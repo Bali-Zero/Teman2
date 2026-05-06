@@ -4,9 +4,9 @@ Generate docs/AUTOMATIONS_REFERENCE.md by scanning LIVE system state.
 
 Sources (in order):
   1. crontab -l  (Pro — local)
-  2. crontab -l  (Air — via SSH)
+  2. crontab -l  (Mini — via SSH)
   3. launchctl list + ~/Library/LaunchAgents/*.plist  (Pro)
-  4. launchctl list + ~/Library/LaunchAgents/*.plist  (Air — via SSH)
+  4. launchctl list + ~/Library/LaunchAgents/*.plist  (Mini — via SSH)
   5. Log files — last line + mtime for health status
 
 D3.1 compliance: CLAUDE.md, zantara_core.py, fly.toml, .env* are in WRITE_BLOCKLIST.
@@ -128,8 +128,8 @@ def _run(cmd: str, timeout: int = 10) -> str:
         return ""
 
 
-def _ssh_air(cmd: str, timeout: int = 10) -> str:
-    return _run(f"ssh -o ConnectTimeout=5 -o BatchMode=yes air '{cmd}'", timeout=timeout)
+def _ssh_mini(cmd: str, timeout: int = 10) -> str:
+    return _run(f"ssh -o ConnectTimeout=5 -o BatchMode=yes mini-remote '{cmd}'", timeout=timeout)
 
 
 _CRON_RE = re.compile(
@@ -235,8 +235,8 @@ def _parse_launchagents(machine: str) -> list[Job]:
         launchctl_raw = _run("launchctl list 2>/dev/null")
         plist_labels = [p.stem for p in sorted(plist_dir.glob("*.plist"))]
     else:
-        launchctl_raw = _ssh_air("launchctl list 2>/dev/null")
-        plist_list = _ssh_air("ls ~/Library/LaunchAgents/*.plist 2>/dev/null")
+        launchctl_raw = _ssh_mini("launchctl list 2>/dev/null")
+        plist_list = _ssh_mini("ls ~/Library/LaunchAgents/*.plist 2>/dev/null")
         plist_labels = [Path(p.strip()).stem for p in plist_list.splitlines() if p.strip()]
 
     running = _parse_launchctl(launchctl_raw)
@@ -292,7 +292,7 @@ PRO_LOG_MAP = {
     "automations_reference": "/tmp/cron-automations-reference.log",
 }
 
-AIR_LOG_MAP = {
+MINI_LOG_MAP = {
     "ollama_cron_window": "~/Projects/nuzantara/logs/ollama_cron.log",
     "auto_test": "~/Projects/nuzantara/logs/auto_test.log",
     "auto_sentinel": "~/Projects/nuzantara/logs/sentinel_nightly.log",
@@ -351,13 +351,13 @@ def _check_log_health_pro(jobs: list[Job]) -> None:
             job.last_status = "⚠️ NO LOG"
 
 
-def _check_log_health_air(jobs: list[Job]) -> None:
-    air_jobs = [j for j in jobs if j.machine == "Air" and j.kind == "cron"]
-    if not air_jobs:
+def _check_log_health_mini(jobs: list[Job]) -> None:
+    mini_jobs = [j for j in jobs if j.machine == "Mini" and j.kind == "cron"]
+    if not mini_jobs:
         return
     checks = []
-    for job in air_jobs:
-        log = job.log_file or AIR_LOG_MAP.get(job.name, "")
+    for job in mini_jobs:
+        log = job.log_file or MINI_LOG_MAP.get(job.name, "")
         if not log:
             continue
         checks.append(
@@ -368,7 +368,7 @@ def _check_log_health_air(jobs: list[Job]) -> None:
         )
     if not checks:
         return
-    raw = _ssh_air("; ".join(checks), timeout=15)
+    raw = _ssh_mini("; ".join(checks), timeout=15)
     current_job = None
     for line in raw.splitlines():
         if line.startswith("JOB:"):
@@ -376,7 +376,7 @@ def _check_log_health_air(jobs: list[Job]) -> None:
         elif line == "---":
             current_job = None
         elif current_job:
-            matching = [j for j in air_jobs if j.name == current_job]
+            matching = [j for j in mini_jobs if j.name == current_job]
             if not matching:
                 continue
             job = matching[0]
@@ -439,13 +439,13 @@ def generate(dry_run: bool = False) -> str:
     sentinel_status, circuit_breakers = _load_sentinel_state()
 
     pro_cron = _consolidate_cron(_parse_crontab(_run("crontab -l 2>/dev/null"), "Pro"))
-    air_cron = _consolidate_cron(_parse_crontab(_ssh_air("crontab -l 2>/dev/null"), "Air"))
+    mini_cron = _consolidate_cron(_parse_crontab(_ssh_mini("crontab -l 2>/dev/null"), "Mini"))
     pro_la = _parse_launchagents("Pro")
-    air_la = _parse_launchagents("Air")
+    mini_la = _parse_launchagents("Mini")
 
-    all_jobs = pro_cron + air_cron + pro_la + air_la
+    all_jobs = pro_cron + mini_cron + pro_la + mini_la
     _check_log_health_pro(all_jobs)
-    _check_log_health_air(all_jobs)
+    _check_log_health_mini(all_jobs)
 
     # Enrichment da registry e circuit breakers
     for job in all_jobs:
@@ -471,7 +471,7 @@ def generate(dry_run: bool = False) -> str:
         "",
         "> **Auto-generated from live system state** — do not edit manually.",
         f"> Generated: {generated_at}",
-        "> Source: `crontab -l` (Pro+Air) + `launchctl list` (Pro+Air) + log health + `job_registry.json` + `sentinel_status.json` + `circuit_breakers.json`",
+        "> Source: `crontab -l` (Pro+Mini) + `launchctl list` (Pro+Mini) + log health + `job_registry.json` + `sentinel_status.json` + `circuit_breakers.json`",
         "",
         "---",
         "",
@@ -513,7 +513,7 @@ def generate(dry_run: bool = False) -> str:
 
     for machine, label in [
         ("Pro", "Pro (nuzantara@Nuzantara — M4 Pro 48GB)"),
-        ("Air", "Air (antonellosiano@Nuzantara-9 — M4 16GB, H24)"),
+        ("Mini", "Mini (nuzantara@mini-pro2 — M4 Pro 24GB, H24)"),
     ]:
         mj = [j for j in all_jobs if j.machine == machine]
         if not mj:

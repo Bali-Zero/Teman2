@@ -1,7 +1,7 @@
 {
   "_version": "2.0",
-  "_updated": "2026-04-13",
-  "_doc": "Single source of truth for all LLM model assignments. Every consumer reads this file. One change, one place.",
+  "_updated": "2026-05-06",
+  "_doc": "Single source of truth for active Pro/Mini LLM model assignments. Air was decommissioned on 2026-05-05 and is not an active Ollama node.",
   "nodes": {
     "pro": {
       "hostname": "Nuzantara",
@@ -14,13 +14,14 @@
       "warm_think": false,
       "ollama_restart_schedule": "weekly sunday 05:00 WITA"
     },
-    "air": {
-      "hostname": "Nuzantara-9",
-      "ram_gb": 16,
-      "mlx_enabled": false,
-      "warm_model": "qwen3:4b",
+    "mini": {
+      "hostname": "mini-pro2",
+      "ram_gb": 24,
+      "mlx_enabled": true,
+      "warm_model": "qwen2.5:7b",
+      "warm_models_extra": [],
       "warm_keep_alive": "-1",
-      "warm_ctx": 4096,
+      "warm_ctx": 8192,
       "warm_think": false,
       "ollama_host": "http://127.0.0.1:11434",
       "ollama_restart_schedule": "weekly sunday 05:00 WITA"
@@ -58,7 +59,7 @@
       "cell_tier1",
       "code_review"
     ],
-    "ollama_air": ["sentry"],
+    "ollama_mini": ["sentry"],
     "gemini_cloud": ["cloud_fallback"],
     "claude_cli": ["sentinel_classifier", "dlq_reasoning"],
     "openrouter": ["aider_fix"],
@@ -73,7 +74,7 @@
   ],
   "notes": {
     "qwen3.5_tool_calling": "BROKEN in Ollama (XML/JSON mismatch #14493). Use qwen3:8b for native tool calling. Our OpenClaw cron does NOT use tools parameter so qwen3.5 is safe.",
-    "air_python_ollama": "Use http://127.0.0.1:11434 not localhost (IPv4/IPv6 issue with Python on Air)",
+    "mini_ram_policy": "Mini has 24GB RAM: keep only qwen2.5:7b warm by default. Load qwen3:8b, qwen3.5:9b, or qwen2.5vl:7b cold only for explicit jobs and do not install/use gemma4:26b on Mini.",
     "think_false": "Always set think:false for qwen3/3.5 API calls, otherwise content is empty and response goes to thinking field",
     "keep_alive_bug": "Always send explicit keep_alive in every API request to prevent timer reset (GitHub #5272)"
   }
