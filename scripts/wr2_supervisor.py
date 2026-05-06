@@ -72,13 +72,31 @@ logger = logging.getLogger("wr2.supervisor")
 
 # (old_status, new_status) → next plist label, or None for alert-only.
 # "*" matches any prior status (including None for INSERT).
+#
+# 2026-05-07 — Sprint A bypass: fact-extractor and fact-checker plists were
+# moved to ~/Library/LaunchAgents/.disabled/ during the WR2 supervisor
+# cutover (PR #299, 26 Apr) but the TRANSITIONS dict still routed through
+# them. Result: every draft reaching `drafts_imaged` triggered launchctl
+# kickstart on a non-loaded plist → silent error → draft stuck forever.
+# Audit 2026-05-07 confirmed zero `rendered` outcomes since 25 Apr.
+#
+# Sprint A short-circuits the fact stages: drafts_imaged → canva-apply
+# directly. Sprint B (next week per docs/wr2/2026-05-07-wr2-longterm-design.md)
+# will re-enable fact-extractor + fact-checker properly, restoring the full
+# chain. The owner-binding decision is "restore fact-checking", but Sprint A
+# prioritises pipeline liveness over fact-check coverage as a stop-gap.
 TRANSITIONS: dict[tuple[str | None, str], str | None] = {
     ("*", "briefed"):                                  "com.balizero.wr2.draft-generator",
     ("briefed", "briefed_facted"):                     "com.balizero.wr2.draft-generator",
     ("briefed", "drafts"):                             "com.balizero.wr2.image-generator",
     ("briefed_facted", "drafts"):                      "com.balizero.wr2.image-generator",
-    ("drafts", "drafts_imaged"):                       "com.balizero.wr2.fact-extractor",
-    ("drafts_imaged", "drafts_imaged_facted"):         "com.balizero.wr2.fact-checker",
+    # Sprint A bypass — see header comment. Restored in Sprint B.
+    ("drafts", "drafts_imaged"):                       "com.balizero.wr2.canva-apply",
+    # Legacy transitions kept for inflight drafts already past drafts_imaged
+    # (e.g. left over from a partial fact-checker run before its plist was
+    # disabled). Once the queue is fully drained these become unreachable;
+    # Sprint B replaces them with the restored fact-extractor/fact-checker.
+    ("drafts_imaged", "drafts_imaged_facted"):         "com.balizero.wr2.canva-apply",
     ("drafts_imaged_facted", "drafts_imaged_checked"): "com.balizero.wr2.canva-apply",
     ("*", "rendered"):                                 None,  # Telegram only
     ("*", "fact_check_failed"):                        None,  # Telegram only
@@ -88,12 +106,15 @@ TRANSITIONS: dict[tuple[str | None, str], str | None] = {
 ALERT_STATUSES = {"rendered", "fact_check_failed"}
 
 # Reconciliation map: which non-terminal statuses need a re-kick if stalled.
+# Sprint A bypass: drafts_imaged / drafts_imaged_facted go straight to
+# canva-apply (fact stages disabled). Sprint B restores fact-extractor +
+# fact-checker entries here.
 NONTERMINAL_TO_NEXT_STAGE: dict[str, str] = {
     "briefed":               "com.balizero.wr2.draft-generator",
     "briefed_facted":        "com.balizero.wr2.draft-generator",
     "drafts":                "com.balizero.wr2.image-generator",
-    "drafts_imaged":         "com.balizero.wr2.fact-extractor",
-    "drafts_imaged_facted":  "com.balizero.wr2.fact-checker",
+    "drafts_imaged":         "com.balizero.wr2.canva-apply",
+    "drafts_imaged_facted":  "com.balizero.wr2.canva-apply",
     "drafts_imaged_checked": "com.balizero.wr2.canva-apply",
 }
 
