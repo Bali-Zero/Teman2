@@ -48,11 +48,22 @@ _NER_PROMPT = """Extract named entities from the text. Return STRICT JSON (no pr
 
 Required keys — each an array of strings (empty array if none found):
   persons         full personal names only (no honorifics alone)
-  organizations   companies, ministries, agencies, NGOs
-  locations       cities, provinces, countries, landmarks
-  laws            statutes, regulations, decrees (e.g. "UU 6/2023", "PP No. 28")
-  monetary_values numeric amounts with currency (e.g. "Rp 500 juta", "USD 1.2M")
-  dates           explicit dates or date ranges ("12 March 2026", "Q2 2026")
+  organizations   companies, ministries, agencies, NGOs.
+                  Indonesian ministry/agency abbreviations are organizations
+                  too: Mendagri, Kemendagri, Kemenkumham, Kemenkeu, Kemlu,
+                  DJP, BKPM, BPN, BPS, BPK, BUMN, DPMPTSP, KPK, OJK, BI,
+                  Bareskrim, Polri, TNI.
+  locations       cities, provinces, countries, landmarks.
+                  NOT currencies (rupiah, USD, IDR are NOT locations).
+  laws            statutes, regulations, decrees. Indonesian formats:
+                  "UU 6/2023", "PP 28/2025", "Perpres 12/2024", "Perda",
+                  "SKB N Menteri", "KEP-71/PJ/2026", "PER-NN/PJ/AAAA",
+                  "PMK 81/2024", "Permendagri", "Perbup".
+                  NOT visa types (e-Tourist Visa, KITAS are NOT laws).
+  monetary_values numeric amounts with currency (e.g. "Rp 500 juta",
+                  "USD 1.2M", "IDR 27.5jt").
+  dates           explicit dates or date ranges ("12 March 2026", "Q2 2026",
+                  "31 Mei 2026").
 
 Include only entities explicitly in the text. Do not infer.
 
@@ -99,16 +110,38 @@ def extract_entities(
     *,
     llm: Callable[..., dict | None] = generate_json,
 ) -> dict:
-    """Extract entities from a single item. Always returns a full dict."""
+    """Extract entities from a single item. Always returns a full dict
+    (empty buckets on transport error). Use extract_entities_status() if
+    you need to distinguish 'LLM ok but no entities' from 'LLM failed'."""
+    entities, _ok = extract_entities_status(title, content, llm=llm)
+    return entities
+
+
+def extract_entities_status(
+    title: str,
+    content: str,
+    *,
+    llm: Callable[..., dict | None] = generate_json,
+) -> tuple[dict, bool]:
+    """Extract entities AND report whether the LLM call succeeded.
+
+    Returns (entities, ok). `ok=False` only on transport-level failure
+    (None response, exception). `ok=True` even when the LLM returned a
+    valid empty dict — that's a legitimate "no entities found" answer
+    and the caller should treat the message as successfully processed.
+    """
     prompt = _NER_PROMPT.format(title=title[:300], content=content[:1000])
 
     try:
         raw = llm(NER_MODEL, prompt, num_predict=400)
     except Exception as e:  # noqa: BLE001 — broad: LLM transport is best-effort
         logger.warning(f"[ner] LLM error: {e}")
-        raw = None
+        return _coerce_entities(None), False
 
-    return _coerce_entities(raw)
+    if raw is None:
+        return _coerce_entities(None), False
+
+    return _coerce_entities(raw), True
 
 
 def run_ner(
@@ -126,7 +159,7 @@ def run_ner(
     publish = publish or (lambda stream, data: stream_publish(stream, data))
     ack = ack or (lambda stream, group, msg_id: stream_ack(stream, group, msg_id))
 
-    stats = {"processed": 0, "extracted": 0, "empty": 0}
+    stats = {"processed": 0, "extracted": 0, "empty": 0, "failed": 0}
 
     items = stream_read_new(
         STREAM_ENRICHED, CONSUMER_GROUP, CONSUMER_NAME, count=max_items
@@ -143,9 +176,17 @@ def run_ner(
             ack(STREAM_ENRICHED, CONSUMER_GROUP, msg_id)
             continue
 
-        entities = extract_entities(
+        entities, ok = extract_entities_status(
             data.get("title", ""), data.get("content", ""), llm=llm
         )
+
+        if not ok:
+            # LLM transport failure — leave msg pending in consumer group
+            # so the next run retries. Do NOT publish a contaminated copy
+            # nor ack: that would mark the item processed forever with
+            # empty entities. (Pre-fix bug: 300 msgs stuck this way.)
+            stats["failed"] += 1
+            continue
 
         # Serialise as JSON string (Redis Streams is flat string-to-string)
         data["entities"] = json.dumps(entities, ensure_ascii=False)
@@ -162,6 +203,7 @@ def run_ner(
 
     logger.info(
         f"[ner] Done: {stats['processed']} processed, "
-        f"{stats['extracted']} with entities, {stats['empty']} empty"
+        f"{stats['extracted']} with entities, {stats['empty']} empty, "
+        f"{stats['failed']} failed (will retry)"
     )
     return stats
