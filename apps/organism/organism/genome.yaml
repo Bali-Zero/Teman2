@@ -483,21 +483,6 @@ organs:
       label: com.matagaruda.watcher.daily
     severity_on_silence: warning
     cicatrix_refs: []
-    duplicates_id: mata_garuda.watcher_daily.mini
-  - id: mata_garuda.watcher_daily.mini
-    runtime: mini_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/mata-garuda/scripts/run_watcher.sh
-    dependencies:
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: mini
-      label: com.matagaruda.watcher.daily
-    severity_on_silence: warning
-    cicatrix_refs: []
-    duplicates_id: mata_garuda.watcher_daily.pro
   - id: mata_garuda.reg_alert_30min.pro
     runtime: pro_launchd
     type: cron
@@ -511,21 +496,6 @@ organs:
       label: com.matagaruda.reg-alert.30min
     severity_on_silence: warning
     cicatrix_refs: []
-    duplicates_id: mata_garuda.reg_alert_30min.mini
-  - id: mata_garuda.reg_alert_30min.mini
-    runtime: mini_launchd
-    type: cron
-    expected_hb_seconds: 5400
-    owner_module: apps/mata-garuda/scripts/run_regulation_alert.py
-    dependencies:
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: mini
-      label: com.matagaruda.reg-alert.30min
-    severity_on_silence: warning
-    cicatrix_refs: []
-    duplicates_id: mata_garuda.reg_alert_30min.pro
   - id: mata_garuda.kg_linker.pro
     runtime: pro_launchd
     type: cron
@@ -540,22 +510,6 @@ organs:
       label: com.matagaruda.kg-linker
     severity_on_silence: warning
     cicatrix_refs: []
-    duplicates_id: mata_garuda.kg_linker.mini
-  - id: mata_garuda.kg_linker.mini
-    runtime: mini_launchd
-    type: cron
-    expected_hb_seconds: 7200
-    owner_module: apps/mata-garuda/mata_garuda/workers/kg_linker.py
-    dependencies:
-      - infra.redis
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: mini
-      label: com.matagaruda.kg-linker
-    severity_on_silence: warning
-    cicatrix_refs: []
-    duplicates_id: mata_garuda.kg_linker.pro
   - id: mata_garuda.wr_topic.pro
     runtime: pro_launchd
     type: cron
@@ -569,21 +523,6 @@ organs:
       label: com.matagaruda.wr-topic
     severity_on_silence: warning
     cicatrix_refs: []
-    duplicates_id: mata_garuda.wr_topic.mini
-  - id: mata_garuda.wr_topic.mini
-    runtime: mini_launchd
-    type: cron
-    expected_hb_seconds: 691200
-    owner_module: apps/mata-garuda/scripts/run_wr_topic.py
-    dependencies:
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: mini
-      label: com.matagaruda.wr-topic
-    severity_on_silence: warning
-    cicatrix_refs: []
-    duplicates_id: mata_garuda.wr_topic.pro
   - id: mata_garuda.wr2_bridge_hourly.pro
     runtime: pro_launchd
     type: cron
@@ -594,24 +533,9 @@ organs:
     recovery_action: launchctl_kickstart
     recovery_params:
       host: pro
-      label: com.matagaruda.wr2-bridge.hourly
+      label: com.matagaruda.wr2-bridge
     severity_on_silence: warning
     cicatrix_refs: []
-    duplicates_id: mata_garuda.wr2_bridge_hourly.mini
-  - id: mata_garuda.wr2_bridge_hourly.mini
-    runtime: mini_launchd
-    type: cron
-    expected_hb_seconds: 7200
-    owner_module: apps/mata-garuda/scripts/run_wr2_bridge.py
-    dependencies:
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: mini
-      label: com.matagaruda.wr2-bridge.hourly
-    severity_on_silence: warning
-    cicatrix_refs: []
-    duplicates_id: mata_garuda.wr2_bridge_hourly.pro
   - id: mata_garuda.bridge_adaptive.pro
     runtime: pro_launchd
     type: daemon
@@ -626,36 +550,6 @@ organs:
       label: com.matagaruda.bridge.adaptive
     severity_on_silence: error
     cicatrix_refs: []
-    duplicates_id: mata_garuda.bridge_adaptive.mini
-  - id: mata_garuda.bridge_adaptive.mini
-    runtime: mini_launchd
-    type: daemon
-    expected_hb_seconds: 180
-    owner_module: apps/mata-garuda/scripts/run_bridge_adaptive.py
-    dependencies:
-      - infra.redis
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: mini
-      label: com.matagaruda.bridge.adaptive
-    severity_on_silence: error
-    cicatrix_refs: []
-    duplicates_id: mata_garuda.bridge_adaptive.pro
-  - id: mata_garuda.sentinel_daily.pro
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/mata-garuda/scripts/run_sentinel.py
-    dependencies:
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.matagaruda.sentinel.daily
-    severity_on_silence: warning
-    cicatrix_refs: []
-    duplicates_id: mata_garuda.sentinel_daily.mini
   - id: mata_garuda.sentinel_daily.mini
     runtime: mini_launchd
     type: cron
@@ -669,22 +563,6 @@ organs:
       label: com.matagaruda.sentinel.daily
     severity_on_silence: warning
     cicatrix_refs: []
-    duplicates_id: mata_garuda.sentinel_daily.pro
-  - id: mata_garuda.intel_bridge_daily.pro
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/mata-garuda/scripts/run_intel_bridge.py
-    dependencies:
-      - infra.redis
-      - wr2.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.matagaruda.intel-bridge.daily
-    severity_on_silence: warning
-    cicatrix_refs: []
-    duplicates_id: mata_garuda.intel_bridge_daily.mini
   - id: mata_garuda.intel_bridge_daily.mini
     runtime: mini_launchd
     type: cron
@@ -699,7 +577,6 @@ organs:
       label: com.matagaruda.intel-bridge.daily
     severity_on_silence: warning
     cicatrix_refs: []
-    duplicates_id: mata_garuda.intel_bridge_daily.pro
   - id: mata_garuda.daily_briefing.pro
     runtime: pro_launchd
     type: cron
@@ -714,22 +591,6 @@ organs:
       label: com.matagaruda.daily-briefing
     severity_on_silence: warning
     cicatrix_refs: []
-    duplicates_id: mata_garuda.daily_briefing.mini
-  - id: mata_garuda.daily_briefing.mini
-    runtime: mini_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/mata-garuda/scripts/run_daily_briefing.py
-    dependencies:
-      - infra.redis
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: mini
-      label: com.matagaruda.daily-briefing
-    severity_on_silence: warning
-    cicatrix_refs: []
-    duplicates_id: mata_garuda.daily_briefing.pro
   - id: mata_garuda.kita_feed_daily.pro
     runtime: pro_launchd
     type: cron
@@ -741,25 +602,9 @@ organs:
     recovery_action: launchctl_kickstart
     recovery_params:
       host: pro
-      label: com.matagaruda.kita-feed.daily
+      label: com.matagaruda.kita-feed
     severity_on_silence: warning
     cicatrix_refs: []
-    duplicates_id: mata_garuda.kita_feed_daily.mini
-  - id: mata_garuda.kita_feed_daily.mini
-    runtime: mini_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/mata-garuda/scripts/run_kita_feed.py
-    dependencies:
-      - infra.redis
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: mini
-      label: com.matagaruda.kita-feed.daily
-    severity_on_silence: warning
-    cicatrix_refs: []
-    duplicates_id: mata_garuda.kita_feed_daily.pro
   - id: mata_garuda.public_channel.pro
     runtime: pro_launchd
     type: cron
@@ -774,22 +619,6 @@ organs:
       label: com.matagaruda.public-channel
     severity_on_silence: warning
     cicatrix_refs: []
-    duplicates_id: mata_garuda.public_channel.mini
-  - id: mata_garuda.public_channel.mini
-    runtime: mini_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/mata-garuda/scripts/run_public_channel.py
-    dependencies:
-      - infra.redis
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: mini
-      label: com.matagaruda.public-channel
-    severity_on_silence: warning
-    cicatrix_refs: []
-    duplicates_id: mata_garuda.public_channel.pro
   - id: mata_garuda.weekly_digest.pro
     runtime: pro_launchd
     type: cron
@@ -804,22 +633,6 @@ organs:
       label: com.matagaruda.weekly-digest
     severity_on_silence: warning
     cicatrix_refs: []
-    duplicates_id: mata_garuda.weekly_digest.mini
-  - id: mata_garuda.weekly_digest.mini
-    runtime: mini_launchd
-    type: cron
-    expected_hb_seconds: 691200
-    owner_module: apps/mata-garuda/scripts/run_weekly_digest.py
-    dependencies:
-      - infra.redis
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: mini
-      label: com.matagaruda.weekly-digest
-    severity_on_silence: warning
-    cicatrix_refs: []
-    duplicates_id: mata_garuda.weekly_digest.pro
   - id: mata_garuda.gap_consumer.pro
     runtime: pro_launchd
     type: cron
@@ -834,22 +647,6 @@ organs:
       label: com.matagaruda.gap.consumer
     severity_on_silence: warning
     cicatrix_refs: []
-    duplicates_id: mata_garuda.gap_consumer.mini
-  - id: mata_garuda.gap_consumer.mini
-    runtime: mini_launchd
-    type: cron
-    expected_hb_seconds: 4200
-    owner_module: apps/mata-garuda/mata_garuda/workers/gap_consumer.py
-    dependencies:
-      - infra.redis
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: mini
-      label: com.matagaruda.gap.consumer
-    severity_on_silence: warning
-    cicatrix_refs: []
-    duplicates_id: mata_garuda.gap_consumer.pro
   - id: mata_garuda.invalidation_sweep.pro
     runtime: pro_launchd
     type: cron
