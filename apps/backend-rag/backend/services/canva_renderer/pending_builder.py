@@ -35,18 +35,34 @@ LEGIBILITY_ARMOR_URL = (
 # (page_index, heading_element_id, body_element_id_or_None)
 # Recovered 2026-03-26 via start-editing-transaction, re-confirmed 2026-04-22.
 # Pages 9 and 11 have image+heading only — no body slot in the template.
-TEMPLATE_SLOTS: list[tuple[int, str, str | None]] = [
-    (1, "PB6Rxs8n5DZkNS9Z-LB7Ms2Np5mWMHmSS", "PB6Rxs8n5DZkNS9Z-LBKpxy8Y8VM8g5sm"),
-    (2, "PBRnkF5C2FHvWPPp-LBwYVgC9yVwkqB5w", "PBRnkF5C2FHvWPPp-LBSxs84s03skX2bJ"),
-    (3, "PBswT8p6LMg6vyX4-LBZ0XDG56kG2Vclt", "PBswT8p6LMg6vyX4-LBR7pfgBKZYHQxLJ"),
-    (4, "PB9rgJ5tQj1yNJrD-LBtDrMM3Bp4nJ4v9", "PB9rgJ5tQj1yNJrD-LBGHjSsS3lj7VY3Z"),
-    (5, "PBZjXPTPh9tnvx82-LBSZHpqHtJfq43QC", "PBZjXPTPh9tnvx82-LB9q34XMJhYmJcVV"),
-    (6, "PBgr2GbZD3DJkPP0-LB0cZMDY3BRdprNk", "PBgr2GbZD3DJkPP0-LB1kPFcPYqsqQYfQ"),
-    (7, "PBk1XphW0PnpKMh2-LBbh37qB3S4DrdrD", "PBk1XphW0PnpKMh2-LB2XL6f0tjmwhgk8"),
-    (8, "PBNffcgkNpZKTtmM-LBqZPxQl4n18fr93", "PBNffcgkNpZKTtmM-LBY2F75l9NJp4bpf"),
-    (9, "PBqdbS4QcwHgGN0F-LBxNXD1BhmjjkJfc", None),
-    (10, "PBz4hjP71RbnjKhb-LBbCpkK9wH5C1KQX", "PBz4hjP71RbnjKhb-LBTVJsF8WVLZBx8L"),
-    (11, "PBxns7m6jJJm3BKT-LBtXZ6mvNj5TH3n0", None),
+# 2026-05-07: TEMPLATE_SLOTS deprecated as authoritative element_id source.
+# The hardcoded suffixes have drifted from the live template (different
+# element ID suffixes, page reordering — page 9 in this list maps to live
+# page 7's prefix `PBqdbS4QcwHg...`). Result: heading text was being applied
+# to body slots and vice versa, producing the "title smaller than body"
+# typography inversion the operator flagged in DAHI7R8qiMo screenshots.
+#
+# The element_id values below are kept as a hint for the apply skill — the
+# skill's Phase A role_index remap is the actual mechanism that finds the
+# right element by visual hierarchy (height descending). When live remap
+# fails, these IDs are tried as a last-resort exact match. Suffixes are
+# deliberately set to None so the skill ALWAYS goes through the height-based
+# remap; future-proof against template revisions in Canva UI.
+#
+# Sprint B item: replace this list with a "role spec" that the skill resolves
+# at runtime via start-editing-transaction (no IDs in pending JSON at all).
+TEMPLATE_SLOTS: list[tuple[int, str | None, str | None]] = [
+    (1, None, None),
+    (2, None, None),
+    (3, None, None),
+    (4, None, None),
+    (5, None, None),
+    (6, None, None),
+    (7, None, None),
+    (8, None, None),
+    (9, None, None),
+    (10, None, None),
+    (11, None, None),
 ]
 
 # Image element IDs per page — None means APPLICA runbook retrieves ID

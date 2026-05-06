@@ -64,6 +64,13 @@ BZ_KEYWORDS: dict[str, int] = {
 
 FRESHNESS_MAX_POINTS: int = 30
 FRESHNESS_HALF_LIFE_HOURS: float = 72.0
+# 2026-05-07: hard cutoff. Owner policy: news >3 days old is stale, never
+# pickable. Previously the freshness_score decayed asymptotically but never
+# zeroed out, so a 12-day-old article with strong tier+keywords could still
+# beat a 1-day-old weaker one. Production failure: cron 05:10 picked an
+# article from 24 April (12 days old) on 6 May. Override via
+# WR2_MAX_ARTICLE_AGE_HOURS env if you ever need to relax for a backfill.
+MAX_ARTICLE_AGE_HOURS: float = float(os.environ.get("WR2_MAX_ARTICLE_AGE_HOURS", "72"))
 TIER_WEIGHT: dict[str, int] = {"T1": 30, "T2": 15, "T3": 5}
 SCORE_THRESHOLD: float = 40.0
 STAGING_FETCH_TIMEOUT: float = 30.0
@@ -251,6 +258,35 @@ async def run(*, dry_run: bool = False, force: bool = False) -> int:
     if not items:
         logger.info("No pending items — nothing to do today")
         return 1
+
+    # 2026-05-07: hard age cutoff. Owner policy: never pick news >3 days old.
+    # Drops items whose detected_at/published_at is older than
+    # MAX_ARTICLE_AGE_HOURS (default 72). If the cutoff empties the pool,
+    # the pipeline goes idle for the day rather than recycle stale topics.
+    now_utc = datetime.now(timezone.utc)
+
+    def _item_age_hours(it: dict[str, Any]) -> float:
+        dt = _parse_dt(it.get("detected_at")) or _parse_dt(it.get("published_at"))
+        if dt is None:
+            return float("inf")  # missing timestamp → treat as stale
+        return max(0.0, (now_utc - dt).total_seconds() / 3600.0)
+
+    fresh_items = [i for i in items if _item_age_hours(i) <= MAX_ARTICLE_AGE_HOURS]
+    dropped_stale = len(items) - len(fresh_items)
+    if dropped_stale:
+        logger.info(
+            "Age filter: dropped %d items older than %.0fh (kept %d)",
+            dropped_stale, MAX_ARTICLE_AGE_HOURS, len(fresh_items),
+        )
+    if not fresh_items:
+        logger.warning(
+            "Age filter emptied the pool (all %d items older than %.0fh) — "
+            "pipeline idle for today. Override via WR2_MAX_ARTICLE_AGE_HOURS "
+            "if backfill needed.",
+            len(items), MAX_ARTICLE_AGE_HOURS,
+        )
+        return 0
+    items = fresh_items
 
     # Live-first hard preference (PR-1 §C). When WR2_PREFER_LIVE_NEWS=true,
     # restrict the candidate pool to items the enricher tagged as breaking
