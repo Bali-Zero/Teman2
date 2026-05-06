@@ -1,0 +1,8 @@
+{"type":"user","content":"hello"}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"mcp__notebooklm-mcp__notebook_query","input":{"notebook_id":"1ed02e54-542f-426a-94f8-53c5ffde4b7d","query":"x"}}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"mcp__notebooklm-mcp__notebook_query","input":{"notebookId":"7fb12c9c-4e12-4a8d-9bd1-c5b857bf310f","query":"y"}}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"mcp__notebooklm-mcp__notebook_query","input":{"notebook_id":"1ed02e54-542f-426a-94f8-53c5ffde4b7d","query":"z"}}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash","input":{"command":"ls"}}]}}
+{"type":"assistant","message":{"content":[{"type":"tool_use","name":"mcp__notebooklm-mcp__source_add","input":{"notebook_id":"d9438180-5e63-4e2a-a473-6061101f6a8d"}}]}}
+not valid json
+{"type":"user","content":"end"}
