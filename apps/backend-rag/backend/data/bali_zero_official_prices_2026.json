@@ -489,26 +489,6 @@
         "notes": "",
         "description_en": "Permanent residence permit (KITAP) for retirees who have already held a Retirement KITAS, bundled with Multiple Exit Re-entry Permit (MERP).",
         "icon_id": "kitap-permanent"
-      },
-      "MERP 1 Year": {
-        "name": "MERP 1 Year",
-        "price": "4.000.000 IDR",
-        "tier_range": null,
-        "duration": "",
-        "validity": "1 year",
-        "notes": "",
-        "description_en": "Multiple Exit Re-entry Permit valid 1 year for KITAP holders, allowing repeated travel without losing residence status.",
-        "icon_id": "kitap-merp"
-      },
-      "MERP 2 Year": {
-        "name": "MERP 2 Year",
-        "price": "5.000.000 IDR",
-        "tier_range": null,
-        "duration": "",
-        "validity": "2 years",
-        "notes": "",
-        "description_en": "Multiple Exit Re-entry Permit valid 2 years for KITAP holders, allowing repeated travel without losing residence status.",
-        "icon_id": "kitap-merp"
       }
     },
     "tax_accounting": {

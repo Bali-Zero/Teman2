@@ -120,8 +120,6 @@ _Permanent residence permits and multiple re-entry permits._
 | **Investor KITAP + MERP**   | Permanent residence permit (KITAP) for investors holding shares in a PT PMA, bundled with Multiple Exit Re-entry Permit (MERP).               | 55.000.000 IDR |
 | **Dependent KITAP + MERP**  | Permanent residence permit (KITAP) for dependent family members of a primary KITAP holder, bundled with Multiple Exit Re-entry Permit (MERP). | 33.000.000 IDR |
 | **Retirement KITAP + MERP** | Permanent residence permit (KITAP) for retirees who have already held a Retirement KITAS, bundled with Multiple Exit Re-entry Permit (MERP).  | 45.000.000 IDR |
-| **MERP 1 Year**             | Multiple Exit Re-entry Permit valid 1 year for KITAP holders, allowing repeated travel without losing residence status.                       | 4.000.000 IDR  |
-| **MERP 2 Year**             | Multiple Exit Re-entry Permit valid 2 years for KITAP holders, allowing repeated travel without losing residence status.                      | 5.000.000 IDR  |
 
 ---
 
