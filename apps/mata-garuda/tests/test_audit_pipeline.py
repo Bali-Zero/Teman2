@@ -38,13 +38,13 @@ def test_drift_detection_unknown():
 def test_t2a_cookie_refresh_proactive():
     mod = _import()
     with patch.object(mod, "_run", return_value=("", 1, "AUTH FAIL")) as run_mock:
-        # First call simulates `nlm whoami` failing; helper must follow up
-        # with `nlm login --clear`.
+        # First call probes via `nlm login --check`; on failure helper must
+        # follow up with bare `nlm login` (interactive refresh).
         mod.ensure_session_or_relogin()
     invocations = [args for (args, _) in run_mock.call_args_list]
     cmds = ["".join(a[0]) if isinstance(a[0], list) else a[0] for a in invocations]
     joined = " ".join(c if isinstance(c, str) else " ".join(c) for c in cmds)
-    assert "login" in joined and "--clear" in joined
+    assert "login" in joined and "--check" in joined
 
 
 def test_t2b_retry_with_backoff():

@@ -1,149 +1,2343 @@
 {
-  "audited_at": "2026-05-06T17:16:59.523036+00:00",
+  "audited_at": "2026-05-06T17:34:04.083321+00:00",
   "live": {
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000001": {
-      "source_count": null,
-      "title": null
+    "91fd4fd1-0ff4-436e-81ed-e3488762ae32": {
+      "source_count": 0,
+      "title": "Innervation Research \u2014 LLM Autonomic Computing 2024-2026",
+      "raw": {
+        "notebook_id": "91fd4fd1-0ff4-436e-81ed-e3488762ae32",
+        "title": "Innervation Research \u2014 LLM Autonomic Computing 2024-2026",
+        "source_count": 0,
+        "url": "https://notebooklm.google.com/notebook/91fd4fd1-0ff4-436e-81ed-e3488762ae32",
+        "sources": []
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000002": {
-      "source_count": null,
-      "title": null
+    "dc1d15ee-a1ca-4f1b-b088-74d902dac75d": {
+      "source_count": 0,
+      "title": "CELL Organism - Autonomous Living Agent Research",
+      "raw": {
+        "notebook_id": "dc1d15ee-a1ca-4f1b-b088-74d902dac75d",
+        "title": "CELL Organism - Autonomous Living Agent Research",
+        "source_count": 0,
+        "url": "https://notebooklm.google.com/notebook/dc1d15ee-a1ca-4f1b-b088-74d902dac75d",
+        "sources": []
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000003": {
-      "source_count": null,
-      "title": null
+    "2779f061-155e-4063-a052-cc36ac0a1479": {
+      "source_count": 0,
+      "title": "Google Drive Automation Deep Research 2026",
+      "raw": {
+        "notebook_id": "2779f061-155e-4063-a052-cc36ac0a1479",
+        "title": "Google Drive Automation Deep Research 2026",
+        "source_count": 0,
+        "url": "https://notebooklm.google.com/notebook/2779f061-155e-4063-a052-cc36ac0a1479",
+        "sources": []
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000004": {
-      "source_count": null,
-      "title": null
+    "57482a88-5d80-4bcc-8c8d-85834e56d47a": {
+      "source_count": 1,
+      "title": "Guida alla Migrazione KBLI 2025: Conformit\u00e0 e Nuovi Codici Indonesianiof",
+      "raw": {
+        "notebook_id": "57482a88-5d80-4bcc-8c8d-85834e56d47a",
+        "title": "Guida alla Migrazione KBLI 2025: Conformit\u00e0 e Nuovi Codici Indonesianiof",
+        "source_count": 1,
+        "url": "https://notebooklm.google.com/notebook/57482a88-5d80-4bcc-8c8d-85834e56d47a",
+        "sources": [
+          {
+            "id": "69405d9f-3e51-4178-973f-4cf8e372877d",
+            "title": "Indonesian License Migration: Navigating the KBLI 2025 Compliance Deadline"
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000005": {
-      "source_count": null,
-      "title": null
+    "ccf76d52-243a-4ed3-942a-ff8ab48ee8e3": {
+      "source_count": 1,
+      "title": "Guida Fiscale Indonesia 2026: Strategie e Conformit\u00e0 per Stranieri",
+      "raw": {
+        "notebook_id": "ccf76d52-243a-4ed3-942a-ff8ab48ee8e3",
+        "title": "Guida Fiscale Indonesia 2026: Strategie e Conformit\u00e0 per Stranieri",
+        "source_count": 1,
+        "url": "https://notebooklm.google.com/notebook/ccf76d52-243a-4ed3-942a-ff8ab48ee8e3",
+        "sources": [
+          {
+            "id": "6e43d85e-89c9-437a-b4c2-302c5d1596f9",
+            "title": "Indonesia Tax Guide 2026: Strategies for Foreign Residents"
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000006": {
-      "source_count": null,
-      "title": null
+    "2aaaa564-1bf9-4df0-b1d7-2516b9e3f6b1": {
+      "source_count": 1,
+      "title": "Guida agli Investimenti Immobiliari a Bali 2026",
+      "raw": {
+        "notebook_id": "2aaaa564-1bf9-4df0-b1d7-2516b9e3f6b1",
+        "title": "Guida agli Investimenti Immobiliari a Bali 2026",
+        "source_count": 1,
+        "url": "https://notebooklm.google.com/notebook/2aaaa564-1bf9-4df0-b1d7-2516b9e3f6b1",
+        "sources": [
+          {
+            "id": "e1321503-7621-498a-a8ac-807cf0282a5f",
+            "title": "The Bali Foreign Property Ownership Guide 2026"
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000007": {
-      "source_count": null,
-      "title": null
+    "b249bf4c-52fb-448a-b09b-0f29b1184c8d": {
+      "source_count": 1,
+      "title": "Guida alla Costituzione Societaria PT PMA Indonesia 2026",
+      "raw": {
+        "notebook_id": "b249bf4c-52fb-448a-b09b-0f29b1184c8d",
+        "title": "Guida alla Costituzione Societaria PT PMA Indonesia 2026",
+        "source_count": 1,
+        "url": "https://notebooklm.google.com/notebook/b249bf4c-52fb-448a-b09b-0f29b1184c8d",
+        "sources": [
+          {
+            "id": "ce696940-b046-4e27-9211-4978b104f5ce",
+            "title": "The Indonesian PT PMA Blueprint 2026"
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000008": {
-      "source_count": null,
-      "title": null
+    "dd8ad7fe-7ad2-4b42-bb02-1d8c7039a349": {
+      "source_count": 1,
+      "title": "Guida alla Costituzione di una PT PMA in Indonesia 2026",
+      "raw": {
+        "notebook_id": "dd8ad7fe-7ad2-4b42-bb02-1d8c7039a349",
+        "title": "Guida alla Costituzione di una PT PMA in Indonesia 2026",
+        "source_count": 1,
+        "url": "https://notebooklm.google.com/notebook/dd8ad7fe-7ad2-4b42-bb02-1d8c7039a349",
+        "sources": [
+          {
+            "id": "659af6cc-e209-46c4-9a4f-916fabb9290a",
+            "title": "Pasted text"
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000009": {
-      "source_count": null,
-      "title": null
+    "e2e26ad8-db55-42ee-96ce-52294ae9776c": {
+      "source_count": 1,
+      "title": "Panduan Visa dan Pajak Indonesia 2026",
+      "raw": {
+        "notebook_id": "e2e26ad8-db55-42ee-96ce-52294ae9776c",
+        "title": "Panduan Visa dan Pajak Indonesia 2026",
+        "source_count": 1,
+        "url": "https://notebooklm.google.com/notebook/e2e26ad8-db55-42ee-96ce-52294ae9776c",
+        "sources": [
+          {
+            "id": "aba9a8f0-cf97-4b2d-a9f4-def144cc0d04",
+            "title": "Indonesia Visa Pathways and Tax Guidelines 2026"
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000010": {
-      "source_count": null,
-      "title": null
+    "f2422359-df5e-44f9-b730-7222644cf8bf": {
+      "source_count": 1,
+      "title": "Panduan Visa Indonesia dan Ketentuan Izin Tinggal 2026",
+      "raw": {
+        "notebook_id": "f2422359-df5e-44f9-b730-7222644cf8bf",
+        "title": "Panduan Visa Indonesia dan Ketentuan Izin Tinggal 2026",
+        "source_count": 1,
+        "url": "https://notebooklm.google.com/notebook/f2422359-df5e-44f9-b730-7222644cf8bf",
+        "sources": [
+          {
+            "id": "90b9fbaf-6f3e-4042-93ff-79f06c1e6917",
+            "title": "Pasted text"
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000011": {
-      "source_count": null,
-      "title": null
+    "04c5901d-398e-42df-85f0-d6acaf681cb7": {
+      "source_count": 1,
+      "title": "Panduan Investasi Properti Bali 2026: Regulasi dan Kepemilikan Asing",
+      "raw": {
+        "notebook_id": "04c5901d-398e-42df-85f0-d6acaf681cb7",
+        "title": "Panduan Investasi Properti Bali 2026: Regulasi dan Kepemilikan Asing",
+        "source_count": 1,
+        "url": "https://notebooklm.google.com/notebook/04c5901d-398e-42df-85f0-d6acaf681cb7",
+        "sources": [
+          {
+            "id": "53174f42-cd6e-4115-8df1-cac701518819",
+            "title": "Pasted text"
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000012": {
-      "source_count": null,
-      "title": null
+    "1542c35c-5cca-4125-b150-8daeefed0e67": {
+      "source_count": 1,
+      "title": "Panduan Navigasi Pajak dan Investasi Asing Indonesia 2026",
+      "raw": {
+        "notebook_id": "1542c35c-5cca-4125-b150-8daeefed0e67",
+        "title": "Panduan Navigasi Pajak dan Investasi Asing Indonesia 2026",
+        "source_count": 1,
+        "url": "https://notebooklm.google.com/notebook/1542c35c-5cca-4125-b150-8daeefed0e67",
+        "sources": [
+          {
+            "id": "0f63adf0-c2a3-4e8b-9a54-db2206dd02c8",
+            "title": "Pasted text"
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000013": {
-      "source_count": null,
-      "title": null
+    "2d602f12-3370-4834-afca-52c0f7922fe9": {
+      "source_count": 1,
+      "title": "Panduan Lengkap Pendirian PT PMA Indonesia 2026",
+      "raw": {
+        "notebook_id": "2d602f12-3370-4834-afca-52c0f7922fe9",
+        "title": "Panduan Lengkap Pendirian PT PMA Indonesia 2026",
+        "source_count": 1,
+        "url": "https://notebooklm.google.com/notebook/2d602f12-3370-4834-afca-52c0f7922fe9",
+        "sources": [
+          {
+            "id": "4555b99d-bda8-4206-bbef-4736bd07b6ea",
+            "title": "Pasted text"
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000014": {
-      "source_count": null,
-      "title": null
+    "dab1aa9f-02fa-473e-9e7a-1859d90b9067": {
+      "source_count": 1,
+      "title": "Bali Zero \u2014 Mengapa Memberi Makan KITA Membuat Kita Lebih Kuat (April 2026)",
+      "raw": {
+        "notebook_id": "dab1aa9f-02fa-473e-9e7a-1859d90b9067",
+        "title": "Bali Zero \u2014 Mengapa Memberi Makan KITA Membuat Kita Lebih Kuat (April 2026)",
+        "source_count": 1,
+        "url": "https://notebooklm.google.com/notebook/dab1aa9f-02fa-473e-9e7a-1859d90b9067",
+        "sources": [
+          {
+            "id": "eb95eb55-1340-4fa9-8296-f530a079606c",
+            "title": "Bali Zero Brief Bahasa April 2026"
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000015": {
-      "source_count": null,
-      "title": null
+    "404d0985-d7fa-4aa9-a4f0-92f07d3cfc2b": {
+      "source_count": 1,
+      "title": "Bali 2026: La Via del Mare tra Aeroporto e Canggu",
+      "raw": {
+        "notebook_id": "404d0985-d7fa-4aa9-a4f0-92f07d3cfc2b",
+        "title": "Bali 2026: La Via del Mare tra Aeroporto e Canggu",
+        "source_count": 1,
+        "url": "https://notebooklm.google.com/notebook/404d0985-d7fa-4aa9-a4f0-92f07d3cfc2b",
+        "sources": [
+          {
+            "id": "d6913b16-26f3-4830-8a73-dfd7ac3751c1",
+            "title": "Bali Water Taxi: The 2026 Coastal Connection Plan"
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000016": {
-      "source_count": null,
-      "title": null
+    "5a034b71-a426-4976-953a-b07d989edd78": {
+      "source_count": 1,
+      "title": "Nuove Procedure di Verifica OTP per Visti Imigrasi",
+      "raw": {
+        "notebook_id": "5a034b71-a426-4976-953a-b07d989edd78",
+        "title": "Nuove Procedure di Verifica OTP per Visti Imigrasi",
+        "source_count": 1,
+        "url": "https://notebooklm.google.com/notebook/5a034b71-a426-4976-953a-b07d989edd78",
+        "sources": [
+          {
+            "id": "dccef1e8-df16-4db7-b983-81d294336a83",
+            "title": "Pasted text"
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000017": {
-      "source_count": null,
-      "title": null
+    "7f12203a-fc7a-4ef9-b918-07c395a39d71": {
+      "source_count": 1,
+      "title": "BZ Morning News \u2014 Multi-Domain Briefing",
+      "raw": {
+        "notebook_id": "7f12203a-fc7a-4ef9-b918-07c395a39d71",
+        "title": "BZ Morning News \u2014 Multi-Domain Briefing",
+        "source_count": 1,
+        "url": "https://notebooklm.google.com/notebook/7f12203a-fc7a-4ef9-b918-07c395a39d71",
+        "sources": [
+          {
+            "id": "2fb9cccc-1a59-4fe7-b90d-2d3ff3b7a1a7",
+            "title": "BZ Morning News \u2014 April 3, 2026 (v3 cinematic)"
+          }
+        ]
+      }
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000018": {
       "source_count": null,
-      "title": null
+      "title": null,
+      "error": "{\n  \"status\": \"error\",\n  \"error\": \"Failed to get notebook: API error (code 5): NOT_FOUND\"\n}"
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000019": {
       "source_count": null,
-      "title": null
+      "title": null,
+      "error": "{\n  \"status\": \"error\",\n  \"error\": \"Failed to get notebook: API error (code 5): NOT_FOUND\"\n}"
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000020": {
       "source_count": null,
-      "title": null
+      "title": null,
+      "error": "{\n  \"status\": \"error\",\n  \"error\": \"Failed to get notebook: API error (code 5): NOT_FOUND\"\n}"
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000021": {
       "source_count": null,
-      "title": null
+      "title": null,
+      "error": "{\n  \"status\": \"error\",\n  \"error\": \"Failed to get notebook: API error (code 5): NOT_FOUND\"\n}"
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000022": {
       "source_count": null,
-      "title": null
+      "title": null,
+      "error": "{\n  \"status\": \"error\",\n  \"error\": \"Failed to get notebook: API error (code 5): NOT_FOUND\"\n}"
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000023": {
       "source_count": null,
-      "title": null
+      "title": null,
+      "error": "{\n  \"status\": \"error\",\n  \"error\": \"Failed to get notebook: API error (code 5): NOT_FOUND\"\n}"
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000024": {
       "source_count": null,
-      "title": null
+      "title": null,
+      "error": "{\n  \"status\": \"error\",\n  \"error\": \"Failed to get notebook: API error (code 5): NOT_FOUND\"\n}"
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000025": {
       "source_count": null,
-      "title": null
+      "title": null,
+      "error": "{\n  \"status\": \"error\",\n  \"error\": \"Failed to get notebook: API error (code 5): NOT_FOUND\"\n}"
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000026": {
-      "source_count": null,
-      "title": null
+    "50396b3e-b2f9-4903-8df5-65c2b9709eba": {
+      "source_count": 128,
+      "title": "Claude Code optimization research 2026-04-21",
+      "raw": {
+        "notebook_id": "50396b3e-b2f9-4903-8df5-65c2b9709eba",
+        "title": "Claude Code optimization research 2026-04-21",
+        "source_count": 128,
+        "url": "https://notebooklm.google.com/notebook/50396b3e-b2f9-4903-8df5-65c2b9709eba",
+        "sources": [
+          {
+            "id": "2aeb8825-3526-468e-9ed4-2139c43748b5",
+            "title": "00-brainstorm1-prompt.md"
+          },
+          {
+            "id": "076a34bb-e9fd-4f4a-b941-b1f7bd04efc5",
+            "title": "00-brainstorm2-prompt.md"
+          },
+          {
+            "id": "0ed375f3-e4e0-4f67-aed5-a0cb29301d3d",
+            "title": "01-exa-deep-research-pro.md"
+          },
+          {
+            "id": "bcc71bcc-02aa-46b0-aab9-4616488efa95",
+            "title": "02-exa-citations.md"
+          },
+          {
+            "id": "e5266947-dc0a-46e5-8e70-0b0f3f278499",
+            "title": "03-gemini-3.1-pro-brainstorm.md"
+          },
+          {
+            "id": "59dcce81-0f1f-443b-8040-ef80b7e60e07",
+            "title": "04-deepseek-reasoner-brainstorm.md"
+          },
+          {
+            "id": "774c02dd-4682-491a-a4f6-73aab7947309",
+            "title": "05-notebooklm-deep-research-digest.md"
+          },
+          {
+            "id": "8e5b8db9-ef12-4e72-86d7-83e1d0a745a9",
+            "title": "06-roadmap-T1-T3-initial.md"
+          },
+          {
+            "id": "dc8f9d54-1d57-4805-be04-efabef40f905",
+            "title": "07-consolidated-research-synthesis.md"
+          },
+          {
+            "id": "2adf4cee-c248-40ea-adcd-f78731a92877",
+            "title": "10 Best MCP Servers for Developers in 2026 - Firecrawl"
+          },
+          {
+            "id": "310be3ee-9800-4f20-8cd9-68aa35e61c08",
+            "title": "35% of your context window is gone before you type a single character in Claude Code"
+          },
+          {
+            "id": "6c6b54a5-dee3-479b-b9ae-1c332282f010",
+            "title": "A Look Inside Claude's Leaked AI Coding Agent - Varonis"
+          },
+          {
+            "id": "68668d62-7bce-46ea-911c-e6ddc51cc8e5",
+            "title": "A Mental Model for Claude Code: Skills, Subagents, and Plugins | by Dean Blank"
+          },
+          {
+            "id": "033d8b3e-3229-4b1b-a8f7-84f094b321d3",
+            "title": "AI Agent Memory Architecture Guide: Three Paths to the Right Memory Solution"
+          },
+          {
+            "id": "123ea98a-a2ae-4153-9573-b3168bffd67c",
+            "title": "AI Coding Tools Compared (2026): Cursor vs Claude Code vs Copilot \u2014 Benchmarks & Pricing | TLDL"
+          },
+          {
+            "id": "8427e6ba-2499-41f9-b51c-3e0546829e30",
+            "title": "Adding Persistent Memory to Claude Code with the Lightweight memsearch Plugin - Milvus"
+          },
+          {
+            "id": "b534d531-70d4-4c92-bcd3-5c7e08f20401",
+            "title": "Amazon Bedrock Prompt Caching: Saving Time and Money in LLM Applications - Caylent"
+          },
+          {
+            "id": "f7f1da89-0356-4ea0-90e3-ef2c9975a1b2",
+            "title": "Anthropic API Pricing in 2026: Complete Guide \u2014 Models, Caching, Batch & Optimization"
+          },
+          {
+            "id": "372495a9-8a7b-419d-97e0-b88b24ef0923",
+            "title": "Anthropic Hid a Multi-Agent System Inside Claude Code \u2014 Someone Found It in the Binary"
+          },
+          {
+            "id": "9fd246c2-de8b-4470-83ed-f6613f58eee2",
+            "title": "Anthropic Release Notes - April 2026 Latest Updates - Releasebot"
+          },
+          {
+            "id": "7fd127b2-1c10-48b2-999d-b6ec0b7f709f",
+            "title": "Anthropic releases Claude Opus 4.7, narrowly retaking lead for most powerful generally available LLM | VentureBeat"
+          },
+          {
+            "id": "b9f4fb8e-6ea9-4011-afb0-02ce19d57e8b",
+            "title": "Anthropic releases Claude Opus 4.7: How to try it, benchmarks, safety | Mashable"
+          },
+          {
+            "id": "66aabb09-3901-4727-8b37-1c119cbf62c1",
+            "title": "Anthropic's Claude Mythos and What it Means for Security - ArmorCode"
+          },
+          {
+            "id": "f09dc6a5-c264-4ca9-ae50-cf638981e721",
+            "title": "Anthropic's Project Glasswing CVE count is still guesswork - The Register"
+          },
+          {
+            "id": "18ae8629-6ef6-44ea-8ef5-d3f5c378d15d",
+            "title": "Automate workflows with hooks - Claude Code Docs"
+          },
+          {
+            "id": "cfeb9462-7765-43f1-87bd-79be58ea83ca",
+            "title": "Automate workflows with hooks - Claude Code Docs"
+          },
+          {
+            "id": "431551d3-db0b-4010-8e68-5406700d94e5",
+            "title": "Best AI Coding Assistants 2026: Cursor vs Copilot vs Claude Code | YUV.AI"
+          },
+          {
+            "id": "9f4bd5fd-4d28-44d1-adf4-b19aaca6909e",
+            "title": "Best AI Gateway for Claude Code Cost Management"
+          },
+          {
+            "id": "4e81ca29-24db-4c6f-856c-3c37b4a8d230",
+            "title": "Best AI Model for Coding Agents in 2026: A Routing Guide"
+          },
+          {
+            "id": "c5f682d0-7b33-40f4-8b26-a2a3294236e7",
+            "title": "Best Claude Code Skills to Try in 2026 - Firecrawl"
+          },
+          {
+            "id": "833a039b-34fd-4592-bf24-212e3c561734",
+            "title": "Best MCP Servers for Claude Code - TrueFoundry"
+          },
+          {
+            "id": "1303f99e-8a13-4ea8-9bff-4dba23aa2c79",
+            "title": "Built a persistent memory system for Claude \u2014 open source, SQLite-based, pretty simple, basic. : r/ClaudeAI - Reddit"
+          },
+          {
+            "id": "4e1e2752-9011-4581-8e11-a70369e5dfc6",
+            "title": "CI/CD Pipeline Design with Claude Code: GitHub Actions from Zero to Deploy"
+          },
+          {
+            "id": "186dec5f-9019-48e6-91fb-849ddd7a1953",
+            "title": "Cache TTL silently regressed from 1h to 5m around early March 2026, causing quota and cost inflation \u00b7 Issue #46829 \u00b7 anthropics/claude-code - GitHub"
+          },
+          {
+            "id": "591fa7d6-897c-4e49-adc6-64ed3ebf5211",
+            "title": "Claude Code Agent Teams Controls: Delegate Mode, Hooks"
+          },
+          {
+            "id": "87b53508-ee91-4b17-9d3a-4e628173af47",
+            "title": "Claude Code Agent Teams: The End of Solo AI Coding? | by Poojan Vig - Towards AI"
+          },
+          {
+            "id": "ee71b715-caf3-4d66-80a5-31d5b407e9ab",
+            "title": "Claude Code Best Practices: CLAUDE.md, Skills, Hooks, and Workflows"
+          },
+          {
+            "id": "0c530ee0-23aa-4e79-ab04-86785e561e7a",
+            "title": "Claude Code CLI Guide 2026: Install, Config, Commands, Env Vars - Blake Crosley"
+          },
+          {
+            "id": "1092d19c-8f9a-4c24-8a75-f9eafa9fc03c",
+            "title": "Claude Code CLI Guide 2026: Install, Config, Commands, Env Vars - Blake Crosley"
+          },
+          {
+            "id": "e6b6bc1f-95a5-46fe-86f1-959ba22da0e5",
+            "title": "Claude Code Complete Guide 2026: From Basics to Advanced MCP, Agents & Git Workflows - Jitendra Zaa"
+          },
+          {
+            "id": "b5130b98-3f58-446f-856b-bcff90c4eaea",
+            "title": "Claude Code GitLab CI/CD - Claude Code Docs"
+          },
+          {
+            "id": "7857f2ab-b511-48e1-a260-217c501fe735",
+            "title": "Claude Code Hooks - Digital Garden @ prg.sh"
+          },
+          {
+            "id": "67260bc1-a823-46c9-9a7e-57d612ace175",
+            "title": "Claude Code Hooks - all 23 explained and implemented : r/ClaudeAI - Reddit"
+          },
+          {
+            "id": "0635c23b-8962-4e6a-994b-4896bd81e2b7",
+            "title": "Claude Code Hooks | Developing with AI Tools - Steve Kinney"
+          },
+          {
+            "id": "2d211296-98c6-4cbb-8d71-8fb2b5cc5844",
+            "title": "Claude Code MCP Servers: How to Connect, Configure, and Use Them - Builder.io"
+          },
+          {
+            "id": "3bf1123a-0893-4482-b7c9-401a4d2d8654",
+            "title": "Claude Code Metrics Dashboard: Grafana Setup (2026) | Sealos Blog"
+          },
+          {
+            "id": "b539d140-459e-4c7d-a1b3-a390b7f65a93",
+            "title": "Claude Code Opus 4.7 keeps checking on malware | Hacker News"
+          },
+          {
+            "id": "6cf14b8e-0127-4f6f-94c7-890ff50a05cb",
+            "title": "Claude Code Pricing 2026: Complete Plans & Cost Guide - Finout"
+          },
+          {
+            "id": "d8dca07a-7e10-4bb4-a579-206598bfddd7",
+            "title": "Claude Code Pricing 2026: Complete Plans & Cost Guide - Finout"
+          },
+          {
+            "id": "dd2e515a-97fa-478b-afb3-f08eddfd541f",
+            "title": "Claude Code Pricing 2026: Free Credits, API Costs & Max Plan Explained | NxCode"
+          },
+          {
+            "id": "57a99d31-6468-480f-a88d-a11e40ae4647",
+            "title": "Claude Code Pricing 2026: Plans, Token Costs, and Real Usage Estimates - Verdent AI"
+          },
+          {
+            "id": "5cf69672-05f6-44ce-9c55-7fe0f180a133",
+            "title": "Claude Code Pricing Guide 2026: Free Tier, Pro vs Max, API Costs ..."
+          },
+          {
+            "id": "ed53890f-63f0-4033-a2c9-38b2736d77f7",
+            "title": "Claude Code Pricing in 2026: Every Plan Explained (Pro, Max, API & Teams) - SSD Nodes"
+          },
+          {
+            "id": "cb91e1ca-f0d0-4b37-9c79-a487b3f2369d",
+            "title": "Claude Code Q1 2026 Update Roundup: Every Feature That Actually Matters | MindStudio"
+          },
+          {
+            "id": "534e7293-b308-4c0c-98d5-1118e6378e03",
+            "title": "Claude Code Visual: hooks, subagents, MCP, CLAUDE.md : r/ClaudeAI - Reddit"
+          },
+          {
+            "id": "f3f1817a-4e18-47bd-87d9-456b6dc6118d",
+            "title": "Claude Code context-gathering bundle: composto skill + 3 codebase agents + /review-all two-phase command - GitHub Gist"
+          },
+          {
+            "id": "f936e0d8-b050-40bf-8aee-dcbb46a48ca4",
+            "title": "Claude Code overview - Claude Code Docs"
+          },
+          {
+            "id": "11609b8b-dcb4-4b5f-ac4f-7c5d8f6b0067",
+            "title": "Claude Code vs Cursor vs GitHub Copilot in April 2026: I Tested All Three on Production Systems Handling 400k+ RPS \u2014 Only One Let Me Sleep at Night - Artificial Intelligence in Plain English"
+          },
+          {
+            "id": "565e9957-eb7f-48c3-a50c-469d449b97e0",
+            "title": "Claude Code vs GitHub Copilot: Which AI Coding Tool Wins? | MindStudio"
+          },
+          {
+            "id": "9ea7287e-6f82-436d-aa7e-b13934840108",
+            "title": "Claude Code | Anthropic's agentic coding system"
+          },
+          {
+            "id": "e1214aab-566f-4f7f-86d1-71f920ed5847",
+            "title": "Claude Code's Memory Is Simpler Than You Think \u2014 And That's a Problem | HarrisonSec"
+          },
+          {
+            "id": "b56f1fbe-aa9e-46c5-956c-c9e387aa0369",
+            "title": "Claude Mythos Preview \\ red.anthropic.com"
+          },
+          {
+            "id": "c0c6afef-44d4-4cec-a843-670b00543204",
+            "title": "Claude Mythos Preview vs Claude Opus 4.7: AI Benchmark Comparison 2026 | BenchLM.ai"
+          },
+          {
+            "id": "2ffd6b4e-794f-45a6-aeb5-d664722c552c",
+            "title": "Claude Opus 4.7 Benchmarks Explained - Vellum AI"
+          },
+          {
+            "id": "708f50e5-3a0d-42db-b672-a066081cf659",
+            "title": "Claude Opus 4.7: Complete Guide to Features, Benchmarks & Pricing (2026) | NxCode"
+          },
+          {
+            "id": "711f9301-908b-4258-9a58-f1f11d21bfbc",
+            "title": "Claude code docs map"
+          },
+          {
+            "id": "eb92f012-fae7-43f8-9151-b055d4587e69",
+            "title": "Claude's code: Anthropic leaks source code for AI software engineering tool - The Guardian"
+          },
+          {
+            "id": "60fb5abb-acb8-42de-90c9-96daddac00b7",
+            "title": "Claude-Mem Guide: Persistent Memory for Claude Code - DataCamp"
+          },
+          {
+            "id": "ac22556f-012e-47d7-b3c1-16157833cf0c",
+            "title": "Claude-Mem: Persistent Memory for AI Coding Assistants - Corti.com"
+          },
+          {
+            "id": "768b57d4-19f7-43b3-abc4-414cc6044515",
+            "title": "Convert CLAUDE.md to AI-native structured-label format \u00b7 anthropics skills \u00b7 Discussion #579 - GitHub"
+          },
+          {
+            "id": "37961a4b-8fcd-4ab1-9ac3-1cc7a8da12de",
+            "title": "Create custom subagents - Claude Code Docs"
+          },
+          {
+            "id": "72cd7552-6923-4df7-8f62-ea945abc36a3",
+            "title": "Cursor vs Claude Code vs GitHub Copilot 2026: The Ultimate Comparison | NxCode"
+          },
+          {
+            "id": "5d181965-3d0f-4214-a6ff-98c7be7829f9",
+            "title": "Every Claude Code Update From March 2026, Explained - Builder.io"
+          },
+          {
+            "id": "49819df3-da0a-412c-8e9f-3616e245eba9",
+            "title": "Extend Claude Code - Claude Code Docs"
+          },
+          {
+            "id": "e9400e80-4555-4b0b-828f-315665900944",
+            "title": "Extend Claude Code - Claude Code Docs"
+          },
+          {
+            "id": "7ee4e836-ad13-4a65-af06-db8cdf2e586e",
+            "title": "Extend Claude with skills - Claude Code Docs"
+          },
+          {
+            "id": "c915c5cd-209a-40cc-b348-29626547c422",
+            "title": "Feature Request: Native token compression for CLAUDE.md and instruction files #33464"
+          },
+          {
+            "id": "45f3fa9c-e9bf-4d90-9ffc-179e4e4422f9",
+            "title": "Google's Code Offensive: The \"Strike Team\" to Beat Claude : r/AIGuild - Reddit"
+          },
+          {
+            "id": "4bf418cc-a8f3-4f78-a47b-a88162b81123",
+            "title": "Hooks - Claude Code Best Practice - Mintlify"
+          },
+          {
+            "id": "148c3196-b06f-4b90-8acb-f5ea663351ea",
+            "title": "Hooks reference - Claude Code Docs"
+          },
+          {
+            "id": "5c4c1d0d-c916-4f06-8e4a-aef27bb80ffc",
+            "title": "How Claude remembers your project - Claude Code Docs"
+          },
+          {
+            "id": "2efc4e9c-d697-49d0-8ce0-9e8dd8660784",
+            "title": "How I Monitor My Claude Code Usage with Grafana, OpenTelemetry, and VictoriaMetrics"
+          },
+          {
+            "id": "a8abd858-1f9e-4327-a2c6-c41921db85da",
+            "title": "How Prompt Caching Actually Works in Claude Code"
+          },
+          {
+            "id": "520dacab-17ee-4c4a-98ed-3456aac701ce",
+            "title": "How to Scale Claude Code with an MCP Gateway (Run Any LLM, Centralize Tools, Control Costs) - DEV Community"
+          },
+          {
+            "id": "43805ec7-84c2-4e2e-abde-8d0d9259ca28",
+            "title": "How to Set Up Claude Code Agent Teams (Full Walkthrough + What Actually Changed)"
+          },
+          {
+            "id": "618c4b56-da77-40dc-9b08-d53ae37cd74a",
+            "title": "How to Set Up Claude Code Agent Teams (Full Walkthrough + What Actually Changed) Tutorial / Guide : r/AIAgentsInAction - Reddit"
+          },
+          {
+            "id": "870f5269-9816-4e94-9459-8c63722f93e6",
+            "title": "How to Set Up Claude Code in GitHub Actions (2026 Guide ..."
+          },
+          {
+            "id": "ec398910-797b-4da8-ad96-fb217a1a0ac9",
+            "title": "I built \"Awesome Claude Code\" \u2014 a curated list of resources, templates, MCP servers, and tips for Claude Code : r/ClaudeAI - Reddit"
+          },
+          {
+            "id": "c3cc4543-8f49-45f6-8106-fc3689179d45",
+            "title": "Integrating Claude Code with GitHub Actions | Developing with AI Tools | Steve Kinney"
+          },
+          {
+            "id": "851afca2-d02c-43e9-b0f1-905eab4458eb",
+            "title": "Introducing Claude Opus 4.7 - Anthropic"
+          },
+          {
+            "id": "c089f2c2-9991-4ac8-88ed-efd760321053",
+            "title": "Let Claude use your computer from the CLI - Claude Code Docs"
+          },
+          {
+            "id": "f63d994f-2096-4e0e-a8f5-ced82bc35e45",
+            "title": "L\u2019Ecosistema Agentico di Claude Code: Analisi Tecnica di Skills, Plugin e Protocolli di Contesto per lo Sviluppo Software Autonomo"
+          },
+          {
+            "id": "d55be94d-c7d9-4de1-aacd-399b13ebaab8",
+            "title": "Newsroom - Anthropic"
+          },
+          {
+            "id": "9b4af654-0518-4641-933d-1de94a7da943",
+            "title": "ONE MILLION!! : r/ClaudeCode - Reddit"
+          },
+          {
+            "id": "af64f3cc-a5f6-4013-aa8d-8f6cdfd347d3",
+            "title": "On Anthropic's Mythos Preview and Project Glasswing - Schneier on Security"
+          },
+          {
+            "id": "35621a14-4581-4697-ba62-786727b30c0d",
+            "title": "OpenClaw AI Memory with Cognee: Plugin Guide and Architecture - Cognee"
+          },
+          {
+            "id": "eed5ea5e-5c4e-45b6-8d76-ae4d394da094",
+            "title": "OpenTelemetry Claude Code - Axiom Docs"
+          },
+          {
+            "id": "29c88be1-7048-45cb-8354-04c0bd3e04ba",
+            "title": "Opus 4.7 is horrible at writing - Hacker News"
+          },
+          {
+            "id": "8c622c66-f621-4577-8732-c28035b18a8c",
+            "title": "Orchestrate teams of Claude Code sessions"
+          },
+          {
+            "id": "9d47809d-0de9-4182-a1ba-2c2f2f79ce7b",
+            "title": "Professional Systems Architecture Report: Optimization Patterns and Autonomous Orchestration in the 2026 Claude Code CLI Ecosystem"
+          },
+          {
+            "id": "e3aa5c75-a1df-45e0-b6b9-ab6b59c9d04d",
+            "title": "Project Glasswing - Anthropic"
+          },
+          {
+            "id": "12a9eaa3-5cac-428d-9eac-0f5e00a7ea22",
+            "title": "Prompt Caching: The Optimization That Cuts LLM Costs by 90%"
+          },
+          {
+            "id": "6561d0ba-dc4e-43b7-9c35-d1bbade0bd6d",
+            "title": "Release notes | Claude Help Center - Claude support"
+          },
+          {
+            "id": "2b863e6f-02e2-409a-a09b-39999552e029",
+            "title": "Simon Willison on claude-code"
+          },
+          {
+            "id": "790e1c3b-5b65-4e59-a158-ebedafb897be",
+            "title": "Step-3.5-Flash/cookbooks/claude-code-best-practices/README.en.md at main \u00b7 stepfun-ai ... - GitHub"
+          },
+          {
+            "id": "5a0dd6c7-1650-4381-a5e3-d918895bcd09",
+            "title": "Terminal Tools Skill for Claude Code | tmux & TUI Control - MCP Market"
+          },
+          {
+            "id": "b6bebd6b-fa60-409c-a1cf-8ab674802809",
+            "title": "The Autonomous Frontier: A Comprehensive Analysis of the Claude Code Ecosystem and Opus 4.7 Development Cycle"
+          },
+          {
+            "id": "50d3059c-3b39-48eb-b995-7e7837e4e0a3",
+            "title": "The Complete Guide to Claude Code V2: CLAUDE.md, MCP ..."
+          },
+          {
+            "id": "fbeacb2b-3c79-43d5-be90-41ae40cba0a1",
+            "title": "The Real Cost of AI Coding in 2026: Pricing, Token Waste, and How to Cut It | Morph"
+          },
+          {
+            "id": "419c3196-15c8-42ae-ab91-d4488b3bde0a",
+            "title": "Top 100 MCP Servers Leaderboard | MCP Market"
+          },
+          {
+            "id": "acd128ec-1bb4-47e9-b6e9-4cb1c381ba36",
+            "title": "Top MCP servers that actually turn Claude into a productivity machine, I tested dozens and kept 35 - Reddit"
+          },
+          {
+            "id": "d4132f24-412f-454b-96d4-7e038a177628",
+            "title": "Understanding Claude Code hooks documentation - PromptLayer Blog"
+          },
+          {
+            "id": "2582748b-da93-4dba-9936-58a90a204e66",
+            "title": "Understanding Write Cache - Help - Cursor - Community Forum"
+          },
+          {
+            "id": "e8427895-e5a9-4f0f-abdb-adae7828c08e",
+            "title": "Use Claude Code Desktop - Claude Code Docs"
+          },
+          {
+            "id": "3a073e6f-9a5b-43c5-8383-5f5179ddb8ee",
+            "title": "Use Claude Code in VS Code - Claude Code Docs"
+          },
+          {
+            "id": "8d26e3cf-1d6c-4b65-ab77-237734408a98",
+            "title": "We tested Anthropic's redesigned Claude Code desktop app and ..."
+          },
+          {
+            "id": "63ad5972-1621-44cd-8331-fdd6a65152d1",
+            "title": "What I Learned Building a Memory System for My Coding Agent : r/ClaudeCode - Reddit"
+          },
+          {
+            "id": "a96ae667-d220-4a44-a6fb-8def17a450f6",
+            "title": "What Is Claude Code's Advisor Strategy? How to Use Opus as an ..."
+          },
+          {
+            "id": "4c295286-0c01-42b0-8ec9-3ea510285bbc",
+            "title": "Why the 1M context window burns through limits faster and what to ..."
+          },
+          {
+            "id": "2e85b937-f083-48c7-9893-9d370b290c8e",
+            "title": "[FEATURE] Hierarchical memory to prevent silent loss at 200-line MEMORY.md limit \u00b7 Issue #40614 \u00b7 anthropics/claude-code - GitHub"
+          },
+          {
+            "id": "04747829-1d49-47cd-96d1-1ddd21d63e4e",
+            "title": "agent-sh/agentsys: AI writes code. This automates ... - GitHub"
+          },
+          {
+            "id": "df9bdaad-6ff7-4817-b532-edafd2ea138a",
+            "title": "akin-ozer/cc-devops-skills: A practical agent skill pack for ... - GitHub"
+          },
+          {
+            "id": "9b1c214b-0b41-4c06-a5cc-33fb10ce3995",
+            "title": "anthropic isn't the only reason you're hitting claude code limits. i did audit of 926 sessions and found a lot of the waste was on my side. : r/ClaudeAI - Reddit"
+          },
+          {
+            "id": "7ceef23e-1825-4978-8f78-ac4f6907ee67",
+            "title": "awesome-claude-code \u00b7 GitHub Topics"
+          },
+          {
+            "id": "91933779-8a2d-49a0-91aa-dc507cedf1aa",
+            "title": "claude-md-templates/principles.md at main \u00b7 abhishekray07/claude ..."
+          },
+          {
+            "id": "fb7545ad-4a37-4cf6-95aa-bdd3ee6e8bd4",
+            "title": "hesreallyhim/awesome-claude-code: A curated list of ... - GitHub"
+          },
+          {
+            "id": "74953927-cf14-4069-9838-9194515a425f",
+            "title": "primeline-ai/claude-tmux-orchestration: Claude Code tmux ... - GitHub"
+          },
+          {
+            "id": "88938a7a-0d86-4788-a825-46cf888f8c5b",
+            "title": "zcquant/claude-code-monitor: Claude Code Telemetry Monitor - Real-time token usage tracking and cost analytics dashboard for Claude Code sessions via OpenTelemetry OTLP protocol Claude Code \u9065\u6d4b\u76d1\u63a7\u5668 - \u901a\u8fc7 OpenTelemetry OTLP \u534f\u8bae\u5b9e\u65f6\u8ddf\u8e2a Claude Code \u4f1a\u8bdd\u7684\u4ee4\u724c\u4f7f\u7528\u91cf\u548c\u6210\u672c\u5206\u6790\u4eea\u8868\u677f - GitHub"
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000027": {
-      "source_count": null,
-      "title": null
+    "201b4b94-deda-40a9-9fcb-0e67a3f81e52": {
+      "source_count": 150,
+      "title": "Digital Sovereignty & Ancestral Wisdom AI",
+      "raw": {
+        "notebook_id": "201b4b94-deda-40a9-9fcb-0e67a3f81e52",
+        "title": "Digital Sovereignty & Ancestral Wisdom AI",
+        "source_count": 150,
+        "url": "https://notebooklm.google.com/notebook/201b4b94-deda-40a9-9fcb-0e67a3f81e52",
+        "sources": [
+          {
+            "id": "ae7b64f2-a018-4fa0-99c2-e35915342c0c",
+            "title": "#EndangeredAlphabets: How Do You Go About Reviving a Traditional Script? Case Study: Bali | Global Literature in Libraries Initiative"
+          },
+          {
+            "id": "9e90c93e-e16f-4961-a7cb-ee85f72b6261",
+            "title": "(PDF) BRIDGING TRADITION AND TECHNOLOGY: THE ROLE OF INNOVATION AND DIGITAL MARKETING IN SUSTAINING BALI'S SOKASI CRAFT INDUSTRY - ResearchGate"
+          },
+          {
+            "id": "f56d4fa5-03de-4fb9-b96c-e439f3736c6b",
+            "title": "(PDF) Dayak Benawan Indigenous Futures: Tropical Rainforest Knowledge in Kalimantan, Indonesia - ResearchGate"
+          },
+          {
+            "id": "d55713cd-563e-4b3a-b07d-d1ef0d86604d",
+            "title": "(PDF) Digital Humanities: Community Participation in the Balinese Language Digital Dictionary - ResearchGate"
+          },
+          {
+            "id": "4c47be24-f70e-4d05-a1ba-af7655604d77",
+            "title": "(PDF) INTELLIGENT PRESERVATION: THE ROLE OF AI IN SAFEGUARDING BALINESE LONTAR MANUSCRIPTS - ResearchGate"
+          },
+          {
+            "id": "5179ccbe-2944-4d22-aca6-858d1ede5c47",
+            "title": "(PDF) Indigenous Data Sovereignty and Blockchain: Reconfiguring Legal Protection of Communal intellectual Property in Indonesia - ResearchGate"
+          },
+          {
+            "id": "a61a0e61-cf88-4517-85af-9aa4d2c3aab1",
+            "title": "(PDF) Indigenous knowledge and information technology for sustainable development"
+          },
+          {
+            "id": "09eb3be6-67a7-46bf-b77e-d3306d3a5fbc",
+            "title": "(PDF) Intelligent Preservation: The Role of AI in Safeguarding Balinese Lontar Manuscripts"
+          },
+          {
+            "id": "1c0eeaab-dfaa-4537-b651-386e46d9e1d0",
+            "title": "(PDF) M P RA The Paradox of Universal Regulation in a Polyvocal World: Algorithmic Epistemicide and the Brussels Effect in African Digital Spaces - ResearchGate"
+          },
+          {
+            "id": "2fcf3cb6-7c92-4b7c-83a7-001f2a1080de",
+            "title": "(PDF) M\u0101ori Data Sovereignty and Privacy Tikanga in Technology Discussion Paper"
+          },
+          {
+            "id": "7b269f7c-8449-4c2a-bc32-b1c41b07d47c",
+            "title": "(PDF) Ontology Modeling for Subak Knowledge Management System - ResearchGate"
+          },
+          {
+            "id": "5cae1484-9ccb-4a90-a312-289f384f5e3f",
+            "title": "(PDF) State of the Nation -M\u0101ori Data Sovereignty/ M\u0101ori Data Governance in 2025"
+          },
+          {
+            "id": "a8e2f188-85a9-4fa7-a08a-991ec481677e",
+            "title": "(PDF) Sustainable Purpose- and Passionpreneurship: New-Age Lifestyle or a Necessity for Sustainable Development? - ResearchGate"
+          },
+          {
+            "id": "780be62c-0342-4a1a-993a-a0ded5b0048b",
+            "title": "(PDF) Sustaining subak, the balinese traditional ecological knowledge in the contemporary context of Bali - ResearchGate"
+          },
+          {
+            "id": "555e3302-1a9a-4718-b157-53003d5e11c2",
+            "title": "(PDF) THE IMPACT OF TECHNOLOGY ON THE DEVELOPMENT OF BALINESE SHADOW PUPPETRY IN THE GLOBAL ERA - ResearchGate"
+          },
+          {
+            "id": "04abfe99-cce6-4b9e-ab4d-eed51443b800",
+            "title": "1 #UWRF2025 - AWS"
+          },
+          {
+            "id": "0038910b-a5cd-4d27-a0d0-e458979a9346",
+            "title": "A Comprehensive and Critical Literature Review of Dependency Theory from 2005 to 2025 in the Context of the Digital Age - Preprints.org"
+          },
+          {
+            "id": "06ac7d80-91b3-4ed1-809e-1381e137c24e",
+            "title": "A Subak Analogy Model in Computer Network Subject for Vocational Student"
+          },
+          {
+            "id": "121df461-312c-4f5c-892f-c7bf42aa3581",
+            "title": "A/HRC/EMRIP/2025/2 General Assembly - the United Nations"
+          },
+          {
+            "id": "8eaac54a-df4f-4593-a66f-b89777148ead",
+            "title": "AI Reflections: Indigenous Data Sovereignty and Artificial Intelligence"
+          },
+          {
+            "id": "434f15bd-f007-4eb3-a14a-f1238ee04adc",
+            "title": "AI for Language and Cultural Preservation - Bowdoin Student Organizations"
+          },
+          {
+            "id": "fb257367-d80a-47d6-b59f-09205fb31d04",
+            "title": "Anthropology for AI"
+          },
+          {
+            "id": "48739dde-58cd-4a5a-9da0-db1ccb7b8ca0",
+            "title": "Artificial Intelligence in Intellectual Property Rights: Opportunities and challenges for Traditional Medicine - ResearchGate"
+          },
+          {
+            "id": "b8a0eee7-90e4-494e-afdc-d6df272da56c",
+            "title": "Asia Pacific Triennial: Navigating new futures \u2013 QAGOMA Stories \u2013 Queensland Art Gallery"
+          },
+          {
+            "id": "a698a377-e0d2-4917-a2d0-48fabae562aa",
+            "title": "Avoiding the next digital divide: Defining digital sovereignty for Tribal Nations in the AI age"
+          },
+          {
+            "id": "fa6741a5-7daf-4ede-b9c6-14392d650a89",
+            "title": "BALINESE SCRIPT KEYBOARD FOR MOBILE DEVICES: ENHANCING DIGITAL ACCESSIBILITY AND CULTURAL PRESERVATION - prosiding idb bali"
+          },
+          {
+            "id": "45de956f-8123-41ad-b380-34d28e2a99a7",
+            "title": "Bali Art Unveiled: Witness the Dynamic Revolution Reshaping an Island's Legacy"
+          },
+          {
+            "id": "00cfadb5-f54d-402c-8943-d4719e08e9c6",
+            "title": "Bali's Tourism Reset: From Pandemic Recovery to Geopolitical Resilience - IndraStra Global"
+          },
+          {
+            "id": "6ca40880-1c26-4678-a393-a2aadb72d6a7",
+            "title": "Balinese Art: A Reflection of the Island's Spirituality - Warriors of the Divine"
+          },
+          {
+            "id": "e6a21f57-6062-4e00-a306-62439866adcb",
+            "title": "Balinese Art: Discovering the Heart of Bali's Cultural Expression"
+          },
+          {
+            "id": "35562a1a-6cbd-4a2d-8ef2-05bd74889a6e",
+            "title": "Balinese Mythology in Paintings: A Window into Bali's Spiritual World - Feliz Eye Art Gallery"
+          },
+          {
+            "id": "45e2c20c-0f5b-462f-8a4a-730957fb430a",
+            "title": "Balinese text-to-speech dataset as digital cultural heritage - PMC"
+          },
+          {
+            "id": "0beff4bf-0c4f-49c5-85bd-dd0a8b9747fc",
+            "title": "Between Trade and Trust: Rethinking Indonesia\u2013US Cross-Border Personal Data Transfer - Economic Research Institute for ASEAN and East Asia"
+          },
+          {
+            "id": "c5c43175-c0f6-410c-93de-e77fd403b1f6",
+            "title": "Beyond the Factory Paradigm: Digital Nomadism and the Digital Future(s) of Knowledge Work Post-COVID-19 - Academia.edu"
+          },
+          {
+            "id": "269aa4b0-da5d-4a44-a572-4aa084004719",
+            "title": "Beyond the Nature-Culture Divide: Spiritual Governance and the Institutional Limits of UNESCO Heritage Protection - UNITesi"
+          },
+          {
+            "id": "8a925fd1-ad81-44de-9d0b-3d383feea4af",
+            "title": "Book of Abstract LT4All 2025"
+          },
+          {
+            "id": "3a6fb49d-a887-4028-9f84-cfa15c6187aa",
+            "title": "Books - SHELLEY STREEBY"
+          },
+          {
+            "id": "d07fa95a-4a34-40eb-afc8-24dff44dce6b",
+            "title": "C20 South Africa Policy Pack 2025"
+          },
+          {
+            "id": "b7f8c6ea-94ef-459f-bbe9-d64b71edc7eb",
+            "title": "CRI Indonesia Report: Ongoing Harms, Limited Accountability - Climate Rights International"
+          },
+          {
+            "id": "0828503f-c798-4274-9816-816f6dda4399",
+            "title": "Can the Internet Revitalize Local Languages?"
+          },
+          {
+            "id": "25659f28-d365-406e-9161-b9fda1907d3b",
+            "title": "Characterization of Globally Important Agricultural Heritage Systems (GIAHS) in Europe"
+          },
+          {
+            "id": "d873b2ab-5c20-4e90-b406-ed73d560a168",
+            "title": "Community-based Tourism (CBT) in Bali | Critical Perspectives on International Planning"
+          },
+          {
+            "id": "1d2e3de3-4b78-4154-a608-c80776987cac",
+            "title": "Culture and Nature in Bali's Futuristic Creative Enclaves - Truly Classy"
+          },
+          {
+            "id": "41ce27cb-cbe6-4b4c-b051-6f84ac563e70",
+            "title": "DEVELOPING SEMANTIC ONTOLOGY FOR PRACTICAL DIGITAL BALINESE DICTIONARY"
+          },
+          {
+            "id": "3fce4122-f8fc-49c6-9d2f-501733f799db",
+            "title": "Data protection laws in Indonesia"
+          },
+          {
+            "id": "591ecd6a-4ffd-4332-b2f3-4cf57cf887e5",
+            "title": "Data protection laws in Indonesia"
+          },
+          {
+            "id": "e8e2c2e4-92b2-467a-937a-d10e12af01cd",
+            "title": "Decolonising Environmental Education: Forest Narratives in Sheela Tomy's Valli (2022)"
+          },
+          {
+            "id": "652ecdac-bbe7-47d2-bd58-b27f46624158",
+            "title": "Decolonizing education with Anishinaabe arcs: generative STEM as a path to indigenous futurity - ResearchGate"
+          },
+          {
+            "id": "9af70e16-9fa3-4a4d-ab66-9158eafcc9f0",
+            "title": "Designing a Generative STEM Model Based on Subak Landscape: Integrating Entropic Modulation and Indigenous Ecological Knowledge into Science Education - ResearchGate"
+          },
+          {
+            "id": "8cf84eed-3809-4154-badf-56b534464123",
+            "title": "Designing an Open Innovation Ecosystem for Digital Cultural Heritage in Bali: Bridging Tradition and Technology Through Lontar Manuscripts[v1] | Preprints.org"
+          },
+          {
+            "id": "8a037e6d-70f9-4470-8422-f078d1718984",
+            "title": "Developing Augmented Reality Lontar Prasi Bali as an E-learning Material to Preserve Balinese Culture"
+          },
+          {
+            "id": "35a1fcb9-9802-4a9d-a5d0-9a45b55014af",
+            "title": "Digital Tribulations 10: The Quest for Indigenous Digital Sovereignty in the Amazon"
+          },
+          {
+            "id": "f261793b-f50a-41c5-b13a-1774013d52b6",
+            "title": "Digital initiatives for indigenous languages - UNESCO Digital Library"
+          },
+          {
+            "id": "f040e38d-6fee-4f4d-a94b-ab0094788023",
+            "title": "Digitizing the Higaonon Language: A Mobile Application for Indigenous Preservation in the Philippines - ResearchGate"
+          },
+          {
+            "id": "8b91fa67-65f2-4dba-b59b-579f13a62b39",
+            "title": "Dynamic of Migration lifestyle and settlement of nomad in Bali, Indonesia - Semantic Scholar"
+          },
+          {
+            "id": "da385aba-2913-42c7-b1f3-ab27e3ccebd1",
+            "title": "ESSAY: Navigating new futures - QAGOMA Collection Online"
+          },
+          {
+            "id": "8549e023-b7f2-4808-8425-afdca2e555c5",
+            "title": "Emerging sovereign systems: global examples of indigenous knowledge machine language models [Forum special series, Artificial intelligence] - RealKM"
+          },
+          {
+            "id": "308067e9-a6c4-44df-922f-01089b7bea05",
+            "title": "Faculty of Humanities Udayana University Successfully Held the 18th SNBI: Highlighting Opportunities for Native Language Revitalization in the Digital Age"
+          },
+          {
+            "id": "d0e73ea8-5336-4519-a190-ef685d35a66a",
+            "title": "Forecast analysis of the impact of remote workers visa policy on the resilience of the tourism economy: A geographical and economic perspective"
+          },
+          {
+            "id": "2d845b7b-79f4-4f8f-b6ab-48d2c6081bf2",
+            "title": "From Voices to Action: Indigenous Leadership in Achieving Affordable and Clean Energy for All"
+          },
+          {
+            "id": "f31980bd-49d0-4f5a-97dc-b32a5b039c83",
+            "title": "GDSS for Bali Tourism Development Using AHP | PDF - Scribd"
+          },
+          {
+            "id": "d343fcd4-b674-462d-a77b-5cb9127e3ebc",
+            "title": "Garden of ten - S A V V Y Contemporary"
+          },
+          {
+            "id": "ac33b556-1ad7-4065-94bf-b4ecf85774a8",
+            "title": "George Turner's Down There in Darkness and the Future of Humanity - Minerva Access"
+          },
+          {
+            "id": "b6022758-213c-446d-adf3-4f774a328717",
+            "title": "Heritage governance in Bali and Ifugao ricescapes: exploring the dynamic roles of Indigenous intermediaries in cultural preservation and development | Policy and Society | Oxford Academic"
+          },
+          {
+            "id": "d869c778-9127-44c5-ad0f-d21f7d7c1e6e",
+            "title": "How AI and Indigenous systems can protect forests ancestral culture. A Q&A with War\u012bN K. Flores of the Kara-Kichwa Nations | UNREDD Programme"
+          },
+          {
+            "id": "9ba66ee7-6fcc-4a93-9315-d79a86d6f5f0",
+            "title": "Imagining the Future of Climate Change - dokumen.pub"
+          },
+          {
+            "id": "ab790e4b-1456-4b76-880d-9a8c91e9b35f",
+            "title": "Impact Analysis of Local Balinese Cultural Values on Consumer Purchasing Decisions in the Global Market of Handicraft Products | Sinergi International Journal of Economics"
+          },
+          {
+            "id": "e2c942fd-bc7d-4513-946c-62f0dd6bab20",
+            "title": "India's Digital Personal Data Protection Act (DPDPA) in action: Digital Individualism vs. Tribal Collectivism - Platform for Peace and Humanity"
+          },
+          {
+            "id": "343766d5-714b-4c06-aab1-b05483c71c08",
+            "title": "Indigenous Data Sovereignty and Blockchain: Reconfiguring Legal Protection of Communal intellectual Property in Indonesia | Journal of Cultural Analysis and Social Change"
+          },
+          {
+            "id": "c1f2bd93-5fb0-42f7-a399-4c78d7c6ed27",
+            "title": "Indigenous Data Sovereignty and Blockchain: Reconfiguring Legal Protection of Communal intellectual Property in Indonesia | Journal of Cultural Analysis and Social Change"
+          },
+          {
+            "id": "1ad1c5f0-8eb6-4887-9bb6-b1b5aa8fceb4",
+            "title": "Indigenous Data Sovereignty and Governance | Native Nations Institute"
+          },
+          {
+            "id": "e5be88fa-0a22-4508-ae11-3aeefc452373",
+            "title": "Indigenous Data Sovereignty and Policy - APO"
+          },
+          {
+            "id": "b3a47295-cbd0-41be-87ec-6df728524d09",
+            "title": "Indigenous Data Sovereignty for Tribal Stewardship - California Natural Resources Agency"
+          },
+          {
+            "id": "8c202a85-32f0-44d6-860a-c1b27a072539",
+            "title": "Indigenous Data Sovereignty | DataJournalism.com"
+          },
+          {
+            "id": "cd0260f0-499c-4251-a1d1-61a3396e0e6d",
+            "title": "Indigenous Futurism - MacKenzie Art Gallery"
+          },
+          {
+            "id": "aca21da1-b507-47cb-aebf-f6b953156b7d",
+            "title": "Indigenous Media: Faustian Contract or Global Village? | Request PDF - ResearchGate"
+          },
+          {
+            "id": "b6ec6fee-daf8-489b-b65a-4cb1f9096e49",
+            "title": "Indigenous Peoples' Food Systems and Biocultural Heritage: Addressing Indigenous Priorities Using Decolonial and Interdisciplinary Research Approaches - MDPI"
+          },
+          {
+            "id": "aad02201-8aa6-4a60-ba48-195d22e0b083",
+            "title": "Indigenous Wisdom and Innovation Shape Bali's Green Startup Journey | Berdaya Media"
+          },
+          {
+            "id": "c0bd546e-0bc3-44ee-8335-d56db0765485",
+            "title": "Indigenous Women Leading Territorial Defense Worldwide - Awana Digital"
+          },
+          {
+            "id": "d83bcb3d-32f7-471b-ba63-2ec825db2156",
+            "title": "Indigenous data governance approaches applied in research using routinely collected health data: a scoping review - PMC"
+          },
+          {
+            "id": "397c0138-bf49-47e5-8e3e-dfc24deeb851",
+            "title": "Indigenous data sovereignty-A new take on an old theme | Request PDF - ResearchGate"
+          },
+          {
+            "id": "de503235-b778-48de-bdd6-1aa918678aef",
+            "title": "Indigenous versus M\u0101ori Data Sovereignty - with Dr Karaitiana Taiuru"
+          },
+          {
+            "id": "8a26c0c0-13d3-4baa-bc40-36c9271da1e2",
+            "title": "Indonesia Data Privacy - Amazon Web Services (AWS)"
+          },
+          {
+            "id": "aeae2379-8707-4763-bd45-1070700897ee",
+            "title": "Indonesia personal data and cybersecurity quarterly update \u2014 October 2025 edition | HBT"
+          },
+          {
+            "id": "dfae8d85-4147-48ea-83c0-9ffaa1f5478d",
+            "title": "Indonesia's Data Sovereignty in the Spotlight After US Trade Deal - Jakarta Globe"
+          },
+          {
+            "id": "3aa569fa-b3b4-4b17-a9d9-b936404875a0",
+            "title": "Indonesia's Digital Sovereignty: From Narrative to National Strategy - IDPro"
+          },
+          {
+            "id": "1b46c4b1-0805-4f4e-b35b-8cd661a31eae",
+            "title": "Integrating LSTM and Hybrid Methods for Automatic Balinese Script Transcription"
+          },
+          {
+            "id": "b160b7e9-8ceb-44f1-8f4e-5146c9f9c230",
+            "title": "Integrating LSTM and Hybrid Methods for Automatic Balinese Script Transcription"
+          },
+          {
+            "id": "e532a755-42eb-4254-8331-e32d6b69bf9d",
+            "title": "Knowledge and tradition coalesce at the Global-Hub on Indigenous Peoples' Food Systems"
+          },
+          {
+            "id": "2843c3d3-78c5-43d6-903a-eace1516cf79",
+            "title": "LOCAL WISDOM PRESERVATION IN DIGITAL AGE: A BIBLIOMETRIC ANALYSIS OF TRADITIONAL KNOWLEDGE SYSTEMS | Sosio Informa"
+          },
+          {
+            "id": "d97b7f6c-c22a-439c-8775-40649f1fcb53",
+            "title": "LORYA Launched \u2013 AI Tool for Supporting the Digitization and Preservation of Written Cultural Heritage | United Nations Development Programme"
+          },
+          {
+            "id": "68117db6-ccf1-4e1f-87d4-d486e2bf033c",
+            "title": "Language Preservation Efforts Get an AI Boost | Dartmouth"
+          },
+          {
+            "id": "42398a58-e86b-47b8-ba22-e540d5353ce2",
+            "title": "Legal Data and Information Governance Reform (ID0152) | Commitment from Indonesia"
+          },
+          {
+            "id": "b0bdec99-65ee-4386-ac07-d7348d617fce",
+            "title": "Leveraging UNESCO Normative Instruments for an Ethical Generative AI Use of Indigenous Data"
+          },
+          {
+            "id": "ac490afa-e0b0-43a7-972e-cb25096aaf06",
+            "title": "Lontar - Semantic Scholar"
+          },
+          {
+            "id": "83d168a4-0f64-473b-b7af-8a34fdfc25fc",
+            "title": "Microsoft Research project helps languages survive \u2014 and thrive - Source Asia"
+          },
+          {
+            "id": "3c23711c-3a46-4546-b899-030ddc789a1f",
+            "title": "M\u0100ORI DATA GOVERNANCE MODEL - University of Waikato"
+          },
+          {
+            "id": "972fddff-638d-4cfc-a090-ae86d8564fd4",
+            "title": "M\u0101ori & Indigenous Data Sovereignty Tools - Te Mana Raraunga"
+          },
+          {
+            "id": "8ebbed29-d9c2-4dad-9287-184d13c53c35",
+            "title": "M\u0101ori Data Governance Report - Karaitiana Taiuru"
+          },
+          {
+            "id": "f6c1253c-b9dc-46a8-8db9-d7bdb3311d07",
+            "title": "M\u0101ori and Linked Administrative Data: A Critical Review of the Literature and Suggestions to Realise M\u0101ori Data Aspirations - PMC"
+          },
+          {
+            "id": "56bf4cfe-c981-4e61-830b-7507cd81ba0e",
+            "title": "M\u0101ori data governance | API Centre - Payments NZ"
+          },
+          {
+            "id": "aa1ad097-b9a5-4d58-9191-0090be31bdfd",
+            "title": "NO/NO Goes Virtual"
+          },
+          {
+            "id": "e6af8966-4261-4b80-be90-e3aca3d1eed8",
+            "title": "New report and guidelines for indigenous data sovereignty in artificial intelligence developments | Global AI Ethics and Governance Observatory - UNESCO"
+          },
+          {
+            "id": "02641506-a8cf-4303-a76a-27e1933fdcf0",
+            "title": "New report highlights way forward with M\u0101ori data governance - Te K\u0101hui Raraunga"
+          },
+          {
+            "id": "6e81dcb5-e3ef-4a6f-b463-37cc812aa8e6",
+            "title": "Ontology-based data framework for the digital preservation cultural heritage: A case of Subak"
+          },
+          {
+            "id": "1eff7b7f-620f-4eeb-ade8-8eb8d53dfb18",
+            "title": "Our Global Community: Checking in with our Partners on International Mother Language Day"
+          },
+          {
+            "id": "5ca74084-4f61-4e41-a995-1f0932b2a0cd",
+            "title": "PRESERVING TRADITIONAL KNOWLEDGE IN THE DIGITAL ERA: CHALLENGES AND STRATEGIES - Synergize Journal"
+          },
+          {
+            "id": "023126db-95b8-48ab-bee6-904c083f9673",
+            "title": "Pacific Arts - eScholarship.org"
+          },
+          {
+            "id": "0d9618cc-4c67-434c-ad9c-a66444964578",
+            "title": "Panca Datu Logic Framework for Sustainability Evaluation: Conceptual Development and Three Case Simulations from Bali - Universitas Udayana"
+          },
+          {
+            "id": "72f358b1-cdbf-407c-b1ee-077281460cf7",
+            "title": "Pia Wurtzbach, all-Filipino creative team land on Vogue Italia fashion editorial | GMA News Online"
+          },
+          {
+            "id": "a1516fbd-61ff-4a55-947c-13ffd0d95b28",
+            "title": "Practicing Sovereignty - Digital Involvement in Times of Crises"
+          },
+          {
+            "id": "f2e4d0c4-e5f9-44d6-891f-03cd139ac52f",
+            "title": "Preserving Bali's Cultural & Literary History through the Palm Leaf Project"
+          },
+          {
+            "id": "1ecb4fe4-6ba0-40c8-8245-cf5c5081933e",
+            "title": "Preserving Balinese Culture Using Augmented Reality Technology for Ogoh-ogoh Art"
+          },
+          {
+            "id": "cd588f50-4e18-4ca9-878e-65a541d0eaef",
+            "title": "Preserving Cultural Heritage: Transkribus Integration with Wikimedia Projects"
+          },
+          {
+            "id": "c3992f11-b0d9-4005-97ae-b4e9de96144b",
+            "title": "Preserving indigenous knowledge: Leveraging digital technology and artificial intelligence"
+          },
+          {
+            "id": "663100b0-7aec-4d62-8b73-8b3d1c41e893",
+            "title": "Promoting Hindu Spiritual Activities and Preserving the Traditions of Vernacular Communities: The Balinese Hindu Palm-Leaf Manuscript Literacy Program in Indonesia"
+          },
+          {
+            "id": "33e0bf1d-ccfb-4f10-9697-c3fb81d36e9f",
+            "title": "REINVENTING WORK IN EUROPE - National Academic Digital Library of Ethiopia"
+          },
+          {
+            "id": "306dda92-aa54-4869-ab9c-a80fbd26d96c",
+            "title": "Reclaiming and Learning Indigenous Languages on Social Media with Digital Activists: Insights from Lampung, Mayangna and Miskitu Youth - ResearchGate"
+          },
+          {
+            "id": "3dabbd50-c4c8-4b02-bd8b-269a96908fa7",
+            "title": "Recognising and valuing M\u0101ori innovation in the high-tech sector: a capacity approach"
+          },
+          {
+            "id": "915651ba-e646-4d26-8bc9-822795fbbeb7",
+            "title": "Redefining Data Sovereignty: M\u0101ori Data Governance in the Digital Age"
+          },
+          {
+            "id": "f2abb8b2-07df-41ae-b5c9-0d1afa7ac8e9",
+            "title": "Redefining data sovereignty: M\u0101ori data governance in the digital age \u2013 TIAL"
+          },
+          {
+            "id": "bd70a139-ae16-463f-a678-2f7cde18699e",
+            "title": "Representing Indonesia, Nukila Evanty Speaks on AI and Cultural Protection - OBSERVER"
+          },
+          {
+            "id": "f59ce6c9-729d-4879-8aeb-5c8c4a7aee2c",
+            "title": "Rescuing balinese manuscripts (Lontar) with balinese Wikisource: creating metadata, cataloging and digitising | Semantic Scholar"
+          },
+          {
+            "id": "483dd049-466c-471b-ba04-550256b4452e",
+            "title": "Sentiment Analysis of Digital Nomad in Indonesia: A Case Study in Bali - UI Scholars Hub"
+          },
+          {
+            "id": "ca39d128-55ad-47fc-9e95-3446ee3551d1",
+            "title": "Sistem Wariga Bali: Pengetahuan Waktu | PDF - Scribd"
+          },
+          {
+            "id": "02d36939-b680-49cc-90a8-d3992fec2330",
+            "title": "Sovereign Snapshot - AI in a Tribal Context: A Brief Review of the Literature - The University of Oklahoma"
+          },
+          {
+            "id": "293f7568-fe1f-4242-a77b-acdafc532697",
+            "title": "Spiritual Energy in Everyday Bali: How Ritual and Art Keep the Island Alive"
+          },
+          {
+            "id": "b6b8e773-954c-4c5a-a3c5-76014a7af218",
+            "title": "Strategic Planning Model for the Digitalization of Subak Cultural Heritage: An Integrated SWOT-PESTEL Approach - Atlantis Press"
+          },
+          {
+            "id": "0cbb6de7-87fc-48cd-ab73-9b7956718be7",
+            "title": "Survey, Preservation and Digitisation of Palm-leaf Manuscripts (lontar) in Private Collections of Bali and Lombok. (EAP1241) - Endangered Archives Programme"
+          },
+          {
+            "id": "72fafa9c-f832-44a4-a85b-c339c31e49ae",
+            "title": "Sustainable Purpose- and Passionpreneurship: New-Age Lifestyle or a Necessity for Sustainable Development? - MDPI"
+          },
+          {
+            "id": "b2cc416e-7f2b-45c5-92f1-550f9f50fd03",
+            "title": "The 3D mural representing Prince Diponegoro's Java war. - ResearchGate"
+          },
+          {
+            "id": "c37302f4-d172-4e5e-91a5-bfe538541b27",
+            "title": "The Balinese Lontar Manuscript Metadata Model: An Ontology-Based Approach - Formosa Publisher"
+          },
+          {
+            "id": "b1f8594f-8069-4d56-b87c-c49fefa7bc18",
+            "title": "The Establishment of IPAS, Bali | Indigenous Peoples of Asia Solidarity Fund"
+          },
+          {
+            "id": "59f1bb22-2cac-42c2-a28c-dfdce7d5ee0e",
+            "title": "The Impact Of Social And Economic Changes Of Digital Nomadic On Tourists And The Local Community In Canggu"
+          },
+          {
+            "id": "07ca25ad-5eb6-4a63-8e29-83c9ce74917e",
+            "title": "The Impact of a Local Well-Being Philosophy on Revisit Intentions to Bali Among Digital Nomads - MDPI"
+          },
+          {
+            "id": "82465cdb-f9e4-4c5c-96cf-be6c5388cad6",
+            "title": "The Indigenous World 2025: Indonesia - IWGIA"
+          },
+          {
+            "id": "2f1eae60-8aa4-408c-9b56-a98938b8c77f",
+            "title": "The Integration of Traditional Knowledge and Local Wisdom in Mitigating and Adapting Climate Change: Different Perspectives of Indigenous Peoples from Java and Bali Island - Universitas Airlangga"
+          },
+          {
+            "id": "4cf24838-9e04-4200-be96-cd67975ec924",
+            "title": "The Social Ecology of Food: Where Agroecology and Heritage Meet - MDPI"
+          },
+          {
+            "id": "2416e9ee-afe8-43c0-b502-958274420413",
+            "title": "The Subak System in Bali, Indonesia - New America"
+          },
+          {
+            "id": "163d3e91-cef7-4cf4-b74e-c44a63993d0b",
+            "title": "Transforming Bali's Tourism Through Intellectual Property: A WIPO Project Highlight"
+          },
+          {
+            "id": "87cc8750-5207-4ed4-8445-cc1a2a2ee062",
+            "title": "Unplugged Coding and Tri Hita Karana in Fostering Thinking and Environmental Awareness | Request PDF - ResearchGate"
+          },
+          {
+            "id": "afe74426-893b-4314-afae-cfcd5b9b314b",
+            "title": "Utilization of 3D Animation Technology in Subak Preservation: Maintaining Social Balance in Balinese Cultural Heritage - ResearchGate"
+          },
+          {
+            "id": "7b1b0aee-b5d7-418d-b77b-334d148b366d",
+            "title": "Utilizing Mobile Applications for 21st- Century Learning and Digital Preservation of Balinese Script"
+          },
+          {
+            "id": "712ce6b7-24c0-4650-8d4f-8e78a2be8a2f",
+            "title": "What Ancestral Intelligence Can Teach Us About AI | Nanjira Sambuli | TED - YouTube"
+          },
+          {
+            "id": "3c9e1fc4-34ad-4994-95a8-f49e2fd7d838",
+            "title": "Why Bali Is Becoming the World's Most Unusual Innovation Hub - Latest News Bali"
+          },
+          {
+            "id": "dcd1ff45-4685-42bd-ab5e-288650719856",
+            "title": "Why the Future of Global Hubs Will Be Cultural, Not Financial - Latest News Bali"
+          },
+          {
+            "id": "eb2219e5-2493-4ae0-b03d-e9900c692be6",
+            "title": "Xbox Celebrates Indigenous Peoples of the World"
+          },
+          {
+            "id": "0be4c4f8-5208-4538-ad86-77e835c294d9",
+            "title": "Youth from Indigenous, Afro-descendant, and Local Communities Unite in Bali to Lead Global Movement for Land Rights and Climate Justice"
+          },
+          {
+            "id": "01338ab7-d988-4e3f-829a-66eeb94ff617",
+            "title": "live oak blog \u2013 ermine burrow"
+          },
+          {
+            "id": "042ce5ce-448c-47ae-bf81-42c2f4294aec",
+            "title": "\u201cStudy the Impact of Tourism on the Environment and Local Culture\u201d"
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000028": {
-      "source_count": null,
-      "title": null
+    "4a8f3162-6f63-4876-9fe9-642dd9ae0606": {
+      "source_count": 67,
+      "title": "Analisi Video AI Agency",
+      "raw": {
+        "notebook_id": "4a8f3162-6f63-4876-9fe9-642dd9ae0606",
+        "title": "Analisi Video AI Agency",
+        "source_count": 67,
+        "url": "https://notebooklm.google.com/notebook/4a8f3162-6f63-4876-9fe9-642dd9ae0606",
+        "sources": [
+          {
+            "id": "24058ec9-14c5-4b46-b3ac-299ae03f9096",
+            "title": "10 Best AI Automation Agencies in 2026 (Ranked & Reviewed)"
+          },
+          {
+            "id": "3bed0f5a-45fb-44bc-a29a-217bc1c84f86",
+            "title": "15 AI Agent Startup Ideas That Made $1M+ in 2026 - Presta"
+          },
+          {
+            "id": "1e79be8f-bc92-430d-85ef-a5bcd41a7135",
+            "title": "15 Best n8n Alternatives in 2026 - Vellum AI"
+          },
+          {
+            "id": "74c18d26-cbbe-4c51-9b0e-b72cfdfb8e70",
+            "title": "17 Top AI Automation Agencies in 2025: Complete Service ..."
+          },
+          {
+            "id": "4e460f5d-4d7d-48f6-b787-38e101d0816d",
+            "title": "2026 AI Legal Forecast: From Innovation to Compliance | Baker Donelson"
+          },
+          {
+            "id": "24cb4074-9c61-43be-91a0-1ae4a71b3901",
+            "title": "2026 AI, Automation, and the Future of Sustainability Degree Careers | Research.com"
+          },
+          {
+            "id": "f937d323-5946-479a-a1c7-dd5f2175737e",
+            "title": "2026 Agentic Coding Trends Report - Anthropic"
+          },
+          {
+            "id": "cefd9770-fcbd-4388-9d06-2ad517c1468e",
+            "title": "25+ Disruptive AI Agent Business Ideas You Should Launch in 2026 - Appinventiv"
+          },
+          {
+            "id": "a0fc75ce-aaf8-453a-8269-f68887fa4cc2",
+            "title": "9 Best Attribution Software for Startups: Pricing Compared for 2026 - Cometly"
+          },
+          {
+            "id": "cb0cf957-7498-4057-a5e3-bf5e76c25ff3",
+            "title": "AI Agency Types 2026: The 4 Models Redefining Marketing and Automation"
+          },
+          {
+            "id": "56c1c487-f3e8-4ab7-a528-9069eddb0f59",
+            "title": "AI And Automation Trends 2026: From Efficiency To Enterprise Resilience - Redwood Software"
+          },
+          {
+            "id": "e541d889-c66d-43f1-a771-88ecc15ef1f9",
+            "title": "AI Automation Agency Business Model: Services, Pricing, and Value Proposition - Zaytrics"
+          },
+          {
+            "id": "25877367-808b-464d-818a-a69272ed4e57",
+            "title": "AI Automation Market Size & Share | Industry Report, 2033 - Grand View Research"
+          },
+          {
+            "id": "3b953726-be87-46d6-93be-05143ed1d36c",
+            "title": "AI Automation in 2026: Implementation, Strategy & Scale"
+          },
+          {
+            "id": "38e35c14-e93c-4d23-b33b-3933dda19392",
+            "title": "AI Governance 2026: Why It's Non-Negotiable for C-Suite - TestingXperts"
+          },
+          {
+            "id": "4af39c17-a277-4f4c-ab27-c361a5964a71",
+            "title": "AI Governance Framework in 2026: Responsible AI & Data Use - Tredence"
+          },
+          {
+            "id": "f844d2d0-e396-4af3-aad4-7aca92bb5473",
+            "title": "AI Governance: The 2026 Enterprise Blueprint for Safe, Scalable, and Responsible Systems"
+          },
+          {
+            "id": "91841feb-9ada-4e4f-a942-1e842df54800",
+            "title": "AI Platform Risk Assessments: Why 2026 Is the Year for Action - Lowenstein Sandler LLP"
+          },
+          {
+            "id": "7d638bb6-bb1b-404d-adde-ea6de17221a4",
+            "title": "AI Risk Management in 2026: AI Moves into Production - Splunk"
+          },
+          {
+            "id": "0ad6bdef-0b18-4c9d-9898-7fd346a1e7f6",
+            "title": "AI Risk Mitigation: Tools and Strategies for 2026 - SentinelOne"
+          },
+          {
+            "id": "4bd4333a-b929-4285-8b8e-4987902dbd2f",
+            "title": "AI Security Trends 2026: Expert AppSec Predictions & Insights | Black Duck Blog"
+          },
+          {
+            "id": "4716e5a3-9ff7-40ba-b60d-313b12ca6c2b",
+            "title": "AI Software Development Statistics 2026 | Omniflow Blog"
+          },
+          {
+            "id": "28db2c3c-75bc-4c73-bc90-cc6f221de6fb",
+            "title": "AI Strategy Consulting: Transform Your Enterprise in 2026 | Stellium ..."
+          },
+          {
+            "id": "3c0baab3-1a50-4791-acc5-3ab8c3e92950",
+            "title": "AI Virtual Assistant Development Cost: Complete Guide 2025 - Biz4Group LLC"
+          },
+          {
+            "id": "061a0421-62dd-4c59-9288-74982faebb37",
+            "title": "AI Will Reshape More Jobs Than It Replaces | BCG"
+          },
+          {
+            "id": "e775ea6d-a45a-4af9-a4df-abdb4241e404",
+            "title": "AI Workflow Automation Agency: The Definitive 2025 Guide - HeyReach"
+          },
+          {
+            "id": "f07d01d1-c762-4f8c-b384-c29fb3430028",
+            "title": "AI and the 2026 threat landscape - Everbridge"
+          },
+          {
+            "id": "911d867c-ada3-447c-8fa8-d0bf4e6b8595",
+            "title": "AI-Powered Marketing Automation in 2026: Proven Strategies, Real Results, and What the Data Shows | ALM Corp"
+          },
+          {
+            "id": "6c2d741a-b9d5-46e3-a727-9371c39387c7",
+            "title": "App Developer Magazine issues"
+          },
+          {
+            "id": "86199082-e198-46b4-b924-9a9d335d746d",
+            "title": "Austin Schneider's Agency U Review: Done For You Systems Agency Course, Success Stories, & Alternatives - Ippei"
+          },
+          {
+            "id": "cfca2601-18b1-44d2-b91a-ea07a4d47fb4",
+            "title": "Best Inside Sales Tools to Win More Deals in 2026 - Storylane"
+          },
+          {
+            "id": "3ad5ce03-56ed-41ae-be47-5ebe5ee38e33",
+            "title": "Beyond Davos 2026: 5 practices to align AI transformation and sustainability - Microsoft"
+          },
+          {
+            "id": "52f3ef59-8990-4d30-8705-1374ce546b24",
+            "title": "Blog \u2013 Justin Barrett Ayers - WordPress.com"
+          },
+          {
+            "id": "d63e947d-45f9-43a7-ad5d-781eb8ce3903",
+            "title": "ChatGPT Ads vs Gemini Ads 2026: Comparing Google and OpenAI AI Search Advertising"
+          },
+          {
+            "id": "debf12e6-3c08-47ba-b65b-53164a4621c1",
+            "title": "Coding vs n8n in 2026 \u2014 feeling the hype fade\u2026 what are you actually using right now?"
+          },
+          {
+            "id": "3ff3859c-fe7a-496a-b78c-86cc29c83ecf",
+            "title": "Customer Acquisition Strategies for 2025: The Latest Trends and Tactics - Synaptic, Inc"
+          },
+          {
+            "id": "d1d84373-40bb-4666-abd3-8b17b1f5b3c4",
+            "title": "Ethical AI governance in 2026: Best practices for CISOs and the middle market - RSM Global"
+          },
+          {
+            "id": "31b0531c-a891-48ee-a0ce-ca77877621d7",
+            "title": "Future of AI Agents: Top Trends in 2026 - Blue Prism"
+          },
+          {
+            "id": "d134573b-3c3a-45c0-9781-a46760165f3f",
+            "title": "GENERATIVE AND AGENTIC AI TRENDS FOR 2026"
+          },
+          {
+            "id": "2f789ed9-c204-422d-b8b3-e0c828c6e738",
+            "title": "Guide to Artificial Intelligence Automation Solutions 2026 | Stellium Consulting"
+          },
+          {
+            "id": "b45c5ad4-4dd0-41c5-89e7-b7251574241d",
+            "title": "How AI Agents Will Transform B2B Sales | BCG"
+          },
+          {
+            "id": "8358d1a7-ef03-492e-abf4-aa046807d656",
+            "title": "How to Build a Successful AI Automation Agency in 2025 - Rain Infotech"
+          },
+          {
+            "id": "af2b81d4-493d-46fc-b282-ef4278f6ef6d",
+            "title": "How to Start a Digital Marketing Agency in 2026: The Complete Blueprint for Success"
+          },
+          {
+            "id": "99144dbd-a8fd-41fc-bfb2-e3cde9c00039",
+            "title": "Low-Code Development Platforms Statistics and Trends 2026 - ToolJet Blog"
+          },
+          {
+            "id": "0ae3deb5-b328-40a1-8178-a91767760307",
+            "title": "Low-code development in 2026: Where agility meets AI - Boost your digital potential - 99X"
+          },
+          {
+            "id": "96690a1b-f298-4771-8194-2a6e4d1546ad",
+            "title": "Machine Learning for Sales: What Works in 2026 - Prospeo"
+          },
+          {
+            "id": "e72f9dce-56a9-447d-b9f4-733685df9bec",
+            "title": "Performance-Based Pricing: The Next Frontier for AI Services."
+          },
+          {
+            "id": "4f84c817-26ff-4a99-b6aa-4a4bece309b2",
+            "title": "Report_Analisi_Video_AI_Agency.md"
+          },
+          {
+            "id": "b886814b-cb32-42e8-aec9-ccb62c53bc47",
+            "title": "Responsible AI Implementation: Ethical Considerations for 2026 - DataToBiz"
+          },
+          {
+            "id": "560f9320-b9ff-46e0-81ea-0e875caf63ba",
+            "title": "Responsible AI in 2026: A 3-step Guide for Governance that Scales | Blog | OneTrust"
+          },
+          {
+            "id": "3bd49602-4b37-4a7d-b66c-25dc89544556",
+            "title": "Sherlocked: Why AI Wrapper Startups Are Failing. | PDF - Scribd"
+          },
+          {
+            "id": "1a767049-5510-45c9-8edb-be0fe1e09cd0",
+            "title": "Startup News: Insider Guide to n8n vs. Make Workflow Automation in 2026"
+          },
+          {
+            "id": "14d63b02-3d3b-4aab-b095-a8860b0ebc37",
+            "title": "The 10 Major Trends to Watch in AI for 2026 | Edison & Black"
+          },
+          {
+            "id": "60ee7b9f-fb73-4033-b5bc-fd7cb327d1fc",
+            "title": "The 2026 Event Marketer's Toolbox: 10 Must-Have Tools to Boost Ticket Sales and Efficiency"
+          },
+          {
+            "id": "e9641acd-e062-440a-ad79-cc479237be8f",
+            "title": "The AI Startup Trap: Speed, Platform Power, and Rapid Obsolescence - Scribd"
+          },
+          {
+            "id": "bf558a4e-e9e2-40e8-a008-06c94304c6ba",
+            "title": "The AI pricing and monetization playbook - Bessemer Venture ..."
+          },
+          {
+            "id": "3edb98b4-acbd-4c88-9a60-4a278e730d88",
+            "title": "The Future of AI Agents: Top Predictions and Trends to Watch in 2026 - Salesforce"
+          },
+          {
+            "id": "af2b2588-16b5-46a9-93f9-bd93b337ed27",
+            "title": "The future of AI: trends shaping the next 10 years - IBM"
+          },
+          {
+            "id": "07c75852-0820-49e3-92c0-286f4a06ceea",
+            "title": "Top 10 AI Agent Tools in 2026: Your Complete Guide to Choosing the Right Platform"
+          },
+          {
+            "id": "cc17e1a1-ef95-45dd-83b9-7b0bfce37896",
+            "title": "Top 10 Outbound Lead Generation Strategies for 2025 - Callbox Inc."
+          },
+          {
+            "id": "52859929-869c-41be-a233-24bd4be6846d",
+            "title": "Top 7 AI Consulting Companies to Watch in 2026"
+          },
+          {
+            "id": "743b7f73-a112-4449-8177-a965a84a2269",
+            "title": "Trustworthy AI services | Deloitte US"
+          },
+          {
+            "id": "173fc199-3a47-4b32-ade7-3a8ea3eac633",
+            "title": "UiPath 2026 AI and Agentic Automation Trends Report"
+          },
+          {
+            "id": "8035d68f-79a2-49d4-93b0-e013c8841e15",
+            "title": "Unlocking Success with AI Agent Pricing Models for Thriving Margins - Mavvrik: AI"
+          },
+          {
+            "id": "1cbee4e5-245d-43ec-9554-be0e8296d566",
+            "title": "Webinar Marketing Strategies & Tips - WebinarKit Blog"
+          },
+          {
+            "id": "75373fdf-de94-4f29-88d5-c2b0e8cb35fd",
+            "title": "What I'm changing in 2026 after running an AI automation agency in 2025 - Reddit"
+          },
+          {
+            "id": "c35df197-ac3c-473b-af3f-4c40bd077d20",
+            "title": "n8n vs Custom AI Automation for Business: When No-Code ..."
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000029": {
-      "source_count": null,
-      "title": null
+    "917a1300-61ac-4fdb-8d94-8a42503c0442": {
+      "source_count": 49,
+      "title": "World Models 2026 \u2014 Comprehensive Survey (Genie, Waypoint, GameNGen, SORA)",
+      "raw": {
+        "notebook_id": "917a1300-61ac-4fdb-8d94-8a42503c0442",
+        "title": "World Models 2026 \u2014 Comprehensive Survey (Genie, Waypoint, GameNGen, SORA)",
+        "source_count": 49,
+        "url": "https://notebooklm.google.com/notebook/917a1300-61ac-4fdb-8d94-8a42503c0442",
+        "sources": [
+          {
+            "id": "288c3801-011a-43f8-bf25-51a2233425cd",
+            "title": "(PDF) World Models in AI: A Comprehensive Overview * - ResearchGate"
+          },
+          {
+            "id": "904e19a1-5836-4ee8-8ec3-e678643bd462",
+            "title": "2025 Reality / 2026 Predictions - Sean Dearnaley Blog"
+          },
+          {
+            "id": "735b196e-2ca8-4587-8699-04315ac112e9",
+            "title": "9 Open Source Gems Every Developer Should Know - DEV Community"
+          },
+          {
+            "id": "e550ce89-8605-4174-87a0-cceb0475507c",
+            "title": "AGIBOT unveils Genie Envisioner 2.0 to advance world models into scalable simulators for embodied AI - The Robot Report"
+          },
+          {
+            "id": "b2cda482-87a7-4bea-8386-306a03d8df17",
+            "title": "AI world model startup Decart reels in $32M - SiliconANGLE"
+          },
+          {
+            "id": "549e25d2-7d39-4a38-87af-f6c718e619ec",
+            "title": "Around the Horn Digest: Everything That Happened in AI Today (Monday, March 31, 2026) - The Neuron"
+          },
+          {
+            "id": "ab0b3041-2932-48b9-913e-86ed9e517660",
+            "title": "Best AI World Models [2026]: Where to Play Immersive Text-to-World AIs & Leaderboard"
+          },
+          {
+            "id": "9855e666-1e65-4e48-8dd7-8a96d616eb44",
+            "title": "Decart AI Lab | Real-Time World Models"
+          },
+          {
+            "id": "bb48c7b2-1092-40ef-a83b-74e5809f1e22",
+            "title": "DeepSeek V4 Teasers, Mythos Cyber Warnings, and a Benchmark Trust Crisis | ZeroNoise"
+          },
+          {
+            "id": "4cb33d44-5cbf-4a4c-a59f-26e086836f80",
+            "title": "Diffusion Models Are Real-Time Game Engines - OpenReview"
+          },
+          {
+            "id": "8b52b6ad-d268-48a7-9031-7df7565a92a9",
+            "title": "Diffusion Models Are Real-Time Game Engines - arXiv"
+          },
+          {
+            "id": "d02c73c5-b962-46e7-a3be-585059c4f8c0",
+            "title": "Embodied World Models: Teaching Robots to Dream (2026) | RoboCloud Hub"
+          },
+          {
+            "id": "12d0ec12-0bf7-4162-991d-c6613dcce8dd",
+            "title": "Etched/oasis-500m - Hugging Face"
+          },
+          {
+            "id": "9d94c763-6aea-44b4-8107-59168c3a44dd",
+            "title": "Exploring LLMs with MLX and the Neural Accelerators in the M5 GPU"
+          },
+          {
+            "id": "497d53cf-6a55-4c7f-95c1-41bdfe0b38e2",
+            "title": "Genie 2: A large-scale foundation world model - Google DeepMind"
+          },
+          {
+            "id": "f4b765d7-4a15-407e-b227-fb46e04bdf6c",
+            "title": "Genie: Generative Interactive Environments - arXiv"
+          },
+          {
+            "id": "96a6c732-187c-445b-ba1a-6e704158fd0b",
+            "title": "Google DeepMind's Project Genie: Technical Analysis, Applications, and Impact on Interactive World Generation | ALM Corp"
+          },
+          {
+            "id": "6ddd6327-56b1-4f32-9e5d-4a5ec79feff0",
+            "title": "Google Gives Creators AI-Generated World Building - MediaPost"
+          },
+          {
+            "id": "591443e2-4f62-441e-8993-cffb75812dad",
+            "title": "I made a list of every AI benchmark that still has signal in 2025-2026 (and the ones that are completely dead) - Reddit"
+          },
+          {
+            "id": "df6bfb5d-0921-48a7-8889-0fa693f7bba9",
+            "title": "Introducing Odyssey-2: A General-Purpose World Model - Odyssey ML"
+          },
+          {
+            "id": "3b25ae04-caa6-4cd9-9715-25b7ffcc3b02",
+            "title": "JiahuaDong/Awesome-World-Models - GitHub"
+          },
+          {
+            "id": "9fbe9ea3-b0c5-46c0-981f-ad28a4de3a35",
+            "title": "Meta's Open 3D Pipeline, World Labs' Virtual Spaces, Baidu's Multimodal Models, and more... - DeepLearning.AI"
+          },
+          {
+            "id": "1f11cd76-1634-4835-865a-5a9353c2e6ca",
+            "title": "Oasis"
+          },
+          {
+            "id": "cd64ac00-3f24-4b81-9b1a-670a2d8bac61",
+            "title": "Odyssey"
+          },
+          {
+            "id": "113b6523-2aab-4e1e-9637-6b567bd0ed57",
+            "title": "Ollama + MLX changed how Apple Silicon feels for local LLMs : r/LocalLLaMA - Reddit"
+          },
+          {
+            "id": "7f9682eb-3ab1-4233-b359-fbe846fd6175",
+            "title": "OpenAI pulls the plug on its Sora AI video app - CBS News"
+          },
+          {
+            "id": "2cb2aa96-3d3e-4df6-b80c-1a24dc07fdef",
+            "title": "Overworld releases AI-based Waypoint 1.5 real-time world simulation system - GamesBeat"
+          },
+          {
+            "id": "b6acf8a8-fdc1-491f-bea5-5b4440fc075f",
+            "title": "Overworld/Waypoint-1-Small - Hugging Face"
+          },
+          {
+            "id": "f6b37148-53f0-456d-bf58-691d21918b0f",
+            "title": "Physical AI: The Next Frontier in AI and Robotics to Build Truly Autonomous Machines"
+          },
+          {
+            "id": "2ef13594-05e1-41c2-aec3-b46a1251f447",
+            "title": "Research & Insights | World Labs"
+          },
+          {
+            "id": "fd8c141f-e510-4545-b51f-15395848ed29",
+            "title": "Simulating the Visual World with Artificial Intelligence: A Roadmap - arXiv"
+          },
+          {
+            "id": "edca4500-ebb9-4595-8274-a29e68517c28",
+            "title": "Sora (text-to-video model) - Wikipedia"
+          },
+          {
+            "id": "68d46aae-6398-494d-a804-2b25572ca5ec",
+            "title": "Sora Is Dead: The 2026 AI Video Landscape After OpenAI's Biggest Flop | AI Magicx Blog"
+          },
+          {
+            "id": "1b07f6fb-9804-454b-9da9-91a8e8d2989c",
+            "title": "The AI Platform War Has a Scoreboard Now. Anthropic Is Winning, Friends. - The Neuron"
+          },
+          {
+            "id": "4a80ac8d-75d4-43be-b869-57b5a57075e4",
+            "title": "The Spatiotemporal Intelligence Inflection: A Comprehensive Survey of World Models 2025-2026"
+          },
+          {
+            "id": "b0f975cb-a44d-4788-8cbe-9b25a6c295c3",
+            "title": "The Waymo World Model: A New Frontier For Autonomous Driving Simulation"
+          },
+          {
+            "id": "0f69142f-ae97-433f-a4ca-c8c704b44608",
+            "title": "Themes in AI to Watch in 2026 - Radical Ventures"
+          },
+          {
+            "id": "835bf365-6a80-416c-b51f-9b530466f7f7",
+            "title": "UniSim: Learning Interactive Real-World Simulators"
+          },
+          {
+            "id": "5d611db5-59e5-4450-a6c9-902dfc7ac681",
+            "title": "Waypoint-1.5: Higher-Fidelity Interactive Worlds for Everyday GPUs"
+          },
+          {
+            "id": "339dd916-2ec7-406a-8ca0-9fa33bb374c2",
+            "title": "What's Next: World Models and Their Importance in Physical AI - IQT"
+          },
+          {
+            "id": "96f5298c-c6be-4be4-9c4f-9a7a0712c126",
+            "title": "World Labs"
+          },
+          {
+            "id": "123b69a8-f902-4a5a-ae8e-bfad26466440",
+            "title": "World Labs Business Breakdown & Founding Story - Contrary Research"
+          },
+          {
+            "id": "fb0014ee-27a8-4f89-9dab-559d46fefc0e",
+            "title": "World Models Are Here\u2014But It's Still the GPT-2 Phase - The Data Exchange"
+          },
+          {
+            "id": "e3cc8e4d-70f4-43c1-843f-445514f1487f",
+            "title": "World Models Race 2026: How LeCun, DeepMind, and World Labs Are Redefining the Path to AGI - Introl"
+          },
+          {
+            "id": "4fde0247-dd75-4ab6-af91-2fa0ba1dc252",
+            "title": "World Models: Five Competing Approaches \u2013 Overview - Themesis, Inc."
+          },
+          {
+            "id": "578403f8-4bf6-4ebe-a2e3-b95a6b2b7f4a",
+            "title": "WorldArena: A Unified Benchmark for Evaluating Perception and Functional Utility of Embodied World Models - arXiv"
+          },
+          {
+            "id": "f4ece1c1-cfc6-4609-83b9-f91fe0fb0d37",
+            "title": "[2408.14837] Diffusion Models Are Real-Time Game Engines - arXiv"
+          },
+          {
+            "id": "6d102ffc-a3b5-4584-b560-8a796b2500c3",
+            "title": "etched-ai/open-oasis: Inference script for Oasis 500M - GitHub"
+          },
+          {
+            "id": "b98a94bc-1ae2-4275-8985-08bb05ed4a65",
+            "title": "leofan90/Awesome-World-Models: A comprehensive list of papers for the definition of World Models and using World Models for General Video Generation, Embodied AI, and Autonomous Driving, including papers, codes, and related websites. - GitHub"
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000030": {
-      "source_count": null,
-      "title": null
+    "d97ff70b-9c14-42a3-8813-5416039b24f7": {
+      "source_count": 44,
+      "title": "Nexus \u2014 Palantir Architecture Deep Research",
+      "raw": {
+        "notebook_id": "d97ff70b-9c14-42a3-8813-5416039b24f7",
+        "title": "Nexus \u2014 Palantir Architecture Deep Research",
+        "source_count": 44,
+        "url": "https://notebooklm.google.com/notebook/d97ff70b-9c14-42a3-8813-5416039b24f7",
+        "sources": [
+          {
+            "id": "51a6f2fc-5075-4a0c-a10e-172c87e629c5",
+            "title": "Add Ontology data to Gaia - Geospatial and geotemporal - Palantir"
+          },
+          {
+            "id": "4f765d2d-025f-4bb2-8db4-fb26f00ce0c6",
+            "title": "Building end-to-end data-driven business solutions with Palantir Foundry and AIP - Proxet"
+          },
+          {
+            "id": "b0323a70-352b-4e7f-83ef-2846bbdd8be4",
+            "title": "Building pipelines \u2022 Best practices \u2022 Recommended Project and team structure - Palantir"
+          },
+          {
+            "id": "17c45901-8a5e-4721-b2df-0825e2ced743",
+            "title": "Clustering - OpenCTI Documentation"
+          },
+          {
+            "id": "3f8b73c5-ba84-4b3a-adee-7cea9632109c",
+            "title": "Create Ontology objects from Gaia - Palantir"
+          },
+          {
+            "id": "3b456600-b8db-4c52-9888-050adef568de",
+            "title": "Data model - OpenCTI Documentation - Filigran"
+          },
+          {
+            "id": "be387ca7-6583-48fd-ac75-ead98191228f",
+            "title": "Data model - i2 Group documentation"
+          },
+          {
+            "id": "54116042-a7e9-4ab8-91ff-4bde0e8355fa",
+            "title": "EP1412887A2 - Integrated system for ordering, fulfillment, and delivery of consumer products using a data network - Google Patents"
+          },
+          {
+            "id": "ecf20aa6-6cd7-43a2-966f-83dc4a54475f",
+            "title": "Event processing with listeners - Data Connection - Palantir"
+          },
+          {
+            "id": "1f2917b2-da9e-44f6-a1ac-8bfccfec4fab",
+            "title": "Foundry Entity Resolution - Palantir"
+          },
+          {
+            "id": "ce178514-8815-4e4c-bca4-a4e1d3efa2af",
+            "title": "Guide to Building Maltego Integrations"
+          },
+          {
+            "id": "082b3251-aa7d-4bbb-a72a-abf1c624b65f",
+            "title": "High Availability Deployment for the Filigran OpenCTI - BnB Techie"
+          },
+          {
+            "id": "6953dd9b-62db-4f93-853f-e7c4cb717912",
+            "title": "IBM i2 Enterprise Insight Analysis: Data Model White Paper"
+          },
+          {
+            "id": "f440f194-fe58-4b1c-bf22-9a7505af9f3a",
+            "title": "IBM i2 Enterprise Insight Analysis: Data Model White Paper"
+          },
+          {
+            "id": "fa7de525-eeb2-4644-bf29-20518b57785d",
+            "title": "MISP Synchronisation - Test and Validation Project"
+          },
+          {
+            "id": "05cbef1c-0893-4f08-9c61-ee41f25973a1",
+            "title": "MISP architecture choices"
+          },
+          {
+            "id": "71d25256-1620-4676-b12b-3df96354afc3",
+            "title": "MISP features and functionalities"
+          },
+          {
+            "id": "93f95800-c9bd-46f6-9de0-06a0748ed634",
+            "title": "MISP performance tuning"
+          },
+          {
+            "id": "d4b40512-65ab-4cce-bd1e-3fa66d7281d7",
+            "title": "Object and link types \u2022 Object types \u2022 Enable Gotham integration - Palantir"
+          },
+          {
+            "id": "64377d2f-b7a6-4c5b-b1d9-199afc41b83b",
+            "title": "Ontology architecture - Palantir"
+          },
+          {
+            "id": "f425a2f1-61b9-4eaa-870f-24cd07197446",
+            "title": "OpenCTI - Trafford"
+          },
+          {
+            "id": "ae611d8d-ece4-4f52-b9f0-3a76f4566d5d",
+            "title": "OpenCTI-Platform/opencti at sredevops.org \u00b7 GitHub - GitHub"
+          },
+          {
+            "id": "c523d94f-0f90-4376-abf6-47ee338a38ce",
+            "title": "Overview - OpenCTI Documentation"
+          },
+          {
+            "id": "8336aebf-fbb1-4a43-8260-0b190913087e",
+            "title": "Overview \u2022 Ontology - Palantir"
+          },
+          {
+            "id": "36d20bf7-6211-4fdc-bbd6-204d9b147a06",
+            "title": "Pipeline Builder \u2022 Overview - Palantir"
+          },
+          {
+            "id": "8f7299e3-b31c-4ffd-b4f3-6ff0439b053a",
+            "title": "Routing in Data Networks - MIT"
+          },
+          {
+            "id": "678fa3b0-0d90-482c-b656-c170a445bd27",
+            "title": "Synchronisation/Sharing \u00b7 misp-book"
+          },
+          {
+            "id": "7299769f-64a6-4021-9758-30623eb983e9",
+            "title": "System Architecture - Maltego Knowledge Base"
+          },
+          {
+            "id": "eb045033-6f3b-46c8-998d-67414ebd8d1b",
+            "title": "TDS Transforms - Maltego Documentation"
+          },
+          {
+            "id": "b7cadf70-0eff-49b9-9fc7-1d044193b883",
+            "title": "The Ontology system \u2022 Palantir"
+          },
+          {
+            "id": "7371ba8f-44dd-4ed9-9e66-033822f511a5",
+            "title": "Threat Intelligence Connector for OpenCTI Platform - Loginsoft"
+          },
+          {
+            "id": "f116f0a7-901b-42bc-938b-bc624ae29e56",
+            "title": "TypeDB in Cyber Threat Intelligence"
+          },
+          {
+            "id": "f41d8ad4-a9a1-4034-b017-2d55f014739d",
+            "title": "Types of geospatial and geotemporal data - Palantir"
+          },
+          {
+            "id": "d5223181-b258-49c2-a388-11e31c3b5b2e",
+            "title": "US10642995B2 - Method and system for reducing risk score volatility - Google Patents"
+          },
+          {
+            "id": "a5240703-55ce-4227-bea9-bb1614eb8324",
+            "title": "US11132461B2 - Detecting, notifying and remediating noisy security policies - Google Patents"
+          },
+          {
+            "id": "6cd4a076-65a7-4fe5-9670-b21c8028a5db",
+            "title": "US11411973B2 - Identifying security risks using distributions of characteristic features extracted from a plurality of events - Google Patents"
+          },
+          {
+            "id": "3ebc2a92-2a48-46be-a9c7-bc839a832d92",
+            "title": "US11595430B2 - Security system using pseudonyms to anonymously identify entities and corresponding security risk related behaviors - Google Patents"
+          },
+          {
+            "id": "e749bbfd-918d-44ef-a3ae-b343625fe0a7",
+            "title": "What is a Transform Distribution Server (TDS)? - Maltego Support Portal"
+          },
+          {
+            "id": "e3769f01-1e25-4930-81d2-e76305256212",
+            "title": "What is a Transform Distribution Server (TDS/iTDS)? - Maltego Documentation"
+          },
+          {
+            "id": "27a8038d-82da-4583-90e8-97e61ed63ada",
+            "title": "What is a data pipeline? - Palantir"
+          },
+          {
+            "id": "8a42a511-b40d-4980-acc7-d93ca7f2c35b",
+            "title": "i2 Analyst's Notebook - Discover and deliver actionable intelligence - i2 Group"
+          },
+          {
+            "id": "dc15ade4-4640-4040-96ff-a44718872163",
+            "title": "i2 Analyst's Notebook | Vertosoft"
+          },
+          {
+            "id": "2a1aff6f-e851-4445-a13a-132993a92ba5",
+            "title": "i2 Analyze: Documentation - IBM"
+          },
+          {
+            "id": "444fc06a-5b3e-4df4-b5d8-386a73c8b4ac",
+            "title": "opencti/docs/docs/reference/data-processing.md at master - GitHub"
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000031": {
-      "source_count": null,
-      "title": null
+    "552072ab-7f09-4cda-a13c-0988f414d36d": {
+      "source_count": 11,
+      "title": "NB-SUBHI Onboarding Frontend SEO CRO 2026-04-30",
+      "raw": {
+        "notebook_id": "552072ab-7f09-4cda-a13c-0988f414d36d",
+        "title": "NB-SUBHI Onboarding Frontend SEO CRO 2026-04-30",
+        "source_count": 11,
+        "url": "https://notebooklm.google.com/notebook/552072ab-7f09-4cda-a13c-0988f414d36d",
+        "sources": [
+          {
+            "id": "7edafeb9-8479-4bf1-80ca-11d9f4744a8e",
+            "title": "01_CLAUDE_subhi_bahasa.md"
+          },
+          {
+            "id": "0838451f-6099-4efb-9671-20c8aff9bca0",
+            "title": "02_VADEMECUM_subhi_bahasa.md"
+          },
+          {
+            "id": "23898424-7d86-445e-9c10-981c46f1b9af",
+            "title": "03_funnel_audit_bahasa.md"
+          },
+          {
+            "id": "c9d95bc5-b4e9-489c-b15f-788c09f3d0fd",
+            "title": "04_AI_ONBOARDING_subhi_bahasa.md"
+          },
+          {
+            "id": "9c2edaee-9ab9-43ff-a92f-621a35f22d26",
+            "title": "05_LIVING_ARCHITECTURE_subhi_bahasa.md"
+          },
+          {
+            "id": "96f0fff2-a754-4261-886c-bded7a06d1a9",
+            "title": "06_X_BRAND_VOICE_subhi_bahasa.md"
+          },
+          {
+            "id": "9a24fb72-cb80-49e8-a8b0-d4c8412175e0",
+            "title": "07_README_subhi_bahasa.md"
+          },
+          {
+            "id": "88d17fb0-c64d-46f5-a115-aa7337773383",
+            "title": "08_apps_mouth_summary_bahasa.md"
+          },
+          {
+            "id": "b84dadc6-67d2-407d-83a6-9745e6b58c2b",
+            "title": "09_packages_core_summary_bahasa.md"
+          },
+          {
+            "id": "038a8757-a778-4acf-bfc2-77a49f6d6487",
+            "title": "10_FIELD_KIT_DAY1_bahasa.md"
+          },
+          {
+            "id": "64212604-0365-4ba6-8e67-bf5cafc26a1d",
+            "title": "23_FIELD_KIT_DAY1.pdf"
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000032": {
-      "source_count": null,
-      "title": null
+    "9a866adc-988c-407f-9920-60dabf5ab164": {
+      "source_count": 1,
+      "title": "NB-SUBHI Misi 60 Hari Probation 2026-04-30",
+      "raw": {
+        "notebook_id": "9a866adc-988c-407f-9920-60dabf5ab164",
+        "title": "NB-SUBHI Misi 60 Hari Probation 2026-04-30",
+        "source_count": 1,
+        "url": "https://notebooklm.google.com/notebook/9a866adc-988c-407f-9920-60dabf5ab164",
+        "sources": [
+          {
+            "id": "0ab55ac8-e581-4ba1-a994-4f211a6bc2a9",
+            "title": "Misi Subhi 60 Hari Probation Bahasa"
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000033": {
-      "source_count": null,
-      "title": null
+    "46b4dfe0-2be9-4fe4-97cd-3d44ef28a8ab": {
+      "source_count": 6,
+      "title": "NB-NLM-ELEVATION \u2014 SOTA research & brainstorm 2026-04-25",
+      "raw": {
+        "notebook_id": "46b4dfe0-2be9-4fe4-97cd-3d44ef28a8ab",
+        "title": "NB-NLM-ELEVATION \u2014 SOTA research & brainstorm 2026-04-25",
+        "source_count": 6,
+        "url": "https://notebooklm.google.com/notebook/46b4dfe0-2be9-4fe4-97cd-3d44ef28a8ab",
+        "sources": [
+          {
+            "id": "128b09fb-a5d3-4458-a42e-3a0a1bdaab96",
+            "title": "01-nlm-sota-2026.md"
+          },
+          {
+            "id": "70634978-9a35-430b-ae72-d6f1226dda98",
+            "title": "02-gemini-brainstorm.md"
+          },
+          {
+            "id": "9f75832a-63fd-4fe9-b0d9-d3b5efc829f7",
+            "title": "03-deepseek-brainstorm.md"
+          },
+          {
+            "id": "ed1b99d6-1e6f-40bb-8db9-94713f09ef97",
+            "title": "04-nlm-self-reflection.md"
+          },
+          {
+            "id": "619b449c-5b1d-4c65-a8d3-039601b5a37c",
+            "title": "06-nb1-validation.md"
+          },
+          {
+            "id": "f4e8657f-bb94-45c6-b691-960627c41549",
+            "title": "2026-04-24-nlm-automations-audit.md"
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000034": {
-      "source_count": null,
-      "title": null
+    "da94d615-0140-4b46-8484-f24a423a91ce": {
+      "source_count": 1,
+      "title": "NB-CRM-VIP \u2014 Top Clients Bali Zero",
+      "raw": {
+        "notebook_id": "da94d615-0140-4b46-8484-f24a423a91ce",
+        "title": "NB-CRM-VIP \u2014 Top Clients Bali Zero",
+        "source_count": 1,
+        "url": "https://notebooklm.google.com/notebook/da94d615-0140-4b46-8484-f24a423a91ce",
+        "sources": [
+          {
+            "id": "d3548d91-3f5f-4ab2-884d-e9a6eeb9617f",
+            "title": "source_text.md"
+          }
+        ]
+      }
     },
-    "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000035": {
-      "source_count": null,
-      "title": null
+    "9530b58d-cb7b-4bda-b5c2-c68e723b8118": {
+      "source_count": 22,
+      "title": "Indonesia Restaurant Investment and Regulatory Guide 2026",
+      "raw": {
+        "notebook_id": "9530b58d-cb7b-4bda-b5c2-c68e723b8118",
+        "title": "Indonesia Restaurant Investment and Regulatory Guide 2026",
+        "source_count": 22,
+        "url": "https://notebooklm.google.com/notebook/9530b58d-cb7b-4bda-b5c2-c68e723b8118",
+        "sources": [
+          {
+            "id": "3e50d7ad-5736-4ab0-adf4-87c1b34e0d9f",
+            "title": "5 Benefits of Location Intelligence for Restaurant Success and ..."
+          },
+          {
+            "id": "a8957b79-9294-4cfd-96ee-f567751074da",
+            "title": "AI Transforming Food & Beverage: 2025 Trends and 2026 Outlook"
+          },
+          {
+            "id": "66573fe0-8e6d-49f9-b3d1-bd68caef1ee4",
+            "title": "Apakah ada larangan atau pembatasan bagi penanaman modal asing untuk mendirikan restoran di Indonesia? - Corsepro"
+          },
+          {
+            "id": "9dcf71bb-e4a3-4fe2-a6ce-3add90a620ed",
+            "title": "Aturan Pendirian PMA di Indonesia - Infiniti Office"
+          },
+          {
+            "id": "c6f12024-970e-4885-8ec4-7c66ceef1af1",
+            "title": "BPJPH Tegaskan Wajib Halal Berlaku Oktober 2026, Ini Daftar Produk yang Terdampak"
+          },
+          {
+            "id": "8d06393e-c05d-4320-a52d-3c1a1fd7fded",
+            "title": "Bagaimana Proses Verifikasi Sertifikat Standar di OSS? - Easybiz"
+          },
+          {
+            "id": "7a912b39-0fee-445a-8bbc-49e1609a195a",
+            "title": "Dinamika Penanaman Modal Asing Sektor Restoran di Indonesia: Navigasi Regulasi, Integrasi Geospasial, dan Strategi Inovasi Terapan 2026"
+          },
+          {
+            "id": "5c1f8c63-6f50-4670-bc4f-326756a319ba",
+            "title": "Greening Indonesia | Recyglo"
+          },
+          {
+            "id": "0faae880-a5d9-4cda-8003-e3fc7b561244",
+            "title": "How to Open a Foreign-Owned Company (PT PMA) in Indonesia \u2013 [2026 Edition] - (Part 1)"
+          },
+          {
+            "id": "02f2088a-ecf0-443b-a033-0c819ca1ec8b",
+            "title": "Indonesia Investment 2026: Business Outlook & Roadmap to Invest in Indonesia"
+          },
+          {
+            "id": "352f5af2-0ca1-4cfe-8419-dd029d7dbaf8",
+            "title": "Indonesia to finalize producer waste responsibility rules in 2026 - ANTARA News"
+          },
+          {
+            "id": "e567d877-2392-49b6-a1cf-98fdc4eb612b",
+            "title": "Mengenal Sertifikat Standar OSS untuk Izin Kegiatan Usaha - Kadin Indonesia"
+          },
+          {
+            "id": "480553d5-007a-49a6-b074-9ab8cb540d25",
+            "title": "Minimum Capital for PT PMA in Indonesia | InvestinAsia"
+          },
+          {
+            "id": "729ebeee-e04b-4192-b103-f8766b8a74d2",
+            "title": "PT PMA Setup Bali: A Complete Guide for Foreign Investors (2025)"
+          },
+          {
+            "id": "9bce5dc7-ce9f-452b-b249-22ff0f76144e",
+            "title": "Panduan Lengkap Aturan RDTR Terbaru untuk 2026 - vOffice"
+          },
+          {
+            "id": "03e3c43e-018f-4eb7-84e2-d83946c48c01",
+            "title": "Panduan Lengkap Izin Usaha Restoran KBLI 56101 via OSS 2025 ..."
+          },
+          {
+            "id": "b932aaac-07c2-46c8-a1f6-40c7618c5fc9",
+            "title": "Panduan PBG Ruko 2026: Aturan Fungsi Campuran dan Persyaratan Teknis - Masterizin"
+          },
+          {
+            "id": "e6e3c18a-36f2-4d9c-9dbe-711b6e04ddfe",
+            "title": "Setting up a PT PMA in Indonesia - Requirements and Process - Emerhub"
+          },
+          {
+            "id": "6937bcee-d71a-4f5a-bad4-8b77bdcb99e6",
+            "title": "Syarat Pendirian PT Penanaman Modal Asing (PMA) - Legal Nusa"
+          },
+          {
+            "id": "7556369b-b352-437a-9d3f-c119b0592c12",
+            "title": "Wajib Halal | LPH THE DEDI SRIYONO INDONESIA"
+          },
+          {
+            "id": "06f584be-c717-4444-902e-cc5ab82a9074",
+            "title": "WhatsApp Image 2026-01-08 at 10.12.03.jpeg"
+          },
+          {
+            "id": "c8963433-9841-45f0-b57d-2d8118bd1973",
+            "title": "why the future of food and beverage demand planning is AI-driven - Baringa"
+          }
+        ]
+      }
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000036": {
       "source_count": null,
-      "title": null
+      "title": null,
+      "error": "{\n  \"status\": \"error\",\n  \"error\": \"Failed to get notebook: API error (code 5): NOT_FOUND\"\n}"
     }
   }
 }

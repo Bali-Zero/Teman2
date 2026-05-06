@@ -49,21 +49,44 @@ def _run(cmd: list[str], timeout: int = 30) -> tuple[str, int, str]:
 
 
 def ensure_session_or_relogin() -> None:
-    """T2.a: probe NLM session, force relogin if needed."""
-    out, rc, err = _run(["nlm", "whoami"])
+    """T2.a: probe NLM session, force relogin if needed.
+
+    nlm CLI (current build) uses `nlm login --check` for probe and bare
+    `nlm login` for interactive refresh. There is no `--clear` flag.
+    """
+    out, rc, err = _run(["nlm", "login", "--check"])
     if rc != 0:
-        print("[T2.a] nlm whoami failed → forcing isolated login", file=sys.stderr)
-        _run(["nlm", "login", "--clear"], timeout=300)
+        print("[T2.a] nlm login --check failed → forcing interactive login", file=sys.stderr)
+        _run(["nlm", "login"], timeout=300)
 
 
 def mcp_query_notebook(uuid: str) -> dict[str, Any]:
-    """Query NotebookLM for a single notebook. Raises TransientMCPError on retryable failures."""
-    out, rc, err = _run(["nlm", "notebook", "info", uuid, "--json"])
+    """Query NotebookLM for a single notebook. Raises TransientMCPError on retryable failures.
+
+    `nlm notebook get --json` returns either:
+    - success: {"value": {"notebook_id": ..., "title": ..., "source_count": int, ...}}
+    - error:   {"status": "error", "error": "...NOT_FOUND..."}
+    Both come back with rc=0; we discriminate on payload shape.
+    """
+    out, rc, err = _run(["nlm", "notebook", "get", uuid, "--json"])
+    combined = (err + out).lower()
     if rc != 0:
-        if any(kw in (err + out).lower() for kw in ("timeout", "5xx", "connection", "transient")):
+        if any(kw in combined for kw in ("timeout", "5xx", "connection", "transient")):
             raise TransientMCPError(err.strip() or out.strip())
         return {"source_count": None, "title": None, "error": err.strip() or out.strip()}
-    return json.loads(out)
+    try:
+        payload = json.loads(out)
+    except json.JSONDecodeError:
+        return {"source_count": None, "title": None, "error": "invalid_json"}
+    if "value" in payload and isinstance(payload["value"], dict):
+        v = payload["value"]
+        return {"source_count": v.get("source_count"), "title": v.get("title"), "raw": v}
+    if payload.get("status") == "error":
+        msg = payload.get("error", "")
+        if any(kw in msg.lower() for kw in ("timeout", "5xx", "connection", "transient")):
+            raise TransientMCPError(msg)
+        return {"source_count": None, "title": None, "error": msg}
+    return {"source_count": None, "title": None, "error": "unknown_shape"}
 
 
 def audit_one_with_retry(uuid: str) -> dict[str, Any]:
