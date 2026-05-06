@@ -495,7 +495,22 @@ async def create_practice(
                 # where metadata::text was '"{\"discount_log\": ...}"').
                 insert_values.append(discount_audit)
 
-            placeholders = ", ".join(f"${i}" for i in range(1, len(insert_values) + 1))
+            # Cast jsonb columns explicitly. asyncpg does not register a
+            # JSON codec for `jsonb` by default, so a `json.dumps()` value
+            # passed to a `jsonb` column lands as a JSON-encoded STRING
+            # scalar (i.e. the whole thing is wrapped in another pair of
+            # quotes), not as a parsed object — which silently breaks
+            # `metadata ? 'discount_log'` and any downstream jsonb_path_*
+            # query. Discovered live 2026-05-06 on practice_id=390 where
+            # metadata::text was '"{\"discount_log\": ...}"' instead of
+            # '{"discount_log": ...}'. The matching UPDATE block at
+            # line ~1268 already does `metadata = $1::jsonb`; the INSERT
+            # path now mirrors that.
+            JSONB_COLUMNS = {"metadata", "documents", "missing_documents", "custom_fields"}
+            placeholders = ", ".join(
+                f"${i}::jsonb" if insert_columns[i - 1] in JSONB_COLUMNS else f"${i}"
+                for i in range(1, len(insert_values) + 1)
+            )
             columns_str = ", ".join(insert_columns)
 
             practice_row = await conn.fetchrow(
