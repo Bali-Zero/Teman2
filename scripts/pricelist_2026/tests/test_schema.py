@@ -79,10 +79,16 @@ def test_tier_range_must_be_two_strings():
 
 
 def test_real_2026_json_validates():
-    """Sanity check: the actual file we ship must validate."""
-    real = Path("apps/backend-rag/backend/data/bali_zero_official_prices_2026.json")
+    """Sanity check: the actual file we ship must validate.
+
+    Path resolved relative to repo root (parents[3] = repo root from
+    scripts/pricelist_2026/tests/test_schema.py) so the test runs
+    correctly regardless of CWD.
+    """
+    repo_root = Path(__file__).resolve().parents[3]
+    real = repo_root / "apps/backend-rag/backend/data/bali_zero_official_prices_2026.json"
     if not real.exists():
-        pytest.skip("real JSON not yet authored")
+        pytest.skip(f"real JSON not yet authored at {real}")
     data = json.loads(real.read_text())
     result = schema.validate(data)
     assert result.ok, f"Real 2026 JSON failed validation: {result.errors}"
