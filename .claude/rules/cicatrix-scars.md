@@ -5,6 +5,56 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: 12+1 mata_garuda LaunchAgents active-active Pro+Mini (2026-05-07)
+
+_Discovered: 2026-05-06 22:45 WITA during Symbiosis W1 genome enrollment audit (Zero verified via `launchctl list` on both nodes via Tailscale) · Severity: P1 · Workaround: TBD (cleanup in dedicated follow-up PR)_
+
+**TRAUMA:** 13 launchd labels load SIMULTANEOUSLY on Pro AND Mini, both producing the same heartbeat at the same schedule. Verified labels (Pro+Mini both):
+
+```
+watcher.daily, reg-alert.30min, kg-linker, wr-topic, wr2-bridge.hourly,
+bridge.adaptive, sentinel.daily, intel-bridge.daily, daily-briefing,
+kita-feed.daily, public-channel, weekly-digest, gap.consumer
+```
+
+For cron jobs (most of the list above), this means the same agent/script runs **twice** per scheduled tick — once on Pro, once on Mini. Concrete blast radius depends per-organ:
+
+- `intel-bridge.daily`: publishes to Redis stream `garuda:raw`. Stream entries deduped per-event-id but the harvester emits a NEW event-id per run → two distinct daily entries containing identical OSINT content.
+- `regulation-alert.30min`: posts to Telegram. Alerts will fire twice (Pro and Mini both deliver to the same chat_id).
+- `kg-linker`: writes to PostgreSQL knowledge graph. Concurrent writes may produce duplicate edges if the dedup logic is per-call rather than per-content-hash.
+- `weekly-digest`, `daily-briefing`: same email or Telegram digest sent twice.
+- `public-channel`: same scheduled post published twice.
+
+The double-firing was masked until 2026-05-04 because Mini was offline most of April; the dup_resolver `~/scripts/wave1-pro-mini-dup-resolver.sh --check` reports zero conflicts when Mini is offline. The risk only materialises during Mini-up windows.
+
+`~/scripts/wave1-pro-mini-dup-resolver.sh` exists with `--check` and `--resolve` modes but was never invoked because the Wave-1 catalogue assumed single-source plists; the 13 active-active labels are NOT in the resolver's protected list.
+
+**ANTIBODY (proposed, NOT yet implemented — follow-up PR):**
+
+1. **Decision per organ** — for each of the 13, decide: (a) Pro-only and unload from Mini, (b) Mini-only and unload from Pro, or (c) leader-election. Rationale per organ depends on resource locality (e.g. `kg-linker` writes to local Postgres on Pro; `nlm-feeder-stream` reaches NotebookLM CLI which is Pro-only). Default for the 13: prefer (a) Pro-only since Pro has the canonical CRM data and external API tokens.
+
+2. **Plist removal** — `launchctl bootout gui/$(id -u)/com.matagaruda.<label>` + `rm ~/Library/LaunchAgents/com.matagaruda.<label>.plist` on the LOSING side. Update `genome.yaml` to drop the corresponding `mini` or `pro` entry once the launchd state is reconciled.
+
+3. **Resolver hardening** — extend `wave1-pro-mini-dup-resolver.sh` protected list to cover the 13 labels with `--resolve` mode that picks the canonical owner per organ. Run via cron after each Mini-up event (heartbeat from `secrets-sync-mini` could trigger).
+
+4. **Test** — register new test in `apps/organism/tests/test_genome_no_active_active.py` that scans `genome.yaml` for entries sharing identical `recovery_params.label` across `pro` and `mini` hosts, fails CI if any pair is found OUTSIDE an explicit allowlist (which starts empty post-cleanup).
+
+Until the cleanup PR ships, the W1 PR registry shows 13 dup pairs cross-linked via `duplicates_id` (header-only convention) — observability without coordination. The Supervisor will surface 2× heartbeats per tick on these labels until reconciled.
+
+**GOTCHA:**
+
+- `genome.yaml` `duplicates_id` is a HEADER-ONLY convention. The validator does NOT enforce it. A future refactor that drops `duplicates_id` accidentally will not surface in CI.
+- The dup_resolver's `--check` mode returns "0 conflicts, Mini offline" when Mini is unreachable. Operators reading this output may conclude "no dups exist" — incorrect when Mini is up.
+- Cron jobs on Pro and Mini may run at slightly offset wall-clock times because the 2 machines have independent clock skew. Expect a 0-5s window where both fire before either completes — race conditions in shared state (Redis SETNX, Postgres advisory lock) are NOT mitigated by this PR.
+- Mata-garuda agents that emit to `garuda:raw` Redis stream pass through Nuzantara's CRM consumer; double-firing inflates `items_processed` metric by 2× until cleanup. Dashboards built on raw counts will misreport — note in dashboard query: filter by `host_pro_or_mini` if the producer label distinguishes.
+- The 13th entry `gap.consumer` was reported as 12 in the topology brief but appears active-active in our enrollment; verify post-merge with Zero whether it's a dup pair or Pro-only. If Pro-only, drop the `mini` enrollment and remove the `duplicates_id` cross-link in a small follow-up commit.
+
+**Related:** Wave-1 dup resolver `~/scripts/wave1-pro-mini-dup-resolver.sh [--check|--resolve]` (Pro-local, idle 2026-05-04 14:40 with Mini offline). MEMORY.md ref: "Wave-1 dup resolver" entry.
+
+Brainstorm artifacts: none yet (this entry is post-discovery during the W1 enrollment). Future agents implementing the cleanup follow-up PR should reference this scar + the W1 PR (`feat(organism): enroll Wave 1 organs in Innervation Genoma`) as the inventory source.
+
+---
+
 ### ⚠️ STRUCTURAL: Test infrastructure mock != production stack (Sprint 1.B 2026-05-02, 3 hotfix in chain)
 
 _Discovered: 2026-05-02 during Sprint 1.B Era Post-Agentica deploy — 3 hotfix
