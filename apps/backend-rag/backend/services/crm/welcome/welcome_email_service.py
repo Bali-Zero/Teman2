@@ -388,7 +388,7 @@ def _build_html(
                   <td align="left" style="padding-bottom:36px;">
                     <table cellspacing="0" cellpadding="0" border="0" style="border-collapse:collapse;"><tr>
                       <td width="112" height="112" style="border-radius:50%;{BG}">
-                        <img src="https://kita.balizero.com/static/balizero-logo-clean.png" width="112" height="112" alt="Bali Zero" style="display:block;border-radius:50%;{BG}" />
+                        <img src="https://kita.balizero.com/static/email/balizero-logo-email.png" width="112" height="112" alt="Bali Zero" style="display:block;border-radius:50%;{BG}" />
                       </td>
                     </tr></table>
                   </td>

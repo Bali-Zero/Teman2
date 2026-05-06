@@ -21,6 +21,7 @@ from backend.services.notifications.email_audit import (
     notify_email_failure_critical,
     record_email_result,
 )
+from backend.services.notifications.email_branding import logo_header_html
 from backend.services.notifications.email_http import get_email_client
 
 # Internal email API — uses Brevo, from=zantara@balizero.com
@@ -83,6 +84,9 @@ class CompletedProcessService:
                     documents=final_documents,
                 )
 
+            # Send notification to team leader
+            team_leader_email = practice_data.get("assigned_to") or practice_data.get("created_by")
+
             # Send email to client
             client_notified = False
             if client_data.get("email"):
@@ -93,13 +97,12 @@ class CompletedProcessService:
                         practice_data=practice_data,
                         documents=uploaded_docs,
                         failed_uploads=failed_uploads,
+                        team_member_email=team_leader_email,
                     )
                     client_notified = True
                 except Exception as e:
                     logger.error(f"Failed to send completion email to client: {e}")
 
-            # Send notification to team leader
-            team_leader_email = practice_data.get("assigned_to") or practice_data.get("created_by")
             team_notified = False
             if team_leader_email:
                 try:
@@ -213,6 +216,7 @@ class CompletedProcessService:
         practice_data: dict,
         documents: list[dict],
         failed_uploads: list[dict] | None = None,
+        team_member_email: str | None = None,
     ) -> None:
         """Send human, congratulatory email to client.
 
@@ -297,6 +301,8 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
             email_type="completion_client",
             practice_id=practice_data["id"],
             client_id=practice_data.get("client_id"),
+            cc=team_member_email if team_member_email and team_member_email != client_email else None,
+            include_logo=True,
         )
         logger.info(f"Completion email sent to client {client_email}")
 
@@ -366,6 +372,8 @@ Zantara CRM System
         email_type: str,
         practice_id: int | None = None,
         client_id: int | None = None,
+        cc: str | None = None,
+        include_logo: bool = False,
     ) -> None:
         """Send email via Brevo (primary), fall back to Zoho if Brevo fails.
 
@@ -384,11 +392,16 @@ Zantara CRM System
         # 1) Brevo
         try:
             html_body = body.replace("\n", "<br>")
+            if include_logo:
+                html_body = f"{logo_header_html()}{html_body}"
+            payload: dict = {"to": to_email, "subject": subject, "body": html_body}
+            if cc:
+                payload["cc"] = cc
             client = await get_email_client()
             response = await client.post(
                 _EMAIL_API_URL,
                 headers={"X-API-Key": _EMAIL_API_KEY},
-                json={"to": to_email, "subject": subject, "body": html_body},
+                json=payload,
             )
             response.raise_for_status()
             logger.info(f"Email sent to {to_email} via Brevo")

@@ -19,6 +19,7 @@ import asyncpg
 import httpx
 
 from backend.services.integrations.zoho_email_service import ZohoEmailService
+from backend.services.notifications.email_branding import logo_header_html
 
 logger = logging.getLogger(__name__)
 
@@ -287,11 +288,13 @@ class BirthdayNotifierService:
         <html>
         <body style="font-family: Arial, sans-serif; line-height: 1.6; color: #333;">
             <div style="max-width: 600px; margin: 0 auto; padding: 20px;">
+                {logo_header_html()}
                 <h2 style="color: #2c3e50;">{greeting}</h2>
                 <p style="white-space: pre-line;">{message}</p>
                 <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;">
                 <p style="font-size: 12px; color: #666;">
-                    Bali Zero - Your Partner in Indonesia<br>
+                    <strong>Zantara — Bali Zero Team</strong><br>
+                    📧 asya@balizero.com | 📱 WhatsApp: +62 821 3107 363<br>
                     <a href="https://www.balizero.com" style="color: #3498db;">www.balizero.com</a>
                 </p>
             </div>
