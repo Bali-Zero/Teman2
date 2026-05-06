@@ -12,12 +12,9 @@ by the sentinel running on Mini, without standing up a redis-py client.
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
 import os
 import subprocess
-from datetime import datetime
-from typing import Optional
 
 logger = logging.getLogger("mata_garuda.workers")
 

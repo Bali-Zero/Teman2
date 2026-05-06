@@ -17,7 +17,6 @@ from unittest.mock import AsyncMock
 import httpx
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Smoke: module imports + constants
 # ---------------------------------------------------------------------------

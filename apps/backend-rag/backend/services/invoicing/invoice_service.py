@@ -96,6 +96,25 @@ class InvoiceAutomationService:
             try:
                 invoice_number = self.invoice_generator.generate_invoice_number(practice_id)
 
+                # Discount fields — added migration 158 (2026-05-06).
+                # Optional and default 0/None for legacy rows that predate
+                # the columns. The generator handles 0 as "no discount" so
+                # the existing visual stays untouched for non-discounted
+                # invoices.
+                discount_value = practice_data.get("discount_amount")
+                discount_amount_float = (
+                    float(discount_value) if discount_value is not None else 0.0
+                )
+                discount_reason_value = practice_data.get("discount_reason")
+                quoted_price_float = float(practice_data.get("quoted_price", 0))
+                # Defensive clamp matches the generator's logic so the email,
+                # PDF, and invoices.amount_idr all converge on the same value.
+                if discount_amount_float < 0:
+                    discount_amount_float = 0.0
+                if discount_amount_float > quoted_price_float:
+                    discount_amount_float = quoted_price_float
+                final_amount_float = quoted_price_float - discount_amount_float
+
                 pdf_bytes = self.invoice_generator.generate(
                     practice_id=practice_id,
                     client_name=client_data["full_name"],
@@ -106,6 +125,8 @@ class InvoiceAutomationService:
                     practice_description=practice_data.get("notes", "Professional Services"),
                     quoted_price=float(practice_data.get("quoted_price", 0)),
                     notes="Thank you for choosing Bali Zero. Payment is due within 2 days.",
+                    discount_amount=discount_amount_float,
+                    discount_reason=discount_reason_value,
                 )
 
                 filename = f"Invoice_{invoice_number}.pdf"
@@ -140,7 +161,7 @@ class InvoiceAutomationService:
                         invoice_number=invoice_number,
                         pdf_bytes=pdf_bytes,
                         filename=filename,
-                        amount=float(practice_data.get("quoted_price", 0)),
+                        amount=final_amount_float,
                         triggered_by=triggered_by,
                         team_member_email=(
                             practice_data.get("assigned_to")
@@ -402,11 +423,22 @@ class InvoiceAutomationService:
     ) -> None:
         """Update practice with invoice information (dual-write: JSONB + invoices table)."""
         async with self.db_pool.acquire() as conn:
-            # ── 1. Fetch practice for amount + client_id ──────────────────────
-            practice_row = await conn.fetchrow(
-                "SELECT client_id, quoted_price FROM practices WHERE id = $1",
-                practice_id,
-            )
+            # ── 1. Fetch practice for amount + client_id + discount ───────────
+            # Defensive try/except keeps the dual-write working on databases
+            # that have not yet applied migration 158.
+            try:
+                practice_row = await conn.fetchrow(
+                    "SELECT client_id, quoted_price, discount_amount FROM practices WHERE id = $1",
+                    practice_id,
+                )
+            except Exception as fetch_exc:
+                if getattr(fetch_exc, "sqlstate", None) == "42703":
+                    practice_row = await conn.fetchrow(
+                        "SELECT client_id, quoted_price FROM practices WHERE id = $1",
+                        practice_id,
+                    )
+                else:
+                    raise
 
             # ── 2. JSONB write (backward compat — kept until Sprint 3 cleanup) ─
             existing_docs = await conn.fetchval(
@@ -453,35 +485,92 @@ class InvoiceAutomationService:
                     except ValueError:
                         pass  # invalid ISO date format — generated_at stays None
 
-                await conn.execute(
-                    """
-                    INSERT INTO invoices (
-                        practice_id, client_id, invoice_number, invoice_source,
-                        amount_idr, drive_file_id, drive_web_link,
-                        email_sent_to_client, accounting_notified, generated_at
-                    ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-                    ON CONFLICT (practice_id) DO UPDATE SET
-                        invoice_number       = EXCLUDED.invoice_number,
-                        invoice_source       = EXCLUDED.invoice_source,
-                        amount_idr           = EXCLUDED.amount_idr,
-                        drive_file_id        = EXCLUDED.drive_file_id,
-                        drive_web_link       = EXCLUDED.drive_web_link,
-                        email_sent_to_client = EXCLUDED.email_sent_to_client,
-                        accounting_notified  = EXCLUDED.accounting_notified,
-                        generated_at         = EXCLUDED.generated_at,
-                        updated_at           = NOW()
-                    """,
-                    practice_id,
-                    practice_row["client_id"],
-                    invoice_info.get("invoice_number") or None,
-                    invoice_info.get("source", "local_pdf"),
-                    float(practice_row["quoted_price"] or 0),
-                    invoice_info.get("invoice_drive_id") or None,
-                    invoice_info.get("invoice_drive_link") or None,
-                    bool(invoice_info.get("email_sent", False)),
-                    bool(invoice_info.get("accounting_notified", False)),
-                    generated_at,
-                )
+                # amount_idr stores the FINAL total (post-discount) so the
+                # AR reports add up to what the client actually owes; the
+                # discount itself is mirrored in discount_amount_idr per
+                # owner Q4=a (2026-05-06). On legacy databases that still
+                # lack discount_amount_idr (no migration 158), fall back to
+                # the pre-158 INSERT shape.
+                quoted_for_invoice = float(practice_row["quoted_price"] or 0)
+                discount_for_invoice = 0.0
+                try:
+                    raw_disc = practice_row["discount_amount"]
+                    if raw_disc is not None:
+                        discount_for_invoice = float(raw_disc)
+                except (KeyError, TypeError):
+                    discount_for_invoice = 0.0
+                if discount_for_invoice < 0:
+                    discount_for_invoice = 0.0
+                if discount_for_invoice > quoted_for_invoice:
+                    discount_for_invoice = quoted_for_invoice
+                amount_for_invoice = quoted_for_invoice - discount_for_invoice
+
+                try:
+                    await conn.execute(
+                        """
+                        INSERT INTO invoices (
+                            practice_id, client_id, invoice_number, invoice_source,
+                            amount_idr, discount_amount_idr,
+                            drive_file_id, drive_web_link,
+                            email_sent_to_client, accounting_notified, generated_at
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+                        ON CONFLICT (practice_id) DO UPDATE SET
+                            invoice_number       = EXCLUDED.invoice_number,
+                            invoice_source       = EXCLUDED.invoice_source,
+                            amount_idr           = EXCLUDED.amount_idr,
+                            discount_amount_idr  = EXCLUDED.discount_amount_idr,
+                            drive_file_id        = EXCLUDED.drive_file_id,
+                            drive_web_link       = EXCLUDED.drive_web_link,
+                            email_sent_to_client = EXCLUDED.email_sent_to_client,
+                            accounting_notified  = EXCLUDED.accounting_notified,
+                            generated_at         = EXCLUDED.generated_at,
+                            updated_at           = NOW()
+                        """,
+                        practice_id,
+                        practice_row["client_id"],
+                        invoice_info.get("invoice_number") or None,
+                        invoice_info.get("source", "local_pdf"),
+                        amount_for_invoice,
+                        discount_for_invoice,
+                        invoice_info.get("invoice_drive_id") or None,
+                        invoice_info.get("invoice_drive_link") or None,
+                        bool(invoice_info.get("email_sent", False)),
+                        bool(invoice_info.get("accounting_notified", False)),
+                        generated_at,
+                    )
+                except Exception as insert_exc:
+                    if getattr(insert_exc, "sqlstate", None) == "42703":
+                        await conn.execute(
+                            """
+                            INSERT INTO invoices (
+                                practice_id, client_id, invoice_number, invoice_source,
+                                amount_idr, drive_file_id, drive_web_link,
+                                email_sent_to_client, accounting_notified, generated_at
+                            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                            ON CONFLICT (practice_id) DO UPDATE SET
+                                invoice_number       = EXCLUDED.invoice_number,
+                                invoice_source       = EXCLUDED.invoice_source,
+                                amount_idr           = EXCLUDED.amount_idr,
+                                drive_file_id        = EXCLUDED.drive_file_id,
+                                drive_web_link       = EXCLUDED.drive_web_link,
+                                email_sent_to_client = EXCLUDED.email_sent_to_client,
+                                accounting_notified  = EXCLUDED.accounting_notified,
+                                generated_at         = EXCLUDED.generated_at,
+                                updated_at           = NOW()
+                            """,
+                            practice_id,
+                            practice_row["client_id"],
+                            invoice_info.get("invoice_number") or None,
+                            invoice_info.get("source", "local_pdf"),
+                            amount_for_invoice,
+                            invoice_info.get("invoice_drive_id") or None,
+                            invoice_info.get("invoice_drive_link") or None,
+                            bool(invoice_info.get("email_sent", False)),
+                            bool(invoice_info.get("accounting_notified", False)),
+                            generated_at,
+                        )
+                    else:
+                        raise
 
             # ── 4. Activity log ───────────────────────────────────────────────
             await conn.execute(

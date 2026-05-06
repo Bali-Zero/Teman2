@@ -5,7 +5,6 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
 
 from mata_garuda.agents.intel_scraper_bridge import bridge_intel_scraper
 from mata_garuda.tools import intel_scraper_tools as ist
