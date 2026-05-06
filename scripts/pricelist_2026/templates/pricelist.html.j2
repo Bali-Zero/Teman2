@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Bali Zero — Price List 2026</title>
+<style>
+  /* Inlined fonts (base64 woff2 set by generator if provided) */
+  {{ font_face_block | safe }}
+
+  :root {
+    --paper: #fbfaf6;
+    --navy: #1d273b;
+    --navy-elevated: #243047;
+    --copper: #d4845a;
+    --gold: #c9a96e;
+    --cool-blue: #5e7fb5;
+    --cream: #edeae4;
+    --muted: #8c8884;
+    --subtle: #575350;
+  }
+
+  @page {
+    size: A4 portrait;
+    margin: 0;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--paper); color: var(--navy); }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .page {
+    width: 210mm;
+    min-height: 297mm;
+    padding: 80px 60px;
+    position: relative;
+    page-break-after: always;
+    background: var(--paper);
+  }
+  .page.dark { background: var(--navy); color: var(--cream); }
+
+  /* COVER */
+  .cover {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    background: var(--navy);
+    color: var(--cream);
+    overflow: hidden;
+  }
+  .cover .batik {
+    position: absolute; inset: 0; opacity: 0.08;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40'><path d='M0 20 L20 0 L40 20 L20 40 Z' fill='none' stroke='%23c9a96e' stroke-width='0.6'/></svg>");
+    background-size: 40px 40px;
+  }
+  .cover img.logo { width: 200px; height: 200px; margin-bottom: 40px; z-index: 1; position: relative; }
+  .cover h1 {
+    font-family: 'Cormorant Garamond', Georgia, serif; font-weight: 600;
+    font-size: 96px; letter-spacing: 0.04em; margin: 0; z-index: 1; position: relative;
+  }
+  .cover .hairline {
+    width: 80px; height: 2px; background: var(--copper);
+    margin: 24px 0; z-index: 1; position: relative;
+  }
+  .cover .subtitle {
+    font-family: 'League Spartan', sans-serif; font-weight: 500;
+    font-size: 28px; color: var(--gold); letter-spacing: 0.18em;
+    text-transform: uppercase; z-index: 1; position: relative;
+  }
+  .cover .tags {
+    margin-top: 80px; color: var(--copper); letter-spacing: 0.1em;
+    z-index: 1; position: relative; font-size: 14px;
+  }
+  .cover .footer {
+    position: absolute; bottom: 60px; font-size: 11px; color: var(--muted);
+    z-index: 1;
+  }
+
+  /* RUNNING HEADER (page 2+) */
+  .header {
+    position: absolute; top: 30px; left: 60px; right: 60px;
+    display: flex; justify-content: space-between; font-size: 10px;
+    color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase;
+    border-bottom: 0.5px solid var(--gold); padding-bottom: 8px;
+  }
+
+  /* PAGE NUMBER */
+  .page-num {
+    position: absolute; bottom: 30px; right: 60px;
+    font-family: 'Cormorant Garamond', Georgia, serif; font-size: 11px;
+    color: var(--subtle);
+  }
+
+  /* TOC */
+  .toc h1 {
+    font-family: 'Cormorant Garamond', Georgia, serif; font-size: 48px;
+    font-weight: 600; margin: 40px 0 40px;
+  }
+  .toc ul { list-style: none; padding: 0; margin: 0; }
+  .toc li {
+    display: flex; align-items: baseline; padding: 12px 0;
+    border-bottom: 0.5px dotted var(--muted);
+  }
+  .toc .roman {
+    font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic;
+    color: var(--copper); width: 60px;
+  }
+  .toc .name { flex: 1; font-size: 16px; }
+  .toc .pageref { color: var(--subtle); }
+
+  /* SECTION DIVIDER */
+  .divider {
+    background: var(--navy); color: var(--cream);
+    padding: 60px; min-height: 200px;
+    display: grid; grid-template-columns: 1fr 1fr; gap: 40px; align-items: center;
+    page-break-after: avoid;
+  }
+  .divider .left .roman {
+    font-family: 'Cormorant Garamond', Georgia, serif; font-style: italic;
+    color: var(--copper); font-size: 28px; margin-bottom: 8px;
+  }
+  .divider .left h2 {
+    font-family: 'Cormorant Garamond', Georgia, serif; font-size: 48px;
+    font-weight: 600; margin: 0 0 12px;
+  }
+  .divider .left .intro { color: var(--muted); font-size: 14px; }
+  .divider .hero {
+    width: 100%; aspect-ratio: 16 / 9; border-radius: 4px;
+    object-fit: cover;
+  }
+
+  /* SUB-SECTION (tax_accounting) */
+  .subsection-title {
+    font-family: 'League Spartan', sans-serif; font-weight: 500;
+    font-size: 18px; color: var(--copper); letter-spacing: 0.06em;
+    text-transform: uppercase; margin: 32px 0 16px;
+    border-bottom: 0.5px solid var(--gold); padding-bottom: 8px;
+  }
+
+  /* SERVICE ROW */
+  .service {
+    display: grid; grid-template-columns: 32px 1fr 180px;
+    gap: 16px; padding: 18px 0 18px 18px;
+    border-left: 3px solid var(--copper);
+    margin-bottom: 12px;
+    page-break-inside: avoid;
+    align-items: start;
+  }
+  .service .icon { width: 28px; height: 28px; opacity: 0.85; }
+  .service .name {
+    font-weight: 600; font-size: 15px; color: var(--navy);
+  }
+  .service .desc {
+    font-style: italic; font-size: 12px; color: var(--muted);
+    margin-top: 4px;
+  }
+  .service .meta {
+    font-size: 11px; color: var(--subtle); margin-top: 6px;
+  }
+  .service .price {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600; font-size: 16px; color: var(--copper);
+  }
+  .service .tier { font-size: 14px; line-height: 1.4; }
+  .service .notes { font-size: 11px; color: var(--muted); margin-top: 4px; font-style: italic; }
+
+  /* CLOSING */
+  .closing {
+    background: var(--navy); color: var(--cream);
+    display: flex; flex-direction: column; justify-content: center;
+    align-items: center; text-align: center;
+    padding: 80px 60px;
+  }
+  .closing h2 {
+    font-family: 'Cormorant Garamond', Georgia, serif; font-size: 56px;
+    margin: 0 0 32px; color: var(--gold);
+  }
+  .closing .qr {
+    width: 200px; height: 200px; background: var(--cream);
+    padding: 16px; border-radius: 4px; margin: 24px 0;
+  }
+  .closing .contact { font-size: 16px; line-height: 2; }
+  .closing .contact a { color: var(--copper); text-decoration: none; }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<section class="page cover">
+  <div class="batik"></div>
+  <img class="logo" src="{{ logo_data_uri }}" alt="">
+  <h1>BALI ZERO</h1>
+  <div class="hairline"></div>
+  <div class="subtitle">Price List 2026</div>
+  <div class="tags">Visa · KITAS · Company<br>Tax · Accounting · Other</div>
+  <div class="footer">{{ contact.website }} · {{ contact.location }}</div>
+</section>
+
+<!-- TOC -->
+<section class="page toc">
+  <div class="header"><span>Bali Zero · Price List 2026</span><span>Contents</span></div>
+  <h1>Contents</h1>
+  <ul>
+    {% for section in sections %}
+    <li>
+      <span class="roman">{{ section.roman }}</span>
+      <span class="name">{{ section.title }}</span>
+      <span class="pageref">{{ section.page_ref }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+  <div class="page-num">02</div>
+</section>
+
+<!-- SECTIONS -->
+{% for section in sections %}
+<section class="page divider">
+  <div class="left">
+    <div class="roman">{{ section.roman }}.</div>
+    <h2>{{ section.title }}</h2>
+    <div class="intro">{{ section.intro }}</div>
+  </div>
+  <img class="hero" src="{{ section.hero_data_uri }}" alt="">
+</section>
+
+<section class="page">
+  <div class="header"><span>Bali Zero · Price List 2026</span><span>{{ section.title }}</span></div>
+
+  {% if section.subsections %}
+    {% for sub in section.subsections %}
+      <div class="subsection-title">{{ sub.title }}</div>
+      {% for svc in sub.services %}
+        {% include 'service_row.html.j2' %}
+      {% endfor %}
+    {% endfor %}
+  {% else %}
+    {% for svc in section.services %}
+      {% include 'service_row.html.j2' %}
+    {% endfor %}
+  {% endif %}
+
+  <div class="page-num">{{ section.page_num }}</div>
+</section>
+{% endfor %}
+
+<!-- CLOSING -->
+<section class="page closing">
+  <h2>Get in touch</h2>
+  <img class="qr" src="{{ qr_data_uri }}" alt="WhatsApp QR">
+  <div class="contact">
+    <div><a href="https://{{ contact.website }}">{{ contact.website }}</a></div>
+    <div>{{ contact.email }}</div>
+    <div>{{ contact.whatsapp }}</div>
+    <div>{{ contact.location }}</div>
+  </div>
+</section>
+
+</body>
+</html>
