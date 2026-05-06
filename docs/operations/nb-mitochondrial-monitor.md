@@ -9,16 +9,16 @@ for the full design.
 
 ## Files and paths
 
-| Artefact | Path |
-|---|---|
-| Bootstrap registry | `~/.agent/nb-monitor/active_notebooks_bootstrap_2026-05-07.json` |
-| SQLite metrics | `~/.agent/nb-mitochondrial/metrics.db` |
-| Run log | `~/.agent/nb-mitochondrial/logs/nb-monitor.log` |
-| Run error log | `~/.agent/nb-mitochondrial/logs/nb-monitor.error.log` |
-| LaunchAgent plist | `~/Library/LaunchAgents/com.nuzantara.nb-mitochondrial-monitor.daily.plist` |
-| Repo plist source | `infra/launchagents/com.nuzantara.nb-mitochondrial-monitor.daily.plist` |
-| Weekly reports | `~/Desktop/nuzantara/research/nb-monitor/report-YYYY-Www.md` |
-| CLI dashboard | `scripts/nb-monitor/show.py` |
+| Artefact           | Path                                                                        |
+| ------------------ | --------------------------------------------------------------------------- |
+| Bootstrap registry | `~/.agent/nb-monitor/active_notebooks_bootstrap_2026-05-07.json`            |
+| SQLite metrics     | `~/.agent/nb-mitochondrial/metrics.db`                                      |
+| Run log            | `~/.agent/nb-mitochondrial/logs/nb-monitor.log`                             |
+| Run error log      | `~/.agent/nb-mitochondrial/logs/nb-monitor.error.log`                       |
+| LaunchAgent plist  | `~/Library/LaunchAgents/com.nuzantara.nb-mitochondrial-monitor.daily.plist` |
+| Repo plist source  | `infra/launchagents/com.nuzantara.nb-mitochondrial-monitor.daily.plist`     |
+| Weekly reports     | `~/Desktop/nuzantara/research/nb-monitor/report-YYYY-Www.md`                |
+| CLI dashboard      | `scripts/nb-monitor/show.py`                                                |
 
 ## Initial deploy
 
@@ -99,12 +99,15 @@ launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.nuzantara.nb-mitochond
 ## Future-work pointers
 
 When FASE 1 (Qdrant local skills) merges:
+
 - Wire `collectors/skill_derivation.py::count_skills_for_uuid` to query `bali_zero_skills_local`.
 - Tests in `test_skill_derivation.py` (new file) for the wiring.
 
 When FASE 2 (`notebook_registry.py`) merges:
+
 - Update `registry.py::load_registry` to prefer `notebook_registry.NB_REGISTRY` if importable.
 - Delete `~/.agent/nb-monitor/active_notebooks_bootstrap_2026-05-07.json` after one full week of clean runs.
 
 When FASE 4 (Oracle citation logging) merges:
+
 - Wire `collectors/cite_rate.py::compute_rate_for_uuid` to query the citation log.
