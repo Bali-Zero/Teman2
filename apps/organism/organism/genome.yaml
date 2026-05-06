@@ -1,34 +1,50 @@
-# Genoma — registry of all 149 organi nervosi del Nuzantara.
+# Genoma — registry of nervous organs in the Nuzantara Innervation system.
 #
 # This file is the SINGLE SOURCE OF TRUTH for "what organs exist, where they
 # run, what their expected heartbeat is, and how to recover them when silent".
 #
-# Authoritative spec: docs/innervation-2026-04-29/07_innervation_protocol.md §2
-# Validation: `python -m organism.tools.validate_genome` (pre-commit hook +
-# CI). HALT-on-checksum-mismatch (NB-1 ADR-7).
+# Authoritative spec: docs/innervation-2026-04-29/07_innervation_protocol.md §2.
+# Doctrine ref: PR #479 (Symbiosis Turn-On Plan ratified 2026-05-06).
+# Validation: `python -m organism.tools.validate_genome` (pre-commit hook + CI).
+# HALT-on-checksum-mismatch (NB-1 ADR-7).
 #
-# Wave 0 initial scope: 7 organ entries — 3 infrastructure backends
-# (postgres, redis, qdrant) that the higher-level organi depend on, plus
-# the 4 organi that get heartbeat in Wave 1 (backend.api, drive_poll,
-# claude_max_watcher, login_healthcheck). Skeleton for the remaining 142
-# organi added in Waves 1-4 PRs.
+# Wave 1 scope (2026-05-07): registry expanded from 26 to ~75-78 organs.
+# Includes mata_garuda Pro+Mini active-active labels, WR2 Pro daemons under
+# wr2.supervisor, and Pro background crons. Wave 2 target: 100+ organs.
 #
-# Coexistence: complementary to redundancies.yaml. Genoma = "chi esiste".
-# Redundancies = "chi è duplicato e come consolidare".
+# Conventions
 #
-# Editing notes for future Claudes:
+# - Active-active organs (same label loaded simultaneously on Pro AND Mini)
+#   are enrolled as TWO separate entries — one per machine — with the
+#   `runtime` field distinguishing them. The optional `duplicates_id` field
+#   cross-references the peer entry on the other machine. Validator does
+#   NOT enforce duplicates_id (header-only convention; future PR may type
+#   it strictly). Resolution of double-firing is tracked separately —
+#   see cicatrix-scars.md "12 mata_garuda LaunchAgents active-active".
+#
+# - `mini_launchd` runtime entries set `recovery_params.host: "mini"` and
+#   `recovery_params.label: <full-launchd-label>`. Cross-machine recovery
+#   requires SSH via the Tailscale alias `mini-remote` (Mini IP
+#   100.93.236.6), NOT localhost. The Supervisor MUST resolve `host: "mini"`
+#   to a remote launchctl invocation; never attempt local kickstart of a
+#   Mini-resident organ.
+#
+# Editing notes for future Claudes
+#
 # - Run `python -m organism.tools.validate_genome --update-checksum` after
 #   every edit. The validator REJECTS the file when the recorded checksum
 #   does not match the canonical SHA256 (NB-1 ADR-7 enforcement).
-# - `yaml.safe_dump` (used by --update-checksum) strips comments. Either
-#   re-apply this header by hand, OR switch to ruamel.yaml in a follow-up.
-#   For Wave 0 we tolerate the manual step — file is small.
+# - `yaml.safe_dump` (used by --update-checksum) STRIPS comments. Re-apply
+#   this header BY HAND after every checksum recompute, OR switch to
+#   ruamel.yaml in a follow-up. For W1 we tolerate the manual step.
 # - `dependencies` MUST resolve to ids in this file. External infra (PG,
 #   Redis, Qdrant) gets explicit `infra.*` entries below.
+# - Branch-hijack antibody: WIP commit + push within 30s of any edit when
+#   working in a long Claude session (see cicatrix-scars STRUCTURAL).
 
 version: 1
 checksum_algo: sha256
-checksum: 968ef15c9d75538ef578319e193c57189b39feb12a03802197da080835faf598
+checksum: 4e84c2e3e81ec628d306bccc1cec16e9930ba3c0f83f7434a0de98645f9ff777
 organs:
   - id: infra.postgres
     runtime: fly_machine
@@ -454,3 +470,732 @@ organs:
       path: http://127.0.0.1:1819/health
       timestamp_field: ts
       json_path: status
+  - id: mata_garuda.watcher_daily.pro
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/mata-garuda/scripts/run_watcher.sh
+    dependencies:
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.matagaruda.watcher.daily
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.watcher_daily.mini
+  - id: mata_garuda.watcher_daily.mini
+    runtime: mini_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/mata-garuda/scripts/run_watcher.sh
+    dependencies:
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: mini
+      label: com.matagaruda.watcher.daily
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.watcher_daily.pro
+  - id: mata_garuda.reg_alert_30min.pro
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 5400
+    owner_module: apps/mata-garuda/scripts/run_regulation_alert.py
+    dependencies:
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.matagaruda.reg-alert.30min
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.reg_alert_30min.mini
+  - id: mata_garuda.reg_alert_30min.mini
+    runtime: mini_launchd
+    type: cron
+    expected_hb_seconds: 5400
+    owner_module: apps/mata-garuda/scripts/run_regulation_alert.py
+    dependencies:
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: mini
+      label: com.matagaruda.reg-alert.30min
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.reg_alert_30min.pro
+  - id: mata_garuda.kg_linker.pro
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 7200
+    owner_module: apps/mata-garuda/mata_garuda/workers/kg_linker.py
+    dependencies:
+      - infra.redis
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.matagaruda.kg-linker
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.kg_linker.mini
+  - id: mata_garuda.kg_linker.mini
+    runtime: mini_launchd
+    type: cron
+    expected_hb_seconds: 7200
+    owner_module: apps/mata-garuda/mata_garuda/workers/kg_linker.py
+    dependencies:
+      - infra.redis
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: mini
+      label: com.matagaruda.kg-linker
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.kg_linker.pro
+  - id: mata_garuda.wr_topic.pro
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 691200
+    owner_module: apps/mata-garuda/scripts/run_wr_topic.py
+    dependencies:
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.matagaruda.wr-topic
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.wr_topic.mini
+  - id: mata_garuda.wr_topic.mini
+    runtime: mini_launchd
+    type: cron
+    expected_hb_seconds: 691200
+    owner_module: apps/mata-garuda/scripts/run_wr_topic.py
+    dependencies:
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: mini
+      label: com.matagaruda.wr-topic
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.wr_topic.pro
+  - id: mata_garuda.wr2_bridge_hourly.pro
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 7200
+    owner_module: apps/mata-garuda/scripts/run_wr2_bridge.py
+    dependencies:
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.matagaruda.wr2-bridge.hourly
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.wr2_bridge_hourly.mini
+  - id: mata_garuda.wr2_bridge_hourly.mini
+    runtime: mini_launchd
+    type: cron
+    expected_hb_seconds: 7200
+    owner_module: apps/mata-garuda/scripts/run_wr2_bridge.py
+    dependencies:
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: mini
+      label: com.matagaruda.wr2-bridge.hourly
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.wr2_bridge_hourly.pro
+  - id: mata_garuda.bridge_adaptive.pro
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 180
+    owner_module: apps/mata-garuda/scripts/run_bridge_adaptive.py
+    dependencies:
+      - infra.redis
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.matagaruda.bridge.adaptive
+    severity_on_silence: error
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.bridge_adaptive.mini
+  - id: mata_garuda.bridge_adaptive.mini
+    runtime: mini_launchd
+    type: daemon
+    expected_hb_seconds: 180
+    owner_module: apps/mata-garuda/scripts/run_bridge_adaptive.py
+    dependencies:
+      - infra.redis
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: mini
+      label: com.matagaruda.bridge.adaptive
+    severity_on_silence: error
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.bridge_adaptive.pro
+  - id: mata_garuda.sentinel_daily.pro
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/mata-garuda/scripts/run_sentinel.py
+    dependencies:
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.matagaruda.sentinel.daily
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.sentinel_daily.mini
+  - id: mata_garuda.sentinel_daily.mini
+    runtime: mini_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/mata-garuda/scripts/run_sentinel.py
+    dependencies:
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: mini
+      label: com.matagaruda.sentinel.daily
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.sentinel_daily.pro
+  - id: mata_garuda.intel_bridge_daily.pro
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/mata-garuda/scripts/run_intel_bridge.py
+    dependencies:
+      - infra.redis
+      - wr2.supervisor
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.matagaruda.intel-bridge.daily
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.intel_bridge_daily.mini
+  - id: mata_garuda.intel_bridge_daily.mini
+    runtime: mini_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/mata-garuda/scripts/run_intel_bridge.py
+    dependencies:
+      - infra.redis
+      - wr2.supervisor
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: mini
+      label: com.matagaruda.intel-bridge.daily
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.intel_bridge_daily.pro
+  - id: mata_garuda.daily_briefing.pro
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/mata-garuda/scripts/run_daily_briefing.py
+    dependencies:
+      - infra.redis
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.matagaruda.daily-briefing
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.daily_briefing.mini
+  - id: mata_garuda.daily_briefing.mini
+    runtime: mini_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/mata-garuda/scripts/run_daily_briefing.py
+    dependencies:
+      - infra.redis
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: mini
+      label: com.matagaruda.daily-briefing
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.daily_briefing.pro
+  - id: mata_garuda.kita_feed_daily.pro
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/mata-garuda/scripts/run_kita_feed.py
+    dependencies:
+      - infra.redis
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.matagaruda.kita-feed.daily
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.kita_feed_daily.mini
+  - id: mata_garuda.kita_feed_daily.mini
+    runtime: mini_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/mata-garuda/scripts/run_kita_feed.py
+    dependencies:
+      - infra.redis
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: mini
+      label: com.matagaruda.kita-feed.daily
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.kita_feed_daily.pro
+  - id: mata_garuda.public_channel.pro
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/mata-garuda/scripts/run_public_channel.py
+    dependencies:
+      - infra.redis
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.matagaruda.public-channel
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.public_channel.mini
+  - id: mata_garuda.public_channel.mini
+    runtime: mini_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/mata-garuda/scripts/run_public_channel.py
+    dependencies:
+      - infra.redis
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: mini
+      label: com.matagaruda.public-channel
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.public_channel.pro
+  - id: mata_garuda.weekly_digest.pro
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 691200
+    owner_module: apps/mata-garuda/scripts/run_weekly_digest.py
+    dependencies:
+      - infra.redis
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.matagaruda.weekly-digest
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.weekly_digest.mini
+  - id: mata_garuda.weekly_digest.mini
+    runtime: mini_launchd
+    type: cron
+    expected_hb_seconds: 691200
+    owner_module: apps/mata-garuda/scripts/run_weekly_digest.py
+    dependencies:
+      - infra.redis
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: mini
+      label: com.matagaruda.weekly-digest
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.weekly_digest.pro
+  - id: mata_garuda.gap_consumer.pro
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 4200
+    owner_module: apps/mata-garuda/mata_garuda/workers/gap_consumer.py
+    dependencies:
+      - infra.redis
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.matagaruda.gap.consumer
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.gap_consumer.mini
+  - id: mata_garuda.gap_consumer.mini
+    runtime: mini_launchd
+    type: cron
+    expected_hb_seconds: 4200
+    owner_module: apps/mata-garuda/mata_garuda/workers/gap_consumer.py
+    dependencies:
+      - infra.redis
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: mini
+      label: com.matagaruda.gap.consumer
+    severity_on_silence: warning
+    cicatrix_refs: []
+    duplicates_id: mata_garuda.gap_consumer.pro
+  - id: mata_garuda.invalidation_sweep.pro
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/mata-garuda/scripts/run_invalidation_sweep.py
+    dependencies:
+      - infra.redis
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.matagaruda.invalidation-sweep
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: mata_garuda.nlm_feeder_stream_hourly.pro
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 7200
+    owner_module: apps/mata-garuda/mata_garuda/workers/nlm_feeder.py
+    dependencies:
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.matagaruda.nlm-feeder-stream.hourly
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: mata_garuda.nlm_expander_weekly.pro
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 691200
+    owner_module: apps/mata-garuda/scripts/run_nlm_expander.py
+    dependencies:
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.matagaruda.nlm-expander.weekly
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: mata_garuda.ner_worker_hourly.mini
+    runtime: mini_launchd
+    type: cron
+    expected_hb_seconds: 7200
+    owner_module: apps/mata-garuda/mata_garuda/workers/ner_worker.py
+    dependencies:
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: mini
+      label: com.matagaruda.ner-worker.hourly
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: mata_garuda.normalizer_hourly.mini
+    runtime: mini_launchd
+    type: cron
+    expected_hb_seconds: 7200
+    owner_module: apps/mata-garuda/mata_garuda/workers/normalizer.py
+    dependencies:
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: mini
+      label: com.matagaruda.normalizer.hourly
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: wr2.canva_apply
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 600
+    owner_module: apps/war-room/scripts/wr2_canva_apply.py
+    dependencies:
+      - wr2.supervisor
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.canva-apply
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: wr2.connector
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/war-room/scripts/wr2_connector.py
+    dependencies:
+      - wr2.supervisor
+      - infra.postgres
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.connector
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: wr2.dossier_compiler
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/war-room/scripts/wr2_dossier_compiler.py
+    dependencies:
+      - wr2.supervisor
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.dossier-compiler
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: wr2.draft_generator
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 600
+    owner_module: apps/war-room/scripts/wr2_draft_generator.py
+    dependencies:
+      - wr2.supervisor
+      - infra.postgres
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.draft-generator
+    severity_on_silence: error
+    cicatrix_refs: []
+  - id: wr2.hardening
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 600
+    owner_module: apps/war-room/scripts/wr2_hardening.py
+    dependencies:
+      - wr2.supervisor
+      - infra.postgres
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.hardening
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: wr2.image_generator
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 600
+    owner_module: apps/war-room/scripts/wr2_image_generator.py
+    dependencies:
+      - wr2.supervisor
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.image-generator
+    severity_on_silence: error
+    cicatrix_refs: []
+  - id: wr2.learner_nightly
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/war-room/scripts/wr2_learner_nightly.py
+    dependencies:
+      - wr2.supervisor
+      - infra.postgres
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.learner-nightly
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: wr2.measurer
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 600
+    owner_module: apps/war-room/scripts/wr2_measurer.py
+    dependencies:
+      - wr2.supervisor
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.measurer
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: wr2.pg_proxy
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 60
+    owner_module: apps/war-room/scripts/wr2_pg_proxy.py
+    dependencies:
+      - wr2.supervisor
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.pg-proxy
+    severity_on_silence: critical
+    cicatrix_refs: []
+  - id: wr2.sla_worker
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 600
+    owner_module: apps/war-room/scripts/wr2_sla_worker.py
+    dependencies:
+      - wr2.supervisor
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.sla-worker
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: wr2.strategos
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 691200
+    owner_module: apps/war-room/scripts/wr2_strategos.py
+    dependencies:
+      - wr2.supervisor
+      - infra.postgres
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.strategos
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: wr2.topic_selector
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/war-room/scripts/wr2_topic_selector.py
+    dependencies:
+      - wr2.supervisor
+      - infra.postgres
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.topic-selector
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: wr2.trend_hunter
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 600
+    owner_module: apps/war-room/scripts/wr2_trend_hunter.py
+    dependencies:
+      - wr2.supervisor
+      - infra.postgres
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.trend-hunter
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: pro.codex_autofix_ci
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 7200
+    owner_module: scripts/codex/codex_autofix_ci.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.codex-autofix-ci
+    severity_on_silence: info
+    cicatrix_refs: []
+  - id: pro.codex_overnight_runner
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/codex/codex_overnight_runner.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.codex-overnight-runner
+    severity_on_silence: info
+    cicatrix_refs: []
+  - id: pro.cost_advisor_daily_cap
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/cost-advisor/daily_cap.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.cost-advisor-daily-cap
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: pro.openclaw_children_watchdog
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 3900
+    owner_module: scripts/openclaw-children-watchdog.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.openclaw-children-watchdog
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: pro.nb_intel_delta_watcher
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 7200
+    owner_module: scripts/nb-intel-delta-watcher.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.nb-intel-delta-watcher.hourly
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: pro.sentinel_meta_watchdog
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 4200
+    owner_module: scripts/sentinel-meta-watchdog.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.sentinel-meta-watchdog
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: pro.federation_alert_dispatcher
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 180
+    owner_module: scripts/federation-alert-dispatcher.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.federation-alert-dispatcher
+    severity_on_silence: error
+    cicatrix_refs: []
+  - id: pro.secrets_sync_mini
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/mini-setup/secrets-sync-mini.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.secrets-sync-mini
+    severity_on_silence: warning
+    cicatrix_refs: []

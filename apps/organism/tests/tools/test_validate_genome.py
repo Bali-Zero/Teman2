@@ -247,3 +247,38 @@ def test_w1_5_organism_control_panel_enrolled():
     assert bridge["type"] == "http"
     assert bridge["path"] == "http://127.0.0.1:1819/health"
     assert bridge["timestamp_field"] == "ts"
+
+
+# ---------- Symbiosis W1: mini_launchd runtime allowlist --------------------
+
+
+def test_mini_launchd_is_an_allowed_runtime():
+    """`mini_launchd` must be in the runtime allowlist (Modo B 2-node topology).
+
+    Decision D1 from PR #479 (Symbiosis Turn-On Plan, 2026-05-06): organs
+    running on Mini-Pro2.local need their own runtime tag so the Supervisor
+    can route recovery to remote launchctl via the Tailscale alias
+    `mini-remote` instead of attempting a (wrong) local kickstart.
+    """
+    assert "mini_launchd" in vg._RUNTIMES
+
+
+def test_validate_data_accepts_mini_launchd_runtime(tmp_path):
+    """An organ with runtime=mini_launchd must validate cleanly."""
+    organs = [_minimal_organ(id="mini.test_organ", runtime="mini_launchd")]
+    p = tmp_path / "genome.yaml"
+    _write_genome(p, organs, checksum=vg.compute_checksum(organs))
+
+    errors = vg.validate_file(p)
+    assert errors == []
+
+
+def test_validate_data_rejects_unknown_runtime(tmp_path):
+    """A runtime outside the allowlist must still be rejected — this guards
+    against accidental allowlist erosion when adding mini_launchd."""
+    organs = [_minimal_organ(id="bogus.organ", runtime="plan9_rcd")]
+    p = tmp_path / "genome.yaml"
+    _write_genome(p, organs, checksum=vg.compute_checksum(organs))
+
+    errors = vg.validate_file(p)
+    assert any("invalid runtime" in e.lower() and "plan9_rcd" in e for e in errors)
