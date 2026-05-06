@@ -771,6 +771,11 @@ export interface CreatePracticeParams {
   notes?: string; // Maps from frontend "title"
   internal_notes?: string;
   quoted_price?: number;
+  // Discount (added 2026-05-06): fixed-IDR adjustment subtracted from
+  // quoted_price for invoice purposes. Backend validates non-negative
+  // and discount_amount <= quoted_price; reason is free-text optional.
+  discount_amount?: number;
+  discount_reason?: string;
   assigned_to?: string; // team member email
   start_date?: string;
   family_member_id?: number; // Optional: tag practice for a specific dependent (spouse/child)

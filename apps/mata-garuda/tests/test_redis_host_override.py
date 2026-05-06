@@ -7,7 +7,6 @@ needs an env-var override to point at Mini's Redis when running on Pro.
 """
 from __future__ import annotations
 
-import os
 from unittest.mock import patch, MagicMock
 
 

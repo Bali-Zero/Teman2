@@ -5,6 +5,7 @@
 **Goal:** Mirror 304 live rows (skill=100 + reflection=102 + insight=102) from `apps/mata-garuda/data/knowledge.db` into a Qdrant collection on the **already-running local Pro container** (`bali_zero_skills_local`, 1536 dims, COSINE), as a read-mostly semantic-search surface beside the canonical SQLite write path.
 
 **Architecture:**
+
 - **Source of truth stays SQLite.** Mata-Garuda agents keep writing skill/reflection/insight as today (~5/day); no code path is retired (R10 forensic vote contradicted Round 4 P1 retire — the rows are LIVE, not vaporware).
 - **Qdrant is a search mirror**, not a primary store. A one-shot migration backfills 304 rows; an optional follow-up cron syncs deltas hourly.
 - **Reuse the existing `qdrant` container** on `0.0.0.0:6333` (volume `~/.qdrant-storage`, image `qdrant/qdrant:latest`) — it is the local Pro Qdrant instance, already serving 10 prod-mirror collections. **Do NOT create a second container** (would conflict on port 6333 and waste 300MB RAM).
@@ -16,12 +17,14 @@
 **Reference pattern:** `apps/backend-rag/backend/scripts/generate_tka_embeddings.py` (standalone httpx-based Qdrant ingestion script — same shape we'll mirror).
 
 **Out of scope (deferred):**
+
 - RAG router integration (SkillsService surface) — separate PR after migration is verified live.
 - Decay filter / valid_to TTL — current SQLite has no `valid_to` column; adding one is a Mata-Garuda schema change, not a mirror concern.
 - Sync delta cron daemon — Task 8 (LaunchAgent) is optional, may defer to a follow-up PR if main path eats the session.
 - P1 dead-code retire — explicitly NOT in scope. R10 forensic agent (2026-05-04 23:01) refuted R4 P1 premise: the rows are live (~5/day write rate). Future agents reading old R4 memos must consult `project_nb_lifecycle_round4_2026_05_04.md` DEPRECATED banner (Task 9).
 
 **Branch hygiene** (per cicatrix scar 2026-04-29 branch-hijack):
+
 - WIP commit + push every ~10 min when untracked files exist on this branch.
 - Push within 30 seconds of commit. No tool calls between commit and push.
 - Recovery hash: this plan lives at `docs/superpowers/plans/2026-05-07-skills-qdrant-local-mirror.md`, committed first as a recovery anchor.
@@ -30,20 +33,21 @@
 
 ## File Structure
 
-| File | Responsibility | Status |
-|---|---|---|
-| `apps/backend-rag/backend/scripts/migrate_skills_to_qdrant_local.py` | One-shot CLI — read SQLite, embed, upsert to Qdrant. `--dry-run` / `--apply` / `--bootstrap-only` flags. | NEW |
-| `apps/backend-rag/backend/tests/scripts/test_migrate_skills_to_qdrant_local.py` | TDD: bootstrap, payload mapping, idempotency, dry-run safety, no-API-leak. | NEW |
-| `docs/superpowers/plans/2026-05-07-skills-qdrant-local-mirror.md` | This plan. | NEW (this file) |
-| `~/.claude/projects/-Users-nuzantara/memory/project_nb_lifecycle_round4_2026_05_04.md` | DEPRECATED banner prepended. | MODIFY (after merge — outside repo) |
-| `~/.claude/projects/-Users-nuzantara/memory/project_nb_lifecycle_round4bis_qdrant_local_2026_05_06.md` | New memo: R4-bis decision rationale. | NEW (after merge — outside repo) |
-| (optional) `~/scripts/skills-qdrant-sync.sh` + `~/Library/LaunchAgents/com.nuzantara.skills-qdrant-local-sync.plist` | Hourly delta sync. | NEW (Task 8 — may defer) |
+| File                                                                                                                 | Responsibility                                                                                           | Status                              |
+| -------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------- |
+| `apps/backend-rag/backend/scripts/migrate_skills_to_qdrant_local.py`                                                 | One-shot CLI — read SQLite, embed, upsert to Qdrant. `--dry-run` / `--apply` / `--bootstrap-only` flags. | NEW                                 |
+| `apps/backend-rag/backend/tests/scripts/test_migrate_skills_to_qdrant_local.py`                                      | TDD: bootstrap, payload mapping, idempotency, dry-run safety, no-API-leak.                               | NEW                                 |
+| `docs/superpowers/plans/2026-05-07-skills-qdrant-local-mirror.md`                                                    | This plan.                                                                                               | NEW (this file)                     |
+| `~/.claude/projects/-Users-nuzantara/memory/project_nb_lifecycle_round4_2026_05_04.md`                               | DEPRECATED banner prepended.                                                                             | MODIFY (after merge — outside repo) |
+| `~/.claude/projects/-Users-nuzantara/memory/project_nb_lifecycle_round4bis_qdrant_local_2026_05_06.md`               | New memo: R4-bis decision rationale.                                                                     | NEW (after merge — outside repo)    |
+| (optional) `~/scripts/skills-qdrant-sync.sh` + `~/Library/LaunchAgents/com.nuzantara.skills-qdrant-local-sync.plist` | Hourly delta sync.                                                                                       | NEW (Task 8 — may defer)            |
 
 ---
 
 ## Task 1: Plan + recovery commit (anchor against branch hijack)
 
 **Files:**
+
 - Create: `docs/superpowers/plans/2026-05-07-skills-qdrant-local-mirror.md` (this file)
 
 - [ ] **Step 1: Save the plan**
@@ -78,6 +82,7 @@ Expected: commit succeeds, push to origin succeeds in <30s.
 ## Task 2: Test scaffold + first failing test (script importable)
 
 **Files:**
+
 - Create: `apps/backend-rag/backend/tests/scripts/test_migrate_skills_to_qdrant_local.py`
 
 - [ ] **Step 1: Write the failing test**
@@ -127,6 +132,7 @@ git push
 ## Task 3: Minimal script skeleton — module loads, constants exist
 
 **Files:**
+
 - Create: `apps/backend-rag/backend/scripts/migrate_skills_to_qdrant_local.py`
 
 - [ ] **Step 1: Write the minimal skeleton**
@@ -263,6 +269,7 @@ git push
 ## Task 4: SQLite reader (pure function, no I/O abstractions)
 
 **Files:**
+
 - Modify: `apps/backend-rag/backend/scripts/migrate_skills_to_qdrant_local.py`
 - Modify: `apps/backend-rag/backend/tests/scripts/test_migrate_skills_to_qdrant_local.py`
 
@@ -473,6 +480,7 @@ git push
 ## Task 5: Qdrant client (httpx) — bootstrap, point upsert, count
 
 **Files:**
+
 - Modify: `apps/backend-rag/backend/scripts/migrate_skills_to_qdrant_local.py`
 - Modify: `apps/backend-rag/backend/tests/scripts/test_migrate_skills_to_qdrant_local.py`
 
@@ -675,6 +683,7 @@ git push
 ## Task 6: Embeddings — async batch via OpenAI (with secret-strip + dry-run safety)
 
 **Files:**
+
 - Modify: `apps/backend-rag/backend/scripts/migrate_skills_to_qdrant_local.py`
 - Modify: `apps/backend-rag/backend/tests/scripts/test_migrate_skills_to_qdrant_local.py`
 
@@ -783,6 +792,7 @@ git push
 ## Task 7: Wire `_run` end-to-end + idempotency contract test
 
 **Files:**
+
 - Modify: `apps/backend-rag/backend/scripts/migrate_skills_to_qdrant_local.py`
 - Modify: `apps/backend-rag/backend/tests/scripts/test_migrate_skills_to_qdrant_local.py`
 
@@ -997,6 +1007,7 @@ PYTHONPATH=. python -m backend.scripts.migrate_skills_to_qdrant_local --dry-run 
 ```
 
 Expected log lines:
+
 - `loaded 304 rows (skill=100 reflection=102 insight=102)` — exact counts may differ if writes happened since 2026-05-06; document the actual.
 - `dry-run: would embed 304 texts and upsert 304 points`
 - `current points in bali_zero_skills_local: 0`
@@ -1069,6 +1080,7 @@ Expected: top hits include the Regulation Watcher skill/insight rows we sampled.
 - [ ] **Step 5: Append verification block to plan**
 
 Add to plan with:
+
 - exact counts before/after
 - 5 smoke queries + their top-1 result
 - timing
@@ -1115,6 +1127,7 @@ Expected: both `OK`.
 ## Task 11: Memory updates (after merge — outside repo)
 
 **Files:**
+
 - Modify: `~/.claude/projects/-Users-nuzantara/memory/project_nb_lifecycle_round4_2026_05_04.md` — prepend DEPRECATED banner.
 - Create: `~/.claude/projects/-Users-nuzantara/memory/project_nb_lifecycle_round4bis_qdrant_local_2026_05_06.md`.
 - Modify: `~/.claude/projects/-Users-nuzantara/memory/MEMORY.md` — replace R4 reference with R4-bis.
@@ -1291,6 +1304,7 @@ exec /opt/homebrew/bin/python3.11 -m backend.scripts.migrate_skills_to_qdrant_lo
 ```
 
 Permissions per cicatrix scar:
+
 - `chmod 0444 ~/Library/LaunchAgents/com.nuzantara.skills-qdrant-local-sync.plist`
 - `chmod 0700 ~/scripts/skills-qdrant-sync.sh` (script may carry env source)
 
@@ -1353,13 +1367,13 @@ no duplicates. **Idempotency live confirmed.**
 
 ### Smoke semantic search (23:05) — 5 queries × top-3
 
-| # | Query | Top score | Top hit |
-|---|---|---:|---|
-| 1 | "harvest regulation peraturan publish stream" | 0.6291 | skill/Regulation Watcher: harvest-and-publish |
-| 2 | "scoring keyword fast-path bypass LLM call" | 0.4403 | skill/lhkpn_harvester: two-phase strategy |
-| 3 | "kg linker entity extraction fail handling" | 0.4098 | insight/lhkpn_harvester: hard-coded URL fail |
-| 4 | "auth refresh cookie expired headless layer-1" | 0.4141 | insight/lhkpn_harvester: HTTP 403 IP-level blocking |
-| 5 | "telegram alert dedup failure cooldown" | 0.4121 | insight/Regulation Watcher: stream 351 items dedup |
+| #   | Query                                          | Top score | Top hit                                             |
+| --- | ---------------------------------------------- | --------: | --------------------------------------------------- |
+| 1   | "harvest regulation peraturan publish stream"  |    0.6291 | skill/Regulation Watcher: harvest-and-publish       |
+| 2   | "scoring keyword fast-path bypass LLM call"    |    0.4403 | skill/lhkpn_harvester: two-phase strategy           |
+| 3   | "kg linker entity extraction fail handling"    |    0.4098 | insight/lhkpn_harvester: hard-coded URL fail        |
+| 4   | "auth refresh cookie expired headless layer-1" |    0.4141 | insight/lhkpn_harvester: HTTP 403 IP-level blocking |
+| 5   | "telegram alert dedup failure cooldown"        |    0.4121 | insight/Regulation Watcher: stream 351 items dedup  |
 
 Q1 score 0.63 is strong (the KB literally has Regulation Watcher harvest
 rows). Q2-5 scores 0.39-0.44 are expected — those concepts aren't in
