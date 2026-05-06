@@ -22,7 +22,11 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_TIMEOUT_SEC = 600  # 10 min — full skill flow can take 5-8 min
+DEFAULT_TIMEOUT_SEC = 1500  # 25 min — empirical: deep-tier 11-slide draft
+# with hero images + Phase A.5 pre-wipe (~50 ops) + Phase B duplicate + Phase C
+# reset (~50 ops) reaches 8-12 min on Pro M4. Synthetic 5-slide no-image test
+# was 283s. 600s timed out on real drafts (37263a1f at 04:09 WITA 2026-05-07).
+# 1500s leaves headroom for Canva MCP rate-limit pauses inside the skill flow.
 DEFAULT_CLAUDE_BIN = "claude"  # resolved from PATH
 # 2026-05-07: APPLICA_WAR_ROOM.md was at apps/war-room/ but that directory was
 # removed in PR #171 (WR1 decommission). The authoritative runbook is now the
@@ -175,9 +179,24 @@ def invoke_claude_apply(
 
     prompt = _build_prompt(canva_pending_path)
 
+    # 2026-05-07: Claude CLI MCP scope is per-directory. The MCP Canva
+    # connector (mcp.canva.com/mcp, OAuth token in ~/.mcp-auth/) is only
+    # registered for the main repo at ~/Desktop/nuzantara. The deploy
+    # worktree at ~/Desktop/nuzantara-deploy (used as WR2_REPO_ROOT in
+    # production cron via wr2-script-wrapper.sh) does NOT have the Canva
+    # MCP server. Live failure 04:13 WITA on draft 0e8e1cf5 returned:
+    #   "ERROR: Canva MCP not available in nuzantara-deploy workspace"
+    # Fix: pin cwd to the main repo regardless of where the worker runs.
+    # The skill reads canva_pending.json by absolute path, so cwd here is
+    # purely the MCP scope discriminator — the pending file location is
+    # unaffected by this pin (and is also CANVA_PENDING_PATH-hardcoded
+    # to the main repo from wr2_canva_desktop_apply.py history).
+    claude_cwd = Path.home() / "Desktop" / "nuzantara"
+
     logger.info(
-        "Invoking claude -p for Canva apply — pending=%s timeout=%ds",
+        "Invoking claude -p for Canva apply — pending=%s cwd=%s timeout=%ds",
         canva_pending_path,
+        claude_cwd,
         timeout_sec,
     )
     start = time.monotonic()
@@ -189,6 +208,7 @@ def invoke_claude_apply(
             text=True,
             timeout=timeout_sec,
             check=False,
+            cwd=str(claude_cwd),
         )
     except subprocess.TimeoutExpired as exc:
         raise CanvaInvokeError(
