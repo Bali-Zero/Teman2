@@ -146,17 +146,22 @@ def append_audit_log_local(uuid: str, action: str, note: str) -> None:
 
 # --- dry-run preview -------------------------------------------------------
 
-def render_preview(pending: list[str]) -> str:
+def render_preview(items: list[tuple[str, str]]) -> str:
     lines = [
         f"# APOPTOSIS dry-run preview — {TODAY}",
         "",
-        f"Pending: {len(pending)} NB",
+        f"Pending: {len(items)} NB",
         "",
         "## NBs that will be renamed",
         "",
     ]
-    for u in pending:
-        lines.append(f"- `{u}` → `[ARCHIVED-{TODAY}] <name>` or `[EXPORTED-{TODAY}] <name>`")
+    archived_count = sum(1 for _, p in items if p == ARCHIVED_PREFIX)
+    exported_count = sum(1 for _, p in items if p == EXPORTED_PREFIX)
+    lines.append(f"- {archived_count} → ARCHIVED prefix")
+    lines.append(f"- {exported_count} → EXPORTED prefix")
+    lines.append("")
+    for uuid, prefix in items:
+        lines.append(f"- `{uuid}` → `{prefix} <name>`")
     lines += ["", "## To apply", "", "```bash", "python apps/mata-garuda/scripts/execute_apoptosis.py --apply", "```", ""]
     return "\n".join(lines)
 
@@ -215,19 +220,32 @@ def generate_decision_matrix(review_entries: list[dict], out_path: Path) -> Path
 
 # --- main loop -------------------------------------------------------------
 
-def run_apoptosis(pending: list[str], dry_run: bool) -> int:
-    """Iterate `pending` UUIDs and rename / preview each."""
+def run_apoptosis(pending: list[str] | list[tuple[str, str]], dry_run: bool) -> int:
+    """Iterate `pending` UUIDs and rename / preview each.
+
+    `pending` may be:
+    - list[str]: legacy/test path; uses ARCHIVED_PREFIX for all (cluster unknown)
+    - list[tuple[str, str]]: (uuid, prefix) pairs; honors per-UUID prefix
+    """
+    # Normalize to list of (uuid, prefix) tuples
+    items: list[tuple[str, str]] = []
+    for entry in pending:
+        if isinstance(entry, tuple):
+            items.append(entry)
+        else:
+            items.append((entry, ARCHIVED_PREFIX))
+
     if dry_run:
-        PREVIEW_PATH.write_text(render_preview(pending))
+        PREVIEW_PATH.write_text(render_preview(items))
         print(f"dry-run preview at {PREVIEW_PATH}")
         return 0
     failed = 0
-    for uuid in pending:
+    for uuid, prefix in items:
         title = nlm_get_title(uuid) or ""
         if title.startswith(("[ARCHIVED-", "[EXPORTED-")):
             append_audit_log_local(uuid, "SKIP_ALREADY_ARCHIVED", title)
             continue
-        new_name = f"{ARCHIVED_PREFIX} {title}"  # Cluster decides prefix in real version
+        new_name = f"{prefix} {title}"
         ok = nlm_rename(uuid, new_name)
         if ok:
             persist_transition(uuid, "APOPTOSIS_DONE")
@@ -237,7 +255,7 @@ def run_apoptosis(pending: list[str], dry_run: bool) -> int:
             failed += 1
             append_audit_log_local(uuid, "RENAME_FAIL", title)
     if failed:
-        telegram_alert(f"NB-LIFECYCLE: {failed}/{len(pending)} APOPTOSIS renames failed (re-run will retry)")
+        telegram_alert(f"NB-LIFECYCLE: {failed}/{len(items)} APOPTOSIS renames failed (re-run will retry)")
     return 0 if failed == 0 else 1
 
 
@@ -253,12 +271,15 @@ def main() -> int:
         print("ERROR: pick exactly one of --dry-run / --apply", file=sys.stderr)
         return 1
 
-    # Load pending UUIDs from registry.
+    # Build (uuid, prefix) tuples per cluster mapping.
     sys.path.insert(0, str(REPO))
     from mata_garuda.notebook_registry import get_by_status
-    pending = [e.uuid for e in get_by_status("KILL_PENDING")] + [
-        e.uuid for e in get_by_status("EXPORT_PENDING")
-    ]
+
+    pending: list[tuple[str, str]] = []
+    for e in get_by_status("KILL_PENDING"):
+        pending.append((e.uuid, ARCHIVED_PREFIX))
+    for e in get_by_status("EXPORT_PENDING"):
+        pending.append((e.uuid, EXPORTED_PREFIX))
 
     rc = run_apoptosis(pending, dry_run=args.dry_run)
 

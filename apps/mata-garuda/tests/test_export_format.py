@@ -82,3 +82,41 @@ def test_export_omits_reimport_for_text_sources():
         summary="x",
     )
     assert "reimport_command:" not in out
+
+
+def test_kill_uses_archived_prefix(monkeypatch, tmp_path):
+    """KILL_PENDING items get ARCHIVED prefix (legacy/test path: flat list)."""
+    apo = _import_apo()
+    monkeypatch.setattr(apo, "PREVIEW_PATH", tmp_path / "preview.md")
+    apo.run_apoptosis(pending=["uuid-kill-1"], dry_run=True)
+    content = (tmp_path / "preview.md").read_text()
+    assert "[ARCHIVED-2026-05-07]" in content
+
+
+def test_export_uses_exported_prefix(monkeypatch, tmp_path):
+    """EXPORT_PENDING items get EXPORTED prefix (per-tuple prefix path)."""
+    apo = _import_apo()
+    monkeypatch.setattr(apo, "PREVIEW_PATH", tmp_path / "preview.md")
+    apo.run_apoptosis(
+        pending=[("uuid-exp-1", apo.EXPORTED_PREFIX)],
+        dry_run=True,
+    )
+    content = (tmp_path / "preview.md").read_text()
+    assert "[EXPORTED-2026-05-07]" in content
+
+
+def test_render_preview_separates_archived_from_exported(monkeypatch, tmp_path):
+    """The preview's count breakdown shows archived vs exported."""
+    apo = _import_apo()
+    monkeypatch.setattr(apo, "PREVIEW_PATH", tmp_path / "preview.md")
+    apo.run_apoptosis(
+        pending=[
+            ("uuid-1", apo.ARCHIVED_PREFIX),
+            ("uuid-2", apo.EXPORTED_PREFIX),
+            ("uuid-3", apo.EXPORTED_PREFIX),
+        ],
+        dry_run=True,
+    )
+    content = (tmp_path / "preview.md").read_text()
+    assert "1 → ARCHIVED prefix" in content
+    assert "2 → EXPORTED prefix" in content
