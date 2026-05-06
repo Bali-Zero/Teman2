@@ -67,6 +67,13 @@ async def _safe_get(path: str) -> dict[str, Any]:
     except (httpx.TimeoutException, httpx.ReadError, httpx.RemoteProtocolError) as exc:
         logger.warning("kg-bridge transport error: %s", exc)
         return {"error": "kg_unavailable", "detail": f"transport error: {type(exc).__name__}"}
+    except httpx.RequestError as exc:
+        # Safety net for httpx subclasses we did not call out by name
+        # (ProxyError, UnsupportedProtocol, LocalProtocolError, ...).
+        # The "never raises" contract on _safe_get means every transport
+        # failure must surface as kg_unavailable, not propagate.
+        logger.warning("kg-bridge unexpected httpx error %s: %s", type(exc).__name__, exc)
+        return {"error": "kg_unavailable", "detail": f"transport error: {type(exc).__name__}"}
 
 
 def register(mcp: Any, _call: Any, _call_safe: Any) -> None:  # noqa: ARG001
@@ -78,7 +85,7 @@ def register(mcp: Any, _call: Any, _call_safe: Any) -> None:  # noqa: ARG001
 
     @mcp.tool()
     @require_role("admin")
-    async def kg_intel_search(query: str, limit: int = 20) -> dict:
+    async def kg_intel_search(query: str, limit: int = 20) -> dict[str, Any]:
         """
         Search mata-garuda KG entities by name substring.
 
@@ -105,7 +112,7 @@ def register(mcp: Any, _call: Any, _call_safe: Any) -> None:  # noqa: ARG001
 
     @mcp.tool()
     @require_role("admin")
-    async def kg_intel_entity(name: str, entity_type: str) -> dict:
+    async def kg_intel_entity(name: str, entity_type: str) -> dict[str, Any]:
         """
         Fetch full mata-garuda KG record for a named entity.
 
@@ -131,7 +138,7 @@ def register(mcp: Any, _call: Any, _call_safe: Any) -> None:  # noqa: ARG001
 
     @mcp.tool()
     @require_role("admin")
-    async def kg_intel_health() -> dict:
+    async def kg_intel_health() -> dict[str, Any]:
         """
         Check mata-garuda KG bridge health.
 
