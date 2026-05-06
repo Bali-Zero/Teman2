@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-05-07",
+  "source": "test fixture",
+  "notebooks": [
+    {
+      "uuid": "1ed02e54-542f-426a-94f8-53c5ffde4b7d",
+      "name": "NB-INTEL-Immigration",
+      "family": "INTEL",
+      "lifecycle_stage": "TAC",
+      "active_routing": true,
+      "first_audited": "2026-05-04",
+      "last_audited": "2026-05-07",
+      "round2_classification": "Curated High Value"
+    },
+    {
+      "uuid": "9d262101-abeb-4e15-af9c-c38e028c62fe",
+      "name": "NB-INTEL-Press",
+      "family": "INTEL",
+      "lifecycle_stage": "TAC",
+      "active_routing": true,
+      "first_audited": "2026-05-04",
+      "last_audited": "2026-05-07",
+      "round2_classification": "Curated High Value"
+    }
+  ]
+}
