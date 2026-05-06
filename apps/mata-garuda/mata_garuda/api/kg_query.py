@@ -162,7 +162,7 @@ class KGQueryHandler(BaseHTTPRequestHandler):
         if not entity_type:
             return self._send_json(400, {"error": "bad_request", "detail": "type is required"})
         if entity_type not in ENTITY_TYPES:
-            return self._send_json(400, {"error": "bad_request", "detail": f"unknown type {entity_type!r}"})
+            return self._send_json(400, {"error": "bad_request", "detail": f"unknown type: {entity_type}"})
         try:
             conn = _ro_conn(self._kg_server.db_path)
         except sqlite3.Error as exc:

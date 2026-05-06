@@ -247,6 +247,13 @@ def test_t7_entity_missing_type_400(running_server: int) -> None:
     assert body["error"] == "bad_request"
 
 
+def test_t7b_entity_unknown_type_400(running_server: int) -> None:
+    """T7b: type value not in ENTITY_TYPES also returns 400."""
+    status, body = _get(running_server, "/kg/entity/Imigrasi?type=robots")
+    assert status == 400
+    assert body["error"] == "bad_request"
+
+
 def test_t8_entity_unknown_404(running_server: int) -> None:
     """T8: unknown entity returns 404 entity_not_found."""
     status, body = _get(running_server, "/kg/entity/Zaphod?type=persons")
