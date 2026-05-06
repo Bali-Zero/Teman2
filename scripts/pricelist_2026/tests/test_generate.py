@@ -47,9 +47,9 @@ def test_generate_html_smoke(fixture_data, stub_assets, tmp_path):
     )
     assert out_html.exists()
     html = out_html.read_text()
-    # Cover content
-    assert "BALI ZERO" in html
+    # Cover content (h1 'BALI ZERO' removed 2026-05-06 — logo speaks for itself)
     assert "Price List 2026" in html
+    assert "Bali Zero" in html  # appears in <title> + running header
     # Service rendered
     assert "C1 Tourism" in html
     assert "2.300.000 IDR" in html

@@ -20,7 +20,7 @@
         "tier_range": null,
         "duration": "",
         "validity": "",
-        "notes": "Single entry, 60 days",
+        "notes": "",
         "description_en": "Tourist visa, single entry, valid 60 days. Cannot be used for work or business activities.",
         "icon_id": "visa-tourism"
       },
@@ -40,7 +40,7 @@
         "tier_range": null,
         "duration": "",
         "validity": "",
-        "notes": "Single entry, 60 days",
+        "notes": "",
         "description_en": "Business visa, single entry, valid 60 days. Suited to business meetings, negotiations and non-employment activities.",
         "icon_id": "visa-business"
       },
@@ -50,7 +50,7 @@
         "tier_range": null,
         "duration": "",
         "validity": "",
-        "notes": "Including Urgent",
+        "notes": "",
         "description_en": "Single-entry visa for performing artists, musicians and cultural workers visiting Indonesia for short-term events.",
         "icon_id": "visa-art"
       },
@@ -60,7 +60,7 @@
         "tier_range": null,
         "duration": "90 days",
         "validity": "",
-        "notes": "Work trial / skill assessment",
+        "notes": "",
         "description_en": "Single-entry visa for a 90-day work trial or skill assessment with an Indonesian employer prior to a full work permit.",
         "icon_id": "visa-worktrial"
       },
@@ -234,7 +234,7 @@
         "tier_range": null,
         "duration": "",
         "validity": "",
-        "notes": "Including Urgent",
+        "notes": "",
         "description_en": "Digital nomad KITAS for remote workers employed by foreign companies. Processed from outside Indonesia, valid 1 year.",
         "icon_id": "kitas-remote"
       },
@@ -463,7 +463,7 @@
           "duration": "",
           "validity": "monthly",
           "notes": "Bank + Cash transactions combined. LKPM and Annual Tax NOT included.",
-          "description_en": "Monthly bookkeeping and tax filing for companies with low transaction volume. See section VI.4 for LKPM and Annual Tax stand-alone fees.",
+          "description_en": "Monthly bookkeeping and tax filing for companies with low transaction volume. See section V.4 for LKPM and Annual Tax stand-alone fees.",
           "icon_id": "tax-monthly"
         },
         "Tier 50-100": {
@@ -476,7 +476,7 @@
           "duration": "",
           "validity": "monthly",
           "notes": "Bank + Cash transactions combined. LKPM and Annual Tax NOT included.",
-          "description_en": "Monthly bookkeeping and tax filing for companies with moderate transaction volume. See section VI.4 for LKPM and Annual Tax stand-alone fees.",
+          "description_en": "Monthly bookkeeping and tax filing for companies with moderate transaction volume. See section V.4 for LKPM and Annual Tax stand-alone fees.",
           "icon_id": "tax-monthly"
         },
         "Tier 100-200": {
@@ -489,7 +489,7 @@
           "duration": "",
           "validity": "monthly",
           "notes": "Bank + Cash transactions combined. LKPM and Annual Tax NOT included.",
-          "description_en": "Monthly bookkeeping and tax filing for companies with higher transaction volume. See section VI.4 for LKPM and Annual Tax stand-alone fees.",
+          "description_en": "Monthly bookkeeping and tax filing for companies with higher transaction volume. See section V.4 for LKPM and Annual Tax stand-alone fees.",
           "icon_id": "tax-monthly"
         },
         "Tier 200+": {
@@ -499,7 +499,7 @@
           "duration": "",
           "validity": "monthly",
           "notes": "Bank + Cash transactions combined. LKPM and Annual Tax NOT included.",
-          "description_en": "Monthly bookkeeping and tax filing for companies with high transaction volume. See section VI.4 for LKPM and Annual Tax stand-alone fees.",
+          "description_en": "Monthly bookkeeping and tax filing for companies with high transaction volume. See section V.4 for LKPM and Annual Tax stand-alone fees.",
           "icon_id": "tax-monthly"
         }
       },

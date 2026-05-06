@@ -32,15 +32,15 @@
 
 _Short-stay visas for a single entry to Indonesia._
 
-| Service                               | Description                                                                                                                                              | Price         |
-| ------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
-| **C1 Tourism**                        | Tourist visa, single entry, valid 60 days. Cannot be used for work or business activities. _(Single entry, 60 days)_                                     | 2.300.000 IDR |
-| **C1 Tourism — Extension (+60 days)** | Onshore extension of the C1 Tourism visa for an additional 60 days, processed at Indonesian immigration.                                                 | 1.700.000 IDR |
-| **C2 Business**                       | Business visa, single entry, valid 60 days. Suited to business meetings, negotiations and non-employment activities. _(Single entry, 60 days)_           | 3.600.000 IDR |
-| **C7A&amp;B Music/Art**               | Single-entry visa for performing artists, musicians and cultural workers visiting Indonesia for short-term events. _(Including Urgent)_                  | 4.500.000 IDR |
-| **C18 Work Trial**                    | Single-entry visa for a 90-day work trial or skill assessment with an Indonesian employer prior to a full work permit. _(Work trial / skill assessment)_ | 5.500.000 IDR |
-| **C22A&amp;B Internship (60 Days)**   | Single-entry internship visa for foreign trainees, valid 60 days, sponsored by an Indonesian host organisation.                                          | 4.800.000 IDR |
-| **C22A&amp;B Internship (180 Days)**  | Single-entry internship visa for foreign trainees, valid 180 days, sponsored by an Indonesian host organisation.                                         | 5.800.000 IDR |
+| Service                               | Description                                                                                                            | Price         |
+| ------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------- |
+| **C1 Tourism**                        | Tourist visa, single entry, valid 60 days. Cannot be used for work or business activities.                             | 2.300.000 IDR |
+| **C1 Tourism — Extension (+60 days)** | Onshore extension of the C1 Tourism visa for an additional 60 days, processed at Indonesian immigration.               | 1.700.000 IDR |
+| **C2 Business**                       | Business visa, single entry, valid 60 days. Suited to business meetings, negotiations and non-employment activities.   | 3.600.000 IDR |
+| **C7A&amp;B Music/Art**               | Single-entry visa for performing artists, musicians and cultural workers visiting Indonesia for short-term events.     | 4.500.000 IDR |
+| **C18 Work Trial**                    | Single-entry visa for a 90-day work trial or skill assessment with an Indonesian employer prior to a full work permit. | 5.500.000 IDR |
+| **C22A&amp;B Internship (60 Days)**   | Single-entry internship visa for foreign trainees, valid 60 days, sponsored by an Indonesian host organisation.        | 4.800.000 IDR |
+| **C22A&amp;B Internship (180 Days)**  | Single-entry internship visa for foreign trainees, valid 180 days, sponsored by an Indonesian host organisation.       | 5.800.000 IDR |
 
 ---
 
@@ -81,7 +81,7 @@ _Long-stay residence permits for foreign nationals._
 | **Freelance E23 (Altus/Onshore)**          | Freelance E23 KITAS valid 6 months, sponsored work permit for independent professionals. Onshore process via Altus.                                        | 27.500.000 IDR |
 | **Freelance E23 (Offshore)**               | Freelance E23 KITAS valid 6 months, sponsored work permit for independent professionals. Offshore process for applicants outside Indonesia.                | 25.800.000 IDR |
 | **E33G Remote Worker (Altus/Onshore)**     | Digital nomad KITAS for remote workers employed by foreign companies. Onshore process via Altus, valid 1 year.                                             | 14.000.000 IDR |
-| **E33G Remote Worker (Offshore)**          | Digital nomad KITAS for remote workers employed by foreign companies. Processed from outside Indonesia, valid 1 year. _(Including Urgent)_                 | 13.000.000 IDR |
+| **E33G Remote Worker (Offshore)**          | Digital nomad KITAS for remote workers employed by foreign companies. Processed from outside Indonesia, valid 1 year.                                      | 13.000.000 IDR |
 | **E33G Remote Worker (Extend)**            | Onshore extension of an existing E33G Remote Worker KITAS.                                                                                                 | 10.000.000 IDR |
 | **Spouse 1 Year (Altus/Onshore)**          | Spouse KITAS valid 1 year for foreign spouses of Indonesian citizens or KITAS/KITAP holders. Onshore process via Altus.                                    | 13.500.000 IDR |
 | **Spouse 1 Year (Offshore)**               | Spouse KITAS valid 1 year for foreign spouses of Indonesian citizens or KITAS/KITAP holders. Offshore process for applicants outside Indonesia.            | 11.000.000 IDR |
@@ -127,16 +127,16 @@ _Permanent residence permits and multiple re-entry permits._
 
 _Monthly bookkeeping packages, annual filings and stand-alone fees._
 
-### VI.1 Monthly Tax Report — without LKPM &amp; Annual
+### V.1 Monthly Tax Report — without LKPM &amp; Annual
 
-| Service                                                                         | Description                                                                                                                                                                                                            | Price                         |
-| ------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
-| **Monthly Tax Report — 0 to 50 transactions (without LKPM &amp; Annual)**       | Monthly bookkeeping and tax filing for companies with low transaction volume. See section VI.4 for LKPM and Annual Tax stand-alone fees. _(Bank + Cash transactions combined. LKPM and Annual Tax NOT included.)_      | 1.800.000 IDR – 2.000.000 IDR |
-| **Monthly Tax Report — 50 to 100 transactions (without LKPM &amp; Annual)**     | Monthly bookkeeping and tax filing for companies with moderate transaction volume. See section VI.4 for LKPM and Annual Tax stand-alone fees. _(Bank + Cash transactions combined. LKPM and Annual Tax NOT included.)_ | 2.500.000 IDR – 3.000.000 IDR |
-| **Monthly Tax Report — 100 to 200 transactions (without LKPM &amp; Annual)**    | Monthly bookkeeping and tax filing for companies with higher transaction volume. See section VI.4 for LKPM and Annual Tax stand-alone fees. _(Bank + Cash transactions combined. LKPM and Annual Tax NOT included.)_   | 3.500.000 IDR – 4.500.000 IDR |
-| **Monthly Tax Report — more than 200 transactions (without LKPM &amp; Annual)** | Monthly bookkeeping and tax filing for companies with high transaction volume. See section VI.4 for LKPM and Annual Tax stand-alone fees. _(Bank + Cash transactions combined. LKPM and Annual Tax NOT included.)_     | 5.000.000 IDR                 |
+| Service                                                                         | Description                                                                                                                                                                                                           | Price                         |
+| ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------- |
+| **Monthly Tax Report — 0 to 50 transactions (without LKPM &amp; Annual)**       | Monthly bookkeeping and tax filing for companies with low transaction volume. See section V.4 for LKPM and Annual Tax stand-alone fees. _(Bank + Cash transactions combined. LKPM and Annual Tax NOT included.)_      | 1.800.000 IDR – 2.000.000 IDR |
+| **Monthly Tax Report — 50 to 100 transactions (without LKPM &amp; Annual)**     | Monthly bookkeeping and tax filing for companies with moderate transaction volume. See section V.4 for LKPM and Annual Tax stand-alone fees. _(Bank + Cash transactions combined. LKPM and Annual Tax NOT included.)_ | 2.500.000 IDR – 3.000.000 IDR |
+| **Monthly Tax Report — 100 to 200 transactions (without LKPM &amp; Annual)**    | Monthly bookkeeping and tax filing for companies with higher transaction volume. See section V.4 for LKPM and Annual Tax stand-alone fees. _(Bank + Cash transactions combined. LKPM and Annual Tax NOT included.)_   | 3.500.000 IDR – 4.500.000 IDR |
+| **Monthly Tax Report — more than 200 transactions (without LKPM &amp; Annual)** | Monthly bookkeeping and tax filing for companies with high transaction volume. See section V.4 for LKPM and Annual Tax stand-alone fees. _(Bank + Cash transactions combined. LKPM and Annual Tax NOT included.)_     | 5.000.000 IDR                 |
 
-### VI.2 Monthly Tax Report — including LKPM + Annual
+### V.2 Monthly Tax Report — including LKPM + Annual
 
 | Service                                                                       | Description                                                                                                                                                                                                                                               | Price         |
 | ----------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------- |
@@ -145,7 +145,7 @@ _Monthly bookkeeping packages, annual filings and stand-alone fees._
 | **Monthly Tax Report — 100 to 200 transactions (incl. LKPM &amp; Annual)**    | Bundled monthly bookkeeping, LKPM filing and Annual Tax report for companies with higher transaction volume. _(Includes LKPM monthly contribution and Annual Tax report.)_                                                                                | 4.500.000 IDR |
 | **Monthly Tax Report — more than 200 transactions (incl. LKPM &amp; Annual)** | Bundled monthly bookkeeping, LKPM filing and Annual Tax report for companies with high transaction volume. _(Includes LKPM monthly contribution and Annual Tax report. Companies with more than 200 transactions per year must use monthly bookkeeping.)_ | 6.500.000 IDR |
 
-### VI.3 Annual Basic Packages
+### V.3 Annual Basic Packages
 
 | Service                    | Description                                                                                                                                                                                        | Price          |
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------- |
@@ -155,7 +155,7 @@ _Monthly bookkeeping packages, annual filings and stand-alone fees._
 | **Annual Basic Package D** | 100-200 transactions per year. Income Tax + PPH 21 OR PPH Sewa (choose one) + yearly Financial Report. _(Does not include Annual Personal Tax report. No discount applies.)_                       | 15.000.000 IDR |
 | **Annual Company ZERO**    | Yearly Financial Report only — for dormant companies with no transactions. _(No transactions in or out.)_                                                                                          | 3.000.000 IDR  |
 
-### VI.4 Annual &amp; Compliance Stand-alone Fees
+### V.4 Annual &amp; Compliance Stand-alone Fees
 
 | Service                              | Description                                                                                                                                                  | Price         |
 | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------- |

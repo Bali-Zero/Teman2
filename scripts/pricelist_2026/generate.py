@@ -80,10 +80,10 @@ SECTION_META: dict[str, tuple[str, str, str, str]] = {
 }
 
 SUBSECTION_TITLES = {
-    "monthly_tax_basic": "VI.1 Monthly Tax Report — without LKPM & Annual",
-    "monthly_tax_bundled": "VI.2 Monthly Tax Report — including LKPM + Annual",
-    "annual_basic_packages": "VI.3 Annual Basic Packages",
-    "annual_standalone": "VI.4 Annual & Compliance Stand-alone Fees",
+    "monthly_tax_basic": "V.1 Monthly Tax Report — without LKPM & Annual",
+    "monthly_tax_bundled": "V.2 Monthly Tax Report — including LKPM + Annual",
+    "annual_basic_packages": "V.3 Annual Basic Packages",
+    "annual_standalone": "V.4 Annual & Compliance Stand-alone Fees",
 }
 
 
