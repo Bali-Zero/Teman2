@@ -166,12 +166,53 @@ def payload_for(row: KnowledgeRow) -> dict[str, object]:
 # --- Qdrant HTTP helpers --------------------------------------------------
 
 
+def _validate_existing_collection_shape(body: dict) -> None:
+    """Per Codex review 2026-05-06 P2: refuse to use a collection whose vector
+    config has drifted (e.g. someone created `bali_zero_skills_local` with a
+    different dim or distance). Catch the mismatch BEFORE burning embeddings.
+    """
+    try:
+        params = body["result"]["config"]["params"]
+        vectors = params["vectors"]
+        size = int(vectors["size"])
+        distance = str(vectors["distance"])
+    except (KeyError, TypeError, ValueError) as exc:
+        raise RuntimeError(
+            f"unexpected Qdrant response shape — cannot validate "
+            f"collection {COLLECTION_NAME}: {exc}",
+        ) from exc
+    if size != VECTOR_SIZE:
+        raise RuntimeError(
+            f"collection {COLLECTION_NAME} has dim={size}, expected "
+            f"{VECTOR_SIZE} (text-embedding-3-small FROZEN). Drop the "
+            f"collection and re-bootstrap.",
+        )
+    if distance != DISTANCE:
+        raise RuntimeError(
+            f"collection {COLLECTION_NAME} has distance={distance!r}, "
+            f"expected {DISTANCE!r}. Drop the collection and re-bootstrap.",
+        )
+
+
 async def bootstrap_collection(url: str) -> bool:
-    """Create the collection if missing. Return True if created, False if exists."""
+    """Create the collection if missing. Return True if created, False if exists.
+
+    TOCTOU note (Gemini review 2026-05-06): there is a small race between
+    the GET 404 check and the PUT, so a concurrent caller could land in
+    the same window. Qdrant returns HTTP 4xx with a "already exists" body
+    in that case; treat any post-PUT 4xx that says "already exists" as a
+    successful-but-not-by-us bootstrap (return False) rather than crashing.
+
+    Shape validation (Codex review 2026-05-06): when the collection
+    already exists, validate its vector size + distance match the FROZEN
+    config before burning embedding calls.
+    """
     async with httpx.AsyncClient(timeout=10.0) as client:
         resp = await client.get(f"{url}/collections/{COLLECTION_NAME}")
     if resp.status_code == 200:
-        logger.info("collection %s already exists at %s", COLLECTION_NAME, url)
+        _validate_existing_collection_shape(resp.json())
+        logger.info("collection %s already exists at %s (shape OK)",
+                    COLLECTION_NAME, url)
         return False
     if resp.status_code != 404:
         raise RuntimeError(
@@ -183,13 +224,24 @@ async def bootstrap_collection(url: str) -> bool:
         put_resp = await client.put(
             f"{url}/collections/{COLLECTION_NAME}", json=body,
         )
-    if put_resp.status_code >= 300:
-        raise RuntimeError(
-            f"create collection failed: {put_resp.status_code} "
-            f"{put_resp.text[:200]}",
+    if put_resp.status_code == 200:
+        logger.info("created collection %s (dim=%d)", COLLECTION_NAME, VECTOR_SIZE)
+        return True
+    # TOCTOU defense: a sibling caller may have created the collection in
+    # the GET-then-PUT window. Qdrant returns 4xx with "already exists" text.
+    if (
+        400 <= put_resp.status_code < 500
+        and "already exists" in put_resp.text.lower()
+    ):
+        logger.info(
+            "collection %s created by sibling between GET and PUT — "
+            "treating as success", COLLECTION_NAME,
         )
-    logger.info("created collection %s (dim=%d)", COLLECTION_NAME, VECTOR_SIZE)
-    return True
+        return False
+    raise RuntimeError(
+        f"create collection failed: {put_resp.status_code} "
+        f"{put_resp.text[:200]}",
+    )
 
 
 async def count_points(url: str) -> int:

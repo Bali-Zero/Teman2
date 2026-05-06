@@ -208,6 +208,20 @@ async def test_bootstrap_creates_collection_when_missing(
     assert put_url.endswith(f"/collections/{COLLECTION_NAME}")
 
 
+def _existing_collection_body(size: int = 1536, distance: str = "Cosine") -> dict:
+    """Mimic Qdrant's GET /collections/{name} response shape."""
+    return {
+        "result": {
+            "status": "green",
+            "config": {
+                "params": {
+                    "vectors": {"size": size, "distance": distance},
+                },
+            },
+        },
+    }
+
+
 async def test_bootstrap_noop_when_exists(monkeypatch: pytest.MonkeyPatch) -> None:
     from backend.scripts.migrate_skills_to_qdrant_local import bootstrap_collection
 
@@ -216,7 +230,7 @@ async def test_bootstrap_noop_when_exists(monkeypatch: pytest.MonkeyPatch) -> No
         text = ""
 
         def json(self) -> dict:
-            return {"result": {"status": "green"}}
+            return _existing_collection_body()
 
     async def fake_get(self: object, url: str, **_: object) -> FakeResp:
         return FakeResp()
@@ -234,6 +248,113 @@ async def test_bootstrap_noop_when_exists(monkeypatch: pytest.MonkeyPatch) -> No
     created = await bootstrap_collection("http://test:6333")
     assert created is False
     assert put_called is False, "must NOT recreate existing collection"
+
+
+async def test_bootstrap_rejects_dim_mismatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Per Codex review 2026-05-06 P2: existing collection with wrong dim must
+    raise BEFORE we burn embedding calls."""
+    from backend.scripts.migrate_skills_to_qdrant_local import bootstrap_collection
+
+    class FakeResp:
+        status_code = 200
+        text = ""
+
+        def json(self) -> dict:
+            return _existing_collection_body(size=768)  # WRONG
+
+    async def fake_get(self: object, url: str, **_: object) -> FakeResp:
+        return FakeResp()
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+
+    with pytest.raises(RuntimeError, match=r"dim=768.*FROZEN"):
+        await bootstrap_collection("http://test:6333")
+
+
+async def test_bootstrap_rejects_distance_mismatch(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Existing collection with wrong distance metric must raise."""
+    from backend.scripts.migrate_skills_to_qdrant_local import bootstrap_collection
+
+    class FakeResp:
+        status_code = 200
+        text = ""
+
+        def json(self) -> dict:
+            return _existing_collection_body(distance="Euclid")  # WRONG
+
+    async def fake_get(self: object, url: str, **_: object) -> FakeResp:
+        return FakeResp()
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+
+    with pytest.raises(RuntimeError, match=r"distance='Euclid'"):
+        await bootstrap_collection("http://test:6333")
+
+
+async def test_bootstrap_handles_toctou_race(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """GET says 404, PUT races with sibling and gets 4xx 'already exists'.
+
+    Per Gemini review 2026-05-06: TOCTOU between GET-404 check and PUT.
+    Treat a post-PUT 4xx with 'already exists' body as success-by-sibling.
+    """
+    from backend.scripts.migrate_skills_to_qdrant_local import bootstrap_collection
+
+    class FakeResp:
+        def __init__(self, status: int, text: str = "") -> None:
+            self.status_code = status
+            self.text = text
+
+        def json(self) -> dict:
+            return {}
+
+    async def fake_get(self: object, url: str, **_: object) -> FakeResp:
+        return FakeResp(404)
+
+    async def fake_put(self: object, url: str, **_: object) -> FakeResp:
+        return FakeResp(
+            400,
+            text='{"status":{"error":"Wrong input: Collection bali_zero_skills_local already exists!"}}',
+        )
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+    monkeypatch.setattr(httpx.AsyncClient, "put", fake_put)
+
+    # Should NOT raise — sibling-created counts as success
+    created = await bootstrap_collection("http://test:6333")
+    assert created is False
+
+
+async def test_bootstrap_raises_on_genuine_4xx(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A 4xx that is NOT 'already exists' (e.g. malformed body) must raise."""
+    from backend.scripts.migrate_skills_to_qdrant_local import bootstrap_collection
+
+    class FakeResp:
+        def __init__(self, status: int, text: str = "") -> None:
+            self.status_code = status
+            self.text = text
+
+        def json(self) -> dict:
+            return {}
+
+    async def fake_get(self: object, url: str, **_: object) -> FakeResp:
+        return FakeResp(404)
+
+    async def fake_put(self: object, url: str, **_: object) -> FakeResp:
+        return FakeResp(400, text='{"error": "invalid vector size 9999"}')
+
+    monkeypatch.setattr(httpx.AsyncClient, "get", fake_get)
+    monkeypatch.setattr(httpx.AsyncClient, "put", fake_put)
+
+    with pytest.raises(RuntimeError, match="create collection failed"):
+        await bootstrap_collection("http://test:6333")
 
 
 async def test_count_points_in_collection(monkeypatch: pytest.MonkeyPatch) -> None:
