@@ -24,6 +24,16 @@
         "description_en": "Tourist visa, single entry, valid 60 days. Cannot be used for work or business activities.",
         "icon_id": "visa-tourism"
       },
+      "C1 Tourism Extension": {
+        "name": "C1 Tourism — Extension (+30 days)",
+        "price": "1.700.000 IDR",
+        "tier_range": null,
+        "duration": "30 days",
+        "validity": "",
+        "notes": "",
+        "description_en": "Onshore extension of the C1 Tourism visa for an additional 30 days, processed at Indonesian immigration.",
+        "icon_id": "visa-extension"
+      },
       "C2 Business": {
         "name": "C2 Business",
         "price": "3.600.000 IDR",
@@ -73,18 +83,6 @@
         "notes": "",
         "description_en": "Single-entry internship visa for foreign trainees, valid 180 days, sponsored by an Indonesian host organisation.",
         "icon_id": "visa-internship"
-      }
-    },
-    "visa_extensions": {
-      "C1 Tourism Extension": {
-        "name": "C1 Tourism Extension",
-        "price": "1.700.000 IDR",
-        "tier_range": null,
-        "duration": "30 days",
-        "validity": "",
-        "notes": "Extension of C1 Tourism visa, +30 days",
-        "description_en": "Onshore extension of the C1 Tourism visa for an additional 30 days, processed at Indonesian immigration.",
-        "icon_id": "visa-extension"
       }
     },
     "multiple_entry_visas": {
@@ -458,7 +456,10 @@
         "Tier 0-50": {
           "name": "Monthly Tax Report — 0 to 50 transactions (without LKPM & Annual)",
           "price": "",
-          "tier_range": ["1.800.000 IDR", "2.000.000 IDR"],
+          "tier_range": [
+            "1.800.000 IDR",
+            "2.000.000 IDR"
+          ],
           "duration": "",
           "validity": "monthly",
           "notes": "Bank + Cash transactions combined. LKPM and Annual Tax NOT included.",
@@ -468,7 +469,10 @@
         "Tier 50-100": {
           "name": "Monthly Tax Report — 50 to 100 transactions (without LKPM & Annual)",
           "price": "",
-          "tier_range": ["2.500.000 IDR", "3.000.000 IDR"],
+          "tier_range": [
+            "2.500.000 IDR",
+            "3.000.000 IDR"
+          ],
           "duration": "",
           "validity": "monthly",
           "notes": "Bank + Cash transactions combined. LKPM and Annual Tax NOT included.",
@@ -478,7 +482,10 @@
         "Tier 100-200": {
           "name": "Monthly Tax Report — 100 to 200 transactions (without LKPM & Annual)",
           "price": "",
-          "tier_range": ["3.500.000 IDR", "4.500.000 IDR"],
+          "tier_range": [
+            "3.500.000 IDR",
+            "4.500.000 IDR"
+          ],
           "duration": "",
           "validity": "monthly",
           "notes": "Bank + Cash transactions combined. LKPM and Annual Tax NOT included.",
@@ -669,7 +676,10 @@
       "Close PMA Company": {
         "name": "Close PMA Company",
         "price": "",
-        "tier_range": ["6.000.000 IDR", "7.500.000 IDR"],
+        "tier_range": [
+          "6.000.000 IDR",
+          "7.500.000 IDR"
+        ],
         "duration": "Process up to 1 year",
         "validity": "",
         "notes": "",
@@ -758,16 +768,6 @@
         "description_en": "Police clearance certificate (Surat Keterangan Catatan Kepolisian), often required for visa renewals and certain employment processes.",
         "icon_id": "other-skck"
       },
-      "ACC Mutation Passport": {
-        "name": "ACC Mutation Passport",
-        "price": "1.000.000 IDR",
-        "tier_range": null,
-        "duration": "",
-        "validity": "",
-        "notes": "",
-        "description_en": "Approval (ACC) for mutation of passport data on existing immigration permits.",
-        "icon_id": "other-mutation"
-      },
       "Mutation Passport": {
         "name": "Mutation Passport",
         "price": "500.000 IDR",
@@ -776,16 +776,6 @@
         "validity": "",
         "notes": "Plus 350k urgent",
         "description_en": "Update of passport details on existing immigration permits after a passport renewal.",
-        "icon_id": "other-mutation"
-      },
-      "ACC Mutation": {
-        "name": "ACC Mutation",
-        "price": "1.000.000 IDR",
-        "tier_range": null,
-        "duration": "",
-        "validity": "",
-        "notes": "",
-        "description_en": "Approval (ACC) for mutation requests on existing immigration permits.",
         "icon_id": "other-mutation"
       },
       "Mutation Address": {
@@ -907,16 +897,6 @@
         "notes": "",
         "description_en": "Combined cancellation of RPTKA, IMTA and Wajib Lapor records at the Ministry of Manpower.",
         "icon_id": "other-cancel"
-      },
-      "ACC Boarding Pass": {
-        "name": "ACC Boarding Pass",
-        "price": "1.200.000 IDR",
-        "tier_range": null,
-        "duration": "",
-        "validity": "",
-        "notes": "",
-        "description_en": "Approval (ACC) for boarding pass issuance in scenarios requiring immigration verification before departure.",
-        "icon_id": "other-boarding"
       },
       "EPO (Exit Permit Only)": {
         "name": "EPO (Exit Permit Only)",
