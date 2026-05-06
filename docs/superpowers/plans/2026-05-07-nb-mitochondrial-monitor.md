@@ -13,6 +13,7 @@
 ## File map (created/modified)
 
 **Created:**
+
 - `apps/mata-garuda/mata_garuda/scripts/__init__.py`
 - `apps/mata-garuda/mata_garuda/scripts/nb_monitor/__init__.py`
 - `apps/mata-garuda/mata_garuda/scripts/nb_monitor/registry.py`
@@ -57,16 +58,19 @@
 All paths assume **CWD = repo root** (`/Users/nuzantara/Desktop/nuzantara/.worktrees/nb-mitochondrial` during this work).
 
 **Run all nb_monitor tests:**
+
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/ -v
 ```
 
 **Run one test:**
+
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/test_registry.py::test_load_returns_dataclass_list -v
 ```
 
 **WIP commit pattern** (cicatrix antibody — every ~10 min while untracked files exist):
+
 ```bash
 if git ls-files --others --exclude-standard | grep -q .; then
   git add -A apps/mata-garuda/mata_garuda/scripts/nb_monitor/ apps/mata-garuda/tests/nb_monitor/
@@ -76,6 +80,7 @@ fi
 ```
 
 **Imports — use absolute throughout** (mata-garuda golden rule):
+
 ```python
 from mata_garuda.scripts.nb_monitor.registry import NotebookEntry, load_registry
 ```
@@ -88,9 +93,10 @@ from mata_garuda.scripts.nb_monitor.registry import NotebookEntry, load_registry
 
 ## COMMIT BLOCK 1 — Bootstrap registry + LaunchAgent skeleton
 
-### Task 1: Create package directories and __init__.py files
+### Task 1: Create package directories and **init**.py files
 
 **Files:**
+
 - Create: `apps/mata-garuda/mata_garuda/scripts/__init__.py`
 - Create: `apps/mata-garuda/mata_garuda/scripts/nb_monitor/__init__.py`
 - Create: `apps/mata-garuda/mata_garuda/scripts/nb_monitor/collectors/__init__.py`
@@ -129,6 +135,7 @@ Write this content to `apps/mata-garuda/mata_garuda/scripts/nb_monitor/__init__.
 ```bash
 cd apps/mata-garuda && .venv/bin/python -c "from mata_garuda.scripts.nb_monitor import __version__; print(__version__)"
 ```
+
 Expected: `0.1.0`
 
 - [ ] **Step 4: Commit**
@@ -146,6 +153,7 @@ git commit -m "feat(nb-monitor): scaffold package directories"
 ### Task 2: NotebookEntry dataclass and registry loader (TDD)
 
 **Files:**
+
 - Create: `apps/mata-garuda/mata_garuda/scripts/nb_monitor/registry.py`
 - Test: `apps/mata-garuda/tests/nb_monitor/test_registry.py`
 - Test fixture: `apps/mata-garuda/tests/nb_monitor/fixtures/bootstrap.json`
@@ -250,6 +258,7 @@ def test_load_wrong_schema_version_raises(tmp_path):
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/test_registry.py -v
 ```
+
 Expected: FAIL with `ModuleNotFoundError: No module named 'mata_garuda.scripts.nb_monitor.registry'`
 
 - [ ] **Step 4: Implement `registry.py`**
@@ -343,6 +352,7 @@ def _parse_entries(notebooks: Iterable[dict], source: str) -> Iterable[NotebookE
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/test_registry.py -v
 ```
+
 Expected: 5 passed
 
 - [ ] **Step 6: Commit**
@@ -360,6 +370,7 @@ git push origin feat/nb-mitochondrial-monitor-2026-05-07
 ### Task 3: SQLite persistence layer (TDD)
 
 **Files:**
+
 - Create: `apps/mata-garuda/mata_garuda/scripts/nb_monitor/persist.py`
 - Test: `apps/mata-garuda/tests/nb_monitor/test_persist.py`
 
@@ -564,6 +575,7 @@ def test_metric_row_primary_key_uuid_ts(tmp_path):
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/test_persist.py -v
 ```
+
 Expected: FAIL — `ModuleNotFoundError: persist`
 
 - [ ] **Step 3: Implement `persist.py`**
@@ -736,6 +748,7 @@ def fetch_alert_last_sent(
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/test_persist.py -v
 ```
+
 Expected: 11 passed
 
 - [ ] **Step 5: Commit**
@@ -752,6 +765,7 @@ git push origin feat/nb-mitochondrial-monitor-2026-05-07
 ### Task 4: Bootstrap registry JSON file (24 entries)
 
 **Files:**
+
 - Create: `~/.agent/nb-monitor/active_notebooks_bootstrap_2026-05-07.json` (NOT git-tracked)
 - Modify: `apps/mata-garuda/mata_garuda/scripts/nb_monitor/__init__.py` (add path constant)
 
@@ -854,6 +868,7 @@ Write to `~/.agent/nb-monitor/active_notebooks_bootstrap_2026-05-07.json`:
 ```bash
 python3 -c "import json; data=json.load(open('$HOME/.agent/nb-monitor/active_notebooks_bootstrap_2026-05-07.json')); print('entries:', len(data['notebooks']))"
 ```
+
 Expected: `entries: 7`
 
 - [ ] **Step 4: Add path constant to `__init__.py`**
@@ -890,7 +905,9 @@ LOG_FILE = DATA_DIR / "logs" / "nb-monitor.log"
 ```bash
 cd apps/mata-garuda && .venv/bin/python -c "from mata_garuda.scripts.nb_monitor import BOOTSTRAP_FILE, METRICS_DB; print('bootstrap:', BOOTSTRAP_FILE); print('db:', METRICS_DB)"
 ```
+
 Expected:
+
 ```
 bootstrap: /Users/nuzantara/.agent/nb-monitor/active_notebooks_bootstrap_2026-05-07.json
 db: /Users/nuzantara/.agent/nb-mitochondrial/metrics.db
@@ -909,6 +926,7 @@ git push origin feat/nb-mitochondrial-monitor-2026-05-07
 ### Task 5: LaunchAgent plist (skeleton, not yet loaded)
 
 **Files:**
+
 - Create: `infra/launchagents/com.nuzantara.nb-mitochondrial-monitor.daily.plist`
 
 **Note:** This task creates the plist file in the repo. It is NOT loaded into launchd in this task — that happens after the smoke test in Task 28.
@@ -918,6 +936,7 @@ git push origin feat/nb-mitochondrial-monitor-2026-05-07
 ```bash
 ls infra/launchagents/ 2>&1 | head -5
 ```
+
 If missing: `mkdir -p infra/launchagents`.
 
 - [ ] **Step 2: Write the plist**
@@ -970,6 +989,7 @@ Write to `infra/launchagents/com.nuzantara.nb-mitochondrial-monitor.daily.plist`
 ```bash
 plutil -lint infra/launchagents/com.nuzantara.nb-mitochondrial-monitor.daily.plist
 ```
+
 Expected: `... OK`
 
 - [ ] **Step 4: Commit**
@@ -987,6 +1007,7 @@ git push origin feat/nb-mitochondrial-monitor-2026-05-07
 ### Task 6: Log scraper for Claude Code JSONL — read frequency (TDD part 1)
 
 **Files:**
+
 - Create: `apps/mata-garuda/mata_garuda/scripts/nb_monitor/collectors/log_scraper.py`
 - Test: `apps/mata-garuda/tests/nb_monitor/test_log_scraper.py`
 - Test fixture: `apps/mata-garuda/tests/nb_monitor/fixtures/jsonl_sample.jsonl`
@@ -1114,6 +1135,7 @@ def test_count_nlm_events_returns_empty_on_no_files(tmp_path):
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/test_log_scraper.py -v
 ```
+
 Expected: FAIL `ModuleNotFoundError: log_scraper`
 
 - [ ] **Step 4: Implement `log_scraper.py`**
@@ -1260,6 +1282,7 @@ def _safe_mtime(p: Path) -> float:
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/test_log_scraper.py -v
 ```
+
 Expected: 7 passed
 
 - [ ] **Step 6: Commit**
@@ -1277,6 +1300,7 @@ git push origin feat/nb-mitochondrial-monitor-2026-05-07
 ### Task 7: Feeder log parser — push success rate (TDD)
 
 **Files:**
+
 - Create: `apps/mata-garuda/mata_garuda/scripts/nb_monitor/collectors/feeder_log.py`
 - Test: `apps/mata-garuda/tests/nb_monitor/test_feeder_log.py`
 - Test fixture: `apps/mata-garuda/tests/nb_monitor/fixtures/feeder_sample.jsonl`
@@ -1383,6 +1407,7 @@ def test_compute_global_push_success_rate_handles_stats_legacy_shape(tmp_path):
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/test_feeder_log.py -v
 ```
+
 Expected: FAIL `ModuleNotFoundError: feeder_log`
 
 - [ ] **Step 4: Implement `feeder_log.py`**
@@ -1478,6 +1503,7 @@ def compute_global_push_success_rate(
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/test_feeder_log.py -v
 ```
+
 Expected: 7 passed
 
 - [ ] **Step 6: Commit**
@@ -1495,6 +1521,7 @@ git push origin feat/nb-mitochondrial-monitor-2026-05-07
 ### Task 8: NLM freshness collector (best-effort) — TDD
 
 **Files:**
+
 - Create: `apps/mata-garuda/mata_garuda/scripts/nb_monitor/collectors/nlm_freshness.py`
 - Test: `apps/mata-garuda/tests/nb_monitor/test_nlm_freshness.py`
 
@@ -1584,6 +1611,7 @@ def test_fetch_source_freshness_age_days_returns_none_on_malformed():
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/test_nlm_freshness.py -v
 ```
+
 Expected: FAIL `ModuleNotFoundError: nlm_freshness`
 
 - [ ] **Step 3: Implement `nlm_freshness.py`**
@@ -1688,6 +1716,7 @@ def fetch_source_freshness_age_days(uuid: str, now_iso: str | None = None) -> in
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/test_nlm_freshness.py -v
 ```
+
 Expected: 6 passed
 
 - [ ] **Step 5: Commit**
@@ -1704,6 +1733,7 @@ git push origin feat/nb-mitochondrial-monitor-2026-05-07
 ### Task 9: Placeholder collectors for skill_derivation + cite_rate
 
 **Files:**
+
 - Create: `apps/mata-garuda/mata_garuda/scripts/nb_monitor/collectors/skill_derivation.py`
 - Create: `apps/mata-garuda/mata_garuda/scripts/nb_monitor/collectors/cite_rate.py`
 
@@ -1761,7 +1791,9 @@ def compute_rate_for_uuid(uuid: str) -> float | None:
 ```bash
 cd apps/mata-garuda && .venv/bin/python -c "from mata_garuda.scripts.nb_monitor.collectors import skill_derivation, cite_rate; print(skill_derivation.count_skills_for_uuid('x')); print(cite_rate.compute_rate_for_uuid('x'))"
 ```
+
 Expected:
+
 ```
 None
 None
@@ -1783,6 +1815,7 @@ git push origin feat/nb-mitochondrial-monitor-2026-05-07
 ### Task 10: Tier classifier (TDD)
 
 **Files:**
+
 - Create: `apps/mata-garuda/mata_garuda/scripts/nb_monitor/tier.py`
 - Test: `apps/mata-garuda/tests/nb_monitor/test_tier.py`
 
@@ -1864,6 +1897,7 @@ def test_read_freq_zero_when_none_treated_as_zero_for_classification():
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/test_tier.py -v
 ```
+
 Expected: FAIL `ModuleNotFoundError: tier`
 
 - [ ] **Step 3: Implement `tier.py`**
@@ -1922,6 +1956,7 @@ def classify(inputs: TierInputs) -> Tier:
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/test_tier.py -v
 ```
+
 Expected: 9 passed
 
 - [ ] **Step 5: Commit**
@@ -1938,6 +1973,7 @@ git push origin feat/nb-mitochondrial-monitor-2026-05-07
 ### Task 11: Alerts engine — pure logic with cooldown + floor (TDD)
 
 **Files:**
+
 - Create: `apps/mata-garuda/mata_garuda/scripts/nb_monitor/alerts.py`
 - Test: `apps/mata-garuda/tests/nb_monitor/test_alerts.py`
 
@@ -2117,6 +2153,7 @@ def test_alert_decision_includes_payload_with_facts():
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/test_alerts.py -v
 ```
+
 Expected: FAIL `ModuleNotFoundError: alerts`
 
 - [ ] **Step 3: Implement `alerts.py`**
@@ -2303,6 +2340,7 @@ def can_send(uuid: str, condition: AlertCondition, last_sent: int | None, now: i
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/test_alerts.py -v
 ```
+
 Expected: 14 passed
 
 - [ ] **Step 5: Commit**
@@ -2319,6 +2357,7 @@ git push origin feat/nb-mitochondrial-monitor-2026-05-07
 ### Task 12: Telegram dispatcher (small, with mock-able transport)
 
 **Files:**
+
 - Create: `apps/mata-garuda/mata_garuda/scripts/nb_monitor/telegram_send.py`
 - Test: `apps/mata-garuda/tests/nb_monitor/test_telegram_send.py`
 
@@ -2381,6 +2420,7 @@ def _ctx_mgr(resp):
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/test_telegram_send.py -v
 ```
+
 Expected: FAIL `ModuleNotFoundError: telegram_send`
 
 - [ ] **Step 3: Implement `telegram_send.py`**
@@ -2437,6 +2477,7 @@ def send_telegram(
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/test_telegram_send.py -v
 ```
+
 Expected: 4 passed
 
 - [ ] **Step 5: Commit**
@@ -2453,6 +2494,7 @@ git push origin feat/nb-mitochondrial-monitor-2026-05-07
 ### Task 13: Weekly report markdown generator (TDD)
 
 **Files:**
+
 - Create: `apps/mata-garuda/mata_garuda/scripts/nb_monitor/report.py`
 - Test: `apps/mata-garuda/tests/nb_monitor/test_report.py`
 
@@ -2569,6 +2611,7 @@ def test_render_weekly_report_handles_empty_entries():
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/test_report.py -v
 ```
+
 Expected: FAIL `ModuleNotFoundError: report`
 
 - [ ] **Step 3: Implement `report.py`**
@@ -2686,6 +2729,7 @@ def _fmt_delta(v: int | None) -> str:
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/test_report.py -v
 ```
+
 Expected: 7 passed
 
 - [ ] **Step 5: Commit**
@@ -2702,6 +2746,7 @@ git push origin feat/nb-mitochondrial-monitor-2026-05-07
 ### Task 14: Run loop (`run.py`) — orchestrates one execution
 
 **Files:**
+
 - Create: `apps/mata-garuda/mata_garuda/scripts/nb_monitor/run.py`
 
 **Note:** `run.py` is the heart that wires everything together. It is NOT directly unit-tested — the integration test in Task 15 is the e2e validation. We do dependency injection on the I/O bits (collectors + telegram + paths) so the integration test can substitute test doubles.
@@ -3132,6 +3177,7 @@ if __name__ == "__main__":
 ```bash
 cd apps/mata-garuda && .venv/bin/python -c "from mata_garuda.scripts.nb_monitor.run import execute_once, RunConfig; print('imports ok')"
 ```
+
 Expected: `imports ok`
 
 - [ ] **Step 3: Verify --help works**
@@ -3139,6 +3185,7 @@ Expected: `imports ok`
 ```bash
 cd apps/mata-garuda && .venv/bin/python -m mata_garuda.scripts.nb_monitor.run --help 2>&1 | head -10
 ```
+
 Expected: argparse usage line printed.
 
 - [ ] **Step 4: Commit**
@@ -3154,6 +3201,7 @@ git push origin feat/nb-mitochondrial-monitor-2026-05-07
 ### Task 15: Integration test (TDD — end-to-end with mocked Telegram)
 
 **Files:**
+
 - Create: `apps/mata-garuda/tests/nb_monitor/test_integration_e2e.py`
 - Create: `apps/mata-garuda/tests/nb_monitor/conftest.py`
 
@@ -3395,6 +3443,7 @@ def test_run_exits_zero_on_missing_registry(tmp_path):
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/test_integration_e2e.py -v
 ```
+
 Expected: 8 passed. If failing — read the assertion message, check `run.py`. Iterate until green.
 
 - [ ] **Step 4: Run full test suite**
@@ -3402,6 +3451,7 @@ Expected: 8 passed. If failing — read the assertion message, check `run.py`. I
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/ -v
 ```
+
 Expected: all tests pass (sum of all individual files: 5 + 11 + 7 + 7 + 6 + 9 + 14 + 4 + 7 + 8 ≈ 78).
 
 - [ ] **Step 5: Coverage check**
@@ -3411,6 +3461,7 @@ cd apps/mata-garuda && .venv/bin/pip install --quiet coverage 2>&1 | tail -2
 cd apps/mata-garuda && .venv/bin/coverage run --source=mata_garuda/scripts/nb_monitor -m pytest tests/nb_monitor/ -q
 cd apps/mata-garuda && .venv/bin/coverage report -m | tail -25
 ```
+
 Expected: total ≥80%. If below, identify uncovered lines via `coverage report -m` and add a focused test.
 
 - [ ] **Step 6: Commit**
@@ -3427,6 +3478,7 @@ git push origin feat/nb-mitochondrial-monitor-2026-05-07
 ### Task 16: CLI dashboard `show.py`
 
 **Files:**
+
 - Create: `scripts/nb-monitor/show.py`
 
 **Note:** This is a tiny user-facing CLI that prints latest snapshot from `metrics.db`. Not heavily tested — manual smoke is sufficient for a read-only display tool.
@@ -3537,6 +3589,7 @@ chmod +x scripts/nb-monitor/show.py
 ```bash
 python scripts/nb-monitor/show.py --help 2>&1 | head -5
 ```
+
 Expected: argparse usage line.
 
 - [ ] **Step 5: Commit**
@@ -3554,6 +3607,7 @@ git push origin feat/nb-mitochondrial-monitor-2026-05-07
 ### Task 17: Operational runbook
 
 **Files:**
+
 - Create: `docs/operations/nb-mitochondrial-monitor.md`
 
 - [ ] **Step 1: Write the runbook**
@@ -3572,16 +3626,16 @@ for the full design.
 
 ## Files and paths
 
-| Artefact | Path |
-|---|---|
-| Bootstrap registry | `~/.agent/nb-monitor/active_notebooks_bootstrap_2026-05-07.json` |
-| SQLite metrics | `~/.agent/nb-mitochondrial/metrics.db` |
-| Run log | `~/.agent/nb-mitochondrial/logs/nb-monitor.log` |
-| Run error log | `~/.agent/nb-mitochondrial/logs/nb-monitor.error.log` |
-| LaunchAgent plist | `~/Library/LaunchAgents/com.nuzantara.nb-mitochondrial-monitor.daily.plist` |
-| Repo plist source | `infra/launchagents/com.nuzantara.nb-mitochondrial-monitor.daily.plist` |
-| Weekly reports | `~/Desktop/nuzantara/research/nb-monitor/report-YYYY-Www.md` |
-| CLI dashboard | `scripts/nb-monitor/show.py` |
+| Artefact           | Path                                                                        |
+| ------------------ | --------------------------------------------------------------------------- |
+| Bootstrap registry | `~/.agent/nb-monitor/active_notebooks_bootstrap_2026-05-07.json`            |
+| SQLite metrics     | `~/.agent/nb-mitochondrial/metrics.db`                                      |
+| Run log            | `~/.agent/nb-mitochondrial/logs/nb-monitor.log`                             |
+| Run error log      | `~/.agent/nb-mitochondrial/logs/nb-monitor.error.log`                       |
+| LaunchAgent plist  | `~/Library/LaunchAgents/com.nuzantara.nb-mitochondrial-monitor.daily.plist` |
+| Repo plist source  | `infra/launchagents/com.nuzantara.nb-mitochondrial-monitor.daily.plist`     |
+| Weekly reports     | `~/Desktop/nuzantara/research/nb-monitor/report-YYYY-Www.md`                |
+| CLI dashboard      | `scripts/nb-monitor/show.py`                                                |
 
 ## Initial deploy
 
@@ -3662,14 +3716,17 @@ launchctl bootout gui/$(id -u) ~/Library/LaunchAgents/com.nuzantara.nb-mitochond
 ## Future-work pointers
 
 When FASE 1 (Qdrant local skills) merges:
+
 - Wire `collectors/skill_derivation.py::count_skills_for_uuid` to query `bali_zero_skills_local`.
 - Tests in `test_skill_derivation.py` (new file) for the wiring.
 
 When FASE 2 (`notebook_registry.py`) merges:
+
 - Update `registry.py::load_registry` to prefer `notebook_registry.NB_REGISTRY` if importable.
 - Delete `~/.agent/nb-monitor/active_notebooks_bootstrap_2026-05-07.json` after one full week of clean runs.
 
 When FASE 4 (Oracle citation logging) merges:
+
 - Wire `collectors/cite_rate.py::compute_rate_for_uuid` to query the citation log.
 ````
 
@@ -3678,6 +3735,7 @@ When FASE 4 (Oracle citation logging) merges:
 ```bash
 head -30 docs/operations/nb-mitochondrial-monitor.md
 ```
+
 Expected: header + first paragraph.
 
 - [ ] **Step 3: Commit**
@@ -3693,6 +3751,7 @@ git push origin feat/nb-mitochondrial-monitor-2026-05-07
 ### Task 18: ADR — bootstrap JSON migration plan
 
 **Files:**
+
 - Create: `docs/adr/ADR-006-nb-mitochondrial-monitor-bootstrap-json.md`
 
 - [ ] **Step 1: Verify ADR dir exists**
@@ -3700,13 +3759,14 @@ git push origin feat/nb-mitochondrial-monitor-2026-05-07
 ```bash
 ls docs/adr/ 2>&1 | head -3
 ```
+
 If missing: `mkdir -p docs/adr`.
 
 - [ ] **Step 2: Write the ADR**
 
 Write to `docs/adr/ADR-006-nb-mitochondrial-monitor-bootstrap-json.md`:
 
-```markdown
+````markdown
 # ADR-006: nb_monitor bootstrap JSON registry, migrate to notebook_registry post-FASE-2
 
 **Status:** Accepted (2026-05-07)
@@ -3718,6 +3778,7 @@ Write to `docs/adr/ADR-006-nb-mitochondrial-monitor-bootstrap-json.md`:
 FASE 5 (NB Mitochondrial Value Monitor) needs a list of "active" notebook UUIDs to iterate per cron run. FASE 2 (SENESCENT decommissioning, separate session) is concurrently building `apps/mata-garuda/mata_garuda/notebook_registry.py` as the SSOT for NB classification (`active_routing`, `lifecycle_stage`, `family`, etc.).
 
 Two scope conflicts:
+
 1. FASE 5 cannot wait for FASE 2 to land — they're independent. Need a registry NOW.
 2. We do NOT want two registries permanently — drift would compound across PRs.
 
@@ -3726,6 +3787,7 @@ Two scope conflicts:
 For this PR, FASE 5 reads from `~/.agent/nb-monitor/active_notebooks_bootstrap_2026-05-07.json` (NOT git-tracked, lives on Pro disk). Schema mirrors what FASE 2 will publish in `notebook_registry.py`. The bootstrap file is hand-curated from `apps/mata-garuda/mata_garuda/config.py::NLM_NOTEBOOKS` (6 UUIDs) plus 1 manually added Property NB; further entries to be added as FASE 2 produces classification data.
 
 `registry.py::load_registry` is written so that — once `notebook_registry.py` exists — a future PR can swap the loader to:
+
 ```python
 try:
     from mata_garuda.notebook_registry import NB_REGISTRY
@@ -3733,6 +3795,8 @@ try:
 except ImportError:
     return load_from_bootstrap_json(BOOTSTRAP_FILE)
 ```
+````
+
 …without changing any callsite.
 
 JSON instead of YAML to avoid adding `pyyaml` to `apps/mata-garuda/pyproject.toml` deps (mata-garuda venv is intentionally minimal: `pydantic`, `pytest`, `pytest-asyncio`).
@@ -3752,7 +3816,8 @@ JSON instead of YAML to avoid adding `pyyaml` to `apps/mata-garuda/pyproject.tom
 - **Read from `config.py NLM_NOTEBOOKS` only (6 UUIDs).** Rejected: 6/60+ is too narrow — produces a partial mitochondrial picture. The bootstrap JSON adds CORE/RESEARCH NBs that `NLM_NOTEBOOKS` does not contain.
 - **YAML format.** Rejected: pyyaml is a 1-MB dep added solely for human readability. JSON is human-readable enough for a 7-NB file and is part of stdlib.
 - **Live MCP `nlm notebook list`.** Rejected: cookie 5min TTL makes this fragile for daily cron. Cookie expiry would result in NULL metrics for every UUID daily.
-```
+
+````
 
 - [ ] **Step 3: Commit**
 
@@ -3760,20 +3825,21 @@ JSON instead of YAML to avoid adding `pyyaml` to `apps/mata-garuda/pyproject.tom
 git add docs/adr/ADR-006-nb-mitochondrial-monitor-bootstrap-json.md
 git commit -m "docs(adr): ADR-006 bootstrap JSON registry, migrate post-FASE-2"
 git push origin feat/nb-mitochondrial-monitor-2026-05-07
-```
+````
 
 ---
 
 ### Task 19: Module README
 
 **Files:**
+
 - Create: `apps/mata-garuda/mata_garuda/scripts/nb_monitor/README.md`
 
 - [ ] **Step 1: Write the README**
 
 Write to `apps/mata-garuda/mata_garuda/scripts/nb_monitor/README.md`:
 
-```markdown
+````markdown
 # nb_monitor
 
 Daily cron measuring which NotebookLM notebooks produce value consumed downstream by Nuzantara.
@@ -3785,6 +3851,7 @@ cd apps/mata-garuda
 .venv/bin/python -m mata_garuda.scripts.nb_monitor.run --once --no-telegram
 python ../../scripts/nb-monitor/show.py
 ```
+````
 
 ## Architecture
 
@@ -3805,7 +3872,8 @@ python ../../scripts/nb-monitor/show.py
 - Runbook: [`docs/operations/nb-mitochondrial-monitor.md`](../../../../../docs/operations/nb-mitochondrial-monitor.md)
 - ADR: [`docs/adr/ADR-006-nb-mitochondrial-monitor-bootstrap-json.md`](../../../../../docs/adr/ADR-006-nb-mitochondrial-monitor-bootstrap-json.md)
 - Round 2 memo: `~/.claude/projects/-Users-nuzantara/memory/project_nb_lifecycle_round2_2026_05_04.md`
-```
+
+````
 
 - [ ] **Step 2: Commit**
 
@@ -3813,7 +3881,7 @@ python ../../scripts/nb-monitor/show.py
 git add apps/mata-garuda/mata_garuda/scripts/nb_monitor/README.md
 git commit -m "docs(nb-monitor): module README with quick start"
 git push origin feat/nb-mitochondrial-monitor-2026-05-07
-```
+````
 
 ---
 
@@ -3824,6 +3892,7 @@ git push origin feat/nb-mitochondrial-monitor-2026-05-07
 ```bash
 cd apps/mata-garuda && .venv/bin/pytest tests/nb_monitor/ -v --tb=short
 ```
+
 Expected: all green.
 
 - [ ] **Step 2: Run the monitor live with --once and --no-telegram**
@@ -3831,6 +3900,7 @@ Expected: all green.
 ```bash
 cd apps/mata-garuda && .venv/bin/python -m mata_garuda.scripts.nb_monitor.run --once --no-telegram
 ```
+
 Expected: process exits 0, log file created, `metrics.db` populated.
 
 - [ ] **Step 3: Inspect outputs**
@@ -3841,6 +3911,7 @@ sqlite3 ~/.agent/nb-mitochondrial/metrics.db \
 python scripts/nb-monitor/show.py
 ls -la ~/.agent/nb-mitochondrial/logs/
 ```
+
 Expected: rows with non-zero `read_freq_7d` for at least the most-queried NB UUIDs (per live grep `d9438180` should be top).
 
 - [ ] **Step 4: Force a weekly report**
@@ -3850,11 +3921,12 @@ cd apps/mata-garuda && .venv/bin/python -m mata_garuda.scripts.nb_monitor.run --
 ls ~/Desktop/nuzantara/research/nb-monitor/
 head -40 ~/Desktop/nuzantara/research/nb-monitor/report-*.md | head -30
 ```
+
 Expected: a `report-YYYY-Www.md` file present, banner visible, ranking table printed.
 
 - [ ] **Step 5: Open the PR**
 
-```bash
+````bash
 gh pr create --title "feat(nb-monitor): mitochondrial value monitor cron + weekly report (Round 2)" --body "$(cat <<'EOF'
 ## Summary
 
@@ -3895,7 +3967,7 @@ CREATE TABLE alerts_sent (
     uuid TEXT, condition TEXT, sent_at INTEGER, payload TEXT,
     PRIMARY KEY (uuid, condition, sent_at)
 );
-```
+````
 
 ## Sample weekly report header
 
@@ -3922,11 +3994,11 @@ CREATE TABLE alerts_sent (
 
 ## Alert conditions + cooldowns
 
-| Condition | Trigger | Cooldown |
-|---|---|---|
-| top5_drop_50pct | tier_lastweek=ALIVE AND in top-5 lastweek AND rf7 dropped ≥50% AND ≥10 absolute | 24h |
-| tier_transition | tier degraded vs lastweek AND age_days > 14 | 24h |
-| dying_no_action | tier=DYING for ≥14d AND skill_derivation_count==0 (post FASE-1) AND no traffic 30d | 7d |
+| Condition       | Trigger                                                                            | Cooldown |
+| --------------- | ---------------------------------------------------------------------------------- | -------- |
+| top5_drop_50pct | tier_lastweek=ALIVE AND in top-5 lastweek AND rf7 dropped ≥50% AND ≥10 absolute    | 24h      |
+| tier_transition | tier degraded vs lastweek AND age_days > 14                                        | 24h      |
+| dying_no_action | tier=DYING for ≥14d AND skill_derivation_count==0 (post FASE-1) AND no traffic 30d | 7d       |
 
 ## Test plan
 
@@ -3952,7 +4024,8 @@ CREATE TABLE alerts_sent (
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
 EOF
 )"
-```
+
+````
 
 - [ ] **Step 6: Mark all plan tasks complete in this file**
 
@@ -3963,7 +4036,7 @@ Verify by editing this plan and changing the relevant `- [ ]` to `- [x]` for all
 git add docs/superpowers/plans/2026-05-07-nb-mitochondrial-monitor.md
 git commit -m "docs(plan): mark tasks complete"
 git push origin feat/nb-mitochondrial-monitor-2026-05-07
-```
+````
 
 - [ ] **Step 7: Final summary message to user**
 
@@ -3974,6 +4047,7 @@ Print a one-liner with: PR URL, total LOC, test count, coverage %.
 ## Self-review checklist (filled by author)
 
 **1. Spec coverage:** every section of `2026-05-07-nb-mitochondrial-monitor-design.md` is addressed:
+
 - §1 Goal → Plan goal line.
 - §2 In-scope → Tasks 1-19.
 - §2 Out-of-scope → respected (no notebook_registry.py modification, no auto-reconcile script, no cell-observatory monitoring).
@@ -3995,6 +4069,7 @@ Print a one-liner with: PR URL, total LOC, test count, coverage %.
 **2. Placeholder scan:** none of the forbidden phrases ("TBD", "TODO", "implement later", "similar to Task N") used. Every code step has full code, every command step has the exact invocation.
 
 **3. Type consistency:**
+
 - `MetricRow` and `AlertRecord` defined in Task 3 used identically in Tasks 14, 15, 16.
 - `Tier` enum from Task 10 used in Tasks 11 (alerts), 13 (report), 14 (run), 15 (integration).
 - `AlertCondition` enum from Task 11 used by name in Task 14.
@@ -4002,6 +4077,7 @@ Print a one-liner with: PR URL, total LOC, test count, coverage %.
 - `RunConfig` injected via dataclass; `collect_*` callable types match between definition (Task 14) and stubs (Task 15 conftest).
 
 **4. Ambiguity check:**
+
 - "Active routing" is bool — only TRUE UUIDs receive `psr` from global feeder rate; FALSE UUIDs get None.
 - "first_audited" is the only mandatory date field; `last_audited` and `round2_classification` are optional.
 - 24 NB target — bootstrap ships with 7 confirmed; warn (don't fail) if registry has fewer.

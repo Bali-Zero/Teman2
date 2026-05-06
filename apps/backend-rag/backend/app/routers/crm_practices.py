@@ -486,7 +486,14 @@ async def create_practice(
                     ]
                 }
                 insert_columns.append("metadata")
-                insert_values.append(json.dumps(discount_audit))
+                # Pass the dict directly — the api pool registers a jsonb
+                # codec (service_initializer._light_init_connection) so
+                # asyncpg serialises with json.dumps() exactly once.
+                # Calling json.dumps() at this layer would double-encode and
+                # land the value as a JSONB string scalar (the bug shipped
+                # in PR #485 / #492 — observed 2026-05-06 on practice_id=390
+                # where metadata::text was '"{\"discount_log\": ...}"').
+                insert_values.append(discount_audit)
 
             # Cast jsonb columns explicitly. asyncpg does not register a
             # JSON codec for `jsonb` by default, so a `json.dumps()` value
@@ -1279,9 +1286,12 @@ async def update_practice(
                         log = []
                     log.append(audit_entry)
                     new_meta["discount_log"] = log
+                    # Pass dict directly — pool's jsonb codec encodes once.
+                    # See create_practice() comment around the metadata
+                    # insert for the symptom of double-encoding.
                     await conn.execute(
-                        "UPDATE practices SET metadata = $1::jsonb WHERE id = $2",
-                        json.dumps(new_meta),
+                        "UPDATE practices SET metadata = $1 WHERE id = $2",
+                        new_meta,
                         practice_id,
                     )
                     updated_practice["metadata"] = new_meta

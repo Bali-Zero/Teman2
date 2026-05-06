@@ -19,10 +19,8 @@ import pytest
 
 from backend.services.invoicing.invoice_service import (
     ACCOUNTING_EMAIL,
-    INVOICE_CC_EMAILS,
     InvoiceAutomationService,
 )
-
 
 # ============================================================
 # FIXTURES
@@ -308,10 +306,13 @@ class TestUpdatePracticeWithInvoice:
             invoice_info={"invoice_number": "INV-001", "source": "local_pdf"},
             triggered_by="admin@balizero.com",
         )
-        # Verify the documents update includes the old data
+        # Verify the documents update includes the old data.
+        # Service now passes dicts directly (asyncpg jsonb codec serialises);
+        # tolerate both shapes so the test stays valid for codec-on and
+        # codec-off call paths.
         update_call = conn.execute.call_args_list[0]
         docs_json = update_call[0][1]
-        parsed = json.loads(docs_json)
+        parsed = docs_json if isinstance(docs_json, dict) else json.loads(docs_json)
         assert "passport" in parsed
         assert "invoice" in parsed
 
@@ -329,7 +330,7 @@ class TestUpdatePracticeWithInvoice:
         )
         update_call = conn.execute.call_args_list[0]
         docs_json = update_call[0][1]
-        parsed = json.loads(docs_json)
+        parsed = docs_json if isinstance(docs_json, dict) else json.loads(docs_json)
         assert "passport" in parsed
 
     @pytest.mark.asyncio
