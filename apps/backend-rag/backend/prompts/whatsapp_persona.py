@@ -19,34 +19,40 @@ logger = logging.getLogger(__name__)
 
 
 # Localized labels for each pricing category in the JSON dataset.
-# Keys must match category keys in bali_zero_official_prices_2025.json.
+# Keys must match category keys in bali_zero_official_prices_2026.json.
 _CATEGORY_LABELS_BY_LANG: dict[str, dict[str, str]] = {
     "en": {
         "single_entry_visas": "SINGLE ENTRY VISAS",
         "multiple_entry_visas": "MULTIPLE ENTRY VISAS",
         "kitas_permits": "KITAS (residence permits)",
         "kitap_permits": "KITAP (permanent permits)",
+        "tax_accounting": "TAX & ACCOUNTING",
         "company_services": "COMPANY SERVICES",
+        "consultant_services": "CONSULTANT SERVICES",
         "other_process": "OTHER PROCESSES",
-        "urgent_services": "URGENT SERVICES (additional cost)",
+        "urgent_processing": "URGENT PROCESSING (additional cost)",
     },
     "it": {
         "single_entry_visas": "VISTI SINGLE ENTRY",
         "multiple_entry_visas": "VISTI MULTIPLE ENTRY",
         "kitas_permits": "KITAS (permessi di soggiorno)",
         "kitap_permits": "KITAP (permessi permanenti)",
+        "tax_accounting": "TASSE & CONTABILITÀ",
         "company_services": "SERVIZI AZIENDALI",
+        "consultant_services": "SERVIZI DI CONSULENZA",
         "other_process": "ALTRI PROCESSI",
-        "urgent_services": "URGENZE (costo aggiuntivo)",
+        "urgent_processing": "URGENZE (costo aggiuntivo)",
     },
     "id": {
         "single_entry_visas": "VISA SINGLE ENTRY",
         "multiple_entry_visas": "VISA MULTIPLE ENTRY",
         "kitas_permits": "KITAS (izin tinggal terbatas)",
         "kitap_permits": "KITAP (izin tinggal tetap)",
+        "tax_accounting": "PAJAK & AKUNTANSI",
         "company_services": "LAYANAN PERUSAHAAN",
+        "consultant_services": "LAYANAN KONSULTAN",
         "other_process": "PROSES LAINNYA",
-        "urgent_services": "LAYANAN URGENT (biaya tambahan)",
+        "urgent_processing": "LAYANAN URGENT (biaya tambahan)",
     },
 }
 
@@ -65,14 +71,46 @@ _APPROX_BY_LANG: dict[str, str] = {
 }
 
 
+def _format_2026_entry(name: str, entry: dict, _approx: str) -> str | None:
+    """Render a 2026 service entry as plain text.
+
+    Returns ``None`` for malformed entries. Handles single ``price`` and
+    ``tier_range`` (low–high) shapes equally.
+    """
+    if not isinstance(entry, dict):
+        return None
+    display_name = entry.get("name") or name
+    price = (entry.get("price") or "").strip()
+    tier_range = entry.get("tier_range")
+    if not price and isinstance(tier_range, (list, tuple)) and len(tier_range) == 2:
+        low = (tier_range[0] or "").strip().replace("IDR", "").strip()
+        high = (tier_range[1] or "").strip().replace("IDR", "").strip()
+        if low and high:
+            price = f"Rp {low} – {high}"
+    if not price:
+        return None
+    notes = entry.get("notes", "")
+    note_str = f" ({notes})" if notes else ""
+    duration = entry.get("duration", "")
+    duration_str = f" — {duration}" if duration else ""
+    return f"{display_name}: {price}{duration_str}{note_str}"
+
+
 def _load_full_pricing(lang: str = "en") -> str:
-    """Load ALL prices from JSON and format as plain text (no markdown, no bullets).
+    """Load ALL prices from the 2026 JSON and format as plain text.
 
     Args:
         lang: Language code for category labels and intro/approx wording.
-              Falls back to "en" if the requested lang is not registered.
+              Falls back to ``"en"`` if the requested lang is not registered.
+
+    The 2026 file uses ``{name: {price, tier_range, ...}}`` per category
+    instead of the legacy ``[{code, price_idr, ...}]`` list, so we no
+    longer surface ``code = name`` keys; the entry's own ``name`` field
+    is the human label.
     """
-    pricing_file = Path(__file__).parent.parent / "data" / "bali_zero_official_prices_2025.json"
+    pricing_file = (
+        Path(__file__).parent.parent / "data" / "bali_zero_official_prices_2026.json"
+    )
     try:
         if not pricing_file.exists():
             return ""
@@ -91,20 +129,39 @@ def _load_full_pricing(lang: str = "en") -> str:
         sections = [intro]
 
         for cat_key, cat_label in category_labels.items():
-            items = services.get(cat_key, [])
+            items = services.get(cat_key, {})
             if not items:
                 continue
             lines = [f"\n{cat_label}"]
-            for item in items:
-                code = item.get("code", "?")
-                name = item.get("name", "")
-                price_idr = item.get("price_idr", 0)
-                price_usd = item.get("price_usd_approx", 0)
-                notes = item.get("notes", "")
-                note_str = f" ({notes})" if notes else ""
-                lines.append(
-                    f"{code} = {name}: {price_idr:,} IDR ({approx} ${price_usd} USD){note_str}",
-                )
+            # ``tax_accounting`` has one extra nesting level (sub-blocks).
+            if cat_key == "tax_accounting" and isinstance(items, dict):
+                for sub_block_name, sub_block in items.items():
+                    if not isinstance(sub_block, dict) or not sub_block:
+                        continue
+                    lines.append(f"  {sub_block_name}")
+                    for entry_name, entry in sub_block.items():
+                        formatted = _format_2026_entry(entry_name, entry, approx)
+                        if formatted:
+                            lines.append(f"    {formatted}")
+            elif isinstance(items, dict):
+                for entry_name, entry in items.items():
+                    formatted = _format_2026_entry(entry_name, entry, approx)
+                    if formatted:
+                        lines.append(formatted)
+            elif isinstance(items, list):
+                # Legacy shape — preserved for safety.
+                for item in items:
+                    if not isinstance(item, dict):
+                        continue
+                    code = item.get("code", "?")
+                    name = item.get("name", "")
+                    price_idr = item.get("price_idr", 0)
+                    price_usd = item.get("price_usd_approx", 0)
+                    notes = item.get("notes", "")
+                    note_str = f" ({notes})" if notes else ""
+                    lines.append(
+                        f"{code} = {name}: {price_idr:,} IDR ({approx} ${price_usd} USD){note_str}",
+                    )
             sections.append("\n".join(lines))
 
         return "\n".join(sections)
@@ -253,10 +310,10 @@ def build_system_prompt(
     expert_rule = expert_rules.get(lang, expert_rules["en"])
 
     pricing_headers: dict[str, str] = {
-        "en": "OFFICIAL BALI ZERO 2025 PRICE LIST (use ONLY these prices, never invent):",
-        "it": "LISTINO PREZZI UFFICIALE BALI ZERO 2025 (usa SOLO questi prezzi, mai inventare):",
-        "id": "DAFTAR HARGA RESMI BALI ZERO 2025 (gunakan HANYA harga ini, jangan dibuat-buat):",
-        "de": "OFFIZIELLE BALI ZERO 2025 PREISLISTE (verwenden Sie NUR diese Preise, niemals erfinden):",
+        "en": "OFFICIAL BALI ZERO 2026 PRICE LIST (use ONLY these prices, never invent):",
+        "it": "LISTINO PREZZI UFFICIALE BALI ZERO 2026 (usa SOLO questi prezzi, mai inventare):",
+        "id": "DAFTAR HARGA RESMI BALI ZERO 2026 (gunakan HANYA harga ini, jangan dibuat-buat):",
+        "de": "OFFIZIELLE BALI ZERO 2026 PREISLISTE (verwenden Sie NUR diese Preise, niemals erfinden):",
     }
     pricing_header = pricing_headers.get(lang, pricing_headers["en"])
 

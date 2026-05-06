@@ -10,5 +10,9 @@
 # Public spatial data — safe to commit
 !master_building_codes_complete.json
 
+# Public Bali Zero price lists — safe to commit
+!bali_zero_official_prices_2025.json
+!bali_zero_official_prices_2026.json
+
 # Keep this directory in git
 !.gitignore

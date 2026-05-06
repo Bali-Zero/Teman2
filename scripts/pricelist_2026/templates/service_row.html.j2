@@ -1,0 +1,22 @@
+<div class="service">
+  <img class="icon" src="{{ svc.icon_data_uri }}" alt="">
+  <div>
+    <div class="name">{{ svc.name }}</div>
+    <div class="desc">{{ svc.description_en }}</div>
+    {% if svc.validity or svc.duration %}
+    <div class="meta">
+      {% if svc.validity %}Validity: {{ svc.validity }}{% endif %}
+      {% if svc.validity and svc.duration %} · {% endif %}
+      {% if svc.duration %}Duration: {{ svc.duration }}{% endif %}
+    </div>
+    {% endif %}
+    {% if svc.notes %}<div class="notes">{{ svc.notes }}</div>{% endif %}
+  </div>
+  <div class="price">
+    {% if svc.tier_range %}
+      <span class="tier">{{ svc.tier_range[0] }}<br>– {{ svc.tier_range[1] }}</span>
+    {% else %}
+      {{ svc.price }}
+    {% endif %}
+  </div>
+</div>

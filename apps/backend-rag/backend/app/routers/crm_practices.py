@@ -834,6 +834,15 @@ CATEGORY_LABELS = {
     "kitap": "KITAP Permits",
     "company": "Company Services",
     "tax": "Tax Services",
+    # 2026 owner decision Q1=B (2026-05-06, see migration 157): split
+    # Tax & Accounting into 4 sub-categories so the dropdown groups
+    # monthly basic / monthly bundled / yearly packages / standalone
+    # fees as separate options rather than collapsing 17 entries under
+    # a single "Tax" header.
+    "tax_monthly": "Tax — Monthly Report (basic)",
+    "tax_monthly_bundled": "Tax — Monthly Report (incl. LKPM & Annual)",
+    "tax_annual": "Tax — Annual Packages",
+    "tax_standalone": "Tax — Standalone & Compliance",
     "other": "Other Process",
     "urgent": "Urgent Services",
 }

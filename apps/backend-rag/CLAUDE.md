@@ -153,9 +153,31 @@ KG `HAS_FEE` relations (~1,500) contain government PNBP fees and legal regulatio
 
 **Bali Zero prices are ONLY in:**
 
-- File: `backend/data/bali_zero_official_prices_2025.json`
+- File: `backend/data/bali_zero_official_prices_2026.json` (since 2026-05-06)
 - Tool: `PricingTool` (Tool #2)
 - Loaded by: `PricingService._load_prices()`
+
+The 2026 schema has 9 categories vs the legacy 2025 schema's 8:
+`single_entry_visas` (now includes ``C1 Tourism Extension``),
+`multiple_entry_visas`, `kitas_permits`, `kitap_permits`,
+`tax_accounting` (NEW — has one extra nesting level for the 4 tier
+sub-blocks ``monthly_tax_basic`` / ``monthly_tax_bundled`` /
+``annual_basic_packages`` / ``annual_standalone``), `company_services`,
+`consultant_services` (NEW — Close PMA, NPWPD, BPJS, NPWP Personal,
+Update Data, EFIN), `other_process`, `urgent_processing` (was
+``urgent_services`` in 2025). The legacy `visa_extensions` category was
+dropped.
+
+Each entry now exposes `name` / `description_en` / `icon_id` /
+`tier_range` (a `[low, high]` pair when there is no single `price`)
+on top of the existing `price` / `duration` / `validity` / `notes`
+fields. The legacy `text` markdown field is gone.
+
+Contact metadata moved to ``metadata.contact``: ``zero@balizero.com`` /
+``+62 821 31 07 363`` / ``Kerobokan`` / ``balizero.com``.
+
+The 2025 file is kept on disk for rollback; deletion is a follow-up PR
+once 2026 has run unblocked in prod for a few weeks.
 
 **Rules enforced in `prompt_builder.py:47-66`:**
 

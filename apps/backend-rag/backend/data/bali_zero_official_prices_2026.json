@@ -1,0 +1,1035 @@
+{
+  "version": "2026.1",
+  "effective_date": "2026-01-01",
+  "metadata": {
+    "currency": "IDR",
+    "contact": {
+      "email": "zero@balizero.com",
+      "whatsapp": "+62 821 31 07 363",
+      "wa_link": "https://wa.me/628213107363",
+      "location": "Kerobokan, Bali, Indonesia",
+      "website": "balizero.com"
+    },
+    "last_updated": "2026-05-06"
+  },
+  "services": {
+    "single_entry_visas": {
+      "C1 Tourism": {
+        "name": "C1 Tourism",
+        "price": "2.300.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Tourist visa, single entry, valid 60 days. Cannot be used for work or business activities.",
+        "icon_id": "visa-tourism"
+      },
+      "C1 Tourism Extension": {
+        "name": "C1 Tourism — Extension (+60 days)",
+        "price": "1.700.000 IDR",
+        "tier_range": null,
+        "duration": "60 days",
+        "validity": "",
+        "notes": "",
+        "description_en": "Onshore extension of the C1 Tourism visa for an additional 60 days, processed at Indonesian immigration.",
+        "icon_id": "visa-extension"
+      },
+      "C2 Business": {
+        "name": "C2 Business",
+        "price": "3.600.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Business visa, single entry, valid 60 days. Suited to business meetings, negotiations and non-employment activities.",
+        "icon_id": "visa-business"
+      },
+      "C7A,B,C Music/Art": {
+        "name": "C7A,B,C — Music/Art",
+        "price": "4.500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Single-entry visa for performing artists, musicians and cultural workers visiting Indonesia for short-term events. Categories C7A, C7B, C7C.",
+        "icon_id": "visa-art"
+      },
+      "C8A,B": {
+        "name": "C8A,B",
+        "price": "4.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Single-entry visa for journalism and media activities (categories C8A, C8B), valid for short-term assignments in Indonesia.",
+        "icon_id": "visa-business"
+      },
+      "C10 Speaker Visa": {
+        "name": "C10 Speaker Visa",
+        "price": "3.500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Single-entry speaker visa for foreign nationals delivering talks, lectures or training sessions at events in Indonesia.",
+        "icon_id": "visa-art"
+      },
+      "C18 Work Trial": {
+        "name": "C18 Work Trial",
+        "price": "5.500.000 IDR",
+        "tier_range": null,
+        "duration": "90 days",
+        "validity": "",
+        "notes": "",
+        "description_en": "Single-entry visa for a 90-day work trial or skill assessment with an Indonesian employer prior to a full work permit.",
+        "icon_id": "visa-worktrial"
+      },
+      "C22A&B Internship (60 Days)": {
+        "name": "C22A&B Internship (60 Days)",
+        "price": "4.800.000 IDR",
+        "tier_range": null,
+        "duration": "60 days",
+        "validity": "",
+        "notes": "",
+        "description_en": "Single-entry internship visa for foreign trainees, valid 60 days, sponsored by an Indonesian host organisation.",
+        "icon_id": "visa-internship"
+      },
+      "C22A&B Internship (180 Days)": {
+        "name": "C22A&B Internship (180 Days)",
+        "price": "5.800.000 IDR",
+        "tier_range": null,
+        "duration": "180 days",
+        "validity": "",
+        "notes": "",
+        "description_en": "Single-entry internship visa for foreign trainees, valid 180 days, sponsored by an Indonesian host organisation.",
+        "icon_id": "visa-internship"
+      },
+      "Bridging Visa": {
+        "name": "Bridging Visa",
+        "price": "3.500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Bridging visa to maintain legal stay during transition between immigration permits.",
+        "icon_id": "visa-extension"
+      }
+    },
+    "multiple_entry_visas": {
+      "D1 Tourism (1 Year)": {
+        "name": "D1 Tourism (1 Year)",
+        "price": "6.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "1 Year",
+        "notes": "",
+        "description_en": "Multiple-entry tourist visa valid 1 year, allowing repeated visits with a maximum stay per entry as set by immigration.",
+        "icon_id": "visa-multiple"
+      },
+      "D1 Tourism (2 Years)": {
+        "name": "D1 Tourism (2 Years)",
+        "price": "8.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "2 Years",
+        "notes": "",
+        "description_en": "Multiple-entry tourist visa valid 2 years, allowing repeated visits with a maximum stay per entry as set by immigration.",
+        "icon_id": "visa-multiple"
+      },
+      "D1 Tourism (5 Years)": {
+        "name": "D1 Tourism (5 Years)",
+        "price": "12.900.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "5 Years",
+        "notes": "",
+        "description_en": "Multiple-entry tourist visa valid 5 years, allowing repeated visits with a maximum stay per entry as set by immigration.",
+        "icon_id": "visa-multiple"
+      },
+      "D2 Business (1 Year)": {
+        "name": "D2 Business (1 Year)",
+        "price": "6.500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "1 Year",
+        "notes": "",
+        "description_en": "Multiple-entry business visa valid 1 year for business meetings and non-employment activities.",
+        "icon_id": "visa-business"
+      },
+      "D2 Business (2 Years)": {
+        "name": "D2 Business (2 Years)",
+        "price": "9.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "2 Years",
+        "notes": "",
+        "description_en": "Multiple-entry business visa valid 2 years for business meetings and non-employment activities.",
+        "icon_id": "visa-business"
+      },
+      "D12 Business Investigation (1 Year)": {
+        "name": "D12 Business Investigation (1 Year)",
+        "price": "7.500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "1 Year",
+        "notes": "",
+        "description_en": "Multiple-entry business investigation visa valid 1 year, for investors and business representatives exploring opportunities in Indonesia.",
+        "icon_id": "visa-investigation"
+      },
+      "D12 Business Investigation (2 Years)": {
+        "name": "D12 Business Investigation (2 Years)",
+        "price": "10.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "2 Years",
+        "notes": "",
+        "description_en": "Multiple-entry business investigation visa valid 2 years, for investors and business representatives exploring opportunities in Indonesia.",
+        "icon_id": "visa-investigation"
+      }
+    },
+    "kitas_permits": {
+      "Working KITAS (Altus/Onshore)": {
+        "name": "Working KITAS (Altus/Onshore)",
+        "price": "36.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "1 year",
+        "notes": "",
+        "description_en": "Standard work permit KITAS sponsored by an Indonesian employer. Onshore process via Altus, suited to candidates already in Indonesia.",
+        "icon_id": "kitas-working"
+      },
+      "Working KITAS (Offshore)": {
+        "name": "Working KITAS (Offshore)",
+        "price": "34.500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "1 year",
+        "notes": "",
+        "description_en": "Standard work permit KITAS sponsored by an Indonesian employer. Offshore process for candidates outside Indonesia at time of application.",
+        "icon_id": "kitas-working"
+      },
+      "Working KITAS (Extend)": {
+        "name": "Working KITAS (Extend)",
+        "price": "31.500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Onshore extension of an existing Working KITAS sponsored by an Indonesian employer.",
+        "icon_id": "kitas-working"
+      },
+      "Investor KITAS 2 Years (Altus/Onshore)": {
+        "name": "Investor KITAS 2 Years (Altus/Onshore)",
+        "price": "19.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Investor KITAS valid 2 years for shareholders of a PT PMA. Onshore process via Altus.",
+        "icon_id": "kitas-investor"
+      },
+      "Investor KITAS 2 Years (Offshore)": {
+        "name": "Investor KITAS 2 Years (Offshore)",
+        "price": "17.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Investor KITAS valid 2 years for shareholders of a PT PMA. Offshore process for applicants outside Indonesia.",
+        "icon_id": "kitas-investor"
+      },
+      "Investor KITAS 2 Years (Extend)": {
+        "name": "Investor KITAS 2 Years (Extend)",
+        "price": "18.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Onshore extension of an existing 2-year Investor KITAS for shareholders of a PT PMA.",
+        "icon_id": "kitas-investor"
+      },
+      "Freelance E23 (Altus/Onshore)": {
+        "name": "Freelance E23 (Altus/Onshore)",
+        "price": "27.500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "6 months",
+        "notes": "",
+        "description_en": "Freelance E23 KITAS valid 6 months, sponsored work permit for independent professionals. Onshore process via Altus.",
+        "icon_id": "kitas-freelance"
+      },
+      "Freelance E23 (Offshore)": {
+        "name": "Freelance E23 (Offshore)",
+        "price": "25.800.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "6 months",
+        "notes": "",
+        "description_en": "Freelance E23 KITAS valid 6 months, sponsored work permit for independent professionals. Offshore process for applicants outside Indonesia.",
+        "icon_id": "kitas-freelance"
+      },
+      "E33G Remote Worker (Altus/Onshore)": {
+        "name": "E33G Remote Worker (Altus/Onshore)",
+        "price": "14.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Digital nomad KITAS for remote workers employed by foreign companies. Onshore process via Altus, valid 1 year.",
+        "icon_id": "kitas-remote"
+      },
+      "E33G Remote Worker (Offshore)": {
+        "name": "E33G Remote Worker (Offshore)",
+        "price": "13.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Digital nomad KITAS for remote workers employed by foreign companies. Processed from outside Indonesia, valid 1 year.",
+        "icon_id": "kitas-remote"
+      },
+      "E33G Remote Worker (Extend)": {
+        "name": "E33G Remote Worker (Extend)",
+        "price": "10.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Onshore extension of an existing E33G Remote Worker KITAS.",
+        "icon_id": "kitas-remote"
+      },
+      "Spouse 1 Year (Altus/Onshore)": {
+        "name": "Spouse 1 Year (Altus/Onshore)",
+        "price": "13.500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Spouse KITAS valid 1 year for foreign spouses of Indonesian citizens or KITAS/KITAP holders. Onshore process via Altus.",
+        "icon_id": "kitas-spouse"
+      },
+      "Spouse 1 Year (Offshore)": {
+        "name": "Spouse 1 Year (Offshore)",
+        "price": "11.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Spouse KITAS valid 1 year for foreign spouses of Indonesian citizens or KITAS/KITAP holders. Offshore process for applicants outside Indonesia.",
+        "icon_id": "kitas-spouse"
+      },
+      "Spouse 1 Year (Extend)": {
+        "name": "Spouse 1 Year (Extend)",
+        "price": "9.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Onshore extension of an existing 1-year Spouse KITAS.",
+        "icon_id": "kitas-spouse"
+      },
+      "Spouse 2 Years (Altus/Onshore)": {
+        "name": "Spouse 2 Years (Altus/Onshore)",
+        "price": "18.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Spouse KITAS valid 2 years for foreign spouses of Indonesian citizens or KITAS/KITAP holders. Onshore process via Altus.",
+        "icon_id": "kitas-spouse"
+      },
+      "Spouse 2 Years (Offshore)": {
+        "name": "Spouse 2 Years (Offshore)",
+        "price": "15.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Spouse KITAS valid 2 years for foreign spouses of Indonesian citizens or KITAS/KITAP holders. Offshore process for applicants outside Indonesia.",
+        "icon_id": "kitas-spouse"
+      },
+      "Spouse 2 Years (Extend)": {
+        "name": "Spouse 2 Years (Extend)",
+        "price": "15.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Onshore extension of an existing 2-year Spouse KITAS.",
+        "icon_id": "kitas-spouse"
+      },
+      "Dependent 1 Year (Altus/Onshore)": {
+        "name": "Dependent 1 Year (Altus/Onshore)",
+        "price": "13.500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Dependent KITAS valid 1 year for children or dependent family members of a primary KITAS/KITAP holder. Onshore process via Altus.",
+        "icon_id": "kitas-spouse"
+      },
+      "Dependent 1 Year (Offshore)": {
+        "name": "Dependent 1 Year (Offshore)",
+        "price": "11.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Dependent KITAS valid 1 year for children or dependent family members of a primary KITAS/KITAP holder. Offshore process for applicants outside Indonesia.",
+        "icon_id": "kitas-spouse"
+      },
+      "Dependent 1 Year (Extend)": {
+        "name": "Dependent 1 Year (Extend)",
+        "price": "9.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Onshore extension of an existing 1-year Dependent KITAS.",
+        "icon_id": "kitas-spouse"
+      },
+      "Dependent 2 Years (Altus/Onshore)": {
+        "name": "Dependent 2 Years (Altus/Onshore)",
+        "price": "18.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Dependent KITAS valid 2 years for children or dependent family members of a primary KITAS/KITAP holder. Onshore process via Altus.",
+        "icon_id": "kitas-spouse"
+      },
+      "Dependent 2 Years (Offshore)": {
+        "name": "Dependent 2 Years (Offshore)",
+        "price": "15.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Dependent KITAS valid 2 years for children or dependent family members of a primary KITAS/KITAP holder. Offshore process for applicants outside Indonesia.",
+        "icon_id": "kitas-spouse"
+      },
+      "Dependent 2 Years (Extend)": {
+        "name": "Dependent 2 Years (Extend)",
+        "price": "15.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Onshore extension of an existing 2-year Dependent KITAS.",
+        "icon_id": "kitas-spouse"
+      },
+      "Born KITAS": {
+        "name": "Born KITAS",
+        "price": "9.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "KITAS issuance for foreign children born in Indonesia, processed alongside the birth registration.",
+        "icon_id": "kitas-spouse"
+      },
+      "Retirement (Altus/Onshore)": {
+        "name": "Retirement (Altus/Onshore)",
+        "price": "16.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Retirement KITAS for foreign nationals 60+ meeting income requirements. Onshore process via Altus.",
+        "icon_id": "kitap-permanent"
+      },
+      "Retirement (Offshore)": {
+        "name": "Retirement (Offshore)",
+        "price": "14.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Retirement KITAS for foreign nationals 60+ meeting income requirements. Offshore process for applicants outside Indonesia.",
+        "icon_id": "kitap-permanent"
+      },
+      "Retirement (Extend)": {
+        "name": "Retirement (Extend)",
+        "price": "10.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Onshore extension of an existing Retirement KITAS.",
+        "icon_id": "kitap-permanent"
+      }
+    },
+    "kitap_permits": {
+      "Investor KITAP + MERP": {
+        "name": "Investor KITAP + MERP",
+        "price": "55.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Permanent residence permit (KITAP) for investors holding shares in a PT PMA, bundled with Multiple Exit Re-entry Permit (MERP).",
+        "icon_id": "kitap-permanent"
+      },
+      "Dependent KITAP + MERP": {
+        "name": "Dependent KITAP + MERP",
+        "price": "33.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Permanent residence permit (KITAP) for dependent family members of a primary KITAP holder, bundled with Multiple Exit Re-entry Permit (MERP).",
+        "icon_id": "kitap-permanent"
+      },
+      "Retirement KITAP + MERP": {
+        "name": "Retirement KITAP + MERP",
+        "price": "45.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Permanent residence permit (KITAP) for retirees who have already held a Retirement KITAS, bundled with Multiple Exit Re-entry Permit (MERP).",
+        "icon_id": "kitap-permanent"
+      }
+    },
+    "tax_accounting": {
+      "monthly_tax_basic": {
+        "Tier 0-50": {
+          "name": "Monthly Tax Report — 0 to 50 transactions (without LKPM & Annual)",
+          "price": "",
+          "tier_range": [
+            "1.800.000 IDR",
+            "2.000.000 IDR"
+          ],
+          "duration": "",
+          "validity": "monthly",
+          "notes": "Bank + Cash transactions combined. LKPM and Annual Tax NOT included.",
+          "description_en": "Monthly bookkeeping and tax filing for companies with low transaction volume. See section V.4 for LKPM and Annual Tax stand-alone fees.",
+          "icon_id": "tax-monthly"
+        },
+        "Tier 50-100": {
+          "name": "Monthly Tax Report — 50 to 100 transactions (without LKPM & Annual)",
+          "price": "",
+          "tier_range": [
+            "2.500.000 IDR",
+            "3.000.000 IDR"
+          ],
+          "duration": "",
+          "validity": "monthly",
+          "notes": "Bank + Cash transactions combined. LKPM and Annual Tax NOT included.",
+          "description_en": "Monthly bookkeeping and tax filing for companies with moderate transaction volume. See section V.4 for LKPM and Annual Tax stand-alone fees.",
+          "icon_id": "tax-monthly"
+        },
+        "Tier 100-200": {
+          "name": "Monthly Tax Report — 100 to 200 transactions (without LKPM & Annual)",
+          "price": "",
+          "tier_range": [
+            "3.500.000 IDR",
+            "4.500.000 IDR"
+          ],
+          "duration": "",
+          "validity": "monthly",
+          "notes": "Bank + Cash transactions combined. LKPM and Annual Tax NOT included.",
+          "description_en": "Monthly bookkeeping and tax filing for companies with higher transaction volume. See section V.4 for LKPM and Annual Tax stand-alone fees.",
+          "icon_id": "tax-monthly"
+        },
+        "Tier 200+": {
+          "name": "Monthly Tax Report — more than 200 transactions (without LKPM & Annual)",
+          "price": "5.000.000 IDR",
+          "tier_range": null,
+          "duration": "",
+          "validity": "monthly",
+          "notes": "Bank + Cash transactions combined. LKPM and Annual Tax NOT included.",
+          "description_en": "Monthly bookkeeping and tax filing for companies with high transaction volume. See section V.4 for LKPM and Annual Tax stand-alone fees.",
+          "icon_id": "tax-monthly"
+        }
+      },
+      "monthly_tax_bundled": {
+        "Tier 0-50": {
+          "name": "Monthly Tax Report — 0 to 50 transactions (including LKPM & Annual)",
+          "price": "2.500.000 IDR",
+          "tier_range": null,
+          "duration": "",
+          "validity": "monthly",
+          "notes": "Includes LKPM monthly contribution and Annual Tax report.",
+          "description_en": "Bundled monthly bookkeeping, LKPM filing and Annual Tax report for companies with low transaction volume.",
+          "icon_id": "tax-monthly"
+        },
+        "Tier 50-100": {
+          "name": "Monthly Tax Report — 50 to 100 transactions (including LKPM & Annual)",
+          "price": "3.500.000 IDR",
+          "tier_range": null,
+          "duration": "",
+          "validity": "monthly",
+          "notes": "Includes LKPM monthly contribution and Annual Tax report.",
+          "description_en": "Bundled monthly bookkeeping, LKPM filing and Annual Tax report for companies with moderate transaction volume.",
+          "icon_id": "tax-monthly"
+        },
+        "Tier 100-200": {
+          "name": "Monthly Tax Report — 100 to 200 transactions (including LKPM & Annual)",
+          "price": "4.500.000 IDR",
+          "tier_range": null,
+          "duration": "",
+          "validity": "monthly",
+          "notes": "Includes LKPM monthly contribution and Annual Tax report.",
+          "description_en": "Bundled monthly bookkeeping, LKPM filing and Annual Tax report for companies with higher transaction volume.",
+          "icon_id": "tax-monthly"
+        },
+        "Tier 200+": {
+          "name": "Monthly Tax Report — more than 200 transactions (including LKPM & Annual)",
+          "price": "6.500.000 IDR",
+          "tier_range": null,
+          "duration": "",
+          "validity": "monthly",
+          "notes": "Includes LKPM monthly contribution and Annual Tax report. Companies with more than 200 transactions per year must use monthly bookkeeping.",
+          "description_en": "Bundled monthly bookkeeping, LKPM filing and Annual Tax report for companies with high transaction volume.",
+          "icon_id": "tax-monthly"
+        }
+      },
+      "annual_basic_packages": {
+        "Package A": {
+          "name": "Annual Basic Package A",
+          "price": "6.000.000 IDR",
+          "tier_range": null,
+          "duration": "",
+          "validity": "yearly",
+          "notes": "Does not include Annual Personal Tax report. No discount applies.",
+          "description_en": "Up to 100 transactions per year. Includes Income Tax calculation only and yearly Financial Report for Annual Tax submission.",
+          "icon_id": "tax-annual"
+        },
+        "Package B": {
+          "name": "Annual Basic Package B",
+          "price": "9.000.000 IDR",
+          "tier_range": null,
+          "duration": "",
+          "validity": "yearly",
+          "notes": "Does not include Annual Personal Tax report. No discount applies.",
+          "description_en": "100-200 transactions per year. Income Tax only + yearly Financial Report.",
+          "icon_id": "tax-annual"
+        },
+        "Package C": {
+          "name": "Annual Basic Package C",
+          "price": "12.000.000 IDR",
+          "tier_range": null,
+          "duration": "",
+          "validity": "yearly",
+          "notes": "Does not include Annual Personal Tax report. No discount applies.",
+          "description_en": "Up to 100 transactions per year. Income Tax + PPH 21 OR PPH Sewa (choose one) + yearly Financial Report.",
+          "icon_id": "tax-annual"
+        },
+        "Package D": {
+          "name": "Annual Basic Package D",
+          "price": "15.000.000 IDR",
+          "tier_range": null,
+          "duration": "",
+          "validity": "yearly",
+          "notes": "Does not include Annual Personal Tax report. No discount applies.",
+          "description_en": "100-200 transactions per year. Income Tax + PPH 21 OR PPH Sewa (choose one) + yearly Financial Report.",
+          "icon_id": "tax-annual"
+        },
+        "Annual Company ZERO": {
+          "name": "Annual Company ZERO",
+          "price": "3.000.000 IDR",
+          "tier_range": null,
+          "duration": "",
+          "validity": "yearly",
+          "notes": "No transactions in or out.",
+          "description_en": "Yearly Financial Report only — for dormant companies with no transactions.",
+          "icon_id": "tax-annual"
+        }
+      },
+      "annual_standalone": {
+        "LKPM Yearly Report": {
+          "name": "LKPM Yearly Report",
+          "price": "4.000.000 IDR",
+          "tier_range": null,
+          "duration": "",
+          "validity": "yearly",
+          "notes": "",
+          "description_en": "Stand-alone yearly LKPM (investment realisation) report submitted to BKPM, required for all PT PMA companies.",
+          "icon_id": "tax-lkpm"
+        },
+        "Annual Tax Company": {
+          "name": "Annual Tax Company",
+          "price": "4.000.000 IDR",
+          "tier_range": null,
+          "duration": "",
+          "validity": "yearly",
+          "notes": "",
+          "description_en": "Stand-alone Annual Corporate Tax report (SPT Tahunan PPh Badan) for Indonesian companies.",
+          "icon_id": "tax-annual"
+        },
+        "Annual Tax Personal": {
+          "name": "Annual Tax Personal",
+          "price": "1.000.000 IDR",
+          "tier_range": null,
+          "duration": "",
+          "validity": "yearly",
+          "notes": "Per person.",
+          "description_en": "Stand-alone Annual Personal Tax report (SPT Tahunan PPh Orang Pribadi) for individual taxpayers.",
+          "icon_id": "tax-personal"
+        },
+        "Annual Tax Personal (additional)": {
+          "name": "Annual Tax Personal (additional)",
+          "price": "1.500.000 IDR",
+          "tier_range": null,
+          "duration": "",
+          "validity": "yearly",
+          "notes": "Each additional person beyond the first.",
+          "description_en": "Stand-alone Annual Personal Tax report for additional persons beyond the first taxpayer in the same engagement.",
+          "icon_id": "tax-personal"
+        }
+      }
+    },
+    "company_services": {
+      "New Company (PT PMA)": {
+        "name": "New Company (PT PMA)",
+        "price": "20.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Full incorporation of a new Indonesian foreign-owned limited company (PT PMA), including notarial deed, BKPM/OSS registration and tax ID issuance.",
+        "icon_id": "company-pma"
+      },
+      "Virtual Office": {
+        "name": "Virtual Office",
+        "price": "5.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "Only for clients without their own commercial premises.",
+        "description_en": "Virtual office address for company registration and correspondence, suited to clients without dedicated commercial premises.",
+        "icon_id": "company-virtual"
+      },
+      "Akta Perubahan (Revision Company)": {
+        "name": "Akta Perubahan (Revision Company)",
+        "price": "Depend (Contact for quote)",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "Required when changing company address, directors, or business activities.",
+        "description_en": "Notarial amendment deed (Akta Perubahan) for an existing Indonesian company. Pricing depends on scope of changes.",
+        "icon_id": "company-akta"
+      }
+    },
+    "consultant_services": {
+      "Close PMA Company": {
+        "name": "Close PMA Company",
+        "price": "",
+        "tier_range": [
+          "6.000.000 IDR",
+          "7.500.000 IDR"
+        ],
+        "duration": "Process up to 1 year",
+        "validity": "",
+        "notes": "",
+        "description_en": "Full closure and deregistration of an Indonesian foreign-owned limited company (PT PMA), including notarial deed, BKPM and tax authority deregistration.",
+        "icon_id": "company-close"
+      },
+      "NPWPD Registration": {
+        "name": "NPWPD Registration",
+        "price": "2.500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "Per location.",
+        "description_en": "Local tax registration (Nomor Pokok Wajib Pajak Daerah) at the regency or city tax office, required per business location in Indonesia.",
+        "icon_id": "consultant-npwpd"
+      },
+      "BPJS Employee (Tenaga Kerja)": {
+        "name": "BPJS Employee (Tenaga Kerja)",
+        "price": "2.500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Registration with BPJS Ketenagakerjaan, the mandatory Indonesian social security scheme for employees covering accident, old-age and pension benefits.",
+        "icon_id": "consultant-bpjs-kes"
+      },
+      "BPJS Insurance (Kesehatan)": {
+        "name": "BPJS Insurance (Kesehatan)",
+        "price": "2.500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Registration with BPJS Kesehatan, the mandatory Indonesian national health insurance scheme.",
+        "icon_id": "consultant-bpjs-kes"
+      },
+      "NPWP Personal + Coretax Activation": {
+        "name": "NPWP Personal + Coretax Activation",
+        "price": "1.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "Per person.",
+        "description_en": "Personal Indonesian tax ID (NPWP) issuance with activation on the Coretax platform.",
+        "icon_id": "consultant-npwp"
+      },
+      "Update Data / Coretax Activation": {
+        "name": "Update Data / Coretax Activation",
+        "price": "1.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Update of taxpayer data (email, phone number, etc.) or stand-alone Coretax activation for an existing NPWP.",
+        "icon_id": "consultant-update"
+      },
+      "EFIN Application": {
+        "name": "EFIN Application",
+        "price": "1.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Application for Electronic Filing Identification Number (EFIN) required to file taxes electronically with the Indonesian tax authority.",
+        "icon_id": "consultant-update"
+      }
+    },
+    "other_process": {
+      "Reset Molina": {
+        "name": "Reset Molina",
+        "price": "1.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "+ Rp 400.000 for urgent processing",
+        "description_en": "Reset of immigration record on the Molina (immigration) database, often needed after data inconsistencies.",
+        "icon_id": "other-molina"
+      },
+      "Created Molina Express": {
+        "name": "Created Molina Express",
+        "price": "500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Express creation of immigration record on the Molina (immigration) database.",
+        "icon_id": "other-molina"
+      },
+      "Passport 5 Years": {
+        "name": "Passport 5 Years",
+        "price": "1.300.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "5 years",
+        "notes": "",
+        "description_en": "Indonesian standard passport issuance for 5-year validity.",
+        "icon_id": "other-passport"
+      },
+      "Passport 10 Years": {
+        "name": "Passport 10 Years",
+        "price": "2.200.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "10 years",
+        "notes": "",
+        "description_en": "Indonesian standard passport issuance for 10-year validity.",
+        "icon_id": "other-passport"
+      },
+      "Electronic Passport 5 Years": {
+        "name": "Electronic Passport 5 Years",
+        "price": "2.200.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "5 years",
+        "notes": "",
+        "description_en": "Indonesian electronic passport (e-passport) issuance for 5-year validity.",
+        "icon_id": "other-passport"
+      },
+      "Electronic Passport 10 Years": {
+        "name": "Electronic Passport 10 Years",
+        "price": "2.700.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "10 years",
+        "notes": "",
+        "description_en": "Indonesian electronic passport (e-passport) issuance for 10-year validity.",
+        "icon_id": "other-passport"
+      },
+      "SKTT": {
+        "name": "SKTT",
+        "price": "1.500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Temporary residence certificate (Surat Keterangan Tempat Tinggal) issued by the local civil registration office, required for KITAS holders.",
+        "icon_id": "other-sktt"
+      },
+      "SKCK": {
+        "name": "SKCK",
+        "price": "2.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Police clearance certificate (Surat Keterangan Catatan Kepolisian), often required for visa renewals and certain employment processes.",
+        "icon_id": "other-skck"
+      },
+      "Domicilie Letter": {
+        "name": "Domicilie Letter",
+        "price": "1.500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Domicile letter (Surat Keterangan Domisili) issued by the local authority confirming the residential address.",
+        "icon_id": "other-domicile"
+      },
+      "Mutation Passport": {
+        "name": "Mutation Passport",
+        "price": "500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "+ Rp 350.000 for urgent processing",
+        "description_en": "Update of passport details on existing immigration permits after a passport renewal.",
+        "icon_id": "other-mutation"
+      },
+      "Mutation Address": {
+        "name": "Mutation Address",
+        "price": "500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Update of registered address on existing immigration permits.",
+        "icon_id": "other-mutation"
+      },
+      "Mutation Address 2 Kanim": {
+        "name": "Mutation Address 2 Kanim",
+        "price": "1.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Update of registered address requiring inter-Kanim (immigration office) transfer.",
+        "icon_id": "other-mutation"
+      },
+      "Lapor Lahir (Under)": {
+        "name": "Lapor Lahir (Under)",
+        "price": "2.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "Under 60 days (Kanim NGR) / Under 90 days (Kanim DPS).",
+        "description_en": "Birth report registration for foreign nationals born in Indonesia, filed within the standard window.",
+        "icon_id": "other-born"
+      },
+      "Lapor Lahir (Up)": {
+        "name": "Lapor Lahir (Up)",
+        "price": "4.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "Above 60 days (Kanim NGR) / Above 90 days (Kanim DPS).",
+        "description_en": "Birth report registration for foreign nationals born in Indonesia, filed after the standard window.",
+        "icon_id": "other-born"
+      },
+      "Cancel RPTKA": {
+        "name": "Cancel RPTKA",
+        "price": "1.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Cancellation of an existing RPTKA (foreign worker utilisation plan) at the Ministry of Manpower.",
+        "icon_id": "other-cancel"
+      },
+      "Cancel Wajib Lapor": {
+        "name": "Cancel Wajib Lapor",
+        "price": "1.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Cancellation of mandatory employer reporting (Wajib Lapor Ketenagakerjaan) at the Ministry of Manpower.",
+        "icon_id": "other-cancel"
+      },
+      "Process IMTA & RPTKA Only (12 Months)": {
+        "name": "Process IMTA & RPTKA Only (12 Months)",
+        "price": "3.500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "12 months",
+        "notes": "",
+        "description_en": "Stand-alone processing of IMTA and RPTKA work permit documents, valid for 12 months.",
+        "icon_id": "other-cancel"
+      },
+      "Process IMTA & RPTKA Only (6 Months or Less)": {
+        "name": "Process IMTA & RPTKA Only (6 Months or Less)",
+        "price": "6.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "6 months or less",
+        "notes": "",
+        "description_en": "Stand-alone processing of IMTA and RPTKA work permit documents, valid for 6 months or less.",
+        "icon_id": "other-cancel"
+      },
+      "EPO (Exit Permit Only)": {
+        "name": "EPO (Exit Permit Only)",
+        "price": "700.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "+ Rp 300.000 for urgent processing",
+        "description_en": "Exit Permit Only (EPO) for KITAS or KITAP holders permanently leaving Indonesia and surrendering their stay permit.",
+        "icon_id": "other-epo"
+      },
+      "ERP (Exit Re-entry Permit)": {
+        "name": "ERP (Exit Re-entry Permit)",
+        "price": "800.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "+ Rp 500.000 for urgent processing",
+        "description_en": "Single-use Exit Re-entry Permit (ERP) for KITAS holders travelling abroad and returning before permit expiry.",
+        "icon_id": "other-erp"
+      },
+      "Driving License": {
+        "name": "Driving License",
+        "price": "1.600.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Indonesian driving license (SIM) issuance for foreign nationals.",
+        "icon_id": "other-boarding"
+      }
+    },
+    "urgent_processing": {
+      "Urgent 1 Hari": {
+        "name": "Urgent 1 Hari",
+        "price": "3.000.000 IDR",
+        "tier_range": null,
+        "duration": "1 day",
+        "validity": "",
+        "notes": "",
+        "description_en": "Urgent processing surcharge for 1-day turnaround on eligible immigration services.",
+        "icon_id": "urgent-1day"
+      },
+      "Urgent 2 Hari": {
+        "name": "Urgent 2 Hari",
+        "price": "2.500.000 IDR",
+        "tier_range": null,
+        "duration": "2 days",
+        "validity": "",
+        "notes": "",
+        "description_en": "Urgent processing surcharge for 2-day turnaround on eligible immigration services.",
+        "icon_id": "urgent-2day"
+      },
+      "Urgent 3 Hari": {
+        "name": "Urgent 3 Hari",
+        "price": "1.000.000 IDR",
+        "tier_range": null,
+        "duration": "3 days",
+        "validity": "",
+        "notes": "",
+        "description_en": "Urgent processing surcharge for 3-day turnaround on eligible immigration services.",
+        "icon_id": "urgent-3day"
+      }
+    }
+  }
+}
