@@ -3,24 +3,43 @@ Mata Garuda — Base worker for Redis Stream consumers.
 
 Workers read from garuda:raw, process items, and write to garuda:enriched.
 Uses redis-cli subprocess — no redis-py dependency.
+
+Cross-host topology (2026-05-06): when GARUDA_REDIS_HOST is set, every
+redis-cli call is routed to that host (with optional GARUDA_REDIS_PORT).
+This lets the feeder running on Pro consume the alerts stream produced
+by the sentinel running on Mini, without standing up a redis-py client.
 """
 from __future__ import annotations
 
 import hashlib
-import json
 import logging
+import os
 import subprocess
-from datetime import datetime
-from typing import Optional
 
 logger = logging.getLogger("mata_garuda.workers")
 
 REDIS_CLI = "redis-cli"
 
 
+def _redis_host_args() -> list[str]:
+    """Return ['-h', host] (and optional ['-p', port]) from env vars.
+
+    GARUDA_REDIS_HOST empty/unset → no -h/-p (redis-cli defaults to 127.0.0.1).
+    GARUDA_REDIS_PORT without HOST → ignored (avoid surprising localhost:port).
+    """
+    host = (os.environ.get("GARUDA_REDIS_HOST") or "").strip()
+    if not host:
+        return []
+    args = ["-h", host]
+    port = (os.environ.get("GARUDA_REDIS_PORT") or "").strip()
+    if port:
+        args += ["-p", port]
+    return args
+
+
 def redis_cmd(*args: str, timeout: int = 10) -> str:
     """Execute a redis-cli command and return output."""
-    cmd = [REDIS_CLI] + list(args)
+    cmd = [REDIS_CLI] + _redis_host_args() + list(args)
     try:
         result = subprocess.run(
             cmd, capture_output=True, text=True, timeout=timeout

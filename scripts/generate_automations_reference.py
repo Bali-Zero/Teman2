@@ -20,7 +20,7 @@ import re
 import subprocess
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 NUZANTARA_ROOT = Path(__file__).parent.parent
@@ -31,6 +31,14 @@ WRITE_BLOCKLIST = {"CLAUDE.md", "zantara_core.py", "fly.toml", ".env", ".env.pro
 REGISTRY_PATH = Path.home() / ".agent" / "decisions" / "job_registry.json"
 SENTINEL_STATUS_PATH = Path.home() / ".agent" / "decisions" / "sentinel_status.json"
 CIRCUIT_BREAKERS_PATH = Path.home() / ".agent" / "decisions" / "circuit_breakers.json"
+CODEX_AUTOMATION_STATE_DIR = Path.home() / ".agent" / "decisions" / "state"
+CODEX_AUTONOMY_LABELS = {
+    "com.nuzantara.codex-autofix-ci",
+    "com.nuzantara.codex-coverage-improver",
+    "com.nuzantara.codex-overnight-feeder",
+    "com.nuzantara.codex-overnight-runner",
+    "com.nuzantara.codex-research-actor",
+}
 
 
 def _check_output_safety(path: Path) -> None:
@@ -118,6 +126,8 @@ class Job:
     max_attempts: int | None = None
     circuit_state: str | None = None
     dlq_phase: str | None = None
+    autonomy_status: str = "—"
+    autonomy_action: str = "—"
 
 
 def _run(cmd: str, timeout: int = 10) -> str:
@@ -126,6 +136,58 @@ def _run(cmd: str, timeout: int = 10) -> str:
         return r.stdout.strip()
     except (subprocess.TimeoutExpired, Exception):
         return ""
+
+
+def _codex_state_key_for_job(job: Job) -> str | None:
+    """Return the Codex state-file key for Codex-owned LaunchAgents."""
+    label = job.plist_label or job.command or job.name
+    if label not in CODEX_AUTONOMY_LABELS:
+        return None
+    return "codex_" + label.replace(".", "_").replace("-", "_")
+
+
+def _load_codex_automation_states(state_dir: Path = CODEX_AUTOMATION_STATE_DIR) -> dict[str, dict]:
+    """Load `codex_*.state.json` files; malformed files are ignored."""
+    states: dict[str, dict] = {}
+    for path in sorted(state_dir.glob("codex_*.state.json")):
+        try:
+            data = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(data, dict):
+            states[path.name.removesuffix(".state.json")] = data
+    return states
+
+
+def _format_codex_autonomy_status(state: dict) -> str:
+    outcome = str(state.get("outcome", "")).lower()
+    action = str(state.get("action", "")).lower()
+    if outcome in {"action", "success"} or action in {"pr_opened", "queued", "fixed", "fallback_commit"}:
+        return "✅ ACTION"
+    if outcome in {"idle", "noop", "no_op"}:
+        return "✅ OK/idle"
+    if outcome in {"skipped", "skip"}:
+        return "⚠️ SKIPPED"
+    if outcome in {"blocked", "failed", "error"}:
+        return "⛔ BLOCKED"
+    if outcome == "stale":
+        return "⚠️ STALE"
+    return "—"
+
+
+def _apply_codex_automation_state(job: Job, states: dict[str, dict]) -> None:
+    key = _codex_state_key_for_job(job)
+    if not key:
+        return
+    state = states.get(key)
+    if not state:
+        job.autonomy_status = "⚠️ NO STATE"
+        return
+    job.autonomy_status = _format_codex_autonomy_status(state)
+    job.autonomy_action = str(state.get("action") or "—")
+    message = str(state.get("message") or "").replace("|", "\\|")
+    if message:
+        job.notes = message[:80]
 
 
 def _ssh_mini(cmd: str, timeout: int = 10) -> str:
@@ -437,6 +499,7 @@ def generate(dry_run: bool = False) -> str:
     # Carica sorgenti aggiuntive (graceful: se mancano, i campi restano None)
     registry = _load_registry()
     sentinel_status, circuit_breakers = _load_sentinel_state()
+    codex_states = _load_codex_automation_states()
 
     pro_cron = _consolidate_cron(_parse_crontab(_run("crontab -l 2>/dev/null"), "Pro"))
     mini_cron = _consolidate_cron(_parse_crontab(_ssh_mini("crontab -l 2>/dev/null"), "Mini"))
@@ -451,6 +514,7 @@ def generate(dry_run: bool = False) -> str:
     for job in all_jobs:
         _enrich_job_from_registry(job, registry)
         _enrich_job_from_circuit_breaker(job, circuit_breakers)
+        _apply_codex_automation_state(job, codex_states)
 
     total = len(all_jobs)
     ok = sum(1 for j in all_jobs if "OK" in j.last_status)
@@ -525,15 +589,15 @@ def generate(dry_run: bool = False) -> str:
         if la:
             lines += [
                 "### LaunchAgents", "",
-                "| Label | Status | Exit | Circuit | Scope | Critical |",
-                "|-------|--------|------|---------|-------|----------|",
+                "| Label | Status | Autonomy | Exit | Circuit | Scope | Critical |",
+                "|-------|--------|----------|------|---------|-------|----------|",
             ]
             for j in la:
                 circuit = _format_circuit_badge(j.circuit_state, j.dlq_phase)
                 scope = j.repair_scope or "—"
                 crit = "🔴" if j.critical else ""
                 lines.append(
-                    f"| `{j.plist_label}` | {j.last_status} | {j.exit_code} | {circuit} | {scope} | {crit} |"
+                    f"| `{j.plist_label}` | {j.last_status} | {j.autonomy_status} | {j.exit_code} | {circuit} | {scope} | {crit} |"
                 )
             lines.append("")
 

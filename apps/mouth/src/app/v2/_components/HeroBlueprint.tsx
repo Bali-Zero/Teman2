@@ -30,7 +30,7 @@ export function HeroBlueprint() {
           priority
           fetchPriority="high"
           sizes="100vw"
-          quality={78}
+          quality={75}
           className="object-cover"
           style={{ objectPosition: "center center" }}
         />
