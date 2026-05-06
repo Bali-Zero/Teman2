@@ -33,7 +33,7 @@ class ProcessAutomationService:
         self.zoho_email_service = ZohoEmailService(db_pool)
 
     @cache_invalidating([
-        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",
+        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
         "zantara:crm_practices:*",
         "zantara:crm_activity:*",
     ])
@@ -178,12 +178,12 @@ Feel free to reach out anytime. Whether it's a quick question or just checking i
 Thank you again for trusting us with your immigration needs. We're honored to be part of your Indonesian journey!
 
 Warmest regards,
-The Zantara Indonesia Team
+Zantara — Bali Zero Team
 
 P.S. Keep an eye on your WhatsApp—we'll be sending you updates there too! 😊
 
 ---
-💬 Questions? Reply to this email or WhatsApp us at +62 xxx xxxx xxxx
+💬 Questions? Reply to this email or WhatsApp us at +62 821 3107 363
 🌐 Visit us at www.balizero.com
 """
 

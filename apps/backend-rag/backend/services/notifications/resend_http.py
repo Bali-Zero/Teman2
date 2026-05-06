@@ -5,7 +5,7 @@ is the secondary path. The two providers use different verified domains
 on purpose so a Brevo account suspension or DNS misconfiguration on the
 apex ``balizero.com`` cannot also take down the fallback:
 
-- Brevo  → ``zantara@balizero.com``        (alias of damar@balizero.com)
+- Brevo  → ``zantara@balizero.com``        (alias of zero@balizero.com)
 - Resend → ``zantara@send.balizero.com``    (subdomain, separate DKIM/MX)
 
 The fallback exists for *delivery* failures (Brevo HTTP 5xx, account

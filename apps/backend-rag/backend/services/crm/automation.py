@@ -205,7 +205,7 @@ class ProcessAutomationService:
         self.zoho_email_service = ZohoEmailService(db_pool)
 
     @cache_invalidating([
-        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",
+        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
         "zantara:crm_practices:*",
         "zantara:crm_activity:*",
     ])
@@ -352,12 +352,12 @@ Feel free to reach out anytime. Whether it's a quick question or just checking i
 Thank you again for trusting us with your immigration needs. We're honored to be part of your Indonesian journey!
 
 Warmest regards,
-The Zantara Indonesia Team
+Zantara — Bali Zero Team
 
 P.S. Keep an eye on your WhatsApp—we'll be sending you updates there too! 😊
 
 ---
-💬 Questions? Reply to this email or WhatsApp us at +62 xxx xxxx xxxx
+💬 Questions? Reply to this email or WhatsApp us at +62 821 3107 363
 🌐 Visit us at www.balizero.com
 """
 
@@ -445,7 +445,7 @@ class CompletedProcessService:
         self.drive_service = DriveFolderService()
 
     @cache_invalidating([
-        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",
+        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
         "zantara:crm_practices:*",
         "zantara:crm_documents:*",
     ])
@@ -632,19 +632,19 @@ This may be the end of this particular process, but it's not goodbye! Our team r
 • Any questions about living and working in Indonesia
 
 Thank You for Trusting Us:
-It's been our privilege to help you navigate this journey. Thank you for choosing Zantara Indonesia—we truly appreciate your trust in our team.
+It's been our privilege to help you navigate this journey. Thank you for choosing Bali Zero—we truly appreciate your trust in our team.
 
 We'd love to hear about your experience! If you have a moment, please let us know how we did. Your feedback helps us serve even better.
 
 Wishing you all the best in your Indonesian adventure!
 
 Warm regards,
-The Zantara Indonesia Team
+Zantara — Bali Zero Team
 
 P.S. Save our contact info for future needs—we're always here to help! 😊
 
 ---
-📧 support@balizero.com | 🌐 www.balizero.com | 📱 WhatsApp: +62 xxx xxxx xxxx
+📧 asya@balizero.com | 🌐 www.balizero.com | 📱 WhatsApp: +62 821 3107 363
 """
 
         await _send_with_brevo_fallback(self.zoho_email_service, client_email, subject, body)
@@ -719,7 +719,7 @@ class WaitingDocumentsService:
         self.zoho_email_service = ZohoEmailService(db_pool)
 
     @cache_invalidating([
-        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",
+        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
         "zantara:crm_practices:*",
     ])
     async def trigger_on_waiting_documents(
@@ -883,7 +883,7 @@ Zantara CRM 🤖
 
         body = f"""Dear {client_name},
 
-Thank you for choosing Zantara Indonesia! We're moving forward with your {practice_type} and we need a few documents from you to get started.
+Thank you for choosing Bali Zero! We're moving forward with your {practice_type} and we need a few documents from you to get started.
 
 {doc_section}
 
@@ -902,10 +902,10 @@ Questions? We're Here!
 If you're unsure about any document, just ask — we're happy to clarify.
 
 Warm regards,
-The Zantara Indonesia Team
+Zantara — Bali Zero Team
 
 ---
-📧 support@balizero.com | 🌐 www.balizero.com
+📧 asya@balizero.com | 🌐 www.balizero.com
 """
 
         await _send_with_brevo_fallback(self.zoho_email_service, client_email, subject, body)

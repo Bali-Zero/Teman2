@@ -307,7 +307,7 @@ async def send_direct_email(
     - External recipients → Brevo HTTP API (better deliverability + tracking)
 
     Auth: X-API-Key header.
-    Sender is always zantara@balizero.com (alias of damar@balizero.com).
+    Sender is always zantara@balizero.com (alias of zero@balizero.com).
     """
     cc_list = [c.strip() for c in request.cc.split(",")] if request.cc else None
     bcc_list = [b.strip() for b in request.bcc.split(",")] if request.bcc else None
