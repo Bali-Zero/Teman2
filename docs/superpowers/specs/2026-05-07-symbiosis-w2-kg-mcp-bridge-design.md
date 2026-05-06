@@ -171,6 +171,9 @@ gives the total including filtered ones.
 - Anything from `aliases_json` (alias-set is OSINT-derived; would let a
   consumer infer source articles by reverse-search)
 - Any field named `content`, `title`, `body`, `excerpt`, `summary`
+- `field` (the literal column name from `kg_observations.field` — its
+  value is the OSINT field-tag like `headline`/`mention`, suppressed
+  defense-in-depth)
 
 A unit test enforces this by asserting that JSON-encoded responses contain
 none of the forbidden keys at any depth.
@@ -271,7 +274,7 @@ Tests:
 | T6 | `/kg/entity/Imigrasi?type=organizations` returns full record minus forbidden fields |
 | T7 | `/kg/entity/Imigrasi?type=` returns 400 bad_request (type required) |
 | T8 | `/kg/entity/Unknown?type=persons` returns 404 entity_not_found |
-| T9 | Response body contains NONE of `value`, `evidence_url`, `aliases_json`, `content`, `title`, `body`, `excerpt`, `summary`, `aliases` (deep walk) |
+| T9 | Response body contains NONE of `value`, `evidence_url`, `aliases_json`, `aliases`, `content`, `title`, `body`, `excerpt`, `summary`, `field` (deep walk) |
 | T10 | Server refuses to bind `0.0.0.0` (startup-time guardrail) |
 | T11 | Concurrent reads don't deadlock (10 threads × 50 requests, all 200) |
 | T12 | Path traversal `/kg/entity/..%2Fetc%2Fpasswd?type=persons` is rejected (400 bad_request) |
