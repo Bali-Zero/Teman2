@@ -486,24 +486,16 @@ async def create_practice(
                     ]
                 }
                 insert_columns.append("metadata")
-                insert_values.append(json.dumps(discount_audit))
+                # Pass the dict directly — the api pool registers a jsonb
+                # codec (service_initializer._light_init_connection) so
+                # asyncpg serialises with json.dumps() exactly once.
+                # Calling json.dumps() at this layer would double-encode and
+                # land the value as a JSONB string scalar (the bug shipped
+                # in PR #485 / #492 — observed 2026-05-06 on practice_id=390
+                # where metadata::text was '"{\"discount_log\": ...}"').
+                insert_values.append(discount_audit)
 
-            # Cast jsonb columns explicitly. asyncpg does not register a
-            # JSON codec for `jsonb` by default, so a `json.dumps()` value
-            # passed to a `jsonb` column lands as a JSON-encoded STRING
-            # scalar (i.e. the whole thing is wrapped in another pair of
-            # quotes), not as a parsed object — which silently breaks
-            # `metadata ? 'discount_log'` and any downstream jsonb_path_*
-            # query. Discovered live 2026-05-06 on practice_id=390 where
-            # metadata::text was '"{\"discount_log\": ...}"' instead of
-            # '{"discount_log": ...}'. The matching UPDATE block at
-            # line ~1268 already does `metadata = $1::jsonb`; the INSERT
-            # path now mirrors that.
-            JSONB_COLUMNS = {"metadata", "documents", "missing_documents", "custom_fields"}
-            placeholders = ", ".join(
-                f"${i}::jsonb" if insert_columns[i - 1] in JSONB_COLUMNS else f"${i}"
-                for i in range(1, len(insert_values) + 1)
-            )
+            placeholders = ", ".join(f"${i}" for i in range(1, len(insert_values) + 1))
             columns_str = ", ".join(insert_columns)
 
             practice_row = await conn.fetchrow(
@@ -1279,9 +1271,12 @@ async def update_practice(
                         log = []
                     log.append(audit_entry)
                     new_meta["discount_log"] = log
+                    # Pass dict directly — pool's jsonb codec encodes once.
+                    # See create_practice() comment around the metadata
+                    # insert for the symptom of double-encoding.
                     await conn.execute(
-                        "UPDATE practices SET metadata = $1::jsonb WHERE id = $2",
-                        json.dumps(new_meta),
+                        "UPDATE practices SET metadata = $1 WHERE id = $2",
+                        new_meta,
                         practice_id,
                     )
                     updated_practice["metadata"] = new_meta
