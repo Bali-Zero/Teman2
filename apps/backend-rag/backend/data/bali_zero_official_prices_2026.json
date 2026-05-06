@@ -366,7 +366,7 @@
         "validity": "",
         "notes": "",
         "description_en": "Dependent KITAS valid 1 year for children or dependent family members of a primary KITAS/KITAP holder. Onshore process via Altus.",
-        "icon_id": "kitas-dependent"
+        "icon_id": "kitas-spouse"
       },
       "Dependent 1 Year (Offshore)": {
         "name": "Dependent 1 Year (Offshore)",
@@ -376,7 +376,7 @@
         "validity": "",
         "notes": "",
         "description_en": "Dependent KITAS valid 1 year for children or dependent family members of a primary KITAS/KITAP holder. Offshore process for applicants outside Indonesia.",
-        "icon_id": "kitas-dependent"
+        "icon_id": "kitas-spouse"
       },
       "Dependent 1 Year (Extend)": {
         "name": "Dependent 1 Year (Extend)",
@@ -386,7 +386,7 @@
         "validity": "",
         "notes": "",
         "description_en": "Onshore extension of an existing 1-year Dependent KITAS.",
-        "icon_id": "kitas-dependent"
+        "icon_id": "kitas-spouse"
       },
       "Dependent 2 Years (Altus/Onshore)": {
         "name": "Dependent 2 Years (Altus/Onshore)",
@@ -396,7 +396,7 @@
         "validity": "",
         "notes": "",
         "description_en": "Dependent KITAS valid 2 years for children or dependent family members of a primary KITAS/KITAP holder. Onshore process via Altus.",
-        "icon_id": "kitas-dependent"
+        "icon_id": "kitas-spouse"
       },
       "Dependent 2 Years (Offshore)": {
         "name": "Dependent 2 Years (Offshore)",
@@ -406,7 +406,7 @@
         "validity": "",
         "notes": "",
         "description_en": "Dependent KITAS valid 2 years for children or dependent family members of a primary KITAS/KITAP holder. Offshore process for applicants outside Indonesia.",
-        "icon_id": "kitas-dependent"
+        "icon_id": "kitas-spouse"
       },
       "Dependent 2 Years (Extend)": {
         "name": "Dependent 2 Years (Extend)",
@@ -416,7 +416,7 @@
         "validity": "",
         "notes": "",
         "description_en": "Onshore extension of an existing 2-year Dependent KITAS.",
-        "icon_id": "kitas-dependent"
+        "icon_id": "kitas-spouse"
       },
       "Born KITAS": {
         "name": "Born KITAS",
@@ -426,7 +426,7 @@
         "validity": "",
         "notes": "",
         "description_en": "KITAS issuance for foreign children born in Indonesia, processed alongside the birth registration.",
-        "icon_id": "kitas-dependent"
+        "icon_id": "kitas-spouse"
       },
       "Retirement (Altus/Onshore)": {
         "name": "Retirement (Altus/Onshore)",
@@ -436,7 +436,7 @@
         "validity": "",
         "notes": "",
         "description_en": "Retirement KITAS for foreign nationals 60+ meeting income requirements. Onshore process via Altus.",
-        "icon_id": "kitas-retirement"
+        "icon_id": "kitap-permanent"
       },
       "Retirement (Offshore)": {
         "name": "Retirement (Offshore)",
@@ -446,7 +446,7 @@
         "validity": "",
         "notes": "",
         "description_en": "Retirement KITAS for foreign nationals 60+ meeting income requirements. Offshore process for applicants outside Indonesia.",
-        "icon_id": "kitas-retirement"
+        "icon_id": "kitap-permanent"
       },
       "Retirement (Extend)": {
         "name": "Retirement (Extend)",
@@ -456,7 +456,7 @@
         "validity": "",
         "notes": "",
         "description_en": "Onshore extension of an existing Retirement KITAS.",
-        "icon_id": "kitas-retirement"
+        "icon_id": "kitap-permanent"
       }
     },
     "kitap_permits": {
@@ -744,7 +744,7 @@
         "validity": "",
         "notes": "",
         "description_en": "Registration with BPJS Ketenagakerjaan, the mandatory Indonesian social security scheme for employees covering accident, old-age and pension benefits.",
-        "icon_id": "consultant-bpjs-tk"
+        "icon_id": "consultant-bpjs-kes"
       },
       "BPJS Insurance (Kesehatan)": {
         "name": "BPJS Insurance (Kesehatan)",
@@ -784,7 +784,7 @@
         "validity": "",
         "notes": "",
         "description_en": "Application for Electronic Filing Identification Number (EFIN) required to file taxes electronically with the Indonesian tax authority.",
-        "icon_id": "consultant-efin"
+        "icon_id": "consultant-update"
       }
     },
     "other_process": {
