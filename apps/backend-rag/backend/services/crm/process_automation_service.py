@@ -15,6 +15,7 @@ import httpx
 from backend.app.utils.logging_utils import get_logger
 from backend.services.common.cache import cache_invalidating
 from backend.services.integrations.zoho_email_service import ZohoEmailService
+from backend.services.notifications.email_branding import logo_header_html
 
 # Internal email API — uses Brevo, from=zantara@balizero.com
 _EMAIL_API_URL = os.getenv(
@@ -91,6 +92,7 @@ class ProcessAutomationService:
                         client_email=client_data["email"],
                         client_name=client_data["full_name"],
                         practice_data=practice_data,
+                        team_member_email=team_leader_email,
                     )
                     results["client_notified"] = True
                     logger.info(f"Process start email sent to client {client_data['email']}")
@@ -140,6 +142,7 @@ class ProcessAutomationService:
         client_email: str,
         client_name: str,
         practice_data: dict,
+        team_member_email: str | None = None,
     ) -> None:
         """Send warm, human email to client confirming payment and process start."""
         practice_type = practice_data.get("practice_type_name", "Immigration Service")
@@ -187,7 +190,11 @@ P.S. Keep an eye on your WhatsApp—we'll be sending you updates there too! 😊
 🌐 Visit us at www.balizero.com
 """
 
-        await self._send_with_brevo_fallback(client_email, subject, body)
+        await self._send_with_brevo_fallback(
+            client_email, subject, body,
+            cc=team_member_email if team_member_email and team_member_email != client_email else None,
+            include_logo=True,
+        )
 
     async def _send_team_leader_notification(
         self,
@@ -238,16 +245,24 @@ P.S. The client is excited to get started—let's make it a great experience! �
 
     async def _send_with_brevo_fallback(
         self, to_email: str, subject: str, body: str,
+        *,
+        cc: str | None = None,
+        include_logo: bool = False,
     ) -> None:
         """Send email via Brevo (primary), fall back to Zoho if Brevo fails."""
         # Primary: Brevo
         try:
             html_body = body.replace("\n", "<br>")
+            if include_logo:
+                html_body = f"{logo_header_html()}{html_body}"
+            payload: dict = {"to": to_email, "subject": subject, "body": html_body}
+            if cc:
+                payload["cc"] = cc
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
                     _EMAIL_API_URL,
                     headers={"X-API-Key": _EMAIL_API_KEY},
-                    json={"to": to_email, "subject": subject, "body": html_body},
+                    json=payload,
                 )
                 response.raise_for_status()
             logger.info(f"Email sent to {to_email} via Brevo")
