@@ -314,6 +314,54 @@ def test_strip_html_handles_empty_input():
     assert _strip_html(None) == ""  # type: ignore[arg-type]
 
 
+def test_fetch_curl_uses_compressed_flag():
+    """curl must run with --compressed so gzip/deflate responses are
+    decoded transparently. Without it, subprocess(text=True) blows up
+    with UnicodeDecodeError on byte 0x8b (gzip magic) — verified
+    empirically against tempo.co on 2026-05-06 first prod run."""
+    from mata_garuda.agents.intel_scraper_bridge import _fetch_article_text
+    captured = {}
+    fake_completed = type("R", (), {
+        "returncode": 0,
+        "stdout": "<html><body>hi</body></html>\n200",
+        "stderr": "",
+    })()
+    def fake_run(cmd, *a, **kw):
+        captured["cmd"] = cmd
+        return fake_completed
+    with patch("mata_garuda.agents.intel_scraper_bridge.subprocess.run", side_effect=fake_run):
+        out = _fetch_article_text("https://example.com/foo")
+    assert "--compressed" in captured["cmd"], (
+        "curl invocation must include --compressed to decode gzip responses"
+    )
+    assert out is not None and "hi" in out
+
+
+def test_fetch_swallows_unicode_decode_error():
+    """If subprocess.run raises UnicodeDecodeError (e.g. server sent gzip
+    bytes despite our --compressed request), the bridge must NOT crash
+    — return None and let the caller publish content="" gracefully."""
+    from mata_garuda.agents.intel_scraper_bridge import _fetch_article_text
+    def boom(*a, **kw):
+        raise UnicodeDecodeError("utf-8", b"\x1f\x8b", 1, 2, "invalid start byte")
+    with patch("mata_garuda.agents.intel_scraper_bridge.subprocess.run", side_effect=boom):
+        out = _fetch_article_text("https://example.com/gzip-only")
+    assert out is None  # graceful: no exception, no partial content
+
+
+def test_fetch_swallows_generic_exception():
+    """Any other unexpected exception from curl/subprocess (e.g. OSError,
+    UnicodeError variants, malformed redirect chain) must also be
+    contained — bridge processes 50 URLs/run, one bad URL must NOT take
+    down the whole batch."""
+    from mata_garuda.agents.intel_scraper_bridge import _fetch_article_text
+    def boom(*a, **kw):
+        raise RuntimeError("unexpected curl crash")
+    with patch("mata_garuda.agents.intel_scraper_bridge.subprocess.run", side_effect=boom):
+        out = _fetch_article_text("https://example.com/weird")
+    assert out is None
+
+
 def test_agent_registered_and_has_genome():
     import mata_garuda.agents.intel_scraper_bridge  # noqa: F401
     from mata_garuda.registry import get_agent

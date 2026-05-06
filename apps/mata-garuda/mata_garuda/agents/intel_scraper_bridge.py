@@ -95,6 +95,11 @@ def _fetch_article_text(url: str) -> str | None:
             [
                 "curl",
                 "-sSL",
+                "--compressed",  # decode gzip/deflate transparently — without
+                                 # this, servers like tempo.co return raw gzip
+                                 # bytes and subprocess(text=True) crashes on
+                                 # the 0x8b magic byte. Verified empirically
+                                 # 2026-05-06 first prod run.
                 "--max-time", str(FETCH_TIMEOUT_S),
                 "--max-filesize", "1000000",  # 1 MB on-wire cap
                 "-A", _USER_AGENT,
@@ -108,6 +113,13 @@ def _fetch_article_text(url: str) -> str | None:
         )
     except (subprocess.TimeoutExpired, FileNotFoundError) as e:
         logger.debug("[intel_bridge] fetch timeout/missing curl for %s: %s", url, e)
+        return None
+    except Exception as e:  # noqa: BLE001 — fetch is best-effort; a single
+        # malformed URL must NOT take down the 50-URL batch (e.g. server
+        # sends gzip despite our --compressed request, or sends invalid
+        # UTF-8 in a non-Content-Encoding-declared body, or any other
+        # subprocess oddity). Log + skip + caller publishes content="".
+        logger.debug("[intel_bridge] fetch unexpected error for %s: %s", url, e)
         return None
 
     if result.returncode != 0:
