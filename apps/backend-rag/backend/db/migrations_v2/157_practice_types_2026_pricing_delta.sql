@@ -234,7 +234,7 @@ VALUES
     ('other_lapor_lahir_under',           'Lapor Lahir (Under)',                          'Birth report registration for foreign nationals born in Indonesia, filed within the standard window (under 60 days Kanim NGR / under 90 days Kanim DPS).', 'other', 2000000, NULL, true),
     ('other_lapor_lahir_up',              'Lapor Lahir (Up)',                             'Birth report registration for foreign nationals born in Indonesia, filed after the standard window (above 60 days Kanim NGR / above 90 days Kanim DPS).',  'other', 4000000, NULL, true),
     ('other_mutation_address_2_kanim',    'Mutation Address 2 Kanim',                     'Update of registered address requiring inter-Kanim (immigration office) transfer.',                                                                                'other', 1000000, NULL, true),
-    ('other_created_molina_express',      'Created Molina Express',                       'Express creation of immigration record on the Molina (immigration) database.',                                                                                     'other', 500000,  NULL, true),
+    ('other_create_molina_express',      'Create Molina Express',                       'Express creation of immigration record on the Molina (immigration) database.',                                                                                     'other', 500000,  NULL, true),
     ('other_imta_rptka_only_12mo',        'Process IMTA & RPTKA Only (12 Months)',        'Stand-alone processing of IMTA and RPTKA work permit documents, valid for 12 months.',                                                                            'other', 3500000, NULL, true),
     ('other_imta_rptka_only_6mo_or_less', 'Process IMTA & RPTKA Only (6 Months or Less)', 'Stand-alone processing of IMTA and RPTKA work permit documents, valid for 6 months or less.',                                                                     'other', 6000000, NULL, true),
     ('other_driving_license',             'Driving License',                              'Indonesian driving license (SIM) issuance for foreign nationals.',                                                                                                  'other', 1600000, NULL, true)
@@ -404,7 +404,7 @@ UPDATE practice_types SET is_active = false WHERE code = ANY(ARRAY[
     'other_lapor_lahir_under',
     'other_lapor_lahir_up',
     'other_mutation_address_2_kanim',
-    'other_created_molina_express',
+    'other_create_molina_express',
     'other_imta_rptka_only_12mo',
     'other_imta_rptka_only_6mo_or_less',
     'other_driving_license'
