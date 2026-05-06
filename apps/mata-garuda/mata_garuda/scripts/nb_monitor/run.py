@@ -182,13 +182,19 @@ def _collect_all(
     cfg: RunConfig,
     ts_capture: int,
 ) -> list[tuple[NotebookEntry, MetricRow, MetricRow | None]]:
-    files = log_scraper.discover_session_files(cutoff_mtime=ts_capture - WINDOW_30D)
-    rf_7d_counts = log_scraper.count_nlm_events_by_uuid(
-        files, window_seconds=WINDOW_7D, now=ts_capture
-    )
-    rf_30d_counts = log_scraper.count_nlm_events_by_uuid(
-        files, window_seconds=WINDOW_30D, now=ts_capture
-    )
+    if cfg.collect_read_freq_7d is not None and cfg.collect_read_freq_30d is not None:
+        rf_7d_counts: dict[str, int] = {}
+        rf_30d_counts: dict[str, int] = {}
+    else:
+        files = log_scraper.discover_session_files(
+            cutoff_mtime=ts_capture - WINDOW_30D
+        )
+        rf_7d_counts = log_scraper.count_nlm_events_by_uuid(
+            files, window_seconds=WINDOW_7D, now=ts_capture
+        )
+        rf_30d_counts = log_scraper.count_nlm_events_by_uuid(
+            files, window_seconds=WINDOW_30D, now=ts_capture
+        )
 
     if cfg.collect_push_success is not None:
         global_psr = cfg.collect_push_success()
