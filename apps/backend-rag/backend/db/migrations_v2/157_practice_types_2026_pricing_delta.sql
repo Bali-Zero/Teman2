@@ -262,14 +262,26 @@ ON CONFLICT (code) DO UPDATE SET
 --                           separately
 --   Domicilie Letter — removed from 2026 list entirely
 --
--- ⚠️ FK risk: practice_types.id is referenced by crm_practices.practice_type_id
--- (and the redundant practice_type_code column). If any LIVE practice
--- references one of these 7 codes, this DELETE will FAIL with a foreign
--- key violation and the entire migration rolls back. Owner accepts that
--- risk (option A, naked DELETE) — if the migration fails, we will run a
--- diagnostic SELECT against crm_practices to identify offenders and
--- decide case-by-case (manually re-assign to a current code or keep
--- the row soft-active).
+-- ⚠️ FK shape: practices has TWO FKs onto practice_types —
+--   practices.practice_type_id   → practice_types.id    (integer FK)
+--   practices.practice_type_code  → practice_types.code  (text FK)
+-- Both are nullable. If any LIVE practice references one of these 8
+-- codes via either column, this DELETE FAILS with a foreign key
+-- violation and the entire migration rolls back (atomic).
+--
+-- Preflight verified 2026-05-06 against prod: all 8 codes have ZERO
+-- practice references via both FK columns, so the DELETE is safe.
+-- If the situation changes between preflight and deploy, the migration
+-- fails cleanly and we run the diagnostic SELECT below to enumerate
+-- offenders and decide case-by-case (re-assign to a current code or
+-- soft-disable that row instead).
+--
+-- Diagnostic on failure:
+--   SELECT id, practice_type_code, practice_type_id, status, created_at
+--   FROM practices
+--   WHERE practice_type_code = ANY(ARRAY['other_acc_mutation', ...])
+--      OR practice_type_id IN (SELECT id FROM practice_types
+--                              WHERE code = ANY(ARRAY[...]));
 -- =====================================================================
 
 DELETE FROM practice_types WHERE code = ANY(ARRAY[
