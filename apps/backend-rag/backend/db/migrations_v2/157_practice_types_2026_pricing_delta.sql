@@ -284,6 +284,49 @@ ON CONFLICT (code) DO UPDATE SET
 --                              WHERE code = ANY(ARRAY[...]));
 -- =====================================================================
 
+-- Defensive pre-check (DeepSeek review 2026-05-06): the FK preflight ran
+-- against prod at review time, but new practices could be inserted in
+-- the deploy window. Raise a clean error BEFORE the DELETE rather than
+-- letting Postgres surface a generic FK violation, so the operator
+-- knows immediately which row blocked the migration.
+DO $$
+DECLARE
+    blocking_codes text;
+BEGIN
+    SELECT string_agg(DISTINCT practice_type_code, ', ' ORDER BY practice_type_code)
+    INTO blocking_codes
+    FROM practices
+    WHERE practice_type_code = ANY(ARRAY[
+        'other_acc_mutation',
+        'other_acc_mutation_passport',
+        'other_acc_boarding_pass',
+        'merp_1yr',
+        'merp_2yr',
+        'other_cancel_rptka_imta_wl',
+        'other_domicilie_sktt',
+        'other_domicilie'
+    ]::text[])
+       OR practice_type_id IN (
+           SELECT id FROM practice_types
+           WHERE code = ANY(ARRAY[
+               'other_acc_mutation',
+               'other_acc_mutation_passport',
+               'other_acc_boarding_pass',
+               'merp_1yr',
+               'merp_2yr',
+               'other_cancel_rptka_imta_wl',
+               'other_domicilie_sktt',
+               'other_domicilie'
+           ]::text[])
+       );
+
+    IF blocking_codes IS NOT NULL THEN
+        RAISE EXCEPTION
+            'Cannot DELETE obsolete practice_types: existing practices reference codes [%]. Re-assign those practices to a current code, then re-run the migration.',
+            blocking_codes;
+    END IF;
+END $$;
+
 DELETE FROM practice_types WHERE code = ANY(ARRAY[
     'other_acc_mutation',
     'other_acc_mutation_passport',
