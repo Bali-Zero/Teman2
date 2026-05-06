@@ -51,8 +51,8 @@ WHERE code = 'other_epassport_5yr';                -- 2M → 2.2M
 UPDATE practice_types SET base_price = 2700000, updated_at = CURRENT_TIMESTAMP
 WHERE code = 'other_epassport_10yr';               -- 2.5M → 2.7M
 
-UPDATE practice_types SET base_price = 1500000, updated_at = CURRENT_TIMESTAMP
-WHERE code = 'other_domicilie';                    -- 800k → 1.5M
+-- (Domicilie Letter price update intentionally removed — the row is
+-- hard-deleted in section 11 below, so updating its price is moot.)
 
 -- C1 Tourism Extension 2026 = +60 days (was +30 in 2025), same price 1.7M
 UPDATE practice_types SET
@@ -246,6 +246,43 @@ ON CONFLICT (code) DO UPDATE SET
     is_active = true,
     updated_at = CURRENT_TIMESTAMP;
 
+-- =====================================================================
+-- 11. HARD-DELETE obsolete 2025 entries (owner decision A, 2026-05-06)
+--
+-- These 7 services are removed from the 2026 published price list and
+-- the owner explicitly approved hard-delete (option A in the planning
+-- conversation):
+--   ACC × 3       — ACC Mutation, ACC Mutation Passport, ACC Boarding Pass
+--   MERP 1Y / 2Y  — standalone MERP entries (KITAP+MERP bundles already
+--                   include MERP, so the standalone rows became orphans)
+--   Cancel combo  — Cancel (RPTKA, IMTA, Wajib Lapor) — replaced by
+--                   individual Cancel RPTKA + Cancel Wajib Lapor at
+--                   updated 1M prices each
+--   Domicilie+SKTT bundle — clients now order SKTT and Domicilie Letter
+--                           separately
+--   Domicilie Letter — removed from 2026 list entirely
+--
+-- ⚠️ FK risk: practice_types.id is referenced by crm_practices.practice_type_id
+-- (and the redundant practice_type_code column). If any LIVE practice
+-- references one of these 7 codes, this DELETE will FAIL with a foreign
+-- key violation and the entire migration rolls back. Owner accepts that
+-- risk (option A, naked DELETE) — if the migration fails, we will run a
+-- diagnostic SELECT against crm_practices to identify offenders and
+-- decide case-by-case (manually re-assign to a current code or keep
+-- the row soft-active).
+-- =====================================================================
+
+DELETE FROM practice_types WHERE code = ANY(ARRAY[
+    'other_acc_mutation',
+    'other_acc_mutation_passport',
+    'other_acc_boarding_pass',
+    'merp_1yr',
+    'merp_2yr',
+    'other_cancel_rptka_imta_wl',
+    'other_domicilie_sktt',
+    'other_domicilie'
+]::text[]);
+
 -- === ROLLBACK ===
 -- Soft-disable the rows added by this migration (DO NOT hard-delete:
 -- live practices may already reference them via practice_type_id /
@@ -256,6 +293,12 @@ ON CONFLICT (code) DO UPDATE SET
 -- price would require knowing the previous value, which is encoded in
 -- migration_066's seed values. If a price change needs to be undone,
 -- write a follow-up migration that sets the explicit prior price.
+--
+-- The HARD-DELETE in section 11 (ACC×3, MERP 1Y/2Y, Cancel combo,
+-- Domicilie+SKTT, Domicilie Letter) is NOT rolled back here either.
+-- Restoring those rows requires re-running the original INSERT from
+-- migration_066. If a rollback is needed, write a follow-up migration
+-- that re-INSERTs the 7 codes with their original 2025 values.
 
 UPDATE practice_types SET is_active = false WHERE code = ANY(ARRAY[
     'visa_c8_journalism',
