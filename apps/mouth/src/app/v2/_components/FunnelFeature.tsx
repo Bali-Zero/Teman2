@@ -243,6 +243,9 @@ export function FunnelFeature({
             fill
             sizes="(max-width: 768px) 100vw, 50vw"
             quality={78}
+            // priority = above-the-fold hero (full layout) → LCP candidate
+            // tells browser to preload with fetchpriority="high"
+            priority={isFull}
             className="pointer-events-none"
             style={{
               objectFit: cfg.bgFit ?? "cover",
