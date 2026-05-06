@@ -282,3 +282,132 @@ def test_validate_data_rejects_unknown_runtime(tmp_path):
 
     errors = vg.validate_file(p)
     assert any("invalid runtime" in e.lower() and "plan9_rcd" in e for e in errors)
+
+
+# ---------- Symbiosis W1.5: 9 MISS CRITICI organi (issue #490) -------------
+
+
+class TestW1_5MissCritici:
+    """Wave 1.5 follow-up to PR #488 W1. Enrolls 9 organi flagged as MISS
+    CRITICI in the W1 tri-LLM cross-check (Federation A2A bridge,
+    auto-healing observatory, publishing pipeline tail, Lamarckian
+    feedback distillation). Registry expanded 78 → 87.
+
+    Issue: https://github.com/Balizero1987/Teman2/issues/490
+    Design: docs/superpowers/specs/2026-05-07-symbiosis-w1.5-miss-critici-design.md
+    """
+
+    @staticmethod
+    def _live_organs_by_id() -> dict:
+        doc = yaml.safe_load(_LIVE_GENOME.read_text())
+        return {o["id"]: o for o in doc["organs"]}
+
+    def test_w1_5_nlm_bridge_enrolled(self):
+        """`nlm.bridge` is the Federation v3 A2A Agent 8 (uvicorn :18790).
+        critical severity because async multi-doc synthesis fails silently
+        when the bridge is down. NO bridge_source declared — empirical
+        check (Codex 2026-05-07): live endpoint is `/nlm/health` and
+        `HealthResponse` does not include a `ts` field, so an http bridge
+        would permanently read as `error: missing timestamp field 'ts'`.
+        Heartbeat-staleness fallback covers observability until a sidecar
+        emitter ships in a future PR.
+        """
+        by_id = self._live_organs_by_id()
+        assert "nlm.bridge" in by_id, "nlm.bridge not enrolled in live genome"
+        organ = by_id["nlm.bridge"]
+        assert organ["runtime"] == "pro_launchd"
+        assert organ["type"] == "daemon"
+        assert organ["recovery_action"] == "launchctl_kickstart"
+        assert organ["recovery_params"]["label"] == "com.balizero.nlm-bridge"
+        assert organ["severity_on_silence"] == "critical"
+        assert organ["dependencies"] == ["infra.postgres"]
+        assert "bridge_source" not in organ, (
+            "nlm.bridge intentionally omits bridge_source — see design D7. "
+            "/nlm/health does not emit `ts`, so an http bridge would "
+            "permanently read as 'missing timestamp field' error."
+        )
+
+    def test_w1_5_cell_observatory_triplet_enrolled(self):
+        """The cell-observatory family: 1 daemon (`cell.observatory`) +
+        2 self-maintenance crons (`*_prune` daily, `*_selfcheck` 5-min).
+        The daemon mirrors the cell.organism pattern with state_file
+        bridge. Empirical correction (Codex 2026-05-07): cell-observatory
+        depends on PG + SQLite + classifier API — no Redis path. Removed
+        from the dependency list vs initial draft.
+        """
+        by_id = self._live_organs_by_id()
+        # Daemon
+        assert "cell.observatory" in by_id, "cell.observatory not enrolled"
+        daemon = by_id["cell.observatory"]
+        assert daemon["type"] == "daemon"
+        assert daemon["severity_on_silence"] == "critical"
+        assert daemon["recovery_params"]["label"] == "com.nuzantara.cell-observatory"
+        assert daemon["bridge_source"]["type"] == "state_file"
+        assert "infra.postgres" in daemon["dependencies"]
+        assert "infra.redis" not in daemon["dependencies"], (
+            "cell.observatory uses PG LISTEN + SQLite + classifier API "
+            "(no Redis path in collector). Adding infra.redis misstates "
+            "the blast radius."
+        )
+
+        # Prune cron (daily 04:00)
+        assert "cell.observatory_prune" in by_id, "cell.observatory_prune not enrolled"
+        prune = by_id["cell.observatory_prune"]
+        assert prune["type"] == "cron"
+        assert prune["expected_hb_seconds"] == 90000  # daily + 1h grace
+        assert prune["severity_on_silence"] == "warning"
+
+        # Selfcheck cron (5-min)
+        assert "cell.observatory_selfcheck" in by_id, "cell.observatory_selfcheck not enrolled"
+        selfcheck = by_id["cell.observatory_selfcheck"]
+        assert selfcheck["type"] == "cron"
+        assert selfcheck["expected_hb_seconds"] == 3900  # 300s + 1h grace
+        assert "cell.observatory" in selfcheck["dependencies"]
+
+    def test_w1_5_post_publish_poller_enrolled(self):
+        """`pro.post_publish_poller` is the final pipeline motor (SEO +
+        Fireworks Flux.1 cover + git push). Severity=error because when
+        down, mouth articles get stuck mid-flow, but upstream WR2 chain
+        can be replayed once restored.
+        """
+        by_id = self._live_organs_by_id()
+        assert "pro.post_publish_poller" in by_id, (
+            "pro.post_publish_poller not enrolled in live genome"
+        )
+        organ = by_id["pro.post_publish_poller"]
+        assert organ["runtime"] == "pro_launchd"
+        assert organ["type"] == "cron"
+        assert organ["severity_on_silence"] == "error"
+        assert organ["recovery_action"] == "launchctl_kickstart"
+        assert organ["recovery_params"]["label"] == "com.balizero.post-publish-poller"
+        assert "infra.postgres" in organ["dependencies"]
+
+    def test_w1_5_sota_m13_quartet_enrolled(self):
+        """The 4 sota.m13_* organi are the Lamarckian feedback distillation
+        loop (post_metrics_history). All 4 are crons under wr2.supervisor;
+        each has expected_hb_seconds matching its schedule."""
+        by_id = self._live_organs_by_id()
+
+        expected = {
+            # id: (expected_hb_seconds, severity)
+            "sota.m13_checkpoint": (90000, "warning"),     # daily 09:00
+            "sota.m13_collect":    (90000, "warning"),     # RunAtLoad — treat as daily
+            "sota.m13_monthly":    (2678400, "info"),      # monthly day-1 04:30
+            "sota.m13_weekly":     (691200, "warning"),    # weekly Sun 06:00
+        }
+        for organ_id, (hb, severity) in expected.items():
+            assert organ_id in by_id, f"{organ_id} not enrolled in live genome"
+            organ = by_id[organ_id]
+            assert organ["type"] == "cron", f"{organ_id} type should be 'cron'"
+            assert organ["expected_hb_seconds"] == hb, (
+                f"{organ_id} expected_hb_seconds={hb}, got {organ['expected_hb_seconds']}"
+            )
+            assert organ["severity_on_silence"] == severity, (
+                f"{organ_id} severity_on_silence={severity}, got {organ['severity_on_silence']}"
+            )
+            assert "wr2.supervisor" in organ["dependencies"], (
+                f"{organ_id} should depend on wr2.supervisor (cron wrapper supervises)"
+            )
+            assert "infra.postgres" in organ["dependencies"], (
+                f"{organ_id} should depend on infra.postgres (post_metrics_history)"
+            )

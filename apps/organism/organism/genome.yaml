@@ -44,7 +44,7 @@
 
 version: 1
 checksum_algo: sha256
-checksum: 4e84c2e3e81ec628d306bccc1cec16e9930ba3c0f83f7434a0de98645f9ff777
+checksum: eab31aaeb891b5e49e144e024a759319023a28c2ade62c2bd7a02599fe7ad84f
 organs:
   - id: infra.postgres
     runtime: fly_machine
@@ -994,5 +994,136 @@ organs:
     recovery_params:
       host: pro
       label: com.nuzantara.secrets-sync-mini
+    severity_on_silence: warning
+    cicatrix_refs: []
+  # === Wave 1.5 MISS CRITICI (2026-05-07) — issue #490 ===
+  # Federation A2A bridge + cell-observatory triplet + post-publish poller +
+  # 4 SOTA M13 Lamarckian feedback distillation crons. Smoke-tested
+  # bootstrapped on Pro at design time. See
+  # docs/superpowers/specs/2026-05-07-symbiosis-w1.5-miss-critici-design.md
+  - id: nlm.bridge
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 180
+    owner_module: apps/nlm-bridge/main.py
+    dependencies:
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.nlm-bridge
+    severity_on_silence: critical
+    cicatrix_refs: []
+  - id: cell.observatory
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 90
+    owner_module: apps/cell-observatory-collector/cell_observatory/__main__.py
+    dependencies:
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.cell-observatory
+    severity_on_silence: critical
+    cicatrix_refs: []
+    bridge_source:
+      type: state_file
+      path: ~/.organism/last_seen/cell.observatory.json
+      timestamp_field: ts
+      status_field: status
+  - id: cell.observatory_prune
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/cell-observatory-collector/cell_observatory/prune.py
+    dependencies:
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.cell-observatory-prune
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: cell.observatory_selfcheck
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 3900
+    owner_module: apps/cell-observatory-collector/scripts/healthcheck.sh
+    dependencies:
+      - cell.observatory
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.cell-observatory-selfcheck
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: pro.post_publish_poller
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/bali-intel-scraper/scripts/post_publish_poller.py
+    dependencies:
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.post-publish-poller
+    severity_on_silence: error
+    cicatrix_refs: []
+  - id: sota.m13_checkpoint
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/backend-rag/backend/services/sota_loop/m13_checkpoint.py
+    dependencies:
+      - infra.postgres
+      - wr2.supervisor
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.sota.m13-checkpoint
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: sota.m13_collect
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/backend-rag/backend/services/sota_loop/m13_collect.py
+    dependencies:
+      - infra.postgres
+      - wr2.supervisor
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.sota.m13-collect
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: sota.m13_monthly
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 2678400
+    owner_module: apps/backend-rag/backend/services/sota_loop/m13_monthly.py
+    dependencies:
+      - infra.postgres
+      - wr2.supervisor
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.sota.m13-monthly
+    severity_on_silence: info
+    cicatrix_refs: []
+  - id: sota.m13_weekly
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 691200
+    owner_module: apps/backend-rag/backend/services/sota_loop/m13_weekly.py
+    dependencies:
+      - infra.postgres
+      - wr2.supervisor
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.sota.m13-weekly
     severity_on_silence: warning
     cicatrix_refs: []
