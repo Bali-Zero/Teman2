@@ -37,6 +37,18 @@ export const PricingTable: React.FC<PricingTableProps> = ({ data }) => {
   const renderPrice = (item: PricingItem) => {
     if (item.price)
       return <span className="text-xl font-bold text-white">{item.price}</span>;
+    // 2026: tier_range = [low, high] when no single ``price``
+    if (item.tier_range && item.tier_range.length === 2) {
+      const low = item.tier_range[0]?.replace("IDR", "").trim();
+      const high = item.tier_range[1]?.replace("IDR", "").trim();
+      if (low && high) {
+        return (
+          <span className="text-xl font-bold text-white">
+            Rp {low} – {high}
+          </span>
+        );
+      }
+    }
     if (item.price_1y && item.price_2y) {
       return (
         <div className="flex flex-col">
@@ -126,11 +138,25 @@ export const PricingTable: React.FC<PricingTableProps> = ({ data }) => {
     }
 
     // It's a specific category listing
+    // ``tax_accounting`` (2026) has one extra nesting level — flatten its
+    // sub-blocks into a single rendered list per sub-block.
+    const taxBlocks =
+      data.tax_accounting && Object.entries(data.tax_accounting);
     return (
       <>
         {renderCategory("Single Entry Visas", data.single_entry_visas)}
         {renderCategory("Multiple Entry Visas", data.multiple_entry_visas)}
-        {renderCategory("KITAS & Long Stay", data.kitas_permits)}
+        {renderCategory("KITAS", data.kitas_permits)}
+        {renderCategory("KITAP", data.kitap_permits)}
+        {taxBlocks?.map(([blockName, blockItems]) =>
+          renderCategory(`Tax & Accounting · ${blockName}`, blockItems),
+        )}
+        {renderCategory("Company Services", data.company_services)}
+        {renderCategory("Consultant Services", data.consultant_services)}
+        {renderCategory("Other Processes", data.other_process)}
+        {renderCategory("Urgent Processing", data.urgent_processing)}
+        {/* Legacy 2025 keys — preserved so cached payloads still render */}
+        {renderCategory("Visa Extensions", data.visa_extensions)}
         {renderCategory("Business & Legal", data.business_legal_services)}
         {renderCategory("Taxation", data.taxation_services)}
         {renderCategory("Quick Packages", data.quick_quotes)}
