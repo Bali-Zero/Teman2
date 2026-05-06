@@ -17,13 +17,13 @@ Doctrine ratified by Zero on 2026-05-06 14:55 WITA: mata-garuda enrolled exposin
 
 `launchctl list` on both machines via Tailscale produced this active-active layout for `com.matagaruda.*`:
 
-| Class | Count | Detail |
-|---|---|---|
-| Pro `com.matagaruda.*` loaded | 16 | full label list verified |
-| Mini `com.matagaruda.*` loaded | 15 | via `ssh mini-remote` |
-| Active-active duplicates (12) | 12 | `watcher.daily`, `reg-alert.30min`, `kg-linker`, `wr-topic`, `wr2-bridge`, `bridge.adaptive`, `sentinel.daily`, `intel-bridge.daily`, `daily-briefing`, `kita-feed`, `public-channel`, `weekly-digest`, `gap.consumer` |
-| Pro-only | 3 | `invalidation-sweep`, `nlm-feeder-stream.hourly`, `nlm-expander.weekly` |
-| Mini-only | 2 | `ner-worker.hourly` (Ollama qwen3.5 GPU on Mini), `normalizer.hourly` |
+| Class                          | Count | Detail                                                                                                                                                                                                                 |
+| ------------------------------ | ----- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Pro `com.matagaruda.*` loaded  | 16    | full label list verified                                                                                                                                                                                               |
+| Mini `com.matagaruda.*` loaded | 15    | via `ssh mini-remote`                                                                                                                                                                                                  |
+| Active-active duplicates (12)  | 12    | `watcher.daily`, `reg-alert.30min`, `kg-linker`, `wr-topic`, `wr2-bridge`, `bridge.adaptive`, `sentinel.daily`, `intel-bridge.daily`, `daily-briefing`, `kita-feed`, `public-channel`, `weekly-digest`, `gap.consumer` |
+| Pro-only                       | 3     | `invalidation-sweep`, `nlm-feeder-stream.hourly`, `nlm-expander.weekly`                                                                                                                                                |
+| Mini-only                      | 2     | `ner-worker.hourly` (Ollama qwen3.5 GPU on Mini), `normalizer.hourly`                                                                                                                                                  |
 
 (The 12 + 3 + (15-12)=3 = 31 entries case — Mini-3 already includes the 2 Mini-only above; the 13th Mini service is a distinct duplicate-pair that the verification listed as 12+1, see commit body for breakdown.)
 
@@ -53,9 +53,10 @@ Pro background `com.nuzantara.*` plists not yet enrolled (~5-8): codex runners (
 **D3 — Active-active duplicates are out of scope for this PR.** Resolution of double-firing risk is documented as a P1 STRUCTURAL cicatrix entry (commit 4); cleanup is a separate PR.
 
 **D4 — Target.** ≥75 entries final. Estimate breakdown:
+
 - B1 matagaruda Pro 16 + Mini 15 = 31 entries (with 24 cross-linked via `duplicates_id`, i.e. 12 pairs)
 - B2 WR2 Pro 13 (16 plist - 3 already enrolled: oracle, supervisor, newsletter) + Pro background 5-8 = 18-21 entries
-- + 26 existing = **~75-78 final**
+- - 26 existing = **~75-78 final**
 
 **D5 — Commit cadence.** WIP commit every ~90 min, push within 30s of every commit. Wave 2 Pro 2026-04-29 used 90-min cadence successfully on similar registry-only work; the 10-min MOS rule applies to large untracked design docs (>5KB), not single-file tracked YAML edits. Branch hijack mitigation: `ps aux | grep -c claude` <3 at session start.
 
@@ -64,6 +65,7 @@ Pro background `com.nuzantara.*` plists not yet enrolled (~5-8): codex runners (
 **D7 — `duplicates_id` typing.** Header-only convention. Validator left untouched. Premature optimization to add a typed schema for it now; future PR if/when strict cross-id resolution is desired.
 
 **D8 — agents/workers classifier.**
+
 - Mata-garuda agents: `grep -l "@register_agent" apps/mata-garuda/mata_garuda/agents/*.py` → 29 decorated files (excluding `__init__.py` which only runs the auto-loader, and `_goid_base.py` which is shared utility). Verified empirically.
 - Mata-garuda workers: B2-workers SKIPPED. The plist-driven workers (`ner_worker`, `normalizer`, `gap_consumer`, `kg_linker`, `nlm_feeder`) are already enrolled via the matagaruda plist entries in B1. The remaining `.py` files in `mata_garuda/workers/` (`base_worker`, `classifier_worker`, `contradiction_worker`, `dedup_worker`, `embedder_worker`, `gap_legacy`, `scorer`, `semantic_diff_worker`) are library/utility code OR Redis-stream consumers spawned on-demand by the registry — not standalone organs. Adding them as registry entries would be noise.
 
@@ -77,6 +79,7 @@ Pro background `com.nuzantara.*` plists not yet enrolled (~5-8): codex runners (
 - This design doc (commit 0)
 
 NO modifications to:
+
 - Organ source code (mata-garuda, WR2, Pro background scripts)
 - Existing 26 genome entries (their `id`, `dependencies`, `recovery_*` stay byte-identical)
 - Plist files in `~/Library/LaunchAgents/`
@@ -120,37 +123,38 @@ Replace the "149 organi nervosi" cap-promise (lines 1-26) with a doctrine-aligne
 Example pair (intel_bridge.daily, active-active):
 
 ```yaml
-  - id: mata_garuda.intel_bridge_daily.pro
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000  # daily cron, 25h grace
-    owner_module: apps/mata-garuda/scripts/run_intel_bridge.py
-    dependencies:
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.matagaruda.intel-bridge.daily
-    severity_on_silence: warning
-    cicatrix_refs: []
-    duplicates_id: mata_garuda.intel_bridge_daily.mini
-  - id: mata_garuda.intel_bridge_daily.mini
-    runtime: mini_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/mata-garuda/scripts/run_intel_bridge.py
-    dependencies:
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: mini
-      label: com.matagaruda.intel-bridge.daily
-    severity_on_silence: warning
-    cicatrix_refs: []
-    duplicates_id: mata_garuda.intel_bridge_daily.pro
+- id: mata_garuda.intel_bridge_daily.pro
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000 # daily cron, 25h grace
+  owner_module: apps/mata-garuda/scripts/run_intel_bridge.py
+  dependencies:
+    - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.matagaruda.intel-bridge.daily
+  severity_on_silence: warning
+  cicatrix_refs: []
+  duplicates_id: mata_garuda.intel_bridge_daily.mini
+- id: mata_garuda.intel_bridge_daily.mini
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/mata-garuda/scripts/run_intel_bridge.py
+  dependencies:
+    - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.matagaruda.intel-bridge.daily
+  severity_on_silence: warning
+  cicatrix_refs: []
+  duplicates_id: mata_garuda.intel_bridge_daily.pro
 ```
 
 Type derivation rules (`expected_hb_seconds = expected_period + 1h grace`):
+
 - `StartCalendarInterval` daily (single Hour/Minute) → `cron`, `expected_hb_seconds = 86400 + 3600 = 90000`.
 - `StartCalendarInterval` weekly (Weekday + Hour/Minute) → `cron`, `expected_hb_seconds = 604800 + 86400 = 691200` (1 day grace for weekly).
 - `StartInterval = N` seconds → `cron`, `expected_hb_seconds = N + 3600` (1h grace minimum, scaled if N is small e.g. minutely).
@@ -175,22 +179,22 @@ Naming: `wr2.<service_underscored>` (e.g. `wr2.draft_generator`). All `runtime: 
 
 **Pro background 5-8 entries** (selected from these candidates by classify rules §5.3):
 
-| Candidate id | LaunchAgent label | Likely type |
-|---|---|---|
-| `pro.codex_autofix_ci` | `com.nuzantara.codex-autofix-ci` | cron |
-| `pro.codex_coverage_improver` | `com.nuzantara.codex-coverage-improver` | cron |
-| `pro.codex_overnight_feeder` | `com.nuzantara.codex-overnight-feeder` | cron |
-| `pro.codex_overnight_runner` | `com.nuzantara.codex-overnight-runner` | cron |
-| `pro.codex_research_actor` | `com.nuzantara.codex-research-actor` | cron |
-| `pro.cost_advisor_daily_cap` | `com.nuzantara.cost-advisor-daily-cap` | cron |
-| `pro.cost_advisor_weekly` | `com.nuzantara.cost-advisor-weekly` | cron |
-| `pro.claude_max_usage_watcher` | `com.nuzantara.claude-max-usage-watcher` | daemon |
-| `pro.openclaw_children_watchdog` | `com.nuzantara.openclaw-children-watchdog` | cron |
-| `pro.nb_intel_delta_watcher` | `com.nuzantara.nb-intel-delta-watcher.hourly` | cron |
-| `pro.sentinel_meta_watchdog` | `com.nuzantara.sentinel-meta-watchdog` | cron |
-| `pro.federation_alert_dispatcher` | `com.nuzantara.federation-alert-dispatcher` | cron |
-| `pro.vector_reindex_check` | `com.nuzantara.vector-reindex-check` | cron |
-| `pro.secrets_sync_mini` | `com.nuzantara.secrets-sync-mini` | cron |
+| Candidate id                      | LaunchAgent label                             | Likely type |
+| --------------------------------- | --------------------------------------------- | ----------- |
+| `pro.codex_autofix_ci`            | `com.nuzantara.codex-autofix-ci`              | cron        |
+| `pro.codex_coverage_improver`     | `com.nuzantara.codex-coverage-improver`       | cron        |
+| `pro.codex_overnight_feeder`      | `com.nuzantara.codex-overnight-feeder`        | cron        |
+| `pro.codex_overnight_runner`      | `com.nuzantara.codex-overnight-runner`        | cron        |
+| `pro.codex_research_actor`        | `com.nuzantara.codex-research-actor`          | cron        |
+| `pro.cost_advisor_daily_cap`      | `com.nuzantara.cost-advisor-daily-cap`        | cron        |
+| `pro.cost_advisor_weekly`         | `com.nuzantara.cost-advisor-weekly`           | cron        |
+| `pro.claude_max_usage_watcher`    | `com.nuzantara.claude-max-usage-watcher`      | daemon      |
+| `pro.openclaw_children_watchdog`  | `com.nuzantara.openclaw-children-watchdog`    | cron        |
+| `pro.nb_intel_delta_watcher`      | `com.nuzantara.nb-intel-delta-watcher.hourly` | cron        |
+| `pro.sentinel_meta_watchdog`      | `com.nuzantara.sentinel-meta-watchdog`        | cron        |
+| `pro.federation_alert_dispatcher` | `com.nuzantara.federation-alert-dispatcher`   | cron        |
+| `pro.vector_reindex_check`        | `com.nuzantara.vector-reindex-check`          | cron        |
+| `pro.secrets_sync_mini`           | `com.nuzantara.secrets-sync-mini`             | cron        |
 
 Selection rule at commit time: enroll only candidates that are (a) launchd-loaded, (b) have a clear schedule OR KeepAlive directive, (c) have a non-empty owner_module that maps to a real script in the monorepo. Skip candidates that are utility wrappers calling other organs already enrolled.
 
@@ -205,6 +209,7 @@ Expected final count: 6-8. If fewer are eligible after applying the rule, the to
 ```
 
 Body (TRAUMA / ANTIBODY / GOTCHA per file convention):
+
 - TRAUMA: 12 launchd labels loaded simultaneously on Pro AND Mini, dup_resolver `~/scripts/wave1-pro-mini-dup-resolver.sh` is currently inert when Mini is offline (SessionStart 2026-05-04 14:40 confirmed). Risk: double-firing for cron jobs (e.g. `intel-bridge.daily` could publish to garuda:raw twice on the same day — Redis dedup is per-event, not per-source).
 - ANTIBODY (proposed, follow-up PR): leader-election by hostname for active-active labels; OR explicit Pro-only / Mini-only split via plist removal on one side; OR shared lock in Redis with TTL=interval. Out of scope for this PR.
 - GOTCHA: enrollment in genome.yaml uses `duplicates_id` cross-references but does NOT resolve double-firing — registry is observability, not coordination. The Supervisor will surface heartbeats from both sides; metrics dashboard will show 2× expected `items_processed` until cleanup PR ships. Severity: P1 (operational drift, not crash). Follow-up: dedicated cleanup PR, owner Zero.
@@ -278,13 +283,13 @@ DeepSeek (always) + Gemini OR NotebookLM (one of two if available — Wave 2 Pro
 
 ## 9. Build sequence (4 commits + design doc)
 
-| # | Commit | Files | Validator | Push |
-|---|---|---|---|---|
-| 0 | `docs(symbiosis): W1 genome enroll design doc` | this file | — | within 30s |
-| 1 | `feat(validator): add mini_launchd runtime per Modo B 2-node topology` | validator + genome preamble | PASS | within 30s |
-| 2 | `feat(organism): enroll matagaruda Pro 16 + Mini 15 (active-active dup tracking)` | genome.yaml +31 entries | PASS | within 30s |
-| 3 | `feat(organism): enroll WR2 Pro 14 + Pro background crons` | genome.yaml +19-22 entries | PASS | within 30s |
-| 4 | `docs(cicatrix): document mata_garuda 12 active-active LaunchAgent dup STRUCTURAL P1` | cicatrix-scars.md | PASS | within 30s |
+| #   | Commit                                                                                | Files                       | Validator | Push       |
+| --- | ------------------------------------------------------------------------------------- | --------------------------- | --------- | ---------- |
+| 0   | `docs(symbiosis): W1 genome enroll design doc`                                        | this file                   | —         | within 30s |
+| 1   | `feat(validator): add mini_launchd runtime per Modo B 2-node topology`                | validator + genome preamble | PASS      | within 30s |
+| 2   | `feat(organism): enroll matagaruda Pro 16 + Mini 15 (active-active dup tracking)`     | genome.yaml +31 entries     | PASS      | within 30s |
+| 3   | `feat(organism): enroll WR2 Pro 14 + Pro background crons`                            | genome.yaml +19-22 entries  | PASS      | within 30s |
+| 4   | `docs(cicatrix): document mata_garuda 12 active-active LaunchAgent dup STRUCTURAL P1` | cicatrix-scars.md           | PASS      | within 30s |
 
 Cumulative target after commit 3: ~76-79 entries. Post-commit-3 the validator must report `✓ genome.yaml valid` for the registry to be in W1-final state. Commit 4 is documentation-only (no genome.yaml change, checksum unaffected).
 
@@ -311,11 +316,11 @@ in `apps/organism/organism/genome.yaml`, expanding the registry from 26 to
 
 ## Batches
 
-| Batch | Scope | Entries |
-|---|---|---|
-| B1 | mata_garuda Pro 16 + Mini 15 (active-active) | 31 |
-| B2 | WR2 Pro 13 + Pro background crons (5-8) | 18-21 |
-| C  | Cicatrix entry: 12 active-active dup P1 STRUCTURAL | 0 (docs) |
+| Batch | Scope                                              | Entries  |
+| ----- | -------------------------------------------------- | -------- |
+| B1    | mata_garuda Pro 16 + Mini 15 (active-active)       | 31       |
+| B2    | WR2 Pro 13 + Pro background crons (5-8)            | 18-21    |
+| C     | Cicatrix entry: 12 active-active dup P1 STRUCTURAL | 0 (docs) |
 
 Total final: ~75-78 organs (≥75 target met).
 

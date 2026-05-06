@@ -120,14 +120,14 @@ To remove the tool entirely, revert the wiring commit on
 
 ## Troubleshooting
 
-| Symptom | Likely cause | Fix |
-|---|---|---|
-| `curl: (7) Failed to connect to 100.93.236.6 port 8990` | Daemon not loaded OR Tailscale flap | `launchctl print gui/$(id -u)/com.matagaruda.kg-query-api`; if not listed, `launchctl load …`. If listed, check `tail -50 ~/logs/mata-garuda-kg-api.err`. |
-| `kg_path` is right but `entities_count: 0` | Reading wrong DB (stale Pro snapshot) | Verify Mini KG: `sqlite3 ~/.agent/mata-garuda/kg.db 'SELECT COUNT(*) FROM kg_entities'`. Confirm plist `MATA_GARUDA_REPO` points at the right repo. |
-| `schema_ok: false` in `/health` | KG DB corrupt or migration in flight | Don't restart blindly; check `kg_linker.py` log to see if a writer is mid-batch. |
-| MCP tool returns `{"error": "kg_unavailable"}` repeatedly | Tailscale data-plane down (NordVPN trap, see `lessons_nordvpn_tailscale_block.md`) | `tailscale ping mini-pro2`. If DERP-only, disconnect NordVPN. |
-| MCP tool raises `MCPAccessDenied` | `AGENT_ROLE` env not set or set to non-admin | Inspect with `env \| grep AGENT_ROLE`. The OpenClaw wrapper sets it; direct stdio sessions need to set it explicitly. |
-| Plist mode is `0644` after edit | Forgot to restore `0444` per cicatrix hardening | `chmod 0444 ~/Library/LaunchAgents/com.matagaruda.kg-query-api.plist`. |
+| Symptom                                                   | Likely cause                                                                       | Fix                                                                                                                                                       |
+| --------------------------------------------------------- | ---------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `curl: (7) Failed to connect to 100.93.236.6 port 8990`   | Daemon not loaded OR Tailscale flap                                                | `launchctl print gui/$(id -u)/com.matagaruda.kg-query-api`; if not listed, `launchctl load …`. If listed, check `tail -50 ~/logs/mata-garuda-kg-api.err`. |
+| `kg_path` is right but `entities_count: 0`                | Reading wrong DB (stale Pro snapshot)                                              | Verify Mini KG: `sqlite3 ~/.agent/mata-garuda/kg.db 'SELECT COUNT(*) FROM kg_entities'`. Confirm plist `MATA_GARUDA_REPO` points at the right repo.       |
+| `schema_ok: false` in `/health`                           | KG DB corrupt or migration in flight                                               | Don't restart blindly; check `kg_linker.py` log to see if a writer is mid-batch.                                                                          |
+| MCP tool returns `{"error": "kg_unavailable"}` repeatedly | Tailscale data-plane down (NordVPN trap, see `lessons_nordvpn_tailscale_block.md`) | `tailscale ping mini-pro2`. If DERP-only, disconnect NordVPN.                                                                                             |
+| MCP tool raises `MCPAccessDenied`                         | `AGENT_ROLE` env not set or set to non-admin                                       | Inspect with `env \| grep AGENT_ROLE`. The OpenClaw wrapper sets it; direct stdio sessions need to set it explicitly.                                     |
+| Plist mode is `0644` after edit                           | Forgot to restore `0444` per cicatrix hardening                                    | `chmod 0444 ~/Library/LaunchAgents/com.matagaruda.kg-query-api.plist`.                                                                                    |
 
 ## Latency benchmark result
 

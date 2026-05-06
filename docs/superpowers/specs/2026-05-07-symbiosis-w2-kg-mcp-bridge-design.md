@@ -11,8 +11,8 @@
 Expose the `mata-garuda` SQLite Knowledge Graph (Mini, `~/.agent/mata-garuda/kg.db`,
 **409 entities + 1549 relations + 622 observations** verified 2026-05-06) as a
 local MCP tool callable by Pro-side organs (Claude Code stdio, OpenClaw,
-Cowork). Result: when an internal investigation asks *"who/what does the
-mata-garuda KG know about Imigrasi?"* the caller gets entity metadata,
+Cowork). Result: when an internal investigation asks _"who/what does the
+mata-garuda KG know about Imigrasi?"_ the caller gets entity metadata,
 neighbour names, and source URLs back. **No OSINT raw content leaves
 mata-garuda.**
 
@@ -28,8 +28,8 @@ mata-garuda.**
 ## 3. Doctrine Justification
 
 **SYMBIOSIS.md Pilastro 3 Condivisione** allows operative knowledge sharing
-between organs: *"le skill e gli insight condivisi contengono conoscenza
-operativa, mai dati OSINT"*. The identity of an entity *mentioned* in the
+between organs: _"le skill e gli insight condivisi contengono conoscenza
+operativa, mai dati OSINT"_. The identity of an entity _mentioned_ in the
 KG is operative knowledge; the raw article body is OSINT.
 
 **Override of `apps/mata-garuda/CLAUDE.md` §1 OSINT-blindato** is added in
@@ -137,13 +137,29 @@ Search is a hit-list only; detail comes from `/kg/entity/...`.
   "first_seen": "2026-03-12T08:11:02+00:00",
   "last_seen": "2026-04-30T12:14:09+00:00",
   "neighbor_names": [
-    {"name": "KITAS Investor", "type": "topics",  "predicate": "regulates",   "confidence": 0.78},
-    {"name": "Permenkumham 22/2023", "type": "laws", "predicate": "issued_by", "confidence": 0.85}
+    {
+      "name": "KITAS Investor",
+      "type": "topics",
+      "predicate": "regulates",
+      "confidence": 0.78
+    },
+    {
+      "name": "Permenkumham 22/2023",
+      "type": "laws",
+      "predicate": "issued_by",
+      "confidence": 0.85
+    }
   ],
   "observation_count": 11,
   "observations": [
-    {"observed_at": "2026-04-30T12:14:09+00:00", "source_url": "https://imigrasi.go.id/2026/04/30/announcement"},
-    {"observed_at": "2026-04-21T03:00:00+00:00", "source_url": "https://kemenkumham.go.id/news/12345"}
+    {
+      "observed_at": "2026-04-30T12:14:09+00:00",
+      "source_url": "https://imigrasi.go.id/2026/04/30/announcement"
+    },
+    {
+      "observed_at": "2026-04-21T03:00:00+00:00",
+      "source_url": "https://kemenkumham.go.id/news/12345"
+    }
   ]
 }
 ```
@@ -234,7 +250,10 @@ stale-connection retry pattern as `server.py:85` (Mini reboots / Tailscale
 flap). On `httpx.ConnectError` / `TimeoutException`, return:
 
 ```json
-{"error": "kg_unavailable", "detail": "Mata Garuda KG bridge unreachable (Tailscale flap or daemon down)"}
+{
+  "error": "kg_unavailable",
+  "detail": "Mata Garuda KG bridge unreachable (Tailscale flap or daemon down)"
+}
 ```
 
 — a regular dict with `error` set, NOT a raised exception. AI consumers
@@ -264,38 +283,39 @@ SQLite KG and inserts 3 entities + 2 relations + 4 observations.
 
 Tests:
 
-| ID | Behaviour |
-|----|-----------|
-| T1 | `/health` returns `ok=true` + correct counts when KG is seeded |
-| T2 | `/health` returns `schema_ok=false` if a table is dropped (fail-soft) |
-| T3 | `/kg/search?q=imigrasi` returns substring matches, capped at limit |
-| T4 | `/kg/search?q=` (empty) returns 400 bad_request |
-| T5 | `/kg/search?limit=999` is hard-capped at 100 in response |
-| T6 | `/kg/entity/Imigrasi?type=organizations` returns full record minus forbidden fields |
-| T7 | `/kg/entity/Imigrasi?type=` returns 400 bad_request (type required) |
-| T8 | `/kg/entity/Unknown?type=persons` returns 404 entity_not_found |
-| T9 | Response body contains NONE of `value`, `evidence_url`, `aliases_json`, `aliases`, `content`, `title`, `body`, `excerpt`, `summary`, `field` (deep walk) |
-| T10 | Server refuses to bind `0.0.0.0` (startup-time guardrail) |
-| T11 | Concurrent reads don't deadlock (10 threads × 50 requests, all 200) |
-| T12 | Path traversal `/kg/entity/..%2Fetc%2Fpasswd?type=persons` is rejected (400 bad_request) |
+| ID  | Behaviour                                                                                                                                                |
+| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| T1  | `/health` returns `ok=true` + correct counts when KG is seeded                                                                                           |
+| T2  | `/health` returns `schema_ok=false` if a table is dropped (fail-soft)                                                                                    |
+| T3  | `/kg/search?q=imigrasi` returns substring matches, capped at limit                                                                                       |
+| T4  | `/kg/search?q=` (empty) returns 400 bad_request                                                                                                          |
+| T5  | `/kg/search?limit=999` is hard-capped at 100 in response                                                                                                 |
+| T6  | `/kg/entity/Imigrasi?type=organizations` returns full record minus forbidden fields                                                                      |
+| T7  | `/kg/entity/Imigrasi?type=` returns 400 bad_request (type required)                                                                                      |
+| T8  | `/kg/entity/Unknown?type=persons` returns 404 entity_not_found                                                                                           |
+| T9  | Response body contains NONE of `value`, `evidence_url`, `aliases_json`, `aliases`, `content`, `title`, `body`, `excerpt`, `summary`, `field` (deep walk) |
+| T10 | Server refuses to bind `0.0.0.0` (startup-time guardrail)                                                                                                |
+| T11 | Concurrent reads don't deadlock (10 threads × 50 requests, all 200)                                                                                      |
+| T12 | Path traversal `/kg/entity/..%2Fetc%2Fpasswd?type=persons` is rejected (400 bad_request)                                                                 |
 
 ### Pro-side (TDD against `kg_intel.py`)
 
 `apps/nuzantara-mcp/tests/test_tools_kg_intel.py` (new). Uses `pytest-asyncio`
-+ `httpx.MockTransport` per existing `test_http_helpers.py` pattern.
+
+- `httpx.MockTransport` per existing `test_http_helpers.py` pattern.
 
 Tests:
 
-| ID | Behaviour |
-|----|-----------|
-| P1 | `kg_intel_search("imigrasi")` returns dict with `results` list |
-| P2 | `kg_intel_entity("X", "organizations")` returns parsed entity record |
-| P3 | `kg_intel_health()` returns counts |
-| P4 | On `httpx.ConnectError`, returns `{"error": "kg_unavailable", ...}` (no raise) |
-| P5 | On `httpx.TimeoutException`, returns `{"error": "kg_unavailable", ...}` |
-| P6 | On HTTP 404, returns `{"error": "entity_not_found", ...}` |
-| P7 | Tool decorators include `@require_role("admin")` |
-| P8 | Module imports successfully (server-imports regression test) |
+| ID  | Behaviour                                                                      |
+| --- | ------------------------------------------------------------------------------ |
+| P1  | `kg_intel_search("imigrasi")` returns dict with `results` list                 |
+| P2  | `kg_intel_entity("X", "organizations")` returns parsed entity record           |
+| P3  | `kg_intel_health()` returns counts                                             |
+| P4  | On `httpx.ConnectError`, returns `{"error": "kg_unavailable", ...}` (no raise) |
+| P5  | On `httpx.TimeoutException`, returns `{"error": "kg_unavailable", ...}`        |
+| P6  | On HTTP 404, returns `{"error": "entity_not_found", ...}`                      |
+| P7  | Tool decorators include `@require_role("admin")`                               |
+| P8  | Module imports successfully (server-imports regression test)                   |
 
 ## 9. Tri-LLM Review
 
@@ -360,7 +380,7 @@ dep).
   approved verbatim text, in commit 1)
 - `apps/nuzantara-mcp/nuzantara_mcp/server.py` — add 2 lines: import
   `register as register_kg_intel`, call `register_kg_intel(mcp, _call,
-  _call_safe)` (in commit 5 with the tool itself)
+_call_safe)` (in commit 5 with the tool itself)
 
 ### NOT modified
 
