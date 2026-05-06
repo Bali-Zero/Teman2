@@ -18,7 +18,7 @@ import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 logger = logging.getLogger("mata_garuda.api.kg_query")
 
@@ -69,8 +69,14 @@ class KGQueryHandler(BaseHTTPRequestHandler):
             return self._handle_health()
         self._send_json(404, {"error": "not_found", "detail": "no such endpoint"})
 
+    # ── handlers ──────────────────────────────────────────────────
+    @property
+    def _kg_server(self) -> "KGServer":
+        """Typed view of `self.server`. Avoids `# type: ignore` per handler."""
+        return cast("KGServer", self.server)
+
     def _handle_health(self) -> None:
-        db_path = self.server.db_path  # type: ignore[attr-defined]
+        db_path = self._kg_server.db_path
         try:
             conn = _ro_conn(db_path)
         except sqlite3.Error as exc:

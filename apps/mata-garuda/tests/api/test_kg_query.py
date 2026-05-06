@@ -7,6 +7,7 @@ import sqlite3
 import threading
 import time
 import urllib.parse
+from collections.abc import Generator
 from pathlib import Path
 from typing import Any
 
@@ -104,7 +105,7 @@ def _start_server(db_path: Path) -> tuple["kg_query.KGServer", threading.Thread,
 
 
 @pytest.fixture
-def running_server(kg_db_seeded: Path):
+def running_server(kg_db_seeded: Path) -> Generator[int, None, None]:
     server, thread, port = _start_server(kg_db_seeded)
     try:
         yield port
