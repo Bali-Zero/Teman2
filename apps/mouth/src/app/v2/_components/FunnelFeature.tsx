@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 import {
   Search,
   IdCard,
@@ -242,7 +243,11 @@ export function FunnelFeature({
             alt=""
             fill
             sizes="(max-width: 768px) 100vw, 50vw"
-            quality={78}
+            quality={75}
+            // LCP element confirmed (img.pointer-events-none) — priority needed
+            // NOTE: causes a dev-only hydration warning in Turbopack 16.2.3
+            // (loading: null vs "lazy") — harmless, not present in production builds
+            priority={isFull}
             className="pointer-events-none"
             style={{
               objectFit: cfg.bgFit ?? "cover",
@@ -362,7 +367,7 @@ export function FunnelFeature({
             )}
 
             <div className="flex items-center gap-4 flex-wrap">
-              <a
+              <Link
                 href={FUNNEL_HREF[funnel]}
                 target={
                   FUNNEL_HREF[funnel].startsWith("http") ? "_blank" : undefined
@@ -384,7 +389,7 @@ export function FunnelFeature({
               >
                 {cfg.cta}
                 <ArrowRight size={14} strokeWidth={2} />
-              </a>
+              </Link>
 
               {/* Pricing pointer — avoids fixed-price commitment on home.
                 Full pricing lives on the dedicated service detail page.

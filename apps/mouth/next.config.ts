@@ -1,9 +1,9 @@
-import type { NextConfig } from 'next';
-import { withSentryConfig } from '@sentry/nextjs';
-import bundleAnalyzer from '@next/bundle-analyzer';
+import type { NextConfig } from "next";
+import { withSentryConfig } from "@sentry/nextjs";
+import bundleAnalyzer from "@next/bundle-analyzer";
 
 const withBundleAnalyzer = bundleAnalyzer({
-  enabled: process.env.ANALYZE === 'true',
+  enabled: process.env.ANALYZE === "true",
 });
 
 const nextConfig: NextConfig = {
@@ -23,16 +23,16 @@ const nextConfig: NextConfig = {
   // Exclude heavy directories from serverless function tracing
   // Without this, Vercel traces public/ (537MB) into each function, exceeding the 300MB limit
   outputFileTracingExcludes: {
-    '/*': [
-      './public/blueprints/**',
-      './public/static/**',
-      './public/files/**',
-      './public/audio/**',
-      './public/videos/**',
-      './public/kbli-navigator/**',
-      './coverage/**',
-      './test-results/**',
-      './playwright-report/**',
+    "/*": [
+      "./public/blueprints/**",
+      "./public/static/**",
+      "./public/files/**",
+      "./public/audio/**",
+      "./public/videos/**",
+      "./public/kbli-navigator/**",
+      "./coverage/**",
+      "./test-results/**",
+      "./playwright-report/**",
     ],
   },
 
@@ -40,14 +40,14 @@ const nextConfig: NextConfig = {
   experimental: {
     // Optimize package imports for faster dev and smaller bundles
     optimizePackageImports: [
-      'lucide-react',
-      '@radix-ui/react-icons',
-      'date-fns',
-      'framer-motion',
-      '@nivo/core',
-      '@nivo/bar',
-      '@nivo/line',
-      '@nivo/pie',
+      "lucide-react",
+      "@radix-ui/react-icons",
+      "date-fns",
+      "framer-motion",
+      "@nivo/core",
+      "@nivo/bar",
+      "@nivo/line",
+      "@nivo/pie",
     ],
     // Server Actions optimization
     serverMinification: true,
@@ -61,50 +61,50 @@ const nextConfig: NextConfig = {
   // NOTE: Domain redirects handled by Vercel Dashboard to avoid conflicts
   images: {
     // 🖼️ Image Optimization - Auto AVIF/WebP conversion
-    formats: ['image/avif', 'image/webp'], // Modern formats (70% smaller)
+    formats: ["image/avif", "image/webp"], // Modern formats (70% smaller)
     deviceSizes: [640, 750, 828, 1080, 1200, 1920], // Responsive breakpoints
     imageSizes: [16, 32, 48, 64, 96, 128, 256, 384], // Icon/thumbnail sizes
     minimumCacheTTL: 60 * 60 * 24 * 365, // Cache 1 year
     dangerouslyAllowSVG: true,
-    contentDispositionType: 'attachment',
+    contentDispositionType: "attachment",
     contentSecurityPolicy: "default-src 'self'; script-src 'none'; sandbox;",
 
     remotePatterns: [
       {
-        protocol: 'https',
-        hostname: 'nuzantara-rag.fly.dev',
+        protocol: "https",
+        hostname: "nuzantara-rag.fly.dev",
       },
       {
-        protocol: 'https',
-        hostname: '*.fly.dev',
+        protocol: "https",
+        hostname: "*.fly.dev",
       },
       {
-        protocol: 'https',
-        hostname: 'oaidalleapiprodscus.blob.core.windows.net',
+        protocol: "https",
+        hostname: "oaidalleapiprodscus.blob.core.windows.net",
       },
       {
-        protocol: 'https',
-        hostname: 'placehold.co',
+        protocol: "https",
+        hostname: "placehold.co",
       },
       {
-        protocol: 'https',
-        hostname: 'image.pollinations.ai',
+        protocol: "https",
+        hostname: "image.pollinations.ai",
       },
       {
-        protocol: 'https',
-        hostname: 'balizero.com',
+        protocol: "https",
+        hostname: "balizero.com",
       },
       {
-        protocol: 'https',
-        hostname: 'www.datocms-assets.com',
+        protocol: "https",
+        hostname: "www.datocms-assets.com",
       },
       {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
+        protocol: "https",
+        hostname: "images.unsplash.com",
       },
       {
-        protocol: 'https',
-        hostname: 'storage.googleapis.com',
+        protocol: "https",
+        hostname: "storage.googleapis.com",
       },
     ],
   },
@@ -113,83 +113,83 @@ const nextConfig: NextConfig = {
     return [
       {
         // Force no-cache for kbli-navigator proxy routes
-        source: '/kbli-navigator',
+        source: "/kbli-navigator",
         headers: [
           {
-            key: 'Cache-Control',
-            value: 'no-cache, no-store, must-revalidate',
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
           },
         ],
       },
       {
-        source: '/kbli-navigator/:path*',
+        source: "/kbli-navigator/:path*",
         headers: [
           {
-            key: 'Cache-Control',
-            value: 'no-cache, no-store, must-revalidate',
+            key: "Cache-Control",
+            value: "no-cache, no-store, must-revalidate",
           },
         ],
       },
       {
         // Cache static assets for 1 year (immutable)
-        source: '/_next/static/:path*',
+        source: "/_next/static/:path*",
         headers: [
           {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
           },
         ],
       },
       {
         // Cache images for 1 year
-        source: '/_next/image/:path*',
+        source: "/_next/image/:path*",
         headers: [
           {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
           },
         ],
       },
       {
         // Cache public assets (fonts, etc) for 1 year
-        source: '/:path*.woff2',
+        source: "/:path*.woff2",
         headers: [
           {
-            key: 'Cache-Control',
-            value: 'public, max-age=31536000, immutable',
+            key: "Cache-Control",
+            value: "public, max-age=31536000, immutable",
           },
         ],
       },
       {
         // Add security headers
-        source: '/:path*',
+        source: "/:path*",
         headers: [
           {
-            key: 'X-DNS-Prefetch-Control',
-            value: 'on',
+            key: "X-DNS-Prefetch-Control",
+            value: "on",
           },
           {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=63072000; includeSubDomains; preload',
+            key: "Strict-Transport-Security",
+            value: "max-age=63072000; includeSubDomains; preload",
           },
           {
-            key: 'X-Frame-Options',
-            value: 'DENY',
+            key: "X-Frame-Options",
+            value: "DENY",
           },
           {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
+            key: "X-Content-Type-Options",
+            value: "nosniff",
           },
           {
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin',
+            key: "Referrer-Policy",
+            value: "strict-origin-when-cross-origin",
           },
           {
-            key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(), payment=()',
+            key: "Permissions-Policy",
+            value: "camera=(), microphone=(), geolocation=(), payment=()",
           },
           {
-            key: 'Content-Security-Policy-Report-Only',
+            key: "Content-Security-Policy-Report-Only",
             value:
               "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://www.googletagmanager.com https://www.google-analytics.com; style-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https:; connect-src 'self' https://nuzantara-rag.fly.dev wss://nuzantara-rag.fly.dev https://127.0.0.1:8090 https://*.sentry.io https://www.google-analytics.com; frame-src 'none'; object-src 'none'; base-uri 'self'",
           },
@@ -197,12 +197,12 @@ const nextConfig: NextConfig = {
       },
       // Preconnect to external domains for Core Web Vitals (LCP/FCP improvement)
       {
-        source: '/:path*',
+        source: "/:path*",
         headers: [
           {
-            key: 'Link',
+            key: "Link",
             value:
-              '<https://fonts.googleapis.com>; rel=preconnect, <https://fonts.gstatic.com>; rel=preconnect; crossorigin',
+              "<https://fonts.googleapis.com>; rel=preconnect, <https://fonts.gstatic.com>; rel=preconnect; crossorigin",
           },
         ],
       },
@@ -213,50 +213,50 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       // Category renames (2026-03-23) — keep for 12+ months
-      { source: '/immigration', destination: '/visas', permanent: true },
+      { source: "/immigration", destination: "/visas", permanent: true },
       {
-        source: '/immigration/:slug*',
-        destination: '/visas/:slug*',
+        source: "/immigration/:slug*",
+        destination: "/visas/:slug*",
         permanent: true,
       },
-      { source: '/tax-legal', destination: '/taxes', permanent: true },
+      { source: "/tax-legal", destination: "/taxes", permanent: true },
       {
-        source: '/tax-legal/:slug*',
-        destination: '/taxes/:slug*',
+        source: "/tax-legal/:slug*",
+        destination: "/taxes/:slug*",
         permanent: true,
       },
-      { source: '/lifestyle', destination: '/living', permanent: true },
+      { source: "/lifestyle", destination: "/living", permanent: true },
       {
-        source: '/lifestyle/:slug*',
-        destination: '/living/:slug*',
+        source: "/lifestyle/:slug*",
+        destination: "/living/:slug*",
         permanent: true,
       },
-      { source: '/tech', destination: '/trends', permanent: true },
+      { source: "/tech", destination: "/trends", permanent: true },
       {
-        source: '/tech/:slug*',
-        destination: '/trends/:slug*',
+        source: "/tech/:slug*",
+        destination: "/trends/:slug*",
         permanent: true,
       },
-      { source: '/bali_news', destination: '/living', permanent: true },
+      { source: "/bali_news", destination: "/living", permanent: true },
       {
-        source: '/bali_news/:slug*',
-        destination: '/living/:slug*',
+        source: "/bali_news/:slug*",
+        destination: "/living/:slug*",
         permanent: true,
       },
-      { source: '/digital-nomad', destination: '/living', permanent: true },
+      { source: "/digital-nomad", destination: "/living", permanent: true },
       {
-        source: '/digital-nomad/:slug*',
-        destination: '/living/:slug*',
-        permanent: true,
-      },
-      {
-        source: '/kbli-navigator',
-        destination: '/kbli',
+        source: "/digital-nomad/:slug*",
+        destination: "/living/:slug*",
         permanent: true,
       },
       {
-        source: '/kbli-navigator/:path*',
-        destination: '/kbli/:path*',
+        source: "/kbli-navigator",
+        destination: "/kbli",
+        permanent: true,
+      },
+      {
+        source: "/kbli-navigator/:path*",
+        destination: "/kbli/:path*",
         permanent: true,
       },
       // Note: /chat redirect to zantara.balizero.com is handled by middleware
