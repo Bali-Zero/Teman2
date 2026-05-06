@@ -75,7 +75,7 @@ REGISTRY_DATA: Final[dict[str, dict]] = {
         "cluster": "placeholder_empty",
         "created_at": None,
         "last_audited": "2026-05-07",
-        "action_pending": "KILL",
+        "action_pending": "ORPHAN_REVIEW",
         "peer_uuids": [],
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000002": {
@@ -86,7 +86,7 @@ REGISTRY_DATA: Final[dict[str, dict]] = {
         "cluster": "placeholder_empty",
         "created_at": None,
         "last_audited": "2026-05-07",
-        "action_pending": "KILL",
+        "action_pending": "ORPHAN_REVIEW",
         "peer_uuids": [],
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000003": {
@@ -97,7 +97,7 @@ REGISTRY_DATA: Final[dict[str, dict]] = {
         "cluster": "placeholder_empty",
         "created_at": None,
         "last_audited": "2026-05-07",
-        "action_pending": "KILL",
+        "action_pending": "ORPHAN_REVIEW",
         "peer_uuids": [],
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000004": {
@@ -108,7 +108,7 @@ REGISTRY_DATA: Final[dict[str, dict]] = {
         "cluster": "playbook_artifact",
         "created_at": None,
         "last_audited": "2026-05-07",
-        "action_pending": "EXPORT",
+        "action_pending": "ORPHAN_REVIEW",
         "peer_uuids": [],
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000005": {
@@ -119,7 +119,7 @@ REGISTRY_DATA: Final[dict[str, dict]] = {
         "cluster": "playbook_artifact",
         "created_at": None,
         "last_audited": "2026-05-07",
-        "action_pending": "EXPORT",
+        "action_pending": "ORPHAN_REVIEW",
         "peer_uuids": [],
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000006": {
@@ -130,7 +130,7 @@ REGISTRY_DATA: Final[dict[str, dict]] = {
         "cluster": "playbook_artifact",
         "created_at": None,
         "last_audited": "2026-05-07",
-        "action_pending": "EXPORT",
+        "action_pending": "ORPHAN_REVIEW",
         "peer_uuids": [],
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000007": {
@@ -141,7 +141,7 @@ REGISTRY_DATA: Final[dict[str, dict]] = {
         "cluster": "playbook_artifact",
         "created_at": None,
         "last_audited": "2026-05-07",
-        "action_pending": "EXPORT",
+        "action_pending": "ORPHAN_REVIEW",
         "peer_uuids": [],
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000008": {
@@ -152,7 +152,7 @@ REGISTRY_DATA: Final[dict[str, dict]] = {
         "cluster": "playbook_artifact",
         "created_at": None,
         "last_audited": "2026-05-07",
-        "action_pending": "EXPORT",
+        "action_pending": "ORPHAN_REVIEW",
         "peer_uuids": [],
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000009": {
@@ -163,7 +163,7 @@ REGISTRY_DATA: Final[dict[str, dict]] = {
         "cluster": "playbook_artifact",
         "created_at": None,
         "last_audited": "2026-05-07",
-        "action_pending": "EXPORT",
+        "action_pending": "ORPHAN_REVIEW",
         "peer_uuids": [],
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000010": {
@@ -174,7 +174,7 @@ REGISTRY_DATA: Final[dict[str, dict]] = {
         "cluster": "playbook_artifact",
         "created_at": None,
         "last_audited": "2026-05-07",
-        "action_pending": "EXPORT",
+        "action_pending": "ORPHAN_REVIEW",
         "peer_uuids": [],
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000011": {
@@ -185,7 +185,7 @@ REGISTRY_DATA: Final[dict[str, dict]] = {
         "cluster": "playbook_artifact",
         "created_at": None,
         "last_audited": "2026-05-07",
-        "action_pending": "EXPORT",
+        "action_pending": "ORPHAN_REVIEW",
         "peer_uuids": [],
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000012": {
@@ -196,7 +196,7 @@ REGISTRY_DATA: Final[dict[str, dict]] = {
         "cluster": "playbook_artifact",
         "created_at": None,
         "last_audited": "2026-05-07",
-        "action_pending": "EXPORT",
+        "action_pending": "ORPHAN_REVIEW",
         "peer_uuids": [],
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000013": {
@@ -207,7 +207,7 @@ REGISTRY_DATA: Final[dict[str, dict]] = {
         "cluster": "playbook_artifact",
         "created_at": None,
         "last_audited": "2026-05-07",
-        "action_pending": "EXPORT",
+        "action_pending": "ORPHAN_REVIEW",
         "peer_uuids": [],
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000014": {
@@ -218,7 +218,7 @@ REGISTRY_DATA: Final[dict[str, dict]] = {
         "cluster": "playbook_artifact",
         "created_at": None,
         "last_audited": "2026-05-07",
-        "action_pending": "EXPORT",
+        "action_pending": "ORPHAN_REVIEW",
         "peer_uuids": [],
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000015": {
@@ -229,7 +229,7 @@ REGISTRY_DATA: Final[dict[str, dict]] = {
         "cluster": "playbook_artifact",
         "created_at": None,
         "last_audited": "2026-05-07",
-        "action_pending": "EXPORT",
+        "action_pending": "ORPHAN_REVIEW",
         "peer_uuids": [],
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000016": {
@@ -240,7 +240,7 @@ REGISTRY_DATA: Final[dict[str, dict]] = {
         "cluster": "playbook_artifact",
         "created_at": None,
         "last_audited": "2026-05-07",
-        "action_pending": "EXPORT",
+        "action_pending": "ORPHAN_REVIEW",
         "peer_uuids": [],
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000017": {
@@ -251,7 +251,7 @@ REGISTRY_DATA: Final[dict[str, dict]] = {
         "cluster": "playbook_artifact",
         "created_at": None,
         "last_audited": "2026-05-07",
-        "action_pending": "EXPORT",
+        "action_pending": "ORPHAN_REVIEW",
         "peer_uuids": [],
     },
     "aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000018": {
