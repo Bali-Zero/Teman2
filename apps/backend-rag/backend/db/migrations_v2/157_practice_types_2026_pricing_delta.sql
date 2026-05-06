@@ -23,8 +23,9 @@
 --   For services priced as a range (e.g. 1.8M–2.0M IDR) we insert ONE
 --   row per service with base_price = NULL. The Quoted Price field on
 --   the New Process form starts blank and the sales person types the
---   negotiated number manually. The notes column keeps the published
---   range for reference.
+--   negotiated number manually. The `description` column keeps the
+--   published range string for reference (NOT the `notes` column —
+--   that is on `practices`, not `practice_types`).
 --
 -- Idempotent: ON CONFLICT(code) DO UPDATE so reruns are safe and pick
 -- up future tweaks. Same pattern as migration_148_practice_types_bridging_visa.
@@ -249,7 +250,7 @@ ON CONFLICT (code) DO UPDATE SET
 -- =====================================================================
 -- 11. HARD-DELETE obsolete 2025 entries (owner decision A, 2026-05-06)
 --
--- These 7 services are removed from the 2026 published price list and
+-- These 8 services are removed from the 2026 published price list and
 -- the owner explicitly approved hard-delete (option A in the planning
 -- conversation):
 --   ACC × 3       — ACC Mutation, ACC Mutation Passport, ACC Boarding Pass
@@ -258,9 +259,9 @@ ON CONFLICT (code) DO UPDATE SET
 --   Cancel combo  — Cancel (RPTKA, IMTA, Wajib Lapor) — replaced by
 --                   individual Cancel RPTKA + Cancel Wajib Lapor at
 --                   updated 1M prices each
---   Domicilie+SKTT bundle — clients now order SKTT and Domicilie Letter
---                           separately
---   Domicilie Letter — removed from 2026 list entirely
+--   Domicilie+SKTT bundle — replaced by SKTT alone (the bundle is dropped)
+--   Domicilie Letter — removed from 2026 published list; SKTT row stays
+--                      as the only domicile-related service
 --
 -- ⚠️ FK shape: practices has TWO FKs onto practice_types —
 --   practices.practice_type_id   → practice_types.id    (integer FK)
@@ -293,10 +294,19 @@ DO $$
 DECLARE
     blocking_codes text;
 BEGIN
-    SELECT string_agg(DISTINCT practice_type_code, ', ' ORDER BY practice_type_code)
+    -- Codex review (2026-05-06) WARNING #2: aggregating only
+    -- practices.practice_type_code missed rows where that column is
+    -- NULL but practice_type_id still references one of the obsolete
+    -- entries. The JOIN below resolves the canonical code via the
+    -- target row's `code` column, so any practice referencing the
+    -- obsolete row through *either* FK is detected.
+    SELECT string_agg(DISTINCT pt.code, ', ' ORDER BY pt.code)
     INTO blocking_codes
-    FROM practices
-    WHERE practice_type_code = ANY(ARRAY[
+    FROM practice_types pt
+    JOIN practices p
+      ON p.practice_type_id = pt.id
+      OR p.practice_type_code = pt.code
+    WHERE pt.code = ANY(ARRAY[
         'other_acc_mutation',
         'other_acc_mutation_passport',
         'other_acc_boarding_pass',
@@ -305,20 +315,7 @@ BEGIN
         'other_cancel_rptka_imta_wl',
         'other_domicilie_sktt',
         'other_domicilie'
-    ]::text[])
-       OR practice_type_id IN (
-           SELECT id FROM practice_types
-           WHERE code = ANY(ARRAY[
-               'other_acc_mutation',
-               'other_acc_mutation_passport',
-               'other_acc_boarding_pass',
-               'merp_1yr',
-               'merp_2yr',
-               'other_cancel_rptka_imta_wl',
-               'other_domicilie_sktt',
-               'other_domicilie'
-           ]::text[])
-       );
+    ]::text[]);
 
     IF blocking_codes IS NOT NULL THEN
         RAISE EXCEPTION
@@ -349,11 +346,30 @@ DELETE FROM practice_types WHERE code = ANY(ARRAY[
 -- migration_066's seed values. If a price change needs to be undone,
 -- write a follow-up migration that sets the explicit prior price.
 --
+-- The metadata change to `ext_c1_tourism` in section 1 (name +
+-- description + typical_duration_days flipped from +30 days to +60 days)
+-- is also intentionally NOT rolled back — those values describe Bali
+-- Zero's actual 2026 service. Reverting to "+30 days" would
+-- mis-represent the product. If a true rollback is needed (e.g. data
+-- corruption), write a follow-up migration with the explicit 2025
+-- values: name='C1 Tourism Extension',
+-- description='Extension of C1 Tourism visa, +30 days',
+-- typical_duration_days=30.
+--
 -- The HARD-DELETE in section 11 (ACC×3, MERP 1Y/2Y, Cancel combo,
--- Domicilie+SKTT, Domicilie Letter) is NOT rolled back here either.
--- Restoring those rows requires re-running the original INSERT from
--- migration_066. If a rollback is needed, write a follow-up migration
--- that re-INSERTs the 7 codes with their original 2025 values.
+-- Domicilie+SKTT, Domicilie Letter — 8 codes total) is NOT rolled back
+-- here either. Restoring those rows requires re-running the original
+-- INSERT from migration_066 (with the original 2025 values).
+--
+-- ⚠️ CICATRIX (Codex review 2026-05-06 WARNING #3): the migration
+-- runner's `apply` path logs into `schema_migrations` (defined in
+-- migration_base.py), but the legacy `rollback_migration()` CLI helper
+-- in migration_manager.py reads from `_schema_versions`. The two
+-- registries diverged in 2026 (see cicatrix-scars EventBus line 146).
+-- This means triggering rollback through the standard CLI helper may
+-- not find this migration entry and silently no-op. Operational
+-- rollback for this file should therefore be done by running the
+-- statements below directly via psql, NOT via the CLI rollback helper.
 
 UPDATE practice_types SET is_active = false WHERE code = ANY(ARRAY[
     'visa_c8_journalism',
