@@ -259,3 +259,49 @@ def test_t8_entity_unknown_404(running_server: int) -> None:
     status, body = _get(running_server, "/kg/entity/Zaphod?type=persons")
     assert status == 404
     assert body["error"] == "entity_not_found"
+
+
+def _walk_keys(obj: Any) -> set[str]:
+    """Recursively collect all dict keys present in obj."""
+    found: set[str] = set()
+    if isinstance(obj, dict):
+        for k, v in obj.items():
+            found.add(k)
+            found |= _walk_keys(v)
+    elif isinstance(obj, list):
+        for item in obj:
+            found |= _walk_keys(item)
+    return found
+
+
+def test_t9_no_forbidden_fields_anywhere(running_server: int) -> None:
+    """T9: NO forbidden field name in any response payload."""
+    forbidden = {"value", "evidence_url", "aliases_json", "aliases", "content", "title", "body", "excerpt", "summary", "field"}
+    paths = [
+        "/health",
+        "/kg/search?q=i&limit=99",
+        "/kg/entity/" + urllib.parse.quote("Direktorat Jenderal Imigrasi") + "?type=organizations",
+    ]
+    for path in paths:
+        status, body = _get(running_server, path)
+        assert status == 200, f"{path} returned {status}"
+        keys = _walk_keys(body)
+        leaks = forbidden & keys
+        assert not leaks, f"{path} leaks forbidden fields: {leaks}"
+
+
+def test_t11_concurrent_reads(running_server: int) -> None:
+    """T11: 10 threads x 50 reads, no deadlock, all 200."""
+    import concurrent.futures
+
+    def worker() -> int:
+        ok = 0
+        for _ in range(50):
+            s, _ = _get(running_server, "/kg/search?q=i")
+            if s == 200:
+                ok += 1
+        return ok
+
+    with concurrent.futures.ThreadPoolExecutor(max_workers=10) as pool:
+        results = list(pool.map(lambda _: worker(), range(10)))
+    assert sum(results) == 500
