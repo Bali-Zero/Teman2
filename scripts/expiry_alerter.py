@@ -28,13 +28,14 @@ from pathlib import Path
 WITA = timezone(timedelta(hours=8))
 PROJECT_ROOT = Path(__file__).parent.parent
 BACKEND_ENV = PROJECT_ROOT / "apps" / "backend-rag" / ".env"
+SSH_HOST = os.environ.get("EXPIRY_ALERTER_SSH_HOST", "pro")
 
 # SMTP config (Zoho via damar@, send as zantara@)
 SMTP_HOST = "smtppro.zoho.com"
 SMTP_PORT = 465
 SMTP_LOGIN = os.environ.get("SMTP_LOGIN", "damar@balizero.com")
 SMTP_PASS = os.environ.get("SMTP_PASS", "")
-FROM_EMAIL = "zantara@balizero.com"
+FROM_EMAIL = os.environ.get("SMTP_FROM_EMAIL", SMTP_LOGIN)
 FROM_NAME = "Zantara AI"
 
 # Telegram config
@@ -143,7 +144,7 @@ asyncio.run(m())
     encoded = __import__("base64").b64encode(code.encode()).decode()
 
     result = subprocess.run(
-        ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", "pro",
+        ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", SSH_HOST,
          f'fly ssh console --app nuzantara-rag -C "python3 -c \\"import base64;exec(base64.b64decode(b\'{encoded}\'))\\"" 2>/dev/null'],
         capture_output=True, text=True, timeout=30,
     )
@@ -374,7 +375,7 @@ asyncio.run(m())
         return
 
     result = subprocess.run(
-        ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", "pro",
+        ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", SSH_HOST,
          f'fly ssh console --app nuzantara-rag -C "python3 -c \\"import base64;exec(base64.b64decode(b\'{encoded}\'))\\"" 2>/dev/null'],
         capture_output=True, text=True, timeout=30,
     )
