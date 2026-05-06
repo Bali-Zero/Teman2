@@ -22,7 +22,11 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_TIMEOUT_SEC = 600  # 10 min — full skill flow can take 5-8 min
+DEFAULT_TIMEOUT_SEC = 1500  # 25 min — empirical: deep-tier 11-slide draft
+# with hero images + Phase A.5 pre-wipe (~50 ops) + Phase B duplicate + Phase C
+# reset (~50 ops) reaches 8-12 min on Pro M4. Synthetic 5-slide no-image test
+# was 283s. 600s timed out on real drafts (37263a1f at 04:09 WITA 2026-05-07).
+# 1500s leaves headroom for Canva MCP rate-limit pauses inside the skill flow.
 DEFAULT_CLAUDE_BIN = "claude"  # resolved from PATH
 # 2026-05-07: APPLICA_WAR_ROOM.md was at apps/war-room/ but that directory was
 # removed in PR #171 (WR1 decommission). The authoritative runbook is now the
