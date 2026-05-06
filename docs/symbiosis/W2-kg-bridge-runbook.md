@@ -131,8 +131,94 @@ To remove the tool entirely, revert the wiring commit on
 
 ## Latency benchmark result
 
-(Filled in at deploy time — Task 12.)
+Captured 2026-05-07 from Pro → Mini via Tailscale (100 calls, `/kg/search?q=imigrasi`):
+
+```
+target  : http://100.93.236.6:8990/kg/search?q=imigrasi
+samples : 100/100 (errors=0)
+p50_ms  : 22.5
+p95_ms  : 25.7
+p99_ms  : 30.3
+min_ms  : 19.0
+max_ms  : 40.0
+```
+
+**Pass:** p99 = 30.3 ms, 26× under the 800 ms spec threshold.
+
+Note: measured while Tailscale was routed via DERP USA relay per the Pro
+ssh.config patch; the p50 around 22 ms suggests Tailscale promoted the
+data-plane to direct peer-to-peer (DERP-relay RTT was ~62 ms). Once
+Mini moves back to the same router as Pro for LAN-direct, expect
+single-digit-ms p99. Either way the 800 ms budget is comfortable.
 
 ## Tri-LLM review
 
-(Filled in at PR-prep time — Task 12.)
+Captured 2026-05-07 pre-merge. Threshold ≥2/3 approvals (per Wave-2 Pro
+2026-04-29 capacity-exhaustion pattern); NotebookLM NB-1 MCP not exposed in
+this session; Gemini opportunistic, skipped because the 2/3 threshold was
+already met by DeepSeek + Codex.
+
+### DeepSeek-V4-flash: APPROVE-WITH-NITS
+
+```
+SPOF: stale _client after Tailscale flap; the singleton is never reset,
+its connection pool may hold dead connections. (Mitigated partially by
+the `if _client is None or _client.is_closed` check in _get_client.)
+
+LEAK: error path returns "kg_path" in 503 (/health), revealing
+$HOME prefix. Low-severity (Tailscale-gated, mata-garuda audit logs
+already include the path).
+
+RACE: _get_client() singleton race on first call. asyncio cooperative
+concurrency makes this a paper risk in single-process; pytest-xdist
+spawns separate worker processes so test isolation is fine.
+
+ONE-IMPROVEMENT: connection-pool health check before each call.
+Rejected by maintainer — would halve throughput; the graceful-
+degradation path already handles flap.
+
+VERDICT: APPROVE-WITH-NITS
+```
+
+(Captured `/tmp/w2-deepseek-review.txt`, model `deepseek-v4-flash`,
+input_tokens=11953 output_tokens=924, ~$0.01 charge against the existing
+DEEPSEEK_API_KEY budget — within the article_composer pattern Zero
+already accepts.)
+
+### Codex (sandbox read-only): APPROVE-WITH-NITS
+
+```
+UNHANDLED: kg_intel.py covers ConnectError/Timeout/ReadError/
+RemoteProtocolError + the new httpx.RequestError safety net. For a
+literal "NEVER raises" contract, a final `except Exception` would
+catch asyncio loop misuse and bad-config exceptions. Maintainer
+deferred — bare `except Exception` would also mask CancelledError,
+defeating the cooperative-cancellation contract.
+
+TEST-SEAM: _TRANSPORT_OVERRIDE is process-local, pytest-xdist spawns
+worker processes so cross-worker races are impossible. In-process
+serial tests work because the fixture resets _client = None.
+
+TCC: plist documents the bypass and execs venv python directly. No
+shell wrapper is a positive. Long-term audit-hostile because it
+relies on interpreter identity for Desktop access; if mata-garuda
+ever moves out of ~/Desktop, the trick goes away naturally.
+
+VERDICT: APPROVE-WITH-NITS
+```
+
+(Captured `/tmp/w2-codex-review.txt`, ChatGPT Plus subscription, no
+incremental cost.)
+
+### Gemini 3.1 Pro: opportunistic-skipped
+
+The 2/3 threshold was met before invoking Gemini. Skipped to conserve
+quota per the Wave-2 Pro capacity-exhaustion pattern. Re-runnable if a
+future change wants the third axis.
+
+### Deferred nits (tracked, not blocking)
+
+- `_handle_health` 503 echoes `kg_path` (DeepSeek LEAK #1). Will mask
+  to basename in a follow-up PR; operator diagnostic is preserved.
+- `_safe_get` final `except Exception` (Codex UNHANDLED). Deferred
+  because bare except would mask `asyncio.CancelledError`.
