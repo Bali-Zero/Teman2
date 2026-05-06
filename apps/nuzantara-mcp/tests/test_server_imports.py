@@ -29,6 +29,7 @@ ALL_TOOL_MODULES = [
     "nuzantara_mcp.tools.prime",
     "nuzantara_mcp.tools.federation",
     "nuzantara_mcp.tools.naga",
+    "nuzantara_mcp.tools.kg_intel",
 ]
 
 OTHER_MODULES = [
