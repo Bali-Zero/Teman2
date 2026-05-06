@@ -27,6 +27,7 @@ from backend.services.notifications.email_audit import (
     notify_email_failure_critical,
     record_email_result,
 )
+from backend.services.notifications.email_branding import logo_header_html
 from backend.services.notifications.email_http import get_email_client
 
 logger = get_logger(__name__)
@@ -104,7 +105,7 @@ class InvoiceAutomationService:
                     practice_type=practice_data.get("practice_type_code", "SERVICE"),
                     practice_description=practice_data.get("notes", "Professional Services"),
                     quoted_price=float(practice_data.get("quoted_price", 0)),
-                    notes="Thank you for choosing Zantara Indonesia. Payment is due within 7 days.",
+                    notes="Thank you for choosing Bali Zero. Payment is due within 2 days.",
                 )
 
                 filename = f"Invoice_{invoice_number}.pdf"
@@ -128,7 +129,7 @@ class InvoiceAutomationService:
                     self.db_pool,
                     email_type="invoice_client",
                     to_email=client_data["email"],
-                    subject=f"Invoice {invoice_number} from Zantara Indonesia",
+                    subject=f"Invoice {invoice_number} from Bali Zero",
                     practice_id=practice_id,
                     client_id=client_data["id"],
                 )
@@ -141,6 +142,10 @@ class InvoiceAutomationService:
                         filename=filename,
                         amount=float(practice_data.get("quoted_price", 0)),
                         triggered_by=triggered_by,
+                        team_member_email=(
+                            practice_data.get("assigned_to")
+                            or practice_data.get("created_by")
+                        ),
                     )
                     email_sent = True
                     await record_email_result(
@@ -262,24 +267,28 @@ class InvoiceAutomationService:
         filename: str,
         amount: float,
         triggered_by: str | None = None,
+        team_member_email: str | None = None,
     ) -> bool:
         """Send invoice email to client via internal email API (sender: zantara@balizero.com)."""
-        subject = f"Invoice {invoice_number} from Zantara Indonesia"
+        subject = f"Invoice {invoice_number} from Bali Zero"
         body_html = (
+            f"{logo_header_html()}"
             f"<p>Dear {client_name},</p>"
-            f"<p>Thank you for choosing Zantara Indonesia for your immigration services.</p>"
+            f"<p>Thank you for choosing Bali Zero for your business in Indonesia.</p>"
             f"<p>Please find your invoice attached to this email.</p>"
             f"<p><b>Invoice Details:</b><br>"
             f"Invoice Number: {invoice_number}<br>"
             f"Amount Due: IDR {amount:,.0f}<br>"
-            f"Payment Terms: Net 7 days</p>"
+            f"Payment Terms: Net 2 days</p>"
             f"<p>Payment can be made via bank transfer to the details provided on the invoice.</p>"
             f"<p>We look forward to serving you!</p>"
-            f"<p>Best regards,<br>Zantara Indonesia Team</p>"
-            f"<hr><small>For support: support@balizero.com | WhatsApp: +62 821 3107 363</small>"
+            f"<p>Best regards,<br>Zantara — Bali Zero Team</p>"
+            f"<hr><small>For support: asya@balizero.com | WhatsApp: +62 821 3107 363</small>"
         )
 
         cc_emails = list(INVOICE_CC_EMAILS)
+        if team_member_email and team_member_email not in cc_emails and team_member_email != client_email:
+            cc_emails.append(team_member_email)
         if triggered_by and triggered_by not in cc_emails and triggered_by != client_email:
             cc_emails.append(triggered_by)
 

@@ -45,20 +45,21 @@ class InvoiceGenerator:
     BANK_SWIFT = "BNIAIDJA"
 
     # ── Logo ─────────────────────────────────────────────────────────────────
-    LOGO_PATH = os.path.join(os.path.dirname(__file__), "balizero_logo.png")
-    LOGO_WIDTH = 2.5 * cm
-    LOGO_HEIGHT = 2.5 * cm
+    LOGO_PATH = os.path.join(os.path.dirname(__file__), "balizero_logo_circle.png")
+    LOGO_WIDTH = 3 * cm
+    LOGO_HEIGHT = 3 * cm
 
     # ── Invoice Settings ────────────────────────────────────────────────────
-    PAYMENT_TERMS_DAYS = 7
+    PAYMENT_TERMS_DAYS = 2
     CURRENCY = "IDR"
 
-    # ── Brand Colors (lazy — None when reportlab not installed) ─────────────
-    COLOR_ACCENT = colors.HexColor("#1a1a2e") if _REPORTLAB_AVAILABLE else None
-    COLOR_LIGHT = colors.HexColor("#f4f6f9") if _REPORTLAB_AVAILABLE else None
-    COLOR_BORDER = colors.HexColor("#dee2e6") if _REPORTLAB_AVAILABLE else None
-    COLOR_TEXT = colors.HexColor("#212529") if _REPORTLAB_AVAILABLE else None
-    COLOR_MUTED = colors.HexColor("#6c757d") if _REPORTLAB_AVAILABLE else None
+    # ── Brand Colors — Bali Zero standard-doc palette (Tax Report cover) ────
+    COLOR_ACCENT = colors.HexColor("#1F2937") if _REPORTLAB_AVAILABLE else None
+    COLOR_GOLD = colors.HexColor("#F4B400") if _REPORTLAB_AVAILABLE else None
+    COLOR_LIGHT = colors.HexColor("#F7F8FA") if _REPORTLAB_AVAILABLE else None
+    COLOR_BORDER = colors.HexColor("#E5E7EB") if _REPORTLAB_AVAILABLE else None
+    COLOR_TEXT = colors.HexColor("#1F2937") if _REPORTLAB_AVAILABLE else None
+    COLOR_MUTED = colors.HexColor("#6B7280") if _REPORTLAB_AVAILABLE else None
     COLOR_WHITE = colors.white if _REPORTLAB_AVAILABLE else None
 
     def __init__(self) -> None:
@@ -71,10 +72,11 @@ class InvoiceGenerator:
             ParagraphStyle(
                 name="InvoiceTitle",
                 parent=self.styles["Heading1"],
-                fontSize=28,
+                fontSize=18,
                 fontName="Helvetica-Bold",
                 textColor=self.COLOR_TEXT,
                 spaceAfter=4,
+                alignment=0,
             ),
         )
         self.styles.add(
@@ -159,11 +161,12 @@ class InvoiceGenerator:
         doc = SimpleDocTemplate(
             buffer,
             pagesize=A4,
-            rightMargin=2 * cm,
-            leftMargin=2 * cm,
-            topMargin=2 * cm,
-            bottomMargin=2 * cm,
+            rightMargin=1.6 * cm,
+            leftMargin=1.6 * cm,
+            topMargin=1.4 * cm,
+            bottomMargin=1.4 * cm,
         )
+        page_width = A4[0] - 1.6 * cm * 2
 
         invoice_number = self.generate_invoice_number(practice_id)
         issue_date = datetime.now(tz=timezone.utc)
@@ -171,71 +174,60 @@ class InvoiceGenerator:
 
         elements = []
 
-        # ── HEADER: Logo top-left + Company name below logo | INVOICE right ──
+        # ── HEADER: "INVOICE" left, logo right ──
+        left_cell = Paragraph("INVOICE", self.styles["InvoiceTitle"])
         if _REPORTLAB_AVAILABLE and os.path.exists(self.LOGO_PATH):
-            logo_img = Image(self.LOGO_PATH, width=self.LOGO_WIDTH, height=self.LOGO_HEIGHT)
-            left_cell = Table(
-                [[logo_img], [Paragraph(f"<b>{self.COMPANY_NAME}</b>", self.styles["CompanyName"])]],
-                colWidths=[10 * cm],
-            )
-            left_cell.setStyle(
-                TableStyle(
-                    [
-                        ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                        ("ALIGN", (0, 0), (-1, -1), "LEFT"),
-                        ("TOPPADDING", (0, 0), (-1, -1), 0),
-                        ("BOTTOMPADDING", (0, 0), (0, 0), 8),
-                        ("BOTTOMPADDING", (0, 1), (0, 1), 0),
-                        ("LEFTPADDING", (0, 0), (-1, -1), 0),
-                    ],
-                ),
-            )
+            right_cell = Image(self.LOGO_PATH, width=self.LOGO_WIDTH, height=self.LOGO_HEIGHT)
         else:
-            left_cell = Paragraph(f"<b>{self.COMPANY_NAME}</b>", self.styles["CompanyName"])
+            right_cell = Paragraph("", self.styles["CompanyInfo"])
 
-        header_data = [
-            [
-                left_cell,
-                Paragraph("INVOICE", self.styles["InvoiceTitle"]),
-            ],
-        ]
-        header_table = Table(header_data, colWidths=[10 * cm, 7 * cm])
+        header_table = Table(
+            [[left_cell, right_cell]],
+            colWidths=[page_width - 4 * cm, 4 * cm],
+        )
         header_table.setStyle(
             TableStyle(
                 [
-                    ("VALIGN", (0, 0), (-1, -1), "TOP"),
+                    ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
+                    ("ALIGN", (0, 0), (0, 0), "LEFT"),
                     ("ALIGN", (1, 0), (1, 0), "RIGHT"),
+                    ("LEFTPADDING", (0, 0), (-1, -1), 0),
+                    ("RIGHTPADDING", (0, 0), (-1, -1), 0),
                     ("TOPPADDING", (0, 0), (-1, -1), 0),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
                 ],
             ),
         )
         elements.append(header_table)
+        elements.append(Spacer(1, 0.25 * cm))
 
-        # Company sub-info
-        elements.append(
-            Paragraph(f"{self.COMPANY_EMAIL} | {self.COMPANY_PHONE}", self.styles["CompanyInfo"]),
-        )
-        elements.append(Paragraph(self.COMPANY_TAX_ID, self.styles["CompanyInfo"]))
-        elements.append(Spacer(1, 0.4 * cm))
-
-        # ── Divider ──────────────────────────────────────────────────────────
-        divider = Table([[""]], colWidths=[17 * cm])
+        # Gold divider — matches Bali Zero standard-doc accent
+        divider = Table([[""]], colWidths=[page_width])
         divider.setStyle(
             TableStyle(
                 [
-                    ("LINEBELOW", (0, 0), (-1, -1), 1.5, self.COLOR_ACCENT),
+                    ("LINEBELOW", (0, 0), (-1, -1), 1.5, self.COLOR_GOLD),
                     ("TOPPADDING", (0, 0), (-1, -1), 0),
                     ("BOTTOMPADDING", (0, 0), (-1, -1), 0),
                 ],
             ),
         )
         elements.append(divider)
-        elements.append(Spacer(1, 0.5 * cm))
+        elements.append(Spacer(1, 0.3 * cm))
+
+        # Company info under divider
+        elements.append(
+            Paragraph(f"<b>{self.COMPANY_NAME}</b>", self.styles["CompanyName"]),
+        )
+        elements.append(
+            Paragraph(f"{self.COMPANY_EMAIL} | {self.COMPANY_PHONE}", self.styles["CompanyInfo"]),
+        )
+        elements.append(Paragraph(self.COMPANY_TAX_ID, self.styles["CompanyInfo"]))
+        elements.append(Spacer(1, 0.35 * cm))
 
         # Invoice number line
         elements.append(Paragraph(f"<b>{invoice_number}</b>", self.styles["CompanyInfo"]))
-        elements.append(Spacer(1, 0.5 * cm))
+        elements.append(Spacer(1, 0.35 * cm))
 
         # ── BILL TO (left) + INVOICE DETAILS (right) ─────────────────────────
         # Build bill-to block
@@ -270,7 +262,7 @@ class InvoiceGenerator:
         )
 
         two_col_data = [[bill_lines, detail_table]]
-        two_col = Table(two_col_data, colWidths=[9 * cm, 8 * cm])
+        two_col = Table(two_col_data, colWidths=[page_width - 8 * cm, 8 * cm])
         two_col.setStyle(
             TableStyle(
                 [
@@ -282,7 +274,7 @@ class InvoiceGenerator:
             ),
         )
         elements.append(two_col)
-        elements.append(Spacer(1, 0.8 * cm))
+        elements.append(Spacer(1, 0.5 * cm))
 
         # ── SERVICE TABLE ─────────────────────────────────────────────────────
         service_description = practice_description or practice_type
@@ -296,7 +288,7 @@ class InvoiceGenerator:
                 f"{self.CURRENCY} {quoted_price:,.0f}",
             ],
         ]
-        svc_table = Table(svc_data, colWidths=[9 * cm, 2 * cm, 3 * cm, 3 * cm])
+        svc_table = Table(svc_data, colWidths=[page_width - 8 * cm, 2 * cm, 3 * cm, 3 * cm])
         svc_table.setStyle(
             TableStyle(
                 [
@@ -305,15 +297,15 @@ class InvoiceGenerator:
                     ("TEXTCOLOR", (0, 0), (-1, 0), self.COLOR_WHITE),
                     ("FONT", (0, 0), (-1, 0), "Helvetica-Bold", 9),
                     ("ALIGN", (0, 0), (-1, 0), "CENTER"),
-                    ("TOPPADDING", (0, 0), (-1, 0), 8),
-                    ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+                    ("TOPPADDING", (0, 0), (-1, 0), 7),
+                    ("BOTTOMPADDING", (0, 0), (-1, 0), 7),
                     # Data rows
                     ("FONT", (0, 1), (-1, -1), "Helvetica", 9),
                     ("TEXTCOLOR", (0, 1), (-1, -1), self.COLOR_TEXT),
                     ("ALIGN", (1, 1), (-1, -1), "CENTER"),
                     ("BACKGROUND", (0, 1), (-1, -1), self.COLOR_LIGHT),
-                    ("TOPPADDING", (0, 1), (-1, -1), 10),
-                    ("BOTTOMPADDING", (0, 1), (-1, -1), 10),
+                    ("TOPPADDING", (0, 1), (-1, -1), 8),
+                    ("BOTTOMPADDING", (0, 1), (-1, -1), 8),
                     ("LEFTPADDING", (0, 0), (-1, -1), 8),
                     # Border
                     ("LINEBELOW", (0, 0), (-1, 0), 0.5, self.COLOR_BORDER),
@@ -323,7 +315,7 @@ class InvoiceGenerator:
             ),
         )
         elements.append(svc_table)
-        elements.append(Spacer(1, 0.3 * cm))
+        elements.append(Spacer(1, 0.25 * cm))
 
         # ── TOTALS ────────────────────────────────────────────────────────────
         totals_data = [
@@ -357,7 +349,7 @@ class InvoiceGenerator:
 
         totals_table = Table(
             totals_data + [total_row],
-            colWidths=[13 * cm, 4 * cm],
+            colWidths=[page_width - 4 * cm, 4 * cm],
             hAlign="RIGHT",
         )
         totals_table.setStyle(
@@ -367,19 +359,19 @@ class InvoiceGenerator:
                     ("FONT", (1, 0), (1, -2), "Helvetica", 9),
                     ("TEXTCOLOR", (0, 0), (-1, -2), self.COLOR_MUTED),
                     ("ALIGN", (0, 0), (-1, -1), "RIGHT"),
-                    ("TOPPADDING", (0, 0), (-1, -2), 3),
-                    ("BOTTOMPADDING", (0, 0), (-1, -2), 3),
+                    ("TOPPADDING", (0, 0), (-1, -2), 2),
+                    ("BOTTOMPADDING", (0, 0), (-1, -2), 2),
                     # Total row
                     ("BACKGROUND", (0, -1), (-1, -1), self.COLOR_ACCENT),
-                    ("TOPPADDING", (0, -1), (-1, -1), 8),
-                    ("BOTTOMPADDING", (0, -1), (-1, -1), 8),
+                    ("TOPPADDING", (0, -1), (-1, -1), 7),
+                    ("BOTTOMPADDING", (0, -1), (-1, -1), 7),
                     ("LEFTPADDING", (0, -1), (-1, -1), 10),
                     ("RIGHTPADDING", (0, -1), (-1, -1), 10),
                 ],
             ),
         )
         elements.append(totals_table)
-        elements.append(Spacer(1, 0.8 * cm))
+        elements.append(Spacer(1, 0.5 * cm))
 
         # ── PAYMENT INFORMATION ───────────────────────────────────────────────
         elements.append(
@@ -391,7 +383,7 @@ class InvoiceGenerator:
                     fontSize=10,
                     fontName="Helvetica-Bold",
                     textColor=self.COLOR_TEXT,
-                    spaceAfter=6,
+                    spaceAfter=4,
                 ),
             ),
         )
@@ -403,15 +395,15 @@ class InvoiceGenerator:
             ["Bank Branch:", self.BANK_BRANCH],
             ["Swift Code:", self.BANK_SWIFT],
         ]
-        pay_table = Table(pay_data, colWidths=[4 * cm, 13 * cm])
+        pay_table = Table(pay_data, colWidths=[3.5 * cm, page_width - 3.5 * cm])
         pay_table.setStyle(
             TableStyle(
                 [
                     ("FONT", (0, 0), (0, -1), "Helvetica-Bold", 9),
                     ("FONT", (1, 0), (1, -1), "Helvetica", 9),
                     ("TEXTCOLOR", (0, 0), (-1, -1), self.COLOR_TEXT),
-                    ("TOPPADDING", (0, 0), (-1, -1), 3),
-                    ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+                    ("TOPPADDING", (0, 0), (-1, -1), 2),
+                    ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
                     ("BACKGROUND", (0, 0), (-1, -1), self.COLOR_LIGHT),
                     ("BOX", (0, 0), (-1, -1), 0.5, self.COLOR_BORDER),
                     ("LINEBELOW", (0, 0), (-1, -2), 0.5, self.COLOR_BORDER),
@@ -420,7 +412,7 @@ class InvoiceGenerator:
             ),
         )
         elements.append(pay_table)
-        elements.append(Spacer(1, 0.5 * cm))
+        elements.append(Spacer(1, 0.3 * cm))
 
         # Payment note
         payment_note = (
@@ -443,8 +435,8 @@ class InvoiceGenerator:
         )
 
         # ── FOOTER ────────────────────────────────────────────────────────────
-        elements.append(Spacer(1, 1 * cm))
-        footer_divider = Table([[""]], colWidths=[17 * cm])
+        elements.append(Spacer(1, 0.5 * cm))
+        footer_divider = Table([[""]], colWidths=[page_width])
         footer_divider.setStyle(
             TableStyle(
                 [
@@ -455,10 +447,10 @@ class InvoiceGenerator:
             ),
         )
         elements.append(footer_divider)
-        elements.append(Spacer(1, 0.3 * cm))
+        elements.append(Spacer(1, 0.2 * cm))
         elements.append(
             Paragraph(
-                f"This invoice was automatically generated by Zantara CRM System | "
+                f"This invoice was automatically generated by Bali Zero CRM | "
                 f"For any questions, please contact {self.COMPANY_EMAIL}<br/>"
                 f"{self.COMPANY_NAME} | Bali, Indonesia",
                 self.styles["Footer"],
