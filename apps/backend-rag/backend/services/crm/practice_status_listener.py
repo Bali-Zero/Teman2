@@ -24,7 +24,7 @@ import httpx
 
 from backend.app.utils.logging_utils import get_logger
 from backend.services.crm.automation import ProcessAutomationService
-from backend.services.notifications.email_branding import logo_header_html
+from backend.services.notifications.email_branding import logo_header_html, team_email_html
 
 logger = get_logger(__name__)
 
@@ -250,26 +250,31 @@ Zantara — Bali Zero Team
         # ── Email 2: Team member — with Asya in CC ───────────────────────
         if team_member_email:
             subject = f"[PAYMENT IN] ✅ {client_name} — {practice_type} — Proceed Now"
-            body = f"""Hi,
-
-Payment has been confirmed for the following practice — you're clear to start!
-
-Client:       {client_name}
-Service:      {practice_type}
-Practice ID:  #{practice_id}
-Amount:       {practice_data.get("quoted_price", "see CRM")}
-
-Next steps:
-1. Review documents in CRM: https://kita.balizero.com/process/{practice_id}
-2. Contact the client on WhatsApp to introduce yourself
-3. Begin application preparation
-
-Asya has verified the payment. Any billing questions → asya@balizero.com
-
-Go!
-
-Zantara CRM 🤖
-"""
+            body = team_email_html(
+                title=f"💰 Payment In — {client_name}",
+                intro=(
+                    "Asya has verified the payment for this practice. You're clear to start! "
+                    "Any billing questions → <a href='mailto:asya@balizero.com' "
+                    "style='color:#1F2937;'>asya@balizero.com</a>"
+                ),
+                meta_rows=[
+                    ("Client", client_name),
+                    ("Service", practice_type),
+                    ("Practice ID", f"#{practice_id}"),
+                    ("Amount", str(practice_data.get("quoted_price", "see CRM"))),
+                ],
+                body_html=(
+                    "<b>Next steps:</b>"
+                    "<ol style='margin:6px 0 4px 18px;padding:0;'>"
+                    "<li>Review documents in the CRM</li>"
+                    "<li>Contact the client on WhatsApp to introduce yourself</li>"
+                    "<li>Begin application preparation</li>"
+                    "</ol>"
+                ),
+                cta_label="Open practice in CRM",
+                cta_url=f"https://kita.balizero.com/process/{practice_id}",
+                signature="Zantara CRM",
+            )
             try:
                 # Use internal /send-email endpoint: handles Zoho/Brevo routing + CC support
                 await self._send_via_internal_api(
@@ -277,6 +282,7 @@ Zantara CRM 🤖
                     subject=subject,
                     body=body,
                     cc="asya@balizero.com",
+                    prebuilt_html=True,
                 )
                 logger.info(f"M4: team notification sent to {team_member_email} (CC: asya)")
             except httpx.HTTPError as exc:
@@ -364,6 +370,7 @@ Zantara CRM 🤖
         cc: str | None = None,
         bcc: str | None = None,
         include_logo: bool = False,
+        prebuilt_html: bool = False,
     ) -> None:
         """
         Send email via the internal /api/notifications/send-email endpoint.
@@ -371,9 +378,12 @@ Zantara CRM 🤖
         This endpoint handles Zoho SMTP vs Brevo routing automatically
         (intra-domain @balizero.com → Zoho, external → Brevo) and supports CC/BCC.
         """
-        html_body = body.replace("\n", "<br>")
-        if include_logo:
-            html_body = f"{logo_header_html()}{html_body}"
+        if prebuilt_html:
+            html_body = body
+        else:
+            html_body = body.replace("\n", "<br>")
+            if include_logo:
+                html_body = f"{logo_header_html()}{html_body}"
         payload: dict[str, Any] = {
             "to": to_email,
             "subject": subject,
