@@ -44,6 +44,36 @@
         "description_en": "Business visa, single entry, valid 60 days. Suited to business meetings, negotiations and non-employment activities.",
         "icon_id": "visa-business"
       },
+      "C7A,B,C Music/Art": {
+        "name": "C7A,B,C — Music/Art",
+        "price": "4.500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Single-entry visa for performing artists, musicians and cultural workers visiting Indonesia for short-term events. Categories C7A, C7B, C7C.",
+        "icon_id": "visa-art"
+      },
+      "C8A,B": {
+        "name": "C8A,B",
+        "price": "4.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Single-entry visa for journalism and media activities (categories C8A, C8B), valid for short-term assignments in Indonesia.",
+        "icon_id": "visa-business"
+      },
+      "C10 Speaker Visa": {
+        "name": "C10 Speaker Visa",
+        "price": "3.500.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Single-entry speaker visa for foreign nationals delivering talks, lectures or training sessions at events in Indonesia.",
+        "icon_id": "visa-art"
+      },
       "C18 Work Trial": {
         "name": "C18 Work Trial",
         "price": "5.500.000 IDR",
@@ -73,36 +103,6 @@
         "notes": "",
         "description_en": "Single-entry internship visa for foreign trainees, valid 180 days, sponsored by an Indonesian host organisation.",
         "icon_id": "visa-internship"
-      },
-      "C7A,B,C Music/Art": {
-        "name": "C7A,B,C Music/Art",
-        "price": "4.500.000 IDR",
-        "tier_range": null,
-        "duration": "",
-        "validity": "",
-        "notes": "",
-        "description_en": "Single-entry visa for performing artists, musicians and cultural workers visiting Indonesia for short-term events. Categories C7A, C7B, C7C.",
-        "icon_id": "visa-art"
-      },
-      "C8A,B": {
-        "name": "C8A,B",
-        "price": "4.000.000 IDR",
-        "tier_range": null,
-        "duration": "",
-        "validity": "",
-        "notes": "",
-        "description_en": "Single-entry visa for journalism and media activities (categories C8A, C8B), valid for short-term assignments in Indonesia.",
-        "icon_id": "visa-business"
-      },
-      "C10 Speaker Visa": {
-        "name": "C10 Speaker Visa",
-        "price": "3.500.000 IDR",
-        "tier_range": null,
-        "duration": "",
-        "validity": "",
-        "notes": "",
-        "description_en": "Single-entry speaker visa for foreign nationals delivering talks, lectures or training sessions at events in Indonesia.",
-        "icon_id": "visa-art"
       },
       "Bridging Visa": {
         "name": "Bridging Visa",
@@ -418,6 +418,16 @@
         "description_en": "Onshore extension of an existing 2-year Dependent KITAS.",
         "icon_id": "kitas-dependent"
       },
+      "Born KITAS": {
+        "name": "Born KITAS",
+        "price": "9.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "KITAS issuance for foreign children born in Indonesia, processed alongside the birth registration.",
+        "icon_id": "kitas-dependent"
+      },
       "Retirement (Altus/Onshore)": {
         "name": "Retirement (Altus/Onshore)",
         "price": "16.000.000 IDR",
@@ -447,16 +457,6 @@
         "notes": "",
         "description_en": "Onshore extension of an existing Retirement KITAS.",
         "icon_id": "kitas-retirement"
-      },
-      "Born KITAS": {
-        "name": "Born KITAS",
-        "price": "9.000.000 IDR",
-        "tier_range": null,
-        "duration": "",
-        "validity": "",
-        "notes": "",
-        "description_en": "KITAS issuance for foreign children born in Indonesia, processed alongside the birth registration.",
-        "icon_id": "kitas-dependent"
       }
     },
     "kitap_permits": {
@@ -545,7 +545,7 @@
       },
       "monthly_tax_bundled": {
         "Tier 0-50": {
-          "name": "Monthly Tax Report — 0 to 50 transactions (incl. LKPM & Annual)",
+          "name": "Monthly Tax Report — 0 to 50 transactions (including LKPM & Annual)",
           "price": "2.500.000 IDR",
           "tier_range": null,
           "duration": "",
@@ -555,7 +555,7 @@
           "icon_id": "tax-monthly"
         },
         "Tier 50-100": {
-          "name": "Monthly Tax Report — 50 to 100 transactions (incl. LKPM & Annual)",
+          "name": "Monthly Tax Report — 50 to 100 transactions (including LKPM & Annual)",
           "price": "3.500.000 IDR",
           "tier_range": null,
           "duration": "",
@@ -565,7 +565,7 @@
           "icon_id": "tax-monthly"
         },
         "Tier 100-200": {
-          "name": "Monthly Tax Report — 100 to 200 transactions (incl. LKPM & Annual)",
+          "name": "Monthly Tax Report — 100 to 200 transactions (including LKPM & Annual)",
           "price": "4.500.000 IDR",
           "tier_range": null,
           "duration": "",
@@ -575,7 +575,7 @@
           "icon_id": "tax-monthly"
         },
         "Tier 200+": {
-          "name": "Monthly Tax Report — more than 200 transactions (incl. LKPM & Annual)",
+          "name": "Monthly Tax Report — more than 200 transactions (including LKPM & Annual)",
           "price": "6.500.000 IDR",
           "tier_range": null,
           "duration": "",
@@ -794,59 +794,19 @@
         "tier_range": null,
         "duration": "",
         "validity": "",
-        "notes": "Plus 400k urgent",
+        "notes": "+ Rp 400.000 for urgent processing",
         "description_en": "Reset of immigration record on the Molina (immigration) database, often needed after data inconsistencies.",
         "icon_id": "other-molina"
       },
-      "SKCK": {
-        "name": "SKCK",
-        "price": "2.000.000 IDR",
-        "tier_range": null,
-        "duration": "",
-        "validity": "",
-        "notes": "",
-        "description_en": "Police clearance certificate (Surat Keterangan Catatan Kepolisian), often required for visa renewals and certain employment processes.",
-        "icon_id": "other-skck"
-      },
-      "Mutation Passport": {
-        "name": "Mutation Passport",
-        "price": "500.000 IDR",
-        "tier_range": null,
-        "duration": "",
-        "validity": "",
-        "notes": "Plus 350k urgent",
-        "description_en": "Update of passport details on existing immigration permits after a passport renewal.",
-        "icon_id": "other-mutation"
-      },
-      "Mutation Address": {
-        "name": "Mutation Address",
+      "Created Molina Express": {
+        "name": "Created Molina Express",
         "price": "500.000 IDR",
         "tier_range": null,
         "duration": "",
         "validity": "",
         "notes": "",
-        "description_en": "Update of registered address on existing immigration permits.",
-        "icon_id": "other-mutation"
-      },
-      "Electronic Passport 5 Years": {
-        "name": "Electronic Passport 5 Years",
-        "price": "2.200.000 IDR",
-        "tier_range": null,
-        "duration": "",
-        "validity": "5 years",
-        "notes": "",
-        "description_en": "Indonesian electronic passport (e-passport) issuance for 5-year validity.",
-        "icon_id": "other-passport"
-      },
-      "Electronic Passport 10 Years": {
-        "name": "Electronic Passport 10 Years",
-        "price": "2.700.000 IDR",
-        "tier_range": null,
-        "duration": "",
-        "validity": "10 years",
-        "notes": "",
-        "description_en": "Indonesian electronic passport (e-passport) issuance for 10-year validity.",
-        "icon_id": "other-passport"
+        "description_en": "Express creation of immigration record on the Molina (immigration) database.",
+        "icon_id": "other-molina"
       },
       "Passport 5 Years": {
         "name": "Passport 5 Years",
@@ -868,15 +828,25 @@
         "description_en": "Indonesian standard passport issuance for 10-year validity.",
         "icon_id": "other-passport"
       },
-      "Domicilie Letter": {
-        "name": "Domicilie Letter",
-        "price": "1.500.000 IDR",
+      "Electronic Passport 5 Years": {
+        "name": "Electronic Passport 5 Years",
+        "price": "2.200.000 IDR",
         "tier_range": null,
         "duration": "",
-        "validity": "",
+        "validity": "5 years",
         "notes": "",
-        "description_en": "Domicile letter (Surat Keterangan Domisili) issued by the local authority confirming the residential address.",
-        "icon_id": "other-domicile"
+        "description_en": "Indonesian electronic passport (e-passport) issuance for 5-year validity.",
+        "icon_id": "other-passport"
+      },
+      "Electronic Passport 10 Years": {
+        "name": "Electronic Passport 10 Years",
+        "price": "2.700.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "10 years",
+        "notes": "",
+        "description_en": "Indonesian electronic passport (e-passport) issuance for 10-year validity.",
+        "icon_id": "other-passport"
       },
       "SKTT": {
         "name": "SKTT",
@@ -888,45 +858,45 @@
         "description_en": "Temporary residence certificate (Surat Keterangan Tempat Tinggal) issued by the local civil registration office, required for KITAS holders.",
         "icon_id": "other-sktt"
       },
-      "Cancel RPTKA": {
-        "name": "Cancel RPTKA",
-        "price": "1.000.000 IDR",
+      "SKCK": {
+        "name": "SKCK",
+        "price": "2.000.000 IDR",
         "tier_range": null,
         "duration": "",
         "validity": "",
         "notes": "",
-        "description_en": "Cancellation of an existing RPTKA (foreign worker utilisation plan) at the Ministry of Manpower.",
-        "icon_id": "other-cancel"
+        "description_en": "Police clearance certificate (Surat Keterangan Catatan Kepolisian), often required for visa renewals and certain employment processes.",
+        "icon_id": "other-skck"
       },
-      "Cancel Wajib Lapor": {
-        "name": "Cancel Wajib Lapor",
-        "price": "1.000.000 IDR",
+      "Domicilie Letter": {
+        "name": "Domicilie Letter",
+        "price": "1.500.000 IDR",
         "tier_range": null,
         "duration": "",
         "validity": "",
         "notes": "",
-        "description_en": "Cancellation of mandatory employer reporting (Wajib Lapor Ketenagakerjaan) at the Ministry of Manpower.",
-        "icon_id": "other-cancel"
+        "description_en": "Domicile letter (Surat Keterangan Domisili) issued by the local authority confirming the residential address.",
+        "icon_id": "other-domicile"
       },
-      "EPO (Exit Permit Only)": {
-        "name": "EPO (Exit Permit Only)",
-        "price": "700.000 IDR",
+      "Mutation Passport": {
+        "name": "Mutation Passport",
+        "price": "500.000 IDR",
         "tier_range": null,
         "duration": "",
         "validity": "",
-        "notes": "Plus 300k urgent",
-        "description_en": "Exit Permit Only (EPO) for KITAS or KITAP holders permanently leaving Indonesia and surrendering their stay permit.",
-        "icon_id": "other-epo"
+        "notes": "+ Rp 350.000 for urgent processing",
+        "description_en": "Update of passport details on existing immigration permits after a passport renewal.",
+        "icon_id": "other-mutation"
       },
-      "ERP (Exit Re-entry Permit)": {
-        "name": "ERP (Exit Re-entry Permit)",
-        "price": "800.000 IDR",
+      "Mutation Address": {
+        "name": "Mutation Address",
+        "price": "500.000 IDR",
         "tier_range": null,
         "duration": "",
         "validity": "",
-        "notes": "Plus 500k urgent",
-        "description_en": "Single-use Exit Re-entry Permit (ERP) for KITAS holders travelling abroad and returning before permit expiry.",
-        "icon_id": "other-erp"
+        "notes": "",
+        "description_en": "Update of registered address on existing immigration permits.",
+        "icon_id": "other-mutation"
       },
       "Mutation Address 2 Kanim": {
         "name": "Mutation Address 2 Kanim",
@@ -937,16 +907,6 @@
         "notes": "",
         "description_en": "Update of registered address requiring inter-Kanim (immigration office) transfer.",
         "icon_id": "other-mutation"
-      },
-      "Created Molina Express": {
-        "name": "Created Molina Express",
-        "price": "500.000 IDR",
-        "tier_range": null,
-        "duration": "",
-        "validity": "",
-        "notes": "",
-        "description_en": "Express creation of immigration record on the Molina (immigration) database.",
-        "icon_id": "other-molina"
       },
       "Lapor Lahir (Under)": {
         "name": "Lapor Lahir (Under)",
@@ -968,6 +928,26 @@
         "description_en": "Birth report registration for foreign nationals born in Indonesia, filed after the standard window.",
         "icon_id": "other-born"
       },
+      "Cancel RPTKA": {
+        "name": "Cancel RPTKA",
+        "price": "1.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Cancellation of an existing RPTKA (foreign worker utilisation plan) at the Ministry of Manpower.",
+        "icon_id": "other-cancel"
+      },
+      "Cancel Wajib Lapor": {
+        "name": "Cancel Wajib Lapor",
+        "price": "1.000.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "",
+        "description_en": "Cancellation of mandatory employer reporting (Wajib Lapor Ketenagakerjaan) at the Ministry of Manpower.",
+        "icon_id": "other-cancel"
+      },
       "Process IMTA & RPTKA Only (12 Months)": {
         "name": "Process IMTA & RPTKA Only (12 Months)",
         "price": "3.500.000 IDR",
@@ -978,8 +958,8 @@
         "description_en": "Stand-alone processing of IMTA and RPTKA work permit documents, valid for 12 months.",
         "icon_id": "other-cancel"
       },
-      "Process IMTA & RPTKA Only (6 Months Kebawah)": {
-        "name": "Process IMTA & RPTKA Only (6 Months Kebawah)",
+      "Process IMTA & RPTKA Only (6 Months or Less)": {
+        "name": "Process IMTA & RPTKA Only (6 Months or Less)",
         "price": "6.000.000 IDR",
         "tier_range": null,
         "duration": "",
@@ -987,6 +967,26 @@
         "notes": "",
         "description_en": "Stand-alone processing of IMTA and RPTKA work permit documents, valid for 6 months or less.",
         "icon_id": "other-cancel"
+      },
+      "EPO (Exit Permit Only)": {
+        "name": "EPO (Exit Permit Only)",
+        "price": "700.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "+ Rp 300.000 for urgent processing",
+        "description_en": "Exit Permit Only (EPO) for KITAS or KITAP holders permanently leaving Indonesia and surrendering their stay permit.",
+        "icon_id": "other-epo"
+      },
+      "ERP (Exit Re-entry Permit)": {
+        "name": "ERP (Exit Re-entry Permit)",
+        "price": "800.000 IDR",
+        "tier_range": null,
+        "duration": "",
+        "validity": "",
+        "notes": "+ Rp 500.000 for urgent processing",
+        "description_en": "Single-use Exit Re-entry Permit (ERP) for KITAS holders travelling abroad and returning before permit expiry.",
+        "icon_id": "other-erp"
       },
       "Driving License": {
         "name": "Driving License",
