@@ -80,11 +80,16 @@ async def _kill_switch_enabled(conn: asyncpg.Connection) -> bool:
 
 
 async def _fetch_ready_drafts(conn: asyncpg.Connection, limit: int) -> list[asyncpg.Record]:
+    # 2026-05-07: aligned with wr2_canva_desktop_apply (PR #341 fix).
+    # DB column is `register` (text), aliased to `tone` for downstream code.
+    # Status filter widened to include 'drafts_imaged' since fact-checker
+    # and fact-extractor stages are disabled (.disabled/) and canva-apply
+    # consumes drafts directly after image-generator.
     return await conn.fetch(
         """
-        SELECT id, topic, tone_register, slides_json
+        SELECT id, topic, register AS tone, slides_json
           FROM war_room_drafts
-         WHERE status = 'drafts'
+         WHERE status IN ('drafts_imaged', 'drafts')
            AND canva_edit_url IS NULL
          ORDER BY created_at ASC
          LIMIT $1
@@ -143,7 +148,7 @@ async def _apply_one_draft(conn: asyncpg.Connection, row: asyncpg.Record) -> boo
     """Process a single draft. Returns True on success."""
     draft_id: UUID = row["id"]
     topic: str = row["topic"]
-    tone: str = row["tone_register"] or "pedagogico"
+    tone: str = row["tone"] or "pedagogico"
     slides_json = row["slides_json"]
 
     if isinstance(slides_json, str):
