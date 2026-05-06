@@ -65,8 +65,14 @@ class KGQueryHandler(BaseHTTPRequestHandler):
     def do_GET(self) -> None:  # noqa: N802
         parsed = urllib.parse.urlparse(self.path)
         path = parsed.path
+        qs = urllib.parse.parse_qs(parsed.query, keep_blank_values=True)
         if path == "/health":
             return self._handle_health()
+        if path == "/kg/search":
+            return self._handle_search(qs)
+        if path.startswith("/kg/entity/"):
+            raw = path[len("/kg/entity/"):]
+            return self._handle_entity(raw, qs)
         self._send_json(404, {"error": "not_found", "detail": "no such endpoint"})
 
     # ── handlers ──────────────────────────────────────────────────
@@ -106,6 +112,50 @@ class KGQueryHandler(BaseHTTPRequestHandler):
             })
         finally:
             conn.close()
+
+    def _handle_search(self, qs: dict[str, list[str]]) -> None:
+        q = (qs.get("q", [""])[0] or "").strip()
+        if not q:
+            return self._send_json(400, {"error": "bad_request", "detail": "q is required"})
+        try:
+            limit_raw = int(qs.get("limit", [str(SEARCH_LIMIT_DEFAULT)])[0])
+        except ValueError:
+            return self._send_json(400, {"error": "bad_request", "detail": "limit must be int"})
+        limit = max(1, min(SEARCH_LIMIT_HARD_CAP, limit_raw))
+        try:
+            conn = _ro_conn(self._kg_server.db_path)
+        except sqlite3.Error as exc:
+            return self._send_json(503, {"error": "kg_unavailable", "detail": str(exc)})
+        try:
+            rows = conn.execute(
+                "SELECT type, canonical_name, source_count, last_seen "
+                "FROM kg_entities "
+                "WHERE LOWER(canonical_name) LIKE ? "
+                "ORDER BY source_count DESC, last_seen DESC LIMIT ?",
+                (f"%{q.lower()}%", limit),
+            ).fetchall()
+        except sqlite3.Error as exc:
+            return self._send_json(503, {"error": "kg_unavailable", "detail": str(exc)})
+        finally:
+            conn.close()
+        results = [
+            {
+                "name": r["canonical_name"],
+                "type": r["type"],
+                "source_count": r["source_count"],
+                "last_seen": r["last_seen"],
+            }
+            for r in rows
+        ]
+        self._send_json(200, {"query": q, "limit": limit, "results": results})
+
+    def _handle_entity(self, raw_name: str, qs: dict[str, list[str]]) -> None:
+        # Path-safety: decode and reject traversal/control-byte names
+        decoded = urllib.parse.unquote(raw_name)
+        if not decoded or not _SAFE_NAME_RE.match(decoded) or ".." in decoded:
+            return self._send_json(400, {"error": "bad_request", "detail": "invalid name"})
+        # Endpoint full implementation arrives in Task 5.
+        self._send_json(501, {"error": "not_implemented", "detail": "entity endpoint pending"})
 
     # ── helpers ──────────────────────────────────────────────────
     def _send_json(self, status: int, body: dict) -> None:

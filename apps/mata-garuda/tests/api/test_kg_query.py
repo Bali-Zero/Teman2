@@ -176,3 +176,42 @@ def test_t2_health_schema_missing(tmp_path: Path) -> None:
         server.shutdown()
         server.server_close()
         thread.join(timeout=2)
+
+
+def test_t3_search_substring_case_insensitive(running_server: int) -> None:
+    """T3: search returns substring matches with metadata only."""
+    status, body = _get(running_server, "/kg/search?q=imigrasi")
+    assert status == 200
+    assert body["query"] == "imigrasi"
+    names = [r["name"] for r in body["results"]]
+    assert "Direktorat Jenderal Imigrasi" in names
+    rec = next(r for r in body["results"] if r["name"] == "Direktorat Jenderal Imigrasi")
+    assert rec["type"] == "organizations"
+    assert rec["source_count"] == 17
+    assert "last_seen" in rec
+    assert "value" not in rec
+    assert "aliases_json" not in rec
+
+
+def test_t4_search_empty_query_400(running_server: int) -> None:
+    """T4: empty q returns 400."""
+    status, body = _get(running_server, "/kg/search?q=")
+    assert status == 400
+    assert body["error"] == "bad_request"
+
+
+def test_t5_search_limit_hard_capped(running_server: int) -> None:
+    """T5: limit param is hard-capped to 100."""
+    status, body = _get(running_server, "/kg/search?q=i&limit=999")
+    assert status == 200
+    # The seeded fixture has 3 entities total; we just assert the cap is applied.
+    assert body["limit"] == 100
+
+
+def test_t12_search_path_traversal_rejected(running_server: int) -> None:
+    """T12: path traversal in /kg/entity/.. is rejected."""
+    status, body = _get(running_server, "/kg/entity/..%2Fetc%2Fpasswd?type=persons")
+    # This belongs in the entity test, but we put it here pre-emptively
+    # since path safety applies to all routes.
+    assert status == 400
+    assert body["error"] == "bad_request"
