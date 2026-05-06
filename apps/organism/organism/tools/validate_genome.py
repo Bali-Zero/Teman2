@@ -27,6 +27,7 @@ import yaml
 # Allowed enum values per 07_innervation_protocol.md §2.2.
 _RUNTIMES = frozenset({
     "pro_launchd",
+    "mini_launchd",  # 2026-05-07 — Modo B 2-node topology (Pro+Mini)
     "air_launchd",
     "air_cron",
     "fly_machine",
