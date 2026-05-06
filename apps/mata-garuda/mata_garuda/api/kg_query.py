@@ -155,12 +155,68 @@ class KGQueryHandler(BaseHTTPRequestHandler):
         self._send_json(200, {"query": q, "limit": limit, "results": results})
 
     def _handle_entity(self, raw_name: str, qs: dict[str, list[str]]) -> None:
-        # Path-safety: decode and reject traversal/control-byte names
         decoded = urllib.parse.unquote(raw_name)
         if not decoded or not _SAFE_NAME_RE.match(decoded) or ".." in decoded:
             return self._send_json(400, {"error": "bad_request", "detail": "invalid name"})
-        # Endpoint full implementation arrives in Task 5.
-        self._send_json(501, {"error": "not_implemented", "detail": "entity endpoint pending"})
+        entity_type = (qs.get("type", [""])[0] or "").strip()
+        if not entity_type:
+            return self._send_json(400, {"error": "bad_request", "detail": "type is required"})
+        if entity_type not in ENTITY_TYPES:
+            return self._send_json(400, {"error": "bad_request", "detail": f"unknown type {entity_type!r}"})
+        try:
+            conn = _ro_conn(self._kg_server.db_path)
+        except sqlite3.Error as exc:
+            return self._send_json(503, {"error": "kg_unavailable", "detail": str(exc)})
+        try:
+            ent = conn.execute(
+                "SELECT id, source_count, first_seen, last_seen "
+                "FROM kg_entities WHERE type=? AND canonical_name=?",
+                (entity_type, decoded),
+            ).fetchone()
+            if ent is None:
+                return self._send_json(404, {"error": "entity_not_found", "detail": "no such entity"})
+            ent_id = ent["id"]
+            neighbors = conn.execute(
+                "SELECT r.predicate, r.confidence, e.type AS object_type, e.canonical_name AS object_name "
+                "FROM kg_relations r JOIN kg_entities e ON e.id = r.object_id "
+                "WHERE r.subject_id=? "
+                "ORDER BY r.confidence DESC, r.source_count DESC LIMIT ?",
+                (ent_id, NEIGHBOR_HARD_CAP),
+            ).fetchall()
+            observations = conn.execute(
+                "SELECT observed_at, source_url FROM kg_observations "
+                "WHERE entity_id=? ORDER BY observed_at DESC LIMIT 50",
+                (ent_id,),
+            ).fetchall()
+            obs_total = conn.execute(
+                "SELECT COUNT(*) FROM kg_observations WHERE entity_id=?",
+                (ent_id,),
+            ).fetchone()[0]
+        except sqlite3.Error as exc:
+            return self._send_json(503, {"error": "kg_unavailable", "detail": str(exc)})
+        finally:
+            conn.close()
+        self._send_json(200, {
+            "name": decoded,
+            "type": entity_type,
+            "source_count": ent["source_count"],
+            "first_seen": ent["first_seen"],
+            "last_seen": ent["last_seen"],
+            "neighbor_names": [
+                {
+                    "name": n["object_name"],
+                    "type": n["object_type"],
+                    "predicate": n["predicate"],
+                    "confidence": n["confidence"],
+                }
+                for n in neighbors
+            ],
+            "observation_count": obs_total,
+            "observations": [
+                {"observed_at": o["observed_at"], "source_url": o["source_url"]}
+                for o in observations
+            ],
+        })
 
     # ── helpers ──────────────────────────────────────────────────
     def _send_json(self, status: int, body: dict) -> None:

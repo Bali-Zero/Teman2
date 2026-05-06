@@ -215,3 +215,40 @@ def test_t12_search_path_traversal_rejected(running_server: int) -> None:
     # since path safety applies to all routes.
     assert status == 400
     assert body["error"] == "bad_request"
+
+
+def test_t6_entity_full_record(running_server: int) -> None:
+    """T6: entity returns name/type/source_count/last_seen + neighbors + observations(no value)."""
+    status, body = _get(
+        running_server,
+        "/kg/entity/" + urllib.parse.quote("Direktorat Jenderal Imigrasi") + "?type=organizations",
+    )
+    assert status == 200
+    assert body["name"] == "Direktorat Jenderal Imigrasi"
+    assert body["type"] == "organizations"
+    assert body["source_count"] == 17
+    assert body["observation_count"] == 2
+    assert len(body["neighbor_names"]) == 2
+    pred = {n["predicate"] for n in body["neighbor_names"]}
+    assert {"regulates", "issued_by"} == pred
+    assert all("name" in n and "type" in n and "confidence" in n for n in body["neighbor_names"])
+    # Forbidden fields absent in any observation
+    for obs in body["observations"]:
+        assert "value" not in obs
+        assert "field" not in obs
+        assert "source_url" in obs
+        assert "observed_at" in obs
+
+
+def test_t7_entity_missing_type_400(running_server: int) -> None:
+    """T7: missing type query param returns 400."""
+    status, body = _get(running_server, "/kg/entity/Imigrasi")
+    assert status == 400
+    assert body["error"] == "bad_request"
+
+
+def test_t8_entity_unknown_404(running_server: int) -> None:
+    """T8: unknown entity returns 404 entity_not_found."""
+    status, body = _get(running_server, "/kg/entity/Zaphod?type=persons")
+    assert status == 404
+    assert body["error"] == "entity_not_found"
