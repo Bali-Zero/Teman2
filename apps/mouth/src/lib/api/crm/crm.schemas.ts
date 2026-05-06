@@ -160,19 +160,38 @@ export type CreateClientOutput = z.output<typeof createClientSchema>;
 // CREATE PRACTICE
 // ============================================
 
-export const createPracticeSchema = z.object({
-  client_id: z
-    .number({ required_error: "Client is required" })
-    .positive("Invalid client ID"),
-  practice_type_code: practiceTypeCodeEnum,
-  status: practiceStatusEnum.default("inquiry"),
-  priority: practicePriorityEnum.default("normal"),
-  notes: emptyToUndefined,
-  internal_notes: emptyToUndefined,
-  quoted_price: z.number().nonnegative("Price cannot be negative").optional(),
-  start_date: optionalDate,
-  family_member_id: z.number().positive().optional(),
-});
+export const createPracticeSchema = z
+  .object({
+    client_id: z
+      .number({ required_error: "Client is required" })
+      .positive("Invalid client ID"),
+    practice_type_code: practiceTypeCodeEnum,
+    status: practiceStatusEnum.default("inquiry"),
+    priority: practicePriorityEnum.default("normal"),
+    notes: emptyToUndefined,
+    internal_notes: emptyToUndefined,
+    quoted_price: z.number().nonnegative("Price cannot be negative").optional(),
+    // Discount (added 2026-05-06, owner Q1=a/Q4=a/Q5=c). Cross-field check
+    // below enforces discount_amount <= quoted_price so the form catches
+    // an over-discount before the backend round-trip.
+    discount_amount: z
+      .number()
+      .nonnegative("Discount cannot be negative")
+      .optional(),
+    discount_reason: emptyToUndefined,
+    start_date: optionalDate,
+    family_member_id: z.number().positive().optional(),
+  })
+  .refine(
+    (data) =>
+      data.discount_amount === undefined ||
+      data.quoted_price === undefined ||
+      data.discount_amount <= data.quoted_price,
+    {
+      message: "Discount cannot exceed quoted price",
+      path: ["discount_amount"],
+    },
+  );
 
 export type CreatePracticeInput = z.input<typeof createPracticeSchema>;
 export type CreatePracticeOutput = z.output<typeof createPracticeSchema>;

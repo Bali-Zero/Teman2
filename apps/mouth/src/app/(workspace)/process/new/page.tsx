@@ -20,7 +20,11 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/api";
-import type { CreatePracticeParams, Client, FamilyMember } from "@/lib/api/crm/crm.types";
+import type {
+  CreatePracticeParams,
+  Client,
+  FamilyMember,
+} from "@/lib/api/crm/crm.types";
 import * as partnersApi from "@/lib/api/partners/partners";
 import { createPracticeSchema, flattenErrors } from "@/lib/api/crm/crm.schemas";
 import { casesMetrics } from "@/lib/metrics/cases-metrics";
@@ -64,7 +68,9 @@ export default function NewPracticePage() {
 
   // Team members for assignment dropdown (loaded from API)
   const { options: allTeamOptions } = useTeamMemberOptions();
-  const [assignableMembers, setAssignableMembers] = useState<{ email: string; name: string }[]>([]);
+  const [assignableMembers, setAssignableMembers] = useState<
+    { email: string; name: string }[]
+  >([]);
 
   // Form state
   const [selectedCategory, setSelectedCategory] = useState("");
@@ -73,6 +79,8 @@ export default function NewPracticePage() {
     title: "",
     client_id: preselectedClientId,
     quoted_price: "",
+    discount_amount: "",
+    discount_reason: "",
     assigned_to: "",
     priority: "normal" as "normal" | "high" | "urgent",
     start_date: "",
@@ -288,7 +296,12 @@ export default function NewPracticePage() {
   const handleCategoryChange = (catCode: string) => {
     setSelectedCategory(catCode);
     setSelectedServiceCode("");
-    setFormData((prev) => ({ ...prev, quoted_price: "" }));
+    setFormData((prev) => ({
+      ...prev,
+      quoted_price: "",
+      discount_amount: "",
+      discount_reason: "",
+    }));
   };
 
   const handleServiceChange = (serviceCode: string) => {
@@ -299,9 +312,16 @@ export default function NewPracticePage() {
       setFormData((prev) => ({
         ...prev,
         quoted_price: String(svc.base_price),
+        discount_amount: "",
+        discount_reason: "",
       }));
     } else {
-      setFormData((prev) => ({ ...prev, quoted_price: "" }));
+      setFormData((prev) => ({
+        ...prev,
+        quoted_price: "",
+        discount_amount: "",
+        discount_reason: "",
+      }));
     }
   };
 
@@ -390,11 +410,14 @@ export default function NewPracticePage() {
         }
       } catch {
         // RBAC 403 or network error — skip duplicate check, proceed with creation
-        logger.warn("Duplicate check skipped — could not fetch client practices", {
-          component: "NewProcess",
-          action: "duplicateCheck",
-          itemId: String(result.data.client_id),
-        });
+        logger.warn(
+          "Duplicate check skipped — could not fetch client practices",
+          {
+            component: "NewProcess",
+            action: "duplicateCheck",
+            itemId: String(result.data.client_id),
+          },
+        );
       }
 
       const backendData = {
@@ -406,6 +429,12 @@ export default function NewPracticePage() {
         ...(formData.quoted_price
           ? { quoted_price: Number(formData.quoted_price) }
           : {}),
+        ...(formData.discount_amount && Number(formData.discount_amount) > 0
+          ? { discount_amount: Number(formData.discount_amount) }
+          : {}),
+        ...(formData.discount_reason && formData.discount_reason.trim()
+          ? { discount_reason: formData.discount_reason.trim() }
+          : {}),
         ...(formData.assigned_to ? { assigned_to: formData.assigned_to } : {}),
         ...(formData.start_date ? { start_date: formData.start_date } : {}),
         ...(result.data.family_member_id
@@ -413,9 +442,7 @@ export default function NewPracticePage() {
           : {}),
       } as CreatePracticeParams;
 
-      const createdPractice = await api.crm.createPractice(
-        backendData,
-      );
+      const createdPractice = await api.crm.createPractice(backendData);
 
       if (formData.referrer_id != null && createdPractice?.id) {
         try {
@@ -424,7 +451,11 @@ export default function NewPracticePage() {
           });
         } catch (referralErr) {
           // Non-fatal: practice exists. Log but don't block user.
-          console.warn("Referral row creation failed", referralErr);
+          logger.warn(
+            "Referral row creation failed",
+            { component: "NewProcess", action: "createReferral" },
+            toError(referralErr),
+          );
         }
       }
       const apiDuration = performance.now() - apiStart;
@@ -745,7 +776,8 @@ export default function NewPracticePage() {
                   className={`${inputClass} appearance-none cursor-pointer pr-10`}
                 >
                   <option value="">
-                    Main client{selectedClient ? ` (${selectedClient.full_name})` : ""}
+                    Main client
+                    {selectedClient ? ` (${selectedClient.full_name})` : ""}
                   </option>
                   {familyMembers.map((m) => (
                     <option key={m.id} value={String(m.id)}>
@@ -820,6 +852,77 @@ export default function NewPracticePage() {
                   ))}
                 </select>
               </div>
+            </div>
+          </div>
+
+          {/* Discount (added 2026-05-06) — fixed-IDR adjustment + optional reason.
+              Surfaces in invoice PDF as "Subtotal / Discount / Total" per
+              owner Q1=a, Q2=a, Q5=c. Cross-validated against quoted_price
+              both client-side (Zod refine) and server-side. */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <label className={labelClass}>
+                Discount{" "}
+                <span className="text-[var(--foreground-muted)] font-normal">
+                  (IDR, optional)
+                </span>
+              </label>
+              <div className="relative">
+                <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--foreground-muted)]" />
+                <input
+                  type="number"
+                  min="0"
+                  step="100000"
+                  value={formData.discount_amount}
+                  onChange={(e) =>
+                    setFormData((prev) => ({
+                      ...prev,
+                      discount_amount: e.target.value,
+                    }))
+                  }
+                  className={inputClass}
+                  placeholder="0"
+                />
+              </div>
+              {formData.discount_amount &&
+                Number(formData.discount_amount) > 0 && (
+                  <p className="text-xs text-[var(--foreground-muted)]">
+                    Final: Rp{" "}
+                    {formatPrice(
+                      Math.max(
+                        0,
+                        Number(formData.quoted_price || 0) -
+                          Number(formData.discount_amount),
+                      ),
+                    )}
+                  </p>
+                )}
+              {fieldErrors.discount_amount && (
+                <p className="text-xs text-red-400">
+                  {fieldErrors.discount_amount}
+                </p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <label className={labelClass}>
+                Discount Reason{" "}
+                <span className="text-[var(--foreground-muted)] font-normal">
+                  (optional)
+                </span>
+              </label>
+              <input
+                type="text"
+                value={formData.discount_reason}
+                onChange={(e) =>
+                  setFormData((prev) => ({
+                    ...prev,
+                    discount_reason: e.target.value,
+                  }))
+                }
+                className={inputClass}
+                placeholder="e.g. Pay-in-advance, Loyalty"
+                maxLength={200}
+              />
             </div>
           </div>
 
@@ -902,7 +1005,9 @@ export default function NewPracticePage() {
             </label>
             <ReferrerDropdown
               value={formData.referrer_id}
-              onChange={(id) => setFormData((prev) => ({ ...prev, referrer_id: id }))}
+              onChange={(id) =>
+                setFormData((prev) => ({ ...prev, referrer_id: id }))
+              }
               className="w-full"
             />
           </div>
