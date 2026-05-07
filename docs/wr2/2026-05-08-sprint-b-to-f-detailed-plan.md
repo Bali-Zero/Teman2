@@ -171,6 +171,29 @@ The first B0 implementation (PR #516) wrote `_log_run_telemetry(draft_id, n, "su
 
 **Fix**: PR `fix/wr2-canva-persist-race-2026-05-08` reorders telemetry to write `success` only AFTER `_persist_canva_result` returns; on persist exception writes `outcome="persist_failed"` so JSONL truthfully mirrors DB state. `_persist_canva_result` accepts `dsn` and re-opens a fresh connection if `conn.is_closed()` — making persist resilient to wireguard idle-timeout. Tests: `scripts/tests/test_wr2_canva_apply_persist_race.py` (4 scenarios). The B0 success-rate denominator now equals the DB-persisted-rendered count, not the apply-returned-result count.
 
+### B-NEW — Canva OAuth watchdog (SHIPPED 2026-05-08, replaces B1+B2)
+
+**Scope**: every 6h, probe whether `claude -p` subprocess sees ≥30 `mcp__claude_ai_Canva__*` tools loaded. If fewer (or non-numeric output), the OAuth token in `~/.mcp-auth/` has gone stale → fetch the re-auth URL via a second `claude -p` calling `mcp__claude_ai_Canva__authenticate` and Telegram alert (P0) the operator with the URL embedded as a click link. 24h cooldown between alerts; first healthy→stale transition always alerts.
+
+**Why this replaces B1 (MCP pre-warm wrapper) and B2 (session keeper daemon)**: 4 review streams (Codex/Gemini/DeepSeek/NotebookLM, 2026-05-07) independently rejected the "MCP cache warming" hypothesis as architecturally unfounded. Empirical 4 datapoints from B0 telemetry showed the only consistent failure mode is "MCP Canva not visible in `claude -p` subprocess" — which `claude -p` cannot self-heal because re-auth is browser-OAuth-interactive. A watchdog that pages an operator is the cheapest-correct mitigation; a wrapper that probes pre-call would just double the failure surface without unblocking re-auth.
+
+**Files (Pro-local, NOT in repo, with snapshot for audit)**:
+
+- `~/scripts/wr2-canva-oauth-watchdog.sh` — bash script (set -uo pipefail, flock single-instance, key=value state file)
+- `~/Library/LaunchAgents/com.balizero.wr2.canva-oauth-watchdog.plist` — `StartInterval=21600` + `RunAtLoad=true`, mode 0444 per cicatrix P0-3
+- `infra/launchagents/com.balizero.wr2.canva-oauth-watchdog.plist` — repo mirror
+- `docs/wr2/skill-snapshots/canva-oauth-watchdog-2026-05-08.md` — script body snapshot for repo tracking + operator runbook
+- `tests/lint/test_canva_oauth_watchdog.sh` — extracts the bash body from the snapshot, runs 6 scenarios with a stub `claude` (healthy / first stale / cooldown active / cooldown elapsed / non-numeric output / boundary count=29), 17 assertions
+
+**Probe contract**:
+- Healthy → integer ≥ `MIN_TOOLS=30` → exit 0, state.last_status=healthy.
+- Stale → empty/non-numeric or < 30 → exit 1, state.last_status=stale, alert if no cooldown.
+- 60s probe timeout (`PROBE_TIMEOUT`); 86400s alert cooldown (`ALERT_COOLDOWN_SEC`).
+
+**Empirical post-bootstrap (2026-05-08)**: launchd `state=not running, last exit code=0`; first probe at 04:34:37 WITA logged `OK: 32 mcp__claude_ai_Canva__* tools visible (>= 30)`; next fire +21600s.
+
+**Discovery during build**: sourcing `~/.nuzantara-secrets.env` with `set -a` poisons the `claude -p` subprocess env (likely `OPENROUTER_API_KEY` or `MINIMAX_API_KEY`) — the count probe silently returned 0. Mitigated by extracting only `TELEGRAM_BOT_TOKEN` + `TELEGRAM_OWNER_CHAT_ID` via grep+cut. `< /dev/null` is mandatory on the probe call (otherwise the "no stdin data received in 3s" warning pollutes the captured output).
+
 ### B1 — MCP pre-warm wrapper (PARKED — pending B0 data)
 
 **Scope**: prima del `claude -p` "vero", lancia un probe `claude -p` short-running per portare in cache la connessione MCP Canva. Se probe fallisce → retry con backoff. Se persiste fail → Telegram alert + skip draft.
