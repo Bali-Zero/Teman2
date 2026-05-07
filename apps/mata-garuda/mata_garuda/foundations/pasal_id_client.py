@@ -88,7 +88,12 @@ class PasalIdClient:
         results = []
         for item in payload.get("results", []):
             # Live API nests title/year/kind under `work`; tolerate both shapes.
-            work = item.get("work", item)
+            # Wave 2 review fix (DeepSeek + Codex W2, 2026-05-08):
+            # `item.get("work", item)` returns None when JSON has explicit
+            # `"work": null` — then `.get()` crashes with AttributeError.
+            # Guard against None and non-dict shapes.
+            raw_work = item.get("work")
+            work = raw_work if isinstance(raw_work, dict) and raw_work else item
             results.append(
                 LawSearchResult(
                     id=item.get("id", work.get("id", "")),
