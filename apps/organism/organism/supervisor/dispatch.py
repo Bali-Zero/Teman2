@@ -9,12 +9,20 @@ Integrates:
   the L0 rule matcher, but dispatcher asserts the decision was not born
   from an actuation event)
 
-In W1 shadow mode: logs the decision then returns SHADOW_LOGGED without
-invoking the actuator. W2 will flip shadow_mode=False and the dispatcher
-will actually call actuator.run().
+Modes:
+- shadow_mode=True: log decision and return SHADOW_LOGGED, do NOT invoke actuator.
+- shadow_mode=False (W2): look up actuator in `actuator_registry`,
+  call `await actuator.run(params=..., correlation_id=..., dry_run=False)`,
+  invoke optional `on_dispatched` callback (Telegram side-effect), return
+  DISPATCHED. Actuator's own ActuatorBase.run() captures exceptions and
+  emits done/failed events; the dispatcher only crashes if the actuator
+  test double explicitly raises (it then records a CB failure and reports
+  DISPATCHED — the upstream supervise loop continues).
 """
 import logging
 from enum import Enum
+from typing import Any, Awaitable, Callable, Mapping, Protocol
+
 from organism.schemas import ActionDecision
 
 
@@ -55,6 +63,15 @@ class DispatchOutcome(str, Enum):
     DEFERRED_DEFER_ACTUATOR = "deferred_defer_actuator"
 
 
+class _ActuatorLike(Protocol):
+    name: str
+
+    async def run(self, *, params, correlation_id, dry_run=False): ...
+
+
+OnDispatchedCallback = Callable[..., Awaitable[None]]
+
+
 class Dispatcher:
     def __init__(
         self,
@@ -64,12 +81,19 @@ class Dispatcher:
         mutex,
         blackout,
         shadow_mode: bool = True,
+        actuator_registry: Mapping[str, _ActuatorLike] | None = None,
+        on_dispatched: OnDispatchedCallback | None = None,
     ):
         self.redis = redis
         self.circuit_breaker = circuit_breaker
         self.mutex = mutex
         self.blackout = blackout
         self.shadow_mode = shadow_mode
+        # Registry is required in active mode but allowed to be None in shadow
+        # so callers (esp. tests) can construct a dispatcher without wiring
+        # the full actuator graph just to verify shadow paths.
+        self.actuator_registry = dict(actuator_registry or {})
+        self.on_dispatched = on_dispatched
 
     def _target_key(self, decision: ActionDecision, target: str) -> str:
         return f"{decision.actuator}:{target}"
@@ -137,12 +161,65 @@ class Dispatcher:
                     actuator, decision.params, correlation_id,
                 )
                 return DispatchOutcome.SHADOW_LOGGED
-            # Active mode — W2 wires actual actuator invocation here.
-            # For W1 we just return DISPATCHED to prove the guard chain passed.
+
+            # 6. W2 active mode — invoke the actuator.
+            instance = self.actuator_registry.get(actuator)
+            if instance is None:
+                # Active mode but we have no implementation wired. Treat as
+                # unknown so upstream observability (and operators) catch the
+                # gap immediately rather than silently no-op'ing.
+                log.error(
+                    "dispatch (active): actuator=%s in SAFE list but not in "
+                    "registry — rejected corr=%s",
+                    actuator, correlation_id,
+                )
+                return DispatchOutcome.REJECTED_UNKNOWN
+
             log.info(
-                "dispatch (active): actuator=%s params=%s corr=%s — invocation placeholder (W2)",
+                "dispatch (active): actuator=%s params=%s corr=%s",
                 actuator, decision.params, correlation_id,
             )
+            result: Any
+            try:
+                result = await instance.run(
+                    params=decision.params,
+                    correlation_id=correlation_id,
+                    dry_run=False,
+                )
+            except Exception as exc:  # actuator misbehaved (raised instead of returning {success: False})
+                log.exception(
+                    "dispatch (active): actuator=%s raised — recording CB "
+                    "failure corr=%s",
+                    actuator, correlation_id,
+                )
+                try:
+                    await self.circuit_breaker.record_failure(target_key)
+                except Exception:
+                    log.exception("dispatch: CB record_failure failed (non-fatal)")
+                result = {"success": False, "error": str(exc)[:500]}
+            else:
+                if not result.get("success", False):
+                    try:
+                        await self.circuit_breaker.record_failure(target_key)
+                    except Exception:
+                        log.exception("dispatch: CB record_failure failed (non-fatal)")
+
+            # 7. Best-effort callback (e.g. Telegram alert). Failures here
+            #    must NOT propagate — they would cascade into supervise-loop
+            #    crashes the moment the bot token expires.
+            if self.on_dispatched is not None:
+                try:
+                    await self.on_dispatched(
+                        decision=decision,
+                        target=target,
+                        correlation_id=correlation_id,
+                        result=result,
+                    )
+                except Exception:
+                    log.exception(
+                        "dispatch: on_dispatched callback raised (non-fatal)",
+                    )
+
             return DispatchOutcome.DISPATCHED
         finally:
             await self.mutex.release(target_key, lock_id)
