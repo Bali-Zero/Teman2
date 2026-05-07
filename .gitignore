@@ -646,3 +646,6 @@ docs/codex-reviews/
 # Generator:       scripts/pricelist_2026/
 # Versioned MD:    docs/pricing/Bali_Zero_Price_List_2026.md
 # Working assets:  ~/Desktop/Bali_Zero_Price_List_2026_assets/
+
+# Mini-Pro2 venv aside (transient backup during venv recreations)
+apps/backend-rag/.venv.mini-aside-*/
