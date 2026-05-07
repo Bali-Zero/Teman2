@@ -405,8 +405,11 @@ export function trackTaxDashboardViewed(
 
 // --- Property ---
 
-/** Track property article CTA interaction */
-export function trackPropertyCTA(articleSlug: string, ctaType: string): void {
+/** Track property article-page CTA interaction (article slug + CTA type) */
+export function trackPropertyArticleCTA(
+  articleSlug: string,
+  ctaType: string,
+): void {
   sendGA4Event("property_cta_clicked", {
     event_category: "Property",
     article_slug: articleSlug,
@@ -461,4 +464,66 @@ export function trackPropertyWACTA(): void {
     sessionId: getOrCreateSessionId(),
     payload: { cta_type: "whatsapp" },
   });
+}
+
+// ============================================================
+// Funnel Home-Block CTA Helpers
+// Dispatches to GA4 + internal CRM bus + funnel store.
+// Used by FunnelFeature component for main CTA, consult/pricing
+// CTA, search submit, and suggestion chip interactions.
+// ============================================================
+
+type FunnelCTAAction =
+  | "cta_click"
+  | "consult_click"
+  | "search_submit"
+  | "suggestion_click";
+
+function _trackFunnelCTA(
+  funnel: "visa" | "kbli" | "tax" | "property",
+  action: FunnelCTAAction,
+  extra?: Record<string, string | number | boolean>,
+): void {
+  // Event name: e.g. "visa_cta_click", "kbli_search_submit"
+  const eventName = `${funnel}_${action}` as const;
+  const params = { event_category: "FunnelCTA", funnel, ...extra };
+  sendGA4Event(eventName, params);
+  trackEvent(eventName, { funnel, ...extra });
+  void trackFunnelEvent(
+    // Cast is safe: all 16 combinations are in FUNNEL_EVENTS
+    eventName as Parameters<typeof trackFunnelEvent>[0],
+    { sessionId: getOrCreateSessionId(), payload: { funnel, ...extra } },
+  );
+}
+
+/** Track Visa Oracle funnel block CTA interactions */
+export function trackVisaCTA(
+  action: FunnelCTAAction,
+  extra?: Record<string, string | number | boolean>,
+): void {
+  _trackFunnelCTA("visa", action, extra);
+}
+
+/** Track KBLI Navigator funnel block CTA interactions */
+export function trackKBLICTA(
+  action: FunnelCTAAction,
+  extra?: Record<string, string | number | boolean>,
+): void {
+  _trackFunnelCTA("kbli", action, extra);
+}
+
+/** Track Tax Intelligence funnel block CTA interactions */
+export function trackTaxCTA(
+  action: FunnelCTAAction,
+  extra?: Record<string, string | number | boolean>,
+): void {
+  _trackFunnelCTA("tax", action, extra);
+}
+
+/** Track Property Map funnel home-block CTA interactions */
+export function trackPropertyCTA(
+  action: FunnelCTAAction,
+  extra?: Record<string, string | number | boolean>,
+): void {
+  _trackFunnelCTA("property", action, extra);
 }

@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
+
 import {
   Search,
   IdCard,
@@ -15,64 +15,13 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import type { Funnel } from "@balizero/core/components/ThemeProvider";
+import {
+  trackVisaCTA,
+  trackKBLICTA,
+  trackTaxCTA,
+  trackPropertyCTA,
+} from "@/lib/analytics";
 
-// ---------------------------------------------------------------------------
-// Tracking lokal — self-contained, tidak bergantung pada file di luar /v2.
-// Mengirim event ke GA4 via gtag (no-op jika gtag belum dimuat di halaman).
-// ---------------------------------------------------------------------------
-type GtagFn = (...args: unknown[]) => void;
-
-// Maps funnel × ctaType → specific GA4 event name.
-// Each entry corresponds to one of the 8 tracked CTA surfaces in FunnelFeature.
-const FUNNEL_EVENT_MAP: Record<
-  string,
-  Record<"primary" | "pricing" | "search" | "suggestion", string>
-> = {
-  visa: {
-    primary: "visa_cta_click",
-    pricing: "visa_consult_click",
-    search: "visa_search_submit",
-    suggestion: "visa_suggestion_click",
-  },
-  kbli: {
-    primary: "kbli_cta_click",
-    pricing: "kbli_consult_click",
-    search: "kbli_search_submit",
-    suggestion: "kbli_suggestion_click",
-  },
-  tax: {
-    primary: "tax_cta_click",
-    pricing: "tax_consult_click",
-    search: "tax_search_submit",
-    suggestion: "tax_suggestion_click",
-  },
-  property: {
-    primary: "property_cta_click",
-    pricing: "property_consult_click",
-    search: "property_search_submit",
-    suggestion: "property_suggestion_click",
-  },
-};
-
-function trackFunnelCTA(
-  funnel: string,
-  ctaType: "primary" | "pricing" | "suggestion" | "search",
-  label: string,
-  destination?: string,
-): void {
-  if (typeof window === "undefined") return;
-  const gtag = (window as Window & { gtag?: GtagFn }).gtag;
-  if (typeof gtag !== "function") return;
-  const eventName =
-    FUNNEL_EVENT_MAP[funnel]?.[ctaType] ?? `${funnel}_${ctaType}_clicked`;
-  gtag("event", eventName, {
-    event_category: "FunnelFeature",
-    funnel,
-    cta_type: ctaType,
-    label,
-    ...(destination ? { destination } : {}),
-  });
-}
 
 type LayoutMode = "full" | "half";
 
@@ -253,6 +202,14 @@ const CONFIGS: Record<
   },
 };
 
+// Per-funnel helper dispatch map — avoids a switch in JSX.
+const CTA_TRACKER: Record<Exclude<Funnel, null>, typeof trackVisaCTA> = {
+  visa: trackVisaCTA,
+  kbli: trackKBLICTA,
+  tax: trackTaxCTA,
+  property: trackPropertyCTA,
+};
+
 export function FunnelFeature({
   funnel,
   layout,
@@ -261,6 +218,7 @@ export function FunnelFeature({
   layout: LayoutMode;
 }) {
   const cfg = CONFIGS[funnel];
+  const track = CTA_TRACKER[funnel];
   const [query, setQuery] = useState("");
   const isFull = layout === "full";
 
@@ -425,7 +383,8 @@ export function FunnelFeature({
             )}
 
             <div className="flex items-center gap-4 flex-wrap">
-              <Link
+              {/* Primary CTA — opens funnel app. Track before navigation. */}
+              <a
                 href={FUNNEL_HREF[funnel]}
                 target={
                   FUNNEL_HREF[funnel].startsWith("http") ? "_blank" : undefined
@@ -434,15 +393,6 @@ export function FunnelFeature({
                   FUNNEL_HREF[funnel].startsWith("http")
                     ? "noopener noreferrer"
                     : undefined
-                }
-                // CTA-1: Primary action — track PRIMA che il browser navighi (non blocca)
-                onClick={() =>
-                  trackFunnelCTA(
-                    funnel,
-                    "primary",
-                    cfg.cta,
-                    FUNNEL_HREF[funnel],
-                  )
                 }
                 className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold transition-transform hover:-translate-y-0.5"
                 style={{
@@ -453,13 +403,14 @@ export function FunnelFeature({
                     "0 8px 32px color-mix(in srgb, var(--accent-funnel) 40%, transparent)",
                   textDecoration: "none",
                 }}
+                onClick={() => track("cta_click")}
               >
                 {cfg.cta}
                 <ArrowRight size={14} strokeWidth={2} />
-              </Link>
+              </a>
 
-              {/* Pricing pointer — avoids fixed-price commitment on home.
-                Full pricing lives on the dedicated service detail page.
+              {/* Consult/pricing CTA — avoids fixed-price commitment on homepage.
+                Full pricing lives on the dedicated service page.
                 Fix 2026-04-22: was FUNNEL_HREF (landing page) → bait-and-
                 switch. Now FUNNEL_PRICING_HREF (real pricing page). */}
               <a
@@ -483,6 +434,7 @@ export function FunnelFeature({
                   fontSize: 12,
                   fontWeight: 600,
                 }}
+                onClick={() => track("consult_click")}
               >
                 <span
                   className="text-[10px] font-semibold uppercase tracking-[0.12em]"
@@ -496,7 +448,7 @@ export function FunnelFeature({
               </a>
             </div>
 
-            {/* Search input + chips — merged into glass card (hidden in full homepage layout) */}
+            {/* Search input + suggestion chips — hidden in full homepage layout */}
             {!isFull && (
               <div
                 className="relative rounded-2xl overflow-hidden mt-8 mb-4"
@@ -510,7 +462,19 @@ export function FunnelFeature({
                     "inset 0 1px 0 rgba(255,255,255,0.08), 0 0 30px color-mix(in srgb, var(--accent-funnel) 15%, transparent)",
                 }}
               >
-                <div className="flex items-center gap-3 px-4 py-3">
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    // Track search submit only when query is non-empty
+                    if (query.trim()) {
+                      track("search_submit", {
+                        query_length: query.trim().length,
+                      });
+                    }
+                    window.location.href = `${FUNNEL_HREF[funnel]}?q=${encodeURIComponent(query.trim())}`;
+                  }}
+                  className="flex items-center gap-3 px-4 py-3"
+                >
                   <Search
                     size={14}
                     strokeWidth={2}
@@ -543,7 +507,7 @@ export function FunnelFeature({
                   >
                     ⌘K
                   </kbd>
-                </div>
+                </form>
               </div>
             )}
 
@@ -552,10 +516,10 @@ export function FunnelFeature({
                 {cfg.searchSuggestions.slice(0, 4).map((sug) => (
                   <button
                     key={sug}
-                    // CTA-3..6: Suggestion chip — track chip mana yang diklik + isi query
                     onClick={() => {
                       setQuery(sug);
-                      trackFunnelCTA(funnel, "suggestion", sug);
+                      // Track suggestion selection with the chip label
+                      track("suggestion_click", { suggestion: sug });
                     }}
                     className="px-2.5 py-1 rounded-full text-[11px] font-medium transition-all"
                     style={{
