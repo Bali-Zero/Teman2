@@ -165,6 +165,12 @@ except CanvaInvokeError as exc:
 
 **Effort**: 2h.
 
+#### B0 known issue: telemetry success vs DB persist race (FIXED 2026-05-08)
+
+The first B0 implementation (PR #516) wrote `_log_run_telemetry(draft_id, n, "success", ...)` BEFORE `_persist_canva_result`, so the JSONL recorded "success" while DB persist could still crash. Empirical case: draft `0e8e1cf5` 2026-05-07 23:53 → 2026-05-08 00:26 UTC — telemetry shows `outcome="success" duration_s=1943.4` but DB row has `canva_design_id=NULL`. Root cause: the asyncpg connection opened in `run()` was held open across the 32-min synchronous `subprocess.run([claude, -p, ...])` blocking call inside `invoke_claude_apply()`. The Fly Postgres tunnel / wireguard proxy closed the idle TCP socket. `_persist_canva_result` then raised `asyncpg.exceptions.ConnectionDoesNotExistError: connection was closed in the middle of operation` (two empirical occurrences in `~/logs/wr2_canva_apply.launchd.err.log`, both at the persist call site post-32min subprocess).
+
+**Fix**: PR `fix/wr2-canva-persist-race-2026-05-08` reorders telemetry to write `success` only AFTER `_persist_canva_result` returns; on persist exception writes `outcome="persist_failed"` so JSONL truthfully mirrors DB state. `_persist_canva_result` accepts `dsn` and re-opens a fresh connection if `conn.is_closed()` — making persist resilient to wireguard idle-timeout. Tests: `scripts/tests/test_wr2_canva_apply_persist_race.py` (4 scenarios). The B0 success-rate denominator now equals the DB-persisted-rendered count, not the apply-returned-result count.
+
 ### B1 — MCP pre-warm wrapper (PARKED — pending B0 data)
 
 **Scope**: prima del `claude -p` "vero", lancia un probe `claude -p` short-running per portare in cache la connessione MCP Canva. Se probe fallisce → retry con backoff. Se persiste fail → Telegram alert + skip draft.
