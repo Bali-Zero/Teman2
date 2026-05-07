@@ -1084,9 +1084,19 @@ async def _process_one(
 
     results: list[Any] = []
 
-    if IMAGE_BACKEND == "codex":
+    if IMAGE_BACKEND == "codex" or (IMAGE_BACKEND == "auto" and codex_available and not flowkit_available):
         # Codex-only path: no Playwright launch at all.
+        # In auto mode, if Codex is available we skip Playwright entirely
+        # — Codex handles 4:5 native and is the desired primary. FlowKit/
+        # Playwright are only fallbacks if Codex itself is missing.
+        # Without this guard, the Playwright launch loop below ran a
+        # `launch_persistent_context` per slide even when Codex succeeded,
+        # leading to network-service crashes on slide 11 (08:09 WITA run).
         sem = asyncio.Semaphore(1)
+        logger.info(
+            "Codex-only path active (backend=%s, codex_available=True). "
+            "Skipping Playwright launch.", IMAGE_BACKEND,
+        )
         for idx, s in enumerate(hero_slides):
             r = await _gen_image_with_semaphore(
                 sem,
