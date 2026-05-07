@@ -3,6 +3,14 @@
 Best-effort: cookie has 5min TTL. Any error path returns None and signals
 `cookie_refresh_pending` upstream (the run loop translates None into
 instrumentation_status). Spec §7.2.
+
+Schema note (verified empirically 2026-05-08, nlm CLI v0.x):
+`nlm notebook get <uuid> --json` returns sources as `[{"id", "title"}]`
+without timestamp fields. `fetch_source_freshness_age_days` therefore
+returns None on every call until an alternative timestamp source is
+wired (tracked in design doc 2026-05-08-nb-source-freshness-alternative).
+This file remains for the cookie/auth check side-effect (returncode=0)
+and `fetch_source_count` which works correctly.
 """
 from __future__ import annotations
 
@@ -49,32 +57,54 @@ def _run_nlm(args: Sequence[str], timeout: int = DEFAULT_TIMEOUT_S) -> str | Non
     return proc.stdout
 
 
+def _extract_sources(data: dict) -> list | None:
+    """Normalize the two response shapes seen in practice.
+
+    `nlm notebook get <uuid> --json` (verified 2026-05-08) wraps the body in
+    `{"value": {"notebook_id": ..., "sources": [...]}}`. Older mocks/tests
+    pass the body flat at top-level. Accept either; return None if neither
+    has a list at `sources`.
+    """
+    sources = data.get("sources")
+    if not isinstance(sources, list):
+        nested = data.get("value", {})
+        if isinstance(nested, dict):
+            sources = nested.get("sources")
+    return sources if isinstance(sources, list) else None
+
+
 def fetch_source_count(uuid: str) -> int | None:
     """Return the number of sources in the notebook, or None on any failure."""
-    out = _run_nlm(["notebook", "info", uuid, "--json"])
+    out = _run_nlm(["notebook", "get", uuid, "--json"])
     if out is None:
         return None
     try:
         data = json.loads(out)
     except json.JSONDecodeError:
         return None
-    sources = data.get("sources")
-    if not isinstance(sources, list):
+    sources = _extract_sources(data)
+    if sources is None:
         return None
     return len(sources)
 
 
 def fetch_source_freshness_age_days(uuid: str, now_iso: str | None = None) -> int | None:
-    """Return median age (days) of NB sources at `now_iso`, or None on failure."""
-    out = _run_nlm(["notebook", "info", uuid, "--json"])
+    """Return median age (days) of NB sources at `now_iso`, or None on failure.
+
+    Currently always returns None: `nlm notebook get` does not expose source
+    timestamps. Kept as a stub so callers (run.py L222-224) keep type contract.
+    Replacement source for timestamps tracked in design doc
+    `docs/superpowers/specs/2026-05-08-nb-source-freshness-alternative.md`.
+    """
+    out = _run_nlm(["notebook", "get", uuid, "--json"])
     if out is None:
         return None
     try:
         data = json.loads(out)
     except json.JSONDecodeError:
         return None
-    sources = data.get("sources")
-    if not isinstance(sources, list) or not sources:
+    sources = _extract_sources(data)
+    if not sources:
         return None
 
     now = (
