@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.balizero.wr2.fact-checker — Sprint B B-bis (2026-05-08).
+
+  Run-on-kickstart only (no schedule). The supervisor calls
+  `launchctl kickstart` whenever a draft transitions to status
+  'drafts_imaged_facted'. The script self-throttles to
+  MAX_DRAFTS_PER_RUN=3.
+
+  Mirror of com.balizero.wr2.fact-extractor — both replace the
+  .disabled/ stubs from PR #299 (26 Apr) now that the scripts exist.
+
+  Install:
+    cp infra/launchagents/com.balizero.wr2.fact-checker.plist \
+       ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) \
+       ~/Library/LaunchAgents/com.balizero.wr2.fact-checker.plist
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.balizero.wr2.fact-checker</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/nuzantara/.openclaw/bin/wr2/wr2-script-wrapper.sh</string>
+        <string>scripts/wr2_fact_checker.py</string>
+    </array>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/wr2_fact_checker.launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/wr2_fact_checker.launchd.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/Users/nuzantara/.local/bin:/Users/nuzantara/.npm-global/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+</dict>
+</plist>
