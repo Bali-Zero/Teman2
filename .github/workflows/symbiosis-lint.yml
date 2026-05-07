@@ -1,0 +1,19 @@
+name: SYMBIOSIS Promise Lint
+
+on:
+  pull_request:
+    paths:
+      - "SYMBIOSIS.md"
+      - "scripts/lint_symbiosis_promises.py"
+      - ".github/workflows/symbiosis-lint.yml"
+
+jobs:
+  symbiosis-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Lint SYMBIOSIS durability promises
+        run: python3 scripts/lint_symbiosis_promises.py SYMBIOSIS.md
