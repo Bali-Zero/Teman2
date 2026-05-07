@@ -55,7 +55,22 @@ from backend.services.canva_renderer.claude_invoker import (  # noqa: E402
 logger = logging.getLogger("wr2.canva_apply")
 
 MAX_DRAFTS_PER_RUN = 3  # avoid stampede; launchd runs every 5 min
-PENDING_TMP_DIR = Path(tempfile.gettempdir())
+
+# 2026-05-07: the canva-apply skill (~/.claude/skills/canva-apply.md) has the
+# pending JSON path HARDCODED to apps/war-room/output/canva/canva_pending.json.
+# Even though invoke_claude_apply passes the actual path in the prompt header,
+# the skill body's "Read the file `<absolute path>`" instruction wins. Live
+# failure 04:34 WITA on draft 37263a1f returned design=D_ALREADY_APPLIED
+# because the skill read the leftover prod pending (status=applied from a
+# previous synthetic test) instead of the per-draft /tmp file we wrote.
+#
+# Fix: write the per-draft pending into the prod path the skill expects.
+# MAX_DRAFTS_PER_RUN=3 still serial (sequential loop), so no race risk.
+# Sprint B can refactor the skill to honour the prompt-passed path; until
+# then this is the single-write convention shared with wr2_canva_desktop_apply.py
+# (which also targets the prod path, per CANVA_PENDING_PATH discovery 2026-05-06).
+PENDING_PROD_DIR = Path.home() / "Desktop" / "nuzantara" / "apps" / "war-room" / "output" / "canva"
+PENDING_PROD_FILE = PENDING_PROD_DIR / "canva_pending.json"
 
 
 def _configure_logging() -> None:
@@ -80,11 +95,16 @@ async def _kill_switch_enabled(conn: asyncpg.Connection) -> bool:
 
 
 async def _fetch_ready_drafts(conn: asyncpg.Connection, limit: int) -> list[asyncpg.Record]:
+    # 2026-05-07: aligned with wr2_canva_desktop_apply (PR #341 fix).
+    # DB column is `register` (text), aliased to `tone` for downstream code.
+    # Status filter widened to include 'drafts_imaged' since fact-checker
+    # and fact-extractor stages are disabled (.disabled/) and canva-apply
+    # consumes drafts directly after image-generator.
     return await conn.fetch(
         """
-        SELECT id, topic, tone_register, slides_json
+        SELECT id, topic, register AS tone, slides_json
           FROM war_room_drafts
-         WHERE status = 'drafts'
+         WHERE status IN ('drafts_imaged', 'drafts')
            AND canva_edit_url IS NULL
          ORDER BY created_at ASC
          LIMIT $1
@@ -143,7 +163,7 @@ async def _apply_one_draft(conn: asyncpg.Connection, row: asyncpg.Record) -> boo
     """Process a single draft. Returns True on success."""
     draft_id: UUID = row["id"]
     topic: str = row["topic"]
-    tone: str = row["tone_register"] or "pedagogico"
+    tone: str = row["tone"] or "pedagogico"
     slides_json = row["slides_json"]
 
     if isinstance(slides_json, str):
@@ -160,7 +180,9 @@ async def _apply_one_draft(conn: asyncpg.Connection, row: asyncpg.Record) -> boo
         logger.error("Draft %s pending build failed: %s", draft_id, exc)
         return False
 
-    pending_path = PENDING_TMP_DIR / f"wr2_canva_pending_{draft_id}.json"
+    # Write to the prod path that the canva-apply skill hardcodes; see header.
+    PENDING_PROD_DIR.mkdir(parents=True, exist_ok=True)
+    pending_path = PENDING_PROD_FILE
     pending_path.write_text(json.dumps(pending, indent=2), encoding="utf-8")
     logger.info("Wrote pending JSON for draft %s → %s", draft_id, pending_path)
 

@@ -22,22 +22,33 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_TIMEOUT_SEC = 600  # 10 min — full APPLICA_WAR_ROOM runbook can take 5-8 min
+DEFAULT_TIMEOUT_SEC = 1500  # 25 min — empirical: deep-tier 11-slide draft
+# with hero images + Phase A.5 pre-wipe (~50 ops) + Phase B duplicate + Phase C
+# reset (~50 ops) reaches 8-12 min on Pro M4. Synthetic 5-slide no-image test
+# was 283s. 600s timed out on real drafts (37263a1f at 04:09 WITA 2026-05-07).
+# 1500s leaves headroom for Canva MCP rate-limit pauses inside the skill flow.
 DEFAULT_CLAUDE_BIN = "claude"  # resolved from PATH
-APPLICA_RUNBOOK_PATH = Path(
-    "/Users/nuzantara/Desktop/nuzantara/apps/war-room/APPLICA_WAR_ROOM.md",
-)
+# 2026-05-07: APPLICA_WAR_ROOM.md was at apps/war-room/ but that directory was
+# removed in PR #171 (WR1 decommission). The authoritative runbook is now the
+# userspace skill ~/.claude/skills/canva-apply.md (the ADAPTIVE skill that
+# wr2_canva_desktop_apply.py also injects inline). Reading it here reuses the
+# single source of truth — any edit to the skill propagates to both code paths.
+APPLICA_RUNBOOK_PATH = Path.home() / ".claude" / "skills" / "canva-apply.md"
 
-# Regex pool, tried in order: JSON field, markdown link, bare URL
-_CANVA_URL_RE = re.compile(r"https?://(?:www\.)?canva\.com/d/([A-Za-z0-9_\-]+)")
+# Regex pool, tried in order: JSON field, markdown link, bare URL.
+# Path tolerates both `/d/<slug>` (legacy) and `/design/<slug>` (current,
+# emitted by the canva-apply skill via Canva MCP).
+_CANVA_URL_RE = re.compile(
+    r"https?://(?:www\.)?canva\.com/(?:d|design)/([A-Za-z0-9_\-]+)",
+)
 _CANVA_JSON_RE = re.compile(
-    r'"(?:edit_url|edit_design_url|url)"\s*:\s*"(https?://[^"]+canva\.com/d/[^"]+)"',
+    r'"(?:edit_url|edit_design_url|url)"\s*:\s*"(https?://[^"]+canva\.com/(?:d|design)/[^"]+)"',
 )
 _DESIGN_ID_JSON_RE = re.compile(
     r'"design_id"\s*:\s*"(D[A-Za-z0-9_\-]+)"',
 )
 _VIEW_URL_JSON_RE = re.compile(
-    r'"view_url"\s*:\s*"(https?://[^"]+canva\.com/d/[^"]+)"',
+    r'"view_url"\s*:\s*"(https?://[^"]+canva\.com/(?:d|design)/[^"]+)"',
 )
 
 
@@ -95,19 +106,36 @@ def extract_canva_urls(stdout: str) -> CanvaApplyResult:
     )
 
 
-def _build_prompt(canva_pending_path: Path) -> str:
-    """Compose the prompt: runbook body + path to pending JSON + output contract.
+def _strip_frontmatter(skill_text: str) -> str:
+    """Remove YAML frontmatter (--- ... ---) from a skill markdown body.
 
-    Keeping the runbook in a file (not inline) means editorial changes in
-    APPLICA_WAR_ROOM.md propagate automatically.
+    Skills under ~/.claude/skills/ start with a frontmatter block carrying
+    `name:` and `description:` keys consumed by the slash-command registry.
+    The body below the closing `---` is the operational runbook itself —
+    the only part the subprocess needs.
+    """
+    if not skill_text.startswith("---\n"):
+        return skill_text
+    end = skill_text.find("\n---\n", 4)
+    if end == -1:
+        return skill_text
+    return skill_text[end + 5 :].lstrip("\n")
+
+
+def _build_prompt(canva_pending_path: Path) -> str:
+    """Compose the prompt: skill body + path to pending JSON + output contract.
+
+    Reads the userspace skill at ~/.claude/skills/canva-apply.md (single
+    source of truth shared with wr2_canva_desktop_apply.py). Editorial
+    changes to the skill propagate to this subprocess path automatically.
     """
     if not APPLICA_RUNBOOK_PATH.is_file():
         raise CanvaInvokeError(
-            f"runbook not found at {APPLICA_RUNBOOK_PATH}. "
-            "Is the war-room app on Pro? WR1 removal plan must preserve "
-            "this file until WR2 has its own runbook.",
+            f"canva-apply skill not found at {APPLICA_RUNBOOK_PATH}. "
+            "Install the skill at ~/.claude/skills/canva-apply.md "
+            "(authoritative runbook for the WR2 canva-apply flow).",
         )
-    runbook = APPLICA_RUNBOOK_PATH.read_text(encoding="utf-8")
+    runbook = _strip_frontmatter(APPLICA_RUNBOOK_PATH.read_text(encoding="utf-8"))
     contract = (
         "\n\n---\n"
         "OUTPUT CONTRACT (mandatory, last line of your response):\n"
@@ -151,9 +179,24 @@ def invoke_claude_apply(
 
     prompt = _build_prompt(canva_pending_path)
 
+    # 2026-05-07: Claude CLI MCP scope is per-directory. The MCP Canva
+    # connector (mcp.canva.com/mcp, OAuth token in ~/.mcp-auth/) is only
+    # registered for the main repo at ~/Desktop/nuzantara. The deploy
+    # worktree at ~/Desktop/nuzantara-deploy (used as WR2_REPO_ROOT in
+    # production cron via wr2-script-wrapper.sh) does NOT have the Canva
+    # MCP server. Live failure 04:13 WITA on draft 0e8e1cf5 returned:
+    #   "ERROR: Canva MCP not available in nuzantara-deploy workspace"
+    # Fix: pin cwd to the main repo regardless of where the worker runs.
+    # The skill reads canva_pending.json by absolute path, so cwd here is
+    # purely the MCP scope discriminator — the pending file location is
+    # unaffected by this pin (and is also CANVA_PENDING_PATH-hardcoded
+    # to the main repo from wr2_canva_desktop_apply.py history).
+    claude_cwd = Path.home() / "Desktop" / "nuzantara"
+
     logger.info(
-        "Invoking claude -p for Canva apply — pending=%s timeout=%ds",
+        "Invoking claude -p for Canva apply — pending=%s cwd=%s timeout=%ds",
         canva_pending_path,
+        claude_cwd,
         timeout_sec,
     )
     start = time.monotonic()
@@ -165,6 +208,7 @@ def invoke_claude_apply(
             text=True,
             timeout=timeout_sec,
             check=False,
+            cwd=str(claude_cwd),
         )
     except subprocess.TimeoutExpired as exc:
         raise CanvaInvokeError(
