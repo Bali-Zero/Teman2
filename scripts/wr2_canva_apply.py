@@ -159,16 +159,18 @@ async def _kill_switch_enabled(conn: asyncpg.Connection) -> bool:
 
 
 async def _fetch_ready_drafts(conn: asyncpg.Connection, limit: int) -> list[asyncpg.Record]:
-    # 2026-05-07: aligned with wr2_canva_desktop_apply (PR #341 fix).
+    # 2026-05-08 (Sprint B B-bis): status filter LOCKED to
+    # 'drafts_imaged_checked'. The Sprint A bypass that allowed
+    # 'drafts_imaged' / 'drafts' here is REVERTED — only fact-checked
+    # drafts render. fact_check_status='fail' drafts land in
+    # 'fact_check_failed' terminal state and are NOT picked up.
+    #
     # DB column is `register` (text), aliased to `tone` for downstream code.
-    # Status filter widened to include 'drafts_imaged' since fact-checker
-    # and fact-extractor stages are disabled (.disabled/) and canva-apply
-    # consumes drafts directly after image-generator.
     return await conn.fetch(
         """
         SELECT id, topic, register AS tone, slides_json
           FROM war_room_drafts
-         WHERE status IN ('drafts_imaged', 'drafts')
+         WHERE status = 'drafts_imaged_checked'
            AND canva_edit_url IS NULL
          ORDER BY created_at ASC
          LIMIT $1

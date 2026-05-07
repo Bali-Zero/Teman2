@@ -477,7 +477,66 @@ KeepAlive=true daemon, no schedule, RunAtLoad=true.
 
 **Effort**: 8h (3h supervisor patch + 4h watchdog + 1h E2E test).
 
-### B4 — Restore fact-extractor + fact-checker
+### B-bis — Fact-stages NET-NEW (SHIPPED 2026-05-08)
+
+**Status**: implemented in PR `feat/wr2-fact-stages-2026-05-08`.
+
+The original "B4 restore" was actually a **net-new build** — the launchd
+plists were disabled in PR #299 (26 Apr) but the executable scripts
+`scripts/wr2_fact_extractor.py` and `scripts/wr2_fact_checker.py` were
+never written; only stub plists existed. This PR ships them from scratch.
+
+**Files shipped**:
+- `apps/backend-rag/backend/db/migrations_v2/162_war_room_fact_check.sql` — adds 3 columns (`fact_check_json JSONB`, `fact_check_status TEXT` w/ CHECK constraint NULL/pass/fail/degraded, `fact_check_at TIMESTAMPTZ`); ROLLBACK marker; constraint added NOT VALID + VALIDATE in two steps so ADD COLUMN doesn't scan the table.
+- `scripts/wr2_fact_extractor.py` (NET-NEW) — Claude OPUS via OAuth subprocess (OB-3 invariant), per-slide claim extraction, JSON parser tolerates fenced + bare model output, 1 retry on parse failure → empty list (degrade-open). Sets `fact_check_json.claims` and advances status `drafts_imaged → drafts_imaged_facted`.
+- `scripts/wr2_fact_checker.py` (NET-NEW) — deterministic per-claim verifier (law / quote / number / date / other) + optional LLM cross-check that **only upgrades** unverifiable claims (cannot downgrade verified). Aggregation rules: any contradicted → `fail`, any unverifiable → `degraded`, all verified → `pass`. Empty claims → `pass` (vacuous truth, lets canva-apply consume).
+- `scripts/wr2_supervisor.py` — TRANSITIONS revert: `drafts_imaged → fact-extractor`, `drafts_imaged_facted → fact-checker`, `drafts_imaged_checked → canva-apply`. Same revert in `NONTERMINAL_TO_NEXT_STAGE` for the reconcile path.
+- `scripts/wr2_canva_apply.py` — status filter LOCKED to `drafts_imaged_checked` (no more Sprint A bypass accepting `drafts_imaged`/`drafts`).
+- `infra/launchagents/com.balizero.wr2.fact-extractor.plist` + `…wr2.fact-checker.plist` — NEW (replace the `.disabled/` stubs from PR #299; supervisor kicks via `launchctl kickstart` on transitions).
+- `scripts/tests/test_wr2_fact_extractor.py` — 13 tests (JSON parser fences/prose/garbage; claim type normalisation; OAuth error handling; pipeline persistence; OB-3 AST guard).
+- `scripts/tests/test_wr2_fact_checker.py` — 25 tests (per-claim verifier all 5 types; aggregation pass/fail/degraded; status transition mapping; LLM upgrade-only invariant; OB-3 AST guard).
+- `scripts/tests/test_wr2_supervisor.py` — `test_reconcile_kicks_stalled` now passes after the TRANSITIONS revert (it was failing on main since Sprint A).
+
+**Atomic deploy contract** (single PR, indivisible): supervisor TRANSITIONS revert + canva-apply status filter narrow + new scripts + new plists must land together. Splitting risks a window where canva-apply still consumes `drafts_imaged` while supervisor routes to `fact-extractor` (silent kickstart of a non-existent script before the deploy completes).
+
+**Bootstrap path (post-merge, manual operator step)**:
+```bash
+# 1. Apply migration 162 (auto via run-sql-v2-migrations-post-deploy on Fly).
+# 2. Set the kill-switches to enable the new stages:
+psql $DATABASE_URL -c "
+  INSERT INTO system_settings(key, value) VALUES
+    ('wr2_fact_extractor_enabled', 'true'),
+    ('wr2_fact_checker_enabled', 'true')
+  ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value;
+"
+# 3. Move plists out of .disabled/ + bootstrap (cicatrix P0-3: chmod 0444 after).
+mv ~/Library/LaunchAgents/.disabled/com.balizero.wr2.fact-extractor.plist \
+   ~/Library/LaunchAgents/
+mv ~/Library/LaunchAgents/.disabled/com.balizero.wr2.fact-checker.plist \
+   ~/Library/LaunchAgents/
+chmod u+w ~/Library/LaunchAgents/com.balizero.wr2.fact-{extractor,checker}.plist
+cp ~/Desktop/nuzantara/infra/launchagents/com.balizero.wr2.fact-extractor.plist \
+   ~/Library/LaunchAgents/
+cp ~/Desktop/nuzantara/infra/launchagents/com.balizero.wr2.fact-checker.plist \
+   ~/Library/LaunchAgents/
+plutil -lint ~/Library/LaunchAgents/com.balizero.wr2.fact-{extractor,checker}.plist
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.balizero.wr2.fact-extractor.plist
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.balizero.wr2.fact-checker.plist
+chmod 0444 ~/Library/LaunchAgents/com.balizero.wr2.fact-{extractor,checker}.plist
+# 4. Trigger one synthetic test run to verify the chain works end-to-end:
+launchctl kickstart gui/$(id -u)/com.balizero.wr2.fact-extractor
+# Watch logs:
+tail -f ~/logs/wr2_fact_extractor.log ~/logs/wr2_fact_checker.log ~/logs/wr2_canva_apply.log
+```
+
+**Rollback** (if a draft fails fact-checking and we need to ship without):
+```bash
+psql $DATABASE_URL -c "UPDATE system_settings SET value='false' WHERE key='wr2_fact_extractor_enabled';"
+# Then patch supervisor TRANSITIONS back to the Sprint A bypass (drafts_imaged → canva-apply)
+# and re-deploy. Migration 162 stays applied; the columns are nullable so canva-apply ignores them.
+```
+
+### B4 — Restore fact-extractor + fact-checker (ORIGINAL OUTLINE — superseded by B-bis above)
 
 **Scope**: ripristinare i 2 plist da `.disabled/` + restore TRANSITIONS chain. Sostituisce il bypass Sprint A.
 
