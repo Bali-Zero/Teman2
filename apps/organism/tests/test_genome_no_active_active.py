@@ -1,4 +1,6 @@
-"""W2-C: Guard against active-active enrollment regressions in genome.yaml.
+"""W2-C: Guard against active-active enrollment regressions in
+organs_registry.yaml (Innervation Genoma — file renamed 2026-05-08 IG-3
+from `genome.yaml`).
 
 Cicatrix ref: STRUCTURAL P1 in `.claude/rules/cicatrix-scars.md` line 8 —
 13 launchd labels firing simultaneously on Pro + Mini. Once the cleanup PR
@@ -18,7 +20,9 @@ from pathlib import Path
 import pytest
 import yaml
 
-GENOME_YAML = Path(__file__).resolve().parents[1] / "organism" / "genome.yaml"
+GENOME_YAML = (
+    Path(__file__).resolve().parents[1] / "organism" / "organs_registry.yaml"
+)
 
 
 # Whitelist of labels intentionally enrolled active-active.
@@ -27,7 +31,7 @@ ACTIVE_ACTIVE_WHITELIST: set[str] = set()
 
 
 def _load_organs() -> list[dict]:
-    """Load the 'organs' list from genome.yaml.
+    """Load the 'organs' list from organs_registry.yaml.
 
     We load the file as raw YAML (without the project's ``Genome.from_yaml``
     helper) to keep the test free of import-time dependencies and to make
@@ -37,11 +41,13 @@ def _load_organs() -> list[dict]:
         data = yaml.safe_load(f)
 
     if not isinstance(data, dict):
-        pytest.fail(f"genome.yaml root is not a mapping: {type(data).__name__}")
+        pytest.fail(
+            f"organs_registry.yaml root is not a mapping: {type(data).__name__}"
+        )
 
     organs = data.get("organs")
     if not isinstance(organs, list):
-        pytest.fail("genome.yaml missing 'organs' list at top level")
+        pytest.fail("organs_registry.yaml missing 'organs' list at top level")
 
     return organs
 
@@ -93,7 +99,8 @@ def test_no_active_active_enrollment_outside_whitelist():
     if offenders:
         msg = (
             "Active-active enrollment detected (cicatrix STRUCTURAL P1 regression).\n"
-            "Each label below has BOTH host:pro AND host:mini entries in genome.yaml.\n"
+            "Each label below has BOTH host:pro AND host:mini entries in "
+            "organs_registry.yaml.\n"
             "Either drop one host or add the label to ACTIVE_ACTIVE_WHITELIST with "
             "a justification.\n\n"
             + "\n".join(f"  - {label}: hosts={sorted(hosts)}" for label, hosts in offenders)
@@ -104,9 +111,9 @@ def test_no_active_active_enrollment_outside_whitelist():
 def test_whitelist_entries_are_actually_dual_host():
     """If a label is whitelisted, it must currently appear on BOTH hosts.
 
-    Stale whitelist entries (label removed from genome.yaml but kept in
-    the whitelist) would silently mask future regressions. This test
-    keeps the whitelist tight.
+    Stale whitelist entries (label removed from organs_registry.yaml but
+    kept in the whitelist) would silently mask future regressions. This
+    test keeps the whitelist tight.
     """
     if not ACTIVE_ACTIVE_WHITELIST:
         pytest.skip("whitelist empty — nothing to validate")
@@ -122,7 +129,8 @@ def test_whitelist_entries_are_actually_dual_host():
 
     if stale:
         msg = (
-            "Whitelist contains stale entries no longer dual-host in genome.yaml:\n"
+            "Whitelist contains stale entries no longer dual-host in "
+            "organs_registry.yaml:\n"
             + "\n".join(f"  - {label}: hosts={hosts}" for label, hosts in stale)
         )
         pytest.fail(msg)

@@ -1,16 +1,17 @@
 """Tests for `cell.sensors.genome_aggregator_sensor`.
 
-The aggregator merges three sources — genome.yaml, ~/.organism/last_seen.db
-(SQLite, per-machine, written by Supervisor in Wave 2), and bridge_source
-state files (per organ, optional override) — into a single SensorReading
-with green/yellow/red aggregate status.
+The aggregator merges three sources — organs_registry.yaml (Innervation
+Genoma — file renamed 2026-05-08 IG-3 from `genome.yaml`),
+~/.organism/last_seen.db (SQLite, per-machine, written by Supervisor in
+Wave 2), and bridge_source state files (per organ, optional override) —
+into a single SensorReading with green/yellow/red aggregate status.
 
 Six cases per 99c_w0a_bis_kickoff.md §3.1:
 
 1. all alive → green
 2. some stale → yellow
 3. some dead → red
-4. genome.yaml missing → red + error metadata
+4. organs_registry.yaml missing → red + error metadata
 5. last_seen.db missing → all (non-bridged) organi treated as dead, status reported
 6. bridge_source override → bridge timestamp wins over last_seen.db lookup
 """
@@ -271,7 +272,7 @@ def test_bridge_source_override_wins_over_last_seen_db(tmp_path):
 
 # ---------- W1.1 enrollment tests -------------------------------------------
 #
-# Every Tier-1 Critical Pro infra organ enrolled in genome.yaml during W1.1
+# Every Tier-1 Critical Pro infra organ enrolled in organs_registry.yaml during W1.1
 # emits a sidecar at ~/.organism/last_seen/<organ_id>.json with the standard
 # schema (ts, status, organ_id, metadata). The aggregator already supports
 # this via bridge_source: state_file. The tests here use tmp_path bridge

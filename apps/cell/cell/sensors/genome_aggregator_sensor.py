@@ -2,15 +2,19 @@
 
 Reads three inputs and merges them into one SensorReading:
 
-1. **Genoma** (`apps/organism/organism/genome.yaml`) — source of truth for
-   "what organi exist + expected heartbeat". Static; checksum-validated.
+1. **Genoma** (`apps/organism/organism/organs_registry.yaml`) — source of
+   truth for "what organi exist + expected heartbeat". Static;
+   checksum-validated. (File renamed from `genome.yaml` 2026-05-08 IG-3;
+   filesystem symlink `genome.yaml → organs_registry.yaml` retained until
+   2026-06-08 for backward compat.)
 2. **last_seen.db** (`~/.organism/last_seen.db`, SQLite, per-machine) — written
    by the Supervisor consume loop in Wave 2 with `organ_id → last_seen`
    (unix epoch). For W0 the table may be absent: all organi without a
    bridge_source are treated as `stale`.
 3. **bridge sources** — for organi with a `bridge_source: state_file` entry
-   in genome.yaml, the timestamp comes from `BridgeStateReader.read_all()`
-   (see `apps/cell/cell/sensors/bridge_state_reader.py`). Bridge timestamps
+   in organs_registry.yaml, the timestamp comes from
+   `BridgeStateReader.read_all()` (see
+   `apps/cell/cell/sensors/bridge_state_reader.py`). Bridge timestamps
    override last_seen.db lookups for that organ.
 
 Classification per organ (07_innervation_protocol.md §1.1):
@@ -74,7 +78,7 @@ _DEFAULT_GENOME = (
     Path(__file__).resolve().parents[3]
     / "organism"
     / "organism"
-    / "genome.yaml"
+    / "organs_registry.yaml"
 )
 _DEFAULT_LAST_SEEN_DB = Path("~/.organism/last_seen.db").expanduser()
 
@@ -177,18 +181,18 @@ class GenomeAggregatorSensor:
     # ----- internals --------------------------------------------------------
 
     def _load_genome(self) -> list[dict[str, Any]]:
-        """Return the `organs` list from genome.yaml (raw dicts)."""
+        """Return the `organs` list from organs_registry.yaml (raw dicts)."""
         if not self._genome_path.exists():
             raise FileNotFoundError(self._genome_path)
         text = self._genome_path.read_text(encoding="utf-8")
         data = yaml.safe_load(text)
         if not isinstance(data, dict):
             raise ValueError(
-                f"genome.yaml must be a mapping, got {type(data).__name__}"
+                f"organs_registry.yaml must be a mapping, got {type(data).__name__}"
             )
         organs = data.get("organs")
         if not isinstance(organs, list):
-            raise ValueError("genome.yaml missing `organs` list")
+            raise ValueError("organs_registry.yaml missing `organs` list")
         return organs
 
     def _read_last_seen(self) -> tuple[dict[str, float], str]:
