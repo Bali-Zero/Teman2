@@ -36,6 +36,7 @@ import os
 import sys
 import tempfile
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID
 
@@ -55,6 +56,69 @@ from backend.services.canva_renderer.claude_invoker import (  # noqa: E402
 logger = logging.getLogger("wr2.canva_apply")
 
 MAX_DRAFTS_PER_RUN = 3  # avoid stampede; launchd runs every 5 min
+
+# B0 instrumentation (2026-05-08): detect-sentinel + retry-once + telemetry.
+# After 4 independent design reviews, the "MCP cache warming" hypothesis was
+# rejected as architecturally unfounded. The 50% empirical canva-apply fail
+# rate is unexplained; instrument with append-only JSONL telemetry to collect
+# 7 days of real data before deciding on a long-term fix (B1/B2/other).
+TELEMETRY_PATH = Path.home() / "logs" / "wr2_canva_apply_telemetry.jsonl"
+
+# When `claude -p` returns these strings in stdout, the canva apply failed
+# because the MCP Canva connector was not visible to the subprocess. Cheap
+# retry after 60s sleep is worth attempting before giving up.
+MCP_NOT_AVAILABLE_SENTINELS = (
+    "MCP Canva not available",
+    "Canva cloud connector requires claude.ai",
+    "claude.ai Canva server is not in mcp-needs-auth-cache",
+    "Canva MCP server is not available",
+    "mcp__claude_ai_Canva__.* are not loaded in this session",
+)
+
+
+def _is_mcp_cold_failure(exc: CanvaInvokeError) -> bool:
+    """Return True if the failure looks like MCP Canva missing from the subprocess."""
+    msg = str(exc)
+    return any(s in msg for s in MCP_NOT_AVAILABLE_SENTINELS)
+
+
+def _is_timeout_failure(exc: CanvaInvokeError) -> bool:
+    return "timed out" in str(exc).lower()
+
+
+def _classify_failure(exc: CanvaInvokeError) -> str:
+    if _is_mcp_cold_failure(exc):
+        return "cold_sentinel"
+    if _is_timeout_failure(exc):
+        return "timeout"
+    return "other"
+
+
+def _log_run_telemetry(
+    draft_id: UUID,
+    attempt: int,
+    outcome: str,
+    duration_s: float,
+    exc_text: str,
+) -> None:
+    """Append one JSONL line per run attempt to ~/logs/wr2_canva_apply_telemetry.jsonl.
+
+    Append-only. No DB schema. Never raises (telemetry must not break the run).
+    """
+    try:
+        TELEMETRY_PATH.parent.mkdir(parents=True, exist_ok=True)
+        rec = {
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "draft_id": str(draft_id),
+            "attempt": attempt,  # 1 = first try, 2 = retry-after-cold
+            "outcome": outcome,  # 'success' | 'cold_sentinel' | 'timeout' | 'other'
+            "duration_s": round(duration_s, 1),
+            "exc_head": (exc_text or "")[:240],
+        }
+        with open(TELEMETRY_PATH, "a") as f:
+            f.write(json.dumps(rec) + "\n")
+    except Exception as e:  # noqa: BLE001
+        logger.warning("telemetry write failed (non-fatal): %s", e)
 
 # 2026-05-07: the canva-apply skill (~/.claude/skills/canva-apply.md) has the
 # pending JSON path HARDCODED to apps/war-room/output/canva/canva_pending.json.
@@ -186,15 +250,51 @@ async def _apply_one_draft(conn: asyncpg.Connection, row: asyncpg.Record) -> boo
     pending_path.write_text(json.dumps(pending, indent=2), encoding="utf-8")
     logger.info("Wrote pending JSON for draft %s → %s", draft_id, pending_path)
 
+    # B0 (2026-05-08): detect-sentinel + retry-once + per-attempt telemetry.
+    # On the happy path (50% baseline), this adds zero overhead beyond a
+    # JSONL log line. On cold-sentinel detection, sleep 60s and retry once
+    # before giving up — far cheaper than the 25-min wasted timeout.
+    t0 = time.time()
+    result = None
     try:
         result = invoke_claude_apply(pending_path)
+        _log_run_telemetry(draft_id, 1, "success", time.time() - t0, "")
     except CanvaInvokeError as exc:
-        logger.error("Draft %s Canva apply failed: %s", draft_id, exc)
-        _send_telegram(
-            f"🚨 *WR2 Canva apply failed*\ndraft: `{draft_id}`\ntopic: {topic[:80]}\n"
-            f"error: `{str(exc)[:400]}`",
-        )
-        return False
+        d1 = time.time() - t0
+        outcome1 = _classify_failure(exc)
+        _log_run_telemetry(draft_id, 1, outcome1, d1, str(exc))
+        if outcome1 == "cold_sentinel":
+            logger.warning(
+                "Draft %s: MCP cold sentinel on attempt 1 (%.1fs) — sleep 60s, retry once",
+                draft_id, d1,
+            )
+            time.sleep(60)
+            t1 = time.time()
+            try:
+                result = invoke_claude_apply(pending_path)
+                _log_run_telemetry(draft_id, 2, "success", time.time() - t1, "")
+            except CanvaInvokeError as exc2:
+                d2 = time.time() - t1
+                outcome2 = _classify_failure(exc2)
+                _log_run_telemetry(draft_id, 2, outcome2, d2, str(exc2))
+                logger.error(
+                    "Draft %s: retry after cold also failed (%s, %.1fs): %s",
+                    draft_id, outcome2, d2, exc2,
+                )
+                _send_telegram(
+                    f"🚨 *WR2 Canva apply failed*\ndraft: `{draft_id}`\n"
+                    f"topic: {topic[:80]}\noutcome: `cold→{outcome2}`\n"
+                    f"error: `{str(exc2)[:400]}`",
+                )
+                return False
+        else:
+            logger.error("Draft %s Canva apply failed (%s): %s", draft_id, outcome1, exc)
+            _send_telegram(
+                f"🚨 *WR2 Canva apply failed*\ndraft: `{draft_id}`\n"
+                f"topic: {topic[:80]}\noutcome: `{outcome1}`\n"
+                f"error: `{str(exc)[:400]}`",
+            )
+            return False
 
     await _persist_canva_result(conn, draft_id, result)
     logger.info(
