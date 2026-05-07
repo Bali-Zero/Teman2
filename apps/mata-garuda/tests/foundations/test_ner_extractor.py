@@ -106,3 +106,41 @@ def test_pipeline_initialised_only_once_under_concurrent_calls():
         f"pipeline() should be called exactly once across 8 concurrent threads, "
         f"got {call_count} (race condition still present)"
     )
+
+
+def test_pipeline_shared_across_instances_same_model():
+    """Wave 3 fix (DeepSeek W3, 2026-05-08): old code had _pipeline as
+    instance attribute, so two NERExtractor() instances each downloaded the
+    same 440MB model. Now cached class-level keyed by model_name."""
+    import sys
+    import types
+
+    # Reset cache so this test is independent
+    from mata_garuda.foundations.ner_extractor import NERExtractor as _NE
+
+    _NE._pipeline_cache.clear()
+
+    call_count = 0
+
+    def fake_pipeline(*args, **kwargs):
+        nonlocal call_count
+        call_count += 1
+        return MagicMock(return_value=[])
+
+    fake_module = types.ModuleType("transformers")
+    fake_module.pipeline = fake_pipeline
+    sys.modules["transformers"] = fake_module
+
+    try:
+        ext1 = _NE()
+        ext2 = _NE()  # same default model
+        ext1.extract("hello")
+        ext2.extract("world")
+    finally:
+        del sys.modules["transformers"]
+        _NE._pipeline_cache.clear()
+
+    assert call_count == 1, (
+        f"pipeline() should be called once across 2 instances of the same model, "
+        f"got {call_count}"
+    )

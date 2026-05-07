@@ -26,7 +26,7 @@ class NamedEntity:
 
 
 class NERExtractor:
-    """Lazy-loaded, thread-safe NER pipeline.
+    """Lazy-loaded, thread-safe, process-shared NER pipeline.
 
     Wave 1 fix (Codex GPT-5 + DeepSeek v4, 2026-05-08):
     Old `__init__` called `pipeline()` eagerly, which downloads ~440MB and uses
@@ -41,28 +41,40 @@ class NERExtractor:
     Also: `transformers` is imported lazily inside `_get_pipeline()` so that
     a worker that only needs `gov_apis_health` does NOT pull torch/transformers
     at import time.
+
+    Wave 3 fix (DeepSeek W3, 2026-05-08):
+    The old design had `_pipeline` as an instance attribute, so two
+    `NERExtractor()` instances would each download/load the same 440MB model
+    independently. Now the pipeline is cached at the CLASS level keyed by
+    `model_name`, so multiple instances of the same model share one pipeline
+    object across the process.
     """
 
     _lock = threading.Lock()
+    _pipeline_cache: dict[str, object] = {}  # class-level: model_name → pipeline
 
     def __init__(self, model_name: str = DEFAULT_MODEL):
         self._model_name = model_name
-        self._pipeline = None  # lazily initialised in _get_pipeline()
 
     def _get_pipeline(self):
-        if self._pipeline is None:
-            with self._lock:
-                if self._pipeline is None:
-                    # Lazy import: avoids loading transformers/torch unless
-                    # extract() is actually called.
-                    from transformers import pipeline as _hf_pipeline
+        cached = NERExtractor._pipeline_cache.get(self._model_name)
+        if cached is not None:
+            return cached
+        with self._lock:
+            cached = NERExtractor._pipeline_cache.get(self._model_name)
+            if cached is not None:
+                return cached
+            # Lazy import: avoids loading transformers/torch unless
+            # extract() is actually called.
+            from transformers import pipeline as _hf_pipeline
 
-                    self._pipeline = _hf_pipeline(
-                        "ner",
-                        model=self._model_name,
-                        aggregation_strategy="simple",
-                    )
-        return self._pipeline
+            pipeline_instance = _hf_pipeline(
+                "ner",
+                model=self._model_name,
+                aggregation_strategy="simple",
+            )
+            NERExtractor._pipeline_cache[self._model_name] = pipeline_instance
+            return pipeline_instance
 
     def extract(self, text: str, labels: Sequence[str] | None = None) -> list[NamedEntity]:
         if not text:
