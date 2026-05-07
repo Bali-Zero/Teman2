@@ -217,9 +217,9 @@ sub_organelles:
     constraint: page_token_persistence_required
 ```
 
-### Q4: Genome integration in `apps/organism/organism/genome.yaml`?
+### Q4: Genome integration in `apps/organism/organism/organs_registry.yaml`?
 
-**Pick: YES, register crm-cell in genome.yaml.** Different rationale
+**Pick: YES, register crm-cell in organs_registry.yaml.** Different rationale
 from `nuz-sync`'s exclusion (cicatrix § "Untracked files lost when
 sibling automation switches branches").
 
@@ -234,13 +234,13 @@ blast radius. crm-cell has no such structural risk:
 - It runs in-process, so failure → FastAPI lifespan handles it,
   not the supervisor.
 
-What genome.yaml inclusion BUYS: the supervisor can detect crm-cell
+What organs_registry.yaml inclusion BUYS: the supervisor can detect crm-cell
 runtime issues via the existing pulse loop (cell pulse → green/yellow/
 red classification per cicatrix § "Backend /health masks
 startup_failed"). For a cell that runs in-process, this is essentially
 free — the FastAPI healthcheck already exists.
 
-**Reversal cost (LOW):** remove the genome.yaml entry. Cell still
+**Reversal cost (LOW):** remove the organs_registry.yaml entry. Cell still
 runs without supervisor monitoring (just lacks centralized health
 view).
 
