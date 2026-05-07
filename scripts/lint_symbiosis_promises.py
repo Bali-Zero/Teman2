@@ -24,19 +24,23 @@ PROMISE_PATTERNS = [
     r"\bdurabl(e|ity|ità)\b",
     r"\balways\s+recover\b",
     r"\breplay\b",
-    r"\bconsumer\s+groups\b",
+    r"\bconsumer\s+group(s)?\b",  # accept singular and plural
     r"\bgraceful\s+degradation\b",
     r"\bguarantee[ds]?\b",
     r"\bif\s+.*?\s+is\s+down\b",
 ]
 
+# A claim must be backed by a concrete test-file path (or N/A out-of-scope).
+# A bare "| Test |" markdown header is NOT enough — the row must cite a
+# `apps/.../tests/...` path or an explicit `Test:`/`Validated by:` line that
+# names a path. `RESOLVED via PR #N` is accepted only as a complementary trail
+# next to a real test path, never alone (enforced via the path requirement).
 TEST_CITATION_PATTERNS = [
     r"`apps/[^`]+/tests/[^`]+`",
-    r"Test:\s*",
-    r"Validated by:\s*",
-    r"\|\s*Test\s*\|",  # markdown table column header
-    r"resolution PR #\d+",  # cicatrix-resolution citation
-    r"RESOLVED via PR #\d+",
+    r"`tests/[^`]+`",
+    r"Test:\s*`?(apps/|tests/)[^\s`]+",
+    r"Validated by:\s*`?(apps/|tests/)[^\s`]+",
+    r"\bN/A\b\s*[—-]\s*out of scope",  # explicit out-of-scope row
 ]
 
 

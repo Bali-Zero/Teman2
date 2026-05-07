@@ -69,7 +69,7 @@ Every organ is a differentiated cell. `packages/cell-core/` provides:
 - **Identity** — SelfModel persistence across restarts
 
 Organs implement: `Sensor`, `Thinker`, `Actor` protocols.
-Communication between organs: L1 (Redis Streams) unchanged.
+Communication between organs: per-channel — Redis Streams per `garuda:raw` (mata-garuda), PG LISTEN/NOTIFY + `events_outbox` per i canali CRM/cognitive/observatory. Vedi tabella Legge 3.
 
 **Genome — DNA Recording** (`cell_core.genome.Genome`):
 
@@ -94,7 +94,7 @@ Un organismo con organi isolati e' un cadavere. La crescita avviene quando gli o
 
 La conoscenza raggiunge chi ne ha bisogno attraverso tre livelli:
 
-**Livello 1 — Real-time (Redis Streams).** Per eventi che richiedono reazione. Ogni agente pubblica sul proprio stream, i consumer group garantiscono delivery. Nessun polling.
+**Livello 1 — Real-time (per-channel: Redis Streams + PG LISTEN/NOTIFY).** Per eventi che richiedono reazione. mata-garuda usa Redis Streams (`garuda:raw`), il backend usa PostgreSQL LISTEN/NOTIFY + `events_outbox` per i canali CRM/cognitive/observatory; durabilità e delivery semantics dettagliate in Legge 3. Nessun polling.
 
 **Livello 2 — Persistente (SQLite / PG).** Per conoscenza accumulata, query-abile. Ogni agente puo' interrogare la saggezza degli altri.
 
@@ -179,16 +179,16 @@ Questi vincoli non sono negoziabili. Nessun pilastro li sovrascrive.
 2. **OSINT blindato.** I dati intelligence non escono mai dal Pro. Mai frontend, mai cloud, mai team. Le skill e gli insight condivisi contengono conoscenza operativa, non dati.
 3. **Event-driven, durabilità per canale.** Nessun polling, nessun orchestratore centrale. Ogni canale evento ha la propria strategia di durabilità, scelta in base al consumer:
 
-   | Canale | Implementazione | Durabilità | Test |
+   | Canale | Implementazione | Durabilità (claim) | Test |
    |---|---|---|---|
-   | `garuda:raw` (mata-garuda) | Redis Streams + consumer groups (XADD/XREADGROUP) | Stream MAXLEN ~100K, replay via `XGROUP READ` from `0` | `apps/mata-garuda/tests/test_redis_host_override.py` |
-   | `practice_changed`, `client_changed`, `compliance_alert`, `war_room_event`, `intel_event`, `cognitive_event`, `federation_alert`, `cell_pulse_observed`, `measurer_event`, `crm_welcome_completed`, `asset_provenance` (CRM + cognitive + observatory) | PostgreSQL LISTEN/NOTIFY + `events_outbox` (migration 144) + DB triggers refactored a `outbox.publish` (migration 146) | Atomic insert nella stessa transaction del trigger; replay automatico al listener-reconnect via `_replay_outbox_on_reconnect`; consumer ack idempotente via `_outbox_id` injection | `apps/backend-rag/backend/tests/services/events/test_outbox.py` (16) + `test_outbox_callsite_integration.py` (12) + `test_event_bus_replay.py` (4) |
-   | `lkpm_ingest_completed` (CRM, Python emitter only) | `EventBus.emit_pg` → `outbox.publish` (no DB trigger) | Stesso schema events_outbox | Same as above |
+   | `garuda:raw` (mata-garuda) | Redis Streams + consumer groups (XADD/XREADGROUP via `workers.base_worker.stream_publish`) | Stream-backed; consumer-group delivery semantics ereditate da Redis. Replay/MAXLEN sono comportamento Redis nativo, NON validati da test in-repo. | N/A — out of scope (Redis-server-level behavior; nessun test in-repo valida MAXLEN ~100K o replay-from-`0`) |
+   | `practice_changed`, `client_changed`, `compliance_alert`, `war_room_event`, `intel_event`, `cognitive_event`, `federation_alert`, `cell_pulse_observed`, `measurer_event`, `crm_welcome_completed`, `asset_provenance` (CRM + cognitive + observatory) | PostgreSQL LISTEN/NOTIFY + `events_outbox` (migration 144) + DB triggers refactored a `outbox.publish` (migration 146) | Atomic insert nella stessa transaction del trigger; replay automatico al listener-reconnect via `_replay_outbox_on_reconnect`, con cap `max_age_minutes=60` (eventi più vecchi di 60min NON sono replayati per evitare flood post-outage lungo); consumer ack idempotente via `_outbox_id` injection. Fase 1: ack avviene a livello dispatcher, NON per-handler — un crash dentro un handler lascia comunque la riga marcata consumed (limite noto, fase 2 introduce per-handler ack). | `Test:` `apps/backend-rag/backend/tests/services/events/test_outbox.py` (16), `apps/backend-rag/backend/tests/services/events/test_outbox_callsite_integration.py` (12), `apps/backend-rag/backend/tests/services/events/test_event_bus_replay.py` (4) |
+   | `lkpm_ingest_completed` (CRM, Python emitter only) | `EventBus.emit_pg` → `outbox.publish` (no DB trigger; vedi `event_bus.py:246-281`) | Stesso schema events_outbox + stessi limiti (60-min cap, dispatcher-level ack) | `Test:` `apps/backend-rag/backend/tests/services/events/test_outbox_callsite_integration.py` |
    | `wr2_status_change`, `partner.commission_changed` | NOT in `PG_CHANNEL_MAP`, separate consumers (es. `wr2_supervisor.py`) | Volatile by design (consumer mantiene proprio stato) | N/A — out of scope (vedi migration 146 header) |
 
    **Cicatrix riferiti:** `EventBus is PG LISTEN/NOTIFY but Symbiosis docs say Redis Streams` (2026-04-29) — RESOLVED via PR #342 + migration 144 + migration 146.
 
-4. **Graceful degradation.** Se un organo non risponde, gli altri procedono. L'organismo e' resiliente per design, non per eccezione. **Invariante:** se un canale è down per >5min, ogni organo entra in `local_emergency_mode` con buffer locale; eventi prodotti durante il gap restano nell'outbox (per CRM/cognitive/observatory) o nello stream (per mata-garuda) e sono replayati al reconnect — vedi tabella Legge 3. **Audit trail:** ogni nuova promessa di durabilità in queste due leggi richiede un test corrispondente, enforced da `scripts/lint_symbiosis_promises.py` su CI.
+4. **Graceful degradation.** Se un organo non risponde, gli altri procedono. L'organismo e' resiliente per design, non per eccezione. Per i canali registrati in `PG_CHANNEL_MAP`, gli eventi prodotti durante una finestra di listener-disconnect restano nell'`events_outbox` e sono replayati al reconnect entro la finestra `max_age_minutes=60` (vedi tabella Legge 3 per limiti precisi); per `garuda:raw` la durabilità deriva dal Redis Stream sottostante. **Audit trail:** ogni nuova promessa di durabilità in queste due leggi richiede una citazione di test (`Test:` `apps/.../tests/...`), enforced da `scripts/lint_symbiosis_promises.py` su CI. `Test:` `apps/backend-rag/backend/tests/services/events/test_event_bus_replay.py`
 5. **Zero come ultima istanza.** Le decisioni strutturali passano da Zero via Telegram. L'organismo propone, non decide.
 6. **Sovranita' locale.** L'organismo vive sulle macchine di Zero (Pro 48GB, Air 16GB). La disconnessione da internet non e' un guasto — e' il suo stato naturale.
 7. **Numeri prima.** Se non ha una metrica, non e' un miglioramento. Se non ha un benchmark before/after, non e' un'evoluzione. Se non ha codice che gira, non e' un'invenzione — e' un'ipotesi.
