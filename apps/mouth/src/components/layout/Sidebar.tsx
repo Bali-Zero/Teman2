@@ -167,6 +167,7 @@ export function Sidebar({
               {conversations.map((conv) => (
                 <li key={conv.id} className="group relative">
                   <button
+                    type="button"
                     className={`w-full text-left p-2 rounded-lg transition-all ${
                       currentConversationId === conv.id
                         ? "bg-[var(--accent)]/10 text-[var(--accent)] border border-[var(--accent)]/20"
@@ -196,13 +197,14 @@ export function Sidebar({
                     </div>
                   </button>
                   <button
+                    type="button"
                     onClick={() => onDeleteConversation(conv.id)}
                     className={`absolute right-2 top-2 p-1 rounded opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity ${
                       currentConversationId === conv.id
                         ? "hover:bg-[var(--accent)]/20 text-[var(--accent)]"
                         : "hover:bg-white/10 text-[var(--foreground-muted)]"
                     }`}
-                    aria-label="Delete conversation"
+                    aria-label={`Delete conversation: ${conv.title || 'Untitled'}`}
                   >
                     <Trash2 className="w-3 h-3" />
                   </button>
