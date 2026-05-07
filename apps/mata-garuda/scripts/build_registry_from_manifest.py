@@ -71,7 +71,14 @@ CLUSTER_INITIAL_STATUS: Final[dict[str, str]] = {
 # Status values that the manifest's `proposed_action` field can carry as a
 # persisted transition (i.e. they came from execute_apoptosis.persist_transition,
 # not from the cluster initial mapping).
-PERSISTED_STATUSES: Final[set[str]] = {"APOPTOSIS_DONE", "RENAME_FAIL"}
+PERSISTED_STATUSES: Final[set[str]] = {
+    "APOPTOSIS_DONE",
+    "RENAME_FAIL",
+    "MERGED",                    # Round 1.5: source NB merged into a target
+    "DELETED",                   # Round 1.5: NB renamed [ARCHIVED-DELETE-...]
+    "DELETE_BLOCKED",            # Round 1.5: rename failed (PERMISSION_DENIED)
+    "DELETE_VERIFIED_NOT_LIVE",  # Round 1.5: stub UUID or already-removed NB
+}
 
 
 def _candidate_to_entry(c: dict, override_status: str | None = None) -> dict:

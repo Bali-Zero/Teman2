@@ -26,13 +26,15 @@ VALID_CLUSTERS = {
 
 VALID_MATCH_STATUSES = {"exact", "fuzzy", "not_found"}
 VALID_DRIFT_STATUSES = {"consistent", "drifted", "unknown_via_mcp_failure"}
-# Initial manifest: KILL/EXPORT/ORPHAN_REVIEW.
-# After persist_transition during APOPTOSIS apply: APOPTOSIS_DONE / RENAME_FAIL.
-# Schema accepts both classes since the same field is reused as the persisted
-# transition record (same shape; status taxonomy widens after each apply run).
+# Initial cluster mapping (R1) + post-apply transitions (R1, R1.5).
+# Same field doubles as transition record across rounds; enum widens each time.
 VALID_PROPOSED_ACTIONS = {
+    # R1 initial: cluster mapping
     "KILL", "EXPORT", "ORPHAN_REVIEW",
+    # R1 transitions
     "APOPTOSIS_DONE", "RENAME_FAIL",
+    # R1.5 transitions (Zero decision 2026-05-07: 19 ambigui resolved)
+    "MERGED", "DELETED", "DELETE_BLOCKED", "DELETE_VERIFIED_NOT_LIVE",
 }
 
 UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
@@ -54,7 +56,13 @@ def test_manifest_has_required_top_level_fields(manifest):
 
 
 def test_candidates_count_matches_list_length(manifest):
-    assert manifest["candidates_count"] == len(manifest["candidates"]) == 36
+    # R1 had 36 entries; R1.5 removed 9 orphan_unclear stub UUIDs after Zero
+    # confirmed they were placeholder slots not corresponding to real NLM NBs.
+    # Resulting size: 36 - 9 = 27 entries (post-R1.5).
+    assert manifest["candidates_count"] == len(manifest["candidates"])
+    assert manifest["candidates_count"] in (27, 36), (
+        f"unexpected candidate count {manifest['candidates_count']} (expect 27 post-R1.5 or 36 pre-R1.5)"
+    )
 
 
 def test_each_candidate_has_required_fields(manifest):
