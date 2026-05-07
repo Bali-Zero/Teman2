@@ -8,6 +8,12 @@
 		<string>/Users/nuzantara</string>
 		<key>PATH</key>
 		<string>/Users/nuzantara/.local/bin:/Users/nuzantara/.npm-global/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+		<key>WR2_PREFER_LIVE_NEWS</key>
+		<string>true</string>
+		<key>WR2_LIVE_NEWS_FILTER_MIN</key>
+		<string>40</string>
+		<key>WR2_MAX_ARTICLE_AGE_HOURS</key>
+		<string>72</string>
 	</dict>
 	<key>Label</key>
 	<string>com.balizero.wr2.topic-selector</string>
