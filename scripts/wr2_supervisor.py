@@ -155,6 +155,17 @@ _shutdown_event: asyncio.Event | None = None
 # Sentinel for "transition not in TRANSITIONS dict" (vs. None which means alert-only).
 _SENTINEL_UNKNOWN = object()
 
+# B3 heartbeat (Sprint B, 2026-05-08). Cadence is 60s by default; the
+# watchdog fires P0 if the latest row is older than 5 minutes (5×
+# heartbeat). The heartbeat MUST run on a SECOND asyncpg.connect() —
+# NOT on the LISTEN connection — because asyncpg forbids concurrent
+# operations on the same Connection (the existing _conn_lock works for
+# the in-loop SELECT 1 keepalive, but adding heartbeat INSERTs there
+# adds contention with the PG NOTIFY listener and the periodic
+# reconcile fetch). A dedicated conn_hb has a single op at any moment
+# (the INSERT itself), no contention.
+HEARTBEAT_INTERVAL_SEC = int(os.environ.get("WR2_HEARTBEAT_INTERVAL_SEC", "60"))
+
 
 # ─────────────────────────────────────────────────────────────────────────
 # Transition resolution
@@ -441,6 +452,54 @@ async def _reconcile_loop(conn: asyncpg.Connection) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────
+# B3 Heartbeat (Sprint B, 2026-05-08)
+# ─────────────────────────────────────────────────────────────────────────
+
+async def _write_heartbeat(conn_hb: asyncpg.Connection, note: str) -> None:
+    """Insert one row into wr2_supervisor_heartbeat.
+
+    Uses a DEDICATED connection (NOT the LISTEN connection) because
+    asyncpg's single-op-per-connection contract means adding INSERTs
+    to the LISTEN conn would contend with the keepalive SELECT and the
+    on-notify _current_status read. Best-effort: missing table or
+    unreachable DB log a warning but do not crash the supervisor.
+    """
+    try:
+        # Truncate `note` so a runaway caller can't blow up the row.
+        await conn_hb.execute(
+            "INSERT INTO wr2_supervisor_heartbeat (note) VALUES ($1)",
+            (note or "")[:200],
+        )
+    except asyncpg.UndefinedTableError:
+        # Migration 161 not yet applied → degrade silently. The watchdog
+        # will see no rows and skip alerts (safe-fail).
+        logger.debug("heartbeat skipped: wr2_supervisor_heartbeat missing")
+    except (asyncpg.PostgresError, OSError, asyncio.TimeoutError) as e:
+        # The dedicated conn_hb may itself drop; the outer reconnect
+        # loop in _run_loop replaces it on the next iteration.
+        logger.warning("heartbeat write failed: %s", e)
+
+
+async def _heartbeat_loop(conn_hb: asyncpg.Connection) -> None:
+    """Tick a heartbeat row every HEARTBEAT_INTERVAL_SEC.
+
+    Cancellation-safe: returns cleanly on CancelledError so _run_loop's
+    finally block can close conn_hb without leaking the task.
+    """
+    assert _shutdown_event is not None
+    # First tick: post-startup, label so the watchdog sees a transition.
+    await _write_heartbeat(conn_hb, "tick")
+    while not _shutdown_event.is_set():
+        try:
+            await asyncio.sleep(HEARTBEAT_INTERVAL_SEC)
+        except asyncio.CancelledError:
+            return
+        if _shutdown_event.is_set():
+            return
+        await _write_heartbeat(conn_hb, "tick")
+
+
+# ─────────────────────────────────────────────────────────────────────────
 # Connection loop with auto-reconnect
 # ─────────────────────────────────────────────────────────────────────────
 
@@ -455,23 +514,39 @@ async def _run_loop() -> None:
         # Initialise to None so the finally block can safely check before close.
         # (Without this, `conn` could be unbound if asyncpg.connect raises.)
         conn: asyncpg.Connection | None = None
+        conn_hb: asyncpg.Connection | None = None
         reconcile_task: asyncio.Task | None = None
+        heartbeat_task: asyncio.Task | None = None
         try:
             logger.info("connecting to Postgres…")
             conn = await asyncpg.connect(dsn=dsn, command_timeout=30)
             await conn.add_listener("wr2_status_change", _on_notification)
             logger.info("LISTEN wr2_status_change active")
+
+            # Dedicated heartbeat connection: SECOND asyncpg.connect, NEVER
+            # shared with the LISTEN conn. asyncpg.Connection allows only
+            # one in-flight operation, so mixing INSERTs with the LISTEN
+            # keepalive + reconcile SELECT contends for _conn_lock and adds
+            # latency. Separate conn = zero contention.
+            conn_hb = await asyncpg.connect(dsn=dsn, command_timeout=30)
+            logger.info("heartbeat conn open (interval=%ds)", HEARTBEAT_INTERVAL_SEC)
+            await _write_heartbeat(conn_hb, "startup")
+
             backoff = 1.0  # reset on success
 
             reconcile_task = asyncio.create_task(_reconcile_loop(conn))
+            heartbeat_task = asyncio.create_task(_heartbeat_loop(conn_hb))
 
-            # Heartbeat: SELECT 1 every 5s. `flyctl proxy` does not send TCP
-            # keepalive on the WG tunnel to nuzantara-postgres.internal, and
-            # an idle LISTEN connection gets dropped at ~10s (observed
-            # 2026-04-28 in launchd.err.log: "connecting → connection lost"
-            # cycle every 60s with the prior 60s heartbeat). A 5s heartbeat
-            # keeps the socket below that threshold; it also surfaces dead
-            # connections quickly via TimeoutError → drop and reconnect.
+            # Keepalive: SELECT 1 every 5s on the LISTEN conn. `flyctl proxy`
+            # does not send TCP keepalive on the WG tunnel to
+            # nuzantara-postgres.internal, and an idle LISTEN connection
+            # gets dropped at ~10s (observed 2026-04-28 in launchd.err.log:
+            # "connecting → connection lost" cycle every 60s with the prior
+            # 60s heartbeat). A 5s SELECT keeps the socket below that
+            # threshold; it also surfaces dead connections quickly via
+            # TimeoutError → drop and reconnect. NOTE: this is a TCP
+            # keepalive, NOT the B3 heartbeat — the B3 heartbeat lives on
+            # conn_hb and writes a row, this one only roundtrips.
             while not _shutdown_event.is_set():
                 await asyncio.sleep(5)
                 async with _get_conn_lock():
@@ -479,22 +554,26 @@ async def _run_loop() -> None:
         except (asyncpg.PostgresError, OSError, asyncio.TimeoutError) as e:
             logger.warning("connection lost: %s — reconnecting in %.1fs", e, backoff)
         finally:
-            # Cancel reconcile task before closing connection
-            if reconcile_task is not None:
-                reconcile_task.cancel()
-                try:
-                    await reconcile_task
-                except (asyncio.CancelledError, Exception):
-                    pass
-            # Close connection if it was opened
-            if conn is not None:
-                try:
-                    await asyncio.wait_for(conn.close(), timeout=5)
-                except (asyncio.TimeoutError, Exception):
+            # Cancel both background tasks before closing connections.
+            for task in (heartbeat_task, reconcile_task):
+                if task is not None:
+                    task.cancel()
                     try:
-                        conn.terminate()
-                    except Exception:
+                        await task
+                    except (asyncio.CancelledError, Exception):
                         pass
+            # Close connections if they were opened. conn_hb closes first
+            # so a final draining heartbeat ("drain") can fire on the
+            # LISTEN side if needed (none currently — symmetric close).
+            for c in (conn_hb, conn):
+                if c is not None:
+                    try:
+                        await asyncio.wait_for(c.close(), timeout=5)
+                    except (asyncio.TimeoutError, Exception):
+                        try:
+                            c.terminate()
+                        except Exception:
+                            pass
 
         if _shutdown_event.is_set():
             break

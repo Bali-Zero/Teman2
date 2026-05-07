@@ -361,9 +361,24 @@ echo "0" > ~/.agent/decisions/state/wr2_canva_keeper.state 2>/dev/null || true
 
 **Effort**: 6h (incluso testing + osservazione 1 ora).
 
-### B3 — Supervisor watchdog + heartbeat table
+### B3 — Supervisor watchdog + heartbeat table (SHIPPED 2026-05-08)
 
-**Scope**: nuova tabella `wr2_supervisor_heartbeat` + daemon esterno che pinga supervisor e alerta se canva-apply success rate <80% in 24h.
+**Status**: implemented in PR `fix/wr2-supervisor-watchdog-2026-05-08`. Migration 161 lands on the next post-deploy `run-sql-v2-migrations-post-deploy` run; the supervisor degrades open until the table exists.
+
+**Files shipped**:
+- `apps/backend-rag/backend/db/migrations_v2/161_wr2_supervisor_heartbeat.sql` — append-only table + `(written_at DESC)` index, `-- === ROLLBACK ===` marker, Squawk lint suppressions for the brand-new-table create-index case.
+- `scripts/wr2_supervisor.py` — `_run_loop` opens a SECOND `asyncpg.connect()` as `conn_hb` (review fix B3.1: NOT on the LISTEN connection), `_heartbeat_loop` writes one row every 60s via `_write_heartbeat`, both background tasks cancelled in `finally` before connections close.
+- `scripts/wr2_supervisor_watchdog.py` — long-running daemon, polls every 60s, tiered alerts:
+  - **P0 SUPERVISOR_DOWN**: heartbeat row > 5 min old.
+  - **P0 PIPELINE_FROZEN**: oldest pending > 2h AND no `rendered` in 24h.
+  - **P1 SUCCESS_RATE_LOW**: canva-apply success < 80% over **7-day rolling window** (review fix: 24h was rejected — at 1 draft/day single fail flips to 0%, single success flips to 100%, too noisy). MIN_ATTEMPTS=5 floor stops first-day flutter.
+- `infra/launchagents/com.balizero.wr2.supervisor-watchdog.plist` — KeepAlive on crash, RunAtLoad, ThrottleInterval=10s.
+- `scripts/tests/test_wr2_supervisor_watchdog.py` — 16 unit tests (cooldown semantics, 7-day window math, all 3 alert tiers, degrade-open on missing migration).
+- `scripts/tests/test_wr2_supervisor.py` — 5 new tests (dedicated conn_hb regression-guard, heartbeat target table, env override, finally task cancellation, migration 161 file present).
+
+**Cooldown**: each alert key has its own 24h cooldown, persisted in `~/.agent/decisions/state/wr2_supervisor_watchdog.state` as `last_alert_<key>=<epoch>` lines. First alert always fires; subsequent alerts within 24h log "cooldown active" and silence the Telegram POST.
+
+**Scope (original)**: nuova tabella `wr2_supervisor_heartbeat` + daemon esterno che pinga supervisor e alerta se canva-apply success rate <80% in 24h.
 
 **Migration creata**: `apps/backend-rag/backend/db/migrations_v2/161_wr2_supervisor_heartbeat.sql`
 

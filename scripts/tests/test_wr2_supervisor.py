@@ -336,3 +336,75 @@ def test_run_loop_no_unbound_local_on_early_connect_failure(sup, monkeypatch):
     # initialises `conn = None` before the try.
     src = SUPERVISOR_PATH.read_text()
     assert "conn: asyncpg.Connection | None = None" in src
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# B3 heartbeat (Sprint B, 2026-05-08)
+# ─────────────────────────────────────────────────────────────────────────
+
+def test_heartbeat_uses_dedicated_connection_not_listen():
+    """The heartbeat MUST use a SECOND asyncpg.connect (conn_hb), NOT the
+    LISTEN connection.
+
+    Why: asyncpg's single-op-per-connection contract means INSERTs to the
+    LISTEN conn would contend with the keepalive SELECT 1 + the on-notify
+    _current_status read. The Sprint B B3 design review (2026-05-08)
+    rejected reusing _conn_lock + the LISTEN conn for heartbeat writes.
+    """
+    src = SUPERVISOR_PATH.read_text()
+    # Two asyncpg.connect calls in _run_loop (one for LISTEN, one for HB).
+    assert src.count("await asyncpg.connect(dsn=dsn") >= 2, (
+        "_run_loop must open TWO asyncpg connections: LISTEN + heartbeat"
+    )
+    # _heartbeat_loop helper exists and takes a separate connection arg.
+    assert "async def _heartbeat_loop(conn_hb: asyncpg.Connection)" in src
+    # _write_heartbeat helper exists.
+    assert "async def _write_heartbeat(conn_hb: asyncpg.Connection" in src
+
+
+def test_heartbeat_writes_to_supervisor_heartbeat_table():
+    """_write_heartbeat targets the wr2_supervisor_heartbeat table
+    (migration 161); regression-guard against a future rename or table swap.
+    """
+    src = SUPERVISOR_PATH.read_text()
+    assert "INSERT INTO wr2_supervisor_heartbeat" in src
+    # asyncpg.UndefinedTableError is caught so a missing migration doesn't
+    # crash the supervisor (degrade-open).
+    assert "asyncpg.UndefinedTableError" in src
+
+
+def test_heartbeat_interval_env_overridable():
+    """HEARTBEAT_INTERVAL_SEC is overridable via env so a future test or
+    canary deploy can shorten the cadence. Default 60s.
+    """
+    src = SUPERVISOR_PATH.read_text()
+    assert 'os.environ.get("WR2_HEARTBEAT_INTERVAL_SEC", "60")' in src
+
+
+def test_run_loop_cancels_heartbeat_task_on_close():
+    """When _run_loop's finally block fires, both reconcile and heartbeat
+    tasks must be cancelled before connections close — otherwise the task
+    holds the conn and conn.close() can hang for the timeout window.
+    """
+    src = SUPERVISOR_PATH.read_text()
+    # Tasks are cancelled in a tuple iteration.
+    assert "for task in (heartbeat_task, reconcile_task)" in src
+    # Both task handles initialised None (parallel to conn=None pattern).
+    assert "heartbeat_task: asyncio.Task | None = None" in src
+
+
+def test_migration_161_present():
+    """Migration file 161 ships with the supervisor patch — runtime would
+    log "wr2_supervisor_heartbeat missing" without it (degrade-open).
+    """
+    repo_root = SCRIPTS_DIR.parent
+    migration = repo_root / "apps" / "backend-rag" / "backend" / "db" / "migrations_v2" / "161_wr2_supervisor_heartbeat.sql"
+    assert migration.is_file(), f"migration 161 missing at {migration}"
+    body = migration.read_text()
+    # Forward DDL.
+    assert "CREATE TABLE IF NOT EXISTS wr2_supervisor_heartbeat" in body
+    # Index for ORDER BY DESC LIMIT 1 reads.
+    assert "idx_wr2_supervisor_heartbeat_written_at" in body
+    # ROLLBACK marker (migration_manager honors it).
+    assert "-- === ROLLBACK ===" in body
+    assert "DROP TABLE IF EXISTS wr2_supervisor_heartbeat" in body
