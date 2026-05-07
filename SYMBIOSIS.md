@@ -177,8 +177,18 @@ Questi vincoli non sono negoziabili. Nessun pilastro li sovrascrive.
 
 1. **CLI-only per LLM.** `claude --print`, `gemini --print`, subprocess. Mai API HTTP Anthropic/Google/OpenAI. DeepSeek API e' l'unica eccezione.
 2. **OSINT blindato.** I dati intelligence non escono mai dal Pro. Mai frontend, mai cloud, mai team. Le skill e gli insight condivisi contengono conoscenza operativa, non dati.
-3. **Event-driven.** Redis Streams e consumer groups. Nessun polling, nessun orchestratore centrale. Se Redis e' down, ogni agente funziona in isolamento.
-4. **Graceful degradation.** Se un organo non risponde, gli altri procedono. L'organismo e' resiliente per design, non per eccezione.
+3. **Event-driven, durabilità per canale.** Nessun polling, nessun orchestratore centrale. Ogni canale evento ha la propria strategia di durabilità, scelta in base al consumer:
+
+   | Canale | Implementazione | Durabilità | Test |
+   |---|---|---|---|
+   | `garuda:raw` (mata-garuda) | Redis Streams + consumer groups (XADD/XREADGROUP) | Stream MAXLEN ~100K, replay via `XGROUP READ` from `0` | `apps/mata-garuda/tests/test_redis_host_override.py` |
+   | `practice_changed`, `client_changed`, `compliance_alert`, `war_room_event`, `intel_event`, `cognitive_event`, `federation_alert`, `cell_pulse_observed`, `measurer_event`, `crm_welcome_completed`, `asset_provenance` (CRM + cognitive + observatory) | PostgreSQL LISTEN/NOTIFY + `events_outbox` (migration 144) + DB triggers refactored a `outbox.publish` (migration 146) | Atomic insert nella stessa transaction del trigger; replay automatico al listener-reconnect via `_replay_outbox_on_reconnect`; consumer ack idempotente via `_outbox_id` injection | `apps/backend-rag/backend/tests/services/events/test_outbox.py` (16) + `test_outbox_callsite_integration.py` (12) + `test_event_bus_replay.py` (4) |
+   | `lkpm_ingest_completed` (CRM, Python emitter only) | `EventBus.emit_pg` → `outbox.publish` (no DB trigger) | Stesso schema events_outbox | Same as above |
+   | `wr2_status_change`, `partner.commission_changed` | NOT in `PG_CHANNEL_MAP`, separate consumers (es. `wr2_supervisor.py`) | Volatile by design (consumer mantiene proprio stato) | N/A — out of scope (vedi migration 146 header) |
+
+   **Cicatrix riferiti:** `EventBus is PG LISTEN/NOTIFY but Symbiosis docs say Redis Streams` (2026-04-29) — RESOLVED via PR #342 + migration 144 + migration 146.
+
+4. **Graceful degradation.** Se un organo non risponde, gli altri procedono. L'organismo e' resiliente per design, non per eccezione. **Invariante:** se un canale è down per >5min, ogni organo entra in `local_emergency_mode` con buffer locale; eventi prodotti durante il gap restano nell'outbox (per CRM/cognitive/observatory) o nello stream (per mata-garuda) e sono replayati al reconnect — vedi tabella Legge 3. **Audit trail:** ogni nuova promessa di durabilità in queste due leggi richiede un test corrispondente, enforced da `scripts/lint_symbiosis_promises.py` su CI.
 5. **Zero come ultima istanza.** Le decisioni strutturali passano da Zero via Telegram. L'organismo propone, non decide.
 6. **Sovranita' locale.** L'organismo vive sulle macchine di Zero (Pro 48GB, Air 16GB). La disconnessione da internet non e' un guasto — e' il suo stato naturale.
 7. **Numeri prima.** Se non ha una metrica, non e' un miglioramento. Se non ha un benchmark before/after, non e' un'evoluzione. Se non ha codice che gira, non e' un'invenzione — e' un'ipotesi.
