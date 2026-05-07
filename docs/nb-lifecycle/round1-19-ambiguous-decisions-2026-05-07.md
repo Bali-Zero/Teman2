@@ -16,35 +16,35 @@ Total entries pending Zero approval: **19**
 - source_count_live: None
 - peer_uuids: []
 
-**Zero decision (2026-05-07):** _____________________________
+**Zero decision (2026-05-07):** MERGE → d2a05271… (copied 61/150)
 
 ### `4a8f3162-6f63-4876-9fe9-642dd9ae0606` — Analisi Video AI Agency
 
 - source_count_live: None
 - peer_uuids: []
 
-**Zero decision (2026-05-07):** _____________________________
+**Zero decision (2026-05-07):** DELETE — renamed [ARCHIVED-DELETE-2026-05-07]
 
 ### `50396b3e-b2f9-4903-8df5-65c2b9709eba` — Claude Code optimization research 2026-04-21
 
 - source_count_live: None
 - peer_uuids: []
 
-**Zero decision (2026-05-07):** _____________________________
+**Zero decision (2026-05-07):** MERGE → dc5d01cd… (copied 124/128)
 
 ### `917a1300-61ac-4fdb-8d94-8a42503c0442` — World Models 2026 — Comprehensive Survey (Genie, Waypoint, GameNGen, SORA)
 
 - source_count_live: None
 - peer_uuids: []
 
-**Zero decision (2026-05-07):** _____________________________
+**Zero decision (2026-05-07):** MERGE → dc5d01cd… (copied 48/49)
 
 ### `d97ff70b-9c14-42a3-8813-5416039b24f7` — Nexus — Palantir Architecture Deep Research
 
 - source_count_live: None
 - peer_uuids: []
 
-**Zero decision (2026-05-07):** _____________________________
+**Zero decision (2026-05-07):** MERGE → dc5d01cd… (copied 44/44)
 
 ## Cluster: subhi_merge
 
@@ -53,28 +53,28 @@ Total entries pending Zero approval: **19**
 - source_count_live: None
 - peer_uuids: []
 
-**Zero decision (2026-05-07):** _____________________________
+**Zero decision (2026-05-07):** DELETE — renamed [ARCHIVED-DELETE-2026-05-07]
 
 ### `552072ab-7f09-4cda-a13c-0988f414d36d` — NB-SUBHI Onboarding Frontend SEO CRO 2026-04-30
 
 - source_count_live: None
 - peer_uuids: []
 
-**Zero decision (2026-05-07):** _____________________________
+**Zero decision (2026-05-07):** DELETE — already prefixed or not live
 
 ### `9a866adc-988c-407f-9920-60dabf5ab164` — NB-SUBHI Misi 60 Hari Probation 2026-04-30
 
 - source_count_live: None
 - peer_uuids: []
 
-**Zero decision (2026-05-07):** _____________________________
+**Zero decision (2026-05-07):** DELETE — already prefixed or not live
 
 ### `da94d615-0140-4b46-8484-f24a423a91ce` — NB-CRM-VIP — Top Clients Bali Zero
 
 - source_count_live: None
 - peer_uuids: []
 
-**Zero decision (2026-05-07):** _____________________________
+**Zero decision (2026-05-07):** DELETE — already prefixed or not live
 
 ## Cluster: zero_value_orphan
 
@@ -83,14 +83,14 @@ Total entries pending Zero approval: **19**
 - source_count_live: None
 - peer_uuids: []
 
-**Zero decision (2026-05-07):** _____________________________
+**Zero decision (2026-05-07):** DELETE — already prefixed or not live
 
 ### `aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000036` — Indonesian Foreign Investment Real Estate & Tax
 
 - source_count_live: None
 - peer_uuids: []
 
-**Zero decision (2026-05-07):** _____________________________
+**Zero decision (2026-05-07):** STUB-NOT-LIVE — manifest cleanup
 
 ## Cluster: orphan_unclear
 
@@ -99,56 +99,56 @@ Total entries pending Zero approval: **19**
 - source_count_live: None
 - peer_uuids: []
 
-**Zero decision (2026-05-07):** _____________________________
+**Zero decision (2026-05-07):** STUB — manifest cleanup (no live entry)
 
 ### `aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000019` — Unidentified NB orphan 2
 
 - source_count_live: None
 - peer_uuids: []
 
-**Zero decision (2026-05-07):** _____________________________
+**Zero decision (2026-05-07):** STUB — manifest cleanup (no live entry)
 
 ### `aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000020` — Unidentified NB orphan 3
 
 - source_count_live: None
 - peer_uuids: []
 
-**Zero decision (2026-05-07):** _____________________________
+**Zero decision (2026-05-07):** STUB — manifest cleanup (no live entry)
 
 ### `aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000021` — Unidentified NB orphan 4
 
 - source_count_live: None
 - peer_uuids: []
 
-**Zero decision (2026-05-07):** _____________________________
+**Zero decision (2026-05-07):** STUB — manifest cleanup (no live entry)
 
 ### `aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000022` — Unidentified NB orphan 5
 
 - source_count_live: None
 - peer_uuids: []
 
-**Zero decision (2026-05-07):** _____________________________
+**Zero decision (2026-05-07):** STUB — manifest cleanup (no live entry)
 
 ### `aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000023` — Unidentified NB orphan 6
 
 - source_count_live: None
 - peer_uuids: []
 
-**Zero decision (2026-05-07):** _____________________________
+**Zero decision (2026-05-07):** STUB — manifest cleanup (no live entry)
 
 ### `aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000024` — Unidentified NB orphan 7
 
 - source_count_live: None
 - peer_uuids: []
 
-**Zero decision (2026-05-07):** _____________________________
+**Zero decision (2026-05-07):** STUB — manifest cleanup (no live entry)
 
 ### `aaaaaaaa-aaaa-aaaa-aaaa-aaaa00000025` — Unidentified NB orphan 8
 
 - source_count_live: None
 - peer_uuids: []
 
-**Zero decision (2026-05-07):** _____________________________
+**Zero decision (2026-05-07):** STUB — manifest cleanup (no live entry)
 
 ## Follow-up — `NLM_NOTEBOOKS` callsites pending migration
 
