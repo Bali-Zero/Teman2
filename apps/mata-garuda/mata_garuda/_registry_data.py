@@ -225,7 +225,7 @@ REGISTRY_DATA: Final[dict[str, dict]] = {
         "name": "Indonesia Restaurant Investment and Regulatory Guide 2026",
         "family": None,
         "legacy_key": None,
-        "status": "DELETE_BLOCKED",
+        "status": "DELETE_VERIFIED_NOT_LIVE",
         "cluster": "zero_value_orphan",
         "created_at": None,
         "last_audited": "2026-05-07",
