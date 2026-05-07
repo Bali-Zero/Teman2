@@ -229,10 +229,13 @@ async def main() -> None:  # pragma: no cover — launchd entrypoint
     blackout_flag_path = Path(os.getenv(
         "ORGANISM_BLACKOUT_FLAG_PATH", str(DEFAULT_BLACKOUT_FLAG_PATH),
     ))
-    # ORGANISM_SHADOW_MODE remains a backward-compat hard-off switch:
-    # if explicitly set to "true", we stay in shadow regardless of file flag.
+    # ORGANISM_SHADOW_MODE is a panic-mode override. Default (unset or
+    # "false") makes the file flag authoritative. Set to "true" only to
+    # force shadow during incidents — survives daemon restart so an operator
+    # cannot accidentally re-arm W2 by deleting the active.flag while
+    # forgetting the env override is still in place.
     forced_shadow_env = (
-        os.getenv("ORGANISM_SHADOW_MODE", "true").lower() == "true"
+        os.getenv("ORGANISM_SHADOW_MODE", "false").lower() == "true"
     )
     active_flag = ActiveFlag(path=active_flag_path)
     registry = build_actuator_registry(redis=r)
