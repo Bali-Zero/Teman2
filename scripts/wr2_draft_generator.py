@@ -225,21 +225,37 @@ Structure:
       "slide_number": 1,
       "slide_type": "cover",
       "is_cover": true,
+      "is_hero_image": true,
       "headline": "...",
       "subhead": "...",
       "body": "...",
       "image_prompt": "editorial scene, 1-2 sentences"
     },
-    // ... 10 more slides ...
+    {
+      "slide_number": 2,
+      "slide_type": "take",
+      "is_cover": false,
+      "is_hero_image": false,
+      "headline": "Our read: ...",
+      "body": "...",
+      "image_prompt": "editorial scene, 1-2 sentences"
+    },
+    // ... 7 more slides — 2 of them at narrative turning points must have is_hero_image: true ...
     {
       "slide_number": 11,
       "slide_type": "cta",
       "is_cover": false,
-      "headline": "...",
-      "body": "Bali Zero — Link in bio for a consultation"
+      "is_hero_image": true,
+      "headline": "What This Means For You",
+      "body": "Two-sentence call to action. Bali Zero — Link in bio for a consultation."
     }
   ]
 }
+
+REPEAT (MUST OBEY): every slide object MUST include the `is_hero_image` field
+(true or false). Slide 1 hero=true, slide 11 hero=true, plus exactly 2 more
+slides hero=true at narrative turning points = 4 hero slides total per
+carousel. The other 7 slides have is_hero_image=false. THIS IS NON-NEGOTIABLE.
 """
 
 
@@ -697,6 +713,7 @@ def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]
             "slide_number": i,
             "slide_type": raw.get("slide_type", "body"),
             "is_cover": bool(raw.get("is_cover", i == 1)),
+            "is_hero_image": bool(raw.get("is_hero_image", False)),
             "headline": (raw.get("headline") or "").strip()[:80],
             "subhead": (raw.get("subhead") or "").strip()[:120],
             "body": (raw.get("body") or "").strip()[:500],
@@ -707,8 +724,27 @@ def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]
 
     if normalised:
         normalised[0]["is_cover"] = True
+        # Slide 1 is ALWAYS hero (cover image). Force-set even if Claude omitted it.
+        normalised[0]["is_hero_image"] = True
         for s in normalised[1:]:
             s["is_cover"] = False
+        # Slide 11 (last, the CTA closer) is ALWAYS hero too.
+        if len(normalised) >= 11:
+            normalised[10]["is_hero_image"] = True
+
+    # Defensive: if Claude produced 0 hero slides (ignoring the prompt),
+    # auto-promote a sensible mid-carousel default so image-generator has
+    # work to do. Pick slides at narrative-turning-point positions.
+    hero_count = sum(1 for s in normalised if s.get("is_hero_image"))
+    if hero_count < 2 and len(normalised) >= 11:
+        # Force-promote slides 3 and 6 (typical turning points) if no
+        # other hero was selected. This is a fallback, not the desired path.
+        normalised[2]["is_hero_image"] = True   # slide 3
+        normalised[5]["is_hero_image"] = True   # slide 6
+        logger.warning(
+            "Claude returned %d hero slides (need >=2 mid). Auto-promoted slides 3 and 6.",
+            hero_count,
+        )
 
     return register, normalised
 
