@@ -9,11 +9,9 @@ B6 OSINT person/org detection).
 """
 from __future__ import annotations
 
+import threading
 from dataclasses import dataclass
-from functools import lru_cache
 from typing import Sequence
-
-from transformers import pipeline
 
 DEFAULT_MODEL = "cahya/bert-base-indonesian-NER"
 
@@ -28,26 +26,42 @@ class NamedEntity:
 
 
 class NERExtractor:
-    """Lazy-loaded NER pipeline.
+    """Lazy-loaded, thread-safe NER pipeline.
 
-    External-review fix (Codex GPT-5 + DeepSeek v4, 2026-05-08):
+    Wave 1 fix (Codex GPT-5 + DeepSeek v4, 2026-05-08):
     Old `__init__` called `pipeline()` eagerly, which downloads ~440MB and uses
     ~1.5GB RAM on first use. Now the pipeline is materialised on first
-    `extract()` call, so a harmless `import` of mata_garuda.foundations doesn't
-    stall workers or saturate Mini-Pro2 memory.
+    `extract()` call.
+
+    Wave 2 fix (DeepSeek W2 + Codex W2, 2026-05-08):
+    Lazy load was racy: two concurrent `extract()` calls could both see
+    `_pipeline is None` and both call HuggingFace `pipeline()`, downloading
+    the model twice. Double-checked locking pattern serialises the init.
+
+    Also: `transformers` is imported lazily inside `_get_pipeline()` so that
+    a worker that only needs `gov_apis_health` does NOT pull torch/transformers
+    at import time.
     """
+
+    _lock = threading.Lock()
 
     def __init__(self, model_name: str = DEFAULT_MODEL):
         self._model_name = model_name
-        self._pipeline = None  # lazily initialised in extract()
+        self._pipeline = None  # lazily initialised in _get_pipeline()
 
     def _get_pipeline(self):
         if self._pipeline is None:
-            self._pipeline = pipeline(
-                "ner",
-                model=self._model_name,
-                aggregation_strategy="simple",
-            )
+            with self._lock:
+                if self._pipeline is None:
+                    # Lazy import: avoids loading transformers/torch unless
+                    # extract() is actually called.
+                    from transformers import pipeline as _hf_pipeline
+
+                    self._pipeline = _hf_pipeline(
+                        "ner",
+                        model=self._model_name,
+                        aggregation_strategy="simple",
+                    )
         return self._pipeline
 
     def extract(self, text: str, labels: Sequence[str] | None = None) -> list[NamedEntity]:

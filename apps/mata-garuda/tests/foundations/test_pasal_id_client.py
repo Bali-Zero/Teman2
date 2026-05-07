@@ -117,3 +117,36 @@ async def test_search_laws_sends_bearer_token_when_set():
 
         call_kwargs = mock_client.get.call_args.kwargs
         assert call_kwargs["headers"]["Authorization"] == "Bearer my-token"
+
+
+@pytest.mark.asyncio
+async def test_search_laws_handles_explicit_null_work_field():
+    """Wave 2 fix (DeepSeek W2 + Codex W2 2026-05-08): old fallback
+    `item.get("work", item)` returns None when JSON has explicit
+    `"work": null`, then `.get()` crashes with AttributeError. New code
+    must fall back to top-level fields cleanly."""
+    fake_response = {
+        "results": [
+            {
+                "id": "uu-2022-27",
+                "work": None,  # explicit null — must not crash
+                "title": "UU 27/2022 PDP (flat fallback)",
+                "year": 2022,
+                "kind": "UU",
+            }
+        ]
+    }
+    with patch("mata_garuda.foundations.pasal_id_client.httpx.AsyncClient") as mock_cls:
+        mock_client = AsyncMock()
+        resp = mock_client.get.return_value
+        resp.status_code = 200
+        resp.json = lambda: fake_response
+        resp.raise_for_status = lambda: None
+        mock_cls.return_value.__aenter__.return_value = mock_client
+
+        client = PasalIdClient()
+        results = await client.search_laws(query="PDP")
+
+    assert len(results) == 1
+    assert results[0].title == "UU 27/2022 PDP (flat fallback)"
+    assert results[0].year == 2022
