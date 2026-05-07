@@ -153,9 +153,23 @@ HARD RULES:
 - Language: ENGLISH (international expat audience)
 - Headlines max 60 characters
 - Body max 280 characters
-- Slide 1 = cover (is_cover: true)
+- Slide 1 = cover (is_cover: true, is_hero_image: true ALWAYS)
 - Slide 11 = CTA to Bali Zero
 - Every slide must include image_prompt: editorial scene in Wired/Bloomberg style, NO stock photos, NO handshakes, NO passport close-ups
+
+HERO IMAGE SELECTION (MANDATORY):
+You MUST mark exactly 4 slides as `is_hero_image: true`:
+- Slide 1 (cover) — ALWAYS hero
+- Slide 11 (CTA closer "What This Means For You") — ALWAYS hero
+- 2 mid-carousel slides at NARRATIVE TURNING POINTS — pick the slides that
+  open a new beat (e.g. "the shift", "the stakes", "fiction vs substance"),
+  not the ones that list facts or numbers.
+
+The remaining 7 slides have `is_hero_image: false` — they keep the
+template's tipografia layout without an image. Hero slides get a
+full-bleed photo as background; non-hero slides are clean text-on-color.
+
+Output exactly 4 slides with `is_hero_image: true`. Not 3, not 5.
 
 STORYTELLING DIRECTIVES (overrides any default factual mode):
 
