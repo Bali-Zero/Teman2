@@ -5,3 +5,7 @@
 ## 2026-04-25 - [Keyboard Visibility for Actions]
 **Learning:** Actions that only appear on hover (e.g., a "Delete" button) are inaccessible to keyboard-only users unless they are also triggered by focus.
 **Action:** Use Tailwind's `group-focus-within:opacity-100` (or similar focus-based classes) alongside `group-hover:opacity-100` to ensure secondary actions become visible when a user tabs through a list.
+
+## 2026-04-26 - [Descriptive Action Labels and Explicit Button Types]
+**Learning:** Generic action labels like "Delete" in lists are ambiguous for screen reader users. Including the item's title in the `aria-label` (e.g., "Delete conversation: [Title]") provides crucial context. Additionally, omitting `type="button"` on non-submit buttons can lead to accidental form submissions and inconsistent browser behavior.
+**Action:** Always include identifying information in `aria-label` for repetitive actions in lists. Consistently apply `type="button"` to all interactive elements that are not meant to submit a form.
