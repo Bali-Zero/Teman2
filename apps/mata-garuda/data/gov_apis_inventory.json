@@ -1,0 +1,55 @@
+[
+  { "id": "djp", "url": "https://pajak.go.id", "category": "tax" },
+  {
+    "id": "kemenkeu_jdih",
+    "url": "https://jdih.kemenkeu.go.id",
+    "category": "regulation"
+  },
+  { "id": "setkab", "url": "https://setkab.go.id", "category": "regulation" },
+  {
+    "id": "peraturan_go_id",
+    "url": "https://peraturan.go.id",
+    "category": "regulation"
+  },
+  {
+    "id": "peraturan_bpk",
+    "url": "https://peraturan.bpk.go.id",
+    "category": "regulation"
+  },
+  { "id": "jdihn", "url": "https://jdihn.go.id", "category": "regulation" },
+  { "id": "bps", "url": "https://bps.go.id", "category": "macro_economy" },
+  { "id": "bi", "url": "https://www.bi.go.id", "category": "macro_economy" },
+  { "id": "ojk", "url": "https://ojk.go.id", "category": "macro_economy" },
+  {
+    "id": "imigrasi",
+    "url": "https://www.imigrasi.go.id",
+    "category": "immigration"
+  },
+  {
+    "id": "kemenkumham",
+    "url": "https://www.kemenkumham.go.id",
+    "category": "immigration"
+  },
+  { "id": "kemnaker", "url": "https://kemnaker.go.id", "category": "labor" },
+  { "id": "atrbpn", "url": "https://www.atrbpn.go.id", "category": "property" },
+  {
+    "id": "jdih_baliprov",
+    "url": "https://jdih.baliprov.go.id",
+    "category": "regulation_bali"
+  },
+  {
+    "id": "jdih_badungkab",
+    "url": "https://jdih.badungkab.go.id",
+    "category": "regulation_bali"
+  },
+  {
+    "id": "jdih_gianyarkab",
+    "url": "https://jdih.gianyarkab.go.id",
+    "category": "regulation_bali"
+  },
+  {
+    "id": "jdih_denpasarkota",
+    "url": "https://jdih.denpasarkota.go.id",
+    "category": "regulation_bali"
+  }
+]
