@@ -1,7 +1,12 @@
 """Stateless Supervisor daemon — main consume loop.
 
-W1: shadow mode (logs decisions to JSONL, does NOT dispatch any actuator).
-W1.C / W2 will flip the switch for a whitelisted set of safe actuators.
+Modes:
+- W1 shadow_mode=True: logs decisions to JSONL, does NOT invoke actuators.
+- W2 shadow_mode=False: looks up actuator in `actuator_registry`, calls
+  `await actuator.run(...)`, optionally fires `on_dispatched` callback for
+  Telegram alerts. Kill switch is the file `~/.agent/supervisor/active.flag`
+  (read by `ActiveFlag.is_active()`); when set to "1" the daemon flips to
+  W2. Anything else (file missing, "0", empty) → shadow.
 
 Architecture:
     - consumes events from Redis stream `organism:events` via the
@@ -11,6 +16,8 @@ Architecture:
       restarted freely)
     - asks Decider for an ActionDecision (L0 YAML only in W1)
     - appends a decision record to ~/logs/organism/decisions.jsonl
+    - in active mode: routes the decision through Dispatcher → actuator
+      registry → optional Telegram callback
     - writes a heartbeat every cycle so W0.3 guardians can enter
       local_emergency_mode if the Supervisor dies
 """
@@ -22,11 +29,16 @@ import logging
 import os
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Awaitable, Callable, Mapping
 
+from organism.blackout import BlackoutManager
 from organism.schemas import Event
+from organism.supervisor.active_flag import ActiveFlag
+from organism.supervisor.circuit_breaker import CircuitBreaker
 from organism.supervisor.decider import Decider
+from organism.supervisor.dispatch import Dispatcher, DispatchOutcome
 from organism.supervisor.incident_context import IncidentStore
+from organism.supervisor.mutex import Mutex
 from organism.supervisor.yaml_rules import RuleMatcher
 
 
@@ -37,6 +49,10 @@ SUPERVISOR_HB_KEY = "organism:supervisor:heartbeat"
 HB_TTL = 600  # 10 min — matches heartbeat.DEFAULT_MAX_LAG_SECONDS safety window
 CONSUMER_GROUP = "organism-supervisor"
 CONSUMER_NAME = "supervisor-1"
+
+# Operator-controlled active flag — file at ~/.agent/supervisor/active.flag
+DEFAULT_ACTIVE_FLAG_PATH = Path.home() / ".agent" / "supervisor" / "active.flag"
+DEFAULT_BLACKOUT_FLAG_PATH = Path.home() / ".agent" / "supervisor" / "pause.flag"
 
 
 async def _write_heartbeat(redis) -> None:
@@ -76,6 +92,27 @@ def _decode_data_field(fields: Any) -> str:
     return str(raw)
 
 
+def _target_for(decision_actuator: str, params: Mapping[str, Any]) -> str:
+    """Compute a stable per-target key for circuit breaker / mutex.
+
+    For restart_agent the target is the agent name. For other actuators we
+    fall back to a sentinel so cross-target calls don't share a single
+    bucket. Keep this in sync with rules/base.yaml param shapes.
+    """
+    if decision_actuator == "restart_agent":
+        ref = params.get("agent_ref")
+        if isinstance(ref, str) and ref:
+            return ref
+    if decision_actuator == "adopt_module":
+        path = params.get("module_path")
+        if isinstance(path, str) and path:
+            return path
+    if decision_actuator == "cleanup_log":
+        # cleanup_log is global per-host — single target lane is fine.
+        return "global"
+    return "global"
+
+
 async def run_once(
     *,
     redis,
@@ -85,8 +122,23 @@ async def run_once(
     shadow_mode: bool = True,
     block_ms: int = 1000,
     count: int = 100,
+    actuator_registry: Mapping[str, Any] | None = None,
+    blackout_flag: Path | None = None,
+    on_dispatched: Callable[..., Awaitable[None]] | None = None,
 ) -> int:
-    """Run one consume+decide+log cycle. Returns number of events processed."""
+    """Run one consume+decide+dispatch+log cycle. Returns events processed.
+
+    Active-mode behavior (shadow_mode=False):
+      - constructs Dispatcher with shared CircuitBreaker, Mutex, BlackoutManager
+        on the supplied flag path
+      - looks up the decided actuator in `actuator_registry` and invokes it
+      - on a DISPATCHED outcome, fires `on_dispatched` (best-effort Telegram)
+
+    Shadow-mode behavior (shadow_mode=True):
+      - everything above except the actuator is invoked in DRY-RUN through
+        Dispatcher's shadow path; in practice run_once short-circuits to
+        SHADOW_LOGGED. `on_dispatched` is NOT called in shadow.
+    """
     await _write_heartbeat(redis)
     await _ensure_consumer_group(redis)
 
@@ -95,6 +147,17 @@ async def run_once(
     matcher = RuleMatcher.from_yaml_text(rules_yaml or "rules: []")
     decider = Decider(
         matcher=matcher, incident_store=IncidentStore(redis=redis),
+    )
+
+    blackout_path = blackout_flag or DEFAULT_BLACKOUT_FLAG_PATH
+    dispatcher = Dispatcher(
+        redis=redis,
+        circuit_breaker=CircuitBreaker(redis=redis),
+        mutex=Mutex(redis=redis),
+        blackout=BlackoutManager(flag_path=blackout_path),
+        shadow_mode=shadow_mode,
+        actuator_registry=actuator_registry or {},
+        on_dispatched=on_dispatched if not shadow_mode else None,
     )
 
     result = await redis.xreadgroup(
@@ -115,6 +178,14 @@ async def run_once(
                 raw = _decode_data_field(fields)
                 event = Event.model_validate_json(raw)
                 decision = await decider.decide(event)
+                target = _target_for(decision.actuator, decision.params)
+
+                outcome = await dispatcher.dispatch(
+                    decision=decision,
+                    target=target,
+                    correlation_id=event.correlation_id,
+                )
+
                 entry = {
                     "ts": time.time(),
                     "event_kind": event.kind,
@@ -123,15 +194,12 @@ async def run_once(
                     "tier": decision.tier,
                     "confidence": decision.confidence,
                     "shadow_mode": shadow_mode,
+                    "dispatch_outcome": outcome.value,
+                    "target": target,
                 }
                 with decisions_log.open("a", encoding="utf-8") as f:
                     f.write(json.dumps(entry) + "\n")
-                if not shadow_mode:
-                    # W1 is shadow-only; W1.C/W2 will replace this with real
-                    # actuator dispatch for whitelisted safe actions.
-                    log.warning(
-                        "active mode dispatch not yet implemented (W1.C/W2)",
-                    )
+
                 await redis.xack(STREAM_KEY, CONSUMER_GROUP, msg_id)
                 processed += 1
             except Exception:
@@ -141,6 +209,8 @@ async def run_once(
 
 async def main() -> None:  # pragma: no cover — launchd entrypoint
     import redis.asyncio as _redis  # local import so tests don't need live Redis
+
+    from organism.actuators import build_actuator_registry
 
     r = _redis.from_url(
         os.getenv("ORGANISM_REDIS_URL", "redis://127.0.0.1:6379/0"),
@@ -153,14 +223,45 @@ async def main() -> None:  # pragma: no cover — launchd entrypoint
         "ORGANISM_DECISIONS_LOG",
         str(Path.home() / "logs" / "organism" / "decisions.jsonl"),
     ))
-    shadow = os.getenv("ORGANISM_SHADOW_MODE", "true").lower() == "true"
+    active_flag_path = Path(os.getenv(
+        "ORGANISM_ACTIVE_FLAG_PATH", str(DEFAULT_ACTIVE_FLAG_PATH),
+    ))
+    blackout_flag_path = Path(os.getenv(
+        "ORGANISM_BLACKOUT_FLAG_PATH", str(DEFAULT_BLACKOUT_FLAG_PATH),
+    ))
+    # ORGANISM_SHADOW_MODE is a panic-mode override. Default (unset or
+    # "false") makes the file flag authoritative. Set to "true" only to
+    # force shadow during incidents — survives daemon restart so an operator
+    # cannot accidentally re-arm W2 by deleting the active.flag while
+    # forgetting the env override is still in place.
+    forced_shadow_env = (
+        os.getenv("ORGANISM_SHADOW_MODE", "false").lower() == "true"
+    )
+    active_flag = ActiveFlag(path=active_flag_path)
+    registry = build_actuator_registry(redis=r)
+
+    # Lazy import to keep the daemon import light when telegram bits absent
+    from organism.supervisor.telegram_alert import build_dispatch_alerter
+
+    on_dispatched = build_dispatch_alerter(registry)
+
     while True:
         try:
+            file_active = active_flag.is_active()
+            shadow = (not file_active) or forced_shadow_env
+            if file_active and forced_shadow_env:
+                log.warning(
+                    "active.flag=1 BUT ORGANISM_SHADOW_MODE=true — staying "
+                    "in shadow. Unset env var to enable W2.",
+                )
             await run_once(
                 redis=r,
                 rules_path=rules_path,
                 decisions_log=decisions_log,
                 shadow_mode=shadow,
+                actuator_registry=registry,
+                blackout_flag=blackout_flag_path,
+                on_dispatched=on_dispatched if not shadow else None,
             )
         except Exception:
             log.exception("run_once failed; sleeping 5s")
