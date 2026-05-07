@@ -47,7 +47,10 @@ export const ComplianceWidget: React.FC<ComplianceWidgetProps> = ({ alerts, onDi
     <div className="relative">
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-full hover:bg-white/10 transition-colors"
+        className="relative p-2 rounded-full hover:bg-white/10 transition-colors focus-visible:ring-2 focus-visible:ring-white/20 focus:outline-none"
+        aria-label="View compliance alerts"
+        aria-haspopup="true"
+        aria-expanded={isOpen}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
@@ -87,7 +90,8 @@ export const ComplianceWidget: React.FC<ComplianceWidgetProps> = ({ alerts, onDi
                           e.stopPropagation();
                           onDismiss(alert.alert_id);
                         }}
-                        className="text-white/20 hover:text-white/50"
+                        className="text-white/20 hover:text-white/50 focus-visible:text-white/50 focus:outline-none"
+                        aria-label={`Dismiss alert: ${alert.title}`}
                       >
                         <X size={14} />
                       </button>
@@ -124,7 +128,10 @@ export const ComplianceWidget: React.FC<ComplianceWidgetProps> = ({ alerts, onDi
             </div>
 
             <div className="p-3 border-t border-white/10 bg-white/5 text-center">
-              <button className="text-xs text-emerald-400 hover:text-emerald-300 font-medium tracking-wide">
+              <button
+                className="text-xs text-emerald-400 hover:text-emerald-300 font-medium tracking-wide focus-visible:ring-1 focus-visible:ring-emerald-400 focus:outline-none rounded-sm"
+                aria-label="View compliance dashboard"
+              >
                 VIEW COMPLIANCE DASHBOARD
               </button>
             </div>
