@@ -332,7 +332,9 @@ Cost: ~Rp 1.5jt/mo (~€85) for PajakExpress business tier.
 
 > "Disruptions to the CTAS architecture are generally related to surges in API queue traffic on the central server. Server processing loads surge significantly because the Coretax system must verify Indonesian ID numbers (NIK) to the Dukcapil central database in real-time."
 
-> "Bimo Wijayanto (DG Pajak): 3 of 21 issues resolved as of April 2026. 18 pending."
+> "Bimo Wijayanto (DG Pajak): 3 of 21 issues resolved (per MUC Consulting article 28 May 2025). 18 pending."
+
+> **Fact-check note (external review Codex GPT-5, 2026-05-08)**: original draft said "April 2026" but the MUC Consulting source is dated 28 May 2025. Updated to reflect the correct source date. The substantive claim — Coretax instability is structural and slow to resolve — remains accurate; only the snapshot date was wrong.
 
 **NB-INTEL-Coretax dedicated is justified** (B2.a Opzione A recommended).
 
