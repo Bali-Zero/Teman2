@@ -33,6 +33,19 @@ class ArxivSanityScorer:
         labels = {p.label for p in papers}
         if len(labels) < 2:
             raise ValueError("Training requires at least two classes (positive and negative)")
+        # External-review fix (Codex GPT-5 + DeepSeek v4, 2026-05-08):
+        # Old: cv = min(3, len(papers) // 2 or 2)
+        # With 3 papers: 3//2 = 1, `1 or 2` → 1 (truthy short-circuit), min(3, 1) = 1.
+        # CalibratedClassifierCV rejects cv=1 (k-fold needs >=2 splits).
+        # Also need each class to have >= cv samples — use min class count as ceiling.
+        positive = sum(1 for p in papers if p.label == 1)
+        negative = len(papers) - positive
+        min_class = min(positive, negative)
+        cv = max(2, min(3, min_class))
+        if min_class < 2:
+            raise ValueError(
+                f"Each class needs >=2 samples for CV calibration (got pos={positive}, neg={negative})"
+            )
         self._vectorizer = TfidfVectorizer(
             max_features=self._max_features,
             ngram_range=(1, 2),
@@ -41,8 +54,7 @@ class ArxivSanityScorer:
         X = self._vectorizer.fit_transform([p.abstract for p in papers])
         y = np.array([p.label for p in papers])
         base = LinearSVC()
-        # CalibratedClassifierCV gives us probability output for ranking
-        self._model = CalibratedClassifierCV(base, cv=min(3, len(papers) // 2 or 2))
+        self._model = CalibratedClassifierCV(base, cv=cv)
         self._model.fit(X, y)
 
     def score(self, abstract: str) -> float:
