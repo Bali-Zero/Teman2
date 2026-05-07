@@ -618,11 +618,41 @@ CODEX_TIMEOUT_SEC = float(os.environ.get("WR2_CODEX_TIMEOUT_SEC", "900"))  # was
 
 **Goal**: zero "deploy drift" + visibilità real-time stato pipeline.
 
-### C1 — Auto-pull deploy worktree hourly
+### C1 — Auto-pull deploy worktree hourly (SHIPPED 2026-05-08)
 
-**Scope**: nuovo LaunchAgent che ogni ora fa `git -C ~/Desktop/nuzantara-deploy pull origin main --ff-only`. Telegram P1 alert su conflict.
+**Status**: implemented in PR `feat/wr2-deploy-pull-2026-05-08`.
 
-**File creato**: `~/scripts/wr2-deploy-pull.sh`
+**Files shipped**:
+- `~/scripts/wr2-deploy-pull.sh` (Pro-local, NOT in repo)
+- `~/Library/LaunchAgents/com.balizero.wr2.deploy-puller.plist` (StartInterval=3600, RunAtLoad=true, mode 0444 per cicatrix P0-3)
+- `infra/launchagents/com.balizero.wr2.deploy-puller.plist` (repo mirror)
+- `docs/wr2/skill-snapshots/deploy-pull-2026-05-08.md` (script body snapshot + operator runbook)
+- `tests/lint/test_wr2_deploy_pull.sh` (extracts the bash body from the snapshot, runs 6 scenarios with a sandbox git fixture, 14 assertions)
+
+**Behavior**:
+- flock single-instance (no overlap on slow network).
+- `git fetch origin deploy/main` (falls back to `origin/main` if the named branch is missing on origin).
+- Already up-to-date → exit 0 / `last_status=ok`.
+- AHEAD of remote → P0 alert "local commits in deploy worktree" / exit 1.
+- DIVERGED → P0 alert "branches diverged" / exit 1.
+- Otherwise `git merge --ff-only` and log advance count.
+
+**Failure surfaces (each Telegram-alerted with 6h per-key cooldown)**:
+| Alert key | Cause | Fix |
+|---|---|---|
+| `deploy_missing` | `~/Desktop/nuzantara-deploy` removed | `git worktree add ~/Desktop/nuzantara-deploy -b deploy/main origin/main` |
+| `wrong_branch` | manual checkout to non-`deploy/main` | `cd ~/Desktop/nuzantara-deploy && git checkout deploy/main` |
+| `dirty_worktree` | local edits to tracked files | `git status` then revert |
+| `local_ahead` | someone committed in deploy dir | cherry-pick into main repo, then `git reset --hard origin/deploy/main` here |
+| `diverged` | force-push on origin OR rebase mid-flight | operator-judgement reset; cf. cicatrix |
+| `fetch_failed` | network or GitHub auth | `gh auth status`, check VPN |
+| `ff_failed` | unexpected git error | inspect `git status` + log |
+
+**Why dedicated puller (not nuz-sync)**: cf. cicatrix scar "Untracked files lost when sibling automation switches branches" (2026-04-29) — `nuz-sync` was the prime suspect for incident #1. The deploy worktree must be isolated from main-repo automation. See also `discovery_worktree_deploy_isolation_2026_05_06.md`.
+
+**Live verification on this PR**: the deploy worktree at `~/Desktop/nuzantara-deploy` was found MISSING during the build (likely cleaned up during a worktree-prune pass). The puller correctly logged `ERROR: deploy worktree missing` and would have Telegram-alerted in production. The PR description includes an operator step to recreate the worktree before bootstrapping the LaunchAgent.
+
+**File originally listed**: `~/scripts/wr2-deploy-pull.sh`
 
 ```bash
 #!/bin/bash
