@@ -181,24 +181,63 @@ async def _persist_canva_result(
     conn: asyncpg.Connection,
     draft_id: UUID,
     result: CanvaApplyResult,
+    *,
+    dsn: str | None = None,
 ) -> None:
-    """Store edit URL + advance status to 'rendered'."""
-    await conn.execute(
-        """
-        UPDATE war_room_drafts
-           SET canva_design_id  = $2,
-               canva_edit_url   = $3,
-               canva_view_url   = $4,
-               canva_applied_at = NOW(),
-               status           = 'rendered',
-               updated_at       = NOW()
-         WHERE id = $1
-        """,
-        draft_id,
-        result.design_id,
-        result.edit_url,
-        result.view_url,
-    )
+    """Store edit URL + advance status to 'rendered'.
+
+    The `conn` passed in was opened in `run()` BEFORE `_apply_one_draft`
+    invoked the synchronous `subprocess.run([claude, -p, ...])` blocking
+    call inside `invoke_claude_apply()`. That subprocess routinely runs
+    25-32 minutes; the Fly Postgres tunnel / wireguard proxy closes idle
+    TCP sockets in that window. Empirical 2026-05-07 23:53 → 00:26 UTC
+    crash on draft 0e8e1cf5 raised
+    `asyncpg.exceptions.ConnectionDoesNotExistError` exactly here, AFTER
+    `_log_run_telemetry(success)` had already written a "success" row.
+    Result: telemetry over-reports the success rate while DB stays at
+    `canva_design_id IS NULL`.
+
+    Mitigation: if the existing `conn` is closed and a `dsn` is provided,
+    open a fresh asyncpg connection just for this UPDATE and close it
+    after. Caller is responsible for not logging telemetry success until
+    this function returns.
+    """
+    use_conn = conn
+    fresh_owned = False
+    if conn.is_closed():
+        if not dsn:
+            raise RuntimeError(
+                f"_persist_canva_result: conn is closed and no dsn provided "
+                f"(draft={draft_id}). Cannot persist Canva result."
+            )
+        logger.warning(
+            "Draft %s: persist conn was closed (likely wireguard idle-timeout "
+            "across long subprocess) — reconnecting from DSN",
+            draft_id,
+        )
+        use_conn = await asyncpg.connect(dsn, timeout=10)
+        fresh_owned = True
+
+    try:
+        await use_conn.execute(
+            """
+            UPDATE war_room_drafts
+               SET canva_design_id  = $2,
+                   canva_edit_url   = $3,
+                   canva_view_url   = $4,
+                   canva_applied_at = NOW(),
+                   status           = 'rendered',
+                   updated_at       = NOW()
+             WHERE id = $1
+            """,
+            draft_id,
+            result.design_id,
+            result.edit_url,
+            result.view_url,
+        )
+    finally:
+        if fresh_owned:
+            await use_conn.close()
 
 
 def _send_telegram(text: str) -> None:
@@ -223,7 +262,12 @@ def _send_telegram(text: str) -> None:
         logger.warning("Telegram send failed: %s", e)
 
 
-async def _apply_one_draft(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
+async def _apply_one_draft(
+    conn: asyncpg.Connection,
+    row: asyncpg.Record,
+    *,
+    dsn: str | None = None,
+) -> bool:
     """Process a single draft. Returns True on success."""
     draft_id: UUID = row["id"]
     topic: str = row["topic"]
@@ -254,11 +298,23 @@ async def _apply_one_draft(conn: asyncpg.Connection, row: asyncpg.Record) -> boo
     # On the happy path (50% baseline), this adds zero overhead beyond a
     # JSONL log line. On cold-sentinel detection, sleep 60s and retry once
     # before giving up — far cheaper than the 25-min wasted timeout.
+    #
+    # Persist-race fix (2026-05-08): the empirical 2026-05-07 23:53 → 00:26
+    # UTC crash showed `_log_run_telemetry(success)` was being written
+    # BEFORE `_persist_canva_result`, then asyncpg raised
+    # ConnectionDoesNotExistError because the connection was closed by the
+    # Fly tunnel during the 32-min subprocess. Telemetry now records
+    # "success" only AFTER persist returns; if persist itself raises, an
+    # extra "persist_failed" row is written so the JSONL truthfully
+    # mirrors DB state.
     t0 = time.time()
     result = None
+    successful_attempt = 0
+    successful_duration = 0.0
     try:
         result = invoke_claude_apply(pending_path)
-        _log_run_telemetry(draft_id, 1, "success", time.time() - t0, "")
+        successful_attempt = 1
+        successful_duration = time.time() - t0
     except CanvaInvokeError as exc:
         d1 = time.time() - t0
         outcome1 = _classify_failure(exc)
@@ -272,7 +328,8 @@ async def _apply_one_draft(conn: asyncpg.Connection, row: asyncpg.Record) -> boo
             t1 = time.time()
             try:
                 result = invoke_claude_apply(pending_path)
-                _log_run_telemetry(draft_id, 2, "success", time.time() - t1, "")
+                successful_attempt = 2
+                successful_duration = time.time() - t1
             except CanvaInvokeError as exc2:
                 d2 = time.time() - t1
                 outcome2 = _classify_failure(exc2)
@@ -296,7 +353,29 @@ async def _apply_one_draft(conn: asyncpg.Connection, row: asyncpg.Record) -> boo
             )
             return False
 
-    await _persist_canva_result(conn, draft_id, result)
+    # Persist with reconnect-on-dead-conn + truthful telemetry.
+    try:
+        await _persist_canva_result(conn, draft_id, result, dsn=dsn)
+    except Exception as exc:  # noqa: BLE001 — telemetry must capture every persist failure
+        _log_run_telemetry(
+            draft_id,
+            successful_attempt,
+            "persist_failed",
+            successful_duration,
+            f"{type(exc).__name__}: {exc}",
+        )
+        logger.error(
+            "Draft %s: Canva apply succeeded but DB persist failed (%s: %s)",
+            draft_id, type(exc).__name__, exc,
+        )
+        _send_telegram(
+            f"🚨 *WR2 Canva persist failed*\ndraft: `{draft_id}`\n"
+            f"topic: {topic[:80]}\noutcome: `persist_failed`\n"
+            f"error: `{type(exc).__name__}: {str(exc)[:400]}`",
+        )
+        return False
+
+    _log_run_telemetry(draft_id, successful_attempt, "success", successful_duration, "")
     logger.info(
         "Draft %s applied — design=%s edit_url=%s duration=%.1fs",
         draft_id,
@@ -340,7 +419,7 @@ async def run() -> int:
         successes = 0
         started = time.monotonic()
         for row in drafts:
-            ok = await _apply_one_draft(conn, row)
+            ok = await _apply_one_draft(conn, row, dsn=dsn)
             if ok:
                 successes += 1
 
