@@ -70,7 +70,7 @@ L'utente scrive in **italiano colloquiale**. Traduci automaticamente in azione t
 | ------------- | --------------------------------------------------------------- | ------------------------------------------------ |
 | Backend       | **Python 3.11+, FastAPI**                                       | 90 router, 253 service                           |
 | Frontend      | **Next.js** (App Router), TypeScript, Tailwind                  | `apps/mouth/`                                    |
-| Vector DB     | **Qdrant**                                                      | 10 collezioni live, 93.283 vettori, 20 defined   |
+| Vector DB     | **Qdrant Cloud**                                                      | 10 collezioni live, 93.283 vettori, 20 defined   |
 | Relational DB | **PostgreSQL 17**                                               | Fly.io `nuzantara-postgres` (2GB)                |
 | Cache         | **Redis**                                                       | Local su Pro                                     |
 | Embedding     | **`text-embedding-3-small` (1536 dims) — FROZEN, MAI CAMBIARE** |
@@ -78,13 +78,12 @@ L'utente scrive in **italiano colloquiale**. Traduci automaticamente in azione t
 | Deploy        | Fly.io backend + Vercel frontend                                |
 | MCP Server    | `apps/nuzantara-mcp/`                                           | **115 tools, 10 prompts, 5 resources, 8 chains** |
 
-### Fly.io — SOLO 3 APP
+### Fly.io — SOLO 2 APP
 
 | App                  | RAM | Note                                   |
 | -------------------- | --- | -------------------------------------- |
 | `nuzantara-rag`      | 2GB | auto_stop=off, min=1 (always-on)       |
 | `nuzantara-postgres` | 2GB | v0.1.0                                 |
-| `nuzantara-qdrant`   | 2GB | v1.17.0                                |
 
 **bali-intel-scraper NON è su Fly** — gira SOLO locale su Pro.
 
