@@ -22,11 +22,14 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_TIMEOUT_SEC = 1500  # 25 min — empirical: deep-tier 11-slide draft
-# with hero images + Phase A.5 pre-wipe (~50 ops) + Phase B duplicate + Phase C
-# reset (~50 ops) reaches 8-12 min on Pro M4. Synthetic 5-slide no-image test
-# was 283s. 600s timed out on real drafts (37263a1f at 04:09 WITA 2026-05-07).
-# 1500s leaves headroom for Canva MCP rate-limit pauses inside the skill flow.
+DEFAULT_TIMEOUT_SEC = 2400  # 40 min — bumped from 1500 after empirical
+# evidence on 7 May 2026: skill v3.2 (height-based remap + width<30 filter
+# in BOTH Phase A.5 and Phase C) added ~12-15 min to wall clock. Run
+# 0e8e1cf5 (skill v3.1, 2026-05-07 05:16 WITA) finished in 1474s. Run
+# e21c86c0 (skill v3.2, 2026-05-07 08:53 WITA) timed out at 1500s. Each
+# Canva MCP round-trip is ~3-8s; the new height/width inspection pass on
+# 12 pages × ~10 elements each is ~120 inspections. 2400s budgets for
+# pathological cases (Canva MCP rate-limit pauses, transient API stalls).
 DEFAULT_CLAUDE_BIN = "claude"  # resolved from PATH
 # 2026-05-07: APPLICA_WAR_ROOM.md was at apps/war-room/ but that directory was
 # removed in PR #171 (WR1 decommission). The authoritative runbook is now the
