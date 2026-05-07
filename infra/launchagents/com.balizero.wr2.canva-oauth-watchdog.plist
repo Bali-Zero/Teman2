@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.balizero.wr2.canva-oauth-watchdog — Sprint B B-NEW (2026-05-08).
+
+  Probes the Claude Code OAuth state for the Canva MCP connector every
+  6 hours and pages Antonello on Telegram when the token has gone stale.
+  Self-contained Pro-local script (NOT git-tracked); snapshot at
+  docs/wr2/skill-snapshots/canva-oauth-watchdog-2026-05-08.md.
+
+  Cadence: 21600s (6h). Cooldown enforced inside the script
+  (24h between alerts; first transition healthy→stale always alerts).
+  StandardOutPath/StandardErrorPath route to ~/logs for forensic.
+
+  Install:
+    cp infra/launchagents/com.balizero.wr2.canva-oauth-watchdog.plist \
+       ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) \
+       ~/Library/LaunchAgents/com.balizero.wr2.canva-oauth-watchdog.plist
+
+  Plist permissions hardened to 0444 per cicatrix P0-3 (chmod u+w
+  before legitimate edits).
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.balizero.wr2.canva-oauth-watchdog</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/scripts/wr2-canva-oauth-watchdog.sh</string>
+    </array>
+
+    <!-- Periodic probe: every 6h. RunAtLoad seeds the first probe so we
+         do not wait 6h post-bootstrap to detect a stale token. -->
+    <key>StartInterval</key>
+    <integer>21600</integer>
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Run-to-completion script; no KeepAlive. exit code conveys state:
+         0 = healthy, 1 = stale (alert path), >1 = unexpected. -->
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/wr2-canva-oauth-watchdog.launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/wr2-canva-oauth-watchdog.launchd.err.log</string>
+
+    <!-- HOME so $HOME expands inside the script. PATH includes
+         ~/.local/bin (claude CLI) plus the standard hierarchy used by
+         all WR2 plists. The script also sets its own PATH defensively
+         after sourcing TELEGRAM_* secrets. -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/Users/nuzantara/.local/bin:/Users/nuzantara/.npm-global/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <!-- Avoid tight respawn loops if the script keeps exiting 1. -->
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+</dict>
+</plist>
