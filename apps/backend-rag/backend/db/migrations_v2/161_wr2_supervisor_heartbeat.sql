@@ -41,11 +41,12 @@ CREATE TABLE IF NOT EXISTS wr2_supervisor_heartbeat (
 -- 2. Index for watchdog reads (latest row + lag query)
 -- =====================================================================
 -- Squawk: brand-new empty table → CREATE INDEX (non-CONCURRENTLY) is
--- safe; there are no concurrent writers contending for the lock.
--- The lint defaults flag this regardless, so suppress explicitly.
+-- safe; there are no concurrent writers contending for the lock. The
+-- repo-level workflow .github/workflows/migration-lint.yml already
+-- excludes `require-concurrent-index-creation` for this exact case
+-- (see docs/oss-injections-2026-04-26.md § "Squawk migration lint"),
+-- so no inline `-- squawk-ignore` directive is needed here.
 
--- squawk-ignore: prefer-big-int
--- squawk-ignore: require-concurrent-index-creation
 CREATE INDEX IF NOT EXISTS idx_wr2_supervisor_heartbeat_written_at
     ON wr2_supervisor_heartbeat (written_at DESC);
 
