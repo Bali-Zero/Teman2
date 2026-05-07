@@ -28,18 +28,32 @@ class NamedEntity:
 
 
 class NERExtractor:
+    """Lazy-loaded NER pipeline.
+
+    External-review fix (Codex GPT-5 + DeepSeek v4, 2026-05-08):
+    Old `__init__` called `pipeline()` eagerly, which downloads ~440MB and uses
+    ~1.5GB RAM on first use. Now the pipeline is materialised on first
+    `extract()` call, so a harmless `import` of mata_garuda.foundations doesn't
+    stall workers or saturate Mini-Pro2 memory.
+    """
+
     def __init__(self, model_name: str = DEFAULT_MODEL):
         self._model_name = model_name
-        self._pipeline = pipeline(
-            "ner",
-            model=model_name,
-            aggregation_strategy="simple",
-        )
+        self._pipeline = None  # lazily initialised in extract()
+
+    def _get_pipeline(self):
+        if self._pipeline is None:
+            self._pipeline = pipeline(
+                "ner",
+                model=self._model_name,
+                aggregation_strategy="simple",
+            )
+        return self._pipeline
 
     def extract(self, text: str, labels: Sequence[str] | None = None) -> list[NamedEntity]:
         if not text:
             return []
-        raw = self._pipeline(text)
+        raw = self._get_pipeline()(text)
         entities = [
             NamedEntity(
                 label=item["entity_group"],
