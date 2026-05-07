@@ -1,0 +1,172 @@
+"""NB-INTEL-Immigration feeder — fix-of-broken pipeline (Task 3).
+
+Sources stream:
+  - imigrasi.go.id/berita
+  - kemenkumham.go.id/berita
+  - Tempo "Imigrasi" tag
+  - Hukumonline immigration tag (deferred — unstable selectors)
+
+Scorer fast-path:
+  regex: KITAS|VITAS|C-?\\d{3}|VOA|e-?VISA|exit ?permit|imigrasi|kemenkumham|RPTKA
+  skip if `lifestyle|tourism|review` in title
+
+Pattern is identical to nb_intel_regulation: 3 best-effort layers, dedup by
+(domain, source_id), regex fast-path filter.
+"""
+from __future__ import annotations
+
+import logging
+import re
+from datetime import date, datetime, timezone
+from typing import Iterable
+
+import httpx
+
+from mata_garuda.domains.setup_team.types import Regulation
+
+logger = logging.getLogger(__name__)
+
+IMIGRASI_BERITA_URL = "https://www.imigrasi.go.id/berita"
+KEMENKUMHAM_BERITA_URL = "https://www.kemenkumham.go.id/berita"
+TEMPO_IMIGRASI_TAG_URL = "https://www.tempo.co/tag/imigrasi"
+DEFAULT_TIMEOUT_SECONDS = 20.0
+
+TRUSTED_TIER1_HOSTS = {
+    "imigrasi.go.id",
+    "kemenkumham.go.id",
+}
+
+IMMIGRATION_REGEX = re.compile(
+    r"\b(KITAS|VITAS|C[\-\s]?\d{3}|VOA|e[\-\s]?VISA|exit\s?permit|imigrasi|kemenkumham|RPTKA)\b",
+    re.IGNORECASE,
+)
+LIFESTYLE_BLOCKLIST = re.compile(r"\b(lifestyle|tourism|review|gallery|cuisine)\b", re.IGNORECASE)
+
+
+def _matches_immigration_regex(text: str) -> bool:
+    if not text:
+        return False
+    if LIFESTYLE_BLOCKLIST.search(text):
+        return False
+    return IMMIGRATION_REGEX.search(text) is not None
+
+
+def _classify_tier(url: str) -> int:
+    if not url:
+        return 2
+    host = url.split("//", 1)[-1].split("/", 1)[0].lower()
+    for trusted in TRUSTED_TIER1_HOSTS:
+        if host == trusted or host.endswith("." + trusted):
+            return 1
+    return 2
+
+
+def _within_window(published_at: date | None, days: int) -> bool:
+    if published_at is None:
+        return True
+    today = datetime.now(timezone.utc).date()
+    return (today - published_at).days <= days
+
+
+async def _fetch_url_links(
+    http: httpx.AsyncClient,
+    url: str,
+    layer_tag: str,
+    domain_filter: str | None = None,
+) -> list[Regulation]:
+    """Generic best-effort link harvester. Returns immigration-matching <a> tags.
+
+    domain_filter: if set, only links whose URL contains this string are kept
+                   (e.g. "imigrasi.go.id" to drop ad/cdn links).
+    """
+    out: list[Regulation] = []
+    try:
+        resp = await http.get(url)
+    except (httpx.HTTPError, httpx.TimeoutException) as exc:
+        logger.warning("%s fetch failed: %s", layer_tag, exc)
+        return out
+    if resp.status_code != 200:
+        logger.warning("%s returned %s, skipping", layer_tag, resp.status_code)
+        return out
+
+    body = resp.text
+    link_re = re.compile(
+        r'<a[^>]+href="(?P<url>[^"]+)"[^>]*>(?P<title>[^<]+)</a>',
+        re.IGNORECASE,
+    )
+    seen: set[str] = set()
+    for m in link_re.finditer(body):
+        href = m.group("url").strip()
+        title = m.group("title").strip()
+        if domain_filter and domain_filter not in href:
+            continue
+        if href in seen:
+            continue
+        seen.add(href)
+        if not _matches_immigration_regex(title):
+            continue
+        sid = f"{layer_tag}:{abs(hash(href))}"
+        out.append(
+            Regulation(
+                source_id=sid,
+                domain="immigration",
+                tier=_classify_tier(href),
+                title=title,
+                url=href,
+                published_at=None,
+                body_excerpt="",
+                tags=(f"layer:{layer_tag}",),
+            )
+        )
+    return out
+
+
+def _dedupe(regulations: Iterable[Regulation]) -> list[Regulation]:
+    seen: set[tuple[str, str]] = set()
+    out: list[Regulation] = []
+    for r in regulations:
+        key = (r.domain, r.source_id)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(r)
+    return out
+
+
+async def fetch_recent_immigration(
+    days: int = 30,
+    *,
+    http_client: httpx.AsyncClient | None = None,
+) -> list[Regulation]:
+    """Fetch immigration news/regs published in the last `days`, deduplicated."""
+    own_http = http_client is None
+    http = http_client or httpx.AsyncClient(
+        timeout=DEFAULT_TIMEOUT_SECONDS,
+        follow_redirects=True,
+    )
+    try:
+        layer_imigrasi = await _fetch_url_links(
+            http, IMIGRASI_BERITA_URL, "imigrasi", domain_filter="imigrasi.go.id"
+        )
+        layer_kemenkumham = await _fetch_url_links(
+            http, KEMENKUMHAM_BERITA_URL, "kemenkumham", domain_filter="kemenkumham.go.id"
+        )
+        layer_tempo = await _fetch_url_links(
+            http, TEMPO_IMIGRASI_TAG_URL, "tempo", domain_filter="tempo.co"
+        )
+    finally:
+        if own_http:
+            await http.aclose()
+
+    combined = list(layer_imigrasi) + list(layer_kemenkumham) + list(layer_tempo)
+    deduped = _dedupe(combined)
+    in_window = [r for r in deduped if _within_window(r.published_at, days)]
+    return in_window
+
+
+__all__ = [
+    "IMMIGRATION_REGEX",
+    "LIFESTYLE_BLOCKLIST",
+    "TRUSTED_TIER1_HOSTS",
+    "fetch_recent_immigration",
+]
