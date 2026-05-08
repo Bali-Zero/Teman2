@@ -441,7 +441,28 @@ async def _apply_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
     return True
 
 
-async def run(dry_run: bool = False) -> int:
+async def _fetch_one_by_id(
+    conn: asyncpg.Connection, draft_id: str
+) -> list[asyncpg.Record]:
+    """Fetch a single draft by UUID, ignoring the FIFO queue order.
+
+    Used by the manual --draft-id flag to override the ORDER BY created_at
+    selection. Still requires the same eligibility predicate (status in the
+    canva-ready set, no canva_edit_url yet) to avoid double-applying.
+    """
+    return await conn.fetch(
+        """
+        SELECT id, topic, register AS tone, slides_json
+          FROM war_room_drafts
+         WHERE id = $1::uuid
+           AND status IN ('drafts_imaged', 'drafts')
+           AND canva_edit_url IS NULL
+        """,
+        draft_id,
+    )
+
+
+async def run(dry_run: bool = False, draft_id: str | None = None) -> int:
     dsn = os.environ.get("DATABASE_URL")
     if not dsn:
         logger.critical("DATABASE_URL not set")
@@ -453,7 +474,18 @@ async def run(dry_run: bool = False) -> int:
             logger.info("wr2_canva_desktop_apply_enabled != true — exiting")
             return 0
 
-        drafts = await _fetch_ready_drafts(conn, MAX_DRAFTS_PER_RUN)
+        if draft_id:
+            drafts = await _fetch_one_by_id(conn, draft_id)
+            if not drafts:
+                logger.error(
+                    "Draft %s not found or not eligible (need status in "
+                    "{drafts_imaged, drafts} AND canva_edit_url IS NULL)",
+                    draft_id,
+                )
+                return 2
+            logger.info("Manual override: processing single draft %s", draft_id)
+        else:
+            drafts = await _fetch_ready_drafts(conn, MAX_DRAFTS_PER_RUN)
         if not drafts:
             logger.info("no drafts ready")
             return 0
@@ -480,10 +512,21 @@ async def run(dry_run: bool = False) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--draft-id",
+        metavar="UUID",
+        default=None,
+        help=(
+            "Manual override: process this specific draft instead of the "
+            "FIFO queue. Same eligibility check applies (status in the "
+            "canva-ready set, no canva_edit_url yet). Useful when an "
+            "earlier draft is intentionally skipped."
+        ),
+    )
     args = parser.parse_args()
     _configure_logging()
     try:
-        return asyncio.run(run(dry_run=args.dry_run))
+        return asyncio.run(run(dry_run=args.dry_run, draft_id=args.draft_id))
     except KeyboardInterrupt:
         return 130
     except Exception as e:
