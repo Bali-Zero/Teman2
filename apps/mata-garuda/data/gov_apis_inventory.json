@@ -81,5 +81,10 @@
     "id": "pemkab_jembrana",
     "url": "https://jembranakab.go.id/articles",
     "category": "regulation_bali"
+  },
+  {
+    "id": "disparda_baliprov",
+    "url": "https://disparda.baliprov.go.id/category/info-terkini/",
+    "category": "regulation_bali"
   }
 ]

@@ -44,6 +44,16 @@ logger = logging.getLogger(__name__)
 # Current JDIHN navigation exposes /dokumen-hukum (HTTP 200 verified).
 JDIHN_SEARCH_URL = "https://jdihn.go.id/dokumen-hukum"
 SETKAB_PRESS_URL = "https://setkab.go.id/category/berita/"
+
+# Phase 1.5 PR-C tier-2 sources (national).
+# BPK = Badan Pemeriksa Keuangan, official gov regulation index. Search
+# parametrized by `type=peraturan` returns the index page with links to
+# /Details/<id>/<slug>. Live verified 2026-05-08.
+BPK_SEARCH_URL = "https://peraturan.bpk.go.id/Search?type=peraturan"
+# peraturan.go.id apex returns 500 (server-side bug); www subdomain is the
+# working canonical. Live verified 2026-05-08.
+PERATURAN_GO_ID_URL = "https://www.peraturan.go.id/"
+
 DEFAULT_TIMEOUT_SECONDS = 20.0
 
 # Domains we trust as tier-1 gov direct.
@@ -171,6 +181,83 @@ async def _fetch_jdihn(http: httpx.AsyncClient, days: int) -> list[Regulation]:
     return out
 
 
+async def _fetch_generic_html(
+    http: httpx.AsyncClient,
+    url: str,
+    layer_tag: str,
+    base_host: str,
+) -> list[Regulation]:
+    """Generic best-effort HTML link harvester for regulation portals.
+
+    Resolves relative hrefs against `base_host` (e.g. "https://peraturan.bpk.go.id")
+    so the resulting Regulation.url is always absolute. Filters by
+    REGULATION_REGEX on the link's anchor text.
+
+    Used by Phase 1.5 PR-C BPK + peraturan.go.id layers.
+    """
+    out: list[Regulation] = []
+    try:
+        resp = await http.get(url)
+    except (httpx.HTTPError, httpx.TimeoutException) as exc:
+        logger.warning("%s fetch failed: %s", layer_tag, exc)
+        return out
+    if resp.status_code != 200:
+        logger.warning("%s returned %s, skipping", layer_tag, resp.status_code)
+        return out
+
+    body = resp.text
+    link_re = re.compile(
+        r'<a[^>]+href="(?P<url>[^"]+)"[^>]*>(?P<title>[^<]+)</a>',
+        re.IGNORECASE,
+    )
+    seen_urls: set[str] = set()
+    for m in link_re.finditer(body):
+        title = m.group("title").strip()
+        href = m.group("url").strip()
+        # Resolve relative → absolute against base_host
+        if href.startswith("/"):
+            href_abs = f"{base_host.rstrip('/')}{href}"
+        elif href.startswith("http"):
+            href_abs = href
+        else:
+            continue  # Skip mailto:/javascript:/etc.
+        if href_abs in seen_urls:
+            continue
+        seen_urls.add(href_abs)
+        if not _matches_regulation_regex(title):
+            continue
+        sid = f"{layer_tag}:{abs(hash(href_abs))}"
+        out.append(
+            Regulation(
+                source_id=sid,
+                domain="regulation",
+                tier=_classify_tier(href_abs),
+                title=title,
+                url=href_abs,
+                published_at=None,
+                body_excerpt="",
+                tags=(f"layer:{layer_tag}",),
+            )
+        )
+    return out
+
+
+async def _fetch_bpk(http: httpx.AsyncClient, days: int) -> list[Regulation]:
+    """Layer 4 (PR-C): peraturan.bpk.go.id Search index."""
+    return await _fetch_generic_html(
+        http, BPK_SEARCH_URL, "bpk", "https://peraturan.bpk.go.id"
+    )
+
+
+async def _fetch_peraturan_go_id(
+    http: httpx.AsyncClient, days: int
+) -> list[Regulation]:
+    """Layer 5 (PR-C): www.peraturan.go.id homepage scrape."""
+    return await _fetch_generic_html(
+        http, PERATURAN_GO_ID_URL, "peraturan_go_id", "https://www.peraturan.go.id"
+    )
+
+
 async def _fetch_setkab(http: httpx.AsyncClient, days: int) -> list[Regulation]:
     """Layer 3: setkab.go.id press signals (Perpres/PP). Best-effort scrape."""
     out: list[Regulation] = []
@@ -259,12 +346,20 @@ async def fetch_recent_regulations(
     try:
         layer_pasal = await _fetch_pasal_id(pid_client, days)
         layer_jdihn = await _fetch_jdihn(http, days)
+        layer_bpk = await _fetch_bpk(http, days)
+        layer_peraturan = await _fetch_peraturan_go_id(http, days)
         layer_setkab = await _fetch_setkab(http, days)
     finally:
         if own_http:
             await http.aclose()
 
-    combined = list(layer_pasal) + list(layer_jdihn) + list(layer_setkab)
+    combined = (
+        list(layer_pasal)
+        + list(layer_jdihn)
+        + list(layer_bpk)
+        + list(layer_peraturan)
+        + list(layer_setkab)
+    )
     deduped = _dedupe(combined)
     in_window = [r for r in deduped if _within_window(r.published_at, days)]
     return in_window

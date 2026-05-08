@@ -36,11 +36,42 @@ logger = logging.getLogger(__name__)
 IMIGRASI_BERITA_URL = "https://www.imigrasi.go.id/berita"
 KEMENKUM_BERITA_URL = "https://www.kemenkum.go.id/berita-utama"
 TEMPO_IMIGRASI_TAG_URL = "https://www.tempo.co/tag/imigrasi"
+
+# Phase 1.5 PR-C: 3 Bali Kantor Imigrasi (regional offices). Each entry is
+# (layer_tag, news_url, host_filter). Live verified 2026-05-08:
+#   - Ngurah Rai (airport) uses /berita-dan-siaran-pers/
+#   - Denpasar (city) uses /kat/berita
+#   - Singaraja (north) uses /berita-keimigrasian/
+# Path varies per office — don't assume a uniform schema. All Kanim sites
+# render article links with relative hrefs (e.g. href="/berita/123") so the
+# harvester resolves them against the source URL host.
+KANIM_BALI_LAYERS: tuple[tuple[str, str, str], ...] = (
+    (
+        "kanim_ngurahrai",
+        "https://ngurahrai.imigrasi.go.id/berita-dan-siaran-pers/",
+        "ngurahrai.imigrasi.go.id",
+    ),
+    (
+        "kanim_denpasar",
+        "https://denpasar.imigrasi.go.id/kat/berita",
+        "denpasar.imigrasi.go.id",
+    ),
+    (
+        "kanim_singaraja",
+        "https://singaraja.imigrasi.go.id/berita-keimigrasian/",
+        "singaraja.imigrasi.go.id",
+    ),
+)
+
 DEFAULT_TIMEOUT_SECONDS = 20.0
 
 TRUSTED_TIER1_HOSTS = {
     "imigrasi.go.id",
     "kemenkum.go.id",  # post-2024 rebrand
+    # Phase 1.5 PR-C — 3 Bali Kantor Imigrasi subdomains.
+    "ngurahrai.imigrasi.go.id",
+    "denpasar.imigrasi.go.id",
+    "singaraja.imigrasi.go.id",
 }
 
 IMMIGRATION_REGEX = re.compile(
@@ -97,6 +128,11 @@ async def _fetch_url_links(
         return out
 
     body = resp.text
+    # Resolve relative hrefs against the source URL's scheme+host. The
+    # Kanim Bali portals (PR-C) emit href="/berita/123" not absolute URLs,
+    # and the central imigrasi.go.id site occasionally does the same.
+    base_host = _extract_base_host(url)
+
     link_re = re.compile(
         r'<a[^>]+href="(?P<url>[^"]+)"[^>]*>(?P<title>[^<]+)</a>',
         re.IGNORECASE,
@@ -105,6 +141,11 @@ async def _fetch_url_links(
     for m in link_re.finditer(body):
         href = m.group("url").strip()
         title = m.group("title").strip()
+        # Resolve relative → absolute
+        if href.startswith("/"):
+            href = f"{base_host}{href}"
+        elif not href.startswith("http"):
+            continue  # Skip mailto:/javascript:/anchor refs.
         if domain_filter and domain_filter not in href:
             continue
         if href in seen:
@@ -126,6 +167,23 @@ async def _fetch_url_links(
             )
         )
     return out
+
+
+def _extract_base_host(url: str) -> str:
+    """Return scheme+host from a URL, e.g.
+    'https://ngurahrai.imigrasi.go.id/berita-dan-siaran-pers/' →
+    'https://ngurahrai.imigrasi.go.id'.
+    Used to resolve relative hrefs back to absolute URLs."""
+    if not url.startswith("http"):
+        return ""
+    scheme_end = url.find("://")
+    if scheme_end == -1:
+        return ""
+    host_start = scheme_end + 3
+    host_end = url.find("/", host_start)
+    if host_end == -1:
+        return url
+    return url[:host_end]
 
 
 def _dedupe(regulations: Iterable[Regulation]) -> list[Regulation]:
@@ -158,6 +216,13 @@ async def fetch_recent_immigration(
         layer_kemenkum = await _fetch_url_links(
             http, KEMENKUM_BERITA_URL, "kemenkum", domain_filter="kemenkum.go.id"
         )
+        kanim_results: list[list[Regulation]] = []
+        for layer_tag, kanim_url, host_filter in KANIM_BALI_LAYERS:
+            kanim_results.append(
+                await _fetch_url_links(
+                    http, kanim_url, layer_tag, domain_filter=host_filter
+                )
+            )
         layer_tempo = await _fetch_url_links(
             http, TEMPO_IMIGRASI_TAG_URL, "tempo", domain_filter="tempo.co"
         )
@@ -165,7 +230,10 @@ async def fetch_recent_immigration(
         if own_http:
             await http.aclose()
 
-    combined = list(layer_imigrasi) + list(layer_kemenkum) + list(layer_tempo)
+    combined: list[Regulation] = list(layer_imigrasi) + list(layer_kemenkum)
+    for kanim_layer in kanim_results:
+        combined.extend(kanim_layer)
+    combined.extend(layer_tempo)
     deduped = _dedupe(combined)
     in_window = [r for r in deduped if _within_window(r.published_at, days)]
     return in_window
@@ -173,6 +241,8 @@ async def fetch_recent_immigration(
 
 __all__ = [
     "IMMIGRATION_REGEX",
+    "KANIM_BALI_LAYERS",
+    "KEMENKUM_BERITA_URL",
     "LIFESTYLE_BLOCKLIST",
     "TRUSTED_TIER1_HOSTS",
     "fetch_recent_immigration",
