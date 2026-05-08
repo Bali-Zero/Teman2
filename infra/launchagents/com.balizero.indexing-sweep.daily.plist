@@ -3,33 +3,33 @@
 <plist version="1.0">
 <dict>
     <key>Label</key>
-    <string>com.balizero.indexing-sweep</string>
+    <string>com.balizero.indexing-sweep.daily</string>
 
-    <!-- Daily Google Search Console Indexing Sweep
+    <!-- Daily Google Search Console Indexing Sweep (Pro)
          Phase 1: Articles (max 200/day)
          Phase 2: KBLI (max 600/day via 3 SAs × 200 each)
          Submits unindexed URLs to Google Indexing API, updates state JSON,
-         reports results to Telegram.
+         reports results to Telegram via OpenClaw bridge.
 
-         Runs daily at 00:30 WITA (17:30 UTC prev day) on Air only.
-         Requires: Google credentials (.secrets/*.json), OpenClaw for Telegram bridge.
+         Schedule: daily at 00:30 WITA (17:30 UTC prev day) on Pro.
+         Requires: Google credentials (apps/evaluator/*.json), OpenClaw for Telegram bridge.
     -->
 
     <key>ProgramArguments</key>
     <array>
         <string>/bin/bash</string>
-        <string>/Users/antonellosiano/Projects/nuzantara/scripts/daily_indexing_cron_wrapper.sh</string>
+        <string>/Users/nuzantara/Desktop/nuzantara/scripts/daily_indexing_cron_wrapper.sh</string>
     </array>
 
     <key>WorkingDirectory</key>
-    <string>/Users/antonellosiano/Projects/nuzantara</string>
+    <string>/Users/nuzantara/Desktop/nuzantara</string>
 
     <key>EnvironmentVariables</key>
     <dict>
         <key>PATH</key>
         <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
         <key>HOME</key>
-        <string>/Users/antonellosiano</string>
+        <string>/Users/nuzantara</string>
     </dict>
 
     <key>StartCalendarInterval</key>
@@ -47,5 +47,8 @@
     <string>/tmp/balizero-indexing-sweep.stdout.log</string>
     <key>StandardErrorPath</key>
     <string>/tmp/balizero-indexing-sweep.stderr.log</string>
+
+    <key>KeepAlive</key>
+    <false/>
 </dict>
 </plist>
