@@ -19,7 +19,13 @@ export const metadata: Metadata = {
   },
 };
 
-export default function KBLIHomePage() {
+export default async function KBLIHomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string }>;
+}) {
+  const { q } = await searchParams;
+  const initialQuery = q ? decodeURIComponent(q) : "";
   const sections = getSections().filter((s) => s.codeCount > 0);
 
   return (
@@ -196,7 +202,7 @@ export default function KBLIHomePage() {
           id="search"
           className="sticky top-20 z-40 -mx-4 px-4 py-4 backdrop-blur-2xl bg-[#141416]/80 border border-white/[0.05] sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 shadow-[0_10px_40px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.03)] rounded-3xl mb-8"
         >
-          <KBLISearch autoFocus />
+          <KBLISearch autoFocus initialQuery={initialQuery} />
           <div className="mt-4 flex flex-wrap items-center gap-2 justify-center lg:justify-start">
             <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mr-2">
               Quick:
