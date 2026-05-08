@@ -162,3 +162,27 @@ Investigate: \`tail ~/logs/organism/supervisor.err\`"
 
 write_state "kickstart" "$GAP"
 log "ACTION done"
+
+# Tier-2 escalation check: wait 60s, re-check gap; if still > threshold,
+# the simple respawn didn't fix it (bug in code/config, not just stale
+# process). Spawn tier-2 autofix script which invokes claude/codex.
+TIER2_SCRIPT="${TIER2_SCRIPT:-$HOME/Desktop/nuzantara/scripts/supervisor_autofix_tier2.sh}"
+if [ -x "$TIER2_SCRIPT" ]; then
+  log "post-kickstart: sleeping 60s before tier-2 check"
+  sleep 60
+  NEW_LAST_TS=$(/usr/bin/tail -n 1 "$DECISIONS_LOG" 2>/dev/null | /usr/bin/jq -r '.ts // empty' 2>/dev/null)
+  if [ -n "$NEW_LAST_TS" ] && [ "$NEW_LAST_TS" != "null" ]; then
+    NEW_LAST_INT=${NEW_LAST_TS%.*}
+    NEW_NOW=$(date +%s)
+    NEW_GAP=$((NEW_NOW - NEW_LAST_INT))
+    if [ "$NEW_GAP" -gt "$LIVENESS_THRESHOLD_S" ]; then
+      log "TIER-2 ESCALATION: kickstart did not recover (gap still ${NEW_GAP}s); invoking $TIER2_SCRIPT"
+      bash "$TIER2_SCRIPT" >>"$LOG_FILE" 2>&1 &
+      log "tier-2 spawned (background, log in ~/logs/supervisor-autofix-tier2.log)"
+    else
+      log "post-kickstart: gap recovered to ${NEW_GAP}s; tier-2 not needed"
+    fi
+  fi
+else
+  log "tier-2 script not executable at $TIER2_SCRIPT; skip escalation"
+fi
