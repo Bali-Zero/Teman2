@@ -11,15 +11,21 @@ import pytest
 
 from mata_garuda.domains.setup_team.feeders.nb_intel_immigration import (
     IMMIGRATION_REGEX,
+    KANIM_BALI_LAYERS,
     KEMENKUM_BERITA_URL,
     LIFESTYLE_BLOCKLIST,
+    TRUSTED_TIER1_HOSTS as IMMIGRATION_TRUSTED_TIER1_HOSTS,
+    _fetch_url_links,
     _matches_immigration_regex,
     fetch_recent_immigration,
 )
 from mata_garuda.domains.setup_team.feeders.nb_intel_regulation import (
+    BPK_SEARCH_URL,
     JDIHN_SEARCH_URL,
+    PERATURAN_GO_ID_URL,
     REGULATION_REGEX,
     SETKAB_PRESS_URL,
+    TRUSTED_TIER1_HOSTS as REGULATION_TRUSTED_TIER1_HOSTS,
     _classify_tier,
     _fetch_jdihn,
     _matches_regulation_regex,
@@ -85,6 +91,80 @@ def test_setkab_press_url_uses_category_berita_path():
     assert SETKAB_PRESS_URL == "https://setkab.go.id/category/berita/"
 
 
+# ---------------- T1.5 PR-C: tier-2 source constants ---------------- #
+
+
+def test_bpk_search_url_filters_by_peraturan_type():
+    """peraturan.bpk.go.id/Search?type=peraturan returns 200 with the
+    Peraturan index page (Permenkop/PMK/PP/UU links). Live verified
+    2026-05-08."""
+    assert BPK_SEARCH_URL == "https://peraturan.bpk.go.id/Search?type=peraturan"
+
+
+def test_peraturan_go_id_url_uses_www_subdomain():
+    """peraturan.go.id apex returns 500; www.peraturan.go.id returns 200.
+    Live verified 2026-05-08."""
+    assert PERATURAN_GO_ID_URL == "https://www.peraturan.go.id/"
+
+
+def test_regulation_trusted_hosts_include_new_tier2():
+    """BPK + peraturan.go.id were already in TRUSTED_TIER1_HOSTS from
+    Phase 0; pin them here so a future cleanup doesn't drop them."""
+    assert "peraturan.bpk.go.id" in REGULATION_TRUSTED_TIER1_HOSTS
+    assert "peraturan.go.id" in REGULATION_TRUSTED_TIER1_HOSTS
+
+
+def test_kanim_bali_layers_include_3_offices():
+    """Phase 1.5 PR-C: 3 Bali immigration offices added (Ngurah Rai
+    airport, Denpasar city, Singaraja north). All under <office>.imigrasi.go.id.
+
+    Each entry is (layer_tag, url, host_filter). Live verified 2026-05-08."""
+    layer_tags = {entry[0] for entry in KANIM_BALI_LAYERS}
+    assert layer_tags == {"kanim_ngurahrai", "kanim_denpasar", "kanim_singaraja"}
+
+
+def test_immigration_trusted_hosts_include_kanim_bali_subdomains():
+    """All 3 Kanim Bali subdomains must be tier-1 trusted (gov direct)."""
+    expected = {
+        "ngurahrai.imigrasi.go.id",
+        "denpasar.imigrasi.go.id",
+        "singaraja.imigrasi.go.id",
+    }
+    assert expected.issubset(IMMIGRATION_TRUSTED_TIER1_HOSTS), (
+        f"missing: {expected - IMMIGRATION_TRUSTED_TIER1_HOSTS}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_fetch_url_links_resolves_relative_hrefs_against_base_url():
+    """Kanim portals link articles via relative hrefs (e.g. href="/berita/123").
+    The harvester must convert them to absolute URLs before storing —
+    otherwise tier classification + dedup get the wrong key.
+    Phase 1.5 PR-C requirement."""
+    http = AsyncMock()
+    html = (
+        '<html><body>'
+        '<a href="/berita/123">KITAS aturan baru WNA</a>'
+        '<a href="https://ngurahrai.imigrasi.go.id/berita/456">VOA exit permit</a>'
+        '</body></html>'
+    )
+    http.get = AsyncMock(return_value=MagicMock(status_code=200, text=html))
+
+    out = await _fetch_url_links(
+        http,
+        url="https://ngurahrai.imigrasi.go.id/berita-dan-siaran-pers/",
+        layer_tag="kanim_ngurahrai",
+        domain_filter="ngurahrai.imigrasi.go.id",
+    )
+    urls = {r.url for r in out}
+    # Relative href resolved to absolute against the host of the source URL:
+    assert "https://ngurahrai.imigrasi.go.id/berita/123" in urls, (
+        f"relative href not resolved; got urls={urls}"
+    )
+    # Already-absolute href passes through unchanged:
+    assert "https://ngurahrai.imigrasi.go.id/berita/456" in urls
+
+
 # ---------------- T2: nb_intel_regulation ---------------- #
 
 
@@ -123,10 +203,10 @@ async def test_fetch_recent_regulations_swallows_pasal_id_auth_error():
     pid.search_laws = AsyncMock(side_effect=PasalIdAuthError("no token"))
 
     http = AsyncMock()
-    # JDIHN response — empty body so no links match.
-    jdihn_resp = MagicMock(status_code=200, text="<html><body></body></html>")
-    setkab_resp = MagicMock(status_code=200, text="<html><body></body></html>")
-    http.get = AsyncMock(side_effect=[jdihn_resp, setkab_resp])
+    # 4 layers fetched in order: JDIHN, BPK, peraturan_go_id, setkab.
+    # All return empty bodies so no links match.
+    empty_resp = MagicMock(status_code=200, text="<html><body></body></html>")
+    http.get = AsyncMock(side_effect=[empty_resp, empty_resp, empty_resp, empty_resp])
 
     result = await fetch_recent_regulations(
         days=30,
@@ -155,11 +235,13 @@ async def test_fetch_recent_regulations_dedupes_across_layers():
     <a href="https://example.com/lifestyle">Top 10 cafe</a>
     </body></html>
     """
-    setkab_resp = MagicMock(status_code=200, text="")
+    empty_resp = MagicMock(status_code=200, text="")
     http.get = AsyncMock(
         side_effect=[
-            MagicMock(status_code=200, text=jdihn_html),
-            setkab_resp,
+            MagicMock(status_code=200, text=jdihn_html),  # JDIHN
+            empty_resp,  # BPK
+            empty_resp,  # peraturan.go.id
+            empty_resp,  # setkab
         ]
     )
 
@@ -215,6 +297,8 @@ async def test_fetch_recent_regulations_jdihn_5xx_does_not_kill_other_layers():
     http.get = AsyncMock(
         side_effect=[
             MagicMock(status_code=503, text=""),  # JDIHN dead
+            MagicMock(status_code=200, text=""),  # BPK empty
+            MagicMock(status_code=200, text=""),  # peraturan.go.id empty
             MagicMock(status_code=200, text=""),  # setkab fine
         ]
     )
@@ -292,10 +376,15 @@ async def test_fetch_recent_immigration_dedupes_and_filters():
     <a href="https://www.tempo.co/imigrasi/aturan-baru">imigrasi memperketat aturan WNA</a>
     </body></html>
     """
+    empty_resp = MagicMock(status_code=200, text="")
+    # Order: imigrasi, kemenkum, 3 Kanim Bali (PR-C), tempo. 6 layers total.
     http.get = AsyncMock(
         side_effect=[
             MagicMock(status_code=200, text=imigrasi_html),
             MagicMock(status_code=200, text=kemenkum_html),
+            empty_resp,  # kanim_ngurahrai
+            empty_resp,  # kanim_denpasar
+            empty_resp,  # kanim_singaraja
             MagicMock(status_code=200, text=tempo_html),
         ]
     )
@@ -317,6 +406,8 @@ async def test_fetch_recent_immigration_dedupes_and_filters():
 @pytest.mark.asyncio
 async def test_fetch_recent_immigration_one_layer_dead_does_not_kill_others():
     http = AsyncMock()
+    empty_resp = MagicMock(status_code=200, text="")
+    # Order: imigrasi, kemenkum, 3 Kanim Bali (PR-C), tempo.
     http.get = AsyncMock(
         side_effect=[
             MagicMock(status_code=503, text=""),  # imigrasi dead
@@ -324,6 +415,9 @@ async def test_fetch_recent_immigration_one_layer_dead_does_not_kill_others():
                 status_code=200,
                 text='<a href="https://www.kemenkum.go.id/x">RPTKA aturan</a>',
             ),
+            empty_resp,  # kanim_ngurahrai
+            empty_resp,  # kanim_denpasar
+            empty_resp,  # kanim_singaraja
             MagicMock(status_code=500, text=""),  # tempo dead
         ]
     )
@@ -365,37 +459,33 @@ def test_bali_category_regexes_classify_correctly():
     assert _classify_categories("") == ()
 
 
-def test_bali_portal_ids_include_all_8_jdih_plus_2_pemkab_fallbacks():
-    """Phase 1.5 PR-B — expanded from 4 to 10 portals.
+def test_bali_portal_ids_include_jdih_pemkab_and_disparda():
+    """Phase 1.5 evolution: 4 (Phase 1) → 10 (PR-B) → 11 (PR-C, +disparda).
 
-    8 jdih portals (4 original + 4 added 2026-05-08): provincia + Badung
-    + Gianyar + Denpasar + Tabanan + Buleleng + Klungkung + Karangasem.
-
-    2 Pemkab homepage fallbacks (Bangli + Jembrana — their dedicated
-    jdih.<kab>.go.id subdomains DNS-fail or timeout, so we scrape the
-    Pemkab homepage's /berita or /articles section instead).
-
-    Live verification 2026-05-08: all 8 jdih return 200; banglikab.go.id
-    and jembranakab.go.id return 200 with regulation-relevant berita.
+    8 jdih portals + 2 Pemkab homepage fallbacks + 1 tourism authority
+    (disparda.baliprov.go.id, the provincial tourism office that publishes
+    PERDA on akomodasi pariwisata, desa adat, subak heritage).
     """
     assert set(BALI_PORTAL_IDS) == {
-        # Original 4 (Phase 1).
+        # Original 4 jdih (Phase 1).
         "jdih_baliprov",
         "jdih_badungkab",
         "jdih_gianyarkab",
         "jdih_denpasarkota",
-        # New jdih (Phase 1.5 PR-B).
+        # PR-B jdih.
         "jdih_tabanankab",
         "jdih_bulelengkab",
         "jdih_klungkungkab",
         "jdih_karangasemkab",
-        # Pemkab homepage fallbacks (jdih.<kab>.go.id was unreachable).
+        # PR-B Pemkab homepage fallbacks.
         "pemkab_bangli",
         "pemkab_jembrana",
+        # PR-C tourism authority.
+        "disparda_baliprov",
     }
 
 
-def test_bali_trusted_tier1_hosts_includes_all_10_portals():
+def test_bali_trusted_tier1_hosts_include_jdih_pemkab_and_disparda():
     """All gov-direct hosts must be tier-1 trusted for the scorer."""
     expected = {
         "jdih.baliprov.go.id",
@@ -408,6 +498,7 @@ def test_bali_trusted_tier1_hosts_includes_all_10_portals():
         "jdih.karangasemkab.go.id",
         "banglikab.go.id",
         "jembranakab.go.id",
+        "disparda.baliprov.go.id",
     }
     assert expected.issubset(BALI_TRUSTED_TIER1_HOSTS), (
         f"missing trusted hosts: {expected - BALI_TRUSTED_TIER1_HOSTS}"

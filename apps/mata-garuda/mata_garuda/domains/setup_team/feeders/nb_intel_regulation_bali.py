@@ -64,9 +64,13 @@ BALI_PORTAL_IDS = (
     # Perbup news in its /berita or /articles section to not lose coverage).
     "pemkab_bangli",
     "pemkab_jembrana",
+    # Phase 1.5 PR-C: Bali tourism authority — publishes PERDA on
+    # akomodasi pariwisata, desa adat, subak heritage. Slow (~30s) so
+    # the probe gate timeout matters here. Verified live 200 on 2026-05-08.
+    "disparda_baliprov",
 )
 
-# Tier-1 trusted: all 10 are gov direct (.go.id under provincia/kabupaten/kota).
+# Tier-1 trusted: all 11 are gov direct (.go.id under provincia/kabupaten/kota).
 TRUSTED_TIER1_HOSTS = {
     "jdih.baliprov.go.id",
     "jdih.badungkab.go.id",
@@ -78,6 +82,7 @@ TRUSTED_TIER1_HOSTS = {
     "jdih.karangasemkab.go.id",
     "banglikab.go.id",
     "jembranakab.go.id",
+    "disparda.baliprov.go.id",
 }
 
 CATEGORY_REGEXES = {

@@ -50,6 +50,11 @@ BALI_ENDPOINTS = [
     ("jdih_karangasemkab", "https://jdih.karangasemkab.go.id"),
     ("pemkab_bangli", "https://www.banglikab.go.id/berita"),
     ("pemkab_jembrana", "https://jembranakab.go.id/articles"),
+    # Phase 1.5 PR-C: provincial tourism authority.
+    (
+        "disparda_baliprov",
+        "https://disparda.baliprov.go.id/category/info-terkini/",
+    ),
 ]
 
 
@@ -76,7 +81,8 @@ def test_bali_endpoint_reachable(portal_id: str, url: str, request) -> None:
             )
         )
 
-    with httpx.Client(timeout=20.0, follow_redirects=True) as client:
+    # 45s timeout — disparda.baliprov.go.id can take 30+ seconds to respond.
+    with httpx.Client(timeout=45.0, follow_redirects=True) as client:
         resp = client.get(url, headers={"User-Agent": "mata-garuda-smoke/1.0"})
 
     assert resp.status_code == 200, (
