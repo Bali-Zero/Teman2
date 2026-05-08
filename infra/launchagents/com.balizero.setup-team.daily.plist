@@ -22,7 +22,7 @@
         <key>HOME</key>
         <string>/Users/nuzantara</string>
         <key>PATH</key>
-        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <string>/Users/nuzantara/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
     </dict>
     <key>StandardOutPath</key>
     <string>/Users/nuzantara/logs/setup-team/launchd-stdout.log</string>

@@ -45,6 +45,13 @@ if [ ! -x "$VENV_PY" ]; then
     exit 2
 fi
 
+# Probe claude CLI: obligation engine subprocess-shells `claude --print`.
+# launchd PATH is minimal; if `claude` not findable, log and continue (engine
+# will skip extraction gracefully — feeders + alerts still run).
+if ! command -v claude >/dev/null 2>&1; then
+    echo "$(date) WARNING: claude binary not found in PATH=$PATH — obligation extraction will be skipped" >> "$LOG_FILE"
+fi
+
 # Pipeline runner. Captures all sub-steps in one Python invocation so we
 # don't pay the ~300ms cold-start penalty per stage. Atomic snapshot mv
 # at the end — partial pipeline = no snapshot file.
