@@ -23,6 +23,12 @@ google-auth-httplib2>=0.1.1
 google-cloud-storage>=2.10.0
 google-cloud-aiplatform>=1.40.0  # Now compatible with OTEL (protobuf 5.x)
 
+# Tigris (S3-compatible) — used by scripts/wr2_image_generator.py +
+# scripts/wr2_draft_generator.py to upload hero images to the warroom
+# bucket. No backend module imports it; pinned here so production venv
+# rebuilds (Pro `nuzantara-deploy` worktree) stay self-sufficient.
+boto3>=1.43.0
+
 # AI/ML - UPGRADED FOR HTTPX 0.28+ COMPATIBILITY
 openai>=2.14.0  # Upgraded for httpx 0.28+ (proxies parameter removed)
 anthropic>=0.75.0  # Upgraded for httpx 0.28+ compatibility
