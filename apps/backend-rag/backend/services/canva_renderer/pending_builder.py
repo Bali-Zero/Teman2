@@ -138,9 +138,19 @@ def slides_to_operations(slides: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "page_index": page_index,
             })
 
-        # Body only if both slot exists AND slide carries body text
+        # Body op whenever the slide carries body text. element_id is
+        # ALWAYS None — TEMPLATE_SLOTS was deliberately None-filled
+        # 2026-05-07 to defer to the apply skill's runtime remap. The
+        # canva-apply skill (~/.claude/skills/canva-apply.md step 8)
+        # resolves slot via top-ascending role_index per page: first
+        # replace_text op → role_index=0 (heading, emitted above),
+        # second → role_index=1 (body, emitted here). Skipping body
+        # ops when body_eid is None — the previous behaviour — meant
+        # ZERO body text ever reached Canva, producing the
+        # "headline-only, body blank" pattern observed in
+        # DAHJDtWApaw / DAHJCzTzn1I PDFs (2026-05-08).
         body = (slide.get("body") or "").strip()
-        if body and body_eid:
+        if body:
             operations.append({
                 "type": "replace_text",
                 "element_id": body_eid,
