@@ -55,7 +55,7 @@ import signal
 import sys
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
@@ -197,6 +197,11 @@ async def _probe_pipeline_state(conn: asyncpg.Connection) -> dict[str, Any]:
                           'drafts_imaged_checked')
         """
     )
+    # asyncpg accepts datetime.timedelta and binds it directly as
+    # `interval`. Passing a string and casting via $1::interval fails
+    # with "'str' object has no attribute 'days'" because asyncpg's
+    # codec dispatches by Python type, not target type. Empirical
+    # repro 2026-05-08 08:10 WITA on production tunnel.
     rendered_recent = await conn.fetchval(
         """
         SELECT COUNT(*)
@@ -204,7 +209,7 @@ async def _probe_pipeline_state(conn: asyncpg.Connection) -> dict[str, Any]:
          WHERE status = 'rendered'
            AND canva_applied_at > NOW() - $1::interval
         """,
-        f"{int(RENDERED_24H_HOURS)} hours",
+        timedelta(hours=RENDERED_24H_HOURS),
     )
     return {
         "oldest_pending_hours": float(oldest_pending) if oldest_pending else 0.0,
