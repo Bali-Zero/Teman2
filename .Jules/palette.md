@@ -13,3 +13,11 @@
 ## 2026-04-26 - [Descriptive Action Labels and Explicit Button Types]
 **Learning:** Generic action labels like "Delete" in lists are ambiguous for screen reader users. Including the item's title in the `aria-label` (e.g., "Delete conversation: [Title]") provides crucial context. Additionally, omitting `type="button"` on non-submit buttons can lead to accidental form submissions and inconsistent browser behavior.
 **Action:** Always include identifying information in `aria-label` for repetitive actions in lists. Consistently apply `type="button"` to all interactive elements that are not meant to submit a form.
+
+## 2026-05-08 - [Auto-resizing Inputs with Constraints]
+**Learning:** Refactoring manual textarea resizing logic into a reusable `AutoResizeTextarea` component improves code maintainability, but it must preserve the original UX constraints (like `maxHeight`) to prevent layout breakage. Using `useLayoutEffect` ensures height updates are calculated before the browser paints, eliminating visual jitter.
+**Action:** Always provide `maxHeight` constraints to auto-resizing textareas and use `useLayoutEffect` for immediate visual feedback.
+
+## 2026-05-08 - [Framer Motion for Ephemeral UI]
+**Learning:** Wrapping conditional UI elements (like attachment menus or prompts) in `AnimatePresence` and `motion.div` significantly improves perceived quality with minimal effort. Using `origin-bottom` or `origin-bottom-left` for scale transitions makes the animation feel anchored to the trigger button.
+**Action:** Use `framer-motion` for all ephemeral UI transitions to provide a "premium" feel.

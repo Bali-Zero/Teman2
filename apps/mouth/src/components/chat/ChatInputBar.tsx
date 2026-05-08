@@ -8,6 +8,7 @@ import { ChatRecordingOverlay } from './ChatRecordingOverlay';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { AttachedImage } from '@/hooks/useChatInput';
+import { AutoResizeTextarea } from '@/components/ui/auto-resize-textarea';
 
 export interface ChatInputBarProps {
   input: string;
@@ -52,16 +53,20 @@ export function ChatInputBar({
   attachedImages = [],
   onRemoveImage,
 }: ChatInputBarProps) {
-  // Close menu on click-outside or Escape
+  // Close menu or cancel prompt on click-outside or Escape
   useEffect(() => {
-    if (!showAttachMenu) return;
+    if (!showAttachMenu && !showImagePrompt) return;
+
     const handleClickOutside = (e: MouseEvent) => {
-      if (attachMenuRef.current && !attachMenuRef.current.contains(e.target as Node)) {
+      if (showAttachMenu && attachMenuRef.current && !attachMenuRef.current.contains(e.target as Node)) {
         setShowAttachMenu(false);
       }
     };
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowAttachMenu(false);
+      if (e.key === 'Escape') {
+        if (showAttachMenu) setShowAttachMenu(false);
+        if (showImagePrompt) setShowImagePrompt(false);
+      }
     };
     document.addEventListener('mousedown', handleClickOutside);
     document.addEventListener('keydown', handleEscape);
@@ -69,7 +74,7 @@ export function ChatInputBar({
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('keydown', handleEscape);
     };
-  }, [showAttachMenu, setShowAttachMenu, attachMenuRef]);
+  }, [showAttachMenu, setShowAttachMenu, attachMenuRef, showImagePrompt, setShowImagePrompt]);
 
   // Use toggle handler if provided, otherwise fall back to start/stop
   const handleMicClick = () => {
@@ -133,22 +138,29 @@ export function ChatInputBar({
           )}
         </AnimatePresence>
 
-        {showImagePrompt && (
-          <div className="mb-2 p-2 bg-[var(--background-secondary)] rounded-lg flex items-center gap-2 shadow-lg border border-[var(--border)]">
-            <ImageIcon className="w-4 h-4 text-[var(--accent)]" />
-            <span className="text-sm text-[var(--foreground-secondary)]">
-              Describe the image you want to generate
-            </span>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowImagePrompt(false)}
-              className="ml-auto"
+        <AnimatePresence>
+          {showImagePrompt && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="mb-2 p-2 bg-[var(--background-secondary)] rounded-lg flex items-center gap-2 shadow-lg border border-[var(--border)] origin-bottom"
             >
-              Cancel
-            </Button>
-          </div>
-        )}
+              <ImageIcon className="w-4 h-4 text-[var(--accent)]" />
+              <span className="text-sm text-[var(--foreground-secondary)]">
+                Describe the image you want to generate
+              </span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowImagePrompt(false)}
+                className="ml-auto"
+              >
+                Cancel
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Input Container */}
         <div className="glass-panel rounded-[24px] p-2 relative overflow-hidden group shadow-2xl">
@@ -212,30 +224,43 @@ export function ChatInputBar({
               >
                 <Plus className="w-5 h-5" />
               </Button>
-              {showAttachMenu && (
-                <div className="absolute bottom-full left-0 mb-2 bg-[var(--background-secondary)] rounded-xl border border-[var(--border)] shadow-lg overflow-hidden min-w-[160px] animate-in fade-in slide-in-from-bottom-2 duration-200">
-                  <button
-                    onClick={() => {
-                      fileInputRef.current?.click();
-                      setShowAttachMenu(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--background-elevated)] transition-colors text-sm"
+              <AnimatePresence>
+                {showAttachMenu && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                    className="absolute bottom-full left-0 mb-2 bg-[var(--background-secondary)] rounded-xl border border-[var(--border)] shadow-lg overflow-hidden min-w-[160px] z-50 origin-bottom-left"
+                    role="menu"
+                    aria-label="Attachment options"
                   >
-                    <Upload className="w-4 h-4" />
-                    Upload file
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowImagePrompt(!showImagePrompt);
-                      setShowAttachMenu(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--background-elevated)] transition-colors text-sm"
-                  >
-                    <ImageIcon className="w-4 h-4" />
-                    Generate image
-                  </button>
-                </div>
-              )}
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        fileInputRef.current?.click();
+                        setShowAttachMenu(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--background-elevated)] transition-colors text-sm"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Upload file
+                    </button>
+                    <button
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setShowImagePrompt(!showImagePrompt);
+                        setShowAttachMenu(false);
+                      }}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-[var(--background-elevated)] transition-colors text-sm"
+                    >
+                      <ImageIcon className="w-4 h-4" />
+                      Generate image
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
 
             <input
@@ -246,7 +271,7 @@ export function ChatInputBar({
               aria-label="Upload file"
             />
 
-            <textarea
+            <AutoResizeTextarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -258,11 +283,6 @@ export function ChatInputBar({
               style={{
                 height: 'auto',
                 overflowY: input.split('\n').length > 3 ? 'auto' : 'hidden',
-              }}
-              onInput={(e) => {
-                const target = e.target as HTMLTextAreaElement;
-                target.style.height = 'auto';
-                target.style.height = Math.min(target.scrollHeight, UI.MAX_TEXTAREA_HEIGHT) + 'px';
               }}
             />
 
