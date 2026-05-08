@@ -20,8 +20,8 @@ import {
   trackKBLICTA,
   trackTaxCTA,
   trackPropertyCTA,
+  trackFunnelCTA,
 } from "@/lib/analytics";
-
 
 type LayoutMode = "full" | "half";
 
@@ -415,15 +415,7 @@ export function FunnelFeature({
                 switch. Now FUNNEL_PRICING_HREF (real pricing page). */}
               <a
                 href={FUNNEL_PRICING_HREF[funnel]}
-                // CTA-2: "See transparent pricing" — track sebelum navigasi ke halaman pricing
-                onClick={() =>
-                  trackFunnelCTA(
-                    funnel,
-                    "pricing",
-                    "See transparent pricing",
-                    FUNNEL_PRICING_HREF[funnel],
-                  )
-                }
+                onClick={() => trackFunnelCTA(funnel, "consult_click")}
                 className="inline-flex items-center gap-2 rounded-xl px-4 py-2.5 transition-all hover:-translate-y-0.5"
                 style={{
                   background:
@@ -434,7 +426,6 @@ export function FunnelFeature({
                   fontSize: 12,
                   fontWeight: 600,
                 }}
-                onClick={() => track("consult_click")}
               >
                 <span
                   className="text-[10px] font-semibold uppercase tracking-[0.12em]"
@@ -487,7 +478,9 @@ export function FunnelFeature({
                     // CTA-7: Search input — track hanya saat user tekan Enter dengan query non-kosong
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && query.trim()) {
-                        trackFunnelCTA(funnel, "search", query.trim());
+                        trackFunnelCTA(funnel, "search_submit", {
+                          query_length: query.trim().length,
+                        });
                       }
                     }}
                     placeholder={cfg.searchPlaceholder}

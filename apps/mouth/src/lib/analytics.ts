@@ -479,7 +479,12 @@ type FunnelCTAAction =
   | "search_submit"
   | "suggestion_click";
 
-function _trackFunnelCTA(
+/** Generic funnel home-block CTA dispatcher.
+ * Fires triple-dispatch: GA4 + internal CRM bus + funnel store.
+ * Used directly by FunnelFeature for cross-funnel callsites (pricing CTA,
+ * search submit). Per-funnel wrappers below for typed callsites.
+ */
+export function trackFunnelCTA(
   funnel: "visa" | "kbli" | "tax" | "property",
   action: FunnelCTAAction,
   extra?: Record<string, string | number | boolean>,
@@ -501,7 +506,7 @@ export function trackVisaCTA(
   action: FunnelCTAAction,
   extra?: Record<string, string | number | boolean>,
 ): void {
-  _trackFunnelCTA("visa", action, extra);
+  trackFunnelCTA("visa", action, extra);
 }
 
 /** Track KBLI Navigator funnel block CTA interactions */
@@ -509,7 +514,7 @@ export function trackKBLICTA(
   action: FunnelCTAAction,
   extra?: Record<string, string | number | boolean>,
 ): void {
-  _trackFunnelCTA("kbli", action, extra);
+  trackFunnelCTA("kbli", action, extra);
 }
 
 /** Track Tax Intelligence funnel block CTA interactions */
@@ -517,7 +522,7 @@ export function trackTaxCTA(
   action: FunnelCTAAction,
   extra?: Record<string, string | number | boolean>,
 ): void {
-  _trackFunnelCTA("tax", action, extra);
+  trackFunnelCTA("tax", action, extra);
 }
 
 /** Track Property Map funnel home-block CTA interactions */
@@ -525,5 +530,5 @@ export function trackPropertyCTA(
   action: FunnelCTAAction,
   extra?: Record<string, string | number | boolean>,
 ): void {
-  _trackFunnelCTA("property", action, extra);
+  trackFunnelCTA("property", action, extra);
 }
