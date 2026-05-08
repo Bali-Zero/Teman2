@@ -23,10 +23,14 @@ mkdir -p "$LOG_DIR"
   echo "[$(date '+%Y-%m-%d %H:%M:%S %Z')] Daily Indexing Sweep started (Pro)"
   echo "==============================================================================="
 
-  # Activate venv (required for import chain)
+  # Activate venv (required for import chain). Bootstrap if missing so a
+  # fresh Pro provision self-heals — matches pre-2026-05-07 behavior.
   if [ ! -f "$VENV_DIR/bin/python" ]; then
-    echo "[ERROR] .venv not found at $VENV_DIR. Cannot proceed."
-    exit 1
+    echo "[INFO] .venv not found at $VENV_DIR, creating..."
+    python3 -m venv "$VENV_DIR"
+    echo "[INFO] Installing requirements..."
+    "$VENV_DIR/bin/pip" install -q --upgrade pip
+    "$VENV_DIR/bin/pip" install -q google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
   fi
 
   source "$VENV_DIR/bin/activate"

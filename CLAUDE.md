@@ -69,7 +69,7 @@ See [`INDEX.md`](INDEX.md) for the full atlas including packages, tessuti dati, 
 ### Tech Stack
 
 <!-- DOCSYNC:BACKEND_STATS_START -->
-- **Backend:** Python 3.11+, FastAPI, 257 routers, 541 services, 906 test files
+- **Backend:** Python 3.11+, FastAPI, 257 routers, 541 services, 907 test files
 <!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
@@ -268,13 +268,12 @@ Sections: `SECURITY_BOUNDARY` · `TOOL_USAGE_POLICY` · `SYSTEM_INSTRUCTIONS` ·
 
 ## 8. Deployment Architecture
 
-### Fly.io — 3 APP ONLY
+### Fly.io — 2 APP ONLY (Qdrant migrated to Qdrant Cloud)
 
 | App                  | CPU       | RAM | Auto-stop  | Note                    |
 | -------------------- | --------- | --- | ---------- | ----------------------- |
 | `nuzantara-rag`      | shared-2x | 2GB | off, min=1 | Always-on, EventBus     |
 | `nuzantara-postgres` | shared-1x | 2GB | no         | v0.1.0, backup → Tigris |
-| `nuzantara-qdrant`   | shared-1x | 2GB | no         | v1.17.0                 |
 
 - **Frontend:** Vercel (auto-deploy on `git push origin main`)
 - **Backend deploy:** `cd apps/backend-rag && fly deploy --strategy rolling`
