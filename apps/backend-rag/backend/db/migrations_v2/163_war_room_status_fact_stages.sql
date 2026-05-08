@@ -94,4 +94,8 @@ ALTER TABLE war_room_drafts
         'rejected'::text,
         'published'::text,
         'missed'::text
-    ]));
+    ]))
+    NOT VALID;
+
+ALTER TABLE war_room_drafts
+    VALIDATE CONSTRAINT war_room_drafts_status_check;
