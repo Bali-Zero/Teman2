@@ -231,9 +231,9 @@ async def test_fetch_recent_immigration_dedupes_and_filters():
     <a href="https://example.com/ad">Top 10 cafe Canggu lifestyle</a>
     </body></html>
     """
-    kemenkumham_html = """
+    kemenkum_html = """
     <html><body>
-    <a href="https://www.kemenkumham.go.id/berita/789">RPTKA WNA pekerja</a>
+    <a href="https://www.kemenkum.go.id/berita/789">RPTKA WNA pekerja</a>
     </body></html>
     """
     tempo_html = """
@@ -244,7 +244,7 @@ async def test_fetch_recent_immigration_dedupes_and_filters():
     http.get = AsyncMock(
         side_effect=[
             MagicMock(status_code=200, text=imigrasi_html),
-            MagicMock(status_code=200, text=kemenkumham_html),
+            MagicMock(status_code=200, text=kemenkum_html),
             MagicMock(status_code=200, text=tempo_html),
         ]
     )
@@ -271,7 +271,7 @@ async def test_fetch_recent_immigration_one_layer_dead_does_not_kill_others():
             MagicMock(status_code=503, text=""),  # imigrasi dead
             MagicMock(
                 status_code=200,
-                text='<a href="https://www.kemenkumham.go.id/x">RPTKA aturan</a>',
+                text='<a href="https://www.kemenkum.go.id/x">RPTKA aturan</a>',
             ),
             MagicMock(status_code=500, text=""),  # tempo dead
         ]
