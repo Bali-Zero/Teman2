@@ -95,7 +95,7 @@ WHERE consumed_at IS NULL GROUP BY channel`
 - `apps/backend-rag/backend/db/migrations_v2/{147..152}_*.sql` (6 nuove
   migration, una per canale)
 - Bulk patcher Python `~/scripts/observatory-emit-enable-bulk.py` che
-  legge genome.yaml + plutil -insert su ogni plist
+  legge organs_registry.yaml + plutil -insert su ogni plist
 - `apps/cell-observatory-collector/` (già esiste, verificare connection
   pool size adeguato a +60 organi)
 
@@ -315,7 +315,7 @@ Supervisor passa da shadow a dispatch.
 
 | Indicatore                          | Before           | Target                  | Pilastro SYMBIOSIS         |
 | ----------------------------------- | ---------------- | ----------------------- | -------------------------- |
-| Organi in genome.yaml               | 26               | ≥100                    | Pilastro 7 (Misura)        |
+| Organi in organs_registry.yaml      | 26               | ≥100                    | Pilastro 7 (Misura)        |
 | Canali events_outbox durabili       | 6/12             | 12/12                   | Legge 4 (event-driven)     |
 | Celle HGT attive                    | 3                | 10+                     | Pilastro 2 (Accumulazione) |
 | Skill scambiate/giorno              | ~0               | ≥5                      | Pilastro 3 (Condivisione)  |

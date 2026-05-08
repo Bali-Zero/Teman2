@@ -38,9 +38,11 @@
 #
 # Editing notes for future Claudes
 #
-# - Run `python -m organism.tools.validate_genome --update-checksum` after
-#   every edit. The validator REJECTS the file when the recorded checksum
-#   does not match the canonical SHA256 (NB-1 ADR-7 enforcement).
+# - Run `python -m organism.tools.validate_organs_registry --update-checksum`
+#   after every edit (legacy `validate_genome` alias still works with a
+#   DeprecationWarning until 2026-06-08). The validator REJECTS the file
+#   when the recorded checksum does not match the canonical SHA256
+#   (NB-1 ADR-7 enforcement).
 # - `yaml.safe_dump` (used by --update-checksum) STRIPS comments. Re-apply
 #   this header BY HAND after every checksum recompute, OR switch to
 #   ruamel.yaml in a follow-up. For W1 we tolerate the manual step.
