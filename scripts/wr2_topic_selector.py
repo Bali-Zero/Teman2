@@ -6,6 +6,12 @@ staging area (on Fly), scores them with a deterministic heuristic
 (freshness + Bali-Zero keyword relevance + tier), and if the top score
 beats a threshold writes a new row into war_room_drafts (status=briefed).
 
+Manual override (--topic-url): bypass the staging fetch + scoring entirely
+and inject a draft from a single URL the operator picks. Fetches the page,
+extracts <title> and the largest <article>/<main>/<p> text block, and
+INSERTs a `briefed` row directly. Use when a news item matters more than
+the cron's score sees (e.g. Pemkab announcements, BPD Bali notices).
+
 Env:
     DATABASE_URL            — Fly postgres via localhost:15432 proxy
     NUZANTARA_BACKEND_URL   — default https://nuzantara-rag.fly.dev
@@ -237,6 +243,184 @@ async def _seen_staging_ids(
     return {r["sid"] for r in rows if r["sid"]}
 
 
+MANUAL_FETCH_TIMEOUT: float = 30.0
+MANUAL_USER_AGENT: str = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0 Safari/537.36"
+)
+
+
+async def _fetch_article(url: str) -> dict[str, str]:
+    """Fetch a URL and extract a usable title + body for manual draft injection.
+
+    Tries a cascade of selectors via stdlib HTMLParser — no BS4 dep on Pro.
+    Returns dict with `title`, `body`, `source` (host). Raises RuntimeError on
+    non-2xx / empty body.
+    """
+    from html.parser import HTMLParser
+    from urllib.parse import urlparse
+
+    async with httpx.AsyncClient(
+        timeout=MANUAL_FETCH_TIMEOUT,
+        follow_redirects=True,
+        headers={"User-Agent": MANUAL_USER_AGENT},
+    ) as client:
+        resp = await client.get(url)
+    if resp.status_code >= 400:
+        raise RuntimeError(f"HTTP {resp.status_code} fetching {url}")
+    html = resp.text
+    if not html or len(html) < 200:
+        raise RuntimeError(f"Empty/short body fetching {url} ({len(html)} bytes)")
+
+    class _Extractor(HTMLParser):
+        def __init__(self) -> None:
+            super().__init__()
+            self.title_buf: list[str] = []
+            self.in_title = False
+            self.skip_depth = 0  # script/style/nav nesting
+            self.paragraphs: list[str] = []
+            self.current: list[str] = []
+            self.in_p = False
+
+        def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+            if tag in {"script", "style", "noscript", "nav", "header", "footer", "aside"}:
+                self.skip_depth += 1
+                return
+            if self.skip_depth:
+                return
+            if tag == "title":
+                self.in_title = True
+            elif tag == "p":
+                self.in_p = True
+                self.current = []
+
+        def handle_endtag(self, tag: str) -> None:
+            if tag in {"script", "style", "noscript", "nav", "header", "footer", "aside"}:
+                if self.skip_depth:
+                    self.skip_depth -= 1
+                return
+            if self.skip_depth:
+                return
+            if tag == "title":
+                self.in_title = False
+            elif tag == "p":
+                if self.in_p:
+                    text = " ".join(self.current).strip()
+                    if len(text) > 30:
+                        self.paragraphs.append(text)
+                self.in_p = False
+
+        def handle_data(self, data: str) -> None:
+            if self.skip_depth:
+                return
+            if self.in_title:
+                self.title_buf.append(data)
+            elif self.in_p:
+                self.current.append(data)
+
+    parser = _Extractor()
+    parser.feed(html)
+    title = " ".join(parser.title_buf).strip() or url
+    # Drop site-name suffix patterns ("Title - Site" / "Title | Site")
+    for sep in (" | ", " - ", " — "):
+        if sep in title:
+            head, _, _ = title.partition(sep)
+            if len(head) > 20:
+                title = head
+                break
+    body_paragraphs = parser.paragraphs[:40]  # cap for sanity
+    body = "\n\n".join(body_paragraphs).strip()
+    if not body:
+        raise RuntimeError(f"No <p> body extracted from {url}")
+    host = urlparse(url).netloc or url
+    return {"title": title[:500], "body": body[:8000], "source": host}
+
+
+async def run_manual_topic(
+    *,
+    url: str,
+    dry_run: bool = False,
+    register: str | None = None,
+) -> int:
+    """Inject a manual draft from a single URL, bypassing staging+scoring.
+
+    Bypasses: staging fetch, age filter, live-news preference, score
+    threshold, dedup against staging_id (no staging_id exists). Marks the
+    draft with `manual_override=True` so downstream tools can audit it.
+    """
+    dsn = os.environ.get("DATABASE_URL")
+    if not dsn:
+        logger.error("DATABASE_URL not set")
+        return 2
+
+    logger.info("Manual topic injection: fetching %s", url)
+    try:
+        article = await _fetch_article(url)
+    except Exception as e:
+        logger.exception("Manual fetch failed: %s", e)
+        _send_telegram(f"WR2 manual topic fetch failed\n{url}\n{e}")
+        return 2
+
+    title = article["title"]
+    body = article["body"]
+    source = article["source"]
+    logger.info(
+        "Extracted: title=%r source=%s body_chars=%d",
+        title[:100], source, len(body),
+    )
+
+    brief_json: dict[str, Any] = {
+        "manual_override": True,
+        "source_url": url,
+        "source_host": source,
+        "article_title": title,
+        "article_summary": body[:2000],
+        "article_body_full": body,
+        "enrichment": {},
+        "live_news_score": None,
+        "liveness_tier": "manual",
+        "live_news_reasons": [],
+        "detected_at": datetime.now(timezone.utc).isoformat(),
+        "picked_at": datetime.now(timezone.utc).isoformat(),
+        "score_detail": {"score": None, "rules": {"manual_override": True}},
+    }
+
+    if dry_run:
+        logger.info("[DRY-RUN] Would create manual draft:\n%s", json.dumps({
+            "topic": title[:120],
+            "register": register,
+            "brief_json_preview": {k: v for k, v in brief_json.items() if k != "article_body_full"},
+        }, indent=2))
+        return 0
+
+    pool = await asyncpg.create_pool(dsn=dsn, min_size=1, max_size=2, command_timeout=30)
+    try:
+        async with pool.acquire() as conn:
+            draft_id = await conn.fetchval(
+                """
+                INSERT INTO war_room_drafts (topic, register, status, brief_json)
+                VALUES ($1, $2, 'briefed', $3::jsonb)
+                RETURNING id
+                """,
+                title[:500],
+                register,
+                json.dumps(brief_json),
+            )
+    finally:
+        await pool.close()
+
+    logger.info("Created manual draft %s — topic=%r", draft_id, title[:80])
+    _send_telegram(
+        "WR2 manual topic injected\n"
+        f"Topic: {title[:120]}\n"
+        f"Source: {source}\n"
+        f"URL: {url}\n"
+        f"Draft: {draft_id}\n"
+        "Draft Generator parte al prossimo run (05:15 WITA)",
+    )
+    return 0
+
+
 async def run(*, dry_run: bool = False, force: bool = False) -> int:
     dsn = os.environ.get("DATABASE_URL")
     if not dsn:
@@ -448,10 +632,37 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--force", action="store_true", help="bypass score threshold")
+    parser.add_argument(
+        "--topic-url",
+        metavar="URL",
+        help=(
+            "Manual override: fetch this article URL, extract title+body, "
+            "and INSERT a draft directly. Bypasses staging fetch, scoring, "
+            "age filter, dedup. Use for ad-hoc topics the cron would miss."
+        ),
+    )
+    parser.add_argument(
+        "--register",
+        metavar="REGISTER",
+        default=None,
+        help=(
+            "Optional Council register hint for the draft (analitico, "
+            "militante, pedagogico, ironico, rituale, poetico, tecnico). "
+            "If omitted, draft_generator picks one."
+        ),
+    )
     args = parser.parse_args()
 
     _configure_logging()
     try:
+        if args.topic_url:
+            return asyncio.run(
+                run_manual_topic(
+                    url=args.topic_url,
+                    dry_run=args.dry_run,
+                    register=args.register,
+                )
+            )
         return asyncio.run(run(dry_run=args.dry_run, force=args.force))
     except KeyboardInterrupt:
         return 130
