@@ -2,16 +2,21 @@
 
 Sources stream:
   - imigrasi.go.id/berita
-  - kemenkumham.go.id/berita
+  - kemenkum.go.id/berita (was kemenkumham.go.id — domain rebranded after
+    Oct 2024 cabinet reshuffle that split the old Ministry of Law and Human
+    Rights into 3 separate ministries; old DNS no longer resolves)
   - Tempo "Imigrasi" tag
   - Hukumonline immigration tag (deferred — unstable selectors)
 
 Scorer fast-path:
-  regex: KITAS|VITAS|C-?\\d{3}|VOA|e-?VISA|exit ?permit|imigrasi|kemenkumham|RPTKA
+  regex: KITAS|VITAS|C-?\\d{3}|VOA|e-?VISA|exit ?permit|imigrasi|kemenkum|RPTKA
   skip if `lifestyle|tourism|review` in title
 
 Pattern is identical to nb_intel_regulation: 3 best-effort layers, dedup by
 (domain, source_id), regex fast-path filter.
+
+Endpoint correction 2026-05-08 (live cron run revealed kemenkumham.go.id
+DNS-fails, dig returns NXDOMAIN; kemenkum.go.id returns 200).
 """
 from __future__ import annotations
 
@@ -27,17 +32,17 @@ from mata_garuda.domains.setup_team.types import Regulation
 logger = logging.getLogger(__name__)
 
 IMIGRASI_BERITA_URL = "https://www.imigrasi.go.id/berita"
-KEMENKUMHAM_BERITA_URL = "https://www.kemenkumham.go.id/berita"
+KEMENKUM_BERITA_URL = "https://www.kemenkum.go.id/berita"
 TEMPO_IMIGRASI_TAG_URL = "https://www.tempo.co/tag/imigrasi"
 DEFAULT_TIMEOUT_SECONDS = 20.0
 
 TRUSTED_TIER1_HOSTS = {
     "imigrasi.go.id",
-    "kemenkumham.go.id",
+    "kemenkum.go.id",  # post-2024 rebrand
 }
 
 IMMIGRATION_REGEX = re.compile(
-    r"\b(KITAS|VITAS|C[\-\s]?\d{3}|VOA|e[\-\s]?VISA|exit\s?permit|imigrasi|kemenkumham|RPTKA)\b",
+    r"\b(KITAS|VITAS|C[\-\s]?\d{3}|VOA|e[\-\s]?VISA|exit\s?permit|imigrasi|kemenkum(?:ham)?|RPTKA)\b",
     re.IGNORECASE,
 )
 LIFESTYLE_BLOCKLIST = re.compile(r"\b(lifestyle|tourism|review|gallery|cuisine)\b", re.IGNORECASE)
@@ -148,8 +153,8 @@ async def fetch_recent_immigration(
         layer_imigrasi = await _fetch_url_links(
             http, IMIGRASI_BERITA_URL, "imigrasi", domain_filter="imigrasi.go.id"
         )
-        layer_kemenkumham = await _fetch_url_links(
-            http, KEMENKUMHAM_BERITA_URL, "kemenkumham", domain_filter="kemenkumham.go.id"
+        layer_kemenkum = await _fetch_url_links(
+            http, KEMENKUM_BERITA_URL, "kemenkum", domain_filter="kemenkum.go.id"
         )
         layer_tempo = await _fetch_url_links(
             http, TEMPO_IMIGRASI_TAG_URL, "tempo", domain_filter="tempo.co"
@@ -158,7 +163,7 @@ async def fetch_recent_immigration(
         if own_http:
             await http.aclose()
 
-    combined = list(layer_imigrasi) + list(layer_kemenkumham) + list(layer_tempo)
+    combined = list(layer_imigrasi) + list(layer_kemenkum) + list(layer_tempo)
     deduped = _dedupe(combined)
     in_window = [r for r in deduped if _within_window(r.published_at, days)]
     return in_window

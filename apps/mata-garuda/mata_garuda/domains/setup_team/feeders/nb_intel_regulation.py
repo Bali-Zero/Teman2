@@ -40,7 +40,9 @@ from mata_garuda.foundations.pasal_id_client import PasalIdAuthError, PasalIdCli
 
 logger = logging.getLogger(__name__)
 
-JDIHN_SEARCH_URL = "https://jdihn.go.id/search/site"
+# Endpoint correction 2026-05-08 (live cron run revealed /search/site → 404).
+# Current JDIHN navigation exposes /dokumen-hukum (HTTP 200 verified).
+JDIHN_SEARCH_URL = "https://jdihn.go.id/dokumen-hukum"
 SETKAB_PRESS_URL = "https://setkab.go.id/category/berita/"
 DEFAULT_TIMEOUT_SECONDS = 20.0
 
