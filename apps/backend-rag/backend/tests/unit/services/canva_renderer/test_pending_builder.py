@@ -12,7 +12,6 @@ import pytest
 
 from backend.services.canva_renderer.pending_builder import (
     TEMPLATE_DESIGN_ID,
-    TEMPLATE_SLOTS,
     build_canva_pending,
     slides_to_operations,
 )
@@ -75,16 +74,21 @@ class TestSlidesToOperations:
         # In current TEMPLATE_SLOTS, element_id is None
         assert slide_1_heading_ops[0]["element_id"] is None
 
-    def test_body_text_goes_to_body_element_id(self) -> None:
-        # Note: TEMPLATE_SLOTS now has None for all body slots,
-        # so body ops are skipped in slides_to_operations.
+    def test_body_text_emitted_even_when_body_eid_is_none(self) -> None:
+        # TEMPLATE_SLOTS has None for all body slots in the live template.
+        # The builder MUST still emit the body op (element_id=None) so the
+        # canva-apply skill can remap to the body slot via top-ascending
+        # role_index. Skipping body ops produces the headline-only carousel
+        # bug observed in DAHJDtWApaw / DAHJCzTzn1I (2026-05-08).
         ops = slides_to_operations(_slides_fixture())
         body_ops = [
             op for op in ops
             if op["type"] == "replace_text"
             and "100 officers" in (op.get("text") or "")
         ]
-        assert len(body_ops) == 0  # skipped because body_eid is None
+        assert len(body_ops) == 1
+        assert body_ops[0]["element_id"] is None
+        assert body_ops[0]["page_index"] == 1
 
     def test_image_url_produces_upload_asset_op(self) -> None:
         ops = slides_to_operations(_slides_fixture())
@@ -105,36 +109,41 @@ class TestSlidesToOperations:
         ]
         assert page_3_upload_ops == []
 
-    def test_slide_9_and_11_body_skipped(self) -> None:
-        """Slides 9 and 11 have no body slot in template DAHE6lx1lf8 —
-        builder must not emit body replace_text for them."""
+    def test_body_ops_emitted_for_slides_9_and_11(self) -> None:
+        """Slides 9/11 have no body slot in the original template, but
+        TEMPLATE_SLOTS is now None-filled across all pages. The builder
+        emits body ops uniformly (element_id=None); the canva-apply
+        skill is responsible for resolving — or skipping — the body
+        slot at apply time via runtime remap. Builder MUST NOT make
+        per-page exceptions, otherwise the headline-only-carousel
+        regression returns whenever template page geometry changes."""
         slides = [
             {
                 "slide_number": 9,
                 "headline": "ENFORCEMENT IS NOT THEORETICAL.",
-                "body": "this body should be skipped because slot is absent",
+                "body": "body text reaches Canva — skill decides if slot exists",
                 "image_url": None,
             },
             {
                 "slide_number": 11,
                 "headline": "KNOW YOUR CLOCK.",
-                "body": "also skipped",
+                "body": "same here — apply skill remaps via role_index",
                 "image_url": None,
             },
         ]
         ops = slides_to_operations(slides)
 
-        # Heading replace_text for both slides still present
-        heading_ops = [op for op in ops if op["type"] == "replace_text"]
-        assert len(heading_ops) == 2
+        replace_ops = [op for op in ops if op["type"] == "replace_text"]
+        # 2 heading ops + 2 body ops, one of each per slide
+        assert len(replace_ops) == 4
 
-        # No body ops for page 9 or 11
-        for op in heading_ops:
-            page_idx = op["page_index"]
-            slot = TEMPLATE_SLOTS[page_idx - 1]
-            assert slot[2] is None or op["element_id"] == slot[1], (
-                f"page {page_idx} should only have heading ops, not body"
+        for page_index in (9, 11):
+            page_ops = [op for op in replace_ops if op["page_index"] == page_index]
+            assert len(page_ops) == 2, (
+                f"page {page_index} must have heading + body ops"
             )
+            # All element_ids are None because TEMPLATE_SLOTS is None-filled
+            assert all(op["element_id"] is None for op in page_ops)
 
 
 class TestBuildCanvaPending:
