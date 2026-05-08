@@ -42,3 +42,6 @@ exclude = ["tests*", "feedback*", "logs*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 python_files = "test_*.py"
+markers = [
+    "live: hits the real public internet; opt-in via MATA_GARUDA_LIVE_ENDPOINTS=1",
+]
