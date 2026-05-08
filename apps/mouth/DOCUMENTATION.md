@@ -33,6 +33,7 @@
 14. [Deployment](#14-deployment)
 15. [Performance](#15-performance)
 16. [Troubleshooting](#16-troubleshooting)
+17. [Analytics Tracking](#17-analytics-tracking)
 
 ---
 
@@ -1354,6 +1355,161 @@ API:           camelCase.ts       (e.g., chat.api.ts)
 MDX:           kebab-case.mdx     (e.g., visa-guide-2025.mdx)
 Images:        kebab-case.jpg     (e.g., golden-visa.jpg)
 ```
+
+---
+
+## 17. Analytics Tracking
+
+> **Last updated:** 2026-05-07
+> **PRs:** `sancho/funnel-event-names` · `sancho/funnel-cta-tracking`
+
+Analytics tracking uses a **triple-dispatch** pattern: every event is sent
+simultaneously to three destinations.
+
+```
+User interaction
+       │
+       ▼
+  Helper function  (lib/analytics.ts)
+       │
+       ├──► sendGA4Event()       → Google Analytics 4 (gtag)
+       ├──► trackEvent()         → Internal CRM analytics bus
+       └──► trackFunnelEvent()   → Funnel store (POST /api/analytics/funnel-event)
+```
+
+---
+
+### 17.1 Event Registry
+
+All valid event names live in one place:
+
+```
+packages/core/analytics/funnel-view.ts  ← Single Source of Truth
+```
+
+`FUNNEL_EVENTS` is a `const` array. `FunnelEventName` is derived automatically:
+
+```typescript
+export type FunnelEventName = (typeof FUNNEL_EVENTS)[number];
+```
+
+**Adding a new event:** append the string to `FUNNEL_EVENTS`. The type updates
+automatically — no other changes needed in the registry file.
+
+---
+
+### 17.2 Funnel Home-Block CTA Events (added 2026-05-07)
+
+Four interaction types × four funnels = **16 events**:
+
+| Action            | Visa                    | KBLI                    | Tax                    | Property                    |
+| ----------------- | ----------------------- | ----------------------- | ---------------------- | --------------------------- |
+| Main CTA click    | `visa_cta_click`        | `kbli_cta_click`        | `tax_cta_click`        | `property_cta_click`        |
+| Pricing CTA click | `visa_consult_click`    | `kbli_consult_click`    | `tax_consult_click`    | `property_consult_click`    |
+| Search submit     | `visa_search_submit`    | `kbli_search_submit`    | `tax_search_submit`    | `property_search_submit`    |
+| Suggestion chip   | `visa_suggestion_click` | `kbli_suggestion_click` | `tax_suggestion_click` | `property_suggestion_click` |
+
+---
+
+### 17.3 Helper Functions
+
+Located in `apps/mouth/src/lib/analytics.ts`.
+
+#### Funnel home-block helpers (new — 2026-05-07)
+
+```typescript
+import { trackVisaCTA, trackKBLICTA, trackTaxCTA, trackPropertyCTA } from "@/lib/analytics";
+
+// All four helpers share the same signature
+trackVisaCTA(
+  action: "cta_click" | "consult_click" | "search_submit" | "suggestion_click",
+  extra?: Record<string, string | number | boolean>,
+): void
+
+// Examples
+trackVisaCTA("cta_click");
+trackKBLICTA("search_submit", { query_length: 12 });
+trackPropertyCTA("suggestion_click", { suggestion: "Canggu villa zone" });
+```
+
+#### Article-page property helper (renamed 2026-05-07)
+
+```typescript
+// Old name: trackPropertyCTA  ← freed for funnel-scoped helper above
+trackPropertyArticleCTA(articleSlug: string, ctaType: string): void
+```
+
+> **Note:** `trackPropertyCTA` now refers to the funnel home-block helper.
+> Use `trackPropertyArticleCTA` for article-page CTAs.
+
+---
+
+### 17.4 Usage in FunnelFeature
+
+`FunnelFeature.tsx` uses a dispatch map to avoid a switch in JSX:
+
+```typescript
+const CTA_TRACKER: Record<Exclude<Funnel, null>, typeof trackVisaCTA> = {
+  visa: trackVisaCTA,
+  kbli: trackKBLICTA,
+  tax: trackTaxCTA,
+  property: trackPropertyCTA,
+};
+
+const track = CTA_TRACKER[funnel]; // resolved once per render
+
+// Wired interactions
+<a onClick={() => track("cta_click")}>Try Visa Oracle</a>
+<a onClick={() => track("consult_click")}>See transparent pricing</a>
+<form onSubmit={() => track("search_submit", { query_length: n })}>...</form>
+<button onClick={() => track("suggestion_click", { suggestion: sug })}>...</button>
+```
+
+---
+
+### 17.5 Verifying in Browser DevTools
+
+1. Open DevTools → **Network** tab
+2. Filter by: `funnel-event`
+3. Click any CTA on the home page
+4. Expect: `POST /api/analytics/funnel-event` → **status 200**
+5. Check **Payload** tab — should contain:
+
+```json
+{
+  "session_id": "...",
+  "event": "visa_cta_click",
+  "payload": { "funnel": "visa" }
+}
+```
+
+**Red flags:**
+
+| Symptom                        | Cause                             | Fix                            |
+| ------------------------------ | --------------------------------- | ------------------------------ |
+| `422` response                 | Event name not in `FUNNEL_EVENTS` | Add to registry (PR 1 pattern) |
+| No request                     | Helper not called                 | Check `CTA_TRACKER` map        |
+| Initiator not `funnel-view.ts` | Local tracker still active        | Should not happen after PR 2   |
+
+---
+
+### 17.6 Pre-existing Helpers Reference
+
+| Helper                      | Category    | GA4 Event Name           |
+| --------------------------- | ----------- | ------------------------ |
+| `trackVisaQuizCompleted`    | Visa Oracle | `visa_quiz_completed`    |
+| `trackVisaResultViewed`     | Visa Oracle | `visa_result_viewed`     |
+| `trackVisaChatQuestion`     | Visa Oracle | `visa_chat_question`     |
+| `trackVisaWhatsAppCTA`      | Visa Oracle | `visa_whatsapp_cta`      |
+| `trackVisaCallingBlock`     | Visa Oracle | `visa_calling_block`     |
+| `trackKBLICodeViewed`       | KBLI        | `kbli_code_viewed`       |
+| `trackKBLISearch`           | KBLI        | `kbli_search`            |
+| `trackKBLIChatQuestion`     | KBLI        | `kbli_chat_question`     |
+| `trackTaxDashboardViewed`   | Tax         | `tax_dashboard_viewed`   |
+| `trackPropertyArticleCTA`   | Property    | `property_cta_clicked`   |
+| `trackPropertyAnalyzeCTA`   | Property    | `property_cta_clicked`   |
+| `trackPropertyChatQuestion` | Property    | `property_chat_question` |
+| `trackPropertyWACTA`        | Property    | `property_chat_question` |
 
 ---
 
