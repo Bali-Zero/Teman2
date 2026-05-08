@@ -32,8 +32,9 @@ code is preserved if reactivation is ever desired.
 ## Innervation scope
 
 These organs are NOT enrolled in the Innervation Genoma registry
-(`apps/organism/organism/genome.yaml`) because they are not running in
-production. Re-evaluate enrollment when reactivated.
+(`apps/organism/organism/organs_registry.yaml`, renamed 2026-05-08 IG-3
+from `genome.yaml`) because they are not running in production.
+Re-evaluate enrollment when reactivated.
 
 ## Files moved here
 

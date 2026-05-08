@@ -33,17 +33,17 @@ The double-firing was masked until 2026-05-04 because Mini was offline most of A
 
 1. **Decision per organ** — for each of the 13, decide: (a) Pro-only and unload from Mini, (b) Mini-only and unload from Pro, or (c) leader-election. Rationale per organ depends on resource locality (e.g. `kg-linker` writes to local Postgres on Pro; `nlm-feeder-stream` reaches NotebookLM CLI which is Pro-only). Default for the 13: prefer (a) Pro-only since Pro has the canonical CRM data and external API tokens.
 
-2. **Plist removal** — `launchctl bootout gui/$(id -u)/com.matagaruda.<label>` + `rm ~/Library/LaunchAgents/com.matagaruda.<label>.plist` on the LOSING side. Update `genome.yaml` to drop the corresponding `mini` or `pro` entry once the launchd state is reconciled.
+2. **Plist removal** — `launchctl bootout gui/$(id -u)/com.matagaruda.<label>` + `rm ~/Library/LaunchAgents/com.matagaruda.<label>.plist` on the LOSING side. Update `organs_registry.yaml` (file renamed 2026-05-08 IG-3 from `genome.yaml`; legacy symlink works until 2026-06-08) to drop the corresponding `mini` or `pro` entry once the launchd state is reconciled.
 
 3. **Resolver hardening** — extend `wave1-pro-mini-dup-resolver.sh` protected list to cover the 13 labels with `--resolve` mode that picks the canonical owner per organ. Run via cron after each Mini-up event (heartbeat from `secrets-sync-mini` could trigger).
 
-4. **Test** — register new test in `apps/organism/tests/test_genome_no_active_active.py` that scans `genome.yaml` for entries sharing identical `recovery_params.label` across `pro` and `mini` hosts, fails CI if any pair is found OUTSIDE an explicit allowlist (which starts empty post-cleanup).
+4. **Test** — register new test in `apps/organism/tests/test_genome_no_active_active.py` that scans `organs_registry.yaml` for entries sharing identical `recovery_params.label` across `pro` and `mini` hosts, fails CI if any pair is found OUTSIDE an explicit allowlist (which starts empty post-cleanup).
 
 Until the cleanup PR ships, the W1 PR registry shows 13 dup pairs cross-linked via `duplicates_id` (header-only convention) — observability without coordination. The Supervisor will surface 2× heartbeats per tick on these labels until reconciled.
 
 **GOTCHA:**
 
-- `genome.yaml` `duplicates_id` is a HEADER-ONLY convention. The validator does NOT enforce it. A future refactor that drops `duplicates_id` accidentally will not surface in CI.
+- `organs_registry.yaml` `duplicates_id` is a HEADER-ONLY convention. The validator does NOT enforce it. A future refactor that drops `duplicates_id` accidentally will not surface in CI.
 - The dup_resolver's `--check` mode returns "0 conflicts, Mini offline" when Mini is unreachable. Operators reading this output may conclude "no dups exist" — incorrect when Mini is up.
 - Cron jobs on Pro and Mini may run at slightly offset wall-clock times because the 2 machines have independent clock skew. Expect a 0-5s window where both fire before either completes — race conditions in shared state (Redis SETNX, Postgres advisory lock) are NOT mitigated by this PR.
 - Mata-garuda agents that emit to `garuda:raw` Redis stream pass through Nuzantara's CRM consumer; double-firing inflates `items_processed` metric by 2× until cleanup. Dashboards built on raw counts will misreport — note in dashboard query: filter by `host_pro_or_mini` if the producer label distinguishes.
@@ -386,7 +386,8 @@ Concrete forensic sequence for incident #2 (full timeline in commit
   the session that created them; mutex / lockfile on `feature/*`
   branches during long-session work.
 - **Innervation Genoma exclusion (2026-04-30)**: `nuz-sync` is
-  explicitly NOT enrolled in `apps/organism/organism/genome.yaml`
+  explicitly NOT enrolled in `apps/organism/organism/organs_registry.yaml`
+  (file renamed 2026-05-08 IG-3 from `genome.yaml`)
   despite being a critical Pro organ. Rationale: this scar identifies
   sibling automation as the most likely producer of branch-hijack
   incidents, and `nuz-sync` is the prime suspect for incident #1

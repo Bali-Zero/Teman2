@@ -45,7 +45,8 @@ def create_app(*, blackout: BlackoutManager) -> FastAPI:
         # `ts` (unix epoch) is the heartbeat field consumed by the Cell
         # GenomeAggregatorSensor for the pro.organism_control_panel organ
         # (W1.5). Don't remove or rename without updating the bridge_source
-        # entry in genome.yaml.
+        # entry in organs_registry.yaml (legacy alias `genome.yaml` symlink
+        # retained until 2026-06-08).
         return {"status": "ok", "paused": paused, "ts": time.time()}
 
     @app.post("/pause")

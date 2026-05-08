@@ -12,7 +12,9 @@ Convention (W1.1, 2026-04-30):
     }
 
 The Cell `genome_aggregator_sensor` reads this sidecar via
-`bridge_source: state_file` declared in `apps/organism/organism/genome.yaml`.
+`bridge_source: state_file` declared in
+`apps/organism/organism/organs_registry.yaml` (filesystem symlink
+`genome.yaml` retained until 2026-06-08 for backward compat).
 A missing / stale file → BridgeReading.error → organ classified `dead`.
 
 This helper is intentionally tiny and dependency-free: it is called from
