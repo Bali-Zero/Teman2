@@ -54,7 +54,8 @@ blocker, I list the remediation Sprint that addresses it.
 ### #2 `seo-guardian-cell` — L1, Sprint 4
 
 - Already exists as `apps/evaluator/seo_cell/`. Light promotion: declare
-  in `genome.yaml`, formalize the metrics (SEO score, indexed pages,
+  in `organs_registry.yaml` (Innervation Genoma — file renamed 2026-05-08
+  IG-3 from `genome.yaml`), formalize the metrics (SEO score, indexed pages,
   click-through-rate, CrUX scores).
 - **⚠️ Event-driven:** seo-cell-daily.sh and seo-cell-28d-check.sh
   write JSON state files, no PG NOTIFY. Sprint 4 W1 wraps in

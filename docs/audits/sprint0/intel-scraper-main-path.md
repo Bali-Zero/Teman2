@@ -101,7 +101,8 @@ Mapping the real production runners to this cell:
 | `cron-agent-python intel-feed-processor` (2h) | Cell **light sensor** — feeds Intel Scraper's enricher with new feeds |
 
 The cell-leggera Sprint 1 work is to formalize this:
-- **Genome scar registry** entry for the cell (`apps/organism/organism/genome.yaml`)
+- **Genome scar registry** entry for the cell (`apps/organism/organism/organs_registry.yaml`,
+  renamed 2026-05-08 IG-3 from `genome.yaml`)
 - **HGT publisher** wrapper around the existing `trend_signals` insert path
   (no new code; just declare the cell + emit `cell_pulse_observed` events
   via the cell-observatory API)
@@ -117,7 +118,7 @@ documentation + observability instrumentation.
 | Is Intel Scraper main path alive? | **Yes** — round-1 audit confirmed runs at 14:00 today (Pro), pre-Sprint 0 |
 | Is drive-poll disable affecting Intel Scraper? | **No** — drive-poll was for CRM Drive folder watching, not Intel Scraper |
 | Is the 03:00 WITA cron still authoritative? | **Yes** — `apps/bali-intel-scraper/CLAUDE.md` confirms; sentinel bridge polls every 5min |
-| Is `intel-scraper-cell` light promotion a no-op or a refactor? | **Mostly no-op** — just declare the cell in `genome.yaml`, instrument observability emit, formalize HGT publisher contract |
+| Is `intel-scraper-cell` light promotion a no-op or a refactor? | **Mostly no-op** — just declare the cell in `organs_registry.yaml` (renamed from `genome.yaml`), instrument observability emit, formalize HGT publisher contract |
 | Re-livening required for Sprint 1? | **No** — already alive |
 
 ## Action items
@@ -155,8 +156,9 @@ documentation + observability instrumentation.
 
 ### Sprint 1 — light promotion work
 
-3. Add `intel-scraper-cell` entry to `apps/organism/organism/genome.yaml`
-   (per brainstorm Genome scar registry pattern).
+3. Add `intel-scraper-cell` entry to `apps/organism/organism/organs_registry.yaml`
+   (renamed 2026-05-08 IG-3 from `genome.yaml`; per brainstorm Genome scar
+   registry pattern).
 4. Add observability emit in the publisher step (one-liner: `await
    ObservedShellBus.emit("intel-scraper.publish", "ok", {count, slug})`
    — uses Track C2 framework).

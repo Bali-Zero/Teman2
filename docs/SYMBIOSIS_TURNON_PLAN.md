@@ -19,8 +19,10 @@ Questo piano accende il restante 60% in 3-4 settimane.
 - `apps/organism/organism/supervisor/` — daemon W1 shadow mode,
   claude_brain, consiglio_gate, 11 actuators (restart/quarantine/
   cleanup/notify), heartbeat Redis key `organism:supervisor:heartbeat`
-- `apps/organism/organism/genome.yaml` — registry schema validato
-  con SHA256 + pre-commit hook (NB-1 ADR-7 HALT-on-mismatch)
+- `apps/organism/organism/organs_registry.yaml` (Innervation Genoma —
+  file renamed 2026-05-08 IG-3, legacy alias `genome.yaml` symlink works
+  until 2026-06-08) — registry schema validato con SHA256 + pre-commit
+  hook (NB-1 ADR-7 HALT-on-mismatch)
 
 ### Da accendere
 
@@ -43,16 +45,16 @@ heartbeat + recovery automatico via Supervisor.
 
 | Sessione | Scope                                                 | Output                 |
 | -------- | ----------------------------------------------------- | ---------------------- |
-| W1-A     | Mata-garuda 30 agents + 13 workers                    | 43 entries genome.yaml |
-| W1-B     | WR2 14 unregistered LaunchAgents                      | 14 entries genome.yaml |
+| W1-A     | Mata-garuda 30 agents + 13 workers                    | 43 entries organs_registry.yaml |
+| W1-B     | WR2 14 unregistered LaunchAgents                      | 14 entries organs_registry.yaml |
 | W1-C     | Pro background crons (intel/translate/sentinel/+ ~10) | ~10 entries            |
 | W1-D     | Mini LaunchAgents (15 mata-garuda + others)           | ~20 entries            |
 
 **Files**:
 
-- `apps/organism/organism/genome.yaml` (espandere da 26 a ~100 entries)
-- `apps/organism/organism/tools/validate_genome.py` (run --update-checksum)
-- Pre-commit hook `validate-genome` (già attivo)
+- `apps/organism/organism/organs_registry.yaml` (espandere da 26 a ~100 entries)
+- `apps/organism/organism/tools/validate_organs_registry.py` (run --update-checksum)
+- Pre-commit hook `validate-organs-registry` (già attivo; rename 2026-05-08 IG-3)
 
 **Test**:
 
@@ -71,7 +73,7 @@ giorno review + 1 giorno canary su Mini)
 
 ### FASE 2 — Cell Observatory full coverage (settimana 1-2)
 
-**Obiettivo**: ogni organo enrolled in genome.yaml emette pulse a
+**Obiettivo**: ogni organo enrolled in organs_registry.yaml emette pulse a
 events_outbox via observatory cross-machine.
 
 **Lavoro**:
@@ -93,7 +95,7 @@ WHERE consumed_at IS NULL GROUP BY channel`
 - `apps/backend-rag/backend/db/migrations_v2/{147..152}_*.sql` (6 nuove
   migration, una per canale)
 - Bulk patcher Python `~/scripts/observatory-emit-enable-bulk.py` che
-  legge genome.yaml + plutil -insert su ogni plist
+  legge organs_registry.yaml + plutil -insert su ogni plist
 - `apps/cell-observatory-collector/` (già esiste, verificare connection
   pool size adeguato a +60 organi)
 
@@ -313,7 +315,7 @@ Supervisor passa da shadow a dispatch.
 
 | Indicatore                          | Before           | Target                  | Pilastro SYMBIOSIS         |
 | ----------------------------------- | ---------------- | ----------------------- | -------------------------- |
-| Organi in genome.yaml               | 26               | ≥100                    | Pilastro 7 (Misura)        |
+| Organi in organs_registry.yaml      | 26               | ≥100                    | Pilastro 7 (Misura)        |
 | Canali events_outbox durabili       | 6/12             | 12/12                   | Legge 4 (event-driven)     |
 | Celle HGT attive                    | 3                | 10+                     | Pilastro 2 (Accumulazione) |
 | Skill scambiate/giorno              | ~0               | ≥5                      | Pilastro 3 (Condivisione)  |

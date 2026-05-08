@@ -1,9 +1,10 @@
-"""Tests for `organism.tools.validate_genome`.
+"""Tests for `organism.tools.validate_organs_registry`.
 
-The validator parses a Genoma YAML file, enforces schema/enum/dep/checksum
-invariants, and returns a list of validation errors. Tests cover the 8
-classes of failure documented in 07_innervation_protocol.md §2.3 plus a
-happy-path baseline.
+The validator parses an organs registry YAML file (the Innervation Genoma
+— file renamed 2026-05-08 IG-3 from `genome.yaml` to `organs_registry.yaml`),
+enforces schema/enum/dep/checksum invariants, and returns a list of
+validation errors. Tests cover the 8 classes of failure documented in
+07_innervation_protocol.md §2.3 plus a happy-path baseline.
 """
 from __future__ import annotations
 
@@ -14,7 +15,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from organism.tools import validate_genome as vg
+from organism.tools import validate_organs_registry as vg
 
 
 # ---------- helpers ----------------------------------------------------------
@@ -187,20 +188,23 @@ def test_compute_checksum_is_canonical_and_stable(tmp_path):
     assert len(h1) == 64  # sha256 hex length
 
 
-# ---------- live genome.yaml integration ------------------------------------
+# ---------- live organs_registry.yaml integration --------------------------
 
 
 _LIVE_GENOME = (
-    Path(__file__).resolve().parents[2] / "organism" / "genome.yaml"
+    Path(__file__).resolve().parents[2] / "organism" / "organs_registry.yaml"
 )
 
 
-def test_live_genome_is_valid():
-    """The repo's genome.yaml must always validate clean — guards against
-    accidental schema drift in PRs that touch the live registry."""
+def test_live_organs_registry_is_valid():
+    """The repo's organs_registry.yaml (Innervation Genoma) must always
+    validate clean — guards against accidental schema drift in PRs that
+    touch the live registry. Renamed from test_live_genome_is_valid 2026-05-08
+    (IG-3) to match the file rename `genome.yaml` → `organs_registry.yaml`.
+    """
     assert _LIVE_GENOME.exists(), f"missing {_LIVE_GENOME}"
     errors = vg.validate_file(_LIVE_GENOME)
-    assert errors == [], f"live genome failed validation: {errors}"
+    assert errors == [], f"live organs_registry failed validation: {errors}"
 
 
 @pytest.mark.parametrize(
@@ -411,3 +415,58 @@ class TestW1_5MissCritici:
             assert "infra.postgres" in organ["dependencies"], (
                 f"{organ_id} should depend on infra.postgres (post_metrics_history)"
             )
+
+
+# ---------- Backward-compat shim (IG-3, 2026-05-08) -------------------------
+
+
+def test_legacy_validate_genome_alias_warns_but_works():
+    """The deprecated `validate_genome` alias (renamed to
+    `validate_organs_registry` 2026-05-08 IG-3) must still re-export the
+    public surface and emit a DeprecationWarning when imported. Removal
+    scheduled 2026-06-08.
+    """
+    import importlib
+    import warnings
+
+    # Force a fresh import to capture the warning at module load.
+    if "organism.tools.validate_genome" in list(__import__("sys").modules):
+        del __import__("sys").modules["organism.tools.validate_genome"]
+
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        legacy = importlib.import_module("organism.tools.validate_genome")
+
+    assert any(
+        issubclass(w.category, DeprecationWarning)
+        and "validate_organs_registry" in str(w.message)
+        for w in caught
+    ), "import of legacy alias must emit DeprecationWarning pointing at the new module"
+
+    # Public surface is re-exported
+    assert hasattr(legacy, "validate_file")
+    assert hasattr(legacy, "compute_checksum")
+    assert hasattr(legacy, "main")
+    assert hasattr(legacy, "_RUNTIMES")  # used by tests historically
+
+
+def test_legacy_genome_yaml_symlink_resolves_to_organs_registry(tmp_path):
+    """The filesystem symlink `apps/organism/organism/genome.yaml` must point
+    at the new file `organs_registry.yaml`, so existing scripts/cron jobs
+    with the old hardcoded path keep reading the live registry without code
+    changes. Removal scheduled 2026-06-08.
+    """
+    legacy = (
+        Path(__file__).resolve().parents[2] / "organism" / "genome.yaml"
+    )
+    assert legacy.exists(), f"missing legacy alias symlink {legacy}"
+    assert legacy.is_symlink(), "legacy alias must be a symlink, not a copy"
+    target = legacy.resolve()
+    assert target.name == "organs_registry.yaml", (
+        f"legacy symlink points at {target.name}, expected organs_registry.yaml"
+    )
+    # And reading via the legacy path must produce the same bytes.
+    new = (
+        Path(__file__).resolve().parents[2] / "organism" / "organs_registry.yaml"
+    )
+    assert legacy.read_bytes() == new.read_bytes()

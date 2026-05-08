@@ -212,8 +212,8 @@ Cell-boundary work needs to know what events the cell will speak.
    on Pro. The cell has the same constraint. Cell can have a
    "Pro-only sub-organelle" pattern (like WR2 has
    topic-selector/draft-generator on Pro only). W1.2 to decide.
-4. **Genome integration** — does crm-cell get a `genome.yaml` entry
-   in `apps/organism/organism/genome.yaml`? `nuz-sync` (cf. cicatrix)
+4. **Genome integration** — does crm-cell get a `organs_registry.yaml` entry
+   in `apps/organism/organism/organs_registry.yaml`? `nuz-sync` (cf. cicatrix)
    is explicitly excluded; this is the right time to set the
    precedent for crm-cell.
 
