@@ -40,20 +40,44 @@ logger = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT_SECONDS = 20.0
 
-# 4 Bali jdih portals (must already be in gov_apis_inventory.json).
+# 8 Bali jdih portals + 2 Pemkab homepage fallbacks
+# (Phase 1.5 PR-B 2026-05-08: expanded from 4 to 10. The 4 added jdih are
+# Tabanan/Buleleng/Klungkung/Karangasem. The 2 Pemkab fallbacks are Bangli
+# and Jembrana — their dedicated jdih.<kab>.go.id subdomains DNS-fail or
+# timeout from this network, so we scrape Pemkab homepage news instead.)
+#
+# All 10 entries must exist in gov_apis_inventory.json — load_inventory()
+# is the source of truth.
 BALI_PORTAL_IDS = (
+    # Original 4 jdih (Phase 1).
     "jdih_baliprov",
     "jdih_badungkab",
     "jdih_gianyarkab",
     "jdih_denpasarkota",
+    # New jdih (Phase 1.5 PR-B, all verified live 200 on 2026-05-08).
+    "jdih_tabanankab",
+    "jdih_bulelengkab",
+    "jdih_klungkungkab",
+    "jdih_karangasemkab",
+    # Pemkab homepage fallbacks (the dedicated jdih subdomain was DNS-fail
+    # or timeout on 2026-05-08; the Pemkab homepage carries enough Perda/
+    # Perbup news in its /berita or /articles section to not lose coverage).
+    "pemkab_bangli",
+    "pemkab_jembrana",
 )
 
-# Tier-1 trusted (all 4 are gov direct).
+# Tier-1 trusted: all 10 are gov direct (.go.id under provincia/kabupaten/kota).
 TRUSTED_TIER1_HOSTS = {
     "jdih.baliprov.go.id",
     "jdih.badungkab.go.id",
     "jdih.gianyarkab.go.id",
     "jdih.denpasarkota.go.id",
+    "jdih.tabanankab.go.id",
+    "jdih.bulelengkab.go.id",
+    "jdih.klungkungkab.go.id",
+    "jdih.karangasemkab.go.id",
+    "banglikab.go.id",
+    "jembranakab.go.id",
 }
 
 CATEGORY_REGEXES = {

@@ -51,5 +51,35 @@
     "id": "jdih_denpasarkota",
     "url": "https://jdih.denpasarkota.go.id",
     "category": "regulation_bali"
+  },
+  {
+    "id": "jdih_tabanankab",
+    "url": "https://jdih.tabanankab.go.id",
+    "category": "regulation_bali"
+  },
+  {
+    "id": "jdih_bulelengkab",
+    "url": "https://jdih.bulelengkab.go.id",
+    "category": "regulation_bali"
+  },
+  {
+    "id": "jdih_klungkungkab",
+    "url": "https://jdih.klungkungkab.go.id",
+    "category": "regulation_bali"
+  },
+  {
+    "id": "jdih_karangasemkab",
+    "url": "https://jdih.karangasemkab.go.id",
+    "category": "regulation_bali"
+  },
+  {
+    "id": "pemkab_bangli",
+    "url": "https://www.banglikab.go.id/berita",
+    "category": "regulation_bali"
+  },
+  {
+    "id": "pemkab_jembrana",
+    "url": "https://jembranakab.go.id/articles",
+    "category": "regulation_bali"
   }
 ]

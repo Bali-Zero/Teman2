@@ -28,6 +28,7 @@ from mata_garuda.domains.setup_team.feeders.nb_intel_regulation import (
 from mata_garuda.domains.setup_team.feeders.nb_intel_regulation_bali import (
     BALI_PORTAL_IDS,
     CATEGORY_REGEXES,
+    TRUSTED_TIER1_HOSTS as BALI_TRUSTED_TIER1_HOSTS,
     _classify_categories,
     fetch_recent_regulation_bali,
 )
@@ -364,18 +365,59 @@ def test_bali_category_regexes_classify_correctly():
     assert _classify_categories("") == ()
 
 
-def test_bali_portal_ids_are_the_4_canonical():
-    assert BALI_PORTAL_IDS == (
+def test_bali_portal_ids_include_all_8_jdih_plus_2_pemkab_fallbacks():
+    """Phase 1.5 PR-B — expanded from 4 to 10 portals.
+
+    8 jdih portals (4 original + 4 added 2026-05-08): provincia + Badung
+    + Gianyar + Denpasar + Tabanan + Buleleng + Klungkung + Karangasem.
+
+    2 Pemkab homepage fallbacks (Bangli + Jembrana — their dedicated
+    jdih.<kab>.go.id subdomains DNS-fail or timeout, so we scrape the
+    Pemkab homepage's /berita or /articles section instead).
+
+    Live verification 2026-05-08: all 8 jdih return 200; banglikab.go.id
+    and jembranakab.go.id return 200 with regulation-relevant berita.
+    """
+    assert set(BALI_PORTAL_IDS) == {
+        # Original 4 (Phase 1).
         "jdih_baliprov",
         "jdih_badungkab",
         "jdih_gianyarkab",
         "jdih_denpasarkota",
+        # New jdih (Phase 1.5 PR-B).
+        "jdih_tabanankab",
+        "jdih_bulelengkab",
+        "jdih_klungkungkab",
+        "jdih_karangasemkab",
+        # Pemkab homepage fallbacks (jdih.<kab>.go.id was unreachable).
+        "pemkab_bangli",
+        "pemkab_jembrana",
+    }
+
+
+def test_bali_trusted_tier1_hosts_includes_all_10_portals():
+    """All gov-direct hosts must be tier-1 trusted for the scorer."""
+    expected = {
+        "jdih.baliprov.go.id",
+        "jdih.badungkab.go.id",
+        "jdih.gianyarkab.go.id",
+        "jdih.denpasarkota.go.id",
+        "jdih.tabanankab.go.id",
+        "jdih.bulelengkab.go.id",
+        "jdih.klungkungkab.go.id",
+        "jdih.karangasemkab.go.id",
+        "banglikab.go.id",
+        "jembranakab.go.id",
+    }
+    assert expected.issubset(BALI_TRUSTED_TIER1_HOSTS), (
+        f"missing trusted hosts: {expected - BALI_TRUSTED_TIER1_HOSTS}"
     )
 
 
-def test_bali_inventory_contains_all_4_portals():
-    """T4 plan note: portals should already be in gov_apis_inventory.json
-    from Phase 0. Verify."""
+def test_bali_inventory_contains_all_bali_portals():
+    """Every id in BALI_PORTAL_IDS must exist in gov_apis_inventory.json.
+    T4 plan note: jdih portals come from Phase 0; Phase 1.5 PR-B added
+    4 more jdih + 2 Pemkab fallbacks (Bangli, Jembrana)."""
     from mata_garuda.foundations.gov_apis_health import load_inventory
 
     inv = load_inventory()
