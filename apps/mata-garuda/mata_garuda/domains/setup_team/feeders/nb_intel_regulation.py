@@ -133,7 +133,9 @@ async def _fetch_jdihn(http: httpx.AsyncClient, days: int) -> list[Regulation]:
     """
     out: list[Regulation] = []
     try:
-        resp = await http.get(JDIHN_SEARCH_URL, params={"keyword": "2026", "type": "regulation"})
+        # `type=regulation` causes the portal to 404 (verified live 2026-05-08).
+        # Plain keyword search returns 200 with the regulation index page.
+        resp = await http.get(JDIHN_SEARCH_URL, params={"keyword": "2026"})
     except (httpx.HTTPError, httpx.TimeoutException) as exc:
         logger.warning("JDIHN fetch failed: %s", exc)
         return out

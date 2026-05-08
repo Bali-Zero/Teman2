@@ -15,8 +15,10 @@ Scorer fast-path:
 Pattern is identical to nb_intel_regulation: 3 best-effort layers, dedup by
 (domain, source_id), regex fast-path filter.
 
-Endpoint correction 2026-05-08 (live cron run revealed kemenkumham.go.id
-DNS-fails, dig returns NXDOMAIN; kemenkum.go.id returns 200).
+Endpoint corrections (live verification 2026-05-08):
+  - kemenkumham.go.id → kemenkum.go.id (DNS rebrand post-2024 ministry split)
+  - kemenkum.go.id/berita → /berita-utama (the /berita path now 404s; news
+    articles live under /berita-utama/<slug>)
 """
 from __future__ import annotations
 
@@ -32,7 +34,7 @@ from mata_garuda.domains.setup_team.types import Regulation
 logger = logging.getLogger(__name__)
 
 IMIGRASI_BERITA_URL = "https://www.imigrasi.go.id/berita"
-KEMENKUM_BERITA_URL = "https://www.kemenkum.go.id/berita"
+KEMENKUM_BERITA_URL = "https://www.kemenkum.go.id/berita-utama"
 TEMPO_IMIGRASI_TAG_URL = "https://www.tempo.co/tag/imigrasi"
 DEFAULT_TIMEOUT_SECONDS = 20.0
 
