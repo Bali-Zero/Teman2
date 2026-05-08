@@ -38,19 +38,34 @@ pytestmark = [
 ]
 
 ENDPOINTS = [
-    # (name, url, allow_404_for_now) — Phase 1.5 PR-A baseline
+    # Phase 1.5 PR-A baseline (regulation + immigration national + media).
     ("imigrasi_berita", "https://www.imigrasi.go.id/berita"),
     ("kemenkum_berita_utama", "https://www.kemenkum.go.id/berita-utama"),
     ("jdihn_dokumen_hukum", "https://jdihn.go.id/dokumen-hukum?keyword=2026"),
     ("setkab_category_berita", "https://setkab.go.id/category/berita/"),
     ("tempo_imigrasi_tag", "https://www.tempo.co/tag/imigrasi"),
+    # Phase 1.5 PR-C: regulation tier-2.
+    ("bpk_search", "https://peraturan.bpk.go.id/Search?type=peraturan"),
+    ("peraturan_go_id", "https://www.peraturan.go.id/"),
+    # Phase 1.5 PR-C: 3 Bali Kantor Imigrasi (regional).
+    (
+        "kanim_ngurahrai",
+        "https://ngurahrai.imigrasi.go.id/berita-dan-siaran-pers/",
+    ),
+    ("kanim_denpasar", "https://denpasar.imigrasi.go.id/kat/berita"),
+    (
+        "kanim_singaraja",
+        "https://singaraja.imigrasi.go.id/berita-keimigrasian/",
+    ),
 ]
 
 
 @pytest.mark.parametrize("name,url", ENDPOINTS)
 def test_endpoint_reachable(name: str, url: str) -> None:
-    """Each Phase 1 source must return 200 with substantive body."""
-    with httpx.Client(timeout=15.0, follow_redirects=True) as client:
+    """Each Phase 1.5 source must return 200 with substantive body."""
+    # 30s timeout — some Bali offices and the regulation portals can be
+    # slow under load (live verified 2026-05-08).
+    with httpx.Client(timeout=30.0, follow_redirects=True) as client:
         resp = client.get(url, headers={"User-Agent": "mata-garuda-smoke/1.0"})
 
     assert resp.status_code == 200, (
