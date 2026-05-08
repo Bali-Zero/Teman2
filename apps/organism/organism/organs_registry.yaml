@@ -53,7 +53,7 @@
 
 version: 1
 checksum_algo: sha256
-checksum: 4c97900b466df729c48fbf4d7788ce2f6f3729581bfcac8f21dd95f45c3304e6
+checksum: 870561659d4ba8c2c10f925659604b40c0c92b411c4efbcc148fb6a59922f8b0
 organs:
   - id: infra.postgres
     runtime: fly_machine
@@ -1667,3 +1667,45 @@ organs:
       label: com.nuzantara.nb-mitochondrial-monitor.daily
     severity_on_silence: warning
     cicatrix_refs: []
+
+  # Sentinel aggregator (2026-05-09) — single pane of glass for all organs.
+  # Reads ~/.organism/last_seen/*.json + launchctl list, classifies each
+  # organ as ok/stale/dead/noheartbeat/unknown, writes ~/.organism/aggregate.json.
+  - id: pro.sentinel_aggregate
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 600
+    owner_module: scripts/sentinel-aggregate.py
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.sentinel-aggregate
+    severity_on_silence: warning
+    cicatrix_refs: []
+    bridge_source:
+      type: state_file
+      path: ~/.organism/last_seen/pro.sentinel_aggregate.json
+      timestamp_field: ts
+      status_field: status
+
+  # Phase-3 Outbox prune (2026-05-09) — daily GC of consumed events_outbox
+  # rows older than 30d. Bounds table growth post phase-2 EventBus refactor.
+  - id: pro.outbox_prune_daily
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/outbox-prune.sh
+    dependencies:
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.outbox-prune.daily
+    severity_on_silence: warning
+    cicatrix_refs: []
+    bridge_source:
+      type: state_file
+      path: ~/.organism/last_seen/pro.outbox_prune_daily.json
+      timestamp_field: ts
+      status_field: status
