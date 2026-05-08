@@ -76,7 +76,6 @@ export function ChatInputBar({
     };
   }, [showAttachMenu, setShowAttachMenu, attachMenuRef, showImagePrompt, setShowImagePrompt]);
 
-  // Use toggle handler if provided, otherwise fall back to start/stop
   const handleMicClick = () => {
     if (onToggleRecording) {
       onToggleRecording();
@@ -86,6 +85,7 @@ export function ChatInputBar({
       onStartRecording();
     }
   };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -118,13 +118,7 @@ export function ChatInputBar({
                   exit={{ scale: 0.8, opacity: 0 }}
                   className="relative group w-16 h-16 rounded-xl overflow-hidden border border-[var(--border)] bg-[var(--background-secondary)]"
                 >
-                  <Image
-                    src={img.base64}
-                    alt={img.name}
-                    fill
-                    className="object-cover"
-                    unoptimized
-                  />
+                  <Image src={img.base64} alt={img.name} fill className="object-cover" unoptimized />
                   <button
                     onClick={() => onRemoveImage?.(img.id)}
                     className="absolute top-1 right-1 p-0.5 bg-black/60 text-white rounded-full opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
@@ -164,7 +158,6 @@ export function ChatInputBar({
 
         {/* Input Container */}
         <div className="glass-panel rounded-[24px] p-2 relative overflow-hidden group shadow-2xl">
-          {/* Subtle inner glow */}
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
           {/* Quick Media Bar */}
@@ -195,7 +188,6 @@ export function ChatInputBar({
               <Mic className={`w-3.5 h-3.5 ${isRecording ? 'animate-bounce' : ''}`} />
             </Button>
 
-            {/* Recording Overlay */}
             <ChatRecordingOverlay isRecording={isRecording} recordingTime={recordingTime} />
 
             <Button
