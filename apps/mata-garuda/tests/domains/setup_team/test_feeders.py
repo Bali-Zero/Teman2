@@ -11,13 +11,17 @@ import pytest
 
 from mata_garuda.domains.setup_team.feeders.nb_intel_immigration import (
     IMMIGRATION_REGEX,
+    KEMENKUM_BERITA_URL,
     LIFESTYLE_BLOCKLIST,
     _matches_immigration_regex,
     fetch_recent_immigration,
 )
 from mata_garuda.domains.setup_team.feeders.nb_intel_regulation import (
+    JDIHN_SEARCH_URL,
     REGULATION_REGEX,
+    SETKAB_PRESS_URL,
     _classify_tier,
+    _fetch_jdihn,
     _matches_regulation_regex,
     fetch_recent_regulations,
 )
@@ -32,6 +36,52 @@ from mata_garuda.foundations.pasal_id_client import (
     LawSearchResult,
     PasalIdAuthError,
 )
+
+
+# ---------------- T1.5: endpoint URL regression-guards ---------------- #
+#
+# Live cron run 2026-05-08 revealed broken endpoints (404):
+#   - JDIHN with `type=regulation` query param → 404 (param rejected)
+#   - kemenkum.go.id/berita → 404 (correct path is /berita-utama)
+# These regression tests pin the corrected URLs/params so a future agent
+# editing the constants must read this comment and update the live opt-in
+# tests in test_feeder_endpoints_live.py at the same time.
+
+
+def test_jdihn_search_url_does_not_include_type_param_path():
+    """JDIHN endpoint /dokumen-hukum returns 200 only when the `type` param
+    is omitted. Live verification 2026-05-08."""
+    assert JDIHN_SEARCH_URL == "https://jdihn.go.id/dokumen-hukum"
+
+
+@pytest.mark.asyncio
+async def test_fetch_jdihn_does_not_send_type_param():
+    """The query that hits the live JDIHN portal must NOT include
+    `type=regulation` — it makes the portal 404. Only `keyword=2026` works."""
+    http = AsyncMock()
+    http.get = AsyncMock(return_value=MagicMock(status_code=200, text=""))
+    await _fetch_jdihn(http, days=30)
+    http.get.assert_awaited_once()
+    call_kwargs = http.get.await_args.kwargs
+    params = call_kwargs.get("params") or {}
+    assert "type" not in params, (
+        "JDIHN portal returns 404 when `type` query param is sent; only "
+        "`keyword` works (verified live 2026-05-08)."
+    )
+
+
+def test_kemenkum_berita_url_uses_berita_utama_path():
+    """kemenkum.go.id/berita returns 404; /berita-utama returns 200 with
+    article links matching href='/berita-utama/<slug>'. Live verification
+    2026-05-08."""
+    assert KEMENKUM_BERITA_URL == "https://www.kemenkum.go.id/berita-utama"
+
+
+def test_setkab_press_url_uses_category_berita_path():
+    """setkab.go.id/berita/ returns 404; /category/berita/ returns 200
+    with article links. Already corrected in PR #540 — pinned here so
+    a future refactor can't silently regress."""
+    assert SETKAB_PRESS_URL == "https://setkab.go.id/category/berita/"
 
 
 # ---------------- T2: nb_intel_regulation ---------------- #
