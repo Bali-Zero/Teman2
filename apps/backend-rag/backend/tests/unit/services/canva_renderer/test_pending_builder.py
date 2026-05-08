@@ -12,7 +12,6 @@ import pytest
 
 from backend.services.canva_renderer.pending_builder import (
     TEMPLATE_DESIGN_ID,
-    TEMPLATE_SLOTS,
     build_canva_pending,
     slides_to_operations,
 )
@@ -75,16 +74,43 @@ class TestSlidesToOperations:
         # In current TEMPLATE_SLOTS, element_id is None
         assert slide_1_heading_ops[0]["element_id"] is None
 
-    def test_body_text_goes_to_body_element_id(self) -> None:
-        # Note: TEMPLATE_SLOTS now has None for all body slots,
-        # so body ops are skipped in slides_to_operations.
+    def test_body_text_emitted_for_non_cover_slide_with_element_id_none(self) -> None:
+        """SP-2 fix (cross-LLM brainstorm 2026-05-08): body ops MUST be emitted
+        for non-cover slides even when element_id is None. The /canva-apply
+        skill (lines 50-53) resolves heading vs body via per-page replace_text
+        op order at runtime — first op = role 0 (heading), second op = role 1
+        (body). If the builder drops body ops because body_eid is None, the
+        skill never gets a chance to resolve them and the carousel ships with
+        empty body slots (Badung Horeka run 2026-05-08, 7/11 slides empty).
+        """
         ops = slides_to_operations(_slides_fixture())
-        body_ops = [
+
+        # Page 2 has headline + body, is_cover defaults to False → 2 ops in order
+        page_2_ops = [
             op for op in ops
-            if op["type"] == "replace_text"
-            and "100 officers" in (op.get("text") or "")
+            if op["page_index"] == 2 and op["type"] == "replace_text"
         ]
-        assert len(body_ops) == 0  # skipped because body_eid is None
+        assert len(page_2_ops) == 2, (
+            f"page 2 must emit headline + body ops, got {len(page_2_ops)}: {page_2_ops}"
+        )
+        assert page_2_ops[0]["text"] == (
+            "WHAT IS DHARMA DEWATA?\nNOT A TOURISM CAMPAIGN."
+        )
+        assert page_2_ops[1]["text"] == "Inaugurated April 15, 2026 by the DGI."
+        assert all(op["element_id"] is None for op in page_2_ops)
+
+    def test_cover_slide_has_no_body_op(self) -> None:
+        """Cover slides (is_cover=True) stay headline-only by design.
+        The cover layout has no body slot in template DAHE6lx1lf8 page 1."""
+        ops = slides_to_operations(_slides_fixture())
+        page_1_ops = [
+            op for op in ops
+            if op["page_index"] == 1 and op["type"] == "replace_text"
+        ]
+        assert len(page_1_ops) == 1, (
+            f"page 1 (cover) must have only headline op, got {page_1_ops}"
+        )
+        assert page_1_ops[0]["text"] == "BALI HAS A NEW IMMIGRATION TASK FORCE."
 
     def test_image_url_produces_upload_asset_op(self) -> None:
         ops = slides_to_operations(_slides_fixture())
@@ -105,36 +131,54 @@ class TestSlidesToOperations:
         ]
         assert page_3_upload_ops == []
 
-    def test_slide_9_and_11_body_skipped(self) -> None:
-        """Slides 9 and 11 have no body slot in template DAHE6lx1lf8 —
-        builder must not emit body replace_text for them."""
+    def test_body_ops_always_emitted_for_non_cover_slides(self) -> None:
+        """Builder must emit body replace_text ops for every non-cover slide
+        with body text. The /canva-apply skill drops body ops at runtime
+        with `🪂 dropped op: no role match on page N` if the live template
+        page has no body slot (e.g. pages 9, 11 of DAHE6lx1lf8) — the
+        builder cannot know the live slot map, so it errs on the side of
+        emitting and lets the skill clamp.
+
+        Regression contract for SP-2 fix (2026-05-08): the previous
+        `if body and body_eid:` short-circuit silently dropped EVERY body
+        op (since body_eid is always None post-2026-05-07 deprecation),
+        producing the 7-of-11 empty-body bug observed in Badung Horeka.
+        """
         slides = [
             {
                 "slide_number": 9,
                 "headline": "ENFORCEMENT IS NOT THEORETICAL.",
-                "body": "this body should be skipped because slot is absent",
+                "body": "body that the skill will drop at runtime if no body slot",
                 "image_url": None,
             },
             {
                 "slide_number": 11,
                 "headline": "KNOW YOUR CLOCK.",
-                "body": "also skipped",
+                "body": "same — emitted by builder, dropped by skill if needed",
                 "image_url": None,
             },
         ]
         ops = slides_to_operations(slides)
 
-        # Heading replace_text for both slides still present
-        heading_ops = [op for op in ops if op["type"] == "replace_text"]
-        assert len(heading_ops) == 2
+        # Builder emits both heading + body for each (4 total replace_text ops)
+        replace_text_ops = [op for op in ops if op["type"] == "replace_text"]
+        assert len(replace_text_ops) == 4, (
+            f"expected 2 headings + 2 bodies = 4 ops, got {len(replace_text_ops)}"
+        )
 
-        # No body ops for page 9 or 11
-        for op in heading_ops:
-            page_idx = op["page_index"]
-            slot = TEMPLATE_SLOTS[page_idx - 1]
-            assert slot[2] is None or op["element_id"] == slot[1], (
-                f"page {page_idx} should only have heading ops, not body"
-            )
+        # Per-page op order: first op = heading, second op = body
+        page_9_ops = [op for op in replace_text_ops if op["page_index"] == 9]
+        assert len(page_9_ops) == 2
+        assert page_9_ops[0]["text"] == "ENFORCEMENT IS NOT THEORETICAL."
+        assert page_9_ops[1]["text"].startswith("body that the skill")
+
+        page_11_ops = [op for op in replace_text_ops if op["page_index"] == 11]
+        assert len(page_11_ops) == 2
+        assert page_11_ops[0]["text"] == "KNOW YOUR CLOCK."
+        assert page_11_ops[1]["text"].startswith("same")
+
+        # All element_ids are None — skill resolves at runtime
+        assert all(op["element_id"] is None for op in replace_text_ops)
 
 
 class TestBuildCanvaPending:

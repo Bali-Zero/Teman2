@@ -138,9 +138,20 @@ def slides_to_operations(slides: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "page_index": page_index,
             })
 
-        # Body only if both slot exists AND slide carries body text
+        # Body ops MUST be emitted whenever non-cover body text exists.
+        # `body_eid` is None for every page (TEMPLATE_SLOTS deprecation
+        # 2026-05-07) — the /canva-apply skill resolves heading vs body
+        # via per-page replace_text op order at runtime (skill lines
+        # 50-53: first op = role 0 = heading, second op = role 1 = body).
+        # Cover slides (is_cover=True) stay headline-only — page 1 of
+        # template DAHE6lx1lf8 has no body slot.
+        # Bug fixed 2026-05-08 (cross-LLM brainstorm: Codex+Gemini+NB-1
+        # all confirmed root cause): the previous `if body and body_eid:`
+        # short-circuited because body_eid is None for every page,
+        # silently dropping every body op and shipping carousels with
+        # 7-of-11 empty body slots (Badung Horeka, draft a3fd4007-...).
         body = (slide.get("body") or "").strip()
-        if body and body_eid:
+        if body and not slide.get("is_cover"):
             operations.append({
                 "type": "replace_text",
                 "element_id": body_eid,
