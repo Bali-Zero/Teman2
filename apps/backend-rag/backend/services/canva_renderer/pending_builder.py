@@ -4,8 +4,9 @@ Format is the one consumed by the APPLICA_WAR_ROOM.md runbook (shipped
 alongside claude_invoker.py at runbooks/APPLICA_WAR_ROOM.md). The
 Council decides tone + structure, the Visual service produces images,
 and this module composes the operations array using stable element IDs
-of the master template (currently DAHJLYRn_3E; was DAHE6lx1lf8 until
-2026-05-09 when that ID became invalid).
+of the master template (currently DAHJEkWpkzY; was DAHJLYRn_3E briefly on
+2026-05-09 — incompatible, only 2/12 pages had richtext slots — and
+DAHE6lx1lf8 before that until it was deleted).
 
 Historical note: the legacy WR1 pipeline (apps/war-room/, removed
 2026-04-22) used to emit this same schema from a bash-composed
@@ -18,14 +19,27 @@ from __future__ import annotations
 from typing import Any
 
 # Master carousel template. See runbooks/APPLICA_WAR_ROOM.md.
-# Master template — replaced 2026-05-09 after the previous master
-# DAHE6lx1lf8 was deleted from Canva (404 / "Design not found" returned
-# from start-editing-transaction starting around 18:24-18:40 WITA).
-# DAHJLYRn_3E is a 12-page replacement with the same gray Bali-Zero
-# brand background. The renderer still clamps to MAX_SLIDES_TEMPLATE
-# (11), so page 12 is left untouched on every run — that is by design,
-# Instagram auto-crops trailing blank pages.
-TEMPLATE_DESIGN_ID = "DAHJLYRn_3E"
+#
+# Replacement #2 (2026-05-10): DAHJLYRn_3E was structurally incompatible —
+# the design only had richtext slots on pages 2 and 3, so 19/22 ops
+# (86%) were dropped by Phase A and the apply skill aborted with
+# `template_mismatch` (Phase 0 pre-reset committed cleanly, no design
+# duplicated). Promoted DAHJEkWpkzY as the new master: it is one of the
+# 4 buggy carousels generated under the old DAHE6lx1lf8 master, so it
+# inherits the original 12-page structure with heading + body richtext
+# slots on every page (verified via get-design-content — text present on
+# pages 1-12). Phase 0 wipes residual content on every run, so the
+# "buggy old text" is not visible after the first apply.
+#
+# Replacement #1 (2026-05-09): DAHE6lx1lf8 was deleted from Canva
+# (404 / "Design not found" from start-editing-transaction). Tried
+# DAHJLYRn_3E first — see structural-mismatch note above.
+#
+# Master ID: DAHJEkWpkzY · 12 pages · gray Bali-Zero brand background.
+# The renderer still clamps to MAX_SLIDES_TEMPLATE (11), so page 12 is
+# left untouched on every run — that is by design, Instagram auto-crops
+# trailing blank pages.
+TEMPLATE_DESIGN_ID = "DAHJEkWpkzY"
 CAROUSEL_FOLDER_ID = "FAHEwkTYduI"
 
 # Legibility Armor gradient overlay — 4:5 PNG with strong dark at top (heading
