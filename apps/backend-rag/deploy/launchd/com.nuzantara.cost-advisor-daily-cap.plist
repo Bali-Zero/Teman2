@@ -7,7 +7,7 @@
   <array>
     <string>/bin/bash</string>
     <string>-lc</string>
-    <string>cd ~/Desktop/nuzantara/apps/backend-rag &amp;&amp; source .venv/bin/activate &amp;&amp; PYTHONPATH=. python -m backend.scripts.cost_advisor_cli --check-daily-cap</string>
+    <string>cd /Users/nuzantara/Desktop/nuzantara/apps/backend-rag &amp;&amp; PYTHONPATH=. /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -m backend.scripts.cost_advisor_cli --check-daily-cap</string>
   </array>
   <key>StartCalendarInterval</key>
   <dict>

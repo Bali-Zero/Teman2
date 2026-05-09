@@ -145,6 +145,11 @@ class ConnectorOrchestrator:
         parsed, runner_result = await self.runner.run_json(
             prompt, timeout=self.timeout,
         )
+        if runner_result.ok and parsed is None:
+            self.logger.warning("runner returned non-JSON; retrying once")
+            parsed, runner_result = await self.runner.run_json(
+                prompt, timeout=self.timeout,
+            )
         if not runner_result.ok or parsed is None:
             result.errors.append(
                 f"runner: {runner_result.error or 'no JSON'}",
