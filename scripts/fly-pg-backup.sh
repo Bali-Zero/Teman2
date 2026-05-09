@@ -89,8 +89,13 @@ else
     exit 1
 fi
 
-# Verify pg_dump header (gunzip -t passes even for corrupt/empty SQL dumps)
-if ! gunzip -c "$BACKUP_FILE" 2>/dev/null | grep -m1 "PostgreSQL database dump" > /dev/null 2>&1; then
+# Verify pg_dump header (gunzip -t passes even for corrupt/empty SQL dumps).
+# Bug fix 2026-05-09: previous form `gunzip -c | grep -m1 ...` failed under
+# `set -o pipefail` because grep -m1 closes its stdin on first match,
+# triggering SIGPIPE on gunzip (exit 141), which propagated as failure.
+# Use `head -c 4096` to bound the read to the header region instead.
+HEADER_PREVIEW=$(gunzip -c "$BACKUP_FILE" 2>/dev/null | head -c 4096 || true)
+if ! echo "$HEADER_PREVIEW" | grep -q "PostgreSQL database dump"; then
     log "ERROR: Backup file does not contain valid pg_dump header — dump may be corrupt or empty"
     log "CRITICAL: pg_dump header missing in $BACKUP_FILE — backup integrity check FAILED"
     exit 1
