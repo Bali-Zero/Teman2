@@ -20,6 +20,7 @@ from __future__ import annotations
 from pathlib import Path
 import sys
 
+import httpx
 import pytest
 
 # Make scripts/ importable. wr2_topic_selector.py imports asyncpg/httpx at
@@ -31,6 +32,7 @@ sys.path.insert(0, str(SCRIPTS_DIR))
 from wr2_topic_selector import (  # noqa: E402
     LIVE_NEWS_BONUS_DIVISOR,
     ROUTINE_TITLE_PENALTY,
+    fetch_staging,
     score_item,
 )
 
@@ -209,3 +211,47 @@ def test_legacy_item_without_live_news_fields_works() -> None:
     assert detail["rules"]["liveness_tier"] == "evergreen"
     assert detail["rules"]["routine_penalty"] == 0
     assert score > 0  # base scoring still gives points
+
+
+@pytest.mark.asyncio
+async def test_fetch_staging_retries_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls = {"count": 0}
+
+    class _Response:
+        def raise_for_status(self) -> None:
+            return None
+
+        def json(self) -> dict:
+            return {
+                "items": [
+                    {"id": "keep", "status": "pending"},
+                    {"id": "drop", "status": "archived"},
+                ],
+            }
+
+    class _FlakyAsyncClient:
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            return None
+
+        async def __aenter__(self) -> "_FlakyAsyncClient":
+            return self
+
+        async def __aexit__(self, *args: object) -> None:
+            return None
+
+        async def get(self, *args: object, **kwargs: object) -> _Response:
+            calls["count"] += 1
+            if calls["count"] == 1:
+                raise httpx.ReadTimeout("first attempt timed out")
+            return _Response()
+
+    async def _no_sleep(delay: float) -> None:
+        return None
+
+    monkeypatch.setattr("wr2_topic_selector.httpx.AsyncClient", _FlakyAsyncClient)
+    monkeypatch.setattr("wr2_topic_selector.asyncio.sleep", _no_sleep)
+
+    items = await fetch_staging("https://backend.example", "api-key")
+
+    assert calls["count"] == 2
+    assert items == [{"id": "keep", "status": "pending"}]
