@@ -42,6 +42,26 @@ from backend.services.war_room.repository import WarRoomRepository
 logger = logging.getLogger("cognitive.oracle.cli")
 
 
+def _hb(status: str, note: str = "") -> None:
+    """Best-effort heartbeat for the Innervation Genoma sentinel.
+
+    Writes ~/.organism/last_seen/wr2.oracle.json. Never raises.
+    """
+    try:
+        from pathlib import Path
+
+        directory = Path.home() / ".organism" / "last_seen"
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / "wr2.oracle.json"
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        payload = {"ts": ts, "status": status, "note": str(note)[:500]}
+        tmp = path.with_suffix(path.suffix + f".tmp.{os.getpid()}")
+        tmp.write_text(json.dumps(payload, separators=(",", ":")) + "\n", encoding="utf-8")
+        os.replace(tmp, path)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 DEFAULT_OWNER = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968")
 
 
@@ -158,10 +178,18 @@ async def run(mode: str) -> int:
     except Exception as exc:  # noqa: BLE001
         logger.error("pool init failed: %s", exc, exc_info=True)
         return 1
+    _hb("starting", f"mode={mode}")
+    rc = 1
     try:
         if mode == "deliver":
-            return await _deliver(pool)
-        return await _deliberate(pool)
+            rc = await _deliver(pool)
+        else:
+            rc = await _deliberate(pool)
+        _hb("ok" if rc == 0 else "warning", f"mode={mode} rc={rc}")
+        return rc
+    except Exception as exc:  # noqa: BLE001
+        _hb("fail", f"mode={mode} exc={type(exc).__name__}")
+        raise
     finally:
         await pool.close()
 
