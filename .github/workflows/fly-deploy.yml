@@ -345,27 +345,73 @@ jobs:
           echo "❌ New image does not expose apply_migration_119.py after 60s"
           exit 1
 
+      - name: Pin Python migrations to a fresh-image machine in the api group (sentinel)
+        id: sentinel
+        timeout-minutes: 5
+        run: |
+          # Wave-4 fix (2026-05-09): without this filter, migration 120
+          # timed out after auto-routing to a `rag`-group machine that
+          # lacks asyncpg (run 25596634798 / commit db23d8c78). Mirrors
+          # the sentinel used by `run-sql-v2-migrations-post-deploy`.
+          # nuzantara-rag has TWO process groups: api (asyncpg installed)
+          # and rag (no asyncpg). Pin to api before running migrations.
+          for i in $(seq 1 18); do
+            JSON=$(flyctl machines list --app nuzantara-rag --json 2>/dev/null || echo '[]')
+            STARTED_TAGS=$(echo "$JSON" | jq -r '[.[] | select(.state=="started") | .image_ref.tag] | unique')
+            STARTED_COUNT=$(echo "$STARTED_TAGS" | jq 'length')
+            if [ "$STARTED_COUNT" = "1" ]; then
+              TAG=$(echo "$STARTED_TAGS" | jq -r '.[0]')
+              MACHINE=$(echo "$JSON" | jq -r --arg tag "$TAG" '
+                [.[]
+                 | select(.state=="started"
+                          and .image_ref.tag==$tag
+                          and (.config.metadata.fly_process_group == "api"))]
+                | .[0].id // empty')
+              if [ -n "$MACHINE" ]; then
+                echo "✅ Pinning Python migrations to api-group machine: $MACHINE (tag $TAG)"
+                echo "machine=$MACHINE" >> $GITHUB_OUTPUT
+                exit 0
+              fi
+              echo "Tentativo $i/18 — image tag converged ($TAG) but no started machine in api process group yet"
+            else
+              echo "Tentativo $i/18 — started_unique_tags=$STARTED_COUNT (rolling not yet converged)"
+            fi
+            sleep 10
+          done
+          echo "❌ Could not isolate a fresh-image machine in the api process group after 3 min"
+          echo "$JSON" | jq '.[] | {id, state, group: .config.metadata.fly_process_group, tag: .image_ref.tag}'
+          exit 1
+
       - name: Run Python migration 119 (partners)
         timeout-minutes: 2
         run: |
+          MACHINE="${{ steps.sentinel.outputs.machine }}"
           flyctl ssh console \
             --app nuzantara-rag \
+            --machine "$MACHINE" \
+            --process-group api \
             --command "/bin/sh -c 'cd /app && python -m backend.migrations.apply_migration_119'"
           echo "✅ Python migration 119 OK"
 
       - name: Run Python migration 120 (partner_email_outbox)
         timeout-minutes: 2
         run: |
+          MACHINE="${{ steps.sentinel.outputs.machine }}"
           flyctl ssh console \
             --app nuzantara-rag \
+            --machine "$MACHINE" \
+            --process-group api \
             --command "/bin/sh -c 'cd /app && python -m backend.migrations.apply_migration_120'"
           echo "✅ Python migration 120 OK"
 
       - name: Run Python migration 121 (practices.family_member_id)
         timeout-minutes: 2
         run: |
+          MACHINE="${{ steps.sentinel.outputs.machine }}"
           flyctl ssh console \
             --app nuzantara-rag \
+            --machine "$MACHINE" \
+            --process-group api \
             --command "/bin/sh -c 'cd /app && python -m backend.migrations.apply_migration_121'"
           echo "✅ Python migration 121 OK"
 
@@ -484,7 +530,6 @@ jobs:
       always() &&
       (needs.run-migrations.result == 'failure' || needs.deploy.result == 'failure')
     runs-on: ubuntu-latest
-
     steps:
       - name: Determine failing stage
         id: stage
