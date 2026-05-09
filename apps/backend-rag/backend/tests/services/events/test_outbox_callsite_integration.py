@@ -40,7 +40,6 @@ import pytest
 
 from backend.services.events.event_bus import PG_CHANNEL_MAP, EventBus
 
-
 # ── 1. EventBus.emit_pg goes through outbox.publish ───────────────────
 
 
@@ -319,6 +318,12 @@ _PG_NOTIFY_ONLY_CHANNELS = frozenset({
     # written, but the path is Python-callsite, not migration-146-trigger.
     # Track A 2026-05-02 — see PR #411 + #416 + #425.
     "cell_pulse_observed",
+    # partner_commission_changed: emitted by services/crm/partners/events.py
+    # `_publish_changed` after CommissionEngine.accrue_from_practice. Python-
+    # only callsite via outbox.publish (no DB trigger). Renamed 2026-05-09
+    # from legacy "partner.commission_changed" so it passes validate_channel
+    # and gets durable replay-on-reconnect via PG_CHANNEL_MAP registration.
+    "partner_commission_changed",
 })
 # Channels that DO have DB triggers but whose triggers live in migrations
 # OTHER than 146. Migration 146 was the bulk refactor of the original 6
