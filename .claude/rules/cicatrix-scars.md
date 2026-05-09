@@ -5,6 +5,171 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: WR2 master template requires verified richtext slot count (2026-05-10)
+
+_Discovered: 2026-05-10 02:53 WITA during run #1 of the post-DAHE6lx1lf8 recovery cycle · Patched 2026-05-10 via `chore/wr2-pipeline-hardening-2026-05-10` (validator + unit test + docstring guard) · Severity: P0_
+
+**TRAUMA:** PR #565 promoted `DAHJLYRn_3E` as the new master template
+in `apps/backend-rag/backend/services/canva_renderer/pending_builder.py`
+(`TEMPLATE_DESIGN_ID = "DAHJLYRn_3E"`) without verifying its structural
+shape. The design only had richtext slots on pages 2 and 3; the renderer
+emits ops for pages 1 + 4-11. Phase A live-mapping detected 19/22 ops
+(86%) would drop and the canva-apply skill aborted with
+`template_mismatch`. Phase 0 had already committed (3 elements wiped on
+the new master) — wasting one transaction round-trip and leaving the
+master in blank state.
+
+Concrete sequence:
+```
+02:53:09  Kickstart canva-apply for draft 6ace6b26 (Golden Visa)
+02:53:51  Claude Desktop attempt 2/5 OK
+~02:55    Phase 0 wipe 3 elements (DAHJLYRn_3E) committed
+~02:57    Phase A live-map: page 1 has 0 richtexts (>=30 width),
+          pages 4-12 same → 19/22 ops would drop
+~02:58    Skill aborts with `template_mismatch` (no design_id produced)
+03:00     Operator confirmed via get-design-content that
+          DAHJLYRn_3E is structurally incompatible
+03:21     PR #566 swapped master to DAHJEkWpkzY (verified text on all 12 pages)
+```
+
+The required CI checks (E2E + MCP) on PR #565 were green. They tested
+the python code change (10 unit tests on `pending_builder.py`); they
+did NOT test that the live template at the new ID had the structural
+shape the renderer assumes. Squawk migration lint, Frontend tests, and
+all other guards were also irrelevant.
+
+**ANTIBODY (shipped on `chore/wr2-pipeline-hardening-2026-05-10`):**
+
+1. **Pre-flight validator** `scripts/wr2_validate_master.py` — accepts
+   `--design-id <DAHX...>` (optional, defaults to current
+   `TEMPLATE_DESIGN_ID`) and exits non-zero if the design is missing
+   from Canva, has fewer than 11 usable pages, or has fewer than 18
+   richtext elements (heading + body × 9 minimum). Calls Canva MCP via
+   the same OAuth flow the apply skill uses. Designed to run from a
+   PR-check workflow OR as a `pre-merge` manual check before any commit
+   that bumps `TEMPLATE_DESIGN_ID`.
+2. **Unit-test contract** in
+   `apps/backend-rag/backend/tests/unit/services/canva_renderer/test_pending_builder.py`:
+   `test_template_design_id_format` asserts the constant matches
+   `^DAH[A-Za-z0-9_-]{8}$` (Canva design ID shape). The empirical
+   structural check stays in the validator script — running a Canva
+   MCP call from CI is not feasible without Canva-side OAuth.
+3. **Docstring header** on `TEMPLATE_DESIGN_ID` now lists the
+   verification checklist a contributor MUST run before changing it
+   (run validator + post the JSON output in the PR description).
+
+**Phase-1 limitation (documented):** The unit test only checks the
+shape of the constant, not the live structural compatibility. A
+contributor who points `TEMPLATE_DESIGN_ID` at a syntactically-valid
+but structurally-broken Canva design will still slip through CI. The
+validator script is the only gate that catches that — relying on
+human discipline to run it. Phase 2 (future PR) wires the validator
+into a GitHub Action triggered specifically when
+`pending_builder.py` is touched, calling Canva MCP via a service
+account.
+
+**GOTCHA:**
+
+- Phase 0 of the canva-apply skill commits BEFORE Phase A detects the
+  mismatch. This is by design (defense-in-depth: master is always
+  blanked at run start). Side-effect: a structurally-incompatible
+  master gets wiped of any residual content on the failed run, which
+  is harmless if the master is correct shape — but if the master was
+  the *wrong design* entirely (e.g. someone pasted a personal design
+  ID by accident), Phase 0 wipes that design's text. The validator
+  script catches this before any wipe happens; future PRs touching
+  `TEMPLATE_DESIGN_ID` MUST run the validator (no CI auto-enforcement
+  yet, see Phase 2 above).
+- The `start-editing-transaction` MCP call returns ALL richtext
+  elements regardless of width. The renderer (and the apply skill)
+  filters by `width >= 30` to exclude bullet glyphs and decorative
+  rules. Validator uses the same filter. If the filter threshold is
+  ever changed in the apply skill, the validator must be updated in
+  lockstep — there is no programmatic link between the two.
+- `DAHJLYRn_3E` is left in Canva (not trashed) as the canonical
+  failure-mode example. Future contributors evaluating new template
+  candidates can `get-design-content` it to see what "structurally
+  incompatible" looks like. If you trash it, document the new
+  cautionary example in this scar entry.
+- Future template promotions: prefer designs that are already
+  duplicates of a working master (e.g. carousel-folder outputs from
+  a prior successful run). They inherit the structural shape by
+  construction. The 4 "buggy orphans"
+  (`DAHJDtWApaw, DAHJCzTzn1I, DAHHv6JaHiQ, DAHJEkWpkzY`) are
+  examples of this — `DAHJEkWpkzY` was promoted to master in PR
+  #566 precisely because its structure was a verified clone of the
+  original `DAHE6lx1lf8`.
+
+Memory references: see `auto memory` discovery 2026-05-10 04:30 WITA
+("WR2 master template structural validation gap"). Recovery commits:
+PR #565 (failed master), PR #566 (working master), this PR
+(prevention).
+
+---
+
+### ⚠️ STRUCTURAL: WR2 canva-apply path coupling between deploy worktree and main repo (2026-05-10)
+
+_Discovered: 2026-05-10 03:50 WITA during the same recovery cycle as the previous scar · Severity: P0 · Workaround SHIPPED in `chore/wr2-pipeline-hardening-2026-05-10`: skill now accepts `WR2_OUTPUT_ROOT` env var; production runs export `WR2_OUTPUT_ROOT=/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/canva` so both deploy worktree (writer) and main repo (skill reader) point at the same dir. Symlink hack archived._
+
+**TRAUMA:** Production cron runs `wr2_canva_desktop_apply.py` from the
+deploy worktree at `/Users/nuzantara/Desktop/nuzantara-deploy`. The
+script writes the pending JSON to its own copy of the path:
+`apps/war-room/output/canva/canva_pending.json`. The
+`/canva-apply` skill at `~/.claude/skills/canva-apply.md` was hardcoded
+to read from the **main** repo path
+`/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/canva/...`.
+Result: the skill reads a different (older or absent) pending JSON
+than the script just wrote. During run #1 today (2026-05-10 02:53)
+the skill silently timed out polling because the file at the
+hardcoded main-repo path was stale.
+
+The temporary fix during the recovery was a runtime symlink:
+```
+ln -s /Users/nuzantara/Desktop/nuzantara/apps/war-room/output/canva \
+      /Users/nuzantara/Desktop/nuzantara-deploy/apps/war-room/output/canva
+```
+This is fragile because:
+- Symlink is not committed to git (it lives in the deploy worktree
+  directory only)
+- `git worktree remove ... && git worktree add ...` would silently
+  destroy it
+- Discovery requires `ls -la` — easy to miss
+
+**ANTIBODY (shipped):**
+
+1. **Skill reads `WR2_OUTPUT_ROOT` env var** with fallback to the
+   legacy main-repo path. Plist `com.balizero.wr2.canva-apply.plist`
+   exports `WR2_OUTPUT_ROOT` matching the writer side; both sides
+   resolve to the same canonical path. The symlink is no longer
+   required and SHOULD be removed once the skill update is verified
+   in production.
+2. **Documentation** in `~/.claude/skills/canva-apply.md` header
+   notes the env-var contract, with a one-line example of the plist
+   directive.
+3. **Long-term TODO** (Phase 2, separate PR): move output dir out of
+   the git tree entirely (`~/var/wr2/output/canva/`). Working
+   runtime data has no business living under a `git pull`-able path.
+   This eliminates the worktree coupling entirely.
+
+**GOTCHA:**
+
+- The skill is loaded from `~/.claude/skills/canva-apply.md` — i.e.
+  the operator's local Claude config dir. It is NOT in the git tree
+  by default. A snapshot copy at `infra/claude-skills/canva-apply.md`
+  is added in this PR for change tracking, with a CI check that
+  fails if the local skill drifts from the git copy. Operators who
+  iterate the skill locally MUST commit the change.
+- `WR2_OUTPUT_ROOT` must end without trailing slash for the skill's
+  `f"{WR2_OUTPUT_ROOT}/canva_pending.json"` interpolation to work.
+  The plist value is normalized server-side (skill strips trailing
+  slash on read).
+- `wr2_canva_desktop_apply.py` already reads `WR2_REPO_ROOT` — it's
+  the same family of env override but a different variable, because
+  the script needs the repo root (for venv + module imports) while
+  the skill needs only the output dir. Don't conflate them.
+
+---
+
 ### ⚠️ STRUCTURAL: 12+1 mata_garuda LaunchAgents active-active Pro+Mini (2026-05-07)
 
 _Discovered: 2026-05-06 22:45 WITA during Symbiosis W1 genome enrollment audit (Zero verified via `launchctl list` on both nodes via Tailscale) · Severity: P1 · Workaround: TBD (cleanup in dedicated follow-up PR)_

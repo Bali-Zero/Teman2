@@ -1,0 +1,98 @@
+name: WR2 master template guard
+
+# Guards changes to TEMPLATE_DESIGN_ID in pending_builder.py.
+# Triggered ONLY when that file is touched in a PR.
+#
+# What this catches:
+# - Syntactic format violations (the unit test in test_pending_builder.py
+#   already does this, but running it as a separate required check makes
+#   the failure mode explicit in the PR UI).
+# - Missing JSON output paste in the PR description (validator output is
+#   manual gate per cicatrix scar 2026-05-10).
+#
+# What this does NOT catch:
+# - Live structural compatibility of the new template (would require
+#   Canva-side OAuth in CI). The validator script must be run manually
+#   and its output pasted into the PR description.
+#
+# References:
+# - cicatrix-scars.md "WR2 master template requires verified richtext
+#   slot count (2026-05-10)"
+# - scripts/wr2_validate_master.py
+
+on:
+  pull_request:
+    paths:
+      - 'apps/backend-rag/backend/services/canva_renderer/pending_builder.py'
+      - 'apps/backend-rag/backend/tests/unit/services/canva_renderer/test_pending_builder.py'
+      - 'scripts/wr2_validate_master.py'
+      - '.github/workflows/wr2-master-template-guard.yml'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect TEMPLATE_DESIGN_ID change
+        id: detect
+        run: |
+          set -e
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          old_id="$(git show "$base":apps/backend-rag/backend/services/canva_renderer/pending_builder.py 2>/dev/null | grep -E '^TEMPLATE_DESIGN_ID = ' | head -1 | cut -d'"' -f2 || true)"
+          new_id="$(git show "$head":apps/backend-rag/backend/services/canva_renderer/pending_builder.py 2>/dev/null | grep -E '^TEMPLATE_DESIGN_ID = ' | head -1 | cut -d'"' -f2 || true)"
+          echo "old_id=$old_id" >> "$GITHUB_OUTPUT"
+          echo "new_id=$new_id" >> "$GITHUB_OUTPUT"
+          if [[ "$old_id" != "$new_id" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::TEMPLATE_DESIGN_ID changed: $old_id → $new_id"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install validator deps
+        run: |
+          # The validator imports from backend.services — minimal install.
+          pip install --quiet pytest
+
+      - name: Run constant-shape unit tests
+        run: |
+          cd apps/backend-rag
+          PYTHONPATH=. python -m pytest \
+            backend/tests/unit/services/canva_renderer/test_pending_builder.py \
+            -v --no-header -k "TestTemplateConstants"
+
+      - name: Run validator (skip-live, shape-only)
+        if: steps.detect.outputs.changed == 'true'
+        run: |
+          python scripts/wr2_validate_master.py --skip-live --json
+
+      - name: Require validator JSON in PR description
+        if: steps.detect.outputs.changed == 'true'
+        env:
+          PR_BODY: ${{ github.event.pull_request.body }}
+          NEW_ID: ${{ steps.detect.outputs.new_id }}
+        run: |
+          set -e
+          # The author MUST paste the output of `python scripts/wr2_validate_master.py --json`
+          # into the PR description. Look for the new design_id appearing
+          # next to a "live_structure" check that resolved to OK.
+          if ! printf '%s' "$PR_BODY" | grep -q "$NEW_ID"; then
+            echo "::error::PR description must include validator JSON output containing the new TEMPLATE_DESIGN_ID ($NEW_ID)."
+            echo "::error::Run: python scripts/wr2_validate_master.py --design-id $NEW_ID --json"
+            echo "::error::Paste the result into the PR description, then re-run this check."
+            exit 1
+          fi
+          if ! printf '%s' "$PR_BODY" | grep -qiE '"name":\s*"live_structure"'; then
+            echo "::error::PR description has the design ID but no live_structure block from the validator."
+            exit 1
+          fi
+          echo "PR description contains validator output — OK."
