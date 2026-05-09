@@ -320,6 +320,31 @@ async def test_cli_failure_surfaces_as_error(intel_repo, cognitive_repo):
 
 
 @pytest.mark.asyncio
+async def test_non_json_runner_output_retries_once(intel_repo, cognitive_repo):
+    d1, d2 = _dossier(), _dossier()
+    await _stub_dossiers(intel_repo, [d1, d2])
+    theses_payload = [
+        {
+            "title": "Recovered JSON",
+            "narrative": "The retry returned parseable output",
+            "source_dossier_ids": [str(d1.id), str(d2.id)],
+            "confidence": 0.8,
+        }
+    ]
+    orch = _make_orch(
+        intel_repo,
+        cognitive_repo,
+        scripts=["I found no useful links today.", _theses_json(theses_payload)],
+    )
+
+    result = await orch.run_once()
+
+    assert orch.runner.call_count == 2
+    assert result.theses_inserted == 1
+    assert result.errors == []
+
+
+@pytest.mark.asyncio
 async def test_fetch_dossiers_failure_captured(intel_repo, cognitive_repo):
     intel_repo.fetch_safe = AsyncMock(side_effect=RuntimeError("pg down"))
     orch = _make_orch(intel_repo, cognitive_repo)

@@ -42,19 +42,15 @@ if [[ -f "$SECRETS_FILE" ]]; then
 fi
 
 # 2. DATABASE_URL resolution
-# Preferred: DATABASE_URL_LOCAL from secrets file, pointing at localhost
-# (the com.balizero.wr2.pg-proxy LaunchAgent keeps `fly proxy 15432:5432
-# -a nuzantara-postgres` alive). This avoids spinning a Fly SSH VM on
-# every cron tick.
-if [[ -z "${DATABASE_URL:-}" ]]; then
-    if [[ -n "${DATABASE_URL_LOCAL:-}" ]]; then
-        DATABASE_URL="$DATABASE_URL_LOCAL"
-    else
-        echo "[wr2-wrapper] ERROR: DATABASE_URL_LOCAL not set in $SECRETS_FILE. Add it (e.g. postgres://backend_rag_v2:<password>@127.0.0.1:15432/nuzantara_rag?sslmode=disable) and load com.balizero.wr2.pg-proxy first." >&2
-        exit 74
-    fi
-    export DATABASE_URL
+# Force DATABASE_URL_LOCAL on Pro/Mini. The shared secrets file may define
+# DATABASE_URL with a Fly 6PN hostname; that only resolves inside Fly and makes
+# launchd jobs fail locally with socket.gaierror.
+if [[ -z "${DATABASE_URL_LOCAL:-}" ]]; then
+    echo "[wr2-wrapper] ERROR: DATABASE_URL_LOCAL not set in $SECRETS_FILE. Add it (e.g. postgres://backend_rag_v2:<password>@127.0.0.1:15432/nuzantara_rag?sslmode=disable) and load com.balizero.wr2.pg-proxy first." >&2
+    exit 74
 fi
+DATABASE_URL="$DATABASE_URL_LOCAL"
+export DATABASE_URL
 
 # Sanity: fail fast if localhost:15432 is unreachable (pg-proxy down)
 if ! nc -z 127.0.0.1 15432 2>/dev/null; then
@@ -64,12 +60,11 @@ fi
 
 # 3. Repo + venv + exec
 cd "$REPO_ROOT/apps/backend-rag"
-if [[ -f ".venv/bin/activate" ]]; then
-    # shellcheck disable=SC1091
-    source .venv/bin/activate
-else
+VENV_PY="$PWD/.venv/bin/python"
+if [[ ! -x "$VENV_PY" ]]; then
     # Fall back to pyenv 3.11.11 shim so cron still runs if .venv is missing
     export PATH="$HOME/.pyenv/versions/3.11.11/bin:$PATH"
+    VENV_PY="python"
 fi
 
-exec env PYTHONPATH=. python -m "$MODULE" "$@"
+exec env PYTHONPATH=. "$VENV_PY" -m "$MODULE" "$@"
