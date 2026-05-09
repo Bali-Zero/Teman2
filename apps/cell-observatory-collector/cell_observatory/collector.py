@@ -134,13 +134,14 @@ class Collector:
                         # heartbeat
                         await conn.execute("SELECT 1")
                 finally:
-                    await conn.close()
-            except (asyncpg.PostgresError, OSError) as exc:
+                    if not conn.is_closed():
+                        await conn.close()
+            except (asyncpg.PostgresError, asyncpg.InterfaceError, OSError) as exc:
                 log.warning("listener disconnected, retry in 5s", error=str(exc))
                 await asyncio.sleep(5)
 
 
-async def run_collector():
+async def run_collector() -> None:
     """Entrypoint used by __main__."""
     cfg = Config.from_env()
     storage = Storage(db_path=cfg.db_path)

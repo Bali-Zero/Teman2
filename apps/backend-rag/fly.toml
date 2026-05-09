@@ -78,7 +78,9 @@ primary_region = 'sin'
   processes = ['rag']
 
 [[vm]]
-  memory = '1gb'
+  # 2026-05-09: api OOM-killed a worker at 1GB with --workers 2 during
+  # production traffic/cold-start imports. Keep api at 2GB like rag.
+  memory = '2gb'
   cpu_kind = 'shared'
   cpus = 1
   processes = ['api']
