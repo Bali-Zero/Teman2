@@ -47,6 +47,8 @@ import yaml
 REGISTRY_PATH = Path.home() / "Desktop" / "nuzantara" / "apps" / "organism" / "organism" / "organs_registry.yaml"
 LAST_SEEN_DIR = Path.home() / ".organism" / "last_seen"
 AGGREGATE_PATH = Path.home() / ".organism" / "aggregate.json"
+EVENTS_JSONL = Path.home() / ".organism" / "events" / "sentinel.jsonl"
+ORGANISM_STREAM_KEY = "organism:events"
 
 STALE_MULTIPLIER = 1.0
 DEAD_MULTIPLIER = 3.0
@@ -318,6 +320,72 @@ def _classify(
     }
 
 
+def _emit_organism_event(event: dict[str, Any]) -> None:
+    """Emit an Event onto the local organism bus (Redis stream + JSONL mirror).
+
+    JSONL first (durable), Redis second (best-effort). Never raises.
+    Mirrors apps/organism/organism/redis_bus.EventBus.emit semantics so
+    the Supervisor's existing consumer can pick these up unchanged.
+    """
+    try:
+        EVENTS_JSONL.parent.mkdir(parents=True, exist_ok=True)
+        line = json.dumps(event, separators=(",", ":"), default=str)
+        with EVENTS_JSONL.open("a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except Exception:
+        return  # never propagate
+
+    # Best-effort Redis XADD via redis-cli (no Python redis dep needed).
+    try:
+        subprocess.run(
+            [
+                "redis-cli", "XADD", ORGANISM_STREAM_KEY, "*",
+                "data", json.dumps(event, separators=(",", ":"), default=str),
+            ],
+            capture_output=True, timeout=2, check=False,
+        )
+    except Exception:
+        pass
+
+
+def _emit_dead_organs_to_supervisor(results: list[dict[str, Any]]) -> int:
+    """For every organ classified as dead with critical/error severity,
+    emit a heartbeat_silent Event onto the organism bus. Returns count
+    of events emitted. Wave-5 closes Layer 3 (sentinel→supervisor)."""
+    now = datetime.now(timezone.utc).isoformat(timespec="seconds")
+    emitted = 0
+    for o in results:
+        if o.get("status") != "dead":
+            continue
+        sev = (o.get("severity") or "warning").lower()
+        # Only escalate the ones the registry wants escalated.
+        if sev not in ("critical", "error"):
+            continue
+        organ_id = o.get("id", "")
+        if not organ_id:
+            continue
+        event = {
+            "ts": now,
+            "severity": sev,
+            "source": "sentinel.aggregate",
+            "kind": "heartbeat_silent",
+            "payload": {
+                "organ_id": organ_id,
+                "age_seconds": o.get("age_seconds"),
+                "hb_status": o.get("hb_status"),
+                "last_exit": o.get("last_exit"),
+                "recovery_action": o.get("recovery_action"),
+                "owner_module": o.get("owner_module"),
+            },
+            "correlation_id": f"sentinel-{organ_id}-{now}",
+            "is_actuation": False,
+            "host": "Pro",
+        }
+        _emit_organism_event(event)
+        emitted += 1
+    return emitted
+
+
 def _atomic_write(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
@@ -415,6 +483,12 @@ def main() -> int:
         )
     except OSError:
         pass
+
+    # Wave-5: emit heartbeat_silent events for dead+critical/error organs
+    # so the Supervisor (organism:events stream consumer) can drive recovery.
+    emitted = _emit_dead_organs_to_supervisor(results)
+    if emitted:
+        print(f"[organism-bus] emitted {emitted} heartbeat_silent event(s)")
 
     _print_summary(rollup)
     return 0

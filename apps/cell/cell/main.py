@@ -54,6 +54,74 @@ logger = logging.getLogger("cell")
 _shutdown = asyncio.Event()
 
 
+def _emit_cell_pulse_event(
+    *,
+    pulse_count: int,
+    health: str,
+    organ_status: str,
+    tier: int | None,
+    action: str | None,
+) -> None:
+    """Best-effort emit a cell_pulse Event onto the organism Redis stream.
+
+    Mirrors organism.redis_bus.EventBus.emit semantics: JSONL first, Redis
+    XADD second. We don't import organism.redis_bus directly because it
+    pulls Pydantic + redis.asyncio which are not always available inside
+    the Cell venv; instead we write JSONL + shell out to redis-cli.
+    Closes Layer 3 of "totale interattività" wave-5.
+    """
+    import json as _json
+    import os as _os
+    import subprocess as _sp
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+    from pathlib import Path as _P
+
+    # Severity mapping: red→error, yellow→warning, green→info, anything→info.
+    sev_map = {"red": "error", "yellow": "warning", "green": "info"}
+    severity = sev_map.get(health, "info")
+
+    ts = _dt.now(_tz.utc).isoformat(timespec="seconds")
+    event = {
+        "ts": ts,
+        "severity": severity,
+        "source": "cell.organism",
+        "kind": "cell_pulse",
+        "payload": {
+            "pulse_count": pulse_count,
+            "health": health,
+            "organ_status": organ_status,
+            "tier": tier,
+            "action": action,
+        },
+        "correlation_id": f"cell-pulse-{pulse_count}-{ts}",
+        "is_actuation": False,
+        "host": "Pro",
+    }
+
+    # JSONL first (durable).
+    try:
+        events_path = _P.home() / ".organism" / "events" / "cell.jsonl"
+        events_path.parent.mkdir(parents=True, exist_ok=True)
+        line = _json.dumps(event, separators=(",", ":"), default=str)
+        with events_path.open("a", encoding="utf-8") as f:
+            f.write(line + "\n")
+    except Exception:
+        return  # never propagate
+
+    # Redis XADD second (best-effort).
+    try:
+        _sp.run(
+            [
+                "redis-cli", "XADD", "organism:events", "*",
+                "data", _json.dumps(event, separators=(",", ":"), default=str),
+            ],
+            capture_output=True, timeout=2, check=False,
+        )
+    except Exception:
+        pass
+
+
 def _handle_signal(sig: int, frame: object) -> None:
     logger.info(f"Received signal {sig}, shutting down...")
     _shutdown.set()
@@ -314,6 +382,19 @@ async def main() -> None:
                         "tier": result.thought_tier,
                         "action": result.action_taken,
                     },
+                )
+
+                # Wave-5: emit Event onto organism:events Redis stream so the
+                # Supervisor sees Cell pulses (not just the PG bus pulse).
+                # Closes Layer 3 of "totale interattività" — Cell was isolated
+                # from the Supervisor's actuator pipeline before this. Best-
+                # effort: stream emit failure must not crash the pulse loop.
+                _emit_cell_pulse_event(
+                    pulse_count=pulse_count,
+                    health=status_str,
+                    organ_status=_organ_status,
+                    tier=result.thought_tier,
+                    action=result.action_taken,
                 )
 
                 # Episodic forgetting — every 1000 pulses (~17h at 60s intervals)
