@@ -8,13 +8,64 @@ knows how to apply via MCP Canva. The format has been stable since
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from backend.services.canva_renderer.pending_builder import (
+    CAROUSEL_FOLDER_ID,
+    MAX_SLIDES_TEMPLATE,
     TEMPLATE_DESIGN_ID,
     build_canva_pending,
     slides_to_operations,
 )
+
+
+# Canva design ID format: 11 chars, starts with "DAH", URL-safe alphabet.
+# Folder ID format: same shape but starts with "FAH".
+_DESIGN_ID_RE = re.compile(r"^DAH[A-Za-z0-9_-]{8}$")
+_FOLDER_ID_RE = re.compile(r"^FAH[A-Za-z0-9_-]{8}$")
+
+
+class TestTemplateConstants:
+    """Guards on the template constants — flag misformatted IDs in CI.
+
+    These tests catch the *shape* of the Canva ID strings; they cannot
+    verify the live design exists or has the right structure (that
+    requires a Canva MCP round-trip and is gated behind
+    `scripts/wr2_validate_master.py`). See cicatrix scar
+    "WR2 master template requires verified richtext slot count
+    (2026-05-10)" for the broader context: PR #565 promoted a
+    structurally-incompatible master that passed every CI check
+    because no test exercised the live shape.
+    """
+
+    def test_template_design_id_format(self) -> None:
+        assert _DESIGN_ID_RE.match(TEMPLATE_DESIGN_ID), (
+            f"TEMPLATE_DESIGN_ID={TEMPLATE_DESIGN_ID!r} does not match "
+            f"the Canva design ID format {_DESIGN_ID_RE.pattern!r}. "
+            "Bumping this constant requires running "
+            "scripts/wr2_validate_master.py and pasting the JSON "
+            "output in the PR description — see "
+            "cicatrix-scars.md (2026-05-10 entry)."
+        )
+
+    def test_carousel_folder_id_format(self) -> None:
+        assert _FOLDER_ID_RE.match(CAROUSEL_FOLDER_ID), (
+            f"CAROUSEL_FOLDER_ID={CAROUSEL_FOLDER_ID!r} does not match "
+            f"the Canva folder ID format {_FOLDER_ID_RE.pattern!r}."
+        )
+
+    def test_max_slides_template_invariant(self) -> None:
+        # The renderer (pending_builder) clamps to MAX_SLIDES_TEMPLATE.
+        # If a future contributor bumps it, they must also re-validate
+        # that the master template at TEMPLATE_DESIGN_ID actually has
+        # that many usable pages. Pin the value as a tripwire.
+        assert MAX_SLIDES_TEMPLATE == 11, (
+            "MAX_SLIDES_TEMPLATE was changed. Re-run "
+            "scripts/wr2_validate_master.py to verify the master "
+            "still has at least this many usable pages."
+        )
 
 
 def _slides_fixture() -> list[dict]:

@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/nuzantara</string>
+		<key>PATH</key>
+		<string>/Users/nuzantara/.local/bin:/Users/nuzantara/.npm-global/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+		<key>WR2_REPO_ROOT</key>
+		<string>/Users/nuzantara/Desktop/nuzantara-deploy</string>
+	</dict>
+	<key>Label</key>
+	<string>com.balizero.wr2.plist-watchdog</string>
+	<key>Program</key>
+	<string>/bin/bash</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>/Users/nuzantara/Desktop/nuzantara-deploy/scripts/wr2_plist_watchdog.sh</string>
+	</array>
+	<key>StartInterval</key>
+	<integer>900</integer>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/wr2_plist_watchdog.err.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/wr2_plist_watchdog.out.log</string>
+</dict>
+</plist>

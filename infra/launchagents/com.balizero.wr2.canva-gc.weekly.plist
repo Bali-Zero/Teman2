@@ -10,21 +10,28 @@
 		<string>/Users/nuzantara/.local/bin:/Users/nuzantara/.npm-global/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
 		<key>WR2_REPO_ROOT</key>
 		<string>/Users/nuzantara/Desktop/nuzantara-deploy</string>
-		<key>WR2_OUTPUT_ROOT</key>
-		<string>/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/canva</string>
 	</dict>
 	<key>Label</key>
-	<string>com.balizero.wr2.canva-apply</string>
+	<string>com.balizero.wr2.canva-gc.weekly</string>
 	<key>Program</key>
 	<string>/Users/nuzantara/.openclaw/bin/wr2/wr2-script-wrapper.sh</string>
 	<key>ProgramArguments</key>
 	<array>
 		<string>/Users/nuzantara/.openclaw/bin/wr2/wr2-script-wrapper.sh</string>
-		<string>scripts/wr2_canva_desktop_apply.py</string>
+		<string>scripts/wr2_canva_garbage_collector.py</string>
 	</array>
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Weekday</key>
+		<integer>1</integer>
+		<key>Hour</key>
+		<integer>4</integer>
+		<key>Minute</key>
+		<integer>30</integer>
+	</dict>
 	<key>StandardErrorPath</key>
-	<string>/Users/nuzantara/logs/wr2_canva_apply.launchd.err.log</string>
+	<string>/Users/nuzantara/logs/wr2_canva_gc.err.log</string>
 	<key>StandardOutPath</key>
-	<string>/Users/nuzantara/logs/wr2_canva_apply.launchd.out.log</string>
+	<string>/Users/nuzantara/logs/wr2_canva_gc.out.log</string>
 </dict>
 </plist>
