@@ -41,7 +41,9 @@ _JOB_PERIODS: dict[str, float] = {
     # heartbeat and flooding Cell pulses red every minute.
     "system_doctor":       24.0,   # daily 08:00
     "expiry_alerter":      24.0,   # daily
-    "knowledge_graph_builder": 24.0,
+    # 2026-05-09 — corrected: crontab schedule is `0 2 * * 0` (weekly Sunday
+    # 02:00), not daily. Period 168h. Yellow at 1.5×=252h, red at 3×=504h.
+    "knowledge_graph_builder": 168.0,
     "metabolic_rollup":        24.0,   # daily 23:30
 }
 
