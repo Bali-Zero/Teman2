@@ -36,6 +36,27 @@ from backend.services.newsletter.publisher import NewsletterPublisher
 logger = logging.getLogger("newsletter.cli")
 
 
+def _hb(status: str, note: str = "") -> None:
+    """Best-effort heartbeat for the Innervation Genoma sentinel.
+
+    Writes ~/.organism/last_seen/wr2.newsletter.json. Never raises.
+    """
+    try:
+        from datetime import datetime, timezone
+        from pathlib import Path
+
+        directory = Path.home() / ".organism" / "last_seen"
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / "wr2.newsletter.json"
+        ts = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        payload = {"ts": ts, "status": status, "note": str(note)[:500]}
+        tmp = path.with_suffix(path.suffix + f".tmp.{os.getpid()}")
+        tmp.write_text(json.dumps(payload, separators=(",", ":")) + "\n", encoding="utf-8")
+        os.replace(tmp, path)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _configure_logging() -> None:
     logging.basicConfig(
         level=logging.INFO,
@@ -50,9 +71,11 @@ def _recipients_from_env() -> list[str]:
 
 async def run() -> int:
     _configure_logging()
+    _hb("starting")
     dsn = os.environ.get("DATABASE_URL")
     if not dsn:
         logger.error("DATABASE_URL not set")
+        _hb("fail", "DATABASE_URL not set")
         return 1
 
     try:
@@ -61,6 +84,7 @@ async def run() -> int:
         )
     except Exception as exc:  # noqa: BLE001
         logger.error("pool init failed: %s", exc, exc_info=True)
+        _hb("fail", f"pool init {type(exc).__name__}")
         return 1
 
     try:
@@ -90,8 +114,13 @@ async def run() -> int:
         }, default=str) + "\n")
 
         if result.skipped and result.skip_reason == "empty_roundup":
+            _hb("warning", "empty_roundup")
             return 2
+        _hb("ok", f"sent={result.recipients_sent}")
         return 0
+    except Exception as exc:  # noqa: BLE001
+        _hb("fail", f"exc={type(exc).__name__}")
+        raise
     finally:
         await pool.close()
 
