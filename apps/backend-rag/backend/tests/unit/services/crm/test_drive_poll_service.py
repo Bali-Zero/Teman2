@@ -13,7 +13,6 @@ from backend.services.crm.drive_poll_service import (
     poll_drive_changes,
 )
 
-
 # ── DriveCircuitBreaker tests ────────────────────────────────────
 
 
@@ -270,6 +269,86 @@ class TestPollDriveChanges:
             mock_cb.call = AsyncMock(return_value=expected)
             result = await poll_drive_changes()
             assert result == expected
+
+    @pytest.mark.asyncio
+    async def test_do_poll_dispatches_ocr_with_db_pool_and_document_type(self) -> None:
+        from backend.services.crm.drive_poll_service import _do_poll_drive_changes
+
+        class FakeAcquire:
+            def __init__(self, conn: Any) -> None:
+                self.conn = conn
+
+            async def __aenter__(self) -> Any:
+                return self.conn
+
+            async def __aexit__(self, *_args: Any) -> bool:
+                return False
+
+        class FakePool:
+            def __init__(self, conn: Any) -> None:
+                self.conn = conn
+
+            def acquire(self) -> FakeAcquire:
+                return FakeAcquire(self.conn)
+
+            async def close(self) -> None:
+                return None
+
+        conn = AsyncMock()
+        conn.fetchrow.side_effect = [
+            {"value": "start-token"},
+        ]
+        conn.fetch.side_effect = [
+            [{"client_id": 42, "subfolder_name": "01_Immigration", "subfolder_id": "folder-immigration"}],
+            [],
+        ]
+        conn.fetchval.side_effect = [
+            None,  # existing document by file_id
+            99,  # inserted documents.id
+        ]
+
+        fake_pool = FakePool(conn)
+
+        drive_service = AsyncMock()
+        drive_service.list_changes_since.return_value = {
+            "changes": [
+                {
+                    "file": {
+                        "id": "drive-file-1",
+                        "name": "passport.pdf",
+                        "mimeType": "application/pdf",
+                        "parents": ["folder-immigration"],
+                    },
+                    "removed": False,
+                },
+            ],
+            "new_page_token": "next-token",
+        }
+        drive_service.get_file_metadata.return_value = {"size": "0"}
+
+        ocr_dispatch = AsyncMock(return_value={"dispatched": True})
+
+        with (
+            patch("backend.services.crm.drive_poll_service.asyncpg.create_pool", new=AsyncMock(return_value=fake_pool)),
+            patch(
+                "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+                return_value=drive_service,
+            ),
+            patch("backend.app.routers.crm_enhanced._dispatch_ocr_by_folder", new=ocr_dispatch),
+            patch.dict("os.environ", {"DATABASE_URL": "postgresql://test/db"}, clear=False),
+        ):
+            result = await _do_poll_drive_changes()
+
+        assert result["processed"] == 1
+        ocr_dispatch.assert_awaited_once_with(
+            db_pool=fake_pool,
+            client_id=42,
+            file_id="drive-file-1",
+            folder_name="01_Immigration",
+            filename="passport.pdf",
+            doc_id=99,
+            document_type="passport",
+        )
 
 
 # ── Nested folder tests ──────────────────────────────────────────
