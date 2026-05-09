@@ -3,17 +3,11 @@ Unit tests for middleware/error_monitoring.py
 Target: >95% coverage
 """
 
-import sys
-from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-backend_path = Path(__file__).parent.parent.parent.parent.parent / "backend"
-if str(backend_path) not in sys.path:
-    sys.path.insert(0, str(backend_path))
-
-from middleware.error_monitoring import (
+from backend.middleware.error_monitoring import (
     ErrorMonitoringMiddleware,
     create_error_monitoring_middleware,
 )
@@ -205,6 +199,35 @@ class TestErrorMonitoringMiddleware:
             mock_alert_service.send_latency_alert.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_dispatch_high_latency_alert_failure_still_returns_response(
+        self, mock_app, mock_alert_service,
+    ):
+        """A latency alert failure must not fail the request."""
+        middleware = ErrorMonitoringMiddleware(mock_app, mock_alert_service)
+        mock_alert_service.send_latency_alert.side_effect = Exception("Alert failed")
+
+        mock_request = MagicMock()
+        mock_request.app.state = MagicMock()
+        mock_request.method = "GET"
+        mock_request.url.path = "/api/test"
+        mock_request.headers.get.return_value = "test-agent"
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.headers = {}
+
+        async def call_next(request):
+            return mock_response
+
+        with patch("backend.app.core.config.settings") as mock_settings:
+            mock_settings.latency_alert_threshold_ms = -1
+
+            result = await middleware.dispatch(mock_request, call_next)
+
+        assert result == mock_response
+        mock_alert_service.send_latency_alert.assert_called_once()
+
+    @pytest.mark.asyncio
     async def test_dispatch_exception(self, mock_app, mock_alert_service):
         """Test dispatch with exception"""
         middleware = ErrorMonitoringMiddleware(mock_app, mock_alert_service)
@@ -291,6 +314,46 @@ class TestErrorMonitoringMiddleware:
         mock_response = MagicMock()
         mock_response.status_code = 500
         mock_response.body = b"invalid json"
+
+        await middleware._handle_error_response(mock_request, mock_response, "req-123", 100.0)
+
+        mock_alert_service.send_http_error_alert.assert_called_once()
+
+    @pytest.mark.asyncio
+    async def test_handle_error_response_suppresses_known_noisy_path(self, mock_app, mock_alert_service):
+        """Known noisy 404/401 paths should not send alerts."""
+        middleware = ErrorMonitoringMiddleware(mock_app, mock_alert_service)
+
+        mock_request = MagicMock()
+        mock_request.app.state = MagicMock()
+        mock_request.method = "GET"
+        mock_request.url.path = "/api/drive/deleted-folder"
+        mock_request.headers.get.return_value = "test-agent"
+
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+
+        await middleware._handle_error_response(mock_request, mock_response, "req-123", 100.0)
+
+        mock_alert_service.send_http_error_alert.assert_not_called()
+
+    @pytest.mark.asyncio
+    async def test_handle_error_response_alert_failure_is_logged_only(
+        self, mock_app, mock_alert_service,
+    ):
+        """HTTP error alert failures should be swallowed by the middleware."""
+        middleware = ErrorMonitoringMiddleware(mock_app, mock_alert_service)
+        mock_alert_service.send_http_error_alert.side_effect = Exception("Alert failed")
+
+        mock_request = MagicMock()
+        mock_request.app.state = MagicMock()
+        mock_request.method = "GET"
+        mock_request.url.path = "/test"
+        mock_request.headers.get.return_value = "test-agent"
+
+        mock_response = MagicMock()
+        mock_response.status_code = 500
+        mock_response.body = b'{"detail": "Server error"}'
 
         await middleware._handle_error_response(mock_request, mock_response, "req-123", 100.0)
 
