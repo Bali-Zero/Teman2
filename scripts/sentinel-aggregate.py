@@ -151,22 +151,32 @@ def _classify(
 
         if age is None:
             status = "unknown"
-        elif hb_status in ("ok", "success", "healthy"):
-            if expected_hb > 0 and age > expected_hb * DEAD_MULTIPLIER:
-                status = "dead"
-            elif expected_hb > 0 and age > expected_hb * STALE_MULTIPLIER:
-                status = "stale"
-            else:
-                status = "ok"
-        elif hb_status in ("degraded", "warning"):
-            # Degraded is a real-but-acceptable signal: the organ ran and
-            # reported a sub-optimal but recoverable state. Map to "warning"
-            # not "dead" so dashboards can distinguish "tell me later"
-            # from "page someone now".
-            status = "warning"
         else:
-            # fail / error / unknown / anything else: dead.
-            status = "dead"
+            # Apply freshness gate FIRST — a stale "degraded" or stale "fail"
+            # is just as serious as a stale "ok" (organ might be dead, last
+            # write recorded its dying state). Codex P1a fix.
+            stale_age = expected_hb > 0 and age > expected_hb * STALE_MULTIPLIER
+            dead_age = expected_hb > 0 and age > expected_hb * DEAD_MULTIPLIER
+
+            if hb_status in ("ok", "success", "healthy"):
+                if dead_age:
+                    status = "dead"
+                elif stale_age:
+                    status = "stale"
+                else:
+                    status = "ok"
+            elif hb_status in ("degraded", "warning"):
+                # Degraded is a real-but-acceptable signal IF fresh. A stale
+                # degraded is worse: organ may have died right after writing.
+                if dead_age:
+                    status = "dead"
+                elif stale_age:
+                    status = "stale"
+                else:
+                    status = "warning"
+            else:
+                # fail / error / unknown / anything else: always dead.
+                status = "dead"
 
         return {
             "id": organ_id,
@@ -217,10 +227,13 @@ def _classify(
                 "recovery_action": organ.get("recovery_action"),
                 "last_exit": last_exit,
             }
-        # Did the organ declare a bridge_source? If yes, missing file is a
-        # broken contract → noheartbeat. If no, launchctl-loaded is enough.
-        declares_hb = bool(organ.get("bridge_source"))
-        if declares_hb:
+        # Did the organ declare a state_file bridge_source? If yes, missing
+        # file is a broken contract → noheartbeat. http-type bridge_source
+        # is not implemented yet (Codex P1c fix): fall through to "ok"
+        # rather than spuriously flagging http-source organs as noheartbeat.
+        bs = organ.get("bridge_source") or {}
+        declares_state_file = isinstance(bs, dict) and bs.get("type") == "state_file"
+        if declares_state_file:
             return {
                 "id": organ_id,
                 "runtime": runtime,
@@ -266,7 +279,7 @@ def _print_summary(rollup: dict[str, list[dict[str, Any]]]) -> None:
     print(
         f"=== Sentinel Aggregate @ {datetime.now(timezone.utc).isoformat(timespec='seconds')} ==="
     )
-    for status in ("dead", "stale", "noheartbeat", "unknown", "remote", "ok"):
+    for status in ("dead", "stale", "warning", "exit_drift", "noheartbeat", "unknown", "remote", "ok"):
         items = rollup.get(status, [])
         if not items:
             continue

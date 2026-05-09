@@ -26,16 +26,32 @@ organism_heartbeat() {
     local status="${2:-ok}"
     local note="${3:-}"
 
-    mkdir -p "$_organism_hb_dir" 2>/dev/null || return 0  # never fail caller
+    # Strict whitelist on organ_id to prevent path traversal / shell metachars.
+    # Registry id convention: [a-z][a-z0-9_]+(\.[a-z0-9_]+)*  (e.g. pro.cpu_monitor)
+    if ! [[ "$id" =~ ^[a-zA-Z][a-zA-Z0-9_.]{0,80}$ ]] || [[ "$id" == *..* ]]; then
+        return 0  # silently refuse — never break the caller
+    fi
+    # Whitelist status to known set.
+    case "$status" in
+        ok|error|warning|starting|degraded|fail|success|healthy) ;;
+        *) status="ok" ;;
+    esac
+
+    mkdir -p "$_organism_hb_dir" 2>/dev/null || return 0
 
     local path="${_organism_hb_dir}/${id}.json"
     local tmp="${path}.tmp.$$"
     local ts
     ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-    # Escape only the bare minimum: backslash + double-quote inside note.
+    # Escape JSON-unsafe chars in note: backslash, quote, newline, tab, CR.
     note="${note//\\/\\\\}"
     note="${note//\"/\\\"}"
+    note="${note//$'\n'/\\n}"
+    note="${note//$'\r'/\\r}"
+    note="${note//$'\t'/\\t}"
+    # Truncate to 500 chars to avoid bloated heartbeat files.
+    note="${note:0:500}"
 
     {
         printf '{"ts":"%s","status":"%s","note":"%s"}\n' "$ts" "$status" "$note"

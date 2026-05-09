@@ -453,7 +453,8 @@ async def _reconcile_loop(conn: asyncpg.Connection) -> None:
 # ─────────────────────────────────────────────────────────────────────────
 
 async def _write_heartbeat(conn_hb: asyncpg.Connection, note: str) -> None:
-    """Insert one row into wr2_supervisor_heartbeat.
+    """Insert one row into wr2_supervisor_heartbeat AND write the Innervation
+    Genoma file heartbeat for the sentinel-aggregator.
 
     Uses a DEDICATED connection (NOT the LISTEN connection) because
     asyncpg's single-op-per-connection contract means adding INSERTs
@@ -461,6 +462,10 @@ async def _write_heartbeat(conn_hb: asyncpg.Connection, note: str) -> None:
     on-notify _current_status read. Best-effort: missing table or
     unreachable DB log a warning but do not crash the supervisor.
     """
+    # File heartbeat for sentinel-aggregate (~/.organism/last_seen/wr2.supervisor.json).
+    # Done first because it doesn't need the DB and it's cheap.
+    _write_organism_heartbeat("wr2.supervisor", "ok", note)
+
     try:
         # Truncate `note` so a runaway caller can't blow up the row.
         await conn_hb.execute(
@@ -475,6 +480,31 @@ async def _write_heartbeat(conn_hb: asyncpg.Connection, note: str) -> None:
         # The dedicated conn_hb may itself drop; the outer reconnect
         # loop in _run_loop replaces it on the next iteration.
         logger.warning("heartbeat write failed: %s", e)
+
+
+def _write_organism_heartbeat(organ_id: str, status: str, note: str = "") -> None:
+    """Write ~/.organism/last_seen/<organ_id>.json for sentinel-aggregate.
+
+    Atomic via tmp + rename. Never raises (best-effort).
+    """
+    try:
+        from pathlib import Path
+        import json as _json
+        from datetime import datetime, timezone
+
+        directory = Path.home() / ".organism" / "last_seen"
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / f"{organ_id}.json"
+        payload = {
+            "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "status": status,
+            "note": str(note)[:500],
+        }
+        tmp = path.with_suffix(path.suffix + f".tmp.{os.getpid()}")
+        tmp.write_text(_json.dumps(payload, separators=(",", ":")) + "\n", encoding="utf-8")
+        os.replace(tmp, path)
+    except Exception:
+        pass  # never propagate
 
 
 async def _heartbeat_loop(conn_hb: asyncpg.Connection) -> None:
