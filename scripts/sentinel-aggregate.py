@@ -70,14 +70,26 @@ def _parse_ts(ts: Any) -> float | None:
     return None
 
 
-def _read_last_seen(organ_id: str) -> dict[str, Any] | None:
-    path = LAST_SEEN_DIR / f"{organ_id}.json"
-    if not path.exists():
-        return None
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
+def _read_last_seen(organ_id: str, organ: dict[str, Any] | None = None) -> dict[str, Any] | None:
+    """Read heartbeat for an organ. Honours bridge_source.path if declared,
+    falls back to ~/.organism/last_seen/<organ_id>.json convention."""
+    candidates: list[Path] = []
+    if organ is not None:
+        bs = organ.get("bridge_source") or {}
+        if isinstance(bs, dict) and bs.get("type") == "state_file":
+            raw = bs.get("path")
+            if isinstance(raw, str) and raw:
+                candidates.append(Path(os.path.expanduser(raw)))
+    candidates.append(LAST_SEEN_DIR / f"{organ_id}.json")
+
+    for path in candidates:
+        if not path.exists():
+            continue
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+    return None
 
 
 def _launchctl_loaded() -> dict[str, dict[str, Any]]:
@@ -139,14 +151,32 @@ def _classify(
 
         if age is None:
             status = "unknown"
-        elif hb_status not in ("ok", "success", "healthy"):
-            status = "dead"
-        elif expected_hb > 0 and age > expected_hb * DEAD_MULTIPLIER:
-            status = "dead"
-        elif expected_hb > 0 and age > expected_hb * STALE_MULTIPLIER:
-            status = "stale"
         else:
-            status = "ok"
+            # Apply freshness gate FIRST — a stale "degraded" or stale "fail"
+            # is just as serious as a stale "ok" (organ might be dead, last
+            # write recorded its dying state). Codex P1a fix.
+            stale_age = expected_hb > 0 and age > expected_hb * STALE_MULTIPLIER
+            dead_age = expected_hb > 0 and age > expected_hb * DEAD_MULTIPLIER
+
+            if hb_status in ("ok", "success", "healthy"):
+                if dead_age:
+                    status = "dead"
+                elif stale_age:
+                    status = "stale"
+                else:
+                    status = "ok"
+            elif hb_status in ("degraded", "warning"):
+                # Degraded is a real-but-acceptable signal IF fresh. A stale
+                # degraded is worse: organ may have died right after writing.
+                if dead_age:
+                    status = "dead"
+                elif stale_age:
+                    status = "stale"
+                else:
+                    status = "warning"
+            else:
+                # fail / error / unknown / anything else: always dead.
+                status = "dead"
 
         return {
             "id": organ_id,
@@ -160,12 +190,33 @@ def _classify(
         }
 
     # No heartbeat. Fall back to launchctl liveness.
+    # Convention (2026-05-09 wave 2): launchd-loaded + last_exit==0 is the
+    # baseline "alive" signal — a missing last_seen file is NOT a problem
+    # by itself. Only mark noheartbeat for organs that DECLARE bridge_source
+    # in registry but don't write it (broken contract); the rest get "ok".
     if launchctl_entry is not None:
         pid = launchctl_entry.get("pid")
         last_exit = launchctl_entry.get("last_exit")
-        # Loaded but no PID = idle (cron between ticks). Acceptable for cron.
-        # Loaded with non-zero last_exit = recent failure.
-        if last_exit is not None and last_exit != 0:
+        # Treat SIGTERM (-15) and SIGINT (-2) as graceful — not failure.
+        # These happen on normal restart cycles or manual kickstart.
+        graceful_signals = {-15, -2}
+        if last_exit is not None and last_exit != 0 and last_exit not in graceful_signals:
+            # last_exit==1 on a CRON without declared heartbeat is often
+            # "exit-code drift" (script ran fine but exited 1). Downgrade
+            # to "warning" unless the registry says critical.
+            organ_type = organ.get("type", "")
+            severity = organ.get("severity_on_silence", "warning")
+            if organ_type == "cron" and severity not in ("critical", "error"):
+                return {
+                    "id": organ_id,
+                    "runtime": runtime,
+                    "status": "exit_drift",
+                    "age_seconds": None,
+                    "severity": "info",
+                    "owner_module": organ.get("owner_module"),
+                    "recovery_action": organ.get("recovery_action"),
+                    "last_exit": last_exit,
+                }
             return {
                 "id": organ_id,
                 "runtime": runtime,
@@ -176,15 +227,33 @@ def _classify(
                 "recovery_action": organ.get("recovery_action"),
                 "last_exit": last_exit,
             }
+        # Did the organ declare a state_file bridge_source? If yes, missing
+        # file is a broken contract → noheartbeat. http-type bridge_source
+        # is not implemented yet (Codex P1c fix): fall through to "ok"
+        # rather than spuriously flagging http-source organs as noheartbeat.
+        bs = organ.get("bridge_source") or {}
+        declares_state_file = isinstance(bs, dict) and bs.get("type") == "state_file"
+        if declares_state_file:
+            return {
+                "id": organ_id,
+                "runtime": runtime,
+                "status": "noheartbeat",
+                "age_seconds": None,
+                "severity": "warning",
+                "owner_module": organ.get("owner_module"),
+                "recovery_action": organ.get("recovery_action"),
+                "pid": pid,
+            }
         return {
             "id": organ_id,
             "runtime": runtime,
-            "status": "noheartbeat",
+            "status": "ok",
             "age_seconds": None,
             "severity": "info",
             "owner_module": organ.get("owner_module"),
             "recovery_action": organ.get("recovery_action"),
             "pid": pid,
+            "hb_source": "launchctl",
         }
 
     # Not loaded in launchctl AND no heartbeat = unknown / not running.
@@ -210,7 +279,7 @@ def _print_summary(rollup: dict[str, list[dict[str, Any]]]) -> None:
     print(
         f"=== Sentinel Aggregate @ {datetime.now(timezone.utc).isoformat(timespec='seconds')} ==="
     )
-    for status in ("dead", "stale", "noheartbeat", "unknown", "remote", "ok"):
+    for status in ("dead", "stale", "warning", "exit_drift", "noheartbeat", "unknown", "remote", "ok"):
         items = rollup.get(status, [])
         if not items:
             continue
@@ -246,7 +315,7 @@ def main() -> int:
         if not isinstance(organ, dict) or "id" not in organ:
             continue
         organ_id = organ["id"]
-        hb = _read_last_seen(organ_id)
+        hb = _read_last_seen(organ_id, organ)
         label = (organ.get("recovery_params") or {}).get("label")
         launchctl_entry = launchctl_map.get(label) if label else None
         results.append(_classify(organ, hb, launchctl_entry, now))

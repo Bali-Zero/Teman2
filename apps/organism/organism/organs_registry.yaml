@@ -53,7 +53,7 @@
 
 version: 1
 checksum_algo: sha256
-checksum: 870561659d4ba8c2c10f925659604b40c0c92b411c4efbcc148fb6a59922f8b0
+checksum: 8c2462294ff06056087c4b9a00bab705b7654b4432d96801e04f0788701003bf
 organs:
   - id: infra.postgres
     runtime: fly_machine
@@ -1665,6 +1665,20 @@ organs:
     recovery_params:
       host: pro
       label: com.nuzantara.nb-mitochondrial-monitor.daily
+    severity_on_silence: warning
+    cicatrix_refs: []
+
+  # Regulatory watcher (siloed catch-up 2026-05-09).
+  - id: pro.regulatory_watcher_daily
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/regulatory-watcher-run.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.regulatory-watcher.daily
     severity_on_silence: warning
     cicatrix_refs: []
 
