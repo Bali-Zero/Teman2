@@ -13,3 +13,7 @@
 ## 2026-04-26 - [Descriptive Action Labels and Explicit Button Types]
 **Learning:** Generic action labels like "Delete" in lists are ambiguous for screen reader users. Including the item's title in the `aria-label` (e.g., "Delete conversation: [Title]") provides crucial context. Additionally, omitting `type="button"` on non-submit buttons can lead to accidental form submissions and inconsistent browser behavior.
 **Action:** Always include identifying information in `aria-label` for repetitive actions in lists. Consistently apply `type="button"` to all interactive elements that are not meant to submit a form.
+
+## 2026-05-09 - [Quick Action Immediate Submission and Emoji A11y]
+**Learning:** Chat quick actions (welcome screen suggestions) provide a better user experience when they trigger immediate submission via `onFollowUpClick` rather than just populating the input. For accessibility, emojis inside buttons should be wrapped in `<span>` with `aria-hidden="true"`, and the button should have a descriptive `aria-label`. Ensuring consistent `focus-ring` classes across component variants (e.g., virtualized vs non-virtualized) is critical for keyboard navigation.
+**Action:** Use `onFollowUpClick` for quick actions. Always hide emojis from screen readers and use `aria-label`. Consistently apply `focus-ring` to interactive elements.

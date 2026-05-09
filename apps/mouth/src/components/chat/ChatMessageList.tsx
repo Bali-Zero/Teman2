@@ -66,28 +66,37 @@ export function ChatMessageList({
           <Button
             variant="outline"
             size="lg"
-            className="rounded-xl gap-2 hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] transition-all"
-            onClick={() => onSetInput("What can you help me with?")}
+            className="rounded-xl gap-2 hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] transition-all focus-ring"
+            onClick={() => onFollowUpClick("What can you help me with?")}
+            aria-label="Ask what Zantara can do"
           >
-            <span className="text-lg">💡</span>
+            <span className="text-lg" aria-hidden="true">
+              💡
+            </span>
             <span>What can you do?</span>
           </Button>
           <Button
             variant="outline"
             size="lg"
-            className="rounded-xl gap-2 hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] transition-all"
-            onClick={() => onSetInput("Summarize my tasks for today")}
+            className="rounded-xl gap-2 hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] transition-all focus-ring"
+            onClick={() => onFollowUpClick("Summarize my tasks for today")}
+            aria-label="Get task summary"
           >
-            <span className="text-lg">📋</span>
+            <span className="text-lg" aria-hidden="true">
+              📋
+            </span>
             <span>My Tasks</span>
           </Button>
           <Button
             variant="outline"
             size="lg"
-            className="rounded-xl gap-2 hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] transition-all"
+            className="rounded-xl gap-2 hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] transition-all focus-ring"
             onClick={onOpenSearchDocs}
+            aria-label="Search documents"
           >
-            <span className="text-lg">🔍</span>
+            <span className="text-lg" aria-hidden="true">
+              🔍
+            </span>
             <span>Search docs</span>
           </Button>
         </div>

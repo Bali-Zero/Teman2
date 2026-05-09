@@ -158,7 +158,7 @@ export function ChatMessageListVirtualized({
             variant="outline"
             size="lg"
             className="rounded-xl gap-2 hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] transition-all focus-ring"
-            onClick={() => onSetInput('What can you help me with?')}
+            onClick={() => onFollowUpClick('What can you help me with?')}
             aria-label="Ask what Zantara can do"
           >
             <span className="text-lg" aria-hidden="true">
@@ -170,7 +170,7 @@ export function ChatMessageListVirtualized({
             variant="outline"
             size="lg"
             className="rounded-xl gap-2 hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] transition-all focus-ring"
-            onClick={() => onSetInput('Summarize my tasks for today')}
+            onClick={() => onFollowUpClick('Summarize my tasks for today')}
             aria-label="Get task summary"
           >
             <span className="text-lg" aria-hidden="true">
