@@ -497,6 +497,63 @@ async def _heartbeat_loop(conn_hb: asyncpg.Connection) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────
+# Outbox replay (migration 164 — wr2_status_change durability)
+# ─────────────────────────────────────────────────────────────────────────
+
+async def _replay_outbox(conn: asyncpg.Connection) -> int:
+    """Replay unconsumed wr2_status_change events from events_outbox.
+
+    Reads rows where channel='wr2_status_change' AND consumed_at IS NULL,
+    ordered by id ASC (commit order). For each row, dispatches via
+    _handle_payload and ONLY THEN marks consumed_at = NOW(). If
+    _handle_payload raises, the row stays unconsumed and will be retried
+    on the next supervisor restart — at-least-once semantics, consumer
+    must dedupe via _recently_dispatched (which it already does).
+
+    Returns the count of successfully dispatched + acked rows.
+    """
+    rows = await conn.fetch(
+        """
+        SELECT id, payload
+          FROM events_outbox
+         WHERE channel = 'wr2_status_change' AND consumed_at IS NULL
+         ORDER BY id ASC
+         LIMIT 500
+        """
+    )
+    if not rows:
+        return 0
+
+    acked = 0
+    for row in rows:
+        outbox_id = row["id"]
+        payload = row["payload"]
+        if isinstance(payload, str):
+            payload = json.loads(payload)
+        if not isinstance(payload, dict):
+            logger.warning("outbox row %d has non-dict payload, marking consumed", outbox_id)
+            await conn.execute(
+                "UPDATE events_outbox SET consumed_at = NOW() WHERE id = $1",
+                outbox_id,
+            )
+            continue
+
+        try:
+            await _handle_payload(payload, conn)
+        except Exception:
+            logger.exception("outbox replay handler failed for id=%d, leaving unconsumed", outbox_id)
+            continue
+
+        await conn.execute(
+            "UPDATE events_outbox SET consumed_at = NOW() WHERE id = $1",
+            outbox_id,
+        )
+        acked += 1
+
+    return acked
+
+
+# ─────────────────────────────────────────────────────────────────────────
 # Connection loop with auto-reconnect
 # ─────────────────────────────────────────────────────────────────────────
 
@@ -519,6 +576,19 @@ async def _run_loop() -> None:
             conn = await asyncpg.connect(dsn=dsn, command_timeout=30)
             await conn.add_listener("wr2_status_change", _on_notification)
             logger.info("LISTEN wr2_status_change active")
+
+            # Outbox replay (migration 164): drain any wr2_status_change
+            # events that landed in events_outbox while we were down. The
+            # trigger writes to events_outbox FIRST, then pg_notify — so
+            # any pg_notify we missed is recoverable via outbox SELECT.
+            # Ack each row only AFTER _handle_payload returns successfully
+            # (per-handler ack — no blanket auto-ack).
+            try:
+                replayed = await _replay_outbox(conn)
+                if replayed:
+                    logger.info("outbox replay: dispatched %d missed event(s)", replayed)
+            except Exception:
+                logger.exception("outbox replay failed (non-fatal, continuing)")
 
             # Dedicated heartbeat connection: SECOND asyncpg.connect, NEVER
             # shared with the LISTEN conn. asyncpg.Connection allows only
