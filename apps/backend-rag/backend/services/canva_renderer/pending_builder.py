@@ -4,7 +4,8 @@ Format is the one consumed by the APPLICA_WAR_ROOM.md runbook (shipped
 alongside claude_invoker.py at runbooks/APPLICA_WAR_ROOM.md). The
 Council decides tone + structure, the Visual service produces images,
 and this module composes the operations array using stable element IDs
-of template DAHE6lx1lf8.
+of the master template (currently DAHJLYRn_3E; was DAHE6lx1lf8 until
+2026-05-09 when that ID became invalid).
 
 Historical note: the legacy WR1 pipeline (apps/war-room/, removed
 2026-04-22) used to emit this same schema from a bash-composed
@@ -17,7 +18,14 @@ from __future__ import annotations
 from typing import Any
 
 # Master carousel template. See runbooks/APPLICA_WAR_ROOM.md.
-TEMPLATE_DESIGN_ID = "DAHE6lx1lf8"
+# Master template — replaced 2026-05-09 after the previous master
+# DAHE6lx1lf8 was deleted from Canva (404 / "Design not found" returned
+# from start-editing-transaction starting around 18:24-18:40 WITA).
+# DAHJLYRn_3E is a 12-page replacement with the same gray Bali-Zero
+# brand background. The renderer still clamps to MAX_SLIDES_TEMPLATE
+# (11), so page 12 is left untouched on every run — that is by design,
+# Instagram auto-crops trailing blank pages.
+TEMPLATE_DESIGN_ID = "DAHJLYRn_3E"
 CAROUSEL_FOLDER_ID = "FAHEwkTYduI"
 
 # Legibility Armor gradient overlay — 4:5 PNG with strong dark at top (heading
@@ -93,7 +101,7 @@ VALID_TONES = frozenset({
     "tecnico",
 })
 
-# Template DAHE6lx1lf8 has exactly 11 pages. Carousels SHORTER than 11 use the
+# Master template has at least 11 pages used by the renderer. Carousels SHORTER than 11 use the
 # first N pages; the apply skill resets (wipes) the unused pages to blank so
 # the Canva duplicate in the output folder only exposes N slides when a user
 # views it (Canva engine still renders all 11 internally, but blank pages are
@@ -102,7 +110,7 @@ VALID_TONES = frozenset({
 MIN_SLIDES = 5
 MAX_SLIDES = 11
 MAX_SLIDES_REQUESTED = 13  # what the draft generator is allowed to output
-MAX_SLIDES_TEMPLATE = 11  # hard cap of DAHE6lx1lf8 template
+MAX_SLIDES_TEMPLATE = 11  # hard cap of master template usable area
 
 
 def slides_to_operations(slides: list[dict[str, Any]]) -> list[dict[str, Any]]:
