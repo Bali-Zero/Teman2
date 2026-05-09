@@ -20,6 +20,12 @@ log() {
     echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] $*" | tee -a "$LOG"
 }
 
+# Heartbeat helper (no-op fallback if not present).
+# shellcheck disable=SC1091
+if ! source "${HOME}/Desktop/nuzantara/scripts/lib/heartbeat.sh" 2>/dev/null; then
+    organism_heartbeat() { :; }
+fi
+
 # Source secrets.
 SECRETS_FILE="${HOME}/.nuzantara-secrets.env"
 if [ -f "$SECRETS_FILE" ]; then
@@ -31,7 +37,22 @@ fi
 
 if [ -z "${DATABASE_URL:-}" ]; then
     log "ERROR: DATABASE_URL not set, exiting"
+    organism_heartbeat "pro.outbox_prune_daily" "fail" "DATABASE_URL not set"
     exit 2
+fi
+
+# Prefer local pg-proxy (port 15432) when reachable — flycast hostnames
+# require WG tunnel which launchd doesn't always have. Fall back gracefully.
+if [[ "$DATABASE_URL" == *"flycast"* ]] || [[ "$DATABASE_URL" == *".internal"* ]]; then
+    if command -v nc >/dev/null 2>&1 && nc -z 127.0.0.1 15432 2>/dev/null; then
+        log "rewriting DATABASE_URL to use local pg-proxy 127.0.0.1:15432"
+        DATABASE_URL="$(echo "$DATABASE_URL" | sed -E 's|@[^:/]+:[0-9]+|@127.0.0.1:15432|')"
+        export DATABASE_URL
+    else
+        log "WARN: DATABASE_URL points to flycast/internal but pg-proxy unreachable on :15432; skipping prune"
+        organism_heartbeat "pro.outbox_prune_daily" "warning" "pg-proxy unreachable, prune skipped"
+        exit 0
+    fi
 fi
 
 REPO_ROOT="${HOME}/Desktop/nuzantara"
@@ -73,11 +94,7 @@ fi
 
 log "completed: deleted $DELETED row(s)"
 
-# Heartbeat for the Innervation Genoma supervisor.
-HEARTBEAT_DIR="${HOME}/.organism/last_seen"
-mkdir -p "$HEARTBEAT_DIR"
-cat > "${HEARTBEAT_DIR}/pro.outbox_prune_daily.json" <<EOF
-{"ts": "$(date -u +%Y-%m-%dT%H:%M:%SZ)", "status": "ok", "deleted": $DELETED}
-EOF
+# Heartbeat for the Innervation Genoma supervisor (via shared helper).
+organism_heartbeat "pro.outbox_prune_daily" "ok" "deleted=$DELETED"
 
 exit 0

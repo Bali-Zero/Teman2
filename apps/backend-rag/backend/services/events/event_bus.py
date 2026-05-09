@@ -70,6 +70,12 @@ PG_CHANNEL_MAP: dict[str, str] = {
     # Learner (skills/scars from high-perf theses), Telegram notifier for
     # critical wr_anomaly_alerts + Oracle ultra_moves.
     "cognitive_event": "cognitive.event",
+    # Emitted by partners.events._publish_changed when CommissionEngine accrues
+    # a commission row. Payload: {partner_id, commission_id, type:"accrued"}.
+    # Renamed 2026-05-09 from legacy dotted "partner.commission_changed" so it
+    # passes outbox validate_channel and gets durable replay-on-reconnect.
+    # Consumers: TBD (downstream ledger sync / partner notification worker).
+    "partner_commission_changed": "partner.commission_changed",
     # Emitted by 15+ alert producers (cell-organism, compliance-ops, daily-ops,
     # heartbeat-check, fly-watcher, gap_scanner, WR2 supervisor, imigrasi-monitor,
     # pajak-monitor, bi-exchange, intel-feed, vision-doc, ...) that today only

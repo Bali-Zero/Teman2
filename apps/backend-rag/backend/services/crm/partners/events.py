@@ -4,26 +4,33 @@ EventBus subscriber for the CRM Partners module.
 Subscribes to ``practice.status_changed`` (PG channel ``practice_changed``
 aliased in event_bus.PG_CHANNEL_MAP).  When a process transitions to
 ``completed``, delegates accrual to :class:`CommissionEngine` and publishes
-``partner.commission_changed`` via ``pg_notify`` on success.
+``partner_commission_changed`` durably via ``outbox.publish`` on success.
+
+Channel rename 2026-05-09 (everyone-hears-everything wave 2): the legacy
+``partner.commission_changed`` channel name failed ``validate_channel``
+(dotted name regex-rejected) and was therefore left out of phase-2 outbox
+durability. Renamed to ``partner_commission_changed`` (single underscore)
+to satisfy the regex and routed through the same outbox.publish path used
+by the rest of PG_CHANNEL_MAP.
 
 Implementation plan: docs/superpowers/plans/2026-04-20-crm-partners-module.md Task 6
 """
 from __future__ import annotations
 
-import json
 import logging
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from backend.app.db import get_pool
 from backend.services.crm.partners.commission_engine import CommissionEngine
+from backend.services.events.outbox import publish as outbox_publish
 
 if TYPE_CHECKING:
     from backend.services.events.event_bus import EventBus
 
 logger = logging.getLogger(__name__)
 
-PARTNER_COMMISSION_CHANGED = "partner.commission_changed"
+PARTNER_COMMISSION_CHANGED = "partner_commission_changed"
 
 
 async def handle_practice_status_changed(payload: dict[str, Any]) -> None:
@@ -77,32 +84,29 @@ async def _publish_changed(
     *,
     kind: str,
 ) -> None:
-    """Emit a ``partner.commission_changed`` notification via PostgreSQL NOTIFY.
+    """Emit a ``partner_commission_changed`` notification durably via Outbox.
 
-    Uses parameterised ``pg_notify($1, $2)`` — NOT string-interpolated NOTIFY —
-    to avoid SQL injection on malformed UUIDs or unexpected ``kind`` values.
+    Writes to ``events_outbox`` first, then ``pg_notify`` with ``_outbox_id``
+    injected — same contract as the other PG_CHANNEL_MAP channels post
+    migration 146. Payload schema preserved (partner_id, commission_id, type).
     """
     pool = await get_pool()
     async with pool.acquire() as conn:
-        notification_payload = json.dumps(
+        await outbox_publish(
+            conn,
+            PARTNER_COMMISSION_CHANGED,
             {
                 "partner_id": str(partner_id),
                 "commission_id": str(commission_id),
                 "type": kind,
-            }
-        )
-        # pg_notify with parameters — injection-safe
-        await conn.execute(
-            "SELECT pg_notify($1, $2)",
-            PARTNER_COMMISSION_CHANGED,
-            notification_payload,
+            },
         )
     logger.info(
-        "Published partner.commission_changed: %s (%s)", commission_id, kind
+        "Published partner_commission_changed: %s (%s)", commission_id, kind
     )
 
 
-def register_partner_handlers(bus: "EventBus") -> None:
+def register_partner_handlers(bus: EventBus) -> None:
     """Subscribe partner-module handlers to the EventBus."""
     bus.subscribe("practice.status_changed", handle_practice_status_changed)
     logger.info("Partner handlers registered on practice.status_changed")
