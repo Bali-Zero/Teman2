@@ -319,13 +319,17 @@ def main():
         from pathlib import Path as _Path
         out_dir = _Path.home() / ".organism" / "last_seen"
         out_dir.mkdir(parents=True, exist_ok=True)
-        # Map: success=ok, skipped/failed in body = degraded, no articles touched = ok-but-idle.
+        # Map: success=ok, partial-skipped = degraded, no work to do = ok-but-idle.
+        # Note (2026-05-09): skipped==total + success==0 used to map to "fail",
+        # but in steady state it just means "everything already translated" —
+        # a healthy idle, not a failure. Reserve "fail" for genuine errors
+        # (which would surface elsewhere as exceptions/non-zero exit codes).
         if total == 0:
             sidecar_status = "ok"
         elif success > 0 and skipped == 0:
             sidecar_status = "ok"
         elif success == 0 and skipped == total:
-            sidecar_status = "fail"
+            sidecar_status = "ok"  # idle: nothing new to translate
         else:
             sidecar_status = "degraded"
         (out_dir / "pro.translate_hourly.json").write_text(_json.dumps({

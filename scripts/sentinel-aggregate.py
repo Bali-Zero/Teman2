@@ -158,7 +158,8 @@ def _classify(
             stale_age = expected_hb > 0 and age > expected_hb * STALE_MULTIPLIER
             dead_age = expected_hb > 0 and age > expected_hb * DEAD_MULTIPLIER
 
-            if hb_status in ("ok", "success", "healthy"):
+            if hb_status in ("ok", "success", "healthy", "starting"):
+                # "starting" is a transient — fresh starting=ok, stale starting=stuck.
                 if dead_age:
                     status = "dead"
                 elif stale_age:
@@ -201,12 +202,13 @@ def _classify(
         # These happen on normal restart cycles or manual kickstart.
         graceful_signals = {-15, -2}
         if last_exit is not None and last_exit != 0 and last_exit not in graceful_signals:
-            # last_exit==1 on a CRON without declared heartbeat is often
-            # "exit-code drift" (script ran fine but exited 1). Downgrade
-            # to "warning" unless the registry says critical.
+            # last_exit!=0 on a non-critical organ is often "exit-code drift"
+            # (script ran fine but exited 1 — e.g. wr2.image_generator logs
+            # "Done: 1/1 drafts imaged" then exits 2). Downgrade to
+            # "exit_drift" unless the registry says critical/error severity.
             organ_type = organ.get("type", "")
             severity = organ.get("severity_on_silence", "warning")
-            if organ_type == "cron" and severity not in ("critical", "error"):
+            if organ_type in ("cron", "daemon") and severity not in ("critical", "error"):
                 return {
                     "id": organ_id,
                     "runtime": runtime,
