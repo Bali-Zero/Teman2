@@ -237,15 +237,26 @@ cmd_organ() {
         recover)
             # Bulk: kickstart every organ currently in 'dead' state.
             [ -f "$AGGREGATE" ] || die "aggregate.json missing"
-            "$DEFAULT_PYTHON" - "$AGGREGATE" <<'PY' | while read -r id; do
+            local dead_ids
+            dead_ids=$("$DEFAULT_PYTHON" - "$AGGREGATE" <<'PY'
 import json, sys
 d = json.load(open(sys.argv[1]))
 for o in d.get("organs", []):
     if o.get("status") == "dead":
         print(o.get("id", ""))
 PY
-                [ -n "$id" ] && cmd_organ kickstart "$id" || true
-            done
+            )
+            if [ -z "$dead_ids" ]; then
+                echo "${C_GREEN}no dead organs${C_RESET} — nothing to recover"
+                return 0
+            fi
+            local count=0
+            while IFS= read -r id; do
+                [ -z "$id" ] && continue
+                cmd_organ kickstart "$id" || note "  (kickstart $id failed — continuing)"
+                count=$((count + 1))
+            done <<< "$dead_ids"
+            echo "${C_BLUE}recovered $count organ(s)${C_RESET}"
             ;;
         ""|help|-h|--help)
             cat <<EOF
@@ -316,18 +327,34 @@ PY
             fi
             ;;
         replay)
-            local channel="${1:?usage: nz bus replay <channel>}"
+            local channel="${1:?usage: nz bus replay <channel> [--all|--minutes=N]}"
+            shift
+            local max_age_minutes=60
+            for arg in "$@"; do
+                case "$arg" in
+                    --all)            max_age_minutes=525600 ;;  # 1 year
+                    --minutes=*)      max_age_minutes="${arg#--minutes=}" ;;
+                esac
+            done
             cd "$REPO_ROOT/apps/backend-rag" || die "backend-rag dir missing"
-            PYTHONPATH=. .venv/bin/python -c "
-import asyncio, asyncpg, os, sys
+            # Pass db_url + channel + max_age explicitly via env so the python
+            # child uses local pg-proxy (with creds), not whatever DATABASE_URL
+            # the shell holds (often Fly flycast which doesn't resolve here).
+            NZ_REPLAY_DSN="$db_url" \
+            NZ_REPLAY_CHANNEL="$channel" \
+            NZ_REPLAY_MAX_AGE="$max_age_minutes" \
+                PYTHONPATH=. .venv/bin/python -c "
+import asyncio, asyncpg, os
 from backend.services.events.outbox import replay_unconsumed
 async def main():
-    dsn = os.environ.get('DATABASE_URL','postgresql://postgres@127.0.0.1:15432/nuzantara_rag')
+    dsn = os.environ['NZ_REPLAY_DSN']
+    channel = os.environ['NZ_REPLAY_CHANNEL']
+    max_age = int(os.environ['NZ_REPLAY_MAX_AGE'])
     conn = await asyncpg.connect(dsn)
     try:
         async def noop(payload): pass
-        n = await replay_unconsumed(conn, noop, channel='$channel')
-        print(f'replayed {n} events on $channel')
+        n = await replay_unconsumed(conn, noop, channel=channel, max_age_minutes=max_age)
+        print(f'replayed {n} events on {channel} (max_age={max_age}min)')
     finally:
         await conn.close()
 asyncio.run(main())
@@ -341,11 +368,13 @@ asyncio.run(main())
             cat <<EOF
 usage: nz bus <sub> [args]
 
-  channels             list PG_CHANNEL_MAP entries
-  tail <channel>       psql LISTEN on channel (Ctrl-C to stop)
-  count [channel]      events_outbox row counts (unconsumed/total)
-  replay <channel>     replay unconsumed rows for channel
-  prune                run outbox-prune.sh (deletes consumed >30d)
+  channels                       list PG_CHANNEL_MAP entries
+  tail <channel>                 psql LISTEN on channel (Ctrl-C to stop)
+  count [channel]                events_outbox row counts (unconsumed/total)
+  replay <channel> [--all|--minutes=N]
+                                 replay unconsumed rows for channel
+                                 (default last 60min; --all = no age limit)
+  prune                          run outbox-prune.sh (deletes consumed >30d)
 EOF
             ;;
         *)
@@ -522,7 +551,9 @@ usage: nz fad <sub>
 
   status                  launchd state of FAD daemon
   list                    pending proposals from federation_alert_proposals
-  approve <proposal_id>   mark proposal approved
+  approve PROPOSAL_ID     mark proposal approved (substitute the real id;
+                          do NOT paste the literal "<proposal_id>" placeholder
+                          — zsh interprets <...> as a redirect)
   log                     tail FAD log
 EOF
             ;;
