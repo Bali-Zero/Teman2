@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.nuzantara.pg-organism-bridge</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/nuzantara</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin</string>
+	</dict>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/bin/bash</string>
+		<string>-lc</string>
+		<string>set -a; [ -f "$HOME/.nuzantara-secrets.env" ] &amp;&amp; source "$HOME/.nuzantara-secrets.env"; set +a; cd /Users/nuzantara/Desktop/nuzantara/apps/backend-rag &amp;&amp; PYTHONPATH=. /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python /Users/nuzantara/Desktop/nuzantara/scripts/pg-to-organism-bridge.py</string>
+	</array>
+	<key>KeepAlive</key>
+	<true/>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/pg-organism-bridge.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/pg-organism-bridge.error.log</string>
+</dict>
+</plist>

@@ -52,4 +52,5 @@ def build_actuator_registry(*, redis) -> dict[str, ActuatorBase]:
         CleanupBranches.name: CleanupBranches(),
         CleanupZombiePlist.name: CleanupZombiePlist(),
         ProposeYamlRule.name: ProposeYamlRule(),
+        FlyMachinesStart.name: FlyMachinesStart(),
     }
