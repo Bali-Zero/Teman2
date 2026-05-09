@@ -74,6 +74,7 @@ async def run() -> int:
                     "theses_rejected": result.theses_rejected,
                     "idempotent_skipped": result.idempotent_skipped,
                     "errors_count": len(result.errors),
+                    "errors": result.errors[:3],
                     "inserted_ids": [str(x) for x in result.inserted_ids],
                 },
                 default=str,
@@ -82,6 +83,9 @@ async def run() -> int:
         )
 
         if result.errors and result.theses_inserted == 0:
+            if all(error.startswith("runner:") for error in result.errors):
+                logger.warning("connector runner degraded: %s", result.errors)
+                return 0
             return 2
         return 0
     finally:

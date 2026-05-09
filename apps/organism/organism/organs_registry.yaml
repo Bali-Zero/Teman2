@@ -53,7 +53,7 @@
 
 version: 1
 checksum_algo: sha256
-checksum: 8c2462294ff06056087c4b9a00bab705b7654b4432d96801e04f0788701003bf
+checksum: ccb3ce14ead30fa6680b6b72cf2752e02f370be0eea7a9176f5e0d0031d8aa59
 organs:
   - id: infra.postgres
     runtime: fly_machine
@@ -108,6 +108,8 @@ organs:
   - id: backend.crm.drive_poll
     runtime: pro_launchd
     type: cron
+    enabled: false
+    disabled_reason: "DISABLED 2026-04-29 in crontab after drive_poll saturated PG; keep registered as disabled until explicitly restored."
     expected_hb_seconds: 360
     owner_module: scripts/openclaw-cron/drive-poll.sh
     dependencies:
@@ -277,7 +279,7 @@ organs:
   - id: pro.metabolic_rollup
     runtime: pro_launchd
     type: cron
-    expected_hb_seconds: 5400
+    expected_hb_seconds: 90000
     owner_module: scripts/metabolic_rollup_pro.sh
     dependencies: []
     recovery_action: launchctl_kickstart
@@ -725,6 +727,8 @@ organs:
   - id: wr2.canva_apply
     runtime: pro_launchd
     type: daemon
+    enabled: false
+    disabled_reason: "Superseded by S12; LaunchAgent archived as .disabled-2026-05-09-superseded-by-S12."
     expected_hb_seconds: 600
     owner_module: apps/war-room/scripts/wr2_canva_apply.py
     dependencies:
@@ -1609,6 +1613,8 @@ organs:
   - id: pro.ollama_warm_pin
     runtime: pro_launchd
     type: cron
+    enabled: false
+    disabled_reason: "LaunchAgent archived from Pro on 2026-05-09; warm pin now runs from crontab weekly after Ollama restart."
     expected_hb_seconds: 900
     owner_module: scripts/ollama-warm-pin.sh
     dependencies: []

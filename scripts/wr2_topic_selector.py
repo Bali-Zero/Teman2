@@ -80,6 +80,8 @@ MAX_ARTICLE_AGE_HOURS: float = float(os.environ.get("WR2_MAX_ARTICLE_AGE_HOURS",
 TIER_WEIGHT: dict[str, int] = {"T1": 30, "T2": 15, "T3": 5}
 SCORE_THRESHOLD: float = 40.0
 STAGING_FETCH_TIMEOUT: float = 30.0
+STAGING_FETCH_ATTEMPTS: int = int(os.environ.get("WR2_STAGING_FETCH_ATTEMPTS", "3"))
+STAGING_FETCH_RETRY_DELAY_S: float = float(os.environ.get("WR2_STAGING_FETCH_RETRY_DELAY_S", "2.0"))
 
 # PR-1 §C: live news preference. The intel-scraper enricher (Section B) tags
 # each staging item with live_news_score (0-100) and a derived liveness_tier
@@ -180,8 +182,20 @@ def score_item(item: dict[str, Any]) -> tuple[float, dict[str, Any]]:
 
 async def fetch_staging(backend_url: str, api_key: str) -> list[dict[str, Any]]:
     url = f"{backend_url.rstrip('/')}/api/intel/staging/pending?type=all"
-    async with httpx.AsyncClient(timeout=STAGING_FETCH_TIMEOUT) as client:
-        resp = await client.get(url, headers={"X-API-Key": api_key})
+    attempts = max(1, STAGING_FETCH_ATTEMPTS)
+    for attempt in range(1, attempts + 1):
+        try:
+            async with httpx.AsyncClient(timeout=STAGING_FETCH_TIMEOUT) as client:
+                resp = await client.get(url, headers={"X-API-Key": api_key})
+            break
+        except httpx.TimeoutException:
+            if attempt >= attempts:
+                raise
+            logger.warning(
+                "staging fetch timed out; retrying",
+                extra={"attempt": attempt, "attempts": attempts},
+            )
+            await asyncio.sleep(STAGING_FETCH_RETRY_DELAY_S * attempt)
     resp.raise_for_status()
     data = resp.json()
     items = data.get("items", [])

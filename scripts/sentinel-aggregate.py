@@ -4,8 +4,9 @@
 Reads the organs_registry.yaml and aggregates per-organ status by combining:
   1. ~/.organism/last_seen/<id>.json (heartbeat written by the organ itself
      or by its wrapper script).
-  2. `launchctl list` output for `runtime: pro_launchd` organs (PID + last
-     exit code, gives liveness when no last_seen file exists).
+  2. `launchctl list` output for `runtime: pro_launchd` / `mini_launchd`
+     organs (PID + last exit code, gives liveness when no last_seen file
+     exists).
   3. `expected_hb_seconds` from the registry to classify silence as
      ok / stale / dead based on age vs threshold.
 
@@ -92,15 +93,8 @@ def _read_last_seen(organ_id: str, organ: dict[str, Any] | None = None) -> dict[
     return None
 
 
-def _launchctl_loaded() -> dict[str, dict[str, Any]]:
-    """Return {label: {pid, last_exit}} from `launchctl list`."""
-    try:
-        out = subprocess.check_output(
-            ["launchctl", "list"], text=True, timeout=10
-        )
-    except (subprocess.SubprocessError, OSError):
-        return {}
-
+def _parse_launchctl_list(out: str) -> dict[str, dict[str, Any]]:
+    """Return {label: {pid, last_exit}} from `launchctl list` text."""
     result: dict[str, dict[str, Any]] = {}
     for line in out.splitlines()[1:]:
         parts = line.split("\t")
@@ -119,6 +113,16 @@ def _launchctl_loaded() -> dict[str, dict[str, Any]]:
     return result
 
 
+def _launchctl_loaded(command: list[str] | None = None) -> dict[str, dict[str, Any]]:
+    """Return {label: {pid, last_exit}} from local or remote launchctl list."""
+    cmd = command or ["launchctl", "list"]
+    try:
+        out = subprocess.check_output(cmd, text=True, timeout=10)
+    except (subprocess.SubprocessError, OSError):
+        return {}
+    return _parse_launchctl_list(out)
+
+
 def _classify(
     organ: dict[str, Any],
     hb: dict[str, Any] | None,
@@ -129,6 +133,18 @@ def _classify(
     runtime = organ.get("runtime", "")
     expected_hb = organ.get("expected_hb_seconds", 0)
     severity_on_silence = organ.get("severity_on_silence", "warning")
+
+    if organ.get("enabled") is False:
+        return {
+            "id": organ_id,
+            "runtime": runtime,
+            "status": "disabled",
+            "age_seconds": None,
+            "severity": "info",
+            "owner_module": organ.get("owner_module"),
+            "recovery_action": organ.get("recovery_action"),
+            "disabled_reason": organ.get("disabled_reason", ""),
+        }
 
     # fly_machine: no local launchctl, status comes from health endpoint —
     # out of scope for this aggregator. Mark as remote.
@@ -179,7 +195,16 @@ def _classify(
                 # fail / error / unknown / anything else: always dead.
                 status = "dead"
 
-        return {
+        if (
+            organ.get("type") == "cron"
+            and status in ("stale", "dead")
+            and hb_status in ("ok", "success", "healthy", "starting", "degraded", "warning")
+            and launchctl_entry is not None
+            and launchctl_entry.get("pid") is not None
+        ):
+            status = "ok"
+
+        result = {
             "id": organ_id,
             "runtime": runtime,
             "status": status,
@@ -189,6 +214,11 @@ def _classify(
             "recovery_action": organ.get("recovery_action"),
             "hb_status": hb_status,
         }
+        if launchctl_entry is not None and launchctl_entry.get("pid") is not None:
+            result["pid"] = launchctl_entry.get("pid")
+            result["last_exit"] = launchctl_entry.get("last_exit")
+            result["hb_source"] = "launchctl_running"
+        return result
 
     # No heartbeat. Fall back to launchctl liveness.
     # Convention (2026-05-09 wave 2): launchd-loaded + last_exit==0 is the
@@ -198,6 +228,37 @@ def _classify(
     if launchctl_entry is not None:
         pid = launchctl_entry.get("pid")
         last_exit = launchctl_entry.get("last_exit")
+        # launchctl keeps the previous exit code even after KeepAlive has
+        # restarted a daemon. If a current PID exists, liveness wins over the
+        # stale last_exit stamp; otherwise running daemons can be reported as
+        # dead forever after one historical boot race.
+        bs = organ.get("bridge_source") or {}
+        declares_state_file = isinstance(bs, dict) and bs.get("type") == "state_file"
+        if declares_state_file:
+            return {
+                "id": organ_id,
+                "runtime": runtime,
+                "status": "noheartbeat",
+                "age_seconds": None,
+                "severity": "warning",
+                "owner_module": organ.get("owner_module"),
+                "recovery_action": organ.get("recovery_action"),
+                "pid": pid,
+                "last_exit": last_exit,
+            }
+        if pid is not None:
+            return {
+                "id": organ_id,
+                "runtime": runtime,
+                "status": "ok",
+                "age_seconds": None,
+                "severity": "info",
+                "owner_module": organ.get("owner_module"),
+                "recovery_action": organ.get("recovery_action"),
+                "pid": pid,
+                "last_exit": last_exit,
+                "hb_source": "launchctl",
+            }
         # Treat SIGTERM (-15) and SIGINT (-2) as graceful — not failure.
         # These happen on normal restart cycles or manual kickstart.
         graceful_signals = {-15, -2}
@@ -233,19 +294,6 @@ def _classify(
         # file is a broken contract → noheartbeat. http-type bridge_source
         # is not implemented yet (Codex P1c fix): fall through to "ok"
         # rather than spuriously flagging http-source organs as noheartbeat.
-        bs = organ.get("bridge_source") or {}
-        declares_state_file = isinstance(bs, dict) and bs.get("type") == "state_file"
-        if declares_state_file:
-            return {
-                "id": organ_id,
-                "runtime": runtime,
-                "status": "noheartbeat",
-                "age_seconds": None,
-                "severity": "warning",
-                "owner_module": organ.get("owner_module"),
-                "recovery_action": organ.get("recovery_action"),
-                "pid": pid,
-            }
         return {
             "id": organ_id,
             "runtime": runtime,
@@ -281,7 +329,7 @@ def _print_summary(rollup: dict[str, list[dict[str, Any]]]) -> None:
     print(
         f"=== Sentinel Aggregate @ {datetime.now(timezone.utc).isoformat(timespec='seconds')} ==="
     )
-    for status in ("dead", "stale", "warning", "exit_drift", "noheartbeat", "unknown", "remote", "ok"):
+    for status in ("dead", "stale", "warning", "exit_drift", "noheartbeat", "unknown", "disabled", "remote", "ok"):
         items = rollup.get(status, [])
         if not items:
             continue
@@ -309,7 +357,17 @@ def main() -> int:
         print("ERROR: registry has no organs list", file=sys.stderr)
         return 1
 
-    launchctl_map = _launchctl_loaded()
+    pro_launchctl_map = _launchctl_loaded()
+    mini_launchctl_map = _launchctl_loaded([
+        "ssh",
+        "-o",
+        "BatchMode=yes",
+        "-o",
+        "ConnectTimeout=3",
+        "mini",
+        "launchctl",
+        "list",
+    ])
     now = _now_epoch()
 
     results: list[dict[str, Any]] = []
@@ -319,6 +377,10 @@ def main() -> int:
         organ_id = organ["id"]
         hb = _read_last_seen(organ_id, organ)
         label = (organ.get("recovery_params") or {}).get("label")
+        if organ.get("runtime") == "mini_launchd":
+            launchctl_map = mini_launchctl_map
+        else:
+            launchctl_map = pro_launchctl_map
         launchctl_entry = launchctl_map.get(label) if label else None
         results.append(_classify(organ, hb, launchctl_entry, now))
 
