@@ -42,6 +42,100 @@ async def _ensure_clean_slate(conn: asyncpg.Connection) -> None:
     await conn.execute("DROP TABLE IF EXISTS intel_validator_log CASCADE")
 
 
+async def _snapshot_schema_versions(
+    conn: asyncpg.Connection,
+    numbers: tuple[int, ...],
+) -> list[dict]:
+    rows = await conn.fetch(
+        """
+        SELECT migration_name, migration_number, executed_at, checksum,
+               description, execution_time_ms, rollback_sql, applied_by
+        FROM _schema_versions
+        WHERE migration_number = ANY($1::int[])
+        """,
+        list(numbers),
+    )
+    return [dict(row) for row in rows]
+
+
+async def _snapshot_schema_migrations(
+    conn: asyncpg.Connection,
+    numbers: tuple[int, ...],
+) -> list[dict]:
+    rows = await conn.fetch(
+        """
+        SELECT migration_name, migration_number, executed_at, checksum,
+               description, execution_time_ms, rollback_sql
+        FROM schema_migrations
+        WHERE migration_number = ANY($1::int[])
+        """,
+        list(numbers),
+    )
+    return [dict(row) for row in rows]
+
+
+async def _restore_schema_versions(
+    conn: asyncpg.Connection,
+    rows: list[dict],
+) -> None:
+    for row in rows:
+        await conn.execute(
+            """
+            INSERT INTO _schema_versions (
+                migration_name, migration_number, executed_at, checksum,
+                description, execution_time_ms, rollback_sql, applied_by
+            )
+            VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+            ON CONFLICT (migration_name) DO UPDATE SET
+                migration_number = EXCLUDED.migration_number,
+                executed_at = EXCLUDED.executed_at,
+                checksum = EXCLUDED.checksum,
+                description = EXCLUDED.description,
+                execution_time_ms = EXCLUDED.execution_time_ms,
+                rollback_sql = EXCLUDED.rollback_sql,
+                applied_by = EXCLUDED.applied_by
+            """,
+            row["migration_name"],
+            row["migration_number"],
+            row["executed_at"],
+            row["checksum"],
+            row["description"],
+            row["execution_time_ms"],
+            row["rollback_sql"],
+            row["applied_by"],
+        )
+
+
+async def _restore_schema_migrations(
+    conn: asyncpg.Connection,
+    rows: list[dict],
+) -> None:
+    for row in rows:
+        await conn.execute(
+            """
+            INSERT INTO schema_migrations (
+                migration_name, migration_number, executed_at, checksum,
+                description, execution_time_ms, rollback_sql
+            )
+            VALUES ($1,$2,$3,$4,$5,$6,$7)
+            ON CONFLICT (migration_name) DO UPDATE SET
+                migration_number = EXCLUDED.migration_number,
+                executed_at = EXCLUDED.executed_at,
+                checksum = EXCLUDED.checksum,
+                description = EXCLUDED.description,
+                execution_time_ms = EXCLUDED.execution_time_ms,
+                rollback_sql = EXCLUDED.rollback_sql
+            """,
+            row["migration_name"],
+            row["migration_number"],
+            row["executed_at"],
+            row["checksum"],
+            row["description"],
+            row["execution_time_ms"],
+            row["rollback_sql"],
+        )
+
+
 def _forward_and_rollback(sql_text: str) -> tuple[str, str]:
     """Split a migration file into (forward_sql, rollback_sql)."""
     rollback = _extract_rollback_sql(sql_text) or ""
@@ -133,6 +227,7 @@ async def test_base_migration_apply_strips_rollback_section() -> None:
     fix, the table is present after apply().
     """
     conn = await asyncpg.connect(_TEST_DB_URL)
+    schema_migrations_before: list[dict] = []
     try:
         # Clean slate (these tests own these tables).
         for sql in (
@@ -147,6 +242,10 @@ async def test_base_migration_apply_strips_rollback_section() -> None:
             "  migration_number INTEGER NOT NULL, executed_at TIMESTAMPTZ DEFAULT NOW(),"
             "  checksum VARCHAR(64) NOT NULL, description TEXT,"
             "  execution_time_ms INTEGER, rollback_sql TEXT)"
+        )
+        schema_migrations_before = await _snapshot_schema_migrations(
+            conn,
+            (114, 115),
         )
         await conn.execute(
             "DELETE FROM schema_migrations WHERE migration_number IN (114, 115)"
@@ -186,8 +285,9 @@ async def test_base_migration_apply_strips_rollback_section() -> None:
         # Cleanup: drop what we just created so other tests are not affected.
         await conn.execute("DROP TABLE IF EXISTS compliance_alerts CASCADE")
         await conn.execute(
-            "DELETE FROM schema_migrations WHERE migration_number = 114"
+            "DELETE FROM schema_migrations WHERE migration_number IN (114, 115)"
         )
+        await _restore_schema_migrations(conn, schema_migrations_before)
     finally:
         await conn.close()
 
@@ -199,6 +299,9 @@ async def test_apply_all_pending_creates_compliance_chain() -> None:
     This mirrors the Fly release_command path that broke deploy 2026-04-19.
     """
     conn = await asyncpg.connect(_TEST_DB_URL)
+    affected_numbers = (92, 108, 109, 110, 114, 115, 116)
+    schema_versions_before: list[dict] = []
+    schema_migrations_before: list[dict] = []
     try:
         # Clean slate including bookkeeping tables for tracked migrations.
         for sql in (
@@ -216,14 +319,22 @@ async def test_apply_all_pending_creates_compliance_chain() -> None:
             "  applied_by VARCHAR(255) DEFAULT 'system')"
         )
         await conn.execute(
-            "DELETE FROM _schema_versions WHERE migration_number IN (114, 115, 116)"
-        )
-        await conn.execute(
             "CREATE TABLE IF NOT EXISTS schema_migrations ("
             "  id SERIAL PRIMARY KEY, migration_name VARCHAR(255) UNIQUE NOT NULL,"
             "  migration_number INTEGER NOT NULL, executed_at TIMESTAMPTZ DEFAULT NOW(),"
             "  checksum VARCHAR(64) NOT NULL, description TEXT,"
             "  execution_time_ms INTEGER, rollback_sql TEXT)"
+        )
+        schema_versions_before = await _snapshot_schema_versions(
+            conn,
+            affected_numbers,
+        )
+        schema_migrations_before = await _snapshot_schema_migrations(
+            conn,
+            affected_numbers,
+        )
+        await conn.execute(
+            "DELETE FROM _schema_versions WHERE migration_number IN (114, 115, 116)"
         )
         await conn.execute(
             "DELETE FROM schema_migrations WHERE migration_number IN (114, 115, 116)"
@@ -266,19 +377,19 @@ async def test_apply_all_pending_creates_compliance_chain() -> None:
             exists = await _table_exists(conn, tbl)
             assert exists, f"{tbl} missing after apply_all_pending()"
 
-        # Cleanup: only reset the migration bookkeeping so a re-run of this
-        # test can re-apply 114/115/116. Do NOT drop the three physical
-        # tables here — other suites in the same pytest session (compliance
-        # services tests, router tests, alert_feedback) rely on
-        # compliance_alerts / alert_outcomes / intel_validator_log being
-        # present. The _ensure_clean_slate + apply_all_pending round-trip
-        # above already proved the migrations are idempotent (CREATE TABLE
-        # IF NOT EXISTS), so leaving the tables in place is safe.
+        # Cleanup: restore the migration bookkeeping to its exact pre-test
+        # state so this integration test does not leave the shared dev DB with
+        # pending migrations. Do NOT drop the three physical tables here —
+        # other suites in the same pytest session rely on them being present.
         await conn.execute(
-            "DELETE FROM schema_migrations WHERE migration_number IN (114, 115, 116)"
+            "DELETE FROM schema_migrations WHERE migration_number = ANY($1::int[])",
+            list(affected_numbers),
         )
         await conn.execute(
-            "DELETE FROM _schema_versions WHERE migration_number IN (92, 108, 109, 110, 114, 115, 116)"
+            "DELETE FROM _schema_versions WHERE migration_number = ANY($1::int[])",
+            list(affected_numbers),
         )
+        await _restore_schema_migrations(conn, schema_migrations_before)
+        await _restore_schema_versions(conn, schema_versions_before)
     finally:
         await conn.close()

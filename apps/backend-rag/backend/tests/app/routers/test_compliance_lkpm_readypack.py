@@ -16,6 +16,7 @@ from __future__ import annotations
 import os
 from typing import AsyncGenerator
 from unittest.mock import AsyncMock, MagicMock, patch
+from uuid import uuid4
 
 import asyncpg
 import pytest
@@ -161,13 +162,15 @@ async def setup_and_teardown(pool: asyncpg.Pool) -> AsyncGenerator[None, None]:
 
 
 async def _insert_client(pool: asyncpg.Pool) -> int:
+    email = f"rp-router-{uuid4().hex[:10]}@example.com"
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """
             INSERT INTO clients (full_name, email, google_drive_folder_id, created_at, updated_at)
-            VALUES ('RP Router Test', 'rp_router@example.com', 'drive_folder_rp', NOW(), NOW())
+            VALUES ('RP Router Test', $1, 'drive_folder_rp', NOW(), NOW())
             RETURNING id
-            """
+            """,
+            email,
         )
     cid = int(row["id"])
     _cleanup_clients.append(cid)
