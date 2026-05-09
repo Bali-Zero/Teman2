@@ -92,6 +92,11 @@ async def cmd_apply(
         if result["skipped"]:
             print(f"⏭️  Skipped: {len(result['skipped'])} migrations")
 
+        if result.get("reconciled"):
+            print(f"🔁 Reconciled: {len(result['reconciled'])} migrations")
+            for num in result["reconciled"]:
+                print(f"   - Migration {num:03d}")
+
         if result["failed"]:
             print(f"❌ Failed: {len(result['failed'])} migrations")
             for failure in result["failed"]:

@@ -14,9 +14,10 @@
 --    to exercise the validator; without the relaxation, a fresh
 --    DB rejects those inserts.
 --
--- Idempotent: every statement uses IF NOT EXISTS / DROP NOT NULL on a
--- known-existing column. No-op on prod (already in this shape) and on
--- previously-bootstrapped CI (the bootstrap script set the same shape).
+-- Idempotent: every statement uses IF NOT EXISTS / DROP NOT NULL. No-op
+-- on prod (already in this shape), converges partially bootstrapped DBs
+-- where lkpm_reports exists without every promoted column, and remains
+-- safe on previously-bootstrapped CI.
 --
 -- Reserved gap: number 131 is intentionally skipped — it's reserved for
 -- 131_unify_migration_tracking.sql in Strategy 01 Step 3.
@@ -79,6 +80,66 @@ CREATE TABLE IF NOT EXISTS lkpm_reports (
     created_at                      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at                      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- CREATE TABLE IF NOT EXISTS does not add missing columns on a partial table.
+-- Re-state the promoted shape as ADD COLUMN IF NOT EXISTS before relaxing
+-- realization nullability, so this migration can repair a half-bootstrapped
+-- lkpm_reports relation instead of crashing on the first missing column.
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS client_id INTEGER;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS quarter TEXT;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS year INTEGER;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'draft';
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS lkpm_assigned_to TEXT;
+
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS realized_equipment_domestic BIGINT DEFAULT 0;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS realized_equipment_import BIGINT DEFAULT 0;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS realized_building_domestic BIGINT DEFAULT 0;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS realized_building_import BIGINT DEFAULT 0;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS realized_vehicle_domestic BIGINT DEFAULT 0;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS realized_vehicle_import BIGINT DEFAULT 0;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS realized_land BIGINT DEFAULT 0;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS realized_working_capital BIGINT DEFAULT 0;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS realized_other BIGINT DEFAULT 0;
+
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS cumulative_equipment_domestic BIGINT DEFAULT 0;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS cumulative_equipment_import BIGINT DEFAULT 0;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS cumulative_building_domestic BIGINT DEFAULT 0;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS cumulative_building_import BIGINT DEFAULT 0;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS cumulative_vehicle_domestic BIGINT DEFAULT 0;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS cumulative_vehicle_import BIGINT DEFAULT 0;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS cumulative_land BIGINT DEFAULT 0;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS cumulative_working_capital BIGINT DEFAULT 0;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS cumulative_other BIGINT DEFAULT 0;
+
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS current_tki INTEGER DEFAULT 0;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS current_tka INTEGER DEFAULT 0;
+
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS quarterly_revenue BIGINT DEFAULT 0;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS annual_revenue BIGINT DEFAULT 0;
+
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS narrative_obstacles TEXT;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS narrative_plans TEXT;
+
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS validation_status TEXT DEFAULT 'pending';
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS validation_alerts JSONB DEFAULT '[]'::jsonb;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS validated_at TIMESTAMPTZ;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS validated_by TEXT;
+
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS client_approved BOOLEAN DEFAULT FALSE;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS client_approved_at TIMESTAMPTZ;
+
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS oss_submitted BOOLEAN DEFAULT FALSE;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS oss_submitted_at TIMESTAMPTZ;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS oss_submitted_by TEXT;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS oss_receipt_number TEXT;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS oss_receipt_file_url TEXT;
+
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS data_source TEXT DEFAULT 'manual';
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS has_ai_categorized_items BOOLEAN DEFAULT FALSE;
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS ai_categorized_count INTEGER DEFAULT 0;
+
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS created_at TIMESTAMPTZ DEFAULT NOW();
+ALTER TABLE lkpm_reports ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT NOW();
 
 -- company_id was added by migration_100a_lkpm_company_id.py (old-style
 -- Python migration). lkpm_ready_pack joins lkpm_reports r ↔

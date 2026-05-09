@@ -405,9 +405,22 @@ class BaseMigration:
         """
         return True
 
-    async def apply(self) -> bool:
+    async def apply(
+        self,
+        *,
+        database_url: str | None = None,
+        force: bool = False,
+    ) -> bool:
         """
         Apply migration with transaction and automatic rollback.
+
+        Args:
+            database_url: Optional database URL override. MigrationManager
+                passes its own URL so tests and one-off runners do not
+                silently fall back to global settings.
+            force: Execute the forward SQL even if schema_migrations already
+                contains this migration. Only use for explicitly idempotent
+                physical remediation.
 
         Returns:
             True if migration applied successfully, False otherwise
@@ -415,7 +428,8 @@ class BaseMigration:
         Raises:
             MigrationError: If migration fails or validation fails
         """
-        if not settings.database_url:
+        db_url = database_url or settings.database_url
+        if not db_url:
             raise MigrationError("DATABASE_URL not configured")
 
         # Read SQL file
@@ -439,12 +453,12 @@ class BaseMigration:
             raise
 
         # Sanitize URL for logging
-        safe_url = self._sanitize_db_url(settings.database_url)
+        safe_url = self._sanitize_db_url(db_url)
         logger.info(f"Applying migration {self.migration_name} to {safe_url}")
 
         # Connect to database
         try:
-            conn = await asyncpg.connect(settings.database_url)
+            conn = await asyncpg.connect(db_url)
         except Exception as e:
             raise MigrationError(f"Cannot connect to database: {e}") from e
 
@@ -459,7 +473,7 @@ class BaseMigration:
                 await self._check_dependencies(conn)
 
                 # Check if already applied
-                if await self._is_applied(conn):
+                if not force and await self._is_applied(conn):
                     logger.info(f"Migration {self.migration_name} already applied, skipping")
                     return True
 

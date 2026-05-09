@@ -193,3 +193,73 @@ Exit criteria:
 5. Session E: stable gate definition.
 
 Do not start new coverage work until Sessions A-C are green. Session D can run in parallel only after S1 client-delete behavior is fixed, otherwise fixture failures remain misleading.
+
+## Stabilization Result - 2026-05-09
+
+Implemented in `codex/coverage-integration-20260509020838`:
+
+- Session A: `MigrationManager.apply_all_pending()` now reconciles both ledgers in both directions:
+  - `schema_migrations` -> `_schema_versions` for canonical rows, including historical rows whose SQL files are no longer in `migrations_v2`.
+  - `_schema_versions` -> `schema_migrations` for discovered legacy-only rows.
+  - Known physical drift checks force idempotent SQL re-run for migrations `132` and `140` instead of trusting a ledger row.
+- Session B: migration `132_legacy_lkpm_reports.sql` now converges partial `lkpm_reports` tables by adding all promoted columns with `ADD COLUMN IF NOT EXISTS` before relaxing `realized_*` / `cumulative_*` nullability.
+- Session C: local DB remediation re-ran migrations `132` and `140`; `pg_rewrite` now has zero `crm_guardian_events_no_update` / `crm_guardian_events_no_delete` rules.
+- Session D: LKPM ready-pack router fixture now generates unique client emails instead of reusing `rp_router@example.com`.
+- Session E: stable backend gate below is the required pre-coverage gate.
+
+Final local DB evidence:
+
+```text
+guardian_rules=[]
+ledger_counts={'legacy': 87, 'canonical': 87}
+canonical_only=[]
+legacy_only=[]
+lkpm_checked_columns=19
+lkpm_realization_nullable=True
+schema_audit.ok=True
+```
+
+## Backend Stabilization Gate
+
+Run from `apps/backend-rag` with the project virtualenv active.
+
+1. Reconcile/apply migrations:
+
+```bash
+JWT_SECRET_KEY=test_jwt_secret_key_for_testing_only_min_32_chars_long \
+API_KEYS=test_api_key_1,test_api_key_2 \
+DATABASE_URL=postgresql://nuzantara@localhost:5432/nuzantara_dev \
+PYTHONPATH=. python -m backend.db.migrate apply-all
+```
+
+2. Audit migration state:
+
+```bash
+JWT_SECRET_KEY=test_jwt_secret_key_for_testing_only_min_32_chars_long \
+API_KEYS=test_api_key_1,test_api_key_2 \
+DATABASE_URL=postgresql://nuzantara@localhost:5432/nuzantara_dev \
+PYTHONPATH=. python -m backend.db.schema_audit --json
+```
+
+Expected: `"ok": true`, no findings.
+
+3. Run the stabilization subset:
+
+```bash
+PYTHONPATH=. pytest \
+  backend/tests/db/test_migration_114_115_116_roundtrip.py::test_apply_all_pending_creates_compliance_chain \
+  backend/tests/db/test_migration_132_lkpm_idempotence.py \
+  backend/tests/db/test_migration_ledger_reconciliation.py \
+  backend/tests/app/routers/test_compliance_lkpm_readypack.py::test_happy_path_admin_dry_run \
+  backend/tests/app/routers/test_compliance_alerts_router.py::test_post_outcome_creates_row \
+  backend/tests/services/crm/partners/test_emails.py::test_send_commission_earned_sterilizes_client_name \
+  backend/tests/db/test_migration_advisory_lock.py \
+  backend/tests/db/test_legacy_promotion_migrations.py \
+  backend/tests/db/test_schema_audit.py
+```
+
+Current result: `34 passed` across the listed stabilization targets.
+
+Broader DB check: `PYTHONPATH=. pytest backend/tests/db -q` currently returns
+`194 passed, 9 skipped`, and a post-run `backend.db.schema_audit --json`
+returns `"ok": true`.

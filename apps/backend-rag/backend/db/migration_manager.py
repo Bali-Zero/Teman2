@@ -5,6 +5,7 @@ Centralized migration management system
 
 import logging
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlparse
 
 import asyncpg
@@ -18,6 +19,32 @@ from backend.db.migration_base import (
 )
 
 logger = logging.getLogger(__name__)
+
+_LKPM_REALIZATION_COLUMNS: tuple[str, ...] = (
+    "realized_equipment_domestic",
+    "realized_equipment_import",
+    "realized_building_domestic",
+    "realized_building_import",
+    "realized_vehicle_domestic",
+    "realized_vehicle_import",
+    "realized_land",
+    "realized_working_capital",
+    "realized_other",
+    "cumulative_equipment_domestic",
+    "cumulative_equipment_import",
+    "cumulative_building_domestic",
+    "cumulative_building_import",
+    "cumulative_vehicle_domestic",
+    "cumulative_vehicle_import",
+    "cumulative_land",
+    "cumulative_working_capital",
+    "cumulative_other",
+)
+
+_MIGRATION_132_REQUIRED_COLUMNS: tuple[str, ...] = (
+    *_LKPM_REALIZATION_COLUMNS,
+    "company_id",
+)
 
 # Re-export for backwards compatibility with existing tests/callers.
 # `__all__` advertises the re-export so static analyzers don't flag it
@@ -154,6 +181,302 @@ class MigrationManager:
             );
         """,
         )
+
+    async def _ensure_canonical_migration_log(self, conn: asyncpg.Connection) -> None:
+        """Ensure schema_migrations table exists.
+
+        BaseMigration owns this table during normal apply. MigrationManager
+        also needs read access for reconciliation when the legacy ledger lags
+        behind the canonical one.
+        """
+        await conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+                id SERIAL PRIMARY KEY,
+                migration_name VARCHAR(255) UNIQUE NOT NULL,
+                migration_number INTEGER NOT NULL,
+                executed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                checksum VARCHAR(64) NOT NULL,
+                description TEXT,
+                execution_time_ms INTEGER,
+                rollback_sql TEXT
+            );
+        """,
+        )
+
+    async def _get_canonical_migrations_by_number(
+        self,
+        conn: asyncpg.Connection,
+    ) -> dict[int, dict[str, Any]]:
+        """Return schema_migrations rows keyed by migration number."""
+        await self._ensure_canonical_migration_log(conn)
+        rows = await conn.fetch(
+            """
+            SELECT DISTINCT ON (migration_number)
+                   migration_name,
+                   migration_number,
+                   executed_at,
+                   checksum,
+                   description,
+                   execution_time_ms,
+                   rollback_sql
+            FROM schema_migrations
+            ORDER BY migration_number, executed_at DESC
+            """,
+        )
+        return {
+            int(row["migration_number"]): dict(row)
+            for row in rows
+        }
+
+    async def _get_legacy_migrations_by_number(
+        self,
+        conn: asyncpg.Connection,
+    ) -> dict[int, dict[str, Any]]:
+        """Return _schema_versions rows keyed by migration number."""
+        await self._ensure_migration_log(conn)
+        rows = await conn.fetch(
+            """
+            SELECT DISTINCT ON (migration_number)
+                   migration_name,
+                   migration_number,
+                   executed_at,
+                   checksum,
+                   description,
+                   execution_time_ms,
+                   rollback_sql
+            FROM _schema_versions
+            ORDER BY migration_number, executed_at DESC
+            """,
+        )
+        return {
+            int(row["migration_number"]): dict(row)
+            for row in rows
+        }
+
+    async def _record_schema_version_from_canonical(
+        self,
+        conn: asyncpg.Connection,
+        *,
+        canonical_row: dict[str, Any],
+        applied_by: str = "migration-manager-reconcile",
+    ) -> None:
+        """Backfill _schema_versions from an existing schema_migrations row."""
+        await self._ensure_migration_log(conn)
+        await conn.execute(
+            """
+            INSERT INTO _schema_versions (
+                migration_name,
+                migration_number,
+                description,
+                applied_by,
+                checksum,
+                execution_time_ms,
+                rollback_sql
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (migration_name) DO UPDATE SET
+                migration_number = EXCLUDED.migration_number,
+                description = EXCLUDED.description,
+                checksum = EXCLUDED.checksum,
+                execution_time_ms = EXCLUDED.execution_time_ms,
+                rollback_sql = EXCLUDED.rollback_sql,
+                applied_by = EXCLUDED.applied_by
+            """,
+            str(canonical_row["migration_name"]),
+            int(canonical_row["migration_number"]),
+            canonical_row.get("description"),
+            applied_by,
+            str(canonical_row["checksum"]),
+            int(canonical_row["execution_time_ms"])
+            if canonical_row.get("execution_time_ms") is not None
+            else 0,
+            canonical_row.get("rollback_sql"),
+        )
+
+    async def _record_canonical_migration(
+        self,
+        conn: asyncpg.Connection,
+        *,
+        migration: BaseMigration,
+        migration_info: dict[str, Any],
+        legacy_row: dict[str, Any] | None = None,
+    ) -> dict[str, Any]:
+        """Backfill schema_migrations from a legacy _schema_versions row."""
+        await self._ensure_canonical_migration_log(conn)
+        sql_text = Path(migration_info["path"]).read_text(encoding="utf-8")
+        checksum = migration._calculate_checksum(sql_text)
+        description = (
+            str(legacy_row["description"])
+            if legacy_row and legacy_row.get("description")
+            else migration.description
+        )
+        execution_time_ms = (
+            int(legacy_row["execution_time_ms"])
+            if legacy_row and legacy_row.get("execution_time_ms") is not None
+            else 0
+        )
+        rollback_sql = (
+            str(legacy_row["rollback_sql"])
+            if legacy_row and legacy_row.get("rollback_sql") is not None
+            else migration_info.get("rollback_sql")
+        )
+        await conn.execute(
+            """
+            INSERT INTO schema_migrations (
+                migration_name,
+                migration_number,
+                checksum,
+                description,
+                execution_time_ms,
+                rollback_sql
+            )
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (migration_name) DO UPDATE SET
+                migration_number = EXCLUDED.migration_number,
+                checksum = EXCLUDED.checksum,
+                description = EXCLUDED.description,
+                execution_time_ms = EXCLUDED.execution_time_ms,
+                rollback_sql = EXCLUDED.rollback_sql
+            """,
+            migration.migration_name,
+            migration.migration_number,
+            checksum,
+            description,
+            execution_time_ms,
+            rollback_sql,
+        )
+        return {
+            "migration_name": migration.migration_name,
+            "migration_number": migration.migration_number,
+            "executed_at": None,
+            "checksum": checksum,
+            "description": description,
+            "execution_time_ms": execution_time_ms,
+            "rollback_sql": rollback_sql,
+        }
+
+    async def _record_schema_version(
+        self,
+        conn: asyncpg.Connection,
+        *,
+        migration: BaseMigration,
+        migration_info: dict[str, Any],
+        canonical_row: dict[str, Any] | None = None,
+        applied_by: str = "migration-manager",
+    ) -> None:
+        """Backfill/record the legacy ledger after apply or reconciliation."""
+        await self._ensure_migration_log(conn)
+
+        sql_text = Path(migration_info["path"]).read_text(encoding="utf-8")
+        checksum = (
+            str(canonical_row["checksum"])
+            if canonical_row and canonical_row.get("checksum")
+            else migration._calculate_checksum(sql_text)
+        )
+        migration_name = (
+            str(canonical_row["migration_name"])
+            if canonical_row and canonical_row.get("migration_name")
+            else migration.migration_name
+        )
+        description = (
+            str(canonical_row["description"])
+            if canonical_row and canonical_row.get("description")
+            else migration.description
+        )
+        execution_time_ms = (
+            int(canonical_row["execution_time_ms"])
+            if canonical_row and canonical_row.get("execution_time_ms") is not None
+            else 0
+        )
+        rollback_sql = (
+            str(canonical_row["rollback_sql"])
+            if canonical_row and canonical_row.get("rollback_sql") is not None
+            else migration_info.get("rollback_sql")
+        )
+
+        await conn.execute(
+            """
+            INSERT INTO _schema_versions (
+                migration_name,
+                migration_number,
+                description,
+                applied_by,
+                checksum,
+                execution_time_ms,
+                rollback_sql
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (migration_name) DO UPDATE SET
+                migration_number = EXCLUDED.migration_number,
+                description = EXCLUDED.description,
+                checksum = EXCLUDED.checksum,
+                execution_time_ms = EXCLUDED.execution_time_ms,
+                rollback_sql = EXCLUDED.rollback_sql,
+                applied_by = EXCLUDED.applied_by
+            """,
+            migration_name,
+            migration.migration_number,
+            description,
+            applied_by,
+            checksum,
+            execution_time_ms,
+            rollback_sql,
+        )
+
+    async def _known_migration_state_satisfied(
+        self,
+        conn: asyncpg.Connection,
+        migration_number: int,
+    ) -> bool | None:
+        """Return physical-state status for migrations with known drift checks.
+
+        None means MigrationManager has no physical verifier for this
+        migration and should only reconcile ledgers.
+        """
+        if migration_number == 132:
+            return await self._migration_132_state_satisfied(conn)
+        if migration_number == 140:
+            return await self._migration_140_state_satisfied(conn)
+        return None
+
+    async def _migration_132_state_satisfied(self, conn: asyncpg.Connection) -> bool:
+        rows = await conn.fetch(
+            """
+            SELECT column_name, is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public'
+              AND table_name = 'lkpm_reports'
+              AND column_name = ANY($1::text[])
+            """,
+            list(_MIGRATION_132_REQUIRED_COLUMNS),
+        )
+        by_name = {str(row["column_name"]): str(row["is_nullable"]) for row in rows}
+        if set(by_name) != set(_MIGRATION_132_REQUIRED_COLUMNS):
+            return False
+        return all(
+            by_name[column_name] == "YES"
+            for column_name in _LKPM_REALIZATION_COLUMNS
+        )
+
+    async def _migration_140_state_satisfied(self, conn: asyncpg.Connection) -> bool:
+        rules_exist = await conn.fetchval(
+            """
+            SELECT EXISTS (
+                SELECT 1
+                FROM pg_rewrite r
+                JOIN pg_class c ON c.oid = r.ev_class
+                JOIN pg_namespace n ON n.oid = c.relnamespace
+                WHERE n.nspname = 'public'
+                  AND c.relname = 'crm_guardian_events'
+                  AND r.rulename IN (
+                    'crm_guardian_events_no_update',
+                    'crm_guardian_events_no_delete'
+                  )
+            )
+            """,
+        )
+        return not bool(rules_exist)
 
     async def get_applied_migrations(self) -> list[dict]:
         """
@@ -305,7 +628,12 @@ class MigrationManager:
 
         return migrations
 
-    async def apply_migration(self, migration: BaseMigration) -> bool:
+    async def apply_migration(
+        self,
+        migration: BaseMigration,
+        *,
+        force: bool = False,
+    ) -> bool:
         """
         Apply a single migration.
 
@@ -318,7 +646,7 @@ class MigrationManager:
         Raises:
             MigrationError: If migration fails
         """
-        return await migration.apply()
+        return await migration.apply(database_url=self.database_url, force=force)
 
     # Process-wide advisory lock id used to serialise concurrent migration
     # runs. `pg_advisory_lock` / `pg_advisory_unlock` are *session-scoped* —
@@ -388,13 +716,32 @@ class MigrationManager:
 
     async def _apply_all_pending_locked(self, dry_run: bool = False) -> dict:
         """Internal: apply pending migrations while holding advisory lock."""
+        if self.pool is None:
+            await self.connect()
+        assert self.pool is not None
+
         discovered = await self.discover_migrations()
         applied_migrations = await self.get_applied_migrations()
         applied_numbers = {m["migration_number"] for m in applied_migrations}
+        async with self.pool.acquire() as conn:
+            canonical_by_number = await self._get_canonical_migrations_by_number(conn)
+            legacy_by_number = await self._get_legacy_migrations_by_number(conn)
+        discovered_by_number = {m["number"]: m for m in discovered}
+        canonical_numbers = set(canonical_by_number)
+        canonical_only_orphans = sorted(
+            canonical_numbers - applied_numbers - set(discovered_by_number),
+        )
+        legacy_only_discovered = sorted(
+            (applied_numbers - canonical_numbers) & set(discovered_by_number),
+        )
+
+        applied = []
+        failed = []
+        reconciled = []
 
         # Orphan tolerance: log applied migrations that no longer have files
         discovered_numbers = {m["number"] for m in discovered}
-        orphan_numbers = applied_numbers - discovered_numbers
+        orphan_numbers = applied_numbers - discovered_numbers - canonical_numbers
         if orphan_numbers:
             logger.warning(
                 f"Orphan migrations in _schema_versions (files removed): {sorted(orphan_numbers)}. "
@@ -403,11 +750,15 @@ class MigrationManager:
 
         pending = [m for m in discovered if m["number"] not in applied_numbers]
 
-        if not pending:
+        if not pending and not canonical_only_orphans and not legacy_only_discovered:
             logger.info("No pending migrations")
             return {"applied": [], "skipped": [], "failed": []}
 
-        logger.info(f"Found {len(pending)} pending migrations")
+        logger.info(
+            "Found %d pending migrations and %d ledger row(s) to reconcile",
+            len(pending),
+            len(canonical_only_orphans) + len(legacy_only_discovered),
+        )
 
         if dry_run:
             logger.info("DRY RUN - Would apply:")
@@ -415,8 +766,44 @@ class MigrationManager:
                 logger.info(f"  - {m['number']:03d}: {m['file']}")
             return {"applied": [], "skipped": [], "failed": []}
 
-        applied = []
-        failed = []
+        if canonical_only_orphans:
+            async with self.pool.acquire() as conn:
+                for migration_number in canonical_only_orphans:
+                    await self._record_schema_version_from_canonical(
+                        conn,
+                        canonical_row=canonical_by_number[migration_number],
+                    )
+                    applied_numbers.add(migration_number)
+                    reconciled.append(migration_number)
+                    logger.info(
+                        "Reconciled historical canonical migration %03d "
+                        "to _schema_versions",
+                        migration_number,
+                    )
+
+        if legacy_only_discovered:
+            async with self.pool.acquire() as conn:
+                for migration_number in legacy_only_discovered:
+                    migration_info = discovered_by_number[migration_number]
+                    migration = BaseMigration(
+                        migration_number=migration_number,
+                        sql_file=migration_info["file"],
+                        description=f"Migration {migration_number}",
+                        rollback_sql=migration_info.get("rollback_sql"),
+                    )
+                    canonical_by_number[migration_number] = (
+                        await self._record_canonical_migration(
+                            conn,
+                            migration=migration,
+                            migration_info=migration_info,
+                            legacy_row=legacy_by_number.get(migration_number),
+                        )
+                    )
+                    reconciled.append(migration_number)
+                    logger.info(
+                        "Reconciled legacy migration %03d to schema_migrations",
+                        migration_number,
+                    )
 
         # CHECK FOR LEGACY DB STATE (FAKE APPLY STRATEGY)
         # If we have pending migration 001 AND the DB already has tables (e.g. users)
@@ -471,18 +858,66 @@ class MigrationManager:
                 description=f"Migration {migration_number}",
                 rollback_sql=migration_info.get("rollback_sql"),
             )
+            canonical_row = canonical_by_number.get(migration_number)
+            force = False
+
+            if canonical_row is not None:
+                async with self.pool.acquire() as conn:
+                    physical_state = await self._known_migration_state_satisfied(
+                        conn,
+                        migration_number,
+                    )
+                    if physical_state is True or physical_state is None:
+                        await self._record_schema_version(
+                            conn,
+                            migration=migration,
+                            migration_info=migration_info,
+                            canonical_row=canonical_row,
+                            applied_by="migration-manager-reconcile",
+                        )
+                        reconciled.append(migration_number)
+                        if physical_state is None:
+                            logger.info(
+                                "Reconciled migration %03d from schema_migrations "
+                                "to _schema_versions",
+                                migration_number,
+                            )
+                        else:
+                            logger.info(
+                                "Reconciled migration %03d after physical-state "
+                                "verification",
+                                migration_number,
+                            )
+                        continue
+
+                    logger.warning(
+                        "Migration %03d is present in schema_migrations but "
+                        "physical-state verification failed; re-running "
+                        "idempotent forward SQL",
+                        migration_number,
+                    )
+                    force = True
 
             try:
-                success = await self.apply_migration(migration)
+                success = await self.apply_migration(migration, force=force)
                 if success:
                     applied.append(migration_number)
+                    async with self.pool.acquire() as conn:
+                        await self._record_schema_version(
+                            conn,
+                            migration=migration,
+                            migration_info=migration_info,
+                            canonical_row=canonical_row,
+                        )
+                    if canonical_row is not None:
+                        reconciled.append(migration_number)
                 else:
                     failed.append({"number": migration_number, "error": "Migration returned False"})
             except Exception as e:
                 logger.error(f"Failed to apply migration {migration_number}: {e}")
                 failed.append({"number": migration_number, "error": str(e)})
 
-        return {"applied": applied, "skipped": [], "failed": failed}
+        return {"applied": applied, "skipped": [], "failed": failed, "reconciled": reconciled}
 
     async def get_status(self) -> dict:
         """
@@ -499,18 +934,18 @@ class MigrationManager:
         discovered = await self.discover_migrations()
         applied_migrations = await self.get_applied_migrations()
         applied_numbers = {m["migration_number"] for m in applied_migrations}
+        discovered_numbers = {m["number"] for m in discovered}
+        applied_discovered_numbers = discovered_numbers & applied_numbers
+        pending_numbers = sorted(discovered_numbers - applied_numbers)
 
         total = len(discovered)
-        applied = len(applied_numbers)
-        pending = total - applied
-
-        discovered_numbers = {m["number"] for m in discovered}
-        pending_numbers = sorted(discovered_numbers - applied_numbers)
+        applied = len(applied_discovered_numbers)
+        pending = len(pending_numbers)
 
         return {
             "total": total,
             "applied": applied,
             "pending": pending,
-            "applied_list": sorted(applied_numbers),
+            "applied_list": sorted(applied_discovered_numbers),
             "pending_list": pending_numbers,
         }
