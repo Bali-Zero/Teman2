@@ -564,6 +564,151 @@ EOF
 }
 
 # ─────────────────────────────────────────────────────────────────────────
+# nz events tail|recent|count|sources
+# ─────────────────────────────────────────────────────────────────────────
+
+cmd_events() {
+    local sub="${1:-recent}"
+    shift || true
+    local events_dir="$HOME/.organism/events"
+
+    case "$sub" in
+        tail)
+            local source="${1:-all}"
+            if [ "$source" = "all" ]; then
+                tail -F "$events_dir"/*.jsonl 2>/dev/null
+            else
+                local f="$events_dir/${source}.jsonl"
+                [ -f "$f" ] || die "no events file: $f"
+                tail -F "$f"
+            fi
+            ;;
+        recent)
+            local limit="${1:-20}"
+            for f in "$events_dir"/*.jsonl; do
+                [ -f "$f" ] || continue
+                tail -n "$limit" "$f" 2>/dev/null
+            done | "$DEFAULT_PYTHON" -c "
+import json, sys
+lines = sorted(sys.stdin.readlines(), key=lambda l: json.loads(l).get('ts',''), reverse=True)[:int('$limit')]
+for line in lines:
+    e = json.loads(line)
+    print(f\"{e['ts'][:19]:20s} [{e['severity']:8s}] {e['source']:30s} {e['kind']:30s} {json.dumps(e.get('payload',{}))[:80]}\")
+"
+            ;;
+        count)
+            for f in "$events_dir"/*.jsonl; do
+                [ -f "$f" ] || continue
+                local n
+                n=$(wc -l < "$f")
+                printf "  %-30s %s\n" "$(basename "$f")" "$n"
+            done
+            echo "  ---"
+            local stream_len
+            stream_len=$(redis-cli XLEN organism:events 2>/dev/null || echo "?")
+            echo "  redis stream organism:events: $stream_len entries"
+            ;;
+        sources)
+            for f in "$events_dir"/*.jsonl; do
+                [ -f "$f" ] || continue
+                "$DEFAULT_PYTHON" -c "
+import json
+sources = set()
+for line in open('$f'):
+    try:
+        sources.add(json.loads(line).get('source','?'))
+    except Exception: pass
+print(f\"$(basename "$f"):\", ', '.join(sorted(sources)))
+"
+            done
+            ;;
+        ""|help|-h|--help)
+            cat <<EOF
+usage: nz events <sub> [args]
+
+  recent [N]            print N most recent events across all jsonl files
+  tail [source|all]     follow ~/.organism/events/<source>.jsonl
+  count                 line counts per JSONL + redis stream length
+  sources               distinct event sources per JSONL
+EOF
+            ;;
+        *)
+            die "unknown events subcommand: $sub"
+            ;;
+    esac
+}
+
+# ─────────────────────────────────────────────────────────────────────────
+# nz actuator list|dry-run
+# ─────────────────────────────────────────────────────────────────────────
+
+cmd_actuator() {
+    local sub="${1:-list}"
+    shift || true
+    case "$sub" in
+        list)
+            cd "$REPO_ROOT/apps/organism" 2>/dev/null && \
+                "$DEFAULT_PYTHON" -c "
+import os
+acts = sorted(
+    f.replace('.py','')
+    for f in os.listdir('organism/actuators')
+    if f.endswith('.py') and not f.startswith('_') and f not in ('base.py',)
+)
+for a in acts:
+    print(f'  {a}')
+"
+            ;;
+        dry-run)
+            local actuator="${1:?usage: nz actuator dry-run <name> [key=value ...]}"
+            shift
+            local params_json="{}"
+            if [ $# -gt 0 ]; then
+                params_json=$("$DEFAULT_PYTHON" -c "
+import json, sys
+params = {}
+for arg in sys.argv[1:]:
+    if '=' in arg:
+        k, v = arg.split('=', 1)
+        params[k] = v
+print(json.dumps(params))
+" "$@")
+            fi
+            cd "$REPO_ROOT/apps/organism" || die "organism dir missing"
+            "$DEFAULT_PYTHON" -c "
+import asyncio, importlib, json, sys
+sys.path.insert(0, '.')
+mod = importlib.import_module('organism.actuators.$actuator')
+# Find the class (CamelCase of snake_case actuator name)
+cls_name = ''.join(p.capitalize() for p in '$actuator'.split('_'))
+# Special-case: 'fly_machines_start' -> 'FlyMachinesStart' which it does correctly.
+cls = getattr(mod, cls_name, None)
+if cls is None:
+    print(f'class {cls_name} not in module organism.actuators.$actuator', file=sys.stderr)
+    sys.exit(1)
+inst = cls()
+async def go():
+    return await inst._dry_run(json.loads('$params_json'))
+print(json.dumps(asyncio.run(go()), indent=2, default=str))
+"
+            ;;
+        ""|help|-h|--help)
+            cat <<EOF
+usage: nz actuator <sub> [args]
+
+  list                          list registered actuators
+  dry-run <name> [key=value ...]
+                                run actuator._dry_run with params
+                                example: nz actuator dry-run fly_machines_start app=nuzantara-rag
+EOF
+            ;;
+        *)
+            die "unknown actuator subcommand: $sub"
+            ;;
+    esac
+}
+
+# ─────────────────────────────────────────────────────────────────────────
 # nz translate
 # ─────────────────────────────────────────────────────────────────────────
 
@@ -599,6 +744,8 @@ commands:
   status [organ_id]            full aggregate or single-organ status
   organ <list|show|kickstart|halt|recover>
   bus <channels|tail|count|replay|prune>
+  events <recent|tail|count|sources>
+  actuator <list|dry-run>
   sentinel <run|tail>
   wr2 <generate|supervisor|queue>
   cell <status|log|kickstart>
@@ -622,6 +769,8 @@ main() {
         status)     cmd_status "$@" ;;
         organ)      cmd_organ "$@" ;;
         bus)        cmd_bus "$@" ;;
+        events)     cmd_events "$@" ;;
+        actuator)   cmd_actuator "$@" ;;
         sentinel)   cmd_sentinel "$@" ;;
         wr2)        cmd_wr2 "$@" ;;
         cell)       cmd_cell "$@" ;;

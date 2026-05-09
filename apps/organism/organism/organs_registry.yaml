@@ -53,7 +53,7 @@
 
 version: 1
 checksum_algo: sha256
-checksum: ccb3ce14ead30fa6680b6b72cf2752e02f370be0eea7a9176f5e0d0031d8aa59
+checksum: 3bf9146ac12938499ca0a0f89f6c0dc3b83fbecea6c5b6192524daa050a31e71
 organs:
   - id: infra.postgres
     runtime: fly_machine
@@ -1687,6 +1687,29 @@ organs:
       label: com.balizero.regulatory-watcher.daily
     severity_on_silence: warning
     cicatrix_refs: []
+
+  # PG → organism Redis stream bridge (2026-05-09 wave-5).
+  # Closes Layer 1 of "totale interattività" audit: bridges the 13 PG
+  # LISTEN/NOTIFY channels to organism:events stream consumed by Supervisor.
+  - id: pro.pg_organism_bridge
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 120
+    owner_module: scripts/pg-to-organism-bridge.py
+    dependencies:
+      - infra.postgres
+      - infra.redis
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.pg-organism-bridge
+    severity_on_silence: warning
+    cicatrix_refs: []
+    bridge_source:
+      type: state_file
+      path: ~/.organism/last_seen/pro.pg_organism_bridge.json
+      timestamp_field: ts
+      status_field: status
 
   # Sentinel aggregator (2026-05-09) — single pane of glass for all organs.
   # Reads ~/.organism/last_seen/*.json + launchctl list, classifies each
