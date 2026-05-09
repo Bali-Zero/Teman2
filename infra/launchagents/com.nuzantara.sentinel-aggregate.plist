@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>Label</key>
+	<string>com.nuzantara.sentinel-aggregate</string>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/nuzantara</string>
+		<key>PATH</key>
+		<string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin</string>
+	</dict>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/nuzantara/.pyenv/versions/3.11.11/bin/python3</string>
+		<string>/Users/nuzantara/Desktop/nuzantara/scripts/sentinel-aggregate.py</string>
+	</array>
+	<key>StartInterval</key>
+	<integer>300</integer>
+	<key>RunAtLoad</key>
+	<true/>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/sentinel-aggregate.log</string>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/sentinel-aggregate.error.log</string>
+</dict>
+</plist>

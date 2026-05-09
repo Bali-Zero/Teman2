@@ -53,7 +53,7 @@
 
 version: 1
 checksum_algo: sha256
-checksum: 9ed0b2991528497aa2adc4294f09531e87351ff678a6ab9d611a92050d9130f1
+checksum: 870561659d4ba8c2c10f925659604b40c0c92b411c4efbcc148fb6a59922f8b0
 organs:
   - id: infra.postgres
     runtime: fly_machine
@@ -1136,3 +1136,576 @@ organs:
       label: com.balizero.sota.m13-weekly
     severity_on_silence: warning
     cicatrix_refs: []
+
+  # Wave 2 — 2026-05-09: enroll 40 LaunchAgent previously siloed (full-system
+  # "everyone hears everything" gap #1). Brings registry from 67/107 to 107/107.
+  # Producer audit: launchctl list ∩ {com.{balizero,nuzantara,cell,matagaruda}.*}
+  # diff'd against registry labels. No bridge_source on these — supervisor uses
+  # launchctl print to detect silence (no last_seen heartbeat writers exist for
+  # this batch). Heartbeat hooks ship in a follow-up PR per category.
+
+  # WR2 children (9) — all under wr2.supervisor parent.
+  - id: wr2.canva_oauth_watchdog
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 3600
+    owner_module: scripts/wr2-canva-oauth-watchdog.sh
+    dependencies:
+      - wr2.supervisor
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.canva-oauth-watchdog
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: wr2.deploy_puller
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 600
+    owner_module: scripts/wr2-deploy-pull.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.deploy-puller
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: wr2.fact_checker
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 1800
+    owner_module: apps/war-room/scripts/wr2_fact_checker.py
+    dependencies:
+      - wr2.supervisor
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.fact-checker
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: wr2.fact_extractor
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 1800
+    owner_module: apps/war-room/scripts/wr2_fact_extractor.py
+    dependencies:
+      - wr2.supervisor
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.fact-extractor
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: wr2.ig_scraper_daily
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: .claude/skills/bali-zero-brand/_ig-metrics-scraper.py
+    dependencies:
+      - wr2.supervisor
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.ig-scraper.daily
+    severity_on_silence: info
+    cicatrix_refs: []
+  - id: wr2.queue_server
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 300
+    owner_module: .claude/skills/bali-zero-brand/_damar-queue-server.py
+    dependencies:
+      - wr2.supervisor
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.queue-server
+    severity_on_silence: error
+    cicatrix_refs: []
+  - id: wr2.reflexion_weekly
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 691200
+    owner_module: .claude/skills/bali-zero-brand/_reflexion-synthesis.py
+    dependencies:
+      - wr2.supervisor
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.reflexion.weekly
+    severity_on_silence: info
+    cicatrix_refs: []
+  - id: wr2.supervisor_watchdog
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 600
+    owner_module: apps/war-room/scripts/wr2_supervisor_watchdog.py
+    dependencies:
+      - wr2.supervisor
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.supervisor-watchdog
+    severity_on_silence: critical
+    cicatrix_refs: []
+  - id: wr2.voyager_weekly
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 691200
+    owner_module: .claude/skills/bali-zero-brand/_voyager-curriculum.py
+    dependencies:
+      - wr2.supervisor
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.wr2.voyager.weekly
+    severity_on_silence: info
+    cicatrix_refs: []
+
+  # Codex agents (5) — autonomous overnight workers + cost advisor weekly.
+  - id: codex.spalla_calibrate
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/codex-spalla-calibrate.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.codex-spalla-calibrate
+    severity_on_silence: info
+    cicatrix_refs: []
+  - id: codex.coverage_improver
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/codex-nightly-coverage-improver.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.codex-coverage-improver
+    severity_on_silence: info
+    cicatrix_refs: []
+  - id: codex.overnight_feeder
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/codex-overnight-queue-feeder.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.codex-overnight-feeder
+    severity_on_silence: info
+    cicatrix_refs: []
+  - id: codex.research_actor
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/codex-daily-research-actor.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.codex-research-actor
+    severity_on_silence: info
+    cicatrix_refs: []
+  - id: pro.cost_advisor_weekly
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 691200
+    owner_module: apps/backend-rag/backend/scripts/cost_advisor_cli.py
+    dependencies:
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.cost-advisor-weekly
+    severity_on_silence: info
+    cicatrix_refs: []
+
+  # Automap (3) — Pro-local automation map server + telegram + watchdog.
+  - id: pro.automap_server
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 300
+    owner_module: scripts/automap/automap_server.py
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.automap-server
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: pro.automap_telegram
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 300
+    owner_module: scripts/automap/automap_telegram.py
+    dependencies:
+      - pro.automap_server
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.automap-telegram
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: pro.automap_watchdog
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90
+    owner_module: scripts/automap/automap_watchdog.py
+    dependencies:
+      - pro.automap_server
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.automap-watchdog
+    severity_on_silence: warning
+    cicatrix_refs: []
+
+  # Organism core (2) — the Supervisor itself + scheduled tick. Self-enrollment
+  # is intentional (meta-observability); recovery=human_only on supervisor since
+  # a dead supervisor cannot recover itself.
+  - id: organism.supervisor
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 120
+    owner_module: apps/organism/organism/supervisor/daemon.py
+    dependencies:
+      - infra.postgres
+    recovery_action: human_only
+    recovery_params:
+      host: pro
+      label: com.nuzantara.organism.supervisor
+    severity_on_silence: critical
+    cicatrix_refs: []
+  - id: organism.scheduled_tick
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 600
+    owner_module: apps/organism/organism/scheduled_tick.py
+    dependencies:
+      - organism.supervisor
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.organism.scheduled-tick
+    severity_on_silence: warning
+    cicatrix_refs: []
+
+  # Cell bridges (3) — heartbeat-bridge feeds Cell from launchd state, the other
+  # two are liveness watchdogs. All critical: Cell observability dies without them.
+  - id: pro.heartbeat_bridge
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 120
+    owner_module: apps/cell/scripts/launch_heartbeat_bridge.sh
+    dependencies:
+      - infra.postgres
+      - cell.organism
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.heartbeat-bridge
+    severity_on_silence: critical
+    cicatrix_refs: []
+  - id: pro.launchagent_state_bridge
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 600
+    owner_module: scripts/launchagent-state-bridge.py
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.launchagent-state-bridge
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: pro.supervisor_liveness_watchdog
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 900
+    owner_module: scripts/supervisor_liveness_watchdog.sh
+    dependencies:
+      - organism.supervisor
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.supervisor-liveness-watchdog
+    severity_on_silence: critical
+    cicatrix_refs: []
+
+  # Pro↔Mini sync daemons (2).
+  - id: pro.memory_sync_bidirectional
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 600
+    owner_module: scripts/mini-setup/memory-sync-bidirectional.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.memory-sync-bidirectional
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: pro.claude_config_sync
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/mini-setup/claude-config-sync.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.claude-config-sync
+    severity_on_silence: info
+    cicatrix_refs: []
+
+  # Daily ops crons (10).
+  - id: pro.indexing_sweep_daily
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/daily_indexing_cron_wrapper.sh
+    dependencies:
+      - infra.postgres
+      - infra.qdrant
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.indexing-sweep.daily
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: pro.intel_radar_daily_digest
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/cron-agent-python/intel_radar_daily_digest.py
+    dependencies:
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.intel-radar-daily-digest
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: pro.post_publish_webhook
+    runtime: pro_launchd
+    type: webhook
+    expected_hb_seconds: 300
+    owner_module: apps/bali-intel-scraper/scripts/post_publish_webhook.py
+    dependencies:
+      - backend.api
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.post-publish-webhook
+    severity_on_silence: error
+    cicatrix_refs: []
+  - id: pro.setup_team_daily
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: infra/scripts/setup-team-cron.sh
+    dependencies:
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.setup-team.daily
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: pro.seo_cell_daily
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/openclaw-cron/seo-cell-daily.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.seo-cell.daily
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: pro.seo_cell_28d_check
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 2419200
+    owner_module: scripts/openclaw-cron/seo-cell-28d-check.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.seo-cell.28d-check
+    severity_on_silence: info
+    cicatrix_refs: []
+  - id: pro.bz_daily_visual_pipeline
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/bz-daily-visual-pipeline.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.bz-daily-visual-pipeline
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: pro.domain_mesh_foundations_daily
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/domain-mesh-foundations-cron.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.domain-mesh.foundations.daily
+    severity_on_silence: info
+    cicatrix_refs: []
+  - id: pro.client_value_predictor
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/openclaw-cron/client-value-predictor.sh
+    dependencies:
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.balizero.client-value-predictor
+    severity_on_silence: info
+    cicatrix_refs: []
+  - id: pro.automations_reference
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/generate-automations-all.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.automations-reference
+    severity_on_silence: info
+    cicatrix_refs: []
+
+  # Infra-ish (6) — local infrastructure helpers.
+  - id: pro.prime_tunnel
+    runtime: pro_launchd
+    type: daemon
+    expected_hb_seconds: 300
+    owner_module: cloudflared/config-prime.yml
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.prime-tunnel
+    severity_on_silence: error
+    cicatrix_refs: []
+  - id: pro.ollama_warm_pin
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 900
+    owner_module: scripts/ollama-warm-pin.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.ollama-warm-pin
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: pro.vector_reindex_check
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/vector-reindex-check.py
+    dependencies:
+      - infra.qdrant
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.vector-reindex-check
+    severity_on_silence: warning
+    cicatrix_refs: []
+  - id: pro.launchd_env_loader
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/launchd_env_loader.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.launchd-env-loader
+    severity_on_silence: info
+    cicatrix_refs: []
+  - id: pro.openclaw_logrotate
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/openclaw-logrotate.sh
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.openclaw-logrotate
+    severity_on_silence: info
+    cicatrix_refs: []
+  - id: pro.nb_mitochondrial_monitor_daily
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: apps/mata-garuda/mata_garuda/scripts/nb_monitor/run.py
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.nb-mitochondrial-monitor.daily
+    severity_on_silence: warning
+    cicatrix_refs: []
+
+  # Sentinel aggregator (2026-05-09) — single pane of glass for all organs.
+  # Reads ~/.organism/last_seen/*.json + launchctl list, classifies each
+  # organ as ok/stale/dead/noheartbeat/unknown, writes ~/.organism/aggregate.json.
+  - id: pro.sentinel_aggregate
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 600
+    owner_module: scripts/sentinel-aggregate.py
+    dependencies: []
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.sentinel-aggregate
+    severity_on_silence: warning
+    cicatrix_refs: []
+    bridge_source:
+      type: state_file
+      path: ~/.organism/last_seen/pro.sentinel_aggregate.json
+      timestamp_field: ts
+      status_field: status
+
+  # Phase-3 Outbox prune (2026-05-09) — daily GC of consumed events_outbox
+  # rows older than 30d. Bounds table growth post phase-2 EventBus refactor.
+  - id: pro.outbox_prune_daily
+    runtime: pro_launchd
+    type: cron
+    expected_hb_seconds: 90000
+    owner_module: scripts/outbox-prune.sh
+    dependencies:
+      - infra.postgres
+    recovery_action: launchctl_kickstart
+    recovery_params:
+      host: pro
+      label: com.nuzantara.outbox-prune.daily
+    severity_on_silence: warning
+    cicatrix_refs: []
+    bridge_source:
+      type: state_file
+      path: ~/.organism/last_seen/pro.outbox_prune_daily.json
+      timestamp_field: ts
+      status_field: status
