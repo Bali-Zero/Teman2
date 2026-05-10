@@ -5,13 +5,12 @@ Tests OAuth flow, token management, and file operations
 with all external dependencies mocked.
 """
 
-import pytest
 from datetime import datetime, timedelta, timezone
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
-
+import pytest
 
 # ---------------------------------------------------------------------------
 # Helpers
