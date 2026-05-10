@@ -288,6 +288,7 @@ def include_routers(api: FastAPI) -> None:
 
     # Admin Drive Auth (for system user OAuth)
     from backend.app.routers import (
+        admin_crm_kg,
         admin_drive_auth,
         admin_drive_health,
         admin_drive_refresh,
@@ -295,6 +296,7 @@ def include_routers(api: FastAPI) -> None:
         admin_zoho_auth,
     )
 
+    api.include_router(admin_crm_kg.router)
     api.include_router(admin_drive_auth.router)
     api.include_router(admin_drive_health.router)
     api.include_router(admin_drive_refresh.router)
@@ -400,6 +402,7 @@ def include_light_routers(api: FastAPI) -> None:
     """
     from backend.app.routers import (
         admin_conversation_cleanup,
+        admin_crm_kg,
         admin_drive_auth,
         admin_drive_health,
         admin_drive_refresh,
@@ -590,7 +593,8 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(team_drive.router)
     api.include_router(sheets.router)
 
-    # Admin Drive Auth
+    # Admin Drive Auth + CRM KG
+    api.include_router(admin_crm_kg.router)
     api.include_router(admin_drive_auth.router)
     api.include_router(admin_drive_health.router)
     api.include_router(admin_drive_refresh.router)

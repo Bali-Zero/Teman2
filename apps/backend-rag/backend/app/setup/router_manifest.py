@@ -85,6 +85,7 @@ def _get_api_v1_prefix() -> str:
 ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     # ── Admin ──
     RouterEntry(name="admin_conversation_cleanup", process_groups=_API, tags=("admin",)),
+    RouterEntry(name="admin_crm_kg",               process_groups=_API, tags=("admin", "crm-kg")),
     RouterEntry(name="admin_drive_auth",           process_groups=_API, tags=("admin", "drive")),
     RouterEntry(name="admin_drive_health",         process_groups=_API, tags=("admin", "drive")),
     RouterEntry(name="admin_drive_refresh",        process_groups=_API, tags=("admin", "drive")),
