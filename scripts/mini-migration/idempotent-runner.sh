@@ -54,7 +54,34 @@ case "$LABEL" in
   *)                                TTL=172800 ;;  # 2d (daily)
 esac
 
-REDIS_HOST="${REDIS_HOST:-127.0.0.1}"
+# REDIS_HOST resolution (A4 — Antonello-decision §9.1):
+# - jobs with side_effects ∈ {brevo, social, telegram-broadcast} use Pro
+#   redis (cross-machine lock prevents double-fire during migration window)
+# - jobs with side_effects ∈ {file_only, none, drive} use local redis
+# Override via explicit REDIS_HOST env still wins.
+PRO_REDIS_HOST="${PRO_REDIS_HOST:-100.107.22.111}"
+LOCAL_REDIS_HOST="127.0.0.1"
+JOB_YAML="${JOB_YAML:-/Users/nuzantara/Desktop/nuzantara/config/job-ownership.yaml}"
+
+resolve_redis_host() {
+  # Honor explicit override
+  if [ -n "${REDIS_HOST:-}" ]; then echo "$REDIS_HOST"; return; fi
+  # Lookup side_effects from YAML
+  local se=""
+  if [ -f "$JOB_YAML" ]; then
+    se=$(awk -v l="${LABEL}:" '
+      $1 == l {found=1; next}
+      found && /^  [a-zA-Z]/ {found=0}
+      found && /^    side_effects:/ {print; exit}
+    ' "$JOB_YAML" 2>/dev/null | head -c 200)
+  fi
+  case "$se" in
+    *brevo*|*social*|*telegram*|*canva*) echo "$PRO_REDIS_HOST" ;;
+    *) echo "$LOCAL_REDIS_HOST" ;;
+  esac
+}
+
+REDIS_HOST=$(resolve_redis_host)
 REDIS_PORT="${REDIS_PORT:-6379}"
 
 # Try SET NX
