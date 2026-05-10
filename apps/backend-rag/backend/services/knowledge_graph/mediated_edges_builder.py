@@ -80,6 +80,7 @@ async def build_mediated_edges(db_pool: asyncpg.Pool) -> dict[str, Any]:
         or {"ok": False, "error": "<reason>"}
     """
     import time
+
     started = time.monotonic()
 
     try:
@@ -99,7 +100,9 @@ async def build_mediated_edges(db_pool: asyncpg.Pool) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(
-            "mediated_edges_builder failed: %s", e, exc_info=True,
+            "mediated_edges_builder failed: %s",
+            e,
+            exc_info=True,
         )
         return {"ok": False, "error": str(e)}
 
@@ -156,7 +159,10 @@ async def _emit_contemporaneous(conn: asyncpg.Connection) -> int:
     # and downstream graph queries can traverse either direction. Keeps
     # row count down on a wide pool.
     result = await conn.execute(
-        sql, _CONTEMPORANEOUS_WINDOW_DAYS, _MAX_EDGES_PER_PASS, _CONF_HEURISTIC_TIME,
+        sql,
+        _CONTEMPORANEOUS_WINDOW_DAYS,
+        _MAX_EDGES_PER_PASS,
+        _CONF_HEURISTIC_TIME,
     )
     # asyncpg returns "INSERT 0 N" — parse the N for row count
     return _parse_inserted_count(result)
@@ -169,47 +175,43 @@ async def _emit_coworker_at(conn: asyncpg.Connection) -> int:
     Confidence 1.0 — this is a deterministic property-equality match
     (both persons have a DESCRIBES path to the SAME company_uid).
 
-    Note: in practice, Akta documents typically describe BOTH a Person
-    (the director) AND a Company. So a single Akta produces two
-    DESCRIBES edges from the same doc, and the cron will then derive
-    a Person-COWORKER_AT-Person edge between the two directors.
+    The document_linker emits DESCRIBES from Document -> Person/Company,
+    so this query first materializes Person -> Company facts through the
+    shared source Document, then pairs people attached to the same Company.
     """
     sql = """
-    WITH person_pairs AS (
+    WITH person_company AS (
         SELECT DISTINCT
-            p1.entity_id AS src_id,
-            p2.entity_id AS tgt_id,
-            c.entity_id AS company_id
-        FROM crm_kg_edges e1
-        JOIN crm_kg_edges e2
-            ON e1.target_entity_id = e2.target_entity_id  -- same Document
-            AND e1.relationship_type = 'DESCRIBES'
-            AND e2.relationship_type = 'DESCRIBES'
-            AND e1.source_entity_id <> e2.source_entity_id
+            p1.entity_id AS person_id,
+            company.entity_id AS company_id
+        FROM crm_kg_edges person_edge
+        JOIN crm_kg_edges company_edge
+            ON person_edge.source_entity_id = company_edge.source_entity_id
+            AND person_edge.relationship_type = 'DESCRIBES'
+            AND company_edge.relationship_type = 'DESCRIBES'
+            AND person_edge.target_entity_id <> company_edge.target_entity_id
+        JOIN crm_kg_nodes document
+            ON document.entity_id = person_edge.source_entity_id
+            AND document.entity_type = 'crm_document'
+            AND document.deleted_at IS NULL
         JOIN crm_kg_nodes p1
-            ON p1.entity_id = e1.source_entity_id
+            ON p1.entity_id = person_edge.target_entity_id
             AND p1.entity_type = 'crm_person'
             AND p1.deleted_at IS NULL
-        JOIN crm_kg_nodes p2
-            ON p2.entity_id = e2.source_entity_id
-            AND p2.entity_type = 'crm_person'
-            AND p2.deleted_at IS NULL
-        WHERE p1.entity_id < p2.entity_id  -- canonical ordering
-        -- Restrict to person pairs that share a Company via separate edges:
-        AND EXISTS (
-            SELECT 1 FROM crm_kg_edges ec1
-            JOIN crm_kg_edges ec2
-                ON ec1.target_entity_id = ec2.target_entity_id  -- same company
-                AND ec1.relationship_type = 'DESCRIBES'
-                AND ec2.relationship_type = 'DESCRIBES'
-                AND ec1.source_entity_id = p1.entity_id
-                AND ec2.source_entity_id = p2.entity_id
-            WHERE ec1.target_entity_id IN (
-                SELECT entity_id FROM crm_kg_nodes
-                WHERE entity_type = 'crm_company'
-                AND deleted_at IS NULL
-            )
-        )
+        JOIN crm_kg_nodes company
+            ON company.entity_id = company_edge.target_entity_id
+            AND company.entity_type = 'crm_company'
+            AND company.deleted_at IS NULL
+    ),
+    person_pairs AS (
+        SELECT DISTINCT
+            left_pc.person_id AS src_id,
+            right_pc.person_id AS tgt_id,
+            left_pc.company_id AS company_id
+        FROM person_company left_pc
+        JOIN person_company right_pc
+            ON left_pc.company_id = right_pc.company_id
+            AND left_pc.person_id < right_pc.person_id
         LIMIT $1
     )
     INSERT INTO crm_kg_edges (

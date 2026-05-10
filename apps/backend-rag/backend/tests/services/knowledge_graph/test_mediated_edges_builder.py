@@ -154,6 +154,22 @@ async def test_coworker_query_uses_idempotent_upsert():
     assert "DO UPDATE" in cow_sql
 
 
+@pytest.mark.asyncio
+async def test_coworker_query_traverses_document_to_person_and_company_edges():
+    """COWORKER_AT must match the linker contract: Document -> Person/Company."""
+    conn = AsyncMock()
+    conn.execute = AsyncMock(side_effect=["INSERT 0 0", "INSERT 0 0"])
+    pool = _make_pool_mock(conn)
+
+    await build_mediated_edges(pool)
+
+    cow_sql = conn.execute.call_args_list[1][0][0]
+    assert "person_edge.source_entity_id = company_edge.source_entity_id" in cow_sql
+    assert "p1.entity_id = person_edge.target_entity_id" in cow_sql
+    assert "company.entity_id = company_edge.target_entity_id" in cow_sql
+    assert "p1.entity_id = person_edge.source_entity_id" not in cow_sql
+
+
 # ─── Helpers ────────────────────────────────────────────────────────────
 
 

@@ -207,6 +207,15 @@ describe("TaxCompanyPilotWorkspace", () => {
     expect(screen.getAllByText("Tax owner")).toHaveLength(2);
     expect(screen.getAllByText("Person entry")).toHaveLength(2);
     expect(screen.getAllByText("Business story")).toHaveLength(2);
+    expect(screen.getAllByText("Evidence story layer")).toHaveLength(2);
+    expect(
+      screen.getAllByText("Client portal: download approved documents only."),
+    ).toHaveLength(2);
+    expect(
+      screen.getAllByText(
+        "Team workspace: open Drive evidence and shortcuts from kita.",
+      ),
+    ).toHaveLength(2);
     expect(screen.getAllByText("Next best actions")).toHaveLength(2);
     expect(screen.getAllByText("Internal review")).toHaveLength(2);
     expect(screen.getAllByText("Key company records")).toHaveLength(2);
@@ -218,17 +227,19 @@ describe("TaxCompanyPilotWorkspace", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("DEA")).toBeInTheDocument();
     expect(screen.getByText("Dewa Ayu")).toBeInTheDocument();
-    expect(screen.getByText("Natan Kleimonov")).toBeInTheDocument();
-    expect(screen.getByText("Giulia Del Giudice")).toBeInTheDocument();
-    expect(screen.getByText("Giorgia Emidio")).toBeInTheDocument();
+    expect(screen.getAllByText("Natan Kleimonov").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Giulia Del Giudice").length).toBeGreaterThan(
+      0,
+    );
+    expect(screen.getAllByText("Giorgia Emidio").length).toBeGreaterThan(0);
     expect(
       screen.getAllByText("Confirm the company role from registry documents."),
-    ).toHaveLength(2);
+    ).toHaveLength(4);
     expect(
-      screen.getByText(
+      screen.getAllByText(
         "Confirm the family or business relationship before nesting files.",
-      ),
-    ).toBeInTheDocument();
+      ).length,
+    ).toBeGreaterThan(0);
     expect(screen.getByText("SPT 2025")).toBeInTheDocument();
     expect(screen.getByText("LKPM Periode 4 PDFs")).toBeInTheDocument();
     expect(

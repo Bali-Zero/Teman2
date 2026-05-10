@@ -87,6 +87,16 @@ export interface TaxCompanyPilotEvidenceLink {
   kind: "folder" | "file" | "spreadsheet" | "document";
 }
 
+export interface TaxCompanyPilotStoryEvidence {
+  label: string;
+  detail: string;
+  source_label: string;
+  source_url?: string | null;
+  source_kind: "folder" | "file" | "spreadsheet" | "document";
+  audience: "team";
+  confidence: TaxCompanyPilotConfidence;
+}
+
 export interface TaxCompanyPilotPersonDossier {
   person_name: string;
   company_name: string;
@@ -106,6 +116,19 @@ export interface TaxCompanyPilotNextAction {
   severity: "high" | "medium" | "low";
 }
 
+export interface TaxCompanyPilotEvidenceStory {
+  person_name: string;
+  company_name: string;
+  tax_owner: string;
+  recap: string;
+  relationship_path: string[];
+  evidence_items: TaxCompanyPilotStoryEvidence[];
+  next_action: string;
+  portal_rule: string;
+  team_rule: string;
+  confidence: TaxCompanyPilotConfidence;
+}
+
 export interface TaxCompanyPilotMap {
   key: TaxCompanyPilotKey;
   primary_entry: "person";
@@ -116,6 +139,7 @@ export interface TaxCompanyPilotMap {
   persons: TaxCompanyPilotPerson[];
   documents: TaxCompanyPilotDocument[];
   person_dossiers: TaxCompanyPilotPersonDossier[];
+  evidence_stories?: TaxCompanyPilotEvidenceStory[];
   next_best_actions: TaxCompanyPilotNextAction[];
   business_story: string[];
   duplicate_candidates: TaxCompanyPilotDuplicateCandidate[];
