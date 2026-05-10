@@ -314,6 +314,26 @@ class TestDocuments:
         assert data["success"] is True
         assert data["message"] == "Document uploaded successfully"
 
+    def test_download_document_success_uses_portal_proxy(self, client, mock_portal_service):
+        """Download returns bytes through the portal without exposing Drive URLs."""
+        mock_portal_service.download_document.return_value = {
+            "content": b"PDF_CONTENT",
+            "file_name": "passport.pdf",
+            "mime_type": "application/pdf",
+        }
+
+        response = client.get("/api/portal/documents/10/download")
+
+        assert response.status_code == 200
+        assert response.content == b"PDF_CONTENT"
+        assert response.headers["content-type"] == "application/pdf"
+        assert "passport.pdf" in response.headers["content-disposition"]
+        assert response.headers["cache-control"] == "private, no-store"
+        mock_portal_service.download_document.assert_called_once()
+        call = mock_portal_service.download_document.call_args
+        assert call.args == (42, 10)
+        assert call.kwargs["current_user"]["client_id"] == 42
+
 
 # ============================================
 # MESSAGE TESTS

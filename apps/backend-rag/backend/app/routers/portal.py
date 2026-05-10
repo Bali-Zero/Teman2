@@ -16,9 +16,11 @@ Created: 2025-12-30
 """
 
 from typing import Any
+from urllib.parse import quote
 
 import asyncpg
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile
+from fastapi.responses import Response
 from pydantic import BaseModel
 
 from backend.app.core.config import settings
@@ -565,6 +567,42 @@ async def upload_document(
             status_code=500,
             detail="Failed to upload document",
         ) from e
+
+
+@router.get("/documents/{document_id}/download")
+async def download_document(
+    document_id: int,
+    client: dict = Depends(get_current_client),
+    portal_service: PortalService = Depends(get_portal_service),
+) -> Response:
+    """
+    Download a client-visible document through the portal proxy.
+
+    The client never receives raw Google Drive URLs or file IDs.
+    """
+    try:
+        document = await portal_service.download_document(
+            client["client_id"],
+            document_id,
+            current_user=client,
+        )
+        if document is None:
+            raise HTTPException(status_code=404, detail="Document not found or not downloadable")
+
+        file_name = document["file_name"]
+        return Response(
+            content=document["content"],
+            media_type=document["mime_type"],
+            headers={
+                "Cache-Control": "private, no-store",
+                "Content-Disposition": f"attachment; filename*=UTF-8''{quote(file_name)}",
+            },
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to download document {document_id} for client {client['client_id']}: {e}")
+        raise HTTPException(status_code=500, detail="Failed to download document") from e
 
 
 # ================================================

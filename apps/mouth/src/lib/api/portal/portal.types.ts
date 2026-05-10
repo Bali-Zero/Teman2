@@ -493,7 +493,7 @@ export interface PortalInvoice {
   amount_idr: number;
   invoice_source: string;
   has_pdf: boolean;
-  drive_web_link: string | null;
+  drive_web_link?: null;
   email_sent: boolean;
   generated_at: string | null;
   created_at: string | null;

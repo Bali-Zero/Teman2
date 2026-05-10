@@ -451,6 +451,66 @@ class TestPortalServiceUpload:
             )
 
 
+class TestPortalServiceDocumentDownload:
+    """Tests for client-safe document download through the portal proxy."""
+
+    @pytest.mark.asyncio
+    async def test_download_document_streams_owned_visible_drive_file(
+        self, portal_service, mock_conn, ctx_client_1,
+    ):
+        """Download uses client ownership and server-side Drive fetch."""
+        mock_conn.fetchrow.return_value = {
+            "id": 10,
+            "file_name": "passport.pdf",
+            "file_id": "drive_file_123",
+            "file_url": "https://drive.google.com/file/d/drive_file_123/view",
+            "mime_type": "application/pdf",
+            "status": "verified",
+        }
+
+        meta_response = MagicMock(status_code=200)
+        meta_response.json.return_value = {
+            "name": "passport.pdf",
+            "mimeType": "application/pdf",
+        }
+        download_response = MagicMock(status_code=200, content=b"PDF_CONTENT")
+
+        async_http = MagicMock()
+        async_http.get = AsyncMock(side_effect=[meta_response, download_response])
+
+        with (
+            patch("backend.services.integrations.google_drive_service.GoogleDriveService") as drive_cls,
+            patch("httpx.AsyncClient") as client_cls,
+        ):
+            drive_cls.SYSTEM_USER_ID = "SYSTEM"
+            drive_cls.return_value.get_valid_token = AsyncMock(return_value="access-token")
+            client_cls.return_value.__aenter__ = AsyncMock(return_value=async_http)
+            client_cls.return_value.__aexit__ = AsyncMock(return_value=False)
+
+            result = await portal_service.download_document(
+                1,
+                10,
+                current_user=ctx_client_1,
+            )
+
+        assert result == {
+            "content": b"PDF_CONTENT",
+            "file_name": "passport.pdf",
+            "mime_type": "application/pdf",
+        }
+        mock_conn.fetchrow.assert_called_once()
+        async_http.get.assert_any_call(
+            "https://www.googleapis.com/drive/v3/files/drive_file_123",
+            params={"fields": "mimeType,name,size"},
+            headers={"Authorization": "Bearer access-token"},
+        )
+        async_http.get.assert_any_call(
+            "https://www.googleapis.com/drive/v3/files/drive_file_123",
+            params={"alt": "media"},
+            headers={"Authorization": "Bearer access-token"},
+        )
+
+
 # ============================================================================
 # PORTAL SERVICE - MESSAGING
 # ============================================================================

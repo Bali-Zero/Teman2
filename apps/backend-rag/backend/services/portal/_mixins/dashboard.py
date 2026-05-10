@@ -387,7 +387,7 @@ class PortalDashboardMixin:
             documents = await conn.fetch(
                 """
                 SELECT d.id, d.document_type, d.file_name, d.status,
-                       d.expiry_date, d.file_url, d.file_size_kb, d.created_at
+                       d.expiry_date, d.file_url, d.file_id, d.file_size_kb, d.created_at
                 FROM documents d
                 WHERE d.client_id = $1
                 AND d.client_visible = true
@@ -500,8 +500,8 @@ class PortalDashboardMixin:
                         if d["expiry_date"]
                         else None,
                         "size": f"{d['file_size_kb']} KB" if d["file_size_kb"] else "-",
-                        "downloadUrl": d["file_url"]
-                        if d["status"] in ("verified", "issued")
+                        "downloadUrl": f"/api/portal/documents/{d['id']}/download"
+                        if d["file_url"] or d["file_id"]
                         else None,
                     },
                 )
@@ -625,7 +625,7 @@ class PortalDashboardMixin:
             # Get company documents
             documents = await conn.fetch(
                 """
-                SELECT d.id, d.document_type, d.file_name, d.status, d.file_url
+                SELECT d.id, d.document_type, d.file_name, d.status, d.file_url, d.file_id
                 FROM documents d
                 JOIN practices p ON p.id = d.practice_id
                 JOIN practice_types pt ON pt.id = p.practice_type_id
@@ -701,8 +701,8 @@ class PortalDashboardMixin:
                         "id": d["id"],
                         "type": d["document_type"],
                         "name": d["file_name"],
-                        "downloadable": d["status"] in ("verified", "issued")
-                        and d["file_url"] is not None,
+                        "downloadable": d["file_url"] is not None
+                        or d["file_id"] is not None,
                     }
                     for d in documents
                 ],
@@ -723,8 +723,8 @@ class PortalDashboardMixin:
             }
 
     @cache_invalidating([
-        lambda self, client_id, *a, **k: f"zantara:portal_dashboard:{client_id}:*",
-        lambda self, client_id, *a, **k: f"zantara:crm_client:{client_id}:*",
+        lambda _self, client_id, *_a, **_k: f"zantara:portal_dashboard:{client_id}:*",
+        lambda _self, client_id, *_a, **_k: f"zantara:crm_client:{client_id}:*",
     ])
     @require_client_access
     async def set_primary_company(

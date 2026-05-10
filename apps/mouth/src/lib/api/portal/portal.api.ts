@@ -510,9 +510,9 @@ export class PortalApi {
 
   async getInvoicePdfUrl(
     invoiceId: number,
-  ): Promise<{ download_url: string; drive_file_id: string }> {
+  ): Promise<{ download_url: string }> {
     const response = await this.client.request<
-      PortalApiResponse<{ download_url: string; drive_file_id: string }>
+      PortalApiResponse<{ download_url: string }>
     >(`/api/portal/billing/${invoiceId}/pdf-url`, { method: "GET" });
     return response.data!;
   }
