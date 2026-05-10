@@ -213,22 +213,38 @@ def step3_drive_upload(pdf_path: str, reg_code: str, domain: str,
     except ImportError:
         return {"ok": False, "error": "google-api-python-client not installed"}
 
+    # CRITICAL (2026-05-10): Service Accounts have quota=0 by Google policy.
+    # Direct SA upload returns 403 storageQuotaExceeded even when uploading
+    # to a user-owned folder (file ownership defaults to SA, not folder owner).
+    # Solution: use Domain-Wide Delegation (DWD) to impersonate a Workspace
+    # user. DWD verified configured 2026-05-10 for zero@balizero.com (Bali Zero
+    # Workspace, 5TB quota). antonellosiano@gmail.com is Gmail consumer and
+    # is NOT delegable — files must therefore go in zero@balizero.com Drive
+    # (acceptable per CLAUDE.md: zero@ is the canonical workspace identity).
+    DWD_SUBJECT = "zero@balizero.com"
+    SA_EMAIL = "nuzantara-google-drive-sa@nuzantara.iam.gserviceaccount.com"
     creds = service_account.Credentials.from_service_account_file(
         str(DRIVE_SA_PATH),
         scopes=["https://www.googleapis.com/auth/drive"],
+        subject=DWD_SUBJECT,
     )
     drive = build("drive", "v3", credentials=creds, cache_discovery=False)
+    log.info("Drive SA delegated to %s (DWD)", DWD_SUBJECT)
 
-    # Find or create peraturan/<domain>/ folder
-    # First, search for existing 'peraturan' folder owned by SA or accessible
+    # Find or create peraturan/<domain>/ folder under impersonated user's Drive
     q = "name='peraturan' and mimeType='application/vnd.google-apps.folder' and trashed=false"
-    folders = drive.files().list(q=q, fields="files(id,name,parents)").execute().get("files", [])
+    folders = drive.files().list(
+        q=q, fields="files(id,name,parents,owners,driveId)",
+        supportsAllDrives=True, includeItemsFromAllDrives=True,
+    ).execute().get("files", [])
     if not folders:
-        log.warning("'peraturan' folder not accessible to SA — uploading to SA root")
+        log.info("'peraturan' folder not found under %s — uploading to MyDrive root", DWD_SUBJECT)
         peraturan_id = "root"
     else:
         peraturan_id = folders[0]["id"]
-        log.info("found peraturan folder: %s", peraturan_id)
+        owner_info = folders[0].get("owners", [{}])[0].get("emailAddress", "<shared-drive>")
+        log.info("found peraturan folder under %s: %s [owner=%s]",
+                 DWD_SUBJECT, peraturan_id, owner_info)
 
     # Find or create domain subfolder
     q_sub = f"name='{domain}' and mimeType='application/vnd.google-apps.folder' and '{peraturan_id}' in parents and trashed=false"
