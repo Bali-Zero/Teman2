@@ -126,8 +126,17 @@ const bimalaMap: TaxCompanyPilotMap = {
 };
 
 describe("TaxCompanyPilotWorkspace", () => {
-  it("renders company maps, people, gaps, duplicates, and Drive links", () => {
+  it("renders company maps as business dossiers instead of technical audit panels", () => {
     render(<TaxCompanyPilotWorkspace maps={[oceanMap, bimalaMap]} />);
+
+    expect(screen.getByText("Business dossiers")).toBeInTheDocument();
+    expect(screen.getByText("Companies under review")).toBeInTheDocument();
+    expect(screen.getAllByText("Open decisions")).toHaveLength(3);
+    expect(screen.getAllByText("Tax owner")).toHaveLength(2);
+    expect(screen.getAllByText("Business recap")).toHaveLength(2);
+    expect(screen.getAllByText("Client relationships")).toHaveLength(2);
+    expect(screen.getAllByText("Key company records")).toHaveLength(2);
+    expect(screen.getAllByText("Folder cleanup")).toHaveLength(2);
 
     expect(screen.getByText("OCEAN CLOTHES AND SHOES PT")).toBeInTheDocument();
     expect(
@@ -148,8 +157,15 @@ describe("TaxCompanyPilotWorkspace", () => {
         "Operational tax folder vs canonical-like company folder",
       ),
     ).toBeInTheDocument();
-    expect(screen.getAllByRole("link", { name: /open drive/i })).toHaveLength(
-      2,
-    );
+    expect(
+      screen.getAllByRole("link", {
+        name: /open operational folder in drive/i,
+      }),
+    ).toHaveLength(2);
+    expect(screen.queryByText("Evidence")).not.toBeInTheDocument();
+    expect(screen.queryByText("Gaps")).not.toBeInTheDocument();
+    expect(screen.queryByText("Duplicate Candidates")).not.toBeInTheDocument();
+    expect(screen.queryByText("Read-only")).not.toBeInTheDocument();
+    expect(screen.queryByText(/Confidence:/)).not.toBeInTheDocument();
   });
 });
