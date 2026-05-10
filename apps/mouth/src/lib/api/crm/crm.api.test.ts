@@ -82,6 +82,38 @@ describe("CrmApi", () => {
     });
   });
 
+  describe("getTaxCompanyPilotMap", () => {
+    it("should fetch the read-only tax company pilot map by key", async () => {
+      const mockPilotMap = {
+        key: "ocean",
+        company: { name: "OCEAN CLOTHES AND SHOES PT", aliases: [] },
+        tax_member: {
+          name: "DEA",
+          workspace_branch: "TAX DEPARTMENT/Members/Dea",
+          source_folder_url: "https://drive.google.com/drive/folders/dea",
+        },
+        drive_folders: {},
+        persons: [],
+        documents: [],
+        duplicate_candidates: [],
+        gaps: [],
+        evidence_links: [],
+        ai_recap: [],
+        read_only: true,
+        confidence: "medium",
+      };
+
+      mockClient.request.mockResolvedValue(mockPilotMap);
+
+      const result = await crmApi.getTaxCompanyPilotMap("ocean");
+
+      expect(mockClient.request).toHaveBeenCalledWith(
+        "/api/crm/pilot/tax-company-map?company=ocean",
+      );
+      expect(result).toEqual(mockPilotMap);
+    });
+  });
+
   describe("markInteractionRead", () => {
     it("should mark interaction as read", async () => {
       const mockResponse = {

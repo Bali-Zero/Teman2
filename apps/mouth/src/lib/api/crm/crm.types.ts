@@ -33,6 +33,75 @@ export interface Practice {
   family_member_relationship?: string;
 }
 
+export type TaxCompanyPilotKey = "ocean" | "bimala";
+export type TaxCompanyPilotConfidence =
+  | "confirmed"
+  | "high"
+  | "medium"
+  | "low"
+  | "unconfirmed";
+
+export interface TaxCompanyPilotEntity {
+  name: string;
+  aliases: string[];
+}
+
+export interface TaxCompanyPilotTaxMember {
+  name: string;
+  workspace_branch: string;
+  source_folder_url: string;
+}
+
+export interface TaxCompanyPilotPerson {
+  name: string;
+  folder_url?: string | null;
+  evidence: string[];
+  role?: string | null;
+  role_confidence: TaxCompanyPilotConfidence;
+  relationship_confidence: TaxCompanyPilotConfidence;
+}
+
+export interface TaxCompanyPilotDocument {
+  name: string;
+  group: "company" | "tax" | "lkpm" | "finance" | "person" | "coretax";
+  evidence_url?: string | null;
+  sensitivity: "internal" | "company" | "person" | "financial" | "credential";
+  confidence: TaxCompanyPilotConfidence;
+}
+
+export interface TaxCompanyPilotGap {
+  code: string;
+  label: string;
+  severity: "high" | "medium" | "low";
+}
+
+export interface TaxCompanyPilotDuplicateCandidate {
+  label: string;
+  urls: string[];
+  confidence: TaxCompanyPilotConfidence;
+}
+
+export interface TaxCompanyPilotEvidenceLink {
+  label: string;
+  url: string;
+  kind: "folder" | "file" | "spreadsheet" | "document";
+}
+
+export interface TaxCompanyPilotMap {
+  key: TaxCompanyPilotKey;
+  company: TaxCompanyPilotEntity;
+  tax_member: TaxCompanyPilotTaxMember;
+  drive_folders: Record<string, string>;
+  persons: TaxCompanyPilotPerson[];
+  documents: TaxCompanyPilotDocument[];
+  duplicate_candidates: TaxCompanyPilotDuplicateCandidate[];
+  gaps: TaxCompanyPilotGap[];
+  evidence_links: TaxCompanyPilotEvidenceLink[];
+  ai_recap: string[];
+  read_only: boolean;
+  confidence: TaxCompanyPilotConfidence;
+}
+
 import type { JsonObject } from "../../types/common";
 
 export interface Interaction {
