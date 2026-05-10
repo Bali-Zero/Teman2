@@ -1,18 +1,15 @@
-"""Admin endpoints for the CRM Knowledge Graph mediated/thematic builders.
+"""Admin endpoints for the CRM Knowledge Graph workers.
 
 Endpoints exposed:
-  - POST /api/admin/crm-kg/build-mediated  → run Tier-B mediated edge pass
-  - GET  /api/admin/crm-kg/health          → counts of nodes/edges per type
+  - GET  /api/admin/crm-kg/health           → counts of nodes/edges per type
+  - POST /api/admin/crm-kg/build-mediated   → run Tier-B mediated edge pass (PR-B)
+  - POST /api/admin/crm-kg/garbage-collect  → soft-delete orphan nodes,
+                                                hard-delete old edges (PR-D)
 
-Both are admin-API-key-gated via the existing X-API-Key middleware. Designed
-to be invoked by:
-  - Mini-Pro2 cron via curl (every 6h)
-  - Manual ops trigger when populating after a backfill
-  - Future LaunchAgent on Pro/Mini if remote cron fails
-
-This router does NOT call the builder synchronously inline if it could
-take >30s; it delegates to a BackgroundTask so the cron caller gets
-HTTP 200 immediately and can move on.
+All admin-API-key-gated via the existing X-API-Key middleware. Designed
+to be invoked by Mini-Pro2 cron via curl. Background-task pattern: HTTP
+200 returns in <1s, work happens async on the api machine without
+blocking other requests.
 """
 
 from __future__ import annotations
@@ -53,12 +50,40 @@ async def trigger_build_mediated(
     return {"status": "started", "message": "Mediated edge builder running in background"}
 
 
+@router.post("/garbage-collect")
+async def trigger_garbage_collect(
+    request: Request,
+    background_tasks: BackgroundTasks,
+) -> dict[str, Any]:
+    """Trigger one pass of the CRM KG garbage collector (PR-D).
+
+    Soft-deletes nodes whose backing CRM data is gone, hard-deletes
+    edges past grace window. See garbage_collector.py docstring.
+
+    Cron-friendly: returns HTTP 200 immediately. Best-effort behavior.
+    """
+    pool = getattr(request.app.state, "db_pool", None)
+    if not pool:
+        return {"status": "error", "message": "Database pool not available"}
+
+    async def _run() -> None:
+        from backend.services.knowledge_graph.garbage_collector import (
+            garbage_collect,
+        )
+        result = await garbage_collect(pool)
+        logger.info("crm_kg.garbage_collect background result: %s", result)
+
+    background_tasks.add_task(_run)
+    return {"status": "started", "message": "Garbage collector running in background"}
+
+
 @router.get("/health")
 async def crm_kg_health(request: Request) -> dict[str, Any]:
     """Quick counts of crm_kg_nodes and crm_kg_edges by type/tier.
 
-    Useful for monitoring growth and verifying the linker / builders
-    are actually emitting data.
+    Splits live vs soft_deleted node counts so PR-D's garbage collector
+    progress is visible. Useful for monitoring dashboards and verifying
+    the linker / builders are actually emitting data.
     """
     pool = getattr(request.app.state, "db_pool", None)
     if not pool:
@@ -90,9 +115,11 @@ async def crm_kg_health(request: Request) -> dict[str, Any]:
 
             nodes_by_type = await conn.fetch(
                 """
-                SELECT entity_type, COUNT(*) AS cnt
+                SELECT
+                    entity_type,
+                    COUNT(*) FILTER (WHERE deleted_at IS NULL) AS live,
+                    COUNT(*) FILTER (WHERE deleted_at IS NOT NULL) AS soft_deleted
                 FROM crm_kg_nodes
-                WHERE deleted_at IS NULL
                 GROUP BY entity_type
                 ORDER BY entity_type
                 """,
@@ -109,7 +136,11 @@ async def crm_kg_health(request: Request) -> dict[str, Any]:
         return {
             "status": "healthy",
             "nodes_by_type": {
-                row["entity_type"]: row["cnt"] for row in nodes_by_type
+                row["entity_type"]: {
+                    "live": row["live"],
+                    "soft_deleted": row["soft_deleted"],
+                }
+                for row in nodes_by_type
             },
             "edges_by_tier": [
                 {
