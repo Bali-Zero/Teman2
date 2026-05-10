@@ -289,7 +289,7 @@ class BaseMigration:
         return hashlib.sha256(sql.encode("utf-8")).hexdigest()
 
     async def _ensure_migration_log(self, conn: asyncpg.Connection) -> None:
-        """Ensure schema_migrations table exists"""
+        """Ensure migration tracking tables exist."""
         await conn.execute(
             """
             CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -316,6 +316,27 @@ class BaseMigration:
             """
             CREATE INDEX IF NOT EXISTS idx_schema_migrations_number
             ON schema_migrations(migration_number)
+        """,
+        )
+        await conn.execute(
+            """
+            CREATE TABLE IF NOT EXISTS _schema_versions (
+                id SERIAL PRIMARY KEY,
+                migration_name VARCHAR(255) UNIQUE NOT NULL,
+                migration_number INTEGER NOT NULL,
+                executed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+                checksum VARCHAR(64) NOT NULL,
+                description TEXT,
+                execution_time_ms INTEGER,
+                rollback_sql TEXT,
+                applied_by VARCHAR(255) DEFAULT 'system'
+            )
+        """,
+        )
+        await conn.execute(
+            """
+            CREATE INDEX IF NOT EXISTS idx_schema_versions_number
+            ON _schema_versions(migration_number)
         """,
         )
 
@@ -359,7 +380,7 @@ class BaseMigration:
         execution_time_ms: int,
         rollback_sql: str | None = None,
     ) -> None:
-        """Log migration to schema_migrations table"""
+        """Log migration to both transition-period tracking tables."""
         checksum = self._calculate_checksum(sql)
         await conn.execute(
             """
@@ -374,6 +395,21 @@ class BaseMigration:
             self.description,
             execution_time_ms,
             rollback_sql,
+        )
+        await conn.execute(
+            """
+            INSERT INTO _schema_versions
+            (migration_name, migration_number, checksum, description, execution_time_ms, rollback_sql, applied_by)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (migration_name) DO NOTHING
+        """,
+            self.migration_name,
+            self.migration_number,
+            checksum,
+            self.description,
+            execution_time_ms,
+            rollback_sql,
+            "migration-base",
         )
 
     async def verify(self, conn: asyncpg.Connection) -> bool:

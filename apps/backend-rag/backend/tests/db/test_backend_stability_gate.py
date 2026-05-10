@@ -38,6 +38,7 @@ def test_backend_stability_gate_lists_required_packs() -> None:
     command_text = "\n".join(" ".join(command) for command in gate.build_gate_commands())
 
     assert "backend.db.schema_audit" in command_text
+    assert "backend/tests/db/test_migration_base_tracking.py" in command_text
     assert "backend/tests/db/test_migration_uniqueness.py" in command_text
     assert "backend/tests/db/test_schema_audit.py" in command_text
     assert "backend/tests/db/test_legacy_promotion_migrations.py" in command_text
