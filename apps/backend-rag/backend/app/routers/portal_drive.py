@@ -29,17 +29,19 @@ async def _list_client_drive_files(
     drive_service: ServiceAccountDriveService,
     client_id: int,
 ) -> dict[str, Any] | None:
-    """List files from the client's Google Drive folder. Returns None if no folder linked."""
+    """Return a client-safe placeholder without exposing Drive navigation."""
     async with pool.acquire() as conn:
-        folder_id = await conn.fetchval(
+        await conn.fetchval(
             "SELECT drive_folder_id FROM clients WHERE id = $1 AND deleted_at IS NULL",
             client_id,
         )
 
-    if not folder_id:
-        return None
-
-    return await drive_service.get_folder_structure(folder_id)
+    return {
+        "files": [],
+        "folders": [],
+        "total_files": 0,
+        "message": "Drive navigation is not exposed in the client portal",
+    }
 
 
 @router.get("/files")
@@ -51,11 +53,6 @@ async def list_drive_files(
     """List files in the client's Google Drive folder."""
     try:
         result = await _list_client_drive_files(db_pool, drive_service, client["client_id"])
-        if result is None:
-            return {
-                "success": True,
-                "data": {"files": [], "folders": [], "total_files": 0, "message": "No Drive folder linked"},
-            }
         return {"success": True, "data": result}
     except Exception as e:
         logger.error(f"Failed to list Drive files for client {client['client_id']}: {e}")
@@ -69,21 +66,5 @@ async def list_subfolder_files(
     db_pool: asyncpg.Pool = Depends(get_database_pool),
     drive_service: ServiceAccountDriveService = Depends(_get_drive_service),
 ) -> dict[str, Any]:
-    """List files in a subfolder of the client's Drive folder."""
-    async with db_pool.acquire() as conn:
-        root_folder_id = await conn.fetchval(
-            "SELECT drive_folder_id FROM clients WHERE id = $1 AND deleted_at IS NULL",
-            client["client_id"],
-        )
-
-    if not root_folder_id:
-        raise HTTPException(status_code=404, detail="No Drive folder linked")
-
-    root_structure = await drive_service.get_folder_structure(root_folder_id)
-    allowed_ids = {root_folder_id} | {f["id"] for f in root_structure.get("folders", [])}
-
-    if folder_id not in allowed_ids:
-        raise HTTPException(status_code=403, detail="Access denied to this folder")
-
-    result = await drive_service.get_folder_structure(folder_id)
-    return {"success": True, "data": result}
+    """Block Drive subfolder navigation from the client portal."""
+    raise HTTPException(status_code=404, detail="Drive navigation is not exposed in the client portal")

@@ -9,6 +9,7 @@ fields are whitelisted here (PROFILE_EDITABLE_FIELDS).
 from typing import Any
 
 import asyncpg
+import httpx
 
 from backend.app.utils.logging_utils import get_logger
 from backend.services.common.cache import cache_invalidating
@@ -97,7 +98,7 @@ class PortalBillingMixin:
                 "amount_idr": amount,
                 "invoice_source": row["invoice_source"],
                 "has_pdf": bool(row["drive_file_id"]),
-                "drive_web_link": row["drive_web_link"],
+                "drive_web_link": None,
                 "email_sent": bool(row["email_sent_to_client"]),
                 "generated_at": row["generated_at"].isoformat() if row["generated_at"] else None,
                 "created_at": row["created_at"].isoformat() if row["created_at"] else None,
@@ -145,9 +146,77 @@ class PortalBillingMixin:
         if not row or (not row["drive_web_link"] and not row["drive_file_id"]):
             return None
 
+        return {"download_url": f"/api/portal/billing/{invoice_id}/pdf"}
+
+    @require_client_access
+    async def download_invoice_pdf(
+        self,
+        client_id: int,
+        invoice_id: int,
+        *,
+        current_user: ClientContext,
+    ) -> dict[str, Any] | None:
+        """Download an invoice PDF through the portal proxy."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT invoice_number, drive_web_link, drive_file_id
+                FROM invoices
+                WHERE id = $1 AND client_id = $2
+                """,
+                invoice_id,
+                client_id,
+            )
+
+        if not row or (not row["drive_web_link"] and not row["drive_file_id"]):
+            return None
+
+        extractor = getattr(self, "_extract_drive_file_id", None)
+        file_id = row["drive_file_id"] or (
+            extractor(row["drive_web_link"]) if extractor else None
+        )
+        if not file_id:
+            return None
+
+        from backend.services.integrations.google_drive_service import GoogleDriveService
+
+        drive_service = GoogleDriveService(self.pool)
+        access_token = await drive_service.get_valid_token(GoogleDriveService.SYSTEM_USER_ID)
+        if not access_token:
+            raise RuntimeError("Google Drive is not connected")
+
+        headers = {"Authorization": f"Bearer {access_token}"}
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            meta_response = await client.get(
+                f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                params={"fields": "mimeType,name,size"},
+                headers=headers,
+            )
+            if meta_response.status_code == 404:
+                return None
+            if meta_response.status_code != 200:
+                logger.error("Portal invoice metadata fetch failed: %s", meta_response.status_code)
+                raise RuntimeError("Failed to fetch invoice metadata")
+
+            metadata = meta_response.json()
+            mime_type = metadata.get("mimeType") or "application/pdf"
+            file_name = metadata.get("name") or f"{row['invoice_number']}.pdf"
+
+            download_response = await client.get(
+                f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                params={"alt": "media"},
+                headers=headers,
+            )
+            if download_response.status_code == 404:
+                return None
+            if download_response.status_code != 200:
+                logger.error("Portal invoice download failed: %s", download_response.status_code)
+                raise RuntimeError("Failed to download invoice")
+
         return {
-            "download_url": row["drive_web_link"],
-            "drive_file_id": row["drive_file_id"],
+            "content": download_response.content,
+            "file_name": file_name,
+            "mime_type": mime_type,
         }
 
     # ================================================
@@ -155,8 +224,8 @@ class PortalBillingMixin:
     # ================================================
 
     @cache_invalidating([
-        lambda self, client_id, *a, **k: f"zantara:portal_profile:{client_id}:*",
-        lambda self, client_id, *a, **k: f"zantara:crm_client:{client_id}:*",
+        lambda _self, client_id, *_a, **_k: f"zantara:portal_profile:{client_id}:*",
+        lambda _self, client_id, *_a, **_k: f"zantara:crm_client:{client_id}:*",
         "zantara:portal_messages:*",
     ])
     @require_client_access
