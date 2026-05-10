@@ -67,7 +67,7 @@ export function ChatMessageList({
             variant="outline"
             size="lg"
             className="rounded-xl gap-2 hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] transition-all"
-            onClick={() => onSetInput("What can you help me with?")}
+            onClick={() => onFollowUpClick?.("What can you help me with?")}
           >
             <span className="text-lg">💡</span>
             <span>What can you do?</span>
@@ -76,7 +76,7 @@ export function ChatMessageList({
             variant="outline"
             size="lg"
             className="rounded-xl gap-2 hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] transition-all"
-            onClick={() => onSetInput("Summarize my tasks for today")}
+            onClick={() => onFollowUpClick?.("Summarize my tasks for today")}
           >
             <span className="text-lg">📋</span>
             <span>My Tasks</span>

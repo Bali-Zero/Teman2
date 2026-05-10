@@ -121,6 +121,7 @@ export function ChatInputBar({
                     unoptimized
                   />
                   <button
+                    type="button"
                     onClick={() => onRemoveImage?.(img.id)}
                     className="absolute top-1 right-1 p-0.5 bg-black/60 text-white rounded-full opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
                     aria-label={`Remove image ${img.name}`}
@@ -215,6 +216,7 @@ export function ChatInputBar({
               {showAttachMenu && (
                 <div className="absolute bottom-full left-0 mb-2 bg-[var(--background-secondary)] rounded-xl border border-[var(--border)] shadow-lg overflow-hidden min-w-[160px] animate-in fade-in slide-in-from-bottom-2 duration-200">
                   <button
+                    type="button"
                     onClick={() => {
                       fileInputRef.current?.click();
                       setShowAttachMenu(false);
@@ -225,6 +227,7 @@ export function ChatInputBar({
                     Upload file
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       setShowImagePrompt(!showImagePrompt);
                       setShowAttachMenu(false);

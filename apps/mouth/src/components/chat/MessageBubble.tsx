@@ -378,6 +378,7 @@ function MessageBubbleComponent({
             {!isUser && (steps?.length ?? 0) > 0 && (
               <div className="mb-3">
                 <button
+                  type="button"
                   onClick={() => setIsThinkingExpanded(!isThinkingExpanded)}
                   className="flex items-center gap-2 text-xs font-medium text-[var(--foreground-muted)] hover:text-[var(--accent)] transition-colors mb-2"
                   aria-expanded={isThinkingExpanded}
@@ -531,6 +532,7 @@ function MessageBubbleComponent({
                   <div className="flex flex-wrap gap-2">
                     {message.metadata.followup_questions.map((question, idx) => (
                       <button
+                        type="button"
                         key={idx}
                         onClick={() => onFollowUpClick?.(question)}
                         className="text-xs text-left px-3 py-1.5 rounded-lg bg-[var(--background-secondary)] hover:bg-[var(--accent)]/10 hover:text-[var(--accent)] border border-[var(--border)] transition-colors duration-200"
@@ -563,6 +565,7 @@ function MessageBubbleComponent({
               {formatMessageTime(timestamp)}
             </span>
             <button
+              type="button"
               onClick={handleCopy}
               className="transition-opacity p-1 hover:bg-[var(--background-secondary)] rounded opacity-70 hover:opacity-100"
               aria-label="Copy message"
