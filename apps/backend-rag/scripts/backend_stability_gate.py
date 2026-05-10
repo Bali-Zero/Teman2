@@ -32,6 +32,7 @@ def build_gate_commands() -> list[list[str]]:
             python,
             "-m",
             "pytest",
+            "backend/tests/db/test_migration_base_tracking.py",
             "backend/tests/db/test_migration_uniqueness.py",
             "backend/tests/db/test_schema_audit.py",
             "backend/tests/db/test_legacy_promotion_migrations.py",
