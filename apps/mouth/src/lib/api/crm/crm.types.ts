@@ -87,13 +87,37 @@ export interface TaxCompanyPilotEvidenceLink {
   kind: "folder" | "file" | "spreadsheet" | "document";
 }
 
+export interface TaxCompanyPilotPersonDossier {
+  person_name: string;
+  company_name: string;
+  headline: string;
+  tax_owner: string;
+  drive_folder_url?: string | null;
+  document_groups: string[];
+  risk_flags: string[];
+  next_action: string;
+  relationship_confidence: TaxCompanyPilotConfidence;
+}
+
+export interface TaxCompanyPilotNextAction {
+  owner: "crm" | "tax" | "setup";
+  label: string;
+  reason: string;
+  severity: "high" | "medium" | "low";
+}
+
 export interface TaxCompanyPilotMap {
   key: TaxCompanyPilotKey;
+  primary_entry: "person";
+  workspace_mode: "team_read_only";
   company: TaxCompanyPilotEntity;
   tax_member: TaxCompanyPilotTaxMember;
   drive_folders: Record<string, string>;
   persons: TaxCompanyPilotPerson[];
   documents: TaxCompanyPilotDocument[];
+  person_dossiers: TaxCompanyPilotPersonDossier[];
+  next_best_actions: TaxCompanyPilotNextAction[];
+  business_story: string[];
   duplicate_candidates: TaxCompanyPilotDuplicateCandidate[];
   gaps: TaxCompanyPilotGap[];
   evidence_links: TaxCompanyPilotEvidenceLink[];

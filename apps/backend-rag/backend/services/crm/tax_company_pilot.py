@@ -53,19 +53,51 @@ class TaxCompanyPilotEvidenceLink(BaseModel):
     kind: Literal["folder", "file", "spreadsheet", "document"]
 
 
+class TaxCompanyPilotPersonDossier(BaseModel):
+    person_name: str
+    company_name: str
+    headline: str
+    tax_owner: str
+    drive_folder_url: str | None = None
+    document_groups: list[str] = Field(default_factory=list)
+    risk_flags: list[str] = Field(default_factory=list)
+    next_action: str
+    relationship_confidence: DriveConfidence = "unconfirmed"
+
+
+class TaxCompanyPilotNextAction(BaseModel):
+    owner: Literal["crm", "tax", "setup"]
+    label: str
+    reason: str
+    severity: Literal["high", "medium", "low"]
+
+
 class TaxCompanyPilotMap(BaseModel):
     key: Literal["ocean", "bimala"]
+    primary_entry: Literal["person"] = "person"
+    workspace_mode: Literal["team_read_only"] = "team_read_only"
     company: TaxCompanyPilotEntity
     tax_member: TaxCompanyPilotTaxMember
     drive_folders: dict[str, str]
     persons: list[TaxCompanyPilotPerson]
     documents: list[TaxCompanyPilotDocument]
+    person_dossiers: list[TaxCompanyPilotPersonDossier] = Field(default_factory=list)
+    next_best_actions: list[TaxCompanyPilotNextAction] = Field(default_factory=list)
+    business_story: list[str] = Field(default_factory=list)
     duplicate_candidates: list[TaxCompanyPilotDuplicateCandidate]
     gaps: list[TaxCompanyPilotGap]
     evidence_links: list[TaxCompanyPilotEvidenceLink]
     ai_recap: list[str]
     read_only: bool = True
     confidence: DriveConfidence = "medium"
+
+    def model_post_init(self, __context: object) -> None:
+        if not self.person_dossiers:
+            object.__setattr__(self, "person_dossiers", _build_person_dossiers(self))
+        if not self.next_best_actions:
+            object.__setattr__(self, "next_best_actions", _build_next_best_actions(self))
+        if not self.business_story:
+            object.__setattr__(self, "business_story", _build_business_story(self))
 
 
 def _drive_folder(folder_id: str) -> str:
@@ -74,6 +106,97 @@ def _drive_folder(folder_id: str) -> str:
 
 def _drive_file(file_id: str) -> str:
     return f"https://drive.google.com/file/d/{file_id}/view"
+
+
+def _document_group_labels(documents: list[TaxCompanyPilotDocument]) -> list[str]:
+    labels: dict[str, str] = {
+        "company": "company registry",
+        "tax": "tax filings",
+        "lkpm": "investment reports",
+        "finance": "finance",
+        "person": "personal file",
+        "coretax": "Coretax access",
+    }
+    return sorted({labels[document.group] for document in documents})
+
+
+def _person_risk_flags(
+    person: TaxCompanyPilotPerson,
+    documents: list[TaxCompanyPilotDocument],
+) -> list[str]:
+    flags: list[str] = []
+    if person.relationship_confidence == "unconfirmed":
+        flags.append("Relationship needs human confirmation.")
+    if person.role_confidence == "unconfirmed":
+        flags.append("Company role needs human confirmation.")
+    if any(document.sensitivity == "financial" for document in documents):
+        flags.append("Company finance stays internal until role is confirmed.")
+    if any(document.sensitivity == "credential" for document in documents):
+        flags.append("Coretax access stays internal.")
+    return flags
+
+
+def _person_headline(person: TaxCompanyPilotPerson, company_name: str) -> str:
+    if person.role:
+        return f"{person.role} connected to {company_name}"
+    if person.relationship_confidence == "confirmed":
+        return f"Confirmed person connected to {company_name}"
+    return f"Person to verify before opening {company_name}"
+
+
+def _person_next_action(person: TaxCompanyPilotPerson) -> str:
+    if person.relationship_confidence == "unconfirmed":
+        return "Confirm the family or business relationship before nesting files."
+    if person.role_confidence == "unconfirmed":
+        return "Confirm the company role from registry documents."
+    return "Review the person profile and attach the confirmed business timeline."
+
+
+def _build_person_dossiers(pilot_map: TaxCompanyPilotMap) -> list[TaxCompanyPilotPersonDossier]:
+    document_groups = _document_group_labels(pilot_map.documents)
+    return [
+        TaxCompanyPilotPersonDossier(
+            person_name=person.name,
+            company_name=pilot_map.company.name,
+            headline=_person_headline(person, pilot_map.company.name),
+            tax_owner=pilot_map.tax_member.name,
+            drive_folder_url=person.folder_url,
+            document_groups=document_groups,
+            risk_flags=_person_risk_flags(person, pilot_map.documents),
+            next_action=_person_next_action(person),
+            relationship_confidence=person.relationship_confidence,
+        )
+        for person in pilot_map.persons
+    ]
+
+
+def _action_owner(code: str) -> Literal["crm", "tax", "setup"]:
+    if "tax" in code or "finance" in code or "family" in code:
+        return "tax"
+    if "individual" in code:
+        return "crm"
+    return "setup"
+
+
+def _build_next_best_actions(pilot_map: TaxCompanyPilotMap) -> list[TaxCompanyPilotNextAction]:
+    return [
+        TaxCompanyPilotNextAction(
+            owner=_action_owner(gap.code),
+            label=gap.label,
+            reason=f"Needed before {pilot_map.company.name} can become a clean person-first workspace.",
+            severity=gap.severity,
+        )
+        for gap in pilot_map.gaps
+    ]
+
+
+def _build_business_story(pilot_map: TaxCompanyPilotMap) -> list[str]:
+    people = ", ".join(person.name for person in pilot_map.persons[:3])
+    return [
+        f"Start from {people}, then open {pilot_map.company.name} only through the confirmed relationship.",
+        f"{pilot_map.tax_member.name} remains the tax owner while the workspace reviews source folders and shortcuts.",
+        "Client portal access stays document-download only; Drive review remains a team workflow.",
+    ]
 
 
 def _ocean_map() -> TaxCompanyPilotMap:
