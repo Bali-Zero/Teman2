@@ -173,6 +173,7 @@ export function ChatHeader({
           />
           <div className="relative" ref={userMenuRef}>
             <button
+              type="button"
               onClick={onToggleUserMenu}
               className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-[var(--background-elevated)] transition-colors"
               aria-label="User menu"
@@ -213,6 +214,7 @@ export function ChatHeader({
                 {/* Menu Items */}
                 <div className="py-1">
                   <button
+                    type="button"
                     onClick={() => {
                       avatarInputRef.current?.click();
                       onToggleUserMenu();
@@ -223,6 +225,7 @@ export function ChatHeader({
                     Change Avatar
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       onShowToast('Settings coming soon!', 'success');
                       onToggleUserMenu();
@@ -234,6 +237,7 @@ export function ChatHeader({
                   </button>
                   {api.isAdmin() && (
                     <button
+                      type="button"
                       onClick={() => {
                         router.push('/admin');
                         onToggleUserMenu();
@@ -249,6 +253,7 @@ export function ChatHeader({
                 {/* Logout */}
                 <div className="border-t border-[var(--border)] py-1">
                   <button
+                    type="button"
                     onClick={() => {
                       onToggleUserMenu();
                       handleLogout();

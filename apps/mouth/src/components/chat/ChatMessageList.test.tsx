@@ -78,12 +78,12 @@ describe("ChatMessageList", () => {
       expect(screen.getByText("Search docs")).toBeInTheDocument();
     });
 
-    it("should call onSetInput when quick action clicked", async () => {
+    it("should call onFollowUpClick when quick action clicked", async () => {
       const user = userEvent.setup();
       render(<ChatMessageList {...defaultProps} />);
 
       await user.click(screen.getByText("What can you do?"));
-      expect(defaultProps.onSetInput).toHaveBeenCalledWith(
+      expect(defaultProps.onFollowUpClick).toHaveBeenCalledWith(
         "What can you help me with?",
       );
     });
