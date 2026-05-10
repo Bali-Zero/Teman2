@@ -484,8 +484,8 @@ class PortalDocumentsMixin:
                             file_size_kb,
                             mime_type,
                         )
-                else:
-                    raise
+                    else:
+                        raise
 
             # =========================================================================
             # STEP 6: CREATE TIMELINE EVENT
