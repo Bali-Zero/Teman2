@@ -235,7 +235,27 @@ class GoogleDriveService:
         return row["access_token"]
 
     async def _refresh_token(self, user_id: str, refresh_token: str) -> str | None:
-        """Refresh access token using refresh token."""
+        """Refresh access token using refresh token.
+
+        OAuth SYSTEM disabled 2026-05-10: legacy SYSTEM-wide OAuth flow has been
+        replaced by ServiceAccountDriveService (domain-wide delegation
+        impersonating zero@balizero.com). Drive operations should go through
+        backend.services.integrations.service_account_drive_service. The
+        SYSTEM token in google_drive_tokens is intentionally left unrefreshed:
+        callers that still request it receive None (and degrade gracefully or
+        error) instead of generating an OAuth refresh storm against a revoked
+        token. Per-user (non-SYSTEM) OAuth flows remain unchanged.
+        """
+        if user_id == self.SYSTEM_USER_ID:
+            if not getattr(self, "_oauth_system_disabled_logged", False):
+                logger.info(
+                    "[GDRIVE] OAuth SYSTEM disabled — Drive operations use "
+                    "ServiceAccountDriveService (domain-wide delegation). "
+                    "Returning None for SYSTEM token requests.",
+                )
+                self._oauth_system_disabled_logged = True
+            return None
+
         logger.info(f"[GDRIVE] Refreshing token for user {user_id}")
 
         client = self._get_client()

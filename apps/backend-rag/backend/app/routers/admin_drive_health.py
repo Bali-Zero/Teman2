@@ -138,68 +138,66 @@ router = APIRouter(prefix="/api/admin/drive", tags=["admin"])
 
 @router.get("/health")
 async def drive_health(request: Request) -> dict[str, Any]:
-    """Verifica stato token Google Drive (public endpoint)."""
+    """Verifica stato Drive integration (public endpoint).
+
+    Post-2026-05-10: primary auth is Service Account (domain-wide delegation
+    impersonating zero@balizero.com), not the legacy SYSTEM OAuth token.
+    Health is determined by SA reachability; OAuth SYSTEM info is reported
+    informationally for debugging legacy callers but does NOT influence the
+    overall status.
+    """
     pool = getattr(request.app.state, "db_pool", None)
-    if not pool:
-        return {"status": "error", "message": "Database pool not available"}
 
-    async with pool.acquire() as conn:
-        # Check table exists
-        table_exists = await conn.fetchval(
-            """SELECT EXISTS (
-                SELECT FROM information_schema.tables
-                WHERE table_name = 'google_drive_tokens'
-            )""",
+    # Primary check: Service Account reachability
+    sa_working = False
+    sa_error: str | None = None
+    try:
+        from backend.services.integrations.service_account_drive_service import (
+            ServiceAccountDriveService,
         )
 
-        if not table_exists:
-            return {"status": "error", "message": "google_drive_tokens table not found"}
+        sa_drive = ServiceAccountDriveService()
+        # get_start_page_token is the cheapest authenticated call (no list)
+        await sa_drive.get_start_page_token()
+        sa_working = True
+    except Exception as e:
+        sa_error = str(e)[:200]
 
-        # Check SYSTEM token
-        token = await conn.fetchrow(
-            """SELECT user_id, expires_at, refresh_token IS NOT NULL as has_refresh, updated_at
-               FROM google_drive_tokens WHERE user_id = 'SYSTEM'""",
-        )
-
-        if not token:
-            return {
-                "status": "error",
-                "message": "SYSTEM token not found. Re-authorize required.",
-                "auth_url": "/api/admin/google-drive/auth",
-            }
-
-        from datetime import datetime, timezone
-
-        now = datetime.now(timezone.utc)
-        expires = token["expires_at"]
-
-        if expires.tzinfo is None:
-            expires = expires.replace(tzinfo=timezone.utc)
-
-        time_left = expires - now
-
-        # Try actual Drive API call
+    # Informational: legacy OAuth SYSTEM token state (no longer load-bearing)
+    oauth_info: dict[str, Any] = {"disabled": True, "note": "OAuth SYSTEM disabled 2026-05-10 — Drive uses Service Account"}
+    if pool is not None:
         try:
-            from backend.services.integrations.google_drive_service import GoogleDriveService
-
-            drive = GoogleDriveService(pool)
-            drive_token = await drive.get_valid_token("SYSTEM")
-            api_working = drive_token is not None
+            async with pool.acquire() as conn:
+                table_exists = await conn.fetchval(
+                    """SELECT EXISTS (
+                        SELECT FROM information_schema.tables
+                        WHERE table_name = 'google_drive_tokens'
+                    )""",
+                )
+                if table_exists:
+                    token = await conn.fetchrow(
+                        """SELECT user_id, expires_at, refresh_token IS NOT NULL as has_refresh, updated_at
+                           FROM google_drive_tokens WHERE user_id = 'SYSTEM'""",
+                    )
+                    if token:
+                        oauth_info["legacy_token_present"] = True
+                        oauth_info["legacy_expires_at"] = token["expires_at"].isoformat()
         except Exception:
-            api_working = False
+            # Legacy info is best-effort only
+            pass
 
-        return {
-            "status": "healthy" if time_left.total_seconds() > 0 and api_working else "warning",
-            "token": {
-                "user_id": token["user_id"],
-                "expires_at": token["expires_at"].isoformat(),
-                "has_refresh": token["has_refresh"],
-                "updated_at": token["updated_at"].isoformat() if token["updated_at"] else None,
-            },
-            "time_left_seconds": time_left.total_seconds(),
-            "time_left_human": str(time_left),
-            "api_working": api_working,
-        }
+    return {
+        "status": "healthy" if sa_working else "error",
+        "auth_mode": "service_account",
+        "service_account": {
+            "working": sa_working,
+            "error": sa_error,
+            "delegated_user": "zero@balizero.com",
+        },
+        "oauth_legacy": oauth_info,
+        # Backward-compat top-level field for any external monitor still keying on this
+        "api_working": sa_working,
+    }
 
 
 @router.post("/poll")
