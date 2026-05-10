@@ -702,6 +702,13 @@ main,
   display: none;
 }
 
+/* Hide the public contact FAB inside the authenticated workspace.
+   Workspace routes already have AppSidebar plus internal assistant widgets,
+   and the public FAB overlaps dense CRM surfaces on mobile. */
+:has(.glass-panel-deep) .fab-whatsapp {
+  display: none;
+}
+
 .fab-whatsapp,
 .fab-zantara {
   bottom: 20px;
