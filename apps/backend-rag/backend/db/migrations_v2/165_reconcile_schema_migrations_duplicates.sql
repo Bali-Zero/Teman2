@@ -24,6 +24,17 @@
 SET lock_timeout = '5s';
 SET statement_timeout = '60s';
 
+ALTER TABLE schema_migrations
+    ADD COLUMN IF NOT EXISTS applied_at TIMESTAMPTZ;
+
+ALTER TABLE schema_migrations
+    ADD COLUMN IF NOT EXISTS applied_by VARCHAR(255);
+
+UPDATE schema_migrations
+SET applied_at = executed_at
+WHERE applied_at IS NULL
+  AND executed_at IS NOT NULL;
+
 CREATE TABLE IF NOT EXISTS schema_migrations_reconciliation_archive (
     archive_id SERIAL PRIMARY KEY,
     archived_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
