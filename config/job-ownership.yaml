@@ -7,7 +7,7 @@
 schema_version: 1
 generated_at: '2026-05-10T10:30:00+08:00'
 pro_plist_count: 135
-mini_plist_count: 11
+mini_plist_count: 13
 both_count: 2
 
 # === 2 CONFLITTI: stesso label su Pro E Mini (ATTENZIONE) ===
@@ -138,20 +138,6 @@ jobs:
     last_migrated: null
     git_sha: null
     notes: ""
-
-  com.balizero.indexing-sweep:
-    owner: mini-only-undocumented
-    family: balizero
-    cluster: C_pro_bound_exception
-    state: mini-only
-    side_effects: [none]
-    idempotent: true
-    resource_class: cron_light
-    schedule: calendar
-    candidate_migrate: false
-    last_migrated: null
-    git_sha: null
-    notes: "Migrazione precedente non documentata, era gia su Mini"
 
   com.balizero.indexing-sweep.daily:
     owner: pro
@@ -1623,6 +1609,20 @@ jobs:
     git_sha: null
     notes: ""
 
+  com.nuzantara.heartbeat-watchdog.daily:
+    owner: mini-only-undocumented
+    family: nuzantara
+    cluster: C_migrate_candidate
+    state: mini-only
+    side_effects: [none]
+    idempotent: true
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: "Migrazione precedente non documentata, era gia su Mini"
+
   com.nuzantara.launchagent-state-bridge:
     owner: pro
     family: nuzantara
@@ -1650,6 +1650,20 @@ jobs:
     last_migrated: null
     git_sha: null
     notes: ""
+
+  com.nuzantara.log-prune.daily:
+    owner: mini-only-undocumented
+    family: nuzantara
+    cluster: C_migrate_candidate
+    state: mini-only
+    side_effects: [none]
+    idempotent: true
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: "Migrazione precedente non documentata, era gia su Mini"
 
   com.nuzantara.login-healthcheck:
     owner: pro
@@ -1804,6 +1818,20 @@ jobs:
     last_migrated: null
     git_sha: null
     notes: ""
+
+  com.nuzantara.overlap-detector.daily:
+    owner: mini-only-undocumented
+    family: nuzantara
+    cluster: C_migrate_candidate
+    state: mini-only
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: "Migrazione precedente non documentata, era gia su Mini"
 
   com.nuzantara.pg-organism-bridge:
     owner: pro
@@ -2032,7 +2060,7 @@ jobs:
 # === STATS ===
 # A_residence_pro: 56
 # B_sync: 5
-# C_migrate_candidate: 51
-# C_pro_bound_exception: 25
+# C_migrate_candidate: 54
+# C_pro_bound_exception: 24
 # D_codex: 7
 # X_system: 0
