@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# Batch push 7 confirmed regulations + KEP-55 substitute to NB-2/3/4/5
+
+set -u
+
+# UUID map
+NB_2="cff93ab0-813a-42f2-a8de-36987e724271"   # Visa
+NB_4="d4b2eedb-9863-4a1a-81ff-a11b0b45d853"   # Tax
+NB_5="d9438180-5e63-4e2a-a473-6061101f6a8d"   # Property
+
+extract_jdih_text() {
+    local url="$1"
+    curl -sf "$url" 2>/dev/null | python3 -c "
+import sys, re, html
+raw = sys.stdin.read()
+clean = re.sub(r'<script[^>]*>.*?</script>', '', raw, flags=re.DOTALL|re.IGNORECASE)
+clean = re.sub(r'<style[^>]*>.*?</style>', '', clean, flags=re.DOTALL|re.IGNORECASE)
+clean = re.sub(r'<[^>]+>', ' ', clean)
+clean = html.unescape(clean)
+clean = re.sub(r'\s+', ' ', clean).strip()
+print(clean[:8000])
+"
+}
+
+push_text() {
+    local nb_uuid="$1"
+    local title="$2"
+    local content="$3"
+    echo ">>> Pushing '$title' to NB ${nb_uuid:0:8}..."
+    # Use --text mode (HTML scraping fallback when --url fails on JSP-dynamic JDIH pages)
+    nlm source add "$nb_uuid" --text "$content" 2>&1 | tail -3
+}
+
+# 1. Permenkumham 22/2023 → NB-2
+echo "=== [1/8] Permenkumham 22/2023 → NB-2 (Visa) ==="
+URL="https://peraturan.go.id/id/permenkumham-no-22-tahun-2023"
+TXT="REGULATION: Permenkumham No. 22 Tahun 2023 Tentang Visa Dan Izin Tinggal (KITAS Investor framework). SOURCE: $URL. CONTENT EXCERPT: $(extract_jdih_text "$URL")"
+push_text "$NB_2" "Permenkumham 22/2023" "$TXT"
+
+# 2. Permenkumham 11/2024 → NB-2
+echo
+echo "=== [2/8] Permenkumham 11/2024 → NB-2 (Visa, Golden Visa C-318) ==="
+URL="https://peraturan.bpk.go.id/Details/285156/permenkumham-no-11-tahun-2024"
+TXT="REGULATION: Permenkumham No. 11 Tahun 2024 (Golden Visa C-318 specific implementation). SOURCE: $URL. CONTENT EXCERPT: $(extract_jdih_text "$URL")"
+push_text "$NB_2" "Permenkumham 11/2024" "$TXT"
+
+# 3. PP 41/1996 → NB-5
+echo
+echo "=== [3/8] PP 41/1996 → NB-5 (Property, Hak Pakai pre-PP18) ==="
+URL="https://peraturan.go.id/id/pp-no-41-tahun-1996"
+TXT="REGULATION: Peraturan Pemerintah No. 41 Tahun 1996 Tentang Pemilikan Rumah Tempat Tinggal Atau Hunian Oleh Orang Asing Yang Berkedudukan Di Indonesia (foreign residential ownership pre-PP18/2021 framework). SOURCE: $URL. CONTENT EXCERPT: $(extract_jdih_text "$URL")"
+push_text "$NB_5" "PP 41/1996" "$TXT"
+
+# 4. PP 13/2017 → NB-5 (NOT Perpres!)
+echo
+echo "=== [4/8] PP 13/2017 → NB-5 (Property, RTRWN spatial planning) ==="
+URL="https://peraturan.go.id/id/pp-no-13-tahun-2017"
+TXT="REGULATION: Peraturan Pemerintah No. 13 Tahun 2017 Tentang Perubahan Atas PP 26/2008 Tentang Rencana Tata Ruang Wilayah Nasional (RTRWN national spatial planning amendment). NOTE: instrument-class is PP not Perpres — earlier classification as 'Perpres 13/2017' was wrong. SOURCE: $URL. CONTENT EXCERPT: $(extract_jdih_text "$URL")"
+push_text "$NB_5" "PP 13/2017" "$TXT"
+
+# 5. Permen ATR/BPN 18/2021 → NB-5
+echo
+echo "=== [5/8] Permen ATR/BPN 18/2021 → NB-5 (Property, Hak Pakai conversion) ==="
+URL="https://jdih.atrbpn.go.id/peraturan/detail/1030/peraturan-menteri-agraria-dan-tata-ruang-kepala-badan-pertanahan-nasional-nomor-18-tahun-2021"
+TXT="REGULATION: Peraturan Menteri Agraria dan Tata Ruang/Kepala BPN No. 18 Tahun 2021 (digital workflow for Hak Pakai conversion). SOURCE: $URL. CONTENT EXCERPT: $(extract_jdih_text "$URL")"
+push_text "$NB_5" "Permen ATR/BPN 18/2021" "$TXT"
+
+# 6. PER-7/PJ/2025 → NB-4
+echo
+echo "=== [6/8] PER-7/PJ/2025 → NB-4 (Tax, NIK-NPWP matching) ==="
+URL="https://www.pajak.go.id/en/node/118195"
+TXT="REGULATION: Peraturan Direktur Jenderal Pajak Nomor PER-7/PJ/2025 (NIK-NPWP matching procedure for foreign nationals in Coretax). NOTE: jdih_pending=true (DJP→peraturan.go.id 6-12 month backfill lag). SOURCE: $URL. CONTENT EXCERPT: $(extract_jdih_text "$URL")"
+push_text "$NB_4" "PER-7/PJ/2025" "$TXT"
+
+# 7. PMK 9/PMK.03/2018 → NB-4
+echo
+echo "=== [7/8] PMK 9/PMK.03/2018 → NB-4 (Tax, predecessor to PMK 81/2024) ==="
+URL="https://jdih.kemenkeu.go.id/fulltext/2018/9~PMK.03~2018Per.pdf"
+TXT="REGULATION: Peraturan Menteri Keuangan Nomor 9/PMK.03/2018 Tentang Perubahan Atas PMK 243/PMK.03/2014 (SPT filing periods amendment, predecessor to PMK 81/2024). NOTE: PMK 81/2024 partially supersedes this. SOURCE: $URL. PDF direct link (binary, content paste skipped — verify via SOURCE link)."
+push_text "$NB_4" "PMK 9/PMK.03/2018" "$TXT"
+
+# 8. KEP-55/PJ/2026 → NB-4 (substitute for hallucinated KEP-6)
+echo
+echo "=== [8/8] KEP-55/PJ/2026 → NB-4 (Tax, REAL Coretax penalty waiver) ==="
+URL="https://www.goodnewsfromindonesia.id/short/kep-55-pj-2026-batas-lapor-spt-tahunan-2025-diperpanjang-dan-bebas-sanksi-hingga-30-april-2026"
+TXT="REGULATION: Keputusan Direktur Jenderal Pajak Nomor KEP-55/PJ/2026 (Coretax-related sanction waiver: SPT Tahunan 2025 deadline extended + sanction-free until 30 April 2026). NOTE: this is the REAL KEP that earlier devils-advocate runs hallucinated as KEP-6/9/11/PJ/2026. Effective 27 March 2026. SOURCE: $URL. CONTENT EXCERPT: $(extract_jdih_text "$URL")"
+push_text "$NB_4" "KEP-55/PJ/2026" "$TXT"
+
+echo
+echo "=== ALL 8 PUSHES COMPLETE ==="
