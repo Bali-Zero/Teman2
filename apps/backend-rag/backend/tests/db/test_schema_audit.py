@@ -170,6 +170,40 @@ async def test_tracking_tables_in_sync(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.asyncio
+async def test_tracking_legacy_duplicate_finding(monkeypatch: pytest.MonkeyPatch) -> None:
+    conn = _build_conn(
+        legacy_table_exists=True,
+        canonical_table_exists=True,
+        legacy_numbers=[1, 2, 2, 3],
+        canonical_numbers=[1, 2, 3],
+    )
+    _patch_manager(monkeypatch, pending_list=[], conn=conn)
+
+    report = await run_audit(database_url="postgres://fake", required_tables=[])
+
+    [finding] = [f for f in report.findings if f.code == "tracking_duplicate_legacy"]
+    assert finding.severity == "error"
+    assert finding.details["duplicates"] == {2: 2}
+
+
+@pytest.mark.asyncio
+async def test_tracking_canonical_duplicate_finding(monkeypatch: pytest.MonkeyPatch) -> None:
+    conn = _build_conn(
+        legacy_table_exists=True,
+        canonical_table_exists=True,
+        legacy_numbers=[1, 2, 3],
+        canonical_numbers=[1, 2, 3, 3, 130, 130, 130],
+    )
+    _patch_manager(monkeypatch, pending_list=[], conn=conn)
+
+    report = await run_audit(database_url="postgres://fake", required_tables=[])
+
+    [finding] = [f for f in report.findings if f.code == "tracking_duplicate_canonical"]
+    assert finding.severity == "error"
+    assert finding.details["duplicates"] == {3: 2, 130: 3}
+
+
+@pytest.mark.asyncio
 async def test_tracking_legacy_only_finding(monkeypatch: pytest.MonkeyPatch) -> None:
     """Migration N exists in _schema_versions but not in schema_migrations.
 

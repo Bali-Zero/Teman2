@@ -17,6 +17,15 @@ from backend.db.migration_base import BaseMigration, MigrationError
 from backend.db.migration_manager import MigrationManager
 
 
+def _write_test_migration(tmp_path: Path, filename: str = "001_fix_missing_tables.sql") -> str:
+    """Create a minimal SQL file for BaseMigration unit tests."""
+    (tmp_path / filename).write_text(
+        "CREATE TABLE IF NOT EXISTS test_migration_table (id INTEGER);\n",
+        encoding="utf-8",
+    )
+    return filename
+
+
 @pytest.fixture
 async def test_db():
     """Create test database connection"""
@@ -40,12 +49,15 @@ def migration_manager():
 class TestBaseMigration:
     """Test BaseMigration class"""
 
-    def test_migration_initialization(self):
+    def test_migration_initialization(self, tmp_path: Path):
         """Test migration can be initialized"""
+        sql_file = _write_test_migration(tmp_path)
         migration = BaseMigration(
             migration_number=999,
-            sql_file="001_fix_missing_tables.sql",
+            sql_file=sql_file,
             description="Test migration",
+            rollback_sql="DROP TABLE IF EXISTS test_migration_table;",
+            _sql_dir=tmp_path,
         )
         assert migration.migration_number == 999
         # Migration name should strip the migration number prefix from SQL filename
@@ -57,10 +69,15 @@ class TestBaseMigration:
         with pytest.raises(MigrationError, match="SQL file not found"):
             BaseMigration(migration_number=999, sql_file="nonexistent.sql", description="Test")
 
-    def test_sql_validation_dangerous_patterns(self):
+    def test_sql_validation_dangerous_patterns(self, tmp_path: Path):
         """Test SQL validation rejects dangerous patterns"""
+        sql_file = _write_test_migration(tmp_path)
         migration = BaseMigration(
-            migration_number=999, sql_file="001_fix_missing_tables.sql", description="Test"
+            migration_number=999,
+            sql_file=sql_file,
+            description="Test",
+            rollback_sql="DROP TABLE IF EXISTS test_migration_table;",
+            _sql_dir=tmp_path,
         )
 
         # Test DROP DATABASE
@@ -78,10 +95,15 @@ class TestBaseMigration:
         # Test TRUNCATE in comment (should pass)
         migration._validate_sql("-- TRUNCATE TABLE users;")
 
-    def test_checksum_calculation(self):
+    def test_checksum_calculation(self, tmp_path: Path):
         """Test checksum calculation"""
+        sql_file = _write_test_migration(tmp_path)
         migration = BaseMigration(
-            migration_number=999, sql_file="001_fix_missing_tables.sql", description="Test"
+            migration_number=999,
+            sql_file=sql_file,
+            description="Test",
+            rollback_sql="DROP TABLE IF EXISTS test_migration_table;",
+            _sql_dir=tmp_path,
         )
 
         sql1 = "CREATE TABLE test (id INT);"
