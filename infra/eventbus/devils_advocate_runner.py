@@ -718,6 +718,23 @@ def emit_redteam_event(report: dict, ground_truth_payload: dict,
                        trace_id=trace_id)
     log.info("published redteam.completed event_id=%s verdict=%s counts=%s nb_avail=%s",
              event_id, verdict, counts, ground_truth_payload.get("nb_available"))
+
+    # Hook to regulatory-ingest skill: if any reg codes are NOT_FOUND_IN_QUERIED,
+    # log an INGEST_HINT so operator (or future auto-watcher) can run the
+    # 6-stage ingest pipeline. We don't auto-execute because (a) need to
+    # web-verify the code is real first (not a hallucination), (b) need to
+    # resolve the JDIH URL and official title manually.
+    gt = ground_truth_payload.get("ground_truth", {})
+    not_found = [code for code, info in gt.items() if info.get("state") == "NOT_FOUND_IN_QUERIED"]
+    if not_found:
+        log.info(
+            "INGEST_HINT — %d reg codes returned NOT_FOUND. If web-verifies as real, "
+            "invoke regulatory-ingest skill via:\n"
+            "    python3 ~/scripts/regulatory_ingest_runner.py --reg '<CODE>' --domain %s "
+            "--jdih-url '<URL>' --title '<OFFICIAL_TITLE>' --priority MEDIUM\n"
+            "Codes: %s",
+            len(not_found), domain, not_found,
+        )
     return event_id
 
 
