@@ -190,6 +190,23 @@ if ! check_type_mismatch; then
   exit 1
 fi
 
+# 2026-05-10 Fase 0c hardening: acquire repo-mutating exclusive lock so
+# Cluster C/D cron jobs do not read half-rewritten .py / .yaml during git
+# pull. Cron jobs use `flock --shared` on the same lock during their
+# startup phase. Timeout 30s — if not acquired, skip this 5min tick.
+if ! command -v flock >/dev/null 2>&1; then
+  log "WARN: flock not installed (brew install flock); skipping repo-mutating lock"
+else
+  REPO_LOCK="/tmp/repo-mutating.lock"
+  exec 8>""
+  if ! flock --exclusive --timeout 30 8; then
+    log "WARN: could not acquire  in 30s — cron job is reading repo, skip this tick"
+    exit 0
+  fi
+  # Lock auto-released on exit (fd 8 closes); add to trap so explicit cleanup is safe.
+  trap 'flock -u 8 2>/dev/null || true; rm -f ""' EXIT
+fi
+
 # Check stash retention (sign of repeated pop failures).
 STASH_COUNT=$(git stash list 2>/dev/null | wc -l | tr -d ' ')
 if [ "$STASH_COUNT" -gt "$STASH_RETENTION_THRESHOLD" ]; then
