@@ -538,6 +538,8 @@ class DocumentUploadBase64(BaseModel):
     document_category: str | None = None
     expiry_date: str | None = None
     family_member_id: int | None = None
+    practice_id: int | None = None
+    company_id: int | None = None
 
 
 @router.post("/clients/{client_id}/documents/upload")
@@ -582,6 +584,20 @@ async def upload_document_base64(
 
             if not client:
                 raise HTTPException(status_code=404, detail="Client not found")
+
+            if data.company_id is not None:
+                company_link = await conn.fetchrow(
+                    """
+                    SELECT company_id
+                    FROM client_company_links
+                    WHERE client_id = $1 AND company_id = $2
+                    LIMIT 1
+                    """,
+                    client_id,
+                    data.company_id,
+                )
+                if not company_link:
+                    raise HTTPException(status_code=400, detail="Company is not linked to this client")
 
             drive_service = ServiceAccountDriveService()
 
@@ -733,8 +749,9 @@ async def upload_document_base64(
                 INSERT INTO documents (
                     client_id, document_type, document_category,
                     file_name, file_id, file_url, google_drive_file_url,
-                    status, storage_type, notes, subfolder, expiry_date, content_hash
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'google_drive', $8, $9, $10, $11)
+                    status, storage_type, notes, subfolder, expiry_date, content_hash,
+                    family_member_id, practice_id
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, 'active', 'google_drive', $8, $9, $10, $11, $12, $13)
                 RETURNING id
                 """,
                 client_id,
@@ -748,7 +765,49 @@ async def upload_document_base64(
                 subfolder_value,
                 _parse_date_or_none(data.expiry_date),
                 content_hash,
+                data.family_member_id,
+                data.practice_id,
             )
+
+            company_document_id = None
+            if data.company_id is not None:
+                company_document_id = await conn.fetchval(
+                    """
+                    SELECT id
+                    FROM company_documents
+                    WHERE company_id = $1 AND google_drive_file_id = $2
+                    """,
+                    data.company_id,
+                    upload_result["id"],
+                )
+                if company_document_id is None:
+                    size_raw = upload_result.get("size")
+                    file_size_kb = None
+                    if size_raw:
+                        try:
+                            file_size_kb = max(1, int(size_raw) // 1024)
+                        except (TypeError, ValueError):
+                            file_size_kb = None
+
+                    company_document_id = await conn.fetchval(
+                        """
+                        INSERT INTO company_documents (
+                            company_id, document_type, google_drive_file_id,
+                            google_drive_file_url, file_name, file_size_kb,
+                            mime_type, notes, uploaded_by, status, is_verified
+                        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'active', false)
+                        RETURNING id
+                        """,
+                        data.company_id,
+                        data.document_type,
+                        upload_result["id"],
+                        upload_result.get("webViewLink"),
+                        data.file_name,
+                        file_size_kb,
+                        data.mime_type,
+                        data.notes,
+                        current_user.get("email", "system"),
+                    )
 
             # Trigger OCR via dispatcher
             background_tasks.add_task(
@@ -772,6 +831,7 @@ async def upload_document_base64(
                 "document_id": doc_id,
                 "file_url": upload_result.get("webViewLink"),
                 "ocr_triggered": True,
+                "company_document_id": company_document_id,
             }
 
     except HTTPException:

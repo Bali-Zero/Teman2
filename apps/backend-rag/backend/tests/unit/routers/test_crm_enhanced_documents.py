@@ -7,12 +7,11 @@ delete_document, _parse_date_or_none.
 Direct function calls with mocked dependencies (no TestClient).
 """
 
-from datetime import date, datetime
+from datetime import date
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
-
 
 # ============================================================
 # FIXTURES
@@ -697,8 +696,80 @@ def test_document_upload_base64_model():
         file="base64data",
         file_name="test.pdf",
         document_type="passport",
+        company_id=10,
+        practice_id=20,
     )
     assert d.file == "base64data"
     assert d.mime_type is None
     assert d.subfolder_hint is None
     assert d.family_member_id is None
+    assert d.company_id == 10
+    assert d.practice_id == 20
+
+
+@pytest.mark.asyncio
+async def test_upload_document_base64_mirrors_company_upload_to_company_documents(
+    mock_db_pool,
+    mock_current_user,
+):
+    from fastapi import BackgroundTasks
+
+    from backend.app.routers.crm_enhanced_documents import (
+        DocumentUploadBase64,
+        upload_document_base64,
+    )
+
+    conn = mock_db_pool._mock_conn
+    conn.fetchrow.side_effect = [
+        {
+            "id": 1,
+            "full_name": "Client One",
+            "google_drive_folder_id": "client-root-folder",
+            "client_type": "individual",
+        },
+        {"company_id": 10},
+    ]
+    conn.fetchval.side_effect = [
+        701,  # documents.id
+        None,  # no existing company_documents row for this Drive file
+        301,  # company_documents.id
+    ]
+
+    drive_service = AsyncMock()
+    drive_service.get_folder_structure.return_value = {
+        "folders": [{"id": "company-folder", "name": "02_Company"}],
+    }
+    drive_service.upload_file_to_folder.return_value = {
+        "id": "drive-file-company",
+        "webViewLink": "https://drive.test/company-doc",
+    }
+
+    with (
+        patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
+        patch("backend.app.routers.crm_enhanced_documents.invalidate_cache", new=AsyncMock()),
+        patch(
+            "backend.app.routers.crm_enhanced_documents.ServiceAccountDriveService",
+            return_value=drive_service,
+        ),
+    ):
+        result = await upload_document_base64(
+            client_id=1,
+            data=DocumentUploadBase64(
+                file="ZmlsZQ==",
+                file_name="nib.pdf",
+                document_type="nib",
+                document_category="pma",
+                mime_type="application/pdf",
+                company_id=10,
+            ),
+            pool=mock_db_pool,
+            current_user=mock_current_user,
+            background_tasks=BackgroundTasks(),
+        )
+
+    assert result["success"] is True
+    assert result["company_document_id"] == 301
+    assert any(
+        "INSERT INTO company_documents" in call.args[0]
+        for call in conn.fetchval.await_args_list
+    )
