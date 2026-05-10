@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { TaxCompanyPilotWorkspace } from "./TaxCompanyPilotWorkspace";
 import type { TaxCompanyPilotMap } from "@/lib/api/crm/crm.types";
 
@@ -126,6 +126,10 @@ const bimalaMap: TaxCompanyPilotMap = {
 };
 
 describe("TaxCompanyPilotWorkspace", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
   it("renders company maps as business dossiers instead of technical audit panels", () => {
     render(<TaxCompanyPilotWorkspace maps={[oceanMap, bimalaMap]} />);
 
@@ -167,5 +171,22 @@ describe("TaxCompanyPilotWorkspace", () => {
     expect(screen.queryByText("Duplicate Candidates")).not.toBeInTheDocument();
     expect(screen.queryByText("Read-only")).not.toBeInTheDocument();
     expect(screen.queryByText(/Confidence:/)).not.toBeInTheDocument();
+  });
+
+  it("does not warn when company maps share the same backend key", () => {
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+
+    render(
+      <TaxCompanyPilotWorkspace
+        maps={[oceanMap, { ...bimalaMap, key: oceanMap.key }]}
+      />,
+    );
+
+    expect(screen.getByText("Business dossiers")).toBeInTheDocument();
+    expect(consoleError.mock.calls.flat().join("\n")).not.toContain(
+      "Encountered two children with the same key",
+    );
   });
 });
