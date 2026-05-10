@@ -1,0 +1,50 @@
+com.balizero.bz-daily-visual-pipeline	PASS	—
+com.balizero.client-value-predictor	PASS	—
+com.balizero.competitor-monitor.monthly	PASS	—
+com.balizero.competitor-signal-router.weekly	PASS	—
+com.balizero.intel-radar-daily-digest	BLOCK_imports	asyncpg
+com.balizero.intel.nightly	BLOCK_interp	/Users/nuzantara/Desktop/nuzantara/apps/bali-intel-scraper/.venv/bin/python3
+com.balizero.regulatory-watcher.daily	PASS	—
+com.balizero.renewal-alerts	PASS	—
+com.balizero.seo-cell.28d-check	BLOCK_interp	
+com.balizero.seo-cell.daily	BLOCK_interp	
+com.balizero.setup-team.daily	PASS	—
+com.balizero.wr2.canva-apply	PASS	—
+com.balizero.wr2.canva-gc.weekly	PASS	—
+com.balizero.wr2.daily-metrics	PASS	—
+com.balizero.yield-optimizer.weekly	PASS	—
+com.garuda.consumer.daily	BLOCK_interp	
+com.garuda.gap-detector.twice-daily	BLOCK_interp	
+com.matagaruda.daily-briefing	PASS	—
+com.matagaruda.gap.consumer	PASS	—
+com.matagaruda.intel-bridge.daily	FATAL	FATAL: cannot fetch plist from Pro
+com.matagaruda.invalidation-sweep	BLOCK_literal	fly ssh|fly
+com.matagaruda.kg-linker	PASS	—
+com.matagaruda.kg-query-api	FATAL	FATAL: cannot fetch plist from Pro
+com.matagaruda.kita-feed.daily	PASS	—
+com.matagaruda.ner-worker.hourly	FATAL	FATAL: cannot fetch plist from Pro
+com.matagaruda.nlm-expander.weekly	PASS	—
+com.matagaruda.nlm-feeder-stream.hourly	PASS	—
+com.matagaruda.normalizer.hourly	FATAL	FATAL: cannot fetch plist from Pro
+com.matagaruda.public-channel	PASS	—
+com.matagaruda.reg-alert.30min	PASS	—
+com.matagaruda.sentinel.daily	FATAL	FATAL: cannot fetch plist from Pro
+com.matagaruda.watcher.daily	PASS	—
+com.matagaruda.weekly-digest	PASS	—
+com.matagaruda.wr-topic	PASS	—
+com.nuzantara.automations-reference	PASS	—
+com.nuzantara.claude-max-usage-watcher	PASS	—
+com.nuzantara.cost-advisor-daily-cap	BLOCK_imports	asyncpg
+com.nuzantara.cost-advisor-weekly	BLOCK_imports	asyncpg
+com.nuzantara.dlq-autopilot	PASS	—
+com.nuzantara.fly-pg-tunnel	FATAL	FATAL: cannot fetch plist from Pro
+com.nuzantara.heartbeat-watchdog.daily	FATAL	FATAL: cannot fetch plist from Pro
+com.nuzantara.log-prune.daily	FATAL	FATAL: cannot fetch plist from Pro
+com.nuzantara.nb-intel-delta-watcher.hourly	PASS	—
+com.nuzantara.nb-mitochondrial-monitor.daily	PASS	—
+com.nuzantara.ollama-warm-pin	FATAL	FATAL: cannot fetch plist from Pro
+com.nuzantara.openclaw-logrotate	PASS	—
+com.nuzantara.outbox-prune.daily	PASS	—
+com.nuzantara.overlap-detector.daily	FATAL	FATAL: cannot fetch plist from Pro
+com.siano.osint.backup.daily	FATAL	FATAL: cannot fetch plist from Pro
+com.siano.osint.news.daily	FATAL	FATAL: cannot fetch plist from Pro
