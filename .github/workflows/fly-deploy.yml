@@ -166,12 +166,30 @@ jobs:
 
       - name: Deploy (rolling strategy, monorepo context)
         run: |
-          flyctl deploy \
-            --strategy rolling \
-            --app nuzantara-rag \
-            --remote-only \
-            --dockerfile apps/backend-rag/Dockerfile \
-            --config apps/backend-rag/fly.toml
+          for attempt in 1 2 3; do
+            echo "Fly deploy attempt ${attempt}/3"
+            set +e
+            flyctl deploy \
+              --strategy rolling \
+              --app nuzantara-rag \
+              --remote-only \
+              --dockerfile apps/backend-rag/Dockerfile \
+              --config apps/backend-rag/fly.toml 2>&1 | tee fly-deploy.log
+            status=${PIPESTATUS[0]}
+            set -e
+
+            if [ "$status" -eq 0 ]; then
+              exit 0
+            fi
+
+            if grep -Eiq "failed to acquire leases|Failed to acquire lease|lease currently held" fly-deploy.log && [ "$attempt" -lt 3 ]; then
+              echo "::warning::Fly machine lease still held; retrying deploy after 90s"
+              sleep 90
+              continue
+            fi
+
+            exit "$status"
+          done
 
   # SQL v2 migrations must re-run AFTER the new image is live.
   #
