@@ -1,8 +1,11 @@
 import {
   AlertTriangle,
   BriefcaseBusiness,
+  Download,
   ExternalLink,
   FileText,
+  FolderOpen,
+  GitBranch,
   Link2,
   ListChecks,
   Sparkles,
@@ -11,6 +14,7 @@ import {
 } from "lucide-react";
 import type {
   TaxCompanyPilotDocument,
+  TaxCompanyPilotEvidenceStory,
   TaxCompanyPilotGap,
   TaxCompanyPilotMap,
   TaxCompanyPilotNextAction,
@@ -102,11 +106,50 @@ function getNextBestActions(
   }));
 }
 
+function getEvidenceStories(
+  map: TaxCompanyPilotMap,
+  personDossiers: TaxCompanyPilotPersonDossier[],
+): TaxCompanyPilotEvidenceStory[] {
+  if (map.evidence_stories?.length) return map.evidence_stories;
+
+  return personDossiers.map((dossier) => ({
+    person_name: dossier.person_name,
+    company_name: dossier.company_name,
+    tax_owner: dossier.tax_owner,
+    recap: dossier.headline,
+    relationship_path: [
+      dossier.person_name,
+      dossier.company_name,
+      `Tax: ${dossier.tax_owner}`,
+    ],
+    evidence_items: map.evidence_links.slice(0, 3).map((link) => ({
+      label: "Source trail",
+      detail: link.label,
+      source_label: link.label,
+      source_url: link.url,
+      source_kind: link.kind,
+      audience: "team" as const,
+      confidence: map.confidence,
+    })),
+    next_action: dossier.next_action,
+    portal_rule: "Client portal: download approved documents only.",
+    team_rule: "Team workspace: open Drive evidence and shortcuts from kita.",
+    confidence: dossier.relationship_confidence,
+  }));
+}
+
 function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
   const documentsByGroup = groupDocuments(map.documents);
   const companyStatus = getCompanyStatus(map);
   const personDossiers = getPersonDossiers(map);
   const nextBestActions = getNextBestActions(map);
+  const evidenceStories = getEvidenceStories(map, personDossiers);
+  const portalRule =
+    evidenceStories[0]?.portal_rule ??
+    "Client portal: download approved documents only.";
+  const teamRule =
+    evidenceStories[0]?.team_rule ??
+    "Team workspace: open Drive evidence and shortcuts from kita.";
   const businessStory =
     map.business_story?.length > 0 ? map.business_story : map.ai_recap;
 
@@ -215,6 +258,77 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
           </div>
         </section>
       </div>
+
+      <section className="border-t border-slate-200 px-4 py-4">
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-950">
+          <GitBranch size={16} />
+          Evidence story layer
+        </div>
+        <div className="grid gap-3 md:grid-cols-2">
+          {evidenceStories.map((story) => (
+            <div
+              key={`${story.person_name}-${story.company_name}`}
+              className="border-l-2 border-slate-300 bg-slate-50 px-3 py-2"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="font-medium text-slate-950">
+                    {story.person_name}
+                  </p>
+                  <p className="mt-1 text-xs font-medium uppercase text-slate-500">
+                    {story.relationship_path.join(" -> ")}
+                  </p>
+                </div>
+                <span className="rounded bg-white px-2 py-1 text-[11px] text-slate-500 ring-1 ring-slate-200">
+                  {story.confidence}
+                </span>
+              </div>
+              <p className="mt-2 text-sm leading-5 text-slate-700">
+                {story.recap}
+              </p>
+              <div className="mt-3 flex flex-wrap gap-2">
+                {story.evidence_items.map((item) =>
+                  item.source_url ? (
+                    <a
+                      key={`${story.person_name}-${item.label}-${item.source_label}`}
+                      href={item.source_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`Open ${item.source_label} evidence in Drive`}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-white px-2 py-1 text-xs text-slate-700 ring-1 ring-slate-200 hover:bg-slate-100 hover:text-slate-950"
+                    >
+                      <FolderOpen size={13} />
+                      {item.label}: {item.source_label}
+                      <ExternalLink size={13} />
+                    </a>
+                  ) : (
+                    <span
+                      key={`${story.person_name}-${item.label}-${item.source_label}`}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-white px-2 py-1 text-xs text-slate-600 ring-1 ring-slate-200"
+                    >
+                      <FileText size={13} />
+                      {item.label}: {item.detail}
+                    </span>
+                  ),
+                )}
+              </div>
+              <p className="mt-3 text-xs font-medium text-emerald-800">
+                {story.next_action}
+              </p>
+            </div>
+          ))}
+        </div>
+        <div className="mt-3 grid gap-2 text-sm md:grid-cols-2">
+          <div className="flex items-center gap-2 border-l-2 border-emerald-600 bg-emerald-50 px-3 py-2 text-emerald-950">
+            <Download size={15} />
+            {portalRule}
+          </div>
+          <div className="flex items-center gap-2 border-l-2 border-slate-500 bg-slate-50 px-3 py-2 text-slate-700">
+            <ShieldCheck size={15} />
+            {teamRule}
+          </div>
+        </div>
+      </section>
 
       <section className="border-t border-slate-200 px-4 py-4">
         <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-950">

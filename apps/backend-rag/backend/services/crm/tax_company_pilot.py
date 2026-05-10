@@ -53,6 +53,16 @@ class TaxCompanyPilotEvidenceLink(BaseModel):
     kind: Literal["folder", "file", "spreadsheet", "document"]
 
 
+class TaxCompanyPilotStoryEvidence(BaseModel):
+    label: str
+    detail: str
+    source_label: str
+    source_url: str | None = None
+    source_kind: Literal["folder", "file", "spreadsheet", "document"] = "folder"
+    audience: Literal["team"] = "team"
+    confidence: DriveConfidence = "confirmed"
+
+
 class TaxCompanyPilotPersonDossier(BaseModel):
     person_name: str
     company_name: str
@@ -72,6 +82,19 @@ class TaxCompanyPilotNextAction(BaseModel):
     severity: Literal["high", "medium", "low"]
 
 
+class TaxCompanyPilotEvidenceStory(BaseModel):
+    person_name: str
+    company_name: str
+    tax_owner: str
+    recap: str
+    relationship_path: list[str]
+    evidence_items: list[TaxCompanyPilotStoryEvidence] = Field(default_factory=list)
+    next_action: str
+    portal_rule: str = "Client portal: download approved documents only."
+    team_rule: str = "Team workspace: open Drive evidence and shortcuts from kita."
+    confidence: DriveConfidence = "medium"
+
+
 class TaxCompanyPilotMap(BaseModel):
     key: Literal["ocean", "bimala"]
     primary_entry: Literal["person"] = "person"
@@ -82,6 +105,7 @@ class TaxCompanyPilotMap(BaseModel):
     persons: list[TaxCompanyPilotPerson]
     documents: list[TaxCompanyPilotDocument]
     person_dossiers: list[TaxCompanyPilotPersonDossier] = Field(default_factory=list)
+    evidence_stories: list[TaxCompanyPilotEvidenceStory] = Field(default_factory=list)
     next_best_actions: list[TaxCompanyPilotNextAction] = Field(default_factory=list)
     business_story: list[str] = Field(default_factory=list)
     duplicate_candidates: list[TaxCompanyPilotDuplicateCandidate]
@@ -94,6 +118,8 @@ class TaxCompanyPilotMap(BaseModel):
     def model_post_init(self, __context: object) -> None:
         if not self.person_dossiers:
             object.__setattr__(self, "person_dossiers", _build_person_dossiers(self))
+        if not self.evidence_stories:
+            object.__setattr__(self, "evidence_stories", _build_evidence_stories(self))
         if not self.next_best_actions:
             object.__setattr__(self, "next_best_actions", _build_next_best_actions(self))
         if not self.business_story:
@@ -106,6 +132,18 @@ def _drive_folder(folder_id: str) -> str:
 
 def _drive_file(file_id: str) -> str:
     return f"https://drive.google.com/file/d/{file_id}/view"
+
+
+def _source_kind(url: str | None) -> Literal["folder", "file", "spreadsheet", "document"]:
+    if not url:
+        return "folder"
+    if "spreadsheets/d/" in url:
+        return "spreadsheet"
+    if "document/d/" in url:
+        return "document"
+    if "/file/d/" in url:
+        return "file"
+    return "folder"
 
 
 def _document_group_labels(documents: list[TaxCompanyPilotDocument]) -> list[str]:
@@ -165,6 +203,94 @@ def _build_person_dossiers(pilot_map: TaxCompanyPilotMap) -> list[TaxCompanyPilo
             risk_flags=_person_risk_flags(person, pilot_map.documents),
             next_action=_person_next_action(person),
             relationship_confidence=person.relationship_confidence,
+        )
+        for person in pilot_map.persons
+    ]
+
+
+def _first_document(
+    documents: list[TaxCompanyPilotDocument],
+    groups: tuple[str, ...],
+) -> TaxCompanyPilotDocument | None:
+    return next((document for document in documents if document.group in groups), None)
+
+
+def _build_story_evidence_items(
+    pilot_map: TaxCompanyPilotMap,
+    person: TaxCompanyPilotPerson,
+) -> list[TaxCompanyPilotStoryEvidence]:
+    items: list[TaxCompanyPilotStoryEvidence] = []
+    if person.evidence:
+        items.append(
+            TaxCompanyPilotStoryEvidence(
+                label="Person file",
+                detail=", ".join(person.evidence[:6]),
+                source_label="Person Drive folder" if person.folder_url else "Person evidence list",
+                source_url=person.folder_url,
+                source_kind=_source_kind(person.folder_url),
+                confidence=person.relationship_confidence,
+            )
+        )
+
+    company_doc = _first_document(pilot_map.documents, ("company",))
+    if company_doc:
+        items.append(
+            TaxCompanyPilotStoryEvidence(
+                label="Company record",
+                detail=f"{company_doc.name} anchors the company side of the story.",
+                source_label=company_doc.name,
+                source_url=company_doc.evidence_url,
+                source_kind=_source_kind(company_doc.evidence_url),
+                confidence=company_doc.confidence,
+            )
+        )
+
+    tax_doc = _first_document(pilot_map.documents, ("tax", "lkpm", "coretax"))
+    if tax_doc:
+        items.append(
+            TaxCompanyPilotStoryEvidence(
+                label="Tax trail",
+                detail=f"{tax_doc.name} shows the tax or compliance workstream.",
+                source_label=pilot_map.tax_member.workspace_branch,
+                source_url=tax_doc.evidence_url or pilot_map.tax_member.source_folder_url,
+                source_kind=_source_kind(tax_doc.evidence_url),
+                confidence=tax_doc.confidence,
+            )
+        )
+
+    return items
+
+
+def _story_recap(person: TaxCompanyPilotPerson, pilot_map: TaxCompanyPilotMap) -> str:
+    if person.relationship_confidence == "unconfirmed":
+        return (
+            f"{person.name} is a candidate entry point for {pilot_map.company.name}; "
+            "the relationship must be confirmed before documents are nested or exposed."
+        )
+    return (
+        f"{person.name} is the entry point for {pilot_map.company.name}; "
+        f"{pilot_map.tax_member.name} owns the tax workstream while Drive evidence "
+        "stays in the team workspace."
+    )
+
+
+def _build_evidence_stories(
+    pilot_map: TaxCompanyPilotMap,
+) -> list[TaxCompanyPilotEvidenceStory]:
+    return [
+        TaxCompanyPilotEvidenceStory(
+            person_name=person.name,
+            company_name=pilot_map.company.name,
+            tax_owner=pilot_map.tax_member.name,
+            recap=_story_recap(person, pilot_map),
+            relationship_path=[
+                person.name,
+                pilot_map.company.name,
+                f"Tax: {pilot_map.tax_member.name}",
+            ],
+            evidence_items=_build_story_evidence_items(pilot_map, person),
+            next_action=_person_next_action(person),
+            confidence=person.relationship_confidence,
         )
         for person in pilot_map.persons
     ]
@@ -341,37 +467,95 @@ def _bimala_map() -> TaxCompanyPilotMap:
             TaxCompanyPilotPerson(
                 name="Giulia Del Giudice",
                 folder_url=_drive_folder("1Xy60Q9k5detu8oZhFWVWexDYh07Yx4LO"),
-                evidence=["ITAS E28A Investor", "Passport", "CV", "Bank statement", "Address", "Travel", "Photo"],
+                evidence=[
+                    "ITAS E28A Investor",
+                    "Passport",
+                    "CV",
+                    "Bank statement",
+                    "Address",
+                    "Travel",
+                    "Photo",
+                ],
                 role_confidence="unconfirmed",
                 relationship_confidence="confirmed",
             ),
             TaxCompanyPilotPerson(
                 name="Gianluca Morelli",
                 folder_url=_drive_folder("1a1LhqSttRqLwUgDXmOdV38QYTaYdMU6X"),
-                evidence=["ITAS E28A Investor", "Passport", "CV", "Bank statement", "Address", "Travel", "Photo"],
+                evidence=[
+                    "ITAS E28A Investor",
+                    "Passport",
+                    "CV",
+                    "Bank statement",
+                    "Address",
+                    "Travel",
+                    "Photo",
+                ],
                 role_confidence="unconfirmed",
                 relationship_confidence="confirmed",
             ),
-            TaxCompanyPilotPerson(name="Giorgia Emidio", evidence=["Child evisa file"], relationship_confidence="unconfirmed"),
-            TaxCompanyPilotPerson(name="Iuma Morelli", evidence=["Child evisa file"], relationship_confidence="unconfirmed"),
-            TaxCompanyPilotPerson(name="Mailen Morelli", evidence=["Child evisa file"], relationship_confidence="unconfirmed"),
+            TaxCompanyPilotPerson(
+                name="Giorgia Emidio",
+                evidence=["Child evisa file"],
+                relationship_confidence="unconfirmed",
+            ),
+            TaxCompanyPilotPerson(
+                name="Iuma Morelli",
+                evidence=["Child evisa file"],
+                relationship_confidence="unconfirmed",
+            ),
+            TaxCompanyPilotPerson(
+                name="Mailen Morelli",
+                evidence=["Child evisa file"],
+                relationship_confidence="unconfirmed",
+            ),
         ],
         documents=[
-            TaxCompanyPilotDocument(name="Proof of receipt letter", group="tax", evidence_url=operational),
+            TaxCompanyPilotDocument(
+                name="Proof of receipt letter", group="tax", evidence_url=operational
+            ),
             TaxCompanyPilotDocument(name="TIN card", group="tax", evidence_url=operational),
-            TaxCompanyPilotDocument(name="Certificate of registration", group="tax", evidence_url=operational),
-            TaxCompanyPilotDocument(name="Taxpayer account issuance letter", group="tax", evidence_url=operational),
-            TaxCompanyPilotDocument(name="EMAIL DJP & CORTAX ACSES", group="coretax", evidence_url=nested_company, sensitivity="credential"),
+            TaxCompanyPilotDocument(
+                name="Certificate of registration", group="tax", evidence_url=operational
+            ),
+            TaxCompanyPilotDocument(
+                name="Taxpayer account issuance letter", group="tax", evidence_url=operational
+            ),
+            TaxCompanyPilotDocument(
+                name="EMAIL DJP & CORTAX ACSES",
+                group="coretax",
+                evidence_url=nested_company,
+                sensitivity="credential",
+            ),
             TaxCompanyPilotDocument(name="Tax/2026", group="tax", evidence_url=tax),
-            TaxCompanyPilotDocument(name="Bukti Lapor SPT zero 2024.pdf", group="tax", evidence_url=nested_company),
-            TaxCompanyPilotDocument(name="FORM SPT 7117 2024.pdf", group="tax", evidence_url=nested_company),
-            TaxCompanyPilotDocument(name="Dokument Pelengkap SPT PT Bimala Investment.pdf", group="tax", evidence_url=nested_company),
-            TaxCompanyPilotDocument(name="LKPM Periode 4 PDFs", group="lkpm", evidence_url=nested_company),
+            TaxCompanyPilotDocument(
+                name="Bukti Lapor SPT zero 2024.pdf", group="tax", evidence_url=nested_company
+            ),
+            TaxCompanyPilotDocument(
+                name="FORM SPT 7117 2024.pdf", group="tax", evidence_url=nested_company
+            ),
+            TaxCompanyPilotDocument(
+                name="Dokument Pelengkap SPT PT Bimala Investment.pdf",
+                group="tax",
+                evidence_url=nested_company,
+            ),
+            TaxCompanyPilotDocument(
+                name="LKPM Periode 4 PDFs", group="lkpm", evidence_url=nested_company
+            ),
             TaxCompanyPilotDocument(name="AKTA", group="company", evidence_url=nested_company),
             TaxCompanyPilotDocument(name="DOKUMEN", group="company", evidence_url=nested_company),
-            TaxCompanyPilotDocument(name="Profil Perseroan.pdf", group="company", evidence_url=nested_company),
-            TaxCompanyPilotDocument(name="Rincian PT.pdf", group="company", evidence_url=nested_company),
-            TaxCompanyPilotDocument(name="Company bank statement", group="finance", evidence_url=nested_company, sensitivity="financial"),
+            TaxCompanyPilotDocument(
+                name="Profil Perseroan.pdf", group="company", evidence_url=nested_company
+            ),
+            TaxCompanyPilotDocument(
+                name="Rincian PT.pdf", group="company", evidence_url=nested_company
+            ),
+            TaxCompanyPilotDocument(
+                name="Company bank statement",
+                group="finance",
+                evidence_url=nested_company,
+                sensitivity="financial",
+            ),
         ],
         duplicate_candidates=[
             TaxCompanyPilotDuplicateCandidate(
