@@ -914,6 +914,71 @@ class TestNotifyHRBonus:
 
 
 # ---------------------------------------------------------------------------
+# Endpoint: upload_client_document
+# ---------------------------------------------------------------------------
+
+
+class TestUploadClientDocument:
+    @pytest.mark.asyncio
+    async def test_uses_canonical_document_upload_and_updates_required_doc(
+        self,
+        mock_db_pool: MagicMock,
+        mock_db_conn: AsyncMock,
+        admin_user: dict,
+    ) -> None:
+        from backend.app.routers import crm_practices
+
+        mock_db_conn.fetchrow = AsyncMock(side_effect=[
+            {
+                "id": 11,
+                "practice_id": 7,
+                "client_id": 42,
+                "client_name": "Client One",
+                "document_type": "passport",
+            },
+            {"id": 42},
+        ])
+        mock_db_conn.execute = AsyncMock(return_value="UPDATE 1")
+
+        canonical_upload = AsyncMock(return_value={"success": True, "document_id": 501})
+
+        request = crm_practices.ClientDocumentUploadRequest(
+            required_doc_id=11,
+            file="ZmlsZQ==",
+            file_name="passport.pdf",
+            notes="client note",
+        )
+
+        with (
+            patch.object(crm_practices, "upload_document_base64", canonical_upload, create=True),
+            patch.object(crm_practices, "invalidate_cache", new=AsyncMock()),
+        ):
+            result = await crm_practices.upload_client_document(
+                practice_id=7,
+                request=request,
+                current_user=admin_user,
+                db_pool=mock_db_pool,
+            )
+
+        assert result["success"] is True
+        assert result["document_id"] == 501
+
+        upload_kwargs = canonical_upload.await_args.kwargs
+        assert upload_kwargs["client_id"] == 42
+        assert upload_kwargs["pool"] is mock_db_pool
+        assert upload_kwargs["current_user"] is admin_user
+        assert upload_kwargs["data"].file_name == "passport.pdf"
+        assert upload_kwargs["data"].document_type == "passport"
+        assert upload_kwargs["data"].practice_id == 7
+
+        update_args = mock_db_conn.execute.await_args.args
+        assert "UPDATE practice_required_documents" in update_args[0]
+        assert update_args[1] == 501
+        assert update_args[2] == "client note"
+        assert update_args[3] == 11
+
+
+# ---------------------------------------------------------------------------
 # Constants / module-level
 # ---------------------------------------------------------------------------
 

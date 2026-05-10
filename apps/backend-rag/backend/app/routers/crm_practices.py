@@ -17,6 +17,7 @@ from pydantic import BaseModel, field_validator
 from backend.app.core.config import settings
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.deps.crm_access import get_practices_user_filter
+from backend.app.routers.crm_enhanced_documents import DocumentUploadBase64, upload_document_base64
 from backend.app.services.internal_email import send_internal_email
 from backend.app.utils.crm_utils import is_crm_admin
 from backend.app.utils.error_handlers import handle_database_error
@@ -2118,13 +2119,10 @@ async def upload_client_document(
     request: ClientDocumentUploadRequest = Body(...),
     current_user: dict = Depends(get_current_user),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
+    background_tasks: BackgroundTasks = BackgroundTasks(),
 ) -> dict[str, Any]:
     """Client uploads a document for a required field."""
     try:
-        import base64
-
-        from backend.services.integrations.google_drive_service import GoogleDriveService
-
         async with db_pool.acquire() as conn:
             # Get required document info
             req_doc = await conn.fetchrow(
@@ -2152,34 +2150,22 @@ async def upload_client_document(
                 if not is_crm_admin(current_user):
                     raise HTTPException(status_code=403, detail="Not authorized")
 
-            # Decode and upload file to Google Drive
-            file_data = base64.b64decode(
-                request.file.split(",")[-1] if "," in request.file else request.file,
-            )
+        upload_result = await upload_document_base64(
+            client_id=req_doc["client_id"],
+            data=DocumentUploadBase64(
+                file=request.file.split(",")[-1] if "," in request.file else request.file,
+                file_name=request.file_name,
+                document_type=req_doc["document_type"],
+                notes=request.notes,
+                practice_id=practice_id,
+            ),
+            pool=db_pool,
+            current_user=current_user,
+            background_tasks=background_tasks,
+        )
+        doc_id = upload_result["document_id"]
 
-            drive_service = GoogleDriveService(db_pool)
-            folder_id = await drive_service.get_or_create_client_folder(req_doc["client_id"])
-
-            file_ext = request.file_name.split(".")[-1] if "." in request.file_name else "pdf"
-            drive_filename = f"{req_doc['document_type']}_{practice_id}_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M%S')}.{file_ext}"
-
-            uploaded_file = await drive_service.upload_file(file_data, drive_filename, folder_id)
-
-            # Create document record
-            doc_row = await conn.fetchrow(
-                """
-                INSERT INTO documents
-                (client_id, document_type, file_name, google_drive_file_url, mime_type, status)
-                VALUES ($1, $2, $3, $4, $5, 'active')
-                RETURNING id
-                """,
-                req_doc["client_id"],
-                req_doc["document_type"],
-                request.file_name,
-                uploaded_file.get("webViewLink", ""),
-                uploaded_file.get("mimeType", "application/pdf"),
-            )
-
+        async with db_pool.acquire() as conn:
             # Update required document record
             await conn.execute(
                 """
@@ -2192,7 +2178,7 @@ async def upload_client_document(
                     updated_at = NOW()
                 WHERE id = $3
                 """,
-                doc_row["id"],
+                doc_id,
                 request.notes,
                 request.required_doc_id,
             )
@@ -2202,7 +2188,7 @@ async def upload_client_document(
                 extra={
                     "practice_id": practice_id,
                     "required_doc_id": request.required_doc_id,
-                    "document_id": doc_row["id"],
+                    "document_id": doc_id,
                     "user": current_user.get("email"),
                 },
             )
@@ -2210,7 +2196,7 @@ async def upload_client_document(
             await invalidate_cache("zantara:crm_practices_stats:*")
             return {
                 "success": True,
-                "document_id": doc_row["id"],
+                "document_id": doc_id,
                 "message": "Document uploaded successfully",
             }
 

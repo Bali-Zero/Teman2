@@ -22,6 +22,8 @@ primary_region = 'sin'
   # takes ~7min on shared-cpu-1x (1 vCPU); default 5s was killing workers during
   # import (2026-04-12 incident). Also see grace_period below.
   api = "uvicorn backend.app.main_api:app --host 0.0.0.0 --port 8080 --workers 2 --timeout-worker-healthcheck 600"
+  # RAG is reached over Fly 6PN via rag.process.nuzantara-rag.internal, so it
+  # must bind IPv6. It intentionally has no [[services]] Fly Proxy block.
   rag = "uvicorn backend.app.main_rag:app --host :: --port 8080 --workers 1 --timeout-worker-healthcheck 600"
 
 [env]
@@ -64,18 +66,11 @@ primary_region = 'sin'
   [[http_service.checks]]
     interval = '30s'
     timeout = '10s'
-    # grace_period 600s: matches --timeout-worker-healthcheck above; cold-start
-    # import on shared-cpu-1x takes ~7min due to presidio/torch chain (see
-    # [processes] comment). Smaller values cause Fly to mark the machine
-    # unhealthy mid-import (2026-04-12 incident).
-    grace_period = '600s'
+    # Fly now caps health-check grace periods at 60s. RAG cold-start tolerance is
+    # handled by --timeout-worker-healthcheck and the /health warmup logic.
+    grace_period = '60s'
     method = 'GET'
     path = '/health/ready'
-
-[[services]]
-  internal_port = 8080
-  protocol = 'tcp'
-  processes = ['rag']
 
 [[vm]]
   # 2026-05-09: api OOM-killed a worker at 1GB with --workers 2 during
