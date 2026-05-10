@@ -43,6 +43,8 @@ async def test_db():
 @pytest.fixture
 def migration_manager():
     """Create migration manager instance"""
+    if not settings.database_url:
+        pytest.skip("DATABASE_URL not configured")
     return MigrationManager()
 
 
@@ -125,6 +127,8 @@ class TestMigrationManager:
     @pytest.mark.asyncio
     async def test_migration_manager_initialization(self):
         """Test migration manager can be initialized"""
+        if not settings.database_url:
+            pytest.skip("DATABASE_URL not configured")
         manager = MigrationManager()
         assert manager.database_url is not None
 
@@ -200,22 +204,30 @@ class TestMigrationIntegration:
     """Integration tests for migrations"""
 
     @pytest.mark.asyncio
-    async def test_migration_idempotency(self, test_db):
+    async def test_migration_idempotency(self, test_db, tmp_path: Path):
         """Test that migrations can be applied multiple times safely"""
         if not settings.database_url:
             pytest.skip("DATABASE_URL not configured")
 
-        # This test requires a real migration
-        # For now, we'll test the concept
+        sql_file = _write_test_migration(tmp_path)
 
         migration = BaseMigration(
             migration_number=999,
-            sql_file="001_fix_missing_tables.sql",
+            sql_file=sql_file,
             description="Test migration for idempotency",
+            _sql_dir=tmp_path,
         )
+        await migration._ensure_migration_log(test_db)  # noqa: SLF001
 
         # First application
         try:
+            await test_db.execute("DROP TABLE IF EXISTS test_migration_table")
+            await test_db.execute(
+                "DELETE FROM schema_migrations WHERE migration_number = 999"
+            )
+            await test_db.execute(
+                "DELETE FROM _schema_versions WHERE migration_number = 999"
+            )
             result1 = await migration.apply()
             assert result1 is True
 
@@ -230,14 +242,24 @@ class TestMigrationIntegration:
             if "Cannot connect" in str(e):
                 pytest.skip(f"Cannot connect to database: {e}")
             raise
+        finally:
+            await test_db.execute("DROP TABLE IF EXISTS test_migration_table")
+            await test_db.execute(
+                "DELETE FROM schema_migrations WHERE migration_number = 999"
+            )
+            await test_db.execute(
+                "DELETE FROM _schema_versions WHERE migration_number = 999"
+            )
 
     @pytest.mark.asyncio
-    async def test_migration_verification(self, test_db):
+    async def test_migration_verification(self, test_db, tmp_path: Path):
         """Test migration verification"""
+        sql_file = _write_test_migration(tmp_path)
         migration = BaseMigration(
             migration_number=999,
-            sql_file="001_fix_missing_tables.sql",
+            sql_file=sql_file,
             description="Test migration",
+            _sql_dir=tmp_path,
         )
 
         # Default verification should return True
@@ -249,21 +271,30 @@ class TestMigrationDependencies:
     """Test migration dependency checking"""
 
     @pytest.mark.asyncio
-    async def test_dependency_checking(self, test_db):
+    async def test_dependency_checking(self, test_db, tmp_path: Path):
         """Test that dependencies are checked"""
         if not settings.database_url:
             pytest.skip("DATABASE_URL not configured")
 
         # Create a migration with a dependency that doesn't exist
+        sql_file = _write_test_migration(tmp_path)
         migration = BaseMigration(
             migration_number=999,
-            sql_file="001_fix_missing_tables.sql",
+            sql_file=sql_file,
             description="Test migration with dependency",
             dependencies=[99999],  # Non-existent migration
+            _sql_dir=tmp_path,
         )
+        await migration._ensure_migration_log(test_db)  # noqa: SLF001
 
         # Should fail because dependency doesn't exist
         try:
+            await test_db.execute(
+                "DELETE FROM schema_migrations WHERE migration_number = 999"
+            )
+            await test_db.execute(
+                "DELETE FROM _schema_versions WHERE migration_number = 999"
+            )
             with pytest.raises(MigrationError, match="depends on"):
                 await migration.apply()
         except MigrationError as e:
@@ -275,6 +306,13 @@ class TestMigrationDependencies:
                 raise
             # Otherwise skip
             pytest.skip(f"Unexpected error: {e}")
+        finally:
+            await test_db.execute(
+                "DELETE FROM schema_migrations WHERE migration_number = 999"
+            )
+            await test_db.execute(
+                "DELETE FROM _schema_versions WHERE migration_number = 999"
+            )
 
 
 if __name__ == "__main__":
