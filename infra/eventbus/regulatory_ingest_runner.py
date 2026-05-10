@@ -113,17 +113,29 @@ def step1_verify(reg_code: str, jdih_url: str | None = None) -> dict:
 # Step 2 — Download PDF
 # ──────────────────────────────────────────────────────────────────────────
 def step2_download(reg_code: str, domain: str, jdih_url: str) -> dict:
+    """Download PDF with HTML→text fallback for sources that publish only as
+    press release / siaran-pers / news article (e.g. KEP DJP series).
+
+    Returns: {"ok": True, "pdf_path": str, "is_text_fallback": bool}
+    """
     safe = _safe_filename(reg_code)
     domain_dir = PERATURAN_BASE / domain
     domain_dir.mkdir(parents=True, exist_ok=True)
     pdf_path = domain_dir / f"{safe}.pdf"
+    txt_path = domain_dir / f"{safe}.txt"
 
+    # Skip if PDF cached
     if pdf_path.exists() and pdf_path.stat().st_size > 50_000:
         log.info("PDF exists already at %s, skipping download", pdf_path)
         return {"ok": True, "pdf_path": str(pdf_path), "size": pdf_path.stat().st_size,
-                "skipped": True}
+                "skipped": True, "is_text_fallback": False}
+    # Skip if TXT cached (from previous fallback)
+    if txt_path.exists() and txt_path.stat().st_size > 500:
+        log.info("TXT exists already at %s, skipping download (text fallback)", txt_path)
+        return {"ok": True, "pdf_path": str(txt_path), "size": txt_path.stat().st_size,
+                "skipped": True, "is_text_fallback": True}
 
-    log.info("downloading PDF: %s → %s", jdih_url, pdf_path)
+    log.info("downloading: %s → %s", jdih_url, pdf_path)
     try:
         result = subprocess.run(
             ["curl", "-sfL", "-o", str(pdf_path), "--max-time", "60", jdih_url],
@@ -132,19 +144,57 @@ def step2_download(reg_code: str, domain: str, jdih_url: str) -> dict:
         if result.returncode != 0:
             return {"ok": False, "error": f"curl exit {result.returncode}: {result.stderr[:200]}"}
         size = pdf_path.stat().st_size
-        # Validate it's actually a PDF
-        if size < 50_000:
-            log.warning("downloaded file too small (%d bytes), likely HTML error page", size)
-            return {"ok": False, "error": "file_too_small", "size": size,
-                    "fallback": "use --text mode"}
-        # Check magic bytes
+        # Validate magic bytes for PDF
         with open(pdf_path, "rb") as fp:
             magic = fp.read(4)
-        if not magic.startswith(b"%PDF"):
-            log.warning("downloaded file not PDF (magic=%r), maybe HTML", magic)
-            return {"ok": False, "error": "not_a_pdf", "magic": str(magic),
-                    "fallback": "use --text mode"}
-        return {"ok": True, "pdf_path": str(pdf_path), "size": size}
+        if magic.startswith(b"%PDF") and size >= 50_000:
+            return {"ok": True, "pdf_path": str(pdf_path), "size": size,
+                    "is_text_fallback": False}
+
+        # Not a PDF — fallback to HTML→text extraction
+        log.warning(
+            "downloaded file is not a valid PDF (magic=%r, size=%d). "
+            "Falling back to HTML→text extraction for sources like "
+            "press releases / siaran-pers.",
+            magic, size,
+        )
+        # Re-fetch as HTML if the previous file was small (likely error page);
+        # otherwise re-use what we have to feed the HTML parser.
+        try:
+            html_text = subprocess.run(
+                ["curl", "-sfL", "--max-time", "60", jdih_url],
+                capture_output=True, text=True, timeout=70,
+            ).stdout
+        except Exception as e:
+            return {"ok": False, "error": f"HTML re-fetch failed: {e}"}
+
+        # Extract visible text via regex (no BeautifulSoup dep)
+        import html as html_mod
+        clean = re.sub(r"<script[^>]*>.*?</script>", "", html_text,
+                       flags=re.DOTALL | re.IGNORECASE)
+        clean = re.sub(r"<style[^>]*>.*?</style>", "", clean,
+                       flags=re.DOTALL | re.IGNORECASE)
+        clean = re.sub(r"<[^>]+>", " ", clean)
+        clean = html_mod.unescape(clean)
+        clean = re.sub(r"\s+", " ", clean).strip()
+
+        if len(clean) < 500:
+            # Even the HTML body is too small — likely 404 or paywalled
+            return {"ok": False, "error": "html_body_too_small",
+                    "size": len(clean), "magic": str(magic)}
+
+        # Persist as .txt (LegalIngestionService → parsers.auto_detect_and_parse → .txt path)
+        # Remove invalid PDF first
+        try:
+            pdf_path.unlink()
+        except Exception:
+            pass
+        # Prefix with regulation header so chunker has context
+        header = f"REGULATION: {reg_code}\nSOURCE_URL: {jdih_url}\nFETCH_DATE: {datetime.now(timezone.utc).isoformat()}\nINGEST_MODE: text-fallback (HTML→text extraction)\n\n"
+        txt_path.write_text(header + clean[:500_000])  # cap at 500k chars to be safe
+        log.info("text fallback OK: extracted %d chars → %s", len(clean), txt_path)
+        return {"ok": True, "pdf_path": str(txt_path), "size": txt_path.stat().st_size,
+                "is_text_fallback": True}
     except Exception as e:
         return {"ok": False, "error": str(e)}
 
