@@ -308,8 +308,11 @@ export function TaxCompanyPilotWorkspace({
         </div>
       </header>
       <div className="grid gap-4 xl:grid-cols-2">
-        {maps.map((map) => (
-          <CompanyPilotPanel key={map.key} map={map} />
+        {maps.map((map, index) => (
+          <CompanyPilotPanel
+            key={`${map.key}-${map.company.name}-${index}`}
+            map={map}
+          />
         ))}
       </div>
     </section>
