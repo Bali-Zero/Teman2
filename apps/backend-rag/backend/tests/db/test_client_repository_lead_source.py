@@ -11,7 +11,7 @@ from __future__ import annotations
 
 import pytest
 
-from backend.db.repositories.client_repository import _infer_lead_source
+from backend.db.repositories.client_repository import _infer_lead_source, _normalize_email
 
 
 def test_explicit_lead_source_wins() -> None:
@@ -66,3 +66,20 @@ def test_explicit_overrides_utm_inference() -> None:
 )
 def test_landing_page_variants(landing: str, expected: str | None) -> None:
     assert _infer_lead_source({"landing_page": landing}) == expected
+
+
+@pytest.mark.parametrize(
+    ("raw_email", "expected"),
+    [
+        (" Guasraf32@gmail.com ", "guasraf32@gmail.com"),
+        ("TEAM@BaliZero.COM", "team@balizero.com"),
+        ("", None),
+        ("   ", None),
+        (None, None),
+    ],
+)
+def test_normalize_email_lowercases_and_trims(
+    raw_email: str | None,
+    expected: str | None,
+) -> None:
+    assert _normalize_email(raw_email) == expected

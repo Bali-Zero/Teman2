@@ -28,6 +28,9 @@ Checks implemented in this PR:
    table names, the audit fails if any of them is missing from the
    ``public`` schema. Empty by default — the project will populate it as
    Step 4 (eliminate ``create_all`` bootstrap) lands.
+4. **Client email uniqueness.** The CRM treats email as an identity key;
+   duplicates after trim/lowercase normalization are a data-quality failure
+   because PostgreSQL's legacy ``UNIQUE(email)`` constraint is case-sensitive.
 
 The audit deliberately does NOT:
 
@@ -269,6 +272,52 @@ async def _check_required_tables(
     ]
 
 
+async def _check_client_email_uniqueness(pool: asyncpg.Pool) -> list[Finding]:
+    """Fail when clients contain duplicate emails after trim/lowercase."""
+    async with pool.acquire() as conn:
+        if not await _table_exists(conn, "clients"):
+            return []
+
+        rows = await conn.fetch(
+            """
+            SELECT
+                LOWER(BTRIM(email)) AS normalized_email,
+                COUNT(*)::int AS count,
+                ARRAY_AGG(id ORDER BY created_at NULLS LAST, id) AS client_ids
+            FROM clients
+            WHERE email IS NOT NULL
+              AND BTRIM(email) <> ''
+            GROUP BY LOWER(BTRIM(email))
+            HAVING COUNT(*) > 1
+            ORDER BY count DESC, normalized_email
+            LIMIT 25
+            """,
+        )
+
+    if not rows:
+        return []
+
+    duplicates = [
+        {
+            "normalized_email": str(row["normalized_email"]),
+            "count": int(row["count"]),
+            "client_ids": [int(client_id) for client_id in row["client_ids"]],
+        }
+        for row in rows
+    ]
+    return [
+        Finding(
+            code="client_email_duplicates",
+            severity="error",
+            message=(
+                f"{len(duplicates)} duplicate client email group(s) after "
+                "trim/lowercase normalization"
+            ),
+            details={"duplicates": duplicates},
+        ),
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
@@ -299,12 +348,14 @@ async def run_audit(
         "pending_migrations",
         "tracking_divergence",
         "required_tables",
+        "client_email_uniqueness",
     ]
     findings: list[Finding] = []
     try:
         findings.extend(await _check_pending_migrations(manager))
         findings.extend(await _check_tracking_divergence(manager.pool))
         findings.extend(await _check_required_tables(manager.pool, required_tables))
+        findings.extend(await _check_client_email_uniqueness(manager.pool))
     finally:
         await manager.close()
 
