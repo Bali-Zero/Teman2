@@ -632,16 +632,16 @@ jobs:
   com.balizero.wr2.ig-scraper.daily:
     owner: pro
     family: balizero
-    cluster: C_migrate_candidate
+    cluster: A_residence_pro
     state: active
     side_effects: [social]
     idempotent: false
     resource_class: cron_light
     schedule: daily
-    candidate_migrate: true
+    candidate_migrate: false
     last_migrated: null
     git_sha: null
-    notes: ""
+    notes: "Antonello-decision 2026-05-10: WR2 family stays Pro, Cluster A residence (ig-scraper has Playwright session, learner/voyager/reflexion likely Pg deps)"
 
   com.balizero.wr2.image-generator:
     owner: pro
@@ -660,16 +660,16 @@ jobs:
   com.balizero.wr2.learner-nightly:
     owner: pro
     family: balizero
-    cluster: C_migrate_candidate
+    cluster: A_residence_pro
     state: active
     side_effects: [file_only]
     idempotent: unknown
     resource_class: cron_light
     schedule: daily
-    candidate_migrate: true
+    candidate_migrate: false
     last_migrated: null
     git_sha: null
-    notes: ""
+    notes: "Antonello-decision 2026-05-10: WR2 family stays Pro, Cluster A residence (ig-scraper has Playwright session, learner/voyager/reflexion likely Pg deps)"
 
   com.balizero.wr2.measurer:
     owner: pro
@@ -758,16 +758,16 @@ jobs:
   com.balizero.wr2.reflexion.weekly:
     owner: pro
     family: balizero
-    cluster: C_migrate_candidate
+    cluster: A_residence_pro
     state: active
     side_effects: [file_only]
     idempotent: unknown
     resource_class: cron_light
     schedule: weekly
-    candidate_migrate: true
+    candidate_migrate: false
     last_migrated: null
     git_sha: null
-    notes: ""
+    notes: "Antonello-decision 2026-05-10: WR2 family stays Pro, Cluster A residence (ig-scraper has Playwright session, learner/voyager/reflexion likely Pg deps)"
 
   com.balizero.wr2.sla-worker:
     owner: pro
@@ -856,16 +856,16 @@ jobs:
   com.balizero.wr2.voyager.weekly:
     owner: pro
     family: balizero
-    cluster: C_migrate_candidate
+    cluster: A_residence_pro
     state: active
     side_effects: [file_only]
     idempotent: unknown
     resource_class: cron_light
     schedule: weekly
-    candidate_migrate: true
+    candidate_migrate: false
     last_migrated: null
     git_sha: null
-    notes: ""
+    notes: "Antonello-decision 2026-05-10: WR2 family stays Pro, Cluster A residence (ig-scraper has Playwright session, learner/voyager/reflexion likely Pg deps)"
 
   com.balizero.yield-optimizer.weekly:
     owner: pro

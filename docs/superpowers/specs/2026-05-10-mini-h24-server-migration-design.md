@@ -447,24 +447,72 @@ Dopo Fase 5 completa (~6 settimane):
   Telegram arrivati (Cluster C girato su Mini), zero errori critici
 - Heartbeat-watchdog daily 09:00 verde da 7 giorni consecutivi
 
-## §9 — Open questions per Antonello
+## §9 — Open questions — RISOLTE 2026-05-10 16:50
 
-1. Idempotency key Redis distribuito — vuoi che Mini punti a `Nuzantara.local:6379`
-   (Pro redis LAN-exposed) per condividere lock con Pro durante la transizione?
-   Trade-off: dipendenza network ma garantisce zero overlap. Alternativa:
-   ogni macchina ha il suo redis locale isolato, accettiamo che durante la
-   finestra di migrazione (15 min) un job potrebbe partire 2× e affidiamo
-   l'idempotency al wrapper file-based.
+### 1. Redis cross-machine distributed lock — **SI**
+Antonello-approved: Mini punta a Redis Pro per i job con `side_effects in
+{brevo, social, telegram-broadcast}` (renewal-alerts, weekly-digest,
+public-channel, daily-briefing, regulatory-watcher). Per i job
+`file_only/none` (cost-advisor, dlq-autopilot, monitoring) ognuno usa
+redis locale isolato.
 
-2. `wr2.reflexion/voyager/learner` weekly e `wr2.ig-scraper.daily` — sono
-   classificati Cluster C in §3 ma potrebbero scrivere in Postgres@17 Pro.
-   Confermi che migrarli è ok dopo grep di verifica, o li tieni Cluster A?
+**Pre-req patch Pro**: Redis Pro attualmente `bind 127.0.0.1 ::1` (verified
+2026-05-10 16:50). Patch `/opt/homebrew/etc/redis.conf` a
+`bind 127.0.0.1 100.107.22.111` (Tailscale IP Pro) + `brew services restart
+redis`. Verifica post-patch: `redis-cli -h 100.107.22.111 PING` da Mini deve
+ritornare `PONG`. Aggiunto requisito Fase 0e prima di Fase 1.
 
-3. Codex overnight Fase 5 — ChatGPT Plus usa 1 device slot per login Codex.
-   Hai capacity per 2 slot (Pro + Mini) o devo loggare-out Pro prima di loggare
-   Mini? In tal caso, durante Fase 5 i codex Pro restano spenti → conferma OK.
+### 2. wr2.reflexion / voyager / learner / ig-scraper — **Cluster A** (resta Pro)
+Antonello-decision: questi 4 plist passano a Cluster A residence. Spec §3
+Cluster C tabella aggiornata di conseguenza. Cluster C scende da 51 a 47
+candidati. Niente preflight/migrazione di questi 4.
 
-4. `translate.hourly` (gemma4:26b) — la riscrivo io con qwen3.5:9b o resta sul Pro
-   come eccezione documentata?
+### 3. Codex device slots ChatGPT Pro — **2 slot OK verificato**
+Verifica empirica 2026-05-10 16:50: Pro `codex login status` ritorna "Logged
+in using ChatGPT" + Mini `codex login status` ritorna "Logged in using
+ChatGPT" **simultaneamente**. `auth.json` Pro mtime 15:49 oggi (token
+rinfrescato di recente, no logout forzato). Antonello ora ha **ChatGPT Pro
+$200/mese** (upgrade da Plus $20), capacity ulteriormente piu' alta.
+Implicazione: 7 plist codex overnight migrabili a Mini Fase 5 senza
+disabilitare Codex Pro per dev sessions interactive day-time.
 
-5. Timing complessivo 6 settimane — ti va o vuoi accelerare/decelerare?
+### 4. translate.hourly — **Resta Pro (Cluster C-exception)**
+gemma4:26b (17 GB) non entra in Mini 24 GB. Pro continua a gestirlo come
+ora. Documentato in §3 Cluster C "Eccezioni" + `config/job-ownership.yaml`
+`owner: pro / cluster: C_pro_bound_exception`.
+
+### 5. Timing 6 settimane — **OK base, +1 settimana extra preflight**
+Antonello-approved baseline 6 settimane MA Fase 1 canary di stamattina ha
+rivelato che il preflight grep e' shallow (no import-trace Python). Quindi
+realistic timeline:
+- Sett 1: Fase 0 osservabilita' + bootstrap (DONE 2026-05-10)
+- **Sett 1.5: extension preflight (import-trace + venv smoke + repo check)** [NEW]
+- Sett 2-7: Fase 1-5 come da spec originale
+
+Totale **7 settimane** dal 2026-05-10. Target completion: ~2026-06-28.
+
+---
+
+## section-10 — Action items derivati dalle risposte (2026-05-10 16:50)
+
+A1. Patch Pro `/opt/homebrew/etc/redis.conf` bind a 100.107.22.111 +
+    restart. Test `redis-cli -h 100.107.22.111 PING` da Mini.
+    [Pre-req Fase 0e — richiede sign-off Antonello, modifica config Pro live]
+
+A2. Update `config/job-ownership.yaml`: 4 plist wr2.{reflexion,voyager,
+    learner,ig-scraper} -> `owner: pro / cluster: A_residence_pro`.
+    [No-risk, solo metadata]
+
+A3. Estendere `scripts/mini-migration/preflight-job.sh` con:
+    (a) Python import-trace via `importlib + ast.parse` per detecting
+        `asyncpg/psycopg/qdrant_client` transitivamente
+    (b) Verifica esistenza repo separati (OSINT-Nexus, MATA-GARUDA-NEXUS)
+    (c) Smoke-test dry-run script su Mini con env vars complete
+    (d) Check pyenv/conda env match
+    [Sett 1.5, ~3-5 ore lavoro]
+
+A4. Implementare Redis idempotent-runner che switch tra
+    `REDIS_HOST=100.107.22.111` (jobs side-effect) vs `REDIS_HOST=127.0.0.1`
+    (jobs file_only). Logica gia' nel skeleton, va solo dichiarata per-label
+    nel job-ownership.yaml.
+    [Sett 2 inizio, prima della prima vera migrazione Fase 1]
