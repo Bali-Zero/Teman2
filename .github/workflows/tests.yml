@@ -144,6 +144,17 @@ jobs:
           cd apps/backend-rag
           PYTHONPATH=. timeout 120 python -m backend.db.migrate apply-all
 
+      - name: Run backend stability gate
+        env:
+          DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
+          TEST_DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
+          REDIS_URL: redis://localhost:6379
+          JWT_SECRET_KEY: test_jwt_secret_key_for_testing_only_min_32_chars_long
+          API_KEYS: test_api_key_1,test_api_key_2
+        run: |
+          cd apps/backend-rag
+          PYTHONPATH=. python scripts/backend_stability_gate.py
+
       - name: Run unit tests
         env:
           DATABASE_URL: postgresql://test:test@localhost:5432/nuzantara_test
