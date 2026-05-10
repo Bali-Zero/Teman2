@@ -206,8 +206,9 @@ DeepSeek pass:
 Build one read-only endpoint and one workspace page:
 
 ```text
-/crm/pilot/tax-company-map?company=ocean
-/crm/pilot/tax-company-map?company=bimala
+/api/crm/pilot/tax-company-map?company=ocean
+/api/crm/pilot/tax-company-map?company=bimala
+/clients/tax-pilot
 ```
 
 The endpoint should return:
@@ -215,12 +216,17 @@ The endpoint should return:
 ```text
 company
 aliases
+primary_entry
+workspace_mode
 tax_member
 drive_folders
 persons
+person_dossiers
 documents
 duplicate_candidates
 missing_docs
+next_best_actions
+business_story
 ai_recap
 evidence_links
 confidence
@@ -233,3 +239,9 @@ Acceptance criteria:
 - No Drive write occurs.
 - No company financial file is exposed to a person unless role confidence is high or internal-user RBAC permits it.
 - Every recap sentence has a supporting Drive evidence link.
+
+## Implemented Team-Side Intelligence Slice
+
+The pilot workspace now starts from the person rather than the company. Each returned map includes `primary_entry=person`, `workspace_mode=team_read_only`, derived `person_dossiers`, `next_best_actions`, and a short `business_story`.
+
+This is a team-side intelligence view for `kita.balizero.com`: team members can open Drive evidence, review risk flags, and decide what to confirm next. The client portal remains limited to approved document downloads and does not expose Drive folders.

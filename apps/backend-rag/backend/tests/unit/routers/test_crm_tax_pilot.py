@@ -11,6 +11,8 @@ async def test_get_tax_company_pilot_returns_ocean_map() -> None:
     assert pilot_map.company.name == "OCEAN CLOTHES AND SHOES PT"
     assert pilot_map.tax_member.name == "DEA"
     assert pilot_map.read_only is True
+    assert pilot_map.primary_entry == "person"
+    assert pilot_map.person_dossiers[0].person_name == "Natan Kleimonov"
 
 
 @pytest.mark.asyncio

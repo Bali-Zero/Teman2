@@ -5,6 +5,8 @@ import type { TaxCompanyPilotMap } from "@/lib/api/crm/crm.types";
 
 const oceanMap: TaxCompanyPilotMap = {
   key: "ocean",
+  primary_entry: "person",
+  workspace_mode: "team_read_only",
   company: {
     name: "OCEAN CLOTHES AND SHOES PT",
     aliases: ["PT Ocean Clothes and Shoes"],
@@ -35,6 +37,31 @@ const oceanMap: TaxCompanyPilotMap = {
       sensitivity: "company",
       confidence: "confirmed",
     },
+  ],
+  person_dossiers: [
+    {
+      person_name: "Natan Kleimonov",
+      company_name: "OCEAN CLOTHES AND SHOES PT",
+      headline: "Person to verify before opening OCEAN CLOTHES AND SHOES PT",
+      tax_owner: "DEA",
+      drive_folder_url: "https://drive.google.com/drive/folders/natan",
+      document_groups: ["tax filings"],
+      risk_flags: ["Company role needs human confirmation."],
+      next_action: "Confirm the company role from registry documents.",
+      relationship_confidence: "medium",
+    },
+  ],
+  next_best_actions: [
+    {
+      owner: "setup",
+      label: "Confirm company roles from company PDFs.",
+      reason:
+        "Needed before OCEAN CLOTHES AND SHOES PT can become a clean person-first workspace.",
+      severity: "high",
+    },
+  ],
+  business_story: [
+    "Start from Natan Kleimonov, then open OCEAN CLOTHES AND SHOES PT only through the confirmed relationship.",
   ],
   duplicate_candidates: [
     {
@@ -101,6 +128,45 @@ const bimalaMap: TaxCompanyPilotMap = {
       confidence: "confirmed",
     },
   ],
+  person_dossiers: [
+    {
+      person_name: "Giulia Del Giudice",
+      company_name: "BIMALA / Bimala Investments Bali PT",
+      headline:
+        "Confirmed person connected to BIMALA / Bimala Investments Bali PT",
+      tax_owner: "Dewa Ayu",
+      drive_folder_url: "https://drive.google.com/drive/folders/giulia",
+      document_groups: ["investment reports"],
+      risk_flags: ["Company role needs human confirmation."],
+      next_action: "Confirm the company role from registry documents.",
+      relationship_confidence: "confirmed",
+    },
+    {
+      person_name: "Giorgia Emidio",
+      company_name: "BIMALA / Bimala Investments Bali PT",
+      headline:
+        "Person to verify before opening BIMALA / Bimala Investments Bali PT",
+      tax_owner: "Dewa Ayu",
+      drive_folder_url: null,
+      document_groups: ["investment reports"],
+      risk_flags: ["Relationship needs human confirmation."],
+      next_action:
+        "Confirm the family or business relationship before nesting files.",
+      relationship_confidence: "unconfirmed",
+    },
+  ],
+  next_best_actions: [
+    {
+      owner: "tax",
+      label: "Confirm child/person relationships before nesting child files.",
+      reason:
+        "Needed before BIMALA / Bimala Investments Bali PT can become a clean person-first workspace.",
+      severity: "high",
+    },
+  ],
+  business_story: [
+    "Start from Giulia Del Giudice, then open BIMALA only through the confirmed relationship.",
+  ],
   duplicate_candidates: [
     {
       label: "Bimala CRM company folder vs tax member working folder",
@@ -133,12 +199,16 @@ describe("TaxCompanyPilotWorkspace", () => {
   it("renders company maps as business dossiers instead of technical audit panels", () => {
     render(<TaxCompanyPilotWorkspace maps={[oceanMap, bimalaMap]} />);
 
-    expect(screen.getByText("Business dossiers")).toBeInTheDocument();
+    expect(
+      screen.getByText("Person-first intelligence desk"),
+    ).toBeInTheDocument();
     expect(screen.getByText("Companies under review")).toBeInTheDocument();
     expect(screen.getAllByText("Open decisions")).toHaveLength(3);
     expect(screen.getAllByText("Tax owner")).toHaveLength(2);
-    expect(screen.getAllByText("Business recap")).toHaveLength(2);
-    expect(screen.getAllByText("Client relationships")).toHaveLength(2);
+    expect(screen.getAllByText("Person entry")).toHaveLength(2);
+    expect(screen.getAllByText("Business story")).toHaveLength(2);
+    expect(screen.getAllByText("Next best actions")).toHaveLength(2);
+    expect(screen.getAllByText("Internal review")).toHaveLength(2);
     expect(screen.getAllByText("Key company records")).toHaveLength(2);
     expect(screen.getAllByText("Folder cleanup")).toHaveLength(2);
 
@@ -151,11 +221,19 @@ describe("TaxCompanyPilotWorkspace", () => {
     expect(screen.getByText("Natan Kleimonov")).toBeInTheDocument();
     expect(screen.getByText("Giulia Del Giudice")).toBeInTheDocument();
     expect(screen.getByText("Giorgia Emidio")).toBeInTheDocument();
+    expect(
+      screen.getAllByText("Confirm the company role from registry documents."),
+    ).toHaveLength(2);
+    expect(
+      screen.getByText(
+        "Confirm the family or business relationship before nesting files.",
+      ),
+    ).toBeInTheDocument();
     expect(screen.getByText("SPT 2025")).toBeInTheDocument();
     expect(screen.getByText("LKPM Periode 4 PDFs")).toBeInTheDocument();
     expect(
-      screen.getByText("Confirm company roles from company PDFs."),
-    ).toBeInTheDocument();
+      screen.getAllByText("Confirm company roles from company PDFs."),
+    ).toHaveLength(2);
     expect(
       screen.getByText(
         "Operational tax folder vs canonical-like company folder",
@@ -171,6 +249,8 @@ describe("TaxCompanyPilotWorkspace", () => {
     expect(screen.queryByText("Duplicate Candidates")).not.toBeInTheDocument();
     expect(screen.queryByText("Read-only")).not.toBeInTheDocument();
     expect(screen.queryByText(/Confidence:/)).not.toBeInTheDocument();
+    expect(screen.queryByText("Business recap")).not.toBeInTheDocument();
+    expect(screen.queryByText("Client relationships")).not.toBeInTheDocument();
   });
 
   it("does not warn when company maps share the same backend key", () => {
@@ -184,7 +264,9 @@ describe("TaxCompanyPilotWorkspace", () => {
       />,
     );
 
-    expect(screen.getByText("Business dossiers")).toBeInTheDocument();
+    expect(
+      screen.getByText("Person-first intelligence desk"),
+    ).toBeInTheDocument();
     expect(consoleError.mock.calls.flat().join("\n")).not.toContain(
       "Encountered two children with the same key",
     );

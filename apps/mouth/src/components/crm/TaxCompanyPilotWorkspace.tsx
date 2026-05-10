@@ -1,15 +1,20 @@
 import {
   AlertTriangle,
+  BriefcaseBusiness,
   ExternalLink,
   FileText,
   Link2,
+  ListChecks,
   Sparkles,
+  ShieldCheck,
   UserRound,
 } from "lucide-react";
 import type {
   TaxCompanyPilotDocument,
   TaxCompanyPilotGap,
   TaxCompanyPilotMap,
+  TaxCompanyPilotNextAction,
+  TaxCompanyPilotPersonDossier,
 } from "@/lib/api/crm/crm.types";
 
 const severityClass: Record<TaxCompanyPilotGap["severity"], string> = {
@@ -22,6 +27,12 @@ const severityLabel: Record<TaxCompanyPilotGap["severity"], string> = {
   high: "Decision needed",
   medium: "Check",
   low: "Watch",
+};
+
+const actionOwnerLabel: Record<TaxCompanyPilotNextAction["owner"], string> = {
+  crm: "CRM",
+  tax: "Tax",
+  setup: "Setup",
 };
 
 const documentGroupLabel: Record<TaxCompanyPilotDocument["group"], string> = {
@@ -44,13 +55,6 @@ function groupDocuments(documents: TaxCompanyPilotDocument[]) {
   );
 }
 
-function relationshipLabel(person: TaxCompanyPilotMap["persons"][number]) {
-  if (person.relationship_confidence === "confirmed") return "Confirmed link";
-  if (person.relationship_confidence === "high") return "Strong link";
-  if (person.relationship_confidence === "medium") return "Likely link";
-  return "Relationship to confirm";
-}
-
 function getCompanyStatus(map: TaxCompanyPilotMap) {
   const highCount = map.gaps.filter((gap) => gap.severity === "high").length;
   if (highCount > 0) return "Needs business review";
@@ -58,9 +62,53 @@ function getCompanyStatus(map: TaxCompanyPilotMap) {
   return "Ready to operate";
 }
 
+function getPersonDossiers(
+  map: TaxCompanyPilotMap,
+): TaxCompanyPilotPersonDossier[] {
+  if (map.person_dossiers?.length) return map.person_dossiers;
+
+  const documentGroups = Object.keys(groupDocuments(map.documents));
+  return map.persons.map((person) => ({
+    person_name: person.name,
+    company_name: map.company.name,
+    headline: person.role
+      ? `${person.role} connected to ${map.company.name}`
+      : `Person to verify before opening ${map.company.name}`,
+    tax_owner: map.tax_member.name,
+    drive_folder_url: person.folder_url,
+    document_groups: documentGroups,
+    risk_flags:
+      person.relationship_confidence === "unconfirmed"
+        ? ["Relationship needs human confirmation."]
+        : [],
+    next_action: person.role
+      ? "Review the person profile and attach the confirmed business timeline."
+      : "Confirm the company role from registry documents.",
+    relationship_confidence: person.relationship_confidence,
+  }));
+}
+
+function getNextBestActions(
+  map: TaxCompanyPilotMap,
+): TaxCompanyPilotNextAction[] {
+  if (map.next_best_actions?.length) return map.next_best_actions;
+
+  return map.gaps.map((gap) => ({
+    owner:
+      gap.code.includes("tax") || gap.code.includes("family") ? "tax" : "setup",
+    label: gap.label,
+    reason: `Needed before ${map.company.name} can become a clean person-first workspace.`,
+    severity: gap.severity,
+  }));
+}
+
 function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
   const documentsByGroup = groupDocuments(map.documents);
   const companyStatus = getCompanyStatus(map);
+  const personDossiers = getPersonDossiers(map);
+  const nextBestActions = getNextBestActions(map);
+  const businessStory =
+    map.business_story?.length > 0 ? map.business_story : map.ai_recap;
 
   return (
     <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
@@ -90,36 +138,28 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
       <div className="grid gap-6 p-4 lg:grid-cols-[1fr_1.05fr]">
         <section>
           <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-950">
-            <Sparkles size={16} />
-            Business recap
-          </div>
-          <ul className="space-y-2 text-sm leading-6 text-slate-700">
-            {map.ai_recap.map((item) => (
-              <li key={item}>{item}</li>
-            ))}
-          </ul>
-        </section>
-
-        <section>
-          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-950">
             <UserRound size={16} />
-            Client relationships
+            Person entry
           </div>
           <div className="divide-y divide-slate-100">
-            {map.persons.map((person) => (
-              <div key={person.name} className="py-3 first:pt-0 last:pb-0">
+            {personDossiers.map((dossier) => (
+              <div
+                key={dossier.person_name}
+                className="py-3 first:pt-0 last:pb-0"
+              >
                 <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="font-medium text-slate-950">{person.name}</p>
-                    <p className="mt-1 text-xs text-slate-500">
-                      {person.role ?? "Role to confirm"} ·{" "}
-                      {relationshipLabel(person)}
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-950">
+                      {dossier.person_name}
+                    </p>
+                    <p className="mt-1 text-sm leading-5 text-slate-600">
+                      {dossier.headline}
                     </p>
                   </div>
-                  {person.folder_url && (
+                  {dossier.drive_folder_url && (
                     <a
-                      aria-label={`Open ${person.name} in Drive`}
-                      href={person.folder_url}
+                      aria-label={`Open ${dossier.person_name} in Drive`}
+                      href={dossier.drive_folder_url}
                       target="_blank"
                       rel="noreferrer"
                       className="rounded-md p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-900"
@@ -128,21 +168,76 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
                     </a>
                   )}
                 </div>
+                <p className="mt-2 text-xs font-medium text-emerald-800">
+                  {dossier.next_action}
+                </p>
                 <div className="mt-2 flex flex-wrap gap-1.5">
-                  {person.evidence.map((item) => (
+                  {dossier.document_groups.map((item) => (
                     <span
-                      key={item}
+                      key={`${dossier.person_name}-${item}`}
                       className="rounded bg-slate-100 px-2 py-1 text-[11px] text-slate-600"
                     >
                       {item}
                     </span>
                   ))}
                 </div>
+                {dossier.risk_flags.length > 0 && (
+                  <ul className="mt-2 space-y-1 text-xs leading-5 text-amber-800">
+                    {dossier.risk_flags.map((flag) => (
+                      <li key={`${dossier.person_name}-${flag}`}>{flag}</li>
+                    ))}
+                  </ul>
+                )}
               </div>
             ))}
           </div>
         </section>
+
+        <section>
+          <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-950">
+            <Sparkles size={16} />
+            Business story
+          </div>
+          <ul className="space-y-2 text-sm leading-6 text-slate-700">
+            {businessStory.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+          <div className="mt-4 border-l-2 border-emerald-600 bg-emerald-50 px-3 py-2 text-sm text-emerald-950">
+            <div className="mb-1 flex items-center gap-2 font-semibold">
+              <ShieldCheck size={15} />
+              Internal review
+            </div>
+            <p>
+              Team members can open Drive evidence here; client portal access
+              remains limited to approved document downloads.
+            </p>
+          </div>
+        </section>
       </div>
+
+      <section className="border-t border-slate-200 px-4 py-4">
+        <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-950">
+          <ListChecks size={16} />
+          Next best actions
+        </div>
+        <div className="grid gap-2 md:grid-cols-3">
+          {nextBestActions.map((action) => (
+            <div
+              key={`${action.owner}-${action.label}`}
+              className={`rounded-md border px-3 py-2 text-sm ${severityClass[action.severity]}`}
+            >
+              <p className="text-[11px] font-semibold uppercase">
+                {actionOwnerLabel[action.owner]}
+              </p>
+              <p className="mt-1 font-medium">{action.label}</p>
+              <p className="mt-1 text-xs leading-5 opacity-85">
+                {action.reason}
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
 
       <div className="grid gap-6 border-t border-slate-200 px-4 py-4 lg:grid-cols-[1.1fr_0.9fr]">
         <section>
@@ -207,7 +302,7 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
       <section className="grid gap-4 border-t border-slate-200 p-4 lg:grid-cols-[1fr_auto]">
         <div>
           <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-950">
-            <Link2 size={16} />
+            <BriefcaseBusiness size={16} />
             Folder cleanup
           </div>
           <div className="space-y-2">
@@ -235,6 +330,7 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
               aria-label={`Open ${link.label} in Drive`}
               className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 px-2.5 py-1.5 text-xs font-medium text-slate-700 hover:bg-slate-100 hover:text-slate-950"
             >
+              <Link2 size={13} />
               {link.label}
               <ExternalLink size={13} />
             </a>
@@ -270,11 +366,11 @@ export function TaxCompanyPilotWorkspace({
             CRM tax workspace
           </p>
           <h1 className="mt-1 text-2xl font-semibold md:text-3xl">
-            Business dossiers
+            Person-first intelligence desk
           </h1>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-            People-first company view for tax work: who is connected, who owns
-            the file, which records matter, and what still needs a decision.
+            Start from each person, then review the company, tax owner, records,
+            Drive evidence, and decisions behind them.
           </p>
         </div>
         <div className="grid grid-cols-2 gap-2 text-right md:grid-cols-4">
