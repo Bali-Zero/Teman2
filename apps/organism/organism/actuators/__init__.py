@@ -15,6 +15,7 @@ from organism.actuators.cleanup_cache import CleanupCache
 from organism.actuators.cleanup_branches import CleanupBranches
 from organism.actuators.cleanup_zombie_plist import CleanupZombiePlist
 from organism.actuators.propose_yaml_rule import ProposeYamlRule
+from organism.actuators.fly_machines_start import FlyMachinesStart
 
 
 __all__ = [
@@ -29,6 +30,7 @@ __all__ = [
     "CleanupBranches",
     "CleanupZombiePlist",
     "ProposeYamlRule",
+    "FlyMachinesStart",
     "build_actuator_registry",
 ]
 
