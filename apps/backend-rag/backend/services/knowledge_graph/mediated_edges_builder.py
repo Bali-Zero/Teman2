@@ -178,6 +178,12 @@ async def _emit_coworker_at(conn: asyncpg.Connection) -> int:
     The document_linker emits DESCRIBES from Document -> Person/Company,
     so this query first materializes Person -> Company facts through the
     shared source Document, then pairs people attached to the same Company.
+
+    Bug history: a previous version of this query referenced a `c` table
+    alias inside an EXISTS subquery while also selecting `c.entity_id` in
+    the outer SELECT — Postgres rejected with "missing FROM-clause entry
+    for table c". Re-shaped as two CTEs (person_company → person_pairs)
+    so the company node is JOINed once and reachable from the SELECT.
     """
     sql = """
     WITH person_company AS (
@@ -186,7 +192,7 @@ async def _emit_coworker_at(conn: asyncpg.Connection) -> int:
             company.entity_id AS company_id
         FROM crm_kg_edges person_edge
         JOIN crm_kg_edges company_edge
-            ON person_edge.source_entity_id = company_edge.source_entity_id
+            ON person_edge.source_entity_id = company_edge.source_entity_id  -- same Document
             AND person_edge.relationship_type = 'DESCRIBES'
             AND company_edge.relationship_type = 'DESCRIBES'
             AND person_edge.target_entity_id <> company_edge.target_entity_id
@@ -205,13 +211,13 @@ async def _emit_coworker_at(conn: asyncpg.Connection) -> int:
     ),
     person_pairs AS (
         SELECT DISTINCT
-            left_pc.person_id AS src_id,
+            left_pc.person_id  AS src_id,
             right_pc.person_id AS tgt_id,
             left_pc.company_id AS company_id
         FROM person_company left_pc
         JOIN person_company right_pc
             ON left_pc.company_id = right_pc.company_id
-            AND left_pc.person_id < right_pc.person_id
+            AND left_pc.person_id < right_pc.person_id  -- canonical ordering
         LIMIT $1
     )
     INSERT INTO crm_kg_edges (
