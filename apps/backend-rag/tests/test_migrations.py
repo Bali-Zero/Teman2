@@ -215,6 +215,7 @@ class TestMigrationIntegration:
             migration_number=999,
             sql_file=sql_file,
             description="Test migration for idempotency",
+            rollback_sql="DROP TABLE IF EXISTS test_migration_table;",
             _sql_dir=tmp_path,
         )
         await migration._ensure_migration_log(test_db)  # noqa: SLF001
@@ -259,6 +260,7 @@ class TestMigrationIntegration:
             migration_number=999,
             sql_file=sql_file,
             description="Test migration",
+            rollback_sql="DROP TABLE IF EXISTS test_migration_table;",
             _sql_dir=tmp_path,
         )
 
@@ -283,6 +285,7 @@ class TestMigrationDependencies:
             sql_file=sql_file,
             description="Test migration with dependency",
             dependencies=[99999],  # Non-existent migration
+            rollback_sql="DROP TABLE IF EXISTS test_migration_table;",
             _sql_dir=tmp_path,
         )
         await migration._ensure_migration_log(test_db)  # noqa: SLF001
