@@ -29,6 +29,12 @@ os.environ.setdefault("TELEGRAM_BOT_TOKEN", "123456:test_token")
 os.environ.setdefault("EMBEDDING_PROVIDER", "openai")
 os.environ.setdefault("EMBEDDING_MODEL", "text-embedding-3-small")
 
+# Some SDK import chains load `mcp.types`, which asks pydantic to create
+# RootModel generics before `pydantic.root_model` has been registered in
+# sys.modules on the local dev venv. Import it here before test modules pull
+# portal/multimodal services through router imports.
+import pydantic.root_model  # noqa: E402,F401
+
 
 # ============================================================================
 # Shared fixtures
