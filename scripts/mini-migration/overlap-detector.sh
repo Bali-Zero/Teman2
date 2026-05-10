@@ -52,7 +52,7 @@ log "=== overlap-detector run ==="
 # Pull active labels (with PID, not the dash-prefixed inactive ones)
 # from both machines. We exclude "system" prefixes (com.apple, com.google,
 # homebrew.mxcl) — they're allowed to coexist.
-SYSTEM_FILTER='com\.apple|com\.google|homebrew\.mxcl'
+SYSTEM_FILTER='com\.apple|com\.google|com\.openai|com\.openssh|homebrew\.mxcl|com\.adobe|com\.microsoft'
 
 PRO_TMP=$(mktemp -t overlap-pro.XXXX)
 MINI_TMP=$(mktemp -t overlap-mini.XXXX)
