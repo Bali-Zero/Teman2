@@ -1,12 +1,13 @@
 name: cron - fly watcher (every 15 min)
 
 # Migrated from Pro crontab `*/15 * * * * cron-agent-python/run.sh fly-watcher` (2026-04-26).
-# Snapshot of fly status for nuzantara-rag, nuzantara-postgres, nuzantara-qdrant.
+# Snapshot of Fly status for runtime apps that still live on Fly.
+# Qdrant moved to Qdrant Cloud; do not check the retired nuzantara-qdrant app.
 # Alerts if any app has machines NOT in expected state or unhealthy checks.
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: "*/15 * * * *"
   workflow_dispatch: {}
 
 concurrency:
@@ -20,7 +21,7 @@ jobs:
     steps:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
-      - name: Snapshot fly status (3 apps)
+      - name: Snapshot fly status (runtime apps)
         id: snap
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
@@ -28,7 +29,7 @@ jobs:
           set -uo pipefail
           REPORT=""
           OVERALL_OK=1
-          for app in nuzantara-rag nuzantara-postgres nuzantara-qdrant; do
+          for app in nuzantara-rag nuzantara-postgres; do
             RAW=$(flyctl status --json -a "$app" 2>&1 || true)
             SUMMARY=$(RAW="$RAW" python3 <<'PY' 2>/dev/null || echo "PARSE_ERROR"
           import json, os, sys
@@ -52,7 +53,6 @@ jobs:
           )
             echo "[$app] $SUMMARY"
             REPORT="${REPORT}[$app] $SUMMARY"$'\n'
-            # nuzantara-qdrant may legitimately be stopped (auto_stop). nuzantara-rag and -postgres should always be started.
             if echo "$SUMMARY" | grep -q "PARSE_ERROR"; then
               OVERALL_OK=0
               continue
@@ -60,7 +60,7 @@ jobs:
             STARTED=$(echo "$SUMMARY" | tr '|' '\n' | grep ^started= | cut -d= -f2)
             TOTAL=$(echo "$SUMMARY" | tr '|' '\n' | grep ^total= | cut -d= -f2)
             UNHEALTHY=$(echo "$SUMMARY" | tr '|' '\n' | grep ^unhealthy= | cut -d= -f2)
-            if [ "$app" != "nuzantara-qdrant" ] && [ "${STARTED:-0}" -lt "${TOTAL:-1}" ]; then
+            if [ "${STARTED:-0}" -lt "${TOTAL:-1}" ]; then
               OVERALL_OK=0
             fi
             if [ "${UNHEALTHY:-0}" -gt 0 ]; then
