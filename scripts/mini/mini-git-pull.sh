@@ -198,13 +198,13 @@ if ! command -v flock >/dev/null 2>&1; then
   log "WARN: flock not installed (brew install flock); skipping repo-mutating lock"
 else
   REPO_LOCK="/tmp/repo-mutating.lock"
-  exec 8>""
+  exec 8>"$REPO_LOCK"
   if ! flock --exclusive --timeout 30 8; then
-    log "WARN: could not acquire  in 30s — cron job is reading repo, skip this tick"
+    log "WARN: could not acquire $REPO_LOCK in 30s — cron job is reading repo, skip this tick"
     exit 0
   fi
   # Lock auto-released on exit (fd 8 closes); add to trap so explicit cleanup is safe.
-  trap 'flock -u 8 2>/dev/null || true; rm -f ""' EXIT
+  trap 'flock -u 8 2>/dev/null || true; rm -f "$LOCK_FILE"' EXIT
 fi
 
 # Check stash retention (sign of repeated pop failures).
