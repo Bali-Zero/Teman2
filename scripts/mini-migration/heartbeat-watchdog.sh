@@ -21,7 +21,7 @@
 set -u
 
 REPO="${REPO:-/Users/nuzantara/Desktop/nuzantara}"
-YAML="$REPO/config/job-ownership.yaml"
+YAML="${YAML:-$HOME/agent-config/job-ownership.yaml}"
 HB_DIR="$HOME/heartbeat"
 LOG_FILE="$HOME/logs/heartbeat-watchdog.log"
 STATE_DIR="$HOME/.agent/decisions/state"

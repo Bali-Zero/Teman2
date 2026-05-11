@@ -254,6 +254,17 @@ fi
 NEW_HEAD=$(git rev-parse --short HEAD)
 log "OK pulled to $NEW_HEAD ($COMMITS_BEHIND commits)"
 
+# 2026-05-11 TCC-safe sync: copia file config che cron+launchd
+# devono leggere ma TCC blocca su ~/Desktop. Non-fatale se sync fallisce.
+mkdir -p "$HOME/agent-config" 2>/dev/null
+if [ -f "$REPO/config/job-ownership.yaml" ]; then
+  if cp "$REPO/config/job-ownership.yaml" "$HOME/agent-config/job-ownership.yaml" 2>>"$LOG_FILE"; then
+    log "  synced config/job-ownership.yaml -> ~/agent-config/"
+  else
+    log "  WARN: failed to sync job-ownership.yaml to ~/agent-config/"
+  fi
+fi
+
 # Restore stash. Conflict-tolerant: on conflict, leave stash for human review.
 if [ "$STASHED" = "1" ]; then
   if git stash pop --quiet 2>>"$LOG_FILE"; then
