@@ -45,7 +45,7 @@ presidio-anonymizer>=2.2.362
 
 # Document Processing
 openpyxl>=3.1.5  # CVE-2023-43515 fixed in 3.1.5
-email-validator>=2.2.0
+email-validator>=2.3.0
 pypdf>=6.8.0  # Security fix: CVE-2026-31826 memory exhaustion
 Pillow>=11.0.0  # Updated 2026-03-24: CVE fixes for image parsers (was 10.0.0)
 EbookLib>=0.20
