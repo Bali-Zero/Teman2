@@ -61,7 +61,7 @@ esac
 # Override via explicit REDIS_HOST env still wins.
 PRO_REDIS_HOST="${PRO_REDIS_HOST:-100.107.22.111}"
 LOCAL_REDIS_HOST="127.0.0.1"
-JOB_YAML="${JOB_YAML:-/Users/nuzantara/Desktop/nuzantara/config/job-ownership.yaml}"
+JOB_YAML="${JOB_YAML:-$HOME/agent-config/job-ownership.yaml}"
 
 resolve_redis_host() {
   # Honor explicit override
