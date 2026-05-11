@@ -13,6 +13,12 @@ mode: doc-only (no runtime HGT activation)
 
 **Generated**: 2026-05-12 03:10 WITA · Step 3 of SYMBIOSIS gap-closure loop · branch `feat/symbiosis-loop-2026-05-12`.
 
+## Terminology note (clarified after NB-1 review 2026-05-12 04:15 WITA)
+
+"FASE 4 HGT" in this doc refers to the local sequencing of `docs/SYMBIOSIS_TURNON_PLAN.md` (6 maggio 2026) which defines 4 phases for Innervation Genoma activation. It is NOT the canonical Nuzantara "Phase 4" — NB-1 explicitly clarifies that the canonical product-architecture sequencing is **Phase 0.5 → Phase 5 → Phase 3** (`0.5a UUID SSOT critical blocker for Phase 3 SurfaceRouter; Phase 5 CSCP keeps surfaces consistent`).
+
+When this doc says "activate FASE 4" or "FASE 4 HALT", read it as: "lift the HALT on the SYMBIOSIS_TURNON_PLAN.md Phase 4 = HGT activation phase", a SYMBIOSIS-local milestone independent from the canonical Phase 0.5/3/5 product roadmap.
+
 ## Context
 
 Commit `68efc17e3` (2026-05-08 01:39:20 +0800) declared HGT FASE 4 activation HALT with the message:
@@ -68,6 +74,16 @@ So `IntelScraperCellRunner` exists, has tests, but is not invoked in any product
 ```
 
 The cron runs `~/scripts/eventbus/research_sentinel.py` (operator-side script). NOT `apps/mata-garuda/mata_garuda/cells/sentinel_cell.py`. The cell-core SentinelCell with its `HGTConsumer` wiring is dormant.
+
+**Two-layer bypass clarified after NB-1 review 2026-05-12 04:15 WITA**:
+
+- **Layer A** (plist level): the operator plist invokes `~/scripts/eventbus/research_sentinel.py`, completely outside the `apps/mata-garuda/mata_garuda/cells/` tree.
+- **Layer B** (Python entrypoint level, canonical per NB-1 R6 audit): even `apps/mata-garuda/scripts/run_sentinel_py.py:126` (the in-repo wrapper that DOES live in mata-garuda) is itself a partial bypass — it instantiates the SentinelCell but **calls a legacy worker directly without going through `PulseLoop.tick()`**, so the REFLECT phase (where skills + HGT publish hooks live) NEVER fires. NB-1 marks this as `🔵 LOW (2) Cell metaphor decorative — REFLECT (skill producer) never fires → explains why Skills layer is empty (R4 finding root cause)`.
+
+So TICKET C below must address BOTH layers:
+
+- Layer A: switch the plist to a sentinel-cell-aware entrypoint (or replace the operator-side script entirely)
+- Layer B: fix `run_sentinel_py.py:126` to actually invoke `pulse_loop.tick()` (full sense→think→act→reflect→dream→mature lifecycle), not the legacy bypass call
 
 ## The 3 prerequisite tickets
 
