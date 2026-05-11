@@ -1,0 +1,39 @@
+{
+  "id": "c4-rental-property",
+  "title": "Rental & property income tax",
+  "intent": "User (property owner or Airbnb host) wants to understand rental income tax, property transfer tax, and capital gains on sale",
+  "pillar": {
+    "slug": "rental-income-tax-indonesia",
+    "category": "tax",
+    "title": "Rental Income Tax Indonesia 2026: 10% PPh Final on Villas, Airbnb & Property Leasing"
+  },
+  "spokes": [
+    {
+      "slug": "bphtb-property-transfer-tax",
+      "category": "tax",
+      "title": "BPHTB Property Transfer Tax Indonesia 2026: 5% Rate, Calculation & Exemptions"
+    },
+    {
+      "slug": "capital-gains-tax-indonesia",
+      "category": "tax",
+      "title": "Capital Gains Tax Indonesia 2026: Property 2.5%, Shares, and Asset Disposal Rates"
+    },
+    {
+      "slug": "pbb-property-tax-indonesia",
+      "category": "tax",
+      "title": "PBB Property Tax Indonesia 2026: NJOP Rates, Payment Deadlines & Bali Examples"
+    },
+    {
+      "slug": "property-tax-guide",
+      "category": "property",
+      "title": "Property Tax Indonesia 2026: Complete Guide"
+    },
+    {
+      "slug": "selling-property-indonesia",
+      "category": "property",
+      "title": "Selling Property in Indonesia 2026: Capital Gains Tax, AJB Process, and Complete Seller Guide"
+    }
+  ],
+  "cannibalization_note": "Cluster pillar 'rental-income-tax-indonesia' (under /tax/) coexists with 'rental-income-tax' (under /property/). Both are kept intentionally — different intent split: /tax/ side covers fiscal mechanics, /property/ side covers property owner workflow. Cross-link required.",
+  "related_clusters": ["c3-incentives-holiday", "c5-deadlines-filing"]
+}
