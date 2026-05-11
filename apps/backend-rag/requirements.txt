@@ -62,7 +62,7 @@ langgraph>=1.0.0
 langgraph-checkpoint-postgres>=2.0.0  # PostgreSQL checkpointing for stateful workflows
 langchain-core>=1.2.19  # Updated 2026-03-14: patch fixes for streaming + callbacks
 langchain-anthropic>=1.0.0  # Required for KG LangGraph orchestrator
-langchain-openai>=1.0.0  # Required for KG LangGraph orchestrator fallback
+langchain-openai>=1.1.14  # Updated 2026-05-12: CVE-2026-41488 fix (was >=1.0.0)
 langsmith>=0.4.0  # Observability: @traceable on RAG nodes + KG nodes
 # langchain-google-genai removed to resolve conflicts
 
