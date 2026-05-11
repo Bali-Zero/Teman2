@@ -30,7 +30,7 @@ google-cloud-aiplatform>=1.40.0  # Now compatible with OTEL (protobuf 5.x)
 boto3>=1.43.0
 
 # AI/ML - UPGRADED FOR HTTPX 0.28+ COMPATIBILITY
-openai>=2.14.0  # Upgraded for httpx 0.28+ (proxies parameter removed)
+openai>=2.36.0  # Upgraded for httpx 0.28+ (proxies parameter removed)
 anthropic>=0.75.0  # Upgraded for httpx 0.28+ compatibility
 # PyTorch - Explicitly specify compatible version to avoid RuntimeError with sentence-transformers
 # PyTorch 2.2.0+ required for transformers compatibility (register_pytree_node)
