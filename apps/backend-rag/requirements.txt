@@ -21,7 +21,7 @@ google-auth>=2.23.0
 google-auth-oauthlib>=1.1.0
 google-auth-httplib2>=0.1.1
 google-cloud-storage>=2.10.0
-google-cloud-aiplatform>=1.40.0  # Now compatible with OTEL (protobuf 5.x)
+google-cloud-aiplatform>=1.151.0  # Now compatible with OTEL (protobuf 5.x)
 
 # Tigris (S3-compatible) — used by scripts/wr2_image_generator.py +
 # scripts/wr2_draft_generator.py to upload hero images to the warroom
