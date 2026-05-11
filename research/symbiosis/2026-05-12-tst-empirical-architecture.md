@@ -29,7 +29,9 @@ Counter-evidence: the legacy `apps/cell/cell/core/pulse.py:432` has its OWN `obs
 
 ### Claim 2 — "asyncpg pool min=1 max=3 per process, observatory.py:55-127"
 
-**Partially verified**: line numbers match the canonical `cell_core.observatory.py`. Specific pool min/max claim not re-verified during this loop step (TODO for future verification).
+**CORRECTED 2026-05-12 04:30 WITA after NB-1 review**: NB-1 cites `apps/backend-rag/backend/app/core/database.py` with hardcoded `_POOL_MIN_SIZE = 2`, `_POOL_MAX_SIZE = 5` (and `_COMMAND_TIMEOUT = 60s`, `_MAX_INACTIVE_CONN_LIFETIME = 300s`, `_ACQUIRE_TIMEOUT = 10s`). The LangGraph checkpointer separately uses `min_size=2, max_size=10` (`docs/.../2026-03-14-autonomous-agents-v2-enhanced-architecture.md`).
+
+The ghost prose's "min=1 max=3 per process" appears to refer to the per-process cell_core asyncpg pool (NOT the backend-RAG canonical pool). NB-1 corpus does not include `packages/cell-core/cell_core/observatory.py:55-127` so it cannot confirm/refute the specific cell-side claim. Status: **TODO** — verify directly by reading `cell_core/observatory.py` in a future pass. Pool min=1/max=3 is plausible for cell-side (one writer per cell process) but is NOT a backend-wide constant.
 
 ### Claim 3 — "Collector (`cell-observatory-collector`) è LISTENER PG → SQLite locale `~/.cell-observatory/observatory.db`"
 
@@ -44,7 +46,11 @@ Counter-evidence: the legacy `apps/cell/cell/core/pulse.py:432` has its OWN `obs
 - Consumer group `organism-supervisor` consumer `supervisor-1` shows `pending=0, idle=93ms`
 - LaunchAgent `com.nuzantara.organism.supervisor` PID 2377 active
 
-The "14 channels" claim: `PG_CHANNEL_MAP` is documented in `cicatrix-scars.md` Law 3 as 13 channels. Original prose "14 = PG_CHANNEL_MAP=13 + wr2_status_change da migration 164" matches the design intent (wr2_status_change is a separate non-PG_CHANNEL_MAP channel handled by `wr2_supervisor.py`).
+The "14 channels" claim — **CORRECTED 2026-05-12 04:30 WITA after NB-1 review**: NB-1 (queried 2026-05-12 04:15 WITA) cites `apps/backend-rag/backend/services/events/event_bus.py` defining `PG_CHANNEL_MAP` with **exactly 12 channels** (`practice_changed`, `client_changed`, `compliance_alert`, `lkpm_ingest_completed`, `war_room_event`, `intel_event`, `cognitive_event`, `federation_alert`, `cell_pulse_observed`, `measurer_event`, `crm_welcome_completed`, `asset_provenance`), NOT 13 as previously cited in `cicatrix-scars.md` Law 3.
+
+`wr2_status_change` is NOT in `PG_CHANNEL_MAP` per NB-1 (handled separately by `wr2_supervisor.py`). The "14 channels" supervisor bridge claim in the original prose was inflated by 2: actual is `PG_CHANNEL_MAP=12` + separate channels handled by dedicated consumers.
+
+Action: `cicatrix-scars.md` Law 3 row should be reviewed and amended to reflect canonical 12-channel count (NOT done in this loop — operator-controlled file).
 
 ## The 1 claim the ghost prose got right
 
