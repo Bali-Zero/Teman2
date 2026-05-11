@@ -254,15 +254,21 @@ fi
 NEW_HEAD=$(git rev-parse --short HEAD)
 log "OK pulled to $NEW_HEAD ($COMMITS_BEHIND commits)"
 
-# 2026-05-11 TCC-safe sync: copia file config che cron+launchd
-# devono leggere ma TCC blocca su ~/Desktop. Non-fatale se sync fallisce.
+# 2026-05-11 TCC-safe sync via git checkout (cp falliva su TCC, ma
+# git binary ha FDA implicito quindi git --git-dir + --work-tree va).
+# git esce 0 anche per "no change", quindi check exit + verifica file.
 mkdir -p "$HOME/agent-config" 2>/dev/null
-if [ -f "$REPO/config/job-ownership.yaml" ]; then
-  if cp "$REPO/config/job-ownership.yaml" "$HOME/agent-config/job-ownership.yaml" 2>>"$LOG_FILE"; then
-    log "  synced config/job-ownership.yaml -> ~/agent-config/"
-  else
-    log "  WARN: failed to sync job-ownership.yaml to ~/agent-config/"
+if git --git-dir="$REPO/.git" --work-tree="$HOME/agent-config" \
+       checkout origin/main -- config/job-ownership.yaml 2>>"$LOG_FILE"; then
+  if [ -f "$HOME/agent-config/config/job-ownership.yaml" ]; then
+    # Move into root for backwards compat ($HOME/agent-config/job-ownership.yaml)
+    mv "$HOME/agent-config/config/job-ownership.yaml" \
+       "$HOME/agent-config/job-ownership.yaml" 2>/dev/null || true
+    rmdir "$HOME/agent-config/config" 2>/dev/null || true
+    log "  synced config/job-ownership.yaml -> ~/agent-config/ (via git checkout)"
   fi
+else
+  log "  WARN: failed to sync job-ownership.yaml to ~/agent-config/"
 fi
 
 # Restore stash. Conflict-tolerant: on conflict, leave stash for human review.
