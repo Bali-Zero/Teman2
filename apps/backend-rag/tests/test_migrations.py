@@ -17,6 +17,15 @@ from backend.db.migration_base import BaseMigration, MigrationError
 from backend.db.migration_manager import MigrationManager
 
 
+def _write_test_migration(tmp_path: Path, filename: str = "001_fix_missing_tables.sql") -> str:
+    """Create a minimal SQL file for BaseMigration unit tests."""
+    (tmp_path / filename).write_text(
+        "CREATE TABLE IF NOT EXISTS test_migration_table (id INTEGER);\n",
+        encoding="utf-8",
+    )
+    return filename
+
+
 @pytest.fixture
 async def test_db():
     """Create test database connection"""
@@ -34,18 +43,23 @@ async def test_db():
 @pytest.fixture
 def migration_manager():
     """Create migration manager instance"""
+    if not settings.database_url:
+        pytest.skip("DATABASE_URL not configured")
     return MigrationManager()
 
 
 class TestBaseMigration:
     """Test BaseMigration class"""
 
-    def test_migration_initialization(self):
+    def test_migration_initialization(self, tmp_path: Path):
         """Test migration can be initialized"""
+        sql_file = _write_test_migration(tmp_path)
         migration = BaseMigration(
             migration_number=999,
-            sql_file="001_fix_missing_tables.sql",
+            sql_file=sql_file,
             description="Test migration",
+            rollback_sql="DROP TABLE IF EXISTS test_migration_table;",
+            _sql_dir=tmp_path,
         )
         assert migration.migration_number == 999
         # Migration name should strip the migration number prefix from SQL filename
@@ -57,10 +71,15 @@ class TestBaseMigration:
         with pytest.raises(MigrationError, match="SQL file not found"):
             BaseMigration(migration_number=999, sql_file="nonexistent.sql", description="Test")
 
-    def test_sql_validation_dangerous_patterns(self):
+    def test_sql_validation_dangerous_patterns(self, tmp_path: Path):
         """Test SQL validation rejects dangerous patterns"""
+        sql_file = _write_test_migration(tmp_path)
         migration = BaseMigration(
-            migration_number=999, sql_file="001_fix_missing_tables.sql", description="Test"
+            migration_number=999,
+            sql_file=sql_file,
+            description="Test",
+            rollback_sql="DROP TABLE IF EXISTS test_migration_table;",
+            _sql_dir=tmp_path,
         )
 
         # Test DROP DATABASE
@@ -78,10 +97,15 @@ class TestBaseMigration:
         # Test TRUNCATE in comment (should pass)
         migration._validate_sql("-- TRUNCATE TABLE users;")
 
-    def test_checksum_calculation(self):
+    def test_checksum_calculation(self, tmp_path: Path):
         """Test checksum calculation"""
+        sql_file = _write_test_migration(tmp_path)
         migration = BaseMigration(
-            migration_number=999, sql_file="001_fix_missing_tables.sql", description="Test"
+            migration_number=999,
+            sql_file=sql_file,
+            description="Test",
+            rollback_sql="DROP TABLE IF EXISTS test_migration_table;",
+            _sql_dir=tmp_path,
         )
 
         sql1 = "CREATE TABLE test (id INT);"
@@ -103,6 +127,8 @@ class TestMigrationManager:
     @pytest.mark.asyncio
     async def test_migration_manager_initialization(self):
         """Test migration manager can be initialized"""
+        if not settings.database_url:
+            pytest.skip("DATABASE_URL not configured")
         manager = MigrationManager()
         assert manager.database_url is not None
 
@@ -178,22 +204,31 @@ class TestMigrationIntegration:
     """Integration tests for migrations"""
 
     @pytest.mark.asyncio
-    async def test_migration_idempotency(self, test_db):
+    async def test_migration_idempotency(self, test_db, tmp_path: Path):
         """Test that migrations can be applied multiple times safely"""
         if not settings.database_url:
             pytest.skip("DATABASE_URL not configured")
 
-        # This test requires a real migration
-        # For now, we'll test the concept
+        sql_file = _write_test_migration(tmp_path)
 
         migration = BaseMigration(
             migration_number=999,
-            sql_file="001_fix_missing_tables.sql",
+            sql_file=sql_file,
             description="Test migration for idempotency",
+            rollback_sql="DROP TABLE IF EXISTS test_migration_table;",
+            _sql_dir=tmp_path,
         )
+        await migration._ensure_migration_log(test_db)  # noqa: SLF001
 
         # First application
         try:
+            await test_db.execute("DROP TABLE IF EXISTS test_migration_table")
+            await test_db.execute(
+                "DELETE FROM schema_migrations WHERE migration_number = 999"
+            )
+            await test_db.execute(
+                "DELETE FROM _schema_versions WHERE migration_number = 999"
+            )
             result1 = await migration.apply()
             assert result1 is True
 
@@ -208,14 +243,25 @@ class TestMigrationIntegration:
             if "Cannot connect" in str(e):
                 pytest.skip(f"Cannot connect to database: {e}")
             raise
+        finally:
+            await test_db.execute("DROP TABLE IF EXISTS test_migration_table")
+            await test_db.execute(
+                "DELETE FROM schema_migrations WHERE migration_number = 999"
+            )
+            await test_db.execute(
+                "DELETE FROM _schema_versions WHERE migration_number = 999"
+            )
 
     @pytest.mark.asyncio
-    async def test_migration_verification(self, test_db):
+    async def test_migration_verification(self, test_db, tmp_path: Path):
         """Test migration verification"""
+        sql_file = _write_test_migration(tmp_path)
         migration = BaseMigration(
             migration_number=999,
-            sql_file="001_fix_missing_tables.sql",
+            sql_file=sql_file,
             description="Test migration",
+            rollback_sql="DROP TABLE IF EXISTS test_migration_table;",
+            _sql_dir=tmp_path,
         )
 
         # Default verification should return True
@@ -227,21 +273,31 @@ class TestMigrationDependencies:
     """Test migration dependency checking"""
 
     @pytest.mark.asyncio
-    async def test_dependency_checking(self, test_db):
+    async def test_dependency_checking(self, test_db, tmp_path: Path):
         """Test that dependencies are checked"""
         if not settings.database_url:
             pytest.skip("DATABASE_URL not configured")
 
         # Create a migration with a dependency that doesn't exist
+        sql_file = _write_test_migration(tmp_path)
         migration = BaseMigration(
             migration_number=999,
-            sql_file="001_fix_missing_tables.sql",
+            sql_file=sql_file,
             description="Test migration with dependency",
             dependencies=[99999],  # Non-existent migration
+            rollback_sql="DROP TABLE IF EXISTS test_migration_table;",
+            _sql_dir=tmp_path,
         )
+        await migration._ensure_migration_log(test_db)  # noqa: SLF001
 
         # Should fail because dependency doesn't exist
         try:
+            await test_db.execute(
+                "DELETE FROM schema_migrations WHERE migration_number = 999"
+            )
+            await test_db.execute(
+                "DELETE FROM _schema_versions WHERE migration_number = 999"
+            )
             with pytest.raises(MigrationError, match="depends on"):
                 await migration.apply()
         except MigrationError as e:
@@ -253,6 +309,13 @@ class TestMigrationDependencies:
                 raise
             # Otherwise skip
             pytest.skip(f"Unexpected error: {e}")
+        finally:
+            await test_db.execute(
+                "DELETE FROM schema_migrations WHERE migration_number = 999"
+            )
+            await test_db.execute(
+                "DELETE FROM _schema_versions WHERE migration_number = 999"
+            )
 
 
 if __name__ == "__main__":

@@ -85,6 +85,7 @@ def _get_api_v1_prefix() -> str:
 ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     # ── Admin ──
     RouterEntry(name="admin_conversation_cleanup", process_groups=_API, tags=("admin",)),
+    RouterEntry(name="admin_crm_kg",               process_groups=_API, tags=("admin", "crm-kg")),
     RouterEntry(name="admin_drive_auth",           process_groups=_API, tags=("admin", "drive")),
     RouterEntry(name="admin_drive_health",         process_groups=_API, tags=("admin", "drive")),
     RouterEntry(name="admin_drive_refresh",        process_groups=_API, tags=("admin", "drive")),
@@ -136,6 +137,7 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="crm_portal_integration", process_groups=_API, tags=("crm", "portal")),
     RouterEntry(name="crm_practices",          process_groups=_RAG, tags=("crm", "rag")),
     RouterEntry(name="crm_shared_memory",      process_groups=_API, tags=("crm",)),
+    RouterEntry(name="crm_tax_pilot",          process_groups=_API, tags=("crm", "pilot", "tax")),
 
     # ── Conversations / Memory ──
     RouterEntry(name="collective_memory", process_groups=_RAG, tags=("memory",)),

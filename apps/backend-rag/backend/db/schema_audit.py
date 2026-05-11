@@ -20,13 +20,17 @@ Checks implemented in this PR:
    we have two tables in flight: ``_schema_versions`` (legacy, written by
    ``MigrationManager``) and ``schema_migrations`` (canonical, written by
    ``BaseMigration.apply()``). The audit fails when a migration number is
-   recorded in one but not the other — that signals the runner saw a
-   half-success and the next deploy will misjudge the state.
+   recorded in one but not the other, or when either table records the same
+   migration number multiple times — that signals the runner saw a
+   half-success / duplicate ledger entry and the next deploy will misjudge the state.
 3. **Required-tables presence (opt-in).** When the env var
    ``SCHEMA_AUDIT_REQUIRED_TABLES`` is set to a comma-separated list of
    table names, the audit fails if any of them is missing from the
    ``public`` schema. Empty by default — the project will populate it as
    Step 4 (eliminate ``create_all`` bootstrap) lands.
+4. **Client email uniqueness.** The CRM treats email as an identity key;
+   duplicates after trim/lowercase normalization are a data-quality failure
+   because PostgreSQL's legacy ``UNIQUE(email)`` constraint is case-sensitive.
 
 The audit deliberately does NOT:
 
@@ -135,6 +139,14 @@ async def _table_exists(conn: asyncpg.Connection, name: str) -> bool:
     )
 
 
+def _duplicate_numbers(numbers: list[int]) -> dict[int, int]:
+    """Return duplicate migration numbers and their occurrence counts."""
+    counts: dict[int, int] = {}
+    for number in numbers:
+        counts[number] = counts.get(number, 0) + 1
+    return {number: count for number, count in sorted(counts.items()) if count > 1}
+
+
 async def _check_tracking_divergence(pool: asyncpg.Pool) -> list[Finding]:
     """Compare the two tracking tables for orphan rows on either side.
 
@@ -157,19 +169,49 @@ async def _check_tracking_divergence(pool: asyncpg.Pool) -> list[Finding]:
         if not legacy_exists and canonical_exists:
             return []
 
-        legacy_numbers: set[int] = set()
+        legacy_number_rows: list[int] = []
         if legacy_exists:
             rows = await conn.fetch(
                 "SELECT migration_number FROM _schema_versions",
             )
-            legacy_numbers = {int(r["migration_number"]) for r in rows}
+            legacy_number_rows = [int(r["migration_number"]) for r in rows]
 
-        canonical_numbers: set[int] = set()
+        canonical_number_rows: list[int] = []
         if canonical_exists:
             rows = await conn.fetch(
                 "SELECT migration_number FROM schema_migrations",
             )
-            canonical_numbers = {int(r["migration_number"]) for r in rows}
+            canonical_number_rows = [int(r["migration_number"]) for r in rows]
+
+        legacy_duplicates = _duplicate_numbers(legacy_number_rows)
+        canonical_duplicates = _duplicate_numbers(canonical_number_rows)
+        if legacy_duplicates:
+            findings.append(
+                Finding(
+                    code="tracking_duplicate_legacy",
+                    severity="error",
+                    message=(
+                        f"{len(legacy_duplicates)} duplicate migration number(s) "
+                        "recorded in _schema_versions"
+                    ),
+                    details={"duplicates": legacy_duplicates},
+                ),
+            )
+        if canonical_duplicates:
+            findings.append(
+                Finding(
+                    code="tracking_duplicate_canonical",
+                    severity="error",
+                    message=(
+                        f"{len(canonical_duplicates)} duplicate migration number(s) "
+                        "recorded in schema_migrations"
+                    ),
+                    details={"duplicates": canonical_duplicates},
+                ),
+            )
+
+        legacy_numbers = set(legacy_number_rows)
+        canonical_numbers = set(canonical_number_rows)
 
         only_in_legacy = sorted(legacy_numbers - canonical_numbers)
         only_in_canonical = sorted(canonical_numbers - legacy_numbers)
@@ -230,6 +272,52 @@ async def _check_required_tables(
     ]
 
 
+async def _check_client_email_uniqueness(pool: asyncpg.Pool) -> list[Finding]:
+    """Fail when clients contain duplicate emails after trim/lowercase."""
+    async with pool.acquire() as conn:
+        if not await _table_exists(conn, "clients"):
+            return []
+
+        rows = await conn.fetch(
+            """
+            SELECT
+                LOWER(BTRIM(email)) AS normalized_email,
+                COUNT(*)::int AS count,
+                ARRAY_AGG(id ORDER BY created_at NULLS LAST, id) AS client_ids
+            FROM clients
+            WHERE email IS NOT NULL
+              AND BTRIM(email) <> ''
+            GROUP BY LOWER(BTRIM(email))
+            HAVING COUNT(*) > 1
+            ORDER BY count DESC, normalized_email
+            LIMIT 25
+            """,
+        )
+
+    if not rows:
+        return []
+
+    duplicates = [
+        {
+            "normalized_email": str(row["normalized_email"]),
+            "count": int(row["count"]),
+            "client_ids": [int(client_id) for client_id in row["client_ids"]],
+        }
+        for row in rows
+    ]
+    return [
+        Finding(
+            code="client_email_duplicates",
+            severity="error",
+            message=(
+                f"{len(duplicates)} duplicate client email group(s) after "
+                "trim/lowercase normalization"
+            ),
+            details={"duplicates": duplicates},
+        ),
+    ]
+
+
 # ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
@@ -260,12 +348,14 @@ async def run_audit(
         "pending_migrations",
         "tracking_divergence",
         "required_tables",
+        "client_email_uniqueness",
     ]
     findings: list[Finding] = []
     try:
         findings.extend(await _check_pending_migrations(manager))
         findings.extend(await _check_tracking_divergence(manager.pool))
         findings.extend(await _check_required_tables(manager.pool, required_tables))
+        findings.extend(await _check_client_email_uniqueness(manager.pool))
     finally:
         await manager.close()
 

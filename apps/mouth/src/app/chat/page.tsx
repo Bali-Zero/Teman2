@@ -17,6 +17,11 @@ import {
 } from "@/components/chat";
 
 export default function ChatPage() {
+  const userMenuRef = React.useRef<HTMLDivElement>(null);
+  const attachMenuRef = React.useRef<HTMLDivElement>(null);
+  const avatarInputRef = React.useRef<HTMLInputElement>(null);
+  const [showAttachMenu, setShowAttachMenu] = React.useState(false);
+
   // 1. Estrazione di tutto lo stato e i metodi dall'Orchestratore
   const {
     displayMessages,
@@ -83,8 +88,8 @@ export default function ChatPage() {
           userAvatar={userAvatar}
           showUserMenu={showUserMenu}
           onToggleUserMenu={() => setShowUserMenu(!showUserMenu)}
-          userMenuRef={null as any}
-          avatarInputRef={null as any}
+          userMenuRef={userMenuRef}
+          avatarInputRef={avatarInputRef}
           onAvatarUpload={handleAvatarChange}
           onShowToast={showToast}
         />
@@ -112,15 +117,17 @@ export default function ChatPage() {
           setShowImagePrompt={(val) => chatInput.setImageGenPrompt(val ? " " : "")}
           onSend={handleSend}
           onImageGenerate={() => setImageModalOpen(true)}
-          showAttachMenu={false}
-          setShowAttachMenu={() => {}}
-          attachMenuRef={null as any}
+          showAttachMenu={showAttachMenu}
+          setShowAttachMenu={setShowAttachMenu}
+          attachMenuRef={attachMenuRef}
           fileInputRef={fileInputRef}
           onFileChange={async (e) => chatInput.handleImageAttach(e)}
           isRecording={false}
           recordingTime={0}
           onStartRecording={() => {}}
           onStopRecording={() => {}}
+          attachedImages={chatInput.attachedImages}
+          onRemoveImage={chatInput.removeAttachedImage}
         />
       </div>
 

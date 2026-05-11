@@ -12,10 +12,11 @@ primary_region = 'sin'
 
 [deploy]
   strategy = 'rolling'
-  release_command = "sh -c 'python -m backend.db.migrate apply-all'"
+  release_command = "sh -c 'python -m backend.db.migrate apply-all && python -m backend.db.schema_audit'"
   # RE-ENABLED 2026-04-06: migration_manager hardened with advisory lock + orphan tolerance
   # Previously disabled for omnichannel deploy bug (commit 1253542d4) — root cause: orphan migration files
-  # Safety: migrations_v2/ currently empty, advisory lock prevents concurrent runs during rolling deploy
+  # Safety: advisory lock prevents concurrent runs during rolling deploy; schema_audit blocks promotion
+  # when migration tracking, required tables, or client email uniqueness drift.
 
 [processes]
   # --timeout-worker-healthcheck 600: presidio/torch/transformers import chain
@@ -78,7 +79,9 @@ primary_region = 'sin'
   processes = ['rag']
 
 [[vm]]
-  memory = '1gb'
+  # 2026-05-09: api OOM-killed a worker at 1GB with --workers 2 during
+  # production traffic/cold-start imports. Keep api at 2GB like rag.
+  memory = '2gb'
   cpu_kind = 'shared'
   cpus = 1
   processes = ['api']

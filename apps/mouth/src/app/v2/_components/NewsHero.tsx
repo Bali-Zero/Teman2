@@ -154,7 +154,7 @@ export function NewsHero({ articles }: { articles: ArticleListItem[] }) {
                   alt={s.title || ""}
                   fill
                   sizes="(max-width: 768px) 100vw, 900px"
-                  quality={82}
+                  quality={75}
                   loading={i === 0 ? "eager" : "lazy"}
                   priority={i === 0}
                   className="object-cover transition-transform duration-700 group-hover:scale-[1.03]"

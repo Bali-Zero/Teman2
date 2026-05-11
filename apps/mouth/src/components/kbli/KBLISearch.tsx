@@ -13,6 +13,8 @@ interface Props {
   autoFocus?: boolean;
   className?: string;
   placeholder?: string;
+  /** Pre-fill the search input from ?q= URL param (homepage → KBLI deep-link). */
+  initialQuery?: string;
 }
 
 export function KBLISearch({
@@ -20,14 +22,22 @@ export function KBLISearch({
   autoFocus = false,
   className,
   placeholder = "Search KBLI codes (e.g. restaurant, villas, consulting)...",
+  initialQuery = "",
 }: Props) {
-  const [query, setQuery] = React.useState("");
+  const [query, setQuery] = React.useState(initialQuery);
   const [results, setResults] = React.useState<KBLISearchResult[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isOpen, setIsOpen] = React.useState(false);
   const [activeIndex, setActiveIndex] = React.useState(-1);
   const router = useRouter();
   const containerRef = React.useRef<HTMLDivElement>(null);
+
+  // Sync initialQuery on mount only (URL ?q= pre-fill).
+  // Not in dep array — intentional: user can freely edit after mount.
+  React.useEffect(() => {
+    if (initialQuery) setQuery(initialQuery);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Close dropdown when clicking outside
   React.useEffect(() => {

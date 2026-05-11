@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.nuzantara.nb-mitochondrial-monitor.daily</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/.venv/bin/python</string>
+        <string>-m</string>
+        <string>mata_garuda.scripts.nb_monitor.run</string>
+    </array>
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda</string>
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>2</integer>
+        <key>Minute</key>
+        <integer>30</integer>
+    </dict>
+    <key>RunAtLoad</key>
+    <false/>
+    <key>KeepAlive</key>
+    <false/>
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/.agent/nb-mitochondrial/logs/nb-monitor.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/.agent/nb-mitochondrial/logs/nb-monitor.error.log</string>
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/Users/nuzantara/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+</dict>
+</plist>

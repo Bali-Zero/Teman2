@@ -4,7 +4,9 @@ Format is the one consumed by the APPLICA_WAR_ROOM.md runbook (shipped
 alongside claude_invoker.py at runbooks/APPLICA_WAR_ROOM.md). The
 Council decides tone + structure, the Visual service produces images,
 and this module composes the operations array using stable element IDs
-of template DAHE6lx1lf8.
+of the master template (currently DAHJEkWpkzY; was DAHJLYRn_3E briefly on
+2026-05-09 — incompatible, only 2/12 pages had richtext slots — and
+DAHE6lx1lf8 before that until it was deleted).
 
 Historical note: the legacy WR1 pipeline (apps/war-room/, removed
 2026-04-22) used to emit this same schema from a bash-composed
@@ -17,7 +19,27 @@ from __future__ import annotations
 from typing import Any
 
 # Master carousel template. See runbooks/APPLICA_WAR_ROOM.md.
-TEMPLATE_DESIGN_ID = "DAHE6lx1lf8"
+#
+# Replacement #2 (2026-05-10): DAHJLYRn_3E was structurally incompatible —
+# the design only had richtext slots on pages 2 and 3, so 19/22 ops
+# (86%) were dropped by Phase A and the apply skill aborted with
+# `template_mismatch` (Phase 0 pre-reset committed cleanly, no design
+# duplicated). Promoted DAHJEkWpkzY as the new master: it is one of the
+# 4 buggy carousels generated under the old DAHE6lx1lf8 master, so it
+# inherits the original 12-page structure with heading + body richtext
+# slots on every page (verified via get-design-content — text present on
+# pages 1-12). Phase 0 wipes residual content on every run, so the
+# "buggy old text" is not visible after the first apply.
+#
+# Replacement #1 (2026-05-09): DAHE6lx1lf8 was deleted from Canva
+# (404 / "Design not found" from start-editing-transaction). Tried
+# DAHJLYRn_3E first — see structural-mismatch note above.
+#
+# Master ID: DAHJEkWpkzY · 12 pages · gray Bali-Zero brand background.
+# The renderer still clamps to MAX_SLIDES_TEMPLATE (11), so page 12 is
+# left untouched on every run — that is by design, Instagram auto-crops
+# trailing blank pages.
+TEMPLATE_DESIGN_ID = "DAHJEkWpkzY"
 CAROUSEL_FOLDER_ID = "FAHEwkTYduI"
 
 # Legibility Armor gradient overlay — 4:5 PNG with strong dark at top (heading
@@ -35,18 +57,34 @@ LEGIBILITY_ARMOR_URL = (
 # (page_index, heading_element_id, body_element_id_or_None)
 # Recovered 2026-03-26 via start-editing-transaction, re-confirmed 2026-04-22.
 # Pages 9 and 11 have image+heading only — no body slot in the template.
-TEMPLATE_SLOTS: list[tuple[int, str, str | None]] = [
-    (1, "PB6Rxs8n5DZkNS9Z-LB7Ms2Np5mWMHmSS", "PB6Rxs8n5DZkNS9Z-LBKpxy8Y8VM8g5sm"),
-    (2, "PBRnkF5C2FHvWPPp-LBwYVgC9yVwkqB5w", "PBRnkF5C2FHvWPPp-LBSxs84s03skX2bJ"),
-    (3, "PBswT8p6LMg6vyX4-LBZ0XDG56kG2Vclt", "PBswT8p6LMg6vyX4-LBR7pfgBKZYHQxLJ"),
-    (4, "PB9rgJ5tQj1yNJrD-LBtDrMM3Bp4nJ4v9", "PB9rgJ5tQj1yNJrD-LBGHjSsS3lj7VY3Z"),
-    (5, "PBZjXPTPh9tnvx82-LBSZHpqHtJfq43QC", "PBZjXPTPh9tnvx82-LB9q34XMJhYmJcVV"),
-    (6, "PBgr2GbZD3DJkPP0-LB0cZMDY3BRdprNk", "PBgr2GbZD3DJkPP0-LB1kPFcPYqsqQYfQ"),
-    (7, "PBk1XphW0PnpKMh2-LBbh37qB3S4DrdrD", "PBk1XphW0PnpKMh2-LB2XL6f0tjmwhgk8"),
-    (8, "PBNffcgkNpZKTtmM-LBqZPxQl4n18fr93", "PBNffcgkNpZKTtmM-LBY2F75l9NJp4bpf"),
-    (9, "PBqdbS4QcwHgGN0F-LBxNXD1BhmjjkJfc", None),
-    (10, "PBz4hjP71RbnjKhb-LBbCpkK9wH5C1KQX", "PBz4hjP71RbnjKhb-LBTVJsF8WVLZBx8L"),
-    (11, "PBxns7m6jJJm3BKT-LBtXZ6mvNj5TH3n0", None),
+# 2026-05-07: TEMPLATE_SLOTS deprecated as authoritative element_id source.
+# The hardcoded suffixes have drifted from the live template (different
+# element ID suffixes, page reordering — page 9 in this list maps to live
+# page 7's prefix `PBqdbS4QcwHg...`). Result: heading text was being applied
+# to body slots and vice versa, producing the "title smaller than body"
+# typography inversion the operator flagged in DAHI7R8qiMo screenshots.
+#
+# The element_id values below are kept as a hint for the apply skill — the
+# skill's Phase A role_index remap is the actual mechanism that finds the
+# right element by visual hierarchy (height descending). When live remap
+# fails, these IDs are tried as a last-resort exact match. Suffixes are
+# deliberately set to None so the skill ALWAYS goes through the height-based
+# remap; future-proof against template revisions in Canva UI.
+#
+# Sprint B item: replace this list with a "role spec" that the skill resolves
+# at runtime via start-editing-transaction (no IDs in pending JSON at all).
+TEMPLATE_SLOTS: list[tuple[int, str | None, str | None]] = [
+    (1, None, None),
+    (2, None, None),
+    (3, None, None),
+    (4, None, None),
+    (5, None, None),
+    (6, None, None),
+    (7, None, None),
+    (8, None, None),
+    (9, None, None),
+    (10, None, None),
+    (11, None, None),
 ]
 
 # Image element IDs per page — None means APPLICA runbook retrieves ID
@@ -77,7 +115,7 @@ VALID_TONES = frozenset({
     "tecnico",
 })
 
-# Template DAHE6lx1lf8 has exactly 11 pages. Carousels SHORTER than 11 use the
+# Master template has at least 11 pages used by the renderer. Carousels SHORTER than 11 use the
 # first N pages; the apply skill resets (wipes) the unused pages to blank so
 # the Canva duplicate in the output folder only exposes N slides when a user
 # views it (Canva engine still renders all 11 internally, but blank pages are
@@ -86,7 +124,7 @@ VALID_TONES = frozenset({
 MIN_SLIDES = 5
 MAX_SLIDES = 11
 MAX_SLIDES_REQUESTED = 13  # what the draft generator is allowed to output
-MAX_SLIDES_TEMPLATE = 11  # hard cap of DAHE6lx1lf8 template
+MAX_SLIDES_TEMPLATE = 11  # hard cap of master template usable area
 
 
 def slides_to_operations(slides: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -122,9 +160,19 @@ def slides_to_operations(slides: list[dict[str, Any]]) -> list[dict[str, Any]]:
                 "page_index": page_index,
             })
 
-        # Body only if both slot exists AND slide carries body text
+        # Body op whenever the slide carries body text. element_id is
+        # ALWAYS None — TEMPLATE_SLOTS was deliberately None-filled
+        # 2026-05-07 to defer to the apply skill's runtime remap. The
+        # canva-apply skill (~/.claude/skills/canva-apply.md step 8)
+        # resolves slot via top-ascending role_index per page: first
+        # replace_text op → role_index=0 (heading, emitted above),
+        # second → role_index=1 (body, emitted here). Skipping body
+        # ops when body_eid is None — the previous behaviour — meant
+        # ZERO body text ever reached Canva, producing the
+        # "headline-only, body blank" pattern observed in
+        # DAHJDtWApaw / DAHJCzTzn1I PDFs (2026-05-08).
         body = (slide.get("body") or "").strip()
-        if body and body_eid:
+        if body:
             operations.append({
                 "type": "replace_text",
                 "element_id": body_eid,

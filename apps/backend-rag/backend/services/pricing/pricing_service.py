@@ -1,5 +1,22 @@
 """Official Pricing Service
-Loads official prices from JSON (NO AI GENERATION)"""
+Loads official prices from JSON (NO AI GENERATION).
+
+Source of truth: ``backend/data/bali_zero_official_prices_2026.json``.
+
+The 2026 schema differs from the legacy 2025 one in three ways the
+service has to handle internally:
+
+* The ``urgent_services`` category was renamed ``urgent_processing``.
+* The ``visa_extensions`` category was dropped — ``C1 Tourism Extension``
+  now lives inside ``single_entry_visas``.
+* New categories ``tax_accounting`` (which has one extra nesting level
+  for the four tier sub-blocks ``monthly_tax_basic`` / ``monthly_tax_bundled``
+  / ``annual_basic_packages`` / ``annual_standalone``) and
+  ``consultant_services`` (flat, like the others).
+* Each entry now exposes ``name`` / ``description_en`` / ``icon_id``
+  / ``tier_range`` (a list ``[low, high]`` or ``None``) on top of the
+  legacy ``price`` / ``duration`` / ``validity`` / ``notes`` fields.
+"""
 
 import json
 import logging
@@ -9,6 +26,76 @@ from typing import Any
 from backend.app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+# Authoritative pricing JSON, 2026 edition.
+_PRICING_FILENAME = "bali_zero_official_prices_2026.json"
+
+# Categories whose value is a flat ``{service_name: entry}`` mapping.
+_FLAT_CATEGORIES = (
+    "single_entry_visas",
+    "multiple_entry_visas",
+    "kitas_permits",
+    "kitap_permits",
+    "company_services",
+    "consultant_services",
+    "other_process",
+    "urgent_processing",
+)
+
+# Categories whose value is ``{sub_block: {service_name: entry}}``.
+_NESTED_CATEGORIES = ("tax_accounting",)
+
+
+def _format_tier_range(tier_range: list[str] | tuple[str, str] | None) -> str | None:
+    """Render a ``tier_range`` (e.g. ``["1.800.000 IDR", "2.000.000 IDR"]``)
+    as ``"Rp 1.800.000 – 2.000.000"`` for human-facing surfaces."""
+    if not tier_range or len(tier_range) != 2:
+        return None
+    low_raw, high_raw = tier_range
+    low = (low_raw or "").replace("IDR", "").strip()
+    high = (high_raw or "").replace("IDR", "").strip()
+    if not low or not high:
+        return None
+    return f"Rp {low} – {high}"
+
+
+def _entry_display_price(entry: dict[str, Any]) -> str:
+    """Return the best human price string for a 2026 entry.
+
+    Falls back to ``tier_range`` when ``price`` is empty (typical for
+    ``tax_accounting`` rows) and to ``"Contact"`` if both are missing.
+    """
+    price = (entry.get("price") or "").strip()
+    if price:
+        return price
+    rendered = _format_tier_range(entry.get("tier_range"))
+    if rendered:
+        return rendered
+    return "Contact"
+
+
+def _iter_service_entries(
+    services: dict[str, Any],
+) -> list[tuple[str, str, dict[str, Any]]]:
+    """Yield ``(category, service_name, entry)`` triples across the whole
+    ``services`` mapping, descending one extra level for nested categories
+    such as ``tax_accounting`` so callers see a flat stream."""
+    triples: list[tuple[str, str, dict[str, Any]]] = []
+    for category_name, category_payload in services.items():
+        if not isinstance(category_payload, dict):
+            continue
+        if category_name in _NESTED_CATEGORIES:
+            for sub_block in category_payload.values():
+                if not isinstance(sub_block, dict):
+                    continue
+                for service_name, entry in sub_block.items():
+                    if isinstance(entry, dict):
+                        triples.append((category_name, service_name, entry))
+        else:
+            for service_name, entry in category_payload.items():
+                if isinstance(entry, dict):
+                    triples.append((category_name, service_name, entry))
+    return triples
 
 
 class PricingService:
@@ -20,12 +107,10 @@ class PricingService:
         self._load_prices()
 
     def _load_prices(self) -> None:
-        """Load official prices from JSON file"""
+        """Load official prices from the 2026 JSON file."""
         try:
-            # Path to official prices JSON
-            # Note: File is in backend/data/ (3 levels up from services/pricing/)
             json_path = (
-                Path(__file__).parent.parent.parent / "data" / "bali_zero_official_prices_2025.json"
+                Path(__file__).parent.parent.parent / "data" / _PRICING_FILENAME
             )
 
             if not json_path.exists():
@@ -40,22 +125,17 @@ class PricingService:
             self.loaded = True
             logger.info(f"Loaded official prices from {json_path}")
 
-            # Count services
-            service_count = 0
-            for category in [
-                "single_entry_visas",
-                "multiple_entry_visas",
-                "visa_extensions",
-                "kitas_permits",
-                "kitap_permits",
-                "company_services",
-                "other_process",
-                "urgent_services",
-            ]:
-                if category in self.prices.get("services", {}):
-                    service_count += len(self.prices["services"][category])
-
-            logger.info(f"{service_count} services loaded across 8 categories")
+            # Count services across the full 9-category 2026 schema, descending
+            # into ``tax_accounting`` sub-blocks so the log line reflects the
+            # real number of priced rows.
+            service_count = len(_iter_service_entries(self.prices.get("services", {})))
+            categories_present = [
+                cat for cat in (*_FLAT_CATEGORIES, *_NESTED_CATEGORIES)
+                if cat in self.prices.get("services", {})
+            ]
+            logger.info(
+                f"{service_count} services loaded across {len(categories_present)} categories"
+            )
 
         except Exception as e:
             logger.error(f"Error loading official prices: {e}")
@@ -110,15 +190,20 @@ class PricingService:
         return self.prices
 
     def search_service(self, query: str) -> dict[str, Any]:
-        """Search for a specific service by name or keyword (supports both list and dict formats)"""
+        """Search for a specific service by name or keyword.
+
+        Supports both the legacy LIST shape (some unit tests still mount
+        ``[{code, name, ...}]`` fixtures) and the 2026 DICT shape, plus
+        the 2026-only nested ``tax_accounting`` sub-block layout.
+        """
         if not self.loaded:
             return {
                 "error": "Official prices not loaded",
-                "contact": self.prices.get("contact_info", {}),
+                "contact": self.prices.get("contact_info", self.prices.get("metadata", {}).get("contact", {})),
             }
 
         query_lower = query.lower().strip()
-        results = {}
+        results: dict[str, Any] = {}
 
         # Extract keywords from query (remove common words)
         noise_words = {
@@ -174,63 +259,79 @@ class PricingService:
             # If all words were noise, use the raw query
             clean_keywords = [query_lower]
 
-        # Search across all service categories
         services = self.prices.get("services", {})
+
+        def _score_dict_entry(
+            category_name: str,
+            service_name: str,
+            service_data: dict[str, Any],
+            container: dict[str, Any] | None = None,
+        ) -> None:
+            service_text = service_name.lower()
+            service_text += " " + str(service_data.get("name", "")).lower()
+            service_text += " " + str(service_data.get("notes", "")).lower()
+            service_text += " " + str(service_data.get("description_en", "")).lower()
+            legacy_names = service_data.get("legacy_names", [])
+            if isinstance(legacy_names, list):
+                service_text += " " + " ".join(n.lower() for n in legacy_names)
+            match_count = sum(1 for term in clean_keywords if term in service_text)
+            if match_count > 0:
+                target = container if container is not None else results
+                target.setdefault(category_name, {})[service_name] = service_data
+
         for category_name, category_services in services.items():
-            # Handle LIST format (array of service objects)
+            # Handle LIST format (legacy fixtures only — no 2026 category uses this)
             if isinstance(category_services, list):
                 for service_item in category_services:
                     if not isinstance(service_item, dict):
                         continue
-                    # Build searchable text ONLY from code and name fields (not prices!)
                     code = str(service_item.get("code", "")).lower()
                     name = str(service_item.get("name", "")).lower()
                     notes = str(service_item.get("notes", "")).lower()
-                    service_text = f"{code} {name} {notes}"
+                    description = str(service_item.get("description_en", "")).lower()
+                    service_text = f"{code} {name} {notes} {description}"
 
-                    # Also check legacy_names if present
                     legacy_names = service_item.get("legacy_names", [])
                     if isinstance(legacy_names, list):
                         service_text += " " + " ".join(n.lower() for n in legacy_names)
 
-                    # Score: count how many keywords match
                     match_count = sum(1 for term in clean_keywords if term in service_text)
-
                     if match_count > 0:
-                        if category_name not in results:
-                            results[category_name] = []
-                        results[category_name].append((match_count, service_item))
+                        results.setdefault(category_name, []).append(
+                            (match_count, service_item),
+                        )
+                continue
 
-            # Handle DICT format (for backward compatibility)
-            elif isinstance(category_services, dict):
-                for service_name, service_data in category_services.items():
-                    service_text = service_name.lower()
-                    if isinstance(service_data, dict):
-                        service_text += " " + str(service_data.get("name", "")).lower()
-                        service_text += " " + str(service_data.get("notes", "")).lower()
-                    legacy_names = (
-                        service_data.get("legacy_names", [])
-                        if isinstance(service_data, dict)
-                        else []
-                    )
-                    legacy_text = " ".join([n.lower() for n in legacy_names])
-                    full_search_text = service_text + " " + legacy_text
+            if not isinstance(category_services, dict):
+                continue
 
-                    match_count = sum(1 for term in clean_keywords if term in full_search_text)
-                    if match_count > 0:
-                        if category_name not in results:
-                            results[category_name] = {}
-                        results[category_name][service_name] = service_data
+            # 2026: ``tax_accounting`` is one level deeper.
+            if category_name in _NESTED_CATEGORIES:
+                for sub_block_name, sub_block in category_services.items():
+                    if not isinstance(sub_block, dict):
+                        continue
+                    for service_name, service_data in sub_block.items():
+                        if not isinstance(service_data, dict):
+                            continue
+                        # Annotate the entry with its sub-block so callers
+                        # (UI, MCP, prompt builder) can preserve the
+                        # tier hierarchy without us flattening it.
+                        annotated = {**service_data, "_sub_block": sub_block_name}
+                        _score_dict_entry(category_name, service_name, annotated)
+                continue
+
+            # Flat dict (single_entry_visas, kitas_permits, …, urgent_processing).
+            for service_name, service_data in category_services.items():
+                if not isinstance(service_data, dict):
+                    continue
+                _score_dict_entry(category_name, service_name, service_data)
 
         # For list results, sort by match_count descending, keep top results
-        filtered_results = {}
+        filtered_results: dict[str, Any] = {}
         for category_name, items in results.items():
             if isinstance(items, list):
-                # Sort by match score descending
                 items.sort(key=lambda x: x[0], reverse=True)
                 max_score = items[0][0] if items else 0
-                # Keep only items with score >= max_score (best matches)
-                # Or if max_score == 1, keep top 5 to avoid returning everything
                 if max_score <= 1:
                     best_items = [item for _score, item in items[:5]]
                 else:
@@ -239,90 +340,126 @@ class PricingService:
             else:
                 filtered_results[category_name] = items
 
+        contact_info = self.prices.get(
+            "contact_info",
+            self.prices.get("metadata", {}).get("contact", {}),
+        )
+
         if filtered_results:
             return {
-                "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025",
+                "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2026",
                 "search_query": query,
                 "results": filtered_results,
-                "contact_info": self.prices.get("contact_info", {}),
+                "contact_info": contact_info,
                 "disclaimer": self.prices.get("disclaimer", {}),
             }
         return {
-            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025",
+            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2026",
             "search_query": query,
             "message": f"No service found for '{query}'",
             "suggestion": f"Contact {settings.SUPPORT_EMAIL} for custom quotes",
-            "contact_info": self.prices.get("contact_info", {}),
+            "contact_info": contact_info,
         }
 
+    def _contact_info(self) -> dict[str, Any]:
+        """Single source for contact info — prefer 2026 ``metadata.contact``."""
+        explicit = self.prices.get("contact_info")
+        if explicit:
+            return explicit
+        return self.prices.get("metadata", {}).get("contact", {})
+
     def get_visa_prices(self) -> dict[str, Any]:
-        """Get all visa prices (single entry + multiple entry)"""
+        """Get all visa prices.
+
+        2026 dropped the ``visa_extensions`` category — ``C1 Tourism Extension``
+        is now a row inside ``single_entry_visas``. We still publish the
+        ``visa_extensions`` key in the response for backwards compatibility
+        with the Mouth ``PricingTable.tsx`` renderer, but it is empty.
+        """
         if not self.loaded:
             return {"error": "Prices not loaded"}
 
         services = self.prices.get("services", {})
         return {
-            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025 - VISA",
+            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2026 - VISA",
             "single_entry_visas": services.get("single_entry_visas", {}),
             "multiple_entry_visas": services.get("multiple_entry_visas", {}),
+            # Legacy key preserved for the Mouth chat renderer; 2026 has no
+            # standalone extensions category, so this is intentionally empty.
             "visa_extensions": services.get("visa_extensions", {}),
-            "contact_info": self.prices.get("contact_info", {}),
+            "contact_info": self._contact_info(),
             "disclaimer": self.prices.get("disclaimer", {}),
         }
 
     def get_kitas_prices(self) -> dict[str, Any]:
-        """Get all KITAS prices"""
+        """Get all KITAS / KITAP prices."""
         if not self.loaded:
             return {"error": "Prices not loaded"}
 
         services = self.prices.get("services", {})
         return {
-            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025 - KITAS",
+            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2026 - KITAS",
             "kitas_permits": services.get("kitas_permits", {}),
-            "contact_info": self.prices.get("contact_info", {}),
+            "kitap_permits": services.get("kitap_permits", {}),
+            "contact_info": self._contact_info(),
             "disclaimer": self.prices.get("disclaimer", {}),
             "important_warnings": self.prices.get("important_warnings", {}),
         }
 
     def get_business_prices(self) -> dict[str, Any]:
-        """Get business & company service prices"""
+        """Get business / company / consultant service prices.
+
+        2026 added ``consultant_services`` (Close PMA, NPWPD, BPJS, NPWP
+        Personal, Update Data, EFIN). Surfaced alongside the existing
+        ``company_services`` and ``other_process`` so the prompt builder
+        and the Mouth UI can render them together.
+        """
         if not self.loaded:
             return {"error": "Prices not loaded"}
 
         services = self.prices.get("services", {})
         return {
-            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025 - BUSINESS",
+            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2026 - BUSINESS",
             "company_services": services.get("company_services", {}),
+            "consultant_services": services.get("consultant_services", {}),
             "other_process": services.get("other_process", {}),
-            "contact_info": self.prices.get("contact_info", {}),
+            "contact_info": self._contact_info(),
             "disclaimer": self.prices.get("disclaimer", {}),
             "important_warnings": self.prices.get("important_warnings", {}),
         }
 
     def get_tax_prices(self) -> dict[str, Any]:
-        """Get urgent service prices (no dedicated tax category)"""
+        """Get tax & accounting prices.
+
+        2026 introduced the dedicated ``tax_accounting`` category with four
+        nested sub-blocks (``monthly_tax_basic`` / ``monthly_tax_bundled``
+        / ``annual_basic_packages`` / ``annual_standalone``). The nested
+        structure is preserved in the response so callers can render the
+        tier hierarchy. Urgent processing kept under its 2026 name
+        (``urgent_processing``).
+        """
         if not self.loaded:
             return {"error": "Prices not loaded"}
 
         services = self.prices.get("services", {})
         return {
-            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025 - URGENT SERVICES",
-            "urgent_services": services.get("urgent_services", {}),
-            "contact_info": self.prices.get("contact_info", {}),
+            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2026 - TAX & URGENT",
+            "tax_accounting": services.get("tax_accounting", {}),
+            "urgent_processing": services.get("urgent_processing", {}),
+            "contact_info": self._contact_info(),
             "disclaimer": self.prices.get("disclaimer", {}),
-            "note": "Tax consulting not in price list - contact for custom quote",
         }
 
     def get_quick_quotes(self) -> dict[str, Any]:
-        """Get pre-calculated package quotes"""
+        """Get pre-calculated package quotes (deprecated — not in 2026 schema)."""
         if not self.loaded:
             return {"error": "Prices not loaded"}
 
         services = self.prices.get("services", {})
         return {
-            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2025 - PACKAGES",
+            "official_notice": "🔒 PREZZI UFFICIALI BALI ZERO 2026 - PACKAGES",
             "quick_quotes": services.get("quick_quotes", {}),
-            "contact_info": self.prices.get("contact_info", {}),
+            "contact_info": self._contact_info(),
             "disclaimer": self.prices.get("disclaimer", {}),
         }
 
@@ -338,8 +475,12 @@ class PricingService:
         }
 
     def _format_service_list(self, category_data: list | dict) -> list[str]:
-        """Helper to format service data regardless of list/dict format"""
-        lines = []
+        """Helper to format service data regardless of list/dict format.
+
+        2026 dict entries can carry ``tier_range`` instead of ``price``;
+        :func:`_entry_display_price` resolves both cases.
+        """
+        lines: list[str] = []
         if isinstance(category_data, list):
             for item in category_data:
                 if isinstance(item, dict):
@@ -357,22 +498,41 @@ class PricingService:
         elif isinstance(category_data, dict):
             for name, data in category_data.items():
                 if isinstance(data, dict):
-                    price = data.get("price", data.get("price_idr", "Contact"))
-                    lines.append(f"- {name}: {price}")
+                    # Detect tax_accounting-style sub-block: a dict whose
+                    # values look like service entries themselves (have
+                    # ``name`` and either ``price`` or ``tier_range``).
+                    is_subblock = bool(data) and all(
+                        isinstance(v, dict) and ("price" in v or "tier_range" in v)
+                        for v in data.values()
+                    )
+                    # Distinguish a SINGLE entry (which also has those keys)
+                    # from a sub-block by checking that ``data`` itself is
+                    # NOT a service entry — service entries have ``name``.
+                    if is_subblock and "name" not in data:
+                        lines.append(f"### {name}")
+                        lines.extend(self._format_service_list(data))
+                        continue
+                    display = _entry_display_price(data)
+                    duration = data.get("duration", "")
+                    duration_str = f" — {duration}" if duration else ""
+                    lines.append(f"- {name}: {display}{duration_str}")
                 else:
                     lines.append(f"- {name}: {data}")
         return lines
 
     def format_for_llm_context(self, service_type: str | None = None) -> str:
         """
-        Format pricing data as context for LLM
-        Returns a concise string suitable for injection into LLM context
+        Format pricing data as context for LLM.
+
+        Returns a concise string suitable for injection into LLM context.
+        Sections track the 2026 schema: visa, KITAS/KITAP, company &
+        consultant, tax & accounting, urgent processing.
         """
         if not self.loaded:
             return f"⚠️ Official prices not available. Contact {settings.SUPPORT_EMAIL}"
 
         context_parts = [
-            "🔒 BALI ZERO OFFICIAL PRICES 2025 (DO NOT GENERATE - USE THESE EXACT VALUES)",
+            "🔒 BALI ZERO OFFICIAL PRICES 2026 (DO NOT GENERATE - USE THESE EXACT VALUES)",
             "",
         ]
 
@@ -380,27 +540,37 @@ class PricingService:
 
         if service_type == "visa" or service_type is None:
             context_parts.append("## VISA PRICES")
-            context_parts.extend(self._format_service_list(services.get("single_entry_visas", [])))
+            context_parts.extend(self._format_service_list(services.get("single_entry_visas", {})))
             context_parts.extend(
-                self._format_service_list(services.get("multiple_entry_visas", [])),
+                self._format_service_list(services.get("multiple_entry_visas", {})),
             )
-            context_parts.extend(self._format_service_list(services.get("visa_extensions", [])))
             context_parts.append("")
 
         if service_type == "kitas" or service_type is None:
             context_parts.append("## KITAS/KITAP PERMITS")
-            context_parts.extend(self._format_service_list(services.get("kitas_permits", [])))
-            context_parts.extend(self._format_service_list(services.get("kitap_permits", [])))
+            context_parts.extend(self._format_service_list(services.get("kitas_permits", {})))
+            context_parts.extend(self._format_service_list(services.get("kitap_permits", {})))
             context_parts.append("")
 
         if service_type == "business" or service_type is None:
-            context_parts.append("## COMPANY SERVICES")
-            context_parts.extend(self._format_service_list(services.get("company_services", [])))
+            context_parts.append("## COMPANY & CONSULTANT SERVICES")
+            context_parts.extend(self._format_service_list(services.get("company_services", {})))
+            context_parts.extend(self._format_service_list(services.get("consultant_services", {})))
+            context_parts.append("")
+
+        if service_type == "tax" or service_type is None:
+            context_parts.append("## TAX & ACCOUNTING")
+            context_parts.extend(self._format_service_list(services.get("tax_accounting", {})))
             context_parts.append("")
 
         if service_type == "other" or service_type is None:
             context_parts.append("## OTHER SERVICES")
-            context_parts.extend(self._format_service_list(services.get("other_process", [])))
+            context_parts.extend(self._format_service_list(services.get("other_process", {})))
+            context_parts.append("")
+
+        if service_type == "urgent" or service_type is None:
+            context_parts.append("## URGENT PROCESSING")
+            context_parts.extend(self._format_service_list(services.get("urgent_processing", {})))
             context_parts.append("")
 
         # Always include warnings
@@ -412,7 +582,7 @@ class PricingService:
             context_parts.append("")
 
         # Contact info
-        contact = self.prices.get("contact_info", {})
+        contact = self._contact_info()
         context_parts.append(
             f"Contact: {contact.get('email', settings.SUPPORT_EMAIL)} | WhatsApp: {contact.get('whatsapp', settings.SUPPORT_WHATSAPP)}",
         )

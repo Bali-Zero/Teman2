@@ -749,6 +749,82 @@ async def _auto_ocr_company_profile(db_pool: Any, client_id: int, file_id: str, 
         return {"success": False, "error": str(e)}
 
 
+async def _auto_classify_content(file_id: str) -> dict[str, Any]:
+    """Content-based document classification via Gemini Vision.
+
+    Used as a fallback when filename keywords don't match any known doc-type
+    in dispatch_ocr_by_folder. Reads the actual file content from Drive,
+    asks Gemini Vision to classify into one of the known types, returns a
+    dict with the detected type + confidence.
+
+    The classifier is deliberately small/cheap (single Vision call, JSON-only
+    response) so it can run on every uploaded file without blowing the OCR
+    budget. The downstream OCR handler (passport/visa/nib/npwp/etc.) is the
+    expensive step and only runs when classification confidence > 0.7.
+
+    Returns:
+        {
+            "document_type": "passport" | "visa" | "nib" | "npwp" |
+                             "company_profile" | "akta" | "spt" | "faktur" |
+                             "bukti_potong" | "contract" | "family_doc" |
+                             "unknown",
+            "confidence": float (0.0-1.0),
+            "language": "id" | "en" | "mixed" | "unknown",
+            "reasoning": str (one-line),
+        }
+        or {"error": str} on failure.
+    """
+    try:
+        image_data, mime_type = await _download_drive_file(file_id)
+
+        classification_prompt = (
+            "You are a document classifier for an Indonesian business services CRM "
+            "(immigration, visa, company setup, tax). "
+            "Classify the document shown in the image/PDF into ONE of these types:\n"
+            "- passport: any passport bio page (any nationality)\n"
+            "- visa: KITAS, KITAP, ITAS, ITAP, VOA, B211, C2, C7, telex visa, e-visa\n"
+            "- nib: Nomor Induk Berusaha (Indonesian business ID), OSS document\n"
+            "- npwp: Nomor Pokok Wajib Pajak (Indonesian tax ID), personal or company\n"
+            "- company_profile: Profil Perseroan, company presentation, profilo aziendale\n"
+            "- akta: Akta Pendirian/Perubahan, notarial deed (Indonesian)\n"
+            "- spt: Surat Pemberitahuan Tahunan (Indonesian annual tax return)\n"
+            "- faktur: Faktur Pajak (Indonesian VAT/PPN tax invoice)\n"
+            "- bukti_potong: bukti potong PPh (Indonesian withholding tax certificate)\n"
+            "- contract: lease, rental agreement, MOU, perjanjian, kontrak\n"
+            "- family_doc: kartu keluarga (KK), akta nikah (marriage), akta kelahiran (birth)\n"
+            "- unknown: cannot classify with confidence\n\n"
+            'Return ONLY valid JSON: {"document_type": "<type>", "confidence": <0.0-1.0>, '
+            '"language": "id|en|mixed|unknown", "reasoning": "<one-line why>"}. '
+            "No markdown, no extra text."
+        )
+
+        response_text = await _gemini_ocr(image_data, mime_type, classification_prompt)
+        extracted = extract_json_from_llm_response(response_text)
+        if not extracted:
+            logger.warning(
+                f"Content classifier: JSON parse failed for file {file_id}. "
+                f"Raw: {response_text[:200]}",
+            )
+            return {"error": "Could not parse classifier response"}
+
+        doc_type = extracted.get("document_type", "unknown")
+        confidence = float(extracted.get("confidence", 0.0))
+        logger.info(
+            f"Content classifier: file {file_id} → type={doc_type} "
+            f"confidence={confidence:.2f} language={extracted.get('language', '?')}",
+        )
+        return {
+            "document_type": doc_type,
+            "confidence": confidence,
+            "language": extracted.get("language", "unknown"),
+            "reasoning": extracted.get("reasoning", ""),
+        }
+
+    except Exception as e:
+        logger.error(f"Content classifier failed for file {file_id}: {e}")
+        return {"error": str(e)}
+
+
 async def _dispatch_ocr_by_folder(
     db_pool: Any,
     client_id: int,

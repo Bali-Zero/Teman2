@@ -1,9 +1,13 @@
 'use client';
 
+import { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { UI } from '@/constants';
-import { Send, ImageIcon, Plus, Loader2, Upload, Camera, Mic } from 'lucide-react';
+import { Send, ImageIcon, Plus, Loader2, Upload, Camera, Mic, X } from 'lucide-react';
 import { ChatRecordingOverlay } from './ChatRecordingOverlay';
+import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
+import { AttachedImage } from '@/hooks/useChatInput';
 
 export interface ChatInputBarProps {
   input: string;
@@ -23,6 +27,8 @@ export interface ChatInputBarProps {
   onStartRecording: () => void;
   onStopRecording: () => void;
   onToggleRecording?: () => void; // Click-to-toggle handler
+  attachedImages?: AttachedImage[];
+  onRemoveImage?: (id: string) => void;
 }
 
 export function ChatInputBar({
@@ -43,7 +49,28 @@ export function ChatInputBar({
   onStartRecording,
   onStopRecording,
   onToggleRecording,
+  attachedImages = [],
+  onRemoveImage,
 }: ChatInputBarProps) {
+  // Close menu on click-outside or Escape
+  useEffect(() => {
+    if (!showAttachMenu) return;
+    const handleClickOutside = (e: MouseEvent) => {
+      if (attachMenuRef.current && !attachMenuRef.current.contains(e.target as Node)) {
+        setShowAttachMenu(false);
+      }
+    };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setShowAttachMenu(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [showAttachMenu, setShowAttachMenu, attachMenuRef]);
+
   // Use toggle handler if provided, otherwise fall back to start/stop
   const handleMicClick = () => {
     if (onToggleRecording) {
@@ -68,6 +95,45 @@ export function ChatInputBar({
   return (
     <div className="fixed bottom-0 left-0 right-0 p-4 pointer-events-none z-10">
       <div className="max-w-3xl mx-auto pointer-events-auto">
+        {/* Image Previews */}
+        <AnimatePresence>
+          {attachedImages.length > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+              className="flex flex-wrap gap-2 mb-3 px-2"
+            >
+              {attachedImages.map((img) => (
+                <motion.div
+                  key={img.id}
+                  layout
+                  initial={{ scale: 0.8, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.8, opacity: 0 }}
+                  className="relative group w-16 h-16 rounded-xl overflow-hidden border border-[var(--border)] bg-[var(--background-secondary)]"
+                >
+                  <Image
+                    src={img.base64}
+                    alt={img.name}
+                    fill
+                    className="object-cover"
+                    unoptimized
+                  />
+                  <button
+                    type="button"
+                    onClick={() => onRemoveImage?.(img.id)}
+                    className="absolute top-1 right-1 p-0.5 bg-black/60 text-white rounded-full opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
+                    aria-label={`Remove image ${img.name}`}
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </motion.div>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {showImagePrompt && (
           <div className="mb-2 p-2 bg-[var(--background-secondary)] rounded-lg flex items-center gap-2 shadow-lg border border-[var(--border)]">
             <ImageIcon className="w-4 h-4 text-[var(--accent)]" />
@@ -150,6 +216,7 @@ export function ChatInputBar({
               {showAttachMenu && (
                 <div className="absolute bottom-full left-0 mb-2 bg-[var(--background-secondary)] rounded-xl border border-[var(--border)] shadow-lg overflow-hidden min-w-[160px] animate-in fade-in slide-in-from-bottom-2 duration-200">
                   <button
+                    type="button"
                     onClick={() => {
                       fileInputRef.current?.click();
                       setShowAttachMenu(false);
@@ -160,6 +227,7 @@ export function ChatInputBar({
                     Upload file
                   </button>
                   <button
+                    type="button"
                     onClick={() => {
                       setShowImagePrompt(!showImagePrompt);
                       setShowAttachMenu(false);

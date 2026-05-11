@@ -8,6 +8,10 @@
 		<string>/Users/nuzantara</string>
 		<key>PATH</key>
 		<string>/Users/nuzantara/.local/bin:/Users/nuzantara/.npm-global/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+		<key>WR2_REPO_ROOT</key>
+		<string>/Users/nuzantara/Desktop/nuzantara-deploy</string>
+		<key>WR2_OUTPUT_ROOT</key>
+		<string>/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/canva</string>
 	</dict>
 	<key>Label</key>
 	<string>com.balizero.wr2.canva-apply</string>

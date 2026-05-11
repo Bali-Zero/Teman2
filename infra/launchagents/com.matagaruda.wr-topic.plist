@@ -8,7 +8,7 @@
     <array>
         <string>/bin/bash</string>
         <string>-lc</string>
-        <string>source ~/.nuzantara-secrets.env 2>/dev/null; cd /Users/nuzantara/Desktop/nuzantara/apps/mata-garuda &amp;&amp; source .venv/bin/activate &amp;&amp; python scripts/run_wr_topic.py &gt;&gt; /Users/nuzantara/logs/matagaruda-wr-topic.log 2&gt;&amp;1</string>
+        <string>source ~/.nuzantara-secrets.env 2>/dev/null; cd /Users/nuzantara/Desktop/nuzantara/apps/mata-garuda &amp;&amp; /Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/.venv/bin/python scripts/run_wr_topic.py &gt;&gt; /Users/nuzantara/logs/matagaruda-wr-topic.log 2&gt;&amp;1</string>
     </array>
     <key>StartCalendarInterval</key>
     <array>

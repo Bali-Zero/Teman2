@@ -20,7 +20,11 @@
       "uses_llm": "qwen3.5:9b",
       "llm_interface": "OpenClaw (main)",
       "tools_called": ["curl (backend+frontend health)", "seo_auto_fixer.py"],
-      "apis_called": ["nuzantara-rag.fly.dev/health", "balizero.com", "Telegram Bot API"]
+      "apis_called": [
+        "nuzantara-rag.fly.dev/health",
+        "balizero.com",
+        "Telegram Bot API"
+      ]
     },
     "seo-guardian-weekly": {
       "description": "SEO weekly LEARN+REPORT via cron-agent LLM prompt (~/scripts/cron-agent-prompts/seo-guardian-weekly.txt). Legacy .py scripts removed 2026-04-20; responsibilities migrated to apps/evaluator/seo_cell/ (cell-core PulseLoop).",
@@ -676,7 +680,10 @@
       "consumes": "Redis stream nexus:gaps",
       "uses_llm": "claude --print (via dispatched agents)",
       "llm_interface": "MetaChain CLI subprocess",
-      "tools_called": ["redis-cli (XREADGROUP/XACK)", "MetaChain run_with_lamarckian_feedback"],
+      "tools_called": [
+        "redis-cli (XREADGROUP/XACK)",
+        "MetaChain run_with_lamarckian_feedback"
+      ],
       "apis_called": [
         "antv.kpk.go.id (via lhkpn_harvester)",
         "peraturan.go.id (via regulation_watcher)"
@@ -1374,7 +1381,11 @@
       "produces": "Processed scrape/AI/report tasks",
       "consumes": "Task queue submissions",
       "uses_llm": "OpenAI or Anthropic (configurable)",
-      "tools_called": ["ScrapeTaskHandler", "AITaskHandler", "CleanupTaskHandler"],
+      "tools_called": [
+        "ScrapeTaskHandler",
+        "AITaskHandler",
+        "CleanupTaskHandler"
+      ],
       "apis_called": ["OpenAI Chat API", "Anthropic Messages API"]
     },
     "bali_intel_proxy_health_check": {
@@ -1430,7 +1441,11 @@
         "CompletedProcessService",
         "PortalNotificationService"
       ],
-      "apis_called": ["Meta WhatsApp Cloud API", "Brevo/Zoho Email API", "Google Drive API"]
+      "apis_called": [
+        "Meta WhatsApp Cloud API",
+        "Brevo/Zoho Email API",
+        "Google Drive API"
+      ]
     },
     "bg_crm_client_welcome": {
       "description": "FastAPI BackgroundTask in crm_clients router: sends welcome messages (WA + email) and schedules welcome email on new client creation.",
@@ -1444,7 +1459,11 @@
         "welcome_whatsapp_service",
         "PortalProfileService.ensure_portal_profile"
       ],
-      "apis_called": ["Meta WhatsApp Cloud API", "Google Drive API", "Brevo Email API (queued)"]
+      "apis_called": [
+        "Meta WhatsApp Cloud API",
+        "Google Drive API",
+        "Brevo Email API (queued)"
+      ]
     },
     "bg_whatsapp_async_processing": {
       "description": "FastAPI BackgroundTask in whatsapp_chat router: handles async message processing for WhatsApp conversations.",
@@ -1477,7 +1496,11 @@
         "auto_categorize_document",
         "PortalNotificationService"
       ],
-      "apis_called": ["Ollama local (qwen2.5vl:7b)", "Gemini API", "Google Drive API"]
+      "apis_called": [
+        "Ollama local (qwen2.5vl:7b)",
+        "Gemini API",
+        "Google Drive API"
+      ]
     }
   },
   "github_actions": {
@@ -1525,7 +1548,11 @@
       "uses_llm": "none",
       "tools_called": ["superfly/flyctl-actions/setup-flyctl@v2"],
       "apis_called": ["Fly.io (auth whoami)", "Telegram Bot API"],
-      "secrets_used": ["FLY_API_TOKEN", "TELEGRAM_BOT_TOKEN", "TELEGRAM_OWNER_CHAT_ID"]
+      "secrets_used": [
+        "FLY_API_TOKEN",
+        "TELEGRAM_BOT_TOKEN",
+        "TELEGRAM_OWNER_CHAT_ID"
+      ]
     },
     "gh_intel_router_tests": {
       "description": "GitHub Action: runs intel router tests on push/PR. Validates bali-intel-scraper API endpoints.",
@@ -1565,7 +1592,10 @@
       "type": "ci-workflow",
       "schedule": "on push/PR",
       "uses_llm": "none",
-      "tools_called": ["Bandit (Python SAST)", "ESLint + eslint-plugin-security"],
+      "tools_called": [
+        "Bandit (Python SAST)",
+        "ESLint + eslint-plugin-security"
+      ],
       "secrets_used": [],
       "notes": "Filename says semgrep but actually runs Bandit+ESLint"
     },
@@ -1920,7 +1950,11 @@
       "type": "launchd-script",
       "schedule": "06:15 WITA daily (com.garuda.consumer.daily)",
       "uses_llm": "none",
-      "tools_called": ["garuda-consumer.sh", "OSINT-Nexus venv python", "neo4j driver"],
+      "tools_called": [
+        "garuda-consumer.sh",
+        "OSINT-Nexus venv python",
+        "neo4j driver"
+      ],
       "apis_called": ["Neo4j (localhost)", "Redis (garuda:raw stream)"],
       "produces": "Neo4j nodes and edges from intelligence items",
       "consumes": "Redis garuda:raw stream"
@@ -1932,7 +1966,11 @@
       "type": "launchd-script",
       "schedule": "07:00 + 18:00 WITA (com.garuda.gap-detector.twice-daily)",
       "uses_llm": "none",
-      "tools_called": ["garuda-gap-detector.sh", "OSINT-Nexus venv python", "8 Cypher gap queries"],
+      "tools_called": [
+        "garuda-gap-detector.sh",
+        "OSINT-Nexus venv python",
+        "8 Cypher gap queries"
+      ],
       "apis_called": ["Neo4j (localhost)", "Redis (nexus:gaps stream)"],
       "produces": "nexus:gaps stream tasks (missing attributes, relations, stale data)",
       "consumes": "Neo4j KG state"
@@ -1943,7 +1981,11 @@
       "machine": "Pro",
       "type": "on-demand",
       "uses_llm": "none (dispatch only, agents use LLMs)",
-      "tools_called": ["task_tools.py", "Redis nexus:gaps stream", "DISPATCH_TABLE routing"],
+      "tools_called": [
+        "task_tools.py",
+        "Redis nexus:gaps stream",
+        "DISPATCH_TABLE routing"
+      ],
       "produces": "Dispatched agent tasks, audit log (task_dispatch.jsonl)",
       "consumes": "nexus:gaps stream from gap detector"
     },
@@ -1953,7 +1995,11 @@
       "machine": "Pro",
       "type": "pipeline-worker",
       "uses_llm": "none",
-      "tools_called": ["Redis garuda:raw→garuda:enriched", "SHA256 dedup", "KB SQLite"],
+      "tools_called": [
+        "Redis garuda:raw→garuda:enriched",
+        "SHA256 dedup",
+        "KB SQLite"
+      ],
       "produces": "garuda:enriched stream, KB entries",
       "consumes": "garuda:raw stream"
     },
@@ -1964,7 +2010,10 @@
       "type": "pipeline-worker",
       "uses_llm": "Ollama (scoring model)",
       "tools_called": ["Redis garuda:enriched", "Ollama local API"],
-      "apis_called": ["Ollama localhost", "Telegram Bot API (high-score alerts)"],
+      "apis_called": [
+        "Ollama localhost",
+        "Telegram Bot API (high-score alerts)"
+      ],
       "produces": "Scored intelligence items, TG alerts for high-value items",
       "consumes": "garuda:enriched stream"
     },
@@ -1992,7 +2041,10 @@
         "Redis garuda:digest",
         "tg_tools.py"
       ],
-      "apis_called": ["Claude CLI (Anthropic subscription)", "Telegram Bot API"],
+      "apis_called": [
+        "Claude CLI (Anthropic subscription)",
+        "Telegram Bot API"
+      ],
       "produces": "Intelligence digest, garuda:digest stream entry, TG briefing",
       "consumes": "KB data, garuda:enriched items"
     },
@@ -2002,7 +2054,10 @@
       "machine": "Pro",
       "type": "pipeline-agent",
       "uses_llm": "Claude CLI",
-      "tools_called": ["scraper_tools.check_regulation_source", "feed_tools.py"],
+      "tools_called": [
+        "scraper_tools.check_regulation_source",
+        "feed_tools.py"
+      ],
       "apis_called": ["ditjenimigrasi.go.id", "kanwilbali.kemenkumham.go.id"],
       "produces": "Regulation change items → garuda:raw",
       "consumes": "Government regulation websites"
@@ -2068,7 +2123,12 @@
       "machine": "Pro",
       "type": "meta-agent",
       "uses_llm": "Claude CLI",
-      "tools_called": ["meta_tools.py", "lamarckian.py", "reflection.py", "Claude CLI --print"],
+      "tools_called": [
+        "meta_tools.py",
+        "lamarckian.py",
+        "reflection.py",
+        "Claude CLI --print"
+      ],
       "produces": "Agent GENOME mutations, performance reflections",
       "consumes": "Agent run logs, GENOME.md files"
     },
@@ -2088,7 +2148,11 @@
       "machine": "Pro",
       "type": "runtime",
       "uses_llm": "Claude CLI (reflection + mutation proposals)",
-      "tools_called": ["lamarckian.py", "reflection.py", "CLIRuntime(model=claude)"],
+      "tools_called": [
+        "lamarckian.py",
+        "reflection.py",
+        "CLIRuntime(model=claude)"
+      ],
       "produces": "Evolved GENOME.md files, KB reflection entries",
       "consumes": "Agent performance logs, current GENOMEs"
     },
@@ -2098,7 +2162,10 @@
       "machine": "Pro",
       "type": "runtime",
       "uses_llm": "Claude CLI (primary) → Gemini CLI (fallback)",
-      "tools_called": ["subprocess: claude --print", "subprocess: gemini --prompt"],
+      "tools_called": [
+        "subprocess: claude --print",
+        "subprocess: gemini --prompt"
+      ],
       "produces": "LLM responses for agents",
       "consumes": "Agent prompts"
     }
@@ -2111,7 +2178,11 @@
       "machine": "Pro (local)",
       "type": "pipeline-stage",
       "uses_llm": "none",
-      "tools_called": ["GoogleNewsRSSFetcher", "browser_pool.py", "proxy_manager.py"],
+      "tools_called": [
+        "GoogleNewsRSSFetcher",
+        "browser_pool.py",
+        "proxy_manager.py"
+      ],
       "apis_called": ["Google News RSS", "600+ news/gov websites"],
       "produces": "Raw scraped articles",
       "consumes": "Source list (630+ URLs)"
@@ -2176,7 +2247,10 @@
       "type": "launchd-orchestrator",
       "schedule": "01:00 WITA daily (com.balizero.intel.nightly)",
       "uses_llm": "LLAMA + Claude + Gemini (via pipeline stages)",
-      "tools_called": ["OpenClaw gateway trigger", "bali-intel-scraper pipeline"],
+      "tools_called": [
+        "OpenClaw gateway trigger",
+        "bali-intel-scraper pipeline"
+      ],
       "produces": "Published intel articles (~$0.06/article)",
       "consumes": "630+ sources"
     }
@@ -2188,7 +2262,37 @@
       "consumes": "antv.kpk.go.id HTTP, gap_consumer dispatch",
       "uses_llm": "claude --print (via MetaChain)",
       "llm_interface": "Claude CLI subprocess",
-      "tools_called": ["scrape_lhkpn_search()", "scrape_lhkpn_profile()", "stream_publish()"]
+      "tools_called": [
+        "scrape_lhkpn_search()",
+        "scrape_lhkpn_profile()",
+        "stream_publish()"
+      ]
+    }
+  },
+  "auto_discovered": {
+    "run.sh": {
+      "description": "Cron wrapper for cron-agent-python jobs. Usage: run.sh <job-name> Ensures: - Minimal PATH (homebrew, pyenv, local bin) - Secrets sourced from ~/.zshrc.secrets (TELEGRAM_BOT_TOKEN etc.) - No ANTHROPIC_",
+      "_source": "auto_discovered"
+    },
+    "garuda-indexer.sh": {
+      "description": "cron-runner.sh — Bypasses macOS Sequoia com.apple.provenance restriction Usage: cron-runner.sh /path/to/script.sh [args...] Sources the target script in a bash process to preserve BASH_SOURCE context",
+      "_source": "auto_discovered"
+    },
+    "garuda-gc.sh": {
+      "description": "cron-runner.sh — Bypasses macOS Sequoia com.apple.provenance restriction Usage: cron-runner.sh /path/to/script.sh [args...] Sources the target script in a bash process to preserve BASH_SOURCE context",
+      "_source": "auto_discovered"
+    },
+    "sentry-quota-check.sh": {
+      "description": " sentry-quota-check.sh — guard against burning the Sentry free-tier quota.  The free tier is 5,000 events/month shared across errors AND transactions. A traces_sample_rate above ~2% on a real-traffic ",
+      "_source": "auto_discovered"
+    },
+    "curiosity_loop.sh": {
+      "description": "Curiosity Loop — SYMBIOSIS Pillar 6 cron wrapper Invoked by ~/Library/LaunchAgents/com.graph.curiosity-loop.plist (04:30 WITA)  gap_detector.scan_all_domains() → prioritize → tier dispatch → Self-RAG ",
+      "_source": "auto_discovered"
+    },
+    "genome_decay.sh": {
+      "description": "Genome Decay — SYMBIOSIS Pillar 5 (Sogno) cron wrapper Invoked by ~/Library/LaunchAgents/com.cell.genome-decay.plist (02:30 WITA)  Ebbinghaus: confidence × 0.95^days_unused, min_idle=7d, threshold 0.3",
+      "_source": "auto_discovered"
     }
   }
 }

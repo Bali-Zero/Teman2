@@ -10,15 +10,19 @@ from backend.services.pricing.pricing_service import PricingService
 
 @pytest.fixture
 def mock_prices():
+    # 2026 schema fixture — visa_extensions dropped, urgent_services renamed
+    # to urgent_processing, tax_accounting + consultant_services added.
     return {
         "services": {
             "single_entry_visas": {"Tourist": {"price": "1.500.000"}},
             "multiple_entry_visas": {},
             "kitas_permits": {},
             "kitap_permits": {},
+            "tax_accounting": {},
             "company_services": {},
+            "consultant_services": {},
             "other_process": {},
-            "urgent_services": {},
+            "urgent_processing": {},
         },
     }
 

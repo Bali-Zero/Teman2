@@ -1,0 +1,5 @@
+{"agent": "nlm_feeder_stream", "alerts": {"processed": 10, "fed": 9, "skipped": 1, "errors": 0}, "enriched": {"processed": 5, "fed": 5, "skipped": 0, "errors": 0}}
+{"agent": "nlm_feeder_stream", "alerts": {"processed": 8, "fed": 6, "skipped": 1, "errors": 1}, "enriched": {"processed": 0, "fed": 0, "skipped": 0, "errors": 0}}
+not json line
+{"agent": "nlm_feeder_stream", "alerts": {"processed": 0, "fed": 0, "skipped": 0, "errors": 0}, "enriched": {"processed": 3, "fed": 3, "skipped": 0, "errors": 0}}
+{"agent": "nlm_feeder_stream", "stats": {"processed": 5, "fed": 4, "skipped": 0, "errors": 1}}

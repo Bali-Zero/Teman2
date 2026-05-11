@@ -36,6 +36,7 @@ import os
 import sys
 import tempfile
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from uuid import UUID
 
@@ -55,7 +56,85 @@ from backend.services.canva_renderer.claude_invoker import (  # noqa: E402
 logger = logging.getLogger("wr2.canva_apply")
 
 MAX_DRAFTS_PER_RUN = 3  # avoid stampede; launchd runs every 5 min
-PENDING_TMP_DIR = Path(tempfile.gettempdir())
+
+# B0 instrumentation (2026-05-08): detect-sentinel + retry-once + telemetry.
+# After 4 independent design reviews, the "MCP cache warming" hypothesis was
+# rejected as architecturally unfounded. The 50% empirical canva-apply fail
+# rate is unexplained; instrument with append-only JSONL telemetry to collect
+# 7 days of real data before deciding on a long-term fix (B1/B2/other).
+TELEMETRY_PATH = Path.home() / "logs" / "wr2_canva_apply_telemetry.jsonl"
+
+# When `claude -p` returns these strings in stdout, the canva apply failed
+# because the MCP Canva connector was not visible to the subprocess. Cheap
+# retry after 60s sleep is worth attempting before giving up.
+MCP_NOT_AVAILABLE_SENTINELS = (
+    "MCP Canva not available",
+    "Canva cloud connector requires claude.ai",
+    "claude.ai Canva server is not in mcp-needs-auth-cache",
+    "Canva MCP server is not available",
+    "mcp__claude_ai_Canva__.* are not loaded in this session",
+)
+
+
+def _is_mcp_cold_failure(exc: CanvaInvokeError) -> bool:
+    """Return True if the failure looks like MCP Canva missing from the subprocess."""
+    msg = str(exc)
+    return any(s in msg for s in MCP_NOT_AVAILABLE_SENTINELS)
+
+
+def _is_timeout_failure(exc: CanvaInvokeError) -> bool:
+    return "timed out" in str(exc).lower()
+
+
+def _classify_failure(exc: CanvaInvokeError) -> str:
+    if _is_mcp_cold_failure(exc):
+        return "cold_sentinel"
+    if _is_timeout_failure(exc):
+        return "timeout"
+    return "other"
+
+
+def _log_run_telemetry(
+    draft_id: UUID,
+    attempt: int,
+    outcome: str,
+    duration_s: float,
+    exc_text: str,
+) -> None:
+    """Append one JSONL line per run attempt to ~/logs/wr2_canva_apply_telemetry.jsonl.
+
+    Append-only. No DB schema. Never raises (telemetry must not break the run).
+    """
+    try:
+        TELEMETRY_PATH.parent.mkdir(parents=True, exist_ok=True)
+        rec = {
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "draft_id": str(draft_id),
+            "attempt": attempt,  # 1 = first try, 2 = retry-after-cold
+            "outcome": outcome,  # 'success' | 'cold_sentinel' | 'timeout' | 'other'
+            "duration_s": round(duration_s, 1),
+            "exc_head": (exc_text or "")[:240],
+        }
+        with open(TELEMETRY_PATH, "a") as f:
+            f.write(json.dumps(rec) + "\n")
+    except Exception as e:  # noqa: BLE001
+        logger.warning("telemetry write failed (non-fatal): %s", e)
+
+# 2026-05-07: the canva-apply skill (~/.claude/skills/canva-apply.md) has the
+# pending JSON path HARDCODED to apps/war-room/output/canva/canva_pending.json.
+# Even though invoke_claude_apply passes the actual path in the prompt header,
+# the skill body's "Read the file `<absolute path>`" instruction wins. Live
+# failure 04:34 WITA on draft 37263a1f returned design=D_ALREADY_APPLIED
+# because the skill read the leftover prod pending (status=applied from a
+# previous synthetic test) instead of the per-draft /tmp file we wrote.
+#
+# Fix: write the per-draft pending into the prod path the skill expects.
+# MAX_DRAFTS_PER_RUN=3 still serial (sequential loop), so no race risk.
+# Sprint B can refactor the skill to honour the prompt-passed path; until
+# then this is the single-write convention shared with wr2_canva_desktop_apply.py
+# (which also targets the prod path, per CANVA_PENDING_PATH discovery 2026-05-06).
+PENDING_PROD_DIR = Path.home() / "Desktop" / "nuzantara" / "apps" / "war-room" / "output" / "canva"
+PENDING_PROD_FILE = PENDING_PROD_DIR / "canva_pending.json"
 
 
 def _configure_logging() -> None:
@@ -80,11 +159,18 @@ async def _kill_switch_enabled(conn: asyncpg.Connection) -> bool:
 
 
 async def _fetch_ready_drafts(conn: asyncpg.Connection, limit: int) -> list[asyncpg.Record]:
+    # 2026-05-08 (Sprint B B-bis): status filter LOCKED to
+    # 'drafts_imaged_checked'. The Sprint A bypass that allowed
+    # 'drafts_imaged' / 'drafts' here is REVERTED — only fact-checked
+    # drafts render. fact_check_status='fail' drafts land in
+    # 'fact_check_failed' terminal state and are NOT picked up.
+    #
+    # DB column is `register` (text), aliased to `tone` for downstream code.
     return await conn.fetch(
         """
-        SELECT id, topic, tone_register, slides_json
+        SELECT id, topic, register AS tone, slides_json
           FROM war_room_drafts
-         WHERE status = 'drafts'
+         WHERE status = 'drafts_imaged_checked'
            AND canva_edit_url IS NULL
          ORDER BY created_at ASC
          LIMIT $1
@@ -97,24 +183,63 @@ async def _persist_canva_result(
     conn: asyncpg.Connection,
     draft_id: UUID,
     result: CanvaApplyResult,
+    *,
+    dsn: str | None = None,
 ) -> None:
-    """Store edit URL + advance status to 'rendered'."""
-    await conn.execute(
-        """
-        UPDATE war_room_drafts
-           SET canva_design_id  = $2,
-               canva_edit_url   = $3,
-               canva_view_url   = $4,
-               canva_applied_at = NOW(),
-               status           = 'rendered',
-               updated_at       = NOW()
-         WHERE id = $1
-        """,
-        draft_id,
-        result.design_id,
-        result.edit_url,
-        result.view_url,
-    )
+    """Store edit URL + advance status to 'rendered'.
+
+    The `conn` passed in was opened in `run()` BEFORE `_apply_one_draft`
+    invoked the synchronous `subprocess.run([claude, -p, ...])` blocking
+    call inside `invoke_claude_apply()`. That subprocess routinely runs
+    25-32 minutes; the Fly Postgres tunnel / wireguard proxy closes idle
+    TCP sockets in that window. Empirical 2026-05-07 23:53 → 00:26 UTC
+    crash on draft 0e8e1cf5 raised
+    `asyncpg.exceptions.ConnectionDoesNotExistError` exactly here, AFTER
+    `_log_run_telemetry(success)` had already written a "success" row.
+    Result: telemetry over-reports the success rate while DB stays at
+    `canva_design_id IS NULL`.
+
+    Mitigation: if the existing `conn` is closed and a `dsn` is provided,
+    open a fresh asyncpg connection just for this UPDATE and close it
+    after. Caller is responsible for not logging telemetry success until
+    this function returns.
+    """
+    use_conn = conn
+    fresh_owned = False
+    if conn.is_closed():
+        if not dsn:
+            raise RuntimeError(
+                f"_persist_canva_result: conn is closed and no dsn provided "
+                f"(draft={draft_id}). Cannot persist Canva result."
+            )
+        logger.warning(
+            "Draft %s: persist conn was closed (likely wireguard idle-timeout "
+            "across long subprocess) — reconnecting from DSN",
+            draft_id,
+        )
+        use_conn = await asyncpg.connect(dsn, timeout=10)
+        fresh_owned = True
+
+    try:
+        await use_conn.execute(
+            """
+            UPDATE war_room_drafts
+               SET canva_design_id  = $2,
+                   canva_edit_url   = $3,
+                   canva_view_url   = $4,
+                   canva_applied_at = NOW(),
+                   status           = 'rendered',
+                   updated_at       = NOW()
+             WHERE id = $1
+            """,
+            draft_id,
+            result.design_id,
+            result.edit_url,
+            result.view_url,
+        )
+    finally:
+        if fresh_owned:
+            await use_conn.close()
 
 
 def _send_telegram(text: str) -> None:
@@ -139,11 +264,16 @@ def _send_telegram(text: str) -> None:
         logger.warning("Telegram send failed: %s", e)
 
 
-async def _apply_one_draft(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
+async def _apply_one_draft(
+    conn: asyncpg.Connection,
+    row: asyncpg.Record,
+    *,
+    dsn: str | None = None,
+) -> bool:
     """Process a single draft. Returns True on success."""
     draft_id: UUID = row["id"]
     topic: str = row["topic"]
-    tone: str = row["tone_register"] or "pedagogico"
+    tone: str = row["tone"] or "pedagogico"
     slides_json = row["slides_json"]
 
     if isinstance(slides_json, str):
@@ -160,21 +290,94 @@ async def _apply_one_draft(conn: asyncpg.Connection, row: asyncpg.Record) -> boo
         logger.error("Draft %s pending build failed: %s", draft_id, exc)
         return False
 
-    pending_path = PENDING_TMP_DIR / f"wr2_canva_pending_{draft_id}.json"
+    # Write to the prod path that the canva-apply skill hardcodes; see header.
+    PENDING_PROD_DIR.mkdir(parents=True, exist_ok=True)
+    pending_path = PENDING_PROD_FILE
     pending_path.write_text(json.dumps(pending, indent=2), encoding="utf-8")
     logger.info("Wrote pending JSON for draft %s → %s", draft_id, pending_path)
 
+    # B0 (2026-05-08): detect-sentinel + retry-once + per-attempt telemetry.
+    # On the happy path (50% baseline), this adds zero overhead beyond a
+    # JSONL log line. On cold-sentinel detection, sleep 60s and retry once
+    # before giving up — far cheaper than the 25-min wasted timeout.
+    #
+    # Persist-race fix (2026-05-08): the empirical 2026-05-07 23:53 → 00:26
+    # UTC crash showed `_log_run_telemetry(success)` was being written
+    # BEFORE `_persist_canva_result`, then asyncpg raised
+    # ConnectionDoesNotExistError because the connection was closed by the
+    # Fly tunnel during the 32-min subprocess. Telemetry now records
+    # "success" only AFTER persist returns; if persist itself raises, an
+    # extra "persist_failed" row is written so the JSONL truthfully
+    # mirrors DB state.
+    t0 = time.time()
+    result = None
+    successful_attempt = 0
+    successful_duration = 0.0
     try:
         result = invoke_claude_apply(pending_path)
+        successful_attempt = 1
+        successful_duration = time.time() - t0
     except CanvaInvokeError as exc:
-        logger.error("Draft %s Canva apply failed: %s", draft_id, exc)
+        d1 = time.time() - t0
+        outcome1 = _classify_failure(exc)
+        _log_run_telemetry(draft_id, 1, outcome1, d1, str(exc))
+        if outcome1 == "cold_sentinel":
+            logger.warning(
+                "Draft %s: MCP cold sentinel on attempt 1 (%.1fs) — sleep 60s, retry once",
+                draft_id, d1,
+            )
+            time.sleep(60)
+            t1 = time.time()
+            try:
+                result = invoke_claude_apply(pending_path)
+                successful_attempt = 2
+                successful_duration = time.time() - t1
+            except CanvaInvokeError as exc2:
+                d2 = time.time() - t1
+                outcome2 = _classify_failure(exc2)
+                _log_run_telemetry(draft_id, 2, outcome2, d2, str(exc2))
+                logger.error(
+                    "Draft %s: retry after cold also failed (%s, %.1fs): %s",
+                    draft_id, outcome2, d2, exc2,
+                )
+                _send_telegram(
+                    f"🚨 *WR2 Canva apply failed*\ndraft: `{draft_id}`\n"
+                    f"topic: {topic[:80]}\noutcome: `cold→{outcome2}`\n"
+                    f"error: `{str(exc2)[:400]}`",
+                )
+                return False
+        else:
+            logger.error("Draft %s Canva apply failed (%s): %s", draft_id, outcome1, exc)
+            _send_telegram(
+                f"🚨 *WR2 Canva apply failed*\ndraft: `{draft_id}`\n"
+                f"topic: {topic[:80]}\noutcome: `{outcome1}`\n"
+                f"error: `{str(exc)[:400]}`",
+            )
+            return False
+
+    # Persist with reconnect-on-dead-conn + truthful telemetry.
+    try:
+        await _persist_canva_result(conn, draft_id, result, dsn=dsn)
+    except Exception as exc:  # noqa: BLE001 — telemetry must capture every persist failure
+        _log_run_telemetry(
+            draft_id,
+            successful_attempt,
+            "persist_failed",
+            successful_duration,
+            f"{type(exc).__name__}: {exc}",
+        )
+        logger.error(
+            "Draft %s: Canva apply succeeded but DB persist failed (%s: %s)",
+            draft_id, type(exc).__name__, exc,
+        )
         _send_telegram(
-            f"🚨 *WR2 Canva apply failed*\ndraft: `{draft_id}`\ntopic: {topic[:80]}\n"
-            f"error: `{str(exc)[:400]}`",
+            f"🚨 *WR2 Canva persist failed*\ndraft: `{draft_id}`\n"
+            f"topic: {topic[:80]}\noutcome: `persist_failed`\n"
+            f"error: `{type(exc).__name__}: {str(exc)[:400]}`",
         )
         return False
 
-    await _persist_canva_result(conn, draft_id, result)
+    _log_run_telemetry(draft_id, successful_attempt, "success", successful_duration, "")
     logger.info(
         "Draft %s applied — design=%s edit_url=%s duration=%.1fs",
         draft_id,
@@ -218,7 +421,7 @@ async def run() -> int:
         successes = 0
         started = time.monotonic()
         for row in drafts:
-            ok = await _apply_one_draft(conn, row)
+            ok = await _apply_one_draft(conn, row, dsn=dsn)
             if ok:
                 successes += 1
 

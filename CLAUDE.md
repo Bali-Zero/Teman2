@@ -69,7 +69,7 @@ See [`INDEX.md`](INDEX.md) for the full atlas including packages, tessuti dati, 
 ### Tech Stack
 
 <!-- DOCSYNC:BACKEND_STATS_START -->
-- **Backend:** Python 3.11+, FastAPI, 257 routers, 541 services, 905 test files
+- **Backend:** Python 3.11+, FastAPI, 261 routers, 545 services, 918 test files
 <!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
@@ -268,13 +268,12 @@ Sections: `SECURITY_BOUNDARY` · `TOOL_USAGE_POLICY` · `SYSTEM_INSTRUCTIONS` ·
 
 ## 8. Deployment Architecture
 
-### Fly.io — 3 APP ONLY
+### Fly.io — 2 APP ONLY (Qdrant migrated to Qdrant Cloud)
 
 | App                  | CPU       | RAM | Auto-stop  | Note                    |
 | -------------------- | --------- | --- | ---------- | ----------------------- |
 | `nuzantara-rag`      | shared-2x | 2GB | off, min=1 | Always-on, EventBus     |
 | `nuzantara-postgres` | shared-1x | 2GB | no         | v0.1.0, backup → Tigris |
-| `nuzantara-qdrant`   | shared-1x | 2GB | no         | v1.17.0                 |
 
 - **Frontend:** Vercel (auto-deploy on `git push origin main`)
 - **Backend deploy:** `cd apps/backend-rag && fly deploy --strategy rolling`
@@ -347,7 +346,7 @@ Admin (`zero@`, `antonellosiano@`, `asya@balizero.com`) → all. Team → only `
 | Veronika | `tax@balizero.com` | Tax team manager | Tax team coordination |
 | Rina | `rina@balizero.com` | Reception | Front desk, scheduling |
 | Ruslana | `ruslana@balizero.com` | Strategic / English content | Strategy, English copy. Telegram chat_id 3743891689 |
-| **Subhi Darajat** ⭐ NEW | `subhi@balizero.com` | **Growth Systems Owner** (probation 90gg 2026-04-30 → 2026-07-29) | `apps/mouth/(blog\|marketing\|kbli\|visa\|property\|tax-calendar)/**` + GA4/GSC + organic distribution. NO backend RAG, NO genome.yaml, NO secrets. See `~/.claude/projects/-Users-nuzantara/memory/subhi-{task-routing,rbac-permissions,contact}.md` |
+| **Subhi Darajat** ⭐ NEW | `subhi@balizero.com` | **Growth Systems Owner** (probation 90gg 2026-04-30 → 2026-07-29) | `apps/mouth/(blog\|marketing\|kbli\|visa\|property\|tax-calendar)/**` + GA4/GSC + organic distribution. NO backend RAG, NO organs_registry.yaml (Innervation Genoma — file renamed 2026-05-08 IG-3 from `genome.yaml`), NO secrets. See `~/.claude/projects/-Users-nuzantara/memory/subhi-{task-routing,rbac-permissions,contact}.md` |
 
 **Email language to team** (`feedback_email_language.md`): Bahasa Indonesia for all `@balizero.com` except `zero@`/`antonellosiano@`. Subhi: bahasa default, italiano OK as fallback.
 

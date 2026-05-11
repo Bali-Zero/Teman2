@@ -32,7 +32,7 @@ class RenewalRule:
         lead_time_days:        Days before expiry when the process should START.
         recommended_start_days: Days before expiry to CONTACT the client
                                (= lead_time_days + safety buffer).
-        renewal_pricing_key:   Key in bali_zero_official_prices_2025.json.
+        renewal_pricing_key:   Key in bali_zero_official_prices_2026.json.
                                None = not a Bali Zero service.
         required_docs:         Documents client must provide.
         complexity:            1.0 = simple extend, 2.0 = multi-permit, 3.0 = upgrade.

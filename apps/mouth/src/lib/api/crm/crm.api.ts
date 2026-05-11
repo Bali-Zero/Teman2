@@ -23,6 +23,8 @@ import type {
   TaxRecord,
   PortalMessageThread,
   PassportOcrResult,
+  TaxCompanyPilotKey,
+  TaxCompanyPilotMap,
 } from "./crm.types";
 import type {
   RequiredDocument,
@@ -198,6 +200,14 @@ export class CrmApi {
   async getRevenueGrowth(): Promise<RevenueGrowthResponse> {
     return this.client.request<RevenueGrowthResponse>(
       "/api/crm/practices/stats/revenue-growth",
+    );
+  }
+
+  async getTaxCompanyPilotMap(
+    company: TaxCompanyPilotKey,
+  ): Promise<TaxCompanyPilotMap> {
+    return this.client.request<TaxCompanyPilotMap>(
+      `/api/crm/pilot/tax-company-map?company=${encodeURIComponent(company)}`,
     );
   }
 

@@ -10,16 +10,19 @@ This module records every publication in the ``events_outbox`` table
 (migration 144) so the EventBus can replay missed events when its
 listener comes back online.
 
-Phase 1 contract (this PR):
+Status (post phase-3, 2026-05-09):
 
-* ``publish()`` is callable directly but is NOT yet wired into the
-  existing ``emit_pg()`` callers. The only consumer in this PR is the
-  new EventBus reconnect hook in ``event_bus.py``.
-* ``replay_unconsumed()`` re-dispatches lost events to in-process
-  handlers via the caller-provided ``dispatch_fn`` and auto-acknowledges
-  rows after the dispatch returns. A crash inside the handler still
-  leaves the row marked consumed in phase 1 — this is a known limitation
-  documented in the synthesis. Phase 2 introduces per-handler ack.
+* Phase 1 (PR #342, migration 144): ``publish()`` + ``replay_unconsumed()``
+  callable, EventBus reconnect hook wired.
+* Phase 2 (migration 146 + ``EventBus.emit_pg`` delegation): six DB-trigger
+  functions refactored to write events_outbox FIRST, then pg_notify with
+  ``_outbox_id`` injected.
+* Phase 3 (this file as-shipped): ``replay_unconsumed()`` only acks rows
+  AFTER ``dispatch_fn`` returns successfully — handler crash leaves the
+  row unconsumed for next replay (at-least-once semantics). Consumers
+  must dedupe via ``_outbox_id``. A daily ``prune_consumed(30)`` cron
+  (LaunchAgent ``com.nuzantara.outbox-prune.daily``) keeps the table
+  bounded.
 
 Reference impl: ``apps/backend-rag/backend/services/bridge/outbox.py``
 (generalised here — bridge_outbox is a different table for Pro/Air
@@ -179,9 +182,11 @@ async def replay_unconsumed(
     Called from the EventBus reconnect handler so events lost during a
     listener-disconnect window are not silently dropped.
 
-    Phase 1 contract: each row is dispatched once, then acked. If
-    ``dispatch_fn`` raises, the exception is logged and the row stays
-    unconsumed (will be retried on the next replay).
+    Phase-3 contract: each row is dispatched once, and acked only AFTER
+    ``dispatch_fn`` returns successfully. If ``dispatch_fn`` raises, the
+    exception is logged and the row stays unconsumed (retried on the
+    next replay). At-least-once semantics — handlers must dedupe via
+    ``_outbox_id`` for idempotency.
 
     Args:
         conn: asyncpg connection.

@@ -10,10 +10,22 @@
   </array>
   <key>EnvironmentVariables</key>
   <dict>
-    <key>ORGANISM_SHADOW_MODE</key><string>true</string>
+    <!-- W2 dispatch is controlled by ~/.agent/supervisor/active.flag (see
+         supervisor/active_flag.py). Set ORGANISM_SHADOW_MODE=true here only
+         to force-pin the daemon in shadow during an incident; default
+         (unset / "false") makes the file flag authoritative. -->
     <key>ORGANISM_RULES_PATH</key><string>/Users/nuzantara/Desktop/nuzantara/apps/organism/organism/rules/base.yaml</string>
     <key>ORGANISM_DECISIONS_LOG</key><string>/Users/nuzantara/logs/organism/decisions.jsonl</string>
     <key>ORGANISM_REDIS_URL</key><string>redis://127.0.0.1:6379/0</string>
+    <key>ORGANISM_ACTIVE_FLAG_PATH</key><string>/Users/nuzantara/.agent/supervisor/active.flag</string>
+    <key>ORGANISM_BLACKOUT_FLAG_PATH</key><string>/Users/nuzantara/.agent/supervisor/pause.flag</string>
+    <!-- TELEGRAM_BOT_TOKEN + TELEGRAM_OWNER_CHAT_ID are intentionally NOT
+         declared here (cicatrix scar 2026-04-29: world-readable plist
+         leaks). Operator sets them via `launchctl setenv TELEGRAM_BOT_TOKEN
+         <token>` + `launchctl setenv TELEGRAM_OWNER_CHAT_ID 1125336968`
+         BEFORE flipping the active flag. The notify_telegram actuator
+         silently skips alerts when these are unset, so an unset env keeps
+         the supervise loop healthy and just disables Telegram side-effects. -->
     <key>PYTHONPATH</key><string>/Users/nuzantara/Desktop/nuzantara/apps/organism</string>
   </dict>
   <key>RunAtLoad</key><true/>

@@ -236,6 +236,8 @@ class PracticeCreate(BaseModel):
     status: str = "inquiry"
     priority: str = "normal"  # 'low', 'normal', 'high', 'urgent'
     quoted_price: Decimal | None = None
+    discount_amount: Decimal | None = None  # Fixed-IDR discount; final invoice total = quoted_price - discount_amount
+    discount_reason: str | None = None  # Free-text reason, optional, surfaced on invoice PDF
     assigned_to: str | None = None  # team member email
     start_date: datetime | None = None
     notes: str | None = None
@@ -274,11 +276,21 @@ class PracticeCreate(BaseModel):
             raise ValueError("quoted_price must be non-negative")
         return v
 
+    @field_validator("discount_amount")
+    @classmethod
+    def validate_discount_amount(cls, v: Decimal | None) -> Decimal | None:
+        """Validate discount_amount is non-negative."""
+        if v is not None and v < 0:
+            raise ValueError("discount_amount must be non-negative")
+        return v
+
 
 class PracticeUpdate(BaseModel):
     status: str | None = None
     priority: str | None = None
     quoted_price: Decimal | None = None
+    discount_amount: Decimal | None = None
+    discount_reason: str | None = None
     actual_price: Decimal | None = None
     payment_status: str | None = None
     paid_amount: Decimal | None = None
@@ -336,6 +348,8 @@ class PracticeResponse(BaseModel):
     status: str
     priority: str
     quoted_price: Decimal | None
+    discount_amount: Decimal | None = None
+    discount_reason: str | None = None
     actual_price: Decimal | None
     payment_status: str
     assigned_to: str | None
@@ -441,7 +455,62 @@ async def create_practice(
                 insert_columns.append("family_member_id")
                 insert_values.append(practice.family_member_id)
 
-            placeholders = ", ".join(f"${i}" for i in range(1, len(insert_values) + 1))
+            # Discount (owner decision Q4=a, 2026-05-06): two dedicated columns
+            # plus an audit entry in metadata.discount_log so we can trace who
+            # applied which discount when, even if discount_amount is later
+            # changed via PATCH.
+            if practice.discount_amount is not None:
+                if quoted_price is not None and practice.discount_amount > quoted_price:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"discount_amount ({practice.discount_amount}) cannot exceed "
+                            f"quoted_price ({quoted_price})"
+                        ),
+                    )
+                insert_columns.append("discount_amount")
+                insert_values.append(practice.discount_amount)
+            if practice.discount_reason is not None and practice.discount_reason.strip():
+                insert_columns.append("discount_reason")
+                insert_values.append(practice.discount_reason.strip())
+            if practice.discount_amount is not None and practice.discount_amount > 0:
+                discount_audit = {
+                    "discount_log": [
+                        {
+                            "amount": str(practice.discount_amount),
+                            "reason": (practice.discount_reason or "").strip() or None,
+                            "applied_by": created_by,
+                            "applied_at": datetime.now(tz=timezone.utc).isoformat(),
+                            "event": "create",
+                        }
+                    ]
+                }
+                insert_columns.append("metadata")
+                # Pass the dict directly — the api pool registers a jsonb
+                # codec (service_initializer._light_init_connection) so
+                # asyncpg serialises with json.dumps() exactly once.
+                # Calling json.dumps() at this layer would double-encode and
+                # land the value as a JSONB string scalar (the bug shipped
+                # in PR #485 / #492 — observed 2026-05-06 on practice_id=390
+                # where metadata::text was '"{\"discount_log\": ...}"').
+                insert_values.append(discount_audit)
+
+            # Cast jsonb columns explicitly. asyncpg does not register a
+            # JSON codec for `jsonb` by default, so a `json.dumps()` value
+            # passed to a `jsonb` column lands as a JSON-encoded STRING
+            # scalar (i.e. the whole thing is wrapped in another pair of
+            # quotes), not as a parsed object — which silently breaks
+            # `metadata ? 'discount_log'` and any downstream jsonb_path_*
+            # query. Discovered live 2026-05-06 on practice_id=390 where
+            # metadata::text was '"{\"discount_log\": ...}"' instead of
+            # '{"discount_log": ...}'. The matching UPDATE block at
+            # line ~1268 already does `metadata = $1::jsonb`; the INSERT
+            # path now mirrors that.
+            JSONB_COLUMNS = {"metadata", "documents", "missing_documents", "custom_fields"}
+            placeholders = ", ".join(
+                f"${i}::jsonb" if insert_columns[i - 1] in JSONB_COLUMNS else f"${i}"
+                for i in range(1, len(insert_values) + 1)
+            )
             columns_str = ", ".join(insert_columns)
 
             practice_row = await conn.fetchrow(
@@ -834,6 +903,15 @@ CATEGORY_LABELS = {
     "kitap": "KITAP Permits",
     "company": "Company Services",
     "tax": "Tax Services",
+    # 2026 owner decision Q1=B (2026-05-06, see migration 157): split
+    # Tax & Accounting into 4 sub-categories so the dropdown groups
+    # monthly basic / monthly bundled / yearly packages / standalone
+    # fees as separate options rather than collapsing 17 entries under
+    # a single "Tax" header.
+    "tax_monthly": "Tax — Monthly Report (basic)",
+    "tax_monthly_bundled": "Tax — Monthly Report (incl. LKPM & Annual)",
+    "tax_annual": "Tax — Annual Packages",
+    "tax_standalone": "Tax — Standalone & Compliance",
     "other": "Other Process",
     "urgent": "Urgent Services",
 }
@@ -978,11 +1056,15 @@ async def update_practice(
             practice_assigned_to: str | None = None
             old_start_date: Any = None
             old_completion_date: Any = None
+            old_discount_amount: Decimal | None = None
+            old_metadata: dict | None = None
+            old_quoted_price: Decimal | None = None
             try:
                 old_row = await conn.fetchrow(
                     """
                     SELECT status, client_id, client_visible, created_by, assigned_to,
-                           start_date, completion_date
+                           start_date, completion_date, discount_amount, metadata,
+                           quoted_price
                     FROM practices
                     WHERE id = $1
                     """,
@@ -1000,6 +1082,16 @@ async def update_practice(
                     practice_assigned_to = old_row.get("assigned_to", "")
                     old_start_date = old_row.get("start_date")
                     old_completion_date = old_row.get("completion_date")
+                    old_discount_amount = old_row.get("discount_amount")
+                    raw_meta = old_row.get("metadata")
+                    if isinstance(raw_meta, str):
+                        try:
+                            old_metadata = json.loads(raw_meta)
+                        except Exception:
+                            old_metadata = {}
+                    else:
+                        old_metadata = raw_meta or {}
+                    old_quoted_price = old_row.get("quoted_price")
             except Exception as e:
                 # Backward compatibility: client_visible column may not exist yet.
                 if getattr(e, "sqlstate", None) == "42703":
@@ -1061,6 +1153,8 @@ async def update_practice(
                 "status": "status",
                 "priority": "priority",
                 "quoted_price": "quoted_price",
+                "discount_amount": "discount_amount",
+                "discount_reason": "discount_reason",
                 "actual_price": "actual_price",
                 "payment_status": "payment_status",
                 "paid_amount": "paid_amount",
@@ -1118,6 +1212,29 @@ async def update_practice(
                 param_index += 1
             else:
                 update_fields.append("updated_at = NOW()")
+
+            # Discount vs quoted_price sanity (owner Q4=a): if both quoted_price
+            # and discount_amount end up touched in this PATCH, the new discount
+            # must not exceed the new quoted_price. Use the post-update value
+            # for each field (fall back to the value already on the row).
+            if updates.discount_amount is not None:
+                effective_quoted = (
+                    updates.quoted_price
+                    if updates.quoted_price is not None
+                    else old_quoted_price
+                )
+                if (
+                    effective_quoted is not None
+                    and Decimal(updates.discount_amount) > Decimal(effective_quoted)
+                ):
+                    raise HTTPException(
+                        status_code=400,
+                        detail=(
+                            f"discount_amount ({updates.discount_amount}) cannot exceed "
+                            f"quoted_price ({effective_quoted})"
+                        ),
+                    )
+
             update_fields_str = ", ".join(update_fields)
 
             # Column names are from a whitelist (field_mapping), values are parameterized
@@ -1136,6 +1253,56 @@ async def update_practice(
                 raise HTTPException(status_code=404, detail="Practice not found")
 
             updated_practice = dict(row)
+
+            # Discount audit log (owner decision Q3=c, 2026-05-06): append an
+            # entry to metadata.discount_log every time discount_amount is
+            # touched, even when only the reason changes. Idempotent — we
+            # ignore the case where the new value equals the old one.
+            try:
+                discount_changed = (
+                    updates.discount_amount is not None
+                    and (
+                        old_discount_amount is None
+                        or Decimal(updates.discount_amount) != Decimal(old_discount_amount)
+                    )
+                )
+                reason_changed = (
+                    updates.discount_reason is not None
+                    and (updates.discount_reason or "").strip()
+                )
+                if discount_changed or reason_changed:
+                    user_email = current_user.get("email", "system") if isinstance(current_user, dict) else "system"
+                    audit_entry = {
+                        "amount": str(updates.discount_amount) if updates.discount_amount is not None else (str(old_discount_amount) if old_discount_amount is not None else None),
+                        "reason": (updates.discount_reason or "").strip() or None,
+                        "applied_by": user_email,
+                        "applied_at": datetime.now(tz=timezone.utc).isoformat(),
+                        "event": "update",
+                        "previous_amount": str(old_discount_amount) if old_discount_amount is not None else None,
+                    }
+                    new_meta = dict(old_metadata or {})
+                    log = new_meta.get("discount_log") or []
+                    if not isinstance(log, list):
+                        log = []
+                    log.append(audit_entry)
+                    new_meta["discount_log"] = log
+                    # Pass dict directly — pool's jsonb codec encodes once.
+                    # See create_practice() comment around the metadata
+                    # insert for the symptom of double-encoding.
+                    await conn.execute(
+                        "UPDATE practices SET metadata = $1 WHERE id = $2",
+                        new_meta,
+                        practice_id,
+                    )
+                    updated_practice["metadata"] = new_meta
+            except Exception as audit_exc:
+                # Audit failure must NOT roll back the user-visible discount
+                # update — the business write already succeeded. Log + move on.
+                logger.warning(
+                    "Discount audit append failed for practice %s: %s",
+                    practice_id,
+                    audit_exc,
+                )
 
             # Create timeline event for client-visible status changes (optional)
             if (

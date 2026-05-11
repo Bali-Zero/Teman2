@@ -12,6 +12,9 @@ from __future__ import annotations
 
 import hashlib
 import logging
+import os
+import re
+import subprocess
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any
@@ -37,10 +40,107 @@ DEFAULT_MAX_ITEMS = 50
 SEEN_SET_KEY = "garuda:intel_bridge:seen_urls"
 SEEN_TTL_DAYS = 90  # URL history window; older URLs re-publish
 
+# Article-content fetch (opt-in via MATAGARUDA_FETCH_CONTENT=1).
+# Without it NER works on title-only and produces 0-2 entities/article.
+# With it, fetcher hits each URL with curl, strips HTML, keeps first 2KB.
+FETCH_TIMEOUT_S = 10
+FETCH_MAX_BYTES = 2000  # what NER sees as `content`
+_USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
+)
+_RE_SCRIPT = re.compile(r"<script\b[^<]*(?:(?!</script>)<[^<]*)*</script>", re.I | re.S)
+_RE_STYLE = re.compile(r"<style\b[^<]*(?:(?!</style>)<[^<]*)*</style>", re.I | re.S)
+_RE_TAG = re.compile(r"<[^>]+>")
+_RE_WS = re.compile(r"\s+")
+
 
 def _url_hash(url: str) -> str:
     """Stable short hash for URL dedup in Redis SET."""
     return hashlib.sha256(url.encode("utf-8")).hexdigest()[:16]
+
+
+def _strip_html(html: str | None) -> str:
+    """Reduce raw HTML to plain visible text.
+
+    Minimal-stack rule (no BeautifulSoup): regex-only. Removes
+    <script>/<style> bodies first, then all tags, then collapses
+    whitespace. Lossy but adequate for NER consumption.
+    """
+    if not html:
+        return ""
+    text = _RE_SCRIPT.sub(" ", html)
+    text = _RE_STYLE.sub(" ", text)
+    text = _RE_TAG.sub(" ", text)
+    text = _RE_WS.sub(" ", text)
+    return text.strip()
+
+
+def _fetch_article_text(url: str) -> str | None:
+    """Fetch article HTML via curl, strip to plain text, cap to FETCH_MAX_BYTES.
+
+    Returns None on any transport-level failure (timeout, non-2xx,
+    network, missing curl). Caller treats None as "leave content empty,
+    don't fail the bridge".
+
+    curl-only (no httpx/requests dep — minimal stack rule). Polite UA so
+    we're not flagged as a generic bot. --max-filesize caps the on-the-wire
+    payload so a long-form article doesn't get pulled in full just to
+    discard most of it.
+    """
+    if not url:
+        return None
+    try:
+        result = subprocess.run(
+            [
+                "curl",
+                "-sSL",
+                "--compressed",  # decode gzip/deflate transparently — without
+                                 # this, servers like tempo.co return raw gzip
+                                 # bytes and subprocess(text=True) crashes on
+                                 # the 0x8b magic byte. Verified empirically
+                                 # 2026-05-06 first prod run.
+                "--max-time", str(FETCH_TIMEOUT_S),
+                "--max-filesize", "1000000",  # 1 MB on-wire cap
+                "-A", _USER_AGENT,
+                "-w", "\n%{http_code}",
+                "-o", "-",
+                url,
+            ],
+            capture_output=True,
+            text=True,
+            timeout=FETCH_TIMEOUT_S + 2,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError) as e:
+        logger.debug("[intel_bridge] fetch timeout/missing curl for %s: %s", url, e)
+        return None
+    except Exception as e:  # noqa: BLE001 — fetch is best-effort; a single
+        # malformed URL must NOT take down the 50-URL batch (e.g. server
+        # sends gzip despite our --compressed request, or sends invalid
+        # UTF-8 in a non-Content-Encoding-declared body, or any other
+        # subprocess oddity). Log + skip + caller publishes content="".
+        logger.debug("[intel_bridge] fetch unexpected error for %s: %s", url, e)
+        return None
+
+    if result.returncode != 0:
+        logger.debug("[intel_bridge] fetch non-zero (%s): %s", result.returncode, url)
+        return None
+
+    body = result.stdout or ""
+    # The trailing http_code from -w lives on its own line.
+    last_nl = body.rfind("\n")
+    if last_nl == -1:
+        return None
+    http_code = body[last_nl + 1:].strip()
+    body = body[:last_nl]
+    if not http_code.startswith("2"):
+        logger.debug("[intel_bridge] fetch HTTP %s for %s", http_code, url)
+        return None
+
+    text = _strip_html(body)
+    if not text:
+        return None
+    return text[:FETCH_MAX_BYTES]
 
 
 def _already_seen(url_hash: str) -> bool:
@@ -99,6 +199,8 @@ def bridge_intel_scraper(
                 "reason": f"no items newer than {since}",
             }
 
+    fetch_content = os.environ.get("MATAGARUDA_FETCH_CONTENT", "").strip() == "1"
+
     published = 0
     skipped_seen = 0
     failures = 0
@@ -113,13 +215,25 @@ def bridge_intel_scraper(
 
         title = art.get("title", "") or url
         src = art.get("source") or _infer_source(url)
+
+        # Article body — opt-in via MATAGARUDA_FETCH_CONTENT=1. Empty by
+        # default to keep the bridge fast (max_items × FETCH_TIMEOUT_S
+        # worst case otherwise) and to preserve backward compatibility
+        # with the existing pipeline. On fetch failure: leave empty,
+        # don't fail the publish.
+        content = ""
+        if fetch_content:
+            fetched = _fetch_article_text(url)
+            if fetched:
+                content = fetched
+
         fields = {
             "title": title[:300],
             "url": url,
             "source": src,
             "source_type": "intel_scraper",
             "source_agent": AGENT_NAME,
-            "content": "",
+            "content": content,
             "agent": AGENT_NAME,
             "timestamp": art.get("published_at")
             or datetime.now().isoformat(timespec="seconds"),

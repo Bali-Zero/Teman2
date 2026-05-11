@@ -21,6 +21,7 @@ from backend.services.notifications.email_audit import (
     notify_email_failure_critical,
     record_email_result,
 )
+from backend.services.notifications.email_branding import logo_header_html, team_email_html
 from backend.services.notifications.email_http import get_email_client
 
 # Internal email API — uses Brevo, from=zantara@balizero.com
@@ -83,6 +84,9 @@ class CompletedProcessService:
                     documents=final_documents,
                 )
 
+            # Send notification to team leader
+            team_leader_email = practice_data.get("assigned_to") or practice_data.get("created_by")
+
             # Send email to client
             client_notified = False
             if client_data.get("email"):
@@ -93,13 +97,12 @@ class CompletedProcessService:
                         practice_data=practice_data,
                         documents=uploaded_docs,
                         failed_uploads=failed_uploads,
+                        team_member_email=team_leader_email,
                     )
                     client_notified = True
                 except Exception as e:
                     logger.error(f"Failed to send completion email to client: {e}")
 
-            # Send notification to team leader
-            team_leader_email = practice_data.get("assigned_to") or practice_data.get("created_by")
             team_notified = False
             if team_leader_email:
                 try:
@@ -213,41 +216,16 @@ class CompletedProcessService:
         practice_data: dict,
         documents: list[dict],
         failed_uploads: list[dict] | None = None,
+        team_member_email: str | None = None,
     ) -> None:
         """Send human, congratulatory email to client.
 
-        When some documents failed to upload to Drive, the email no longer
-        claims completeness: a "⚠️ Missing documents" section lists the
-        filenames and tells the client the team will follow up.
+        Documents are delivered by the consultant via WhatsApp — this email
+        no longer lists Drive links (clients aren't given Drive folder access).
         """
         practice_type = practice_data.get("practice_type_name", "Immigration Service")
 
-        # Build document links section
-        docs_section = ""
-        if documents:
-            docs_section = "\n📎 Your Documents:\n"
-            for doc in documents:
-                docs_section += f"   • {doc['filename']}: {doc['file_url']}\n"
-
-        # Missing-documents warning (was silently dropped before the fix).
-        missing_section = ""
-        if failed_uploads:
-            missing_section = (
-                "\n⚠️ Note: A few documents could not be uploaded to your Drive folder "
-                "automatically. Our team will send them to you directly within 24 hours:\n"
-            )
-            for item in failed_uploads:
-                missing_section += f"   • {item['filename']}\n"
-
         subject = f"[CLIENT] 🎉 Congratulations {client_name}! Your {practice_type} is Complete"
-
-        storage_note = (
-            "All your important documents are safely stored in your personal Google Drive folder. "
-            "You can access them anytime through the link above."
-            if not failed_uploads
-            else "The documents listed above are in your personal Google Drive folder. "
-                 "The missing items will arrive by direct email shortly."
-        )
 
         body = f"""Dear {client_name},
 
@@ -260,8 +238,8 @@ What This Means for You:
 ✅ All legal requirements have been fulfilled
 ✅ You can now proceed with confidence in your Indonesian journey
 
-{docs_section}{missing_section}
-{storage_note}
+📲 Your documents:
+Your consultant will share all the documents with you directly on WhatsApp shortly.
 
 A Few Things to Remember:
 • Keep your documents secure and make backup copies
@@ -297,6 +275,8 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
             email_type="completion_client",
             practice_id=practice_data["id"],
             client_id=practice_data.get("client_id"),
+            cc=team_member_email if team_member_email and team_member_email != client_email else None,
+            include_logo=True,
         )
         logger.info(f"Completion email sent to client {client_email}")
 
@@ -329,24 +309,38 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
             )
         else:
             subject = f"[TEAM] ✅ Process Completed - {client_name} ({practice_type})"
-            followup_line = "No further action required on this case."
+            followup_line = "Great work — no further action required on this case."
 
-        body = f"""Hi Team Leader,
+        if failed_count:
+            title = f"⚠️ Completed (with missing docs) — {client_name}"
+            intro = (
+                f"<b>Attention:</b> {failed_count} document(s) failed to upload to Drive. "
+                f"The client email told them you'll follow up — please send the missing files "
+                f"manually within 24h."
+            )
+        else:
+            title = f"✅ Process Completed — {client_name}"
+            intro = followup_line
 
-Great work! The following practice has been successfully completed:
-
-📋 Practice Details:
-• Client: {client_name}
-• Service: {practice_type}
-• Practice ID: {practice_id}
-• Status: ✅ COMPLETED
-• Documents uploaded: {uploaded_count}{f" (⚠️ {failed_count} failed)" if failed_count else ""}
-
-{followup_line}
-
-Best regards,
-Zantara CRM System
-"""
+        body = team_email_html(
+            title=title,
+            intro=intro,
+            meta_rows=[
+                ("Client", client_name),
+                ("Service", practice_type),
+                ("Practice ID", f"#{practice_id}"),
+                ("Status", "✅ COMPLETED"),
+                (
+                    "Documents",
+                    f"{uploaded_count} uploaded"
+                    + (f" · ⚠️ {failed_count} failed" if failed_count else ""),
+                ),
+            ],
+            body_html="",
+            cta_label="Open practice in CRM",
+            cta_url=f"https://kita.balizero.com/process/{practice_id}",
+            signature="Zantara CRM",
+        )
 
         await self._send_with_brevo_fallback(
             team_leader_email,
@@ -355,6 +349,7 @@ Zantara CRM System
             email_type="completion_team",
             practice_id=practice_id,
             client_id=practice_data.get("client_id"),
+            prebuilt_html=True,
         )
 
     async def _send_with_brevo_fallback(
@@ -366,6 +361,9 @@ Zantara CRM System
         email_type: str,
         practice_id: int | None = None,
         client_id: int | None = None,
+        cc: str | None = None,
+        include_logo: bool = False,
+        prebuilt_html: bool = False,
     ) -> None:
         """Send email via Brevo (primary), fall back to Zoho if Brevo fails.
 
@@ -383,12 +381,20 @@ Zantara CRM System
 
         # 1) Brevo
         try:
-            html_body = body.replace("\n", "<br>")
+            if prebuilt_html:
+                html_body = body
+            else:
+                html_body = body.replace("\n", "<br>")
+                if include_logo:
+                    html_body = f"{logo_header_html()}{html_body}"
+            payload: dict = {"to": to_email, "subject": subject, "body": html_body}
+            if cc:
+                payload["cc"] = cc
             client = await get_email_client()
             response = await client.post(
                 _EMAIL_API_URL,
                 headers={"X-API-Key": _EMAIL_API_KEY},
-                json={"to": to_email, "subject": subject, "body": html_body},
+                json=payload,
             )
             response.raise_for_status()
             logger.info(f"Email sent to {to_email} via Brevo")

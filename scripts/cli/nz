@@ -1,0 +1,785 @@
+#!/usr/bin/env bash
+# nz — Nuzantara unified CLI dispatcher.
+#
+# Single entry point for routine operations on the 117-organ Nuzantara
+# system. Resolves organs via organs_registry.yaml; routes commands to
+# the right launchctl/fly/ssh path based on registry runtime.
+#
+# Install:
+#   ln -sf "$HOME/Desktop/nuzantara/scripts/cli/nz" "$HOME/.local/bin/nz"
+#
+# Run `nz` with no args for the help screen.
+
+set -o pipefail
+
+# ─────────────────────────────────────────────────────────────────────────
+# Constants
+# ─────────────────────────────────────────────────────────────────────────
+
+readonly REPO_ROOT="${NZ_REPO_ROOT:-$HOME/Desktop/nuzantara}"
+readonly REGISTRY="$REPO_ROOT/apps/organism/organism/organs_registry.yaml"
+readonly AGGREGATE="$HOME/.organism/aggregate.json"
+readonly OUTBOX_PRUNE_SH="$REPO_ROOT/scripts/outbox-prune.sh"
+readonly SENTINEL_AGG_PY="$REPO_ROOT/scripts/sentinel-aggregate.py"
+readonly DEFAULT_PYTHON="${NZ_PYTHON:-/Users/nuzantara/.pyenv/versions/3.11.11/bin/python3}"
+
+# Ensure brew + libpq psql is reachable even from sandboxed callers.
+export PATH="/opt/homebrew/opt/libpq/bin:/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
+
+# Colors (auto-disabled when stdout is not a TTY)
+if [ -t 1 ]; then
+    readonly C_RED=$'\033[0;31m'
+    readonly C_GREEN=$'\033[0;32m'
+    readonly C_YELLOW=$'\033[0;33m'
+    readonly C_BLUE=$'\033[0;34m'
+    readonly C_DIM=$'\033[2m'
+    readonly C_RESET=$'\033[0m'
+else
+    readonly C_RED=""
+    readonly C_GREEN=""
+    readonly C_YELLOW=""
+    readonly C_BLUE=""
+    readonly C_DIM=""
+    readonly C_RESET=""
+fi
+
+# ─────────────────────────────────────────────────────────────────────────
+# Helpers
+# ─────────────────────────────────────────────────────────────────────────
+
+die() {
+    echo "${C_RED}error:${C_RESET} $*" >&2
+    exit 1
+}
+
+note() {
+    echo "${C_DIM}$*${C_RESET}" >&2
+}
+
+require_registry() {
+    [ -f "$REGISTRY" ] || die "registry not found: $REGISTRY (set NZ_REPO_ROOT?)"
+}
+
+# Parse organs_registry.yaml. Output one line per organ:
+#   <id> <runtime> <type> <recovery_action> <recovery_label_or_app> <severity>
+_organs_table() {
+    require_registry
+    "$DEFAULT_PYTHON" - "$REGISTRY" <<'PY'
+import sys, yaml
+data = yaml.safe_load(open(sys.argv[1]).read())
+for o in data.get("organs", []):
+    rp = o.get("recovery_params") or {}
+    label = rp.get("label") or rp.get("app") or ""
+    print(
+        o.get("id", "?"),
+        o.get("runtime", "?"),
+        o.get("type", "?"),
+        o.get("recovery_action", "?"),
+        label,
+        o.get("severity_on_silence", "?"),
+        sep="\t",
+    )
+PY
+}
+
+# Resolve an organ id to its registry row. Empty stdout if not found.
+_organ_resolve() {
+    local id="$1"
+    _organs_table | awk -F'\t' -v id="$id" '$1==id {print; exit}'
+}
+
+# Pretty-print a single aggregate.json organ row.
+_aggregate_organ() {
+    local id="$1"
+    [ -f "$AGGREGATE" ] || die "aggregate.json missing — is sentinel-aggregate running?"
+    "$DEFAULT_PYTHON" - "$AGGREGATE" "$id" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+target = sys.argv[2]
+for o in d.get("organs", []):
+    if o.get("id") == target:
+        print(json.dumps(o, indent=2))
+        sys.exit(0)
+print(f"organ '{target}' not in aggregate", file=sys.stderr)
+sys.exit(1)
+PY
+}
+
+# ─────────────────────────────────────────────────────────────────────────
+# nz status [organ_id]
+# ─────────────────────────────────────────────────────────────────────────
+
+cmd_status() {
+    [ -f "$AGGREGATE" ] || die "aggregate.json missing — run \`nz sentinel run\` first"
+
+    if [ $# -gt 0 ]; then
+        _aggregate_organ "$1"
+        return
+    fi
+
+    "$DEFAULT_PYTHON" - "$AGGREGATE" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+total = d.get("classified_count", 0)
+ts = d.get("ts", "?")
+print(f"Aggregate @ {ts}  total={total}")
+print()
+by = d.get("by_status", {})
+for k, v in sorted(by.items(), key=lambda x: -x[1]):
+    pct = 100*v/total if total else 0
+    print(f"  {k:12s} {v:3d}  ({pct:5.1f}%)")
+
+# Show problematic organs (not ok / exit_drift / remote)
+print()
+print("Problematic:")
+shown = 0
+for o in sorted(d.get("organs", []), key=lambda x: x.get("id","")):
+    s = o.get("status", "?")
+    if s in ("ok", "exit_drift", "remote", "disabled"):
+        continue
+    age = o.get("age_seconds")
+    age_s = f"age={age}s" if age is not None else "age=n/a"
+    hb = o.get("hb_status") or "-"
+    print(f"  [{s:11s}] {o.get('id'):44s} hb={hb:9s} {age_s}")
+    shown += 1
+if shown == 0:
+    print("  (none)")
+PY
+}
+
+# ─────────────────────────────────────────────────────────────────────────
+# nz organ list|show|kickstart|halt|recover
+# ─────────────────────────────────────────────────────────────────────────
+
+cmd_organ() {
+    local sub="${1:-}"
+    shift || true
+
+    case "$sub" in
+        list|ls)
+            _organs_table | awk -F'\t' '{
+                printf "  %-40s %-15s %-10s %-25s %s\n", $1, $2, $3, $4, $6
+            }'
+            ;;
+        show)
+            local id="${1:?usage: nz organ show <id>}"
+            local row
+            row=$(_organ_resolve "$id")
+            [ -n "$row" ] || die "organ '$id' not in registry"
+            echo "$row" | awk -F'\t' '{
+                printf "id:               %s\nruntime:          %s\ntype:             %s\nrecovery_action:  %s\nrecovery_label:   %s\nseverity:         %s\n", $1, $2, $3, $4, $5, $6
+            }'
+            echo
+            note "live aggregate:"
+            _aggregate_organ "$id" 2>/dev/null || note "  (not in aggregate.json — sentinel-aggregate may not have classified yet)"
+            ;;
+        kickstart|kick)
+            local id="${1:?usage: nz organ kickstart <id>}"
+            local row
+            row=$(_organ_resolve "$id")
+            [ -n "$row" ] || die "organ '$id' not in registry"
+            local runtime label action
+            runtime=$(echo "$row" | awk -F'\t' '{print $2}')
+            label=$(echo "$row" | awk -F'\t' '{print $5}')
+            action=$(echo "$row" | awk -F'\t' '{print $4}')
+            case "$runtime" in
+                pro_launchd)
+                    [ -n "$label" ] || die "no recovery_params.label for $id"
+                    echo "${C_BLUE}kickstart${C_RESET} $label (Pro)"
+                    launchctl kickstart "gui/$(id -u)/$label"
+                    ;;
+                mini_launchd)
+                    [ -n "$label" ] || die "no recovery_params.label for $id"
+                    echo "${C_BLUE}kickstart${C_RESET} $label (Mini)"
+                    ssh -o ConnectTimeout=5 mini-remote "launchctl kickstart 'gui/\$(id -u)/$label'" \
+                        || ssh -o ConnectTimeout=5 mini "launchctl kickstart 'gui/\$(id -u)/$label'" \
+                        || die "Mini unreachable"
+                    ;;
+                fly_machine)
+                    [ -n "$label" ] || die "no recovery_params.app for $id"
+                    [ "$action" = "fly_machines_start" ] || die "unsupported action $action for $id"
+                    echo "${C_BLUE}fly machines start${C_RESET} -a $label"
+                    fly machines start -a "$label"
+                    ;;
+                *)
+                    die "unsupported runtime $runtime for $id"
+                    ;;
+            esac
+            ;;
+        halt|stop)
+            local id="${1:?usage: nz organ halt <id>}"
+            local row
+            row=$(_organ_resolve "$id")
+            [ -n "$row" ] || die "organ '$id' not in registry"
+            local runtime label
+            runtime=$(echo "$row" | awk -F'\t' '{print $2}')
+            label=$(echo "$row" | awk -F'\t' '{print $5}')
+            case "$runtime" in
+                pro_launchd)
+                    [ -n "$label" ] || die "no label for $id"
+                    echo "${C_YELLOW}bootout${C_RESET} $label (Pro)"
+                    launchctl bootout "gui/$(id -u)/$label" && echo "ok"
+                    ;;
+                mini_launchd)
+                    [ -n "$label" ] || die "no label for $id"
+                    echo "${C_YELLOW}bootout${C_RESET} $label (Mini)"
+                    ssh -o ConnectTimeout=5 mini-remote "launchctl bootout 'gui/\$(id -u)/$label'" && echo ok
+                    ;;
+                fly_machine)
+                    echo "${C_YELLOW}fly machines stop${C_RESET} -a $label"
+                    fly machines stop -a "$label"
+                    ;;
+                *)
+                    die "unsupported runtime $runtime for $id"
+                    ;;
+            esac
+            ;;
+        recover)
+            # Bulk: kickstart every organ currently in 'dead' state.
+            [ -f "$AGGREGATE" ] || die "aggregate.json missing"
+            local dead_ids
+            dead_ids=$("$DEFAULT_PYTHON" - "$AGGREGATE" <<'PY'
+import json, sys
+d = json.load(open(sys.argv[1]))
+for o in d.get("organs", []):
+    if o.get("status") == "dead":
+        print(o.get("id", ""))
+PY
+            )
+            if [ -z "$dead_ids" ]; then
+                echo "${C_GREEN}no dead organs${C_RESET} — nothing to recover"
+                return 0
+            fi
+            local count=0
+            while IFS= read -r id; do
+                [ -z "$id" ] && continue
+                cmd_organ kickstart "$id" || note "  (kickstart $id failed — continuing)"
+                count=$((count + 1))
+            done <<< "$dead_ids"
+            echo "${C_BLUE}recovered $count organ(s)${C_RESET}"
+            ;;
+        ""|help|-h|--help)
+            cat <<EOF
+usage: nz organ <sub> [args]
+
+  list              list all organs in registry
+  show <id>         show organ + live aggregate row
+  kickstart <id>    launchctl kickstart / fly machines start / mini ssh
+  halt <id>         launchctl bootout / fly machines stop
+  recover           kickstart every organ currently 'dead' in aggregate
+EOF
+            ;;
+        *)
+            die "unknown organ subcommand: $sub (try \`nz organ help\`)"
+            ;;
+    esac
+}
+
+# ─────────────────────────────────────────────────────────────────────────
+# nz bus channels|tail|replay|count
+# ─────────────────────────────────────────────────────────────────────────
+
+cmd_bus() {
+    local sub="${1:-}"
+    shift || true
+
+    # Source secrets for DATABASE_URL etc.
+    if [ -f "$HOME/.nuzantara-secrets.env" ]; then
+        set -a
+        # shellcheck disable=SC1091
+        . "$HOME/.nuzantara-secrets.env"
+        set +a
+    fi
+    local db_url="${DATABASE_URL_LOCAL:-${DATABASE_URL:-postgresql://postgres@127.0.0.1:15432/nuzantara_rag}}"
+
+    case "$sub" in
+        channels|ls)
+            "$DEFAULT_PYTHON" - <<'PY'
+from importlib import import_module
+import sys
+sys.path.insert(0, "/Users/nuzantara/Desktop/nuzantara/apps/backend-rag")
+try:
+    mod = import_module("backend.services.events.event_bus")
+    chans = getattr(mod, "PG_CHANNEL_MAP", {})
+    print(f"PG_CHANNEL_MAP ({len(chans)} channels):")
+    for k, v in chans.items():
+        print(f"  {k:35s} -> {v}")
+except Exception as e:
+    print(f"unable to import PG_CHANNEL_MAP: {e}", file=sys.stderr)
+    sys.exit(1)
+PY
+            ;;
+        tail)
+            local channel="${1:?usage: nz bus tail <channel>}"
+            command -v psql >/dev/null || die "psql not found in PATH"
+            note "psql LISTEN $channel  (Ctrl-C to stop)"
+            db_url="${DATABASE_URL_LOCAL:-${DATABASE_URL:-postgresql://postgres@127.0.0.1:15432/nuzantara_rag}}"
+            psql "$db_url" -c "LISTEN $channel" -c "SELECT pg_sleep(86400)"
+            ;;
+        count)
+            local channel="${1:-}"
+            command -v psql >/dev/null || die "psql not found"
+            db_url="${DATABASE_URL_LOCAL:-${DATABASE_URL:-postgresql://postgres@127.0.0.1:15432/nuzantara_rag}}"
+            if [ -n "$channel" ]; then
+                psql "$db_url" -c "SELECT channel, COUNT(*) FILTER (WHERE consumed_at IS NULL) AS unconsumed, COUNT(*) AS total FROM events_outbox WHERE channel='$channel' GROUP BY channel"
+            else
+                psql "$db_url" -c "SELECT channel, COUNT(*) FILTER (WHERE consumed_at IS NULL) AS unconsumed, COUNT(*) AS total FROM events_outbox GROUP BY channel ORDER BY channel"
+            fi
+            ;;
+        replay)
+            local channel="${1:?usage: nz bus replay <channel> [--all|--minutes=N]}"
+            shift
+            local max_age_minutes=60
+            for arg in "$@"; do
+                case "$arg" in
+                    --all)            max_age_minutes=525600 ;;  # 1 year
+                    --minutes=*)      max_age_minutes="${arg#--minutes=}" ;;
+                esac
+            done
+            cd "$REPO_ROOT/apps/backend-rag" || die "backend-rag dir missing"
+            # Pass db_url + channel + max_age explicitly via env so the python
+            # child uses local pg-proxy (with creds), not whatever DATABASE_URL
+            # the shell holds (often Fly flycast which doesn't resolve here).
+            NZ_REPLAY_DSN="$db_url" \
+            NZ_REPLAY_CHANNEL="$channel" \
+            NZ_REPLAY_MAX_AGE="$max_age_minutes" \
+                PYTHONPATH=. .venv/bin/python -c "
+import asyncio, asyncpg, os
+from backend.services.events.outbox import replay_unconsumed
+async def main():
+    dsn = os.environ['NZ_REPLAY_DSN']
+    channel = os.environ['NZ_REPLAY_CHANNEL']
+    max_age = int(os.environ['NZ_REPLAY_MAX_AGE'])
+    conn = await asyncpg.connect(dsn)
+    try:
+        async def noop(payload): pass
+        n = await replay_unconsumed(conn, noop, channel=channel, max_age_minutes=max_age)
+        print(f'replayed {n} events on {channel} (max_age={max_age}min)')
+    finally:
+        await conn.close()
+asyncio.run(main())
+"
+            ;;
+        prune)
+            [ -x "$OUTBOX_PRUNE_SH" ] || die "outbox-prune.sh not executable: $OUTBOX_PRUNE_SH"
+            "$OUTBOX_PRUNE_SH"
+            ;;
+        ""|help|-h|--help)
+            cat <<EOF
+usage: nz bus <sub> [args]
+
+  channels                       list PG_CHANNEL_MAP entries
+  tail <channel>                 psql LISTEN on channel (Ctrl-C to stop)
+  count [channel]                events_outbox row counts (unconsumed/total)
+  replay <channel> [--all|--minutes=N]
+                                 replay unconsumed rows for channel
+                                 (default last 60min; --all = no age limit)
+  prune                          run outbox-prune.sh (deletes consumed >30d)
+EOF
+            ;;
+        *)
+            die "unknown bus subcommand: $sub (try \`nz bus help\`)"
+            ;;
+    esac
+}
+
+# ─────────────────────────────────────────────────────────────────────────
+# nz sentinel run|tail
+# ─────────────────────────────────────────────────────────────────────────
+
+cmd_sentinel() {
+    local sub="${1:-run}"
+    shift || true
+    case "$sub" in
+        run)
+            "$DEFAULT_PYTHON" "$SENTINEL_AGG_PY"
+            ;;
+        tail)
+            tail -f "$HOME/logs/sentinel-aggregate.log"
+            ;;
+        ""|help|-h|--help)
+            cat <<EOF
+usage: nz sentinel <sub>
+
+  run    execute sentinel-aggregate now (writes ~/.organism/aggregate.json)
+  tail   tail the sentinel-aggregate log
+EOF
+            ;;
+        *)
+            die "unknown sentinel subcommand: $sub"
+            ;;
+    esac
+}
+
+# ─────────────────────────────────────────────────────────────────────────
+# nz wr2 generate|supervisor|queue|fact
+# ─────────────────────────────────────────────────────────────────────────
+
+cmd_wr2() {
+    local sub="${1:-}"
+    shift || true
+    case "$sub" in
+        generate|gen)
+            local topic="${1:-}"
+            [ -n "$topic" ] || die "usage: nz wr2 generate <topic>"
+            local script="$REPO_ROOT/scripts/wr2_draft_generator.py"
+            [ -f "$script" ] || die "wr2_draft_generator.py missing"
+            cd "$REPO_ROOT/apps/backend-rag" && PYTHONPATH=. .venv/bin/python "$script" --topic "$topic"
+            ;;
+        supervisor)
+            local action="${1:-status}"
+            case "$action" in
+                status)
+                    launchctl print "gui/$(id -u)/com.balizero.wr2.supervisor" 2>&1 | grep -E "state =|last exit" | head -3
+                    cat "$HOME/.organism/last_seen/wr2.supervisor.json" 2>/dev/null | head -1
+                    ;;
+                restart)
+                    launchctl kickstart -k "gui/$(id -u)/com.balizero.wr2.supervisor"
+                    echo "wr2.supervisor restarted"
+                    ;;
+                log)
+                    tail -50 "$HOME/logs/wr2_supervisor.log"
+                    ;;
+                *)
+                    die "usage: nz wr2 supervisor {status|restart|log}"
+                    ;;
+            esac
+            ;;
+        queue)
+            local pending=("$REPO_ROOT/apps/war-room/output/canva/canva_pending.json")
+            for f in "${pending[@]}"; do
+                [ -f "$f" ] && echo "=== $f ===" && cat "$f"
+            done
+            ;;
+        ""|help|-h|--help)
+            cat <<EOF
+usage: nz wr2 <sub> [args]
+
+  generate <topic>            run wr2_draft_generator on a topic
+  supervisor {status|restart|log}
+  queue                       show canva_pending.json
+EOF
+            ;;
+        *)
+            die "unknown wr2 subcommand: $sub"
+            ;;
+    esac
+}
+
+# ─────────────────────────────────────────────────────────────────────────
+# nz cell status|log|kickstart
+# ─────────────────────────────────────────────────────────────────────────
+
+cmd_cell() {
+    local sub="${1:-status}"
+    shift || true
+    case "$sub" in
+        status)
+            cat "$HOME/.organism/last_seen/cell.organism.json" 2>/dev/null && echo
+            launchctl print "gui/$(id -u)/com.cell.organism" 2>&1 | grep -E "state =|last exit" | head -3
+            ;;
+        log)
+            tail -50 "$HOME/Library/Logs/cell-organism.log"
+            ;;
+        kickstart|restart)
+            launchctl kickstart -k "gui/$(id -u)/com.cell.organism"
+            echo "cell.organism restarted"
+            ;;
+        ""|help|-h|--help)
+            cat <<EOF
+usage: nz cell <sub>
+
+  status        latest pulse + launchctl state
+  log           tail cell-organism.log
+  kickstart     restart cell.organism daemon
+EOF
+            ;;
+        *)
+            die "unknown cell subcommand: $sub"
+            ;;
+    esac
+}
+
+# ─────────────────────────────────────────────────────────────────────────
+# nz fad list|approve|status
+# ─────────────────────────────────────────────────────────────────────────
+
+cmd_fad() {
+    local sub="${1:-status}"
+    shift || true
+
+    if [ -f "$HOME/.nuzantara-secrets.env" ]; then
+        set -a
+        # shellcheck disable=SC1091
+        . "$HOME/.nuzantara-secrets.env"
+        set +a
+    fi
+    local db_url="${DATABASE_URL_LOCAL:-${DATABASE_URL:-postgresql://postgres@127.0.0.1:15432/nuzantara_rag}}"
+
+    case "$sub" in
+        status)
+            launchctl print "gui/$(id -u)/com.nuzantara.federation-alert-dispatcher" 2>&1 | grep -E "state =|last exit" | head -3
+            ;;
+        list)
+            # Schema-tolerant: select common columns; lists pending only.
+            psql "$db_url" <<'SQL'
+SELECT proposal_id,
+       severity,
+       status,
+       created_at
+  FROM federation_alert_proposals
+ WHERE status IN ('pending','proposed','awaiting_review')
+ ORDER BY created_at DESC
+ LIMIT 20;
+SQL
+            ;;
+        approve)
+            local pid="${1:?usage: nz fad approve <proposal_id>}"
+            psql "$db_url" -v pid="$pid" <<'SQL'
+UPDATE federation_alert_proposals
+   SET status = 'approved'
+ WHERE proposal_id = :'pid'
+RETURNING proposal_id, status;
+SQL
+            ;;
+        log)
+            tail -50 "$HOME/logs/alert-dispatcher/launchd.err.log"
+            ;;
+        ""|help|-h|--help)
+            cat <<EOF
+usage: nz fad <sub>
+
+  status                  launchd state of FAD daemon
+  list                    pending proposals from federation_alert_proposals
+  approve PROPOSAL_ID     mark proposal approved (substitute the real id;
+                          do NOT paste the literal "<proposal_id>" placeholder
+                          — zsh interprets <...> as a redirect)
+  log                     tail FAD log
+EOF
+            ;;
+        *)
+            die "unknown fad subcommand: $sub"
+            ;;
+    esac
+}
+
+# ─────────────────────────────────────────────────────────────────────────
+# nz events tail|recent|count|sources
+# ─────────────────────────────────────────────────────────────────────────
+
+cmd_events() {
+    local sub="${1:-recent}"
+    shift || true
+    local events_dir="$HOME/.organism/events"
+
+    case "$sub" in
+        tail)
+            local source="${1:-all}"
+            if [ "$source" = "all" ]; then
+                tail -F "$events_dir"/*.jsonl 2>/dev/null
+            else
+                local f="$events_dir/${source}.jsonl"
+                [ -f "$f" ] || die "no events file: $f"
+                tail -F "$f"
+            fi
+            ;;
+        recent)
+            local limit="${1:-20}"
+            for f in "$events_dir"/*.jsonl; do
+                [ -f "$f" ] || continue
+                tail -n "$limit" "$f" 2>/dev/null
+            done | "$DEFAULT_PYTHON" -c "
+import json, sys
+lines = sorted(sys.stdin.readlines(), key=lambda l: json.loads(l).get('ts',''), reverse=True)[:int('$limit')]
+for line in lines:
+    e = json.loads(line)
+    print(f\"{e['ts'][:19]:20s} [{e['severity']:8s}] {e['source']:30s} {e['kind']:30s} {json.dumps(e.get('payload',{}))[:80]}\")
+"
+            ;;
+        count)
+            for f in "$events_dir"/*.jsonl; do
+                [ -f "$f" ] || continue
+                local n
+                n=$(wc -l < "$f")
+                printf "  %-30s %s\n" "$(basename "$f")" "$n"
+            done
+            echo "  ---"
+            local stream_len
+            stream_len=$(redis-cli XLEN organism:events 2>/dev/null || echo "?")
+            echo "  redis stream organism:events: $stream_len entries"
+            ;;
+        sources)
+            for f in "$events_dir"/*.jsonl; do
+                [ -f "$f" ] || continue
+                "$DEFAULT_PYTHON" -c "
+import json
+sources = set()
+for line in open('$f'):
+    try:
+        sources.add(json.loads(line).get('source','?'))
+    except Exception: pass
+print(f\"$(basename "$f"):\", ', '.join(sorted(sources)))
+"
+            done
+            ;;
+        ""|help|-h|--help)
+            cat <<EOF
+usage: nz events <sub> [args]
+
+  recent [N]            print N most recent events across all jsonl files
+  tail [source|all]     follow ~/.organism/events/<source>.jsonl
+  count                 line counts per JSONL + redis stream length
+  sources               distinct event sources per JSONL
+EOF
+            ;;
+        *)
+            die "unknown events subcommand: $sub"
+            ;;
+    esac
+}
+
+# ─────────────────────────────────────────────────────────────────────────
+# nz actuator list|dry-run
+# ─────────────────────────────────────────────────────────────────────────
+
+cmd_actuator() {
+    local sub="${1:-list}"
+    shift || true
+    case "$sub" in
+        list)
+            cd "$REPO_ROOT/apps/organism" 2>/dev/null && \
+                "$DEFAULT_PYTHON" -c "
+import os
+acts = sorted(
+    f.replace('.py','')
+    for f in os.listdir('organism/actuators')
+    if f.endswith('.py') and not f.startswith('_') and f not in ('base.py',)
+)
+for a in acts:
+    print(f'  {a}')
+"
+            ;;
+        dry-run)
+            local actuator="${1:?usage: nz actuator dry-run <name> [key=value ...]}"
+            shift
+            local params_json="{}"
+            if [ $# -gt 0 ]; then
+                params_json=$("$DEFAULT_PYTHON" -c "
+import json, sys
+params = {}
+for arg in sys.argv[1:]:
+    if '=' in arg:
+        k, v = arg.split('=', 1)
+        params[k] = v
+print(json.dumps(params))
+" "$@")
+            fi
+            cd "$REPO_ROOT/apps/organism" || die "organism dir missing"
+            "$DEFAULT_PYTHON" -c "
+import asyncio, importlib, json, sys
+sys.path.insert(0, '.')
+mod = importlib.import_module('organism.actuators.$actuator')
+# Find the class (CamelCase of snake_case actuator name)
+cls_name = ''.join(p.capitalize() for p in '$actuator'.split('_'))
+# Special-case: 'fly_machines_start' -> 'FlyMachinesStart' which it does correctly.
+cls = getattr(mod, cls_name, None)
+if cls is None:
+    print(f'class {cls_name} not in module organism.actuators.$actuator', file=sys.stderr)
+    sys.exit(1)
+inst = cls()
+async def go():
+    return await inst._dry_run(json.loads('$params_json'))
+print(json.dumps(asyncio.run(go()), indent=2, default=str))
+"
+            ;;
+        ""|help|-h|--help)
+            cat <<EOF
+usage: nz actuator <sub> [args]
+
+  list                          list registered actuators
+  dry-run <name> [key=value ...]
+                                run actuator._dry_run with params
+                                example: nz actuator dry-run fly_machines_start app=nuzantara-rag
+EOF
+            ;;
+        *)
+            die "unknown actuator subcommand: $sub"
+            ;;
+    esac
+}
+
+# ─────────────────────────────────────────────────────────────────────────
+# nz translate
+# ─────────────────────────────────────────────────────────────────────────
+
+cmd_translate() {
+    "$DEFAULT_PYTHON" "$REPO_ROOT/scripts/translate-articles.py" "$@"
+}
+
+# ─────────────────────────────────────────────────────────────────────────
+# nz health
+# ─────────────────────────────────────────────────────────────────────────
+
+cmd_health() {
+    echo "Backend health (Fly):"
+    curl -fsS https://nuzantara-rag.fly.dev/health 2>&1 | head -30 || echo "  unreachable"
+    echo
+    echo "Local services:"
+    nc -z 127.0.0.1 15432 2>/dev/null && echo "  pg-proxy   :15432  UP" || echo "  pg-proxy   :15432  DOWN"
+    nc -z 127.0.0.1 6379 2>/dev/null && echo "  redis      :6379   UP" || echo "  redis      :6379   DOWN"
+    nc -z 127.0.0.1 11434 2>/dev/null && echo "  ollama     :11434  UP" || echo "  ollama     :11434  DOWN"
+}
+
+# ─────────────────────────────────────────────────────────────────────────
+# Top-level dispatch
+# ─────────────────────────────────────────────────────────────────────────
+
+usage() {
+    cat <<EOF
+nz — Nuzantara unified CLI
+
+usage: nz <command> [args]
+
+commands:
+  status [organ_id]            full aggregate or single-organ status
+  organ <list|show|kickstart|halt|recover>
+  bus <channels|tail|count|replay|prune>
+  events <recent|tail|count|sources>
+  actuator <list|dry-run>
+  sentinel <run|tail>
+  wr2 <generate|supervisor|queue>
+  cell <status|log|kickstart>
+  fad <status|list|approve|log>
+  translate [args...]          run translate-articles.py
+  health                       backend + local services snapshot
+  help                         this screen
+
+env:
+  NZ_REPO_ROOT     repo location (default: \$HOME/Desktop/nuzantara)
+  NZ_PYTHON        python interpreter (default: pyenv 3.11.11)
+
+Each subcommand accepts \`help\` for its own usage.
+EOF
+}
+
+main() {
+    local cmd="${1:-help}"
+    shift || true
+    case "$cmd" in
+        status)     cmd_status "$@" ;;
+        organ)      cmd_organ "$@" ;;
+        bus)        cmd_bus "$@" ;;
+        events)     cmd_events "$@" ;;
+        actuator)   cmd_actuator "$@" ;;
+        sentinel)   cmd_sentinel "$@" ;;
+        wr2)        cmd_wr2 "$@" ;;
+        cell)       cmd_cell "$@" ;;
+        fad)        cmd_fad "$@" ;;
+        translate)  cmd_translate "$@" ;;
+        health)     cmd_health "$@" ;;
+        help|-h|--help|"") usage ;;
+        *)          die "unknown command: $cmd (try \`nz help\`)" ;;
+    esac
+}
+
+main "$@"

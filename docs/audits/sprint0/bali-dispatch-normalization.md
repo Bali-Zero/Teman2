@@ -123,7 +123,8 @@ is 9, not 7 nor 13/16.**
 ### Sprint 1 / Sprint 2 (WR2 mapping work)
 
 3. Lock the cognitive Level mapping in
-   `apps/organism/organism/genome.yaml` once finalized.
+   `apps/organism/organism/organs_registry.yaml` (file renamed 2026-05-08
+   IG-3 from `genome.yaml`) once finalized.
 4. Track each organelle's IPC pattern in Sprint 0 Track B2
    (filesystem vs PG NOTIFY). The 9 cognitive ones MUST emit through
    `EventBus.PG_CHANNEL_MAP` to respect the Event-driven Law; the

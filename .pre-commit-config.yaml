@@ -94,14 +94,18 @@ repos:
         # The script accepts file paths as argv and exits 1 if any is not whitelisted.
         files: ^[^/]+$
 
-      - id: validate-genome
-        name: "Validate apps/organism/organism/genome.yaml"
-        # Runs ONLY when genome.yaml is staged. NB-1 ADR-7 HALT-on-mismatch:
-        # if the recorded SHA256 checksum does not match the canonical organ
-        # list, the commit is rejected. To update after a legitimate edit:
-        #   PYTHONPATH=apps/organism python -m organism.tools.validate_genome \
+      - id: validate-organs-registry
+        name: "Validate apps/organism/organism/organs_registry.yaml"
+        # Runs ONLY when organs_registry.yaml is staged. NB-1 ADR-7
+        # HALT-on-mismatch: if the recorded SHA256 checksum does not match
+        # the canonical organ list, the commit is rejected. To update after
+        # a legitimate edit:
+        #   PYTHONPATH=apps/organism python -m organism.tools.validate_organs_registry \
         #     --update-checksum
-        entry: bash -c 'PYTHONPATH=apps/organism python3 -m organism.tools.validate_genome apps/organism/organism/genome.yaml'
+        # Renamed 2026-05-08 (IG-3) from validate-genome / genome.yaml.
+        # Backward-compat alias `validate_genome` still works (deprecated,
+        # removal 2026-06-08).
+        entry: bash -c 'PYTHONPATH=apps/organism python3 -m organism.tools.validate_organs_registry apps/organism/organism/organs_registry.yaml'
         language: system
-        files: ^apps/organism/organism/genome\.yaml$
+        files: ^apps/organism/organism/organs_registry\.yaml$
         pass_filenames: false

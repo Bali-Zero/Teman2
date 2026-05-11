@@ -72,22 +72,40 @@ logger = logging.getLogger("wr2.supervisor")
 
 # (old_status, new_status) → next plist label, or None for alert-only.
 # "*" matches any prior status (including None for INSERT).
+#
+# 2026-05-08 — Sprint B B-bis: Sprint A bypass (drafts_imaged → canva-apply)
+# is REVERTED. fact-extractor + fact-checker scripts are now NET-NEW
+# (scripts/wr2_fact_extractor.py + scripts/wr2_fact_checker.py) and the
+# disabled plists move back to ~/Library/LaunchAgents/. canva-apply's
+# status filter is locked to 'drafts_imaged_checked' so only fact-checked
+# drafts render.
+#
+# Pre-bypass history (Sprint A, 2026-05-07): the fact-* plists were
+# disabled during the supervisor cutover (PR #299, 26 Apr) but the
+# scripts never existed → silent kickstart failure → drafts stuck. Audit
+# 2026-05-07 confirmed zero `rendered` outcomes since 25 Apr. Sprint A
+# patched the symptom by routing drafts_imaged → canva-apply directly.
+# Sprint B B-bis builds the missing scripts and restores the full chain.
 TRANSITIONS: dict[tuple[str | None, str], str | None] = {
     ("*", "briefed"):                                  "com.balizero.wr2.draft-generator",
     ("briefed", "briefed_facted"):                     "com.balizero.wr2.draft-generator",
     ("briefed", "drafts"):                             "com.balizero.wr2.image-generator",
     ("briefed_facted", "drafts"):                      "com.balizero.wr2.image-generator",
+    # Sprint B B-bis (RESTORED): drafts_imaged → fact-extractor → fact-checker → canva-apply.
     ("drafts", "drafts_imaged"):                       "com.balizero.wr2.fact-extractor",
     ("drafts_imaged", "drafts_imaged_facted"):         "com.balizero.wr2.fact-checker",
     ("drafts_imaged_facted", "drafts_imaged_checked"): "com.balizero.wr2.canva-apply",
     ("*", "rendered"):                                 None,  # Telegram only
-    ("*", "fact_check_failed"):                        None,  # Telegram only
+    ("*", "fact_check_failed"):                        None,  # Telegram only — manual review terminal
     ("*", "rejected"):                                 None,  # log only
 }
 
 ALERT_STATUSES = {"rendered", "fact_check_failed"}
 
 # Reconciliation map: which non-terminal statuses need a re-kick if stalled.
+# Sprint B B-bis: full chain restored. Each pre-canva-apply state has a
+# dedicated next-stage so the supervisor can reconcile drafts left over
+# from a partial run (e.g. fact-checker crash mid-batch).
 NONTERMINAL_TO_NEXT_STAGE: dict[str, str] = {
     "briefed":               "com.balizero.wr2.draft-generator",
     "briefed_facted":        "com.balizero.wr2.draft-generator",
@@ -133,6 +151,17 @@ _shutdown_event: asyncio.Event | None = None
 
 # Sentinel for "transition not in TRANSITIONS dict" (vs. None which means alert-only).
 _SENTINEL_UNKNOWN = object()
+
+# B3 heartbeat (Sprint B, 2026-05-08). Cadence is 60s by default; the
+# watchdog fires P0 if the latest row is older than 5 minutes (5×
+# heartbeat). The heartbeat MUST run on a SECOND asyncpg.connect() —
+# NOT on the LISTEN connection — because asyncpg forbids concurrent
+# operations on the same Connection (the existing _conn_lock works for
+# the in-loop SELECT 1 keepalive, but adding heartbeat INSERTs there
+# adds contention with the PG NOTIFY listener and the periodic
+# reconcile fetch). A dedicated conn_hb has a single op at any moment
+# (the INSERT itself), no contention.
+HEARTBEAT_INTERVAL_SEC = int(os.environ.get("WR2_HEARTBEAT_INTERVAL_SEC", "60"))
 
 
 # ─────────────────────────────────────────────────────────────────────────
@@ -420,6 +449,141 @@ async def _reconcile_loop(conn: asyncpg.Connection) -> None:
 
 
 # ─────────────────────────────────────────────────────────────────────────
+# B3 Heartbeat (Sprint B, 2026-05-08)
+# ─────────────────────────────────────────────────────────────────────────
+
+async def _write_heartbeat(conn_hb: asyncpg.Connection, note: str) -> None:
+    """Insert one row into wr2_supervisor_heartbeat AND write the Innervation
+    Genoma file heartbeat for the sentinel-aggregator.
+
+    Uses a DEDICATED connection (NOT the LISTEN connection) because
+    asyncpg's single-op-per-connection contract means adding INSERTs
+    to the LISTEN conn would contend with the keepalive SELECT and the
+    on-notify _current_status read. Best-effort: missing table or
+    unreachable DB log a warning but do not crash the supervisor.
+    """
+    # File heartbeat for sentinel-aggregate (~/.organism/last_seen/wr2.supervisor.json).
+    # Done first because it doesn't need the DB and it's cheap.
+    _write_organism_heartbeat("wr2.supervisor", "ok", note)
+
+    try:
+        # Truncate `note` so a runaway caller can't blow up the row.
+        await conn_hb.execute(
+            "INSERT INTO wr2_supervisor_heartbeat (note) VALUES ($1)",
+            (note or "")[:200],
+        )
+    except asyncpg.UndefinedTableError:
+        # Migration 161 not yet applied → degrade silently. The watchdog
+        # will see no rows and skip alerts (safe-fail).
+        logger.debug("heartbeat skipped: wr2_supervisor_heartbeat missing")
+    except (asyncpg.PostgresError, OSError, asyncio.TimeoutError) as e:
+        # The dedicated conn_hb may itself drop; the outer reconnect
+        # loop in _run_loop replaces it on the next iteration.
+        logger.warning("heartbeat write failed: %s", e)
+
+
+def _write_organism_heartbeat(organ_id: str, status: str, note: str = "") -> None:
+    """Write ~/.organism/last_seen/<organ_id>.json for sentinel-aggregate.
+
+    Atomic via tmp + rename. Never raises (best-effort).
+    """
+    try:
+        from pathlib import Path
+        import json as _json
+        from datetime import datetime, timezone
+
+        directory = Path.home() / ".organism" / "last_seen"
+        directory.mkdir(parents=True, exist_ok=True)
+        path = directory / f"{organ_id}.json"
+        payload = {
+            "ts": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "status": status,
+            "note": str(note)[:500],
+        }
+        tmp = path.with_suffix(path.suffix + f".tmp.{os.getpid()}")
+        tmp.write_text(_json.dumps(payload, separators=(",", ":")) + "\n", encoding="utf-8")
+        os.replace(tmp, path)
+    except Exception:
+        pass  # never propagate
+
+
+async def _heartbeat_loop(conn_hb: asyncpg.Connection) -> None:
+    """Tick a heartbeat row every HEARTBEAT_INTERVAL_SEC.
+
+    Cancellation-safe: returns cleanly on CancelledError so _run_loop's
+    finally block can close conn_hb without leaking the task.
+    """
+    assert _shutdown_event is not None
+    # First tick: post-startup, label so the watchdog sees a transition.
+    await _write_heartbeat(conn_hb, "tick")
+    while not _shutdown_event.is_set():
+        try:
+            await asyncio.sleep(HEARTBEAT_INTERVAL_SEC)
+        except asyncio.CancelledError:
+            return
+        if _shutdown_event.is_set():
+            return
+        await _write_heartbeat(conn_hb, "tick")
+
+
+# ─────────────────────────────────────────────────────────────────────────
+# Outbox replay (migration 164 — wr2_status_change durability)
+# ─────────────────────────────────────────────────────────────────────────
+
+async def _replay_outbox(conn: asyncpg.Connection) -> int:
+    """Replay unconsumed wr2_status_change events from events_outbox.
+
+    Reads rows where channel='wr2_status_change' AND consumed_at IS NULL,
+    ordered by id ASC (commit order). For each row, dispatches via
+    _handle_payload and ONLY THEN marks consumed_at = NOW(). If
+    _handle_payload raises, the row stays unconsumed and will be retried
+    on the next supervisor restart — at-least-once semantics, consumer
+    must dedupe via _recently_dispatched (which it already does).
+
+    Returns the count of successfully dispatched + acked rows.
+    """
+    rows = await conn.fetch(
+        """
+        SELECT id, payload
+          FROM events_outbox
+         WHERE channel = 'wr2_status_change' AND consumed_at IS NULL
+         ORDER BY id ASC
+         LIMIT 500
+        """
+    )
+    if not rows:
+        return 0
+
+    acked = 0
+    for row in rows:
+        outbox_id = row["id"]
+        payload = row["payload"]
+        if isinstance(payload, str):
+            payload = json.loads(payload)
+        if not isinstance(payload, dict):
+            logger.warning("outbox row %d has non-dict payload, marking consumed", outbox_id)
+            await conn.execute(
+                "UPDATE events_outbox SET consumed_at = NOW() WHERE id = $1",
+                outbox_id,
+            )
+            continue
+
+        try:
+            await _handle_payload(payload, conn)
+        except Exception:
+            logger.exception("outbox replay handler failed for id=%d, leaving unconsumed", outbox_id)
+            continue
+
+        await conn.execute(
+            "UPDATE events_outbox SET consumed_at = NOW() WHERE id = $1",
+            outbox_id,
+        )
+        acked += 1
+
+    return acked
+
+
+# ─────────────────────────────────────────────────────────────────────────
 # Connection loop with auto-reconnect
 # ─────────────────────────────────────────────────────────────────────────
 
@@ -434,23 +598,52 @@ async def _run_loop() -> None:
         # Initialise to None so the finally block can safely check before close.
         # (Without this, `conn` could be unbound if asyncpg.connect raises.)
         conn: asyncpg.Connection | None = None
+        conn_hb: asyncpg.Connection | None = None
         reconcile_task: asyncio.Task | None = None
+        heartbeat_task: asyncio.Task | None = None
         try:
             logger.info("connecting to Postgres…")
             conn = await asyncpg.connect(dsn=dsn, command_timeout=30)
             await conn.add_listener("wr2_status_change", _on_notification)
             logger.info("LISTEN wr2_status_change active")
+
+            # Outbox replay (migration 164): drain any wr2_status_change
+            # events that landed in events_outbox while we were down. The
+            # trigger writes to events_outbox FIRST, then pg_notify — so
+            # any pg_notify we missed is recoverable via outbox SELECT.
+            # Ack each row only AFTER _handle_payload returns successfully
+            # (per-handler ack — no blanket auto-ack).
+            try:
+                replayed = await _replay_outbox(conn)
+                if replayed:
+                    logger.info("outbox replay: dispatched %d missed event(s)", replayed)
+            except Exception:
+                logger.exception("outbox replay failed (non-fatal, continuing)")
+
+            # Dedicated heartbeat connection: SECOND asyncpg.connect, NEVER
+            # shared with the LISTEN conn. asyncpg.Connection allows only
+            # one in-flight operation, so mixing INSERTs with the LISTEN
+            # keepalive + reconcile SELECT contends for _conn_lock and adds
+            # latency. Separate conn = zero contention.
+            conn_hb = await asyncpg.connect(dsn=dsn, command_timeout=30)
+            logger.info("heartbeat conn open (interval=%ds)", HEARTBEAT_INTERVAL_SEC)
+            await _write_heartbeat(conn_hb, "startup")
+
             backoff = 1.0  # reset on success
 
             reconcile_task = asyncio.create_task(_reconcile_loop(conn))
+            heartbeat_task = asyncio.create_task(_heartbeat_loop(conn_hb))
 
-            # Heartbeat: SELECT 1 every 5s. `flyctl proxy` does not send TCP
-            # keepalive on the WG tunnel to nuzantara-postgres.internal, and
-            # an idle LISTEN connection gets dropped at ~10s (observed
-            # 2026-04-28 in launchd.err.log: "connecting → connection lost"
-            # cycle every 60s with the prior 60s heartbeat). A 5s heartbeat
-            # keeps the socket below that threshold; it also surfaces dead
-            # connections quickly via TimeoutError → drop and reconnect.
+            # Keepalive: SELECT 1 every 5s on the LISTEN conn. `flyctl proxy`
+            # does not send TCP keepalive on the WG tunnel to
+            # nuzantara-postgres.internal, and an idle LISTEN connection
+            # gets dropped at ~10s (observed 2026-04-28 in launchd.err.log:
+            # "connecting → connection lost" cycle every 60s with the prior
+            # 60s heartbeat). A 5s SELECT keeps the socket below that
+            # threshold; it also surfaces dead connections quickly via
+            # TimeoutError → drop and reconnect. NOTE: this is a TCP
+            # keepalive, NOT the B3 heartbeat — the B3 heartbeat lives on
+            # conn_hb and writes a row, this one only roundtrips.
             while not _shutdown_event.is_set():
                 await asyncio.sleep(5)
                 async with _get_conn_lock():
@@ -458,22 +651,26 @@ async def _run_loop() -> None:
         except (asyncpg.PostgresError, OSError, asyncio.TimeoutError) as e:
             logger.warning("connection lost: %s — reconnecting in %.1fs", e, backoff)
         finally:
-            # Cancel reconcile task before closing connection
-            if reconcile_task is not None:
-                reconcile_task.cancel()
-                try:
-                    await reconcile_task
-                except (asyncio.CancelledError, Exception):
-                    pass
-            # Close connection if it was opened
-            if conn is not None:
-                try:
-                    await asyncio.wait_for(conn.close(), timeout=5)
-                except (asyncio.TimeoutError, Exception):
+            # Cancel both background tasks before closing connections.
+            for task in (heartbeat_task, reconcile_task):
+                if task is not None:
+                    task.cancel()
                     try:
-                        conn.terminate()
-                    except Exception:
+                        await task
+                    except (asyncio.CancelledError, Exception):
                         pass
+            # Close connections if they were opened. conn_hb closes first
+            # so a final draining heartbeat ("drain") can fire on the
+            # LISTEN side if needed (none currently — symmetric close).
+            for c in (conn_hb, conn):
+                if c is not None:
+                    try:
+                        await asyncio.wait_for(c.close(), timeout=5)
+                    except (asyncio.TimeoutError, Exception):
+                        try:
+                            c.terminate()
+                        except Exception:
+                            pass
 
         if _shutdown_event.is_set():
             break

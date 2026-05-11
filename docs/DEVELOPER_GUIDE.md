@@ -251,7 +251,7 @@ The `kbli_2025_final` Qdrant collection uses **flat payloads** (not nested under
 
 ### Pricing Source of Truth
 
-All client-facing prices come from `PricingTool` (backed by `bali_zero_official_prices_2025.json`). The Knowledge Graph contains government fees (PNBP), not Bali Zero prices. **Never expose KG fees to clients.**
+All client-facing prices come from `PricingTool` (backed by `bali_zero_official_prices_2026.json` since 2026-05-06; the legacy 2025 file is kept on disk for rollback only). The Knowledge Graph contains government fees (PNBP), not Bali Zero prices. **Never expose KG fees to clients.**
 
 ### Auth Middleware (Fail-Closed)
 

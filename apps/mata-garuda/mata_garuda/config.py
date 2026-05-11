@@ -19,14 +19,12 @@ TG_BOT_TOKEN_ENV = "TELEGRAM_BOT_TOKEN"
 TG_ZERO_CHAT_ID = "1125336968"
 
 # NLM Notebook IDs
-NLM_NOTEBOOKS = {
-    "ai_research": "dc5d01cd-e99f-4c8f-aae4-75060b43d0de",  # NB-INTEL-AIResearch
-    "self_evolving": "305f5f2e-d2f4-4f77-a771-c2b7aa0867e4",  # Mata Garuda Self-Evolving Research
-    "regulation": "a17f134e-b9ab-42d9-bfc2-5bbc45165c76",  # NB-INTEL-Regulation
-    "tax": "7fb12c9c-4e12-4a8d-9bd1-c5b857bf310f",         # NB-INTEL-Tax
-    "immigration": "1ed02e54-542f-426a-94f8-53c5ffde4b7d", # NB-INTEL-Immigration
-    "press": "9d262101-abeb-4e15-af9c-c38e028c62fe",       # NB-INTEL-Press
-}
+# NLM_NOTEBOOKS is a backward-compat shim. Source of truth: notebook_registry.
+# Migration plan: the 4 callsites (sentinel_actor, nlm_feeder, nlm_expander_agent,
+# health_tools) will be migrated to NOTEBOOK_REGISTRY in a follow-up PR — see
+# docs/nb-lifecycle/round1-19-ambiguous-decisions-2026-05-07.md §Follow-up.
+from mata_garuda.notebook_registry import get_legacy_notebooks_dict
+NLM_NOTEBOOKS = get_legacy_notebooks_dict()
 
 # Domain → NLM Notebook routing (for nlm_feeder)
 # Enriched items with one of these topic/domain values flow to the mapped NB.

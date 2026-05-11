@@ -48,6 +48,7 @@ def _build_conn(
     legacy_numbers: list[int],
     canonical_numbers: list[int],
     extra_tables: set[str] | None = None,
+    client_email_duplicates: list[dict[str, object]] | None = None,
 ) -> AsyncMock:
     """Build a connection that responds to the SQL the audit issues.
 
@@ -58,6 +59,7 @@ def _build_conn(
     We dispatch on the SQL string to keep the fake light.
     """
     extra_tables = extra_tables or set()
+    client_email_duplicates = client_email_duplicates or []
     conn = AsyncMock()
 
     async def _fetchval(sql: str, name: str) -> bool:
@@ -69,11 +71,13 @@ def _build_conn(
             return canonical_table_exists
         return name in extra_tables
 
-    async def _fetch(sql: str) -> list[dict[str, int]]:
+    async def _fetch(sql: str) -> list[dict[str, object]]:
         if "_schema_versions" in sql:
             return [{"migration_number": n} for n in legacy_numbers]
         if "schema_migrations" in sql:
             return [{"migration_number": n} for n in canonical_numbers]
+        if "FROM clients" in sql:
+            return client_email_duplicates
         raise AssertionError(f"unexpected fetch SQL: {sql!r}")
 
     conn.fetchval.side_effect = _fetchval
@@ -167,6 +171,40 @@ async def test_tracking_tables_in_sync(monkeypatch: pytest.MonkeyPatch) -> None:
     codes = {f.code for f in report.findings}
     assert "tracking_divergence_legacy_only" not in codes
     assert "tracking_divergence_canonical_only" not in codes
+
+
+@pytest.mark.asyncio
+async def test_tracking_legacy_duplicate_finding(monkeypatch: pytest.MonkeyPatch) -> None:
+    conn = _build_conn(
+        legacy_table_exists=True,
+        canonical_table_exists=True,
+        legacy_numbers=[1, 2, 2, 3],
+        canonical_numbers=[1, 2, 3],
+    )
+    _patch_manager(monkeypatch, pending_list=[], conn=conn)
+
+    report = await run_audit(database_url="postgres://fake", required_tables=[])
+
+    [finding] = [f for f in report.findings if f.code == "tracking_duplicate_legacy"]
+    assert finding.severity == "error"
+    assert finding.details["duplicates"] == {2: 2}
+
+
+@pytest.mark.asyncio
+async def test_tracking_canonical_duplicate_finding(monkeypatch: pytest.MonkeyPatch) -> None:
+    conn = _build_conn(
+        legacy_table_exists=True,
+        canonical_table_exists=True,
+        legacy_numbers=[1, 2, 3],
+        canonical_numbers=[1, 2, 3, 3, 130, 130, 130],
+    )
+    _patch_manager(monkeypatch, pending_list=[], conn=conn)
+
+    report = await run_audit(database_url="postgres://fake", required_tables=[])
+
+    [finding] = [f for f in report.findings if f.code == "tracking_duplicate_canonical"]
+    assert finding.severity == "error"
+    assert finding.details["duplicates"] == {3: 2, 130: 3}
 
 
 @pytest.mark.asyncio
@@ -337,6 +375,60 @@ async def test_required_tables_read_from_env(monkeypatch: pytest.MonkeyPatch) ->
     [finding] = [f for f in report.findings if f.code == "required_table_missing"]
     assert finding.details["missing"] == ["conversations"]
     assert finding.details["configured_via"] == "SCHEMA_AUDIT_REQUIRED_TABLES"
+
+
+# ---------------------------------------------------------------------------
+# Client email uniqueness check
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.asyncio
+async def test_client_email_duplicates_finding(monkeypatch: pytest.MonkeyPatch) -> None:
+    conn = _build_conn(
+        legacy_table_exists=True,
+        canonical_table_exists=True,
+        legacy_numbers=[1],
+        canonical_numbers=[1],
+        extra_tables={"clients"},
+        client_email_duplicates=[
+            {
+                "normalized_email": "guasraf32@gmail.com",
+                "count": 2,
+                "client_ids": [11636, 11677],
+            },
+        ],
+    )
+    _patch_manager(monkeypatch, pending_list=[], conn=conn)
+
+    report = await run_audit(database_url="postgres://fake", required_tables=[])
+
+    [finding] = [f for f in report.findings if f.code == "client_email_duplicates"]
+    assert finding.severity == "error"
+    assert finding.details["duplicates"] == [
+        {
+            "normalized_email": "guasraf32@gmail.com",
+            "count": 2,
+            "client_ids": [11636, 11677],
+        },
+    ]
+
+
+@pytest.mark.asyncio
+async def test_client_email_check_skips_when_clients_table_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    conn = _build_conn(
+        legacy_table_exists=True,
+        canonical_table_exists=True,
+        legacy_numbers=[1],
+        canonical_numbers=[1],
+        extra_tables=set(),
+    )
+    _patch_manager(monkeypatch, pending_list=[], conn=conn)
+
+    report = await run_audit(database_url="postgres://fake", required_tables=[])
+
+    assert "client_email_duplicates" not in {finding.code for finding in report.findings}
 
 
 # ---------------------------------------------------------------------------

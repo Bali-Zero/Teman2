@@ -60,6 +60,26 @@ Mondo esterno → Mata Garuda (raccoglie) → garuda:raw (Redis)
 - I fallimenti vanno in `feedback/{agent_name}.md`
 - Le mutazioni al GENOME richiedono review umana (Zero) — **NO auto-apply**
 
+### §1.4 Eccezione Pillar 3 SYMBIOSIS — KG metadata sharing
+
+Deroga esplicita autorizzata da Zero 2026-05-06: il KG SQLite locale
+(~/.agent/mata-garuda/kg.db) può esporre metadata operativi (entity
+names, type, neighbor list, observation_count) verso organi locali Pro
+via Tailscale loopback (NO Fly, NO cloud, NO frontend, NO team).
+
+Payload ammesso: name, type, source_count, last_seen, neighbor_names,
+observation_count, observation.source_url (sempre URL pubblico, mai
+body content).
+
+Payload VIETATO: observation.value (può contenere title/snippet OSINT
+raw), content fields, full text article.
+
+Justification: SYMBIOSIS.md Pilastro 3 Condivisione: "ogni agente
+pubblica conoscenza operativa, mai dati OSINT". L'identità di una
+entità menzionata è conoscenza operativa, l'articolo grezzo no.
+
+Implementation reference: `docs/superpowers/specs/2026-05-07-symbiosis-w2-kg-mcp-bridge-design.md`.
+
 ## 2. Comportamento Claude Code
 
 **DO NOT ask to write code.** Agisci subito, chiedi solo per decisioni irreversibili.

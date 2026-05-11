@@ -25,6 +25,13 @@ google-auth>=2.23.0
 google-auth-oauthlib>=1.1.0
 google-auth-httplib2>=0.1.1
 google-cloud-storage>=2.10.0
+
+# Tigris (S3-compatible) — used by scripts/wr2_image_generator.py +
+# scripts/wr2_draft_generator.py to upload hero images to the warroom
+# bucket. No backend module imports it; pinned here so production venv
+# rebuilds (Pro `nuzantara-deploy` worktree) stay self-sufficient.
+boto3>=1.43.0
+
 langchain>=0.1.0
 langchain-core>=0.1.0
 langchain-anthropic>=1.0.0

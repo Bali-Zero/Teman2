@@ -166,6 +166,9 @@ from nuzantara_mcp.tools.federation import register as register_federation
 # --- Naga Research Engine ---
 from nuzantara_mcp.tools.naga import register as register_naga
 
+# --- KG Intelligence Bridge (mata-garuda KG via Tailscale) ---
+from nuzantara_mcp.tools.kg_intel import register as register_kg_intel
+
 # --- Prompts, Resources, Chains ---
 from nuzantara_mcp.prompts.templates import register as register_prompts
 from nuzantara_mcp.resources.config import register as register_resources
@@ -210,6 +213,9 @@ register_federation(mcp, _call, _call_safe)
 
 # Naga Research Engine
 register_naga(mcp, _call, _call_safe)
+
+# KG Intelligence Bridge (Pro->Mini Tailscale, admin-gated)
+register_kg_intel(mcp, _call, _call_safe)
 
 # Prompts, resources, chains
 register_prompts(mcp)

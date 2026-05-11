@@ -139,3 +139,44 @@ async def test_update_profile_notification_failure_does_not_raise():
     )
 
     assert result is not None  # Profile returned despite notification failure
+
+
+@pytest.mark.asyncio
+async def test_update_profile_message_failure_does_not_raise() -> None:
+    """If portal_messages insert fails, update_profile still returns the profile."""
+    mock_conn = AsyncMock()
+    mock_conn.fetchrow.return_value = _PROFILE_ROW
+
+    call_count = 0
+
+    async def execute_side_effect(*args: object, **kwargs: object) -> None:
+        nonlocal call_count
+        call_count += 1
+        if call_count == 3:  # portal_messages INSERT
+            raise Exception("message insert failed")
+
+    mock_conn.execute.side_effect = execute_side_effect
+
+    mock_pool = MagicMock()
+    mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
+    mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
+
+    service = PortalService(mock_pool)
+    result = await service.update_profile(
+        client_id=1,
+        fields={"phone": "+62888"},
+        current_user={"client_id": 1, "email": "c1@example.com"},
+    )
+
+    assert result is not None
+
+
+@pytest.mark.asyncio
+async def test_get_profile_data_returns_empty_when_client_missing() -> None:
+    """_get_profile_data returns an empty dict for a missing/deleted client."""
+    service, mock_conn = _make_service(fetchrow_return=None)
+    mock_conn.fetchrow.return_value = None
+
+    result = await service._get_profile_data(mock_conn, client_id=404)
+
+    assert result == {}

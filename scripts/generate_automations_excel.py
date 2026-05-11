@@ -5,9 +5,9 @@ Generate automations-inventory.xlsx from live system state.
 Sources:
   - job_registry.json (sentinel-tracked jobs)
   - circuit_breakers.json (health state)
-  - crontab -l (Pro + Air via SSH)
-  - launchctl list (Pro + Air via SSH)
-  - openclaw cron/jobs.json (Pro + Air via SSH)
+  - crontab -l (Pro + Mini via SSH)
+  - launchctl list (Pro + Mini via SSH)
+  - openclaw cron/jobs.json (Pro + Mini via SSH)
   - MODEL_TOPOLOGY.json (model assignments)
 
 Output: docs/automations-inventory.xlsx
@@ -67,7 +67,7 @@ THIN_BORDER = Border(
 @dataclass
 class Automation:
     name: str
-    machine: str  # Pro / Air
+    machine: str  # Pro / Mini
     type: str  # cron / launchd / openclaw / daemon
     system: str = ""  # Garuda / Olympus / Cell / SEO / CRM / NLM / Infra / Ops / Intel
     schedule: str = ""
@@ -360,7 +360,7 @@ def load_json(path: Path) -> dict:
 def ssh_cmd(cmd: str, timeout: int = 10) -> str:
     try:
         r = subprocess.run(
-            ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", "air", cmd],
+            ["ssh", "-o", "ConnectTimeout=5", "-o", "BatchMode=yes", "mini-remote", cmd],
             capture_output=True, text=True, timeout=timeout,
         )
         return r.stdout
@@ -466,8 +466,8 @@ def collect_crontab(machine: str) -> list[Automation]:
         model, interface = "", ""
         for sp in script_paths:
             real_path = sp
-            if machine == "Air":
-                # Can't read Air files directly, mark for manual check
+            if machine == "Mini":
+                # Can't read Mini files directly from this process, mark for manual check
                 pass
             else:
                 model, interface = detect_llm_usage(real_path)
@@ -576,7 +576,7 @@ def collect_openclaw(machine: str) -> list[Automation]:
 
     topology = load_json(TOPOLOGY_PATH)
     warm_model = topology.get("nodes", {}).get(
-        "pro" if machine == "Pro" else "air", {}
+        "pro" if machine == "Pro" else "mini", {}
     ).get("warm_model", "?")
 
     automations = []
@@ -654,7 +654,7 @@ def _get_launchagent_status(label: str, machine: str) -> tuple[str, str]:
             )
         else:
             r = subprocess.run(
-                ["ssh", "-o", "ConnectTimeout=3", "-o", "BatchMode=yes", "air",
+                ["ssh", "-o", "ConnectTimeout=3", "-o", "BatchMode=yes", "mini-remote",
                  f"launchctl list {label}"],
                 capture_output=True, text=True, timeout=10,
             )
@@ -879,7 +879,7 @@ def write_summary_sheet(wb: Workbook, all_autos: list[Automation]) -> None:
         ("Totale automazioni", len(all_autos)),
         ("", ""),
         ("Pro", sum(1 for a in all_autos if a.machine == "Pro")),
-        ("Air", sum(1 for a in all_autos if a.machine == "Air")),
+        ("Mini", sum(1 for a in all_autos if a.machine == "Mini")),
         ("", ""),
         ("OpenClaw cron", sum(1 for a in all_autos if a.type == "openclaw")),
         ("Crontab", sum(1 for a in all_autos if a.type == "cron")),
@@ -948,18 +948,18 @@ def main() -> None:
     all_automations.extend(collect_openclaw("Pro"))
     print(f"    {sum(1 for a in all_automations if a.machine == 'Pro' and a.type == 'openclaw')} openclaw jobs")
 
-    # Air
-    print("  Air crontab...")
-    all_automations.extend(collect_crontab("Air"))
-    print(f"    {sum(1 for a in all_automations if a.machine == 'Air' and a.type == 'cron')} cron entries")
+    # Mini
+    print("  Mini crontab...")
+    all_automations.extend(collect_crontab("Mini"))
+    print(f"    {sum(1 for a in all_automations if a.machine == 'Mini' and a.type == 'cron')} cron entries")
 
-    print("  Air LaunchAgents...")
-    all_automations.extend(collect_launchagents("Air"))
-    print(f"    {sum(1 for a in all_automations if a.machine == 'Air' and a.type in ('launchd', 'daemon'))} launchagents")
+    print("  Mini LaunchAgents...")
+    all_automations.extend(collect_launchagents("Mini"))
+    print(f"    {sum(1 for a in all_automations if a.machine == 'Mini' and a.type in ('launchd', 'daemon'))} launchagents")
 
-    print("  Air OpenClaw...")
-    all_automations.extend(collect_openclaw("Air"))
-    print(f"    {sum(1 for a in all_automations if a.machine == 'Air' and a.type == 'openclaw')} openclaw jobs")
+    print("  Mini OpenClaw...")
+    all_automations.extend(collect_openclaw("Mini"))
+    print(f"    {sum(1 for a in all_automations if a.machine == 'Mini' and a.type == 'openclaw')} openclaw jobs")
 
     # Enrich from registry + circuit breakers
     print("  Enriching from registry + circuit breakers...")
@@ -1014,9 +1014,9 @@ def main() -> None:
     pro = [a for a in all_automations if a.machine == "Pro"]
     write_sheet(wb, "Pro", pro)
 
-    # Air sheet
-    air = [a for a in all_automations if a.machine == "Air"]
-    write_sheet(wb, "Air", air)
+    # Mini sheet
+    mini = [a for a in all_automations if a.machine == "Mini"]
+    write_sheet(wb, "Mini", mini)
 
     # Backend services (from catalog)
     backend_services = []
@@ -1045,7 +1045,7 @@ def main() -> None:
     if backend_services:
         write_sheet(wb, "Backend", backend_services)
 
-    # Extra catalog sections: GitHub Actions, Claude Code Hooks, Home Scripts, Air Cron Extras
+    # Extra catalog sections: GitHub Actions, Claude Code Hooks, Home Scripts, legacy Air Cron Extras
     extra_sections = [
         ("github_actions", "GitHub Actions", "GitHub", "ci-workflow"),
         ("claude_code_hooks", "Hooks", "Pro", "hook"),
@@ -1090,7 +1090,7 @@ def main() -> None:
     wb.save(str(OUTPUT_FILE))
     total = len(all_with_backend)
     print(f"\nDone! {total} automations → {OUTPUT_FILE}")
-    print(f"  Pro: {len(pro)} | Air: {len(air)} | Backend: {len(backend_services)} | Extras: {len(all_extras)}")
+    print(f"  Pro: {len(pro)} | Mini: {len(mini)} | Backend: {len(backend_services)} | Extras: {len(all_extras)}")
 
 
 if __name__ == "__main__":

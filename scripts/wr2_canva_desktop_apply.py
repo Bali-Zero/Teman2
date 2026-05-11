@@ -59,17 +59,46 @@ logger = logging.getLogger("wr2.canva_desktop_apply")
 MAX_DRAFTS_PER_RUN = 1  # GUI automation is fragile — never race
 CLAUDE_APP_NAME = "Claude"
 
-# Where the /canva-apply skill looks for the pending file.
-# Must match the path in ~/.claude/skills/canva-apply.md.
-CANVA_PENDING_PATH = (
-    _REPO_ROOT / "apps" / "war-room" / "output" / "canva" / "canva_pending.json"
+# Output dir resolution — must match the skill's WR2_OUTPUT_ROOT contract.
+# See ~/.claude/skills/canva-apply.md "Path resolution" section.
+# Hierarchy: explicit env var > legacy main-repo path. The skill side has
+# the same fallback, so both writer and reader resolve to the same dir
+# even when the env var is unset.
+#
+# E11 in 2026-05-10 audit (TODO Phase 2): move the output dir entirely
+# OUT of the git tree (e.g. ~/var/wr2/output/canva/). Working runtime
+# data has no business living under a `git pull`-able path — a worktree
+# checkout / branch switch can race with an in-flight Phase D write and
+# corrupt the file. Migration requires coordinating: this script + the
+# skill (~/.claude/skills/canva-apply.md) + the LaunchAgent
+# (infra/launchagents/com.balizero.wr2.canva-apply.plist) all flipping
+# WR2_OUTPUT_ROOT in lockstep. Out of scope for this PR.
+_LEGACY_OUTPUT_ROOT = Path(
+    "/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/canva"
 )
-CANVA_OUTPUT_PATH = (
-    _REPO_ROOT / "apps" / "war-room" / "output" / "canva" / "carousel_canva.json"
-)
+_OUTPUT_ROOT = Path(
+    os.environ.get("WR2_OUTPUT_ROOT") or str(_LEGACY_OUTPUT_ROOT)
+).resolve()
+CANVA_PENDING_PATH = _OUTPUT_ROOT / "canva_pending.json"
+CANVA_OUTPUT_PATH = _OUTPUT_ROOT / "carousel_canva.json"
 
 POLL_INTERVAL_SEC = 10
-POLL_TIMEOUT_SEC = 600  # 10 minutes
+# Skill duration empirics (2026-05-10): run #1 finished in 412s, run #2
+# finished in ~25 min when Claude Desktop was throttled. The skill emits
+# carousel_canva.json BEFORE the UPDATE happens — so as long as the script
+# is still polling when the skill writes the file, the DB UPDATE will fire.
+# Bumped from 600s (10m) to 1800s (30m) to cover the slow case. The
+# Telegram timeout alert fires at the 30m mark — operator can re-kickstart.
+POLL_TIMEOUT_SEC = int(os.environ.get("WR2_POLL_TIMEOUT_SEC", "1800"))
+
+# Pre-keystroke grace period (seconds). The kickstart command is sent from
+# a shell session that is, by definition, frontmost at that instant. The
+# AppleScript focus check runs before we paste, but the operator needs a
+# moment to bring Claude Desktop forward. Without grace, attempt 1/5
+# always fails on the focus check (frontmost is iTerm2/Terminal). With
+# grace, attempt 1 has a chance to succeed. See E6 in the 2026-05-10
+# pipeline audit.
+PRE_KEYSTROKE_GRACE_SEC = int(os.environ.get("WR2_PRE_KEYSTROKE_GRACE_SEC", "8"))
 
 
 def _configure_logging() -> None:
@@ -388,6 +417,19 @@ async def _apply_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
     # steals focus during the milliseconds between activate + verify_frontmost.
     # Retry envelope: up to 5 attempts with 30s gap. Telegram alert only
     # after the full envelope fails — no per-attempt noise.
+    #
+    # 2026-05-10: pre-keystroke grace period added. The operator typically
+    # kickstarts from a shell session (iTerm2/Terminal); attempt 1/5 used
+    # to fail 100% of the time on the focus check because the operator
+    # hadn't switched to Claude Desktop yet. The grace gives them ~8s.
+    if PRE_KEYSTROKE_GRACE_SEC > 0:
+        logger.info(
+            "Pre-keystroke grace: sleeping %ds — bring Claude Desktop "
+            "to the foreground now.",
+            PRE_KEYSTROKE_GRACE_SEC,
+        )
+        time.sleep(PRE_KEYSTROKE_GRACE_SEC)
+
     last_error: Exception | None = None
     for attempt in range(1, 6):
         try:
@@ -414,10 +456,41 @@ async def _apply_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
     logger.info("Command sent — polling for output...")
     result = _wait_for_canva_output(since_ts=started_at)
     if not result:
+        # Last-chance reconciliation (2026-05-10 audit E5): the skill in
+        # Claude Desktop may have completed AFTER the poll deadline. The
+        # carousel_canva.json file is still there with the result. Check
+        # one final time, IGNORING the since_ts gate (the skill may be
+        # slow but it WILL eventually write). If the file has a design_id
+        # produced after `started_at`, accept it.
+        if CANVA_OUTPUT_PATH.is_file():
+            try:
+                tail_data = json.loads(CANVA_OUTPUT_PATH.read_text())
+                tail_mtime = CANVA_OUTPUT_PATH.stat().st_mtime
+                if (
+                    tail_data.get("design_id")
+                    and tail_data.get("status") == "applied"
+                    and tail_mtime >= started_at
+                ):
+                    logger.info(
+                        "Late reconciliation: skill completed after poll "
+                        "deadline (mtime=%.0f, started_at=%.0f)",
+                        tail_mtime,
+                        started_at,
+                    )
+                    design_id = tail_data["design_id"]
+                    edit_url = tail_data.get("design_url") or (
+                        f"https://www.canva.com/design/{design_id}/edit"
+                    )
+                    view_url = tail_data.get("view_url")
+                    result = (design_id, edit_url, view_url)
+            except (json.JSONDecodeError, OSError) as e:
+                logger.debug("late reconciliation read failed: %s", e)
+    if not result:
         _send_telegram(
             f"WR2 Canva apply TIMEOUT after {POLL_TIMEOUT_SEC}s\n"
             f"Draft: {draft_id}\n"
-            "Check Claude Desktop manually"
+            f"Check {CANVA_OUTPUT_PATH} for late skill output, "
+            f"or run: python scripts/wr2_canva_reconcile.py --draft-id {draft_id}"
         )
         return False
 
@@ -441,7 +514,28 @@ async def _apply_one(conn: asyncpg.Connection, row: asyncpg.Record) -> bool:
     return True
 
 
-async def run(dry_run: bool = False) -> int:
+async def _fetch_one_by_id(
+    conn: asyncpg.Connection, draft_id: str
+) -> list[asyncpg.Record]:
+    """Fetch a single draft by UUID, ignoring the FIFO queue order.
+
+    Used by the manual --draft-id flag to override the ORDER BY created_at
+    selection. Still requires the same eligibility predicate (status in the
+    canva-ready set, no canva_edit_url yet) to avoid double-applying.
+    """
+    return await conn.fetch(
+        """
+        SELECT id, topic, register AS tone, slides_json
+          FROM war_room_drafts
+         WHERE id = $1::uuid
+           AND status IN ('drafts_imaged', 'drafts')
+           AND canva_edit_url IS NULL
+        """,
+        draft_id,
+    )
+
+
+async def run(dry_run: bool = False, draft_id: str | None = None) -> int:
     dsn = os.environ.get("DATABASE_URL")
     if not dsn:
         logger.critical("DATABASE_URL not set")
@@ -453,7 +547,18 @@ async def run(dry_run: bool = False) -> int:
             logger.info("wr2_canva_desktop_apply_enabled != true — exiting")
             return 0
 
-        drafts = await _fetch_ready_drafts(conn, MAX_DRAFTS_PER_RUN)
+        if draft_id:
+            drafts = await _fetch_one_by_id(conn, draft_id)
+            if not drafts:
+                logger.error(
+                    "Draft %s not found or not eligible (need status in "
+                    "{drafts_imaged, drafts} AND canva_edit_url IS NULL)",
+                    draft_id,
+                )
+                return 2
+            logger.info("Manual override: processing single draft %s", draft_id)
+        else:
+            drafts = await _fetch_ready_drafts(conn, MAX_DRAFTS_PER_RUN)
         if not drafts:
             logger.info("no drafts ready")
             return 0
@@ -480,10 +585,21 @@ async def run(dry_run: bool = False) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--draft-id",
+        metavar="UUID",
+        default=None,
+        help=(
+            "Manual override: process this specific draft instead of the "
+            "FIFO queue. Same eligibility check applies (status in the "
+            "canva-ready set, no canva_edit_url yet). Useful when an "
+            "earlier draft is intentionally skipped."
+        ),
+    )
     args = parser.parse_args()
     _configure_logging()
     try:
-        return asyncio.run(run(dry_run=args.dry_run))
+        return asyncio.run(run(dry_run=args.dry_run, draft_id=args.draft_id))
     except KeyboardInterrupt:
         return 130
     except Exception as e:

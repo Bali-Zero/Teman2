@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.balizero.wr2.deploy-puller — Sprint C C1 (2026-05-08).
+
+  Pulls origin/main into ~/Desktop/nuzantara-deploy every hour so the
+  WR2 production cron scripts (canva-apply, fact-extractor,
+  fact-checker, supervisor, image-generator) — which run via
+  ~/.openclaw/bin/wr2/wr2-script-wrapper.sh with WR2_REPO_ROOT
+  defaulting to ~/Desktop/nuzantara-deploy — pick up merged code
+  automatically within ~1h.
+
+  Failure modes (all alerted via Telegram with 6h cooldown):
+    - deploy worktree missing
+    - deploy worktree on wrong branch
+    - deploy worktree has local changes
+    - git fetch fails (network/auth)
+    - local commits ahead of origin (manual edits)
+    - branches diverged (cannot fast-forward)
+
+  The script is single-instance via flock; a missed tick caused by
+  StartInterval drift (Mac sleep) catches up on the next firing.
+
+  Install:
+    cp infra/launchagents/com.balizero.wr2.deploy-puller.plist \
+       ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) \
+       ~/Library/LaunchAgents/com.balizero.wr2.deploy-puller.plist
+
+  Plist permissions hardened to 0444 per cicatrix P0-3.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.balizero.wr2.deploy-puller</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/scripts/wr2-deploy-pull.sh</string>
+    </array>
+
+    <!-- Hourly pull. RunAtLoad seeds an immediate pull so a freshly
+         merged PR doesn't have to wait up to an hour. -->
+    <key>StartInterval</key>
+    <integer>3600</integer>
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/wr2-deploy-pull.launchd.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/wr2-deploy-pull.launchd.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/Users/nuzantara/.local/bin:/Users/nuzantara/.npm-global/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+
+    <!-- Avoid tight respawn loops if git/network fails. -->
+    <key>ThrottleInterval</key>
+    <integer>60</integer>
+</dict>
+</plist>

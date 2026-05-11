@@ -1,0 +1,2066 @@
+# config/job-ownership.yaml
+# Source-of-truth per migrazione cron Pro->Mini.
+# Generated 2026-05-10 by scripts/mini-migration/gen-inventory.py
+# DO NOT edit `owner` field manually — only migrate-job.sh / rollback-job.sh.
+# Other fields hand-curated as needed.
+
+schema_version: 1
+generated_at: '2026-05-10T10:30:00+08:00'
+pro_plist_count: 135
+mini_plist_count: 13
+both_count: 2
+
+# === 2 CONFLITTI: stesso label su Pro E Mini (ATTENZIONE) ===
+
+jobs:
+  ai.flowkit.gateway:
+    owner: pro
+    family: flowkit
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  ai.openclaw.gateway:
+    owner: pro
+    family: openclaw
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.bz-daily-visual-pipeline:
+    owner: pro
+    family: balizero
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [canva, social]
+    idempotent: false
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.client-value-predictor:
+    owner: pro
+    family: balizero
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.codex-spalla-calibrate:
+    owner: pro
+    family: balizero
+    cluster: D_codex
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: codex
+    schedule: calendar
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.competitor-monitor.monthly:
+    owner: pro
+    family: balizero
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: cron_light
+    schedule: monthly
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.competitor-signal-router.weekly:
+    owner: pro
+    family: balizero
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: weekly
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.cron-log-sentinel:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.domain-mesh.foundations.daily:
+    owner: pro
+    family: balizero
+    cluster: C_pro_bound_exception
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.indexing-sweep.daily:
+    owner: pro
+    family: balizero
+    cluster: C_pro_bound_exception
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.intel-dedup-gateway:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.intel-radar-daily-digest:
+    owner: pro
+    family: balizero
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.intel.nightly:
+    owner: pro
+    family: balizero
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.meta-dispatcher:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.nlm-bridge:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.nuzantara-drive-sync:
+    owner: pro
+    family: balizero
+    cluster: B_sync
+    state: active
+    side_effects: [drive]
+    idempotent: true
+    resource_class: sync
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.observatory:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.observatory-export:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: continuous
+    schedule: continuous
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.observatory-server:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.post-publish-poller:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.post-publish-webhook:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.regulatory-watcher.daily:
+    owner: pro
+    family: balizero
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [telegram]
+    idempotent: false
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.renewal-alerts:
+    owner: pro
+    family: balizero
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [brevo, telegram]
+    idempotent: false
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.research-sentinel:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.seo-cell.28d-check:
+    owner: pro
+    family: balizero
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: monthly
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.seo-cell.daily:
+    owner: pro
+    family: balizero
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.setup-team.daily:
+    owner: pro
+    family: balizero
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.sota.m13-checkpoint:
+    owner: pro
+    family: balizero
+    cluster: C_pro_bound_exception
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.sota.m13-collect:
+    owner: pro
+    family: balizero
+    cluster: C_pro_bound_exception
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.sota.m13-monthly:
+    owner: pro
+    family: balizero
+    cluster: C_pro_bound_exception
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: monthly
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.sota.m13-weekly:
+    owner: pro
+    family: balizero
+    cluster: C_pro_bound_exception
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: weekly
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.translate.hourly:
+    owner: pro
+    family: balizero
+    cluster: C_pro_bound_exception
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: ollama
+    schedule: hourly
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.canva-apply:
+    owner: pro
+    family: balizero
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [canva]
+    idempotent: false
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.canva-gc.weekly:
+    owner: pro
+    family: balizero
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [canva]
+    idempotent: false
+    resource_class: cron_light
+    schedule: weekly
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.canva-oauth-watchdog:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [canva]
+    idempotent: false
+    resource_class: cron_light
+    schedule: interval
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.canva-renderer:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [canva]
+    idempotent: false
+    resource_class: continuous
+    schedule: every_10min
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.connector:
+    owner: pro
+    family: balizero
+    cluster: C_pro_bound_exception
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.daily-metrics:
+    owner: pro
+    family: balizero
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.deploy-puller:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: hourly
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.dossier-compiler:
+    owner: pro
+    family: balizero
+    cluster: C_pro_bound_exception
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.draft-generator:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.fact-checker:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.fact-extractor:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.hardening:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.ig-scraper.daily:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [social]
+    idempotent: false
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: "Antonello-decision 2026-05-10: WR2 family stays Pro, Cluster A residence (ig-scraper has Playwright session, learner/voyager/reflexion likely Pg deps)"
+
+  com.balizero.wr2.image-generator:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.learner-nightly:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: "Antonello-decision 2026-05-10: WR2 family stays Pro, Cluster A residence (ig-scraper has Playwright session, learner/voyager/reflexion likely Pg deps)"
+
+  com.balizero.wr2.measurer:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.newsletter:
+    owner: pro
+    family: balizero
+    cluster: C_pro_bound_exception
+    state: active
+    side_effects: [brevo]
+    idempotent: false
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.oracle:
+    owner: pro
+    family: balizero
+    cluster: C_pro_bound_exception
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.pg-proxy:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.plist-watchdog:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: cron_light
+    schedule: hourly
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.queue-server:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.reflexion.weekly:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: weekly
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: "Antonello-decision 2026-05-10: WR2 family stays Pro, Cluster A residence (ig-scraper has Playwright session, learner/voyager/reflexion likely Pg deps)"
+
+  com.balizero.wr2.sla-worker:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.strategos:
+    owner: pro
+    family: balizero
+    cluster: C_pro_bound_exception
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.supervisor:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.supervisor-watchdog:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.topic-selector:
+    owner: pro
+    family: balizero
+    cluster: C_pro_bound_exception
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.trend-hunter:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.balizero.wr2.voyager.weekly:
+    owner: pro
+    family: balizero
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: weekly
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: "Antonello-decision 2026-05-10: WR2 family stays Pro, Cluster A residence (ig-scraper has Playwright session, learner/voyager/reflexion likely Pg deps)"
+
+  com.balizero.yield-optimizer.weekly:
+    owner: pro
+    family: balizero
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: weekly
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.cell.metabolic-rollup:
+    owner: pro
+    family: cell
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.cell.organism:
+    owner: pro
+    family: cell
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.claude-max-api:
+    owner: pro
+    family: other
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.garuda.consumer.daily:
+    owner: pro
+    family: garuda
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.garuda.gap-detector.twice-daily:
+    owner: pro
+    family: garuda
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.google.GoogleUpdater.wake:
+    owner: both-conflict
+    family: google
+    cluster: C_pro_bound_exception
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: hourly
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: "CONFLICT: stesso label su entrambe macchine, decidere owner"
+
+  com.google.keystone.agent:
+    owner: pro
+    family: google
+    cluster: C_pro_bound_exception
+    state: inactive
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.google.keystone.xpcservice:
+    owner: pro
+    family: google
+    cluster: C_pro_bound_exception
+    state: inactive
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.matagaruda.bridge.adaptive:
+    owner: pro
+    family: matagaruda
+    cluster: C_pro_bound_exception
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: continuous
+    schedule: continuous
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.matagaruda.daily-briefing:
+    owner: pro
+    family: matagaruda
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [telegram]
+    idempotent: false
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.matagaruda.gap.consumer:
+    owner: pro
+    family: matagaruda
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: continuous
+    schedule: every_10min
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.matagaruda.intel-bridge.daily:
+    owner: mini-only-undocumented
+    family: matagaruda
+    cluster: C_migrate_candidate
+    state: mini-only
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: "Migrazione precedente non documentata, era gia su Mini"
+
+  com.matagaruda.invalidation-sweep:
+    owner: pro
+    family: matagaruda
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.matagaruda.kg-linker:
+    owner: pro
+    family: matagaruda
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: hourly
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.matagaruda.kg-query-api:
+    owner: mini-only-undocumented
+    family: matagaruda
+    cluster: C_migrate_candidate
+    state: mini-only
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: "Migrazione precedente non documentata, era gia su Mini"
+
+  com.matagaruda.kita-feed.daily:
+    owner: pro
+    family: matagaruda
+    cluster: C_migrate_candidate
+    state: inactive
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.matagaruda.ner-worker.hourly:
+    owner: mini-only-undocumented
+    family: matagaruda
+    cluster: C_migrate_candidate
+    state: mini-only
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: hourly
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: "Migrazione precedente non documentata, era gia su Mini"
+
+  com.matagaruda.nlm-expander.weekly:
+    owner: pro
+    family: matagaruda
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: weekly
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.matagaruda.nlm-feeder-stream.hourly:
+    owner: pro
+    family: matagaruda
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: hourly
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.matagaruda.normalizer.hourly:
+    owner: mini-only-undocumented
+    family: matagaruda
+    cluster: C_migrate_candidate
+    state: mini-only
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: hourly
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: "Migrazione precedente non documentata, era gia su Mini"
+
+  com.matagaruda.public-channel:
+    owner: pro
+    family: matagaruda
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [social, telegram]
+    idempotent: false
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.matagaruda.reg-alert.30min:
+    owner: pro
+    family: matagaruda
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [telegram]
+    idempotent: false
+    resource_class: cron_light
+    schedule: hourly
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.matagaruda.sentinel.daily:
+    owner: mini-only-undocumented
+    family: matagaruda
+    cluster: C_migrate_candidate
+    state: mini-only
+    side_effects: [none]
+    idempotent: true
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: "Migrazione precedente non documentata, era gia su Mini"
+
+  com.matagaruda.watcher.daily:
+    owner: pro
+    family: matagaruda
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [telegram]
+    idempotent: false
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.matagaruda.weekly-digest:
+    owner: pro
+    family: matagaruda
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [brevo]
+    idempotent: false
+    resource_class: cron_light
+    schedule: weekly
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.matagaruda.wr-topic:
+    owner: pro
+    family: matagaruda
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.matagaruda.wr2-bridge.hourly:
+    owner: pro
+    family: matagaruda
+    cluster: C_pro_bound_exception
+    state: inactive
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: hourly
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.automap-server:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.automap-telegram:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [telegram]
+    idempotent: false
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.automap-watchdog:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.automations-reference:
+    owner: pro
+    family: nuzantara
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.cell-observatory:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.cell-observatory-prune:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.cell-observatory-selfcheck:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: continuous
+    schedule: every_10min
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.claude-config-sync:
+    owner: pro
+    family: nuzantara
+    cluster: B_sync
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: sync
+    schedule: hourly
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.claude-max-usage-watcher:
+    owner: pro
+    family: nuzantara
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [telegram]
+    idempotent: false
+    resource_class: cron_light
+    schedule: hourly
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.codex-autofix-ci:
+    owner: pro
+    family: nuzantara
+    cluster: D_codex
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: codex
+    schedule: calendar
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.codex-coverage-improver:
+    owner: pro
+    family: nuzantara
+    cluster: D_codex
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: codex
+    schedule: calendar
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.codex-openclaw-analysis:
+    owner: pro
+    family: nuzantara
+    cluster: D_codex
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: codex
+    schedule: calendar
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.codex-overnight-feeder:
+    owner: pro
+    family: nuzantara
+    cluster: D_codex
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: codex
+    schedule: calendar
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.codex-overnight-runner:
+    owner: pro
+    family: nuzantara
+    cluster: D_codex
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: codex
+    schedule: calendar
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.codex-research-actor:
+    owner: pro
+    family: nuzantara
+    cluster: D_codex
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: codex
+    schedule: calendar
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.cost-advisor-daily-cap:
+    owner: pro
+    family: nuzantara
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.cost-advisor-weekly:
+    owner: pro
+    family: nuzantara
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: cron_light
+    schedule: weekly
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.cpu-monitor:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: continuous
+    schedule: every_10min
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.disk-monitor:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: continuous
+    schedule: every_10min
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.dlq-autopilot:
+    owner: pro
+    family: nuzantara
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: hourly
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.federation-alert-dispatcher:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [telegram]
+    idempotent: false
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.fly-pg-tunnel:
+    owner: mini-only-undocumented
+    family: nuzantara
+    cluster: C_migrate_candidate
+    state: mini-only
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: "Migrazione precedente non documentata, era gia su Mini"
+
+  com.nuzantara.fly-restart-loop-detector:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: hourly
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.git-pull-main.5min:
+    owner: mini-only-undocumented
+    family: nuzantara
+    cluster: B_sync
+    state: mini-only
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: sync
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: "Migrazione precedente non documentata, era gia su Mini"
+
+  com.nuzantara.heartbeat-bridge:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.heartbeat-watchdog.daily:
+    owner: mini-only-undocumented
+    family: nuzantara
+    cluster: C_migrate_candidate
+    state: mini-only
+    side_effects: [none]
+    idempotent: true
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: "Migrazione precedente non documentata, era gia su Mini"
+
+  com.nuzantara.launchagent-state-bridge:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.launchd-env-loader:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: interval
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.log-prune.daily:
+    owner: mini-only-undocumented
+    family: nuzantara
+    cluster: C_migrate_candidate
+    state: mini-only
+    side_effects: [none]
+    idempotent: true
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: "Migrazione precedente non documentata, era gia su Mini"
+
+  com.nuzantara.login-healthcheck:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: continuous
+    schedule: every_10min
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.memory-sync-bidirectional:
+    owner: pro
+    family: nuzantara
+    cluster: B_sync
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: sync
+    schedule: every_10min
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.nb-intel-delta-watcher.hourly:
+    owner: pro
+    family: nuzantara
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [telegram]
+    idempotent: false
+    resource_class: cron_light
+    schedule: hourly
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.nb-mitochondrial-monitor.daily:
+    owner: pro
+    family: nuzantara
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.ollama-warm-pin:
+    owner: mini-only-undocumented
+    family: nuzantara
+    cluster: C_migrate_candidate
+    state: mini-only
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: "Migrazione precedente non documentata, era gia su Mini"
+
+  com.nuzantara.openclaw-children-watchdog:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: continuous
+    schedule: every_10min
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.openclaw-logrotate:
+    owner: pro
+    family: nuzantara
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.organism.control-panel:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.organism.scheduled-tick:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.organism.supervisor:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.outbox-prune.daily:
+    owner: pro
+    family: nuzantara
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.overlap-detector.daily:
+    owner: mini-only-undocumented
+    family: nuzantara
+    cluster: C_migrate_candidate
+    state: mini-only
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: "Migrazione precedente non documentata, era gia su Mini"
+
+  com.nuzantara.pg-organism-bridge:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.prime-tunnel:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.secrets-sync-mini:
+    owner: pro
+    family: nuzantara
+    cluster: B_sync
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: sync
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.sentinel:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.sentinel-aggregate:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: continuous
+    schedule: every_10min
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.sentinel-meta-watchdog:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: continuous
+    schedule: every_10min
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.supervisor-liveness-watchdog:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [none]
+    idempotent: true
+    resource_class: continuous
+    schedule: every_10min
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.vector-reindex-check:
+    owner: pro
+    family: nuzantara
+    cluster: C_pro_bound_exception
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: calendar
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.nuzantara.zombie-hunter:
+    owner: pro
+    family: nuzantara
+    cluster: A_residence_pro
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: continuous
+    schedule: continuous
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.openai.atlas.update-helper:
+    owner: pro
+    family: openai
+    cluster: C_pro_bound_exception
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: hourly
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.siano.osint.backup.daily:
+    owner: pro
+    family: siano
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [drive]
+    idempotent: true
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  com.siano.osint.news.daily:
+    owner: pro
+    family: siano
+    cluster: C_migrate_candidate
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: cron_light
+    schedule: daily
+    candidate_migrate: true
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  homebrew.mxcl.ollama:
+    owner: pro
+    family: brew
+    cluster: C_pro_bound_exception
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  homebrew.mxcl.postgresql@17:
+    owner: pro
+    family: brew
+    cluster: C_pro_bound_exception
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+  homebrew.mxcl.redis:
+    owner: both-conflict
+    family: brew
+    cluster: C_pro_bound_exception
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: residence
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: "CONFLICT: stesso label su entrambe macchine, decidere owner"
+
+  homebrew.mxcl.syncthing:
+    owner: pro
+    family: brew
+    cluster: C_pro_bound_exception
+    state: active
+    side_effects: [file_only]
+    idempotent: unknown
+    resource_class: sync
+    schedule: on_load
+    candidate_migrate: false
+    last_migrated: null
+    git_sha: null
+    notes: ""
+
+# === STATS ===
+# A_residence_pro: 56
+# B_sync: 5
+# C_migrate_candidate: 54
+# C_pro_bound_exception: 24
+# D_codex: 7
+# X_system: 0

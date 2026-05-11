@@ -19,10 +19,12 @@ Depends on PortalService for:
 """
 
 import asyncio
+import re
 from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
+import httpx
 
 from backend.app.utils.logging_utils import get_logger
 from backend.services.common.background import spawn
@@ -109,6 +111,23 @@ class PortalDocumentsMixin:
             "family": "04_Family",
         }
         return category_map.get((category or "").lower(), "99_Misc")
+
+    @staticmethod
+    def _extract_drive_file_id(url: str | None) -> str | None:
+        """Extract a Google Drive file id from a stored Drive URL."""
+        if not url:
+            return None
+
+        match = re.search(r"/file/d/([^/]+)", url)
+        if match:
+            return match.group(1)
+
+        match = re.search(r"[?&]id=([^&]+)", url)
+        if match:
+            return match.group(1)
+
+        return None
+
     # ================================================
     # DOCUMENTS
     # ================================================
@@ -125,7 +144,7 @@ class PortalDocumentsMixin:
         async with self.pool.acquire() as conn:
             query = """
                 SELECT d.id, d.document_type, d.file_name, d.status,
-                       d.expiry_date, d.file_url, d.file_size_kb, d.created_at,
+                       d.expiry_date, d.file_url, d.file_id, d.file_size_kb, d.created_at,
                        p.id as practice_id, pt.name as practice_name
                 FROM documents d
                 LEFT JOIN practices p ON p.id = d.practice_id
@@ -153,15 +172,86 @@ class PortalDocumentsMixin:
                     "size_kb": d["file_size_kb"],
                     "practice_id": d["practice_id"],
                     "practice_name": d["practice_name"],
-                    "downloadable": d["status"] in ("verified", "issued")
-                    and d["file_url"] is not None,
+                    "downloadable": d["file_url"] is not None
+                    or d["file_id"] is not None,
                     "created_at": d["created_at"].isoformat(),
                 }
                 for d in documents
             ]
 
+    @require_client_access
+    async def download_document(
+        self,
+        client_id: int,
+        document_id: int,
+        *,
+        current_user: ClientContext,
+    ) -> dict[str, Any] | None:
+        """Download a client-visible document through the portal proxy."""
+        async with self.pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT id, file_name, file_id, file_url, mime_type, status
+                FROM documents
+                WHERE id = $1
+                  AND client_id = $2
+                  AND client_visible = true
+                LIMIT 1
+                """,
+                document_id,
+                client_id,
+            )
+
+        if not row:
+            return None
+
+        file_id = row["file_id"] or self._extract_drive_file_id(row["file_url"])
+        if not file_id:
+            return None
+
+        from backend.services.integrations.google_drive_service import GoogleDriveService
+
+        drive_service = GoogleDriveService(self.pool)
+        access_token = await drive_service.get_valid_token(GoogleDriveService.SYSTEM_USER_ID)
+        if not access_token:
+            raise RuntimeError("Google Drive is not connected")
+
+        headers = {"Authorization": f"Bearer {access_token}"}
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            meta_response = await client.get(
+                f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                params={"fields": "mimeType,name,size"},
+                headers=headers,
+            )
+            if meta_response.status_code == 404:
+                return None
+            if meta_response.status_code != 200:
+                logger.error("Portal document metadata fetch failed: %s", meta_response.status_code)
+                raise RuntimeError("Failed to fetch document metadata")
+
+            metadata = meta_response.json()
+            mime_type = metadata.get("mimeType") or row["mime_type"] or "application/octet-stream"
+            file_name = metadata.get("name") or row["file_name"] or "document"
+
+            download_response = await client.get(
+                f"https://www.googleapis.com/drive/v3/files/{file_id}",
+                params={"alt": "media"},
+                headers=headers,
+            )
+            if download_response.status_code == 404:
+                return None
+            if download_response.status_code != 200:
+                logger.error("Portal document download failed: %s", download_response.status_code)
+                raise RuntimeError("Failed to download document")
+
+        return {
+            "content": download_response.content,
+            "file_name": file_name,
+            "mime_type": mime_type,
+        }
+
     @cache_invalidating([
-        lambda self, client_id, *a, **k: f"zantara:portal_documents:{client_id}:*",
+        lambda _self, client_id, *_a, **_k: f"zantara:portal_documents:{client_id}:*",
         "zantara:portal_documents:*",
         "zantara:portal_timeline:*",
     ])
@@ -394,8 +484,8 @@ class PortalDocumentsMixin:
                             file_size_kb,
                             mime_type,
                         )
-                else:
-                    raise
+                    else:
+                        raise
 
             # =========================================================================
             # STEP 6: CREATE TIMELINE EVENT

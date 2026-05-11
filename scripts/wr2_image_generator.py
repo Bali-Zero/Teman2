@@ -147,7 +147,8 @@ BRAND_SUFFIX = (
     "chiaroscuro lighting, low-key exposure, desaturated muted palette of "
     "deep charcoals and warm ochre accents. Minimalist composition with "
     "vast negative space. No human faces visible — silhouettes or objects only. "
-    "Photorealistic. 4:5 portrait orientation."
+    "Photorealistic. CRITICAL ASPECT RATIO: 4:5 portrait, 1080x1350 pixels, "
+    "full-bleed, no border, no whitespace on any side."
 )
 
 ANTI_CLICHE_SUFFIX = (
@@ -548,6 +549,128 @@ async def _upload_and_return(
     return slide_number, url, None
 
 
+# ─────────────────────────────────────────────────────────────────────────
+# Codex backend (2026-05-07) — gpt-image-2 via ChatGPT Pro $200 OAuth
+#
+# Mirror of _generate_cover_via_codex from wr2_draft_generator.py (PR #478),
+# extended from cover-only to all hero body slides.
+#
+# Why: FlowKit + Playwright produce 1080x1080 (1:1) images while the WR2
+# template uses 1080x1350 (4:5) frames. Codex `$imagegen` produces 4:5
+# natively when prompted with explicit aspect, eliminating side gaps.
+#
+# Trap: Codex IGNORES output path in prompt — writes to
+# ~/.codex/generated_images/<uuid-v7>/ig_<hash>.png. We snapshot the dir
+# pre-run and pick the freshest new PNG.
+# ─────────────────────────────────────────────────────────────────────────
+
+CODEX_BIN = "/opt/homebrew/bin/codex"
+CODEX_OUTPUT_DIR = Path.home() / ".codex" / "generated_images"
+CODEX_TIMEOUT_SEC = float(os.environ.get("WR2_CODEX_TIMEOUT_SEC", "600"))
+CODEX_MTIME_WINDOW_SEC = 600
+
+_CODEX_STRIPPED_ENV_KEYS = frozenset({
+    "ANTHROPIC_API_KEY",
+    "AWS_BEDROCK_ANTHROPIC_KEY",
+    "VERTEX_AI_ANTHROPIC_KEY",
+    "OPENAI_API_KEY",
+    "GEMINI_API_KEY",
+    "GOOGLE_API_KEY",
+})
+
+
+def _codex_safe_env() -> dict[str, str]:
+    return {k: v for k, v in os.environ.items() if k not in _CODEX_STRIPPED_ENV_KEYS}
+
+
+async def _probe_codex_available() -> bool:
+    """Check if Codex CLI binary exists. Cheap probe, no execution."""
+    try:
+        return Path(CODEX_BIN).is_file() and os.access(CODEX_BIN, os.X_OK)
+    except OSError:
+        return False
+
+
+async def _acquire_bytes_via_codex(
+    slide_number: int,
+    image_prompt: str,
+    draft_id: str,
+) -> tuple[bytes | None, str | None]:
+    """Generate one hero image via Codex CLI `$imagegen` (gpt-image-2).
+
+    Aspect ratio 4:5 portrait is enforced via prompt suffix. Returns
+    (bytes, None) on success or (None, error) on failure.
+
+    Mirrors wr2_draft_generator._generate_cover_via_codex but takes the
+    final composed prompt (BRAND + ANTI_CLICHE) as input.
+    """
+    final_prompt = _compose_final_prompt(image_prompt)
+    # Force 4:5 portrait — gpt-image-2 honours aspect hints in prompt body
+    final_prompt += "\n\nOutput 1080x1350 (4:5 portrait), full bleed, no border."
+
+    logger.info(
+        "[slide %d] Codex $imagegen — prompt %d chars",
+        slide_number, len(final_prompt),
+    )
+
+    pre_existing: set[Path] = set()
+    if CODEX_OUTPUT_DIR.exists():
+        pre_existing = set(CODEX_OUTPUT_DIR.rglob("ig_*.png"))
+
+    t0 = time.perf_counter()
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            CODEX_BIN,
+            "exec",
+            f"$imagegen {final_prompt}",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            stdin=asyncio.subprocess.DEVNULL,
+            env=_codex_safe_env(),
+        )
+        try:
+            _stdout, _stderr = await asyncio.wait_for(
+                proc.communicate(), timeout=CODEX_TIMEOUT_SEC,
+            )
+        except asyncio.TimeoutError:
+            proc.kill()
+            await proc.wait()
+            return None, f"codex timed out after {CODEX_TIMEOUT_SEC}s"
+        if proc.returncode != 0:
+            tail = (_stderr or _stdout or b"").decode("utf-8", errors="replace")[-200:]
+            return None, f"codex exit={proc.returncode}: {tail.strip()}"
+    except FileNotFoundError:
+        return None, f"codex binary not found at {CODEX_BIN}"
+    except Exception as e:  # noqa: BLE001
+        return None, f"codex spawn failed: {e}"
+
+    if not CODEX_OUTPUT_DIR.exists():
+        return None, "codex output dir does not exist after run"
+    candidates = [p for p in CODEX_OUTPUT_DIR.rglob("ig_*.png") if p not in pre_existing]
+    if not candidates:
+        all_pngs = list(CODEX_OUTPUT_DIR.rglob("ig_*.png"))
+        if not all_pngs:
+            return None, "no PNG found in codex output dir"
+        latest = max(all_pngs, key=lambda p: p.stat().st_mtime)
+        if (time.time() - latest.stat().st_mtime) > CODEX_MTIME_WINDOW_SEC:
+            return None, f"latest PNG older than {CODEX_MTIME_WINDOW_SEC}s window"
+        png_path = latest
+    else:
+        png_path = max(candidates, key=lambda p: p.stat().st_mtime)
+
+    try:
+        img_bytes = png_path.read_bytes()
+    except Exception as e:  # noqa: BLE001
+        return None, f"failed to read codex PNG {png_path}: {e}"
+
+    elapsed_ms = (time.perf_counter() - t0) * 1000
+    logger.info(
+        "[slide %d] Codex ok: %d bytes from %s (%.0fms)",
+        slide_number, len(img_bytes), png_path.name, elapsed_ms,
+    )
+    return img_bytes, None
+
+
 async def _acquire_bytes_via_flowkit(
     slide_number: int,
     image_prompt: str,
@@ -629,17 +752,19 @@ async def _gen_image_with_semaphore(
     *,
     backend: str = "auto",
     flowkit_available: bool = False,
+    codex_available: bool = False,
 ) -> tuple[int, str | None, str | None]:
     """Generate + upload one hero image. Returns (slide_number, url, error).
 
-    Backend selection (Sprint 1.6 W3):
-      - `backend="flowkit"` — FlowKit only. Falls through to error if the
-        first attempt raises (no Playwright fallback in this mode).
+    Backend selection (Sprint A 2026-05-07 — Codex added as primary):
+      - `backend="codex"` — Codex CLI `$imagegen` only (gpt-image-2 via
+        ChatGPT Pro $200 OAuth). Native 4:5 portrait, no Playwright needed.
+      - `backend="flowkit"` — FlowKit only. Errors out if unavailable.
       - `backend="playwright"` — Playwright only (legacy behavior).
-      - `backend="auto"` — try FlowKit first when `flowkit_available=True`
-        (caller has pre-checked `is_available()` to avoid repeated probing
-        per slide). On any failure, fall back to Playwright retry/variant
-        loop. This is the DEFAULT.
+      - `backend="auto"` — DEFAULT. Try Codex first (when
+        `codex_available=True`), fall back to FlowKit (when
+        `flowkit_available=True`), fall back to Playwright. VLM alignment
+        guard applies to ALL backends.
 
     Retries up to MAX_RETRIES_PER_SLIDE times on Playwright failure (Gemini
     UI flakiness is intermittent — page sometimes stalls while loading or
@@ -649,6 +774,50 @@ async def _gen_image_with_semaphore(
     from silent safety refusals that ignore a fraction of phrasings.
     """
     async with sem:
+        # ── Codex $imagegen primary path (Sprint A 2026-05-07) ──────────
+        # gpt-image-2 via ChatGPT Pro OAuth, native 4:5 1080x1350 portrait.
+        # Tried before FlowKit because it produces the correct aspect ratio
+        # for the WR2 carousel template (FlowKit defaults to 1:1 → side gaps).
+        if backend in ("auto", "codex") and codex_available:
+            logger.info(
+                "[slide %d] generating via Codex $imagegen (gpt-image-2)",
+                slide_number,
+            )
+            t0 = time.time()
+            cx_bytes, cx_err = await _acquire_bytes_via_codex(
+                slide_number, image_prompt, draft_id,
+            )
+            dt = time.time() - t0
+            if cx_bytes:
+                logger.info(
+                    "[slide %d] Codex ok (%.1fs, %d bytes)",
+                    slide_number, dt, len(cx_bytes),
+                )
+                score, why = await _score_image_alignment(
+                    cx_bytes, image_prompt, slide_number,
+                )
+                if score >= VLM_MIN_SCORE:
+                    return await _upload_and_return(
+                        cx_bytes, slide_number, draft_id,
+                    )
+                logger.warning(
+                    "[slide %d] Codex image rejected (score=%.2f < %.2f): %s",
+                    slide_number, score, VLM_MIN_SCORE, why,
+                )
+                if backend == "codex":
+                    return slide_number, None, (
+                        f"codex VLM rejected (score={score:.2f}): {why}"
+                    )
+                # else fall through to FlowKit/Playwright
+            else:
+                logger.warning(
+                    "[slide %d] Codex failed after %.1fs: %s",
+                    slide_number, dt, cx_err,
+                )
+                if backend == "codex":
+                    return slide_number, None, cx_err or "codex unknown error"
+                # backend=auto: drop into FlowKit / Playwright
+
         # ── FlowKit fast path ───────────────────────────────────────────
         if backend in ("auto", "flowkit") and flowkit_available:
             logger.info(
@@ -881,12 +1050,22 @@ async def _process_one(
             )
         return True
 
-    # ── Backend selection (Sprint 1.6 W3) ─────────────────────────────────
-    # Probe FlowKit ONCE per draft (not per slide) to decide whether to
-    # launch Playwright at all. In flowkit-only mode we skip Playwright
-    # entirely; in auto mode we still launch Playwright as fallback even
-    # if FlowKit is currently up — the cron is long-running and FlowKit's
-    # bearer token can expire mid-draft (45 min refresh window).
+    # ── Backend selection (Sprint A 2026-05-07: Codex added as primary) ──
+    # Probe Codex + FlowKit ONCE per draft (not per slide). Codex is the
+    # default primary in `auto` mode because it produces 4:5 1080x1350
+    # natively (matching the WR2 template), while FlowKit produces 1:1.
+    codex_available = False
+    if IMAGE_BACKEND in ("auto", "codex"):
+        codex_available = await _probe_codex_available()
+        if not codex_available and IMAGE_BACKEND == "codex":
+            err = "WR2_IMAGE_BACKEND=codex but Codex CLI is not available"
+            logger.error(err)
+            raise BackendUnavailableError(err)
+        if codex_available:
+            logger.info(
+                "Codex available — using as primary backend (gpt-image-2 4:5 native)"
+            )
+
     flowkit_available = False
     if IMAGE_BACKEND in ("auto", "flowkit"):
         flowkit_available = await _probe_flowkit_available()
@@ -896,16 +1075,42 @@ async def _process_one(
             raise BackendUnavailableError(err)
         if flowkit_available:
             logger.info(
-                "FlowKit available — using as primary backend (PAYGATE_TIER_TWO)"
+                "FlowKit available (fallback if Codex fails)"
             )
-        else:
+        elif not codex_available:
             logger.info(
-                "FlowKit unavailable — using Playwright backend"
+                "Codex+FlowKit unavailable — using Playwright backend"
             )
 
     results: list[Any] = []
 
-    if IMAGE_BACKEND == "flowkit":
+    if IMAGE_BACKEND == "codex" or (IMAGE_BACKEND == "auto" and codex_available and not flowkit_available):
+        # Codex-only path: no Playwright launch at all.
+        # In auto mode, if Codex is available we skip Playwright entirely
+        # — Codex handles 4:5 native and is the desired primary. FlowKit/
+        # Playwright are only fallbacks if Codex itself is missing.
+        # Without this guard, the Playwright launch loop below ran a
+        # `launch_persistent_context` per slide even when Codex succeeded,
+        # leading to network-service crashes on slide 11 (08:09 WITA run).
+        sem = asyncio.Semaphore(1)
+        logger.info(
+            "Codex-only path active (backend=%s, codex_available=True). "
+            "Skipping Playwright launch.", IMAGE_BACKEND,
+        )
+        for idx, s in enumerate(hero_slides):
+            r = await _gen_image_with_semaphore(
+                sem,
+                None,
+                s["slide_number"],
+                s.get("image_prompt") or "",
+                str(draft_id),
+                backend="codex",
+                codex_available=True,
+            )
+            results.append(r)
+            if idx < len(hero_slides) - 1:
+                await asyncio.sleep(2)
+    elif IMAGE_BACKEND == "flowkit":
         # FlowKit-only path: no Playwright launch at all.
         sem = asyncio.Semaphore(1)
         for idx, s in enumerate(hero_slides):
@@ -947,6 +1152,7 @@ async def _process_one(
                         str(draft_id),
                         backend=IMAGE_BACKEND,
                         flowkit_available=flowkit_available,
+                        codex_available=codex_available,
                     )
                     results.append(r)
                 finally:

@@ -1,6 +1,7 @@
 import asyncio
 import pytest
-from unittest.mock import AsyncMock
+import asyncpg
+from unittest.mock import AsyncMock, MagicMock
 from cell_observatory.collector import Collector
 
 
@@ -39,7 +40,7 @@ async def test_outbox_replay_on_startup():
         },
     ]
 
-    fake_conn = AsyncMock()
+    fake_conn = MagicMock()
     fake_conn.fetch = AsyncMock(return_value=fake_conn_rows)
     fake_conn.execute = AsyncMock()
 
@@ -54,3 +55,41 @@ async def test_outbox_replay_on_startup():
     assert "outbox_id" not in select_call.split("WHERE")[0], (
         "regression: SELECT must not reference outbox_id column"
     )
+
+
+@pytest.mark.asyncio
+async def test_listener_retries_when_keepalive_connection_is_closed(monkeypatch):
+    """A stale asyncpg connection must reconnect instead of killing the daemon."""
+
+    class StopLoop(Exception):
+        pass
+
+    storage = AsyncMock()
+    classifier = AsyncMock()
+    collector = Collector(storage=storage, classifier=classifier)
+
+    fake_conn = MagicMock()
+    fake_conn.fetch = AsyncMock(return_value=[])
+    fake_conn.add_listener = AsyncMock()
+    fake_conn.execute = AsyncMock(side_effect=asyncpg.InterfaceError("connection is closed"))
+    fake_conn.is_closed.return_value = False
+    fake_conn.close = AsyncMock()
+
+    connect = AsyncMock(return_value=fake_conn)
+    monkeypatch.setattr("cell_observatory.collector.asyncpg.connect", connect)
+
+    sleep_calls = 0
+
+    async def fake_sleep(_seconds: float) -> None:
+        nonlocal sleep_calls
+        sleep_calls += 1
+        if sleep_calls > 1:
+            raise StopLoop
+
+    monkeypatch.setattr("cell_observatory.collector.asyncio.sleep", fake_sleep)
+
+    with pytest.raises(StopLoop):
+        await collector.run("postgresql://example", num_workers=0)
+
+    connect.assert_awaited_once_with("postgresql://example")
+    fake_conn.close.assert_awaited_once()

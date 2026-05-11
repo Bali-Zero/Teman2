@@ -8,14 +8,64 @@ knows how to apply via MCP Canva. The format has been stable since
 
 from __future__ import annotations
 
+import re
+
 import pytest
 
 from backend.services.canva_renderer.pending_builder import (
+    CAROUSEL_FOLDER_ID,
+    MAX_SLIDES_TEMPLATE,
     TEMPLATE_DESIGN_ID,
-    TEMPLATE_SLOTS,
     build_canva_pending,
     slides_to_operations,
 )
+
+
+# Canva design ID format: 11 chars, starts with "DAH", URL-safe alphabet.
+# Folder ID format: same shape but starts with "FAH".
+_DESIGN_ID_RE = re.compile(r"^DAH[A-Za-z0-9_-]{8}$")
+_FOLDER_ID_RE = re.compile(r"^FAH[A-Za-z0-9_-]{8}$")
+
+
+class TestTemplateConstants:
+    """Guards on the template constants — flag misformatted IDs in CI.
+
+    These tests catch the *shape* of the Canva ID strings; they cannot
+    verify the live design exists or has the right structure (that
+    requires a Canva MCP round-trip and is gated behind
+    `scripts/wr2_validate_master.py`). See cicatrix scar
+    "WR2 master template requires verified richtext slot count
+    (2026-05-10)" for the broader context: PR #565 promoted a
+    structurally-incompatible master that passed every CI check
+    because no test exercised the live shape.
+    """
+
+    def test_template_design_id_format(self) -> None:
+        assert _DESIGN_ID_RE.match(TEMPLATE_DESIGN_ID), (
+            f"TEMPLATE_DESIGN_ID={TEMPLATE_DESIGN_ID!r} does not match "
+            f"the Canva design ID format {_DESIGN_ID_RE.pattern!r}. "
+            "Bumping this constant requires running "
+            "scripts/wr2_validate_master.py and pasting the JSON "
+            "output in the PR description — see "
+            "cicatrix-scars.md (2026-05-10 entry)."
+        )
+
+    def test_carousel_folder_id_format(self) -> None:
+        assert _FOLDER_ID_RE.match(CAROUSEL_FOLDER_ID), (
+            f"CAROUSEL_FOLDER_ID={CAROUSEL_FOLDER_ID!r} does not match "
+            f"the Canva folder ID format {_FOLDER_ID_RE.pattern!r}."
+        )
+
+    def test_max_slides_template_invariant(self) -> None:
+        # The renderer (pending_builder) clamps to MAX_SLIDES_TEMPLATE.
+        # If a future contributor bumps it, they must also re-validate
+        # that the master template at TEMPLATE_DESIGN_ID actually has
+        # that many usable pages. Pin the value as a tripwire.
+        assert MAX_SLIDES_TEMPLATE == 11, (
+            "MAX_SLIDES_TEMPLATE was changed. Re-run "
+            "scripts/wr2_validate_master.py to verify the master "
+            "still has at least this many usable pages."
+        )
 
 
 def _slides_fixture() -> list[dict]:
@@ -69,21 +119,27 @@ class TestSlidesToOperations:
             op for op in ops
             if op["type"] == "replace_text"
             and op["page_index"] == 1
-            and op["element_id"] == TEMPLATE_SLOTS[0][1]  # heading slot for page 1
+            and op.get("text") == "BALI HAS A NEW IMMIGRATION TASK FORCE."
         ]
         assert len(slide_1_heading_ops) == 1
-        assert slide_1_heading_ops[0]["text"] == "BALI HAS A NEW IMMIGRATION TASK FORCE."
+        # In current TEMPLATE_SLOTS, element_id is None
+        assert slide_1_heading_ops[0]["element_id"] is None
 
-    def test_body_text_goes_to_body_element_id(self) -> None:
+    def test_body_text_emitted_even_when_body_eid_is_none(self) -> None:
+        # TEMPLATE_SLOTS has None for all body slots in the live template.
+        # The builder MUST still emit the body op (element_id=None) so the
+        # canva-apply skill can remap to the body slot via top-ascending
+        # role_index. Skipping body ops produces the headline-only carousel
+        # bug observed in DAHJDtWApaw / DAHJCzTzn1I (2026-05-08).
         ops = slides_to_operations(_slides_fixture())
-        page_1_body_slot = TEMPLATE_SLOTS[0][2]  # body element id for page 1
         body_ops = [
             op for op in ops
             if op["type"] == "replace_text"
-            and op["element_id"] == page_1_body_slot
+            and "100 officers" in (op.get("text") or "")
         ]
         assert len(body_ops) == 1
-        assert "100 officers" in body_ops[0]["text"]
+        assert body_ops[0]["element_id"] is None
+        assert body_ops[0]["page_index"] == 1
 
     def test_image_url_produces_upload_asset_op(self) -> None:
         ops = slides_to_operations(_slides_fixture())
@@ -104,36 +160,41 @@ class TestSlidesToOperations:
         ]
         assert page_3_upload_ops == []
 
-    def test_slide_9_and_11_body_skipped(self) -> None:
-        """Slides 9 and 11 have no body slot in template DAHE6lx1lf8 —
-        builder must not emit body replace_text for them."""
+    def test_body_ops_emitted_for_slides_9_and_11(self) -> None:
+        """Slides 9/11 have no body slot in the original template, but
+        TEMPLATE_SLOTS is now None-filled across all pages. The builder
+        emits body ops uniformly (element_id=None); the canva-apply
+        skill is responsible for resolving — or skipping — the body
+        slot at apply time via runtime remap. Builder MUST NOT make
+        per-page exceptions, otherwise the headline-only-carousel
+        regression returns whenever template page geometry changes."""
         slides = [
             {
                 "slide_number": 9,
                 "headline": "ENFORCEMENT IS NOT THEORETICAL.",
-                "body": "this body should be skipped because slot is absent",
+                "body": "body text reaches Canva — skill decides if slot exists",
                 "image_url": None,
             },
             {
                 "slide_number": 11,
                 "headline": "KNOW YOUR CLOCK.",
-                "body": "also skipped",
+                "body": "same here — apply skill remaps via role_index",
                 "image_url": None,
             },
         ]
         ops = slides_to_operations(slides)
 
-        # Heading replace_text for both slides still present
-        heading_ops = [op for op in ops if op["type"] == "replace_text"]
-        assert len(heading_ops) == 2
+        replace_ops = [op for op in ops if op["type"] == "replace_text"]
+        # 2 heading ops + 2 body ops, one of each per slide
+        assert len(replace_ops) == 4
 
-        # No body ops for page 9 or 11
-        for op in heading_ops:
-            page_idx = op["page_index"]
-            slot = TEMPLATE_SLOTS[page_idx - 1]
-            assert slot[2] is None or op["element_id"] == slot[1], (
-                f"page {page_idx} should only have heading ops, not body"
+        for page_index in (9, 11):
+            page_ops = [op for op in replace_ops if op["page_index"] == page_index]
+            assert len(page_ops) == 2, (
+                f"page {page_index} must have heading + body ops"
             )
+            # All element_ids are None because TEMPLATE_SLOTS is None-filled
+            assert all(op["element_id"] is None for op in page_ops)
 
 
 class TestBuildCanvaPending:

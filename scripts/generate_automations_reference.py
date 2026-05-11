@@ -4,9 +4,9 @@ Generate docs/AUTOMATIONS_REFERENCE.md by scanning LIVE system state.
 
 Sources (in order):
   1. crontab -l  (Pro — local)
-  2. crontab -l  (Air — via SSH)
+  2. crontab -l  (Mini — via SSH)
   3. launchctl list + ~/Library/LaunchAgents/*.plist  (Pro)
-  4. launchctl list + ~/Library/LaunchAgents/*.plist  (Air — via SSH)
+  4. launchctl list + ~/Library/LaunchAgents/*.plist  (Mini — via SSH)
   5. Log files — last line + mtime for health status
 
 D3.1 compliance: CLAUDE.md, zantara_core.py, fly.toml, .env* are in WRITE_BLOCKLIST.
@@ -20,7 +20,7 @@ import re
 import subprocess
 import sys
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 
 NUZANTARA_ROOT = Path(__file__).parent.parent
@@ -31,6 +31,14 @@ WRITE_BLOCKLIST = {"CLAUDE.md", "zantara_core.py", "fly.toml", ".env", ".env.pro
 REGISTRY_PATH = Path.home() / ".agent" / "decisions" / "job_registry.json"
 SENTINEL_STATUS_PATH = Path.home() / ".agent" / "decisions" / "sentinel_status.json"
 CIRCUIT_BREAKERS_PATH = Path.home() / ".agent" / "decisions" / "circuit_breakers.json"
+CODEX_AUTOMATION_STATE_DIR = Path.home() / ".agent" / "decisions" / "state"
+CODEX_AUTONOMY_LABELS = {
+    "com.nuzantara.codex-autofix-ci",
+    "com.nuzantara.codex-coverage-improver",
+    "com.nuzantara.codex-overnight-feeder",
+    "com.nuzantara.codex-overnight-runner",
+    "com.nuzantara.codex-research-actor",
+}
 
 
 def _check_output_safety(path: Path) -> None:
@@ -118,6 +126,8 @@ class Job:
     max_attempts: int | None = None
     circuit_state: str | None = None
     dlq_phase: str | None = None
+    autonomy_status: str = "—"
+    autonomy_action: str = "—"
 
 
 def _run(cmd: str, timeout: int = 10) -> str:
@@ -128,8 +138,60 @@ def _run(cmd: str, timeout: int = 10) -> str:
         return ""
 
 
-def _ssh_air(cmd: str, timeout: int = 10) -> str:
-    return _run(f"ssh -o ConnectTimeout=5 -o BatchMode=yes air '{cmd}'", timeout=timeout)
+def _codex_state_key_for_job(job: Job) -> str | None:
+    """Return the Codex state-file key for Codex-owned LaunchAgents."""
+    label = job.plist_label or job.command or job.name
+    if label not in CODEX_AUTONOMY_LABELS:
+        return None
+    return "codex_" + label.replace(".", "_").replace("-", "_")
+
+
+def _load_codex_automation_states(state_dir: Path = CODEX_AUTOMATION_STATE_DIR) -> dict[str, dict]:
+    """Load `codex_*.state.json` files; malformed files are ignored."""
+    states: dict[str, dict] = {}
+    for path in sorted(state_dir.glob("codex_*.state.json")):
+        try:
+            data = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if isinstance(data, dict):
+            states[path.name.removesuffix(".state.json")] = data
+    return states
+
+
+def _format_codex_autonomy_status(state: dict) -> str:
+    outcome = str(state.get("outcome", "")).lower()
+    action = str(state.get("action", "")).lower()
+    if outcome in {"action", "success"} or action in {"pr_opened", "queued", "fixed", "fallback_commit"}:
+        return "✅ ACTION"
+    if outcome in {"idle", "noop", "no_op"}:
+        return "✅ OK/idle"
+    if outcome in {"skipped", "skip"}:
+        return "⚠️ SKIPPED"
+    if outcome in {"blocked", "failed", "error"}:
+        return "⛔ BLOCKED"
+    if outcome == "stale":
+        return "⚠️ STALE"
+    return "—"
+
+
+def _apply_codex_automation_state(job: Job, states: dict[str, dict]) -> None:
+    key = _codex_state_key_for_job(job)
+    if not key:
+        return
+    state = states.get(key)
+    if not state:
+        job.autonomy_status = "⚠️ NO STATE"
+        return
+    job.autonomy_status = _format_codex_autonomy_status(state)
+    job.autonomy_action = str(state.get("action") or "—")
+    message = str(state.get("message") or "").replace("|", "\\|")
+    if message:
+        job.notes = message[:80]
+
+
+def _ssh_mini(cmd: str, timeout: int = 10) -> str:
+    return _run(f"ssh -o ConnectTimeout=5 -o BatchMode=yes mini-remote '{cmd}'", timeout=timeout)
 
 
 _CRON_RE = re.compile(
@@ -235,8 +297,8 @@ def _parse_launchagents(machine: str) -> list[Job]:
         launchctl_raw = _run("launchctl list 2>/dev/null")
         plist_labels = [p.stem for p in sorted(plist_dir.glob("*.plist"))]
     else:
-        launchctl_raw = _ssh_air("launchctl list 2>/dev/null")
-        plist_list = _ssh_air("ls ~/Library/LaunchAgents/*.plist 2>/dev/null")
+        launchctl_raw = _ssh_mini("launchctl list 2>/dev/null")
+        plist_list = _ssh_mini("ls ~/Library/LaunchAgents/*.plist 2>/dev/null")
         plist_labels = [Path(p.strip()).stem for p in plist_list.splitlines() if p.strip()]
 
     running = _parse_launchctl(launchctl_raw)
@@ -292,7 +354,7 @@ PRO_LOG_MAP = {
     "automations_reference": "/tmp/cron-automations-reference.log",
 }
 
-AIR_LOG_MAP = {
+MINI_LOG_MAP = {
     "ollama_cron_window": "~/Projects/nuzantara/logs/ollama_cron.log",
     "auto_test": "~/Projects/nuzantara/logs/auto_test.log",
     "auto_sentinel": "~/Projects/nuzantara/logs/sentinel_nightly.log",
@@ -351,13 +413,13 @@ def _check_log_health_pro(jobs: list[Job]) -> None:
             job.last_status = "⚠️ NO LOG"
 
 
-def _check_log_health_air(jobs: list[Job]) -> None:
-    air_jobs = [j for j in jobs if j.machine == "Air" and j.kind == "cron"]
-    if not air_jobs:
+def _check_log_health_mini(jobs: list[Job]) -> None:
+    mini_jobs = [j for j in jobs if j.machine == "Mini" and j.kind == "cron"]
+    if not mini_jobs:
         return
     checks = []
-    for job in air_jobs:
-        log = job.log_file or AIR_LOG_MAP.get(job.name, "")
+    for job in mini_jobs:
+        log = job.log_file or MINI_LOG_MAP.get(job.name, "")
         if not log:
             continue
         checks.append(
@@ -368,7 +430,7 @@ def _check_log_health_air(jobs: list[Job]) -> None:
         )
     if not checks:
         return
-    raw = _ssh_air("; ".join(checks), timeout=15)
+    raw = _ssh_mini("; ".join(checks), timeout=15)
     current_job = None
     for line in raw.splitlines():
         if line.startswith("JOB:"):
@@ -376,7 +438,7 @@ def _check_log_health_air(jobs: list[Job]) -> None:
         elif line == "---":
             current_job = None
         elif current_job:
-            matching = [j for j in air_jobs if j.name == current_job]
+            matching = [j for j in mini_jobs if j.name == current_job]
             if not matching:
                 continue
             job = matching[0]
@@ -437,20 +499,22 @@ def generate(dry_run: bool = False) -> str:
     # Carica sorgenti aggiuntive (graceful: se mancano, i campi restano None)
     registry = _load_registry()
     sentinel_status, circuit_breakers = _load_sentinel_state()
+    codex_states = _load_codex_automation_states()
 
     pro_cron = _consolidate_cron(_parse_crontab(_run("crontab -l 2>/dev/null"), "Pro"))
-    air_cron = _consolidate_cron(_parse_crontab(_ssh_air("crontab -l 2>/dev/null"), "Air"))
+    mini_cron = _consolidate_cron(_parse_crontab(_ssh_mini("crontab -l 2>/dev/null"), "Mini"))
     pro_la = _parse_launchagents("Pro")
-    air_la = _parse_launchagents("Air")
+    mini_la = _parse_launchagents("Mini")
 
-    all_jobs = pro_cron + air_cron + pro_la + air_la
+    all_jobs = pro_cron + mini_cron + pro_la + mini_la
     _check_log_health_pro(all_jobs)
-    _check_log_health_air(all_jobs)
+    _check_log_health_mini(all_jobs)
 
     # Enrichment da registry e circuit breakers
     for job in all_jobs:
         _enrich_job_from_registry(job, registry)
         _enrich_job_from_circuit_breaker(job, circuit_breakers)
+        _apply_codex_automation_state(job, codex_states)
 
     total = len(all_jobs)
     ok = sum(1 for j in all_jobs if "OK" in j.last_status)
@@ -471,7 +535,7 @@ def generate(dry_run: bool = False) -> str:
         "",
         "> **Auto-generated from live system state** — do not edit manually.",
         f"> Generated: {generated_at}",
-        "> Source: `crontab -l` (Pro+Air) + `launchctl list` (Pro+Air) + log health + `job_registry.json` + `sentinel_status.json` + `circuit_breakers.json`",
+        "> Source: `crontab -l` (Pro+Mini) + `launchctl list` (Pro+Mini) + log health + `job_registry.json` + `sentinel_status.json` + `circuit_breakers.json`",
         "",
         "---",
         "",
@@ -513,7 +577,7 @@ def generate(dry_run: bool = False) -> str:
 
     for machine, label in [
         ("Pro", "Pro (nuzantara@Nuzantara — M4 Pro 48GB)"),
-        ("Air", "Air (antonellosiano@Nuzantara-9 — M4 16GB, H24)"),
+        ("Mini", "Mini (nuzantara@mini-pro2 — M4 Pro 24GB, H24)"),
     ]:
         mj = [j for j in all_jobs if j.machine == machine]
         if not mj:
@@ -525,15 +589,15 @@ def generate(dry_run: bool = False) -> str:
         if la:
             lines += [
                 "### LaunchAgents", "",
-                "| Label | Status | Exit | Circuit | Scope | Critical |",
-                "|-------|--------|------|---------|-------|----------|",
+                "| Label | Status | Autonomy | Exit | Circuit | Scope | Critical |",
+                "|-------|--------|----------|------|---------|-------|----------|",
             ]
             for j in la:
                 circuit = _format_circuit_badge(j.circuit_state, j.dlq_phase)
                 scope = j.repair_scope or "—"
                 crit = "🔴" if j.critical else ""
                 lines.append(
-                    f"| `{j.plist_label}` | {j.last_status} | {j.exit_code} | {circuit} | {scope} | {crit} |"
+                    f"| `{j.plist_label}` | {j.last_status} | {j.autonomy_status} | {j.exit_code} | {circuit} | {scope} | {crit} |"
                 )
             lines.append("")
 

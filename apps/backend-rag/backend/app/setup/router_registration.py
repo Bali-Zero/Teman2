@@ -54,6 +54,7 @@ def include_routers(api: FastAPI) -> None:
         crm_portal_integration,
         crm_practices,
         crm_shared_memory,
+        crm_tax_pilot,
         dashboard,  # [NEW] Interactive dashboard for Streamlit zoning map
         dashboard_featured_articles,
         dashboard_summary,
@@ -93,8 +94,8 @@ def include_routers(api: FastAPI) -> None:
         news,
         newsletter,
         nusantara_health,
-        olympus,  # [OLYMPUS] DB Guardian health + internal management
         observed_shell,  # [OBSERVED-SHELL] Sprint 1 PR-1.2 — cell-core observability bridge
+        olympus,  # [OLYMPUS] DB Guardian health + internal management
         omnichannel,  # [NEW] Unified inbox for cross-channel conversations
         oracle_ingest,
         oracle_universal,
@@ -187,6 +188,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(crm_notifications.router)
     api.include_router(crm_practices.router)
     api.include_router(crm_shared_memory.router)
+    api.include_router(crm_tax_pilot.router)
     api.include_router(crm_analytics.router)  # [NEW] CRM Analytics dashboard
     api.include_router(crm_portal_integration.router)  # Team ↔ Portal integration
 
@@ -286,6 +288,7 @@ def include_routers(api: FastAPI) -> None:
 
     # Admin Drive Auth (for system user OAuth)
     from backend.app.routers import (
+        admin_crm_kg,
         admin_drive_auth,
         admin_drive_health,
         admin_drive_refresh,
@@ -293,6 +296,7 @@ def include_routers(api: FastAPI) -> None:
         admin_zoho_auth,
     )
 
+    api.include_router(admin_crm_kg.router)
     api.include_router(admin_drive_auth.router)
     api.include_router(admin_drive_health.router)
     api.include_router(admin_drive_refresh.router)
@@ -398,6 +402,7 @@ def include_light_routers(api: FastAPI) -> None:
     """
     from backend.app.routers import (
         admin_conversation_cleanup,
+        admin_crm_kg,
         admin_drive_auth,
         admin_drive_health,
         admin_drive_refresh,
@@ -422,6 +427,7 @@ def include_light_routers(api: FastAPI) -> None:
         crm_notifications,
         crm_portal_integration,
         crm_shared_memory,
+        crm_tax_pilot,
         debug,
         documents_proxy,
         event_bus,
@@ -520,6 +526,7 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(crm_interactions.router)
     api.include_router(crm_notifications.router)
     api.include_router(crm_shared_memory.router)
+    api.include_router(crm_tax_pilot.router)
     api.include_router(crm_analytics.router)
     api.include_router(crm_portal_integration.router)
     api.include_router(partners.router)  # [PARTNERS] /api/partners/* — CRM Partners module
@@ -586,7 +593,8 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(team_drive.router)
     api.include_router(sheets.router)
 
-    # Admin Drive Auth
+    # Admin Drive Auth + CRM KG
+    api.include_router(admin_crm_kg.router)
     api.include_router(admin_drive_auth.router)
     api.include_router(admin_drive_health.router)
     api.include_router(admin_drive_refresh.router)

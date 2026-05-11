@@ -1,15 +1,17 @@
 #!/bin/bash
 #
 # Daily Indexing Sweep Cron Wrapper
-# Ensures venv exists and activates it before running the sweep.
-# Runs on Air (target: /Users/antonellosiano/Projects/nuzantara).
+# Submits unindexed articles + KBLI pages to Google Indexing API (daily quota-based).
+# Phase 1 (articles): max 200/day | Phase 2 (KBLI): max 600/day
+# Updates state JSON files and sends summary to Telegram.
 #
+# Runs on Pro: /Users/nuzantara/Desktop/nuzantara
 
 set -uo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
-VENV_DIR="$PROJECT_ROOT/venv"
+VENV_DIR="$PROJECT_ROOT/.venv"
 LOG_DIR="$PROJECT_ROOT/logs"
 LOG_FILE="$LOG_DIR/daily_indexing_sweep.log"
 
@@ -18,24 +20,24 @@ mkdir -p "$LOG_DIR"
 
 {
   echo "==============================================================================="
-  echo "[$(date '+%Y-%m-%d %H:%M:%S %Z')] Daily Indexing Sweep started"
+  echo "[$(date '+%Y-%m-%d %H:%M:%S %Z')] Daily Indexing Sweep started (Pro)"
   echo "==============================================================================="
 
-  # Check venv; create if missing
+  # Activate venv (required for import chain). Bootstrap if missing so a
+  # fresh Pro provision self-heals — matches pre-2026-05-07 behavior.
   if [ ! -f "$VENV_DIR/bin/python" ]; then
-    echo "[INFO] venv not found at $VENV_DIR, creating..."
+    echo "[INFO] .venv not found at $VENV_DIR, creating..."
     python3 -m venv "$VENV_DIR"
-
-    # Install requirements
     echo "[INFO] Installing requirements..."
     "$VENV_DIR/bin/pip" install -q --upgrade pip
     "$VENV_DIR/bin/pip" install -q google-auth google-auth-oauthlib google-auth-httplib2 google-api-python-client
   fi
 
-  # Activate and run
   source "$VENV_DIR/bin/activate"
   cd "$PROJECT_ROOT"
+  export PYTHONPATH="${PROJECT_ROOT}:${PYTHONPATH:-}"
 
+  # Run sweep (both Phase 1: articles + Phase 2: KBLI)
   python scripts/daily_indexing_sweep.py
   EXIT_CODE=$?
 

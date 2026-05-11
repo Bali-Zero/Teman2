@@ -33,6 +33,12 @@ class KnowledgeBase:
         # reads via WAL.
         self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         self._conn.row_factory = sqlite3.Row
+        # WAL allows readers + a single writer concurrently and survives the
+        # transient "disk I/O error" we saw 2026-05-06 when an hourly feeder
+        # collided with a still-running previous instance. journal_mode is
+        # persisted in the DB, so this is a no-op after the first open.
+        self._conn.execute("PRAGMA journal_mode = WAL")
+        self._conn.execute("PRAGMA synchronous = NORMAL")
         self._init_tables()
 
     def _init_tables(self) -> None:

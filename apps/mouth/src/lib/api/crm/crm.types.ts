@@ -33,6 +33,123 @@ export interface Practice {
   family_member_relationship?: string;
 }
 
+export type TaxCompanyPilotKey = "ocean" | "bimala";
+export type TaxCompanyPilotConfidence =
+  | "confirmed"
+  | "high"
+  | "medium"
+  | "low"
+  | "unconfirmed";
+
+export interface TaxCompanyPilotEntity {
+  name: string;
+  aliases: string[];
+}
+
+export interface TaxCompanyPilotTaxMember {
+  name: string;
+  workspace_branch: string;
+  source_folder_url: string;
+}
+
+export interface TaxCompanyPilotPerson {
+  name: string;
+  folder_url?: string | null;
+  evidence: string[];
+  role?: string | null;
+  role_confidence: TaxCompanyPilotConfidence;
+  relationship_confidence: TaxCompanyPilotConfidence;
+}
+
+export interface TaxCompanyPilotDocument {
+  name: string;
+  group: "company" | "tax" | "lkpm" | "finance" | "person" | "coretax";
+  evidence_url?: string | null;
+  sensitivity: "internal" | "company" | "person" | "financial" | "credential";
+  confidence: TaxCompanyPilotConfidence;
+}
+
+export interface TaxCompanyPilotGap {
+  code: string;
+  label: string;
+  severity: "high" | "medium" | "low";
+}
+
+export interface TaxCompanyPilotDuplicateCandidate {
+  label: string;
+  urls: string[];
+  confidence: TaxCompanyPilotConfidence;
+}
+
+export interface TaxCompanyPilotEvidenceLink {
+  label: string;
+  url: string;
+  kind: "folder" | "file" | "spreadsheet" | "document";
+}
+
+export interface TaxCompanyPilotStoryEvidence {
+  label: string;
+  detail: string;
+  source_label: string;
+  source_url?: string | null;
+  source_kind: "folder" | "file" | "spreadsheet" | "document";
+  audience: "team";
+  confidence: TaxCompanyPilotConfidence;
+}
+
+export interface TaxCompanyPilotPersonDossier {
+  person_name: string;
+  company_name: string;
+  headline: string;
+  tax_owner: string;
+  drive_folder_url?: string | null;
+  document_groups: string[];
+  risk_flags: string[];
+  next_action: string;
+  relationship_confidence: TaxCompanyPilotConfidence;
+}
+
+export interface TaxCompanyPilotNextAction {
+  owner: "crm" | "tax" | "setup";
+  label: string;
+  reason: string;
+  severity: "high" | "medium" | "low";
+}
+
+export interface TaxCompanyPilotEvidenceStory {
+  person_name: string;
+  company_name: string;
+  tax_owner: string;
+  recap: string;
+  relationship_path: string[];
+  evidence_items: TaxCompanyPilotStoryEvidence[];
+  next_action: string;
+  portal_rule: string;
+  team_rule: string;
+  confidence: TaxCompanyPilotConfidence;
+}
+
+export interface TaxCompanyPilotMap {
+  key: TaxCompanyPilotKey;
+  primary_entry: "person";
+  workspace_mode: "team_read_only";
+  company: TaxCompanyPilotEntity;
+  tax_member: TaxCompanyPilotTaxMember;
+  drive_folders: Record<string, string>;
+  persons: TaxCompanyPilotPerson[];
+  documents: TaxCompanyPilotDocument[];
+  person_dossiers: TaxCompanyPilotPersonDossier[];
+  evidence_stories?: TaxCompanyPilotEvidenceStory[];
+  next_best_actions: TaxCompanyPilotNextAction[];
+  business_story: string[];
+  duplicate_candidates: TaxCompanyPilotDuplicateCandidate[];
+  gaps: TaxCompanyPilotGap[];
+  evidence_links: TaxCompanyPilotEvidenceLink[];
+  ai_recap: string[];
+  read_only: boolean;
+  confidence: TaxCompanyPilotConfidence;
+}
+
 import type { JsonObject } from "../../types/common";
 
 export interface Interaction {
@@ -771,6 +888,11 @@ export interface CreatePracticeParams {
   notes?: string; // Maps from frontend "title"
   internal_notes?: string;
   quoted_price?: number;
+  // Discount (added 2026-05-06): fixed-IDR adjustment subtracted from
+  // quoted_price for invoice purposes. Backend validates non-negative
+  // and discount_amount <= quoted_price; reason is free-text optional.
+  discount_amount?: number;
+  discount_reason?: string;
   assigned_to?: string; // team member email
   start_date?: string;
   family_member_id?: number; // Optional: tag practice for a specific dependent (spouse/child)

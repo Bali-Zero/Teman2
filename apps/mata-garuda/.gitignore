@@ -1,7 +1,9 @@
 # Mata Garuda — runtime data (NEVER push)
 feedback/
 logs/
-data/
+# data/ is runtime-only, EXCEPT nb_round1_candidates_*.json (static curated manifests)
+data/*
+!data/nb_round1_candidates_*.json
 reflections/
 skills/
 .venv/

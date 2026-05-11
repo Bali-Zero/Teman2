@@ -15,6 +15,7 @@ import httpx
 from backend.app.utils.logging_utils import get_logger
 from backend.services.common.cache import cache_invalidating
 from backend.services.integrations.zoho_email_service import ZohoEmailService
+from backend.services.notifications.email_branding import logo_header_html, team_email_html
 
 # Internal email API — uses Brevo, from=zantara@balizero.com
 _EMAIL_API_URL = os.getenv(
@@ -91,6 +92,7 @@ class ProcessAutomationService:
                         client_email=client_data["email"],
                         client_name=client_data["full_name"],
                         practice_data=practice_data,
+                        team_member_email=team_leader_email,
                     )
                     results["client_notified"] = True
                     logger.info(f"Process start email sent to client {client_data['email']}")
@@ -140,6 +142,7 @@ class ProcessAutomationService:
         client_email: str,
         client_name: str,
         practice_data: dict,
+        team_member_email: str | None = None,
     ) -> None:
         """Send warm, human email to client confirming payment and process start."""
         practice_type = practice_data.get("practice_type_name", "Immigration Service")
@@ -187,7 +190,11 @@ P.S. Keep an eye on your WhatsApp—we'll be sending you updates there too! 😊
 🌐 Visit us at www.balizero.com
 """
 
-        await self._send_with_brevo_fallback(client_email, subject, body)
+        await self._send_with_brevo_fallback(
+            client_email, subject, body,
+            cc=team_member_email if team_member_email and team_member_email != client_email else None,
+            include_logo=True,
+        )
 
     async def _send_team_leader_notification(
         self,
@@ -200,54 +207,56 @@ P.S. Keep an eye on your WhatsApp—we'll be sending you updates there too! 😊
 
         subject = f"[TEAM] 🚀 Let's Go! Payment Confirmed - {client_name}"
 
-        body = f"""Hey there!
+        practice_id = practice_data["id"]
+        body = team_email_html(
+            title=f"🚀 Payment Confirmed — {client_name}",
+            intro=f"Asya has confirmed the payment for {client_name}'s {practice_type}. This one is yours — let's go!",
+            meta_rows=[
+                ("Client", client_name),
+                ("Service", practice_type),
+                ("Practice ID", f"#{practice_id}"),
+                ("Amount", str(practice_data.get("quoted_price", "—"))),
+            ],
+            body_html=(
+                "<b>Your mission:</b>"
+                "<ol style='margin:6px 0 4px 18px;padding:0;'>"
+                "<li>Review the client's documents in the CRM</li>"
+                "<li>Start working on the application</li>"
+                "<li>Update status to <i>SUBMITTED TO GOV</i> when ready</li>"
+                "<li>Keep the client updated via WhatsApp</li>"
+                "</ol>"
+            ),
+            cta_label="Open practice in CRM",
+            cta_url=f"https://kita.balizero.com/process/{practice_id}",
+            signature="Zantara CRM",
+        )
 
-Great news—payment has just been confirmed for {client_name}'s {practice_type}! 🎉
-
-This one's all yours. Here are the details:
-
-👤 Client: {client_name}
-🔖 Service: {practice_type}
-🆔 Practice ID: {practice_data["id"]}
-💰 Amount: {practice_data.get("quoted_price", "N/A")}
-
-✅ Asya has confirmed the payment is in, so you're good to go!
-
-Your Mission (should you choose to accept it 😄):
-1. Review the client's documents in the CRM
-2. Start working your magic on the application
-3. Update the status to "SUBMITTED TO GOV" when you're ready
-4. Keep the client in the loop via WhatsApp—they love updates!
-
-🎯 Quick Access:
-https://kita.balizero.com/process
-
-You've got this! We know you'll handle this case with your usual excellence.
-
-If you need anything or have questions about this case, just holler.
-
-Go get 'em!
-
-Cheers,
-Zantara CRM 🤖
-
-P.S. The client is excited to get started—let's make it a great experience! ✨
-"""
-
-        await self._send_with_brevo_fallback(team_leader_email, subject, body)
+        await self._send_with_brevo_fallback(team_leader_email, subject, body, prebuilt_html=True)
 
     async def _send_with_brevo_fallback(
         self, to_email: str, subject: str, body: str,
+        *,
+        cc: str | None = None,
+        include_logo: bool = False,
+        prebuilt_html: bool = False,
     ) -> None:
         """Send email via Brevo (primary), fall back to Zoho if Brevo fails."""
         # Primary: Brevo
         try:
-            html_body = body.replace("\n", "<br>")
+            if prebuilt_html:
+                html_body = body
+            else:
+                html_body = body.replace("\n", "<br>")
+                if include_logo:
+                    html_body = f"{logo_header_html()}{html_body}"
+            payload: dict = {"to": to_email, "subject": subject, "body": html_body}
+            if cc:
+                payload["cc"] = cc
             async with httpx.AsyncClient(timeout=30.0) as client:
                 response = await client.post(
                     _EMAIL_API_URL,
                     headers={"X-API-Key": _EMAIL_API_KEY},
-                    json={"to": to_email, "subject": subject, "body": html_body},
+                    json=payload,
                 )
                 response.raise_for_status()
             logger.info(f"Email sent to {to_email} via Brevo")

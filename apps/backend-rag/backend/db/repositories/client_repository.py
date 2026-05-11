@@ -35,6 +35,14 @@ def _infer_lead_source(client_data: dict[str, Any]) -> str | None:
     return None
 
 
+def _normalize_email(value: str | None) -> str | None:
+    """Normalize client email before storing it in the CRM table."""
+    if value is None:
+        return None
+    normalized = value.strip().lower()
+    return normalized or None
+
+
 def _parse_date(value: str | date | None) -> date | None:
     """Convert ISO date string to datetime.date for asyncpg DATE columns."""
     if value is None:
@@ -147,7 +155,7 @@ class ClientRepository(BaseRepository):
                 client_record = await conn.fetchrow(
                     client_query,
                     client_data.get("full_name"),
-                    client_data.get("email"),
+                    _normalize_email(client_data.get("email")),
                     client_data.get("phone"),
                     client_data.get("status", "active"),
                     client_data.get("client_type", "individual"),

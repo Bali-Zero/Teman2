@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>EnvironmentVariables</key>
+	<dict>
+		<key>HOME</key>
+		<string>/Users/nuzantara</string>
+		<key>PATH</key>
+		<string>/Users/nuzantara/.local/bin:/Users/nuzantara/.npm-global/bin:/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+		<key>WR2_REPO_ROOT</key>
+		<string>/Users/nuzantara/Desktop/nuzantara-deploy</string>
+	</dict>
+	<key>Label</key>
+	<string>com.balizero.wr2.daily-metrics</string>
+	<key>Program</key>
+	<string>/Users/nuzantara/.openclaw/bin/wr2/wr2-script-wrapper.sh</string>
+	<key>ProgramArguments</key>
+	<array>
+		<string>/Users/nuzantara/.openclaw/bin/wr2/wr2-script-wrapper.sh</string>
+		<string>scripts/wr2_daily_metrics.py</string>
+	</array>
+	<key>StartCalendarInterval</key>
+	<dict>
+		<key>Hour</key>
+		<integer>6</integer>
+		<key>Minute</key>
+		<integer>0</integer>
+	</dict>
+	<key>StandardErrorPath</key>
+	<string>/Users/nuzantara/logs/wr2_daily_metrics.err.log</string>
+	<key>StandardOutPath</key>
+	<string>/Users/nuzantara/logs/wr2_daily_metrics.out.log</string>
+</dict>
+</plist>

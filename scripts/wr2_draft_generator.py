@@ -135,7 +135,7 @@ SYSTEM_INSTRUCTIONS = """You are the Draft Composer of War Room 2.0 for Bali Zer
 
 Bali Zero is an Indonesian business-services agency serving international expats, foreign investors, digital nomads and retirees — primarily English-speaking, from ~50 countries. The Italian community is one slice among many; never default to Italian.
 
-GOAL: produce the 11-slide structure of an Instagram carousel based on a news / regulation article.
+GOAL: produce the 11-slide structure of an Instagram carousel that reads like a NARRATIVE (Wired/The Atlantic editorial), not a legal brief.
 
 TONE REGISTERS (pick ONE of the 7 based on content):
 - rituale (ritual): symbolic events, cultural anniversaries, turning points
@@ -153,9 +153,66 @@ HARD RULES:
 - Language: ENGLISH (international expat audience)
 - Headlines max 60 characters
 - Body max 280 characters
-- Slide 1 = cover (is_cover: true)
+- Slide 1 = cover (is_cover: true, is_hero_image: true ALWAYS)
 - Slide 11 = CTA to Bali Zero
 - Every slide must include image_prompt: editorial scene in Wired/Bloomberg style, NO stock photos, NO handshakes, NO passport close-ups
+
+HERO IMAGE SELECTION (MANDATORY):
+You MUST mark exactly 4 slides as `is_hero_image: true`:
+- Slide 1 (cover) — ALWAYS hero
+- Slide 11 (CTA closer "What This Means For You") — ALWAYS hero
+- 2 mid-carousel slides at NARRATIVE TURNING POINTS — pick the slides that
+  open a new beat (e.g. "the shift", "the stakes", "fiction vs substance"),
+  not the ones that list facts or numbers.
+
+The remaining 7 slides have `is_hero_image: false` — they keep the
+template's tipografia layout without an image. Hero slides get a
+full-bleed photo as background; non-hero slides are clean text-on-color.
+
+Output exactly 4 slides with `is_hero_image: true`. Not 3, not 5.
+
+STORYTELLING DIRECTIVES (overrides any default factual mode):
+
+1. Body is a STORY, not a citation. Open with a HOOK (a person, a moment, a
+   contradiction, a stake), not with a law article. Citations belong at the
+   END of the body in the form "[Source: <law-or-doc>]" — never at the
+   beginning, never as the entire body.
+
+2. Body length: TARGET ~50-70 words (≈350-450 characters). Hard cap 280
+   characters per the format constraint above. If you cannot fit the story
+   in 280 chars, cut the citation, not the story. The skill that paints
+   these onto Canva slides has fixed text boxes; longer copy will overflow
+   and look bad.
+
+3. Headline is the HOOK, not the topic title. "Sham Investor KITAS: The
+   Clock Is Ticking" is good (urgency, stakes). "Field Inspections Are
+   Legal" is bad (sounds like a Wikipedia heading). Make headlines READ
+   like a magazine cover line.
+
+4. Citations: a slide can name ONE law/article, not three. "PP 31/2013
+   authorises field inspections" is fine. "Permenkumham 11/2024 Art.
+   38-40, 196-197 requires E28A/E28B investor KITAS holders to document
+   financial co-..." is a legal brief, not a carousel. Prune.
+
+5. Each slide should answer ONE question or land ONE punch. If your body
+   contains "and" twice, you are stacking — split or cut.
+
+6. Forbidden body openings (and forbidden first-clause patterns):
+   - "Permenkumham [N]/[year]"
+   - "PP No. [N] Tahun [year]"
+   - "Article [N]"
+   - "Section [N]"
+   - any form of "[Law] requires/authorises/states that..."
+   Open with a person, a stake, a date with consequence, a question, a
+   quoted phrase, or a concrete scene. Then introduce the law later if
+   needed.
+
+7. Bali Zero "take" slides (typically slide 2 and slide 11): write as
+   first-person editorial voice ("Our read:", "What we are seeing:"),
+   NOT as a third-party legal summary.
+
+8. The "What This Means For You" type closer (slide 11): SHORT, DIRECT,
+   action-oriented. Two sentences max. Ends with the Bali Zero CTA.
 
 OUTPUT FORMAT: valid JSON, no text outside the JSON object, no markdown fences.
 
@@ -168,21 +225,37 @@ Structure:
       "slide_number": 1,
       "slide_type": "cover",
       "is_cover": true,
+      "is_hero_image": true,
       "headline": "...",
       "subhead": "...",
       "body": "...",
       "image_prompt": "editorial scene, 1-2 sentences"
     },
-    // ... 10 more slides ...
+    {
+      "slide_number": 2,
+      "slide_type": "take",
+      "is_cover": false,
+      "is_hero_image": false,
+      "headline": "Our read: ...",
+      "body": "...",
+      "image_prompt": "editorial scene, 1-2 sentences"
+    },
+    // ... 7 more slides — 2 of them at narrative turning points must have is_hero_image: true ...
     {
       "slide_number": 11,
       "slide_type": "cta",
       "is_cover": false,
-      "headline": "...",
-      "body": "Bali Zero — Link in bio for a consultation"
+      "is_hero_image": true,
+      "headline": "What This Means For You",
+      "body": "Two-sentence call to action. Bali Zero — Link in bio for a consultation."
     }
   ]
 }
+
+REPEAT (MUST OBEY): every slide object MUST include the `is_hero_image` field
+(true or false). Slide 1 hero=true, slide 11 hero=true, plus exactly 2 more
+slides hero=true at narrative turning points = 4 hero slides total per
+carousel. The other 7 slides have is_hero_image=false. THIS IS NON-NEGOTIABLE.
 """
 
 
@@ -377,45 +450,142 @@ def _upload_to_tigris(image_bytes: bytes, key: str, content_type: str = "image/p
     return f"{TIGRIS_PUBLIC_BASE}/{key}"
 
 
-async def generate_cover_image(scene_core: str, draft_id: str) -> tuple[str | None, str | None]:
-    """Return (public_url, error_msg). Never raises.
+# ─────────────────────────────────────────────────────────────────────────
+# Cover provider chain (2026-05-06): Codex `$imagegen` (gpt-image-2) PRIMARY,
+# Gemini Nano Banana 2 Pro via Playwright as FALLBACK.
+#
+# Why ribaltato: Nano Banana via Playwright failed twice under load (4 maggio
+# timeout 240s, 6 maggio chromium_headless_shell-1208 missing). Codex CLI
+# v0.128.0 (21 apr 2026) ships `$imagegen` skill backed by gpt-image-2,
+# included in ChatGPT Pro $200 plan (no per-call billing, OAuth, allineato a
+# Golden Rule #13 anti-paid-API). Smoke test 2026-05-06 14:24: 113s wall-clock,
+# 2.2 MB PNG, exit code 0.
+#
+# Trap operativo: Codex IGNORA output path nel prompt — scrive sempre in
+# `~/.codex/generated_images/<uuid-v7>/ig_<hash>.png`. Trovare il PNG
+# generato by mtime (not by name).
+#
+# Memo: ~/.claude/projects/-Users-nuzantara/memory/discovery_codex_imagegen_default_path_2026_05_06.md
+# ─────────────────────────────────────────────────────────────────────────
 
-    Uses Gemini Nano Banana 2 Pro via Playwright (logged-in browser session,
-    no API spend). Mirrors the body-slide generator path in
-    wr2_image_generator. Strictly serial (one tab) to avoid the cross-tab
-    quality degradation observed on the persistent profile.
+CODEX_BIN = "/opt/homebrew/bin/codex"
+CODEX_OUTPUT_DIR = Path.home() / ".codex" / "generated_images"
+CODEX_TIMEOUT_SEC = 600  # 5x margin over observed 113s
+CODEX_MTIME_WINDOW_SEC = 600  # search window for "fresh" PNG (10min)
+# Strip provider API keys before spawning Codex subprocess. Mirror of
+# backend.services.federation_alerts.actions.codex_image_gen._safe_env().
+# OPENAI_API_KEY is held by parent for text-embedding-3-small only;
+# image gen MUST go via Codex OAuth Pro $200 plan, never per-call billing.
+_CODEX_STRIPPED_ENV_KEYS = frozenset({
+    "ANTHROPIC_API_KEY",
+    "AWS_BEDROCK_ANTHROPIC_KEY",
+    "VERTEX_AI_ANTHROPIC_KEY",
+    "OPENAI_API_KEY",
+    "GEMINI_API_KEY",
+    "GOOGLE_API_KEY",
+})
 
-    Falls back to a clear error tuple on any failure — caller decides whether
-    to abort the draft or proceed without cover.
+
+def _codex_safe_env() -> dict[str, str]:
+    return {k: v for k, v in os.environ.items() if k not in _CODEX_STRIPPED_ENV_KEYS}
+
+
+async def _generate_cover_via_codex(scene_core: str) -> tuple[bytes | None, str | None]:
+    """Generate cover via Codex CLI `$imagegen`. Return (img_bytes, error_msg).
+
+    Never raises. On any failure returns (None, error_msg) so caller can
+    fall through to the Playwright/Nano Banana legacy path.
     """
-    # Lazy import: keeps wr2_image_generator's heavy Playwright dep out of the
-    # draft_generator critical path until cover time.
+    bare_prompt = scene_core.strip()
+    logger.info(
+        "Cover via Codex $imagegen (gpt-image-2) — prompt (%d chars): %s...",
+        len(bare_prompt),
+        bare_prompt[:120],
+    )
+    # Snapshot pre-existing PNGs so we can identify the fresh one by exclusion.
+    pre_existing: set[Path] = set()
+    if CODEX_OUTPUT_DIR.exists():
+        pre_existing = set(CODEX_OUTPUT_DIR.rglob("ig_*.png"))
+
+    t0 = time.perf_counter()
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            CODEX_BIN,
+            "exec",
+            f"$imagegen {bare_prompt}",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            stdin=asyncio.subprocess.DEVNULL,
+            env=_codex_safe_env(),
+        )
+        try:
+            _stdout, _stderr = await asyncio.wait_for(proc.communicate(), timeout=CODEX_TIMEOUT_SEC)
+        except asyncio.TimeoutError:
+            proc.kill()
+            await proc.wait()
+            return None, f"codex $imagegen timed out after {CODEX_TIMEOUT_SEC}s"
+        if proc.returncode != 0:
+            tail = (_stderr or _stdout or b"").decode("utf-8", errors="replace")[-200:]
+            return None, f"codex exit={proc.returncode}: {tail.strip()}"
+    except FileNotFoundError:
+        return None, f"codex binary not found at {CODEX_BIN}"
+    except Exception as e:
+        return None, f"codex spawn failed: {e}"
+
+    # Find the freshest PNG NOT in the pre-existing set.
+    if not CODEX_OUTPUT_DIR.exists():
+        return None, "codex output dir does not exist after run"
+    candidates = [p for p in CODEX_OUTPUT_DIR.rglob("ig_*.png") if p not in pre_existing]
+    if not candidates:
+        # Fallback: take latest by mtime if it falls within the window.
+        all_pngs = list(CODEX_OUTPUT_DIR.rglob("ig_*.png"))
+        if not all_pngs:
+            return None, "no PNG found in codex output dir"
+        latest = max(all_pngs, key=lambda p: p.stat().st_mtime)
+        if (time.time() - latest.stat().st_mtime) > CODEX_MTIME_WINDOW_SEC:
+            return None, f"latest PNG older than {CODEX_MTIME_WINDOW_SEC}s window"
+        png_path = latest
+    else:
+        png_path = max(candidates, key=lambda p: p.stat().st_mtime)
+
+    try:
+        img_bytes = png_path.read_bytes()
+    except Exception as e:
+        return None, f"failed to read codex PNG {png_path}: {e}"
+
+    elapsed_ms = (time.perf_counter() - t0) * 1000
+    logger.info(
+        "Codex cover generated: %d bytes from %s (%.0fms)",
+        len(img_bytes),
+        png_path.name,
+        elapsed_ms,
+    )
+    return img_bytes, None
+
+
+async def _generate_cover_via_playwright(bare_prompt: str) -> tuple[bytes | None, str | None]:
+    """Generate cover via Gemini Nano Banana 2 Pro via Playwright (LEGACY).
+
+    Return (img_bytes, error_msg). Never raises. Used as fallback when
+    Codex `$imagegen` fails. Lazy-imports wr2_image_generator so the
+    Playwright dependency is not loaded unless we hit this path.
+    """
     sys.path.insert(0, str(_REPO_ROOT / "scripts"))
     try:
         from wr2_image_generator import (  # noqa: E402
             GEMINI_PROFILE_DIR,
             _gen_one_image,
-            _score_image_alignment,
-            _upload_to_tigris as _img_upload_to_tigris,
-            VLM_MIN_SCORE,
         )
     except Exception as e:
         return None, f"wr2_image_generator import failed: {e}"
 
     from playwright.async_api import async_playwright  # noqa: E402
 
-    # The image_generator's _gen_one_image already wraps the prompt with
-    # BRAND_SUFFIX + ANTI_CLICHE_SUFFIX, which is exactly what the cover
-    # also wants — so we feed the bare scene_core (don't pre-build with
-    # build_imagen_prompt, which decorates for the Imagen API).
-    bare_prompt = scene_core.strip()
     logger.info(
-        "Cover via Gemini Nano Banana — prompt (%d chars): %s...",
+        "Cover via Gemini Nano Banana (FALLBACK) — prompt (%d chars): %s...",
         len(bare_prompt),
         bare_prompt[:120],
     )
-
-    t0 = time.perf_counter()
     img_bytes: bytes | None = None
     last_err: str | None = None
 
@@ -432,7 +602,6 @@ async def generate_cover_image(scene_core: str, draft_id: str) -> tuple[str | No
                 args=["--disable-blink-features=AutomationControlled"],
             )
             try:
-                # Cover slide_number == 0 sentinel for log readability.
                 img_bytes, last_err = await _gen_one_image(context, 0, bare_prompt)
             finally:
                 await context.close()
@@ -441,8 +610,26 @@ async def generate_cover_image(scene_core: str, draft_id: str) -> tuple[str | No
 
     if not img_bytes:
         return None, f"cover gen returned no bytes: {last_err or 'unknown'}"
+    return img_bytes, None
 
-    # Reuse the same VLM alignment gate the body slides go through.
+
+async def _finalize_cover(
+    img_bytes: bytes,
+    bare_prompt: str,
+    draft_id: str,
+    t0: float,
+) -> tuple[str | None, str | None]:
+    """VLM alignment gate + Tigris upload. Shared between Codex and Playwright paths."""
+    sys.path.insert(0, str(_REPO_ROOT / "scripts"))
+    try:
+        from wr2_image_generator import (  # noqa: E402
+            _score_image_alignment,
+            _upload_to_tigris as _img_upload_to_tigris,
+            VLM_MIN_SCORE,
+        )
+    except Exception as e:
+        return None, f"wr2_image_generator import failed (finalize): {e}"
+
     try:
         score, why = await _score_image_alignment(img_bytes, bare_prompt, 0)
         if score < VLM_MIN_SCORE:
@@ -473,6 +660,37 @@ async def generate_cover_image(scene_core: str, draft_id: str) -> tuple[str | No
     return url, None
 
 
+async def generate_cover_image(scene_core: str, draft_id: str) -> tuple[str | None, str | None]:
+    """Return (public_url, error_msg). Never raises.
+
+    Provider chain (PRIMARY → FALLBACK):
+      1. Codex CLI `$imagegen` (gpt-image-2 via OAuth Pro $200) — preferred
+      2. Gemini Nano Banana 2 Pro via Playwright (legacy) — fallback
+
+    On both failures returns a clear error tuple — caller proceeds without cover.
+    """
+    bare_prompt = scene_core.strip()
+    t0 = time.perf_counter()
+
+    # ── PRIMARY: Codex `$imagegen` ──
+    img_bytes, codex_err = await _generate_cover_via_codex(bare_prompt)
+    if img_bytes is not None:
+        return await _finalize_cover(img_bytes, bare_prompt, draft_id, t0)
+
+    logger.warning(
+        "Codex cover failed (%s) — falling back to Playwright/Nano Banana",
+        codex_err,
+    )
+
+    # ── FALLBACK: Playwright + Gemini Nano Banana 2 Pro ──
+    img_bytes, pw_err = await _generate_cover_via_playwright(bare_prompt)
+    if img_bytes is not None:
+        return await _finalize_cover(img_bytes, bare_prompt, draft_id, t0)
+
+    # Both providers failed — return composite error for diagnosis.
+    return None, f"Both providers failed: codex={codex_err}; playwright={pw_err}"
+
+
 # ─────────────────────────────────────────────────────────────────────────
 # Slide normalisation
 # ─────────────────────────────────────────────────────────────────────────
@@ -495,6 +713,7 @@ def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]
             "slide_number": i,
             "slide_type": raw.get("slide_type", "body"),
             "is_cover": bool(raw.get("is_cover", i == 1)),
+            "is_hero_image": bool(raw.get("is_hero_image", False)),
             "headline": (raw.get("headline") or "").strip()[:80],
             "subhead": (raw.get("subhead") or "").strip()[:120],
             "body": (raw.get("body") or "").strip()[:500],
@@ -505,8 +724,27 @@ def _normalise_slides(parsed: dict[str, Any]) -> tuple[str, list[dict[str, Any]]
 
     if normalised:
         normalised[0]["is_cover"] = True
+        # Slide 1 is ALWAYS hero (cover image). Force-set even if Claude omitted it.
+        normalised[0]["is_hero_image"] = True
         for s in normalised[1:]:
             s["is_cover"] = False
+        # Slide 11 (last, the CTA closer) is ALWAYS hero too.
+        if len(normalised) >= 11:
+            normalised[10]["is_hero_image"] = True
+
+    # Defensive: if Claude produced 0 hero slides (ignoring the prompt),
+    # auto-promote a sensible mid-carousel default so image-generator has
+    # work to do. Pick slides at narrative-turning-point positions.
+    hero_count = sum(1 for s in normalised if s.get("is_hero_image"))
+    if hero_count < 2 and len(normalised) >= 11:
+        # Force-promote slides 3 and 6 (typical turning points) if no
+        # other hero was selected. This is a fallback, not the desired path.
+        normalised[2]["is_hero_image"] = True   # slide 3
+        normalised[5]["is_hero_image"] = True   # slide 6
+        logger.warning(
+            "Claude returned %d hero slides (need >=2 mid). Auto-promoted slides 3 and 6.",
+            hero_count,
+        )
 
     return register, normalised
 
