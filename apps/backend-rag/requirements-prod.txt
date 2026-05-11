@@ -11,7 +11,7 @@ python-multipart>=0.0.22  # Security fix: arbitrary file write
 
 # MCP Protocol (Critical for Client Handshake)
 mcp>=1.25.0
-anyio>=4.5.0
+anyio>=4.13.0
 
 # Vector Database
 qdrant-client>=1.12.0
