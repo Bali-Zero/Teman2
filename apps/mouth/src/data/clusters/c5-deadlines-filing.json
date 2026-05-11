@@ -1,0 +1,48 @@
+{
+  "id": "c5-deadlines-filing",
+  "title": "Tax deadlines, filing & compliance",
+  "intent": "User needs to know when to file, what to file, and what happens if they miss a deadline. Covers individual and PT PMA obligations across SPT Tahunan, SPT Masa, monthly installments, and penalty mechanics.",
+  "pillar": {
+    "slug": "tax-calendar-indonesia",
+    "category": "tax",
+    "title": "Indonesia Tax Calendar 2026: Filing Deadlines & Obligations"
+  },
+  "spokes": [
+    {
+      "slug": "annual-tax-return-guide",
+      "category": "tax",
+      "title": "Annual Tax Return (SPT) Guide for Expats in Indonesia 2026"
+    },
+    {
+      "slug": "coretax-efiling-spt-guide",
+      "category": "tax",
+      "title": "CoreTax e-Filing Guide: Complete SPT Tax Return Filing Tutorial 2026"
+    },
+    {
+      "slug": "quarterly-tax-reporting-indonesia",
+      "category": "tax",
+      "title": "Quarterly & Monthly Tax Reporting Indonesia 2026: SPT Masa Schedules, Deadlines & Penalties"
+    },
+    {
+      "slug": "pph-29-annual-settlement-guide",
+      "category": "tax",
+      "title": "PPh 29 Annual Tax Settlement 2026: Underpayment and Overpayment Guide for PT PMA"
+    },
+    {
+      "slug": "tax-compliance-checklist-pt-pma",
+      "category": "tax",
+      "title": "PT PMA Tax Compliance Checklist 2026: Every Monthly, Quarterly, and Annual Obligation"
+    },
+    {
+      "slug": "tax-penalties-interest-indonesia",
+      "category": "tax",
+      "title": "Indonesia Tax Penalties and Interest Rates 2026: Complete Guide to Fines, Underpayment, and Voluntary Disclosure"
+    },
+    {
+      "slug": "indonesia-extends-2024-annual-tax-return-deadline-to-april-30",
+      "category": "immigration",
+      "title": "Indonesia Extends 2024 Annual Tax Return Deadline to April 30"
+    }
+  ],
+  "related_clusters": ["c2-npwp-coretax", "c1-tax-residency", "c6-vat-ppn"]
+}
