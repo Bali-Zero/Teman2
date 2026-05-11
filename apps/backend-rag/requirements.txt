@@ -172,7 +172,7 @@ python-json-logger>=2.0.0
 certifi>=2026.2.25  # Updated 2026-03-14: SSL certificates updated Feb 2026
 
 # LLM Routing
-litellm>=1.83.10  # Updated 2026-05-12: CVE-2026-40217 fix
+litellm>=1.83.7  # Updated 2026-04-25: Gemini 2.5 + new provider fixes + security fix
 
 # Build trigger 1771636448
 
