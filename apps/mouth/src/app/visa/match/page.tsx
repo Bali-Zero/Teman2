@@ -40,8 +40,10 @@ const BUDGETS = [
   { id: "over_500m", label: "Over IDR 500M" },
 ];
 
-const labelOf = (list: { iso?: string; id?: string; label: string }[], v: unknown) =>
-  list.find((x) => (x.iso ?? x.id) === v)?.label ?? String(v);
+const labelOf = (
+  list: { iso?: string; id?: string; label: string }[],
+  v: unknown,
+) => list.find((x) => (x.iso ?? x.id) === v)?.label ?? String(v);
 
 const fieldStyle: React.CSSProperties = {
   padding: "0.45rem 0.7rem",
@@ -80,17 +82,35 @@ export default function VisaMatchPage() {
       summary: (v) => labelOf(NATIONALITIES, v),
       render: ({ value, setValue }) => (
         <div>
-          <p style={{ margin: 0, fontFamily: "var(--font-serif, Georgia, serif)", fontSize: "clamp(1.1rem, 2.6vw, 1.3rem)" }}>
+          <p
+            style={{
+              margin: 0,
+              fontFamily: "var(--font-serif, Georgia, serif)",
+              fontSize: "clamp(1.1rem, 2.6vw, 1.3rem)",
+            }}
+          >
             What&apos;s your nationality?
           </p>
           <select
             value={(value as string) ?? ""}
-            onChange={(e) => { setValue(e.target.value); tracker.formStarted("nationality"); }}
-            style={{ marginTop: "var(--space-2, 0.5rem)", ...fieldStyle, width: "100%", maxWidth: 320 }}
+            onChange={(e) => {
+              setValue(e.target.value);
+              tracker.formStarted("nationality");
+            }}
+            style={{
+              marginTop: "var(--space-2, 0.5rem)",
+              ...fieldStyle,
+              width: "100%",
+              maxWidth: 320,
+            }}
             aria-label="Nationality"
           >
             <option value="">Select one…</option>
-            {NATIONALITIES.map((n) => (<option key={n.iso} value={n.iso}>{n.label}</option>))}
+            {NATIONALITIES.map((n) => (
+              <option key={n.iso} value={n.iso}>
+                {n.label}
+              </option>
+            ))}
           </select>
         </div>
       ),
@@ -102,15 +122,30 @@ export default function VisaMatchPage() {
       summary: (v) => labelOf(PURPOSES, v),
       render: ({ value, setValue }) => (
         <div>
-          <p style={{ margin: 0, fontFamily: "var(--font-serif, Georgia, serif)", fontSize: "clamp(1.1rem, 2.6vw, 1.3rem)" }}>
+          <p
+            style={{
+              margin: 0,
+              fontFamily: "var(--font-serif, Georgia, serif)",
+              fontSize: "clamp(1.1rem, 2.6vw, 1.3rem)",
+            }}
+          >
             Why are you coming?
           </p>
-          <div style={{ display: "grid", gap: "var(--space-2, 0.5rem)", marginTop: "var(--space-3, 1rem)" }}>
+          <div
+            style={{
+              display: "grid",
+              gap: "var(--space-2, 0.5rem)",
+              marginTop: "var(--space-3, 1rem)",
+            }}
+          >
             {PURPOSES.map((p) => (
               <button
                 key={p.id}
                 type="button"
-                onClick={() => { setValue(p.id); tracker.formStarted("purpose"); }}
+                onClick={() => {
+                  setValue(p.id);
+                  tracker.formStarted("purpose");
+                }}
                 style={cardButtonStyle(value === p.id)}
               >
                 {p.label}
@@ -124,12 +159,19 @@ export default function VisaMatchPage() {
     {
       id: "duration",
       title: "Duration",
-      summary: (v) => (typeof v === "number" ? `${v} month${v === 1 ? "" : "s"}` : "?"),
+      summary: (v) =>
+        typeof v === "number" ? `${v} month${v === 1 ? "" : "s"}` : "?",
       render: ({ value, setValue }) => {
         const num = typeof value === "number" ? value : 6;
         return (
           <div>
-            <p style={{ margin: 0, fontFamily: "var(--font-serif, Georgia, serif)", fontSize: "clamp(1.1rem, 2.6vw, 1.3rem)" }}>
+            <p
+              style={{
+                margin: 0,
+                fontFamily: "var(--font-serif, Georgia, serif)",
+                fontSize: "clamp(1.1rem, 2.6vw, 1.3rem)",
+              }}
+            >
               Roughly how many months? ({num} {num === 1 ? "month" : "months"})
             </p>
             <input
@@ -137,12 +179,27 @@ export default function VisaMatchPage() {
               min={1}
               max={60}
               value={num}
-              onChange={(e) => { setValue(Number(e.target.value)); tracker.formStarted("duration"); }}
-              style={{ width: "100%", marginTop: "var(--space-3, 1rem)", accentColor: "var(--accent-funnel)" }}
+              onChange={(e) => {
+                setValue(Number(e.target.value));
+                tracker.formStarted("duration");
+              }}
+              style={{
+                width: "100%",
+                marginTop: "var(--space-3, 1rem)",
+                accentColor: "var(--accent-funnel)",
+              }}
               aria-label="Duration in months"
             />
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "var(--text-sm, 0.85rem)", color: "var(--color-text-muted)" }}>
-              <span>1 mo</span><span>60 mo</span>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                fontSize: "var(--text-sm, 0.85rem)",
+                color: "var(--color-text-muted)",
+              }}
+            >
+              <span>1 mo</span>
+              <span>60 mo</span>
             </div>
           </div>
         );
@@ -154,15 +211,30 @@ export default function VisaMatchPage() {
       summary: (v) => labelOf(BUDGETS, v),
       render: ({ value, setValue }) => (
         <div>
-          <p style={{ margin: 0, fontFamily: "var(--font-serif, Georgia, serif)", fontSize: "clamp(1.1rem, 2.6vw, 1.3rem)" }}>
+          <p
+            style={{
+              margin: 0,
+              fontFamily: "var(--font-serif, Georgia, serif)",
+              fontSize: "clamp(1.1rem, 2.6vw, 1.3rem)",
+            }}
+          >
             Budget band for Indonesia setup?
           </p>
-          <div style={{ display: "grid", gap: "var(--space-2, 0.5rem)", marginTop: "var(--space-3, 1rem)" }}>
+          <div
+            style={{
+              display: "grid",
+              gap: "var(--space-2, 0.5rem)",
+              marginTop: "var(--space-3, 1rem)",
+            }}
+          >
             {BUDGETS.map((b) => (
               <button
                 key={b.id}
                 type="button"
-                onClick={() => { setValue(b.id); tracker.formStarted("budget"); }}
+                onClick={() => {
+                  setValue(b.id);
+                  tracker.formStarted("budget");
+                }}
                 style={cardButtonStyle(value === b.id)}
               >
                 {b.label}
@@ -193,7 +265,9 @@ export default function VisaMatchPage() {
       const { hash } = (await res.json()) as { hash: string };
       router.push(`/visa/match/${hash}`);
     } catch {
-      setSubmitError("We could not compute a recommendation. Please try again or message us on WhatsApp.");
+      setSubmitError(
+        "We could not compute a recommendation. Please try again or message us on WhatsApp.",
+      );
     }
   };
 
@@ -220,7 +294,9 @@ export default function VisaMatchPage() {
         onComplete={onComplete}
       />
       {submitError ? (
-        <p role="alert" style={{ color: "var(--color-error)", margin: 0 }}>{submitError}</p>
+        <p role="alert" style={{ color: "var(--color-error)", margin: 0 }}>
+          {submitError}
+        </p>
       ) : null}
     </AppFrame>
   );

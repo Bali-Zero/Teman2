@@ -119,7 +119,9 @@ export default function VisaClockPage() {
             >
               <option value="">pick one…</option>
               {VISA_OPTIONS.map((v) => (
-                <option key={v.code} value={v.code}>{v.label}</option>
+                <option key={v.code} value={v.code}>
+                  {v.label}
+                </option>
               ))}
             </select>
           ),
