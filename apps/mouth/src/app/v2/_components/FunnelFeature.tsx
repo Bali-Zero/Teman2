@@ -90,11 +90,11 @@ const CONFIGS: Record<
       "5,000+ expat cases handled since 2019",
     ],
     cta: "Try Visa Oracle",
-    searchPlaceholder: "e.g. Can I open a PT PMA on a B211A visa?",
+    searchPlaceholder: "e.g. Can I open a PT PMA on a C1 visa?",
     searchSuggestions: [
       "KITAS for retirees",
       "Golden Visa 5yr",
-      "E33G investor",
+      "E28A investor",
       "Digital Nomad B1",
       "Dependent family visa",
     ],
