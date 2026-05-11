@@ -1,0 +1,31 @@
+{
+  "id": "c6-vat-ppn",
+  "title": "VAT / PPN",
+  "intent": "Business owner (PT PMA, freelancer) needs to understand VAT (PPN) rates, when to register, how to issue e-Faktur invoices, and the 2026 rate change",
+  "pillar": {
+    "slug": "vat-ppn-guide",
+    "category": "tax",
+    "title": "VAT (PPN) in Indonesia 2026: Complete Business Guide"
+  },
+  "spokes": [
+    {
+      "slug": "e-faktur-vat-invoice-guide",
+      "category": "tax",
+      "title": "E-Faktur VAT Invoice Guide 2026: Registration, Issuance, and Reconciliation"
+    },
+    {
+      "slug": "tax-payment-methods-indonesia",
+      "category": "tax",
+      "title": "Tax Payment Methods Indonesia 2026: MPN G3, e-Billing, Channels & NTPN Guide"
+    }
+  ],
+  "to_create": [
+    {
+      "slug": "ppn-12-percent-increase-2026",
+      "category": "tax",
+      "rationale": "Generic 'vat-ppn-guide' currently ranks position 50 on '2026 rate' queries (4-5 GSC variants). 2026 rate change is news-worthy + commercial intent, deserves dedicated landing page with calculator.",
+      "priority": "high"
+    }
+  ],
+  "related_clusters": ["c5-deadlines-filing"]
+}

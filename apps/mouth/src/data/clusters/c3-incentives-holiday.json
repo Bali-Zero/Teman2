@@ -1,0 +1,48 @@
+{
+  "id": "c3-incentives-holiday",
+  "title": "Tax incentives & holiday",
+  "intent": "User (investor or PT PMA owner) wants to know which tax incentives apply to their business, especially pioneer industries tax holiday and 30% allowance",
+  "pillar": {
+    "slug": "tax-incentives-indonesia",
+    "category": "tax",
+    "title": "Tax Incentives Indonesia 2026: Business Benefits Guide"
+  },
+  "spokes": [
+    {
+      "slug": "indonesia-zero-tax-foreign-income-2026",
+      "category": "tax",
+      "title": "Indonesia's 0% Tax on Foreign Income: The Expat Advantage Most Don't Know"
+    },
+    {
+      "slug": "kbli-2025-tax-implications-klu",
+      "category": "business",
+      "title": "KBLI 2025 and Tax Implications: How Your Business Code Affects KLU, Audit Risk & Tax Benchmarks"
+    },
+    {
+      "slug": "bali-kek-financial-zone-targets-dubai-style-tax-breaks-for-investors",
+      "category": "immigration",
+      "title": "Bali KEK Financial Zone Targets Dubai-Style Tax Breaks for Investors"
+    }
+  ],
+  "to_create": [
+    {
+      "slug": "tax-holiday-pioneer-industries-list-2026",
+      "category": "tax",
+      "rationale": "9 distinct GSC query variants on 'indonesia tax holiday pioneer industries list' with position 8-12, no dedicated page exists. Highest ROI new article in cluster.",
+      "priority": "high"
+    },
+    {
+      "slug": "tax-allowance-30-investment-deduction-guide",
+      "category": "tax",
+      "rationale": "Query 'indonesia tax allowance 30% investment deduction 6 years' ranks position 5 with 1 imp. Demand exists, no dedicated page.",
+      "priority": "medium"
+    },
+    {
+      "slug": "tax-incentives-vs-tax-holiday-difference",
+      "category": "tax",
+      "rationale": "Disambiguation page — high intent confusion between 'tax incentive' and 'tax holiday' visible in GSC queries.",
+      "priority": "low"
+    }
+  ],
+  "related_clusters": ["c4-rental-property"]
+}
