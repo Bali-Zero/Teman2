@@ -73,7 +73,7 @@ launchctl list | awk '$1 ~ /^[0-9]+$/ {print $3}' \
 PRO_COUNT=$(wc -l < "$PRO_TMP" | tr -d ' ')
 MINI_COUNT=$(wc -l < "$MINI_TMP" | tr -d ' ')
 OVERLAP=$(comm -12 "$PRO_TMP" "$MINI_TMP")
-OVERLAP_COUNT=$(echo "$OVERLAP" | grep -cv '^$' || echo 0)
+OVERLAP_COUNT=$([ -z "$OVERLAP" ] && echo 0 || echo "$OVERLAP" | grep -cv '^$')
 
 log "Pro active: $PRO_COUNT, Mini active: $MINI_COUNT, Overlap: $OVERLAP_COUNT"
 
