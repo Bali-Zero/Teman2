@@ -140,7 +140,7 @@ jobs:
 
     steps:
       - name: Create SAST summary
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const bandit = '${{ needs.bandit-sast.result }}';

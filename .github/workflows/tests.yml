@@ -406,7 +406,7 @@ jobs:
         uses: actions/download-artifact@v4
 
       - name: Create test summary
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');
