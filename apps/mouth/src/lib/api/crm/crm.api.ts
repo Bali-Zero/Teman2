@@ -211,6 +211,21 @@ export class CrmApi {
     );
   }
 
+  async getEvidenceDossiers({
+    companies = [],
+    limit = 10,
+  }: {
+    companies?: string[];
+    limit?: number;
+  } = {}): Promise<TaxCompanyPilotMap[]> {
+    const queryParams = new URLSearchParams();
+    companies.forEach((company) => queryParams.append("company", company));
+    queryParams.append("limit", limit.toString());
+    return this.client.request<TaxCompanyPilotMap[]>(
+      `/api/crm/intelligence/evidence-dossiers?${queryParams.toString()}`,
+    );
+  }
+
   /**
    * Mark an interaction as read
    */
