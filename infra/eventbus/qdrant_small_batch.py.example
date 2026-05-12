@@ -1,0 +1,67 @@
+#!/usr/bin/env python3
+"""Ingest only PDFs <2MB to avoid OpenAI 300k token batch limit bug."""
+import asyncio
+import json
+import os
+import sys
+import time
+from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv("/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.env", override=True)
+os.environ.setdefault(
+    "DATABASE_URL",
+    "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable",
+)
+sys.path.insert(0, "/Users/nuzantara/Desktop/nuzantara/apps/backend-rag")
+from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
+
+ITEMS = [
+    # PP 41/1996 already ingested in single test (12 chunks). Skip.
+    ("/Users/nuzantara/Desktop/nuzantara/data/source_documents/peraturan/property/PP_13-2017.pdf",
+     "PP 13/2017 — RTRWN Amendment", "property"),
+    ("/Users/nuzantara/Desktop/nuzantara/data/source_documents/peraturan/tax/PMK_9-PMK.03-2018.pdf",
+     "PMK 9/PMK.03/2018 — SPT Filing Periods", "tax"),
+    ("/Users/nuzantara/Desktop/nuzantara/data/source_documents/peraturan/tax/PER-7-PJ-2025.pdf",
+     "PER-7/PJ/2025 — NIK-NPWP Coretax", "tax"),
+    ("/Users/nuzantara/Desktop/nuzantara/data/source_documents/peraturan/tax/KEP-55-PJ-2026.pdf",
+     "KEP-55/PJ/2026 — Coretax Penalty Waiver", "tax"),
+]
+
+
+async def main():
+    service = LegalIngestionService(collection_name="legal_unified_2026")
+    print("[init] OK", flush=True)
+    results = []
+    for path, title, domain in ITEMS:
+        if not os.path.exists(path):
+            results.append({"title": title, "status": "missing"})
+            continue
+        kb = os.path.getsize(path) // 1024
+        print(f"[start] {title} ({kb} KB)", flush=True)
+        t0 = time.time()
+        try:
+            r = await asyncio.wait_for(
+                service.ingest_legal_document(file_path=path, title=title, category=domain),
+                timeout=300,
+            )
+            elapsed = time.time() - t0
+            chunks = r.get("chunks_created") if isinstance(r, dict) else None
+            print(f"[done]  {title} → chunks={chunks} in {elapsed:.0f}s", flush=True)
+            results.append({"title": title, "status": "ok", "chunks": chunks, "elapsed": elapsed})
+        except Exception as e:
+            elapsed = time.time() - t0
+            print(f"[ERROR] {title}: {type(e).__name__}: {str(e)[:200]}", flush=True)
+            results.append({"title": title, "status": "error",
+                            "error": f"{type(e).__name__}: {str(e)[:300]}", "elapsed": elapsed})
+
+    with open("/tmp/qdrant_small_results.json", "w") as f:
+        json.dump(results, f, indent=2, default=str)
+
+    ok = sum(1 for r in results if r.get("status") == "ok")
+    chunks = sum(r.get("chunks") or 0 for r in results)
+    print(f"\n[FINAL] {ok}/{len(results)} ok, {chunks} chunks total", flush=True)
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
