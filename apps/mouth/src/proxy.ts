@@ -163,6 +163,20 @@ export function proxy(request: NextRequest) {
     return redirectResponse;
   }
 
+  // === REDIRECT 301: www.balizero.com → balizero.com (apex) ===
+  // GSC export 2026-05-11 revealed ~50% of indexed URLs include `www.` prefix,
+  // halving effective crawl budget. Vercel dashboard SHOULD be configured to
+  // redirect www → apex at edge level (primary domain = balizero.com), but this
+  // middleware safety-net catches any request that slips through (DNS cache,
+  // Vercel config drift, manual links). See docs/marketing/spec-tax.md §6.
+  if (hostname === `www.${PUBLIC_DOMAIN}`) {
+    const redirectUrl = new URL(pathname, `https://${PUBLIC_DOMAIN}`);
+    redirectUrl.search = request.nextUrl.search;
+    const redirectResponse = NextResponse.redirect(redirectUrl, 301);
+    redirectResponse.headers.set("x-pathname", pathname);
+    return redirectResponse;
+  }
+
   // Determine if we're on the public domain
   const subdomain = hostname.split(".")[0]; // e.g. "mail", "calendar", "kita", "balizero"
   const isSSOSubdomain = SSO_SUBDOMAINS.includes(subdomain);
