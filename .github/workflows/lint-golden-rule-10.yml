@@ -33,12 +33,12 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install ripgrep + pytest
+      - name: Install ripgrep + test dependencies
         run: |
           sudo apt-get update -y
           sudo apt-get install -y ripgrep
           python -m pip install --upgrade pip
-          python -m pip install pytest
+          python -m pip install pytest "pydantic>=2.12.5"
 
       - name: Run regression test (single source of truth)
         working-directory: apps/backend-rag

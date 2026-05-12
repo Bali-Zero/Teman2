@@ -313,6 +313,33 @@ export function BusinessStoryPanel({
                   <p className="text-xs leading-5 text-emerald-200">
                     {nextAction}
                   </p>
+                  {map.next_best_actions.length > 0 && (
+                    <div className="pt-2">
+                      <p className="text-[11px] font-semibold uppercase text-[var(--bz-text-2)]">
+                        Next actions
+                      </p>
+                      <ul className="mt-2 space-y-2">
+                        {map.next_best_actions.slice(0, 3).map((action) => (
+                          <li
+                            key={`${map.key}-${action.owner}-${action.label}`}
+                            className="rounded-md border border-white/[0.06] bg-white/[0.03] p-2"
+                          >
+                            <div className="flex items-center justify-between gap-2">
+                              <span className="text-xs font-medium text-[var(--bz-text-1)]">
+                                {action.label}
+                              </span>
+                              <span className="shrink-0 rounded bg-white/[0.08] px-1.5 py-0.5 text-[10px] font-medium text-[var(--bz-text-2)]">
+                                {action.owner}
+                              </span>
+                            </div>
+                            <p className="mt-1 text-[11px] leading-4 text-[var(--bz-text-2)]">
+                              {action.reason}
+                            </p>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </aside>
               </div>
 
