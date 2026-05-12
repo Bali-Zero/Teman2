@@ -82,6 +82,12 @@ async def test_build_evidence_dossiers_reads_db_and_kg_rows() -> None:
     assert dossier.persons[0].name == "Natan Kleimonov"
     assert dossier.persons[0].role == "Director"
     assert {document.group for document in dossier.documents} == {"company", "tax"}
+    assert dossier.readiness.status == "ready"
+    assert dossier.readiness.score == 100
+    assert dossier.readiness.label == "Ready to operate"
+    assert dossier.readiness.reasons == [
+        "Tax owner, person folder, company evidence, tax trail, and KG links are present."
+    ]
     assert dossier.evidence_stories[0].relationship_path == [
         "Natan Kleimonov",
         "OCEAN CLOTHES AND SHOES PT",
@@ -176,6 +182,13 @@ async def test_build_evidence_dossiers_flags_operational_next_actions() -> None:
     ] == [
         "Assign tax owner before using this story operationally.",
         "Connect the canonical person Drive folder.",
+    ]
+    assert dossier.readiness.status == "blocked"
+    assert dossier.readiness.score == 5
+    assert dossier.readiness.label == "Blocked"
+    assert dossier.readiness.reasons[:2] == [
+        "Assign tax owner before using this story operationally.",
+        "Attach company registry evidence.",
     ]
     assert dossier.evidence_stories[0].next_action == (
         "Assign tax owner before using this story operationally."
