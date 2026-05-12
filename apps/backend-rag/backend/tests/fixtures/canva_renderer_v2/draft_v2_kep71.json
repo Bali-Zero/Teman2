@@ -1,0 +1,11 @@
+{
+  "carousel_id": "kep71-pj-2026",
+  "slide_count": 6,
+  "primary_regulation_code": "KEP-71/PJ/2026",
+  "slides": [
+    {"index": 1, "layout_family": "cover-photo", "heading": "SPT Deadline",
+     "subheading": "Extended", "body": "From 30/04 to 31/05/2026"},
+    {"index": 2, "layout_family": "evidence-carved", "heading": "KEP-71",
+     "evidence_code": "KEP-71/PJ/2026", "body": "Issued by Bimo Wijayanto"}
+  ]
+}
