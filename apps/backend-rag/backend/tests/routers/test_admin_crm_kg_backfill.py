@@ -88,3 +88,63 @@ async def test_backfill_drive_documents_live_requires_explicit_ocr_flag() -> Non
     task = background_tasks.tasks[0]
     await task.func(*task.args, **task.kwargs)
     assert mock_backfill.call_args.kwargs["allow_ocr"] is True
+
+
+@pytest.mark.asyncio
+async def test_autowatch_drive_dry_run_returns_summary() -> None:
+    from backend.app.routers.admin_crm_kg import trigger_autowatch_drive
+
+    with patch(
+        "backend.services.crm.drive_autowatcher_service.run_crm_drive_autowatch",
+        new_callable=AsyncMock,
+        return_value={"dry_run": True, "snapshot_candidates": 2},
+    ) as mock_autowatch:
+        result = await trigger_autowatch_drive(
+            request=_request_with_pool(object()),
+            background_tasks=BackgroundTasks(),
+            limit=10,
+            dry_run=True,
+            client_id=42,
+            allow_ocr=False,
+            story_drafts=True,
+        )
+
+    assert result == {"dry_run": True, "snapshot_candidates": 2}
+    mock_autowatch.assert_called_once()
+    assert mock_autowatch.call_args.kwargs["limit"] == 10
+    assert mock_autowatch.call_args.kwargs["dry_run"] is True
+    assert mock_autowatch.call_args.kwargs["client_id"] == 42
+    assert mock_autowatch.call_args.kwargs["allow_ocr"] is False
+    assert mock_autowatch.call_args.kwargs["story_drafts"] is True
+
+
+@pytest.mark.asyncio
+async def test_autowatch_drive_live_runs_in_background() -> None:
+    from backend.app.routers.admin_crm_kg import trigger_autowatch_drive
+
+    background_tasks = BackgroundTasks()
+    with patch(
+        "backend.services.crm.drive_autowatcher_service.run_crm_drive_autowatch",
+        new_callable=AsyncMock,
+    ) as mock_autowatch:
+        result = await trigger_autowatch_drive(
+            request=_request_with_pool(object()),
+            background_tasks=background_tasks,
+            limit=5,
+            dry_run=False,
+            client_id=None,
+            allow_ocr=True,
+            story_drafts=True,
+        )
+
+    assert result["status"] == "started"
+    assert result["dry_run"] is False
+    assert result["allow_ocr"] is True
+    assert result["story_drafts"] is True
+    assert len(background_tasks.tasks) == 1
+    mock_autowatch.assert_not_called()
+
+    task = background_tasks.tasks[0]
+    await task.func(*task.args, **task.kwargs)
+    assert mock_autowatch.call_args.kwargs["dry_run"] is False
+    assert mock_autowatch.call_args.kwargs["allow_ocr"] is True
