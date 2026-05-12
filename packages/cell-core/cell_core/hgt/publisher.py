@@ -35,6 +35,18 @@ class HGTPublisher:
         self._cell_name = cell_name
         self._maxlen = maxlen
 
+    @property
+    def cell_name(self) -> str:
+        """Public read-only access to the cell name.
+
+        Bridges (e.g. IntelScraperHGTBridge, CrmHGTBridge) need this to set
+        their ``_cell_origin`` field without reaching into the protected
+        ``_cell_name`` attribute. See spec
+        ``docs/superpowers/specs/2026-05-12-phase3-hgt-execution-spec.md``
+        §TICKET A.0.
+        """
+        return self._cell_name
+
     async def publish(self, skill: dict) -> bool:
         """Publish skill to HGT stream if eligible.
 
