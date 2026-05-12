@@ -1794,6 +1794,50 @@ IMPORTANT:
                         self.log(f'Submitted to staging: {item_id} ({intel_type}) — awaiting News Room approval')
                         art['_staging_item_id'] = item_id
                         art['_staging_intel_type'] = intel_type
+
+                    # Intel Lake Wave 5 (2026-05-12): enqueue observation to
+                    # local SQLite outbox so the unified pipeline sees this
+                    # finding alongside other producers (intel_radar, mata-garuda,
+                    # imigrasi_monitor, ...). Best-effort — failure must not
+                    # break the existing staging submission flow.
+                    try:
+                        import hashlib as _h  # noqa: PLC0415
+                        import sys as _sys  # noqa: PLC0415
+                        _sys.path.insert(0, "/Users/nuzantara/scripts")
+                        from intel_lake_outbox import enqueue as _lake_enqueue  # type: ignore
+                        _url = art.get("url") or art.get("source_url") or f"bali-intel-scraper://item/{item_id or 'unknown'}"
+                        _title = art.get("title") or "untitled"
+                        _ch = _h.sha256((_title + " " + _url).encode()).hexdigest()[:32]
+                        # Domain inferred from URL when possible
+                        try:
+                            from urllib.parse import urlparse as _up  # noqa: PLC0415
+                            _domain = _up(_url).netloc or "bali-intel-scraper"
+                        except Exception:
+                            _domain = "bali-intel-scraper"
+                        _lake_enqueue(
+                            "bali_intel_scraper",
+                            {
+                                "producer_name": "bali_intel_scraper",
+                                "canonical_url": _url,
+                                "content_hash": _ch,
+                                "title": _title[:500],
+                                "summary": (art.get("summary") or art.get("description") or "")[:2000],
+                                "source_domain": _domain,
+                                "language": art.get("language") or "id",
+                                "jurisdiction": "ID-bali" if intel_type == "news" else "ID-national",
+                                "topic_tags": [intel_type, "news-room", art.get("category", "general")],
+                                "published_at": art.get("published_at") or art.get("scraped_at"),
+                                "score": art.get("score"),
+                                "raw_payload": {
+                                    "intel_type": intel_type,
+                                    "staging_item_id": item_id,
+                                    "tier": art.get("tier"),
+                                    "source": art.get("source"),
+                                },
+                            },
+                        )
+                    except Exception as _exc:
+                        self.log(f"intel-lake enqueue failed: {_exc}", "WARN")
                     return True
                 return False
 
