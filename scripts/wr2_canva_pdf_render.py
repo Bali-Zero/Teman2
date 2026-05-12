@@ -159,9 +159,21 @@ def split_for_yellow(text: str) -> list[tuple[str, bool]]:
     return segments if segments else [(text, False)]
 
 
+_TRAILING_PUNCT = ".,;:!?)»\"'"
+_LEADING_PUNCT = ".,;:!?)»\"'"
+
+
 def wrap_segments(text: str, font: str, size: int,
                   max_w: int) -> list[list[tuple[str, bool]]]:
-    """Wrap text into lines, preserving (segment, is_yellow) tuples."""
+    """Wrap text into lines, preserving (segment, is_yellow) tuples.
+
+    Fix 2 (2026-05-13): punctuation glue. Previously every token was emitted
+    with a trailing space, so "DAYS" + "." became "DAYS ." (orphan punctuation
+    after a yellow-highlight token). Now: if a word begins with punctuation
+    AND the previous emitted token in the same line ends with a trailing space,
+    strip that trailing space before appending the punctuation. This collapses
+    "31 DAYS ." → "31 DAYS." while preserving normal word spacing.
+    """
     full_segs = split_for_yellow(text)
     lines: list[list[tuple[str, bool]]] = []
     cur_line: list[tuple[str, bool]] = []
@@ -170,6 +182,18 @@ def wrap_segments(text: str, font: str, size: int,
         for word in seg_text.split(" "):
             if not word:
                 continue
+            # If word starts with punctuation AND previous token in this line
+            # ended with space, strip that space.
+            if cur_line and word[0] in _LEADING_PUNCT:
+                prev_word, prev_y = cur_line[-1]
+                if prev_word.endswith(" "):
+                    stripped = prev_word.rstrip(" ")
+                    width_delta = (
+                        stringWidth(prev_word, font, size)
+                        - stringWidth(stripped, font, size)
+                    )
+                    cur_line[-1] = (stripped, prev_y)
+                    cur_width -= width_delta
             word_w = stringWidth(word + " ", font, size)
             if cur_width + word_w > max_w and cur_line:
                 lines.append(cur_line)
@@ -493,15 +517,36 @@ def render_photo_headline_yellow_sub(c: canvas.Canvas, s: dict[str, Any],
             cur_x += stringWidth(seg, ctx.font_bold, head_size)
         y_head -= head_line_h
 
-    # Body (UPPERCASE)
+    # Body (UPPERCASE) — vcentered in space between heading bottom and logo top.
+    # Fix 1 (2026-05-13): previously body anchored just below heading, leaving
+    # 50-70% of canvas as empty antracite. Now compute body block height and
+    # center it vertically within [logo_top + 60pt, heading_bottom - 30pt].
     body = (s.get("body") or "").upper()
     if body:
         body_size = 30
         body_line_h = body_size + 12
-        body_y_top = y_head - 20
-        draw_wrapped_highlights(c, 60, body_y_top, body, ctx.font_bold,
-                                body_size, max_w, body_line_h,
-                                max_lines=8, shadow=has_hero)
+        # Pre-wrap to know the line count
+        body_lines_segs = wrap_segments(body, ctx.font_bold, body_size, max_w)
+        body_lines_segs = body_lines_segs[:8]
+        body_total_h = len(body_lines_segs) * body_line_h
+
+        # Available zone: top = just below last heading baseline; bottom = logo top edge + safety
+        zone_top = y_head + head_line_h - 30
+        logo_top_edge = 80 + 90 + 60  # logo y=80, h=90, safety 60
+        zone_bottom = logo_top_edge
+
+        # Center body block in [zone_bottom, zone_top]
+        vcenter = (zone_top + zone_bottom) / 2
+        body_start_y = vcenter + body_total_h / 2 - body_size / 2
+        # Clamp: never push above zone_top, never below zone_bottom
+        body_start_y = min(body_start_y, zone_top - body_size)
+        body_start_y = max(body_start_y, zone_bottom + body_total_h - body_size)
+
+        cur_y = body_start_y
+        for line in body_lines_segs:
+            draw_highlighted_line(c, 60, cur_y, line, ctx.font_bold,
+                                  body_size, shadow=has_hero)
+            cur_y -= body_line_h
 
     draw_logo(c)
     if ctx.is_inner:
@@ -817,37 +862,61 @@ def render_elegant_close(c: canvas.Canvas, s: dict[str, Any],
 
 def render_stat_card_hero(c: canvas.Canvas, s: dict[str, Any],
                           ctx: RenderContext) -> None:
-    """ADOPT pattern 1 — big number center (Quartz/ProPublica)."""
+    """ADOPT pattern 1 — Quartz/ProPublica big-number stat card.
+
+    Fix 3 (2026-05-13): canonical Quartz layout — kicker mute TOP, giant
+    number vertically centered, caption block BELOW number, source mono
+    footer above logo. Previously caption was above number (wrong direction).
+    """
     c.setFillColor(HexColor(COLOR_BG_ANTRACITE))
     c.rect(0, 0, W, H, fill=1, stroke=0)
 
     stat = s.get("stat") or s.get("heading") or ""
     caption = s.get("caption") or s.get("body") or ""
     source = s.get("source") or s.get("yellow_accent") or ""
+    # Optional kicker (small label top — Quartz convention).
+    # Falls back to source-like field if no explicit kicker.
+    kicker = (s.get("kicker") or s.get("subheading") or "").upper()
 
-    # Adapt stat font size based on length
+    # 1. Kicker (small mute label top)
+    if kicker:
+        c.setFillColor(HexColor(COLOR_TEXT_MUTED))
+        c.setFont(ctx.font_mono, 20)
+        kw = stringWidth(kicker[:60], ctx.font_mono, 20)
+        c.drawString((W - kw) / 2, H - 180, kicker[:60])
+
+    # 2. Giant number (vertically centered, ~middle of canvas)
     stat_size = 380 if len(stat) <= 4 else (280 if len(stat) <= 6 else 200)
     c.setFillColor(HexColor(COLOR_ACCENT_YELLOW))
     c.setFont(ctx.font_bold, stat_size)
     stat_w = stringWidth(stat, ctx.font_bold, stat_size)
-    c.drawString((W - stat_w) / 2, 620, stat)
+    # Anchor stat so its center sits near vertical middle of canvas
+    # (canvas vertical center = 675, stat baseline ~ center + stat_size*0.35)
+    stat_baseline = H / 2 - stat_size * 0.35
+    c.drawString((W - stat_w) / 2, stat_baseline, stat)
 
+    # 3. Caption (BELOW the number — Quartz readout)
     if caption:
-        lines = wrap_simple(caption.upper(), ctx.font_bold, 36, W - 200)[:3]
-        cur_y = 540
+        cap_size = 32
+        lines = wrap_simple(caption.upper(), ctx.font_bold, cap_size, W - 200)[:3]
+        # Anchor caption block top just below the stat baseline minus
+        # some safety (stat_baseline - 60 is "below the number's bottom")
+        cap_top = stat_baseline - 90
+        cur_y = cap_top
         for ln in lines:
-            lw = stringWidth(ln, ctx.font_bold, 36)
+            lw = stringWidth(ln, ctx.font_bold, cap_size)
             c.setFillColor(HexColor(COLOR_TEXT_WHITE))
-            c.setFont(ctx.font_bold, 36)
+            c.setFont(ctx.font_bold, cap_size)
             c.drawString((W - lw) / 2, cur_y, ln)
-            cur_y -= 50
+            cur_y -= 46
 
+    # 4. Source mono footer (above logo)
     if source:
         c.setFillColor(HexColor(COLOR_TEXT_MUTED))
-        c.setFont(ctx.font_mono, 22)
+        c.setFont(ctx.font_mono, 20)
         meta = f"SOURCE: {source.upper()}"
-        mw = stringWidth(meta, ctx.font_mono, 22)
-        c.drawString((W - mw) / 2, 250, meta)
+        mw = stringWidth(meta, ctx.font_mono, 20)
+        c.drawString((W - mw) / 2, 230, meta)
 
     draw_logo(c)
     if ctx.is_inner:
