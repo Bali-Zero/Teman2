@@ -237,10 +237,20 @@ async def main(args: argparse.Namespace) -> int:
 
         while total_replayed + total_dlq < args.max_events and not stop["stop"]:
             batch_num += 1
-            async with conn.transaction():
+            # NO transaction wrapper — each row UPDATE/INSERT is autonomous
+            # so a poison-pill DLQ insert can't abort subsequent operations.
+            # SKIP LOCKED still protects against concurrent producers.
+            try:
                 replayed, dlq, info = await replay_batch(
                     conn, args.channel, since_dt, args.batch, redis_initial, args.dry_run
                 )
+            except asyncpg.exceptions.InFailedSQLTransactionError as exc:
+                logger.warning("transaction aborted mid-batch: %s — reconnecting", exc)
+                await conn.close()
+                conn = await asyncpg.connect(dsn=dsn, command_timeout=30)
+                if not args.dry_run:
+                    await conn.execute(DLQ_DDL)
+                continue
             if replayed == 0 and dlq == 0:
                 logger.info("no more events to replay — done")
                 break
