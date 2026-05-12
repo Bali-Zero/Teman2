@@ -122,7 +122,7 @@ async def test_backfill_links_completed_json_string_without_ocr(monkeypatch: pyt
 
 
 @pytest.mark.asyncio
-async def test_backfill_dispatches_pending_existing_document_to_ocr(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_backfill_skips_pending_existing_document_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
     from backend.services.documents.crm_drive_backfill_service import run_crm_drive_backfill
 
     monkeypatch.delenv("CRM_KG_ENABLED", raising=False)
@@ -159,6 +159,60 @@ async def test_backfill_dispatches_pending_existing_document_to_ocr(monkeypatch:
         return_value={"ok": True, "nodes": 3, "edges": 2},
     ) as mock_kg:
         result = await run_crm_drive_backfill(pool, limit=5, dry_run=False)
+
+    assert result["processed"] == 1
+    assert result["ocr_dispatched"] == 0
+    assert result["kg_linked"] == 0
+    assert result["skipped"] == 1
+    mock_dispatch.assert_not_called()
+    mock_kg.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_backfill_dispatches_pending_existing_document_to_ocr_when_allowed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from backend.services.documents.crm_drive_backfill_service import run_crm_drive_backfill
+
+    monkeypatch.delenv("CRM_KG_ENABLED", raising=False)
+    pool = _FakePool(
+        [
+            {
+                "document_id": 11,
+                "client_id": 42,
+                "file_id": "drive-pending",
+                "file_name": "scan_001.pdf",
+                "document_type": "unknown",
+                "document_category": "tax",
+                "practice_id": 7,
+                "google_drive_file_url": None,
+                "file_url": None,
+                "ocr_status": "pending",
+                "ocr_extracted_data": None,
+                "has_kg_node": False,
+            },
+        ],
+    )
+
+    with patch(
+        "backend.services.documents.ocr_dispatcher_service.dispatch_ocr_by_folder",
+        new_callable=AsyncMock,
+        return_value={
+            "dispatched": True,
+            "handler": "npwp",
+            "result": {"success": True, "extracted": {"npwp": "01.234"}},
+        },
+    ) as mock_dispatch, patch(
+        "backend.services.knowledge_graph.document_linker.kg_link_document",
+        new_callable=AsyncMock,
+        return_value={"ok": True, "nodes": 3, "edges": 2},
+    ) as mock_kg:
+        result = await run_crm_drive_backfill(
+            pool,
+            limit=5,
+            dry_run=False,
+            allow_ocr=True,
+        )
 
     assert result["processed"] == 1
     assert result["ocr_dispatched"] == 1
@@ -207,7 +261,12 @@ async def test_backfill_does_not_double_link_when_dispatcher_kg_enabled(
         "backend.services.knowledge_graph.document_linker.kg_link_document",
         new_callable=AsyncMock,
     ) as mock_kg:
-        result = await run_crm_drive_backfill(pool, limit=5, dry_run=False)
+        result = await run_crm_drive_backfill(
+            pool,
+            limit=5,
+            dry_run=False,
+            allow_ocr=True,
+        )
 
     assert result["processed"] == 1
     assert result["ocr_dispatched"] == 1
@@ -268,4 +327,5 @@ async def test_fetch_candidates_only_selects_documents_without_kg_node() -> None
     query, args = pool.conn.fetch_calls[0]
     assert "AND kg.entity_id IS NULL" in query
     assert "OR d.ocr_status IN" not in query
-    assert args == (None, 5)
+    assert "d.ocr_status = 'completed'" in query
+    assert args == (None, 5, False)

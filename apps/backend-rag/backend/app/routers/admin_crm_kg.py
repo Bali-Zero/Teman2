@@ -33,11 +33,12 @@ async def trigger_backfill_drive_documents(
     limit: int = Query(25, ge=1, le=250),
     dry_run: bool = Query(True),
     client_id: int | None = Query(None, ge=1),
+    allow_ocr: bool = Query(False),
 ) -> dict[str, Any]:
     """Backfill current CRM Drive documents into OCR and crm_kg.
 
     Dry-run returns the candidate summary immediately. Live mode runs in a
-    background task so admin/cron callers do not block on Gemini OCR.
+    background task. OCR/Gemini dispatch is disabled unless allow_ocr=true.
     """
     pool = getattr(request.app.state, "db_pool", None)
     if not pool:
@@ -53,6 +54,7 @@ async def trigger_backfill_drive_documents(
             limit=limit,
             dry_run=True,
             client_id=client_id,
+            allow_ocr=allow_ocr,
         )
 
     async def _run() -> None:
@@ -61,6 +63,7 @@ async def trigger_backfill_drive_documents(
             limit=limit,
             dry_run=False,
             client_id=client_id,
+            allow_ocr=allow_ocr,
         )
         logger.info("crm_kg.backfill_drive_documents background result: %s", result)
 
@@ -69,6 +72,7 @@ async def trigger_backfill_drive_documents(
         "status": "started",
         "message": "CRM Drive document backfill running in background",
         "dry_run": False,
+        "allow_ocr": allow_ocr,
         "limit": limit,
         "client_id": client_id,
     }
