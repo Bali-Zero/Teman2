@@ -114,6 +114,43 @@ describe("CrmApi", () => {
     });
   });
 
+  describe("getEvidenceDossiers", () => {
+    it("should fetch team-only evidence dossiers with repeated company filters", async () => {
+      const mockDossiers = [
+        {
+          key: "ocean",
+          company: { name: "OCEAN CLOTHES AND SHOES PT", aliases: [] },
+          tax_member: {
+            name: "DEA",
+            workspace_branch: "TAX DEPARTMENT/Members/Dea",
+            source_folder_url: "https://drive.google.com/drive/folders/dea",
+          },
+          drive_folders: {},
+          persons: [],
+          documents: [],
+          duplicate_candidates: [],
+          gaps: [],
+          evidence_links: [],
+          ai_recap: [],
+          read_only: true,
+          confidence: "medium",
+        },
+      ];
+
+      mockClient.request.mockResolvedValue(mockDossiers);
+
+      const result = await crmApi.getEvidenceDossiers({
+        companies: ["ocean", "bimala"],
+        limit: 2,
+      });
+
+      expect(mockClient.request).toHaveBeenCalledWith(
+        "/api/crm/intelligence/evidence-dossiers?company=ocean&company=bimala&limit=2",
+      );
+      expect(result).toEqual(mockDossiers);
+    });
+  });
+
   describe("markInteractionRead", () => {
     it("should mark interaction as read", async () => {
       const mockResponse = {

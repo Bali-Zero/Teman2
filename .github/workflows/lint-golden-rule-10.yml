@@ -16,9 +16,9 @@ name: Golden Rule #10 — httpx pattern lint
 on:
   pull_request:
     paths:
-      - 'apps/backend-rag/backend/**/*.py'
-      - 'apps/backend-rag/backend/tests/app/setup/test_no_httpx_violators.py'
-      - '.github/workflows/lint-golden-rule-10.yml'
+      - "apps/backend-rag/backend/**/*.py"
+      - "apps/backend-rag/backend/tests/app/setup/test_no_httpx_violators.py"
+      - ".github/workflows/lint-golden-rule-10.yml"
 
 jobs:
   lint:
@@ -26,12 +26,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install ripgrep + pytest
         run: |

@@ -49,6 +49,7 @@ def include_routers(api: FastAPI) -> None:
         crm_enhanced,
         crm_enhanced_alerts,
         crm_enhanced_documents,
+        crm_intelligence,
         crm_interactions,
         crm_notifications,
         crm_portal_integration,
@@ -184,6 +185,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(crm_enhanced.router)
     api.include_router(crm_enhanced_documents.router)
     api.include_router(crm_enhanced_alerts.router)
+    api.include_router(crm_intelligence.router)
     api.include_router(crm_interactions.router)
     api.include_router(crm_notifications.router)
     api.include_router(crm_practices.router)
@@ -423,6 +425,7 @@ def include_light_routers(api: FastAPI) -> None:
         crm_company,
         crm_enhanced_alerts,
         crm_enhanced_documents,
+        crm_intelligence,
         crm_interactions,
         crm_notifications,
         crm_portal_integration,
@@ -523,6 +526,7 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(crm_company.router)
     api.include_router(crm_enhanced_documents.router)
     api.include_router(crm_enhanced_alerts.router)
+    api.include_router(crm_intelligence.router)
     api.include_router(crm_interactions.router)
     api.include_router(crm_notifications.router)
     api.include_router(crm_shared_memory.router)

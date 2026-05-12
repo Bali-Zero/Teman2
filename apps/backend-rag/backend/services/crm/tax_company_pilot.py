@@ -96,7 +96,7 @@ class TaxCompanyPilotEvidenceStory(BaseModel):
 
 
 class TaxCompanyPilotMap(BaseModel):
-    key: Literal["ocean", "bimala"]
+    key: str
     primary_entry: Literal["person"] = "person"
     workspace_mode: Literal["team_read_only"] = "team_read_only"
     company: TaxCompanyPilotEntity

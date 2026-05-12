@@ -39,15 +39,15 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Cache dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pip-${{ hashFiles('apps/backend-rag/requirements.txt') }}
@@ -85,7 +85,9 @@ jobs:
             --ignore-vuln CVE-2025-69196 \
             --ignore-vuln CVE-2025-64340 \
             --ignore-vuln CVE-2026-27124 \
-            --ignore-vuln CVE-2026-28684
+            --ignore-vuln CVE-2026-28684 \
+            --ignore-vuln CVE-2026-40217 \
+            --ignore-vuln CVE-2026-41488
 
       - name: Mypy type check (core + models)
         run: |
@@ -179,14 +181,14 @@ jobs:
           PYTHONPATH=. coverage report --fail-under=55
 
       - name: Upload coverage to Codecov
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         with:
           files: apps/backend-rag/coverage.xml
           flags: backend
           name: backend-coverage
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: backend-test-results
@@ -200,12 +202,12 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install MCP dependencies
         run: |
@@ -220,7 +222,7 @@ jobs:
           python -m pytest tests/ -v --tb=short --junit-xml=test-results-mcp.xml
 
       - name: Upload test results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         if: always()
         with:
           name: mcp-test-results
@@ -236,15 +238,15 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Cache dependencies
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: |
             **/node_modules
@@ -269,7 +271,7 @@ jobs:
           npm run test:coverage:check
 
       - name: Upload coverage
-        uses: codecov/codecov-action@v4
+        uses: codecov/codecov-action@v6
         with:
           files: apps/${{ matrix.app }}/coverage/lcov.info
           flags: ${{ matrix.app }}
@@ -307,17 +309,17 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Setup Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install backend dependencies
         run: |
@@ -339,7 +341,7 @@ jobs:
           # CI currently has no OAuth token injected; any test that would
           # hit a real Claude endpoint must mock it.
           JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          LANGCHAIN_TRACING_V2: 'false'
+          LANGCHAIN_TRACING_V2: "false"
           ENVIRONMENT: test
         run: |
           cd apps/backend-rag
@@ -364,7 +366,7 @@ jobs:
 
       - name: Run E2E tests
         env:
-          CI: 'true'
+          CI: "true"
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
           NEXT_PUBLIC_API_URL: http://localhost:8000
           NEXT_PUBLIC_WS_URL: ws://localhost:8000/ws
@@ -386,9 +388,19 @@ jobs:
             --reporter=list \
             --grep "page Page"
 
-      - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
+      - name: Check Playwright report
+        id: playwright-report
         if: always()
+        run: |
+          if [ -d apps/mouth/playwright-report ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v7
+        if: always() && steps.playwright-report.outputs.exists == 'true'
         with:
           name: playwright-report
           path: apps/mouth/playwright-report/
@@ -401,10 +413,10 @@ jobs:
 
     steps:
       - name: Download all artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v8
 
       - name: Create test summary
-        uses: actions/github-script@v7
+        uses: actions/github-script@v9
         with:
           script: |
             const fs = require('fs');

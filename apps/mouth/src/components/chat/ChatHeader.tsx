@@ -175,7 +175,7 @@ export function ChatHeader({
             <button
               type="button"
               onClick={onToggleUserMenu}
-              className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-[var(--background-elevated)] transition-colors"
+              className="flex items-center gap-2 px-2 py-1 rounded-lg hover:bg-[var(--background-elevated)] transition-colors focus-ring"
               aria-label="User menu"
               aria-haspopup="true"
               aria-expanded={showUserMenu}

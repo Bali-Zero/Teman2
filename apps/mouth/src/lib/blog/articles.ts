@@ -14,6 +14,23 @@ import { unstable_cache } from "next/cache";
 import type { Article, ArticleListItem, ArticleCategory } from "./types";
 
 const ARTICLES_PATH = path.join(process.cwd(), "src/content/articles");
+const ARTICLE_FOLDER_NAMES = Object.freeze([
+  "immigration",
+  "business",
+  "business_regulations",
+  "news",
+  "tax-legal",
+  "tax",
+  "property",
+  "lifestyle",
+  "digital-nomad",
+  "bali_news",
+  "emerging_trends",
+  "tech",
+  "social_media",
+] as const);
+type ArticleFolderName = (typeof ARTICLE_FOLDER_NAMES)[number];
+const ARTICLE_FOLDER_SET = new Set<string>(ARTICLE_FOLDER_NAMES);
 
 const BACKEND_URL =
   process.env.BACKEND_RAG_URL ||
@@ -79,6 +96,32 @@ const CATEGORY_COVER_DEFAULTS: Record<string, string> = {
 
 function defaultCoverImage(category: ArticleCategory): string {
   return CATEGORY_COVER_DEFAULTS[category] || "/static/blog/golden-visa.jpg";
+}
+
+function isArticleFolderName(value: string): value is ArticleFolderName {
+  return ARTICLE_FOLDER_SET.has(value);
+}
+
+function articleFolderPath(folder: ArticleFolderName): string {
+  return path.join(/*turbopackIgnore: true*/ ARTICLES_PATH, folder);
+}
+
+function articleMdxPath(folder: ArticleFolderName, slug: string): string {
+  return path.join(
+    /*turbopackIgnore: true*/ articleFolderPath(folder),
+    `${slug}.mdx`,
+  );
+}
+
+function articleLocaleMdxPath(
+  folder: ArticleFolderName,
+  slug: string,
+  locale: string,
+): string {
+  return path.join(
+    /*turbopackIgnore: true*/ articleFolderPath(folder),
+    `${slug}.${locale}.mdx`,
+  );
 }
 
 // ============================================================================
@@ -251,13 +294,13 @@ async function getAllMdxSlugs(): Promise<
 
   if (!fs.existsSync(ARTICLES_PATH)) return slugs;
 
-  const categories = fs.readdirSync(ARTICLES_PATH).filter((item) => {
-    const itemPath = path.join(ARTICLES_PATH, item);
-    return fs.statSync(itemPath).isDirectory() && !item.startsWith(".");
+  const categories = ARTICLE_FOLDER_NAMES.filter((item) => {
+    const itemPath = articleFolderPath(item);
+    return fs.existsSync(itemPath) && fs.statSync(itemPath).isDirectory();
   });
 
   for (const folderCategory of categories) {
-    const categoryPath = path.join(ARTICLES_PATH, folderCategory);
+    const categoryPath = articleFolderPath(folderCategory);
     const files = fs
       .readdirSync(categoryPath)
       .filter(
@@ -293,7 +336,8 @@ async function getMdxArticleBySlug(
   let actualFolderCategory = category;
 
   for (const folder of possibleFolders) {
-    const tryPath = path.join(ARTICLES_PATH, folder, `${slug}.mdx`);
+    if (!isArticleFolderName(folder)) continue;
+    const tryPath = articleMdxPath(folder, slug);
     if (fs.existsSync(tryPath)) {
       filePath = tryPath;
       actualFolderCategory = folder;
@@ -301,8 +345,8 @@ async function getMdxArticleBySlug(
     }
   }
 
-  if (!filePath) {
-    const directPath = path.join(ARTICLES_PATH, category, `${slug}.mdx`);
+  if (!filePath && isArticleFolderName(category)) {
+    const directPath = articleMdxPath(category, slug);
     if (fs.existsSync(directPath)) {
       filePath = directPath;
       actualFolderCategory = category;
@@ -430,11 +474,8 @@ export async function getArticleByLocale(
   const possibleFolders = CATEGORY_FOLDERS[normalizedCategory] || [category];
 
   for (const folder of possibleFolders) {
-    const localePath = path.join(
-      ARTICLES_PATH,
-      folder,
-      `${slug}.${locale}.mdx`,
-    );
+    if (!isArticleFolderName(folder)) continue;
+    const localePath = articleLocaleMdxPath(folder, slug, locale);
     if (fs.existsSync(localePath)) {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       let frontmatter: Record<string, any>;
@@ -526,11 +567,8 @@ export function getAvailableLocales(category: string, slug: string): string[] {
 
   for (const locale of ["id", "it", "ru", "fr"] as const) {
     for (const folder of possibleFolders) {
-      const localePath = path.join(
-        ARTICLES_PATH,
-        folder,
-        `${slug}.${locale}.mdx`,
-      );
+      if (!isArticleFolderName(folder)) continue;
+      const localePath = articleLocaleMdxPath(folder, slug, locale);
       if (fs.existsSync(localePath)) {
         locales.push(locale);
         break;
@@ -687,7 +725,8 @@ export async function getNoIndexSlugs(): Promise<Set<string>> {
 
   for (const { folderCategory, slug } of allSlugs) {
     try {
-      const filePath = path.join(ARTICLES_PATH, folderCategory, `${slug}.mdx`);
+      if (!isArticleFolderName(folderCategory)) continue;
+      const filePath = articleMdxPath(folderCategory, slug);
       if (!fs.existsSync(filePath)) continue;
       const fileContents = fs.readFileSync(filePath, "utf8");
       const { data: frontmatter } = matter(fileContents);
