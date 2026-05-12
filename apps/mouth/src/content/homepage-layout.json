@@ -1,8 +1,8 @@
 {
-  "_comment": "CASCADE ARCHITECTURE: Hero (5 newest) → Latest Intelligence (5 older) → Category sections. Each tier shows different articles. Update hero_* when publishing new articles; old heroes move to latest_*.",
+  "_comment": "CASCADE ARCHITECTURE: Hero (5 newest) \u2192 Latest Intelligence (5 older) \u2192 Category sections. Each tier shows different articles. Update hero_* when publishing new articles; old heroes move to latest_*.",
   "hero_main": "bali-draws-rp-1331-trillion-in-investment-in-q1-2026",
   "hero_2": "westin-ubud-bets-on-biophilic-luxury-to-capture-wellness-tourism",
-  "hero_3": "the-real-cost-of-living-in-bali-what-1000-buys-in-2026",
+  "hero_3": "bali-arrivals-climb-10-as-conflict-era-safeguards-protect-stranded-tourists",
   "hero_4": "bali-all-access-pass-one-card-to-rule-the-islands-transit",
   "hero_5": "bali-kek-financial-zone-targets-dubai-style-tax-breaks-for-investors",
   "hero_6": "bkpm-regulation-5-2025-fdi",
