@@ -83,6 +83,12 @@ Se la cellula partecipa al sistema circolatorio di conoscenza:
 
 **Pattern di riferimento:** `apps/mata-garuda/mata_garuda/cell/runner.py` (publisher), `apps/mata-garuda/mata_garuda/cells/sentinel_cell.py` (consumer)
 
+### Observatory emit — silent-birth prevention (aggiunto 2026-05-12 post Gap 1 fix)
+
+17. [ ] **Plist `EnvironmentVariables.CELL_OBSERVATORY_EMIT=true`** — senza questa env var il pulse hook in `cell_core/pulse.py:265` è no-op silenzioso, la cellula esegue ma non emette mai a `~/.cell-observatory/observatory.db` né al PG channel `cell_pulse_observed`. Verifica empirica 2026-05-12: solo `com.cell.organism.plist` ha l'env var → solo `cell_id='cell'` emette (1154 events/24h), seo-cell e sentinel sono silenti per default.
+
+**Rationale**: `observatory.is_enabled()` legge `os.getenv("CELL_OBSERVATORY_EMIT","").lower() == "true"`. Un plist senza questa key produce cellule "nate silenti" — il bug è invisibile finché qualcuno non interroga l'observatory e nota che mancano cell_id. Vedi `research/symbiosis/2026-05-12-cell-silenti-root-cause-and-fix.md` per dettagli + procedura di fix retroattivo.
+
 ---
 
 ## 3. Nuovo router FastAPI
