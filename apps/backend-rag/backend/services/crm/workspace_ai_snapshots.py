@@ -6,6 +6,7 @@ approved facts, so raw AI output cannot leak into the team UI or client portal.
 
 from __future__ import annotations
 
+import json
 import logging
 from typing import Any, Literal
 
@@ -81,7 +82,10 @@ async def create_workspace_ai_snapshot(
             payload.notebook_id,
             payload.note_id,
             payload.source_file_ids,
-            [fact.model_dump(mode="json") for fact in payload.facts],
+            json.dumps(
+                [fact.model_dump(mode="json") for fact in payload.facts],
+                default=str,
+            ),
             created_by,
         )
 
