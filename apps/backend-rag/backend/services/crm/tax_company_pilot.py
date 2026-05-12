@@ -89,6 +89,25 @@ class TaxCompanyPilotReadiness(BaseModel):
     reasons: list[str] = Field(default_factory=list)
 
 
+class TaxCompanyPilotWorkspaceAiFact(BaseModel):
+    category: Literal["identity", "person", "compliance", "gap", "next_action"]
+    label: str
+    detail: str
+    source_file_ids: list[str] = Field(default_factory=list)
+    confidence: DriveConfidence = "medium"
+
+
+class TaxCompanyPilotWorkspaceAiSnapshot(BaseModel):
+    provider: Literal["notebooklm", "gemini", "manual"] = "notebooklm"
+    notebook_id: str | None = None
+    note_id: str | None = None
+    source_file_ids: list[str] = Field(default_factory=list)
+    facts: list[TaxCompanyPilotWorkspaceAiFact] = Field(default_factory=list)
+    approved_by: str | None = None
+    approved_at: str | None = None
+    created_at: str | None = None
+
+
 class TaxCompanyPilotEvidenceStory(BaseModel):
     person_name: str
     company_name: str
@@ -120,6 +139,7 @@ class TaxCompanyPilotMap(BaseModel):
     gaps: list[TaxCompanyPilotGap]
     evidence_links: list[TaxCompanyPilotEvidenceLink]
     ai_recap: list[str]
+    workspace_ai: TaxCompanyPilotWorkspaceAiSnapshot | None = None
     read_only: bool = True
     confidence: DriveConfidence = "medium"
 
