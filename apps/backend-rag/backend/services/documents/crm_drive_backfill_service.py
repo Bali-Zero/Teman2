@@ -277,11 +277,7 @@ WHERE c.deleted_at IS NULL
   AND d.file_id <> ''
   AND (d.is_archived IS NULL OR d.is_archived = false)
   AND ($1::int IS NULL OR d.client_id = $1::int)
-  AND (
-      kg.entity_id IS NULL
-      OR d.ocr_status IS NULL
-      OR d.ocr_status IN ('pending', 'processing', 'failed')
-  )
+  AND kg.entity_id IS NULL
 ORDER BY
     CASE
         WHEN d.ocr_status = 'completed' AND kg.entity_id IS NULL THEN 0
