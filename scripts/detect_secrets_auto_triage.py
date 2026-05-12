@@ -102,6 +102,14 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         "docs/ markdown: documentation, any token string is illustrative or redacted",
     ),
     (
+        re.compile(r"(^|/)research/.*\.md$"),
+        "research/ markdown: design/audit/planning notes, token strings illustrative",
+    ),
+    (
+        re.compile(r"(^|/)research/.*\.md$"),
+        "research/ markdown: design/audit/planning notes, token strings illustrative",
+    ),
+    (
         re.compile(r"(^|/)README.*\.md$", re.IGNORECASE),
         "README: documentation",
     ),

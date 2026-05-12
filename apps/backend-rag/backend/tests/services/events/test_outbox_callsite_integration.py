@@ -354,6 +354,12 @@ _TRIGGER_BACKED_CHANNELS_IN_OTHER_MIGRATIONS = frozenset({
     "measurer_event",
     "crm_welcome_completed",
     "asset_provenance",
+    # Wave 1 Intel Lake (2026-05-12). Trigger ``notify_intel_lake_event``
+    # lives in migration 168_intel_lake_schema.sql, dispatching ONLY on
+    # AFTER INSERT (no UPDATE — last_seen_at refresh must not re-fire).
+    # See migration 168 + backend/tests/db/test_migration_168_intel_lake.py
+    # for per-migration contract (outbox-before-notify + _outbox_id injection).
+    "intel_lake_event",
 })
 _TRIGGER_BACKED_CHANNELS = frozenset(
     ch
