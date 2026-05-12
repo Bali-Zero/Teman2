@@ -52,6 +52,30 @@ Branch: `feat/wr2-canva-pdf-render-2026-05-13`. Commits:
 - `fafa25267` — feat(wr2): rebuild wr2_canva_pdf_render.py production renderer
 - `e697328d5` — fix(wr2): 3 visual fixes (body vcenter + punctuation glue + Quartz stat-card)
 
+**2026-05-13 v3 orchestrator end-to-end design + implementation complete** (PR pending):
+
+The new `canva_renderer_v2` package (~1000 LOC across 9 modules) and 4 scripts + 3 launchd plists are committed on branch `feat/wr2-canva-pdf-render-2026-05-13`. End-to-end loop now codeable: PG draft → ReportLab → Tigris → Canva `import-design-from-url` → PG update. No master template required.
+
+Full implementation tasks T1-T13 (47/47 unit tests passing across all modules) committed as discrete bisect-safe commits:
+
+- T1: `c4a497ac3` — migration 169 lease columns
+- T2: `7a43ba1e1` — pkg init + _telegram.py
+- T3: `b40d4c2b3` — _schema_adapter.py + 3 fixtures
+- T4: `ecaba84c9` — _pdf_pipeline.py subprocess
+- T5: `302a7f466` — _tigris.py + S3 lifecycle JSON
+- T6: `dc2967ca9` — _token_storage.py (HMAC + flock + proactive refresh)
+- T7: `96bc8c203` — _canva_mcp.py (mcp SDK 1.27.0 streamable HTTP + OAuth)
+- T8: `d765894b9` — _pg.py asyncpg + lease CAS
+- T9: `af33c24bf` — _telemetry.py JSONL + rotation
+- T10: `532e93e92` — orchestrator.py top-level (3 integration tests)
+- T11: `6e830a2f4` — scripts/wr2_canva_pdf_apply.py entrypoint
+- T12: `1bc70a32e` — bootstrap + 2 watchdogs + E2E fixture
+- T13: `36b118602` — 3 launchd plists (plutil-lint OK)
+
+Pending T14 (this update) + T15 (PR open). Deploy via `docs/runbooks/wr2-orchestrator-pdf-render-runbook.md`.
+
+Scar moves toward archival — DAHJEkWpkzY validation gap permanently closed by architectural pivot.
+
 _Discovered: 2026-05-10 02:53 WITA during run #1 of the post-DAHE6lx1lf8 recovery cycle · Patched 2026-05-10 via `chore/wr2-pipeline-hardening-2026-05-10` (validator + unit test + docstring guard) · Severity: P0_
 
 **TRAUMA:** PR #565 promoted `DAHJLYRn_3E` as the new master template
