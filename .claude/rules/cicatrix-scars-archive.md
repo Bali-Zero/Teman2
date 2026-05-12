@@ -6,6 +6,38 @@ Restore by appending an entry back to `cicatrix-scars.md` if it relapses into a 
 
 ---
 
+### ✅ RESOLVED: Consiglio v1 mata-garuda prototype quarantined permanently (2026-05-06 / confirmed 2026-05-12)
+
+_Quarantined 2026-05-06 PR #468 · Confirmed permanent via SYMBIOSIS gap-closure loop NLM review 2026-05-12 PR #588_
+
+**TRAUMA:** The multi-LLM deliberation prototype in `apps/mata-garuda/council/` (Sprint reference PR #68 2026-04-16) never produced a single deliberation: `council.db` was never created on either Pro or Mini, no log entries match "council", the weekly LaunchAgent was meant for Air (decommissioned 2026-05-05 before any cron landed), and `shared/escalations.json` (one of two intended Council inputs) stayed empty from creation through quarantine.
+
+**ANTIBODY:** Code moved to `apps/mata-garuda/.disabled-2026-05-06/council/` following the `.disabled-YYYY-MM-DD/` convention used for `apps/backend-rag/backend/channels/.disabled-2026-04-30/` (Twitter/Slack/gchat). Kept self-contained at moment of quarantine: no production imports of `mata_garuda.council` existed. Files moved (preserves git history via `git mv`):
+
+```
+apps/mata-garuda/mata_garuda/council/        → .disabled-2026-05-06/council/
+apps/mata-garuda/tests/council/              → .disabled-2026-05-06/tests-council/
+apps/mata-garuda/scripts/council_weekly.py   → .disabled-2026-05-06/council_weekly.py
+shared/escalations.json                      → .disabled-2026-05-06/escalations.json
+```
+
+**GOTCHA:** The LIVE Consiglio v1 implementation continues at `apps/backend-rag/backend/services/research/consiglio_orchestrator.py` (Gate-6 invariant: every final claim has ≥3/4 LLMs agreeing, 4 members Claude+Gemini+DeepSeek+NotebookLM, read-only, feeds Task 20 playbook synthesis writing `08_playbook.md` + `09_wr2_weights.json`). Companion file `apps/organism/organism/supervisor/consiglio_gate.py` is the supervisor's Gate integrator. The mata-garuda quarantined prototype and the backend-RAG live impl are DIFFERENT designs:
+
+| Aspect | Quarantined prototype | Live impl |
+|---|---|---|
+| Location | `apps/mata-garuda/.disabled-2026-05-06/council/` | `apps/backend-rag/backend/services/research/consiglio_orchestrator.py` |
+| Cadence | Weekly cron LaunchAgent | Synchronous gate-6 invariant in FastAPI context |
+| Members | 4-LLM moderator (different impl) | Claude+Gemini+DeepSeek+NotebookLM |
+| Persistence | SQLite `council.db` | None (read-only) |
+| Trigger | Weekly cron (meant for Air) | Task 20 driver call |
+| Status | DORMANT (no historical deliberations) | LIVE (production playbook synthesis) |
+
+PR #468 correctly quarantined only the prototype. SYMBIOSIS gap-closure loop 2026-05-12 Step 4 initially recommended "KILL all Consiglio" based on incomplete analysis (only checked the quarantined directory); NB-1 review caught the live impl and the KILL was REVOKED. See `research/symbiosis/2026-05-12-consiglio-v1-live-vs-quarantined-divergence.md` for the full decision matrix.
+
+**Future agents**: when evaluating any "kill X" decision, grep the ENTIRE `apps/` tree for the entity name, not just the quarantined location. The mata-garuda+backend-rag duplicate-entity pattern is structural in Nuzantara (cf. `apps/cell/` legacy vs `packages/cell-core/` canonical observatory implementations).
+
+---
+
 ### ✅ RESOLVED: OpenClaw MCP child apparent mortality = test artifact (2026-05-02)
 
 _Discovered: 2026-05-02 during deep test del bot @Balizerobot dopo realignment workspace prompt. **Non è un bug strutturale** — è artefatto del test pattern._

@@ -64,6 +64,23 @@ async def _run_one_pulse() -> int:
         result.health_status,
         result.action_taken,
     )
+
+    # Gap 1 Layer 2 fix 2026-05-12: cell_core.pulse:265 schedules the
+    # observatory emit as fire-and-forget asyncio.create_task. Without this
+    # cleanup wait, asyncio.run() exits before the emit task can finish its
+    # PG INSERT + NOTIFY, leaving observatory.db without the seo_cell row.
+    # Reference: research/symbiosis/2026-05-12-cell-silenti-root-cause-and-fix.md
+    pending = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
+    if pending:
+        logger.info(
+            "[seo_cell] awaiting %d fire-and-forget tasks (observatory emit)",
+            len(pending),
+        )
+        try:
+            await asyncio.wait(pending, timeout=10.0)
+        except Exception as e:  # noqa: BLE001
+            logger.warning("[seo_cell] pending-task wait raised: %r", e)
+
     # We treat 'red' health as a soft failure for sentinel purposes —
     # the cell is still pre_natal and the actor never ran, but a red
     # signal indicates a sensor is having connectivity issues that

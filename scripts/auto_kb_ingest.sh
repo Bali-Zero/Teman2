@@ -1,8 +1,22 @@
 #!/bin/bash
 
 # Configuration
-PROJECT_DIR="/Users/antonellosiano/Projects/nuzantara"
-PYTHON_EXEC="/Users/antonellosiano/.pyenv/shims/python3"
+# Path-aware: works on Pro (~/Desktop/nuzantara) and on legacy Air
+# (~/Projects/nuzantara). Air was decommissioned 2026-05-05; this script
+# was originally hardcoded for Air.
+if [ -d "$HOME/Desktop/nuzantara" ]; then
+    PROJECT_DIR="$HOME/Desktop/nuzantara"
+elif [ -d "$HOME/Projects/nuzantara" ]; then
+    PROJECT_DIR="$HOME/Projects/nuzantara"
+else
+    echo "ERROR: could not locate nuzantara repo under \$HOME" >&2
+    exit 1
+fi
+if [ -x "$HOME/.pyenv/shims/python3" ]; then
+    PYTHON_EXEC="$HOME/.pyenv/shims/python3"
+else
+    PYTHON_EXEC="$(command -v python3)"
+fi
 KB_DIR="$PROJECT_DIR/apps/kb"
 LOG_FILE="$PROJECT_DIR/logs/kb_ingest.log"
 DATE=$(date "+%Y-%m-%d %H:%M:%S")
