@@ -30,6 +30,18 @@ VALID_EXPECTED_OUTCOMES = frozenset({"success", "partial", "failure"})
 VALID_HEALTH = frozenset({"green", "yellow", "red"})
 WEAKNESS_PATTERN_THRESHOLD = 3
 
+# LEVA 2 (2026-05-13): when a weakness_tag accumulates >= this many critiques in
+# a rolling SCAR_WINDOW_HOURS, the critic emits a "scar" row to cell_skills so
+# the thinker can read it across pulses (loop persistence). Brainstorm
+# convergence Gemini 3.1 Pro + DeepSeek V4 Pro:
+#   N=10 / 24h: produces 1 scar in practice today (check_health 804 in 7d ~
+#               115/day, > 10/24h). alert_human 11 in 7d ~ 1.6/day, < 10/24h.
+#   confidence 0.7: below decisional threshold of many routes — penalises
+#                   without blinding. Deterministic, NOT adaptive.
+SCAR_THRESHOLD_N = 10
+SCAR_WINDOW_HOURS = 24
+SCAR_CONFIDENCE = 0.7
+
 _OUTCOME_SCORE: dict[str, float] = {
     "success": 1.0,
     "partial": 0.5,
@@ -518,6 +530,25 @@ class CriticAgent:
                         exp["episode_id"],
                     )
 
+            # LEVA 2: emit a scar to cell_skills when weakness_tag recurs.
+            # Best-effort, never fail the critique on scar errors.
+            if weakness_tag is not None:
+                try:
+                    await self._maybe_emit_scar(
+                        weakness_tag=weakness_tag,
+                        action=action,
+                        expected_outcome=exp["expected_outcome"],
+                        expected_health=exp["expected_health_in_n"],
+                        latest_actual_outcome=actual_outcome,
+                        latest_actual_health=actual_health,
+                    )
+                except Exception as exc:
+                    logger.warning(
+                        "Scar emission failed for weakness %s: %s",
+                        weakness_tag,
+                        exc,
+                    )
+
             # Record skill use if skill_id is set.
             skill_id = exp.get("skill_id")
             if skill_id is not None and self._library is not None:
@@ -551,6 +582,122 @@ class CriticAgent:
         except Exception as exc:
             logger.error("Failed to evaluate expectation %s: %s", exp.get("id"), exc)
             return None
+
+    # -- Scar emission (LEVA 2) ---------------------------------------------
+
+    async def _maybe_emit_scar(
+        self,
+        weakness_tag: str,
+        action: str,
+        expected_outcome: str,
+        expected_health: str,
+        latest_actual_outcome: str,
+        latest_actual_health: str,
+    ) -> int | None:
+        """Insert a scar row in cell_skills when *weakness_tag* recurs.
+
+        Triggered after each critique with a non-null ``weakness_tag``. The scar
+        is idempotent across concurrent pulses thanks to the partial UNIQUE
+        index ``uq_cell_skills_scar_tag`` (kind='scar'). Returns the inserted
+        row id, or ``None`` if the count threshold was not reached or the scar
+        already exists.
+
+        Failure modes (broken DB pool, missing migration 172, unique conflict)
+        do NOT propagate — the caller logs at WARNING level.
+        """
+        async with self._pool.acquire() as conn:
+            count = await conn.fetchval(
+                """
+                SELECT COUNT(*) FROM cell_critiques
+                WHERE weakness_tag = $1
+                  AND created_at > NOW() - ($2 || ' hours')::INTERVAL
+                """,
+                weakness_tag,
+                str(SCAR_WINDOW_HOURS),
+            )
+            if (count or 0) < SCAR_THRESHOLD_N:
+                return None
+
+            # Fetch last 5 actual_outcome values for this weakness_tag to give
+            # the precondition signature some shape. Best-effort: missing rows
+            # are tolerated.
+            last_outcomes_rows = await conn.fetch(
+                """
+                SELECT actual_outcome FROM cell_critiques
+                WHERE weakness_tag = $1
+                ORDER BY id DESC
+                LIMIT 5
+                """,
+                weakness_tag,
+            )
+            last_5_actual = [r["actual_outcome"] for r in last_outcomes_rows]
+            # Include the current evaluation when the fetch missed it.
+            if not last_5_actual or last_5_actual[0] != latest_actual_outcome:
+                last_5_actual = [latest_actual_outcome, *last_5_actual][:5]
+
+            precondition = {
+                "action": action,
+                "expected_outcome": expected_outcome,
+                "expected_health": expected_health,
+                "last_5_actual_outcomes": last_5_actual,
+                "time_span_seconds": SCAR_WINDOW_HOURS * 3600,
+            }
+
+            name = f"scar:{weakness_tag}"
+            trigger_nl = (
+                f"After {SCAR_THRESHOLD_N}+ '{action}' actions in "
+                f"{SCAR_WINDOW_HOURS}h where the cell expected "
+                f"{expected_outcome}/{expected_health} but observed repeated "
+                f"failure (most recent: {latest_actual_outcome}/{latest_actual_health}), "
+                f"avoid '{action}' in the same situation."
+            )
+            rationale = (
+                f"Scar emitted by CriticAgent because '{weakness_tag}' "
+                f"recurred {count} times within {SCAR_WINDOW_HOURS}h "
+                f">= threshold {SCAR_THRESHOLD_N}. "
+                f"See migration 172_cell_skills_scar_support.sql."
+            )
+            # Empty embedding placeholder: scars are matched by precondition
+            # JSONB in the thinker (LEVA 4), not by semantic similarity.
+            empty_embedding = b""
+
+            row = await conn.fetchrow(
+                """
+                INSERT INTO cell_skills
+                    (name, trigger_nl, action_sequence, rationale_nl,
+                     fitness, success_count, failure_count, use_count,
+                     generation, parent_id, embedding, status, source,
+                     kind, scope, precondition, scar_weakness_tag)
+                VALUES
+                    ($1, $2, '[]'::jsonb, $3,
+                     $4, 0, 0, 0,
+                     0, NULL, $5, 'active', 'critic_scar_emission',
+                     'scar', 'Personal', $6::jsonb, $7)
+                ON CONFLICT (scar_weakness_tag) WHERE kind = 'scar'
+                    DO NOTHING
+                RETURNING id
+                """,
+                name,
+                trigger_nl,
+                rationale,
+                SCAR_CONFIDENCE,
+                empty_embedding,
+                json.dumps(precondition),
+                weakness_tag,
+            )
+            if row is None:
+                logger.debug(
+                    "Scar %s already exists (idempotent skip)", weakness_tag
+                )
+                return None
+            logger.info(
+                "Emitted scar id=%d for weakness %s (recurrence=%d in %dh)",
+                row["id"],
+                weakness_tag,
+                count,
+                SCAR_WINDOW_HOURS,
+            )
+            return int(row["id"])
 
     # -- Weakness detection -------------------------------------------------
 

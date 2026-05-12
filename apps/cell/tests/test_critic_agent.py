@@ -8,6 +8,9 @@ import httpx
 import pytest
 
 from cell.cortex.critic import (
+    SCAR_CONFIDENCE,
+    SCAR_THRESHOLD_N,
+    SCAR_WINDOW_HOURS,
     VALID_EXPECTED_OUTCOMES,
     VALID_HEALTH,
     WEAKNESS_PATTERN_THRESHOLD,
@@ -549,6 +552,253 @@ class TestWeaknessDetection:
 
         assert tags == []
         mock_self_model.add_weakness.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# TestScarEmission (LEVA 2, 2026-05-13)
+# ---------------------------------------------------------------------------
+
+
+class TestScarEmission:
+    """LEVA 2: weakness_tag recurrence -> persisted scar in cell_skills."""
+
+    def test_scar_constants_sane(self):
+        # Brainstorm Gemini+DeepSeek 2026-05-13: N=10/24h/conf=0.7.
+        assert SCAR_THRESHOLD_N == 10
+        assert SCAR_WINDOW_HOURS == 24
+        assert 0.0 < SCAR_CONFIDENCE < 1.0
+        # 0.7 sits below the typical 0.8 decisional threshold of many
+        # downstream routes; if you change this, document why.
+        assert SCAR_CONFIDENCE == 0.7
+
+    @pytest.mark.asyncio
+    async def test_emit_scar_when_threshold_reached(self, mock_pool):
+        conn = _conn_from_pool(mock_pool)
+        # 1st fetchval = count(*) over 24h, hit threshold.
+        # 2nd fetchrow = INSERT ... RETURNING id (no conflict -> returns row).
+        conn.fetchval = AsyncMock(return_value=SCAR_THRESHOLD_N)
+        conn.fetch = AsyncMock(return_value=[
+            {"actual_outcome": "failure"},
+            {"actual_outcome": "failure"},
+            {"actual_outcome": "partial"},
+        ])
+        conn.fetchrow = AsyncMock(return_value={"id": 7})
+
+        agent = CriticAgent(mock_pool)
+        new_id = await agent._maybe_emit_scar(
+            weakness_tag="repeated_failure_check_health",
+            action="check_health",
+            expected_outcome="partial",
+            expected_health="green",
+            latest_actual_outcome="failure",
+            latest_actual_health="red",
+        )
+        assert new_id == 7
+
+        # Verify the INSERT was issued with the right shape.
+        insert_call = next(
+            c for c in conn.fetchrow.await_args_list
+            if "INSERT INTO cell_skills" in c.args[0]
+        )
+        sql = insert_call.args[0]
+        assert "kind = 'scar'" in sql
+        assert "scar_weakness_tag" in sql
+        assert "ON CONFLICT (scar_weakness_tag) WHERE kind = 'scar'" in sql
+        assert "DO NOTHING" in sql
+        # Confidence (positional arg 4) is the SCAR_CONFIDENCE constant.
+        assert insert_call.args[4] == SCAR_CONFIDENCE
+        # scar_weakness_tag (positional arg 7) matches what we passed.
+        assert insert_call.args[7] == "repeated_failure_check_health"
+
+    @pytest.mark.asyncio
+    async def test_no_scar_when_under_threshold(self, mock_pool):
+        conn = _conn_from_pool(mock_pool)
+        conn.fetchval = AsyncMock(return_value=SCAR_THRESHOLD_N - 1)
+        # If the threshold check fails, fetchrow MUST NOT be called.
+        conn.fetchrow = AsyncMock(return_value={"id": 999})
+
+        agent = CriticAgent(mock_pool)
+        result = await agent._maybe_emit_scar(
+            weakness_tag="repeated_failure_alert_human",
+            action="alert_human",
+            expected_outcome="partial",
+            expected_health="yellow",
+            latest_actual_outcome="failure",
+            latest_actual_health="red",
+        )
+        assert result is None
+        conn.fetchrow.assert_not_awaited()
+
+    @pytest.mark.asyncio
+    async def test_idempotent_on_conflict(self, mock_pool):
+        """ON CONFLICT DO NOTHING -> RETURNING yields None on duplicate."""
+        conn = _conn_from_pool(mock_pool)
+        conn.fetchval = AsyncMock(return_value=SCAR_THRESHOLD_N + 5)
+        conn.fetch = AsyncMock(return_value=[
+            {"actual_outcome": "failure"},
+        ])
+        conn.fetchrow = AsyncMock(return_value=None)
+
+        agent = CriticAgent(mock_pool)
+        result = await agent._maybe_emit_scar(
+            weakness_tag="repeated_failure_check_health",
+            action="check_health",
+            expected_outcome="partial",
+            expected_health="green",
+            latest_actual_outcome="failure",
+            latest_actual_health="red",
+        )
+        assert result is None
+
+    @pytest.mark.asyncio
+    async def test_precondition_jsonb_shape(self, mock_pool):
+        """Precondition JSONB must contain the 5 documented keys."""
+        conn = _conn_from_pool(mock_pool)
+        conn.fetchval = AsyncMock(return_value=SCAR_THRESHOLD_N)
+        conn.fetch = AsyncMock(return_value=[
+            {"actual_outcome": "failure"},
+            {"actual_outcome": "partial"},
+        ])
+        conn.fetchrow = AsyncMock(return_value={"id": 1})
+
+        agent = CriticAgent(mock_pool)
+        await agent._maybe_emit_scar(
+            weakness_tag="repeated_failure_scale_up",
+            action="scale_up",
+            expected_outcome="success",
+            expected_health="green",
+            latest_actual_outcome="failure",
+            latest_actual_health="red",
+        )
+
+        insert_call = next(
+            c for c in conn.fetchrow.await_args_list
+            if "INSERT INTO cell_skills" in c.args[0]
+        )
+        # precondition is positional arg 6, serialised JSON string.
+        precondition_json = insert_call.args[6]
+        precondition = json.loads(precondition_json)
+        assert precondition["action"] == "scale_up"
+        assert precondition["expected_outcome"] == "success"
+        assert precondition["expected_health"] == "green"
+        assert isinstance(precondition["last_5_actual_outcomes"], list)
+        assert len(precondition["last_5_actual_outcomes"]) <= 5
+        assert precondition["time_span_seconds"] == SCAR_WINDOW_HOURS * 3600
+
+    @pytest.mark.asyncio
+    async def test_evaluate_pending_calls_emit_scar(self, mock_pool, now):
+        """End-to-end: weakness_tag in critique -> _maybe_emit_scar invoked."""
+        conn = _conn_from_pool(mock_pool)
+
+        # Force the weakness_tag path: 3+ recent failures on this action.
+        exp_row = {
+            "id": 50,
+            "pulse_number": 100,
+            "episode_id": None,
+            "action": "check_health",
+            "skill_id": None,
+            "expected_outcome": "partial",
+            "expected_rt_delta_ms": 0,
+            "expected_health_in_n": "green",
+            "n_pulses_horizon": 5,
+            "confidence_at_proposal": 0.5,
+            "rationale_nl": "heuristic",
+            "critique_id": None,
+            "created_at": now,
+        }
+        # Pulse data with red status -> failure outcome.
+        pulse_data = [{"health_status": "red", "response_time_ms": 5000}]
+
+        fetch_returns = [
+            [exp_row],   # evaluate_pending: pending expectations
+            pulse_data,  # _evaluate_single: pulse_log rows
+            # _maybe_emit_scar: last_5 actual_outcome rows
+            [{"actual_outcome": "failure"}],
+        ]
+        fetch_idx = [0]
+
+        async def mock_fetch(*args, **kwargs):
+            i = fetch_idx[0]
+            fetch_idx[0] += 1
+            return fetch_returns[i] if i < len(fetch_returns) else []
+
+        # fetchval is called twice: weakness failure_count (>= 3) then scar
+        # threshold count (>= SCAR_THRESHOLD_N).
+        fetchval_returns = [WEAKNESS_PATTERN_THRESHOLD, SCAR_THRESHOLD_N]
+        fetchval_idx = [0]
+
+        async def mock_fetchval(*args, **kwargs):
+            i = fetchval_idx[0]
+            fetchval_idx[0] += 1
+            return fetchval_returns[i] if i < len(fetchval_returns) else 0
+
+        # fetchrow is called for INSERT critique and INSERT scar.
+        fetchrow_returns = [{"id": 9001, "created_at": now}, {"id": 42}]
+        fetchrow_idx = [0]
+
+        async def mock_fetchrow(*args, **kwargs):
+            i = fetchrow_idx[0]
+            fetchrow_idx[0] += 1
+            return fetchrow_returns[i] if i < len(fetchrow_returns) else None
+
+        conn.fetch = AsyncMock(side_effect=mock_fetch)
+        conn.fetchval = AsyncMock(side_effect=mock_fetchval)
+        conn.fetchrow = AsyncMock(side_effect=mock_fetchrow)
+
+        agent = CriticAgent(mock_pool)
+        critiques = await agent.evaluate_pending(current_pulse=110)
+
+        assert len(critiques) == 1
+        assert critiques[0].weakness_tag == "repeated_failure_check_health"
+        # Scar INSERT was executed (2nd fetchrow call).
+        assert fetchrow_idx[0] == 2
+
+    @pytest.mark.asyncio
+    async def test_scar_failure_does_not_break_critique(self, mock_pool, now):
+        """Scar emission raises -> critique still returned, error logged."""
+        conn = _conn_from_pool(mock_pool)
+
+        exp_row = {
+            "id": 51,
+            "pulse_number": 200,
+            "episode_id": None,
+            "action": "check_health",
+            "skill_id": None,
+            "expected_outcome": "partial",
+            "expected_rt_delta_ms": 0,
+            "expected_health_in_n": "green",
+            "n_pulses_horizon": 5,
+            "confidence_at_proposal": 0.5,
+            "rationale_nl": "heuristic",
+            "critique_id": None,
+            "created_at": now,
+        }
+        pulse_data = [{"health_status": "red", "response_time_ms": 5000}]
+
+        fetch_returns = [[exp_row], pulse_data]
+        fetch_idx = [0]
+
+        async def mock_fetch(*args, **kwargs):
+            i = fetch_idx[0]
+            fetch_idx[0] += 1
+            return fetch_returns[i] if i < len(fetch_returns) else []
+
+        conn.fetch = AsyncMock(side_effect=mock_fetch)
+        conn.fetchval = AsyncMock(return_value=WEAKNESS_PATTERN_THRESHOLD)
+        conn.fetchrow = AsyncMock(return_value={"id": 9001, "created_at": now})
+
+        agent = CriticAgent(mock_pool)
+        # Force scar emission to raise.
+        with patch.object(
+            agent,
+            "_maybe_emit_scar",
+            new=AsyncMock(side_effect=RuntimeError("simulated DB outage")),
+        ):
+            critiques = await agent.evaluate_pending(current_pulse=210)
+
+        # Critique still produced despite scar failure.
+        assert len(critiques) == 1
+        assert critiques[0].id == 9001
 
 
 # ---------------------------------------------------------------------------
