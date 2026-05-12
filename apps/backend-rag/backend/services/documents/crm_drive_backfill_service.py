@@ -45,6 +45,7 @@ async def run_crm_drive_backfill(
     dry_run: bool = True,
     client_id: int | None = None,
     link_kg: bool = True,
+    allow_ocr: bool = False,
 ) -> dict[str, Any]:
     """Run one bounded backfill pass over existing CRM Drive documents.
 
@@ -54,6 +55,7 @@ async def run_crm_drive_backfill(
         dry_run: When true, only counts and previews candidates.
         client_id: Optional single-client scope.
         link_kg: Whether to create crm_kg edges after OCR/direct link.
+        allow_ocr: Whether this pass may dispatch missing documents to OCR.
 
     Returns:
         Summary counters safe for admin endpoints and cron logs.
@@ -62,9 +64,11 @@ async def run_crm_drive_backfill(
         pool,
         limit=limit,
         client_id=client_id,
+        allow_ocr=allow_ocr,
     )
     summary: dict[str, Any] = {
         "dry_run": dry_run,
+        "allow_ocr": allow_ocr,
         "candidate_count": len(candidates),
         "processed": 0,
         "ocr_dispatched": 0,
@@ -79,7 +83,12 @@ async def run_crm_drive_backfill(
 
     for candidate in candidates:
         try:
-            outcome = await _process_candidate(pool, candidate, link_kg=link_kg)
+            outcome = await _process_candidate(
+                pool,
+                candidate,
+                link_kg=link_kg,
+                allow_ocr=allow_ocr,
+            )
         except Exception as exc:  # noqa: BLE001 - batch worker must continue
             logger.error(
                 "CRM Drive backfill failed for document %s: %s",
@@ -105,11 +114,12 @@ async def fetch_crm_drive_backfill_candidates(
     *,
     limit: int = _DEFAULT_LIMIT,
     client_id: int | None = None,
+    allow_ocr: bool = False,
 ) -> list[CrmDriveBackfillCandidate]:
     """Fetch existing Drive-backed documents that still need OCR or KG."""
     safe_limit = max(1, min(limit, _MAX_LIMIT))
     async with pool.acquire() as conn:
-        rows = await conn.fetch(_CANDIDATE_SQL, client_id, safe_limit)
+        rows = await conn.fetch(_CANDIDATE_SQL, client_id, safe_limit, allow_ocr)
     return [_candidate_from_row(row) for row in rows]
 
 
@@ -118,10 +128,14 @@ async def _process_candidate(
     candidate: CrmDriveBackfillCandidate,
     *,
     link_kg: bool,
+    allow_ocr: bool,
 ) -> dict[str, int]:
     if _can_link_without_ocr(candidate):
         linked = await _link_candidate_to_kg(pool, candidate, candidate.document_type)
         return {"ocr_dispatched": 0, "kg_linked": int(linked), "skipped": int(not linked)}
+
+    if not allow_ocr:
+        return {"ocr_dispatched": 0, "kg_linked": 0, "skipped": 1}
 
     from backend.services.documents.ocr_dispatcher_service import dispatch_ocr_by_folder
 
@@ -278,6 +292,13 @@ WHERE c.deleted_at IS NULL
   AND (d.is_archived IS NULL OR d.is_archived = false)
   AND ($1::int IS NULL OR d.client_id = $1::int)
   AND kg.entity_id IS NULL
+  AND (
+      $3::boolean = true
+      OR (
+          d.ocr_status = 'completed'
+          AND d.ocr_extracted_data IS NOT NULL
+      )
+  )
 ORDER BY
     CASE
         WHEN d.ocr_status = 'completed' AND kg.entity_id IS NULL THEN 0
