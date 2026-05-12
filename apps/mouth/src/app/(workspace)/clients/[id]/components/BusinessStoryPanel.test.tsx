@@ -168,14 +168,19 @@ describe("BusinessStoryPanel", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("LKPM Q1 2026")).toBeInTheDocument();
     expect(
-      screen.getByText(
+      screen.getAllByText(
         "Confirm current company tax standing before the next LKPM cycle.",
       ),
-    ).toBeInTheDocument();
+    ).toHaveLength(2);
     expect(
       screen.getByText(
         "Team opens Drive evidence from kita. Client portal stays on approved downloads only.",
       ),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Next actions")).toBeInTheDocument();
+    expect(screen.getByText("tax")).toBeInTheDocument();
+    expect(
+      screen.getByText("Needed before the recap can be treated as current."),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /open lkpm q1 2026 evidence/i }),
