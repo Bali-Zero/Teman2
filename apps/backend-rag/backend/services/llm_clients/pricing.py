@@ -85,9 +85,20 @@ LLM_PRICING: dict[str, dict[str, float]] = {
         "input": 0.075,
         "output": 0.30,
     },
+    # ── DeepSeek V4 flagship (2026-04-24 release) ──
+    "deepseek/deepseek-v4-pro": {
+        "input": 0.435,
+        "output": 0.87,
+    },
+    "deepseek/deepseek-v4-flash": {
+        "input": 0.14,
+        "output": 0.28,
+    },
+    # Legacy alias — V4-Flash rates apply on DeepSeek side
+    # (DEPRECATED 2026-07-24, kept for backward-compat with old logs)
     "deepseek/deepseek-chat": {
-        "input": 0.27,
-        "output": 1.10,
+        "input": 0.14,
+        "output": 0.28,
     },
     # ── Default fallback (conservative estimate) ──
     "unknown": {
@@ -256,15 +267,28 @@ _PRICING_TABLE: dict[tuple[str, str], dict[str, float]] = {
         "input_per_token": 0.0,
         "output_per_token": 0.0,
     },
-    # ── DeepSeek (Council DeepSeekHTTPRunner + article_composer) ──
-    # Source: https://api-docs.deepseek.com/quick_start/pricing (2026-04, cache-miss rates)
+    # ── DeepSeek V4 flagship (2026-04-24 release) ──
+    # Source: https://api-docs.deepseek.com/news/news260424
+    # V4 Pro: 1.6T params, 49B activated, 1M ctx, ``reasoning_effort`` modes
+    #   (cache-miss/output rates; 75% promo to 2026-05-31 not applied here)
+    ("deepseek", "deepseek-v4-pro"): {
+        "input_per_token": 0.435 / 1_000_000,
+        "output_per_token": 0.87 / 1_000_000,
+    },
+    # V4 Flash: 284B params, 13B activated, 1M ctx
+    ("deepseek", "deepseek-v4-flash"): {
+        "input_per_token": 0.14 / 1_000_000,
+        "output_per_token": 0.28 / 1_000_000,
+    },
+    # Legacy aliases — DEPRECATED 2026-07-24, routed to V4-Flash on DeepSeek side
+    # so V4-Flash rates apply. Kept for backward-compat with historical logs.
     ("deepseek", "deepseek-reasoner"): {
-        "input_per_token": 0.55 / 1_000_000,
-        "output_per_token": 2.19 / 1_000_000,
+        "input_per_token": 0.14 / 1_000_000,
+        "output_per_token": 0.28 / 1_000_000,
     },
     ("deepseek", "deepseek-chat"): {
-        "input_per_token": 0.27 / 1_000_000,
-        "output_per_token": 1.10 / 1_000_000,
+        "input_per_token": 0.14 / 1_000_000,
+        "output_per_token": 0.28 / 1_000_000,
     },
 }
 

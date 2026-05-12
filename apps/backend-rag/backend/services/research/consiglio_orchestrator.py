@@ -7,7 +7,7 @@ Current members:
   claude     — Claude Opus 4.7 via OAuth CLI (primary analyst)
   gemini     — Gemini 3.1 Pro (1M ctx) via CLI — gracefully degrades
                on 429 rate limit; result simply omits gemini votes
-  deepseek   — DeepSeek Reasoner ($0.01/query, audited exception)
+  deepseek   — DeepSeek V4 Pro Think Max ($0.01/query, audited exception)
   notebooklm — NotebookLM MCP query — grounded authority validator
 
 If a member fails (network error, rate limit, no binary), the orchestrator

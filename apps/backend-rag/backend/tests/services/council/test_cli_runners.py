@@ -76,7 +76,7 @@ def test_deepseek_requires_api_key():
 
 def test_deepseek_runner_default_model():
     r = DeepSeekHTTPRunner(api_key="sk-test")
-    assert r.model == "deepseek-reasoner"
+    assert r.model == "deepseek-v4-pro"
 
 
 # ── ClaudeCLIRunner subprocess errors ──────────────────────────────────
