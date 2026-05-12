@@ -361,7 +361,47 @@ def _ingest_to_backend(pdf_path: Path, row: RegulationRow) -> dict:
                 headers={"X-API-Key": SCRAPER_API_KEY},
             )
             response.raise_for_status()
-            return response.json()
+            result = response.json()
+
+    # Intel Lake Wave 4 (2026-05-12): enqueue regulation observation to
+    # local SQLite outbox. Best-effort — failure must not block ingestion.
+    try:
+        import hashlib  # noqa: PLC0415
+        import sys as _sys  # noqa: PLC0415
+        _sys.path.insert(0, "/Users/nuzantara/scripts")
+        from intel_lake_outbox import enqueue as _lake_enqueue  # type: ignore
+        url = row.url or f"peraturan://{row.tipo}/{row.anno}/{row.nome or 'unknown'}"
+        ch = hashlib.sha256(
+            ((title or "") + " " + url).encode()
+        ).hexdigest()[:32]
+        _lake_enqueue(
+            "peraturan_ingestion_trigger",
+            {
+                "producer_name": "peraturan_ingestion_trigger",
+                "canonical_url": url,
+                "content_hash": ch,
+                "title": (title or row.nome or "untitled")[:500],
+                "summary": None,
+                "source_domain": "peraturan.go.id",
+                "language": "id",
+                "jurisdiction": "ID-national",
+                "topic_tags": ["regulation", "legal", (row.tipo or "unknown").lower()],
+                "published_at": str(row.anno) if row.anno else None,
+                "score": None,
+                "raw_payload": {
+                    "tipo": row.tipo,
+                    "anno": row.anno,
+                    "tier": params.get("tier"),
+                    "backend_response_chunks": result.get("chunks") if isinstance(result, dict) else None,
+                },
+            },
+        )
+    except Exception as _exc:
+        # Logger not available at this scope; print to stderr is best we can do
+        import sys as _sys2  # noqa: PLC0415
+        print(f"intel_lake_outbox enqueue failed: {_exc}", file=_sys2.stderr)
+
+    return result
 
 
 # ─── Drive upload ─────────────────────────────────────────────────────────────
