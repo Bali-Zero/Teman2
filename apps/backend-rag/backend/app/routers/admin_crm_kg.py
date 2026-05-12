@@ -2,6 +2,8 @@
 
 Endpoints exposed:
   - GET  /api/admin/crm-kg/health           → counts of nodes/edges per type
+  - POST /api/admin/crm-kg/backfill-drive-documents
+                                             → OCR/KG pass over current CRM docs
   - POST /api/admin/crm-kg/build-mediated   → run Tier-B mediated edge pass (PR-B)
   - POST /api/admin/crm-kg/garbage-collect  → soft-delete orphan nodes,
                                                 hard-delete old edges (PR-D)
@@ -17,11 +19,59 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from fastapi import APIRouter, BackgroundTasks, Request
+from fastapi import APIRouter, BackgroundTasks, Query, Request
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/admin/crm-kg", tags=["admin"])
+
+
+@router.post("/backfill-drive-documents")
+async def trigger_backfill_drive_documents(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    limit: int = Query(25, ge=1, le=250),
+    dry_run: bool = Query(True),
+    client_id: int | None = Query(None, ge=1),
+) -> dict[str, Any]:
+    """Backfill current CRM Drive documents into OCR and crm_kg.
+
+    Dry-run returns the candidate summary immediately. Live mode runs in a
+    background task so admin/cron callers do not block on Gemini OCR.
+    """
+    pool = getattr(request.app.state, "db_pool", None)
+    if not pool:
+        return {"status": "error", "message": "Database pool not available"}
+
+    from backend.services.documents.crm_drive_backfill_service import (
+        run_crm_drive_backfill,
+    )
+
+    if dry_run:
+        return await run_crm_drive_backfill(
+            pool,
+            limit=limit,
+            dry_run=True,
+            client_id=client_id,
+        )
+
+    async def _run() -> None:
+        result = await run_crm_drive_backfill(
+            pool,
+            limit=limit,
+            dry_run=False,
+            client_id=client_id,
+        )
+        logger.info("crm_kg.backfill_drive_documents background result: %s", result)
+
+    background_tasks.add_task(_run)
+    return {
+        "status": "started",
+        "message": "CRM Drive document backfill running in background",
+        "dry_run": False,
+        "limit": limit,
+        "client_id": client_id,
+    }
 
 
 @router.post("/build-mediated")

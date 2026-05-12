@@ -126,16 +126,59 @@ function getEvidenceItems(
   }));
 }
 
+function humanizeOperationalText(value: string): string {
+  const normalized = value.trim();
+  const direct: Record<string, string> = {
+    "Attach source documents.": "Add the missing documents.",
+    "Attach source documents before using this company story operationally.":
+      "Add the missing documents before using this story for work.",
+    "Run OCR/KG linking for stronger relationships.":
+      "Let the CRM read the documents and connect them.",
+    "Run OCR/KG linking to strengthen the person-company evidence chain.":
+      "Let the CRM read the documents and connect this person to the company.",
+    "Attach tax or LKPM evidence.": "Add the tax or LKPM files.",
+    "No blocking evidence gaps.": "Nothing important is missing.",
+  };
+  if (direct[normalized]) return direct[normalized];
+
+  return normalized
+    .replace(/\bOCR\/KG linking\b/g, "document reading")
+    .replace(/\bKG\b/g, "CRM map")
+    .replace(/\bOCR\b/g, "document reading")
+    .replace(/\bevidence layer\b/gi, "document map")
+    .replace(/\bevidence\b/gi, "documents")
+    .replace(/\bsource documents\b/gi, "missing documents")
+    .replace(/\bperson-first workspace\b/gi, "client story")
+    .replace(/\boperationally\b/gi, "for work");
+}
+
+function humanReadinessLabel(readiness: TaxCompanyPilotReadiness): string {
+  if (readiness.status === "ready") return "Ready";
+  if (readiness.status === "blocked") return "Missing documents";
+  return "Needs a check";
+}
+
+function humanConfidenceLabel(confidence: TaxCompanyPilotMap["confidence"]): string {
+  const labels: Record<TaxCompanyPilotMap["confidence"], string> = {
+    unconfirmed: "not confirmed",
+    low: "early draft",
+    medium: "some documents",
+    high: "strong documents",
+    confirmed: "confirmed",
+  };
+  return labels[confidence] ?? confidence;
+}
+
 function getNextAction(
   map: TaxCompanyPilotMap,
   story: TaxCompanyPilotEvidenceStory | null,
   dossier: TaxCompanyPilotPersonDossier | null,
 ): string {
-  return (
+  return humanizeOperationalText(
     story?.next_action ??
-    dossier?.next_action ??
-    map.next_best_actions[0]?.label ??
-    "Review the company evidence and decide the next operational step."
+      dossier?.next_action ??
+      map.next_best_actions[0]?.label ??
+      "Review the company documents and decide the next step.",
   );
 }
 
@@ -175,13 +218,13 @@ function EmptyBusinessStory({ companyNames }: { companyNames: string[] }) {
         <div className="min-w-0">
           <h3 className="text-sm font-semibold text-[var(--bz-text-1)]">
             {hasCompanyLinks
-              ? "No evidence dossier found yet"
-              : "No business story linked yet"}
+              ? "Story not built yet"
+              : "No company linked yet"}
           </h3>
           <p className="mt-1 text-sm leading-6 text-[var(--bz-text-2)]">
             {hasCompanyLinks
-              ? "The person has company links, but the evidence layer has not mapped those files yet."
-              : "Link this person to a company before building tax evidence."}
+              ? "This person has a company, but the CRM has not read the documents yet."
+              : "Connect this person to a company, then the CRM can build the tax story."}
           </p>
         </div>
       </div>
@@ -261,16 +304,16 @@ export function BusinessStoryPanel({
         <div>
           <h3 className="flex items-center gap-2 text-sm font-semibold text-[var(--bz-text-1)]">
             <Sparkles className="h-4 w-4 text-[var(--bz-accent)]" />
-            Business Story
+            Client Story
           </h3>
           <p className="mt-1 text-xs text-[var(--bz-text-2)]">
-            Person -&gt; company -&gt; tax -&gt; evidence -&gt; next action
+            Person -&gt; company -&gt; tax -&gt; documents -&gt; next step
           </p>
         </div>
         <div className="inline-flex items-center gap-2 rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-1.5 text-xs font-medium text-emerald-200">
           <ShieldCheck className="h-3.5 w-3.5" />
-          Team opens Drive evidence from kita. Client portal stays on approved
-          downloads only.
+          Team can open Drive here. Clients only see approved downloads in the
+          portal.
         </div>
       </header>
 
@@ -304,7 +347,7 @@ export function BusinessStoryPanel({
                       {map.company.name}
                     </h4>
                     <span className="rounded bg-white/[0.06] px-2 py-1 text-[11px] font-medium text-[var(--bz-text-2)]">
-                      {map.confidence}
+                      {humanConfidenceLabel(map.confidence)}
                     </span>
                   </div>
                   <p className="mt-1 flex items-center gap-2 text-xs font-medium text-[var(--bz-text-2)]">
@@ -312,12 +355,12 @@ export function BusinessStoryPanel({
                     {relationshipPath.join(" -> ")}
                   </p>
                   <p className="mt-3 text-sm leading-6 text-[var(--bz-text-1)]">
-                    {recap}
+                    {humanizeOperationalText(recap)}
                   </p>
                   {map.business_story.length > 0 && (
                     <ul className="mt-3 space-y-1 text-sm leading-6 text-[var(--bz-text-2)]">
                       {map.business_story.slice(0, 2).map((item) => (
-                        <li key={item}>{item}</li>
+                        <li key={item}>{humanizeOperationalText(item)}</li>
                       ))}
                     </ul>
                   )}
@@ -327,7 +370,7 @@ export function BusinessStoryPanel({
                   <div className="rounded-md border border-white/[0.06] bg-white/[0.03] p-2">
                     <div className="flex items-center justify-between gap-2">
                       <span className="text-xs font-semibold text-[var(--bz-text-1)]">
-                        {readiness.label}
+                        {humanReadinessLabel(readiness)}
                       </span>
                       <span className="rounded bg-white/[0.08] px-1.5 py-0.5 text-[10px] font-medium text-[var(--bz-text-2)]">
                         {readiness.score}%
@@ -335,7 +378,7 @@ export function BusinessStoryPanel({
                     </div>
                     {readiness.reasons.length > 0 && (
                       <p className="mt-1 text-[11px] leading-4 text-[var(--bz-text-2)]">
-                        {readiness.reasons[0]}
+                        {humanizeOperationalText(readiness.reasons[0])}
                       </p>
                     )}
                   </div>
@@ -352,7 +395,7 @@ export function BusinessStoryPanel({
                   {map.next_best_actions.length > 0 && (
                     <div className="pt-2">
                       <p className="text-[11px] font-semibold uppercase text-[var(--bz-text-2)]">
-                        Next actions
+                        What to do next
                       </p>
                       <ul className="mt-2 space-y-2">
                         {map.next_best_actions.slice(0, 3).map((action) => (
@@ -362,14 +405,14 @@ export function BusinessStoryPanel({
                           >
                             <div className="flex items-center justify-between gap-2">
                               <span className="text-xs font-medium text-[var(--bz-text-1)]">
-                                {action.label}
+                                {humanizeOperationalText(action.label)}
                               </span>
                               <span className="shrink-0 rounded bg-white/[0.08] px-1.5 py-0.5 text-[10px] font-medium text-[var(--bz-text-2)]">
                                 {action.owner}
                               </span>
                             </div>
                             <p className="mt-1 text-[11px] leading-4 text-[var(--bz-text-2)]">
-                              {action.reason}
+                              {humanizeOperationalText(action.reason)}
                             </p>
                           </li>
                         ))}
