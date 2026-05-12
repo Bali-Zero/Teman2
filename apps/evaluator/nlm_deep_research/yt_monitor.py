@@ -203,6 +203,42 @@ def save_state(state: dict) -> None:
 # ---------------------------------------------------------------------------
 
 
+def _enqueue_to_intel_lake(video_url: str, notebook_id: str, source_handle: str | None = None) -> None:
+    """Wave 2 (2026-05-12): mirror this YT ingestion into the Intel Lake outbox.
+
+    Best-effort — failure must not break the existing yt_monitor flow.
+    """
+    try:
+        import hashlib  # noqa: PLC0415
+        import sys  # noqa: PLC0415
+        sys.path.insert(0, "/Users/nuzantara/scripts")
+        from intel_lake_outbox import enqueue as _lake_enqueue  # type: ignore
+
+        content_hash = hashlib.sha256(video_url.encode()).hexdigest()[:32]
+        _lake_enqueue(
+            "yt_monitor",
+            {
+                "producer_name": "yt_monitor",
+                "canonical_url": video_url,
+                "content_hash": content_hash,
+                "title": video_url,  # full title unknown at this layer
+                "summary": None,
+                "source_domain": "youtube.com",
+                "language": None,
+                "jurisdiction": None,
+                "topic_tags": ["youtube", "video"],
+                "published_at": None,
+                "score": None,
+                "raw_payload": {
+                    "notebook_id": notebook_id,
+                    "source_handle": source_handle,
+                },
+            },
+        )
+    except Exception as exc:
+        logger.warning("intel-lake enqueue failed for %s: %s", video_url[:80], exc)
+
+
 def ingest_video(notebook_id: str, video_url: str, dry_run: bool = False) -> bool:
     """Ingest a YouTube video into NLM notebook via nlm CLI."""
     if dry_run:
@@ -220,6 +256,7 @@ def ingest_video(notebook_id: str, video_url: str, dry_run: bool = False) -> boo
         )
         if result.returncode == 0:
             logger.info("Ingested %s into %s", video_url, notebook_id)
+            _enqueue_to_intel_lake(video_url, notebook_id)
             return True
         else:
             logger.error("nlm ingest failed: %s", result.stderr[:200])
