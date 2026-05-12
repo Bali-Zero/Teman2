@@ -11,7 +11,10 @@
 -- on safety policy gen, same 429 pattern as Gemini's CLI safety check).
 -- Empty/near-empty table (0 rows on 2026-05-13) — ALTER ADD COLUMN with DEFAULT runs in
 -- PG 11+ fast path (no full-table rewrite), CHECK constraints + partial UNIQUE INDEX are
--- Squawk-clean on empty data.
+-- Squawk-clean on empty data. Wrapped in BEGIN/COMMIT to satisfy
+-- prefer-robust-stmts (per migration 168 / 156 / 138 convention).
+
+BEGIN;
 
 ALTER TABLE cell_skills
     ADD COLUMN IF NOT EXISTS kind VARCHAR(16) NOT NULL DEFAULT 'skill';
@@ -25,11 +28,8 @@ ALTER TABLE cell_skills
 ALTER TABLE cell_skills
     ADD COLUMN IF NOT EXISTS scar_weakness_tag VARCHAR(64);
 
--- Use NOT VALID + VALIDATE to avoid the constraint-missing-not-valid +
--- prefer-robust-stmts Squawk warnings. The table is empty/near-empty today
--- (0 rows on 2026-05-13), so the ACCESS EXCLUSIVE lock during VALIDATE is
--- trivial; we keep the pattern for forward-compatibility once cell_skills
--- starts accumulating skill rows from LEVA 1 (dream -> skill loop).
+-- Use NOT VALID + VALIDATE to avoid the constraint-missing-not-valid Squawk warning.
+-- Table is empty/near-empty today; VALIDATE is instant.
 ALTER TABLE cell_skills
     ADD CONSTRAINT cell_skills_kind_check
         CHECK (kind IN ('skill', 'scar')) NOT VALID;
@@ -43,6 +43,8 @@ ALTER TABLE cell_skills VALIDATE CONSTRAINT cell_skills_scope_check;
 -- Idempotency guard for concurrent scar emission across pulses.
 -- Partial unique index: only scars require uniqueness on weakness_tag; skill rows leave
 -- scar_weakness_tag NULL and are unconstrained.
+-- Non-CONCURRENT is acceptable here (table empty, ACCESS SHARE lock trivial); the
+-- repo-wide --exclude=require-concurrent-index-creation in migration-lint.yml covers it.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_cell_skills_scar_tag
     ON cell_skills (scar_weakness_tag)
     WHERE kind = 'scar';
@@ -50,6 +52,8 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_cell_skills_scar_tag
 CREATE INDEX IF NOT EXISTS idx_cell_skills_kind_status
     ON cell_skills (kind, status)
     WHERE status = 'active';
+
+COMMIT;
 
 COMMENT ON COLUMN cell_skills.kind IS
     'Entry type. Default "skill" (positive evolvable procedure). "scar" marks a failure pattern '
