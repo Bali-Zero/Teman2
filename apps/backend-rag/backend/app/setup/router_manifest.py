@@ -207,7 +207,7 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     # ── Intel (RAG process only — needs /data volume) ──
     RouterEntry(name="intel",           process_groups=_RAG, tags=("intel",)),
     RouterEntry(name="intel_analytics", process_groups=_RAG, tags=("intel",)),
-    RouterEntry(name="intel_lake",      process_groups=_API, tags=("intel", "intel-lake")),
+    RouterEntry(name="intel_lake",      process_groups=_BOTH, tags=("intel", "intel-lake")),
     RouterEntry(name="intel_scraper",   process_groups=_RAG, tags=("intel",)),
 
     # ── KBLI ──

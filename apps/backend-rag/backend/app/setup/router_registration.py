@@ -78,6 +78,7 @@ def include_routers(api: FastAPI) -> None:
         hr_owner_cashout,  # [NEW] Owner-only weekly cashout
         ingest,
         instagram_chat,
+        intel_lake,
         kbli_notebook,
         kbli_notebook_chat,
         kg_agentic,
@@ -276,6 +277,7 @@ def include_routers(api: FastAPI) -> None:
     )  # Omnichannel WhatsApp conversations API (dashboard only)
     api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
     api.include_router(instagram_chat.webhook_router)  # [NEW] Instagram webhook
+    api.include_router(intel_lake.router)  # Intel Lake Wave 1 ingest (mig 168)
     api.include_router(webhooks.router)  # External webhooks (OpenClaw, etc.)
     api.include_router(
         messaging_identity.router,
