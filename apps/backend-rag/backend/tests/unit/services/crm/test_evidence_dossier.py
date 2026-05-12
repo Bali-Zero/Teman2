@@ -68,6 +68,55 @@ async def test_build_evidence_dossiers_reads_db_and_kg_rows() -> None:
                     "confidence": 1.0,
                 },
             ],
+            [
+                {
+                    "company_id": 7,
+                    "provider": "notebooklm",
+                    "notebook_id": "notebook_ocean",
+                    "note_id": "note_ocean",
+                    "source_file_ids": ["drive_file_profile", "drive_file_spt"],
+                    "facts": [
+                        {
+                            "category": "identity",
+                            "label": "Company profile",
+                            "detail": "PT PMA in Canggu with active NIB and NPWP.",
+                            "source_file_ids": ["drive_file_profile"],
+                            "confidence": "confirmed",
+                        },
+                        {
+                            "category": "person",
+                            "label": "Director",
+                            "detail": "Ihor Osmanov is listed as Director.",
+                            "source_file_ids": ["drive_file_profile"],
+                            "confidence": "confirmed",
+                        },
+                        {
+                            "category": "compliance",
+                            "label": "Formation status",
+                            "detail": "Company formation and tax registration are present.",
+                            "source_file_ids": ["drive_file_profile", "drive_file_spt"],
+                            "confidence": "confirmed",
+                        },
+                        {
+                            "category": "gap",
+                            "label": "KITAS gap",
+                            "detail": "KITAS evidence was not found in the company documents.",
+                            "source_file_ids": ["drive_file_profile"],
+                            "confidence": "medium",
+                        },
+                        {
+                            "category": "next_action",
+                            "label": "Review roles",
+                            "detail": "Confirm roles in CRM and review investor KITAS path.",
+                            "source_file_ids": ["drive_file_profile"],
+                            "confidence": "medium",
+                        },
+                    ],
+                    "approved_by": "team@balizero.com",
+                    "approved_at": "2026-05-12T15:50:00+00:00",
+                    "created_at": "2026-05-12T15:45:00+00:00",
+                },
+            ],
         ],
     )
     pool = _pool(conn)
@@ -88,6 +137,20 @@ async def test_build_evidence_dossiers_reads_db_and_kg_rows() -> None:
     assert dossier.readiness.reasons == [
         "Tax owner, person folder, company evidence, tax trail, and KG links are present."
     ]
+    assert dossier.workspace_ai is not None
+    assert dossier.workspace_ai.provider == "notebooklm"
+    assert dossier.workspace_ai.notebook_id == "notebook_ocean"
+    assert dossier.workspace_ai.approved_by == "team@balizero.com"
+    assert dossier.workspace_ai.facts[0].detail == "PT PMA in Canggu with active NIB and NPWP."
+    assert dossier.business_story[0] == "PT PMA in Canggu with active NIB and NPWP."
+    assert dossier.evidence_stories[0].next_action == (
+        "Confirm roles in CRM and review investor KITAS path."
+    )
+    assert any(
+        item.label == "Reviewed Workspace AI"
+        and item.detail == "PT PMA in Canggu with active NIB and NPWP."
+        for item in dossier.evidence_stories[0].evidence_items
+    )
     assert dossier.evidence_stories[0].relationship_path == [
         "Natan Kleimonov",
         "OCEAN CLOTHES AND SHOES PT",
@@ -97,10 +160,11 @@ async def test_build_evidence_dossiers_reads_db_and_kg_rows() -> None:
         "Client portal: download approved documents only."
     )
     assert any("KG direct" in item.detail for item in dossier.evidence_stories[0].evidence_items)
-    assert conn.fetch.await_count == 3
+    assert conn.fetch.await_count == 4
     assert "client_company_links" in conn.fetch.await_args_list[0].args[0]
     assert "documents" in conn.fetch.await_args_list[1].args[0]
     assert "crm_kg_nodes" in conn.fetch.await_args_list[2].args[0]
+    assert "crm_workspace_ai_snapshots" in conn.fetch.await_args_list[3].args[0]
 
 
 @pytest.mark.asyncio
@@ -160,6 +224,7 @@ async def test_build_evidence_dossiers_flags_operational_next_actions() -> None:
                     "expiry_date": None,
                 },
             ],
+            [],
             [],
         ],
     )

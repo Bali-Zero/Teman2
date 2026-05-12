@@ -1,0 +1,58 @@
+{
+  "_meta": {
+    "version": 1,
+    "source_of_truth": "apps/backend-rag/backend/services/intel/intel_lake_router.py _RULES",
+    "synced_from_backend_at": "2026-05-13",
+    "note": "Pro-local copy because Fly DISABLE_BACKGROUND_WORKERS=1 blocks the in-process router. Keep in sync with backend manually. When that kill-switch is removed, retire this file + the Pro cron."
+  },
+  "nb_intel_uuids": {
+    "immigration": "1ed02e54-542f-426a-94f8-53c5ffde4b7d",
+    "tax": "7fb12c9c-4e12-4a8d-9bd1-c5b857bf310f",
+    "regulation": "a17f134e-b9ab-42d9-bfc2-5bbc45165c76",
+    "press": "9d262101-abeb-4e15-af9c-c38e028c62fe",
+    "ai_research": "dc5d01cd-e99f-4c8f-aae4-75060b43d0de"
+  },
+  "rules": [
+    {
+      "name": "immigration_govid",
+      "pattern": "^(imigrasi\\.go\\.id|kanwilkemenkumham|kemenkumham\\.go\\.id|kanim\\.|jdih\\.kemenkumham)",
+      "status": "nb-intel",
+      "targets_key": "immigration"
+    },
+    {
+      "name": "tax_govid",
+      "pattern": "^(pajak\\.go\\.id|ortax\\.org|ddtcnews|mucconsulting|ikpi\\.or\\.id|kemenkeu\\.go\\.id|jdih\\.kemenkeu)",
+      "status": "nb-intel",
+      "targets_key": "tax"
+    },
+    {
+      "name": "regulation_govid",
+      "pattern": "^(bkpm\\.go\\.id|oss\\.go\\.id|kemendag\\.go\\.id|jdih\\.bkpm|jdih\\.menpan|jdih\\.setkab|peraturan\\.go\\.id)",
+      "status": "nb-intel",
+      "targets_key": "regulation"
+    },
+    {
+      "name": "ai_research",
+      "pattern": "^(arxiv\\.org|github\\.com|huggingface\\.co|openai\\.com|anthropic\\.com|deepmind\\.com|paperswithcode)",
+      "status": "nb-intel",
+      "targets_key": "ai_research"
+    },
+    {
+      "name": "press_indonesian",
+      "pattern": "^(detik|kompas|tempo|tribunnews|jakartapost|antaranews|bisnis\\.com|cnnindonesia|kontan\\.co\\.id|katadata)",
+      "status": "blog",
+      "targets_key": null
+    },
+    {
+      "name": "osint_social",
+      "pattern": "^(reddit|twitter|x\\.com|youtube|t\\.co|medium\\.com)",
+      "status": "archive",
+      "targets_key": null
+    }
+  ],
+  "fallback": {
+    "status": "needs_review",
+    "targets": {},
+    "rule_name": "no_match"
+  }
+}

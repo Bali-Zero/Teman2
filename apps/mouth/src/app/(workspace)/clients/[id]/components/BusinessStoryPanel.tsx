@@ -126,6 +126,10 @@ function getEvidenceItems(
   }));
 }
 
+function getReviewedWorkspaceAiFacts(map: TaxCompanyPilotMap) {
+  return map.workspace_ai?.facts.slice(0, 3) ?? [];
+}
+
 function humanizeOperationalText(value: string): string {
   const normalized = value.trim();
   const direct: Record<string, string> = {
@@ -322,6 +326,7 @@ export function BusinessStoryPanel({
           const story = getPrimaryStory(map, clientName);
           const dossier = getPrimaryDossier(map, clientName);
           const evidenceItems = getEvidenceItems(map, story);
+          const workspaceAiFacts = getReviewedWorkspaceAiFacts(map);
           const nextAction = getNextAction(map, story, dossier);
           const relationshipPath = story?.relationship_path ?? [
             clientName,
@@ -363,6 +368,20 @@ export function BusinessStoryPanel({
                         <li key={item}>{humanizeOperationalText(item)}</li>
                       ))}
                     </ul>
+                  )}
+                  {workspaceAiFacts.length > 0 && (
+                    <div className="mt-4 rounded-lg border border-emerald-500/15 bg-emerald-500/[0.06] p-3">
+                      <p className="text-xs font-semibold uppercase text-emerald-200">
+                        Reviewed Workspace AI
+                      </p>
+                      <ul className="mt-2 space-y-1 text-sm leading-6 text-[var(--bz-text-1)]">
+                        {workspaceAiFacts.map((fact) => (
+                          <li key={`${fact.category}-${fact.label}`}>
+                            {humanizeOperationalText(fact.detail)}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
                   )}
                 </div>
 

@@ -15,7 +15,11 @@ from backend.services.crm.tax_company_pilot import (
     TaxCompanyPilotPerson,
     TaxCompanyPilotStoryEvidence,
     TaxCompanyPilotTaxMember,
+    TaxCompanyPilotWorkspaceAiSnapshot,
     get_tax_company_pilot_map,
+)
+from backend.services.crm.workspace_ai_snapshots import (
+    fetch_latest_workspace_ai_snapshots,
 )
 
 _PORTAL_RULE = "Client portal: download approved documents only."
@@ -56,8 +60,13 @@ async def _build_dynamic_maps(
             return []
 
         client_ids = sorted({int(row["client_id"]) for row in company_rows})
+        company_ids = sorted({int(row["company_id"]) for row in company_rows})
         document_rows = await conn.fetch(_DOCUMENT_SQL, client_ids)
         kg_rows = await conn.fetch(_KG_SQL, client_ids)
+        workspace_ai_by_company = await fetch_latest_workspace_ai_snapshots(
+            conn,
+            company_ids,
+        )
 
     documents_by_client: dict[int, list[dict[str, Any]]] = defaultdict(list)
     for row in document_rows:
@@ -77,6 +86,7 @@ async def _build_dynamic_maps(
             rows=rows,
             documents_by_client=documents_by_client,
             kg_by_client=kg_by_client,
+            workspace_ai=workspace_ai_by_company.get(company_id),
         )
         for company_id, rows in rows_by_company.items()
     ]
@@ -88,6 +98,7 @@ def _build_company_map(
     rows: list[dict[str, Any]],
     documents_by_client: dict[int, list[dict[str, Any]]],
     kg_by_client: dict[int, list[dict[str, Any]]],
+    workspace_ai: TaxCompanyPilotWorkspaceAiSnapshot | None,
 ) -> TaxCompanyPilotMap:
     first = rows[0]
     client_ids = [int(row["client_id"]) for row in rows]
@@ -130,13 +141,16 @@ def _build_company_map(
                 documents=documents,
                 kg_rows=all_kg,
                 gaps=gaps,
+                workspace_ai=workspace_ai,
             )
             for person in people
         ],
         duplicate_candidates=[],
         gaps=gaps,
         evidence_links=evidence_links,
-        ai_recap=_ai_recap(first, people, documents, all_kg),
+        ai_recap=_ai_recap(first, people, documents, all_kg, workspace_ai),
+        business_story=_approved_workspace_ai_story(workspace_ai),
+        workspace_ai=workspace_ai,
         read_only=True,
         confidence=_overall_confidence(documents, all_kg),
     )
@@ -171,6 +185,7 @@ def _evidence_story(
     documents: list[TaxCompanyPilotDocument],
     kg_rows: list[dict[str, Any]],
     gaps: list[dict[str, str]],
+    workspace_ai: TaxCompanyPilotWorkspaceAiSnapshot | None,
 ) -> dict[str, Any]:
     items = [
         TaxCompanyPilotStoryEvidence(
@@ -184,18 +199,16 @@ def _evidence_story(
     ]
     items.extend(_document_evidence_items(documents[:3]))
     items.extend(_kg_evidence_items(kg_rows[:3]))
+    items.extend(_workspace_ai_evidence_items(workspace_ai))
 
     return {
         "person_name": person.name,
         "company_name": company_name,
         "tax_owner": tax_owner,
-        "recap": (
-            f"{person.name} is the CRM entry point for {company_name}; "
-            f"{tax_owner} owns or reviews the tax workstream."
-        ),
+        "recap": _story_recap(person, company_name, tax_owner, workspace_ai),
         "relationship_path": [person.name, company_name, f"Tax: {tax_owner}"],
         "evidence_items": items,
-        "next_action": _next_action(documents, kg_rows, gaps),
+        "next_action": _next_action(documents, kg_rows, gaps, workspace_ai),
         "portal_rule": _PORTAL_RULE,
         "team_rule": _TEAM_RULE,
         "confidence": person.relationship_confidence,
@@ -232,6 +245,31 @@ def _kg_evidence_items(rows: list[dict[str, Any]]) -> list[TaxCompanyPilotStoryE
             confidence=_confidence_from_float(row.get("confidence")),
         )
         for row in rows
+    ]
+
+
+def _workspace_ai_evidence_items(
+    workspace_ai: TaxCompanyPilotWorkspaceAiSnapshot | None,
+) -> list[TaxCompanyPilotStoryEvidence]:
+    if workspace_ai is None:
+        return []
+
+    primary_fact = next(
+        (fact for fact in workspace_ai.facts if fact.category == "identity"),
+        workspace_ai.facts[0] if workspace_ai.facts else None,
+    )
+    if primary_fact is None:
+        return []
+
+    return [
+        TaxCompanyPilotStoryEvidence(
+            label="Reviewed Workspace AI",
+            detail=primary_fact.detail,
+            source_label=primary_fact.label,
+            source_url=None,
+            source_kind="document",
+            confidence=primary_fact.confidence,
+        )
     ]
 
 
@@ -301,7 +339,12 @@ def _ai_recap(
     people: list[TaxCompanyPilotPerson],
     documents: list[TaxCompanyPilotDocument],
     kg_rows: list[dict[str, Any]],
+    workspace_ai: TaxCompanyPilotWorkspaceAiSnapshot | None,
 ) -> list[str]:
+    approved_story = _approved_workspace_ai_story(workspace_ai)
+    if approved_story:
+        return approved_story
+
     names = ", ".join(person.name for person in people[:3])
     return [
         f"Start from {names}, then open {company['company_name']} through confirmed CRM links.",
@@ -310,11 +353,53 @@ def _ai_recap(
     ]
 
 
+def _approved_workspace_ai_story(
+    workspace_ai: TaxCompanyPilotWorkspaceAiSnapshot | None,
+) -> list[str]:
+    if workspace_ai is None:
+        return []
+
+    order = ("identity", "person", "compliance", "gap", "next_action")
+    lines: list[str] = []
+    for category in order:
+        fact = next((item for item in workspace_ai.facts if item.category == category), None)
+        if fact is not None and fact.detail:
+            lines.append(fact.detail)
+    return lines[:5]
+
+
+def _story_recap(
+    person: TaxCompanyPilotPerson,
+    company_name: str,
+    tax_owner: str,
+    workspace_ai: TaxCompanyPilotWorkspaceAiSnapshot | None,
+) -> str:
+    identity = next(
+        (fact.detail for fact in (workspace_ai.facts if workspace_ai else []) if fact.category == "identity"),
+        None,
+    )
+    if identity:
+        return f"{person.name} opens {company_name}. Reviewed Workspace AI confirms: {identity}"
+
+    return (
+        f"{person.name} is the CRM entry point for {company_name}; "
+        f"{tax_owner} owns or reviews the tax workstream."
+    )
+
+
 def _next_action(
     documents: list[TaxCompanyPilotDocument],
     kg_rows: list[dict[str, Any]],
     gaps: list[dict[str, str]] | None = None,
+    workspace_ai: TaxCompanyPilotWorkspaceAiSnapshot | None = None,
 ) -> str:
+    if workspace_ai is not None:
+        action = next(
+            (fact.detail for fact in workspace_ai.facts if fact.category == "next_action"),
+            None,
+        )
+        if action:
+            return action
     if gaps:
         return gaps[0]["label"]
     if not documents:

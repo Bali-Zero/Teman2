@@ -10,7 +10,6 @@ Design rules:
   - Handlers MUST be idempotent — events can be delivered more than once.
 """
 
-import asyncio
 import logging
 import time
 from datetime import datetime, timezone
@@ -84,6 +83,7 @@ def register_handlers(
 
     Called once at app startup after EventBus.start().
     """
+
     # ── client.changed ─────────────────────────────────────────────────
     async def on_client_changed(payload: dict[str, Any]) -> None:
         """React to client creation or update.
@@ -102,14 +102,12 @@ def register_handlers(
         if _is_duplicate(dedup_key):
             return
 
-        logger.info(
-            f"🔔 Event client.changed: {operation} client_id={client_id} "
-            f"email={email}"
-        )
+        logger.info(f"🔔 Event client.changed: {operation} client_id={client_id} email={email}")
 
         # Invalidate CRM cache
         try:
             from backend.core.cache import invalidate_cache
+
             await invalidate_cache("zantara:crm_clients_stats:*")
         except Exception as e:
             logger.debug(f"Cache invalidation skipped: {e}")
@@ -145,9 +143,7 @@ def register_handlers(
 
         # On new client: create Drive folder + log interaction
         if operation == "INSERT":
-            logger.info(
-                f"🆕 New client created: id={client_id}, email={email}"
-            )
+            logger.info(f"🆕 New client created: id={client_id}, email={email}")
             # Create Drive folder in background (non-blocking)
             spawn(
                 _create_drive_folder(db_pool, client_id),
@@ -156,7 +152,8 @@ def register_handlers(
             # Log CRM interaction
             spawn(
                 _log_interaction(
-                    db_pool, client_id,
+                    db_pool,
+                    client_id,
                     "system",
                     "Client created — auto-provisioning started",
                     "internal",
@@ -184,13 +181,13 @@ def register_handlers(
             return
 
         logger.info(
-            f"🔔 Event practice.status_changed: "
-            f"practice_id={practice_id} {old_status}→{new_status}"
+            f"🔔 Event practice.status_changed: practice_id={practice_id} {old_status}→{new_status}"
         )
 
         # Invalidate practice cache
         try:
             from backend.core.cache import invalidate_cache
+
             await invalidate_cache("zantara:crm_practices:*")
         except Exception as e:
             logger.debug(f"Cache invalidation skipped: {e}")
@@ -240,7 +237,8 @@ def register_handlers(
         if new_status == "cancelled":
             spawn(
                 _log_interaction(
-                    db_pool, client_id,
+                    db_pool,
+                    client_id,
                     "system",
                     f"Practice #{practice_id} cancelled (was: {old_status})",
                     "internal",
@@ -307,7 +305,8 @@ def register_handlers(
         if client_id:
             spawn(
                 _log_interaction(
-                    db_pool, client_id,
+                    db_pool,
+                    client_id,
                     "compliance",
                     f"[{severity}] {alert_type}: {message[:200]}",
                     "internal",
@@ -322,7 +321,10 @@ def register_handlers(
 
     # ── Compliance + intel handlers (2026-04-18 PR) ────────────────────
     try:
-        from backend.services.events.handlers.compliance_handlers import HANDLERS as _compliance_handlers
+        from backend.services.events.handlers.compliance_handlers import (
+            HANDLERS as _compliance_handlers,
+        )
+
         for event_type, handler in _compliance_handlers.items():
             bus.subscribe(event_type, handler)
     except ImportError as exc:
@@ -331,8 +333,10 @@ def register_handlers(
     # ── Partner handlers (2026-04-20) ──────────────────────────────────
     try:
         from backend.app.db import set_pool as _set_pool
+
         _set_pool(db_pool)
         from backend.services.crm.partners.events import register_partner_handlers
+
         register_partner_handlers(bus)
     except ImportError as exc:
         logger.warning("partner handlers not loaded: %s", exc)
@@ -347,22 +351,36 @@ def register_handlers(
         from backend.services.war_room.asset_invalidated_subscriber import (
             AssetInvalidatedSubscriber,
         )
+
         wr2_invalidated = AssetInvalidatedSubscriber(db_pool=db_pool)
         bus.subscribe("mata_garuda.asset_provenance", wr2_invalidated.handle)
     except ImportError as exc:
         logger.warning(
-            "war_room AssetInvalidatedSubscriber not loaded: %s", exc,
+            "war_room AssetInvalidatedSubscriber not loaded: %s",
+            exc,
         )
 
-    logger.info(
-        f"✅ EventBus handlers registered: "
-        f"{len(bus._subscribers)} event types"
-    )
+    # ── Intel Lake Tier 1 Router (2026-05-13) ──────────────────────────
+    # Subscribes to intel_lake.event channel (mig 168). On every new item:
+    # applies regex rules to source_domain → set routing_status from
+    # 'unrouted' to nb-intel / blog / archive / needs_review.
+    # See backend/services/intel/intel_lake_router.py.
+    try:
+        from backend.services.intel.intel_lake_router import (
+            register_intel_lake_router_handlers,
+        )
+
+        register_intel_lake_router_handlers(bus, db_pool)
+    except ImportError as exc:
+        logger.warning("intel_lake_router not loaded: %s", exc)
+
+    logger.info(f"✅ EventBus handlers registered: {len(bus._subscribers)} event types")
 
 
 # ═══════════════════════════════════════════════════════════════════════════
 # Background action functions — called via asyncio.create_task from handlers
 # ═══════════════════════════════════════════════════════════════════════════
+
 
 async def _create_drive_folder(db_pool: asyncpg.Pool, client_id: int) -> None:
     """Create a Google Drive folder for a new client."""
@@ -370,12 +388,14 @@ async def _create_drive_folder(db_pool: asyncpg.Pool, client_id: int) -> None:
         from backend.services.integrations.service_account_drive_service import (
             ServiceAccountDriveService,
         )
+
         drive_svc = ServiceAccountDriveService()
 
         # Fetch client name for folder
         async with db_pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT full_name FROM clients WHERE id = $1", client_id,
+                "SELECT full_name FROM clients WHERE id = $1",
+                client_id,
             )
         if not row:
             return
@@ -386,7 +406,8 @@ async def _create_drive_folder(db_pool: asyncpg.Pool, client_id: int) -> None:
         # Check if folder already exists (idempotency)
         async with db_pool.acquire() as conn:
             existing = await conn.fetchval(
-                "SELECT drive_folder_id FROM clients WHERE id = $1", client_id,
+                "SELECT drive_folder_id FROM clients WHERE id = $1",
+                client_id,
             )
         if existing:
             logger.debug(f"Drive folder already exists for client {client_id}")
@@ -397,7 +418,8 @@ async def _create_drive_folder(db_pool: asyncpg.Pool, client_id: int) -> None:
             async with db_pool.acquire() as conn:
                 await conn.execute(
                     "UPDATE clients SET drive_folder_id = $1 WHERE id = $2",
-                    folder_id, client_id,
+                    folder_id,
+                    client_id,
                 )
             logger.info(f"📁 Drive folder created for client {client_id}: {folder_id}")
     except Exception as e:
@@ -419,14 +441,19 @@ async def _log_interaction(
             await conn.execute(
                 """INSERT INTO interactions (client_id, type, summary, channel, created_at)
                    VALUES ($1, $2, $3, $4, NOW())""",
-                client_id, interaction_type, summary, channel,
+                client_id,
+                interaction_type,
+                summary,
+                channel,
             )
     except Exception as e:
         logger.debug(f"Interaction log failed: {e}")
 
 
 async def _check_client_expiry_on_completion(
-    db_pool: asyncpg.Pool, client_id: int, completed_practice_id: int,
+    db_pool: asyncpg.Pool,
+    client_id: int,
+    completed_practice_id: int,
 ) -> None:
     """When a practice completes, check if the client has other expiring documents.
 
@@ -445,13 +472,13 @@ async def _check_client_expiry_on_completion(
                      AND expiry_date IS NOT NULL
                      AND expiry_date - CURRENT_DATE < 90
                    ORDER BY expiry_date""",
-                client_id, completed_practice_id,
+                client_id,
+                completed_practice_id,
             )
 
         if expiring:
             items = ", ".join(
-                f"{r['practice_type_code']}(#{r['id']}, {r['days_remaining']}d)"
-                for r in expiring
+                f"{r['practice_type_code']}(#{r['id']}, {r['days_remaining']}d)" for r in expiring
             )
             logger.info(
                 f"📋 Client {client_id} has {len(expiring)} expiring items "
@@ -459,7 +486,9 @@ async def _check_client_expiry_on_completion(
             )
             # Log for CRM visibility
             await _log_interaction(
-                db_pool, client_id, "system",
+                db_pool,
+                client_id,
+                "system",
                 f"Practice #{completed_practice_id} completed. "
                 f"Note: {len(expiring)} other items expiring within 90 days: {items}",
                 "internal",
@@ -472,6 +501,7 @@ async def _send_admin_telegram(title: str, message: str) -> None:
     """Send alert to admin via Telegram."""
     try:
         from backend.services.monitoring.alert_service import AlertLevel, AlertService
+
         svc = AlertService()
         await svc.send_alert(title=title, message=message, level=AlertLevel.WARNING)
     except Exception as e:
@@ -479,7 +509,8 @@ async def _send_admin_telegram(title: str, message: str) -> None:
 
 
 async def _run_predictive_scan_for_client(
-    db_pool: asyncpg.Pool, client_id: int,
+    db_pool: asyncpg.Pool,
+    client_id: int,
 ) -> None:
     """
     Run the predictive compliance engine for a single client after their

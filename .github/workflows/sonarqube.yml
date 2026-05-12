@@ -67,7 +67,7 @@ jobs:
       - name: Run Python tests with coverage
         run: |
           cd apps/backend-rag
-          PYTHONPATH=. pytest backend/tests/ -v \
+          PYTHONPATH=.:../crm-cell pytest backend/tests/ -v \
             --cov=backend \
             --cov-report=xml:coverage.xml \
             --cov-report=term-missing \
