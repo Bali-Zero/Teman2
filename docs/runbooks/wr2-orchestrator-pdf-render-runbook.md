@@ -16,7 +16,7 @@ mkdir -p ~/.config/wr2 && chmod 700 ~/.config/wr2
 ```bash
 # Run via flycast tunnel (PG proxy must be running):
 psql -h 127.0.0.1 -p 15432 -U postgres -d nuzantara_rag \
-  -f apps/backend-rag/backend/db/migrations_v2/169_wr2_draft_lease.sql
+  -f apps/backend-rag/backend/db/migrations_v2/170_wr2_draft_lease.sql
 ```
 
 ### 3. Apply Tigris S3 lifecycle

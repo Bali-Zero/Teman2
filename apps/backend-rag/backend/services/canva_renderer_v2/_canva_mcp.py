@@ -127,7 +127,9 @@ class CanvaMcpClient:
             redirect_handler=self._reject_interactive,
             callback_handler=self._reject_interactive,
         )
-        self._http_client = httpx.AsyncClient(
+        # Short-lived launchd-tick orchestrator (≤5min lifetime); this is the
+        # single MCP session for the entire run, closed in __aexit__ — no leak.
+        self._http_client = httpx.AsyncClient(  # golden-rule-10-exempt: short-lived cron process, single session, explicit aclose() in __aexit__
             auth=oauth, follow_redirects=True, timeout=60.0
         )
         self._stream_cm = streamable_http_client(
