@@ -36,6 +36,7 @@ import type {
 import { getCountryFlag } from "@/lib/utils/nationality-flags";
 import {
   useClientDetail,
+  useClientBusinessStory,
   useClientTimeline,
   useDocumentCategories,
   useInvalidateClient,
@@ -54,6 +55,7 @@ import { CompanyTab } from "./components/CompanyTab";
 import { TaxTab } from "./components/TaxTab";
 import { TimelineTab } from "./components/TimelineTab";
 import { PortalMessages } from "./components/PortalMessages";
+import { BusinessStoryPanel } from "./components/BusinessStoryPanel";
 import { EditClientModal } from "./components/modals/EditClientModal";
 import { AddFamilyMemberModal } from "./components/modals/AddFamilyMemberModal";
 import { EditFamilyMemberModal } from "./components/modals/EditFamilyMemberModal";
@@ -75,6 +77,11 @@ export default function ClientDetailPage() {
   const { data: timelineData } = useClientTimeline(clientId);
   const { data: docCategoriesData } = useDocumentCategories();
   const invalidateClient = useInvalidateClient(clientId);
+  const businessStoryQuery = useClientBusinessStory(
+    clientId,
+    profile?.client.full_name ?? "",
+    profile?.company_links,
+  );
 
   // Local interactions state: seeded from query, extended optimistically on log
   const [interactions, setInteractions] = useState<Interaction[]>([]);
@@ -297,6 +304,15 @@ export default function ClientDetailPage() {
   const completedPractices = practices.filter((p) =>
     ["completed", "approved"].includes(p.status),
   );
+  const businessStoryCompanyNames = (company_links ?? [])
+    .map((link) => link.company_name)
+    .filter((companyName) => companyName.trim().length > 0);
+  const businessStoryError =
+    businessStoryQuery.error instanceof Error
+      ? businessStoryQuery.error
+      : businessStoryQuery.error
+        ? new Error("Business story request failed")
+        : null;
 
   // Get country flag for fallback
   const countryFlag = getCountryFlag(client.nationality);
@@ -784,7 +800,10 @@ export default function ClientDetailPage() {
       )}
 
       {/* Tabs */}
-      <div ref={tabsRef} className="flex gap-2 border-b border-[var(--bz-border)] pb-2 overflow-x-auto">
+      <div
+        ref={tabsRef}
+        className="flex gap-2 border-b border-[var(--bz-border)] pb-2 overflow-x-auto"
+      >
         {[
           { key: "overview", label: "Overview", icon: User },
           {
@@ -840,6 +859,13 @@ export default function ClientDetailPage() {
             onEditClick={() => setActiveModal("edit_client")}
             onRefresh={invalidateClient}
             clientId={clientId}
+          />
+          <BusinessStoryPanel
+            clientName={client.full_name}
+            companyNames={businessStoryCompanyNames}
+            maps={businessStoryQuery.data ?? []}
+            isLoading={businessStoryQuery.isLoading}
+            error={businessStoryError}
           />
           <PortalMessages clientId={clientId} clientName={client.full_name} />
         </>

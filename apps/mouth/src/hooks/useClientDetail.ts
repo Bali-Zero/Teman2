@@ -3,10 +3,38 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import type {
+  ClientCompanyLink,
   ClientProfile,
   Interaction,
   DocumentCategory,
+  TaxCompanyPilotMap,
 } from "@/lib/api/crm/crm.types";
+
+const PILOT_FALLBACK_TERMS = ["ocean", "bimala"] as const;
+
+export function buildBusinessStorySearchTerms(
+  clientName: string,
+  companyLinks: ClientCompanyLink[] | undefined,
+): string[] {
+  const normalizedClientName = clientName.trim();
+  const companyNames =
+    companyLinks
+      ?.map((link) => link.company_name.trim())
+      .filter((companyName) => companyName.length > 0) ?? [];
+  const rawTerms = [
+    normalizedClientName,
+    ...companyNames,
+    ...(companyNames.length === 0 ? PILOT_FALLBACK_TERMS : []),
+  ].filter((term) => term.length > 0);
+
+  const seen = new Set<string>();
+  return rawTerms.filter((term) => {
+    const key = term.toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
 
 /**
  * Fetches the full client profile (client, family, documents, practices,
@@ -46,6 +74,26 @@ export function useDocumentCategories() {
     queryFn: () => api.crm.getDocumentCategories(),
     staleTime: 10 * 60 * 1000,
     refetchOnWindowFocus: false,
+  });
+}
+
+export function useClientBusinessStory(
+  clientId: string | number,
+  clientName: string,
+  companyLinks: ClientCompanyLink[] | undefined,
+) {
+  const searchTerms = buildBusinessStorySearchTerms(clientName, companyLinks);
+
+  return useQuery<TaxCompanyPilotMap[]>({
+    queryKey: ["client", String(clientId), "business-story", searchTerms],
+    queryFn: () =>
+      api.crm.getEvidenceDossiers({
+        companies: searchTerms,
+        limit: Math.max(searchTerms.length, 2),
+      }),
+    staleTime: 2 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    enabled: !!clientId && Number(clientId) > 0 && searchTerms.length > 0,
   });
 }
 
