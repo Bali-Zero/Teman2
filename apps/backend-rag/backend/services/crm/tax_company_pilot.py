@@ -82,6 +82,13 @@ class TaxCompanyPilotNextAction(BaseModel):
     severity: Literal["high", "medium", "low"]
 
 
+class TaxCompanyPilotReadiness(BaseModel):
+    status: Literal["ready", "needs_review", "blocked"]
+    score: int = Field(ge=0, le=100)
+    label: str
+    reasons: list[str] = Field(default_factory=list)
+
+
 class TaxCompanyPilotEvidenceStory(BaseModel):
     person_name: str
     company_name: str
@@ -107,6 +114,7 @@ class TaxCompanyPilotMap(BaseModel):
     person_dossiers: list[TaxCompanyPilotPersonDossier] = Field(default_factory=list)
     evidence_stories: list[TaxCompanyPilotEvidenceStory] = Field(default_factory=list)
     next_best_actions: list[TaxCompanyPilotNextAction] = Field(default_factory=list)
+    readiness: TaxCompanyPilotReadiness | None = None
     business_story: list[str] = Field(default_factory=list)
     duplicate_candidates: list[TaxCompanyPilotDuplicateCandidate]
     gaps: list[TaxCompanyPilotGap]
@@ -122,6 +130,8 @@ class TaxCompanyPilotMap(BaseModel):
             object.__setattr__(self, "evidence_stories", _build_evidence_stories(self))
         if not self.next_best_actions:
             object.__setattr__(self, "next_best_actions", _build_next_best_actions(self))
+        if self.readiness is None:
+            object.__setattr__(self, "readiness", _build_readiness(self))
         if not self.business_story:
             object.__setattr__(self, "business_story", _build_business_story(self))
 
@@ -314,6 +324,64 @@ def _build_next_best_actions(pilot_map: TaxCompanyPilotMap) -> list[TaxCompanyPi
         )
         for gap in pilot_map.gaps
     ]
+
+
+def _readiness_penalty(severity: Literal["high", "medium", "low"]) -> int:
+    if severity == "high":
+        return 45
+    if severity == "medium":
+        return 20
+    return 10
+
+
+def _readiness_reason_priority(action: TaxCompanyPilotNextAction) -> tuple[int, int]:
+    severity_order = {"high": 0, "medium": 1, "low": 2}
+    code_order = {
+        "company": 0,
+        "registry": 0,
+        "tax": 1,
+        "lkpm": 1,
+        "person": 2,
+        "folder": 2,
+        "kg": 3,
+        "linking": 3,
+    }
+    label = action.label.lower()
+    business_order = min(
+        (order for marker, order in code_order.items() if marker in label),
+        default=4,
+    )
+    return severity_order[action.severity], business_order
+
+
+def _build_readiness(pilot_map: TaxCompanyPilotMap) -> TaxCompanyPilotReadiness:
+    if not pilot_map.gaps:
+        return TaxCompanyPilotReadiness(
+            status="ready",
+            score=100,
+            label="Ready to operate",
+            reasons=[
+                "Tax owner, person folder, company evidence, tax trail, and KG links are present."
+            ],
+        )
+
+    score = max(
+        5,
+        100 - sum(_readiness_penalty(gap.severity) for gap in pilot_map.gaps),
+    )
+    status: Literal["needs_review", "blocked"] = (
+        "blocked"
+        if any(gap.severity == "high" for gap in pilot_map.gaps)
+        else "needs_review"
+    )
+    label = "Blocked" if status == "blocked" else "Needs review"
+    actions = sorted(pilot_map.next_best_actions, key=_readiness_reason_priority)
+    return TaxCompanyPilotReadiness(
+        status=status,
+        score=score,
+        label=label,
+        reasons=[action.label for action in actions[:4]],
+    )
 
 
 def _build_business_story(pilot_map: TaxCompanyPilotMap) -> list[str]:

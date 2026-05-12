@@ -15,6 +15,7 @@ import type {
   TaxCompanyPilotEvidenceStory,
   TaxCompanyPilotMap,
   TaxCompanyPilotPersonDossier,
+  TaxCompanyPilotReadiness,
   TaxCompanyPilotStoryEvidence,
 } from "@/lib/api/crm/crm.types";
 
@@ -136,6 +137,25 @@ function getNextAction(
     map.next_best_actions[0]?.label ??
     "Review the company evidence and decide the next operational step."
   );
+}
+
+function getReadiness(map: TaxCompanyPilotMap): TaxCompanyPilotReadiness {
+  if (map.readiness) return map.readiness;
+  const hasHighGap = map.gaps.some((gap) => gap.severity === "high");
+  if (!map.gaps.length) {
+    return {
+      status: "ready",
+      score: 100,
+      label: "Ready to operate",
+      reasons: ["No blocking evidence gaps."],
+    };
+  }
+  return {
+    status: hasHighGap ? "blocked" : "needs_review",
+    score: hasHighGap ? 35 : 70,
+    label: hasHighGap ? "Blocked" : "Needs review",
+    reasons: map.gaps.slice(0, 3).map((gap) => gap.label),
+  };
 }
 
 function EmptyBusinessStory({ companyNames }: { companyNames: string[] }) {
@@ -265,6 +285,7 @@ export function BusinessStoryPanel({
             map.company.name,
             `Tax: ${map.tax_member.name}`,
           ];
+          const readiness = getReadiness(map);
           const personName =
             story?.person_name ?? dossier?.person_name ?? clientName;
           const recap =
@@ -303,6 +324,21 @@ export function BusinessStoryPanel({
                 </div>
 
                 <aside className="space-y-2 rounded-lg border border-white/[0.06] bg-black/10 p-3">
+                  <div className="rounded-md border border-white/[0.06] bg-white/[0.03] p-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs font-semibold text-[var(--bz-text-1)]">
+                        {readiness.label}
+                      </span>
+                      <span className="rounded bg-white/[0.08] px-1.5 py-0.5 text-[10px] font-medium text-[var(--bz-text-2)]">
+                        {readiness.score}%
+                      </span>
+                    </div>
+                    {readiness.reasons.length > 0 && (
+                      <p className="mt-1 text-[11px] leading-4 text-[var(--bz-text-2)]">
+                        {readiness.reasons[0]}
+                      </p>
+                    )}
+                  </div>
                   <div className="flex items-center gap-2 text-sm font-medium text-[var(--bz-text-1)]">
                     <Building2 className="h-4 w-4 text-[var(--bz-accent)]" />
                     {personName}

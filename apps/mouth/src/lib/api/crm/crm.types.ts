@@ -116,6 +116,13 @@ export interface TaxCompanyPilotNextAction {
   severity: "high" | "medium" | "low";
 }
 
+export interface TaxCompanyPilotReadiness {
+  status: "ready" | "needs_review" | "blocked";
+  score: number;
+  label: string;
+  reasons: string[];
+}
+
 export interface TaxCompanyPilotEvidenceStory {
   person_name: string;
   company_name: string;
@@ -141,6 +148,7 @@ export interface TaxCompanyPilotMap {
   person_dossiers: TaxCompanyPilotPersonDossier[];
   evidence_stories?: TaxCompanyPilotEvidenceStory[];
   next_best_actions: TaxCompanyPilotNextAction[];
+  readiness?: TaxCompanyPilotReadiness | null;
   business_story: string[];
   duplicate_candidates: TaxCompanyPilotDuplicateCandidate[];
   gaps: TaxCompanyPilotGap[];
