@@ -2123,6 +2123,8 @@ def main():
                        help='Dry run (no publishing)')
     parser.add_argument('--max-enrich', type=int, default=15,
                        help='Max articles to enrich with Claude (default: 15)')
+    parser.add_argument('--no-cell-emit', action='store_true',
+                       help='Disable Phase 3 TICKET B cell-aware HGT post-emit (debug only)')
 
     args = parser.parse_args()
 
@@ -2150,7 +2152,27 @@ def main():
     # Run pipeline
     pipeline = IntelPipeline(config)
     success = pipeline.run()
-    
+
+    # Phase 3 TICKET B — IntelScraperHGTBridge async post-emit (bounded blast).
+    # See spec v2: research/symbiosis/2026-05-13-ticket-b-narrow-spec.md
+    if not args.no_cell_emit:
+        try:
+            import asyncio
+            from backend.cell.cell_post_emit import emit_pipeline_run
+
+            asyncio.run(
+                asyncio.wait_for(
+                    emit_pipeline_run(pipeline.state),
+                    timeout=60.0,
+                )
+            )
+        except asyncio.TimeoutError:
+            print("⚠️ cell post-emit timeout after 60s (non-fatal)",
+                  file=sys.stderr)
+        except Exception as cell_exc:
+            print(f"⚠️ cell post-emit skipped (non-fatal): {cell_exc}",
+                  file=sys.stderr)
+
     sys.exit(0 if success else 1)
 
 
