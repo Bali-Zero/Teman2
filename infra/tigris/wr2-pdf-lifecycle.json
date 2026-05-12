@@ -1,0 +1,16 @@
+{
+  "Rules": [
+    {
+      "ID": "wr2-pdf-prod-30d",
+      "Status": "Enabled",
+      "Filter": {"Prefix": "wr2-pdf/"},
+      "Expiration": {"Days": 30}
+    },
+    {
+      "ID": "wr2-pdf-tests-1d",
+      "Status": "Enabled",
+      "Filter": {"Prefix": "wr2-pdf-tests/"},
+      "Expiration": {"Days": 1}
+    }
+  ]
+}
