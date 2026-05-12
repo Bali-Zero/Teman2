@@ -254,6 +254,21 @@ operation on Pro.
 
 ## 4. Per-draft flow and error handling
 
+### 4.0 Cross-LLM panel revisions (2026-05-13, post sez 4-7 review)
+
+3-LLM panel (Gemini + GPT-5.5 codex + DeepSeek V4 Pro) caught **6 flaws**
+in earlier sez 4-7 drafts. Applied inline below; full table in §1.4.
+
+| Convergence | Flaw | Mitigation in this section |
+|---|---|---|
+| 2/3 (high) | **Per-draft lease / idempotency** — overlapping launchd run can double-process same draft mid-tigris-upload, before PG UPDATE | §4.1.1 lease table |
+| 3/3 (medium) | **Tigris orphan PDF** on `canva_import_failed` path | §4.3 cleanup step |
+| 2/3 (high) | **Overlapping launchd runs** — default launchd does NOT serialize a job with itself on `StartInterval` | §5.1 LaunchOnlyOnce + flock advisory in orchestrator |
+| 2/3 (high) | **429/5xx → mark `canva_import_failed` aggressive** — should backoff + leave in `drafts_imaged_checked` for retry | §4.3 transient-vs-permanent classifier |
+| 2/3 (high) | **Plist envvar rotation gap** — secrets baked at bootstrap, no hot-reload | §5.1 zsh wrapper `source ~/.nuzantara-secrets.env && exec ...` (consistent with legacy plist) |
+| 2/3 (medium) | **E2E test on real PG draft pollutes production** | §6.4 synthetic `e2e_test_client` + namespaced Tigris prefix + dedicated Canva folder |
+| 2/3 (split) | **Commit ordering bisectability** — keep imports green at every commit | §7.3 restructure |
+
 ### 4.1 Draft lifecycle
 
 ```
@@ -281,6 +296,37 @@ Two new terminal status values are added to the schema vocabulary:
 Both are terminal and NOT picked up by the next cron tick. Antonello
 manually re-promotes them to `drafts_imaged_checked` after fixing the
 underlying issue.
+
+### 4.1.1 Per-draft lease (new, post-panel)
+
+Race condition discovered by panel: even with `MAX_DRAFTS_PER_RUN=3`,
+two overlapping orchestrator runs (slow MCP call extending past 5min
+StartInterval) can both SELECT the same draft, double-upload PDF to
+Tigris, and double-import to Canva.
+
+**Fix — compare-and-swap status transition** at fetch time:
+
+```sql
+UPDATE war_room_drafts
+   SET status = 'rendering',
+       lease_owner = $1,           -- new column: text (orchestrator PID + hostname)
+       lease_acquired_at = NOW()    -- new column: timestamptz
+ WHERE id = $2
+   AND status = 'drafts_imaged_checked'
+   AND canva_edit_url IS NULL
+RETURNING id, topic, register, slides_json
+```
+
+Only the row that wins the CAS is processed. After success → status
+`'rendered'` clears the lease. After terminal failure → status
+`'pdf_render_failed'` / `'canva_import_failed'` clears the lease.
+
+Stale lease watchdog: `lease_acquired_at < NOW() - INTERVAL '15 minutes'`
+AND `status='rendering'` → reset to `'drafts_imaged_checked'`,
+nullify lease fields, alert Telegram (orphan recovery).
+
+Schema migration: new SQL v2 migration `NNN_wr2_draft_lease.sql` adds
+`lease_owner text` + `lease_acquired_at timestamptz` to `war_room_drafts`.
 
 ### 4.2 Per-draft pseudo-code
 
@@ -338,19 +384,37 @@ async def _apply_one_draft(conn, mcp_session, row, *, dsn):
     return True
 ```
 
-### 4.3 Failure classification
+### 4.3 Failure classification (revised post-panel)
 
-| Failure point | New status | Retry-able? | Alert? |
-|---|---|---|---|
-| A schema adapt KeyError | no DB change | no, fixable in code | logger.error, no Telegram |
-| B PDF render exit≠0 | `pdf_render_failed` | manual re-promote | Telegram |
-| B subprocess timeout 120s | `pdf_render_failed` | manual | Telegram |
-| C Tigris boto3 ClientError | `pdf_render_failed` | auto 3 retry then terminal | Telegram |
-| D MCP call_tool raises | `canva_import_failed` | manual | Telegram (escalation) |
-| D OAuth token expired AND refresh succeeded | (transparent retry) | yes | no |
-| D OAuth refresh revoked | (orchestrator exits 5) | re-bootstrap | Telegram high prio |
-| E move-to-folder fails | status stays `rendered` | non-fatal | warn log |
-| F PG UPDATE crashes | orphan (Canva exists, DB unaware) | reconnect-on-dead-conn (legacy) | Telegram persist_failed |
+Two new classes added for panel feedback: **transient** (retry naturally
+next cron tick, stay in `drafts_imaged_checked` after lease release)
+vs **permanent** (mark terminal). MCP 429/5xx and OAuth transient errors
+are transient; structural failures are permanent.
+
+| Failure point | Classification | DB status | Lease release | Tigris cleanup | Telegram |
+|---|---|---|---|---|---|
+| A schema adapt KeyError | permanent | `pdf_render_failed` | yes | n/a (pre-upload) | yes |
+| B PDF render exit≠0 | permanent | `pdf_render_failed` | yes | n/a | yes |
+| B subprocess timeout 120s | permanent | `pdf_render_failed` | yes | n/a | yes |
+| C Tigris boto3 ClientError (3 retry exh) | permanent | `pdf_render_failed` | yes | best-effort delete partial | yes |
+| D MCP `call_tool` raises 429 / 5xx / Retry-After | **transient** | revert to `drafts_imaged_checked` | yes | **delete uploaded PDF** | warn log only |
+| D MCP `call_tool` raises 4xx structural | permanent | `canva_import_failed` | yes | **delete uploaded PDF** | yes (escalation) |
+| D OAuth token expired AND refresh succeeded | transparent retry | (no change mid-flow) | held | n/a | no |
+| D OAuth refresh revoked | (orchestrator exits 5) | revert to `drafts_imaged_checked` | yes | **delete uploaded PDF** | yes high prio |
+| E move-to-folder fails | non-fatal | stays `rendered` | yes | n/a | warn log |
+| F PG UPDATE crashes | orphan | (Canva exists, DB unaware) | held → watchdog resets | n/a | yes persist_failed |
+
+**Tigris cleanup (new step §4.3.1)**: on transient or permanent path D
+failure, orchestrator MUST call `boto3.delete_object` on the uploaded
+PDF before mutating DB. Best-effort: failure to delete is logged but
+does not change status flow (S3 lifecycle policy is the safety net,
+see §5.6).
+
+**Backoff classifier**: MCP responses with `Retry-After` header or
+HTTP 429/502/503/504 → classified transient. Other HTTP 4xx →
+permanent. `httpx.NetworkError` / `httpx.TimeoutException` → transient
+with cap (after 3 consecutive transient failures on same draft across
+ticks, escalate to permanent).
 
 ### 4.4 Inherited patterns from legacy
 
@@ -368,10 +432,19 @@ Three patterns from `scripts/wr2_canva_apply.py` are reused verbatim:
 
 ## 5. launchd plist and operational lifecycle
 
-### 5.1 Production plist
+### 5.1 Production plist (revised post-panel)
 
-File: `infra/launchagents/com.balizero.wr2.canva-renderer.plist`
-(replaces existing plist of same label):
+Two changes from v1 driven by panel:
+
+1. **No inline `EnvironmentVariables`** — use bash wrapper that sources
+   `~/.nuzantara-secrets.env` at execution time. Fresh secrets every
+   tick, no `bootout`+`bootstrap` for rotation. Consistent with legacy
+   plist convention (verified empirically via `launchctl print`).
+2. **Single-instance flock** in `ProgramArguments` wrapper — prevents
+   overlapping runs from launchd (StartInterval=300 doesn't serialize
+   on slow tick).
+
+File: `infra/launchagents/com.balizero.wr2.canva-renderer.plist`:
 
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
@@ -382,34 +455,12 @@ File: `infra/launchagents/com.balizero.wr2.canva-renderer.plist`
   <string>com.balizero.wr2.canva-renderer</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python</string>
-    <string>/Users/nuzantara/Desktop/nuzantara/scripts/wr2_canva_pdf_apply.py</string>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>source ~/.nuzantara-secrets.env 2>/dev/null; exec /opt/homebrew/bin/flock -n /tmp/wr2_canva_pdf_apply.lock /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -u /Users/nuzantara/Desktop/nuzantara/scripts/wr2_canva_pdf_apply.py</string>
   </array>
   <key>WorkingDirectory</key>
   <string>/Users/nuzantara/Desktop/nuzantara</string>
-  <key>EnvironmentVariables</key>
-  <dict>
-    <key>PATH</key>
-    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
-    <key>DATABASE_URL</key>
-    <string>postgresql://...127.0.0.1:15432/nuzantara_rag</string>
-    <key>WR2_CANVA_TOKEN_FILE</key>
-    <string>/Users/nuzantara/.config/wr2/canva_tokens.json</string>
-    <key>WR2_CANVA_HMAC_KEY</key>
-    <string>${SECRET_HEX}</string>
-    <key>AWS_ACCESS_KEY_ID</key>
-    <string>${TIGRIS_ACCESS_KEY}</string>
-    <key>AWS_SECRET_ACCESS_KEY</key>
-    <string>${TIGRIS_SECRET_KEY}</string>
-    <key>AWS_ENDPOINT_URL_S3</key>
-    <string>https://fly.storage.tigris.dev</string>
-    <key>TIGRIS_BUCKET</key>
-    <string>nuzantara-warroom-images</string>
-    <key>TELEGRAM_BOT_TOKEN</key>
-    <string>${TELEGRAM_BOT_TOKEN}</string>
-    <key>TELEGRAM_OWNER_CHAT_ID</key>
-    <string>1125336968</string>
-  </dict>
   <key>StartInterval</key>
   <integer>300</integer>
   <key>RunAtLoad</key>
@@ -431,6 +482,18 @@ File: `infra/launchagents/com.balizero.wr2.canva-renderer.plist`
 </dict>
 </plist>
 ```
+
+Notes:
+- `flock -n` (non-blocking): if a previous instance still holds the
+  lock, this tick exits 1 (non-success, but no error log). Next tick
+  retries naturally. Lock file `/tmp/wr2_canva_pdf_apply.lock`.
+- `flock` binary at `/opt/homebrew/bin/flock` (brew, v0.4.0,
+  verified 2026-05-13). Pre-existing in stack (cf. git-pull.5min plist
+  + mini-migration `lessons_python_ssh_heredoc_escape.md` fix).
+- `-l` on `/bin/zsh` ensures `.zshrc` is sourced (PATH+brew available),
+  matching the empirically-verified legacy plist convention.
+- `exec` replaces the shell process → launchd sees the Python PID
+  directly for accurate `SuccessfulExit` evaluation.
 
 Token watchdog plist
 (`infra/launchagents/com.balizero.wr2.canva-token-watchdog.daily.plist`)
@@ -500,6 +563,42 @@ psql -c "UPDATE system_settings SET value='false' WHERE key='wr2_canva_renderer_
 #    (legacy script still in repo for ~2 weeks)
 ```
 
+### 5.6 Tigris S3 lifecycle policies (new post-panel)
+
+Two prefixes with distinct retention:
+
+```
+s3://nuzantara-warroom-images/wr2-pdf/                  retention 30 days (production)
+s3://nuzantara-warroom-images/wr2-pdf-tests/             retention 1 day  (E2E namespace)
+```
+
+`infra/tigris/wr2-pdf-lifecycle.json` defines the policy. Applied via:
+
+```bash
+aws s3api put-bucket-lifecycle-configuration \
+  --bucket nuzantara-warroom-images \
+  --lifecycle-configuration file://infra/tigris/wr2-pdf-lifecycle.json \
+  --endpoint-url https://fly.storage.tigris.dev
+```
+
+Rationale: 30-day retention covers re-import-from-url replay if Canva
+design is accidentally deleted client-side. 1-day on `tests/` prefix
+auto-cleans E2E artifacts. Both serve as safety net for orphan-PDF
+class even when orchestrator cleanup step fails.
+
+### 5.7 Stale-lease watchdog (new post-panel)
+
+`scripts/wr2_canva_lease_watchdog.py` runs every 10 minutes via plist
+`com.balizero.wr2.canva-lease-watchdog.10min.plist`:
+
+1. SELECT id, lease_owner, lease_acquired_at FROM war_room_drafts
+   WHERE status='rendering' AND lease_acquired_at < NOW() - INTERVAL '15 minutes'.
+2. UPDATE status='drafts_imaged_checked', clear lease fields.
+3. Telegram alert per orphan recovered (sample: 5 max per run to avoid
+   flood).
+
+This + Tigris S3 lifecycle = belt+suspenders against orphan state.
+
 ## 6. Testing strategy
 
 | Test layer | Coverage | Tool |
@@ -513,6 +612,39 @@ psql -c "UPDATE system_settings SET value='false' WHERE key='wr2_canva_renderer_
 CI: existing PR-checks (E2E, MCP Server Tests) cover unrelated code
 paths. New unit tests added under
 `apps/backend-rag/backend/tests/unit/services/canva_renderer_v2/`.
+
+### 6.4 E2E isolation strategy (new post-panel)
+
+Panel flagged that "1 real draft from PG" as test fixture pollutes
+production data. Revised approach:
+
+| Layer | Production | E2E |
+|---|---|---|
+| PG client_id | real Bali Zero clients | permanent synthetic `e2e_test_client` row in `clients` table |
+| PG draft | created by storyboarder | created by `scripts/wr2_e2e_create_fixture_draft.py` with `client_id=e2e_test_client`, `topic="[E2E TEST]..."`, fixed UUID `00000000-0000-0000-e2e0-000000000001` |
+| Tigris prefix | `wr2-pdf/` | `wr2-pdf-tests/` (1-day lifecycle) |
+| Canva folder | "WR2 Drafts 2026" | "E2E Tests (Auto-Delete)" (separate `WR2_DRAFTS_FOLDER_ID_E2E` env) |
+| Status terminal | normal | teardown script DELETEs Canva design + PG row immediately after assert |
+
+Orchestrator detects E2E mode via `WR2_E2E_MODE=true` env var (set by
+test runner only). In E2E mode: uses test Tigris prefix, test Canva
+folder, and outputs more verbose diagnostics. Production never sets
+this var.
+
+E2E test scenarios:
+
+1. **Happy path** — synthetic draft → fully rendered + Canva URL valid
+2. **Lease race** — spawn 2 orchestrator instances simultaneously,
+   assert only 1 processes
+3. **OAuth refresh mid-flow** — pre-expire token, assert transparent
+   refresh + success
+4. **Tigris 503 transient** — moto intercepts, assert backoff
+5. **Stale lease recovery** — manually insert `status='rendering'`
+   row with `lease_acquired_at` 20min ago, assert watchdog resets
+
+E2E pytest fixtures live in
+`apps/backend-rag/backend/tests/e2e/canva_renderer_v2/`. Run manually
+on Pro after bootstrap; not in CI (browser-bound OAuth flow).
 
 ## 7. Deliverables and commit plan
 
@@ -549,24 +681,35 @@ paths. New unit tests added under
 | `apps/backend-rag/backend/tests/fixtures/canva_renderer_v2/draft_legacy_parq.json` | data |
 | `apps/backend-rag/backend/tests/fixtures/canva_renderer_v2/draft_v2_kep71.json` | data |
 
-### 7.3 Commit sequence (WIP-every-step anti-hijack)
+### 7.3 Commit sequence (revised post-panel — bisect-safe)
 
-| Commit | Subject | Files |
-|---|---|---|
-| 1 | `docs(wr2): spec for orchestrator PDF render pipeline` | this design doc |
-| 2 | `feat(canva-renderer-v2): module scaffolding + _pg.py + _telegram.py` | 2 modules + tests |
-| 3 | `feat(canva-renderer-v2): _schema_adapter.py with 3 fixtures` | adapter + fixtures + tests |
-| 4 | `feat(canva-renderer-v2): _pdf_pipeline.py subprocess wrapper` | pipeline + tests |
-| 5 | `feat(canva-renderer-v2): _tigris.py boto3 with 3-retry` | tigris + tests |
-| 6 | `feat(canva-renderer-v2): _token_storage.py HMAC+flock+proactive-refresh` | storage + tests |
-| 7 | `feat(canva-renderer-v2): _canva_mcp.py ClientSession wrapper` | mcp + tests |
-| 8 | `feat(canva-renderer-v2): orchestrator.py top-level + scripts entrypoint` | orchestrator + script + integration test |
-| 9 | `feat(wr2): bootstrap_canva_oauth.py one-shot interactive script` | bootstrap |
-| 10 | `feat(wr2): canva_token_watchdog.py daily expiry check` | watchdog |
-| 11 | `feat(infra): launchd plist for v2 renderer + token watchdog` | 2 plist files |
-| 12 | `docs(cicatrix): update DAHJEkWpkzY scar — v3 orchestrator live` | scar update |
+Panel split on commit ordering (Gemini OK, GPT-5.5 + DeepSeek
+"restructure for bisectability"). Resolution: every commit must keep
+`pytest --collect-only` green (no missing-import errors) even if
+feature is incomplete. Pure-library modules first, then wiring last.
+
+| # | Subject | Files | Bisect-safe? |
+|---|---|---|---|
+| 1 | `docs(wr2): spec for orchestrator PDF render pipeline` | this design doc | yes |
+| 2 | `feat(db): SQL v2 migration NNN_wr2_draft_lease.sql` | lease columns | yes |
+| 3 | `feat(canva-renderer-v2): pkg init + _telegram.py + _pg.py (read-only)` | 3 files + tests | yes (no external IO except mocked PG) |
+| 4 | `feat(canva-renderer-v2): _schema_adapter.py + fixtures` | adapter + 3 fixtures + tests | yes (pure function) |
+| 5 | `feat(canva-renderer-v2): _pdf_pipeline.py subprocess wrapper` | pipeline + tests | yes (mocks subprocess) |
+| 6 | `feat(canva-renderer-v2): _tigris.py boto3 + S3 lifecycle JSON` | tigris + tests + infra/tigris/ | yes (moto S3) |
+| 7 | `feat(canva-renderer-v2): _token_storage.py HMAC+flock+proactive-refresh` | storage + tests | yes (tmp fixture) |
+| 8 | `feat(canva-renderer-v2): _canva_mcp.py ClientSession wrapper` | mcp + tests | yes (httpx_mock) |
+| 9 | `feat(canva-renderer-v2): _pg.py write path + lease CAS` | pg lease + tests | yes |
+| 10 | `feat(canva-renderer-v2): orchestrator.py top-level (wired)` | orchestrator + integration test | yes (all deps committed) |
+| 11 | `feat(wr2): scripts/wr2_canva_pdf_apply.py thin entrypoint` | script | yes |
+| 12 | `feat(wr2): bootstrap_canva_oauth.py + canva_token_watchdog.py + lease_watchdog.py` | 3 scripts | yes |
+| 13 | `feat(infra): launchd plist for v2 renderer + token watchdog + lease watchdog` | 3 plist files | yes |
+| 14 | `feat(canva-renderer-v2): E2E fixtures + scripts/wr2_e2e_create_fixture_draft.py` | e2e infra | yes |
+| 15 | `docs(cicatrix): update DAHJEkWpkzY scar — v3 orchestrator live` | scar update | yes |
 
 Push after every commit. WIP-commit-every-10min anti-hijack.
+`git bisect` valid across all 15 commits because each isolated module
+has its own passing test suite and no commit leaves the imports
+broken (orchestrator.py last, after all deps shipped).
 
 ### 7.4 Stop condition
 
