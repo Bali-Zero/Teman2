@@ -447,6 +447,7 @@ def include_light_routers(api: FastAPI) -> None:
         hr_owner_cashout,
         image_generation,
         instagram_chat,
+        intel_lake,
         knowledge_activity,
         lead_capture,  # [4APPS] POST /api/lead/capture — homepage → WhatsApp handoff
         lkpm,
@@ -625,6 +626,9 @@ def include_light_routers(api: FastAPI) -> None:
 
     # Image generation router
     api.include_router(image_generation.router)
+
+    # Intel Lake — Wave 1 (mig 168) unified intel pipeline ingest endpoint
+    api.include_router(intel_lake.router)
 
     # Query Analytics router
     api.include_router(query_analytics.router)
