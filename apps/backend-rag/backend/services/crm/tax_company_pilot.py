@@ -299,7 +299,7 @@ def _build_evidence_stories(
 def _action_owner(code: str) -> Literal["crm", "tax", "setup"]:
     if "tax" in code or "finance" in code or "family" in code:
         return "tax"
-    if "individual" in code:
+    if "individual" in code or "person" in code or "folder" in code:
         return "crm"
     return "setup"
 

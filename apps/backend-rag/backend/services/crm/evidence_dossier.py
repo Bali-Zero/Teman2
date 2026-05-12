@@ -104,8 +104,9 @@ def _build_company_map(
 
     people = [_person_from_link(row) for row in rows]
     documents = [_document_from_row(doc) for doc in all_docs]
-    evidence_links = _evidence_links(rows, documents)
     tax_owner = _tax_owner(rows)
+    gaps = _gaps(rows, documents, all_kg, tax_owner)
+    evidence_links = _evidence_links(rows, documents)
 
     return TaxCompanyPilotMap(
         key=f"dynamic-{company_id}",
@@ -128,11 +129,12 @@ def _build_company_map(
                 tax_owner=tax_owner,
                 documents=documents,
                 kg_rows=all_kg,
+                gaps=gaps,
             )
             for person in people
         ],
         duplicate_candidates=[],
-        gaps=_gaps(documents, all_kg),
+        gaps=gaps,
         evidence_links=evidence_links,
         ai_recap=_ai_recap(first, people, documents, all_kg),
         read_only=True,
@@ -168,7 +170,8 @@ def _evidence_story(
     tax_owner: str,
     documents: list[TaxCompanyPilotDocument],
     kg_rows: list[dict[str, Any]],
-) -> Any:
+    gaps: list[dict[str, str]],
+) -> dict[str, Any]:
     items = [
         TaxCompanyPilotStoryEvidence(
             label="Person file",
@@ -192,7 +195,7 @@ def _evidence_story(
         ),
         "relationship_path": [person.name, company_name, f"Tax: {tax_owner}"],
         "evidence_items": items,
-        "next_action": _next_action(documents, kg_rows),
+        "next_action": _next_action(documents, kg_rows, gaps),
         "portal_rule": _PORTAL_RULE,
         "team_rule": _TEAM_RULE,
         "confidence": person.relationship_confidence,
@@ -254,12 +257,38 @@ def _evidence_links(
 
 
 def _gaps(
+    rows: list[dict[str, Any]],
     documents: list[TaxCompanyPilotDocument],
     kg_rows: list[dict[str, Any]],
-) -> list[Any]:
+    tax_owner: str,
+) -> list[dict[str, str]]:
     gaps: list[dict[str, str]] = []
+    if tax_owner == "Unassigned tax owner":
+        gaps.append(
+            {
+                "code": "missing_tax_owner",
+                "label": "Assign tax owner before using this story operationally.",
+                "severity": "high",
+            }
+        )
+    if not any(row.get("client_folder_id") for row in rows):
+        gaps.append(
+            {
+                "code": "missing_person_folder",
+                "label": "Connect the canonical person Drive folder.",
+                "severity": "medium",
+            }
+        )
     if not documents:
         gaps.append({"code": "missing_documents", "label": "Attach source documents.", "severity": "high"})
+    if documents and not any(document.group == "company" for document in documents):
+        gaps.append(
+            {
+                "code": "missing_company_registry",
+                "label": "Attach company registry evidence.",
+                "severity": "medium",
+            }
+        )
     if documents and not any(document.group in ("tax", "lkpm", "coretax") for document in documents):
         gaps.append({"code": "missing_tax_trail", "label": "Attach tax or LKPM evidence.", "severity": "medium"})
     if not kg_rows:
@@ -284,7 +313,10 @@ def _ai_recap(
 def _next_action(
     documents: list[TaxCompanyPilotDocument],
     kg_rows: list[dict[str, Any]],
+    gaps: list[dict[str, str]] | None = None,
 ) -> str:
+    if gaps:
+        return gaps[0]["label"]
     if not documents:
         return "Attach source documents before using this company story operationally."
     if not kg_rows:
