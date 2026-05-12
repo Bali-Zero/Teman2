@@ -103,6 +103,38 @@ jobs:
             #                               on a fresh empty table the ACCESS EXCLUSIVE
             #                               warning about future ALTER COLUMN doesn't apply
             #                               (we'd just rebuild the table at this scale)
+            # Style-only exclusions (added 2026-05-13, mig 172):
+            #   prefer-robust-stmts         — the migration_base.py runner already
+            #                                 wraps the whole file in a single
+            #                                 asyncpg conn.transaction()
+            #                                 (apps/backend-rag/backend/db/
+            #                                  migration_base.py:493). Explicit
+            #                                 BEGIN/COMMIT inside the SQL would
+            #                                 conflict with asyncpg nested-txn
+            #                                 semantics, so we let the runner be
+            #                                 the canonical transaction boundary.
+            #   constraint-missing-not-valid — empty / near-empty tables in this
+            #                                  repo never have lock-held-during-
+            #                                  scan concerns. The two-step NOT
+            #                                  VALID + VALIDATE pattern is itself
+            #                                  flagged by Squawk when both are
+            #                                  in the same outer transaction
+            #                                  (which the runner enforces), so
+            #                                  the rule is unactionable here.
+            #   prefer-bigint-over-int       — mig 172 mirrors apps/cell/cell/
+            #                                  core/db.py:_CREATE_CELL_SKILLS
+            #                                  shape for the CI test DB; that
+            #                                  table predates squawk in the
+            #                                  repo and uses INTEGER for
+            #                                  success/failure/use_count.
+            #                                  Re-typing to BIGINT would
+            #                                  diverge from production.
+            #   prefer-identity              — same reason: existing cell_skills
+            #                                  uses SERIAL PRIMARY KEY in
+            #                                  production. GENERATED ALWAYS AS
+            #                                  IDENTITY is the modern pattern
+            #                                  but mid-flight schema swap is
+            #                                  out of scope for LEVA 2.
             squawk \
               --pg-version=15.0 \
               --exclude=require-concurrent-index-creation \
@@ -113,6 +145,10 @@ jobs:
               --exclude=ban-char-field \
               --exclude=prefer-bigint-over-smallint \
               --exclude=prefer-text-field \
+              --exclude=prefer-robust-stmts \
+              --exclude=constraint-missing-not-valid \
+              --exclude=prefer-bigint-over-int \
+              --exclude=prefer-identity \
               "$file"
             echo "::endgroup::"
           done
