@@ -25,13 +25,20 @@ ALTER TABLE cell_skills
 ALTER TABLE cell_skills
     ADD COLUMN IF NOT EXISTS scar_weakness_tag VARCHAR(64);
 
+-- Use NOT VALID + VALIDATE to avoid the constraint-missing-not-valid +
+-- prefer-robust-stmts Squawk warnings. The table is empty/near-empty today
+-- (0 rows on 2026-05-13), so the ACCESS EXCLUSIVE lock during VALIDATE is
+-- trivial; we keep the pattern for forward-compatibility once cell_skills
+-- starts accumulating skill rows from LEVA 1 (dream -> skill loop).
 ALTER TABLE cell_skills
     ADD CONSTRAINT cell_skills_kind_check
-        CHECK (kind IN ('skill', 'scar'));
+        CHECK (kind IN ('skill', 'scar')) NOT VALID;
+ALTER TABLE cell_skills VALIDATE CONSTRAINT cell_skills_kind_check;
 
 ALTER TABLE cell_skills
     ADD CONSTRAINT cell_skills_scope_check
-        CHECK (scope IN ('Project', 'Personal'));
+        CHECK (scope IN ('Project', 'Personal')) NOT VALID;
+ALTER TABLE cell_skills VALIDATE CONSTRAINT cell_skills_scope_check;
 
 -- Idempotency guard for concurrent scar emission across pulses.
 -- Partial unique index: only scars require uniqueness on weakness_tag; skill rows leave
