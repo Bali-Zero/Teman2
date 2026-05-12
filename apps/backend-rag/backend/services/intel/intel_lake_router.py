@@ -37,9 +37,12 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import asyncpg
+
+if TYPE_CHECKING:
+    from backend.services.events.event_bus import EventBus
 
 logger = logging.getLogger(__name__)
 
@@ -229,7 +232,7 @@ async def backfill_unrouted(db_pool: asyncpg.Pool, batch_size: int = 100) -> int
     return total
 
 
-def register_intel_lake_router_handlers(bus, db_pool: asyncpg.Pool) -> None:
+def register_intel_lake_router_handlers(bus: EventBus, db_pool: asyncpg.Pool) -> None:
     """Register Tier 1 router on `intel_lake.event` channel.
 
     Called from backend.services.events.handlers._core.register_handlers.

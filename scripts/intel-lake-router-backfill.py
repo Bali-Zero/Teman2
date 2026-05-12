@@ -12,6 +12,7 @@ Usage:
 
 Requires DATABASE_URL env var (Fly proxy on localhost:15432).
 """
+
 import asyncio
 import logging
 import os
@@ -24,10 +25,13 @@ logger = logging.getLogger("intel-lake-router-backfill")
 async def main() -> int:
     import asyncpg  # noqa: PLC0415
 
-    db_url = os.environ.get(
-        "DATABASE_URL",
-        "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag",
-    )
+    db_url = os.environ.get("DATABASE_URL")
+    if not db_url:
+        logger.error(
+            "DATABASE_URL not set. Export from secrets first: "
+            "`set -a; source ~/.nuzantara-secrets.env; set +a`"
+        )
+        return 2
     pool = await asyncpg.create_pool(db_url, min_size=1, max_size=3)
     if pool is None:
         logger.error("failed to create asyncpg pool")
