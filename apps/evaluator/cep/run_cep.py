@@ -3,7 +3,7 @@
 
 Runs the versioned golden query set against a target answer source
 (``--answers-file`` JSON map, or stub for dry-run), grades each result
-with DeepSeek Reasoner against the rubric (required_facts), and emits a
+with DeepSeek V4 Pro (Think Max mode) against the rubric (required_facts), and emits a
 CSV report + summary suitable for cron + Telegram alerting.
 
 Why DeepSeek as evaluator:
@@ -76,7 +76,8 @@ def grade_with_deepseek(
 ) -> dict[str, Any]:
     """Score a single answer against its rubric."""
     body = {
-        "model": "deepseek-reasoner",
+        "model": "deepseek-v4-pro",
+        "reasoning_effort": "max",
         "messages": [
             {"role": "system", "content": "You are an evaluator. Reply only strict JSON."},
             {"role": "user", "content": DEEPSEEK_RUBRIC_PROMPT.format(
