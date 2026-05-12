@@ -121,6 +121,20 @@ jobs:
             #                                  in the same outer transaction
             #                                  (which the runner enforces), so
             #                                  the rule is unactionable here.
+            #   prefer-bigint-over-int       — mig 172 mirrors apps/cell/cell/
+            #                                  core/db.py:_CREATE_CELL_SKILLS
+            #                                  shape for the CI test DB; that
+            #                                  table predates squawk in the
+            #                                  repo and uses INTEGER for
+            #                                  success/failure/use_count.
+            #                                  Re-typing to BIGINT would
+            #                                  diverge from production.
+            #   prefer-identity              — same reason: existing cell_skills
+            #                                  uses SERIAL PRIMARY KEY in
+            #                                  production. GENERATED ALWAYS AS
+            #                                  IDENTITY is the modern pattern
+            #                                  but mid-flight schema swap is
+            #                                  out of scope for LEVA 2.
             squawk \
               --pg-version=15.0 \
               --exclude=require-concurrent-index-creation \
@@ -133,6 +147,8 @@ jobs:
               --exclude=prefer-text-field \
               --exclude=prefer-robust-stmts \
               --exclude=constraint-missing-not-valid \
+              --exclude=prefer-bigint-over-int \
+              --exclude=prefer-identity \
               "$file"
             echo "::endgroup::"
           done
