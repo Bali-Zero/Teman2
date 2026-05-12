@@ -55,7 +55,7 @@ export function NewMessagesPill({ show, unreadCount, onClick }: NewMessagesPillP
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 8 }}
           transition={{ duration: 0.18 }}
-          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--background-secondary)] px-3 py-1.5 text-xs font-medium text-[var(--foreground)] shadow-md hover:bg-[var(--background)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+          className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 inline-flex items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--background-secondary)] px-3 py-1.5 text-xs font-medium text-[var(--foreground)] shadow-md hover:bg-[var(--background)] focus-ring"
           aria-live="polite"
           data-testid="new-messages-pill"
         >
