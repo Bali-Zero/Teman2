@@ -124,6 +124,14 @@ PG_CHANNEL_MAP: dict[str, str] = {
     # values (war_room_draft..measurer_metric — see migration 154).
     # See: docs/sprint3/mata-garuda-cell-design.md.
     "asset_provenance": "mata_garuda.asset_provenance",
+    # Emitted by intel_items AFTER INSERT trigger (migration 168, Wave 1 of
+    # Intel Lake — unified intel pipeline from 12+ producers). Payload:
+    # {item_id, canonical_url, source_domain, topic_tags, routing_status,
+    # first_seen_at, _outbox_id}. Fires only on NEW items, not on
+    # last_seen_at UPDATEs. Consumers: router daemon (Tier 1 rules + Tier 2
+    # LLM), downstream blog/wr2/nb-intel feeders.
+    # See: research/symbiosis/2026-05-12-intel-lake-design.md
+    "intel_lake_event": "intel_lake.event",
 }
 
 _RECONNECT_DELAY_S = 5

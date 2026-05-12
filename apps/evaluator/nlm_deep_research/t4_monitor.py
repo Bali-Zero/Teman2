@@ -803,6 +803,41 @@ class T4Monitor:
         if success:
             self._cb.record_success(state)
             self._persistence.save(state)
+            # Intel Lake Wave 2 (2026-05-12): dual-write to outbox so the lake
+            # also sees this observation. Best-effort — failure must not affect
+            # the existing T4 flow. Importing lazily to avoid heavy startup.
+            try:
+                import hashlib  # noqa: PLC0415
+                import sys  # noqa: PLC0415
+                sys.path.insert(0, "/Users/nuzantara/scripts")
+                from intel_lake_outbox import enqueue as _lake_enqueue  # type: ignore
+
+                content_hash = hashlib.sha256(
+                    (article.title + " " + (article.content or "")).encode()
+                ).hexdigest()[:32]
+                _lake_enqueue(
+                    "t4_monitor",
+                    {
+                        "producer_name": "t4_monitor",
+                        "canonical_url": article.url,
+                        "content_hash": content_hash,
+                        "title": article.title[:500],
+                        "summary": (article.content or "")[:2000],
+                        "source_domain": article.source_handle or "unknown",
+                        "language": None,
+                        "jurisdiction": None,
+                        "topic_tags": ["t4", article.platform or "unknown"],
+                        "published_at": article.scraped_at.isoformat() if article.scraped_at else None,
+                        "score": article.svs_score,
+                        "raw_payload": {
+                            "platform": article.platform,
+                            "notebook_id": self._notebook_id,
+                            "svs_score": article.svs_score,
+                        },
+                    },
+                )
+            except Exception as exc:
+                logger.warning("intel-lake enqueue failed for %s: %s", article.url[:80], exc)
         else:
             self._cb.record_failure(state)
             self._persistence.save(state)
