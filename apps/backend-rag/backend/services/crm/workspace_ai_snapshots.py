@@ -98,10 +98,7 @@ async def create_workspace_ai_snapshot(
         notebook_id=row["notebook_id"],
         note_id=row["note_id"],
         source_file_ids=list(row["source_file_ids"] or []),
-        facts=[
-            TaxCompanyPilotWorkspaceAiFact.model_validate(fact)
-            for fact in (row["facts"] or [])
-        ],
+        facts=_facts_from_db_value(row["facts"]),
         status=row["status"],
         created_by=row["created_by"],
         approved_by=row["approved_by"],
@@ -119,14 +116,18 @@ def _snapshot_from_row(row: Any) -> TaxCompanyPilotWorkspaceAiSnapshot:
         notebook_id=data.get("notebook_id"),
         note_id=data.get("note_id"),
         source_file_ids=list(data.get("source_file_ids") or []),
-        facts=[
-            TaxCompanyPilotWorkspaceAiFact.model_validate(fact)
-            for fact in (data.get("facts") or [])
-        ],
+        facts=_facts_from_db_value(data.get("facts")),
         approved_by=data.get("approved_by"),
         approved_at=approved_at.isoformat() if hasattr(approved_at, "isoformat") else approved_at,
         created_at=created_at.isoformat() if hasattr(created_at, "isoformat") else created_at,
     )
+
+
+def _facts_from_db_value(value: Any) -> list[TaxCompanyPilotWorkspaceAiFact]:
+    if not value:
+        return []
+    parsed = json.loads(value) if isinstance(value, str) else value
+    return [TaxCompanyPilotWorkspaceAiFact.model_validate(fact) for fact in parsed]
 
 
 _LATEST_BY_COMPANY_SQL = """

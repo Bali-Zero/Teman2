@@ -42,7 +42,6 @@ class _FakeConn:
         self.args = args
         facts_arg = args[7]
         assert isinstance(facts_arg, str)
-        facts = json.loads(facts_arg)
         return {
             "id": "draft-1",
             "company_id": args[0],
@@ -52,7 +51,7 @@ class _FakeConn:
             "notebook_id": args[4],
             "note_id": args[5],
             "source_file_ids": args[6],
-            "facts": facts,
+            "facts": facts_arg,
             "status": "draft",
             "created_by": args[8],
             "approved_by": None,
@@ -89,5 +88,6 @@ async def test_create_workspace_ai_snapshot_serializes_facts_for_jsonb() -> None
     )
 
     assert response.status == "draft"
+    assert response.facts[0].category == "identity"
     assert pool.conn.args is not None
     assert json.loads(pool.conn.args[7])[0]["category"] == "identity"
