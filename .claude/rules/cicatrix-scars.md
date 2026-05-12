@@ -5,7 +5,52 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
-### ⚠️ STRUCTURAL: WR2 master template requires verified richtext slot count (2026-05-10)
+### ⚠️ STRUCTURAL: WR2 master template requires verified richtext slot count (2026-05-10 → architecturally bypassed 2026-05-13)
+
+_Discovered: 2026-05-10 02:53 WITA during run #1 of the post-DAHE6lx1lf8 recovery cycle · Patched 2026-05-10 via `chore/wr2-pipeline-hardening-2026-05-10` (validator + unit test + docstring guard) · **Architecturally bypassed 2026-05-13 via `feat/wr2-canva-pdf-render-2026-05-13`** (ReportLab→Tigris→Canva import flow, no master template required) · Severity: P0 (now defanged)_
+
+**RESOLUTION (2026-05-13 — DAHJEkWpkzY validation gap FINALLY closed):**
+
+The structural validation gap (master template richtext slot count) is now moot
+because the new rendering pipeline does not depend on a Canva master template
+at all. The PDF is generated server-side via ReportLab (`wr2_canva_pdf_render.py`,
+12 layout families auto-routed via `slide.layout_family`), uploaded to Tigris
+S3, then imported into Canva via `import-design-from-url` MCP which yields a
+layer-editable design without needing pre-existing richtext slots.
+
+Status of the three failing master template IDs:
+
+| Design ID | Status | Reason |
+|---|---|---|
+| `DAHE6lx1lf8` | DECOMMISSIONED 2026-05-08 | Original master, obsolete |
+| `DAHJLYRn_3E` | KEPT AS FAILURE EXAMPLE | Only 2 usable pages (PR #565 failed promotion) |
+| `DAHJEkWpkzY` | UNUSED IN NEW FLOW | Was the 2026-05-10 "fix" master; the new flow doesn't read any master |
+
+The validator `scripts/wr2_validate_master.py` is preserved in repo for
+documentation and as a tool if anyone needs to evaluate a Canva design's
+shape (e.g. for new editorial surfaces). The unit-test contract
+`test_template_design_id_format` in
+`apps/backend-rag/backend/tests/unit/services/canva_renderer/test_pending_builder.py`
+is preserved for the legacy `wr2_canva_apply.py` orchestrator (now disabled
+via kill switch — see below).
+
+**Production cron disabled 2026-05-13**: `com.balizero.wr2.canva-renderer.plist`
+called the legacy orchestrator (`wr2_canva_apply.py`) which relied on the
+broken master template flow. Disabled via:
+1. Kill switch flipped to `false`: `system_settings.wr2_canva_renderer_enabled='false'`
+2. Plist bootout: `launchctl bootout gui/$(id -u)/com.balizero.wr2.canva-renderer`
+
+Plist file `~/Library/LaunchAgents/com.balizero.wr2.canva-renderer.plist`
+preserved on disk for future reload AFTER the orchestrator refactor
+integrates the new renderer. Until then: queue stays empty (verified
+0 drafts pending at decommission time, status distribution 20 rendered
++ 15 rejected). When the orchestrator refactor lands, the plist will be
+updated to call the new pipeline (ReportLab → Tigris → Canva MCP import)
+and the kill switch flipped back on.
+
+Branch: `feat/wr2-canva-pdf-render-2026-05-13`. Commits:
+- `fafa25267` — feat(wr2): rebuild wr2_canva_pdf_render.py production renderer
+- `e697328d5` — fix(wr2): 3 visual fixes (body vcenter + punctuation glue + Quartz stat-card)
 
 _Discovered: 2026-05-10 02:53 WITA during run #1 of the post-DAHE6lx1lf8 recovery cycle · Patched 2026-05-10 via `chore/wr2-pipeline-hardening-2026-05-10` (validator + unit test + docstring guard) · Severity: P0_
 
