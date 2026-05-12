@@ -99,6 +99,12 @@ const giuliaMap: TaxCompanyPilotMap = {
       severity: "medium",
     },
   ],
+  readiness: {
+    status: "needs_review",
+    score: 76,
+    label: "Needs review",
+    reasons: ["Confirm current company tax standing before the next LKPM cycle."],
+  },
   business_story: [
     "Bimala is visible through a person-first path, not a company-only archive.",
   ],
@@ -161,6 +167,8 @@ describe("BusinessStoryPanel", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText("Giulia Del Giudice")).toBeInTheDocument();
     expect(screen.getByText("Tax owner: Dewa Ayu")).toBeInTheDocument();
+    expect(screen.getByText("Needs review")).toBeInTheDocument();
+    expect(screen.getByText("76%")).toBeInTheDocument();
     expect(
       screen.getByText(
         "Start from Giulia, then follow the Bimala company record, LKPM evidence, and tax owner.",
@@ -171,7 +179,7 @@ describe("BusinessStoryPanel", () => {
       screen.getAllByText(
         "Confirm current company tax standing before the next LKPM cycle.",
       ),
-    ).toHaveLength(2);
+    ).toHaveLength(3);
     expect(
       screen.getByText(
         "Team opens Drive evidence from kita. Client portal stays on approved downloads only.",
