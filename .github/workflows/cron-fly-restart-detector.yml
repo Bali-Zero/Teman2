@@ -6,7 +6,7 @@ name: cron - fly restart loop detector (every 15 min)
 
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: "*/15 * * * *"
   workflow_dispatch: {}
 
 concurrency:
@@ -19,13 +19,13 @@ jobs:
     timeout-minutes: 5
     env:
       COOLDOWN_KEY: fly-restart-detector-cooldown-v1
-      COOLDOWN_SECONDS: '1800'
+      COOLDOWN_SECONDS: "1800"
     steps:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 
       - name: Restore cooldown state
         id: cache
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ${{ runner.temp }}/cooldown.state
           key: ${{ env.COOLDOWN_KEY }}-${{ github.run_id }}
@@ -116,7 +116,7 @@ jobs:
 
       - name: Save cooldown state
         if: always()
-        uses: actions/cache/save@v4
+        uses: actions/cache/save@v5
         with:
           path: ${{ runner.temp }}/cooldown.state
           key: ${{ env.COOLDOWN_KEY }}-${{ github.run_id }}

@@ -39,6 +39,26 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)\.env\.example$"),
         ".env.example: documented placeholder, never a real secret",
     ),
+    # *.py.example, *.json.example, *.yml.example — documented example files
+    (
+        re.compile(r"\.(py|json|yml|yaml|toml|sh)\.example$"),
+        "*.<ext>.example: documented placeholder, never a real secret",
+    ),
+    # infra/eventbus/ schemas + examples (qdrant connection strings are placeholders)
+    (
+        re.compile(r"(^|/)infra/eventbus/.*\.(py|md|yaml|yml)$"),
+        "infra/eventbus/: connection-string placeholders in event-bus reference code",
+    ),
+    # infra/skills/ documentation (skill .md files document curl/api usage with placeholder creds)
+    (
+        re.compile(r"(^|/)infra/skills/.*\.md$"),
+        "infra/skills/*.md: skill documentation, credentials are illustrative",
+    ),
+    # scripts/damar-node/: marketing automation config with example credentials
+    (
+        re.compile(r"(^|/)scripts/damar-node/.*\.(json|js|ts|md)$"),
+        "scripts/damar-node/: marketing automation, credentials are placeholders",
+    ),
     (
         re.compile(r"(^|/)\.env\.sample$"),
         ".env.sample: documented placeholder, never a real secret",

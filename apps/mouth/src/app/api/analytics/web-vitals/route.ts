@@ -12,7 +12,7 @@ import { logger } from "@/lib/logger";
  * The endpoint is a no-op in development.
  */
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const ALLOWED_METRICS = new Set(["CLS", "INP", "LCP", "TTFB", "FCP", "FID"]);
@@ -32,7 +32,10 @@ export async function POST(request: Request) {
   try {
     body = (await request.json()) as Payload;
   } catch {
-    return NextResponse.json({ ok: false, error: "invalid_json" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "invalid_json" },
+      { status: 400 },
+    );
   }
 
   if (
@@ -41,7 +44,10 @@ export async function POST(request: Request) {
     !ALLOWED_METRICS.has(body.name) ||
     (body.rating && !ALLOWED_RATINGS.has(body.rating))
   ) {
-    return NextResponse.json({ ok: false, error: "invalid_metric" }, { status: 400 });
+    return NextResponse.json(
+      { ok: false, error: "invalid_metric" },
+      { status: 400 },
+    );
   }
 
   logger.info("[web-vitals]", {

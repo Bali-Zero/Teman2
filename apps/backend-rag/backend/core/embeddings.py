@@ -17,6 +17,98 @@ from backend.services.observability import llm_cost_tracked, set_usage
 
 logger = logging.getLogger(__name__)
 
+# Token-aware sub-batching (cicatrix scar 2026-05-10):
+# OpenAI text-embedding-3-small has TWO hard limits:
+#   1. 300k tokens per request (sum across all inputs)
+#   2. 8192 tokens per single input string
+# Large legal PDFs hit (1) (e.g. Permenkumham 22/2023 7MB → 460k tokens), and
+# the chunker may also emit single chunks >8192 tokens triggering (2). Both
+# previously caused silent partial-embeddings → upsert length-mismatch error.
+# We use tiktoken to enforce both limits before sending to API.
+_OPENAI_EMBED_MAX_TOKENS_PER_REQUEST = 300_000
+_OPENAI_EMBED_TOKEN_BUDGET = 200_000  # safety margin for limit (1)
+_OPENAI_EMBED_MAX_TOKENS_PER_INPUT = 8192  # OpenAI hard limit (2)
+_OPENAI_EMBED_INPUT_TOKEN_BUDGET = 7500  # safety margin for limit (2)
+try:
+    import tiktoken
+
+    _TIKTOKEN_AVAILABLE = True
+    _TIKTOKEN_ENCODER = tiktoken.get_encoding("cl100k_base")
+except ImportError:
+    _TIKTOKEN_AVAILABLE = False
+    _TIKTOKEN_ENCODER = None
+    logger.warning(
+        "tiktoken not available — embedding sub-batching falls back to "
+        "char-count heuristic (1 token ≈ 4 chars). Recommended: pip install tiktoken",
+    )
+
+
+def _count_tokens(text: str) -> int:
+    """Count tokens for a string using tiktoken (or char-based fallback)."""
+    if _TIKTOKEN_AVAILABLE and _TIKTOKEN_ENCODER is not None:
+        try:
+            return len(_TIKTOKEN_ENCODER.encode(text, disallowed_special=()))
+        except Exception:
+            pass
+    # Fallback: 1 token ≈ 4 characters (conservative for non-English)
+    return max(1, len(text) // 3)  # use /3 not /4 to err on safer side for Bahasa
+
+
+def _truncate_oversized_input(text: str, max_tokens: int = _OPENAI_EMBED_INPUT_TOKEN_BUDGET) -> str:
+    """Truncate a single input string to max_tokens (OpenAI 8192 hard limit).
+
+    Logs WARNING when truncation happens — the upstream chunker should produce
+    chunks within the limit; oversized inputs are evidence of a chunker config
+    bug or a malformed PDF page.
+    """
+    if not _TIKTOKEN_AVAILABLE or _TIKTOKEN_ENCODER is None:
+        # Char-based fallback: ~4 chars/token → max ~30k chars
+        max_chars = max_tokens * 3
+        if len(text) > max_chars:
+            logger.warning(
+                f"Truncating oversized input (char-fallback): {len(text)} chars → {max_chars}",
+            )
+            return text[:max_chars] + " [TRUNCATED]"
+        return text
+
+    tokens = _TIKTOKEN_ENCODER.encode(text, disallowed_special=())
+    if len(tokens) <= max_tokens:
+        return text
+    truncated_tokens = tokens[:max_tokens]
+    truncated_text = _TIKTOKEN_ENCODER.decode(truncated_tokens)
+    logger.warning(
+        f"Truncating oversized input: {len(tokens)} tokens → {max_tokens} "
+        f"({len(text)} chars → {len(truncated_text)} chars). "
+        f"Upstream chunker should produce smaller chunks (limit: OpenAI 8192/input).",
+    )
+    return truncated_text + " [TRUNCATED]"
+
+
+def _split_by_token_budget(
+    texts: list[str], budget: int = _OPENAI_EMBED_TOKEN_BUDGET,
+) -> list[list[str]]:
+    """Split texts into sub-batches each under `budget` tokens.
+
+    Each individual text is assumed to fit within budget (chunker should ensure
+    this; if not, it's emitted as its own sub-batch and OpenAI will reject it
+    with a clear error rather than silently truncating).
+    """
+    sub_batches: list[list[str]] = []
+    current: list[str] = []
+    current_tokens = 0
+    for text in texts:
+        text_tokens = _count_tokens(text)
+        if current_tokens + text_tokens > budget and current:
+            sub_batches.append(current)
+            current = [text]
+            current_tokens = text_tokens
+        else:
+            current.append(text)
+            current_tokens += text_tokens
+    if current:
+        sub_batches.append(current)
+    return sub_batches
+
 # Tracing utilities (with fallback for standalone usage)
 try:
     from backend.app.utils.tracing import set_span_attribute, set_span_status, trace_span
@@ -280,9 +372,14 @@ class EmbeddingsGenerator:
                 return result
 
             except Exception as e:
+                # IMPORTANT (cicatrix scar 2026-05-10): do NOT swallow this error
+                # by returning []. Downstream code (LegalIngestionService,
+                # HierarchicalIndexer) expects len(embeddings) == len(texts) and
+                # otherwise produces silent partial-ingest with chunks_created=0.
+                # Propagating the error lets the caller fail loudly + log clearly.
                 logger.error(f"Error generating embeddings: {e}")
                 set_span_status("error", str(e))
-                return []
+                raise
 
     def get_cache_stats(self) -> dict:
         """Get embedding cache statistics."""
@@ -308,23 +405,80 @@ class EmbeddingsGenerator:
     async def _generate_embeddings_openai(self, texts: list[str]) -> list[list[float]]:
         """
         Generate embeddings using OpenAI API (ASYNC).
-        Automatically batches large requests (OpenAI max batch size: 2048).
+
+        Two-level batching:
+          1. **Item count**: max 2048 texts per request (OpenAI API limit)
+          2. **Token count**: max 200k tokens per request (safety margin under
+             OpenAI 300k hard limit; cicatrix scar 2026-05-10 — large legal
+             PDFs hit this limit silently producing length-mismatch errors)
         """
         logger.info(f"Generating embeddings for {len(texts)} texts using OpenAI (Async)")
 
-        MAX_BATCH_SIZE = 2048  # OpenAI API limit
-        all_embeddings = []
+        # Pre-flight: truncate any single input >8192 tokens (OpenAI per-input limit).
+        # Counts truncations to surface chunker config issues.
+        truncated_texts: list[str] = []
+        n_truncated = 0
+        for t in texts:
+            t_safe = _truncate_oversized_input(t)
+            if t_safe is not t:
+                n_truncated += 1
+            truncated_texts.append(t_safe)
+        if n_truncated > 0:
+            logger.warning(
+                f"⚠️  {n_truncated}/{len(texts)} inputs were truncated to fit OpenAI "
+                f"8192-token per-input limit. Consider tuning chunker max chunk size.",
+            )
 
-        # Process in batches if needed
-        for i in range(0, len(texts), MAX_BATCH_SIZE):
-            batch = texts[i : i + MAX_BATCH_SIZE]
-            logger.debug(f"Processing batch {i // MAX_BATCH_SIZE + 1}: {len(batch)} texts")
+        MAX_BATCH_SIZE = 2048  # OpenAI API limit (item count)
+        all_embeddings: list[list[float]] = []
 
-            batch_embeddings = await self._embed_batch(batch)
-            all_embeddings.extend(batch_embeddings)
+        # First level: split by item count
+        item_batches = [
+            truncated_texts[i : i + MAX_BATCH_SIZE]
+            for i in range(0, len(truncated_texts), MAX_BATCH_SIZE)
+        ]
 
+        for batch_idx, item_batch in enumerate(item_batches, start=1):
+            # Second level: split by token budget
+            sub_batches = _split_by_token_budget(item_batch, budget=_OPENAI_EMBED_TOKEN_BUDGET)
+            logger.debug(
+                f"Item batch {batch_idx}/{len(item_batches)}: {len(item_batch)} texts → "
+                f"{len(sub_batches)} token-sub-batches",
+            )
+            for sub_idx, sub_batch in enumerate(sub_batches, start=1):
+                sub_tokens = sum(_count_tokens(t) for t in sub_batch)
+                logger.debug(
+                    f"  sub-batch {sub_idx}/{len(sub_batches)}: {len(sub_batch)} texts, "
+                    f"~{sub_tokens} tokens",
+                )
+                if sub_tokens > _OPENAI_EMBED_MAX_TOKENS_PER_REQUEST:
+                    # A single text exceeds the hard limit — log + let OpenAI reject
+                    # with the explicit max_tokens_per_request error.
+                    logger.error(
+                        f"Sub-batch exceeds OpenAI 300k token limit "
+                        f"({sub_tokens} tokens, {len(sub_batch)} texts). "
+                        f"Likely a single chunk too large; chunker should produce "
+                        f"smaller chunks. Will attempt anyway — expect 400 from API.",
+                    )
+                sub_embeddings = await self._embed_batch(sub_batch)
+                if len(sub_embeddings) != len(sub_batch):
+                    raise RuntimeError(
+                        f"OpenAI embed batch returned {len(sub_embeddings)} embeddings for "
+                        f"{len(sub_batch)} input texts — likely truncation due to API limit. "
+                        f"Sub-batch tokens: ~{sub_tokens}. Aborting before downstream "
+                        f"length-mismatch error in upsert.",
+                    )
+                all_embeddings.extend(sub_embeddings)
+
+        # Hard contract: caller MUST receive same number of embeddings as inputs
+        if len(all_embeddings) != len(texts):
+            raise RuntimeError(
+                f"OpenAI embedding generation produced {len(all_embeddings)} vectors for "
+                f"{len(texts)} input texts (mismatch). This is a bug in batching logic.",
+            )
         logger.info(
-            f"✅ Generated {len(all_embeddings)} embeddings (OpenAI, {len(all_embeddings[0]) if all_embeddings else 0} dims)",
+            f"✅ Generated {len(all_embeddings)} embeddings (OpenAI, "
+            f"{len(all_embeddings[0]) if all_embeddings else 0} dims)",
         )
         return all_embeddings
 

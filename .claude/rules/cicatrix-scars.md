@@ -170,6 +170,55 @@ This is fragile because:
 
 ---
 
+### ⚠️ STRUCTURAL: LegalIngestionService bypasses OpenAI 300k token batch limit (2026-05-10)
+
+_Discovered: 2026-05-10 ~15:00 WITA during regulatory-ingest skill batch run on 8 Indonesian regulations · Severity: P1 (data loss — ingest reports success but 0 chunks created) · Workaround: skip files >2MB until embed batching shipped_
+
+**TRAUMA:** `LegalIngestionService.ingest_legal_document()` calls `EmbeddingsGenerator._embed_batch()` which sends all chunks in a single OpenAI API request. OpenAI `text-embedding-3-small` has a hard limit of **300,000 tokens per request**. For Indonesian legal PDFs >2-3MB the chunked text can easily exceed this — the API returns `400 max_tokens_per_request`, but the pipeline does NOT propagate this as a fatal error. Instead:
+
+1. `_embed_batch()` returns a partial/empty embeddings array
+2. `HierarchicalIndexer._upsert_hierarchical_chunks()` calls `qdrant.upsert_documents_with_sparse(chunks, embeddings, sparse_vectors, metadatas, ids)` with mismatched array lengths
+3. `qdrant_db.py:1206` raises `ValueError: chunks, embeddings, sparse_vectors, metadatas, and ids must have same length`
+4. The outer `ingest_legal_document()` catches the exception, logs "Ingestion failed", but the calling code receives an `ok=True` result with `chunks_created=0` (silent partial failure — looks successful in batch reports)
+
+Concrete evidence (2026-05-10 batch):
+
+```
+[start] Permenkumham 22/2023 — Visa Dan Izin Tinggal (6961 KB)
+Error generating embeddings: Error code: 400 - {'error': {'message': 'Requested 460590 tokens, max 300000 tokens per request', 'type': 'max_tokens_per_request', ...}}
+Error upserting with sparse vectors: chunks, embeddings, sparse_vectors, metadatas, and ids must have same length
+[done]  Permenkumham 22/2023 → chunks=0 in 32s   ← reports "done" but ZERO chunks indexed
+```
+
+3 of 8 regulations affected: Permenkumham 22/2023 (7MB / 460k tokens), Permenkumham 11/2024 (11MB), Permen ATR/BPN 18/2021 (4.8MB). All three remain only in NotebookLM, NOT in Qdrant `legal_unified_2026`. The batch report says "4/4 ok, 38 chunks" but should say "1/4 ok, 0 chunks for the failed one + WARN reason".
+
+**Why we found this NOW:** the existing `ingest_t0_regulations.py` reference script was previously tested on small T0 immigration PDFs (<2MB each). The regulatory-ingest skill batch was the first to attempt large Permenkumham documents. The bug exists in production code paths but only triggers on >300k-token documents.
+
+**ANTIBODY (proposed, NOT yet implemented):**
+
+1. **Fix in `LegalIngestionService` / `EmbeddingsGenerator`** — split chunk arrays into sub-batches of max 200k tokens each (safety margin) before calling OpenAI. Aggregate embeddings array across sub-batches. Token counting via `tiktoken` for `cl100k_base` encoding (text-embedding-3-small uses this).
+
+2. **Hard-fail propagation** — `EmbeddingsGenerator._embed_batch()` MUST raise on ANY OpenAI 4xx, NOT return partial array. Caller MUST verify `len(embeddings) == len(chunks)` before passing to upsert.
+
+3. **CI test** — add unit test that builds a synthetic chunk list exceeding 300k tokens, calls `ingest_legal_document()`, asserts either (a) success with all chunks indexed (proper batching) OR (b) explicit `ValueError` with token-count message — never silent `chunks_created=0`.
+
+**Workaround until fix shipped:**
+- Skip files >2MB in batch ingest scripts (use `find -size -2M`)
+- For large regulations, split PDF manually into <2MB chunks via `pdftk` before ingest
+- Always verify `chunks_created > 0` in batch reports; treat 0 as failure even if status="ok"
+
+**GOTCHA:**
+
+- The 300k token limit is per-request, not per-document. Even a 5MB PDF with proper batching of ~10 sub-requests would work. The bug is the absence of batching, not the token limit itself.
+- The `ValueError` message ("must have same length") is misleading — it suggests a chunker bug. The real cause is upstream embedding API rejection. Always check OpenAI API logs first when seeing this error.
+- `LegalIngestionService` returns `{success: True, chunks_created: 0}` on this failure path. Batch consumers MUST check `chunks_created > 0`, not just `success`. Status code is non-actionable.
+- Workaround "split PDF" is destructive: BAB/Pasal hierarchical structure is broken across split boundaries. Real fix MUST be embedding batching at the API call level, not document splitting.
+
+Reference batch: `/tmp/qdrant_batch_ingest_v2.py` + `/tmp/qdrant_small_only.py` (2026-05-10 evidence).
+Files affected: `apps/backend-rag/backend/core/embeddings.py`, `apps/backend-rag/backend/core/legal/hierarchical_indexer.py`, `apps/backend-rag/backend/services/ingestion/legal_ingestion_service.py`.
+
+---
+
 ### ⚠️ STRUCTURAL: 12+1 mata_garuda LaunchAgents active-active Pro+Mini (2026-05-07)
 
 _Discovered: 2026-05-06 22:45 WITA during Symbiosis W1 genome enrollment audit (Zero verified via `launchctl list` on both nodes via Tailscale) · Severity: P1 · Workaround: TBD (cleanup in dedicated follow-up PR)_

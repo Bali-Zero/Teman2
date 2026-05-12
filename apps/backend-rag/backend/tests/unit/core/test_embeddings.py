@@ -251,12 +251,100 @@ class TestEmbeddingsGenerator:
     @pytest.mark.asyncio
     @patch("sentence_transformers.SentenceTransformer")
     async def test_generate_embeddings_error_handling(self, mock_st):
-        """Test error handling in generate_embeddings"""
+        """Test error handling in generate_embeddings.
+
+        NOTE (cicatrix scar 2026-05-10): generate_embeddings now RAISES on
+        error instead of returning [] silently. The previous silent-swallow
+        produced downstream length-mismatch errors in upsert.
+        """
         mock_transformer = MagicMock()
         mock_transformer.get_sentence_embedding_dimension.return_value = 384
         mock_transformer.encode.side_effect = Exception("Encoding error")
         mock_st.return_value = mock_transformer
 
         generator = EmbeddingsGenerator(provider="sentence-transformers")
-        result = await generator.generate_embeddings(["test"])
-        assert result is None or result == [] or isinstance(result, list)
+        with pytest.raises(Exception, match="Encoding error"):
+            await generator.generate_embeddings(["test"])
+
+
+# ─────────────────────────────────────────────────────────────────────
+# Token-aware sub-batching tests (cicatrix scar 2026-05-10)
+# OpenAI text-embedding-3-small limits: 300k tokens/request, 8192 tokens/input
+# ─────────────────────────────────────────────────────────────────────
+class TestTokenAwareBatching:
+    """Tests for the OpenAI 300k/8192 token limit handling."""
+
+    def test_count_tokens_with_tiktoken(self):
+        """tiktoken counts a known string accurately."""
+        from backend.core.embeddings import _TIKTOKEN_AVAILABLE, _count_tokens
+
+        if not _TIKTOKEN_AVAILABLE:
+            pytest.skip("tiktoken not available")
+        # "hello world" tokenizes to 2 tokens in cl100k_base
+        assert _count_tokens("hello world") == 2
+
+    def test_count_tokens_fallback_chars(self):
+        """Char-based fallback when tiktoken absent."""
+        from backend.core import embeddings as emb
+
+        with patch.object(emb, "_TIKTOKEN_AVAILABLE", False):
+            count = emb._count_tokens("a" * 30)
+            # Conservative: max(1, len/3)
+            assert count == 10
+
+    def test_split_by_token_budget_single_text_fits(self):
+        """Single small text → 1 sub-batch."""
+        from backend.core.embeddings import _split_by_token_budget
+
+        sub = _split_by_token_budget(["short text"], budget=1000)
+        assert len(sub) == 1
+        assert sub[0] == ["short text"]
+
+    def test_split_by_token_budget_splits_correctly(self):
+        """Many texts with budget → sum of sub-batch sizes equals input count."""
+        from backend.core.embeddings import _split_by_token_budget
+
+        texts = ["lorem ipsum " * 100 for _ in range(50)]
+        sub = _split_by_token_budget(texts, budget=2000)
+        # Total roughly 50 × ~150-200 tok = 7500-10000 tok / 2000 = 4-8 batches
+        assert 3 <= len(sub) <= 10
+        # No texts dropped
+        assert sum(len(s) for s in sub) == len(texts)
+
+    def test_split_by_token_budget_oversized_single_emits_alone(self):
+        """Single text > budget gets own sub-batch (will be flagged at API call)."""
+        from backend.core.embeddings import _split_by_token_budget
+
+        big = "lorem ipsum " * 50000  # ~150k tokens
+        sub = _split_by_token_budget([big, "short"], budget=10_000)
+        # Big alone, then short
+        assert len(sub) == 2
+        assert sub[0] == [big]
+        assert sub[1] == ["short"]
+
+    def test_truncate_oversized_input_under_limit(self):
+        """Input under limit returned unchanged."""
+        from backend.core.embeddings import _truncate_oversized_input
+
+        text = "hello world " * 10  # well under 8192 tokens
+        out = _truncate_oversized_input(text, max_tokens=7500)
+        assert out == text
+
+    def test_truncate_oversized_input_over_limit(self):
+        """Input over limit truncated + [TRUNCATED] marker added."""
+        from backend.core.embeddings import (
+            _TIKTOKEN_AVAILABLE,
+            _count_tokens,
+            _truncate_oversized_input,
+        )
+
+        if not _TIKTOKEN_AVAILABLE:
+            pytest.skip("tiktoken not available")
+        big = "Permenkumham 22 Tahun 2023 " * 2000  # ~10k+ tokens
+        original_tokens = _count_tokens(big)
+        assert original_tokens > 8192  # confirm test setup is meaningful
+        out = _truncate_oversized_input(big, max_tokens=7500)
+        out_tokens = _count_tokens(out)
+        # Should be ~7500 + few extra from " [TRUNCATED]" suffix
+        assert out_tokens <= 7600
+        assert "[TRUNCATED]" in out

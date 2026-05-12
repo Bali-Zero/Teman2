@@ -1,6 +1,7 @@
 import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 import bundleAnalyzer from "@next/bundle-analyzer";
+import path from "node:path";
 
 const withBundleAnalyzer = bundleAnalyzer({
   enabled: process.env.ANALYZE === "true",
@@ -10,6 +11,9 @@ const nextConfig: NextConfig = {
   // Note: "standalone" output removed — Vercel handles bundling natively.
   // Using standalone on Vercel caused serverless functions to exceed 300MB
   // (507MB for KBLI routes) by including all node_modules in each function.
+  turbopack: {
+    root: path.join(__dirname, "../.."),
+  },
   reactStrictMode: true,
   typescript: {
     ignoreBuildErrors: false,
@@ -33,6 +37,14 @@ const nextConfig: NextConfig = {
       "./coverage/**",
       "./test-results/**",
       "./playwright-report/**",
+    ],
+  },
+  outputFileTracingIncludes: {
+    "/*": [
+      "./data/KBLI_2025_FINAL_CLEAN.json",
+      "./data/kbli-2025.json",
+      "./data/kbli-gold-all.json",
+      "./src/content/articles/**/*.mdx",
     ],
   },
 
@@ -127,26 +139,6 @@ const nextConfig: NextConfig = {
           {
             key: "Cache-Control",
             value: "no-cache, no-store, must-revalidate",
-          },
-        ],
-      },
-      {
-        // Cache static assets for 1 year (immutable)
-        source: "/_next/static/:path*",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
-          },
-        ],
-      },
-      {
-        // Cache images for 1 year
-        source: "/_next/image/:path*",
-        headers: [
-          {
-            key: "Cache-Control",
-            value: "public, max-age=31536000, immutable",
           },
         ],
       },
