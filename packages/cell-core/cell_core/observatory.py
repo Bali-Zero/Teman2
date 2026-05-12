@@ -123,8 +123,28 @@ async def emit_pulse_observed(
             async with conn.transaction():
                 row = await conn.fetchrow(_INSERT_SQL, "cell_pulse_observed", json.dumps(payload))
                 outbox_id = int(row["id"])
-                payload["_outbox_id"] = outbox_id
-                await conn.execute(_NOTIFY_SQL, "cell_pulse_observed", json.dumps(payload))
+                # Gap 1 Layer 3 fix 2026-05-12: pg_notify has an 8000-byte payload
+                # limit (Postgres NOTIFY hard cap). Cells with many sensors
+                # (seo_cell has 7 sensors with rich metadata) easily exceed it
+                # and the entire emit fails. The events_outbox row already
+                # carries the full payload — the NOTIFY only needs the routing
+                # tuple + the keys the collector reads in storage.insert_pulse_event
+                # (cell_observatory/storage.py): _outbox_id, cell_id, cell_kind,
+                # pulse_id, pulse_timestamp, phase, pulse_result.classifier_self.
+                # Sensors + homeostatic_state + scar_signals stay only in events_outbox
+                # row payload (queryable via outbox_id for full-detail consumers).
+                notify_stub = {
+                    "_outbox_id": outbox_id,
+                    "cell_id": cell_id,
+                    "cell_kind": cell_kind,
+                    "pulse_id": pulse_id,
+                    "pulse_timestamp": pulse_timestamp_ms,
+                    "phase": phase,
+                    "pulse_result": {
+                        "classifier_self": pulse_result.get("classifier_self"),
+                    },
+                }
+                await conn.execute(_NOTIFY_SQL, "cell_pulse_observed", json.dumps(notify_stub))
     except Exception as exc:
         logger.warning(
             "cell_observatory emit failed (non-blocking): cell=%s pulse=%s err=%s",
