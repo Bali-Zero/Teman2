@@ -9,6 +9,7 @@ from __future__ import annotations
 import logging
 import time
 from pathlib import Path
+from typing import Any
 
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
@@ -29,7 +30,7 @@ class TigrisError(RuntimeError):
     """Tigris S3 operation failed after retries."""
 
 
-def get_s3_client():
+def get_s3_client() -> Any:
     return boto3.client(
         "s3",
         endpoint_url=ENDPOINT,
@@ -44,7 +45,7 @@ def _is_transient(exc: Exception) -> bool:
     return isinstance(exc, BotoCoreError)
 
 
-def upload_pdf(s3, pdf_path: Path, *, draft_id: str, prefix: str = "wr2-pdf") -> str:
+def upload_pdf(s3: Any, pdf_path: Path, *, draft_id: str, prefix: str = "wr2-pdf") -> str:
     """Upload PDF to s3://BUCKET/{prefix}/{draft_id}.pdf, return public URL."""
     key = f"{prefix}/{draft_id}.pdf"
     body = pdf_path.read_bytes()
@@ -75,7 +76,7 @@ def upload_pdf(s3, pdf_path: Path, *, draft_id: str, prefix: str = "wr2-pdf") ->
     raise TigrisError(f"Tigris exhausted retries for {key}: {last_exc}") from last_exc
 
 
-def delete_pdf(s3, *, draft_id: str, prefix: str = "wr2-pdf") -> None:
+def delete_pdf(s3: Any, *, draft_id: str, prefix: str = "wr2-pdf") -> None:
     """Best-effort delete. Never raises (S3 lifecycle is the safety net)."""
     key = f"{prefix}/{draft_id}.pdf"
     try:
