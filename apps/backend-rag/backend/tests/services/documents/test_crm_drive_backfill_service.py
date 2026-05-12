@@ -253,3 +253,19 @@ async def test_backfill_dry_run_only_counts_candidates() -> None:
     assert result["dry_run"] is True
     mock_dispatch.assert_not_called()
     mock_kg.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_fetch_candidates_only_selects_documents_without_kg_node() -> None:
+    from backend.services.documents.crm_drive_backfill_service import (
+        fetch_crm_drive_backfill_candidates,
+    )
+
+    pool = _FakePool([])
+
+    await fetch_crm_drive_backfill_candidates(pool, limit=5)
+
+    query, args = pool.conn.fetch_calls[0]
+    assert "AND kg.entity_id IS NULL" in query
+    assert "OR d.ocr_status IN" not in query
+    assert args == (None, 5)
