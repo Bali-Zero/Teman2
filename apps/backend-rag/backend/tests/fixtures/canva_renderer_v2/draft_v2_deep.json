@@ -1,0 +1,18 @@
+{
+  "carousel_id": "deep-test",
+  "slide_count": 4,
+  "slides": [
+    {"index": 1, "layout_family": "stat-card-hero", "stat": "31 MAY",
+     "caption": "PPh Badan", "source": "KEP-71/PJ/2026"},
+    {"index": 2, "layout_family": "thin-red-rule-divider",
+     "body": "Late filing penalty: Rp 1jt", "source": "UU KUP"},
+    {"index": 3, "layout_family": "swiss-grid-asymmetry",
+     "yellow_accent": "MECHANISM",
+     "steps": [
+       {"num": "01", "head": "Check NPWP", "body": "Verify status"},
+       {"num": "02", "head": "Submit SPT", "body": "Before deadline"}
+     ]},
+    {"index": 4, "layout_family": "statement-bomb",
+     "statement": "Pay on time or pay double"}
+  ]
+}

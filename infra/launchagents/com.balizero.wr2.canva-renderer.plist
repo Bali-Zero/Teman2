@@ -1,54 +1,34 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!--
-  Mata Garuda / War Room 2.0 — Canva Renderer (headless).
-
-  Picks war_room_drafts rows with status='drafts' and canva_edit_url IS NULL,
-  converts slides_json to canva_pending.json format, invokes `claude -p`
-  against APPLICA_WAR_ROOM.md, persists the returned edit URL.
-
-  Runs on Pro only because MCP Canva is browser-bound OAuth via the
-  Claude Code CLI installed on this machine.
--->
 <plist version="1.0">
-  <dict>
-    <key>Label</key>
-    <string>com.balizero.wr2.canva-renderer</string>
-
-    <key>ProgramArguments</key>
-    <array>
-      <string>/bin/zsh</string>
-      <string>-lc</string>
-      <string>source ~/.nuzantara-secrets.env 2>/dev/null; /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -u /Users/nuzantara/Desktop/nuzantara/scripts/wr2_canva_apply.py</string>
-    </array>
-
-    <key>WorkingDirectory</key>
-    <string>/Users/nuzantara/Desktop/nuzantara</string>
-
-    <key>StartInterval</key>
-    <integer>300</integer>  <!-- every 5 minutes -->
-
-    <key>RunAtLoad</key>
-    <false/>
-
-    <key>StandardOutPath</key>
-    <string>/Users/nuzantara/logs/wr2_canva_apply.log</string>
-
-    <key>StandardErrorPath</key>
-    <string>/Users/nuzantara/logs/wr2_canva_apply.error.log</string>
-
-    <key>EnvironmentVariables</key>
-    <dict>
-      <key>PATH</key>
-      <string>/Users/nuzantara/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
-    </dict>
-
-    <!-- Keep process light: max 10 min (same as Canva apply timeout) -->
-    <key>ExitTimeOut</key>
-    <integer>600</integer>
-
-    <!-- Allow manual stop from GUI / launchctl kickstart without permission issues -->
-    <key>ProcessType</key>
-    <string>Background</string>
-  </dict>
+<dict>
+  <key>Label</key>
+  <string>com.balizero.wr2.canva-renderer</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/zsh</string>
+    <string>-lc</string>
+    <string>source ~/.nuzantara-secrets.env 2>/dev/null; exec /opt/homebrew/bin/flock -n /tmp/wr2_canva_pdf_apply.lock /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -u /Users/nuzantara/Desktop/nuzantara/scripts/wr2_canva_pdf_apply.py</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/nuzantara/Desktop/nuzantara</string>
+  <key>StartInterval</key>
+  <integer>300</integer>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>SuccessfulExit</key>
+  <array>
+    <integer>0</integer>
+    <integer>3</integer>
+    <integer>4</integer>
+    <integer>5</integer>
+    <integer>7</integer>
+  </array>
+  <key>ThrottleInterval</key>
+  <integer>300</integer>
+  <key>StandardOutPath</key>
+  <string>/Users/nuzantara/logs/wr2_canva_pdf_apply.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/nuzantara/logs/wr2_canva_pdf_apply.error.log</string>
+</dict>
 </plist>

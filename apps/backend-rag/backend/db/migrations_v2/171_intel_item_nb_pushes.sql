@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS intel_item_nb_pushes (
     content_hash TEXT NOT NULL,
     status TEXT NOT NULL DEFAULT 'pending'
         CHECK (status IN ('pending','pushed','failed_transient','failed_permanent','quarantined')),
-    attempts INT NOT NULL DEFAULT 0,
+    attempts BIGINT NOT NULL DEFAULT 0,
     pushed_at TIMESTAMPTZ,
     last_error TEXT,
     last_error_class TEXT,
@@ -24,14 +24,13 @@ CREATE TABLE IF NOT EXISTS intel_item_nb_pushes (
 );
 
 -- Empty table, no lock contention possible → CONCURRENTLY not needed.
--- squawk-ignore: prefer-bigint-over-int
--- squawk-ignore: require-concurrent-index-creation
-CREATE INDEX idx_intel_item_nb_pushes_pending
+-- prefer-bigint-over-int + require-concurrent-index-creation are excluded
+-- globally via CLI; no inline ignore directives needed.
+CREATE INDEX IF NOT EXISTS idx_intel_item_nb_pushes_pending
     ON intel_item_nb_pushes (created_at)
     WHERE status IN ('pending','failed_transient');
 
--- squawk-ignore: require-concurrent-index-creation
-CREATE INDEX idx_intel_item_nb_pushes_item
+CREATE INDEX IF NOT EXISTS idx_intel_item_nb_pushes_item
     ON intel_item_nb_pushes (item_id);
 
 COMMENT ON TABLE intel_item_nb_pushes IS
