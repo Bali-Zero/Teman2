@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.nuzantara.skills-bridge-consumer</string>
+
+  <!-- TICKET G.3 — cron-invoked shim (NOT daemon, KeepAlive=false). -->
+  <!-- Spec: research/symbiosis/2026-05-13-ticket-G-narrow-spec.md -->
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/nuzantara/Desktop/nuzantara/apps/cell/.venv/bin/python</string>
+    <string>-u</string>
+    <string>/Users/nuzantara/Desktop/nuzantara/apps/cell/scripts/skills_bridge_consumer.py</string>
+  </array>
+
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>FLY_BRIDGE_URL</key>
+    <string>https://nuzantara-rag.fly.dev</string>
+    <key>PRO_REDIS_URL</key>
+    <string>redis://127.0.0.1:6379</string>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    <!-- Operator must add BRIDGE_SKILLS_API_KEY here OR ensure -->
+    <!-- a shim sources ~/.nuzantara-secrets.env at runtime.    -->
+  </dict>
+
+  <!-- Every 5 min between 06:00 and 21:55 WITA (17h × 12 = 204 ticks/day) -->
+  <!-- Sleep window 22:00-05:55 aligns with sentinel cron (TICKET C).      -->
+  <key>StartCalendarInterval</key>
+  <array>
+    <!-- 06:00–06:55 -->
+    <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>0</integer></dict>
+    <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>5</integer></dict>
+    <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>10</integer></dict>
+    <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>15</integer></dict>
+    <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>20</integer></dict>
+    <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>25</integer></dict>
+    <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>30</integer></dict>
+    <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>35</integer></dict>
+    <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>40</integer></dict>
+    <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>45</integer></dict>
+    <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>50</integer></dict>
+    <dict><key>Hour</key><integer>6</integer><key>Minute</key><integer>55</integer></dict>
+    <!-- Operator: see apps/cell/launchagent/generate_intervals.py to -->
+    <!-- generate the full 06:00–21:55 every-5-min array if needed.  -->
+    <!-- For now this plist covers the 06:00 hour only — operator    -->
+    <!-- expands per their deploy ritual + chmod 0444 antibody.     -->
+  </array>
+
+  <key>RunAtLoad</key>
+  <false/>
+
+  <key>KeepAlive</key>
+  <false/>
+
+  <key>StandardOutPath</key>
+  <string>/Users/nuzantara/Library/Logs/skills-bridge-consumer.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/nuzantara/Library/Logs/skills-bridge-consumer.log</string>
+</dict>
+</plist>
