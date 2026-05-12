@@ -244,3 +244,47 @@ def test_evidence_query_prioritizes_companies_without_autowatcher_drafts() -> No
     assert "crm_workspace_ai_snapshots" in sql
     assert "snap.note_id LIKE $3::text" in sql
     assert "ORDER BY has_autowatcher_snapshot ASC" in sql
+    assert "company_documents" in sql
+    assert "google_drive_file_id" in sql
+
+
+def test_evidence_rows_dedupe_company_documents_across_linked_people() -> None:
+    from backend.services.crm.drive_autowatcher_service import _evidence_from_rows
+
+    evidence = _evidence_from_rows(
+        [
+            {
+                "company_id": 1762,
+                "company_name": "PT FRA Real Estate Consulting",
+                "client_id": 146,
+                "client_name": "Michele Porinelli",
+                "tax_owner": "sahira@balizero.com",
+                "file_id": "company-drive-file",
+                "file_name": "Profil Perseroan April 2025.pdf",
+                "document_type": "company_profile",
+                "document_category": "company",
+                "ocr_status": None,
+                "has_kg_node": False,
+                "kg_edge_count": 0,
+            },
+            {
+                "company_id": 1762,
+                "company_name": "PT FRA Real Estate Consulting",
+                "client_id": 176,
+                "client_name": "Francesca rizzo",
+                "tax_owner": "krisna@balizero.com",
+                "file_id": "company-drive-file",
+                "file_name": "Profil Perseroan April 2025.pdf",
+                "document_type": "company_profile",
+                "document_category": "company",
+                "ocr_status": None,
+                "has_kg_node": False,
+                "kg_edge_count": 0,
+            },
+        ]
+    )
+
+    assert len(evidence) == 1
+    assert evidence[0].client_ids == [146, 176]
+    assert evidence[0].people == ["Michele Porinelli", "Francesca rizzo"]
+    assert [document.file_id for document in evidence[0].documents] == ["company-drive-file"]
