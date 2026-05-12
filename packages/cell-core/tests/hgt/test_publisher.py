@@ -89,3 +89,16 @@ async def test_publish_domain_defaults_generic(fake_redis):
     await pub.publish(skill)
     _id, data = fake_redis.get_stream(STREAM_SKILLS)[0]
     assert data["domain"] == "generic"
+
+
+def test_cell_name_public_property():
+    """Phase 3 TICKET A.0 — public ``cell_name`` property.
+
+    Bridges (IntelScraperHGTBridge, CrmHGTBridge) read this instead of
+    reaching into the protected ``_cell_name`` attribute. Read-only.
+    """
+    pub = HGTPublisher(None, cell_name="my-cell")
+    assert pub.cell_name == "my-cell"
+    # Read-only: assignment must raise AttributeError (no setter).
+    with pytest.raises(AttributeError):
+        pub.cell_name = "rewritten"  # type: ignore[misc]
