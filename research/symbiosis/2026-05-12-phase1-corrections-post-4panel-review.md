@@ -32,7 +32,7 @@ Convergenza 4/4 critica: Phase 1 doc made operational claims insufficiently back
 
 ### CORR 1 — Plaintext password removed from 3 plists
 
-**Original violation**: `plutil -insert EnvironmentVariables.EVENTBUS_DATABASE_URL` with full credential string `postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag` injected into:
+**Original violation**: `plutil -insert EnvironmentVariables.EVENTBUS_DATABASE_URL` with full credential string `postgresql://<user>:<REDACTED>@localhost:15432/nuzantara_rag` injected into:
 
 - `~/Library/LaunchAgents/com.balizero.seo-cell.daily.plist`
 - `~/Library/LaunchAgents/com.balizero.seo-cell.28d-check.plist`
