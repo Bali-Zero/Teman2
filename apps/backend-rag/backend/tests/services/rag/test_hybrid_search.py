@@ -299,23 +299,22 @@ class TestHybridSearchIntegration:
     @pytest.mark.asyncio
     async def test_search_hybrid_native(self, hybrid_service, mock_collection_manager):
         """Test hybrid search using native Qdrant hybrid search."""
-        with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
-            mock_embedder.return_value.generate_query_embedding = AsyncMock(
-                return_value=[0.1] * 1536,
-            )
+        hybrid_service._embedder.generate_query_embedding = AsyncMock(
+            return_value=[0.1] * 1536,
+        )
 
-            result = await hybrid_service.search_hybrid(
-                query="visa KITAS",
-                collection="legal_unified_hybrid",
-                limit=5,
-                alpha=0.5,
-            )
+        result = await hybrid_service.search_hybrid(
+            query="visa KITAS",
+            collection="legal_unified_hybrid",
+            limit=5,
+            alpha=0.5,
+        )
 
-            assert "results" in result
-            assert result["collection"] == "legal_unified_hybrid"
-            assert result["search_type"] == "hybrid_rrf"
-            assert result["bm25_enabled"] is True
-            assert result["alpha"] == 0.5
+        assert "results" in result
+        assert result["collection"] == "legal_unified_hybrid"
+        assert result["search_type"] == "hybrid_rrf"
+        assert result["bm25_enabled"] is True
+        assert result["alpha"] == 0.5
 
     @pytest.mark.asyncio
     async def test_search_hybrid_fallback_to_manual(self, hybrid_service, mock_collection_manager):
@@ -324,39 +323,37 @@ class TestHybridSearchIntegration:
         mock_client = mock_collection_manager.get_collection.return_value
         mock_client.hybrid_search.side_effect = Exception("Native hybrid not available")
 
-        with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
-            mock_embedder.return_value.generate_query_embedding = AsyncMock(
-                return_value=[0.1] * 1536,
-            )
+        hybrid_service._embedder.generate_query_embedding = AsyncMock(
+            return_value=[0.1] * 1536,
+        )
 
-            result = await hybrid_service.search_hybrid(
-                query="visa KITAS",
-                collection="legal_unified_hybrid",
-                limit=5,
-            )
+        result = await hybrid_service.search_hybrid(
+            query="visa KITAS",
+            collection="legal_unified_hybrid",
+            limit=5,
+        )
 
-            assert "results" in result
-            # Should fallback to manual or dense-only
-            assert result["search_type"] in ["hybrid_manual_rrf", "dense_only"]
+        assert "results" in result
+        # Should fallback to manual or dense-only
+        assert result["search_type"] in ["hybrid_manual_rrf", "dense_only"]
 
     @pytest.mark.asyncio
     async def test_search_hybrid_no_bm25(self, hybrid_service, mock_collection_manager):
         """Test hybrid search when BM25 is not available."""
         hybrid_service._bm25_enabled = False
 
-        with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
-            mock_embedder.return_value.generate_query_embedding = AsyncMock(
-                return_value=[0.1] * 1536,
-            )
+        hybrid_service._embedder.generate_query_embedding = AsyncMock(
+            return_value=[0.1] * 1536,
+        )
 
-            result = await hybrid_service.search_hybrid(
-                query="visa KITAS",
-                collection="legal_unified",
-                limit=5,
-            )
+        result = await hybrid_service.search_hybrid(
+            query="visa KITAS",
+            collection="legal_unified",
+            limit=5,
+        )
 
-            assert result["bm25_enabled"] is False
-            assert result["search_type"] == "dense_only"
+        assert result["bm25_enabled"] is False
+        assert result["search_type"] == "dense_only"
 
     @pytest.mark.asyncio
     async def test_search_hybrid_empty_query(self, hybrid_service):
@@ -403,23 +400,22 @@ class TestHybridSearchIntegration:
         """Test hybrid search with metadata filters."""
         filters = {"tier": {"$in": ["S", "A"]}}
 
-        with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
-            mock_embedder.return_value.generate_query_embedding = AsyncMock(
-                return_value=[0.1] * 1536,
-            )
+        hybrid_service._embedder.generate_query_embedding = AsyncMock(
+            return_value=[0.1] * 1536,
+        )
 
-            await hybrid_service.search_hybrid(
-                query="visa KITAS",
-                collection="legal_unified_hybrid",
-                limit=5,
-                filters=filters,
-            )
+        await hybrid_service.search_hybrid(
+            query="visa KITAS",
+            collection="legal_unified_hybrid",
+            limit=5,
+            filters=filters,
+        )
 
-            # Verify filters were passed to search
-            mock_client = mock_collection_manager.get_collection.return_value
-            if mock_client.hybrid_search.called:
-                call_kwargs = mock_client.hybrid_search.call_args[1]
-                assert call_kwargs.get("filter") == filters
+        # Verify filters were passed to search
+        mock_client = mock_collection_manager.get_collection.return_value
+        if mock_client.hybrid_search.called:
+            call_kwargs = mock_client.hybrid_search.call_args[1]
+            assert call_kwargs.get("filter") == filters
 
 
 # =============================================================================
@@ -433,22 +429,21 @@ class TestDenseOnlySearch:
     @pytest.mark.asyncio
     async def test_search_dense_only_success(self, hybrid_service, mock_collection_manager):
         """Test successful dense-only search."""
-        with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
-            mock_embedder.return_value.generate_query_embedding = AsyncMock(
-                return_value=[0.1] * 1536,
-            )
+        hybrid_service._embedder.generate_query_embedding = AsyncMock(
+            return_value=[0.1] * 1536,
+        )
 
-            result = await hybrid_service.search_dense_only(
-                query="visa requirements",
-                collection="legal_unified",
-                limit=5,
-            )
+        result = await hybrid_service.search_dense_only(
+            query="visa requirements",
+            collection="legal_unified",
+            limit=5,
+        )
 
-            assert result["search_type"] == "dense_only"
-            assert result["bm25_enabled"] is False
-            assert result["alpha"] == 1.0
-            assert "results" in result
-            assert "duration_ms" in result
+        assert result["search_type"] == "dense_only"
+        assert result["bm25_enabled"] is False
+        assert result["alpha"] == 1.0
+        assert "results" in result
+        assert "duration_ms" in result
 
     @pytest.mark.asyncio
     async def test_search_dense_only_error(self, hybrid_service, mock_collection_manager):
@@ -457,20 +452,19 @@ class TestDenseOnlySearch:
             "Search failed",
         )
 
-        with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
-            mock_embedder.return_value.generate_query_embedding = AsyncMock(
-                return_value=[0.1] * 1536,
-            )
+        hybrid_service._embedder.generate_query_embedding = AsyncMock(
+            return_value=[0.1] * 1536,
+        )
 
-            result = await hybrid_service.search_dense_only(
-                query="test",
-                collection="legal_unified",
-                limit=5,
-            )
+        result = await hybrid_service.search_dense_only(
+            query="test",
+            collection="legal_unified",
+            limit=5,
+        )
 
-            assert result["search_type"] == "error"
-            assert "error" in result
-            assert result["results"] == []
+        assert result["search_type"] == "error"
+        assert "error" in result
+        assert result["results"] == []
 
 
 # =============================================================================
@@ -727,31 +721,30 @@ class TestPerformanceAndKeywordQueries:
     @pytest.mark.asyncio
     async def test_hybrid_faster_with_caching(self, hybrid_service):
         """Test that cached searches are faster."""
-        with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
-            mock_embedder.return_value.generate_query_embedding = AsyncMock(
-                return_value=[0.1] * 1536,
-            )
+        hybrid_service._embedder.generate_query_embedding = AsyncMock(
+            return_value=[0.1] * 1536,
+        )
 
-            # First call
-            start = __import__("time").time()
-            result1 = await hybrid_service.search_hybrid(
-                query="cached query",
-                collection="test_collection",
-                limit=5,
-            )
-            __import__("time").time() - start
+        # First call
+        start = __import__("time").time()
+        result1 = await hybrid_service.search_hybrid(
+            query="cached query",
+            collection="test_collection",
+            limit=5,
+        )
+        __import__("time").time() - start
 
-            # Second call (should be cached)
-            start = __import__("time").time()
-            result2 = await hybrid_service.search_hybrid(
-                query="cached query",
-                collection="test_collection",
-                limit=5,
-            )
-            __import__("time").time() - start
+        # Second call (should be cached)
+        start = __import__("time").time()
+        result2 = await hybrid_service.search_hybrid(
+            query="cached query",
+            collection="test_collection",
+            limit=5,
+        )
+        __import__("time").time() - start
 
-            # Both should return same results
-            assert result1["query"] == result2["query"]
+        # Both should return same results
+        assert result1["query"] == result2["query"]
 
 
 # =============================================================================
@@ -781,19 +774,18 @@ class TestIndonesianLanguageSupport:
     @pytest.mark.asyncio
     async def test_hybrid_search_indonesian_query(self, hybrid_service):
         """Test hybrid search with Indonesian query."""
-        with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
-            mock_embedder.return_value.generate_query_embedding = AsyncMock(
-                return_value=[0.1] * 1536,
-            )
+        hybrid_service._embedder.generate_query_embedding = AsyncMock(
+            return_value=[0.1] * 1536,
+        )
 
-            result = await hybrid_service.search_hybrid(
-                query="peraturan visa KITAS terbaru",
-                collection="legal_unified_hybrid",
-                limit=5,
-            )
+        result = await hybrid_service.search_hybrid(
+            query="peraturan visa KITAS terbaru",
+            collection="legal_unified_hybrid",
+            limit=5,
+        )
 
-            assert result["query"] == "peraturan visa KITAS terbaru"
-            assert "results" in result
+        assert result["query"] == "peraturan visa KITAS terbaru"
+        assert "results" in result
 
 
 # =============================================================================
@@ -870,15 +862,14 @@ class TestEdgeCases:
     @pytest.mark.asyncio
     async def test_search_with_large_limit(self, hybrid_service):
         """Test search with very large limit."""
-        with patch("backend.core.embeddings.create_embeddings_generator") as mock_embedder:
-            mock_embedder.return_value.generate_query_embedding = AsyncMock(
-                return_value=[0.1] * 1536,
-            )
+        hybrid_service._embedder.generate_query_embedding = AsyncMock(
+            return_value=[0.1] * 1536,
+        )
 
-            result = await hybrid_service.search_hybrid(
-                query="test",
-                collection="test_collection",
-                limit=1000,
-            )
+        result = await hybrid_service.search_hybrid(
+            query="test",
+            collection="test_collection",
+            limit=1000,
+        )
 
-            assert "results" in result
+        assert "results" in result
