@@ -447,18 +447,18 @@ function loadData(): void {
   );
   const fallbackPath = path.join(process.cwd(), "data", "kbli-2025.json");
 
-  let jsonPath: string;
+  let rawData: string;
   if (fs.existsSync(localPath)) {
-    jsonPath = localPath;
+    rawData = fs.readFileSync(localPath, "utf-8");
   } else if (fs.existsSync(fallbackPath)) {
-    jsonPath = fallbackPath;
+    rawData = fs.readFileSync(fallbackPath, "utf-8");
   } else {
     throw new Error(
       `KBLI data file not found. Tried:\n  ${localPath}\n  ${fallbackPath}`,
     );
   }
 
-  const raw: KBLIRawDataFile = JSON.parse(fs.readFileSync(jsonPath, "utf-8"));
+  const raw: KBLIRawDataFile = JSON.parse(rawData);
   const codes = raw.data.map(transformRecord);
 
   // Build lookup maps
