@@ -117,9 +117,18 @@ export function PassportCard({
     }
   };
 
-  // Auto-trigger OCR when passport image exists but no extracted data
-  const hasTriggeredOcr = useRef(false);
   const isExtractingRef = useRef(false);
+
+  const blobToBase64 = async (blob: Blob): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const result = reader.result as string;
+        resolve(result.split(',')[1] ?? result);
+      };
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    });
 
   // Enhanced OCR extraction with Gemini Vision
   const handleExtractData = useCallback(async () => {
@@ -133,23 +142,25 @@ export function PassportCard({
     isExtractingRef.current = true;
     setOcrError(null);
     try {
-      const response = (await api.post('/api/crm/clients/extract-passport-enhanced', {
-        client_id: client.id,
-        file_id: fileId,
-      })) as {
-        success: boolean;
-        passport_number?: string;
-        expiry_date?: string;
-        full_name?: string;
-        gender?: string;
-        birthplace?: string;
-        name_match?: boolean;
-        message?: string;
-      };
+      const proxyUrl = getDriveProxyUrl(passportImageUrl, 'full');
+      if (!proxyUrl) {
+        throw new Error('Passport document cannot be proxied for OCR');
+      }
+
+      const fileResponse = await fetch(proxyUrl);
+      if (!fileResponse.ok) {
+        throw new Error(`Passport download failed (${fileResponse.status})`);
+      }
+
+      const blob = await fileResponse.blob();
+      const imageBase64 = await blobToBase64(blob);
+      const mimeType = blob.type || (passportIsPdf ? 'application/pdf' : 'image/jpeg');
+      const response = await api.crm.extractPassportForClient(imageBase64, mimeType, client.id);
+
       if (response.success) {
         const details = [];
         if (response.passport_number) details.push(`Passport: ${response.passport_number}`);
-        if (response.expiry_date) details.push(`Expiry: ${response.expiry_date}`);
+        if (response.passport_expiry) details.push(`Expiry: ${response.passport_expiry}`);
         if (response.gender) details.push(`Gender: ${response.gender}`);
         if (response.birthplace) details.push(`Birthplace: ${response.birthplace}`);
         if (response.name_match === false) {
@@ -169,20 +180,12 @@ export function PassportCard({
     } catch (err) {
       logger.error('Passport OCR failed', { metadata: { error: String(err) } });
       setOcrError('OCR failed. Click to retry.');
-      hasTriggeredOcr.current = false;
       toast.error('Extraction failed', { description: (err as Error).message });
     } finally {
       setIsExtracting(false);
       isExtractingRef.current = false;
     }
-  }, [passportImageUrl, client.id, onRefresh]);
-
-  useEffect(() => {
-    if (passportImageUrl && !client.passport_number && !isExtractingRef.current && !hasTriggeredOcr.current) {
-      hasTriggeredOcr.current = true;
-      handleExtractData();
-    }
-  }, [passportImageUrl, client.passport_number, handleExtractData]);
+  }, [passportImageUrl, passportIsPdf, client.id, onRefresh]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
