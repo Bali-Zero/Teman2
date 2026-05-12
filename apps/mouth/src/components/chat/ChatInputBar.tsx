@@ -8,6 +8,7 @@ import { ChatRecordingOverlay } from './ChatRecordingOverlay';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { AttachedImage } from '@/hooks/useChatInput';
+import { AutoResizeTextarea } from '@/components/ui/auto-resize-textarea';
 
 export interface ChatInputBarProps {
   input: string;
@@ -152,7 +153,7 @@ export function ChatInputBar({
         )}
 
         {/* Input Container */}
-        <div className="glass-panel rounded-[24px] p-2 relative overflow-hidden group shadow-2xl">
+        <div className="glass-panel rounded-[24px] p-2 relative overflow-hidden group shadow-2xl transition-all duration-200 focus-within:ring-2 focus-within:ring-[var(--accent)]/50 focus-within:ring-offset-2 focus-within:ring-offset-[var(--background)]">
           {/* Subtle inner glow */}
           <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
 
@@ -249,7 +250,7 @@ export function ChatInputBar({
               aria-label="Upload file"
             />
 
-            <textarea
+            <AutoResizeTextarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
@@ -257,16 +258,7 @@ export function ChatInputBar({
               aria-label={showImagePrompt ? 'Describe your image' : 'Type your message'}
               disabled={isLoading}
               rows={1}
-              className="flex-1 border-0 bg-transparent focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none focus-visible:ring-offset-0 resize-none min-h-[40px] max-h-[120px] py-2 px-3 text-sm text-[#D8D6D0] placeholder:text-zinc-500 font-medium outline-none ring-0"
-              style={{
-                height: 'auto',
-                overflowY: input.split('\n').length > 3 ? 'auto' : 'hidden',
-              }}
-              onInput={(e) => {
-                const target = e.target as HTMLTextAreaElement;
-                target.style.height = 'auto';
-                target.style.height = Math.min(target.scrollHeight, UI.MAX_TEXTAREA_HEIGHT) + 'px';
-              }}
+              className="flex-1 border-0 bg-transparent focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none focus-visible:ring-offset-0 min-h-[40px] py-2 px-3 text-sm text-[#D8D6D0] placeholder:text-zinc-500 font-medium outline-none ring-0"
             />
 
             <Button
