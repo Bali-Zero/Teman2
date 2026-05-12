@@ -482,6 +482,7 @@ export interface PassportOcrResult {
   passport_expiry: string | null;
   issuing_country: string | null;
   birthplace: string | null;
+  name_match?: boolean | null;
   warnings: string[];
   message: string | null;
 }

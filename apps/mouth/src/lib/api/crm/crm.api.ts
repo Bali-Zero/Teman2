@@ -347,6 +347,28 @@ export class CrmApi {
   }
 
   /**
+   * Extract passport data from an existing client document and persist it.
+   */
+  async extractPassportForClient(
+    imageBase64: string,
+    mimeType: string,
+    clientId: number,
+  ): Promise<PassportOcrResult> {
+    return this.client.request<PassportOcrResult>(
+      "/api/crm/clients/extract-passport-enhanced",
+      {
+        method: "POST",
+        body: JSON.stringify({
+          image_base64: imageBase64,
+          mime_type: mimeType,
+          client_id: clientId,
+        }),
+      },
+      120000,
+    );
+  }
+
+  /**
    * Get practice types catalog grouped by category (for process creation form)
    */
   async getPracticeTypesCatalog(): Promise<{
