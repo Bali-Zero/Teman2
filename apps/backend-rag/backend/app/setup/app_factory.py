@@ -226,6 +226,19 @@ async def lifespan(app: FastAPI):
                 )
                 await event_bus.start()
                 register_handlers(event_bus, app.state.db_pool)
+                # Phase 3 TICKET A.2 — crm-cell HGT pattern broadcasting
+                # (subscribes to practice.status_changed + lkpm.ingest_completed
+                # in addition to compliance_handlers). See spec v2:
+                # research/symbiosis/2026-05-12-ticket-a2-narrow-spec.md
+                try:
+                    from backend.services.events.handlers.crm_hgt_handlers import (
+                        register_crm_hgt_handlers,
+                    )
+                    register_crm_hgt_handlers(event_bus)
+                except Exception as crm_exc:
+                    logger.warning(
+                        f"⚠️ crm_hgt_handlers registration failed (non-fatal): {crm_exc}"
+                    )
                 app.state.event_bus = event_bus
                 logger.info("✅ EventBus started (client_changed, compliance_alert)")
             except Exception as e:
