@@ -85,6 +85,10 @@ COPY --from=builder /root/.local /home/nuzantara/.local
 # Copy editable cell-core source (required for .egg-link to resolve at runtime)
 COPY --from=builder /app/packages /app/packages
 
+# Copy crm-cell source so backend in-process HGT handlers can import
+# crm_cell.* at runtime without relying on external PYTHONPATH state.
+COPY apps/crm-cell/crm_cell /app/apps/crm-cell/crm_cell
+
 # Copy application code (paths relative to monorepo root)
 COPY apps/backend-rag/backend ./backend
 COPY apps/backend-rag/scripts ./scripts
@@ -92,7 +96,7 @@ COPY apps/backend-rag/training-data ./training-data
 COPY apps/backend-rag/*.py ./
 
 # Set Python path (cell-core included for explicit import resolution)
-ENV PYTHONPATH=/app:/app/backend:/app/packages/cell-core:/home/nuzantara/.local/lib/python3.11/site-packages
+ENV PYTHONPATH=/app:/app/backend:/app/packages/cell-core:/app/apps/crm-cell:/home/nuzantara/.local/lib/python3.11/site-packages
 ENV PATH=/home/nuzantara/.local/bin:$PATH
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1

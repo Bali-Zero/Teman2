@@ -96,13 +96,13 @@ jobs:
           # Strict only on the allowlist in pyproject.toml → [[tool.mypy.overrides]].
           # Everything else is silenced by the backend.* opt-out. See FOLLOWUPS.md
           # (section "Mypy strict-module expansion") for the modules pending cleanup.
-          PYTHONPATH=. python -m mypy backend/core backend/app/models \
+          PYTHONPATH=.:../crm-cell python -m mypy backend/core backend/app/models \
             --config-file pyproject.toml
 
       - name: Import chain gate
         run: |
           cd apps/backend-rag
-          PYTHONPATH=. python -c "from backend.app.dependencies import get_current_user; print('✅ Import chain OK')"
+          PYTHONPATH=.:../crm-cell python -c "from backend.app.dependencies import get_current_user; print('✅ Import chain OK')"
 
       - name: Check LLM cost tracking coverage
         run: python scripts/check_llm_cost_tracking.py
@@ -113,7 +113,7 @@ jobs:
           REDIS_URL: redis://localhost:6379
         run: |
           cd apps/backend-rag
-          PYTHONPATH=. pytest backend/tests/services/rag/test_confidence.py -q --tb=short -x \
+          PYTHONPATH=.:../crm-cell pytest backend/tests/services/rag/test_confidence.py -q --tb=short -x \
             --junit-xml=test-results-core.xml
 
       - name: Bootstrap SQLModel tables
@@ -131,7 +131,7 @@ jobs:
           API_KEYS: test_api_key_1,test_api_key_2
         run: |
           cd apps/backend-rag
-          PYTHONPATH=. python scripts/ci_bootstrap_schema.py
+          PYTHONPATH=.:../crm-cell python scripts/ci_bootstrap_schema.py
 
       - name: Apply database migrations
         # After SQLModel tables exist, apply the Alembic-style migration files
@@ -144,7 +144,7 @@ jobs:
           API_KEYS: test_api_key_1,test_api_key_2
         run: |
           cd apps/backend-rag
-          PYTHONPATH=. timeout 120 python -m backend.db.migrate apply-all
+          PYTHONPATH=.:../crm-cell timeout 120 python -m backend.db.migrate apply-all
 
       - name: Run backend stability gate
         env:
@@ -155,7 +155,7 @@ jobs:
           API_KEYS: test_api_key_1,test_api_key_2
         run: |
           cd apps/backend-rag
-          PYTHONPATH=. python scripts/backend_stability_gate.py
+          PYTHONPATH=.:../crm-cell python scripts/backend_stability_gate.py
 
       - name: Run unit tests
         env:
@@ -167,7 +167,7 @@ jobs:
           REDIS_URL: redis://localhost:6379
         run: |
           cd apps/backend-rag
-          PYTHONPATH=. pytest backend/tests/ -v \
+          PYTHONPATH=.:../crm-cell pytest backend/tests/ -v \
             --ignore=backend/tests/e2e \
             --cov=backend \
             --cov-report=xml:coverage.xml \
@@ -178,7 +178,7 @@ jobs:
       - name: Check coverage threshold
         run: |
           cd apps/backend-rag
-          PYTHONPATH=. coverage report --fail-under=55
+          PYTHONPATH=.:../crm-cell coverage report --fail-under=55
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v6

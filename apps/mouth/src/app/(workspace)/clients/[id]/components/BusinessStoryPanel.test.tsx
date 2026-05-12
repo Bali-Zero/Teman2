@@ -118,6 +118,31 @@ const giuliaMap: TaxCompanyPilotMap = {
     },
   ],
   ai_recap: ["Bimala has LKPM and company evidence."],
+  workspace_ai: {
+    provider: "notebooklm",
+    notebook_id: "notebook_bimala",
+    note_id: "note_bimala",
+    source_file_ids: ["drive_profile"],
+    facts: [
+      {
+        category: "identity",
+        label: "Company profile",
+        detail: "Active PT PMA company profile confirmed.",
+        source_file_ids: ["drive_profile"],
+        confidence: "confirmed",
+      },
+      {
+        category: "compliance",
+        label: "Tax trail",
+        detail: "Tax and LKPM files are present.",
+        source_file_ids: ["drive_profile"],
+        confidence: "confirmed",
+      },
+    ],
+    approved_by: "team@balizero.com",
+    approved_at: "2026-05-12T15:50:00Z",
+    created_at: "2026-05-12T15:45:00Z",
+  },
   read_only: true,
   confidence: "confirmed",
 };
@@ -189,6 +214,13 @@ describe("BusinessStoryPanel", () => {
     expect(screen.getByText("tax")).toBeInTheDocument();
     expect(
       screen.getByText("Needed before the recap can be treated as current."),
+    ).toBeInTheDocument();
+    expect(screen.getByText("Reviewed Workspace AI")).toBeInTheDocument();
+    expect(
+      screen.getByText("Active PT PMA company profile confirmed."),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText("Tax and LKPM files are present."),
     ).toBeInTheDocument();
     expect(
       screen.getByRole("link", { name: /open lkpm q1 2026 evidence/i }),

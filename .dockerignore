@@ -15,6 +15,11 @@
 # cell-core package (editable install target)
 !packages/cell-core/
 
+# crm-cell package (runtime import target for backend HGT handlers)
+!apps/crm-cell/
+!apps/crm-cell/crm_cell/
+!apps/crm-cell/crm_cell/**
+
 # Exclude noise inside included dirs
 **/__pycache__/
 **/*.pyc
