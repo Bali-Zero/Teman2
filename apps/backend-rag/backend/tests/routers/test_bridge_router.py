@@ -1,7 +1,7 @@
 """Tests for /api/bridge/* endpoints."""
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
@@ -248,9 +248,15 @@ def test_get_skills_503_when_skills_key_unset(monkeypatch):
     assert r.status_code == 503
 
 
-def test_get_skills_503_when_redis_unavailable(monkeypatch):
-    """If redis_manager.available is False, return 503."""
+def test_get_skills_503_when_redis_unavailable_and_no_redis_url(monkeypatch):
+    """If redis_manager.available is False AND REDIS_URL env var is missing, return 503.
+
+    Light-init fallback path: when there's no redis_manager singleton, the
+    endpoint falls back to building an ad-hoc client from REDIS_URL. If both
+    paths are unavailable, return 503.
+    """
     monkeypatch.setenv("BRIDGE_SKILLS_API_KEY", SKILLS_KEY)
+    monkeypatch.delenv("REDIS_URL", raising=False)
     from fastapi import FastAPI
     from backend.app.routers import bridge as bridge_router
 
@@ -268,6 +274,44 @@ def test_get_skills_503_when_redis_unavailable(monkeypatch):
         headers={"X-Bridge-Skills-Auth": SKILLS_KEY},
     )
     assert r.status_code == 503
+
+
+def test_get_skills_falls_back_to_redis_url_on_light_init(monkeypatch):
+    """When app.state.redis_manager is missing (light init on Fly api process),
+    endpoint should build an ad-hoc client from REDIS_URL env var.
+
+    Fix 2026-05-13 post-deploy: Fly api machine doesn't init RedisManager
+    (initialize_services_light skips it), so the original CORR-G1 broke
+    the endpoint on api process group. Fallback added.
+    """
+    monkeypatch.setenv("BRIDGE_SKILLS_API_KEY", SKILLS_KEY)
+    monkeypatch.setenv("REDIS_URL", "redis://localhost:6379")
+
+    from fastapi import FastAPI
+    from backend.app.routers import bridge as bridge_router
+
+    app = FastAPI()
+    app.include_router(bridge_router.router)
+    # app.state.redis_manager NOT set — simulates light init
+
+    fake_async_client = AsyncMock()
+    fake_async_client.xread = AsyncMock(return_value=None)
+    fake_async_client.aclose = AsyncMock()
+
+    with patch("redis.asyncio.from_url", return_value=fake_async_client) as from_url_mock:
+        client = TestClient(app)
+        r = client.get(
+            "/api/bridge/skills?after_id=0-0",
+            headers={"X-Bridge-Skills-Auth": SKILLS_KEY},
+        )
+        assert r.status_code == 200
+        body = r.json()
+        assert body["events"] == []
+        assert body["last_stream_id"] == "0-0"
+        # Verify the ad-hoc fallback path was taken
+        from_url_mock.assert_called_once()
+        # Verify ad-hoc client was closed (no leak)
+        fake_async_client.aclose.assert_called()
 
 
 def test_get_skills_empty_stream_returns_empty_events(skills_client, app_with_skills):
