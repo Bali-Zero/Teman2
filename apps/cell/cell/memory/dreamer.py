@@ -6,16 +6,46 @@ extracts generalizable rules, identifies knowledge gaps, and writes
 a dream summary to cell_dreams.
 
 Inspired by MemGPT (paged memory consolidation) + sleep consolidation research.
+
+LEVA 1 (2026-05-13): after the dream is persisted, every rule in
+``rules_extracted`` is upserted into ``cell_skills`` as a candidate skill
+(``kind='skill'``, ``status='candidate'``, ``source='dreamer'``). This closes
+the loop ``dream → persisted skill`` so subsequent pulses can recall the rule
+across cell restarts. Dedup is hash-based on the normalised rule text.
 """
+import hashlib
 import json
 import logging
+import re
 from dataclasses import dataclass, field
 from datetime import date, datetime, timezone
 from typing import Any
 
 import httpx
 
+from cell.cortex.skill_library import compute_embedding
+
 logger = logging.getLogger("cell.memory.dreamer")
+
+# LEVA 1 (2026-05-13): cap rules-as-skills per dream cycle to bound bloat if
+# the Qwen 9B consolidator emits an outlier high count.
+_MAX_RULES_PER_DREAM = 20
+
+# Normalisation helpers for rule dedup. We match on case-insensitive, trailing-
+# punctuation-stripped, whitespace-collapsed form so "Rule!  " collides with
+# "rule" (this happens daily — empirical: last 3 dreams emit identical rules).
+_WHITESPACE_RE = re.compile(r"\s+")
+_TRAILING_PUNCT_RE = re.compile(r"[.!?\s]+$")
+
+
+def _normalize_rule(rule: str) -> str:
+    """Lowercase + strip trailing punctuation + collapse whitespace. Cap 4000."""
+    if not rule:
+        return ""
+    s = rule.lower().strip()
+    s = _TRAILING_PUNCT_RE.sub("", s)
+    s = _WHITESPACE_RE.sub(" ", s)
+    return s[:4000]
 
 _DREAMER_SYSTEM = """You are CELL's consolidation process, running during sleep.
 Analyze today's episodes and extract generalizable rules.
@@ -145,6 +175,93 @@ class Dreamer:
             logger.warning(f"Dreamer LLM extraction failed: {e}")
             return [], []
 
+    async def _upsert_rules_as_skills(
+        self, rules: list[str], dream_date: date
+    ) -> int:
+        """Upsert dream-extracted rules as candidate skills in cell_skills.
+
+        Returns the number of NEW skills inserted (0 if all dedup hits).
+        Best-effort: any exception is logged at WARNING and swallowed; the
+        outer ``dream()`` call must never break because of a skill upsert.
+
+        LEVA 1 contract:
+        - ``kind='skill'`` (LEVA 2 column, default already set by migration 172
+          but written explicitly to stay self-describing).
+        - ``status='candidate'`` (only ``status='active'`` is returned by
+          ``SkillLibrary.recall()``; promotion is a LEVA 4 concern).
+        - ``fitness=0.0`` (initial; the existing ``record_use()`` formula will
+          recompute it on the first use). The source confidence (0.6) is stored
+          in ``precondition.source_confidence`` instead, so the formula is not
+          shadowed.
+        - ``scope='Project'`` (germline-inheritable via HGT, LEVA 5).
+        - ``source='dreamer'``.
+        - Dedup: ``name = f"rule:{sha1(normalised)[:24]}"``; SELECT-then-INSERT
+          inside a single connection. Single-process dreamer cron makes the
+          race window trivial.
+        """
+        if not rules:
+            return 0
+
+        rules = rules[:_MAX_RULES_PER_DREAM]
+        inserted = 0
+
+        for rule_text in rules:
+            try:
+                norm = _normalize_rule(rule_text)
+                if not norm:
+                    continue
+                skill_name = f"rule:{hashlib.sha1(norm.encode()).hexdigest()[:24]}"
+                trigger_nl = rule_text[:4000]
+                embedding = compute_embedding(norm)
+                precondition = {
+                    "source": "dreamer",
+                    "source_confidence": 0.6,
+                    "source_dream_date": dream_date.isoformat(),
+                    "rule_text_sha1": skill_name.removeprefix("rule:"),
+                }
+
+                async with self._pool.acquire() as conn:
+                    existing = await conn.fetchval(
+                        "SELECT id FROM cell_skills WHERE name = $1",
+                        skill_name,
+                    )
+                    if existing is not None:
+                        continue
+                    await conn.execute(
+                        """
+                        INSERT INTO cell_skills
+                            (name, trigger_nl, action_sequence, rationale_nl,
+                             fitness, success_count, failure_count, use_count,
+                             generation, parent_id, embedding, status, source,
+                             kind, scope, precondition)
+                        VALUES
+                            ($1, $2, '[]'::jsonb, $3,
+                             0.0, 0, 0, 0,
+                             0, NULL, $4, 'candidate', 'dreamer',
+                             'skill', 'Project', $5::jsonb)
+                        """,
+                        skill_name,
+                        trigger_nl,
+                        f"Rule extracted by Dreamer on {dream_date.isoformat()}.",
+                        embedding,
+                        json.dumps(precondition),
+                    )
+                    inserted += 1
+            except Exception as exc:
+                logger.warning(
+                    "Failed to upsert rule as skill: %s -- %s",
+                    rule_text[:80],
+                    exc,
+                )
+
+        if inserted:
+            logger.info(
+                "Dreamer: upserted %d new candidate skills from %d rules",
+                inserted,
+                len(rules),
+            )
+        return inserted
+
     async def _persist_dream(self, result: DreamResult) -> None:
         """Write dream result to cell_dreams."""
         async with self._pool.acquire() as conn:
@@ -201,6 +318,16 @@ class Dreamer:
             summary=summary,
         )
         await self._persist_dream(result)
+
+        # LEVA 1: close the loop dream -> persisted candidate skill.
+        # Best-effort: never blocks the caller.
+        if result.rules_extracted:
+            try:
+                await self._upsert_rules_as_skills(
+                    result.rules_extracted, result.dream_date
+                )
+            except Exception as exc:
+                logger.warning("Dreamer skill upsert failed: %s", exc)
 
         logger.info(
             f"Dreamer: consolidated {len(episodes)} episodes -> "
