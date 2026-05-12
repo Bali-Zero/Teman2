@@ -14,6 +14,7 @@
 -- Squawk-clean on empty data. Wrapped in BEGIN/COMMIT to satisfy
 -- prefer-robust-stmts (per migration 168 / 156 / 138 convention).
 
+-- Step 1: add columns + NOT VALID constraints + indexes in one transaction.
 BEGIN;
 
 ALTER TABLE cell_skills
@@ -28,21 +29,16 @@ ALTER TABLE cell_skills
 ALTER TABLE cell_skills
     ADD COLUMN IF NOT EXISTS scar_weakness_tag VARCHAR(64);
 
--- Use NOT VALID + VALIDATE to avoid the constraint-missing-not-valid Squawk warning.
--- Table is empty/near-empty today; VALIDATE is instant.
+-- NOT VALID gets the constraint in place without scanning existing rows.
 ALTER TABLE cell_skills
     ADD CONSTRAINT cell_skills_kind_check
         CHECK (kind IN ('skill', 'scar')) NOT VALID;
-ALTER TABLE cell_skills VALIDATE CONSTRAINT cell_skills_kind_check;
 
 ALTER TABLE cell_skills
     ADD CONSTRAINT cell_skills_scope_check
         CHECK (scope IN ('Project', 'Personal')) NOT VALID;
-ALTER TABLE cell_skills VALIDATE CONSTRAINT cell_skills_scope_check;
 
 -- Idempotency guard for concurrent scar emission across pulses.
--- Partial unique index: only scars require uniqueness on weakness_tag; skill rows leave
--- scar_weakness_tag NULL and are unconstrained.
 -- Non-CONCURRENT is acceptable here (table empty, ACCESS SHARE lock trivial); the
 -- repo-wide --exclude=require-concurrent-index-creation in migration-lint.yml covers it.
 CREATE UNIQUE INDEX IF NOT EXISTS uq_cell_skills_scar_tag
@@ -53,6 +49,19 @@ CREATE INDEX IF NOT EXISTS idx_cell_skills_kind_status
     ON cell_skills (kind, status)
     WHERE status = 'active';
 
+COMMIT;
+
+-- Step 2: VALIDATE constraints in a SEPARATE transaction so the validation
+-- scan doesn't block reads inside the structural transaction above. Squawk
+-- rule constraint-missing-not-valid explicitly requires this two-step
+-- pattern; combining them in one BEGIN/COMMIT defeats the purpose.
+-- Empty/near-empty table today, so each VALIDATE returns in microseconds.
+BEGIN;
+ALTER TABLE cell_skills VALIDATE CONSTRAINT cell_skills_kind_check;
+COMMIT;
+
+BEGIN;
+ALTER TABLE cell_skills VALIDATE CONSTRAINT cell_skills_scope_check;
 COMMIT;
 
 COMMENT ON COLUMN cell_skills.kind IS
