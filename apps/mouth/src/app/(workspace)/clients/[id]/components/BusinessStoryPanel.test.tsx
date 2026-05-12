@@ -155,9 +155,9 @@ describe("BusinessStoryPanel", () => {
       />,
     );
 
-    expect(screen.getByText("Business Story")).toBeInTheDocument();
+    expect(screen.getByText("Client Story")).toBeInTheDocument();
     expect(
-      screen.getByText("Person -> company -> tax -> evidence -> next action"),
+      screen.getByText("Person -> company -> tax -> documents -> next step"),
     ).toBeInTheDocument();
     expect(
       screen.getByText("BIMALA / Bimala Investments Bali PT"),
@@ -167,11 +167,11 @@ describe("BusinessStoryPanel", () => {
     ).not.toBeInTheDocument();
     expect(screen.getByText("Giulia Del Giudice")).toBeInTheDocument();
     expect(screen.getByText("Tax owner: Dewa Ayu")).toBeInTheDocument();
-    expect(screen.getByText("Needs review")).toBeInTheDocument();
+    expect(screen.getByText("Needs a check")).toBeInTheDocument();
     expect(screen.getByText("76%")).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Start from Giulia, then follow the Bimala company record, LKPM evidence, and tax owner.",
+        "Start from Giulia, then follow the Bimala company record, LKPM documents, and tax owner.",
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("LKPM Q1 2026")).toBeInTheDocument();
@@ -182,10 +182,10 @@ describe("BusinessStoryPanel", () => {
     ).toHaveLength(3);
     expect(
       screen.getByText(
-        "Team opens Drive evidence from kita. Client portal stays on approved downloads only.",
+        "Team can open Drive here. Clients only see approved downloads in the portal.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByText("Next actions")).toBeInTheDocument();
+    expect(screen.getByText("What to do next")).toBeInTheDocument();
     expect(screen.getByText("tax")).toBeInTheDocument();
     expect(
       screen.getByText("Needed before the recap can be treated as current."),
@@ -207,11 +207,11 @@ describe("BusinessStoryPanel", () => {
     );
 
     expect(
-      screen.getByText("No business story linked yet"),
+      screen.getByText("No company linked yet"),
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "Link this person to a company before building tax evidence.",
+        "Connect this person to a company, then the CRM can build the tax story.",
       ),
     ).toBeInTheDocument();
   });
