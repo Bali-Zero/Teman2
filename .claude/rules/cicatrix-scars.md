@@ -58,7 +58,7 @@ The new `canva_renderer_v2` package (~1000 LOC across 9 modules) and 4 scripts +
 
 Full implementation tasks T1-T13 (47/47 unit tests passing across all modules) committed as discrete bisect-safe commits:
 
-- T1: `c4a497ac3` — migration 169 lease columns
+- T1: `c4a497ac3` — migration 169 lease columns (renamed to 170 in CI-fix commit after collision with main's 169_crm_workspace_ai_snapshots)
 - T2: `7a43ba1e1` — pkg init + _telegram.py
 - T3: `b40d4c2b3` — _schema_adapter.py + 3 fixtures
 - T4: `ecaba84c9` — _pdf_pipeline.py subprocess
