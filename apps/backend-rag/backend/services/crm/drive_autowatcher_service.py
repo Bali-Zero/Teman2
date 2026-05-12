@@ -149,7 +149,12 @@ async def fetch_drive_evidence_for_story_drafts(
     safe_limit = _safe_limit(limit)
     try:
         async with pool.acquire() as conn:
-            rows = await conn.fetch(_EVIDENCE_SQL, client_id, safe_limit)
+            rows = await conn.fetch(
+                _EVIDENCE_SQL,
+                client_id,
+                safe_limit,
+                f"{_NOTE_PREFIX}:%",
+            )
     except asyncpg.UndefinedTableError:
         logger.info("CRM Drive autowatcher skipped: required CRM tables missing")
         return []
@@ -446,19 +451,24 @@ def _safe_limit(limit: int) -> int:
 
 _EVIDENCE_SQL = """
 WITH company_scope AS (
-    SELECT DISTINCT
+    SELECT
         co.id AS company_id,
-        co.company_name
+        co.company_name,
+        BOOL_OR(snap.id IS NOT NULL) AS has_autowatcher_snapshot
     FROM client_company_links ccl
     JOIN clients cl ON cl.id = ccl.client_id
     JOIN companies co ON co.id = ccl.company_id
     JOIN documents d ON d.client_id = cl.id
+    LEFT JOIN crm_workspace_ai_snapshots snap
+        ON snap.company_id = co.id
+        AND snap.note_id LIKE $3::text
     WHERE cl.deleted_at IS NULL
       AND d.file_id IS NOT NULL
       AND d.file_id <> ''
       AND (d.is_archived IS NULL OR d.is_archived = false)
       AND ($1::int IS NULL OR cl.id = $1::int)
-    ORDER BY co.company_name
+    GROUP BY co.id, co.company_name
+    ORDER BY has_autowatcher_snapshot ASC, co.company_name
     LIMIT $2
 )
 SELECT
