@@ -8,14 +8,14 @@ name: Lint Cross-Import
 on:
   pull_request:
     paths:
-      - 'package.json'
-      - 'package-lock.json'
-      - 'apps/*/package.json'
-      - 'packages/*/package.json'
-      - 'apps/*/tsconfig*.json'
-      - 'packages/*/tsconfig*.json'
-      - 'scripts/lint_cross_import.sh'
-      - '.github/workflows/lint-cross-import.yml'
+      - "package.json"
+      - "package-lock.json"
+      - "apps/*/package.json"
+      - "packages/*/package.json"
+      - "apps/*/tsconfig*.json"
+      - "packages/*/tsconfig*.json"
+      - "scripts/lint_cross_import.sh"
+      - ".github/workflows/lint-cross-import.yml"
 
 permissions:
   contents: read
@@ -31,21 +31,21 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 1
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
           cache-dependency-path: package-lock.json
 
       - name: Setup Python (for the helper script)
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       # Step 1 — package.json JSON validity (covers BOTH workspace and orphan
       # apps; e.g. apps/kbli-navigator is not in `workspaces` but its

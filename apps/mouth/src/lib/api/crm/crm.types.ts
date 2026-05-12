@@ -130,7 +130,7 @@ export interface TaxCompanyPilotEvidenceStory {
 }
 
 export interface TaxCompanyPilotMap {
-  key: TaxCompanyPilotKey;
+  key: string;
   primary_entry: "person";
   workspace_mode: "team_read_only";
   company: TaxCompanyPilotEntity;

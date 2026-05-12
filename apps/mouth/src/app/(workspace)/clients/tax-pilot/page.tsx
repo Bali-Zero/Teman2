@@ -8,12 +8,12 @@ import type { TaxCompanyPilotMap } from "@/lib/api/crm/crm.types";
 
 export default function TaxCompanyPilotPage() {
   const { data, isLoading, error } = useQuery<TaxCompanyPilotMap[]>({
-    queryKey: ["crm-tax-company-pilot"],
+    queryKey: ["crm-evidence-dossiers", "ocean", "bimala"],
     queryFn: async () =>
-      Promise.all([
-        api.crm.getTaxCompanyPilotMap("ocean"),
-        api.crm.getTaxCompanyPilotMap("bimala"),
-      ]),
+      api.crm.getEvidenceDossiers({
+        companies: ["ocean", "bimala"],
+        limit: 2,
+      }),
     staleTime: 5 * 60_000,
   });
 
@@ -21,7 +21,7 @@ export default function TaxCompanyPilotPage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#0b1020] text-white">
         <Loader2 className="mr-2 animate-spin" size={18} />
-        Loading tax company map
+        Loading evidence dossiers
       </main>
     );
   }
@@ -30,7 +30,7 @@ export default function TaxCompanyPilotPage() {
     return (
       <main className="flex min-h-screen items-center justify-center bg-[#0b1020] px-4 text-white">
         <div className="rounded-lg border border-red-400/30 bg-red-500/10 p-4 text-sm text-red-100">
-          Tax company map is unavailable.
+          Evidence dossiers are unavailable.
         </div>
       </main>
     );

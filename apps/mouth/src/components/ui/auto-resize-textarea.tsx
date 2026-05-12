@@ -1,32 +1,46 @@
 "use client";
 
-import { useRef, useLayoutEffect, TextareaHTMLAttributes } from "react";
+import React, { useLayoutEffect, forwardRef, useImperativeHandle, useRef, TextareaHTMLAttributes } from "react";
+import { UI } from "@/constants";
 
 interface AutoResizeTextareaProps extends TextareaHTMLAttributes<HTMLTextAreaElement> {
   value: string;
+  maxHeight?: number;
 }
 
-export function AutoResizeTextarea({
-  value,
-  className,
-  ...props
-}: AutoResizeTextareaProps) {
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+/**
+ * A textarea component that automatically adjusts its height based on content.
+ * Prevents visual flickering by using useLayoutEffect to recalculate height before paint.
+ */
+export const AutoResizeTextarea = forwardRef<HTMLTextAreaElement, AutoResizeTextareaProps>(
+  ({ value, className, maxHeight = UI.MAX_TEXTAREA_HEIGHT, ...props }, ref) => {
+    const internalRef = useRef<HTMLTextAreaElement>(null);
 
-  // useLayoutEffect elimina il "flicker" visivo ricalcolando l'altezza prima del paint
-  useLayoutEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
-    }
-  }, [value]);
+    // Expose the internal textarea ref to parent components
+    useImperativeHandle(ref, () => internalRef.current as HTMLTextAreaElement);
 
-  return (
-    <textarea
-      ref={textareaRef}
-      value={value}
-      className={`overflow-hidden resize-none ${className || ""}`}
-      {...props}
-    />
-  );
-}
+    // Recalculate height whenever value changes to match content
+    useLayoutEffect(() => {
+      const textarea = internalRef.current;
+      if (textarea) {
+        textarea.style.height = "auto";
+        const newHeight = Math.min(textarea.scrollHeight, maxHeight);
+        textarea.style.height = `${newHeight}px`;
+
+        // Show scrollbar only if content exceeds maxHeight
+        textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+      }
+    }, [value, maxHeight]);
+
+    return (
+      <textarea
+        ref={internalRef}
+        value={value}
+        className={`overflow-hidden resize-none ${className || ""}`}
+        {...props}
+      />
+    );
+  }
+);
+
+AutoResizeTextarea.displayName = "AutoResizeTextarea";

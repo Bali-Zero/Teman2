@@ -1,0 +1,43 @@
+{
+  "id": "c2-npwp-coretax",
+  "title": "NPWP & Coretax onboarding",
+  "intent": "User needs to register, troubleshoot, or migrate their Indonesian tax ID and use the Coretax e-filing platform",
+  "pillar": {
+    "slug": "npwp-foreigners-guide",
+    "category": "tax",
+    "title": "NPWP: Indonesian Tax Number for Foreigners 2026"
+  },
+  "spokes": [
+    {
+      "slug": "coretax-npwp16-vs-npwp15-foreigners",
+      "category": "tax",
+      "title": "NPWP 16-Digit vs 15-Digit for Foreigners in Indonesia 2026: Migration Guide"
+    },
+    {
+      "slug": "coretax-npwp-problems-2026",
+      "category": "tax",
+      "title": "Coretax Chaos: Il Nuovo Sistema Fiscale Blocca le Registrazioni NPWP"
+    },
+    {
+      "slug": "coretax-login-errors-fixes-2026",
+      "category": "tax",
+      "title": "CoreTax Login Errors 2026: Common Problems and Step-by-Step Fixes"
+    },
+    {
+      "slug": "coretax-efiling-spt-guide",
+      "category": "tax",
+      "title": "CoreTax e-Filing Guide: Complete SPT Tax Return Filing Tutorial 2026"
+    },
+    {
+      "slug": "coretax-vs-djp-online-what-changed",
+      "category": "tax",
+      "title": "CoreTax vs DJP Online 2026: What Changed and What You Need to Know"
+    },
+    {
+      "slug": "npwp-of-wives-automatically-deactivated-in-coretax",
+      "category": "immigration",
+      "title": "NPWP of Wives Automatically Deactivated in Coretax"
+    }
+  ],
+  "related_clusters": ["c1-tax-residency", "c5-deadlines-filing"]
+}

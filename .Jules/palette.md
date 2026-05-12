@@ -13,3 +13,7 @@
 ## 2026-04-26 - [Descriptive Action Labels and Explicit Button Types]
 **Learning:** Generic action labels like "Delete" in lists are ambiguous for screen reader users. Including the item's title in the `aria-label` (e.g., "Delete conversation: [Title]") provides crucial context. Additionally, omitting `type="button"` on non-submit buttons can lead to accidental form submissions and inconsistent browser behavior.
 **Action:** Always include identifying information in `aria-label` for repetitive actions in lists. Consistently apply `type="button"` to all interactive elements that are not meant to submit a form.
+
+## 2026-04-28 - [Consistent Focus Indicators with focus-ring Utility]
+**Learning:** In highly customized dark UIs, default browser focus outlines are often invisible or clash with the aesthetic. Providing a dedicated `.focus-ring` utility class using `focus-visible` ensures that keyboard users have clear, brand-consistent navigation cues without affecting mouse users.
+**Action:** Apply `.focus-ring` to all interactive elements that do not have a robust built-in focus state.

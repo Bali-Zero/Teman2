@@ -1,0 +1,38 @@
+{
+  "id": "c1-tax-residency",
+  "title": "Tax Residency & 183-day rule",
+  "intent": "User wants to understand if/when they owe Indonesian tax based on residency status",
+  "pillar": {
+    "slug": "tax-residency-indonesia",
+    "category": "tax",
+    "title": "Tax Residency in Indonesia: When Do You Become a Tax Resident? 2026"
+  },
+  "spokes": [
+    {
+      "slug": "indonesia-zero-tax-foreign-income-2026",
+      "category": "tax",
+      "title": "Indonesia's 0% Tax on Foreign Income: The Expat Advantage Most Don't Know"
+    },
+    {
+      "slug": "indonesias-183-day-tax-residency-rule-what-expats-get-wrong-in-2026",
+      "category": "business",
+      "title": "Indonesia's 183-Day Tax Residency Rule: What Expats Get Wrong in 2026"
+    },
+    {
+      "slug": "indonesia-tax-guide-for-foreigners",
+      "category": "tax",
+      "title": "Indonesia Tax Guide for Foreigners 2026"
+    },
+    {
+      "slug": "tax-planning-expats",
+      "category": "tax",
+      "title": "Tax Planning for Expats Indonesia 2026: Strategies Guide"
+    },
+    {
+      "slug": "tax-deductions-expats-indonesia",
+      "category": "tax",
+      "title": "Tax Deductions for Expats in Indonesia 2026: PTKP Thresholds, Allowances & Optimization"
+    }
+  ],
+  "related_clusters": ["c5-deadlines-filing", "c2-npwp-coretax"]
+}
