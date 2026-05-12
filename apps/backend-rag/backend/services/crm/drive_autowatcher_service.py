@@ -450,54 +450,126 @@ def _safe_limit(limit: int) -> int:
 
 
 _EVIDENCE_SQL = """
-WITH company_scope AS (
+WITH linked_people AS (
     SELECT
-        co.id AS company_id,
-        co.company_name,
-        BOOL_OR(snap.id IS NOT NULL) AS has_autowatcher_snapshot
+        ccl.company_id,
+        cl.id AS client_id,
+        cl.full_name AS client_name,
+        COALESCE(cl.tax_consultant, cl.assigned_to, '') AS tax_owner
     FROM client_company_links ccl
     JOIN clients cl ON cl.id = ccl.client_id
-    JOIN companies co ON co.id = ccl.company_id
-    JOIN documents d ON d.client_id = cl.id
-    LEFT JOIN crm_workspace_ai_snapshots snap
-        ON snap.company_id = co.id
-        AND snap.note_id LIKE $3::text
     WHERE cl.deleted_at IS NULL
-      AND d.file_id IS NOT NULL
+      AND ($1::int IS NULL OR cl.id = $1::int)
+),
+company_scope AS (
+    SELECT
+        base.company_id,
+        base.company_name,
+        BOOL_OR(snap.id IS NOT NULL) AS has_autowatcher_snapshot
+    FROM (
+        SELECT
+            co.id AS company_id,
+            co.company_name
+        FROM linked_people lp
+        JOIN companies co ON co.id = lp.company_id
+        JOIN documents d ON d.client_id = lp.client_id
+        WHERE d.file_id IS NOT NULL
+          AND d.file_id <> ''
+          AND (d.is_archived IS NULL OR d.is_archived = false)
+
+        UNION
+
+        SELECT
+            co.id AS company_id,
+            co.company_name
+        FROM linked_people lp
+        JOIN companies co ON co.id = lp.company_id
+        JOIN company_documents cd ON cd.company_id = co.id
+        WHERE cd.google_drive_file_id IS NOT NULL
+          AND cd.google_drive_file_id <> ''
+          AND COALESCE(cd.status, 'active') <> 'deleted'
+    ) base
+    LEFT JOIN crm_workspace_ai_snapshots snap
+        ON snap.company_id = base.company_id
+        AND snap.note_id LIKE $3::text
+    GROUP BY base.company_id, base.company_name
+    ORDER BY has_autowatcher_snapshot ASC, base.company_name
+    LIMIT $2
+),
+evidence_rows AS (
+    SELECT
+        scope.company_id,
+        scope.company_name,
+        lp.client_id,
+        lp.client_name,
+        lp.tax_owner,
+        d.file_id,
+        d.file_name,
+        d.document_type,
+        d.document_category,
+        d.ocr_status,
+        kg.entity_id IS NOT NULL AS has_kg_node,
+        kg.entity_id AS kg_entity_id
+    FROM company_scope scope
+    JOIN linked_people lp ON lp.company_id = scope.company_id
+    JOIN documents d ON d.client_id = lp.client_id
+    LEFT JOIN crm_kg_nodes kg
+        ON kg.file_id = d.file_id
+        AND kg.entity_type = 'crm_document'
+        AND kg.deleted_at IS NULL
+    WHERE d.file_id IS NOT NULL
       AND d.file_id <> ''
       AND (d.is_archived IS NULL OR d.is_archived = false)
-      AND ($1::int IS NULL OR cl.id = $1::int)
-    GROUP BY co.id, co.company_name
-    ORDER BY has_autowatcher_snapshot ASC, co.company_name
-    LIMIT $2
+
+    UNION ALL
+
+    SELECT
+        scope.company_id,
+        scope.company_name,
+        lp.client_id,
+        lp.client_name,
+        lp.tax_owner,
+        cd.google_drive_file_id AS file_id,
+        cd.file_name,
+        cd.document_type,
+        COALESCE(cd.document_subtype, 'company') AS document_category,
+        NULL::text AS ocr_status,
+        kg.entity_id IS NOT NULL AS has_kg_node,
+        kg.entity_id AS kg_entity_id
+    FROM company_scope scope
+    JOIN linked_people lp ON lp.company_id = scope.company_id
+    JOIN company_documents cd ON cd.company_id = scope.company_id
+    LEFT JOIN crm_kg_nodes kg
+        ON kg.file_id = cd.google_drive_file_id
+        AND kg.entity_type = 'crm_document'
+        AND kg.deleted_at IS NULL
+    WHERE cd.google_drive_file_id IS NOT NULL
+      AND cd.google_drive_file_id <> ''
+      AND COALESCE(cd.status, 'active') <> 'deleted'
+),
+kg_counts AS (
+    SELECT
+        er.company_id,
+        COUNT(DISTINCT edge.relationship_id) AS kg_edge_count
+    FROM evidence_rows er
+    LEFT JOIN crm_kg_edges edge
+        ON edge.source_entity_id = er.kg_entity_id
+    GROUP BY er.company_id
 )
 SELECT
-    scope.company_id,
-    scope.company_name,
-    cl.id AS client_id,
-    cl.full_name AS client_name,
-    COALESCE(cl.tax_consultant, cl.assigned_to, '') AS tax_owner,
-    d.file_id,
-    d.file_name,
-    d.document_type,
-    d.document_category,
-    d.ocr_status,
-    kg.entity_id IS NOT NULL AS has_kg_node,
-    COUNT(edge.relationship_id) OVER (PARTITION BY scope.company_id) AS kg_edge_count
-FROM company_scope scope
-JOIN client_company_links ccl ON ccl.company_id = scope.company_id
-JOIN clients cl ON cl.id = ccl.client_id
-JOIN documents d ON d.client_id = cl.id
-LEFT JOIN crm_kg_nodes kg
-    ON kg.file_id = d.file_id
-    AND kg.entity_type = 'crm_document'
-    AND kg.deleted_at IS NULL
-LEFT JOIN crm_kg_edges edge
-    ON edge.source_entity_id = kg.entity_id
-WHERE cl.deleted_at IS NULL
-  AND d.file_id IS NOT NULL
-  AND d.file_id <> ''
-  AND (d.is_archived IS NULL OR d.is_archived = false)
-  AND ($1::int IS NULL OR cl.id = $1::int)
-ORDER BY scope.company_name, cl.full_name, d.file_name
+    er.company_id,
+    er.company_name,
+    er.client_id,
+    er.client_name,
+    er.tax_owner,
+    er.file_id,
+    er.file_name,
+    er.document_type,
+    er.document_category,
+    er.ocr_status,
+    er.has_kg_node,
+    COALESCE(kc.kg_edge_count, 0) AS kg_edge_count
+FROM evidence_rows er
+LEFT JOIN kg_counts kc ON kc.company_id = er.company_id
+ORDER BY er.company_name, er.client_name, er.file_name
 """
