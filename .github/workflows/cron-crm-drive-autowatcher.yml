@@ -1,0 +1,80 @@
+name: cron - CRM Drive autowatcher
+
+# Bounded pass over current CRM Drive documents:
+# 1. backfill indexed documents into OCR/KG
+# 2. create Workspace AI draft snapshots for human review
+#
+# It does not approve facts and does not expose raw Drive evidence to clients.
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: 'Max documents/companies to inspect in this pass'
+        required: false
+        default: '10'
+      allow_ocr:
+        description: 'Allow OCR/Gemini dispatch for pending existing documents'
+        required: false
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
+
+concurrency:
+  group: cron-crm-drive-autowatcher
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: POST /api/admin/crm-kg/autowatch-drive
+        id: autowatch
+        env:
+          API_KEY: ${{ secrets.NUZANTARA_API_KEY }}
+          LIMIT: ${{ github.event.inputs.limit || '10' }}
+          ALLOW_OCR: ${{ github.event.inputs.allow_ocr || 'true' }}
+        run: |
+          set -uo pipefail
+          BODY_FILE="$RUNNER_TEMP/body.json"
+          URL="https://nuzantara-rag.fly.dev/api/admin/crm-kg/autowatch-drive?limit=${LIMIT}&dry_run=false&allow_ocr=${ALLOW_OCR}&story_drafts=true"
+          HTTP_CODE=$(curl -sS -o "$BODY_FILE" -w "%{http_code}" --max-time 240 \
+            -X POST \
+            -H "X-API-Key: $API_KEY" \
+            -H "Content-Type: application/json" \
+            "$URL" || echo "000")
+          BODY=$(cat "$BODY_FILE" 2>/dev/null || echo "")
+          echo "http_code=$HTTP_CODE" >> "$GITHUB_OUTPUT"
+          echo "body<<EOF" >> "$GITHUB_OUTPUT"
+          echo "$BODY" | head -c 800 >> "$GITHUB_OUTPUT"
+          echo "" >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+          if [ "$HTTP_CODE" = "200" ]; then
+            echo "CRM Drive autowatcher accepted: $BODY"
+          else
+            echo "::warning::CRM Drive autowatcher failed (HTTP $HTTP_CODE): $BODY"
+            exit 1
+          fi
+
+      - name: Telegram alert on failure
+        if: failure()
+        env:
+          BOT: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          CHAT: ${{ secrets.TELEGRAM_OWNER_CHAT_ID }}
+          HTTP_CODE: ${{ steps.autowatch.outputs.http_code }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          [ -z "$BOT" ] || [ -z "$CHAT" ] && { echo "Telegram secrets missing"; exit 0; }
+          TEXT="🚨 <b>crm-drive-autowatcher</b> failed
+          HTTP: ${HTTP_CODE:-?}
+          Run: ${RUN_URL}"
+          curl -sS -m 10 -X POST \
+            "https://api.telegram.org/bot${BOT}/sendMessage" \
+            -d "chat_id=${CHAT}" \
+            --data-urlencode "text=${TEXT}" \
+            -d "parse_mode=HTML" >/dev/null || true

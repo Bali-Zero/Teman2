@@ -4,6 +4,8 @@ Endpoints exposed:
   - GET  /api/admin/crm-kg/health           → counts of nodes/edges per type
   - POST /api/admin/crm-kg/backfill-drive-documents
                                              → OCR/KG pass over current CRM docs
+  - POST /api/admin/crm-kg/autowatch-drive  → bounded Drive/OCR/KG pass plus
+                                               review-only Business Story drafts
   - POST /api/admin/crm-kg/build-mediated   → run Tier-B mediated edge pass (PR-B)
   - POST /api/admin/crm-kg/garbage-collect  → soft-delete orphan nodes,
                                                 hard-delete old edges (PR-D)
@@ -73,6 +75,63 @@ async def trigger_backfill_drive_documents(
         "message": "CRM Drive document backfill running in background",
         "dry_run": False,
         "allow_ocr": allow_ocr,
+        "limit": limit,
+        "client_id": client_id,
+    }
+
+
+@router.post("/autowatch-drive")
+async def trigger_autowatch_drive(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    limit: int = Query(25, ge=1, le=100),
+    dry_run: bool = Query(True),
+    client_id: int | None = Query(None, ge=1),
+    allow_ocr: bool = Query(False),
+    story_drafts: bool = Query(True),
+) -> dict[str, Any]:
+    """Run a bounded autonomous Drive intelligence pass.
+
+    This wraps the current Drive backfill/OCR/KG linker and prepares
+    Workspace AI snapshots as draft only. Draft facts never enter Business
+    Story until a team member approves them.
+    """
+    pool = getattr(request.app.state, "db_pool", None)
+    if not pool:
+        return {"status": "error", "message": "Database pool not available"}
+
+    from backend.services.crm.drive_autowatcher_service import (
+        run_crm_drive_autowatch,
+    )
+
+    if dry_run:
+        return await run_crm_drive_autowatch(
+            pool,
+            limit=limit,
+            dry_run=True,
+            client_id=client_id,
+            allow_ocr=allow_ocr,
+            story_drafts=story_drafts,
+        )
+
+    async def _run() -> None:
+        result = await run_crm_drive_autowatch(
+            pool,
+            limit=limit,
+            dry_run=False,
+            client_id=client_id,
+            allow_ocr=allow_ocr,
+            story_drafts=story_drafts,
+        )
+        logger.info("crm_kg.autowatch_drive background result: %s", result)
+
+    background_tasks.add_task(_run)
+    return {
+        "status": "started",
+        "message": "CRM Drive autowatcher running in background",
+        "dry_run": False,
+        "allow_ocr": allow_ocr,
+        "story_drafts": story_drafts,
         "limit": limit,
         "client_id": client_id,
     }
