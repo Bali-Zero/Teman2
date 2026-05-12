@@ -123,6 +123,25 @@ export interface TaxCompanyPilotReadiness {
   reasons: string[];
 }
 
+export interface TaxCompanyPilotWorkspaceAiFact {
+  category: "identity" | "person" | "compliance" | "gap" | "next_action";
+  label: string;
+  detail: string;
+  source_file_ids: string[];
+  confidence: TaxCompanyPilotConfidence;
+}
+
+export interface TaxCompanyPilotWorkspaceAiSnapshot {
+  provider: "notebooklm" | "gemini" | "manual";
+  notebook_id?: string | null;
+  note_id?: string | null;
+  source_file_ids: string[];
+  facts: TaxCompanyPilotWorkspaceAiFact[];
+  approved_by?: string | null;
+  approved_at?: string | null;
+  created_at?: string | null;
+}
+
 export interface TaxCompanyPilotEvidenceStory {
   person_name: string;
   company_name: string;
@@ -154,6 +173,7 @@ export interface TaxCompanyPilotMap {
   gaps: TaxCompanyPilotGap[];
   evidence_links: TaxCompanyPilotEvidenceLink[];
   ai_recap: string[];
+  workspace_ai?: TaxCompanyPilotWorkspaceAiSnapshot | null;
   read_only: boolean;
   confidence: TaxCompanyPilotConfidence;
 }

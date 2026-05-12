@@ -503,6 +503,15 @@ biznews_urls.csv
 *.pptx
 compliance_report_*.pdf
 
+# ============================================
+# Dev-tools research artifacts (Claude Code experiments, pilot runs, agent-teams scratchpad)
+# Convention 2026-05-13: research/dev-tools/ is ephemeral working dir, NOT versioned.
+# Background: branch-switch by sibling Claude session has lost untracked files here twice
+# (cf. cicatrix scar "Untracked files lost when sibling automation switches branches mid-session").
+# Durable artifacts MUST live in ~/.claude/projects/-Users-nuzantara/pilot-archives/ instead.
+# ============================================
+research/dev-tools/
+
 # OpenCode / alternative AI tools
 .opencode/
 opencode.json
