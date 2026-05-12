@@ -234,3 +234,13 @@ def test_story_draft_payload_uses_human_language_and_no_drive_links() -> None:
     assert "drive.google.com" not in details
     assert "Maria Rossi" in details
     assert payload.facts[-1].detail.startswith("Review this draft")
+
+
+def test_evidence_query_prioritizes_companies_without_autowatcher_drafts() -> None:
+    from backend.services.crm import drive_autowatcher_service
+
+    sql = drive_autowatcher_service._EVIDENCE_SQL
+
+    assert "crm_workspace_ai_snapshots" in sql
+    assert "snap.note_id LIKE $3::text" in sql
+    assert "ORDER BY has_autowatcher_snapshot ASC" in sql
