@@ -8,7 +8,9 @@ unprocessed documents through the existing OCR dispatcher.
 from __future__ import annotations
 
 import logging
+import os
 from dataclasses import dataclass
+from json import JSONDecodeError, loads
 from typing import Any
 
 import asyncpg
@@ -137,7 +139,7 @@ async def _process_candidate(
         return {"ocr_dispatched": 0, "kg_linked": 0, "skipped": 1}
 
     linked = False
-    if link_kg:
+    if link_kg and not _dispatcher_links_kg():
         handler_name = str(result.get("handler") or candidate.document_type)
         linked = await _link_candidate_to_kg(
             pool,
@@ -172,7 +174,7 @@ async def _link_candidate_to_kg(
 
 def _candidate_from_row(row: Any) -> CrmDriveBackfillCandidate:
     data = dict(row)
-    raw_ocr = data.get("ocr_extracted_data")
+    raw_ocr = _coerce_extracted_data(data.get("ocr_extracted_data"))
     return CrmDriveBackfillCandidate(
         document_id=int(data["document_id"]),
         client_id=int(data["client_id"]),
@@ -183,7 +185,7 @@ def _candidate_from_row(row: Any) -> CrmDriveBackfillCandidate:
         practice_id=data.get("practice_id"),
         drive_url=data.get("google_drive_file_url") or data.get("file_url"),
         ocr_status=data.get("ocr_status"),
-        ocr_extracted_data=raw_ocr if isinstance(raw_ocr, dict) else {},
+        ocr_extracted_data=raw_ocr,
         has_kg_node=bool(data.get("has_kg_node")),
     )
 
@@ -205,6 +207,23 @@ def _extract_fields_from_dispatch(result: dict[str, Any]) -> dict[str, Any]:
         if "passport_number" in payload or "npwp" in payload or "npwp_company" in payload:
             return payload
     return {}
+
+
+def _coerce_extracted_data(raw_ocr: Any) -> dict[str, Any]:
+    if isinstance(raw_ocr, dict):
+        return raw_ocr
+    if isinstance(raw_ocr, str) and raw_ocr.strip():
+        try:
+            parsed = loads(raw_ocr)
+        except JSONDecodeError:
+            return {}
+        if isinstance(parsed, dict):
+            return parsed
+    return {}
+
+
+def _dispatcher_links_kg() -> bool:
+    return os.environ.get("CRM_KG_ENABLED", "").lower() in ("true", "1", "yes", "on")
 
 
 def _folder_hint(category: str | None) -> str:
