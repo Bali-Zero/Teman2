@@ -17,6 +17,7 @@ import {
   AnswerBox,
   KeyTakeaway,
 } from "@/components/blog/interactive";
+import { ArticleToolEmbed } from "@/components/blog/ArticleToolEmbed";
 
 // Generate a URL-friendly ID from heading text (must match TableOfContents.tsx logic)
 function headingId(children: React.ReactNode): string {
@@ -47,6 +48,7 @@ const mdxComponents = {
   GlossaryTerm,
   AnswerBox,
   KeyTakeaway,
+  ArticleToolEmbed,
 
   // Override default HTML elements with styled versions (30% larger text)
   // Headings get auto-generated IDs matching TOC extraction logic
