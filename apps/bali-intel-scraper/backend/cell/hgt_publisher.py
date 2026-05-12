@@ -107,7 +107,10 @@ class IntelScraperHGTBridge:
 
     def __init__(self, publisher: HGTPublisher) -> None:
         self._publisher = publisher
-        self._cell_origin = publisher._cell_name  # type: ignore[attr-defined]
+        # Use public cell_name property (Phase 3 TICKET A.0). Falls back to
+        # the protected attribute for compatibility with any in-tree shim
+        # that may still expose only ``_cell_name``.
+        self._cell_origin = getattr(publisher, "cell_name", None) or publisher._cell_name  # type: ignore[attr-defined]
 
     @classmethod
     def from_redis(
