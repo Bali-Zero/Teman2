@@ -22,13 +22,10 @@ sys.path.insert(0, str(_PACKAGE_PATH))
 from crm_cell import (  # noqa: E402
     CELL_NAME,
     CELL_VERSION,
-    CONFIDENCE_FLOOR,
     CrmEventBridge,
-    CrmHGTPublisher,
     CrmScar,
     CrmScarRecorder,
     FailureKind,
-    StructuralPattern,
     WelcomeRunResult,
 )
 
@@ -39,8 +36,9 @@ from crm_cell import (  # noqa: E402
 
 
 def test_cell_name_and_version():
+    """Phase 3 TICKET A.1 bumped CELL_VERSION 0.1.0 → 0.2.0 (CrmHGTBridge async)."""
     assert CELL_NAME == "crm-cell"
-    assert CELL_VERSION == "0.1.0"
+    assert CELL_VERSION == "0.2.0"
 
 
 # ---------------------------------------------------------------------------
@@ -91,54 +89,10 @@ def test_failure_kind_enum_values_match_design():
 
 
 # ---------------------------------------------------------------------------
-# CrmHGTPublisher
+# CrmHGTBridge: see test_hgt_publisher.py (Phase 3 TICKET A.1)
 # ---------------------------------------------------------------------------
-
-
-def test_hgt_publishes_above_confidence_floor():
-    publisher = CrmHGTPublisher()
-    pattern = StructuralPattern(
-        pattern_kind="brevo_template_bounce_rate",
-        confidence=0.85,
-        payload={"template_id": "T123", "bounce_pct": 0.82, "n": 1000},
-    )
-    assert publisher.publish(pattern) is True
-
-
-def test_hgt_filters_below_confidence_floor():
-    publisher = CrmHGTPublisher()
-    pattern = StructuralPattern(
-        pattern_kind="weak_signal",
-        confidence=0.5,
-        payload={"foo": "bar"},
-    )
-    assert publisher.publish(pattern) is False
-
-
-def test_hgt_blocks_pii_payload():
-    """Confidence is high but payload contains client_id — must NOT publish."""
-    publisher = CrmHGTPublisher()
-    pattern = StructuralPattern(
-        pattern_kind="bounce",
-        confidence=0.95,
-        payload={"client_id": 42, "bounce_pct": 0.9},
-    )
-    assert publisher.publish(pattern) is False
-
-
-def test_hgt_blocks_email_in_payload():
-    publisher = CrmHGTPublisher()
-    pattern = StructuralPattern(
-        pattern_kind="bounce",
-        confidence=0.95,
-        payload={"email": "test@example.com", "bounce_pct": 0.9},
-    )
-    assert publisher.publish(pattern) is False
-
-
-def test_confidence_floor_is_07():
-    """Sprint 1 contract — propose-only quarantine."""
-    assert CONFIDENCE_FLOOR == 0.7
+# The Sprint 3 W2 sync stub ``CrmHGTPublisher`` was DELETED in Phase 3
+# TICKET A.1. Async tests live in ``test_hgt_publisher.py``.
 
 
 # ---------------------------------------------------------------------------
