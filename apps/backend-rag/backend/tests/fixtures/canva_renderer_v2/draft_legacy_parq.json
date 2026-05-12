@@ -1,0 +1,11 @@
+{
+  "slides": [
+    {"slide_number": 1, "slide_type": "cover", "headline": "Parq Ambassador",
+     "subhead": "Immigration designates Parq", "body": "...", "is_hero_image": true,
+     "image_url": "https://example.com/parq-hero.jpg"},
+    {"slide_number": 2, "slide_type": "take", "headline": "What happened",
+     "subhead": "16 October 2026", "body": "Indonesia immigration appointed Parq..."},
+    {"slide_number": 3, "slide_type": "law", "headline": "The provision",
+     "subhead": "Permenkumham 22/2023", "body": "Article 14 ayat 2..."}
+  ]
+}
