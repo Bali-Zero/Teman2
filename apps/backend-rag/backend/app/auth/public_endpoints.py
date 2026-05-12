@@ -102,6 +102,22 @@ _INFRA = (
         "Channel health (web) — Cell heartbeat bridge poll target",
         match="exact",
     ),
+    # Intel Lake Wave 1 (2026-05-12, mig 168): unified intel pipeline ingest
+    # endpoint. Public to bypass HybridAuthMiddleware — but enforces its own
+    # X-Producer-Token header auth in the router (env INTEL_LAKE_PRODUCER_TOKEN).
+    # See backend/app/routers/intel_lake.py and research/symbiosis/2026-05-12-intel-lake-design.md
+    PublicEndpoint(
+        "/api/intel/lake/observations",
+        Category.INFRA,
+        "Intel Lake observation ingest — X-Producer-Token auth in-router",
+        match="exact",
+    ),
+    PublicEndpoint(
+        "/api/intel/lake/observations-batch",
+        Category.INFRA,
+        "Intel Lake batched observation ingest — X-Producer-Token auth in-router",
+        match="exact",
+    ),
 )
 
 _AUTH = (

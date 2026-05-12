@@ -157,7 +157,7 @@ async def post_observation(
     )
 
 
-@router.post("/observations:batch", response_model=BatchObservationResponse)
+@router.post("/observations-batch", response_model=BatchObservationResponse)
 async def post_observations_batch(
     payload: BatchObservationPayload,
     request: Request,
