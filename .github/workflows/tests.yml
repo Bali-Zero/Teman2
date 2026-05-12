@@ -388,13 +388,22 @@ jobs:
             --reporter=list \
             --grep "page Page"
 
+      - name: Check Playwright report
+        id: playwright-report
+        if: always()
+        run: |
+          if [ -d apps/mouth/playwright-report ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Upload Playwright report
         uses: actions/upload-artifact@v7
-        if: always()
+        if: always() && steps.playwright-report.outputs.exists == 'true'
         with:
           name: playwright-report
           path: apps/mouth/playwright-report/
-          if-no-files-found: ignore
 
   test-summary:
     name: Test Summary
