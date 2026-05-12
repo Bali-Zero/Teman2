@@ -8,18 +8,18 @@ name: Lint i18n providers
 on:
   pull_request:
     paths:
-      - 'apps/mouth/src/app/**'
-      - 'apps/mouth/src/i18n/**'
-      - 'scripts/lint_i18n_providers.sh'
-      - 'tests/lint/test_i18n_providers.sh'
-      - '.github/workflows/lint-i18n-providers.yml'
+      - "apps/mouth/src/app/**"
+      - "apps/mouth/src/i18n/**"
+      - "scripts/lint_i18n_providers.sh"
+      - "tests/lint/test_i18n_providers.sh"
+      - ".github/workflows/lint-i18n-providers.yml"
 
 jobs:
   lint:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Install ripgrep
         run: sudo apt-get update && sudo apt-get install -y ripgrep

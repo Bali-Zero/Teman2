@@ -11,14 +11,14 @@ name: Migration number uniqueness lint
 on:
   pull_request:
     paths:
-      - 'apps/backend-rag/backend/db/migrations_v2/**'
+      - "apps/backend-rag/backend/db/migrations_v2/**"
 
 jobs:
   lint:
     name: Detect duplicate prefixes
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Detect duplicate migration numbers
         run: |

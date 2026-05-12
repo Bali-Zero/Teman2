@@ -18,8 +18,8 @@ name: Migration Lint (Squawk)
 on:
   pull_request:
     paths:
-      - 'apps/backend-rag/backend/db/migrations_v2/**.sql'
-      - '.github/workflows/migration-lint.yml'
+      - "apps/backend-rag/backend/db/migrations_v2/**.sql"
+      - ".github/workflows/migration-lint.yml"
   workflow_dispatch: {}
 
 concurrency:
@@ -36,7 +36,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -59,9 +59,9 @@ jobs:
 
       - name: Setup Node
         if: steps.changed.outputs.files != ''
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: '20'
+          node-version: "20"
 
       - name: Install Squawk
         if: steps.changed.outputs.files != ''

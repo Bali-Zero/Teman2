@@ -21,7 +21,7 @@ import type { NextRequest } from "next/server";
  * - Bali Zero branding (bottom)
  */
 
-export const runtime = "edge";
+export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);

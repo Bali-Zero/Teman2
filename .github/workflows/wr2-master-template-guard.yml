@@ -23,16 +23,16 @@ name: WR2 master template guard
 on:
   pull_request:
     paths:
-      - 'apps/backend-rag/backend/services/canva_renderer/pending_builder.py'
-      - 'apps/backend-rag/backend/tests/unit/services/canva_renderer/test_pending_builder.py'
-      - 'scripts/wr2_validate_master.py'
-      - '.github/workflows/wr2-master-template-guard.yml'
+      - "apps/backend-rag/backend/services/canva_renderer/pending_builder.py"
+      - "apps/backend-rag/backend/tests/unit/services/canva_renderer/test_pending_builder.py"
+      - "scripts/wr2_validate_master.py"
+      - ".github/workflows/wr2-master-template-guard.yml"
 
 jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
@@ -54,9 +54,9 @@ jobs:
           fi
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
-          python-version: '3.11'
+          python-version: "3.11"
 
       - name: Install validator deps
         run: |
