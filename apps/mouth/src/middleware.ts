@@ -153,6 +153,18 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(url, 308);
   }
 
+  // === REDIRECT 301: Tax treaty legacy URLs → canonical pillar ===
+  // SEO: Consolidate link equity from legacy tax treaty slug variants
+  // to the canonical double-tax-agreement pillar page.
+  if (
+    pathname === "/tax-treaties-explained" ||
+    pathname === "/double-taxation-treaties"
+  ) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/double-tax-agreement-claiming-benefits";
+    return NextResponse.redirect(url, 301);
+  }
+
   // === REDIRECT 301: mo.balizero.com → balizero.com ===
   // SEO: Prevent duplicate content and consolidate domain authority
   if (hostname === MOBILE_DOMAIN || hostname === `www.${MOBILE_DOMAIN}`) {
