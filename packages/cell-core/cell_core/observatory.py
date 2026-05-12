@@ -128,7 +128,11 @@ async def emit_pulse_observed(
                 # (seo_cell has 7 sensors with rich metadata) easily exceed it
                 # and the entire emit fails. The events_outbox row already
                 # carries the full payload — the NOTIFY only needs the routing
-                # tuple so listeners can fetch the row by _outbox_id.
+                # tuple + the keys the collector reads in storage.insert_pulse_event
+                # (cell_observatory/storage.py): _outbox_id, cell_id, cell_kind,
+                # pulse_id, pulse_timestamp, phase, pulse_result.classifier_self.
+                # Sensors + homeostatic_state + scar_signals stay only in events_outbox
+                # row payload (queryable via outbox_id for full-detail consumers).
                 notify_stub = {
                     "_outbox_id": outbox_id,
                     "cell_id": cell_id,
@@ -136,7 +140,9 @@ async def emit_pulse_observed(
                     "pulse_id": pulse_id,
                     "pulse_timestamp": pulse_timestamp_ms,
                     "phase": phase,
-                    "classifier_self": pulse_result.get("classifier_self"),
+                    "pulse_result": {
+                        "classifier_self": pulse_result.get("classifier_self"),
+                    },
                 }
                 await conn.execute(_NOTIFY_SQL, "cell_pulse_observed", json.dumps(notify_stub))
     except Exception as exc:
