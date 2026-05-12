@@ -179,6 +179,40 @@ class SkillsResponse(BaseModel):
     stream_lowest_id: str | None = None
 
 
+async def _get_skills_redis_client(request: Request) -> Any:
+    """Return an async Redis client for the cell:skills stream.
+
+    Tries `app.state.redis_manager.get_async_client()` first (rag process group,
+    full init). Falls back to a fresh `redis.asyncio.from_url(REDIS_URL)` client
+    on the api process group (light init, no RedisManager singleton — see
+    `service_initializer.initialize_services_light` which omits the manager).
+
+    Returns the client or raises HTTPException(503) on failure.
+
+    Empirical context (2026-05-13 03:58 WITA, post-deploy of PR #647):
+    Fly api machine `7847d95ce257d8` logged "redis_manager unavailable" for
+    every /api/bridge/skills request — light init doesn't wire the manager.
+    This helper restores Redis access without changing the light init contract.
+    """
+    redis_manager = getattr(request.app.state, "redis_manager", None)
+    if redis_manager is not None and getattr(redis_manager, "available", False):
+        client = redis_manager.get_async_client()
+        if client is not None:
+            return client
+    # Light-init fallback: build ad-hoc async client from REDIS_URL env var.
+    redis_url = os.getenv("REDIS_URL", "")
+    if not redis_url:
+        logger.warning("Bridge skills: no redis_manager AND REDIS_URL unset")
+        raise HTTPException(status_code=503, detail="Redis unavailable")
+    try:
+        import redis.asyncio as aioredis
+        client = aioredis.from_url(redis_url, decode_responses=False)
+        return client
+    except Exception as e:
+        logger.exception("Bridge skills: ad-hoc redis client init failed")
+        raise HTTPException(status_code=503, detail=f"Redis init failed: {e}")
+
+
 @router.get("/skills", response_model=SkillsResponse)
 async def get_skills(
     request: Request,
@@ -189,21 +223,21 @@ async def get_skills(
     """Pro polls this endpoint to pull cell:skills Redis stream entries from Fly Upstash.
 
     Per TICKET G spec v2 (research/symbiosis/2026-05-13-ticket-G-narrow-spec.md):
-    - CORR-G1: get_async_client() via app.state.redis_manager
+    - CORR-G1 (fixed 2026-05-13 post-deploy): redis client via
+      `_get_skills_redis_client(request)` which prefers app.state.redis_manager
+      but falls back to ad-hoc REDIS_URL client on light-init api process.
     - CORR-G3: dedicated BRIDGE_SKILLS_API_KEY
     - CORR-G4: XINFO STREAM gap detection — events_orphaned=true if
       after_id < stream lowest entry ID (Pro should reset last_id to "$")
     """
     _check_skills_auth(x_bridge_skills_auth)
 
-    redis_manager = getattr(request.app.state, "redis_manager", None)
-    if redis_manager is None or not getattr(redis_manager, "available", False):
-        logger.warning("Bridge skills: redis_manager unavailable")
-        raise HTTPException(status_code=503, detail="Redis unavailable")
-    client = redis_manager.get_async_client()
-    if client is None:
-        logger.warning("Bridge skills: async client not initialized")
-        raise HTTPException(status_code=503, detail="Redis async client not initialized")
+    client = await _get_skills_redis_client(request)
+    # Track ad-hoc client so we can close it cleanly at the end
+    is_adhoc = (
+        getattr(request.app.state, "redis_manager", None) is None
+        or not getattr(getattr(request.app.state, "redis_manager", None), "available", False)
+    )
 
     events_orphaned = False
     stream_lowest_id: str | None = None
@@ -226,6 +260,11 @@ async def get_skills(
     try:
         result = await client.xread({"cell:skills": after_id}, count=count)
     except Exception as e:
+        if is_adhoc:
+            try:
+                await client.aclose()
+            except Exception:
+                pass
         logger.exception("Bridge skills: XREAD failed")
         raise HTTPException(status_code=503, detail=f"Stream read failed: {e}")
 
@@ -242,9 +281,15 @@ async def get_skills(
                 }
                 events.append({"id": last_id, "fields": decoded_fields})
 
+    if is_adhoc:
+        try:
+            await client.aclose()
+        except Exception:
+            pass
+
     logger.info(
-        "Bridge skills: returned %d events (after_id=%s last_id=%s orphaned=%s)",
-        len(events), after_id, last_id, events_orphaned,
+        "Bridge skills: returned %d events (after_id=%s last_id=%s orphaned=%s adhoc=%s)",
+        len(events), after_id, last_id, events_orphaned, is_adhoc,
     )
     return SkillsResponse(
         events=events,
