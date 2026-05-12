@@ -166,9 +166,16 @@ class CanvaMcpClient:
         """
         if self._session is None:
             raise RuntimeError("CanvaMcpClient not entered — use async with")
+        # Canva MCP `import-design-from-url` requires {url, name, user_intent}
+        # (verified empirically 2026-05-13: title→name corrected from wrong
+        # arg shape after MCP -32602 invalid_type undefined for `name`).
         result = await self._session.call_tool(
             "import-design-from-url",
-            arguments={"url": url, "title": title},
+            arguments={
+                "url": url,
+                "name": title,
+                "user_intent": "Import WR2 carousel PDF into Canva for editing",
+            },
         )
         # mcp SDK 1.12.4+ returns CallToolResult object; normalise to dict-like shape
         if hasattr(result, "__dict__") and not isinstance(result, dict):
@@ -183,10 +190,17 @@ class CanvaMcpClient:
         """Move a Canva item into a folder. Best-effort: logs on failure, never raises."""
         if self._session is None:
             raise RuntimeError("CanvaMcpClient not entered — use async with")
+        # Canva MCP `move-item-to-folder` requires {item_id, to_folder_id,
+        # user_intent} (NOT folder_id — verified 2026-05-13 same wave as
+        # import-design-from-url arg-name fix).
         try:
             await self._session.call_tool(
                 "move-item-to-folder",
-                arguments={"item_id": item_id, "folder_id": folder_id},
+                arguments={
+                    "item_id": item_id,
+                    "to_folder_id": folder_id,
+                    "user_intent": "Organize WR2 rendered carousel into WR2 Drafts folder",
+                },
             )
         except Exception as e:  # noqa: BLE001 — intentional best-effort
             logger.warning("move-item-to-folder failed (non-fatal): %s", e)
