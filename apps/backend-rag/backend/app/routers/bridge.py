@@ -1,14 +1,21 @@
 """
 Bridge router — Pro<->Fly bidirectional bridge.
 
-3 endpoints:
+4 endpoints:
 - GET  /api/bridge/events           — Pro pulls outbox events
 - POST /api/bridge/ingest/article   — Pro pushes a published article
 - POST /api/bridge/ingest/enrichment — Pro pushes a KB enrichment
+- GET  /api/bridge/skills           — Pro pulls cell:skills Redis stream (TICKET G.1)
 
-Auth: X-Bridge-Auth header must match BRIDGE_API_KEY env var.
+Auth:
+- X-Bridge-Auth header must match BRIDGE_API_KEY env var (events + ingest).
+- X-Bridge-Skills-Auth header must match BRIDGE_SKILLS_API_KEY env var
+  (skills). Dedicated key per TICKET G CORR-G3 — isolates HGT skill payloads
+  from generic bridge auth blast radius.
 
-Reference: docs/superpowers/specs/2026-04-14-organism-nervous-system-design.md §4
+References:
+- docs/superpowers/specs/2026-04-14-organism-nervous-system-design.md §4
+- research/symbiosis/2026-05-13-ticket-G-narrow-spec.md (skills endpoint)
 """
 from __future__ import annotations
 
@@ -18,7 +25,7 @@ import os
 from typing import Any
 
 import asyncpg
-from fastapi import APIRouter, Depends, Header, HTTPException, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from backend.app.deps.database import get_database_pool
@@ -37,6 +44,37 @@ def _check_auth(x_bridge_auth: str | None) -> None:
         raise HTTPException(status_code=503, detail="Bridge auth not configured")
     if not x_bridge_auth or not hmac.compare_digest(x_bridge_auth, expected):
         raise HTTPException(status_code=401, detail="Invalid bridge credentials")
+
+
+def _check_skills_auth(x_bridge_skills_auth: str | None) -> None:
+    """Dedicated auth for /api/bridge/skills endpoint (TICKET G CORR-G3).
+
+    Separated from BRIDGE_API_KEY to isolate the blast radius of skill-stream
+    credentials (HGT payloads may carry CRM-derived structural metadata).
+    """
+    expected = os.getenv("BRIDGE_SKILLS_API_KEY", "")
+    if not expected:
+        logger.error("BRIDGE_SKILLS_API_KEY not set in environment")
+        raise HTTPException(status_code=503, detail="Bridge skills auth not configured")
+    if not x_bridge_skills_auth or not hmac.compare_digest(x_bridge_skills_auth, expected):
+        raise HTTPException(status_code=401, detail="Invalid bridge skills credentials")
+
+
+def _stream_id_lt(a: str, b: str) -> bool:
+    """Return True if Redis stream ID a < b. Format: 'ms-seq'."""
+    a_ms, _, a_seq = a.partition("-")
+    b_ms, _, b_seq = b.partition("-")
+    try:
+        a_ms_i = int(a_ms) if a_ms else 0
+        b_ms_i = int(b_ms) if b_ms else 0
+    except ValueError:
+        return False
+    if a_ms_i != b_ms_i:
+        return a_ms_i < b_ms_i
+    try:
+        return int(a_seq or 0) < int(b_seq or 0)
+    except ValueError:
+        return False
 
 
 # ── GET /api/bridge/events ──────────────────────────────────────────────
@@ -129,3 +167,88 @@ async def ingest_enrichment(
         len(body.content),
     )
     return EnrichmentIngestResponse(kb_entry_id=body.kb_entry_id, status="queued")
+
+
+# ── GET /api/bridge/skills (TICKET G.1) ──────────────────────────────────
+
+
+class SkillsResponse(BaseModel):
+    events: list[dict[str, Any]]
+    last_stream_id: str
+    events_orphaned: bool = False
+    stream_lowest_id: str | None = None
+
+
+@router.get("/skills", response_model=SkillsResponse)
+async def get_skills(
+    request: Request,
+    after_id: str = Query("0-0", description="XREAD start ID (default 0-0 for full read)"),
+    count: int = Query(100, ge=1, le=500, description="Max events per request"),
+    x_bridge_skills_auth: str | None = Header(default=None, alias="X-Bridge-Skills-Auth"),
+) -> SkillsResponse:
+    """Pro polls this endpoint to pull cell:skills Redis stream entries from Fly Upstash.
+
+    Per TICKET G spec v2 (research/symbiosis/2026-05-13-ticket-G-narrow-spec.md):
+    - CORR-G1: get_async_client() via app.state.redis_manager
+    - CORR-G3: dedicated BRIDGE_SKILLS_API_KEY
+    - CORR-G4: XINFO STREAM gap detection — events_orphaned=true if
+      after_id < stream lowest entry ID (Pro should reset last_id to "$")
+    """
+    _check_skills_auth(x_bridge_skills_auth)
+
+    redis_manager = getattr(request.app.state, "redis_manager", None)
+    if redis_manager is None or not getattr(redis_manager, "available", False):
+        logger.warning("Bridge skills: redis_manager unavailable")
+        raise HTTPException(status_code=503, detail="Redis unavailable")
+    client = redis_manager.get_async_client()
+    if client is None:
+        logger.warning("Bridge skills: async client not initialized")
+        raise HTTPException(status_code=503, detail="Redis async client not initialized")
+
+    events_orphaned = False
+    stream_lowest_id: str | None = None
+    if after_id not in ("0-0", "$"):
+        try:
+            info = await client.xinfo_stream("cell:skills")
+            first_entry = info.get(b"first-entry") or info.get("first-entry")
+            if first_entry:
+                raw = first_entry[0]
+                stream_lowest_id = raw.decode() if isinstance(raw, bytes) else raw
+                if _stream_id_lt(after_id, stream_lowest_id):
+                    events_orphaned = True
+                    logger.warning(
+                        "Bridge skills: gap detected — after_id=%s < stream_lowest=%s",
+                        after_id, stream_lowest_id,
+                    )
+        except Exception as e:
+            logger.debug("XINFO STREAM cell:skills failed (non-fatal): %s", e)
+
+    try:
+        result = await client.xread({"cell:skills": after_id}, count=count)
+    except Exception as e:
+        logger.exception("Bridge skills: XREAD failed")
+        raise HTTPException(status_code=503, detail=f"Stream read failed: {e}")
+
+    events: list[dict[str, Any]] = []
+    last_id = after_id
+    if result:
+        for _stream_name, entries in result:
+            for entry_id, fields in entries:
+                last_id = entry_id.decode() if isinstance(entry_id, bytes) else entry_id
+                decoded_fields = {
+                    (k.decode() if isinstance(k, bytes) else k):
+                    (v.decode() if isinstance(v, bytes) else v)
+                    for k, v in fields.items()
+                }
+                events.append({"id": last_id, "fields": decoded_fields})
+
+    logger.info(
+        "Bridge skills: returned %d events (after_id=%s last_id=%s orphaned=%s)",
+        len(events), after_id, last_id, events_orphaned,
+    )
+    return SkillsResponse(
+        events=events,
+        last_stream_id=last_id,
+        events_orphaned=events_orphaned,
+        stream_lowest_id=stream_lowest_id,
+    )

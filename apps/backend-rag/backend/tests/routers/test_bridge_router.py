@@ -190,3 +190,153 @@ def test_get_events_503_when_bridge_api_key_unset(monkeypatch):
 
     r = client.get("/api/bridge/events?after_id=0", headers={"X-Bridge-Auth": "anything"})
     assert r.status_code == 503
+
+
+# ── GET /api/bridge/skills (TICKET G.1) ────────────────────────────────
+
+
+SKILLS_KEY = "test-bridge-skills-key-67890"
+
+
+@pytest.fixture
+def app_with_skills(monkeypatch):
+    """Build a minimal FastAPI app with bridge router + mocked redis_manager."""
+    monkeypatch.setenv("BRIDGE_SKILLS_API_KEY", SKILLS_KEY)
+    from backend.app.routers import bridge as bridge_router
+
+    app = FastAPI()
+    app.include_router(bridge_router.router)
+
+    # Mock redis_manager with get_async_client
+    fake_redis_client = AsyncMock()
+    fake_redis_manager = MagicMock()
+    fake_redis_manager.available = True
+    fake_redis_manager.get_async_client = MagicMock(return_value=fake_redis_client)
+    app.state.redis_manager = fake_redis_manager
+    app.state._fake_redis_client = fake_redis_client  # expose for test setup
+    return app
+
+
+@pytest.fixture
+def skills_client(app_with_skills):
+    return TestClient(app_with_skills)
+
+
+def test_get_skills_unauthorized_missing_header(skills_client):
+    r = skills_client.get("/api/bridge/skills")
+    assert r.status_code == 401
+
+
+def test_get_skills_unauthorized_wrong_key(skills_client):
+    r = skills_client.get(
+        "/api/bridge/skills",
+        headers={"X-Bridge-Skills-Auth": "wrong"},
+    )
+    assert r.status_code == 401
+
+
+def test_get_skills_503_when_skills_key_unset(monkeypatch):
+    """If BRIDGE_SKILLS_API_KEY env var is missing, return 503."""
+    monkeypatch.delenv("BRIDGE_SKILLS_API_KEY", raising=False)
+    from fastapi import FastAPI
+    from backend.app.routers import bridge as bridge_router
+
+    app = FastAPI()
+    app.include_router(bridge_router.router)
+    client = TestClient(app)
+    r = client.get("/api/bridge/skills", headers={"X-Bridge-Skills-Auth": "anything"})
+    assert r.status_code == 503
+
+
+def test_get_skills_503_when_redis_unavailable(monkeypatch):
+    """If redis_manager.available is False, return 503."""
+    monkeypatch.setenv("BRIDGE_SKILLS_API_KEY", SKILLS_KEY)
+    from fastapi import FastAPI
+    from backend.app.routers import bridge as bridge_router
+
+    app = FastAPI()
+    app.include_router(bridge_router.router)
+
+    fake_redis_manager = MagicMock()
+    fake_redis_manager.available = False
+    fake_redis_manager.get_async_client = MagicMock(return_value=None)
+    app.state.redis_manager = fake_redis_manager
+    client = TestClient(app)
+
+    r = client.get(
+        "/api/bridge/skills",
+        headers={"X-Bridge-Skills-Auth": SKILLS_KEY},
+    )
+    assert r.status_code == 503
+
+
+def test_get_skills_empty_stream_returns_empty_events(skills_client, app_with_skills):
+    """XREAD returning None/[] → empty events list, last_id = after_id."""
+    fake_client = app_with_skills.state._fake_redis_client
+    fake_client.xread = AsyncMock(return_value=None)
+
+    r = skills_client.get(
+        "/api/bridge/skills?after_id=0-0",
+        headers={"X-Bridge-Skills-Auth": SKILLS_KEY},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["events"] == []
+    assert body["last_stream_id"] == "0-0"
+    assert body["events_orphaned"] is False
+
+
+def test_get_skills_populated_stream_returns_events(skills_client, app_with_skills):
+    """XREAD with entries → events list with decoded fields, last_id = newest."""
+    fake_client = app_with_skills.state._fake_redis_client
+    fake_client.xread = AsyncMock(return_value=[
+        (b"cell:skills", [
+            (b"1736500000000-0", {b"skill_id": b"hgt_001", b"procedure": b"test_proc"}),
+            (b"1736500000001-0", {b"skill_id": b"hgt_002", b"procedure": b"test_proc2"}),
+        ]),
+    ])
+
+    r = skills_client.get(
+        "/api/bridge/skills?after_id=0-0&count=10",
+        headers={"X-Bridge-Skills-Auth": SKILLS_KEY},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert len(body["events"]) == 2
+    assert body["events"][0]["id"] == "1736500000000-0"
+    assert body["events"][0]["fields"]["skill_id"] == "hgt_001"
+    assert body["last_stream_id"] == "1736500000001-0"
+    assert body["events_orphaned"] is False
+
+
+def test_get_skills_gap_detection_returns_orphaned_flag(skills_client, app_with_skills):
+    """CORR-G4: if after_id < stream lowest, events_orphaned=true."""
+    fake_client = app_with_skills.state._fake_redis_client
+    # XINFO STREAM returns first-entry with id > after_id
+    fake_client.xinfo_stream = AsyncMock(return_value={
+        b"first-entry": (b"1736600000000-0", {b"skill_id": b"hgt_999"}),
+    })
+    fake_client.xread = AsyncMock(return_value=None)
+
+    r = skills_client.get(
+        # after_id=1736500000000-0 < stream lowest=1736600000000-0 → orphaned
+        "/api/bridge/skills?after_id=1736500000000-0",
+        headers={"X-Bridge-Skills-Auth": SKILLS_KEY},
+    )
+    assert r.status_code == 200
+    body = r.json()
+    assert body["events_orphaned"] is True
+    assert body["stream_lowest_id"] == "1736600000000-0"
+
+
+def test_stream_id_lt_helper():
+    """Unit test for the _stream_id_lt comparison helper."""
+    from backend.app.routers.bridge import _stream_id_lt
+
+    assert _stream_id_lt("1736500000000-0", "1736600000000-0") is True
+    assert _stream_id_lt("1736600000000-0", "1736500000000-0") is False
+    assert _stream_id_lt("1736500000000-0", "1736500000000-1") is True
+    assert _stream_id_lt("1736500000000-1", "1736500000000-0") is False
+    assert _stream_id_lt("0-0", "1-0") is True
+    # Malformed: returns False (safe default)
+    assert _stream_id_lt("garbage", "1-0") is False
