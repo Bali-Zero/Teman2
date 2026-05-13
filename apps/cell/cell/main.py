@@ -24,6 +24,8 @@ from cell.effectors.local_effector import LocalEffector
 from cell.fast.trend_detector import TrendDetector
 from cell.memory.long_term import LongTermMemory
 from cell.memory.short_term import ShortTermMemory
+from cell_core.sensors.outbox_sensor import OutboxSensor
+
 from cell.sensors.backup_sensor import BackupSensor
 from cell.sensors.cron_sensor import CronSensor
 from cell.sensors.database_sensor import DatabaseSensor
@@ -314,6 +316,23 @@ async def main() -> None:
         nlm_effector = NLMEffector()
         logger.info("AI Intel Sensor + NLM Effector initialized")
 
+        # LEVA 3 (2026-05-13): outbox lag — perceives business-channel
+        # pressure on events_outbox. Excludes cell_pulse_observed (CELL
+        # itself emits those, ~12k/30d, would flood the metric). 1-hour
+        # lookback caps the count so an abandoned consumer's queue
+        # doesn't make every pulse look red.
+        outbox_sensor = OutboxSensor(
+            pool_factory=lambda: _db_pool_ep,
+            channels=["cell_pulse_observed"],
+            exclude=True,
+            lookback_seconds=3600,
+            red_threshold=200,
+        )
+        logger.info(
+            "OutboxSensor initialized (exclude=[cell_pulse_observed], "
+            "lookback=1h, red_threshold=200)"
+        )
+
         engine = PulseEngine(
             dna_loader=dna_loader,
             safety_gate=safety_gate,
@@ -346,6 +365,7 @@ async def main() -> None:
             cortex=cortex,
             ai_intel_sensor=ai_intel_sensor,
             nlm_effector=nlm_effector,
+            outbox_sensor=outbox_sensor,
         )
 
         logger.info("CELL organism online. Starting pulse loop. Brain: ACTIVE.")

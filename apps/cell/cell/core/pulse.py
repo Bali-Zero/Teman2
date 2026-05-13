@@ -124,6 +124,7 @@ class PulseEngine:
         cortex: Any = None,
         ai_intel_sensor: Any = None,
         nlm_effector: Any = None,
+        outbox_sensor: Any = None,
         metrics: PulseMetrics | None = None,
     ) -> None:
         self._dna = dna_loader
@@ -157,6 +158,7 @@ class PulseEngine:
         self._cortex = cortex
         self._ai_intel_sensor = ai_intel_sensor
         self._nlm_effector = nlm_effector
+        self._outbox_sensor = outbox_sensor
         self._metrics = metrics
         self._recent_pulses: list[dict] = []
         self._ltm_cache: str = ""
@@ -257,6 +259,20 @@ class PulseEngine:
             sensor_metadata["vercel"] = vercel_reading.metadata
             vercel_status = vercel_reading.status
 
+        # LEVA 3 (2026-05-13): outbox lag — perceives durable EventBus
+        # pressure on business channels. cell_pulse_observed is excluded
+        # because CELL itself emits those (would self-flood the count).
+        # The sensor handles PG-down internally and never raises.
+        outbox_status = "green"
+        if self._outbox_sensor is not None:
+            try:
+                outbox_reading = await self._outbox_sensor.read()
+                sensor_metadata["outbox"] = outbox_reading.metadata
+                outbox_status = outbox_reading.status
+            except Exception as e:  # noqa: BLE001
+                logger.warning(f"OutboxSensor read failed: {e}")
+                outbox_status = "yellow"
+
         # Aggregate: final status is the worst across all sensors
         sensor_statuses = [http_status.value]
         if self._db_sensor is not None:
@@ -265,7 +281,9 @@ class PulseEngine:
             sensor_statuses.append(qdrant_reading.status)  # type: ignore[possibly-undefined]
         if self._error_rate_sensor is not None:
             sensor_statuses.append(error_reading.status)  # type: ignore[possibly-undefined]
-        sensor_statuses.extend([ollama_status, backup_status, cron_status, vercel_status])
+        sensor_statuses.extend([
+            ollama_status, backup_status, cron_status, vercel_status, outbox_status,
+        ])
 
         # AI Intel Sensor — daily harvest (24h cooldown)
         ai_intel_items: list[dict] = []
