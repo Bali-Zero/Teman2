@@ -18,12 +18,40 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 from urllib.parse import urldefrag, urlparse, urlunparse
 
 import asyncpg
 
 logger = logging.getLogger(__name__)
+
+
+def _parse_iso_datetime(value: str | None) -> datetime | None:
+    """Parse an ISO 8601 string into a datetime for asyncpg timestamptz binding.
+
+    asyncpg's timestamptz codec requires a Python `datetime`, NOT a string.
+    Wave 4 producers (regulatory_watcher, intel_radar) send ISO 8601 strings
+    like ``2026-05-13T07:00:00+08:00``; binding them directly produced
+    ``invalid input for query argument $9: ... (expected a date object)``
+    and the endpoint returned 500. The bug silently dropped every item with
+    a non-null ``published_at`` since Wave 4 deploy (2026-05-12) because the
+    drainer trusts the audit log for rejection accounting.
+
+    Returns ``None`` for empty / unparseable input — better to lose the
+    timestamp than to drop the whole item.
+    """
+    if not value:
+        return None
+    try:
+        # Python 3.11+ fromisoformat handles trailing 'Z' and offsets
+        return datetime.fromisoformat(value)
+    except (ValueError, TypeError):
+        logger.warning(
+            "intel-lake: unparseable published_at=%r — storing as NULL",
+            value,
+        )
+        return None
 
 MAX_RAW_PAYLOAD_BYTES = 50_000
 ROUTING_STATUS_VALUES = {
@@ -152,7 +180,7 @@ class IntelLakeService:
                     obs.language,
                     obs.jurisdiction,
                     obs.topic_tags or [],
-                    obs.published_at,
+                    _parse_iso_datetime(obs.published_at),
                     raw_json,
                 )
 
