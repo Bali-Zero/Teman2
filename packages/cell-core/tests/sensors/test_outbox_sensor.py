@@ -153,3 +153,107 @@ async def test_per_channel_filtering():
 
     assert reading.status == "yellow"
     assert reading.metadata["channel"] == "practice_changed"
+
+
+# ──────────────────────────────────────────────────────────────────
+# LEVA 3 extensions (2026-05-13): channels list, exclude, lookback
+# ──────────────────────────────────────────────────────────────────
+
+
+def test_channel_and_channels_are_mutex():
+    """Constructor rejects both single-channel and list-channel at once."""
+    from cell_core.sensors.outbox_sensor import OutboxSensor
+
+    with pytest.raises(ValueError):
+        OutboxSensor(
+            pool_factory=lambda: None,
+            channel="practice_changed",
+            channels=["client_changed"],
+        )
+
+
+@pytest.mark.asyncio
+async def test_channels_include_emits_ANY_query():
+    """channels=[a,b] + exclude=False -> WHERE channel = ANY(...)."""
+    from cell_core.sensors.outbox_sensor import OutboxSensor
+
+    pool = _FakePool(count=7)
+    sensor = OutboxSensor(
+        pool_factory=lambda: pool,
+        channels=["practice_changed", "client_changed"],
+        exclude=False,
+    )
+    query, params = sensor._build_query()
+    assert "= ANY($1::text[])" in query
+    assert "NOT " not in query
+    assert params == (["practice_changed", "client_changed"],)
+    reading = await sensor.read()
+    assert reading.status == "yellow"
+    assert reading.metadata["channels"] == ["practice_changed", "client_changed"]
+    assert reading.metadata["exclude"] is False
+
+
+@pytest.mark.asyncio
+async def test_channels_exclude_emits_NOT_ANY_query():
+    """channels=[x] + exclude=True -> WHERE NOT (channel = ANY(...))."""
+    from cell_core.sensors.outbox_sensor import OutboxSensor
+
+    pool = _FakePool(count=4)
+    sensor = OutboxSensor(
+        pool_factory=lambda: pool,
+        channels=["cell_pulse_observed"],
+        exclude=True,
+    )
+    query, params = sensor._build_query()
+    assert "NOT (channel = ANY($1::text[]))" in query
+    assert params == (["cell_pulse_observed"],)
+    reading = await sensor.read()
+    assert reading.metadata["exclude"] is True
+
+
+def test_lookback_seconds_appended_to_query():
+    """lookback_seconds=3600 -> INTERVAL '3600 seconds' clause."""
+    from cell_core.sensors.outbox_sensor import OutboxSensor
+
+    sensor = OutboxSensor(
+        pool_factory=lambda: None,
+        lookback_seconds=3600,
+    )
+    query, _ = sensor._build_query()
+    assert "INTERVAL '3600 seconds'" in query
+    assert "created_at > NOW() -" in query
+
+
+def test_lookback_zero_or_negative_ignored():
+    """lookback_seconds=0/negative is normalised to None (no clause)."""
+    from cell_core.sensors.outbox_sensor import OutboxSensor
+
+    s1 = OutboxSensor(pool_factory=lambda: None, lookback_seconds=0)
+    s2 = OutboxSensor(pool_factory=lambda: None, lookback_seconds=-10)
+    q1, _ = s1._build_query()
+    q2, _ = s2._build_query()
+    assert "INTERVAL" not in q1
+    assert "INTERVAL" not in q2
+
+
+@pytest.mark.asyncio
+async def test_channels_exclude_with_lookback_combined():
+    """Combined query: exclude + lookback both active."""
+    from cell_core.sensors.outbox_sensor import OutboxSensor
+
+    pool = _FakePool(count=12)
+    sensor = OutboxSensor(
+        pool_factory=lambda: pool,
+        channels=["cell_pulse_observed"],
+        exclude=True,
+        lookback_seconds=3600,
+        red_threshold=200,
+    )
+    query, params = sensor._build_query()
+    assert "NOT (channel = ANY($1::text[]))" in query
+    assert "INTERVAL '3600 seconds'" in query
+    assert params == (["cell_pulse_observed"],)
+    reading = await sensor.read()
+    assert reading.status == "yellow"  # 12 < 200
+    assert reading.metadata["lookback_seconds"] == 3600
+    assert reading.metadata["red_threshold"] == 200
