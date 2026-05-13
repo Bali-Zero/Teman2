@@ -17,6 +17,20 @@
 -- Repo-wide excludes prefer-robust-stmts + constraint-missing-not-valid already
 -- in .github/workflows/migration-lint.yml.
 
+-- Defensive: ensure whatsapp_message_context exists for fresh test DBs.
+-- The legacy whatsapp_message_context table is created by an earlier
+-- (Python-style) migration not picked up by the SQL v2 test runner in CI.
+-- This CREATE TABLE IF NOT EXISTS is a no-op on prod (table has 14.847 rows
+-- already) but lets the SQL v2 migration suite apply in isolation.
+CREATE TABLE IF NOT EXISTS whatsapp_message_context (
+    id              SERIAL PRIMARY KEY,
+    phone_number    VARCHAR(50),
+    message_date    TIMESTAMPTZ DEFAULT NOW(),
+    direction       VARCHAR(16),
+    message_text    TEXT,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
 ALTER TABLE whatsapp_message_context
     ADD COLUMN IF NOT EXISTS team_member_email VARCHAR(255);
 
@@ -62,11 +76,19 @@ CREATE INDEX IF NOT EXISTS idx_whatsapp_message_context_team
 CREATE INDEX IF NOT EXISTS idx_whatsapp_message_context_source
     ON whatsapp_message_context (source, message_date DESC);
 
+-- FK added with NOT VALID to avoid SHARE ROW EXCLUSIVE lock on a hot table.
+-- The legacy whatsapp_message_context has no rows with bridge_session_id IS NOT NULL
+-- (the column was just added above with no DEFAULT), so VALIDATE is a no-op
+-- and safe to run in the same migration.
 ALTER TABLE whatsapp_message_context
     ADD CONSTRAINT fk_wmc_bridge_session
         FOREIGN KEY (bridge_session_id)
         REFERENCES whatsapp_team_sessions(id)
-        ON DELETE SET NULL;
+        ON DELETE SET NULL
+        NOT VALID;
+
+ALTER TABLE whatsapp_message_context
+    VALIDATE CONSTRAINT fk_wmc_bridge_session;
 
 COMMENT ON COLUMN whatsapp_message_context.team_member_email IS
     'Email of the Bali Zero team member whose linked-device bridge captured '
