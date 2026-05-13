@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+        "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  com.balizero.wa-mirror — long-running Baileys daemon on Mini-Pro2.
+  Install with:
+     cp scripts/com.balizero.wa-mirror.plist ~/Library/LaunchAgents/
+     launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.balizero.wa-mirror.plist
+     launchctl kickstart -k gui/$(id -u)/com.balizero.wa-mirror
+
+  Why KeepAlive=true: per cicatrix STRUCTURAL "53 LaunchAgents Pro, only 7
+  have KeepAlive=true" — long-running daemons MUST set KeepAlive so launchd
+  respawns within 10s of any crash.
+-->
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.balizero.wa-mirror</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/opt/homebrew/bin/node</string>
+        <string>--enable-source-maps</string>
+        <string>/Users/nuzantara/Desktop/nuzantara/apps/wa-mirror/dist/bridge/index.js</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara/apps/wa-mirror</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>NODE_ENV</key>
+        <string>production</string>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+    </dict>
+
+    <key>EnvironmentVariablesFile</key>
+    <string>/Users/nuzantara/.wa-mirror.env</string>
+
+    <key>RunAtLoad</key>
+    <true/>
+
+    <key>KeepAlive</key>
+    <true/>
+
+    <key>ThrottleInterval</key>
+    <integer>30</integer>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/wa-mirror.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/wa-mirror.err.log</string>
+
+    <key>SoftResourceLimits</key>
+    <dict>
+        <key>NumberOfFiles</key>
+        <integer>4096</integer>
+    </dict>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+</dict>
+</plist>
