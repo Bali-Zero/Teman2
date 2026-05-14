@@ -61,7 +61,13 @@ COMMENT ON INDEX uq_whatsapp_team_sessions_active_member IS
     'history — replaces the 173 full-pair UNIQUE that wrongly blocked them.';
 
 -- === ROLLBACK ===
+-- The rollback intentionally restores the exact 173 constraint. Squawk lints
+-- the whole file (the ROLLBACK section is just a comment to it and to
+-- Postgres); migration_base.py runs only the forward DDL. Re-flagging the
+-- constraint we are deliberately reverting to is unactionable here, hence the
+-- per-statement squawk-ignore directly above the ADD CONSTRAINT.
 DROP INDEX IF EXISTS uq_whatsapp_team_sessions_active_member;
+-- squawk-ignore: disallowed-unique-constraint
 ALTER TABLE whatsapp_team_sessions
     ADD CONSTRAINT uq_whatsapp_team_sessions_active
         UNIQUE (team_member_email, status)
