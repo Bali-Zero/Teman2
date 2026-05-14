@@ -27,8 +27,10 @@ export const NLMCitationPanel: React.FC<NLMCitationPanelProps> = ({
     <div className="mt-3 rounded-lg border-l-2 border-amber-600 overflow-hidden">
       {/* Header — always visible, toggles expand */}
       <button
+        type="button"
         onClick={onToggle}
-        className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-zinc-900/50 hover:bg-zinc-900/70 transition-colors text-left"
+        aria-expanded={expanded}
+        className="w-full flex items-center justify-between gap-2 px-3 py-2 bg-zinc-900/50 hover:bg-zinc-900/70 transition-colors text-left focus-ring"
       >
         <div className="flex items-center gap-2 text-xs font-medium text-amber-600">
           <BookOpen size={14} />
