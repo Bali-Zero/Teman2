@@ -42,9 +42,15 @@ class WorkflowAnalyticsRepository(BaseRepository):
             Row id if successful, None otherwise.
         """
         try:
-            import json
-
-            steps_jsonb = json.dumps(steps_json) if steps_json else None
+            # NOTE: bind the raw list/dict, NOT json.dumps(steps_json). The
+            # app/runtime asyncpg pool registers a jsonb codec with
+            # `encoder=json.dumps` (service_initializer.py / database.py) —
+            # pre-serializing here double-encodes into a jsonb string scalar
+            # instead of an array/object. Regression fixed 2026-05-14.
+            # `is not None` (not plain truthiness): an empty list/dict is a
+            # valid "zero steps recorded" value and must round-trip as []/{}
+            # in jsonb, NOT collapse to SQL NULL.
+            steps_value = steps_json if steps_json is not None else None
 
             async with self.db_pool.acquire() as conn:
                 row = await conn.fetchrow(
@@ -62,7 +68,7 @@ class WorkflowAnalyticsRepository(BaseRepository):
                     workflow_type,
                     workflow_name,
                     steps_count,
-                    steps_jsonb,
+                    steps_value,
                     source,
                     confidence,
                     execution_time_ms,
