@@ -1,5 +1,9 @@
--- migration 174_wa_mirror_session_active_index
+-- migration 175_wa_mirror_session_active_index
 -- Fix the whatsapp_team_sessions uniqueness model.
+--
+-- (Renumbered 174 → 175 to resolve a prefix collision with
+--  174_intel_lake_jsonb_double_encoding_repair.sql merged to main in
+--  parallel — cicatrix STRUCTURAL 2026-04-29 P0-7.)
 --
 -- Migration 173 created:
 --   CONSTRAINT uq_whatsapp_team_sessions_active

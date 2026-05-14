@@ -307,7 +307,7 @@ async function handleConnectionUpdate(
       );
     } catch (err) {
       // The pre-2026-05-14 UNIQUE(team_member_email, status) constraint made
-      // this throw on a duplicate `disconnected` row. Migration 174 replaces
+      // this throw on a duplicate `disconnected` row. Migration 175 replaces
       // it with a partial unique index on active states only, but we still
       // swallow errors here so a bookkeeping failure never kills the loop.
       const msg = err instanceof Error ? err.message : String(err);
