@@ -151,7 +151,14 @@ class IntelLakeService:
         if not canonical:
             raise IntelLakeError(f"empty canonical_url after normalize: {obs.canonical_url!r}")
 
-        raw_json = json.dumps(obs.raw_payload or {})
+        # ``raw_json`` is computed ONLY for the 50KB size guard below.
+        # The DB binds ``raw_payload_obj`` (the raw dict) — the pool's jsonb
+        # codec (``backend/app/core/database.py``) registers
+        # ``encoder=json.dumps``, so binding pre-serialized text would
+        # double-encode it into a jsonb *string* scalar. Regression fixed
+        # 2026-05-14.
+        raw_payload_obj = obs.raw_payload or {}
+        raw_json = json.dumps(raw_payload_obj)
         if len(raw_json.encode()) > MAX_RAW_PAYLOAD_BYTES:
             raise PayloadTooLargeError(
                 f"raw_payload {len(raw_json)} bytes exceeds limit {MAX_RAW_PAYLOAD_BYTES}"
@@ -181,7 +188,7 @@ class IntelLakeService:
                     obs.jurisdiction,
                     obs.topic_tags or [],
                     _parse_iso_datetime(obs.published_at),
-                    raw_json,
+                    raw_payload_obj,
                 )
 
                 item_id = str(row["id"])
@@ -202,7 +209,7 @@ class IntelLakeService:
                     """,
                     row["id"],
                     obs.producer_name,
-                    raw_json,
+                    raw_payload_obj,
                     obs.score,
                 )
 
