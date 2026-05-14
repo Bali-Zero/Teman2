@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+from contextlib import asynccontextmanager
+from typing import Any
+
+import pytest
+
 from backend.services.intel.intel_lake_router import (
     NB_INTEL_AI_RESEARCH,
     NB_INTEL_IMMIGRATION,
@@ -13,6 +18,32 @@ from backend.services.intel.intel_lake_router import (
 
 def _make_router() -> IntelLakeRouter:
     return IntelLakeRouter(None)  # type: ignore[arg-type]
+
+
+class _CapturingConn:
+    """Fake asyncpg connection that records fetchval/execute call args."""
+
+    def __init__(self) -> None:
+        self.fetchval_calls: list[tuple[Any, ...]] = []
+        self.execute_calls: list[tuple[Any, ...]] = []
+
+    async def fetchval(self, query: str, *args: Any) -> Any:
+        self.fetchval_calls.append((query, *args))
+        return "00000000-0000-0000-0000-000000000001"  # pretend a row was updated
+
+    async def execute(self, query: str, *args: Any) -> None:
+        self.execute_calls.append((query, *args))
+
+
+class _CapturingPool:
+    """Fake asyncpg pool yielding a single shared _CapturingConn."""
+
+    def __init__(self) -> None:
+        self.conn = _CapturingConn()
+
+    @asynccontextmanager
+    async def acquire(self) -> Any:
+        yield self.conn
 
 
 class TestClassifyImmigration:
@@ -151,3 +182,74 @@ class TestRulesNoOverlap:
     def test_reddit_does_not_match_blog(self) -> None:
         d = _make_router()._classify("reddit.com")
         assert d["status"] != "blog"
+
+
+class TestRoutingTargetsBindType:
+    """Regression for 2026-05-14 — jsonb double-encoding.
+
+    The asyncpg pool registers a jsonb codec with ``encoder=json.dumps``
+    (see ``backend/app/core/database.py``). If ``route_event`` ALSO calls
+    ``json.dumps`` on ``routing_targets`` before binding, the value is
+    serialized twice and lands in PG as a jsonb *string* scalar (``"{}"``)
+    instead of a jsonb *object* (``{}``). The Pro-local router + nb-pusher
+    then see ``jsonb_typeof = 'string'`` and cannot read ``nb_uuids``.
+
+    The fix: bind the raw dict and let the pool codec serialize it once.
+    These tests assert the value reaching ``conn.fetchval`` is a ``dict``.
+    """
+
+    @staticmethod
+    def _update_call(pool: _CapturingPool) -> tuple[Any, ...]:
+        """Locate the captured UPDATE intel_items fetchval call.
+
+        Anchors assertions to the routing UPDATE by SQL content rather than
+        a fragile positional index.
+        """
+        for call in pool.conn.fetchval_calls:
+            if "UPDATE intel_items" in call[0]:
+                return call
+        raise AssertionError("route_event did not issue an UPDATE intel_items")
+
+    @pytest.mark.asyncio
+    async def test_routing_targets_bound_as_dict_not_str_for_nbintel(self) -> None:
+        pool = _CapturingPool()
+        router = IntelLakeRouter(pool)  # type: ignore[arg-type]
+        await router.route_event(
+            {"item_id": "11111111-1111-1111-1111-111111111111",
+             "source_domain": "imigrasi.go.id"}
+        )
+        # UPDATE args after query: item_id, new_status, routing_targets
+        bound_targets = self._update_call(pool)[3]
+        assert isinstance(bound_targets, dict), (
+            f"routing_targets bound as {type(bound_targets).__name__}, "
+            f"expected dict — json.dumps + pool codec = double-encoding"
+        )
+        assert bound_targets == {"nb_uuids": [NB_INTEL_IMMIGRATION]}
+
+    @pytest.mark.asyncio
+    async def test_routing_targets_bound_as_dict_not_str_for_fallback(self) -> None:
+        pool = _CapturingPool()
+        router = IntelLakeRouter(pool)  # type: ignore[arg-type]
+        await router.route_event(
+            {"item_id": "22222222-2222-2222-2222-222222222222",
+             "source_domain": "regulatory-watcher"}
+        )
+        bound_targets = self._update_call(pool)[3]
+        assert isinstance(bound_targets, dict), (
+            f"empty routing_targets bound as {type(bound_targets).__name__}, "
+            f"expected dict {{}} — would land in PG as jsonb string '\"{{}}\"'"
+        )
+        assert bound_targets == {}
+
+    @pytest.mark.asyncio
+    async def test_routing_status_still_bound_as_str(self) -> None:
+        # Guard against over-correction: status IS a plain text column.
+        pool = _CapturingPool()
+        router = IntelLakeRouter(pool)  # type: ignore[arg-type]
+        await router.route_event(
+            {"item_id": "33333333-3333-3333-3333-333333333333",
+             "source_domain": "detik.com"}
+        )
+        bound_status = self._update_call(pool)[2]
+        assert bound_status == "blog"
+        assert isinstance(bound_status, str)
