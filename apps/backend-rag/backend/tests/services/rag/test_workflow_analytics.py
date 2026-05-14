@@ -152,6 +152,94 @@ class TestWorkflowAnalyticsRepository:
         assert call_args[0][7] is None
 
     @pytest.mark.asyncio
+    async def test_log_workflow_steps_bound_as_object_not_str(self, mock_db_pool):
+        """Regression 2026-05-14 — jsonb double-encoding.
+
+        The app/runtime asyncpg pool registers a jsonb codec with
+        ``encoder=json.dumps`` (service_initializer.py / database.py). If
+        ``log_workflow`` ALSO calls ``json.dumps(steps_json)`` before
+        binding, the value is serialized twice and lands in PG as a jsonb
+        *string* scalar instead of a jsonb array/object. Any
+        ``steps_json -> ...`` path query then silently returns nothing.
+
+        The fix binds the raw list/dict; the codec serializes it once.
+        """
+        from backend.db.repositories.workflow_analytics_repository import (
+            WorkflowAnalyticsRepository,
+        )
+
+        pool, conn = mock_db_pool
+        conn.fetchrow = AsyncMock(return_value={"id": 7})
+        repo = WorkflowAnalyticsRepository(pool)
+
+        steps = [{"step": 1, "action": "Plan"}, {"step": 2, "action": "Execute"}]
+        await repo.log_workflow(
+            workflow_id="wf-jsonb",
+            query="q",
+            steps_json=steps,
+        )
+
+        call = conn.fetchrow.call_args[0]
+        assert "INSERT INTO workflow_analytics" in call[0]  # anchor to the right INSERT
+        bound_steps = call[7]
+        assert not isinstance(bound_steps, str), (
+            f"steps_json bound as {type(bound_steps).__name__} — json.dumps "
+            f"+ pool codec = double-encoding into a jsonb string scalar"
+        )
+        assert bound_steps == steps
+
+    @pytest.mark.asyncio
+    async def test_log_workflow_dict_steps_bound_as_object_not_str(self, mock_db_pool):
+        from backend.db.repositories.workflow_analytics_repository import (
+            WorkflowAnalyticsRepository,
+        )
+
+        pool, conn = mock_db_pool
+        conn.fetchrow = AsyncMock(return_value={"id": 8})
+        repo = WorkflowAnalyticsRepository(pool)
+
+        steps = {"nodes": ["a", "b"], "count": 2}
+        await repo.log_workflow(
+            workflow_id="wf-jsonb-dict", query="q", steps_json=steps
+        )
+
+        call = conn.fetchrow.call_args[0]
+        assert "INSERT INTO workflow_analytics" in call[0]
+        bound_steps = call[7]
+        assert isinstance(bound_steps, dict), (
+            f"dict steps_json bound as {type(bound_steps).__name__}, expected dict"
+        )
+        assert bound_steps == steps
+
+    @pytest.mark.asyncio
+    async def test_log_workflow_empty_list_steps_not_collapsed_to_null(
+        self, mock_db_pool
+    ):
+        """F2 regression — `[]` must round-trip as jsonb [], NOT SQL NULL.
+
+        The old `if steps_json` guard collapsed empty list/dict to None.
+        An empty list is a valid "zero steps recorded" value distinct from
+        "no steps field". The fix uses `is not None`.
+        """
+        from backend.db.repositories.workflow_analytics_repository import (
+            WorkflowAnalyticsRepository,
+        )
+
+        pool, conn = mock_db_pool
+        conn.fetchrow = AsyncMock(return_value={"id": 9})
+        repo = WorkflowAnalyticsRepository(pool)
+
+        await repo.log_workflow(
+            workflow_id="wf-empty-steps", query="q", steps_json=[]
+        )
+
+        bound_steps = conn.fetchrow.call_args[0][7]
+        assert bound_steps == [], (
+            f"empty list steps_json bound as {bound_steps!r} — must stay []"
+            f" (a valid zero-steps value), not collapse to None"
+        )
+
+    @pytest.mark.asyncio
     async def test_record_feedback_success(self, mock_db_pool):
         """Test recording user feedback on a workflow."""
         from backend.db.repositories.workflow_analytics_repository import (

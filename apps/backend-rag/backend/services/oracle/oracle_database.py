@@ -138,6 +138,10 @@ class DatabaseManager:
                     "response_time_ms": analytics_data.get("response_time_ms"),
                     "document_count": analytics_data.get("document_count"),
                     "session_id": analytics_data.get("session_id"),
+                    # SQLAlchemy engine pool (self._engine) — NO asyncpg jsonb
+                    # codec is registered here, so json.dumps() is REQUIRED.
+                    # Unlike the asyncpg-pool analytics repositories, where
+                    # json.dumps() double-encodes (regression fixed 2026-05-14).
                     "metadata": json.dumps(analytics_data.get("metadata", {})),
                 }
 
@@ -178,6 +182,8 @@ class DatabaseManager:
                     "response_time_ms": feedback_data.get("response_time_ms"),
                     "user_rating": feedback_data.get("user_rating"),
                     "session_id": feedback_data.get("session_id"),
+                    # SQLAlchemy engine pool (self._engine) — NO asyncpg jsonb
+                    # codec is registered here, so json.dumps() is REQUIRED.
                     "metadata": json.dumps(feedback_data.get("metadata", {})),
                 }
 

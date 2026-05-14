@@ -289,6 +289,9 @@ class MetricsTracker:
                     variant,
                     metric,
                     value,
+                    # Self-created asyncpg pool (_get_pool) has NO jsonb codec
+                    # registered — json.dumps() is REQUIRED here, unlike the
+                    # app/runtime codec-on pool where it double-encodes.
                     json.dumps(metadata) if metadata else None,
                 )
 
@@ -382,6 +385,8 @@ class MetricsTracker:
                             variant,
                             metric_name,
                             value,
+                            # Self-created asyncpg pool (_get_pool) has NO jsonb
+                            # codec — json.dumps() is REQUIRED here.
                             json.dumps(metadata) if metadata else None,
                         )
 
