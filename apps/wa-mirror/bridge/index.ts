@@ -2,10 +2,17 @@
 //
 // Reads the team roster from the env var WA_MIRROR_TEAM_MEMBERS
 //   ("alice@balizero.com,bob@balizero.com,...") and starts one Baileys
-// session per email. On graceful shutdown (SIGINT/SIGTERM) closes the PG
-// pool. Crashes in a single team-member session are isolated and logged;
-// the orchestrator does NOT restart them automatically — the team member
-// rescans the QR via `npm run onboard -- --email=...`.
+// session per email. Each session runs `startSession` with
+// resolveOnFirstOpen=false, so its promise NEVER resolves under normal
+// operation — the reconnect loop inside session.ts keeps it alive across
+// transient closes (restartRequired 515, connectionLost 408, etc.).
+//
+// A session promise only SETTLES (rejects) on a terminal `loggedOut`: the
+// team member removed the linked device and must re-scan the QR via
+// `npm run onboard -- --email=...`. When that happens we log it and let the
+// other sessions keep running — we do NOT exit the process.
+//
+// On graceful shutdown (SIGINT/SIGTERM) we close the PG pool and exit.
 
 import "dotenv/config";
 
@@ -38,24 +45,41 @@ async function main(): Promise<void> {
   }
   logger.info({ count: roster.length, members: roster }, "wa-mirror starting");
 
-  const tasks = roster.map((email) =>
+  // Each startSession promise is expected to stay pending forever (the
+  // reconnect loop owns the lifecycle). We attach a .catch purely to observe
+  // the terminal loggedOut rejection — we never let it bubble or tear down
+  // the process. The daemon keeps running so the OTHER members stay mirrored
+  // and so a re-onboarded member is picked up on the next daemon restart.
+  for (const email of roster) {
     startSession({
       teamMemberEmail: email,
       sessionLabel: process.env.WA_MIRROR_SESSION_LABEL,
       sessionsRoot: process.env.WA_MIRROR_SESSIONS_ROOT,
-    }).catch((err) => {
-      const msg = err instanceof Error ? err.message : String(err);
-      logger.error({ email, msg }, "wa-mirror session crashed");
-      // Returning null keeps Promise.all alive for the other members.
-      return null;
+      resolveOnFirstOpen: false,
     })
+      .then(() => {
+        // Should not happen with resolveOnFirstOpen=false, but log if it does.
+        logger.warn(
+          { email },
+          "wa-mirror session promise resolved unexpectedly (daemon mode)"
+        );
+      })
+      .catch((err) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.error(
+          { email, msg },
+          "wa-mirror session terminated (logged out — needs re-onboarding)"
+        );
+      });
+  }
+
+  logger.info(
+    { count: roster.length },
+    "wa-mirror all sessions launched; reconnect loops own their lifecycle"
   );
 
-  await Promise.all(tasks);
-  logger.info("wa-mirror all sessions settled. Daemon staying alive for events.");
-
-  // Keep the process up forever — Baileys event handlers fire async; closing
-  // here would tear the bridge down. SIGINT/SIGTERM handle shutdown.
+  // Keep the process up forever — Baileys event handlers and the reconnect
+  // setTimeout callbacks fire async. SIGINT/SIGTERM handle shutdown.
   await new Promise<void>(() => undefined);
 }
 
