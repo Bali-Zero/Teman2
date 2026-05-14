@@ -34,7 +34,6 @@ Design: research/symbiosis/2026-05-13-intel-lake-router-tier1-design.md
 
 from __future__ import annotations
 
-import json
 import logging
 import re
 from typing import TYPE_CHECKING, Any
@@ -144,6 +143,11 @@ class IntelLakeRouter:
 
         try:
             async with self._pool.acquire() as conn:
+                # NOTE: bind ``new_targets`` as a raw dict, NOT json.dumps(...).
+                # The pool's jsonb codec (``backend/app/core/database.py``)
+                # registers ``encoder=json.dumps`` — pre-serializing here
+                # double-encodes and lands a jsonb *string* ("{}") instead of
+                # a jsonb *object* ({}). Regression fixed 2026-05-14.
                 affected = await conn.fetchval(
                     """
                     UPDATE intel_items
@@ -155,7 +159,7 @@ class IntelLakeRouter:
                     """,
                     item_id,
                     new_status,
-                    json.dumps(new_targets),
+                    new_targets,
                 )
                 await conn.execute(
                     """
