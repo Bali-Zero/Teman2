@@ -270,8 +270,10 @@ function mapCloseReason(code: number): string {
   }
 }
 
-function extractText(message: Record<string, unknown>): string | null {
-  const m = message as {
+// Accepts Baileys' proto.IMessage (no index signature) or any message-shaped
+// object. We narrow with a cast to the handful of fields we read.
+function extractText(message: unknown): string | null {
+  const m = (message ?? {}) as {
     conversation?: string;
     extendedTextMessage?: { text?: string };
     imageMessage?: { caption?: string };
@@ -289,8 +291,9 @@ function extractText(message: Record<string, unknown>): string | null {
   return null;
 }
 
-function hasMedia(message: Record<string, unknown>): boolean {
-  const keys = Object.keys(message);
+function hasMedia(message: unknown): boolean {
+  if (message === null || typeof message !== "object") return false;
+  const keys = Object.keys(message as Record<string, unknown>);
   return keys.some((k) =>
     ["imageMessage", "videoMessage", "documentMessage", "audioMessage"].includes(k)
   );
