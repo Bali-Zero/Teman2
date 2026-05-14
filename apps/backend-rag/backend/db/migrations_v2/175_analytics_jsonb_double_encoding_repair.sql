@@ -34,7 +34,10 @@
 -- pre-filter is defense-in-depth against a corrupt row we have not seen.
 --
 -- Idempotent: the `jsonb_typeof(col) = 'string'` guard means a second run
--- is a no-op (already-repaired rows are object/array, not string).
+-- is a no-op (already-repaired rows are object/array, not string). The
+-- `to_regclass` guards (see DO block) additionally make it a clean no-op
+-- on databases where the legacy analytics tables were never created
+-- (e.g. the CI test DB, which only applies migrations_v2/).
 --
 -- Rolling-deploy race: old-code instances may write new double-encoded
 -- rows during the 1-3 minute window between this migration and full code
@@ -42,26 +45,42 @@
 -- after full rollout is safe (idempotent). Given ~9.5k rows the window's
 -- contribution is negligible.
 
+-- TABLE-EXISTENCE GUARD: `workflow_analytics` / `query_analytics` are
+-- created by a LEGACY migration (`005_workflow_analytics`, tracked in
+-- `_schema_versions`), NOT by the `migrations_v2/` runner. The CI test DB
+-- (`nuzantara_test`) only applies `migrations_v2/`, so these tables are
+-- absent there — a bare UPDATE would raise `relation does not exist` and
+-- fail the migration. This is a data-only repair: if the table is not
+-- present there is simply nothing to repair, so each block is gated on
+-- `to_regclass(...)` and is a clean no-op when the table is missing.
 DO $$
 DECLARE
     n_steps    bigint;
     n_metadata bigint;
 BEGIN
-    UPDATE workflow_analytics
-       SET steps_json = (steps_json #>> '{}')::jsonb
-     WHERE jsonb_typeof(steps_json) = 'string'
-       AND (steps_json #>> '{}') ~ '^\s*[\[{]'
-       AND jsonb_typeof((steps_json #>> '{}')::jsonb) IN ('object', 'array');
-    GET DIAGNOSTICS n_steps = ROW_COUNT;
+    IF to_regclass('public.workflow_analytics') IS NOT NULL THEN
+        UPDATE workflow_analytics
+           SET steps_json = (steps_json #>> '{}')::jsonb
+         WHERE jsonb_typeof(steps_json) = 'string'
+           AND (steps_json #>> '{}') ~ '^\s*[\[{]'
+           AND jsonb_typeof((steps_json #>> '{}')::jsonb) IN ('object', 'array');
+        GET DIAGNOSTICS n_steps = ROW_COUNT;
+    ELSE
+        n_steps := -1;  -- sentinel: table absent (CI test DB)
+    END IF;
 
-    UPDATE query_analytics
-       SET metadata = (metadata #>> '{}')::jsonb
-     WHERE jsonb_typeof(metadata) = 'string'
-       AND (metadata #>> '{}') ~ '^\s*[\[{]'
-       AND jsonb_typeof((metadata #>> '{}')::jsonb) IN ('object', 'array');
-    GET DIAGNOSTICS n_metadata = ROW_COUNT;
+    IF to_regclass('public.query_analytics') IS NOT NULL THEN
+        UPDATE query_analytics
+           SET metadata = (metadata #>> '{}')::jsonb
+         WHERE jsonb_typeof(metadata) = 'string'
+           AND (metadata #>> '{}') ~ '^\s*[\[{]'
+           AND jsonb_typeof((metadata #>> '{}')::jsonb) IN ('object', 'array');
+        GET DIAGNOSTICS n_metadata = ROW_COUNT;
+    ELSE
+        n_metadata := -1;  -- sentinel: table absent (CI test DB)
+    END IF;
 
-    RAISE NOTICE 'm175 analytics jsonb repair: workflow_analytics.steps_json=% query_analytics.metadata=%',
+    RAISE NOTICE 'm175 analytics jsonb repair: workflow_analytics.steps_json=% query_analytics.metadata=% (-1 = table absent, no-op)',
         n_steps, n_metadata;
 END $$;
 
