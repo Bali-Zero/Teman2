@@ -36,7 +36,7 @@ async def test_deepseek_runner_records_cost_on_success() -> None:
     fake_resp.status_code = 200
     fake_resp.json.return_value = {
         "choices": [{"message": {"content": "test reply"}}],
-        "model": "deepseek-reasoner",
+        "model": "deepseek-v4-pro",
         "usage": {"prompt_tokens": 50, "completion_tokens": 20},
     }
     fake_resp.raise_for_status = MagicMock()
@@ -57,7 +57,7 @@ async def test_deepseek_runner_records_cost_on_success() -> None:
     mock_rec.assert_awaited_once()
     kwargs = mock_rec.await_args.kwargs
     assert kwargs["provider"] == "deepseek"
-    assert kwargs["model"] == "deepseek-reasoner"
+    assert kwargs["model"] == "deepseek-v4-pro"
     assert kwargs["input_tokens"] == 50
     assert kwargs["output_tokens"] == 20
     assert kwargs["success"] is True
