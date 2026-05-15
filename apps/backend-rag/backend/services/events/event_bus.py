@@ -114,6 +114,12 @@ PG_CHANNEL_MAP: dict[str, str] = {
     # Consumers: analytics dashboards, retention loop, future onboarding cell.
     # See: docs/sprint3/crm-cell-design.md § Q2c.
     "crm_welcome_completed": "crm.welcome_completed",
+    # Emitted by apps/wa-mirror after a one-to-one WhatsApp message is
+    # persisted to whatsapp_message_context. Payload: {message_context_id,
+    # bridge_session_id, team_member_email, client_id, direction,
+    # message_date, preview, _outbox_id}. Consumer: CRM interaction timeline
+    # fan-in in events.handlers._core.
+    "whatsapp_message_received": "whatsapp.message_received",
     # Emitted by asset_provenance INSERT/UPDATE trigger (migration 155, Sprint
     # 3 W2 Mata-Garuda L4.5 cell promotion). Payload: {provenance_id,
     # asset_kind, asset_id, source, confidence, owner, valid_until,
