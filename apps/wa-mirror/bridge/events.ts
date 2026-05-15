@@ -54,9 +54,8 @@ export async function emitMessageReceived(
       const notifyPayload = JSON.stringify({ ...payload, _outbox_id: outboxId });
       await query(`SELECT pg_notify($1, $2)`, [CHANNEL, notifyPayload]);
     }
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
+  } catch {
     // eslint-disable-next-line no-console
-    console.warn(`[wa-mirror.events] emit failed: ${msg}`);
+    console.warn("[wa-mirror.events] emit failed");
   }
 }
