@@ -135,6 +135,19 @@ jobs:
             #                                  IDENTITY is the modern pattern
             #                                  but mid-flight schema swap is
             #                                  out of scope for LEVA 2.
+            # Style-only exclusions (added 2026-05-14, mig 175):
+            #   disallowed-unique-constraint  — Squawk lints the whole file,
+            #                                  including the `-- === ROLLBACK ===`
+            #                                  section (a plain comment to both
+            #                                  Squawk and Postgres). migration_base.py
+            #                                  runs only the forward DDL. mig 175's
+            #                                  rollback deliberately restores the
+            #                                  exact 173 UNIQUE constraint, so the
+            #                                  rule fires on a statement we never
+            #                                  execute forward. Same family as the
+            #                                  already-excluded constraint-missing-not-valid.
+            #                                  The forward DDL in 175 uses a partial
+            #                                  unique INDEX, not a constraint.
             squawk \
               --pg-version=15.0 \
               --exclude=require-concurrent-index-creation \
@@ -149,6 +162,7 @@ jobs:
               --exclude=constraint-missing-not-valid \
               --exclude=prefer-bigint-over-int \
               --exclude=prefer-identity \
+              --exclude=disallowed-unique-constraint \
               "$file"
             echo "::endgroup::"
           done

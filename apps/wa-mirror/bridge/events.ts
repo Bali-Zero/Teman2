@@ -19,7 +19,7 @@ export type WhatsAppMessagePayload = {
   message_context_id: number;
   bridge_session_id: number;
   team_member_email: string;
-  client_id: number;
+  client_id: number | null;
   direction: "inbound" | "outbound";
   message_date: string; // ISO 8601
   preview: string; // first 120 chars, useful for downstream alerters
