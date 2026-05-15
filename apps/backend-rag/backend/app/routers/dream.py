@@ -7,9 +7,10 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 
+from backend.app.deps.database import get_database_pool
 # Reuse existing AI service utilities if available, or import standard ones
 # Assuming call_claude_with_retry is available in article_composer service for now
 # Ideally we should move it to a shared LLM service
@@ -51,29 +52,63 @@ class GenerateResponse(BaseModel):
     success: bool
 
 
-# Simple in-memory store for demo persistence if DB not ready
-# In production, use Redis or Postgres
-MOCK_DB: dict[str, Any] = {}
-
 # --- Endpoints ---
 
 
 @router.post("/state")
-async def save_state(user_id: str, state: dict[str, Any]) -> dict[str, Any]:
-    """Persist Dream Room state (Articles, Inspirations, etc.)"""
-    # TODO(#77): Replace in-memory MOCK_DB with Postgres JSONB persistence.
-    MOCK_DB[user_id] = state
-    logger.info(f"Saved state for user {user_id}")
+async def save_state(
+    user_id: str,
+    state: dict[str, Any],
+    pool=Depends(get_database_pool),
+) -> dict[str, Any]:
+    """Persist Dream Room state (Articles, Inspirations, etc.) to Postgres.
+
+    Closes TODO(#77): replaced the in-memory MOCK_DB (which silently lost
+    state on every Fly machine restart) with a JSONB-backed UPSERT in
+    table ``dream_room_state`` (migration 178).
+
+    The asyncpg pool installs a ``jsonb`` codec in
+    ``init_db_connection`` — we pass ``state`` as a Python dict and let
+    the codec serialize it once. Passing ``json.dumps(state)`` here would
+    double-encode (cf. memory:
+    ``discovery_jsonb_double_encoding_systemic_2026_05_14``).
+    """
+    async with pool.acquire() as conn:
+        await conn.execute(
+            """
+            INSERT INTO dream_room_state (user_id, state)
+            VALUES ($1, $2)
+            ON CONFLICT (user_id) DO UPDATE
+              SET state = EXCLUDED.state,
+                  updated_at = NOW()
+            """,
+            user_id,
+            state,  # dict, NOT json.dumps(state) — codec handles serialization.
+        )
+    logger.info("Saved Dream Room state user=%s", user_id)
     return {
         "success": True,
-        "timestamp": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
+        "timestamp": datetime.now(tz=timezone.utc).isoformat(),
     }
 
 
 @router.get("/state/{user_id}")
-async def get_state(user_id: str) -> dict[str, Any]:
-    """Retrieve persisted state"""
-    state = MOCK_DB.get(user_id)
+async def get_state(
+    user_id: str,
+    pool=Depends(get_database_pool),
+) -> dict[str, Any]:
+    """Retrieve persisted Dream Room state (TODO #77).
+
+    Returns ``state=None`` when the user has no saved canvas — keeps the
+    client contract compatible with the legacy MOCK_DB.get() behaviour.
+    """
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT state FROM dream_room_state WHERE user_id = $1",
+            user_id,
+        )
+
+    state = row["state"] if row is not None else None
     return {"success": True, "state": state}
 
 
