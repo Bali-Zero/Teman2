@@ -53,7 +53,7 @@
     <string>/Users/nuzantara/logs/wa-mirror.log</string>
 
     <key>StandardErrorPath</key>
-    <string>/Users/nuzantara/logs/wa-mirror.err.log</string>
+    <string>/Users/nuzantara/logs/wa-mirror.err</string>
 
     <key>SoftResourceLimits</key>
     <dict>
