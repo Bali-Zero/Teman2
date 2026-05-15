@@ -45,7 +45,8 @@ Runtime: ~1-2s on Pro.
 ## What the generator reads
 
 - `~/.claude/agents/*.md` — Claude Code subagent frontmatter (skips `*.pre-T2`)
-- `~/Library/LaunchAgents/com.balizero.*.plist` — launchd jobs (via `plutil -convert json`)
+- `~/Library/LaunchAgents/com.{balizero,nuzantara,cell,matagaruda}.*.plist` — launchd jobs (via `plutil -convert json`)
+- `scripts/automation_catalog.json` (`launchagents` section) — curated catalog notes merged into cron entries
 - `~/.claude/skills/**/*.md` — Claude skills with valid frontmatter
 - `~/.gemini/skills/**/*.md` — Gemini skills
 - `.cursor/rules/**/*.mdc` — Cursor rules (currently empty)

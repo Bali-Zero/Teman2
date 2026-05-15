@@ -32,7 +32,10 @@ SKILLS_DIR = Path.home() / ".claude" / "skills"
 LAUNCHAGENTS_DIR = Path.home() / "Library" / "LaunchAgents"
 CURSOR_RULES_DIR = REPO_ROOT / ".cursor" / "rules"
 GEMINI_SKILLS_DIR = Path.home() / ".gemini" / "skills"
+AUTOMATION_CATALOG = REPO_ROOT / "scripts" / "automation_catalog.json"
 OUTPUT_FILE = Path(__file__).parent / "01-inventory.md"
+
+LAUNCHAGENT_PREFIXES = ("com.balizero.", "com.nuzantara.", "com.cell.", "com.matagaruda.")
 
 AGENTIC_KEYWORDS = re.compile(
     r"\b(claude|gemini|nlm|codex|deepseek|ollama)\b", re.IGNORECASE
@@ -243,26 +246,62 @@ def _is_agentic(script_path_str: str) -> bool:
         return False
 
 
+def _load_automation_catalog() -> dict[str, dict[str, Any]]:
+    """Read the curated launchagents section of scripts/automation_catalog.json.
+
+    Returns label → catalog-entry dict. Missing/malformed file → empty dict.
+    """
+    if not AUTOMATION_CATALOG.is_file():
+        return {}
+    try:
+        data = json.loads(AUTOMATION_CATALOG.read_text(encoding="utf-8"))
+        section = data.get("launchagents", {})
+        return section if isinstance(section, dict) else {}
+    except Exception as e:
+        print(f"  WARN: automation_catalog.json read failed: {e}", file=sys.stderr)
+        return {}
+
+
 def scan_crons() -> list[dict[str, Any]]:
-    """Scan all com.balizero.*.plist in ~/Library/LaunchAgents (sorted)."""
+    """Scan all com.{balizero,nuzantara,cell,matagaruda}.*.plist in ~/Library/LaunchAgents.
+
+    Enriches each entry with a `catalog_note` (curated metadata from
+    scripts/automation_catalog.json `launchagents` section) and a `prefix`
+    field (one of LAUNCHAGENT_PREFIXES, trailing dot stripped).
+    """
     results = []
     if not LAUNCHAGENTS_DIR.is_dir():
         return results
-    for p in sorted(LAUNCHAGENTS_DIR.glob("com.balizero.*.plist")):
-        pdict = _plist_to_json(p)
-        if not pdict:
-            continue
-        label = pdict.get("Label", p.stem)
-        script = _script_path(pdict)
-        script_exists = bool(script) and Path(script).exists()
-        results.append({
-            "label": label,
-            "schedule": _schedule_str(pdict),
-            "script": script,
-            "agentic": _is_agentic(script),
-            "script_exists": script_exists,
-            "plist_path": str(p),
-        })
+    catalog = _load_automation_catalog()
+    seen_paths = set()
+    for prefix in LAUNCHAGENT_PREFIXES:
+        for p in sorted(LAUNCHAGENTS_DIR.glob(f"{prefix}*.plist")):
+            # Skip .disabled-* variants (filename does not end in .plist anyway —
+            # glob handles that — but guard against future shapes).
+            if ".disabled" in p.name:
+                continue
+            if str(p) in seen_paths:
+                continue
+            seen_paths.add(str(p))
+            pdict = _plist_to_json(p)
+            if not pdict:
+                continue
+            label = pdict.get("Label", p.stem)
+            script = _script_path(pdict)
+            script_exists = bool(script) and Path(script).exists()
+            entry = catalog.get(label, {})
+            results.append({
+                "label": label,
+                "prefix": prefix.rstrip("."),
+                "schedule": _schedule_str(pdict),
+                "script": script,
+                "agentic": _is_agentic(script),
+                "script_exists": script_exists,
+                "plist_path": str(p),
+                "catalog_note": entry.get("description", "") if isinstance(entry, dict) else "",
+                "catalog_type": entry.get("type", "") if isinstance(entry, dict) else "",
+            })
+    results.sort(key=lambda r: r["label"])
     return results
 
 
@@ -341,7 +380,8 @@ def render(
         "",
         f"**Snapshot**: {len(subagents)} Claude subagents · "
         f"{len([c for c in crons if c['agentic']])} agentic crons / "
-        f"{len([c for c in crons if not c['agentic']])} infra crons · "
+        f"{len([c for c in crons if not c['agentic']])} infra crons "
+        f"({len(crons)} total launchd) · "
         f"{len(skills)} skills · {len(cross_tool)} cross-tool entries",
         "",
     ]
@@ -393,28 +433,38 @@ def render(
     infra_crons = [c for c in crons if not c["agentic"]]
 
     lines += ["## Cron-agents", ""]
+    prefix_counts = {pref.rstrip("."): 0 for pref in LAUNCHAGENT_PREFIXES}
+    for c in crons:
+        prefix_counts[c.get("prefix", "")] = prefix_counts.get(c.get("prefix", ""), 0) + 1
+    breakdown = " · ".join(f"{pref}={cnt}" for pref, cnt in prefix_counts.items() if cnt)
+    lines += [f"_Prefix breakdown: {breakdown}_", ""]
+
     lines += [
         f"### Agentic crons ({len(agentic_crons)}) _(call an LLM)_",
         "",
-        "| Label | Schedule | Script |",
-        "|---|---|---|",
+        "| Label | Schedule | Script | Catalog note |",
+        "|---|---|---|---|",
     ]
     for c in agentic_crons:
         script_short = Path(c["script"]).name if c["script"] else "—"
+        note = _md_escape((c.get("catalog_note") or "")[:80]) or "—"
         lines.append(
-            f"| {_md_escape(c['label'])} | {c['schedule']} | `{_md_escape(script_short)}` |"
+            f"| {_md_escape(c['label'])} | {c['schedule']} | "
+            f"`{_md_escape(script_short)}` | {note} |"
         )
     lines += [
         "",
         f"### Infrastructure crons ({len(infra_crons)}) _(no LLM)_",
         "",
-        "| Label | Schedule | Script |",
-        "|---|---|---|",
+        "| Label | Schedule | Script | Catalog note |",
+        "|---|---|---|---|",
     ]
     for c in infra_crons:
         script_short = Path(c["script"]).name if c["script"] else "—"
+        note = _md_escape((c.get("catalog_note") or "")[:80]) or "—"
         lines.append(
-            f"| {_md_escape(c['label'])} | {c['schedule']} | `{_md_escape(script_short)}` |"
+            f"| {_md_escape(c['label'])} | {c['schedule']} | "
+            f"`{_md_escape(script_short)}` | {note} |"
         )
     lines.append("")
 
