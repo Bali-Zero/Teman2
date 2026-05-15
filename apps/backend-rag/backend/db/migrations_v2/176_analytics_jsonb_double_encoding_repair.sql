@@ -1,4 +1,4 @@
--- migration 175_analytics_jsonb_double_encoding_repair
+-- migration 176_analytics_jsonb_double_encoding_repair
 -- Data-only repair for the jsonb double-encoding regression in the
 -- analytics repositories (2026-05-14). Companion to migration 174, which
 -- fixed the same pattern in the Intel Lake tables.
