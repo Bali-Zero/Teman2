@@ -1,0 +1,9 @@
+path,reason
+rejected/Generate_diverse_images_angles_202605160201 (1).jpeg,identity drift or direct source rejection; excluded from approved training set
+rejected/Generate_diverse_images_angles_202605160201.jpeg,identity drift or direct source rejection; excluded from approved training set
+rejected/anchors-bali-context/zan_v1_bali_left-profile_REJECTED_identity_drift.png,identity drift; moved out of approved or rejected after visual QA
+rejected/identity-drift/drift-test-teak-office_IDENTITY_DRIFT.mp4,identity drift; moved out of approved or rejected after visual QA
+rejected/identity-drift/zan_v1_bali_bali-temple-golden_IDENTITY_DRIFT.png,identity drift; moved out of approved or rejected after visual QA
+rejected/identity-drift/zan_v1_bali_fullbody-standing_OUTFIT_DRIFT.png,full-body identity/outfit drift; moved out of approved during 2026-05-16 QA
+rejected/identity-drift/zan_v1_bali_teak-office_IDENTITY_DRIFT.png,identity drift; moved out of approved or rejected after visual QA
+rejected/riri.png,byte-identical duplicate of zan2.png; excluded to avoid duplicate weighting
