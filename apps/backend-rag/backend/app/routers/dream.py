@@ -80,26 +80,29 @@ async def get_state(user_id: str) -> dict[str, Any]:
 @router.post("/scrape", response_model=ScrapingResponse)
 async def scrape_url(request: ScrapingRequest) -> dict[str, Any]:
     """
-    Mock scraper for now.
-    TODO(#78): Integrate with Firecrawl (or httpx + BeautifulSoup fallback).
-    """
-    # Mock delay
-    import asyncio
+    Fetch a URL and extract title + key paragraphs + quotes.
 
-    await asyncio.sleep(1.5)
+    Closes TODO(#78): uses ``httpx + BeautifulSoup`` (no paid Firecrawl
+    dependency). Failures degrade to ``success=False`` rather than 500,
+    so the Dream Room can render a graceful "couldn't read this page"
+    state.
+    """
+    from backend.services.scraping.url_scraper import (
+        scrape_url as _scrape_url_impl,
+    )
+
+    try:
+        content = await _scrape_url_impl(request.url)
+    except ValueError as e:
+        # Invalid URL scheme — let FastAPI map this to a 400.
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail=str(e)) from e
 
     return {
-        "title": "The Future of AI in Content Marketing (Scraped)",
-        "keyPoints": [
-            "AI tools are increasing production speed",
-            "Human creativity is the differentiator",
-            f"Scraped content from {request.url}",
-        ],
-        "quotes": [
-            {"text": "AI is a tool, not a master.", "author": "Tech Visionary"},
-            {"text": "Content is king, context is queen.", "author": "Marketing Guru"},
-        ],
-        "success": True,
+        "title": content.title,
+        "keyPoints": content.keyPoints,
+        "quotes": content.quotes,
+        "success": content.success,
     }
 
 
