@@ -31,18 +31,42 @@ AGENTIC_KEYWORDS = re.compile(
 )
 
 
+def parse_frontmatter(path: Path) -> dict[str, Any]:
+    """Parse YAML frontmatter from a markdown file. Returns {} on failure."""
+    try:
+        text = path.read_text(encoding="utf-8")
+        if not text.startswith("---"):
+            return {}
+        end = text.index("---", 3)
+        return yaml.safe_load(text[3:end]) or {}
+    except Exception as e:
+        print(f"  WARN: {path.name} frontmatter parse failed: {e}", file=sys.stderr)
+        return {}
+
+
+def scan_subagents() -> list[dict[str, Any]]:
+    """Scan ~/.claude/agents/*.md (skip *.pre-T2 and non-.md files)."""
+    results = []
+    for p in sorted(AGENTS_DIR.glob("*.md")):
+        if ".pre-T2" in p.name or p.suffix != ".md":
+            continue
+        fm = parse_frontmatter(p)
+        results.append({
+            "name": fm.get("name", p.stem),
+            "description": (fm.get("description") or "")[:120],
+            "model": fm.get("model", ""),
+            "tools": fm.get("tools", []),
+            "path": str(p),
+            "mtime": p.stat().st_mtime,
+            "frontmatter_ok": bool(fm),
+        })
+    return results
+
+
 def main(dry_run: bool = False) -> int:
     subagents = scan_subagents()
-    cross_tool = scan_cross_tool()
-    crons = scan_crons()
-    skills = scan_skills()
-    drift = compute_drift(subagents, crons)
-    content = render(subagents, cross_tool, crons, skills, drift)
-    if dry_run:
-        print(content)
-    else:
-        OUTPUT_FILE.write_text(content, encoding="utf-8")
-        print(f"Written: {OUTPUT_FILE} ({len(content)} bytes)")
+    for a in subagents:
+        print(f"  {a['name']:40s} model={a['model']}")
     return 0
 
 
