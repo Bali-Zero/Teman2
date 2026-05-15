@@ -199,6 +199,18 @@ def configure_logging() -> None:
     logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
     logging.getLogger("uvicorn.error").setLevel(logging.INFO)
 
+    # In-process ring buffer for GET /api/debug/logs (TODO #79).
+    # Captures the last N records so operators can inspect them without
+    # flyctl auth or external aggregators.
+    from backend.app.services.log_ring_buffer import get_ring_buffer_handler
+
+    ring_handler = get_ring_buffer_handler()
+    ring_handler.setLevel(log_level)
+    ring_handler.addFilter(ContextFilter())
+    # Avoid duplicate attachment on hot-reload / repeated configure calls.
+    if ring_handler not in root_logger.handlers:
+        root_logger.addHandler(ring_handler)
+
     # Log startup message
     logger = logging.getLogger("zantara.backend")
     logger.info(
