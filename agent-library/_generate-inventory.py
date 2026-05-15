@@ -137,21 +137,35 @@ def _plist_to_json(plist_path: Path) -> dict[str, Any]:
         return {}
 
 
+def _fmt_calendar_entry(entry: dict[str, Any]) -> str:
+    """Format one StartCalendarInterval dict as 'weekly[dN]@HH:MM' or 'daily@HH:MM'."""
+    weekday = entry.get("Weekday")
+    h = entry.get("Hour")
+    m = entry.get("Minute", 0)
+    h_s = f"{h:02}" if isinstance(h, int) else "*"
+    m_s = f"{m:02}" if isinstance(m, int) else "00"
+    if weekday is not None:
+        return f"weekly[d{weekday}]@{h_s}:{m_s}"
+    return f"daily@{h_s}:{m_s}"
+
+
 def _schedule_str(plist_dict: dict[str, Any]) -> str:
-    """Human-readable schedule from plist dict."""
+    """Human-readable schedule from plist dict.
+
+    For multi-interval `StartCalendarInterval` lists, joins each entry with `;`
+    up to a cap of 4 (further intervals collapsed to `…+N`) — fixes the
+    `calendar×N` data-loss spotted in the review.
+    """
     if "StartCalendarInterval" in plist_dict:
         sci = plist_dict["StartCalendarInterval"]
         if isinstance(sci, list):
-            return f"calendar×{len(sci)}"
+            parts = [_fmt_calendar_entry(e) for e in sci if isinstance(e, dict)]
+            if not parts:
+                return f"calendar×{len(sci)}"
+            shown, hidden = parts[:4], len(parts) - 4
+            return ";".join(shown) + (f"…+{hidden}" if hidden > 0 else "")
         if isinstance(sci, dict):
-            weekday = sci.get("Weekday")
-            h = sci.get("Hour")
-            m = sci.get("Minute", 0)
-            h_s = f"{h:02}" if isinstance(h, int) else "*"
-            m_s = f"{m:02}" if isinstance(m, int) else "00"
-            if weekday is not None:
-                return f"weekly[d{weekday}]@{h_s}:{m_s}"
-            return f"daily@{h_s}:{m_s}"
+            return _fmt_calendar_entry(sci)
         return "calendar"
     if "StartInterval" in plist_dict:
         try:
@@ -168,56 +182,90 @@ def _schedule_str(plist_dict: dict[str, Any]) -> str:
     return "on-demand"
 
 
-def _script_path(plist_dict: dict[str, Any]) -> str:
-    """Pick the real workload script from Program/ProgramArguments.
+def _collect_script_candidates(plist_dict: dict[str, Any]) -> list[str]:
+    """Collect all script-like absolute paths from Program + ProgramArguments,
+    including tokens extracted from shell-string args (`-c` payloads).
 
-    Prefers, in order:
-      1. The first arg that is an existing file path.
-      2. The first arg ending in a recognized script suffix.
-      3. The first token (parsed cheaply) of a `-c` shell string that ends
-         in a recognized script suffix.
-      4. Program (if set) or ProgramArguments[0] as last-resort fallback.
+    Bare ProgramArguments paths are accepted unconditionally (after the
+    interpreter filter) — they're positional, the caller intended them as the
+    workload. Tokens parsed from shell strings are stricter: only kept if
+    they end in a recognized script suffix, otherwise we'd capture redirect
+    targets / state files / arbitrary args. See review:
+    com.nuzantara.pg-proxy-cluster-recheck-oneshot regressed when the
+    `>> /Users/.../state.txt` redirect target was captured as the workload.
     """
     args = list(plist_dict.get("ProgramArguments") or [])
     program = plist_dict.get("Program", "") or ""
-    candidates = ([program] if program else []) + args
+    bare = ([program] if program else []) + args
+    out: list[str] = []
+    seen: set[str] = set()
 
-    # Pass 1: bare args — existing files that are NOT interpreters
-    for a in candidates:
-        if not isinstance(a, str) or not a.startswith("/"):
-            continue
-        if _is_interpreter(a):
-            continue
-        if Path(a).exists():
-            return a
+    def _add(s: str, require_suffix: bool = False) -> None:
+        if not s or s in seen:
+            return
+        if not s.startswith("/") or _is_interpreter(s):
+            return
+        if require_suffix and not s.endswith(_SCRIPT_SUFFIXES):
+            return
+        out.append(s)
+        seen.add(s)
 
-    # Pass 2: bare args — suffix match on standalone paths (file may not exist;
-    # flagged via script_exists). Require no whitespace to avoid matching the
-    # tail of a shell-string arg.
-    for a in candidates:
+    for a in bare:
         if not isinstance(a, str) or " " in a:
             continue
-        if a.endswith(_SCRIPT_SUFFIXES):
-            return a
+        _add(a, require_suffix=False)
 
-    # Pass 3: parse shell-string args (e.g. `-c` payloads). Skip interpreter
-    # invocations; pick the first script-like token.
     for a in args:
         if not isinstance(a, str) or " " not in a:
             continue
-        tokens = a.split()
-        for tok in tokens:
-            t = tok.strip("`'\";|&()")
-            if not t.startswith("/"):
-                continue
-            if _is_interpreter(t):
-                continue
-            if t.endswith(_SCRIPT_SUFFIXES):
-                return t
-            if Path(t).exists():
-                return t
+        for tok in a.split():
+            t = tok.strip("`'\";|&()<>")
+            _add(t, require_suffix=True)
+    return out
 
-    # Fallback: Program or first arg (likely an interpreter — better than empty)
+
+def _script_matches_agentic(path_str: str) -> bool:
+    """Header-only agentic check used to disambiguate ambiguous shell chains."""
+    return _is_agentic(path_str)
+
+
+def _script_path(plist_dict: dict[str, Any]) -> str:
+    """Pick the real workload script from Program/ProgramArguments.
+
+    Strategy:
+      1. Gather all absolute-path script-like candidates from Program +
+         ProgramArguments (including sub-tokens of `-c` shell strings).
+      2. Prefer candidates that EXIST on disk; among those, prefer the first
+         one whose header matches an agentic keyword (handles `wrapper.sh &&
+         real-agent.py` correctly — review HIGH#1).
+      3. If no existing candidate, fall back to the first suffix-matching
+         path (still useful: surfaces drift via `script_exists=False`).
+      4. Last resort: Program or first ProgramArguments arg (interpreter).
+
+    Relative paths are deliberately ignored (review MEDIUM: relative `setup.sh`
+    in ProgramArguments used to surface as a false orphan-plist warning).
+    """
+    candidates = _collect_script_candidates(plist_dict)
+
+    existing = [c for c in candidates if Path(c).exists()]
+    if existing:
+        # Disambiguate chained shell scripts: if more than one workload exists
+        # on disk, prefer the one that actually calls an LLM.
+        if len(existing) > 1:
+            for c in existing:
+                if _script_matches_agentic(c):
+                    return c
+        return existing[0]
+
+    suffix_match = [c for c in candidates if c.endswith(_SCRIPT_SUFFIXES)]
+    if suffix_match:
+        return suffix_match[0]
+
+    if candidates:
+        return candidates[0]
+
+    args = list(plist_dict.get("ProgramArguments") or [])
+    program = plist_dict.get("Program", "") or ""
     if program:
         return program
     return args[0] if args else ""
@@ -330,8 +378,13 @@ def compute_drift(
     subagents: list[dict[str, Any]],
     crons: list[dict[str, Any]],
 ) -> dict[str, list[str]]:
-    """Surface three classes of drift for the inventory health-check section."""
-    now = _time.time()
+    """Surface three classes of drift for the inventory health-check section.
+
+    Idempotency: `now` is rounded to the start of the current UTC minute so
+    that two back-to-back runs within the same minute use the same stale
+    cutoff and produce byte-identical output (Gemini Important).
+    """
+    now = (int(_time.time()) // 60) * 60
     stale_cutoff = now - STALE_DAYS * 86400
     missing_frontmatter = sorted(
         a["path"] for a in subagents if not a["frontmatter_ok"]
@@ -349,17 +402,38 @@ def compute_drift(
     }
 
 
-def _tools_str(tools: list[str] | str | None) -> str:
-    if not tools:
+def _tools_str(tools: Any) -> str:
+    """Render the agent `tools` frontmatter field defensively.
+
+    Empirically, Claude Code subagent frontmatter ships `tools:` as either a
+    comma-separated string OR a YAML list. Defensive against unexpected types
+    (bool/dict/int) — DeepSeek CRITICAL: crashed on `tools: true`.
+    """
+    if tools is None or tools == "":
         return ""
     if isinstance(tools, str):
         return tools
-    return ", ".join(tools[:4]) + ("…" if len(tools) > 4 else "")
+    if isinstance(tools, list):
+        text_items = [str(t) for t in tools if t is not None]
+        return ", ".join(text_items[:4]) + ("…" if len(text_items) > 4 else "")
+    # Unexpected shape (bool, dict, int): stringify, truncate, surface to user.
+    return str(tools)[:60]
 
 
 def _md_escape(text: str) -> str:
     """Pipe-escape for markdown table cells. Compact whitespace."""
-    return text.replace("|", "\\|").replace("\n", " ").strip()
+    return text.replace("|", "\\|").replace("\n", " ").replace("\r", " ").strip()
+
+
+def _flatten(text: str) -> str:
+    """Flatten newlines into single-space for bullet-list rendering.
+
+    Gemini Minor: subagent descriptions written as YAML block scalars contain
+    `\n` which break the markdown bullet layout.
+    """
+    if not text:
+        return ""
+    return " ".join(text.split())
 
 
 def render(
@@ -414,7 +488,7 @@ def render(
             "",
             f"- **Model**: {a['model'] or '(not set)'}",
             f"- **Tools**: {_tools_str(a['tools']) or '(not set)'}",
-            f"- **Description**: {a['description'] or '(missing)'}",
+            f"- **Description**: {_flatten(a['description']) or '(missing)'}",
             f"- **File**: `{a['path']}`",
             "",
         ]
@@ -473,7 +547,7 @@ def render(
     if skills:
         for s in skills:
             lines.append(
-                f"- **{s['name']}** — {s['description']} (`{Path(s['path']).name}`)"
+                f"- **{s['name']}** — {_flatten(s['description'])} (`{Path(s['path']).name}`)"
             )
     else:
         lines.append("_(none found)_")
