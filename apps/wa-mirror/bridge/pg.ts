@@ -1,10 +1,12 @@
-// pg.ts — thin asyncpg-equivalent wrapper for wa-mirror.
+// pg.ts — thin Postgres wrapper for wa-mirror.
 // Uses node-postgres `pg` driver. Single shared pool across the daemon
 // because each Baileys session writes a small amount of data (one row per
 // message + one heartbeat update per minute), well below pool saturation.
 
 import pg from "pg";
 import type { PoolConfig, QueryResult } from "pg";
+
+import { normalizePhone, phoneSearchVariants } from "./phone.js";
 
 let _pool: pg.Pool | null = null;
 
@@ -59,21 +61,61 @@ export async function closePool(): Promise<void> {
 export async function findClientByPhone(
   phoneRaw: string
 ): Promise<number | null> {
-  const normalized = phoneRaw.replace(/[^\d]/g, "");
-  if (normalized.length < 8) return null;
+  const variants = phoneSearchVariants(phoneRaw);
+  if (variants.length === 0) return null;
   // Match strategies (most → least specific):
   //   1. exact phone_normalized
   //   2. exact whatsapp (digit-stripped)
   //   3. exact phone (digit-stripped)
   // Indonesian numbers may be stored as 0812..., 62812..., or +62812...
-  // The digit-stripped form removes the ambiguity.
+  // The variant array covers canonical E.164, digit-only, and local 08...
+  // forms without dropping prospects when no row matches.
   const sql = `
     SELECT id FROM clients
-    WHERE regexp_replace(COALESCE(phone_normalized, ''), '\\D', '', 'g') = $1
-       OR regexp_replace(COALESCE(whatsapp, ''),         '\\D', '', 'g') = $1
-       OR regexp_replace(COALESCE(phone, ''),            '\\D', '', 'g') = $1
+    WHERE COALESCE(phone_normalized, '') = ANY($1::text[])
+       OR COALESCE(whatsapp, '') = ANY($1::text[])
+       OR COALESCE(phone, '') = ANY($1::text[])
+       OR regexp_replace(COALESCE(phone_normalized, ''), '\\D', '', 'g') = ANY($1::text[])
+       OR regexp_replace(COALESCE(whatsapp, ''),         '\\D', '', 'g') = ANY($1::text[])
+       OR regexp_replace(COALESCE(phone, ''),            '\\D', '', 'g') = ANY($1::text[])
     LIMIT 1
   `;
-  const res = await query<{ id: number }>(sql, [normalized]);
+  const res = await query<{ id: number }>(sql, [variants]);
   return res.rowCount && res.rowCount > 0 ? res.rows[0].id : null;
+}
+
+export async function findOpenPracticeForClient(
+  clientId: number
+): Promise<number | null> {
+  const res = await query<{ id: number }>(
+    `SELECT id
+       FROM practices
+      WHERE client_id = $1
+        AND COALESCE(status, '') NOT IN (
+          'completed', 'cancelled', 'canceled', 'rejected', 'archived'
+        )
+      ORDER BY updated_at DESC NULLS LAST, created_at DESC NULLS LAST, id DESC
+      LIMIT 1`,
+    [clientId]
+  );
+  return res.rowCount && res.rowCount > 0 ? res.rows[0].id : null;
+}
+
+export async function touchWhatsAppContact(opts: {
+  phone: string;
+  name: string;
+}): Promise<void> {
+  const canonical = normalizePhone(opts.phone);
+  if (!canonical) return;
+  await query(
+    `INSERT INTO whatsapp_contacts
+       (phone, phone_normalized, name, contact_type, imported_from, last_message_at, total_messages)
+     VALUES ($1, $2, $3, 'client', 'wa_mirror', NOW(), 1)
+     ON CONFLICT (phone) DO UPDATE
+       SET phone_normalized = EXCLUDED.phone_normalized,
+           last_message_at = NOW(),
+           total_messages = whatsapp_contacts.total_messages + 1,
+           updated_at = NOW()`,
+    [canonical, canonical.replace(/[^\d]/g, ""), opts.name.slice(0, 255)]
+  );
 }

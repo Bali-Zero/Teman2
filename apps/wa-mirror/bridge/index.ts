@@ -1,8 +1,8 @@
 // index.ts — wa-mirror orchestrator. Entry point for `npm start`.
 //
-// Reads the team roster from the env var WA_MIRROR_TEAM_MEMBERS
-//   ("alice@balizero.com,bob@balizero.com,...") and starts one Baileys
-// session per email. Each session runs `startSession` with
+// Reads the team roster from the env var WA_MIRROR_ACCOUNTS
+//   ("+62812...,+62813...") and starts one Baileys session per phone.
+// Each session runs `startSession` with
 // resolveOnFirstOpen=false, so its promise NEVER resolves under normal
 // operation — the reconnect loop inside session.ts keeps it alive across
 // transient closes (restartRequired 515, connectionLost 408, etc.).
@@ -19,68 +19,116 @@ import "dotenv/config";
 import pino from "pino";
 
 import { closePool } from "./pg.js";
+import { normalizePhone } from "./phone.js";
 import { startSession } from "./session.js";
+import { sendTelegramAlert } from "./telegram.js";
 
 const logger = pino({
   level: process.env.WA_MIRROR_LOG_LEVEL ?? "info",
   base: undefined,
 });
 
-function parseRoster(): string[] {
-  const raw = process.env.WA_MIRROR_TEAM_MEMBERS ?? "";
+type AccountConfig = {
+  phone: string;
+  name: string;
+};
+
+function parseAccounts(): AccountConfig[] {
+  const raw =
+    process.env.WA_MIRROR_ACCOUNTS ?? process.env.WA_MIRROR_TEAM_MEMBERS ?? "";
+  const names = parseAccountNames();
   return raw
     .split(",")
-    .map((s) => s.trim().toLowerCase())
-    .filter((s) => s.length > 0 && s.includes("@"));
+    .map((s) => normalizePhone(s.trim()))
+    .filter((phone) => phone.length > 0)
+    .map((phone) => ({
+      phone,
+      name: names.get(phone) ?? phone,
+    }));
+}
+
+function parseAccountNames(): Map<string, string> {
+  const names = new Map<string, string>();
+  const raw = process.env.WA_MIRROR_ACCOUNT_NAMES;
+  if (!raw) return names;
+  try {
+    const parsed = JSON.parse(raw) as Record<string, string>;
+    for (const [phone, name] of Object.entries(parsed)) {
+      const normalized = normalizePhone(phone);
+      if (normalized && name.trim()) names.set(normalized, name.trim());
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.warn({ msg }, "WA_MIRROR_ACCOUNT_NAMES is not valid JSON");
+  }
+  return names;
 }
 
 async function main(): Promise<void> {
-  const roster = parseRoster();
-  if (roster.length === 0) {
+  const accounts = parseAccounts();
+  if (accounts.length === 0) {
     logger.error(
-      "WA_MIRROR_TEAM_MEMBERS is empty. Set it to a comma-separated list of " +
-        "team-member emails before starting the daemon."
+      "WA_MIRROR_ACCOUNTS is empty. Set it to comma-separated E.164 phones " +
+        "before starting the daemon."
     );
     process.exit(2);
   }
-  logger.info({ count: roster.length, members: roster }, "wa-mirror starting");
+  logger.info({ count: accounts.length, accounts }, "wa-mirror starting");
 
   // Each startSession promise is expected to stay pending forever (the
   // reconnect loop owns the lifecycle). We attach a .catch purely to observe
   // the terminal loggedOut rejection — we never let it bubble or tear down
   // the process. The daemon keeps running so the OTHER members stay mirrored
   // and so a re-onboarded member is picked up on the next daemon restart.
-  for (const email of roster) {
-    startSession({
-      teamMemberEmail: email,
-      sessionLabel: process.env.WA_MIRROR_SESSION_LABEL,
-      sessionsRoot: process.env.WA_MIRROR_SESSIONS_ROOT,
-      resolveOnFirstOpen: false,
-    })
-      .then(() => {
-        // Should not happen with resolveOnFirstOpen=false, but log if it does.
-        logger.warn(
-          { email },
-          "wa-mirror session promise resolved unexpectedly (daemon mode)"
-        );
-      })
-      .catch((err) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        logger.error(
-          { email, msg },
-          "wa-mirror session terminated (logged out — needs re-onboarding)"
-        );
-      });
+  for (const account of accounts) {
+    void runAccountForever(account);
   }
 
   logger.info(
-    { count: roster.length },
+    { count: accounts.length },
     "wa-mirror all sessions launched; reconnect loops own their lifecycle"
   );
 
   // Keep the process up forever — Baileys event handlers and the reconnect
   // setTimeout callbacks fire async. SIGINT/SIGTERM handle shutdown.
   await new Promise<void>(() => undefined);
+}
+
+async function runAccountForever(account: AccountConfig): Promise<void> {
+  let attempt = 0;
+  for (;;) {
+    attempt += 1;
+    try {
+      await startSession({
+        accountPhone: account.phone,
+        teamMemberName: account.name,
+        sessionLabel: process.env.WA_MIRROR_SESSION_LABEL,
+        sessionsRoot: process.env.WA_MIRROR_SESSIONS_ROOT,
+        resolveOnFirstOpen: false,
+      });
+      logger.warn(
+        { account },
+        "wa-mirror session promise resolved unexpectedly (daemon mode)"
+      );
+      attempt = 0;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      const delayMs = Math.min(2_000 * 2 ** Math.min(attempt - 1, 5), 60_000);
+      logger.error(
+        { account, msg, attempt, delayMs },
+        "wa-mirror session crashed; restarting with backoff"
+      );
+      await sendTelegramAlert(
+        `wa-mirror disconnected: ${account.name} (${account.phone}); reconnect_attempt=${attempt}; error=${msg}`,
+        logger
+      );
+      await sleep(delayMs);
+    }
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function shutdown(signal: string): Promise<void> {

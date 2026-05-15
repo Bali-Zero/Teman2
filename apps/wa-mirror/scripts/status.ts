@@ -8,6 +8,8 @@ import { closePool, query } from "../bridge/pg.js";
 type Row = {
   id: number;
   team_member_email: string;
+  team_member_phone: string | null;
+  team_member_name: string | null;
   phone_normalized: string;
   status: string;
   connected_at: string | null;
@@ -20,7 +22,8 @@ type Row = {
 
 async function main(): Promise<void> {
   const res = await query<Row>(
-    `SELECT id, team_member_email, phone_normalized, status,
+    `SELECT id, team_member_email, team_member_phone, team_member_name,
+            phone_normalized, status,
             connected_at, last_seen_at, disconnected_at, disconnect_reason,
             messages_logged, messages_filtered
        FROM whatsapp_team_sessions
@@ -34,13 +37,15 @@ async function main(): Promise<void> {
   }
 
   const lines = [
-    "id  email                              phone           status        logged  filtered  last_seen",
-    "--- ---------------------------------- --------------- ------------- ------- --------- ------------------",
+    "id  name                  account         status        logged  filtered  last_seen",
+    "--- --------------------- --------------- ------------- ------- --------- ------------------",
   ];
   for (const r of res.rows) {
     const last = r.last_seen_at ?? r.disconnected_at ?? "-";
+    const account = r.team_member_phone ?? r.phone_normalized ?? r.team_member_email;
+    const name = r.team_member_name ?? r.team_member_email;
     lines.push(
-      `${pad(String(r.id), 3)} ${pad(r.team_member_email, 34)} ${pad(r.phone_normalized, 15)} ${pad(r.status, 13)} ${pad(r.messages_logged, 7)} ${pad(r.messages_filtered, 9)} ${last}`
+      `${pad(String(r.id), 3)} ${pad(name, 21)} ${pad(account, 15)} ${pad(r.status, 13)} ${pad(r.messages_logged, 7)} ${pad(r.messages_filtered, 9)} ${last}`
     );
   }
   process.stdout.write(lines.join("\n") + "\n");

@@ -5,7 +5,7 @@
 //
 // Architecture notes:
 // - Auth state is persisted to disk via `useMultiFileAuthState` (Baileys
-//   convention). Path: ~/.wa-mirror/sessions/<email>/.
+//   convention). Path: apps/wa-mirror/sessions/<e164_phone>/ by default.
 // - The QR code is printed to stderr ONLY during the very first connect
 //   (when no auth state exists yet). Subsequent restarts pick up the saved
 //   credentials silently.
@@ -40,7 +40,11 @@ import QRCode from "qrcode";
 
 import { emitMessageReceived } from "./events.js";
 import { jidToPhone } from "./filters.js";
-import { findClientByPhone } from "./pg.js";
+import {
+  findClientByPhone,
+  findOpenPracticeForClient,
+  touchWhatsAppContact,
+} from "./pg.js";
 import {
   incrementMessagesFiltered,
   incrementMessagesLogged,
@@ -50,6 +54,15 @@ import {
   touch,
 } from "./heartbeat.js";
 import { query } from "./pg.js";
+import {
+  PgMessageContextStore,
+  extractMessageRecord,
+  persistCapturedMessage,
+} from "./message_capture.js";
+import type { MessageContextStore, WaMirrorAccount } from "./message_capture.js";
+import { queueMediaDownload } from "./media.js";
+import { normalizePhone, phoneDigits } from "./phone.js";
+import { sendTelegramAlert } from "./telegram.js";
 
 const logger = pino({
   level: process.env.WA_MIRROR_LOG_LEVEL ?? "info",
@@ -57,7 +70,8 @@ const logger = pino({
 });
 
 export type StartSessionOptions = {
-  teamMemberEmail: string;
+  accountPhone: string;
+  teamMemberName?: string;
   /** Bali Zero-side number once the team member scans the QR. Falls back to
    *  the JID Baileys reports on `open`. Used only as fallback when the
    *  operator did not pre-populate the row. */
@@ -77,8 +91,7 @@ export type StartSessionOptions = {
 };
 
 const DEFAULT_SESSIONS_ROOT = path.join(
-  process.env.HOME ?? "/Users/nuzantara",
-  ".wa-mirror",
+  process.cwd(),
   "sessions"
 );
 
@@ -104,37 +117,49 @@ const RECONNECT_MAX_MS = 60_000;
  */
 export async function startSession(opts: StartSessionOptions): Promise<number> {
   const sessionsRoot = opts.sessionsRoot ?? DEFAULT_SESSIONS_ROOT;
-  const authDir = path.join(sessionsRoot, opts.teamMemberEmail.toLowerCase());
+  const accountPhone = normalizePhone(opts.accountPhone);
+  if (!accountPhone) {
+    throw new Error(`wa-mirror: invalid account phone ${opts.accountPhone}`);
+  }
+  const teamMemberName = opts.teamMemberName ?? accountPhone;
+  const authDir = path.join(sessionsRoot, accountPhone);
   await mkdir(authDir, { recursive: true });
 
   const sessionLabel = opts.sessionLabel ?? DEFAULT_LABEL;
 
   const sessionRow = await openSession({
-    teamMemberEmail: opts.teamMemberEmail,
-    phoneNormalized: (opts.expectedPhone ?? "").replace(/[^\d]/g, ""),
+    teamMemberKey: accountPhone,
+    teamMemberPhone: accountPhone,
+    teamMemberName,
+    phoneNormalized: phoneDigits(opts.expectedPhone ?? accountPhone),
     sessionLabel,
     authStatePath: authDir,
   });
   logger.info(
-    { sessionId: sessionRow.id, email: opts.teamMemberEmail },
+    { sessionId: sessionRow.id, accountPhone, teamMemberName },
     "wa-mirror session row opened"
   );
 
   return connectWithRetry({
     sessionId: sessionRow.id,
-    teamMemberEmail: opts.teamMemberEmail,
+    account: {
+      phone: accountPhone,
+      name: teamMemberName,
+    },
     authDir,
     sessionLabel,
     resolveOnFirstOpen: opts.resolveOnFirstOpen ?? false,
+    store: new PgMessageContextStore(),
   });
 }
 
 type ConnectContext = {
   sessionId: number;
-  teamMemberEmail: string;
+  account: WaMirrorAccount;
   authDir: string;
   sessionLabel: string;
   resolveOnFirstOpen: boolean;
+  store: MessageContextStore;
 };
 
 /**
@@ -172,7 +197,7 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
         },
         printQRInTerminal: false,
         browser: [ctx.sessionLabel, "Chrome", "1.0.0"],
-        logger: logger.child({ baileys: ctx.teamMemberEmail }),
+        logger: logger.child({ baileys: ctx.account.phone }),
         markOnlineOnConnect: false,
         syncFullHistory: false,
         shouldSyncHistoryMessage: () => false,
@@ -256,25 +281,26 @@ async function handleConnectionUpdate(
   const { connection, lastDisconnect, qr } = update;
 
   if (qr) {
-    const qrPath = `/tmp/qr-${ctx.teamMemberEmail.split("@")[0]}.png`;
+    const qrPath = `/tmp/qr-${phoneDigits(ctx.account.phone)}.png`;
     await QRCode.toFile(qrPath, qr, { width: 400 });
     process.stderr.write(
-      `\n[wa-mirror] QR salvato in ${qrPath} — aprilo con: open ${qrPath}\n`
+      `\n[wa-mirror] QR saved to ${qrPath} — open it with: open ${qrPath}\n`
     );
     qrcodeTerminal.generate(qr, { small: true }, (qrAscii) => {
-      process.stderr.write(qrAscii);
-      process.stderr.write("\n");
+      process.stdout.write(qrAscii);
+      process.stdout.write("\n");
     });
   }
 
   if (connection === "open") {
-    const ownPhone = jidToPhone(sock.user?.id);
+    const ownPhone = normalizePhone(jidToPhone(sock.user?.id)) || ctx.account.phone;
     try {
       await query(
         `UPDATE whatsapp_team_sessions
-           SET phone_normalized = COALESCE(NULLIF($1, ''), phone_normalized)
-         WHERE id = $2`,
-        [ownPhone, ctx.sessionId]
+         SET phone_normalized = COALESCE(NULLIF($1, ''), phone_normalized),
+               team_member_phone = COALESCE(NULLIF($2, ''), team_member_phone)
+         WHERE id = $3`,
+        [phoneDigits(ownPhone), ownPhone, ctx.sessionId]
       );
       await markConnected(ctx.sessionId);
     } catch (err) {
@@ -288,9 +314,13 @@ async function handleConnectionUpdate(
       { sessionId: ctx.sessionId, ownPhone },
       "wa-mirror session connected"
     );
-    deps.settleResolve();
+    await sendTelegramAlert(
+      `wa-mirror connected: ${ctx.account.name} (${ownPhone})`,
+      logger
+    );
     if (ctx.resolveOnFirstOpen) {
       // onboard.ts: auth state is persisted, our job is done.
+      deps.settleResolve();
       deps.stop();
     }
     return;
@@ -322,15 +352,26 @@ async function handleConnectionUpdate(
     }
 
     logger.warn(
-      { sessionId: ctx.sessionId, code, reason, terminal },
+      {
+        sessionId: ctx.sessionId,
+        accountPhone: ctx.account.phone,
+        code,
+        reason,
+        terminal,
+        attempt: deps.attempt,
+      },
       "wa-mirror session closed"
+    );
+    await sendTelegramAlert(
+      `wa-mirror disconnected: ${ctx.account.name} (${ctx.account.phone}); reason=${reason}; reconnect_attempt=${deps.attempt}`,
+      logger
     );
 
     if (terminal) {
       // Device removed from the phone's Linked Devices — needs a fresh QR.
       deps.settleReject(
         new Error(
-          `wa-mirror: session for ${ctx.teamMemberEmail} logged out: ${reason}`
+          `wa-mirror: session for ${ctx.account.phone} logged out: ${reason}`
         )
       );
       return;
@@ -352,89 +393,75 @@ async function handleConnectionUpdate(
 }
 
 function registerMessageHandler(sock: WASocket, ctx: ConnectContext): void {
+  let consecutiveDbErrors = 0;
+
   sock.ev.on("messages.upsert", async (event) => {
     if (event.type !== "notify" && event.type !== "append") return;
     for (const m of event.messages) {
-      if (!m.message) continue;
       try {
-        const direction = m.key.fromMe ? "outbound" : "inbound";
-        const counterpartJid = m.key.remoteJid ?? "";
-        const teamMemberPhone = jidToPhone(sock.user?.id);
-
-        const counterpartPhone = jidToPhone(counterpartJid);
-        // Skip groups and empty JIDs.
-        if (!counterpartPhone) {
-          await incrementMessagesFiltered(ctx.sessionId);
-          continue;
-        }
-        // Skip self-messages (team member messaging themselves).
-        if (counterpartPhone === teamMemberPhone.replace(/[^\d]/g, "")) {
+        const record = extractMessageRecord(m, ctx.account);
+        if (record === null) {
           await incrementMessagesFiltered(ctx.sessionId);
           continue;
         }
 
-        const text = extractText(m.message);
-        if (!text && !hasMedia(m.message)) {
-          await incrementMessagesFiltered(ctx.sessionId);
-          continue;
+        try {
+          await touchWhatsAppContact({
+            phone: record.counterpartPhone,
+            name: m.pushName ?? `wa:${record.counterpartPhone}`,
+          });
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : String(err);
+          logger.warn(
+            { sessionId: ctx.sessionId, msg },
+            "wa-mirror contact touch failed (message capture continues)"
+          );
         }
 
-        // Look up client in CRM — optional, contactId may be null.
-        const clientId = await findClientByPhone(counterpartPhone);
-
-        // Ensure a whatsapp_contacts row exists for the counterpart.
-        const counterpartName =
-          m.pushName ?? `wa:${counterpartPhone}`;
-        const contactRes = await query<{ id: number }>(
-          `INSERT INTO whatsapp_contacts (phone, phone_normalized, name, contact_type, imported_from)
-           VALUES ($1, $1, $2, 'client', 'wa_mirror')
-           ON CONFLICT (phone) DO UPDATE
-             SET last_message_at = NOW(),
-                 total_messages = whatsapp_contacts.total_messages + 1,
-                 updated_at = NOW()
-           RETURNING id`,
-          [counterpartPhone, counterpartName.slice(0, 255)]
-        );
-        const contactId = contactRes.rows[0].id;
-
-        const messageDate = m.messageTimestamp
-          ? new Date(Number(m.messageTimestamp) * 1000)
-          : new Date();
-
-        const insertRes = await query<{ id: number }>(
-          `INSERT INTO whatsapp_message_context
-             (contact_id, direction, message_text, message_date,
-              team_member_email, source, bridge_session_id)
-           VALUES ($1, $2, $3, $4, $5, 'wa_mirror', $6)
-           RETURNING id`,
-          [
-            contactId,
-            direction,
-            text ?? "[media]",
-            messageDate.toISOString(),
-            ctx.teamMemberEmail,
-            ctx.sessionId,
-          ]
-        );
-        const messageContextId = insertRes.rows[0].id;
+        const persisted = await persistCapturedMessage(record, {
+          store: ctx.store,
+          resolveClientId: findClientByPhone,
+          resolvePracticeId: findOpenPracticeForClient,
+        });
+        consecutiveDbErrors = 0;
 
         await incrementMessagesLogged(ctx.sessionId);
 
         await emitMessageReceived({
-          message_context_id: messageContextId,
+          message_context_id: persisted.id,
           bridge_session_id: ctx.sessionId,
-          team_member_email: ctx.teamMemberEmail,
-          client_id: clientId,
-          direction,
-          message_date: messageDate.toISOString(),
-          preview: (text ?? "[media]").slice(0, 120),
+          team_member_email: ctx.account.phone,
+          client_id: persisted.row.clientId,
+          direction: record.direction,
+          message_date: record.timestamp.toISOString(),
+          preview: (record.body || `[${record.mediaType}]`).slice(0, 120),
+        });
+
+        queueMediaDownload({
+          sock,
+          rawMessage: m,
+          messageContextId: persisted.id,
+          record,
+          store: ctx.store,
+          logger,
         });
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
+        consecutiveDbErrors += 1;
         logger.warn(
-          { sessionId: ctx.sessionId, msg },
+          {
+            sessionId: ctx.sessionId,
+            msg,
+            consecutiveDbErrors,
+          },
           "wa-mirror message persist failed"
         );
+        if (consecutiveDbErrors > 5) {
+          await sendTelegramAlert(
+            `wa-mirror DB write errors >5: ${ctx.account.name} (${ctx.account.phone}); latest=${msg}`,
+            logger
+          );
+        }
       }
     }
     await touch(ctx.sessionId);
@@ -481,33 +508,4 @@ export function mapCloseReason(code: number): string {
  */
 export function isTerminalCloseCode(code: number): boolean {
   return code === DisconnectReason.loggedOut;
-}
-
-// Accepts Baileys' proto.IMessage (no index signature) or any message-shaped
-// object. We narrow with a cast to the handful of fields we read.
-function extractText(message: unknown): string | null {
-  const m = (message ?? {}) as {
-    conversation?: string;
-    extendedTextMessage?: { text?: string };
-    imageMessage?: { caption?: string };
-    videoMessage?: { caption?: string };
-    documentMessage?: { caption?: string; fileName?: string };
-  };
-  if (typeof m.conversation === "string" && m.conversation.length > 0) {
-    return m.conversation;
-  }
-  if (m.extendedTextMessage?.text) return m.extendedTextMessage.text;
-  if (m.imageMessage?.caption) return m.imageMessage.caption;
-  if (m.videoMessage?.caption) return m.videoMessage.caption;
-  if (m.documentMessage?.caption) return m.documentMessage.caption;
-  if (m.documentMessage?.fileName) return `[doc] ${m.documentMessage.fileName}`;
-  return null;
-}
-
-function hasMedia(message: unknown): boolean {
-  if (message === null || typeof message !== "object") return false;
-  const keys = Object.keys(message as Record<string, unknown>);
-  return keys.some((k) =>
-    ["imageMessage", "videoMessage", "documentMessage", "audioMessage"].includes(k)
-  );
 }

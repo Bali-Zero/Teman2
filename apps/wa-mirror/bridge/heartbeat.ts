@@ -14,6 +14,8 @@ import { query } from "./pg.js";
 export type SessionRow = {
   id: number;
   team_member_email: string;
+  team_member_phone?: string;
+  team_member_name?: string;
   phone_normalized: string;
   session_label: string;
   auth_state_path: string;
@@ -28,7 +30,9 @@ export type SessionRow = {
  * Otherwise INSERT a new row.
  */
 export async function openSession(opts: {
-  teamMemberEmail: string;
+  teamMemberKey: string;
+  teamMemberPhone: string;
+  teamMemberName: string;
   phoneNormalized: string;
   sessionLabel: string;
   authStatePath: string;
@@ -43,7 +47,7 @@ export async function openSession(opts: {
     ORDER BY created_at DESC
     LIMIT 1
   `;
-  const existing = await query<SessionRow>(findSql, [opts.teamMemberEmail]);
+  const existing = await query<SessionRow>(findSql, [opts.teamMemberKey]);
   if (existing.rowCount && existing.rowCount > 0) {
     const row = existing.rows[0];
     // Update auth path in case it moved on disk between restarts.
@@ -52,10 +56,19 @@ export async function openSession(opts: {
          SET auth_state_path = $1,
              phone_normalized = $2,
              session_label = $3,
+             team_member_phone = $4,
+             team_member_name = $5,
              status = 'pending',
              updated_at = NOW()
-       WHERE id = $4`,
-      [opts.authStatePath, opts.phoneNormalized, opts.sessionLabel, row.id]
+       WHERE id = $6`,
+      [
+        opts.authStatePath,
+        opts.phoneNormalized,
+        opts.sessionLabel,
+        opts.teamMemberPhone,
+        opts.teamMemberName,
+        row.id,
+      ]
     );
     return { ...row, status: "pending" };
   }
@@ -63,13 +76,16 @@ export async function openSession(opts: {
   // 2. Otherwise INSERT a fresh row.
   const insertSql = `
     INSERT INTO whatsapp_team_sessions
-      (team_member_email, phone_normalized, session_label, auth_state_path, status)
-    VALUES ($1, $2, $3, $4, 'pending')
+      (team_member_email, team_member_phone, team_member_name,
+       phone_normalized, session_label, auth_state_path, status)
+    VALUES ($1, $2, $3, $4, $5, $6, 'pending')
     RETURNING id, team_member_email, phone_normalized, session_label,
               auth_state_path, status
   `;
   const inserted = await query<SessionRow>(insertSql, [
-    opts.teamMemberEmail,
+    opts.teamMemberKey,
+    opts.teamMemberPhone,
+    opts.teamMemberName,
     opts.phoneNormalized,
     opts.sessionLabel,
     opts.authStatePath,
