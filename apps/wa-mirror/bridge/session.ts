@@ -135,10 +135,7 @@ export async function startSession(opts: StartSessionOptions): Promise<number> {
     sessionLabel,
     authStatePath: authDir,
   });
-  logger.info(
-    { sessionId: sessionRow.id, teamMemberName },
-    "wa-mirror session row opened"
-  );
+  logger.info({ sessionId: sessionRow.id }, "wa-mirror session row opened");
 
   return connectWithRetry({
     sessionId: sessionRow.id,

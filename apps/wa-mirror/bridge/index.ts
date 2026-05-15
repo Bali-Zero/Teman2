@@ -107,7 +107,6 @@ async function runAccountForever(account: AccountConfig): Promise<void> {
         resolveOnFirstOpen: false,
       });
       logger.warn(
-        { accountName: account.name },
         "wa-mirror session promise resolved unexpectedly (daemon mode)"
       );
       attempt = 0;
@@ -115,7 +114,7 @@ async function runAccountForever(account: AccountConfig): Promise<void> {
       const msg = err instanceof Error ? err.message : String(err);
       const delayMs = Math.min(2_000 * 2 ** Math.min(attempt - 1, 5), 60_000);
       logger.error(
-        { accountName: account.name, msg, attempt, delayMs },
+        { msg, attempt, delayMs },
         "wa-mirror session crashed; restarting with backoff"
       );
       await sendTelegramAlert(
