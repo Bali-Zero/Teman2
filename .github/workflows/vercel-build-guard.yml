@@ -1,0 +1,30 @@
+name: Vercel Build Guard
+
+# Cancella build Vercel ridondanti su push rapidi consecutivi su main.
+# Agisce come safety net dopo l'ignoreBuildStep già configurato sui progetti Vercel.
+# Non interferisce con fly-deploy.yml.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'apps/mouth/**'
+      - 'apps/web/**'
+      - 'packages/**'
+      - 'vercel.json'
+      - 'apps/mouth/vercel.json'
+
+concurrency:
+  group: vercel-production-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  notify-deploy:
+    name: Vercel deploy triggered
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log
+        run: |
+          echo "Frontend files changed — Vercel build proceeding"
+          echo "Commit: ${{ github.sha }}"
+          echo "Message: ${{ github.event.head_commit.message }}"

@@ -47,16 +47,19 @@ def _is_transient(exc: Exception) -> bool:
 
 def upload_pdf(s3: Any, pdf_path: Path, *, draft_id: str,
                prefix: str = "wr2-pdf",
-               content_addressed: bool = True) -> str:
-    """Upload PDF to Tigris S3, return public URL.
+               content_addressed: bool = True) -> tuple[str, str]:
+    """Upload PDF to Tigris S3, return (public_url, s3_key).
 
     Fix 2026-05-15 [Codex find]: previously key was hardcoded as
     `{prefix}/{draft_id}.pdf` — every retry/rerender overwrote the same
     URL while Canva or CDN could serve stale bytes. New default:
     content-addressed key `{prefix}/{draft_id}/{sha256_first8}.pdf` so
     each render version is its own URL. Legacy single-key mode retained
-    via content_addressed=False for backwards compatibility (legacy
-    callers that rely on the predictable URL).
+    via content_addressed=False for backwards compatibility.
+
+    Fix 2026-05-16 [DeepSeek find]: returns (url, key) tuple so callers
+    can pass the exact key to delete_pdf_by_key() on cleanup, avoiding
+    orphaned S3 objects when Canva import fails.
     """
     import hashlib as _hl
     body = pdf_path.read_bytes()
@@ -86,7 +89,7 @@ def upload_pdf(s3: Any, pdf_path: Path, *, draft_id: str,
                             head.get("ETag", "?"), head.get("ContentLength", "?"))
             except Exception as e:  # noqa: BLE001
                 logger.warning("Tigris HEAD verify failed (non-fatal): %s", e)
-            return f"https://{PUBLIC_HOST}/{key}"
+            return f"https://{PUBLIC_HOST}/{key}", key
         except (ClientError, BotoCoreError) as e:
             last_exc = e
             if not _is_transient(e):
@@ -102,13 +105,26 @@ def upload_pdf(s3: Any, pdf_path: Path, *, draft_id: str,
 
 
 def delete_pdf(s3: Any, *, draft_id: str, prefix: str = "wr2-pdf") -> None:
-    """Best-effort delete of LEGACY single-key path. Never raises."""
+    """Best-effort delete of LEGACY single-key path. Never raises.
+
+    DEPRECATED: does NOT delete content-addressed keys. Use delete_pdf_by_key()
+    with the key returned from upload_pdf().
+    """
     key = f"{prefix}/{draft_id}.pdf"
     try:
         s3.delete_object(Bucket=BUCKET, Key=key)
         logger.info("Tigris delete OK: %s", key)
     except Exception as e:  # noqa: BLE001
         logger.warning("Tigris delete failed (swallowed): %s — %s", key, e)
+
+
+def delete_pdf_by_key(s3: Any, *, key: str) -> None:
+    """Best-effort delete of an exact S3 key (content-addressed or legacy). Never raises."""
+    try:
+        s3.delete_object(Bucket=BUCKET, Key=key)
+        logger.info("Tigris delete_by_key OK: %s", key)
+    except Exception as e:  # noqa: BLE001
+        logger.warning("Tigris delete_by_key failed (swallowed): %s — %s", key, e)
 
 
 def build_public_url(draft_id: str, *, prefix: str = "wr2-pdf") -> str:

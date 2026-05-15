@@ -40,6 +40,7 @@ from backend.services.canva_renderer_v2._telemetry import log_telemetry
 from backend.services.canva_renderer_v2._tigris import (
     TigrisError,
     delete_pdf,
+    delete_pdf_by_key,
     get_s3_client,
     upload_pdf,
 )
@@ -133,7 +134,7 @@ async def process_draft(
 
     # Step C — Tigris upload
     try:
-        pdf_url = upload_pdf(s3, pdf_path, draft_id=str(draft_id), prefix=tigris_prefix)
+        pdf_url, pdf_s3_key = upload_pdf(s3, pdf_path, draft_id=str(draft_id), prefix=tigris_prefix)
     except TigrisError as e:
         await _pg.release_lease_permanent(
             conn, draft_id=draft_id, status="pdf_render_failed", reason=str(e),
@@ -153,7 +154,7 @@ async def process_draft(
     try:
         design_id, edit_url = await mcp_client.import_design_from_url(pdf_url, title=topic[:80])
     except Exception as e:
-        delete_pdf(s3, draft_id=str(draft_id), prefix=tigris_prefix)
+        delete_pdf_by_key(s3, key=pdf_s3_key)
         if is_transient_error(e):
             await _pg.release_lease_transient(
                 conn, draft_id=draft_id, reason=f"{type(e).__name__}: {e}"

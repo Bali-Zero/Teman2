@@ -43,9 +43,12 @@ async def test_process_draft_happy_path(tmp_path, monkeypatch):
         return_value=tmp_path / "fake.pdf",
     ), patch(
         "backend.services.canva_renderer_v2.orchestrator.upload_pdf",
-        return_value="https://nuzantara-warroom-images.fly.storage.tigris.dev/wr2-pdf/abc-uuid.pdf",
+        return_value=(
+            "https://nuzantara-warroom-images.fly.storage.tigris.dev/wr2-pdf/abc-uuid/deadbeef.pdf",
+            "wr2-pdf/abc-uuid/deadbeef.pdf",
+        ),
     ), patch(
-        "backend.services.canva_renderer_v2.orchestrator.delete_pdf",
+        "backend.services.canva_renderer_v2.orchestrator.delete_pdf_by_key",
     ):
         (tmp_path / "fake.pdf").write_bytes(b"%PDF-1.4")
         ok = await process_draft(
@@ -73,20 +76,20 @@ async def test_process_draft_429_releases_transient_and_deletes_pdf(tmp_path):
     mcp_client.import_design_from_url.side_effect = err
 
     s3 = MagicMock()
-    deleted: list[str] = []
+    deleted_keys: list[str] = []
 
-    def fake_delete(s3_, **kwargs):
-        deleted.append(kwargs.get("draft_id", ""))
+    def fake_delete_by_key(s3_, *, key: str) -> None:
+        deleted_keys.append(key)
 
     with patch(
         "backend.services.canva_renderer_v2.orchestrator.render_pdf",
         return_value=tmp_path / "fake.pdf",
     ), patch(
         "backend.services.canva_renderer_v2.orchestrator.upload_pdf",
-        return_value="https://test/wr2-pdf/abc-uuid.pdf",
+        return_value=("https://test/wr2-pdf/abc-uuid/deadbeef.pdf", "wr2-pdf/abc-uuid/deadbeef.pdf"),
     ), patch(
-        "backend.services.canva_renderer_v2.orchestrator.delete_pdf",
-        side_effect=fake_delete,
+        "backend.services.canva_renderer_v2.orchestrator.delete_pdf_by_key",
+        side_effect=fake_delete_by_key,
     ):
         (tmp_path / "fake.pdf").write_bytes(b"%PDF-1.4")
         ok = await process_draft(
@@ -94,7 +97,7 @@ async def test_process_draft_429_releases_transient_and_deletes_pdf(tmp_path):
             draft_id="abc-uuid", lease_owner="pid@host",
         )
         assert ok is False
-        assert "abc-uuid" in deleted
+        assert any("abc-uuid" in k for k in deleted_keys)
         # release_lease_transient called → status='drafts_imaged_checked'
         sql_calls = [c.args[0] for c in conn.execute.call_args_list]
         assert any("status = 'drafts_imaged_checked'" in s for s in sql_calls)
