@@ -14,6 +14,10 @@ import { phonePathSegment } from "./phone.js";
 const DEFAULT_MEDIA_ROOT = path.join(homedir(), "wa-mirror-media");
 let ocrEndpointExists: Promise<boolean> | null = null;
 
+function errorType(err: unknown): string {
+  return err instanceof Error && err.name ? err.name : typeof err;
+}
+
 export function queueMediaDownload(opts: {
   sock: WASocket;
   rawMessage: unknown;
@@ -28,12 +32,10 @@ export function queueMediaDownload(opts: {
 
   setImmediate(() => {
     downloadAndStoreMedia(opts).catch((err) => {
-      const msg = err instanceof Error ? err.message : String(err);
       opts.logger.warn(
         {
-          msg,
+          errorType: errorType(err),
           messageContextId: opts.messageContextId,
-          baileysMessageId: opts.record.baileysMessageId,
         },
         "wa-mirror media download failed"
       );
@@ -113,7 +115,7 @@ async function maybeRunOcr(
   }
 
   if (!(await hasOcrEndpoint())) {
-    logger.info({ filePath, mime }, "wa-mirror OCR endpoint not found; skipping");
+    logger.info({ mime }, "wa-mirror OCR endpoint not found; skipping");
     return null;
   }
 
@@ -130,15 +132,14 @@ async function maybeRunOcr(
     });
     if (!response.ok) {
       logger.warn(
-        { status: response.status, endpoint },
+        { status: response.status },
         "wa-mirror OCR request failed"
       );
       return null;
     }
     return response.json();
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    logger.warn({ msg, endpoint }, "wa-mirror OCR request threw");
+    logger.warn({ errorType: errorType(err) }, "wa-mirror OCR request threw");
     return null;
   }
 }

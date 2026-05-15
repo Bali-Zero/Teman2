@@ -101,6 +101,10 @@ const DEFAULT_LABEL = "Bali Zero WA-Mirror";
 const RECONNECT_BASE_MS = 2_000;
 const RECONNECT_MAX_MS = 60_000;
 
+function errorType(err: unknown): string {
+  return err instanceof Error && err.name ? err.name : typeof err;
+}
+
 /**
  * Boot a Baileys session for one team member and keep it connected.
  *
@@ -194,7 +198,7 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
         },
         printQRInTerminal: false,
         browser: [ctx.sessionLabel, "Chrome", "1.0.0"],
-        logger: logger.child({ baileys: ctx.account.name }),
+        logger: logger.child({ component: "baileys" }),
         markOnlineOnConnect: false,
         syncFullHistory: false,
         shouldSyncHistoryMessage: () => false,
@@ -234,9 +238,8 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
       );
       setTimeout(() => {
         connectOnce().catch((err) => {
-          const msg = err instanceof Error ? err.message : String(err);
           logger.error(
-            { sessionId: ctx.sessionId, msg },
+            { sessionId: ctx.sessionId, errorType: errorType(err) },
             "wa-mirror connectOnce threw — retrying"
           );
           scheduleReconnect();
@@ -245,9 +248,8 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
     };
 
     connectOnce().catch((err) => {
-      const msg = err instanceof Error ? err.message : String(err);
       logger.error(
-        { sessionId: ctx.sessionId, msg },
+        { sessionId: ctx.sessionId, errorType: errorType(err) },
         "wa-mirror initial connectOnce threw"
       );
       scheduleReconnect();
@@ -301,14 +303,13 @@ async function handleConnectionUpdate(
       );
       await markConnected(ctx.sessionId);
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
       logger.warn(
-        { sessionId: ctx.sessionId, msg },
+        { sessionId: ctx.sessionId, errorType: errorType(err) },
         "wa-mirror markConnected failed (non-fatal)"
       );
     }
     logger.info(
-      { sessionId: ctx.sessionId, teamMemberName: ctx.account.name },
+      { sessionId: ctx.sessionId },
       "wa-mirror session connected"
     );
     await sendTelegramAlert(
@@ -341,9 +342,8 @@ async function handleConnectionUpdate(
       // this throw on a duplicate `disconnected` row. Migration 175 replaces
       // it with a partial unique index on active states only, but we still
       // swallow errors here so a bookkeeping failure never kills the loop.
-      const msg = err instanceof Error ? err.message : String(err);
       logger.warn(
-        { sessionId: ctx.sessionId, msg },
+        { sessionId: ctx.sessionId, errorType: errorType(err) },
         "wa-mirror markDisconnected failed (non-fatal)"
       );
     }
@@ -351,7 +351,6 @@ async function handleConnectionUpdate(
     logger.warn(
       {
         sessionId: ctx.sessionId,
-        accountName: ctx.account.name,
         code,
         reason,
         terminal,
@@ -367,9 +366,7 @@ async function handleConnectionUpdate(
     if (terminal) {
       // Device removed from the phone's Linked Devices — needs a fresh QR.
       deps.settleReject(
-        new Error(
-          `wa-mirror: session for ${ctx.account.name} logged out: ${reason}`
-        )
+        new Error(`wa-mirror: session logged out: ${reason}`)
       );
       return;
     }
@@ -408,9 +405,8 @@ function registerMessageHandler(sock: WASocket, ctx: ConnectContext): void {
             name: m.pushName ?? `wa:${record.counterpartPhone}`,
           });
         } catch (err) {
-          const msg = err instanceof Error ? err.message : String(err);
           logger.warn(
-            { sessionId: ctx.sessionId, msg },
+            { sessionId: ctx.sessionId, errorType: errorType(err) },
             "wa-mirror contact touch failed (message capture continues)"
           );
         }
@@ -443,19 +439,18 @@ function registerMessageHandler(sock: WASocket, ctx: ConnectContext): void {
           logger,
         });
       } catch (err) {
-        const msg = err instanceof Error ? err.message : String(err);
         consecutiveDbErrors += 1;
         logger.warn(
           {
             sessionId: ctx.sessionId,
-            msg,
+            errorType: errorType(err),
             consecutiveDbErrors,
           },
           "wa-mirror message persist failed"
         );
         if (consecutiveDbErrors > 5) {
           await sendTelegramAlert(
-            `wa-mirror DB write errors >5: ${ctx.account.name}; latest=${msg}`,
+            `wa-mirror DB write errors >5: ${ctx.account.name}; latest_type=${errorType(err)}`,
             logger
           );
         }

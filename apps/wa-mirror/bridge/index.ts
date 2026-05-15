@@ -33,6 +33,10 @@ type AccountConfig = {
   name: string;
 };
 
+function errorType(err: unknown): string {
+  return err instanceof Error && err.name ? err.name : typeof err;
+}
+
 function parseAccounts(): AccountConfig[] {
   const raw =
     process.env.WA_MIRROR_ACCOUNTS ?? process.env.WA_MIRROR_TEAM_MEMBERS ?? "";
@@ -58,8 +62,10 @@ function parseAccountNames(): Map<string, string> {
       if (normalized && name.trim()) names.set(normalized, name.trim());
     }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    logger.warn({ msg }, "WA_MIRROR_ACCOUNT_NAMES is not valid JSON");
+    logger.warn(
+      { errorType: errorType(err) },
+      "WA_MIRROR_ACCOUNT_NAMES is not valid JSON"
+    );
   }
   return names;
 }
@@ -73,7 +79,7 @@ async function main(): Promise<void> {
     );
     process.exit(2);
   }
-  logger.info({ count: accounts.length, accounts }, "wa-mirror starting");
+  logger.info({ count: accounts.length }, "wa-mirror starting");
 
   // Each startSession promise is expected to stay pending forever (the
   // reconnect loop owns the lifecycle). We attach a .catch purely to observe
@@ -111,14 +117,14 @@ async function runAccountForever(account: AccountConfig): Promise<void> {
       );
       attempt = 0;
     } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
+      const type = errorType(err);
       const delayMs = Math.min(2_000 * 2 ** Math.min(attempt - 1, 5), 60_000);
       logger.error(
-        { msg, attempt, delayMs },
+        { errorType: type, attempt, delayMs },
         "wa-mirror session crashed; restarting with backoff"
       );
       await sendTelegramAlert(
-        `wa-mirror disconnected: ${account.name}; reconnect_attempt=${attempt}; error=${msg}`,
+        `wa-mirror disconnected: ${account.name}; reconnect_attempt=${attempt}; error_type=${type}`,
         logger
       );
       await sleep(delayMs);
@@ -135,8 +141,7 @@ async function shutdown(signal: string): Promise<void> {
   try {
     await closePool();
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    logger.error({ msg }, "pool close failed");
+    logger.error({ errorType: errorType(err) }, "pool close failed");
   }
   process.exit(0);
 }
@@ -144,14 +149,13 @@ async function shutdown(signal: string): Promise<void> {
 process.on("SIGINT", () => void shutdown("SIGINT"));
 process.on("SIGTERM", () => void shutdown("SIGTERM"));
 process.on("uncaughtException", (err) => {
-  logger.error({ err: err.message, stack: err.stack }, "uncaughtException");
+  logger.error({ errorType: errorType(err) }, "uncaughtException");
 });
 process.on("unhandledRejection", (reason) => {
-  logger.error({ reason: String(reason) }, "unhandledRejection");
+  logger.error({ reasonType: typeof reason }, "unhandledRejection");
 });
 
 main().catch((err) => {
-  const msg = err instanceof Error ? err.message : String(err);
-  logger.error({ msg }, "wa-mirror main crashed");
+  logger.error({ errorType: errorType(err) }, "wa-mirror main crashed");
   process.exit(1);
 });

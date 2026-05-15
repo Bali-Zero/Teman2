@@ -15,6 +15,10 @@ import { query } from "./pg.js";
 
 const CHANNEL = "whatsapp_message_received";
 
+function errorType(err: unknown): string {
+  return err instanceof Error && err.name ? err.name : typeof err;
+}
+
 export type WhatsAppMessagePayload = {
   message_context_id: number;
   bridge_session_id: number;
@@ -55,8 +59,7 @@ export async function emitMessageReceived(
       await query(`SELECT pg_notify($1, $2)`, [CHANNEL, notifyPayload]);
     }
   } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
     // eslint-disable-next-line no-console
-    console.warn(`[wa-mirror.events] emit failed: ${msg}`);
+    console.warn(`[wa-mirror.events] emit failed: ${errorType(err)}`);
   }
 }
