@@ -136,7 +136,7 @@ export async function startSession(opts: StartSessionOptions): Promise<number> {
     authStatePath: authDir,
   });
   logger.info(
-    { sessionId: sessionRow.id, accountPhone, teamMemberName },
+    { sessionId: sessionRow.id, teamMemberName },
     "wa-mirror session row opened"
   );
 
@@ -197,7 +197,7 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
         },
         printQRInTerminal: false,
         browser: [ctx.sessionLabel, "Chrome", "1.0.0"],
-        logger: logger.child({ baileys: ctx.account.phone }),
+        logger: logger.child({ baileys: ctx.account.name }),
         markOnlineOnConnect: false,
         syncFullHistory: false,
         shouldSyncHistoryMessage: () => false,
@@ -311,11 +311,11 @@ async function handleConnectionUpdate(
       );
     }
     logger.info(
-      { sessionId: ctx.sessionId, ownPhone },
+      { sessionId: ctx.sessionId, teamMemberName: ctx.account.name },
       "wa-mirror session connected"
     );
     await sendTelegramAlert(
-      `wa-mirror connected: ${ctx.account.name} (${ownPhone})`,
+      `wa-mirror connected: ${ctx.account.name}`,
       logger
     );
     if (ctx.resolveOnFirstOpen) {
@@ -354,7 +354,7 @@ async function handleConnectionUpdate(
     logger.warn(
       {
         sessionId: ctx.sessionId,
-        accountPhone: ctx.account.phone,
+        accountName: ctx.account.name,
         code,
         reason,
         terminal,
@@ -363,7 +363,7 @@ async function handleConnectionUpdate(
       "wa-mirror session closed"
     );
     await sendTelegramAlert(
-      `wa-mirror disconnected: ${ctx.account.name} (${ctx.account.phone}); reason=${reason}; reconnect_attempt=${deps.attempt}`,
+      `wa-mirror disconnected: ${ctx.account.name}; reason=${reason}; reconnect_attempt=${deps.attempt}`,
       logger
     );
 
@@ -371,7 +371,7 @@ async function handleConnectionUpdate(
       // Device removed from the phone's Linked Devices — needs a fresh QR.
       deps.settleReject(
         new Error(
-          `wa-mirror: session for ${ctx.account.phone} logged out: ${reason}`
+          `wa-mirror: session for ${ctx.account.name} logged out: ${reason}`
         )
       );
       return;
@@ -458,7 +458,7 @@ function registerMessageHandler(sock: WASocket, ctx: ConnectContext): void {
         );
         if (consecutiveDbErrors > 5) {
           await sendTelegramAlert(
-            `wa-mirror DB write errors >5: ${ctx.account.name} (${ctx.account.phone}); latest=${msg}`,
+            `wa-mirror DB write errors >5: ${ctx.account.name}; latest=${msg}`,
             logger
           );
         }
