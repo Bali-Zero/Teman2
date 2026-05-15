@@ -8,10 +8,21 @@
 --
 -- Partial index: only enforce uniqueness when confirmation_token IS NOT
 -- NULL, because the confirm flow sets it to NULL after use.
+--
+-- Guarded with to_regclass() because newsletter_subscribers is created
+-- by the legacy Python migration `migration_033_newsletter.py` (not by
+-- migrations_v2). In CI environments where only migrations_v2 are
+-- applied, the table does not yet exist — skip silently instead of
+-- failing. Production (Fly) has 033 applied → index is created.
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_newsletter_confirmation_token
-    ON newsletter_subscribers (confirmation_token)
-    WHERE confirmation_token IS NOT NULL;
+DO $$
+BEGIN
+    IF to_regclass('public.newsletter_subscribers') IS NOT NULL THEN
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_newsletter_confirmation_token
+            ON newsletter_subscribers (confirmation_token)
+            WHERE confirmation_token IS NOT NULL;
+    END IF;
+END $$;
 
 -- === ROLLBACK ===
 DROP INDEX IF EXISTS uq_newsletter_confirmation_token;
