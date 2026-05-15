@@ -178,6 +178,42 @@ class TestPGNotificationRouting:
         assert received[0]["_event_type"] == "client.changed"
 
     @pytest.mark.asyncio
+    async def test_pg_event_acknowledges_outbox_after_handler_success(self) -> None:
+        received: list[dict] = []
+
+        async def handler(payload: dict) -> None:
+            received.append(payload)
+
+        conn = MagicMock()
+        conn.execute = AsyncMock(return_value="UPDATE 1")
+
+        class _Acquire:
+            async def __aenter__(self) -> MagicMock:
+                return conn
+
+            async def __aexit__(self, *_args: object) -> None:
+                return None
+
+        class _Pool:
+            def acquire(self) -> _Acquire:
+                return _Acquire()
+
+        bus = EventBus(
+            db_dsn="postgresql://test:test@localhost/test",
+            db_pool=_Pool(),  # type: ignore[arg-type]
+        )
+        bus.subscribe("client.changed", handler)
+
+        await bus._handle_pg_event(
+            "client_changed",
+            '{"client_id": 42, "_outbox_id": 99}',
+        )
+
+        assert received
+        assert conn.execute.await_args.args[1] == 99
+        assert conn.execute.await_args.args[2] == "event_bus:client.changed"
+
+    @pytest.mark.asyncio
     async def test_invalid_json_does_not_crash(self, bus: EventBus) -> None:
         # Should log warning, not raise
         await bus._handle_pg_event("client_changed", "not json{{{")
