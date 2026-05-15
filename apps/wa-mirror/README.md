@@ -3,19 +3,19 @@
 **Status**: scaffolding 2026-05-13 (LEVA WA-Mirror, transparent multi-account)
 **Runs on**: Mini-Pro2 (24/7 server)
 **Language**: Node.js 22 + `@whiskeysockets/baileys`
-**Data store**: PostgreSQL `nuzantara_rag` (tables `whatsapp_*`, migration 173)
+**Data store**: PostgreSQL `nuzantara_rag` (tables `whatsapp_*`, migrations 173/175/177)
 
 ## Goal
 
-Every WhatsApp message between a **Bali Zero team member** and a **CRM client** lands in the kita.balizero.com practice timeline within a few seconds, full transparency, mirrored in both directions.
+Every one-to-one WhatsApp message on a configured **Bali Zero team member** account lands in `whatsapp_message_context` within a few seconds. CRM matches are linked to the client/practice timeline; unknown numbers are stored as `client_id=NULL` prospects/leads.
 
 Today: team members (Surya, Adit, Sahira, Ari, Krisna, etc.) use **their personal WhatsApp numbers** to chat with clients. Conversations live only on their phones. Zero audit trail. Zero continuity when someone is on leave / leaves the company. Compliance gap on UU PDP 27/2022 record-keeping for KYC/visa workflows.
 
-After this bridge: each team member's WhatsApp is registered as a **WhatsApp Web "Linked Device"** of the wa-mirror service. The service reads inbound + outbound messages, matches the counterpart phone against `clients.phone`, and writes the message to `whatsapp_message_context` linked to that client / practice.
+After this bridge: each team member's WhatsApp is registered as a **WhatsApp Web "Linked Device"** of the wa-mirror service. The service reads inbound + outbound messages, matches the counterpart phone against `clients.phone`, and writes the message to `whatsapp_message_context`. A match gets `client_id` plus best open `practice_id`; no match is still stored as a prospect/lead.
 
 ## What is NOT this bridge
 
-- **NOT** surveillance. Team members keep using WhatsApp normally. Messages to non-clients (family, friends, vendors) are dropped server-side — never reach the CRM.
+- **NOT** a reply bot. Team members keep using WhatsApp normally. v1 captures the one-to-one message stream for audit/continuity and does not send messages.
 - **NOT** a replacement for the Meta Cloud API at `backend/channels/whatsapp/` — that handles the official Bali Zero number `+62 821 31 07 363`. wa-mirror handles the **personal numbers** of the team in parallel.
 - **NOT** a Meta API integration. Uses Baileys (reverse-engineered WhatsApp Web protocol). Operates within the standard "Linked Devices" surface — see "Risks" below.
 
@@ -32,11 +32,13 @@ After this bridge: each team member's WhatsApp is registered as a **WhatsApp Web
 │  Mini-Pro2 — wa-mirror daemon (Node.js)                             │
 │     │                                                                │
 │     │  Baileys session manager (1 session per team member)           │
-│     │     ├─ persistent auth state in ~/.wa-mirror/sessions/<email>  │
+│     │     ├─ persistent auth state in apps/wa-mirror/sessions/<phone>│
 │     │     ├─ message event handler                                   │
-│     │     │     ├─ privacy filter: counterpart phone in clients?     │
-│     │     │     │     ├─ YES → write whatsapp_message_context        │
-│     │     │     │     └─ NO  → drop, log "filtered" metric           │
+│     │     │     ├─ counterpart phone in clients?                     │
+│     │     │     │     ├─ YES → write client_id/practice_id           │
+│     │     │     │     └─ NO  → write client_id=NULL prospect row     │
+│     │     │     ├─ media download queue → ~/wa-mirror-media/...      │
+│     │     │     ├─ best-effort OCR for images/PDF if endpoint exists │
 │     │     │     └─ EventBus emit `whatsapp_message_received`         │
 │     │     └─ heartbeat → cell_pulse_observed                         │
 │     │                                                                │
@@ -59,8 +61,8 @@ After this bridge: each team member's WhatsApp is registered as a **WhatsApp Web
 This is the **load-bearing onboarding contract**. Every team member receives this
 in writing AND in person before scanning the QR code.
 
-1. The bridge ONLY logs WhatsApp conversations where the counterpart phone is
-   **already a registered Bali Zero client** in the `clients` table. Logic:
+1. The bridge logs one-to-one WhatsApp conversations for configured Bali Zero
+   team accounts. The counterpart phone is matched against the `clients` table:
 
    ```sql
    SELECT id FROM clients
@@ -68,8 +70,8 @@ in writing AND in person before scanning the QR code.
       OR whatsapp = $counterpart_phone_raw;
    ```
 
-   No match → message is discarded server-side. Hash of the discard event is
-   logged for metrics (count only — no content). See `bridge/filters.ts`.
+   No match → the message is stored with `client_id=NULL` and `practice_id=NULL`.
+   These rows are prospects/leads and must not be dropped at capture time.
 
 2. The bridge does NOT send messages on behalf of the team member. It is
    **read-only** with respect to outbound. (Phase 2 may add "send via dashboard"
@@ -140,9 +142,9 @@ the OLD `whatsapp_team_sessions` row.
 
 - **Reuses**: `whatsapp_contacts` + `whatsapp_message_context` tables (no
   rebuild, append rows)
-- **Extends**: 1 migration adds `whatsapp_team_sessions` + a
-  `team_member_email` column on `whatsapp_message_context` to distinguish
-  inbound from Meta Cloud API number vs from team mirror
+- **Extends**: migration 177 adds `client_id`, `practice_id`,
+  `team_member_phone`, `counterpart_phone`, body/media/OCR columns, raw Baileys
+  JSON, and the `baileys_message_id` dedup index.
 - **Hooks into**: existing EventBus (PG NOTIFY) on channel
   `whatsapp_message_received`
 - **CRM**: timeline rendering reuses existing practice timeline panel,
@@ -153,19 +155,23 @@ the OLD `whatsapp_team_sessions` row.
 ```
 apps/wa-mirror/
 ├── README.md                    (this file)
-├── package.json                 (Node deps: baileys, asyncpg, dotenv)
+├── package.json                 (Node deps: baileys, pg, dotenv)
 ├── tsconfig.json
 ├── bridge/
 │   ├── index.ts                 (entry, session orchestrator)
 │   ├── session.ts               (1 Baileys connection per team member)
-│   ├── filters.ts               (phone-match-clients privacy gate)
-│   ├── pg.ts                    (asyncpg wrapper)
+│   ├── filters.ts               (JID helpers and match classifier)
+│   ├── media.ts                 (async media download + OCR trigger)
+│   ├── message_capture.ts       (Baileys payload → DB row)
+│   ├── phone.ts                 (E.164 normalization)
+│   ├── pg.ts                    (Postgres pool wrapper)
+│   ├── telegram.ts              (owner alerts)
 │   ├── events.ts                (EventBus PG NOTIFY emit)
 │   └── heartbeat.ts             (write whatsapp_team_sessions)
 ├── docs/
 │   ├── PRIVACY_CONTRACT_TEAM.md (signed by each team member)
 │   └── PKWT_CLAUSE.md           (1-line for employment contract)
 └── scripts/
-    ├── onboard.sh               (QR code flow for new team member)
-    └── status.sh                (list active sessions)
+    ├── onboard.ts               (QR code flow for new team member)
+    └── status.ts                (list active sessions)
 ```

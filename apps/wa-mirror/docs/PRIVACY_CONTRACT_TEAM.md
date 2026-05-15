@@ -20,18 +20,18 @@ sudah ada di sistem,
 
 ### Apa yang DICATAT sistem
 
-- Pesan masuk/keluar **hanya** ketika nomor lawan bicara terdaftar di tabel
-  `clients` Bali Zero (klien yang sudah pernah memberikan nomor ke kami).
+- Pesan masuk/keluar untuk chat satu-lawan-satu pada akun kerja yang
+  dikonfigurasi. Jika nomor lawan bicara ada di tabel `clients` Bali Zero,
+  pesan ditautkan ke klien/practice. Jika belum ada, pesan tetap disimpan
+  sebagai prospect/lead dengan `client_id=NULL`.
 - Tanggal, waktu, isi teks, lampiran media (foto akta, paspor, dll. yang sudah
   jadi bagian alur kerja KITAS/PMA).
 
 ### Apa yang TIDAK DICATAT sistem
 
-- Percakapan dengan keluarga, teman, vendor, ojol, ojek, restoran, atau siapa
-  pun yang TIDAK terdaftar sebagai klien Bali Zero. Server menghapus pesan
-  tersebut dalam beberapa milidetik tanpa menyimpannya. Yang dicatat hanya
-  hitungan numerik ("X pesan terfilter hari ini") untuk metrik kapasitas
-  server, tanpa isi.
+- Group chat, status/story, dan panggilan suara/video. Untuk chat
+  satu-lawan-satu, nomor yang belum cocok dengan CRM tidak dibuang karena bisa
+  menjadi prospect/lead Bali Zero.
 - Daftar kontak Anda. Sistem tidak menyentuh phonebook Anda.
 - Status, story, panggilan suara/video.
 
@@ -41,7 +41,7 @@ sudah ada di sistem,
    "Bali Zero WA-Mirror" → Keluar. Sesi mati dalam 5 detik. Tidak ada data
    yang ditarik dari ponsel Anda setelah pemutusan.
 2. **Akses data**: Anda berhak melihat semua baris di
-   `whatsapp_message_context` yang `team_member_email = email Anda`. Kirim
+   `whatsapp_message_context` yang `team_member_phone = nomor Anda`. Kirim
    email ke zero@balizero.com, dalam 7 hari kerja Anda menerima ekspor JSON.
 3. **Penghapusan** (UU PDP art. 17): jika Anda keluar dari Bali Zero, semua
    sesi Anda otomatis dihapus dalam 30 hari setelah surat keluar resmi.
@@ -50,10 +50,8 @@ sudah ada di sistem,
 
 ### Yang TIDAK boleh dilakukan oleh Bali Zero / Antonello
 
-- Membaca pesan yang difilter (non-klien). Filter dijalankan di server,
-  Antonello tidak punya tombol "lihat semua, bypass filter". Jika ada bug
-  yang menyebabkan pesan non-klien tertulis ke CRM, itu insiden yang harus
-  dilaporkan dan diperbaiki dalam 24 jam.
+- Menggunakan pesan prospect/non-klien di luar kebutuhan bisnis Bali Zero.
+  Semua akses tetap melalui RBAC dan audit trail.
 - Memberikan akses ke pesan Anda kepada anggota tim lain yang tidak terkait
   klien yang sama. RBAC: Surya melihat pesan klien yang dia tangani; Adit
   melihat pesan klien yang dia tangani; Antonello (owner) melihat semua
@@ -94,18 +92,18 @@ existing "Linked Devices" feature of WhatsApp. Goal:
 
 ### What the system DOES log
 
-- Inbound/outbound messages **only** when the counterpart's number is
-  registered in the Bali Zero `clients` table (clients who previously gave
-  us their number).
+- Inbound/outbound one-to-one messages on configured work accounts. If the
+  counterpart number exists in the Bali Zero `clients` table, the message is
+  linked to that client/practice. If it does not match yet, the message is
+  still stored as a prospect/lead with `client_id=NULL`.
 - Date, time, text content, media attachments (photos of akta, passport, etc.
   that are already part of the KITAS/PMA workflow).
 
 ### What the system does NOT log
 
-- Conversations with family, friends, vendors, ojol, restaurants, or anyone
-  NOT registered as a Bali Zero client. The server discards those messages
-  in milliseconds without storing them. Only a numeric count is logged
-  ("X messages filtered today") for server capacity metrics, no content.
+- Group chats, status/stories, and voice/video calls. For one-to-one chats,
+  an unmatched CRM number is not discarded because it may be a Bali Zero
+  prospect/lead.
 - Your contact list. The system does not touch your phonebook.
 - Status, stories, voice/video calls.
 
@@ -115,7 +113,7 @@ existing "Linked Devices" feature of WhatsApp. Goal:
    "Bali Zero WA-Mirror" → Log out. Session dies within 5 seconds. No
    data is pulled from your phone post-disconnect.
 2. **Data access**: you have the right to see all rows in
-   `whatsapp_message_context` where `team_member_email = your email`.
+   `whatsapp_message_context` where `team_member_phone = your number`.
    Email zero@balizero.com, you receive a JSON export within 7 business
    days.
 3. **Deletion** (UU PDP art. 17): when you leave Bali Zero, all your
@@ -126,10 +124,8 @@ existing "Linked Devices" feature of WhatsApp. Goal:
 
 ### What Bali Zero / Antonello may NOT do
 
-- Read filtered (non-client) messages. The filter runs server-side.
-  Antonello does NOT have a "show all, bypass filter" button. If a bug
-  causes non-client messages to be written to the CRM, that is an
-  incident to be reported and fixed within 24 hours.
+- Use prospect/non-client messages outside Bali Zero business needs. All
+  access still goes through RBAC and audit trail.
 - Grant access to your messages to other team members not associated with
   the same client. RBAC: Surya sees messages of clients he handles;
   Adit sees messages of clients he handles; Antonello (owner) sees all
