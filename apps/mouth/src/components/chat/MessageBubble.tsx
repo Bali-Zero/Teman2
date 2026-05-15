@@ -380,7 +380,7 @@ function MessageBubbleComponent({
                 <button
                   type="button"
                   onClick={() => setIsThinkingExpanded(!isThinkingExpanded)}
-                  className="flex items-center gap-2 text-xs font-medium text-[var(--foreground-muted)] hover:text-[var(--accent)] transition-colors mb-2"
+                  className="flex items-center gap-2 text-xs font-medium text-[var(--foreground-muted)] hover:text-[var(--accent)] transition-colors mb-2 focus-ring rounded"
                   aria-expanded={isThinkingExpanded}
                 >
                   <Lightbulb className="w-3.5 h-3.5" />
@@ -535,7 +535,7 @@ function MessageBubbleComponent({
                         type="button"
                         key={idx}
                         onClick={() => onFollowUpClick?.(question)}
-                        className="text-xs text-left px-3 py-1.5 rounded-lg bg-[var(--background-secondary)] hover:bg-[var(--accent)]/10 hover:text-[var(--accent)] border border-[var(--border)] transition-colors duration-200"
+                        className="text-xs text-left px-3 py-1.5 rounded-lg bg-[var(--background-secondary)] hover:bg-[var(--accent)]/10 hover:text-[var(--accent)] border border-[var(--border)] transition-colors duration-200 focus-ring"
                       >
                         {question}
                       </button>
@@ -567,7 +567,7 @@ function MessageBubbleComponent({
             <button
               type="button"
               onClick={handleCopy}
-              className="transition-opacity p-1 hover:bg-[var(--background-secondary)] rounded opacity-70 hover:opacity-100"
+              className="transition-opacity p-1 hover:bg-[var(--background-secondary)] rounded opacity-70 hover:opacity-100 focus-ring"
               aria-label="Copy message"
             >
               {copied ? (
