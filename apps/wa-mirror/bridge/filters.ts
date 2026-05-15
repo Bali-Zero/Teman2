@@ -1,10 +1,8 @@
-// filters.ts — privacy gate. The PRIVACY_CONTRACT_TEAM.md commitment is
-// enforced HERE: a message is mirrored to the CRM only when the counterpart
-// phone is a registered Bali Zero client.
+// filters.ts — JID helpers and legacy match classifier.
 //
-// This file is the only path to disk for message content. The orchestrator
-// MUST go through `shouldMirror()` before any persistence call. There is
-// intentionally no "bypass filter" flag.
+// Current capture policy is store-everything for one-to-one chats. No CRM
+// match means prospect/client_id=NULL, not a dropped message. Groups and
+// malformed JIDs remain out of scope.
 
 import { findClientByPhone } from "./pg.js";
 
@@ -38,14 +36,11 @@ export function jidToPhone(jid: string | null | undefined): string {
 }
 
 /**
- * Decide whether a message should be mirrored to the CRM.
+ * Legacy classifier retained for callers that want CRM match metadata.
  *
- * The decision is based ONLY on whether the counterpart phone exists in the
- * Bali Zero clients table. Team-member's own number is NEVER the criterion:
- * messages BETWEEN a team member and a client are mirrored regardless of
- * direction (inbound from client → mirrored; outbound from team member to
- * client → mirrored). Messages between a team member and a non-client are
- * dropped before any text is written.
+ * A no-client match is still mirrorable: the message is a prospect/lead and
+ * must be stored with client_id=NULL. Only empty JIDs and self-messages are
+ * non-mirrorable.
  *
  * Self-messages (team member writing notes to themselves) are dropped.
  */
@@ -73,7 +68,7 @@ export async function shouldMirror(opts: {
   const clientId = await findClientByPhone(counterpart);
   if (clientId === null) {
     return {
-      mirror: false,
+      mirror: true,
       clientId: null,
       reason: "no_client_match",
       counterpartNormalized: counterpart,
