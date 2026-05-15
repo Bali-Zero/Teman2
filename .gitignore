@@ -658,3 +658,4 @@ docs/codex-reviews/
 
 # Mini-Pro2 venv aside (transient backup during venv recreations)
 apps/backend-rag/.venv.mini-aside-*/
+apps/mouth/scripts/output/
