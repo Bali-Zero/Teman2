@@ -14,10 +14,6 @@ import { phonePathSegment } from "./phone.js";
 const DEFAULT_MEDIA_ROOT = path.join(homedir(), "wa-mirror-media");
 let ocrEndpointExists: Promise<boolean> | null = null;
 
-function errorType(err: unknown): string {
-  return err instanceof Error && err.name ? err.name : typeof err;
-}
-
 export function queueMediaDownload(opts: {
   sock: WASocket;
   rawMessage: unknown;
@@ -31,10 +27,9 @@ export function queueMediaDownload(opts: {
   }
 
   setImmediate(() => {
-    downloadAndStoreMedia(opts).catch((err) => {
+    downloadAndStoreMedia(opts).catch(() => {
       opts.logger.warn(
         {
-          errorType: errorType(err),
           messageContextId: opts.messageContextId,
         },
         "wa-mirror media download failed"
@@ -138,8 +133,8 @@ async function maybeRunOcr(
       return null;
     }
     return response.json();
-  } catch (err) {
-    logger.warn({ errorType: errorType(err) }, "wa-mirror OCR request threw");
+  } catch {
+    logger.warn("wa-mirror OCR request threw");
     return null;
   }
 }

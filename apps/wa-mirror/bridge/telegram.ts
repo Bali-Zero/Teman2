@@ -1,9 +1,5 @@
 import type pino from "pino";
 
-function errorType(err: unknown): string {
-  return err instanceof Error && err.name ? err.name : typeof err;
-}
-
 export async function sendTelegramAlert(
   text: string,
   logger?: pino.Logger
@@ -31,10 +27,7 @@ export async function sendTelegramAlert(
         "wa-mirror Telegram alert failed"
       );
     }
-  } catch (err) {
-    logger?.warn(
-      { errorType: errorType(err) },
-      "wa-mirror Telegram alert threw"
-    );
+  } catch {
+    logger?.warn("wa-mirror Telegram alert threw");
   }
 }

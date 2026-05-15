@@ -101,10 +101,6 @@ const DEFAULT_LABEL = "Bali Zero WA-Mirror";
 const RECONNECT_BASE_MS = 2_000;
 const RECONNECT_MAX_MS = 60_000;
 
-function errorType(err: unknown): string {
-  return err instanceof Error && err.name ? err.name : typeof err;
-}
-
 /**
  * Boot a Baileys session for one team member and keep it connected.
  *
@@ -237,9 +233,9 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
         "wa-mirror scheduling reconnect"
       );
       setTimeout(() => {
-        connectOnce().catch((err) => {
+        connectOnce().catch(() => {
           logger.error(
-            { sessionId: ctx.sessionId, errorType: errorType(err) },
+            { sessionId: ctx.sessionId },
             "wa-mirror connectOnce threw — retrying"
           );
           scheduleReconnect();
@@ -247,9 +243,9 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
       }, delay);
     };
 
-    connectOnce().catch((err) => {
+    connectOnce().catch(() => {
       logger.error(
-        { sessionId: ctx.sessionId, errorType: errorType(err) },
+        { sessionId: ctx.sessionId },
         "wa-mirror initial connectOnce threw"
       );
       scheduleReconnect();
@@ -302,9 +298,9 @@ async function handleConnectionUpdate(
         [phoneDigits(ownPhone), ownPhone, ctx.sessionId]
       );
       await markConnected(ctx.sessionId);
-    } catch (err) {
+    } catch {
       logger.warn(
-        { sessionId: ctx.sessionId, errorType: errorType(err) },
+        { sessionId: ctx.sessionId },
         "wa-mirror markConnected failed (non-fatal)"
       );
     }
@@ -337,13 +333,13 @@ async function handleConnectionUpdate(
         reason,
         terminal ? "revoked" : "disconnected"
       );
-    } catch (err) {
+    } catch {
       // The pre-2026-05-14 UNIQUE(team_member_email, status) constraint made
       // this throw on a duplicate `disconnected` row. Migration 175 replaces
       // it with a partial unique index on active states only, but we still
       // swallow errors here so a bookkeeping failure never kills the loop.
       logger.warn(
-        { sessionId: ctx.sessionId, errorType: errorType(err) },
+        { sessionId: ctx.sessionId },
         "wa-mirror markDisconnected failed (non-fatal)"
       );
     }
@@ -404,9 +400,9 @@ function registerMessageHandler(sock: WASocket, ctx: ConnectContext): void {
             phone: record.counterpartPhone,
             name: m.pushName ?? `wa:${record.counterpartPhone}`,
           });
-        } catch (err) {
+        } catch {
           logger.warn(
-            { sessionId: ctx.sessionId, errorType: errorType(err) },
+            { sessionId: ctx.sessionId },
             "wa-mirror contact touch failed (message capture continues)"
           );
         }
@@ -438,19 +434,18 @@ function registerMessageHandler(sock: WASocket, ctx: ConnectContext): void {
           store: ctx.store,
           logger,
         });
-      } catch (err) {
+      } catch {
         consecutiveDbErrors += 1;
         logger.warn(
           {
             sessionId: ctx.sessionId,
-            errorType: errorType(err),
             consecutiveDbErrors,
           },
           "wa-mirror message persist failed"
         );
         if (consecutiveDbErrors > 5) {
           await sendTelegramAlert(
-            `wa-mirror DB write errors >5: ${ctx.account.name}; latest_type=${errorType(err)}`,
+            `wa-mirror DB write errors >5: ${ctx.account.name}; consecutive=${consecutiveDbErrors}`,
             logger
           );
         }

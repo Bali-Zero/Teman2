@@ -33,10 +33,6 @@ type AccountConfig = {
   name: string;
 };
 
-function errorType(err: unknown): string {
-  return err instanceof Error && err.name ? err.name : typeof err;
-}
-
 function parseAccounts(): AccountConfig[] {
   const raw =
     process.env.WA_MIRROR_ACCOUNTS ?? process.env.WA_MIRROR_TEAM_MEMBERS ?? "";
@@ -61,11 +57,8 @@ function parseAccountNames(): Map<string, string> {
       const normalized = normalizePhone(phone);
       if (normalized && name.trim()) names.set(normalized, name.trim());
     }
-  } catch (err) {
-    logger.warn(
-      { errorType: errorType(err) },
-      "WA_MIRROR_ACCOUNT_NAMES is not valid JSON"
-    );
+  } catch {
+    logger.warn("WA_MIRROR_ACCOUNT_NAMES is not valid JSON");
   }
   return names;
 }
@@ -116,15 +109,14 @@ async function runAccountForever(account: AccountConfig): Promise<void> {
         "wa-mirror session promise resolved unexpectedly (daemon mode)"
       );
       attempt = 0;
-    } catch (err) {
-      const type = errorType(err);
+    } catch {
       const delayMs = Math.min(2_000 * 2 ** Math.min(attempt - 1, 5), 60_000);
       logger.error(
-        { errorType: type, attempt, delayMs },
+        { attempt, delayMs },
         "wa-mirror session crashed; restarting with backoff"
       );
       await sendTelegramAlert(
-        `wa-mirror disconnected: ${account.name}; reconnect_attempt=${attempt}; error_type=${type}`,
+        `wa-mirror disconnected: ${account.name}; reconnect_attempt=${attempt}`,
         logger
       );
       await sleep(delayMs);
@@ -140,22 +132,22 @@ async function shutdown(signal: string): Promise<void> {
   logger.warn({ signal }, "wa-mirror shutdown requested");
   try {
     await closePool();
-  } catch (err) {
-    logger.error({ errorType: errorType(err) }, "pool close failed");
+  } catch {
+    logger.error("pool close failed");
   }
   process.exit(0);
 }
 
 process.on("SIGINT", () => void shutdown("SIGINT"));
 process.on("SIGTERM", () => void shutdown("SIGTERM"));
-process.on("uncaughtException", (err) => {
-  logger.error({ errorType: errorType(err) }, "uncaughtException");
+process.on("uncaughtException", () => {
+  logger.error("uncaughtException");
 });
-process.on("unhandledRejection", (reason) => {
-  logger.error({ reasonType: typeof reason }, "unhandledRejection");
+process.on("unhandledRejection", () => {
+  logger.error("unhandledRejection");
 });
 
-main().catch((err) => {
-  logger.error({ errorType: errorType(err) }, "wa-mirror main crashed");
+main().catch(() => {
+  logger.error("wa-mirror main crashed");
   process.exit(1);
 });

@@ -10,10 +10,6 @@ import { normalizePhone, phoneSearchVariants } from "./phone.js";
 
 let _pool: pg.Pool | null = null;
 
-function errorType(err: unknown): string {
-  return err instanceof Error && err.name ? err.name : typeof err;
-}
-
 export function getPool(): pg.Pool {
   if (_pool !== null) return _pool;
   const connectionString = process.env.WA_MIRROR_DATABASE_URL ?? process.env.DATABASE_URL;
@@ -30,10 +26,10 @@ export function getPool(): pg.Pool {
     application_name: "wa-mirror",
   };
   _pool = new pg.Pool(config);
-  _pool.on("error", (err) => {
+  _pool.on("error", () => {
     // node-postgres emits idle client errors; never crash the daemon.
     // eslint-disable-next-line no-console
-    console.error(`[wa-mirror.pg] idle client error: ${errorType(err)}`);
+    console.error("[wa-mirror.pg] idle client error");
   });
   return _pool;
 }
