@@ -48,7 +48,10 @@ import json
 import os
 import re
 import sys
-from dataclasses import dataclass
+import shutil
+import tempfile
+import uuid
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -507,12 +510,32 @@ def _gradient_png(w: int, h: int, top_a: float, bot_a: float,
     return out_path
 
 
-def _crop_hero_to_canvas(hero_path: str, out_path: str) -> str | None:
-    if not Path(hero_path).exists():
+def _crop_hero_to_canvas(hero_path: str, out_path: str | Path,
+                         slide_index: int | None = None) -> str | None:
+    """Crop + resize hero image to 1080×1350. Returns out_path str or None.
+
+    Fix 2026-05-16 [audit]: warns explicitly on missing/corrupt file instead
+    of silently returning None (which produced blank slides with no stderr
+    indication). out_path should be a per-slide unique path (use ctx.tmp_dir)
+    to avoid parallel-run collisions on /tmp fixed filenames.
+    """
+    p = Path(hero_path)
+    if not p.exists():
+        label = f"slide {slide_index}" if slide_index is not None else hero_path
+        print(
+            f"[wr2-render] WARNING: hero image missing for {label}: {hero_path} "
+            f"— slide will render on antracite background (imagegen failed/pending?)",
+            file=sys.stderr,
+        )
         return None
     try:
         img = Image.open(hero_path).convert("RGB")
-    except Exception:
+    except Exception as e:
+        print(
+            f"[wr2-render] WARNING: hero image corrupt for {hero_path}: {e} "
+            f"— slide will render on antracite background",
+            file=sys.stderr,
+        )
         return None
     sw, sh = img.size
     target_ratio = W / H
@@ -526,8 +549,8 @@ def _crop_hero_to_canvas(hero_path: str, out_path: str) -> str | None:
         t = max(0, (sh - nh) // 2)
         img = img.crop((0, t, sw, t + nh))
     img = img.resize((W, H), Image.LANCZOS)
-    img.save(out_path, quality=92)
-    return out_path
+    img.save(str(out_path), quality=92)
+    return str(out_path)
 
 
 def draw_logo(c: canvas.Canvas, x_center: float = W / 2,
@@ -575,6 +598,7 @@ class RenderContext:
     slide_count: int
     is_inner: bool  # slides 2..N-1
     primary_regulation_code: str | None
+    tmp_dir: Path = field(default_factory=lambda: Path(tempfile.mkdtemp(prefix="wr2_")))
 
 
 def render_cover_photo(c: canvas.Canvas, s: dict[str, Any],
@@ -585,11 +609,14 @@ def render_cover_photo(c: canvas.Canvas, s: dict[str, Any],
 
     hero = s.get("hero_image_path") or s.get("image_path")
     if hero:
-        cropped = _crop_hero_to_canvas(hero, "/tmp/_wr2_cover_hero.jpg")
+        slide_idx = s.get("index", 1)
+        cropped = _crop_hero_to_canvas(
+            hero, ctx.tmp_dir / f"slide_{slide_idx}_hero.jpg",
+            slide_index=slide_idx)
         if cropped:
             c.drawImage(cropped, 0, 0, width=W, height=H)
             grad = _gradient_png(W, H // 2, 0.0, 0.92,
-                                 "/tmp/_wr2_cover_grad.png")
+                                 str(ctx.tmp_dir / f"slide_{slide_idx}_grad.png"))
             c.drawImage(grad, 0, 0, width=W, height=H // 2, mask="auto")
 
     # Regulation badge top-right (Article 14.4)
@@ -652,10 +679,14 @@ def render_photo_headline_yellow_sub(c: canvas.Canvas, s: dict[str, Any],
     hero = s.get("hero_image_path") or s.get("image_path")
     has_hero = False
     if hero:
-        cropped = _crop_hero_to_canvas(hero, "/tmp/_wr2_inner_hero.jpg")
+        slide_idx = s.get("index", "x")
+        cropped = _crop_hero_to_canvas(
+            hero, ctx.tmp_dir / f"slide_{slide_idx}_hero.jpg",
+            slide_index=slide_idx)
         if cropped:
             c.drawImage(cropped, 0, 0, width=W, height=H)
-            grad = _gradient_png(W, H, 0.55, 0.85, "/tmp/_wr2_inner_grad.png")
+            grad = _gradient_png(W, H, 0.55, 0.85,
+                                 str(ctx.tmp_dir / f"slide_{slide_idx}_grad.png"))
             c.drawImage(grad, 0, 0, width=W, height=H, mask="auto")
             has_hero = True
 
@@ -1396,20 +1427,25 @@ def render_carousel(slides_json: dict[str, Any], out_pdf: str) -> int:
                                or slides_json.get("brief", {}).get(
                                    "primary_regulation_code"))
 
-    c = canvas.Canvas(out_pdf, pagesize=(W, H))
-    for i, s in enumerate(slides):
-        is_inner = (i > 0) and (i < n - 1)
-        ctx = RenderContext(
-            font_bold=font_bold,
-            font_reg=font_reg,
-            font_mono=font_mono,
-            slide_count=n,
-            is_inner=is_inner,
-            primary_regulation_code=primary_regulation_code,
-        )
-        render_slide(c, s, ctx)
-        c.showPage()
-    c.save()
+    tmp_dir = Path(tempfile.mkdtemp(prefix="wr2_"))
+    try:
+        c = canvas.Canvas(out_pdf, pagesize=(W, H))
+        for i, s in enumerate(slides):
+            is_inner = (i > 0) and (i < n - 1)
+            ctx = RenderContext(
+                font_bold=font_bold,
+                font_reg=font_reg,
+                font_mono=font_mono,
+                slide_count=n,
+                is_inner=is_inner,
+                primary_regulation_code=primary_regulation_code,
+                tmp_dir=tmp_dir,
+            )
+            render_slide(c, s, ctx)
+            c.showPage()
+        c.save()
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
     return n
 
 
