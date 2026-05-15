@@ -1,10 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   InMemoryMessageContextStore,
+  PgMessageContextStore,
   extractMessageRecord,
   persistCapturedMessage,
 } from "../bridge/message_capture.js";
+import { query } from "../bridge/pg.js";
+
+vi.mock("../bridge/pg.js", () => ({
+  query: vi.fn(),
+}));
 
 const account = {
   phone: "+628213107363",
@@ -12,6 +18,10 @@ const account = {
 };
 
 describe("message capture persistence", () => {
+  beforeEach(() => {
+    vi.mocked(query).mockReset();
+  });
+
   it("upserts the same baileys_message_id only once", async () => {
     const store = new InMemoryMessageContextStore();
     const message = {
@@ -75,6 +85,33 @@ describe("message capture persistence", () => {
       counterpartPhone: "+6289876543210",
       body: "Can you help with a visa?",
     });
+  });
+
+  it("persists via live wa-mirror columns without the legacy phone_number column", async () => {
+    vi.mocked(query).mockResolvedValueOnce({
+      rowCount: 1,
+      rows: [{ id: 7 }],
+    } as never);
+
+    const store = new PgMessageContextStore();
+    await store.upsertMessage({
+      baileysMessageId: "wamid-live-schema",
+      direction: "inbound",
+      teamMemberPhone: account.phone,
+      counterpartPhone: "+6289876543210",
+      body: "hello from live schema",
+      timestamp: new Date("2026-05-16T00:02:00.000Z"),
+      mediaType: "text",
+      mediaMime: null,
+      mediaUrl: null,
+      rawBaileysEvent: { key: { id: "wamid-live-schema" } },
+      clientId: null,
+      practiceId: null,
+    });
+
+    const sql = vi.mocked(query).mock.calls[0][0];
+    expect(sql).toContain("counterpart_phone");
+    expect(sql).not.toContain("phone_number");
   });
 });
 
