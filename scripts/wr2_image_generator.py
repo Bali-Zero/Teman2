@@ -527,16 +527,83 @@ async def _probe_flowkit_available() -> bool:
         return False
 
 
+def _write_image_audit_sidecar(
+    *,
+    slide_number: int,
+    draft_id: str,
+    image_bytes: bytes,
+    tigris_url: str,
+    tigris_key: str,
+    backend: str,
+    image_prompt: str,
+    vlm_score: float | None,
+    vlm_reason: str | None,
+    timestamp: str,
+) -> None:
+    """Write `<sidecar_dir>/slide-NN-<ts>.meta.json` next to the hero asset.
+
+    Fix 2026-05-15: previously imagegen pipeline left zero audit trail — no
+    way to know which prompt produced which JPG, which backend (Codex /
+    FlowKit / Playwright) was used, whether VLM accepted the score, when it
+    was generated, or what its sha256 was. Now: every successful upload
+    writes a sidecar JSON with the full reproduction recipe.
+
+    The sidecar is best-effort: a failure to write metadata never blocks the
+    upload (logged warning only). Path: ~/.cache/wr2-imagegen-audit/<draft_id>/
+    so the audit survives even when carousel output dirs are cleaned up.
+    """
+    import hashlib
+    try:
+        audit_dir = Path.home() / ".cache" / "wr2-imagegen-audit" / draft_id
+        audit_dir.mkdir(parents=True, exist_ok=True)
+        sidecar_path = audit_dir / f"slide-{slide_number:02d}-{timestamp}.meta.json"
+        meta = {
+            "schema_version": 1,
+            "slide_number": slide_number,
+            "draft_id": draft_id,
+            "tigris_url": tigris_url,
+            "tigris_key": tigris_key,
+            "backend": backend,
+            "image_prompt": image_prompt,
+            "vlm_score": vlm_score,
+            "vlm_reason": vlm_reason,
+            "sha256": hashlib.sha256(image_bytes).hexdigest(),
+            "byte_length": len(image_bytes),
+            "generated_at_utc": timestamp,
+            "wrote_at_utc": datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ"),
+        }
+        sidecar_path.write_text(json.dumps(meta, indent=2), encoding="utf-8")
+        logger.info(
+            "[slide %d] audit sidecar written: %s",
+            slide_number, sidecar_path,
+        )
+    except Exception as e:  # noqa: BLE001
+        logger.warning(
+            "[slide %d] audit sidecar write failed (non-fatal): %s",
+            slide_number, e,
+        )
+
+
 async def _upload_and_return(
     img_bytes: bytes,
     slide_number: int,
     draft_id: str,
+    *,
+    backend: str = "unknown",
+    image_prompt: str = "",
+    vlm_score: float | None = None,
+    vlm_reason: str | None = None,
 ) -> tuple[int, str | None, str | None]:
     """Upload image bytes to Tigris and return the standard tuple.
 
     Shared by both FlowKit and Playwright backends — single source of truth
     for the (slide_number, image_url, error) contract that
     `_gen_image_with_semaphore` returns.
+
+    Fix 2026-05-15: writes audit sidecar (.meta.json) after successful upload
+    so every generated hero is reproducible (prompt + backend + sha256 + VLM
+    score). Callers SHOULD pass backend/image_prompt/vlm_score for full
+    audit; defaults preserve backwards compatibility with older callers.
     """
     logger.info("[slide %d] uploading to Tigris", slide_number)
     ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
@@ -546,6 +613,19 @@ async def _upload_and_return(
     except Exception as e:
         return slide_number, None, f"tigris upload failed: {e}"
     logger.info("[slide %d] uploaded → %s", slide_number, url)
+    # Best-effort audit sidecar — never blocks the upload return
+    _write_image_audit_sidecar(
+        slide_number=slide_number,
+        draft_id=draft_id,
+        image_bytes=img_bytes,
+        tigris_url=url,
+        tigris_key=key,
+        backend=backend,
+        image_prompt=image_prompt,
+        vlm_score=vlm_score,
+        vlm_reason=vlm_reason,
+        timestamp=ts,
+    )
     return slide_number, url, None
 
 
@@ -799,6 +879,10 @@ async def _gen_image_with_semaphore(
                 if score >= VLM_MIN_SCORE:
                     return await _upload_and_return(
                         cx_bytes, slide_number, draft_id,
+                        backend="codex",
+                        image_prompt=image_prompt,
+                        vlm_score=score,
+                        vlm_reason=why,
                     )
                 logger.warning(
                     "[slide %d] Codex image rejected (score=%.2f < %.2f): %s",
@@ -843,6 +927,10 @@ async def _gen_image_with_semaphore(
                 if score >= VLM_MIN_SCORE:
                     return await _upload_and_return(
                         fk_bytes, slide_number, draft_id,
+                        backend="flowkit",
+                        image_prompt=image_prompt,
+                        vlm_score=score,
+                        vlm_reason=why,
                     )
                 logger.warning(
                     "[slide %d] FlowKit image rejected (score=%.2f < %.2f): %s",
@@ -875,6 +963,9 @@ async def _gen_image_with_semaphore(
             )
         last_err: str | None = None
         img_bytes: bytes | None = None
+        last_score: float | None = None
+        last_why: str | None = None
+        last_prompt_used: str = image_prompt
         prompt_variants = _build_prompt_variants(image_prompt)
         overall_attempt = 0
         for variant_idx, prompt_to_use in enumerate(prompt_variants):
@@ -917,6 +1008,9 @@ async def _gen_image_with_semaphore(
                         img_bytes, image_prompt, slide_number,
                     )
                     if score >= VLM_MIN_SCORE:
+                        last_score = score
+                        last_why = why
+                        last_prompt_used = prompt_to_use
                         break
                     logger.warning(
                         "[slide %d] image rejected (score=%.2f < %.2f): %s — retrying",
@@ -946,7 +1040,13 @@ async def _gen_image_with_semaphore(
             logger.error("[slide %d] all variants+attempts failed, last err=%s", slide_number, last_err)
             return slide_number, None, last_err or "all retries failed"
 
-        return await _upload_and_return(img_bytes, slide_number, draft_id)
+        return await _upload_and_return(
+            img_bytes, slide_number, draft_id,
+            backend="playwright",
+            image_prompt=last_prompt_used,
+            vlm_score=last_score,
+            vlm_reason=last_why,
+        )
 
 
 # ─────────────────────────────────────────────────────────────────────────

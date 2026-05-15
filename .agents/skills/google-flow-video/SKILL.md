@@ -1,3 +1,10 @@
+---
+name: google-flow-video
+description: Use when creating, iterating, or improving videos in Google Flow, including Veo prompt structure, model selection, Ingredients, voice settings, and frames-to-video chaining.
+metadata:
+  short-description: Google Flow video prompting workflow
+---
+
 # Skill: Google Flow — Mastering AI Video Creation
 
 ## Trigger

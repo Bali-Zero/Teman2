@@ -56,6 +56,15 @@ CLI_CONFIGS: dict[str, dict] = {
     "claude": {
         "cmd": "claude",
         "print_flag": "--print",
+        # INTENTIONAL: --system-prompt (NOT --append-system-prompt) per SYMBIOSIS
+        # Pillar 2 (OSINT blindato). Each mata-garuda agent runs with ONLY its
+        # GENOME.md — no leak of Nuzantara root CLAUDE.md, MEMORY.md, or auto-
+        # loaded Claude Code skills into OSINT agent reasoning. Trade-off: this
+        # bypasses ~/.claude/settings.json excludeDynamicSystemPromptSections
+        # (the flag is ignored with --system-prompt per CLI help), costing
+        # ~3-8KB cache miss/run. Eval: docs/brainstorms/2026-05-15-mata-garuda-
+        # system-prompt/README.md + GitHub issue #672. Do NOT refactor to
+        # --append-system-prompt without re-reading that eval.
         "system_flag": "--system-prompt",
         "model_flag": "--model",
     },
