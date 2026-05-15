@@ -48,10 +48,15 @@ class QueryAnalyticsRepository(BaseRepository):
         """
         try:
             import hashlib
-            import json
 
             query_hash = hashlib.md5(query_text.encode()).hexdigest()
-            metadata = json.dumps({"user_email": user_id} if user_id else {})
+            # NOTE: bind the raw dict, NOT json.dumps(...). The app/runtime
+            # asyncpg pool registers a jsonb codec with `encoder=json.dumps`
+            # (service_initializer.py / database.py) — pre-serializing here
+            # double-encodes into a jsonb string scalar instead of an object,
+            # which breaks the `metadata ? 'user_email'` operator.
+            # Regression fixed 2026-05-14.
+            metadata = {"user_email": user_id} if user_id else {}
 
             async with self.db_pool.acquire() as conn:
                 row = await conn.fetchrow(
