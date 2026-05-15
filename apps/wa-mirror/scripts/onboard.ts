@@ -35,10 +35,16 @@ async function main(): Promise<void> {
   const { email } = parseArgs();
   logger.info({ email }, "wa-mirror onboarding started; print QR & wait for open");
   try {
+    // resolveOnFirstOpen=true: the reconnect loop inside startSession still
+    // absorbs the post-pairing restartRequired (code 515) bounce, but the
+    // promise resolves the first time the session reaches `connected` and the
+    // socket is then closed. The persisted auth state in
+    // ~/.wa-mirror/sessions/<email>/ is what the daemon picks up later.
     const sessionId = await startSession({
       teamMemberEmail: email,
       sessionLabel: process.env.WA_MIRROR_SESSION_LABEL,
       sessionsRoot: process.env.WA_MIRROR_SESSIONS_ROOT,
+      resolveOnFirstOpen: true,
     });
     logger.info(
       { email, sessionId },
