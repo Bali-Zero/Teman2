@@ -134,8 +134,21 @@ def pick_font(prefer: list[str]) -> str:
 
 # ---------- Text utilities ----------
 
-def split_for_yellow(text: str) -> list[tuple[str, bool]]:
-    """Return [(segment, is_yellow), ...] covering the input text."""
+# Fix 2026-05-15: previously every number/regulation/verb was highlighted →
+# slides like "165 DEPORTED 1 JAN– 12 APR. 62 DETAINED. 210 ARRESTED…" had
+# 10+ yellow tokens, destroying visual hierarchy. Cap is enforced inside
+# split_for_yellow: keep only the FIRST N highlights, rest revert to white.
+MAX_HIGHLIGHTS_PER_TEXT = 3
+
+
+def split_for_yellow(text: str,
+                     max_highlights: int = MAX_HIGHLIGHTS_PER_TEXT) -> list[tuple[str, bool]]:
+    """Return [(segment, is_yellow), ...] covering the input text.
+
+    The first ``max_highlights`` regex matches keep is_yellow=True; subsequent
+    matches are collapsed to is_yellow=False. This enforces editorial discipline:
+    typography hierarchy is destroyed when every fact is highlighted.
+    """
     matches: list[tuple[int, int]] = []
     for pat in YELLOW_COMPILED:
         for m in pat.finditer(text):
@@ -147,9 +160,11 @@ def split_for_yellow(text: str) -> list[tuple[str, bool]]:
             merged[-1] = (merged[-1][0], max(merged[-1][1], e))
         else:
             merged.append((s, e))
+    # Enforce cap: only the first N merged ranges remain "yellow".
+    capped = merged[:max_highlights]
     segments: list[tuple[str, bool]] = []
     last = 0
-    for s, e in merged:
+    for s, e in capped:
         if s > last:
             segments.append((text[last:s], False))
         segments.append((text[s:e], True))
@@ -494,19 +509,30 @@ def render_photo_headline_yellow_sub(c: canvas.Canvas, s: dict[str, Any],
 
     max_w = W - 120
 
-    # Yellow sub (top)
+    # Fix 2026-05-15: previously yellow sub at y=H-110 (font 28) and heading
+    # at y=H-170 (font up to 56) → only 60pt vertical gap. With heading 56pt
+    # ascender top, the heading visually overlapped the sub. New: enforce
+    # SUB_BELOW_HEADING ordering — sub is the eyebrow (smaller, ABOVE heading)
+    # OR moved down with proper gap; here we keep sub at top but with explicit
+    # bottom-of-sub clearance before heading top.
+    SUB_SIZE = 22                     # smaller eyebrow to leave room
+    SUB_TO_HEADING_GAP = 38           # explicit gap (font_size + breathing room)
+    SUB_Y = H - 100                   # eyebrow baseline
+
+    # Yellow sub (eyebrow)
     sub_text = (s.get("subheading") or s.get("yellow_accent") or "").upper()
     if sub_text:
         c.setFillColor(HexColor(COLOR_ACCENT_YELLOW))
-        c.setFont(ctx.font_bold, 28)
-        c.drawString(60, H - 110, sub_text[:60])
+        c.setFont(ctx.font_bold, SUB_SIZE)
+        c.drawString(60, SUB_Y, sub_text[:60])
 
-    # Heading
+    # Heading — anchored below sub with explicit gap (avoid vertical overlap)
     heading = (s.get("heading") or "").upper()
     head_size, head_lines = adaptive_heading(
         heading, ctx.font_bold, max_w, max_size=56, min_size=40, max_lines=3)
     head_line_h = head_size + 12
-    y_head = H - 170
+    # Heading top baseline = SUB_Y - SUB_SIZE (sub block bottom) - GAP - head_size (heading first-line ascender)
+    y_head = SUB_Y - SUB_SIZE - SUB_TO_HEADING_GAP - head_size
     for line in head_lines:
         segs = split_for_yellow(line)
         cur_x = 60
@@ -575,26 +601,44 @@ def render_dark_status_list(c: canvas.Canvas, s: dict[str, Any],
     c.setLineWidth(4)
     c.line(60, y_head - 10, 220, y_head - 10)
 
+    # Fix 2026-05-15: previous version had (a) label at cur_y and value at
+    # cur_y-40 with no wrap → value font 32pt collides with label 18pt of
+    # NEXT row because cur_y -= 110 isn't enough when value is multi-line;
+    # (b) status="critical" mapped to red, violating brand constitution
+    # (white+yellow only — red reserved for logo + thin rule). Both fixed.
     items = s.get("list_items") or []
+    LABEL_TO_VALUE_GAP = 32           # vertical gap between label baseline and value baseline (label ~18pt, gap accommodates descenders + leading)
+    VALUE_LINE_HEIGHT = 38            # for value at 28pt with leading
+    INTER_ITEM_GAP = 40               # gap between bottom of one value block and top of next label
+    LABEL_SIZE = 16
+    VALUE_SIZE = 28
     cur_y = y_head - 80
     for it in items[:6]:
         label = (it.get("label") or "").upper()
-        value = (it.get("value") or "")[:35].upper()
+        value_full = (it.get("value") or "").upper()
         status = it.get("status") or "neutral"
+        # Constitution: white + yellow only. critical→white+bold (intensity via weight, not red).
         color = {
-            "critical": COLOR_STATUS_RED,
+            "critical": COLOR_TEXT_WHITE,
             "positive": COLOR_ACCENT_YELLOW,
             "neutral": COLOR_TEXT_WHITE,
         }.get(status, COLOR_TEXT_WHITE)
 
+        # Label (small caps, muted)
         c.setFillColor(HexColor(COLOR_TEXT_MUTED))
-        c.setFont(ctx.font_mono, 18)
-        c.drawString(60, cur_y, label)
+        c.setFont(ctx.font_mono, LABEL_SIZE)
+        c.drawString(60, cur_y, label[:48])
 
+        # Value: wrap to fit, max 2 lines, drawn below label with gap
         c.setFillColor(HexColor(color))
-        c.setFont(ctx.font_bold, 32)
-        c.drawString(60, cur_y - 40, value)
-        cur_y -= 110
+        c.setFont(ctx.font_bold, VALUE_SIZE)
+        value_lines = wrap_simple(value_full, ctx.font_bold, VALUE_SIZE, W - 120)[:2]
+        line_y = cur_y - LABEL_TO_VALUE_GAP
+        for vl in value_lines:
+            c.drawString(60, line_y, vl)
+            line_y -= VALUE_LINE_HEIGHT
+        # Next item position: after this value block plus inter-item gap
+        cur_y = line_y - INTER_ITEM_GAP + VALUE_LINE_HEIGHT  # line_y is "below last line", add back one LH to get bottom of last line
 
     draw_logo(c)
     if ctx.is_inner:
@@ -706,27 +750,37 @@ def render_timeline_pinboard(c: canvas.Canvas, s: dict[str, Any],
     c.setLineWidth(3)
     c.line(80, H - 200, 80, 240)
 
+    # Fix 2026-05-15: previous version drew date at (110, cur_y+8) and event
+    # at (110, cur_y-8) — only 16pt vertical separation but font 18 vs 24,
+    # so glyphs interleaved producing the "Q01²⁶A⁻⁰R¹R⁻⁰IVALS" garbage.
+    # Plus event used same X=110 as date — they collided horizontally.
+    # New layout: date as separated pill ABOVE event, both starting at x=110,
+    # date at cur_y, event starting cur_y - 26 (font 18 + 8 padding).
     events = s.get("timeline") or []
+    DATE_TO_EVENT_GAP = 28
+    EVENT_LINE_H = 30
+    INTER_EVENT_GAP = 36
     cur_y = H - 220
     for ev in events[:6]:
         date = ev.get("date") or ""
         event = (ev.get("event") or "").upper()
-        # Dot on rule
+        # Dot on rule, aligned vertically with date row
         c.setFillColor(HexColor(COLOR_STATUS_RED))
-        c.circle(80, cur_y, 7, fill=1, stroke=0)
-        # Date yellow
+        c.circle(80, cur_y - 4, 6, fill=1, stroke=0)
+        # Date — yellow mono, single line, no overlap
         c.setFillColor(HexColor(COLOR_ACCENT_YELLOW))
-        c.setFont(ctx.font_mono, 18)
-        c.drawString(110, cur_y + 8, date)
-        # Event
-        evt_lines = wrap_simple(event, ctx.font_bold, 24, W - 180)[:2]
-        evt_y = cur_y - 8
+        c.setFont(ctx.font_mono, 16)
+        c.drawString(110, cur_y, date)
+        # Event — below date with proper gap
+        evt_lines = wrap_simple(event, ctx.font_bold, 22, W - 180)[:2]
+        evt_y = cur_y - DATE_TO_EVENT_GAP
         for el in evt_lines:
             c.setFillColor(HexColor(COLOR_TEXT_WHITE))
-            c.setFont(ctx.font_bold, 24)
+            c.setFont(ctx.font_bold, 22)
             c.drawString(110, evt_y, el)
-            evt_y -= 30
-        cur_y -= 130
+            evt_y -= EVENT_LINE_H
+        # Move to next event: bottom of last event line + inter-event gap
+        cur_y = evt_y - INTER_EVENT_GAP + EVENT_LINE_H
 
     draw_logo(c)
     if ctx.is_inner:
