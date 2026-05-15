@@ -81,9 +81,26 @@ _TOKENS_FALLBACK = {
     "status_red": "#C8102E",
 }
 
+# Fallback layout_defaults when tokens.json is unavailable
+_LAYOUT_DEFAULTS_FALLBACK: dict[str, dict[str, str]] = {
+    "dark-status-list":          {"heading_color": "yellow"},
+    "timeline-pinboard":         {"heading_color": "yellow"},
+    "three-verdicts":            {"heading_color": "yellow"},
+    "thin-red-rule-divider":     {"heading_color": "yellow"},
+    "swiss-grid-asymmetry":      {"heading_color": "yellow"},
+    "evidence-carved":           {"heading_color": "white"},
+    "monospace-evidence-block":  {"heading_color": "white"},
+    "qa-dialogue":               {"heading_color": "white"},
+    "cover-photo":               {"heading_color": "white"},
+    "photo-headline-yellow-sub": {"heading_color": "white"},
+    "stat-card-hero":            {"heading_color": "yellow"},
+    "statement-bomb":            {"heading_color": "white"},
+    "elegant-close":             {"heading_color": "yellow"},
+}
 
-def _load_brand_tokens() -> dict[str, str]:
-    """Load brand color tokens from tokens.json with fallback to constants."""
+
+def _load_brand_tokens() -> tuple[dict[str, str], dict[str, dict[str, str]]]:
+    """Load color tokens + layout_defaults from tokens.json with fallback."""
     try:
         if TOKENS_PATH.exists():
             import json as _json
@@ -98,24 +115,46 @@ def _load_brand_tokens() -> dict[str, str]:
                 "accent_yellow": colors.get("accent", {}).get("yellow", {}).get("value", _TOKENS_FALLBACK["accent_yellow"]),
                 "status_red": colors.get("status", {}).get("red", {}).get("value", _TOKENS_FALLBACK["status_red"]),
             }
-            # Detect drift from fallback baseline (informational, not blocking)
             drift = [k for k, v in loaded.items() if v.upper() != _TOKENS_FALLBACK[k].upper()]
             if drift:
                 print(f"[wr2-render] tokens.json drift detected: {drift} (using new values)",
                       file=sys.stderr)
-            return loaded
+            layout_defaults = {
+                k: v for k, v in data.get("layout_defaults", {}).items()
+                if not k.startswith("_")
+            }
+            if not layout_defaults:
+                layout_defaults = dict(_LAYOUT_DEFAULTS_FALLBACK)
+            return loaded, layout_defaults
     except Exception as e:
         print(f"[wr2-render] tokens.json load failed ({e}), using fallback", file=sys.stderr)
-    return dict(_TOKENS_FALLBACK)
+    return dict(_TOKENS_FALLBACK), dict(_LAYOUT_DEFAULTS_FALLBACK)
 
 
-_BRAND_TOKENS = _load_brand_tokens()
+_BRAND_TOKENS, _LAYOUT_DEFAULTS = _load_brand_tokens()
 COLOR_BG_ANTRACITE = _BRAND_TOKENS["bg_antracite"]
 COLOR_BG_BLACK = _BRAND_TOKENS["bg_black"]
 COLOR_TEXT_WHITE = _BRAND_TOKENS["text_white"]
 COLOR_TEXT_MUTED = _BRAND_TOKENS["text_muted"]
 COLOR_ACCENT_YELLOW = _BRAND_TOKENS["accent_yellow"]
 COLOR_STATUS_RED = _BRAND_TOKENS["status_red"]
+
+
+def heading_color_for(slide: dict[str, Any]) -> str:
+    """Return hex color for the heading of this slide.
+
+    Priority (high → low):
+      1. slide["heading_color"] override in slides.json  ("yellow" | "white")
+      2. tokens.json layout_defaults[layout_family].heading_color
+      3. hardcoded fallback per _LAYOUT_DEFAULTS_FALLBACK
+    """
+    override = (slide.get("heading_color") or "").strip().lower()
+    if override in ("yellow", "white"):
+        src = override
+    else:
+        layout = slide.get("layout_family", "")
+        src = _LAYOUT_DEFAULTS.get(layout, {}).get("heading_color", "white")
+    return COLOR_ACCENT_YELLOW if src == "yellow" else COLOR_TEXT_WHITE
 
 # ---------- Yellow highlight regex (Article 6.9 anchor family) ----------
 # These patterns identify "verifiable facts" tokens that get yellow color
@@ -691,10 +730,7 @@ def render_dark_status_list(c: canvas.Canvas, s: dict[str, Any],
         heading, ctx.font_bold, max_w, max_size=48, min_size=36, max_lines=2)
     y_head = H - 130
     for line in head_lines:
-        # Fix 2026-05-16 [user correction]: heading must be yellow (like
-        # thin-red-rule-divider), not white. User manually corrected both
-        # dark-status-list slides in Canva — baking into renderer.
-        c.setFillColor(HexColor(COLOR_ACCENT_YELLOW))
+        c.setFillColor(HexColor(heading_color_for(s)))
         c.setFont(ctx.font_bold, head_size)
         c.drawString(60, y_head, line)
         y_head -= head_size + 12
@@ -803,7 +839,7 @@ def render_evidence_carved(c: canvas.Canvas, s: dict[str, Any],
         c.setFont(ctx.font_bold, head_size)
         c.drawString(62, y_head - 3, line)
         c.restoreState()
-        c.setFillColor(HexColor(COLOR_TEXT_WHITE))
+        c.setFillColor(HexColor(heading_color_for(s)))
         c.setFont(ctx.font_bold, head_size)
         c.drawString(60, y_head, line)
         y_head -= head_line_h
@@ -839,7 +875,7 @@ def render_qa_dialogue(c: canvas.Canvas, s: dict[str, Any],
 
     heading = (s.get("heading") or "").upper()
     if heading:
-        c.setFillColor(HexColor(COLOR_TEXT_WHITE))
+        c.setFillColor(HexColor(heading_color_for(s)))
         c.setFont(ctx.font_bold, 32)
         c.drawString(60, H - 110, heading[:50])
 
@@ -875,7 +911,7 @@ def render_timeline_pinboard(c: canvas.Canvas, s: dict[str, Any],
     c.rect(0, 0, W, H, fill=1, stroke=0)
 
     heading = (s.get("heading") or "").upper()
-    c.setFillColor(HexColor(COLOR_ACCENT_YELLOW))
+    c.setFillColor(HexColor(heading_color_for(s)))
     c.setFont(ctx.font_bold, 36)
     c.drawString(60, H - 110, heading[:40])
 
@@ -930,7 +966,7 @@ def render_three_verdicts(c: canvas.Canvas, s: dict[str, Any],
     c.rect(0, 0, W, H, fill=1, stroke=0)
 
     heading = (s.get("heading") or "").upper()
-    c.setFillColor(HexColor(COLOR_ACCENT_YELLOW))
+    c.setFillColor(HexColor(heading_color_for(s)))
     c.setFont(ctx.font_bold, 32)
     c.drawString(60, H - 110, heading[:40])
 
