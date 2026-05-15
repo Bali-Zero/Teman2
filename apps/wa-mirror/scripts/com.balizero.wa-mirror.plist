@@ -8,6 +8,10 @@
      launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.balizero.wa-mirror.plist
      launchctl kickstart -k gui/$(id -u)/com.balizero.wa-mirror
 
+  Required env lives in ~/.wa-mirror.env:
+     WA_MIRROR_ACCOUNTS, DATABASE_URL, TELEGRAM_BOT_TOKEN,
+     TELEGRAM_OWNER_CHAT_ID
+
   Why KeepAlive=true: per cicatrix STRUCTURAL "53 LaunchAgents Pro, only 7
   have KeepAlive=true" — long-running daemons MUST set KeepAlive so launchd
   respawns within 10s of any crash.
@@ -19,9 +23,8 @@
 
     <key>ProgramArguments</key>
     <array>
-        <string>/opt/homebrew/bin/node</string>
-        <string>--enable-source-maps</string>
-        <string>/Users/nuzantara/Desktop/nuzantara/apps/wa-mirror/dist/bridge/index.js</string>
+        <string>/bin/zsh</string>
+        <string>/Users/nuzantara/Desktop/nuzantara/apps/wa-mirror/scripts/run-wa-mirror.sh</string>
     </array>
 
     <key>WorkingDirectory</key>
@@ -37,9 +40,6 @@
         <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
     </dict>
 
-    <key>EnvironmentVariablesFile</key>
-    <string>/Users/nuzantara/.wa-mirror.env</string>
-
     <key>RunAtLoad</key>
     <true/>
 
@@ -50,7 +50,7 @@
     <integer>30</integer>
 
     <key>StandardOutPath</key>
-    <string>/Users/nuzantara/logs/wa-mirror.out.log</string>
+    <string>/Users/nuzantara/logs/wa-mirror.log</string>
 
     <key>StandardErrorPath</key>
     <string>/Users/nuzantara/logs/wa-mirror.err.log</string>
