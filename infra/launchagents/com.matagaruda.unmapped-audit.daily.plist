@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.matagaruda.unmapped-audit.daily</string>
+
+    <!-- Mata-Garuda C.2 — Daily audit of unmapped gap_legacy entries.
+
+         Runs once per day at 09:00 WITA (Pro-only) and emits a Telegram
+         alert if the rolling 24h total of `knowledge.type='unmapped_gap'`
+         rows exceeds the threshold (default 50, override via env
+         MATAGARUDA_UNMAPPED_ALERT_THRESHOLD).
+
+         Why this exists: the schema drift between OSINT-Nexus and
+         mata_garuda.workers.gap_legacy._TRANSLATION was invisible for
+         8 days (2026-05-08 → 2026-05-16) because 2137 "Legacy gap
+         drained" warnings stayed in the log file without any alert.
+         This LaunchAgent provides the "loud failure" signature recommended
+         by the 4-LLM brainstorm:
+           research/symbiosis/2026-05-16-dispatch-alias-brainstorm.md §C.2
+
+         KeepAlive=false because this is a daily audit, not a daemon. The
+         cicatrix-scars §"53 LaunchAgents Pro, only 7 KeepAlive=true"
+         classifies StartCalendarInterval entries as "cron jobs" —
+         KeepAlive=false is correct here.
+    -->
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/nuzantara/Desktop/nuzantara/scripts/mata_garuda_unmapped_audit_wrapper.sh</string>
+    </array>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <key>HOME</key>
+        <string>/Users/nuzantara</string>
+        <!-- TELEGRAM_BOT_TOKEN, TELEGRAM_OWNER_CHAT_ID, and
+             MATAGARUDA_UNMAPPED_ALERT_THRESHOLD (optional) are
+             sourced by the wrapper from ~/.nuzantara-secrets.env
+             (mode 0600) — do NOT inline secrets here (cicatrix P0-3
+             secrets-leak incident 2026-04-29). -->
+    </dict>
+
+    <!-- Daily 09:00 WITA. Off-cycle from gap-detector (07:00/18:00) so
+         it audits a complete-ish observation window.
+
+         macOS launchd evaluates StartCalendarInterval in SYSTEM LOCAL
+         TIME (NOT UTC). -->
+    <key>StartCalendarInterval</key>
+    <dict>
+        <key>Hour</key>
+        <integer>9</integer>
+        <key>Minute</key>
+        <integer>0</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>KeepAlive</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/mata-garuda-unmapped-audit.stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/mata-garuda-unmapped-audit.stderr.log</string>
+</dict>
+</plist>

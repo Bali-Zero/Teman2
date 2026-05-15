@@ -25,7 +25,11 @@ from typing import Any, Callable, Optional
 
 from mata_garuda.config import STREAM_NEXUS_GAPS
 from mata_garuda.workers.base_worker import stream_ack, stream_read_new
-from mata_garuda.workers.gap_legacy import coerce_to_canonical, is_legacy_shape
+from mata_garuda.workers.gap_legacy import (
+    coerce_to_canonical,
+    consume_unmapped_counter,
+    is_legacy_shape,
+)
 
 logger = logging.getLogger("mata_garuda.workers.gap_consumer")
 
@@ -38,6 +42,16 @@ MAX_DISPATCH_PER_RUN = 5
 DISPATCH_SLEEP_S = 2
 
 # Gap type → agent name (None = Phase 2, skipped with ack)
+#
+# Two classes of None entries:
+#   - "Phase 2 deferred"     — agent will exist in a future sprint, gap is
+#                              legitimately routable just not implemented yet
+#                              (e.g. gap.missing_procurement → lpse_harvester).
+#   - "gap.dlq:<reason>"     — explicit dead-letter for orphan attributes
+#                              that arrive from OSINT but have no agent
+#                              roadmap. These are still ACKed (no PEL bloat)
+#                              but logged + counted separately so future
+#                              audits can decide if they deserve an agent.
 GAP_DISPATCH: dict[str, Optional[str]] = {
     "gap.missing_nip":          "lhkpn_harvester",
     "gap.missing_lhkpn":        "lhkpn_harvester",
@@ -47,6 +61,13 @@ GAP_DISPATCH: dict[str, Optional[str]] = {
     "gap.missing_office":       "regulation_watcher",
     "gap.kanim_struktur":       "regulation_watcher",
     "gap.missing_procurement":  None,  # Phase 2: lpse_harvester
+    # C.4 — explicit DLQ for orphan attribute namespaces.
+    # The 4-LLM brainstorm 2026-05-16 (research/symbiosis/.../dispatch-alias)
+    # identified these as "OSINT emits them, no agent target exists today".
+    # Routing them to a distinct gap.dlq:* canonical keeps them visible in
+    # logs + audit counter, distinct from genuinely-unknown gap types.
+    "gap.dlq:phone":             None,
+    "gap.dlq:profile":           None,
 }
 
 
@@ -225,8 +246,52 @@ def run_gap_consumer(
         if i < len(items) - 1 and result.get("agent"):
             time.sleep(DISPATCH_SLEEP_S)
 
+    # C.2 — Persist unmapped counter snapshot to knowledge.db for daily audit.
+    # Non-fatal: failure to record must not break the consumer cycle.
+    unmapped_snapshot = consume_unmapped_counter()
+    if unmapped_snapshot:
+        try:
+            _persist_unmapped_snapshot(unmapped_snapshot)
+        except Exception as e:  # noqa: BLE001 — defensive: audit is opt-in
+            logger.warning("Failed to persist unmapped audit snapshot: %s", e)
+
     logger.info("Gap consumer cycle: %s", stats)
     return stats
+
+
+def _persist_unmapped_snapshot(
+    snapshot: dict[tuple[str, Optional[str]], int],
+) -> None:
+    """Append unmapped (gap_type, attribute) → count rows to knowledge.db.
+
+    One row per tuple per consumer tick. The daily audit script aggregates
+    rows over a rolling 24h window and alerts via Telegram if the unmapped
+    rate exceeds the configured threshold.
+
+    Stored as `knowledge.type='unmapped_gap'` with content as a single-line
+    JSON object {"gap_type": str, "attribute": str|null, "count": int} so
+    existing FTS5 indexes and prune cron don't need schema changes.
+    """
+    import json as _json
+
+    from mata_garuda.runtime.knowledge import KnowledgeBase
+
+    kb = KnowledgeBase()
+    try:
+        for (gtype, attr), count in snapshot.items():
+            content = _json.dumps(
+                {"gap_type": gtype, "attribute": attr, "count": count},
+                ensure_ascii=False,
+            )
+            kb.store(
+                agent="gap_consumer",
+                entry_type="unmapped_gap",
+                content=content,
+                source="nexus:gaps",
+                confidence=1.0,
+            )
+    finally:
+        kb.close()
 
 
 def main() -> None:
