@@ -1,9 +1,9 @@
-# Agent Library — Inventory (auto-generated 2026-05-16 06:59 WITA)
+# Agent Library — Inventory (auto-generated 2026-05-16 07:10 WITA)
 
 <!-- regenerate: python3 agent-library/_generate-inventory.py -->
 <!-- DO NOT hand-edit — changes will be overwritten -->
 
-**Snapshot**: 16 Claude subagents · 24 agentic crons / 118 infra crons (142 total launchd) · 25 skills · 9 cross-tool entries
+**Snapshot**: 16 Claude subagents · 35 agentic crons / 107 infra crons (142 total launchd) · 25 skills · 9 cross-tool entries
 
 ## Quick index
 
@@ -136,7 +136,7 @@
 
 - **Model**: opus
 - **Tools**: Read, Write, Bash, WebFetch, WebSearch
-- **Description**: Monthly external benchmark for Bali Zero IG carousel design. Researches state-of-the-art editorial IG carouseli from 12 
+- **Description**: Monthly external benchmark for Bali Zero IG carousel design. Researches state-of-the-art editorial IG carouseli from 12
 - **File**: `/Users/nuzantara/.claude/agents/wr2-external-bench.md`
 
 ### wr2-ig-metrics-analyst
@@ -190,10 +190,11 @@
 
 _Prefix breakdown: com.balizero=73 · com.nuzantara=51 · com.cell=2 · com.matagaruda=16_
 
-### Agentic crons (24) _(call an LLM)_
+### Agentic crons (35) _(call an LLM)_
 
 | Label | Schedule | Script | Catalog note |
 |---|---|---|---|
+| com.balizero.bz-daily-visual-pipeline | daily@05:30 | `bz-daily-visual-pipeline.sh` | — |
 | com.balizero.codex-spalla-calibrate | weekly[d0]@06:00 | `spalla-calibrate.sh` | — |
 | com.balizero.competitor-monitor.monthly | daily@09:00 | `competitor-monitor-run.sh` | — |
 | com.balizero.intel-lake-nb-pusher.15min | every 15min | `intel-lake-nb-pusher-cron.sh` | — |
@@ -213,38 +214,47 @@ _Prefix breakdown: com.balizero=73 · com.nuzantara=51 · com.cell=2 · com.mata
 | com.matagaruda.nlm-expander.weekly | weekly[d0]@09:00 | `run_nlm_expander.py` | — |
 | com.matagaruda.weekly-digest | weekly[d0]@08:00 | `run_weekly_digest.py` | — |
 | com.nuzantara.claude-config-sync | every 1h | `claude-config-sync.sh` | — |
+| com.nuzantara.codex-autofix-ci | daily@*:15 | `nightly-autofix-ci.sh` | — |
+| com.nuzantara.codex-coverage-improver | daily@03:00 | `nightly-coverage-improver.sh` | — |
+| com.nuzantara.codex-openclaw-analysis | daily@07:15 | `openclaw-analysis.sh` | — |
+| com.nuzantara.codex-overnight-feeder | daily@21:30 | `overnight-queue-feeder.sh` | — |
+| com.nuzantara.codex-overnight-runner | daily@22:00 | `overnight-runner.sh` | — |
+| com.nuzantara.codex-research-actor | daily@06:00 | `daily-research-actor.sh` | — |
+| com.nuzantara.codex-spark-alarm | every 2min | `spark-alarm.sh` | — |
+| com.nuzantara.codex-spark-harvester | every 3min | `spark-completion-harvester.sh` | — |
+| com.nuzantara.codex-spark-loop | run-at-load | `spark-loop.sh` | — |
 | com.nuzantara.memory-sync-bidirectional | every 5min | `memory-sync-bidirectional.sh` | — |
 | com.nuzantara.nb-intel-delta-watcher.hourly | every 1h | `nb-intel-delta-watcher.sh` | — |
+| com.nuzantara.prime-tunnel | run-at-load | `config-prime.yml` | Cloudflared tunnel: persistent tunnel to prime.balizero.com for 3D map service. |
 | com.nuzantara.sentinel | run-at-load | `nuzantara-sentinel.py` | Nuzantara Sentinel: 4-tier self-healing automation monitor. Classifies failures |
 | com.nuzantara.sentinel-meta-watchdog | every 10min | `sentinel_meta_watchdog.sh` | — |
 | com.nuzantara.zombie-hunter | every 60s | `zombie-hunter.sh` | Zombie process hunter: kills orphaned Python/Node processes that consume resourc |
 
-### Infrastructure crons (118) _(no LLM)_
+### Infrastructure crons (107) _(no LLM)_
 
 | Label | Schedule | Script | Catalog note |
 |---|---|---|---|
-| com.balizero.bz-daily-visual-pipeline | daily@05:30 | `cron-runner.sh` | — |
 | com.balizero.client-value-predictor | daily@09:00 | `client-value-predictor.sh` | Client value predictor: ML scoring of client lifetime value based on practice hi |
-| com.balizero.competitor-signal-router.weekly | weekly[d1]@06:30 | `.nuzantara-secrets.env` | — |
-| com.balizero.cron-log-sentinel | run-at-load | `.nuzantara-secrets.env` | — |
+| com.balizero.competitor-signal-router.weekly | weekly[d1]@06:30 | `competitor_signal_router.py` | — |
+| com.balizero.cron-log-sentinel | run-at-load | `cron_log_sentinel.py` | — |
 | com.balizero.domain-mesh.foundations.daily | daily@04:00 | `domain-mesh-foundations-cron.sh` | — |
 | com.balizero.indexing-sweep.daily | daily@00:30 | `daily_indexing_cron_wrapper.sh` | — |
-| com.balizero.intel-dedup-gateway | run-at-load | `.nuzantara-secrets.env` | — |
+| com.balizero.intel-dedup-gateway | run-at-load | `intel_dedup_gateway.py` | — |
 | com.balizero.intel-lake-router.5min | every 5min | `intel-lake-router-cron.sh` | — |
 | com.balizero.intel-lake.outbox-drain.minute | every 60s | `intel-lake-outbox-drain.py` | — |
 | com.balizero.intel-lake.shadow-validate.6h | every 6h | `intel-lake-shadow-validate.sh` | — |
-| com.balizero.intel-radar-daily-digest | daily@18:00 | `.nuzantara-secrets.env` | — |
-| com.balizero.intel.nightly | daily@01:00 | `.nuzantara-secrets.env` | Intel nightly scraper: orchestrates bali-intel-scraper for overnight news/regula |
-| com.balizero.meta-dispatcher | run-at-load | `.nuzantara-secrets.env` | — |
+| com.balizero.intel-radar-daily-digest | daily@18:00 | `intel_radar_daily_digest.py` | — |
+| com.balizero.intel.nightly | daily@01:00 | `zsh` | Intel nightly scraper: orchestrates bali-intel-scraper for overnight news/regula |
+| com.balizero.meta-dispatcher | run-at-load | `meta_dispatcher.py` | — |
 | com.balizero.nb-curator.mode-c.weekly | weekly[d1]@05:00 | `run-nb-curator-mode-c.sh` | — |
-| com.balizero.nuzantara-drive-sync | calendar×2 | `nuzantara-drive-sync.sh` | — |
-| com.balizero.observatory | run-at-load | `.nuzantara-secrets.env` | — |
+| com.balizero.nuzantara-drive-sync | daily@06:00;daily@18:00 | `nuzantara-drive-sync.sh` | — |
+| com.balizero.observatory | run-at-load | `observatory.py` | — |
 | com.balizero.observatory-export | every 60s | `observatory_export.py` | — |
 | com.balizero.observatory-server | run-at-load | `serve.py` | — |
 | com.balizero.post-publish-webhook | run-at-load | `post_publish_webhook.py` | Post-publish webhook server (port 7788): receives Vercel deploy notifications, t |
 | com.balizero.regulatory-watcher.fix-b-verify | daily@07:15 | `regulatory-watcher-fix-b-verify.sh` | — |
 | com.balizero.renewal-alerts | daily@08:00 | `renewal-alerts.sh` | Renewal alerts: check all client visa/permit expiry dates, send alerts for upcom |
-| com.balizero.research-sentinel | run-at-load | `.nuzantara-secrets.env` | — |
+| com.balizero.research-sentinel | run-at-load | `research_sentinel.py` | — |
 | com.balizero.seo-cell.28d-check | daily@04:00 | `seo-cell-28d-check.sh` | — |
 | com.balizero.seo-cell.daily | daily@19:30 | `seo-cell-daily.sh` | — |
 | com.balizero.setup-team.daily | daily@06:00 | `setup-team-cron.sh` | — |
@@ -286,39 +296,30 @@ _Prefix breakdown: com.balizero=73 · com.nuzantara=51 · com.cell=2 · com.mata
 | com.matagaruda.bridge.adaptive | every 60s | `matagaruda-bridge.sh` | Mata Garuda bridge — bidirectional Pro<->Fly nerve. Pulls bridge_outbox events f |
 | com.matagaruda.gap.consumer | every 10min | `matagaruda-gap-consumer.sh` | Mata Garuda gap consumer — reads nexus:gaps stream (currently 552 entries), disp |
 | com.matagaruda.invalidation-sweep | daily@04:13 | `mata_garuda_invalidation_sweep_wrapper.sh` | — |
-| com.matagaruda.kg-linker | every 1h | `.nuzantara-secrets.env` | — |
-| com.matagaruda.kita-feed | daily@05:00 | `.nuzantara-secrets.env` | — |
-| com.matagaruda.nlm-feeder-stream.hourly | every 1h | `mata-garuda` | — |
-| com.matagaruda.public-channel | calendar×6 | `.nuzantara-secrets.env` | — |
+| com.matagaruda.kg-linker | every 1h | `bash` | — |
+| com.matagaruda.kita-feed | daily@05:00 | `bash` | — |
+| com.matagaruda.nlm-feeder-stream.hourly | every 1h | `zsh` | — |
+| com.matagaruda.public-channel | daily@02:15;daily@06:15;daily@10:15;daily@14:15…+2 | `bash` | — |
 | com.matagaruda.reg-alert.30min | every 30min | `run_regulation_alert.py` | — |
 | com.matagaruda.sentinel.hourly | every 1h | `run_sentinel_cell.py` | — |
 | com.matagaruda.unmapped-audit.daily | daily@09:00 | `mata_garuda_unmapped_audit_wrapper.sh` | — |
 | com.matagaruda.watcher.daily | daily@06:00 | `mata-garuda-watcher.sh` | Mata Garuda watcher: monitors KG data freshness and alerts if entities become st |
-| com.matagaruda.wr-topic | calendar×2 | `mata-garuda` | — |
-| com.matagaruda.wr2-bridge | every 1h | `.nuzantara-secrets.env` | — |
+| com.matagaruda.wr-topic | weekly[d3]@08:00;weekly[d6]@08:00 | `bash` | — |
+| com.matagaruda.wr2-bridge | every 1h | `bash` | — |
 | com.nuzantara.automap-server | run-at-load | `automap_server.py` | Automap server: automation mapping service that tracks all running automations a |
 | com.nuzantara.automap-telegram | run-at-load | `automap_telegram.py` | Automap Telegram bot: sends automation status updates and alerts to Telegram. |
 | com.nuzantara.automap-watchdog | run-at-load | `automap_watchdog.py` | Automap watchdog: monitors automap-server and automap-telegram health, restarts |
 | com.nuzantara.automations-reference | daily@23:15 | `generate-automations-all.sh` | Nightly doc generator: scans live system state (crontab, launchctl, registry, se |
 | com.nuzantara.cell-observatory | run-at-load | `bash` | — |
 | com.nuzantara.cell-observatory-prune | daily@04:00 | `bash` | — |
-| com.nuzantara.cell-observatory-selfcheck | every 5min | `healthcheck.sh` | — |
+| com.nuzantara.cell-observatory-selfcheck | every 5min | `bash` | — |
 | com.nuzantara.cleanup-2026-05-16-ttl-sentinel | daily@08:35 | `restore-federation-alert-mode.sh` | — |
-| com.nuzantara.codex-autofix-ci | calendar×1 | `cron-runner.sh` | — |
-| com.nuzantara.codex-coverage-improver | daily@03:00 | `cron-runner.sh` | — |
-| com.nuzantara.codex-openclaw-analysis | daily@07:15 | `cron-runner.sh` | — |
-| com.nuzantara.codex-overnight-feeder | daily@21:30 | `cron-runner.sh` | — |
-| com.nuzantara.codex-overnight-runner | daily@22:00 | `cron-runner.sh` | — |
-| com.nuzantara.codex-research-actor | daily@06:00 | `cron-runner.sh` | — |
-| com.nuzantara.codex-spark-alarm | every 2min | `cron-runner.sh` | — |
-| com.nuzantara.codex-spark-harvester | every 3min | `cron-runner.sh` | — |
-| com.nuzantara.codex-spark-loop | run-at-load | `cron-runner.sh` | — |
-| com.nuzantara.cost-advisor-daily-cap | daily@08:00 | `backend-rag` | — |
+| com.nuzantara.cost-advisor-daily-cap | daily@08:00 | `bash` | — |
 | com.nuzantara.cost-advisor-weekly | weekly[d1]@07:00 | `bash` | — |
 | com.nuzantara.cpu-monitor | every 10min | `cpu-monitor.sh` | — |
 | com.nuzantara.disk-monitor | every 10min | `disk-monitor.sh` | Disk usage monitor: check root disk >85%, log dir >500MB, single log >50MB. Aler |
 | com.nuzantara.dlq-autopilot | every 30min | `launch_dlq_autopilot.sh` | DLQ Autopilot: processes dead-letter-queue entries autonomously. Pipeline: prefl |
-| com.nuzantara.federation-alert-dispatcher | run-at-load | `backend-rag` | — |
+| com.nuzantara.federation-alert-dispatcher | run-at-load | `bash` | — |
 | com.nuzantara.fly-restart-loop-detector | every 15min | `fly-restart-loop-detector.sh` | — |
 | com.nuzantara.heartbeat-bridge | run-at-load | `launch_heartbeat_bridge.sh` | — |
 | com.nuzantara.launchagent-state-bridge | run-at-load | `launchagent-state-bridge.py` | LaunchAgent state bridge: reads launchctl list output and writes state files for |
@@ -332,20 +333,19 @@ _Prefix breakdown: com.balizero=73 · com.nuzantara=51 · com.cell=2 · com.mata
 | com.nuzantara.organism.supervisor | run-at-load | `python3` | — |
 | com.nuzantara.outbox-prune.daily | daily@03:15 | `outbox-prune.sh` | — |
 | com.nuzantara.outbox-prune.weekly | weekly[d0]@04:30 | `outbox_prune.py` | — |
-| com.nuzantara.pg-organism-bridge | run-at-load | `backend-rag` | — |
+| com.nuzantara.pg-organism-bridge | run-at-load | `pg-to-organism-bridge.py` | — |
 | com.nuzantara.pg-organism-bridge-watchdog | every 5min | `pg-organism-bridge-watchdog.sh` | — |
 | com.nuzantara.pg-proxy-cluster-recheck-oneshot | daily@08:10 | `bash` | — |
-| com.nuzantara.prime-tunnel | run-at-load | `cloudflared` | Cloudflared tunnel: persistent tunnel to prime.balizero.com for 3D map service. |
 | com.nuzantara.secrets-sync-mini | daily@04:30 | `secrets-sync-cron.sh` | — |
 | com.nuzantara.sentinel-aggregate | every 5min | `sentinel-aggregate.py` | — |
-| com.nuzantara.skills-bridge-consumer | calendar×192 | `skills_bridge_consumer.py` | — |
+| com.nuzantara.skills-bridge-consumer | daily@06:00;daily@06:05;daily@06:10;daily@06:15…+188 | `skills_bridge_consumer.py` | — |
 | com.nuzantara.supervisor-liveness-watchdog | every 10min | `supervisor_liveness_watchdog.sh` | — |
 | com.nuzantara.vector-reindex-check | weekly[d1]@09:00 | `vector-reindex-check.py` | Vector reindex checker: detects if Qdrant collections have drifted from source d |
 
 ## Skills
 
 - **browser** — Use for ANY browser interaction: reading pages, clicking, filling forms, navigating, verifying deplo (`browser.md`)
-- **canva-apply** — Apply pending Canva operations from the War Room. Reads canva_pending.json; if status is "pending",  (`canva-apply.md`)
+- **canva-apply** — Apply pending Canva operations from the War Room. Reads canva_pending.json; if status is "pending", (`canva-apply.md`)
 - **canva-reset-template** — Reset the Bali Zero carousel master template DAHE6lx1lf8 to a clean state. Replaces all text element (`canva-reset-template.md`)
 - **drive-upload** — Upload files or streams to Google Drive via rclone. Use when saving archives, backups, exfiltrated d (`drive-upload.md`)
 - **federation-dispatch** — Use when the user explicitly orders dispatch via ai-dispatch.sh (gemini, codex, deepseek, claude-cli (`federation-dispatch.md`)
@@ -360,11 +360,11 @@ _Prefix breakdown: com.balizero=73 · com.nuzantara=51 · com.cell=2 · com.mata
 - **Nuzantara Deployment** — Deploy Nuzantara backend to Fly.io with full checks (`nuzantara-deploy.md`)
 - **nuzantara-flowkit-flow-generation** — Use when generating Imagen 4 / Veo 3 images and videos for Bali Zero (WR2 carousel hero, IG reel, di (`nuzantara-flowkit-flow-generation.md`)
 - **nuzantara-kg-operations** — Use for Nuzantara Knowledge Graph work — GraphRAG 2.0/6.0, 108K nodes / 243K edges, Louvain clusteri (`nuzantara-kg-operations.md`)
-- **nuzantara-llm-test** — Use when testing the Nuzantara multi-LLM gateway — comparing Claude OAuth, Gemini, Codex, DeepSeek,  (`nuzantara-llm-test.md`)
+- **nuzantara-llm-test** — Use when testing the Nuzantara multi-LLM gateway — comparing Claude OAuth, Gemini, Codex, DeepSeek, (`nuzantara-llm-test.md`)
 - **nuzantara-monitoring** — Use when checking Nuzantara observability stack — Prometheus metrics, Sentry error tracking, Langfus (`nuzantara-monitoring.md`)
 - **nuzantara-parallel-dev** — Use when launching 2+ Claude Code sessions in parallel on Nuzantara (Pro or Air) with tmux + git wor (`nuzantara-parallel-dev.md`)
 - **nuzantara-send-email** — Use when sending any email from the Nuzantara/Zantara system — reports, invoices, notifications, CRM (`nuzantara-send-email.md`)
-- **nuzantara-spec-driven-dev** — Use when implementing a Nuzantara feature with spec-driven methodology — write spec first, validate  (`nuzantara-spec-driven-dev.md`)
+- **nuzantara-spec-driven-dev** — Use when implementing a Nuzantara feature with spec-driven methodology — write spec first, validate (`nuzantara-spec-driven-dev.md`)
 - **nuzantara-tdd** — Apply Test-Driven Development (TDD) methodology with Red-Green-Refactor cycle for all code implement (`nuzantara-tdd.md`)
 - **nuzantara-vector-search** — Use for Nuzantara Qdrant operations — semantic search, embedding generation (bge-m3, nomic-embed-tex (`nuzantara-vector-search.md`)
 - **software-architecture** — Apply Clean Architecture, SOLID principles, and Domain-Driven Design patterns when designing or refa (`software-architecture.md`)
@@ -372,6 +372,4 @@ _Prefix breakdown: com.balizero=73 · com.nuzantara=51 · com.cell=2 · com.mata
 
 ## Drift warnings
 
-**Orphaned plists (script not on disk):**
-- `com.nuzantara.cell-observatory-selfcheck`
-
+_No drift detected._
