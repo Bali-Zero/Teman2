@@ -118,7 +118,7 @@ def _send_telegram_alert(message: str) -> None:
         logger.info("Telegram alert circuit breaker inviato")
     except (urllib.error.URLError, OSError, ValueError) as ex:
         logger.warning(f"Telegram alert fallito: {ex}")
-    except Exception as ex:
+    except Exception:
         logger.exception("Telegram alert fallito con errore inatteso")
 
 
@@ -333,7 +333,7 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                             continue
             except (HttpError, asyncpg.PostgresError, OSError) as e:
                 logger.debug(f"Could not compute content hash for {file_name}: {e}")
-            except Exception as e:
+            except Exception:
                 logger.exception(f"Unexpected error computing content hash for {file_name}")
 
             logger.info(
@@ -402,16 +402,18 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
             # Dispatch OCR
             try:
                 await _dispatch_ocr_by_folder(
-                    client_id,
-                    file_id,
-                    folder_name,
-                    file_name,
-                    doc_id,
+                    db_pool=db_pool,
+                    client_id=client_id,
+                    file_id=file_id,
+                    folder_name=folder_name,
+                    filename=file_name,
+                    doc_id=doc_id,
+                    document_type=_infer_document_type(file_name, folder_name),
                 )
                 processed += 1
             except (HttpError, asyncpg.PostgresError, OSError) as e:
                 logger.warning(f"Drive poll: OCR dispatch failed for {file_name}: {e}")
-            except Exception as e:
+            except Exception:
                 logger.exception(f"Drive poll: OCR dispatch failed unexpectedly for {file_name}")
 
         # 5. Save new page token
@@ -435,7 +437,7 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
     except (HttpError, asyncpg.PostgresError, OSError, KeyError) as e:
         logger.warning(f"Drive poll failed: {e}")
         raise  # ri-lancia per permettere al circuit breaker di contare i failures
-    except Exception as e:
+    except Exception:
         logger.exception("Drive poll failed with unexpected error")
         raise  # ri-lancia per permettere al circuit breaker di contare i failures
     finally:
