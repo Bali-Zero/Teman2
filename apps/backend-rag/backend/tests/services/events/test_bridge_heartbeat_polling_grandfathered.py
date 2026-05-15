@@ -1,9 +1,12 @@
 """Grandfathered polling-based watchdog test stub for pg-organism-bridge.
 
-Symbiosis L3 grandfathered exception: watchdog uses 5min polling instead
-of durable XADD heartbeat consumer. Heartbeat-based watchdog = follow-up PR.
+Documents the L3 grandfathered exception: the watchdog uses 5min polling
+instead of durable XADD heartbeat consumer. Heartbeat-based watchdog is
+follow-up PR (gated on bridge restart). Until then, polling watchdog is
+in production AND lint_symbiosis_promises.py needs this file to exist.
 
-Test: apps/backend-rag/backend/tests/services/events/test_bridge_heartbeat_polling_grandfathered.py
+TODO follow-up PR: replace polling with XREAD BLOCK consumer of
+`organism:heartbeat` stream (60s XADD producer in pg-to-organism-bridge.py).
 """
 import pytest
 
