@@ -726,31 +726,48 @@ def render_dark_status_list(c: canvas.Canvas, s: dict[str, Any],
         LABEL_TO_VALUE_GAP = 32
         VALUE_LINE_HEIGHT = 38
         INTER_ITEM_GAP = 40
+    # Fix 2026-05-15 [v4 critic find]: previous version used
+    # `wrap_simple(...)[:2]` which silently dropped overflow without
+    # ellipsis (Article — silent content loss). Plus `positive` status
+    # painted entire value YELLOW (Article 3 palette violation: yellow
+    # is for accent/highlight, NOT entire body strings). New:
+    # - call wrap_simple with max_lines + ellipsis-on-overflow
+    # - allow 3 lines per value when n_items ≤ 3 (more vertical budget)
+    # - positive status uses white body + yellow ACCENT via
+    #   draw_highlighted_line (regex picks the highlight tokens, max 3)
+    max_value_lines = 3 if n_items <= 3 else 2
     cur_y = y_head - 80
     for it in items[:6]:
         label = (it.get("label") or "").upper()
         value_full = (it.get("value") or "").upper()
         status = it.get("status") or "neutral"
-        # Constitution: white + yellow only. critical→white+bold (intensity via weight, not red).
-        color = {
-            "critical": COLOR_TEXT_WHITE,
-            "positive": COLOR_ACCENT_YELLOW,
-            "neutral": COLOR_TEXT_WHITE,
-        }.get(status, COLOR_TEXT_WHITE)
 
         # Label (small caps, muted)
         c.setFillColor(HexColor(COLOR_TEXT_MUTED))
         c.setFont(ctx.font_mono, LABEL_SIZE)
         c.drawString(60, cur_y, label[:48])
 
-        # Value: wrap to fit, max 2 lines, drawn below label with gap
-        c.setFillColor(HexColor(color))
+        # Value: wrap with proper max_lines + ellipsis, drawn below label
         c.setFont(ctx.font_bold, VALUE_SIZE)
-        value_lines = wrap_simple(value_full, ctx.font_bold, VALUE_SIZE, W - 120)[:2]
+        value_lines = wrap_simple(value_full, ctx.font_bold, VALUE_SIZE,
+                                  W - 120, max_lines=max_value_lines,
+                                  ellipsis=True)
         line_y = cur_y - LABEL_TO_VALUE_GAP
-        for vl in value_lines:
-            c.drawString(60, line_y, vl)
-            line_y -= VALUE_LINE_HEIGHT
+        if status == "positive":
+            # Yellow accent applied via draw_highlighted_line which respects
+            # MAX_HIGHLIGHTS_PER_TEXT cap. Base color: white. Yellow on
+            # number/regulation/verb tokens only.
+            for vl in value_lines:
+                line_segs = split_for_yellow(vl)
+                draw_highlighted_line(c, 60, line_y, line_segs, ctx.font_bold,
+                                      VALUE_SIZE, shadow=False)
+                line_y -= VALUE_LINE_HEIGHT
+        else:
+            # critical + neutral: solid white body
+            c.setFillColor(HexColor(COLOR_TEXT_WHITE))
+            for vl in value_lines:
+                c.drawString(60, line_y, vl)
+                line_y -= VALUE_LINE_HEIGHT
         # Next item position: after this value block plus inter-item gap
         cur_y = line_y - INTER_ITEM_GAP + VALUE_LINE_HEIGHT  # line_y is "below last line", add back one LH to get bottom of last line
 
