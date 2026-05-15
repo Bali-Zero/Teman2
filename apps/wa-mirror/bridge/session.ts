@@ -36,9 +36,11 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import pino from "pino";
 import qrcodeTerminal from "qrcode-terminal";
+import QRCode from "qrcode";
 
 import { emitMessageReceived } from "./events.js";
-import { jidToPhone, shouldMirror } from "./filters.js";
+import { jidToPhone } from "./filters.js";
+import { findClientByPhone } from "./pg.js";
 import {
   incrementMessagesFiltered,
   incrementMessagesLogged,
@@ -254,8 +256,10 @@ async function handleConnectionUpdate(
   const { connection, lastDisconnect, qr } = update;
 
   if (qr) {
+    const qrPath = `/tmp/qr-${ctx.teamMemberEmail.split("@")[0]}.png`;
+    await QRCode.toFile(qrPath, qr, { width: 400 });
     process.stderr.write(
-      `\n[wa-mirror] Team member ${ctx.teamMemberEmail}: scan this QR with WhatsApp → Settings → Linked Devices\n`
+      `\n[wa-mirror] QR salvato in ${qrPath} — aprilo con: open ${qrPath}\n`
     );
     qrcodeTerminal.generate(qr, { small: true }, (qrAscii) => {
       process.stderr.write(qrAscii);
@@ -357,28 +361,30 @@ function registerMessageHandler(sock: WASocket, ctx: ConnectContext): void {
         const counterpartJid = m.key.remoteJid ?? "";
         const teamMemberPhone = jidToPhone(sock.user?.id);
 
-        const decision = await shouldMirror({
-          counterpartJid,
-          teamMemberPhone,
-        });
-        if (!decision.mirror) {
+        const counterpartPhone = jidToPhone(counterpartJid);
+        // Skip groups and empty JIDs.
+        if (!counterpartPhone) {
+          await incrementMessagesFiltered(ctx.sessionId);
+          continue;
+        }
+        // Skip self-messages (team member messaging themselves).
+        if (counterpartPhone === teamMemberPhone.replace(/[^\d]/g, "")) {
           await incrementMessagesFiltered(ctx.sessionId);
           continue;
         }
 
         const text = extractText(m.message);
         if (!text && !hasMedia(m.message)) {
-          // Nothing useful (e.g. reaction-only or protocol message).
           await incrementMessagesFiltered(ctx.sessionId);
           continue;
         }
 
-        // Ensure a whatsapp_contacts row exists for the counterpart so the
-        // FK on whatsapp_message_context is satisfied. UPSERT keyed on
-        // unique `phone`. We don't have a display name from Baileys here
-        // reliably, so we stamp the normalised phone.
+        // Look up client in CRM — optional, contactId may be null.
+        const clientId = await findClientByPhone(counterpartPhone);
+
+        // Ensure a whatsapp_contacts row exists for the counterpart.
         const counterpartName =
-          m.pushName ?? `wa:${decision.counterpartNormalized}`;
+          m.pushName ?? `wa:${counterpartPhone}`;
         const contactRes = await query<{ id: number }>(
           `INSERT INTO whatsapp_contacts (phone, phone_normalized, name, contact_type, imported_from)
            VALUES ($1, $1, $2, 'client', 'wa_mirror')
@@ -387,7 +393,7 @@ function registerMessageHandler(sock: WASocket, ctx: ConnectContext): void {
                  total_messages = whatsapp_contacts.total_messages + 1,
                  updated_at = NOW()
            RETURNING id`,
-          [decision.counterpartNormalized, counterpartName.slice(0, 255)]
+          [counterpartPhone, counterpartName.slice(0, 255)]
         );
         const contactId = contactRes.rows[0].id;
 
@@ -418,7 +424,7 @@ function registerMessageHandler(sock: WASocket, ctx: ConnectContext): void {
           message_context_id: messageContextId,
           bridge_session_id: ctx.sessionId,
           team_member_email: ctx.teamMemberEmail,
-          client_id: decision.clientId!,
+          client_id: clientId,
           direction,
           message_date: messageDate.toISOString(),
           preview: (text ?? "[media]").slice(0, 120),
