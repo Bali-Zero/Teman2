@@ -3,13 +3,20 @@
 Used by backend paths that previously ran Claude via Max OAuth but
 suffered from the upstream `claude` CLI non-TTY hang inside the Fly
 container (see `memory/feedback_claude_cli_linux_hang.md`). DeepSeek is
-cheaper (~100x) than Claude Sonnet for structured JSON generation and
+cheaper than Claude Sonnet for structured JSON generation and
 returns usage counters properly.
 
 Endpoint: `https://api.deepseek.com/v1/chat/completions` (OpenAI-style).
-Models:
-- ``deepseek-chat``: DeepSeek V3.2, general-purpose, cheapest.
-- ``deepseek-reasoner``: DeepSeek R1 reasoning (not used here).
+Models (DeepSeek V4 release 2026-04-24, ref api-docs.deepseek.com/news/news260424):
+- ``deepseek-v4-pro``: V4 Pro flagship (1.6T params, 49B activated, 1M ctx).
+- ``deepseek-v4-flash``: V4 Flash (284B params, 13B activated, 1M ctx).
+- Legacy aliases ``deepseek-chat`` (→ V4-Flash non-think) and
+  ``deepseek-reasoner`` (→ V4-Flash thinking) are deprecated 2026-07-24.
+
+V4 supports three reasoning modes via ``reasoning_effort`` parameter:
+- ``"low"``  : Non-think (fast, cheap)
+- ``"high"`` : Think High (balanced)
+- ``"max"``  : Think Max (deep chain-of-thought, recommended for Consiglio)
 
 Auth: ``DEEPSEEK_API_KEY`` env var (already deployed on `nuzantara-rag`).
 """
@@ -20,15 +27,17 @@ import logging
 import os
 import time
 from dataclasses import dataclass
-from typing import Any, Final
+from typing import Any, Final, Literal
 
 import httpx
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_MODEL: Final[str] = "deepseek-chat"
+DEFAULT_MODEL: Final[str] = "deepseek-v4-pro"
 DEFAULT_BASE_URL: Final[str] = "https://api.deepseek.com/v1"
 DEFAULT_TIMEOUT_S: Final[float] = 60.0
+
+ReasoningEffort = Literal["low", "high", "max"]
 
 
 class DeepSeekError(RuntimeError):
@@ -85,6 +94,7 @@ async def complete_async(
     timeout_s: float = DEFAULT_TIMEOUT_S,
     endpoint: str | None = None,
     request_id: str | None = None,
+    reasoning_effort: ReasoningEffort | None = None,
 ) -> DeepSeekResponse:
     """Run a one-shot chat completion against DeepSeek.
 
@@ -96,7 +106,8 @@ async def complete_async(
     Args:
         prompt: User prompt. Kept as a single string for call-site parity
             with the old ``claude -p`` subprocess wrapper.
-        model: Model slug (``deepseek-chat`` by default).
+        model: Model slug. Defaults to ``deepseek-v4-pro`` (V4 flagship).
+            Use ``deepseek-v4-flash`` for cheaper general-purpose calls.
         system: Optional system prompt.
         max_tokens: Upper bound on completion tokens.
         temperature: Sampling temperature. 0.3 is a reasonable default
@@ -110,6 +121,12 @@ async def complete_async(
             it all DeepSeek calls show up as ``endpoint=unknown``.
         request_id: Correlation id propagated from the HTTP request, if
             available.
+        reasoning_effort: DeepSeek V4 reasoning mode. One of
+            ``"low"`` (Non-think, fast), ``"high"`` (Think High,
+            balanced) or ``"max"`` (Think Max, deep chain-of-thought).
+            ``None`` lets the API pick the default. Recommended values:
+            ``"max"`` for Consiglio gate-6 deliberation, ``"low"`` for
+            structured JSON generation, ``"high"`` for general reasoning.
 
     Returns:
         :class:`DeepSeekResponse` with the completion text + usage
@@ -151,6 +168,8 @@ async def complete_async(
         }
         if response_format is not None:
             payload["response_format"] = response_format
+        if reasoning_effort is not None:
+            payload["reasoning_effort"] = reasoning_effort
 
         base_url = os.getenv("DEEPSEEK_BASE_URL", DEFAULT_BASE_URL).rstrip("/")
         url = f"{base_url}/chat/completions"
@@ -196,13 +215,28 @@ async def complete_async(
         cache_hit_tokens = int(usage.get("prompt_cache_hit_tokens") or 0)
         model_returned = str(data.get("model") or model)
 
-        # Cost: DeepSeek V3.2 pricing, in USD per 1M tokens.
-        # Cache hit: $0.07/M input. Cache miss: $0.28/M input. Output: $0.42/M.
+        # Cost: DeepSeek V4 pricing (USD per 1M tokens, 2026-04-24 release).
+        # V4 Pro flagship: cache hit $0.435, cache miss $0.435 (input),
+        # output $0.87. (75% promo until 2026-05-31 lowers cache-hit input
+        # to $0.003625; we use list price here to be conservative.)
+        # V4 Flash: cache hit $0.0028, cache miss $0.14, output $0.28.
+        # Legacy ``deepseek-chat``/``deepseek-reasoner`` aliases route to
+        # V4-Flash on DeepSeek side and are billed at flash rates.
+        model_lc = (model_returned or model).lower()
+        is_v4_pro = "v4-pro" in model_lc or model_lc.endswith("-pro")
+        if is_v4_pro:
+            input_cm_rate = 0.435  # V4-Pro cache-miss input
+            input_ch_rate = 0.435  # V4-Pro cache-hit input (promo aside)
+            output_rate = 0.87     # V4-Pro output
+        else:
+            input_cm_rate = 0.14   # V4-Flash / legacy aliases
+            input_ch_rate = 0.0028
+            output_rate = 0.28
         cache_miss_tokens = max(0, input_tokens - cache_hit_tokens)
         cost_usd = (
-            cache_miss_tokens * 0.28 / 1_000_000
-            + cache_hit_tokens * 0.07 / 1_000_000
-            + output_tokens * 0.42 / 1_000_000
+            cache_miss_tokens * input_cm_rate / 1_000_000
+            + cache_hit_tokens * input_ch_rate / 1_000_000
+            + output_tokens * output_rate / 1_000_000
         )
 
         success = True

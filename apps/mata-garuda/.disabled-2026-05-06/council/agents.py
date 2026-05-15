@@ -165,7 +165,7 @@ class DeepSeekAdapter:
     def __init__(
         self,
         timeout: int = COUNCIL_AGENT_TIMEOUT,
-        model: str = "deepseek-reasoner",
+        model: str = "deepseek-v4-pro",
         api_key_env: str = "DEEPSEEK_API_KEY",
     ):
         self._timeout = timeout

@@ -1,7 +1,7 @@
 """Async CLI runners for Council proponents.
 
 Legge 1 compliance: LLM chiamati via subprocess `claude -p`, `gemini -p`.
-Eccezione esplicita: DeepSeek R1 via HTTP (SYMBIOSIS.md:176).
+Eccezione esplicita: DeepSeek V4 Pro Think Max via HTTP (SYMBIOSIS.md:176).
 
 Each runner:
 - is async (asyncio.create_subprocess_exec) to run 3 proponents in parallel
@@ -167,19 +167,23 @@ class DeepSeekHTTPRunner(CLIRunner):
     default_timeout = 120
 
     API_URL = "https://api.deepseek.com/v1/chat/completions"
-    DEFAULT_MODEL = "deepseek-reasoner"  # R1
+    DEFAULT_MODEL = "deepseek-v4-pro"  # V4 Pro, Think Max recommended
 
     def __init__(
         self,
         api_key: str,
         model: str | None = None,
         http_client: httpx.AsyncClient | None = None,
+        reasoning_effort: str | None = "max",
     ) -> None:
         if not api_key:
             raise CLIRunnerError("DeepSeekHTTPRunner requires api_key")
         self.api_key = api_key
         self.model = model or self.DEFAULT_MODEL
         self._client = http_client
+        # Default to "max" for Consiglio gate-6 deliberation; callers can
+        # override with "low"/"high" or pass None to let the API pick.
+        self.reasoning_effort = reasoning_effort
 
     @llm_cost_tracked(provider="deepseek", model_attr="model")
     async def run(
@@ -191,11 +195,13 @@ class DeepSeekHTTPRunner(CLIRunner):
             "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
-        payload = {
+        payload: dict[str, Any] = {
             "model": self.model,
             "messages": [{"role": "user", "content": prompt}],
             "temperature": 0.7,
         }
+        if self.reasoning_effort is not None:
+            payload["reasoning_effort"] = self.reasoning_effort
 
         client = self._client or _get_module_client(eff_timeout)
 
