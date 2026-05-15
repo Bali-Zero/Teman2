@@ -155,13 +155,47 @@ def scan_crons() -> list[dict[str, Any]]:
     return results
 
 
+def scan_cross_tool() -> list[dict[str, Any]]:
+    """Scan Cursor rules and Gemini skills."""
+    results = []
+    for p in sorted(CURSOR_RULES_DIR.glob("**/*.mdc")):
+        fm = parse_frontmatter(p)
+        results.append({
+            "name": fm.get("description", p.stem)[:60],
+            "type": "cursor-rule",
+            "path": str(p.relative_to(REPO_ROOT)),
+        })
+    for p in sorted(GEMINI_SKILLS_DIR.glob("**/*.md")):
+        fm = parse_frontmatter(p)
+        results.append({
+            "name": fm.get("name", p.stem),
+            "type": "gemini-skill",
+            "path": str(p),
+        })
+    return results
+
+
+def scan_skills() -> list[dict[str, Any]]:
+    """Scan ~/.claude/skills/**/*.md for skill frontmatter."""
+    results = []
+    for p in sorted(SKILLS_DIR.glob("**/*.md")):
+        fm = parse_frontmatter(p)
+        if not fm:
+            continue
+        results.append({
+            "name": fm.get("name", p.stem),
+            "description": (fm.get("description") or "")[:100],
+            "path": str(p),
+        })
+    return results
+
+
 def main(dry_run: bool = False) -> int:
+    subagents = scan_subagents()
+    cross_tool = scan_cross_tool()
     crons = scan_crons()
-    agentic = [c for c in crons if c["agentic"]]
-    infra = [c for c in crons if not c["agentic"]]
-    print(f"Agentic crons: {len(agentic)}, Infra crons: {len(infra)}")
-    for c in crons[:5]:
-        print(f"  {c['label']:50s} {c['schedule']:15s} agentic={c['agentic']}")
+    skills = scan_skills()
+    print(f"subagents={len(subagents)} cross_tool={len(cross_tool)} crons={len(crons)} skills={len(skills)}")
     return 0
 
 
