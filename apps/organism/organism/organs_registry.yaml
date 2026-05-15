@@ -1,1754 +1,1659 @@
-# Innervation Genoma — registry of nervous organs in the Nuzantara system.
-#
-# This file is the SINGLE SOURCE OF TRUTH for "what organs exist, where they
-# run, what their expected heartbeat is, and how to recover them when silent".
-#
-# File renamed 2026-05-08 (IG-3): `genome.yaml` → `organs_registry.yaml`.
-# Filesystem symlink `genome.yaml → organs_registry.yaml` retained for
-# backward compat until 2026-06-08. The SYSTEM CONCEPT name "Innervation
-# Genoma" is preserved everywhere (SYMBIOSIS.md, doctrine docs, this header).
-#
-# Authoritative spec: docs/innervation-2026-04-29/07_innervation_protocol.md §2.
-# Doctrine ref: PR #479 (Symbiosis Turn-On Plan ratified 2026-05-06).
-# Validation: `python -m organism.tools.validate_organs_registry`
-# (pre-commit hook + CI). Backward-compat alias `validate_genome` works
-# but emits DeprecationWarning (removal 2026-06-08).
-# HALT-on-checksum-mismatch (NB-1 ADR-7).
-#
-# Wave 1 scope (2026-05-07): registry expanded from 26 to ~75-78 organs.
-# Includes mata_garuda Pro+Mini active-active labels, WR2 Pro daemons under
-# wr2.supervisor, and Pro background crons. Wave 2 target: 100+ organs.
-#
-# Conventions
-#
-# - Active-active organs (same label loaded simultaneously on Pro AND Mini)
-#   are enrolled as TWO separate entries — one per machine — with the
-#   `runtime` field distinguishing them. The optional `duplicates_id` field
-#   cross-references the peer entry on the other machine. Validator does
-#   NOT enforce duplicates_id (header-only convention; future PR may type
-#   it strictly). Resolution of double-firing is tracked separately —
-#   see cicatrix-scars.md "12 mata_garuda LaunchAgents active-active".
-#
-# - `mini_launchd` runtime entries set `recovery_params.host: "mini"` and
-#   `recovery_params.label: <full-launchd-label>`. Cross-machine recovery
-#   requires SSH via the Tailscale alias `mini-remote` (Mini IP
-#   100.93.236.6), NOT localhost. The Supervisor MUST resolve `host: "mini"`
-#   to a remote launchctl invocation; never attempt local kickstart of a
-#   Mini-resident organ.
-#
-# Editing notes for future Claudes
-#
-# - Run `python -m organism.tools.validate_organs_registry --update-checksum`
-#   after every edit (legacy `validate_genome` alias still works with a
-#   DeprecationWarning until 2026-06-08). The validator REJECTS the file
-#   when the recorded checksum does not match the canonical SHA256
-#   (NB-1 ADR-7 enforcement).
-# - `yaml.safe_dump` (used by --update-checksum) STRIPS comments. Re-apply
-#   this header BY HAND after every checksum recompute, OR switch to
-#   ruamel.yaml in a follow-up. For W1 we tolerate the manual step.
-# - `dependencies` MUST resolve to ids in this file. External infra (PG,
-#   Redis, Qdrant) gets explicit `infra.*` entries below.
-# - Branch-hijack antibody: WIP commit + push within 30s of any edit when
-#   working in a long Claude session (see cicatrix-scars STRUCTURAL).
-
 version: 1
 checksum_algo: sha256
 checksum: 3bf9146ac12938499ca0a0f89f6c0dc3b83fbecea6c5b6192524daa050a31e71
 organs:
-  - id: infra.postgres
-    runtime: fly_machine
-    type: daemon
-    expected_hb_seconds: 0
-    owner_module: infra/fly/nuzantara-postgres
-    dependencies: []
-    recovery_action: fly_machines_start
-    recovery_params:
-      app: nuzantara-postgres
-    severity_on_silence: critical
-    cicatrix_refs: []
-  - id: infra.redis
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 0
-    owner_module: brew/redis
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      label: homebrew.mxcl.redis
-    severity_on_silence: critical
-    cicatrix_refs: []
-  - id: infra.qdrant
-    runtime: fly_machine
-    type: daemon
-    expected_hb_seconds: 0
-    owner_module: infra/fly/nuzantara-qdrant
-    dependencies: []
-    recovery_action: fly_machines_start
-    recovery_params:
-      app: nuzantara-qdrant
-    severity_on_silence: critical
-    cicatrix_refs: []
-  - id: backend.api
-    runtime: fly_machine
-    type: webhook
-    expected_hb_seconds: 60
-    owner_module: apps/backend-rag/backend/app/main.py
-    dependencies:
-      - infra.postgres
-      - infra.redis
-      - infra.qdrant
-    recovery_action: fly_machines_start
-    recovery_params:
-      app: nuzantara-rag
-      process_group: api
-    severity_on_silence: critical
-    cicatrix_refs:
-      - 2026-04-29-startup-failed-mask
-      - 2026-04-29-drive-poll-attribute-error
-  - id: backend.crm.drive_poll
-    runtime: pro_launchd
-    type: cron
-    enabled: false
-    disabled_reason: "DISABLED 2026-04-29 in crontab after drive_poll saturated PG; keep registered as disabled until explicitly restored."
-    expected_hb_seconds: 360
-    owner_module: scripts/openclaw-cron/drive-poll.sh
-    dependencies:
-      - infra.postgres
-      - backend.api
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      label: com.nuzantara.drive-poll
-    severity_on_silence: warning
-    cicatrix_refs:
-      - 2026-04-29-drive-poll-attribute-error
-    bridge_source:
-      type: state_file
-      path: ~/.agent/decisions/state/drive_poll.last.json
-      timestamp_field: ts
-      status_field: status
-  - id: pro.claude_max_watcher
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 3600
-    owner_module: scripts/claude-max-usage-watcher.py
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      label: com.nuzantara.claude-max-usage-watcher
-    severity_on_silence: warning
-    cicatrix_refs: []
-    bridge_source:
-      type: state_file
-      path: ~/.claude/usage-watcher/last_run.json
-      timestamp_field: ts
-      status_field: status
-  - id: pro.login_healthcheck
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 900
-    owner_module: scripts/login-healthcheck.sh
-    dependencies:
-      - backend.api
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      label: com.nuzantara.login-healthcheck
-    severity_on_silence: critical
-    cicatrix_refs:
-      - 2026-04-29-startup-failed-mask
-    bridge_source:
-      type: state_file
-      path: ~/.agent/decisions/state/login_healthcheck.last.json
-      timestamp_field: ts
-      status_field: status
-  - id: pro.fly_restart_loop_detector
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 1350
-    owner_module: scripts/fly-restart-loop-detector.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      label: com.nuzantara.fly-restart-loop-detector
-    severity_on_silence: critical
-    cicatrix_refs:
-      - 2026-04-29-drive-poll-attribute-error
-    bridge_source:
-      type: state_file
-      path: ~/.organism/last_seen/pro.fly_restart_loop_detector.json
-      timestamp_field: ts
-      status_field: status
-  - id: pro.cpu_monitor
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 1350
-    owner_module: scripts/cpu-monitor.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      label: com.nuzantara.cpu-monitor
-    severity_on_silence: warning
-    cicatrix_refs: []
-    bridge_source:
-      type: state_file
-      path: ~/.organism/last_seen/pro.cpu_monitor.json
-      timestamp_field: ts
-      status_field: status
-  - id: pro.disk_monitor
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 1350
-    owner_module: scripts/disk-monitor.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      label: com.nuzantara.disk-monitor
-    severity_on_silence: warning
-    cicatrix_refs: []
-    bridge_source:
-      type: state_file
-      path: ~/.organism/last_seen/pro.disk_monitor.json
-      timestamp_field: ts
-      status_field: status
-  - id: pro.zombie_hunter
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90
-    owner_module: .claude/scripts/zombie-hunter.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      label: com.nuzantara.zombie-hunter
-    severity_on_silence: warning
-    cicatrix_refs:
-      - 2026-04-29-untracked-files-lost
-    bridge_source:
-      type: state_file
-      path: ~/.organism/last_seen/pro.zombie_hunter.json
-      timestamp_field: ts
-      status_field: status
-  - id: pro.dlq_autopilot
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 2700
-    owner_module: scripts/dlq_autopilot.py
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      label: com.nuzantara.dlq-autopilot
-    severity_on_silence: warning
-    cicatrix_refs: []
-    bridge_source:
-      type: state_file
-      path: ~/.organism/last_seen/pro.dlq_autopilot.json
-      timestamp_field: ts
-      status_field: status
-  - id: pro.sentinel
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/nuzantara-sentinel.py
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      label: com.nuzantara.sentinel
-    severity_on_silence: critical
-    cicatrix_refs: []
-    bridge_source:
-      type: state_file
-      path: ~/.organism/last_seen/pro.sentinel.json
-      timestamp_field: ts
-      status_field: status
-  - id: cell.organism
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 90
-    owner_module: apps/cell/cell/main.py
-    dependencies:
-      - infra.postgres
-      - infra.redis
-    recovery_action: human_only
-    recovery_params:
-      label: com.cell.organism
-    severity_on_silence: critical
-    cicatrix_refs: []
-    bridge_source:
-      type: state_file
-      path: ~/.organism/last_seen/cell.organism.json
-      timestamp_field: ts
-      status_field: status
-  - id: pro.metabolic_rollup
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/metabolic_rollup_pro.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      label: com.cell.metabolic-rollup
-    severity_on_silence: warning
-    cicatrix_refs: []
-    bridge_source:
-      type: state_file
-      path: ~/.organism/last_seen/pro.metabolic_rollup.json
-      timestamp_field: ts
-      status_field: status
-  - id: channel.whatsapp
-    runtime: fly_machine
-    type: webhook
-    expected_hb_seconds: 120
-    owner_module: apps/backend-rag/backend/channels/whatsapp
-    dependencies:
-      - backend.api
-    recovery_action: fly_machines_start
-    recovery_params:
-      app: nuzantara-rag
-      process_group: api
-    severity_on_silence: critical
-    cicatrix_refs: []
-    bridge_source:
-      type: http
-      path: https://kita.balizero.com/api/channels/health-public
-      timestamp_field: ts
-      json_path: channels.whatsapp.status
-  - id: channel.telegram
-    runtime: fly_machine
-    type: webhook
-    expected_hb_seconds: 120
-    owner_module: apps/backend-rag/backend/channels/telegram
-    dependencies:
-      - backend.api
-    recovery_action: fly_machines_start
-    recovery_params:
-      app: nuzantara-rag
-      process_group: api
-    severity_on_silence: critical
-    cicatrix_refs: []
-    bridge_source:
-      type: http
-      path: https://kita.balizero.com/api/channels/health-public
-      timestamp_field: ts
-      json_path: channels.telegram.status
-  - id: channel.instagram
-    runtime: fly_machine
-    type: webhook
-    expected_hb_seconds: 120
-    owner_module: apps/backend-rag/backend/channels/instagram
-    dependencies:
-      - backend.api
-    recovery_action: fly_machines_start
-    recovery_params:
-      app: nuzantara-rag
-      process_group: api
-    severity_on_silence: critical
-    cicatrix_refs: []
-    bridge_source:
-      type: http
-      path: https://kita.balizero.com/api/channels/health-public
-      timestamp_field: ts
-      json_path: channels.instagram.status
-  - id: channel.web
-    runtime: fly_machine
-    type: webhook
-    expected_hb_seconds: 120
-    owner_module: apps/backend-rag/backend/channels/web
-    dependencies:
-      - backend.api
-    recovery_action: fly_machines_start
-    recovery_params:
-      app: nuzantara-rag
-      process_group: api
-    severity_on_silence: critical
-    cicatrix_refs: []
-    bridge_source:
-      type: http
-      path: https://kita.balizero.com/api/channels/health-public
-      timestamp_field: ts
-      json_path: channels.web.status
-  - id: pro.intel_nightly
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/bali-intel-scraper/scripts/run_intel_pipeline.py
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      label: com.balizero.intel.nightly
-    severity_on_silence: warning
-    cicatrix_refs: []
-    bridge_source:
-      type: state_file
-      path: ~/.agent/decisions/state/intel_scraper.last.json
-      timestamp_field: ts
-      status_field: status
-  - id: pro.translate_hourly
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 5400
-    owner_module: scripts/translate-articles.py
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      label: com.balizero.translate.hourly
-    severity_on_silence: warning
-    cicatrix_refs: []
-    bridge_source:
-      type: state_file
-      path: ~/.organism/last_seen/pro.translate_hourly.json
-      timestamp_field: ts
-      status_field: status
-  - id: pro.renewal_alerts
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/openclaw-cron/renewal-alerts.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      label: com.balizero.renewal-alerts
-    severity_on_silence: warning
-    cicatrix_refs: []
-    bridge_source:
-      type: state_file
-      path: ~/.agent/decisions/state/expiry_alerter.last.json
-      timestamp_field: ts
-      status_field: status
-  - id: wr2.supervisor
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 300
-    owner_module: scripts/wr2_supervisor.py
-    dependencies:
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      label: com.balizero.wr2.supervisor
-    severity_on_silence: warning
-    cicatrix_refs: []
-    bridge_source:
-      type: state_file
-      path: ~/.organism/last_seen/wr2.supervisor.json
-      timestamp_field: ts
-      status_field: status
-  - id: wr2.oracle
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 1209600
-    owner_module: backend.services.cognitive.oracle_cli
-    dependencies:
-      - infra.postgres
-      - wr2.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      label: com.balizero.wr2.oracle
-    severity_on_silence: warning
-    cicatrix_refs: []
-    bridge_source:
-      type: state_file
-      path: ~/.organism/last_seen/wr2.oracle.json
-      timestamp_field: ts
-      status_field: status
-  - id: wr2.newsletter
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 1209600
-    owner_module: backend.services.newsletter.newsletter_cli
-    dependencies:
-      - infra.postgres
-      - wr2.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      label: com.balizero.wr2.newsletter
-    severity_on_silence: warning
-    cicatrix_refs: []
-    bridge_source:
-      type: state_file
-      path: ~/.organism/last_seen/wr2.newsletter.json
-      timestamp_field: ts
-      status_field: status
-  - id: pro.organism_control_panel
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 120
-    owner_module: apps/organism/organism/control_panel.py
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      label: com.nuzantara.organism.control-panel
-    severity_on_silence: critical
-    cicatrix_refs: []
-    bridge_source:
-      type: http
-      path: http://127.0.0.1:1819/health
-      timestamp_field: ts
-      json_path: status
-  - id: mata_garuda.watcher_daily.pro
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/mata-garuda/scripts/run_watcher.sh
-    dependencies:
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.matagaruda.watcher.daily
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: mata_garuda.reg_alert_30min.pro
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 5400
-    owner_module: apps/mata-garuda/scripts/run_regulation_alert.py
-    dependencies:
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.matagaruda.reg-alert.30min
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: mata_garuda.kg_linker.pro
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 7200
-    owner_module: apps/mata-garuda/mata_garuda/workers/kg_linker.py
-    dependencies:
-      - infra.redis
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.matagaruda.kg-linker
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: mata_garuda.wr_topic.pro
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 691200
-    owner_module: apps/mata-garuda/scripts/run_wr_topic.py
-    dependencies:
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.matagaruda.wr-topic
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: mata_garuda.wr2_bridge_hourly.pro
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 7200
-    owner_module: apps/mata-garuda/scripts/run_wr2_bridge.py
-    dependencies:
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.matagaruda.wr2-bridge
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: mata_garuda.bridge_adaptive.pro
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 180
-    owner_module: apps/mata-garuda/scripts/run_bridge_adaptive.py
-    dependencies:
-      - infra.redis
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.matagaruda.bridge.adaptive
-    severity_on_silence: error
-    cicatrix_refs: []
-  - id: mata_garuda.sentinel_daily.mini
-    runtime: mini_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/mata-garuda/scripts/run_sentinel.py
-    dependencies:
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: mini
-      label: com.matagaruda.sentinel.daily
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: mata_garuda.intel_bridge_daily.mini
-    runtime: mini_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/mata-garuda/scripts/run_intel_bridge.py
-    dependencies:
-      - infra.redis
-      - wr2.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: mini
-      label: com.matagaruda.intel-bridge.daily
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: mata_garuda.daily_briefing.pro
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/mata-garuda/scripts/run_daily_briefing.py
-    dependencies:
-      - infra.redis
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.matagaruda.daily-briefing
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: mata_garuda.kita_feed_daily.pro
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/mata-garuda/scripts/run_kita_feed.py
-    dependencies:
-      - infra.redis
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.matagaruda.kita-feed
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: mata_garuda.public_channel.pro
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/mata-garuda/scripts/run_public_channel.py
-    dependencies:
-      - infra.redis
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.matagaruda.public-channel
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: mata_garuda.weekly_digest.pro
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 691200
-    owner_module: apps/mata-garuda/scripts/run_weekly_digest.py
-    dependencies:
-      - infra.redis
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.matagaruda.weekly-digest
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: mata_garuda.gap_consumer.pro
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 4200
-    owner_module: apps/mata-garuda/mata_garuda/workers/gap_consumer.py
-    dependencies:
-      - infra.redis
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.matagaruda.gap.consumer
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: mata_garuda.invalidation_sweep.pro
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/mata-garuda/scripts/run_invalidation_sweep.py
-    dependencies:
-      - infra.redis
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.matagaruda.invalidation-sweep
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: mata_garuda.nlm_feeder_stream_hourly.pro
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 7200
-    owner_module: apps/mata-garuda/mata_garuda/workers/nlm_feeder.py
-    dependencies:
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.matagaruda.nlm-feeder-stream.hourly
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: mata_garuda.nlm_expander_weekly.pro
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 691200
-    owner_module: apps/mata-garuda/scripts/run_nlm_expander.py
-    dependencies:
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.matagaruda.nlm-expander.weekly
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: mata_garuda.ner_worker_hourly.mini
-    runtime: mini_launchd
-    type: cron
-    expected_hb_seconds: 7200
-    owner_module: apps/mata-garuda/mata_garuda/workers/ner_worker.py
-    dependencies:
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: mini
-      label: com.matagaruda.ner-worker.hourly
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: mata_garuda.normalizer_hourly.mini
-    runtime: mini_launchd
-    type: cron
-    expected_hb_seconds: 7200
-    owner_module: apps/mata-garuda/mata_garuda/workers/normalizer.py
-    dependencies:
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: mini
-      label: com.matagaruda.normalizer.hourly
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: wr2.canva_apply
-    runtime: pro_launchd
-    type: daemon
-    enabled: false
-    disabled_reason: "Superseded by S12; LaunchAgent archived as .disabled-2026-05-09-superseded-by-S12."
-    expected_hb_seconds: 600
-    owner_module: apps/war-room/scripts/wr2_canva_apply.py
-    dependencies:
-      - wr2.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.canva-apply
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: wr2.connector
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/war-room/scripts/wr2_connector.py
-    dependencies:
-      - wr2.supervisor
-      - infra.postgres
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.connector
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: wr2.dossier_compiler
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/war-room/scripts/wr2_dossier_compiler.py
-    dependencies:
-      - wr2.supervisor
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.dossier-compiler
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: wr2.draft_generator
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 600
-    owner_module: apps/war-room/scripts/wr2_draft_generator.py
-    dependencies:
-      - wr2.supervisor
-      - infra.postgres
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.draft-generator
-    severity_on_silence: error
-    cicatrix_refs: []
-  - id: wr2.hardening
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 600
-    owner_module: apps/war-room/scripts/wr2_hardening.py
-    dependencies:
-      - wr2.supervisor
-      - infra.postgres
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.hardening
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: wr2.image_generator
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 600
-    owner_module: apps/war-room/scripts/wr2_image_generator.py
-    dependencies:
-      - wr2.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.image-generator
-    severity_on_silence: error
-    cicatrix_refs: []
-  - id: wr2.learner_nightly
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/war-room/scripts/wr2_learner_nightly.py
-    dependencies:
-      - wr2.supervisor
-      - infra.postgres
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.learner-nightly
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: wr2.measurer
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 600
-    owner_module: apps/war-room/scripts/wr2_measurer.py
-    dependencies:
-      - wr2.supervisor
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.measurer
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: wr2.pg_proxy
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 60
-    owner_module: apps/war-room/scripts/wr2_pg_proxy.py
-    dependencies:
-      - wr2.supervisor
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.pg-proxy
-    severity_on_silence: critical
-    cicatrix_refs: []
-  - id: wr2.sla_worker
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 600
-    owner_module: apps/war-room/scripts/wr2_sla_worker.py
-    dependencies:
-      - wr2.supervisor
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.sla-worker
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: wr2.strategos
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 691200
-    owner_module: apps/war-room/scripts/wr2_strategos.py
-    dependencies:
-      - wr2.supervisor
-      - infra.postgres
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.strategos
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: wr2.topic_selector
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/war-room/scripts/wr2_topic_selector.py
-    dependencies:
-      - wr2.supervisor
-      - infra.postgres
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.topic-selector
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: wr2.trend_hunter
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 600
-    owner_module: apps/war-room/scripts/wr2_trend_hunter.py
-    dependencies:
-      - wr2.supervisor
-      - infra.postgres
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.trend-hunter
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: pro.codex_autofix_ci
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 7200
-    owner_module: scripts/codex/codex_autofix_ci.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.codex-autofix-ci
-    severity_on_silence: info
-    cicatrix_refs: []
-  - id: pro.codex_overnight_runner
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/codex/codex_overnight_runner.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.codex-overnight-runner
-    severity_on_silence: info
-    cicatrix_refs: []
-  - id: pro.cost_advisor_daily_cap
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/cost-advisor/daily_cap.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.cost-advisor-daily-cap
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: pro.openclaw_children_watchdog
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 3900
-    owner_module: scripts/openclaw-children-watchdog.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.openclaw-children-watchdog
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: pro.nb_intel_delta_watcher
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 7200
-    owner_module: scripts/nb-intel-delta-watcher.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.nb-intel-delta-watcher.hourly
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: pro.sentinel_meta_watchdog
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 4200
-    owner_module: scripts/sentinel-meta-watchdog.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.sentinel-meta-watchdog
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: pro.federation_alert_dispatcher
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 180
-    owner_module: scripts/federation-alert-dispatcher.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.federation-alert-dispatcher
-    severity_on_silence: error
-    cicatrix_refs: []
-  - id: pro.secrets_sync_mini
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/mini-setup/secrets-sync-mini.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.secrets-sync-mini
-    severity_on_silence: warning
-    cicatrix_refs: []
-  # === Wave 1.5 MISS CRITICI (2026-05-07) — issue #490 ===
-  # Federation A2A bridge + cell-observatory triplet + post-publish poller +
-  # 4 SOTA M13 Lamarckian feedback distillation crons. Smoke-tested
-  # bootstrapped on Pro at design time. See
-  # docs/superpowers/specs/2026-05-07-symbiosis-w1.5-miss-critici-design.md
-  - id: nlm.bridge
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 180
-    owner_module: apps/nlm-bridge/main.py
-    dependencies:
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.nlm-bridge
-    severity_on_silence: critical
-    cicatrix_refs: []
-  - id: cell.observatory
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 90
-    owner_module: apps/cell-observatory-collector/cell_observatory/__main__.py
-    dependencies:
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.cell-observatory
-    severity_on_silence: critical
-    cicatrix_refs: []
-    bridge_source:
-      type: state_file
-      path: ~/.organism/last_seen/cell.observatory.json
-      timestamp_field: ts
-      status_field: status
-  - id: cell.observatory_prune
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/cell-observatory-collector/cell_observatory/prune.py
-    dependencies:
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.cell-observatory-prune
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: cell.observatory_selfcheck
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 3900
-    owner_module: apps/cell-observatory-collector/scripts/healthcheck.sh
-    dependencies:
-      - cell.observatory
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.cell-observatory-selfcheck
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: pro.post_publish_poller
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/bali-intel-scraper/scripts/post_publish_poller.py
-    dependencies:
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.post-publish-poller
-    severity_on_silence: error
-    cicatrix_refs: []
-  - id: sota.m13_checkpoint
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/backend-rag/backend/services/sota_loop/m13_checkpoint.py
-    dependencies:
-      - infra.postgres
-      - wr2.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.sota.m13-checkpoint
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: sota.m13_collect
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/backend-rag/backend/services/sota_loop/m13_collect.py
-    dependencies:
-      - infra.postgres
-      - wr2.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.sota.m13-collect
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: sota.m13_monthly
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 2678400
-    owner_module: apps/backend-rag/backend/services/sota_loop/m13_monthly.py
-    dependencies:
-      - infra.postgres
-      - wr2.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.sota.m13-monthly
-    severity_on_silence: info
-    cicatrix_refs: []
-  - id: sota.m13_weekly
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 691200
-    owner_module: apps/backend-rag/backend/services/sota_loop/m13_weekly.py
-    dependencies:
-      - infra.postgres
-      - wr2.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.sota.m13-weekly
-    severity_on_silence: warning
-    cicatrix_refs: []
-
-  # Wave 2 — 2026-05-09: enroll 40 LaunchAgent previously siloed (full-system
-  # "everyone hears everything" gap #1). Brings registry from 67/107 to 107/107.
-  # Producer audit: launchctl list ∩ {com.{balizero,nuzantara,cell,matagaruda}.*}
-  # diff'd against registry labels. No bridge_source on these — supervisor uses
-  # launchctl print to detect silence (no last_seen heartbeat writers exist for
-  # this batch). Heartbeat hooks ship in a follow-up PR per category.
-
-  # WR2 children (9) — all under wr2.supervisor parent.
-  - id: wr2.canva_oauth_watchdog
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 3600
-    owner_module: scripts/wr2-canva-oauth-watchdog.sh
-    dependencies:
-      - wr2.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.canva-oauth-watchdog
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: wr2.deploy_puller
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 600
-    owner_module: scripts/wr2-deploy-pull.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.deploy-puller
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: wr2.fact_checker
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 1800
-    owner_module: apps/war-room/scripts/wr2_fact_checker.py
-    dependencies:
-      - wr2.supervisor
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.fact-checker
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: wr2.fact_extractor
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 1800
-    owner_module: apps/war-room/scripts/wr2_fact_extractor.py
-    dependencies:
-      - wr2.supervisor
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.fact-extractor
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: wr2.ig_scraper_daily
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: .claude/skills/bali-zero-brand/_ig-metrics-scraper.py
-    dependencies:
-      - wr2.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.ig-scraper.daily
-    severity_on_silence: info
-    cicatrix_refs: []
-  - id: wr2.queue_server
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 300
-    owner_module: .claude/skills/bali-zero-brand/_damar-queue-server.py
-    dependencies:
-      - wr2.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.queue-server
-    severity_on_silence: error
-    cicatrix_refs: []
-  - id: wr2.reflexion_weekly
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 691200
-    owner_module: .claude/skills/bali-zero-brand/_reflexion-synthesis.py
-    dependencies:
-      - wr2.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.reflexion.weekly
-    severity_on_silence: info
-    cicatrix_refs: []
-  - id: wr2.supervisor_watchdog
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 600
-    owner_module: apps/war-room/scripts/wr2_supervisor_watchdog.py
-    dependencies:
-      - wr2.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.supervisor-watchdog
-    severity_on_silence: critical
-    cicatrix_refs: []
-  - id: wr2.voyager_weekly
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 691200
-    owner_module: .claude/skills/bali-zero-brand/_voyager-curriculum.py
-    dependencies:
-      - wr2.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.wr2.voyager.weekly
-    severity_on_silence: info
-    cicatrix_refs: []
-
-  # Codex agents (5) — autonomous overnight workers + cost advisor weekly.
-  - id: codex.spalla_calibrate
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/codex-spalla-calibrate.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.codex-spalla-calibrate
-    severity_on_silence: info
-    cicatrix_refs: []
-  - id: codex.coverage_improver
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/codex-nightly-coverage-improver.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.codex-coverage-improver
-    severity_on_silence: info
-    cicatrix_refs: []
-  - id: codex.overnight_feeder
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/codex-overnight-queue-feeder.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.codex-overnight-feeder
-    severity_on_silence: info
-    cicatrix_refs: []
-  - id: codex.research_actor
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/codex-daily-research-actor.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.codex-research-actor
-    severity_on_silence: info
-    cicatrix_refs: []
-  - id: pro.cost_advisor_weekly
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 691200
-    owner_module: apps/backend-rag/backend/scripts/cost_advisor_cli.py
-    dependencies:
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.cost-advisor-weekly
-    severity_on_silence: info
-    cicatrix_refs: []
-
-  # Automap (3) — Pro-local automation map server + telegram + watchdog.
-  - id: pro.automap_server
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 300
-    owner_module: scripts/automap/automap_server.py
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.automap-server
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: pro.automap_telegram
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 300
-    owner_module: scripts/automap/automap_telegram.py
-    dependencies:
-      - pro.automap_server
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.automap-telegram
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: pro.automap_watchdog
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90
-    owner_module: scripts/automap/automap_watchdog.py
-    dependencies:
-      - pro.automap_server
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.automap-watchdog
-    severity_on_silence: warning
-    cicatrix_refs: []
-
-  # Organism core (2) — the Supervisor itself + scheduled tick. Self-enrollment
-  # is intentional (meta-observability); recovery=human_only on supervisor since
-  # a dead supervisor cannot recover itself.
-  - id: organism.supervisor
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 120
-    owner_module: apps/organism/organism/supervisor/daemon.py
-    dependencies:
-      - infra.postgres
-    recovery_action: human_only
-    recovery_params:
-      host: pro
-      label: com.nuzantara.organism.supervisor
-    severity_on_silence: critical
-    cicatrix_refs: []
-  - id: organism.scheduled_tick
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 600
-    owner_module: apps/organism/organism/scheduled_tick.py
-    dependencies:
-      - organism.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.organism.scheduled-tick
-    severity_on_silence: warning
-    cicatrix_refs: []
-
-  # Cell bridges (3) — heartbeat-bridge feeds Cell from launchd state, the other
-  # two are liveness watchdogs. All critical: Cell observability dies without them.
-  - id: pro.heartbeat_bridge
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 120
-    owner_module: apps/cell/scripts/launch_heartbeat_bridge.sh
-    dependencies:
-      - infra.postgres
-      - cell.organism
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.heartbeat-bridge
-    severity_on_silence: critical
-    cicatrix_refs: []
-  - id: pro.launchagent_state_bridge
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 600
-    owner_module: scripts/launchagent-state-bridge.py
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.launchagent-state-bridge
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: pro.supervisor_liveness_watchdog
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 900
-    owner_module: scripts/supervisor_liveness_watchdog.sh
-    dependencies:
-      - organism.supervisor
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.supervisor-liveness-watchdog
-    severity_on_silence: critical
-    cicatrix_refs: []
-
-  # Pro↔Mini sync daemons (2).
-  - id: pro.memory_sync_bidirectional
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 600
-    owner_module: scripts/mini-setup/memory-sync-bidirectional.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.memory-sync-bidirectional
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: pro.claude_config_sync
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/mini-setup/claude-config-sync.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.claude-config-sync
-    severity_on_silence: info
-    cicatrix_refs: []
-
-  # Daily ops crons (10).
-  - id: pro.indexing_sweep_daily
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/daily_indexing_cron_wrapper.sh
-    dependencies:
-      - infra.postgres
-      - infra.qdrant
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.indexing-sweep.daily
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: pro.intel_radar_daily_digest
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/cron-agent-python/intel_radar_daily_digest.py
-    dependencies:
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.intel-radar-daily-digest
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: pro.post_publish_webhook
-    runtime: pro_launchd
-    type: webhook
-    expected_hb_seconds: 300
-    owner_module: apps/bali-intel-scraper/scripts/post_publish_webhook.py
-    dependencies:
-      - backend.api
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.post-publish-webhook
-    severity_on_silence: error
-    cicatrix_refs: []
-  - id: pro.setup_team_daily
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: infra/scripts/setup-team-cron.sh
-    dependencies:
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.setup-team.daily
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: pro.seo_cell_daily
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/openclaw-cron/seo-cell-daily.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.seo-cell.daily
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: pro.seo_cell_28d_check
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 2419200
-    owner_module: scripts/openclaw-cron/seo-cell-28d-check.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.seo-cell.28d-check
-    severity_on_silence: info
-    cicatrix_refs: []
-  - id: pro.bz_daily_visual_pipeline
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/bz-daily-visual-pipeline.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.bz-daily-visual-pipeline
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: pro.domain_mesh_foundations_daily
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/domain-mesh-foundations-cron.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.domain-mesh.foundations.daily
-    severity_on_silence: info
-    cicatrix_refs: []
-  - id: pro.client_value_predictor
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/openclaw-cron/client-value-predictor.sh
-    dependencies:
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.client-value-predictor
-    severity_on_silence: info
-    cicatrix_refs: []
-  - id: pro.automations_reference
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/generate-automations-all.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.automations-reference
-    severity_on_silence: info
-    cicatrix_refs: []
-
-  # Infra-ish (6) — local infrastructure helpers.
-  - id: pro.prime_tunnel
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 300
-    owner_module: cloudflared/config-prime.yml
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.prime-tunnel
-    severity_on_silence: error
-    cicatrix_refs: []
-  - id: pro.ollama_warm_pin
-    runtime: pro_launchd
-    type: cron
-    enabled: false
-    disabled_reason: "LaunchAgent archived from Pro on 2026-05-09; warm pin now runs from crontab weekly after Ollama restart."
-    expected_hb_seconds: 900
-    owner_module: scripts/ollama-warm-pin.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.ollama-warm-pin
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: pro.vector_reindex_check
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/vector-reindex-check.py
-    dependencies:
-      - infra.qdrant
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.vector-reindex-check
-    severity_on_silence: warning
-    cicatrix_refs: []
-  - id: pro.launchd_env_loader
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/launchd_env_loader.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.launchd-env-loader
-    severity_on_silence: info
-    cicatrix_refs: []
-  - id: pro.openclaw_logrotate
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/openclaw-logrotate.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.openclaw-logrotate
-    severity_on_silence: info
-    cicatrix_refs: []
-  - id: pro.nb_mitochondrial_monitor_daily
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: apps/mata-garuda/mata_garuda/scripts/nb_monitor/run.py
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.nb-mitochondrial-monitor.daily
-    severity_on_silence: warning
-    cicatrix_refs: []
-
-  # Regulatory watcher (siloed catch-up 2026-05-09).
-  - id: pro.regulatory_watcher_daily
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/regulatory-watcher-run.sh
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.balizero.regulatory-watcher.daily
-    severity_on_silence: warning
-    cicatrix_refs: []
-
-  # PG → organism Redis stream bridge (2026-05-09 wave-5).
-  # Closes Layer 1 of "totale interattività" audit: bridges the 13 PG
-  # LISTEN/NOTIFY channels to organism:events stream consumed by Supervisor.
-  - id: pro.pg_organism_bridge
-    runtime: pro_launchd
-    type: daemon
-    expected_hb_seconds: 120
-    owner_module: scripts/pg-to-organism-bridge.py
-    dependencies:
-      - infra.postgres
-      - infra.redis
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.pg-organism-bridge
-    severity_on_silence: warning
-    cicatrix_refs: []
-    bridge_source:
-      type: state_file
-      path: ~/.organism/last_seen/pro.pg_organism_bridge.json
-      timestamp_field: ts
-      status_field: status
-
-  # Sentinel aggregator (2026-05-09) — single pane of glass for all organs.
-  # Reads ~/.organism/last_seen/*.json + launchctl list, classifies each
-  # organ as ok/stale/dead/noheartbeat/unknown, writes ~/.organism/aggregate.json.
-  - id: pro.sentinel_aggregate
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 600
-    owner_module: scripts/sentinel-aggregate.py
-    dependencies: []
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.sentinel-aggregate
-    severity_on_silence: warning
-    cicatrix_refs: []
-    bridge_source:
-      type: state_file
-      path: ~/.organism/last_seen/pro.sentinel_aggregate.json
-      timestamp_field: ts
-      status_field: status
-
-  # Phase-3 Outbox prune (2026-05-09) — daily GC of consumed events_outbox
-  # rows older than 30d. Bounds table growth post phase-2 EventBus refactor.
-  - id: pro.outbox_prune_daily
-    runtime: pro_launchd
-    type: cron
-    expected_hb_seconds: 90000
-    owner_module: scripts/outbox-prune.sh
-    dependencies:
-      - infra.postgres
-    recovery_action: launchctl_kickstart
-    recovery_params:
-      host: pro
-      label: com.nuzantara.outbox-prune.daily
-    severity_on_silence: warning
-    cicatrix_refs: []
-    bridge_source:
-      type: state_file
-      path: ~/.organism/last_seen/pro.outbox_prune_daily.json
-      timestamp_field: ts
-      status_field: status
+- id: infra.postgres
+  runtime: fly_machine
+  type: daemon
+  expected_hb_seconds: 0
+  owner_module: infra/fly/nuzantara-postgres
+  dependencies: []
+  recovery_action: fly_machines_start
+  recovery_params:
+    app: nuzantara-postgres
+  severity_on_silence: critical
+  cicatrix_refs: []
+- id: infra.redis
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 0
+  owner_module: brew/redis
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: homebrew.mxcl.redis
+  severity_on_silence: critical
+  cicatrix_refs: []
+- id: infra.qdrant
+  runtime: fly_machine
+  type: daemon
+  expected_hb_seconds: 0
+  owner_module: infra/fly/nuzantara-qdrant
+  dependencies: []
+  recovery_action: fly_machines_start
+  recovery_params:
+    app: nuzantara-qdrant
+  severity_on_silence: critical
+  cicatrix_refs: []
+- id: backend.api
+  runtime: fly_machine
+  type: webhook
+  expected_hb_seconds: 60
+  owner_module: apps/backend-rag/backend/app/main.py
+  dependencies:
+  - infra.postgres
+  - infra.redis
+  - infra.qdrant
+  recovery_action: fly_machines_start
+  recovery_params:
+    app: nuzantara-rag
+    process_group: api
+  severity_on_silence: critical
+  cicatrix_refs:
+  - 2026-04-29-startup-failed-mask
+  - 2026-04-29-drive-poll-attribute-error
+- id: backend.crm.drive_poll
+  runtime: pro_launchd
+  type: cron
+  enabled: false
+  disabled_reason: DISABLED 2026-04-29 in crontab after drive_poll saturated PG; keep
+    registered as disabled until explicitly restored.
+  expected_hb_seconds: 360
+  owner_module: scripts/openclaw-cron/drive-poll.sh
+  dependencies:
+  - infra.postgres
+  - backend.api
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.drive-poll
+  severity_on_silence: warning
+  cicatrix_refs:
+  - 2026-04-29-drive-poll-attribute-error
+  bridge_source:
+    type: state_file
+    path: ~/.agent/decisions/state/drive_poll.last.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.claude_max_watcher
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 3600
+  owner_module: scripts/claude-max-usage-watcher.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.claude-max-usage-watcher
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.claude/usage-watcher/last_run.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.login_healthcheck
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 900
+  owner_module: scripts/login-healthcheck.sh
+  dependencies:
+  - backend.api
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.login-healthcheck
+  severity_on_silence: critical
+  cicatrix_refs:
+  - 2026-04-29-startup-failed-mask
+  bridge_source:
+    type: state_file
+    path: ~/.agent/decisions/state/login_healthcheck.last.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.fly_restart_loop_detector
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 1350
+  owner_module: scripts/fly-restart-loop-detector.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.fly-restart-loop-detector
+  severity_on_silence: critical
+  cicatrix_refs:
+  - 2026-04-29-drive-poll-attribute-error
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.fly_restart_loop_detector.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.cpu_monitor
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 1350
+  owner_module: scripts/cpu-monitor.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.cpu-monitor
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.cpu_monitor.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.disk_monitor
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 1350
+  owner_module: scripts/disk-monitor.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.disk-monitor
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.disk_monitor.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.zombie_hunter
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90
+  owner_module: .claude/scripts/zombie-hunter.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.zombie-hunter
+  severity_on_silence: warning
+  cicatrix_refs:
+  - 2026-04-29-untracked-files-lost
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.zombie_hunter.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.dlq_autopilot
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 2700
+  owner_module: scripts/dlq_autopilot.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.dlq-autopilot
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.dlq_autopilot.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.sentinel
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/nuzantara-sentinel.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.sentinel
+  severity_on_silence: critical
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.sentinel.json
+    timestamp_field: ts
+    status_field: status
+- id: cell.organism
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 90
+  owner_module: apps/cell/cell/main.py
+  dependencies:
+  - infra.postgres
+  - infra.redis
+  recovery_action: human_only
+  recovery_params:
+    label: com.cell.organism
+  severity_on_silence: critical
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/cell.organism.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.metabolic_rollup
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/metabolic_rollup_pro.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.cell.metabolic-rollup
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.metabolic_rollup.json
+    timestamp_field: ts
+    status_field: status
+- id: channel.whatsapp
+  runtime: fly_machine
+  type: webhook
+  expected_hb_seconds: 120
+  owner_module: apps/backend-rag/backend/channels/whatsapp
+  dependencies:
+  - backend.api
+  recovery_action: fly_machines_start
+  recovery_params:
+    app: nuzantara-rag
+    process_group: api
+  severity_on_silence: critical
+  cicatrix_refs: []
+  bridge_source:
+    type: http
+    path: https://kita.balizero.com/api/channels/health-public
+    timestamp_field: ts
+    json_path: channels.whatsapp.status
+- id: channel.telegram
+  runtime: fly_machine
+  type: webhook
+  expected_hb_seconds: 120
+  owner_module: apps/backend-rag/backend/channels/telegram
+  dependencies:
+  - backend.api
+  recovery_action: fly_machines_start
+  recovery_params:
+    app: nuzantara-rag
+    process_group: api
+  severity_on_silence: critical
+  cicatrix_refs: []
+  bridge_source:
+    type: http
+    path: https://kita.balizero.com/api/channels/health-public
+    timestamp_field: ts
+    json_path: channels.telegram.status
+- id: channel.instagram
+  runtime: fly_machine
+  type: webhook
+  expected_hb_seconds: 120
+  owner_module: apps/backend-rag/backend/channels/instagram
+  dependencies:
+  - backend.api
+  recovery_action: fly_machines_start
+  recovery_params:
+    app: nuzantara-rag
+    process_group: api
+  severity_on_silence: critical
+  cicatrix_refs: []
+  bridge_source:
+    type: http
+    path: https://kita.balizero.com/api/channels/health-public
+    timestamp_field: ts
+    json_path: channels.instagram.status
+- id: channel.web
+  runtime: fly_machine
+  type: webhook
+  expected_hb_seconds: 120
+  owner_module: apps/backend-rag/backend/channels/web
+  dependencies:
+  - backend.api
+  recovery_action: fly_machines_start
+  recovery_params:
+    app: nuzantara-rag
+    process_group: api
+  severity_on_silence: critical
+  cicatrix_refs: []
+  bridge_source:
+    type: http
+    path: https://kita.balizero.com/api/channels/health-public
+    timestamp_field: ts
+    json_path: channels.web.status
+- id: pro.intel_nightly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/bali-intel-scraper/scripts/run_intel_pipeline.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.intel.nightly
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.agent/decisions/state/intel_scraper.last.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.translate_hourly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 5400
+  owner_module: scripts/translate-articles.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.translate.hourly
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.translate_hourly.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.renewal_alerts
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/openclaw-cron/renewal-alerts.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.renewal-alerts
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.agent/decisions/state/expiry_alerter.last.json
+    timestamp_field: ts
+    status_field: status
+- id: wr2.supervisor
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 300
+  owner_module: scripts/wr2_supervisor.py
+  dependencies:
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.wr2.supervisor
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/wr2.supervisor.json
+    timestamp_field: ts
+    status_field: status
+- id: wr2.oracle
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 1209600
+  owner_module: backend.services.cognitive.oracle_cli
+  dependencies:
+  - infra.postgres
+  - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.wr2.oracle
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/wr2.oracle.json
+    timestamp_field: ts
+    status_field: status
+- id: wr2.newsletter
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 1209600
+  owner_module: backend.services.newsletter.newsletter_cli
+  dependencies:
+  - infra.postgres
+  - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.balizero.wr2.newsletter
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/wr2.newsletter.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.organism_control_panel
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 120
+  owner_module: apps/organism/organism/control_panel.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    label: com.nuzantara.organism.control-panel
+  severity_on_silence: critical
+  cicatrix_refs: []
+  bridge_source:
+    type: http
+    path: http://127.0.0.1:1819/health
+    timestamp_field: ts
+    json_path: status
+- id: mata_garuda.watcher_daily.pro
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/mata-garuda/scripts/run_watcher.sh
+  dependencies:
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.matagaruda.watcher.daily
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: mata_garuda.reg_alert_30min.pro
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 5400
+  owner_module: apps/mata-garuda/scripts/run_regulation_alert.py
+  dependencies:
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.matagaruda.reg-alert.30min
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: mata_garuda.kg_linker.pro
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 7200
+  owner_module: apps/mata-garuda/mata_garuda/workers/kg_linker.py
+  dependencies:
+  - infra.redis
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.matagaruda.kg-linker
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: mata_garuda.wr_topic.pro
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 691200
+  owner_module: apps/mata-garuda/scripts/run_wr_topic.py
+  dependencies:
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.matagaruda.wr-topic
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: mata_garuda.wr2_bridge_hourly.pro
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 7200
+  owner_module: apps/mata-garuda/scripts/run_wr2_bridge.py
+  dependencies:
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.matagaruda.wr2-bridge
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: mata_garuda.bridge_adaptive.pro
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 180
+  owner_module: apps/mata-garuda/scripts/run_bridge_adaptive.py
+  dependencies:
+  - infra.redis
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.matagaruda.bridge.adaptive
+  severity_on_silence: error
+  cicatrix_refs: []
+- id: mata_garuda.sentinel_daily.mini
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/mata-garuda/scripts/run_sentinel.py
+  dependencies:
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.matagaruda.sentinel.daily
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: mata_garuda.intel_bridge_daily.mini
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/mata-garuda/scripts/run_intel_bridge.py
+  dependencies:
+  - infra.redis
+  - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.matagaruda.intel-bridge.daily
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: mata_garuda.daily_briefing.pro
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/mata-garuda/scripts/run_daily_briefing.py
+  dependencies:
+  - infra.redis
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.matagaruda.daily-briefing
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: mata_garuda.kita_feed_daily.pro
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/mata-garuda/scripts/run_kita_feed.py
+  dependencies:
+  - infra.redis
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.matagaruda.kita-feed
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: mata_garuda.public_channel.pro
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/mata-garuda/scripts/run_public_channel.py
+  dependencies:
+  - infra.redis
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.matagaruda.public-channel
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: mata_garuda.weekly_digest.pro
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 691200
+  owner_module: apps/mata-garuda/scripts/run_weekly_digest.py
+  dependencies:
+  - infra.redis
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.matagaruda.weekly-digest
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: mata_garuda.gap_consumer.pro
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 4200
+  owner_module: apps/mata-garuda/mata_garuda/workers/gap_consumer.py
+  dependencies:
+  - infra.redis
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.matagaruda.gap.consumer
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: mata_garuda.invalidation_sweep.pro
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/mata-garuda/scripts/run_invalidation_sweep.py
+  dependencies:
+  - infra.redis
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.matagaruda.invalidation-sweep
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: mata_garuda.nlm_feeder_stream_hourly.pro
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 7200
+  owner_module: apps/mata-garuda/mata_garuda/workers/nlm_feeder.py
+  dependencies:
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.matagaruda.nlm-feeder-stream.hourly
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: mata_garuda.nlm_expander_weekly.pro
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 691200
+  owner_module: apps/mata-garuda/scripts/run_nlm_expander.py
+  dependencies:
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.matagaruda.nlm-expander.weekly
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: mata_garuda.ner_worker_hourly.mini
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 7200
+  owner_module: apps/mata-garuda/mata_garuda/workers/ner_worker.py
+  dependencies:
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.matagaruda.ner-worker.hourly
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: mata_garuda.normalizer_hourly.mini
+  runtime: mini_launchd
+  type: cron
+  expected_hb_seconds: 7200
+  owner_module: apps/mata-garuda/mata_garuda/workers/normalizer.py
+  dependencies:
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: mini
+    label: com.matagaruda.normalizer.hourly
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.canva_apply
+  runtime: pro_launchd
+  type: daemon
+  enabled: false
+  disabled_reason: Superseded by S12; LaunchAgent archived as .disabled-2026-05-09-superseded-by-S12.
+  expected_hb_seconds: 600
+  owner_module: apps/war-room/scripts/wr2_canva_apply.py
+  dependencies:
+  - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.canva-apply
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.connector
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/war-room/scripts/wr2_connector.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.connector
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.dossier_compiler
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/war-room/scripts/wr2_dossier_compiler.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.dossier-compiler
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.draft_generator
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 600
+  owner_module: apps/war-room/scripts/wr2_draft_generator.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.draft-generator
+  severity_on_silence: error
+  cicatrix_refs: []
+- id: wr2.hardening
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 600
+  owner_module: apps/war-room/scripts/wr2_hardening.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.hardening
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.image_generator
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 600
+  owner_module: apps/war-room/scripts/wr2_image_generator.py
+  dependencies:
+  - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.image-generator
+  severity_on_silence: error
+  cicatrix_refs: []
+- id: wr2.learner_nightly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/war-room/scripts/wr2_learner_nightly.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.learner-nightly
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.measurer
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 600
+  owner_module: apps/war-room/scripts/wr2_measurer.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.measurer
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.pg_proxy
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 60
+  owner_module: apps/war-room/scripts/wr2_pg_proxy.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.pg-proxy
+  severity_on_silence: critical
+  cicatrix_refs: []
+- id: wr2.sla_worker
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 600
+  owner_module: apps/war-room/scripts/wr2_sla_worker.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.sla-worker
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.strategos
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 691200
+  owner_module: apps/war-room/scripts/wr2_strategos.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.strategos
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.topic_selector
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/war-room/scripts/wr2_topic_selector.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.topic-selector
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.trend_hunter
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 600
+  owner_module: apps/war-room/scripts/wr2_trend_hunter.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.trend-hunter
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.codex_autofix_ci
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 7200
+  owner_module: scripts/codex/codex_autofix_ci.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.codex-autofix-ci
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: pro.codex_overnight_runner
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/codex/codex_overnight_runner.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.codex-overnight-runner
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: pro.cost_advisor_daily_cap
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/cost-advisor/daily_cap.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.cost-advisor-daily-cap
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.openclaw_children_watchdog
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 3900
+  owner_module: scripts/openclaw-children-watchdog.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.openclaw-children-watchdog
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.nb_intel_delta_watcher
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 7200
+  owner_module: scripts/nb-intel-delta-watcher.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.nb-intel-delta-watcher.hourly
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.sentinel_meta_watchdog
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 4200
+  owner_module: scripts/sentinel-meta-watchdog.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.sentinel-meta-watchdog
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.federation_alert_dispatcher
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 180
+  owner_module: scripts/federation-alert-dispatcher.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.federation-alert-dispatcher
+  severity_on_silence: error
+  cicatrix_refs: []
+- id: pro.secrets_sync_mini
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/mini-setup/secrets-sync-mini.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.secrets-sync-mini
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: nlm.bridge
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 180
+  owner_module: apps/nlm-bridge/main.py
+  dependencies:
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.nlm-bridge
+  severity_on_silence: critical
+  cicatrix_refs: []
+- id: cell.observatory
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 90
+  owner_module: apps/cell-observatory-collector/cell_observatory/__main__.py
+  dependencies:
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.cell-observatory
+  severity_on_silence: critical
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/cell.observatory.json
+    timestamp_field: ts
+    status_field: status
+- id: cell.observatory_prune
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/cell-observatory-collector/cell_observatory/prune.py
+  dependencies:
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.cell-observatory-prune
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: cell.observatory_selfcheck
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 3900
+  owner_module: apps/cell-observatory-collector/scripts/healthcheck.sh
+  dependencies:
+  - cell.observatory
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.cell-observatory-selfcheck
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.post_publish_poller
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/bali-intel-scraper/scripts/post_publish_poller.py
+  dependencies:
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.post-publish-poller
+  severity_on_silence: error
+  cicatrix_refs: []
+- id: sota.m13_checkpoint
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/backend-rag/backend/services/sota_loop/m13_checkpoint.py
+  dependencies:
+  - infra.postgres
+  - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.sota.m13-checkpoint
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: sota.m13_collect
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/backend-rag/backend/services/sota_loop/m13_collect.py
+  dependencies:
+  - infra.postgres
+  - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.sota.m13-collect
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: sota.m13_monthly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 2678400
+  owner_module: apps/backend-rag/backend/services/sota_loop/m13_monthly.py
+  dependencies:
+  - infra.postgres
+  - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.sota.m13-monthly
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: sota.m13_weekly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 691200
+  owner_module: apps/backend-rag/backend/services/sota_loop/m13_weekly.py
+  dependencies:
+  - infra.postgres
+  - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.sota.m13-weekly
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.canva_oauth_watchdog
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 3600
+  owner_module: scripts/wr2-canva-oauth-watchdog.sh
+  dependencies:
+  - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.canva-oauth-watchdog
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.deploy_puller
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 600
+  owner_module: scripts/wr2-deploy-pull.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.deploy-puller
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.fact_checker
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 1800
+  owner_module: apps/war-room/scripts/wr2_fact_checker.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.fact-checker
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.fact_extractor
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 1800
+  owner_module: apps/war-room/scripts/wr2_fact_extractor.py
+  dependencies:
+  - wr2.supervisor
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.fact-extractor
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: wr2.ig_scraper_daily
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: .claude/skills/bali-zero-brand/_ig-metrics-scraper.py
+  dependencies:
+  - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.ig-scraper.daily
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: wr2.queue_server
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 300
+  owner_module: .claude/skills/bali-zero-brand/_damar-queue-server.py
+  dependencies:
+  - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.queue-server
+  severity_on_silence: error
+  cicatrix_refs: []
+- id: wr2.reflexion_weekly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 691200
+  owner_module: .claude/skills/bali-zero-brand/_reflexion-synthesis.py
+  dependencies:
+  - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.reflexion.weekly
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: wr2.supervisor_watchdog
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 600
+  owner_module: apps/war-room/scripts/wr2_supervisor_watchdog.py
+  dependencies:
+  - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.supervisor-watchdog
+  severity_on_silence: critical
+  cicatrix_refs: []
+- id: wr2.voyager_weekly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 691200
+  owner_module: .claude/skills/bali-zero-brand/_voyager-curriculum.py
+  dependencies:
+  - wr2.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.wr2.voyager.weekly
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: codex.spalla_calibrate
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/codex-spalla-calibrate.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.codex-spalla-calibrate
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: codex.coverage_improver
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/codex-nightly-coverage-improver.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.codex-coverage-improver
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: codex.overnight_feeder
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/codex-overnight-queue-feeder.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.codex-overnight-feeder
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: codex.research_actor
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/codex-daily-research-actor.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.codex-research-actor
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: pro.cost_advisor_weekly
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 691200
+  owner_module: apps/backend-rag/backend/scripts/cost_advisor_cli.py
+  dependencies:
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.cost-advisor-weekly
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: pro.automap_server
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 300
+  owner_module: scripts/automap/automap_server.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.automap-server
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.automap_telegram
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 300
+  owner_module: scripts/automap/automap_telegram.py
+  dependencies:
+  - pro.automap_server
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.automap-telegram
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.automap_watchdog
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90
+  owner_module: scripts/automap/automap_watchdog.py
+  dependencies:
+  - pro.automap_server
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.automap-watchdog
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: organism.supervisor
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 120
+  owner_module: apps/organism/organism/supervisor/daemon.py
+  dependencies:
+  - infra.postgres
+  recovery_action: human_only
+  recovery_params:
+    host: pro
+    label: com.nuzantara.organism.supervisor
+  severity_on_silence: critical
+  cicatrix_refs: []
+- id: organism.scheduled_tick
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 600
+  owner_module: apps/organism/organism/scheduled_tick.py
+  dependencies:
+  - organism.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.organism.scheduled-tick
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.heartbeat_bridge
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 120
+  owner_module: apps/cell/scripts/launch_heartbeat_bridge.sh
+  dependencies:
+  - infra.postgres
+  - cell.organism
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.heartbeat-bridge
+  severity_on_silence: critical
+  cicatrix_refs: []
+- id: pro.launchagent_state_bridge
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 600
+  owner_module: scripts/launchagent-state-bridge.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.launchagent-state-bridge
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.supervisor_liveness_watchdog
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 900
+  owner_module: scripts/supervisor_liveness_watchdog.sh
+  dependencies:
+  - organism.supervisor
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.supervisor-liveness-watchdog
+  severity_on_silence: critical
+  cicatrix_refs: []
+- id: pro.memory_sync_bidirectional
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 600
+  owner_module: scripts/mini-setup/memory-sync-bidirectional.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.memory-sync-bidirectional
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.claude_config_sync
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/mini-setup/claude-config-sync.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.claude-config-sync
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: pro.indexing_sweep_daily
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/daily_indexing_cron_wrapper.sh
+  dependencies:
+  - infra.postgres
+  - infra.qdrant
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.indexing-sweep.daily
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.intel_radar_daily_digest
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/cron-agent-python/intel_radar_daily_digest.py
+  dependencies:
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.intel-radar-daily-digest
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.post_publish_webhook
+  runtime: pro_launchd
+  type: webhook
+  expected_hb_seconds: 300
+  owner_module: apps/bali-intel-scraper/scripts/post_publish_webhook.py
+  dependencies:
+  - backend.api
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.post-publish-webhook
+  severity_on_silence: error
+  cicatrix_refs: []
+- id: pro.setup_team_daily
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: infra/scripts/setup-team-cron.sh
+  dependencies:
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.setup-team.daily
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.seo_cell_daily
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/openclaw-cron/seo-cell-daily.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.seo-cell.daily
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.seo_cell_28d_check
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 2419200
+  owner_module: scripts/openclaw-cron/seo-cell-28d-check.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.seo-cell.28d-check
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: pro.bz_daily_visual_pipeline
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/bz-daily-visual-pipeline.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.bz-daily-visual-pipeline
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.domain_mesh_foundations_daily
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/domain-mesh-foundations-cron.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.domain-mesh.foundations.daily
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: pro.client_value_predictor
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/openclaw-cron/client-value-predictor.sh
+  dependencies:
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.client-value-predictor
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: pro.automations_reference
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/generate-automations-all.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.automations-reference
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: pro.prime_tunnel
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 300
+  owner_module: cloudflared/config-prime.yml
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.prime-tunnel
+  severity_on_silence: error
+  cicatrix_refs: []
+- id: pro.ollama_warm_pin
+  runtime: pro_launchd
+  type: cron
+  enabled: false
+  disabled_reason: LaunchAgent archived from Pro on 2026-05-09; warm pin now runs
+    from crontab weekly after Ollama restart.
+  expected_hb_seconds: 900
+  owner_module: scripts/ollama-warm-pin.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.ollama-warm-pin
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.vector_reindex_check
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/vector-reindex-check.py
+  dependencies:
+  - infra.qdrant
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.vector-reindex-check
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.launchd_env_loader
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/launchd_env_loader.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.launchd-env-loader
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: pro.openclaw_logrotate
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/openclaw-logrotate.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.openclaw-logrotate
+  severity_on_silence: info
+  cicatrix_refs: []
+- id: pro.nb_mitochondrial_monitor_daily
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: apps/mata-garuda/mata_garuda/scripts/nb_monitor/run.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.nb-mitochondrial-monitor.daily
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.regulatory_watcher_daily
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/regulatory-watcher-run.sh
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.balizero.regulatory-watcher.daily
+  severity_on_silence: warning
+  cicatrix_refs: []
+- id: pro.pg_organism_bridge
+  runtime: pro_launchd
+  type: daemon
+  expected_hb_seconds: 120
+  owner_module: scripts/pg-to-organism-bridge.py
+  dependencies:
+  - infra.postgres
+  - infra.redis
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.pg-organism-bridge
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.pg_organism_bridge.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.sentinel_aggregate
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 600
+  owner_module: scripts/sentinel-aggregate.py
+  dependencies: []
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.sentinel-aggregate
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.sentinel_aggregate.json
+    timestamp_field: ts
+    status_field: status
+- id: pro.outbox_prune_daily
+  runtime: pro_launchd
+  type: cron
+  expected_hb_seconds: 90000
+  owner_module: scripts/outbox-prune.sh
+  dependencies:
+  - infra.postgres
+  recovery_action: launchctl_kickstart
+  recovery_params:
+    host: pro
+    label: com.nuzantara.outbox-prune.daily
+  severity_on_silence: warning
+  cicatrix_refs: []
+  bridge_source:
+    type: state_file
+    path: ~/.organism/last_seen/pro.outbox_prune_daily.json
+    timestamp_field: ts
+    status_field: status
