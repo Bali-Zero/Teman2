@@ -195,15 +195,9 @@ def _emit_event(event: dict) -> None:
         return
 
     try:
-        # MAXLEN ~ 100000 caps the stream to ~100k entries (approximate, O(1)
-        # via the `~` modifier vs O(N) for exact MAXLEN). Prevents unbounded
-        # growth when Supervisor consumer is down/slow. At ~100 events/min
-        # peak, 100k entries = ~16h of buffer. JSONL mirror remains the
-        # durable record for longer history.
         subprocess.run(
             [
-                "redis-cli", "XADD", ORGANISM_STREAM_KEY,
-                "MAXLEN", "~", "100000", "*",
+                "redis-cli", "XADD", ORGANISM_STREAM_KEY, "*",
                 "data", json.dumps(event, separators=(",", ":"), default=str),
             ],
             capture_output=True, timeout=2, check=False,

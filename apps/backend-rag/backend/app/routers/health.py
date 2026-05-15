@@ -23,9 +23,8 @@ logger = logging.getLogger(__name__)
 # P0-0: how long /health tolerates `startup_complete=False` before flipping to 503.
 # Cold-start RAG warmup (Qdrant + embeddings + KG) is ~30-90s on Fly.io shared-2x;
 # 180s gives generous headroom while still catching deadlocked init that would
-# otherwise stay "initializing" indefinitely. Fly.io grace_period (600s in
-# fly.toml) is wider than this — Fly continues to accept the warmup return
-# until our own deadline fires.
+# otherwise stay "initializing" indefinitely. Fly.io now caps health-check
+# grace_period at 60s; this deadline is the app-level guard after boot starts.
 STARTUP_WARMUP_DEADLINE_S = float(os.getenv("STARTUP_WARMUP_DEADLINE_S", "180"))
 
 
@@ -1064,8 +1063,9 @@ async def redis_health(request: Request) -> dict[str, Any]:
 @router.get("/metrics/prometheus", include_in_schema=False)
 async def prometheus_metrics():
     """Prometheus text format metrics for external scraping (Grafana Cloud, Prometheus)."""
-    from backend.app.metrics import generate_latest
     from starlette.responses import Response
+
+    from backend.app.metrics import generate_latest
 
     return Response(
         content=generate_latest(),
