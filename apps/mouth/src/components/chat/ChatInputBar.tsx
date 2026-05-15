@@ -124,7 +124,7 @@ export function ChatInputBar({
                   <button
                     type="button"
                     onClick={() => onRemoveImage?.(img.id)}
-                    className="absolute top-1 right-1 p-0.5 bg-black/60 text-white rounded-full opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
+                    className="absolute top-1 right-1 p-0.5 bg-black/60 text-white rounded-full opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity focus-ring"
                     aria-label={`Remove image ${img.name}`}
                   >
                     <X className="w-3 h-3" />
@@ -162,7 +162,7 @@ export function ChatInputBar({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0 rounded-full text-zinc-400 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]"
+              className="h-7 w-7 p-0 rounded-full text-zinc-400 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)] focus-ring"
               onClick={() => fileInputRef.current?.click()}
               title="Upload File"
               aria-label="Upload File"
@@ -173,7 +173,7 @@ export function ChatInputBar({
             <Button
               variant="ghost"
               size="sm"
-              className={`h-7 w-7 p-0 rounded-full transition-all duration-200 ${
+              className={`h-7 w-7 p-0 rounded-full transition-all duration-200 focus-ring ${
                 isRecording
                   ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse scale-110'
                   : 'text-zinc-600 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]'
@@ -191,7 +191,7 @@ export function ChatInputBar({
             <Button
               variant="ghost"
               size="sm"
-              className="h-7 w-7 p-0 rounded-full text-zinc-400 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]"
+              className="h-7 w-7 p-0 rounded-full text-zinc-400 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)] focus-ring"
               onClick={() => setShowImagePrompt(!showImagePrompt)}
               title="Generate/Analyze Image"
               aria-label="Generate/Analyze Image"
@@ -207,7 +207,7 @@ export function ChatInputBar({
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowAttachMenu(!showAttachMenu)}
-                className={`rounded-xl ${showAttachMenu ? 'text-[var(--accent)] bg-[var(--accent)]/10' : ''}`}
+                className={`rounded-xl focus-ring ${showAttachMenu ? 'text-[var(--accent)] bg-[var(--accent)]/10' : ''}`}
                 aria-label="Attach file"
                 aria-haspopup="true"
                 aria-expanded={showAttachMenu}
@@ -265,7 +265,7 @@ export function ChatInputBar({
               onClick={showImagePrompt ? onImageGenerate : onSend}
               disabled={!input.trim() || isLoading}
               size="icon"
-              className="rounded-full flex-shrink-0 w-10 h-10 glow-button border-0"
+              className="rounded-full flex-shrink-0 w-10 h-10 glow-button border-0 focus-ring"
               aria-label={
                 isLoading ? 'Sending...' : showImagePrompt ? 'Generate image' : 'Send message'
               }
