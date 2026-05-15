@@ -56,7 +56,24 @@ def parse_frontmatter(path: Path) -> dict[str, Any]:
 
 
 def scan_subagents() -> list[dict[str, Any]]:
-    raise NotImplementedError("scan_subagents — implemented in Task 2")
+    """Scan ~/.claude/agents/*.md (skip *.pre-T2 and non-files)."""
+    results = []
+    if not AGENTS_DIR.is_dir():
+        return results
+    for p in sorted(AGENTS_DIR.glob("*.md")):
+        if ".pre-T2" in p.name or not p.is_file():
+            continue
+        fm = parse_frontmatter(p)
+        results.append({
+            "name": fm.get("name", p.stem),
+            "description": (fm.get("description") or "")[:120],
+            "model": fm.get("model", ""),
+            "tools": fm.get("tools", []),
+            "path": str(p),
+            "mtime": p.stat().st_mtime,
+            "frontmatter_ok": bool(fm),
+        })
+    return results
 
 
 def scan_cross_tool() -> list[dict[str, Any]]:
