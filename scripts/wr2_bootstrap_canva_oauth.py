@@ -158,8 +158,15 @@ def main() -> int:
 
     server = socketserver.TCPServer(("127.0.0.1", port), Handler)
     threading.Thread(target=server.serve_forever, daemon=True).start()
-    logger.info("Local callback server listening on %d. Opening browser ...", port)
-    webbrowser.open(auth_url)
+    logger.info("Local callback server listening on %d. Opening Chrome ...", port)
+    logger.info("If browser does NOT open Chrome automatically, paste this URL into Chrome manually:\n  %s", auth_url)
+    # Force Chrome on macOS (Safari is the system default and was hijacking the flow)
+    import subprocess as _sp
+    try:
+        _sp.run(["/usr/bin/open", "-a", "Google Chrome", auth_url], check=False, timeout=5)
+    except Exception as _e:
+        logger.warning("Chrome open failed (%s) — fall back to default browser", _e)
+        webbrowser.open(auth_url)
 
     # Wait for callback (max 5min)
     for _ in range(300):

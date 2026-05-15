@@ -79,10 +79,20 @@ def is_legacy_schema(data: dict[str, Any]) -> bool:
 
 
 def _download_hero(url: str, slide_n: int) -> str | None:
+    """Download hero image to cache. Filename = SHA1(url)[:16] to prevent
+    cross-draft cache collision.
+
+    BUG FIX 2026-05-13: previous version used `hero_{slide_n:02d}.jpg` which
+    caused multiple drafts to share the same cache file (slide 1 of draft A
+    served from slide 1 of draft B). The orchestrator's first end-to-end
+    run rendered Sam Altman with Marina Pinyaylova's heroes.
+    """
     if not url:
         return None
+    import hashlib
     HERO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
-    dest = HERO_CACHE_DIR / f"hero_{slide_n:02d}.jpg"
+    url_hash = hashlib.sha1(url.encode()).hexdigest()[:16]
+    dest = HERO_CACHE_DIR / f"hero_{slide_n:02d}_{url_hash}.jpg"
     if dest.exists():
         return str(dest)
     try:

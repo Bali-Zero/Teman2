@@ -17,7 +17,7 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
-REPO_ROOT = Path(__file__).resolve().parents[4]  # backend-rag/backend/services/canva_renderer_v2/ → repo root
+REPO_ROOT = Path(__file__).resolve().parents[5]  # canva_renderer_v2/services/backend/backend-rag/apps/<repo> → repo root
 RENDER_SCRIPT = REPO_ROOT / "scripts" / "wr2_canva_pdf_render.py"
 
 DEFAULT_TIMEOUT_S = 120
