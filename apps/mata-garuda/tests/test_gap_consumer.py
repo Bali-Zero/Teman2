@@ -1,18 +1,30 @@
 """Tests for gap consumer — reads nexus:gaps and dispatches agents."""
 from __future__ import annotations
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
+
+import pytest
 
 from mata_garuda.workers.gap_consumer import (
     GAP_DISPATCH,
     process_gap,
     run_gap_consumer,
 )
+from mata_garuda.workers.gap_legacy import consume_unmapped_counter
+
+
+@pytest.fixture(autouse=True)
+def _reset_unmapped_counter():
+    """Counter state must not leak across consumer tests."""
+    consume_unmapped_counter()
+    yield
+    consume_unmapped_counter()
 
 
 def test_gap_dispatch_table_complete():
-    """All 8 gap types from the design spec are mapped (1 to None for Phase 2)."""
+    """8 canonical gap types + 2 explicit DLQ slots (C.4 2026-05-16)."""
     expected = {
+        # Canonical agent-targeted
         "gap.missing_nip",
         "gap.missing_lhkpn",
         "gap.missing_angkatan",
@@ -21,11 +33,16 @@ def test_gap_dispatch_table_complete():
         "gap.missing_office",
         "gap.kanim_struktur",
         "gap.missing_procurement",
+        # C.4 explicit DLQ — no agent target by design
+        "gap.dlq:phone",
+        "gap.dlq:profile",
     }
     assert set(GAP_DISPATCH.keys()) == expected
-    # Phase 1: 7 gaps mapped to an agent, 1 unmapped (procurement)
+    # 7 routable, 3 None (1 phase-2 deferred + 2 DLQ)
     mapped = {k for k, v in GAP_DISPATCH.items() if v is not None}
     assert "gap.missing_procurement" not in mapped
+    assert "gap.dlq:phone" not in mapped
+    assert "gap.dlq:profile" not in mapped
     assert len(mapped) == 7
 
 
@@ -328,3 +345,114 @@ def test_run_gap_consumer_mixed_canonical_and_legacy_batch():
     assert fake_dispatch.call_count == 2
     # All three entries got acked (2 via process_gap on resolve, 1 via drain)
     assert fake_xack.call_count == 3
+
+
+# ── C.2 — unmapped persistence ──────────────────────────────────────────
+
+
+def test_run_gap_consumer_persists_unmapped_snapshot():
+    """Drained legacy entries must be persisted to knowledge.db at cycle end."""
+    msgs = [
+        {"id": "300-0", "data": {
+            "gap_type": "totally_invented", "attribute": "x",
+        }},
+        {"id": "300-1", "data": {
+            "gap_type": "totally_invented", "attribute": "x",
+        }},
+        {"id": "300-2", "data": {
+            "gap_type": "another_unknown",
+        }},
+    ]
+    fake_read = MagicMock(return_value=msgs)
+    fake_xack = MagicMock()
+
+    captured_stores: list[dict] = []
+
+    class _FakeKB:
+        def store(self, **kwargs):
+            captured_stores.append(kwargs)
+            return 1
+
+        def close(self):
+            pass
+
+    with patch(
+        "mata_garuda.runtime.knowledge.KnowledgeBase", return_value=_FakeKB()
+    ):
+        stats = run_gap_consumer(
+            max_items=10,
+            stream_read=fake_read,
+            xack=fake_xack,
+        )
+
+    assert stats["skipped"] == 3
+    # Two distinct unmapped tuples → two persistence rows
+    assert len(captured_stores) == 2
+    types_seen = {c["entry_type"] for c in captured_stores}
+    assert types_seen == {"unmapped_gap"}
+    agents_seen = {c["agent"] for c in captured_stores}
+    assert agents_seen == {"gap_consumer"}
+
+
+def test_run_gap_consumer_no_persistence_when_zero_unmapped():
+    """If all entries are mapped, no audit row is written."""
+    msgs = [
+        {"id": "400-0", "data": {
+            "gap_type": "missing_attribute", "attribute": "nip",
+            "entity_name": "OK",
+        }},
+    ]
+    fake_read = MagicMock(return_value=msgs)
+    fake_dispatch = MagicMock(return_value={"case_resolved": True})
+    fake_xack = MagicMock()
+
+    captured_stores: list[dict] = []
+
+    class _FakeKB:
+        def store(self, **kwargs):
+            captured_stores.append(kwargs)
+            return 1
+
+        def close(self):
+            pass
+
+    with patch(
+        "mata_garuda.runtime.knowledge.KnowledgeBase", return_value=_FakeKB()
+    ):
+        run_gap_consumer(
+            max_items=10,
+            stream_read=fake_read,
+            dispatch_agent=fake_dispatch,
+            xack=fake_xack,
+        )
+
+    assert captured_stores == []
+
+
+def test_run_gap_consumer_persistence_failure_does_not_break_cycle():
+    """A crash in the audit persister must not poison the consumer cycle."""
+    msgs = [
+        {"id": "500-0", "data": {"gap_type": "totally_invented", "attribute": "x"}},
+    ]
+    fake_read = MagicMock(return_value=msgs)
+    fake_xack = MagicMock()
+
+    class _BrokenKB:
+        def store(self, **kwargs):
+            raise RuntimeError("disk full")
+
+        def close(self):
+            pass
+
+    with patch(
+        "mata_garuda.runtime.knowledge.KnowledgeBase", return_value=_BrokenKB()
+    ):
+        stats = run_gap_consumer(
+            max_items=10,
+            stream_read=fake_read,
+            xack=fake_xack,
+        )
+
+    # Consumer still completed its work; only the audit step swallowed.
+    assert stats["skipped"] == 1
+    fake_xack.assert_called_once()
