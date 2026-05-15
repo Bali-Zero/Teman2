@@ -607,7 +607,7 @@ def render_cover_photo(c: canvas.Canvas, s: dict[str, Any],
     c.setFillColor(HexColor(COLOR_BG_ANTRACITE))
     c.rect(0, 0, W, H, fill=1, stroke=0)
 
-    hero = s.get("hero_image_path") or s.get("image_path")
+    hero = s.get("hero_image_path") or s.get("image_anchor_path") or s.get("image_path")
     if hero:
         slide_idx = s.get("index", 1)
         cropped = _crop_hero_to_canvas(
@@ -676,7 +676,7 @@ def render_photo_headline_yellow_sub(c: canvas.Canvas, s: dict[str, Any],
     c.setFillColor(HexColor(COLOR_BG_ANTRACITE))
     c.rect(0, 0, W, H, fill=1, stroke=0)
 
-    hero = s.get("hero_image_path") or s.get("image_path")
+    hero = s.get("hero_image_path") or s.get("image_anchor_path") or s.get("image_path")
     has_hero = False
     if hero:
         slide_idx = s.get("index", "x")
@@ -1051,15 +1051,17 @@ def render_three_verdicts(c: canvas.Canvas, s: dict[str, Any],
     }
     for i, v in enumerate(verdicts[:3]):
         x = 80 + i * (col_w + 40)
-        verdict_kind = (v.get("kind") or "neutral").lower()
+        # Schema alias: legacy {case/verdict/tone/marker} → canonical {label/kind/body}
+        verdict_kind = (v.get("kind") or v.get("tone") or v.get("marker") or "neutral").lower()
         color = color_map.get(verdict_kind, COLOR_TEXT_WHITE)
-        label = (v.get("label") or "").upper()
-        body = (v.get("body") or "")
+        label = (v.get("label") or v.get("case") or "").upper()
+        body = (v.get("body") or v.get("verdict") or v.get("consequence") or "")
 
-        # Label (large color)
+        # Label (large color) — cap at 12 chars; 44pt at col_w ≈ 293px fits 9-10 chars cleanly
+        font_size_lbl = 44 if len(label) <= 9 else 36
         c.setFillColor(HexColor(color))
-        c.setFont(ctx.font_bold, 44)
-        c.drawString(x, H - 280, label[:8])
+        c.setFont(ctx.font_bold, font_size_lbl)
+        c.drawString(x, H - 280, label[:12])
         # Body wrapped
         body_lines = wrap_simple(body, ctx.font_bold, 22, col_w)[:8]
         body_y = H - 340
