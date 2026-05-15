@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Generate agent-library/01-inventory.md — operational snapshot of all agents.
+"""Generate scripts/agent-library/01-inventory.md — operational snapshot of all agents.
 
 Usage:
-    python3 agent-library/_generate-inventory.py [--dry-run]
+    python3 scripts/agent-library/_generate-inventory.py [--dry-run]
 
 --dry-run: print to stdout instead of writing the file.
 """
@@ -232,7 +232,7 @@ def render(
     lines += [
         f"# Agent Library — Inventory (auto-generated {ts})",
         "",
-        "<!-- regenerate: python3 agent-library/_generate-inventory.py -->",
+        "<!-- regenerate: python3 scripts/agent-library/_generate-inventory.py -->",
         "<!-- DO NOT hand-edit — changes will be overwritten -->",
         "",
     ]
