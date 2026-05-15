@@ -324,6 +324,11 @@ _PG_NOTIFY_ONLY_CHANNELS = frozenset({
     # from legacy "partner.commission_changed" so it passes validate_channel
     # and gets durable replay-on-reconnect via PG_CHANNEL_MAP registration.
     "partner_commission_changed",
+    # whatsapp_message_received: emitted by the external Node wa-mirror bridge
+    # after writing whatsapp_message_context. The bridge writes events_outbox
+    # directly, then sends pg_notify; no DB trigger or migration-146 function
+    # owns this channel.
+    "whatsapp_message_received",
 })
 # Channels that DO have DB triggers but whose triggers live in migrations
 # OTHER than 146. Migration 146 was the bulk refactor of the original 6
