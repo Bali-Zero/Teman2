@@ -92,6 +92,7 @@ _LAYOUT_DEFAULTS_FALLBACK: dict[str, dict[str, str]] = {
     "monospace-evidence-block":  {"heading_color": "white"},
     "qa-dialogue":               {"heading_color": "white"},
     "cover-photo":               {"heading_color": "white"},
+    "cover":                     {"heading_color": "white"},  # alias for cover-photo
     "photo-headline-yellow-sub": {"heading_color": "white"},
     "stat-card-hero":            {"heading_color": "yellow"},
     "statement-bomb":            {"heading_color": "white"},
@@ -119,10 +120,22 @@ def _load_brand_tokens() -> tuple[dict[str, str], dict[str, dict[str, str]]]:
             if drift:
                 print(f"[wr2-render] tokens.json drift detected: {drift} (using new values)",
                       file=sys.stderr)
-            layout_defaults = {
+            layout_defaults_raw = {
                 k: v for k, v in data.get("layout_defaults", {}).items()
                 if not k.startswith("_")
             }
+            _valid_hc = {"yellow", "white"}
+            layout_defaults: dict[str, dict[str, str]] = {}
+            for fam, fam_cfg in layout_defaults_raw.items():
+                hc = fam_cfg.get("heading_color", "white")
+                if hc not in _valid_hc:
+                    print(
+                        f"[wr2-render] tokens.json layout_defaults['{fam}'].heading_color="
+                        f"'{hc}' is invalid (expected yellow|white) — clamped to 'white'",
+                        file=sys.stderr,
+                    )
+                    hc = "white"
+                layout_defaults[fam] = {"heading_color": hc}
             if not layout_defaults:
                 layout_defaults = dict(_LAYOUT_DEFAULTS_FALLBACK)
             return loaded, layout_defaults
@@ -749,6 +762,16 @@ def render_dark_status_list(c: canvas.Canvas, s: dict[str, Any],
     # block consumed only top 30% of canvas, leaving 70% empty. Dynamic
     # VALUE_SIZE scaling fills the available zone proportionally.
     items = s.get("list_items") or []
+    # Brevity guard (storyboarder rule: value ≤80 chars). Warn but never crash.
+    for _bi, _it in enumerate(items):
+        _v = _it.get("value") or ""
+        if len(_v) > 80:
+            print(
+                f"[wr2-render] dark-status-list slide {s.get('index', '?')} "
+                f"item[{_bi}].value len={len(_v)} > 80 — will truncate with ellipsis. "
+                f"Fix in storyboarder: '{_v[:60]}...'",
+                file=sys.stderr,
+            )
     n_items = max(1, min(6, len(items)))
     if n_items <= 3:
         LABEL_SIZE, VALUE_SIZE = 18, 40
@@ -875,9 +898,14 @@ def render_qa_dialogue(c: canvas.Canvas, s: dict[str, Any],
 
     heading = (s.get("heading") or "").upper()
     if heading:
-        c.setFillColor(HexColor(heading_color_for(s)))
-        c.setFont(ctx.font_bold, 32)
-        c.drawString(60, H - 110, heading[:50])
+        hd_size, hd_lines = adaptive_heading(
+            heading, ctx.font_bold, W - 120, max_size=32, min_size=24, max_lines=2)
+        y_hd = H - 110
+        for hd_ln in hd_lines:
+            c.setFillColor(HexColor(heading_color_for(s)))
+            c.setFont(ctx.font_bold, hd_size)
+            c.drawString(60, y_hd, hd_ln)
+            y_hd -= hd_size + 10
 
     pairs = s.get("qa_pairs") or []
     cur_y = H - 220
@@ -911,9 +939,14 @@ def render_timeline_pinboard(c: canvas.Canvas, s: dict[str, Any],
     c.rect(0, 0, W, H, fill=1, stroke=0)
 
     heading = (s.get("heading") or "").upper()
-    c.setFillColor(HexColor(heading_color_for(s)))
-    c.setFont(ctx.font_bold, 36)
-    c.drawString(60, H - 110, heading[:40])
+    hd_size, hd_lines = adaptive_heading(
+        heading, ctx.font_bold, W - 120, max_size=36, min_size=28, max_lines=2)
+    y_hd = H - 110
+    for hd_ln in hd_lines:
+        c.setFillColor(HexColor(heading_color_for(s)))
+        c.setFont(ctx.font_bold, hd_size)
+        c.drawString(60, y_hd, hd_ln)
+        y_hd -= hd_size + 10
 
     # Fix 2026-05-15 [Gemini find]: hardcoded c.line end at Y=240 left a
     # 700px dangling rule when ≤2 events were rendered. New: compute rule
@@ -966,9 +999,14 @@ def render_three_verdicts(c: canvas.Canvas, s: dict[str, Any],
     c.rect(0, 0, W, H, fill=1, stroke=0)
 
     heading = (s.get("heading") or "").upper()
-    c.setFillColor(HexColor(heading_color_for(s)))
-    c.setFont(ctx.font_bold, 32)
-    c.drawString(60, H - 110, heading[:40])
+    hd_size, hd_lines = adaptive_heading(
+        heading, ctx.font_bold, W - 120, max_size=32, min_size=22, max_lines=2)
+    y_hd = H - 110
+    for hd_ln in hd_lines:
+        c.setFillColor(HexColor(heading_color_for(s)))
+        c.setFont(ctx.font_bold, hd_size)
+        c.drawString(60, y_hd, hd_ln)
+        y_hd -= hd_size + 10
 
     verdicts = s.get("verdicts") or []
     col_w = (W - 200) / max(1, min(3, len(verdicts)))
@@ -1084,9 +1122,14 @@ def render_elegant_close(c: canvas.Canvas, s: dict[str, Any],
     email = s.get("email") or "zantara@balizero.com"
     whatsapp = s.get("whatsapp") or "wa.me/6285954680980"
 
-    c.setFillColor(HexColor(COLOR_TEXT_WHITE))
-    c.setFont(ctx.font_bold, 40)
-    c.drawString(60, H - 200, heading[:38])
+    hd_size, hd_lines = adaptive_heading(
+        heading, ctx.font_bold, W - 120, max_size=40, min_size=28, max_lines=2)
+    y_hd = H - 200
+    for hd_ln in hd_lines:
+        c.setFillColor(HexColor(heading_color_for(s)))
+        c.setFont(ctx.font_bold, hd_size)
+        c.drawString(60, y_hd, hd_ln)
+        y_hd -= hd_size + 10
 
     if body:
         lines = wrap_simple(body, ctx.font_bold, 26, W - 120)[:5]
@@ -1258,9 +1301,14 @@ def render_monospace_evidence_block(c: canvas.Canvas, s: dict[str, Any],
     c.rect(0, 0, W, H, fill=1, stroke=0)
 
     heading = (s.get("heading") or "").upper()
-    c.setFillColor(HexColor(COLOR_TEXT_WHITE))
-    c.setFont(ctx.font_bold, 28)
-    c.drawString(60, H - 130, heading[:50])
+    hd_size, hd_lines = adaptive_heading(
+        heading, ctx.font_bold, W - 120, max_size=28, min_size=20, max_lines=2)
+    y_hd = H - 130
+    for hd_ln in hd_lines:
+        c.setFillColor(HexColor(heading_color_for(s)))
+        c.setFont(ctx.font_bold, hd_size)
+        c.drawString(60, y_hd, hd_ln)
+        y_hd -= hd_size + 10
 
     c.setStrokeColor(HexColor(COLOR_ACCENT_YELLOW))
     c.setLineWidth(3)
