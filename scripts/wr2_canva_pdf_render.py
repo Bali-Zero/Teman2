@@ -260,12 +260,49 @@ def adaptive_heading(text: str, font: str, max_w: int, max_size: int = 64,
     return min_size, smart_wrap_heading(text, font, min_size, max_w)[:max_lines]
 
 
-def wrap_simple(text: str, font: str, size: int, max_w: int) -> list[str]:
-    """Plain word-wrap without yellow segmentation."""
+def _char_break_word(word: str, font: str, size: int, max_w: int) -> list[str]:
+    """Break a single word at character boundary when it exceeds max_w.
+
+    Fix 2026-05-15 [Gemini find]: previous wrap_simple let single words
+    longer than max_w (URLs, run-on identifiers, agglutinative Bahasa
+    compounds like 'PUNGUTANWISATAWANASING') bleed off the canvas edge.
+    """
+    if stringWidth(word, font, size) <= max_w:
+        return [word]
+    chunks: list[str] = []
+    cur = ""
+    for ch in word:
+        if stringWidth(cur + ch, font, size) > max_w and cur:
+            chunks.append(cur)
+            cur = ch
+        else:
+            cur += ch
+    if cur:
+        chunks.append(cur)
+    return chunks
+
+
+def wrap_simple(text: str, font: str, size: int, max_w: int,
+                max_lines: int | None = None,
+                ellipsis: bool = True) -> list[str]:
+    """Plain word-wrap without yellow segmentation.
+
+    Fix 2026-05-15 [Gemini find]:
+    - words exceeding max_w get character-level break
+    - if max_lines provided AND overflow, append '…' on last kept line
+    """
     words = text.split()
     lines: list[str] = []
     cur: list[str] = []
     for w in words:
+        if stringWidth(w, font, size) > max_w:
+            if cur:
+                lines.append(" ".join(cur))
+                cur = []
+            chunks = _char_break_word(w, font, size, max_w)
+            lines.extend(chunks[:-1])
+            cur = [chunks[-1]]
+            continue
         cand = " ".join(cur + [w])
         if stringWidth(cand, font, size) <= max_w or not cur:
             cur.append(w)
@@ -274,6 +311,18 @@ def wrap_simple(text: str, font: str, size: int, max_w: int) -> list[str]:
             cur = [w]
     if cur:
         lines.append(" ".join(cur))
+    if max_lines is not None and len(lines) > max_lines:
+        kept = lines[:max_lines]
+        if ellipsis and kept:
+            while kept[-1] and stringWidth(kept[-1] + " …", font, size) > max_w:
+                parts = kept[-1].rsplit(" ", 1)
+                if len(parts) == 1:
+                    while kept[-1] and stringWidth(kept[-1] + "…", font, size) > max_w:
+                        kept[-1] = kept[-1][:-1]
+                    break
+                kept[-1] = parts[0]
+            kept[-1] = (kept[-1] + " …").strip()
+        return kept
     return lines
 
 
@@ -293,14 +342,23 @@ def draw_text_shadow(c: canvas.Canvas, x: float, y: float, text: str,
 def draw_highlighted_line(c: canvas.Canvas, x: float, y: float,
                           line: list[tuple[str, bool]], font: str, size: int,
                           shadow: bool = False) -> None:
+    # Fix 2026-05-15 [Gemini find]: previous single-pass painted shadow then
+    # foreground per segment. Shadow of segment N+1 was painted AFTER
+    # foreground of segment N, and glyphs with negative left-bearings
+    # (W, J, A in italic) extend left of their nominal x — so the black
+    # shadow visually overpainted/corrupted the white/yellow trailing edge
+    # of the previous word. New: 2-pass — first all shadows, then all text.
+    if shadow:
+        cur_x = x
+        c.saveState()
+        c.setFillColor(Color(0, 0, 0, alpha=0.6))
+        c.setFont(font, size)
+        for seg, _ in line:
+            c.drawString(cur_x + 2, y - 2, seg)
+            cur_x += stringWidth(seg, font, size)
+        c.restoreState()
     cur_x = x
     for seg, is_y in line:
-        if shadow:
-            c.saveState()
-            c.setFillColor(Color(0, 0, 0, alpha=0.6))
-            c.setFont(font, size)
-            c.drawString(cur_x + 2, y - 2, seg)
-            c.restoreState()
         c.setFillColor(HexColor(COLOR_ACCENT_YELLOW if is_y else COLOR_TEXT_WHITE))
         c.setFont(font, size)
         c.drawString(cur_x, y, seg)
@@ -543,30 +601,26 @@ def render_photo_headline_yellow_sub(c: canvas.Canvas, s: dict[str, Any],
             cur_x += stringWidth(seg, ctx.font_bold, head_size)
         y_head -= head_line_h
 
-    # Body (UPPERCASE) — vcentered in space between heading bottom and logo top.
-    # Fix 1 (2026-05-13): previously body anchored just below heading, leaving
-    # 50-70% of canvas as empty antracite. Now compute body block height and
-    # center it vertically within [logo_top + 60pt, heading_bottom - 30pt].
+    # Body (UPPERCASE) — anchored at fixed offset below heading.
+    # Fix 2026-05-15 [Gemini find]: previous version vcentered body in
+    # available zone, creating 400px+ disjointed void between heading and
+    # body when both were short. New: body anchored HEADING_TO_BODY_GAP
+    # below heading bottom, excess whitespace pushed to bottom.
+    HEADING_TO_BODY_GAP = 50
     body = (s.get("body") or "").upper()
     if body:
         body_size = 30
         body_line_h = body_size + 12
-        # Pre-wrap to know the line count
         body_lines_segs = wrap_segments(body, ctx.font_bold, body_size, max_w)
         body_lines_segs = body_lines_segs[:8]
         body_total_h = len(body_lines_segs) * body_line_h
 
-        # Available zone: top = just below last heading baseline; bottom = logo top edge + safety
-        zone_top = y_head + head_line_h - 30
-        logo_top_edge = 80 + 90 + 60  # logo y=80, h=90, safety 60
-        zone_bottom = logo_top_edge
+        heading_bottom_y = y_head + head_line_h
+        body_start_y = heading_bottom_y - HEADING_TO_BODY_GAP
 
-        # Center body block in [zone_bottom, zone_top]
-        vcenter = (zone_top + zone_bottom) / 2
-        body_start_y = vcenter + body_total_h / 2 - body_size / 2
-        # Clamp: never push above zone_top, never below zone_bottom
-        body_start_y = min(body_start_y, zone_top - body_size)
-        body_start_y = max(body_start_y, zone_bottom + body_total_h - body_size)
+        logo_top_edge = 80 + 90 + 60
+        min_start_y = logo_top_edge + body_total_h - body_size
+        body_start_y = max(body_start_y, min_start_y)
 
         cur_y = body_start_y
         for line in body_lines_segs:
@@ -606,12 +660,26 @@ def render_dark_status_list(c: canvas.Canvas, s: dict[str, Any],
     # NEXT row because cur_y -= 110 isn't enough when value is multi-line;
     # (b) status="critical" mapped to red, violating brand constitution
     # (white+yellow only — red reserved for logo + thin rule). Both fixed.
+    # Fix 2026-05-15 [Gemini find #16]: when items list ≤4 entries, the
+    # block consumed only top 30% of canvas, leaving 70% empty. Dynamic
+    # VALUE_SIZE scaling fills the available zone proportionally.
     items = s.get("list_items") or []
-    LABEL_TO_VALUE_GAP = 32           # vertical gap between label baseline and value baseline (label ~18pt, gap accommodates descenders + leading)
-    VALUE_LINE_HEIGHT = 38            # for value at 28pt with leading
-    INTER_ITEM_GAP = 40               # gap between bottom of one value block and top of next label
-    LABEL_SIZE = 16
-    VALUE_SIZE = 28
+    n_items = max(1, min(6, len(items)))
+    if n_items <= 3:
+        LABEL_SIZE, VALUE_SIZE = 18, 40
+        LABEL_TO_VALUE_GAP = 44
+        VALUE_LINE_HEIGHT = 50
+        INTER_ITEM_GAP = 80
+    elif n_items == 4:
+        LABEL_SIZE, VALUE_SIZE = 17, 34
+        LABEL_TO_VALUE_GAP = 38
+        VALUE_LINE_HEIGHT = 44
+        INTER_ITEM_GAP = 56
+    else:
+        LABEL_SIZE, VALUE_SIZE = 16, 28
+        LABEL_TO_VALUE_GAP = 32
+        VALUE_LINE_HEIGHT = 38
+        INTER_ITEM_GAP = 40
     cur_y = y_head - 80
     for it in items[:6]:
         label = (it.get("label") or "").upper()
@@ -745,21 +813,23 @@ def render_timeline_pinboard(c: canvas.Canvas, s: dict[str, Any],
     c.setFont(ctx.font_bold, 36)
     c.drawString(60, H - 110, heading[:40])
 
-    # Vertical red rule
-    c.setStrokeColor(HexColor(COLOR_STATUS_RED))
-    c.setLineWidth(3)
-    c.line(80, H - 200, 80, 240)
-
-    # Fix 2026-05-15: previous version drew date at (110, cur_y+8) and event
-    # at (110, cur_y-8) — only 16pt vertical separation but font 18 vs 24,
-    # so glyphs interleaved producing the "Q01²⁶A⁻⁰R¹R⁻⁰IVALS" garbage.
-    # Plus event used same X=110 as date — they collided horizontally.
-    # New layout: date as separated pill ABOVE event, both starting at x=110,
-    # date at cur_y, event starting cur_y - 26 (font 18 + 8 padding).
+    # Fix 2026-05-15 [Gemini find]: hardcoded c.line end at Y=240 left a
+    # 700px dangling rule when ≤2 events were rendered. New: compute rule
+    # end dynamically from final event position.
     events = s.get("timeline") or []
     DATE_TO_EVENT_GAP = 28
     EVENT_LINE_H = 30
     INTER_EVENT_GAP = 36
+    # Pre-pass to compute final cur_y for dynamic rule sizing
+    final_y = H - 220
+    for ev in events[:6]:
+        evt_preview = (ev.get("event") or "").upper()
+        evt_lines_pv = wrap_simple(evt_preview, ctx.font_bold, 22, W - 180)[:2]
+        final_y -= DATE_TO_EVENT_GAP + EVENT_LINE_H * len(evt_lines_pv) + INTER_EVENT_GAP
+    rule_bottom = max(final_y + 20, 240)
+    c.setStrokeColor(HexColor(COLOR_STATUS_RED))
+    c.setLineWidth(3)
+    c.line(80, H - 200, 80, rule_bottom)
     cur_y = H - 220
     for ev in events[:6]:
         date = ev.get("date") or ""
@@ -835,7 +905,13 @@ def render_three_verdicts(c: canvas.Canvas, s: dict[str, Any],
 
 def render_statement_bomb(c: canvas.Canvas, s: dict[str, Any],
                           ctx: RenderContext) -> None:
-    """Closing slide — single statement centered, adaptive shrink."""
+    """Closing slide — single statement centered, adaptive shrink.
+
+    Fix 2026-05-15:
+    - Logo size 110→90 (was oversized, dominated closing visually).
+    - Honor yellow_accent slide-spec field: previously dropped silently;
+      now the token renders yellow within the statement.
+    """
     c.setFillColor(HexColor(COLOR_BG_ANTRACITE))
     c.rect(0, 0, W, H, fill=1, stroke=0)
 
@@ -843,13 +919,13 @@ def render_statement_bomb(c: canvas.Canvas, s: dict[str, Any],
     if not statement:
         return
 
-    # If statement has 2 sentences, render as 2 stanzas
     sentences = [t.strip() for t in re.split(r"(?<=[.!?])\s+", statement) if t.strip()]
     if not sentences:
         sentences = [statement]
 
+    yellow_accent = (s.get("yellow_accent") or "").upper().strip()
+
     max_w = W - 120
-    # Adaptive shrink: find size where each sentence fits ≤2 lines
     size = 80
     while size >= 48:
         ok = all(len(smart_wrap_heading(snt, ctx.font_bold, size, max_w)) <= 2
@@ -869,12 +945,30 @@ def render_statement_bomb(c: canvas.Canvas, s: dict[str, Any],
     for snt in sentences:
         lines = smart_wrap_heading(snt, ctx.font_bold, size, max_w)
         for line in lines:
-            draw_centered_highlights(c, W / 2, cur_y, line, ctx.font_bold,
-                                     size, max_w, line_h, max_lines=1)
+            if yellow_accent and yellow_accent in line:
+                idx = line.find(yellow_accent)
+                pre = line[:idx]
+                post = line[idx + len(yellow_accent):]
+                full_w = stringWidth(line, ctx.font_bold, size)
+                start_x = (W - full_w) / 2
+                c.setFont(ctx.font_bold, size)
+                if pre:
+                    c.setFillColor(HexColor(COLOR_TEXT_WHITE))
+                    c.drawString(start_x, cur_y, pre)
+                    start_x += stringWidth(pre, ctx.font_bold, size)
+                c.setFillColor(HexColor(COLOR_ACCENT_YELLOW))
+                c.drawString(start_x, cur_y, yellow_accent)
+                start_x += stringWidth(yellow_accent, ctx.font_bold, size)
+                if post:
+                    c.setFillColor(HexColor(COLOR_TEXT_WHITE))
+                    c.drawString(start_x, cur_y, post)
+            else:
+                draw_centered_highlights(c, W / 2, cur_y, line, ctx.font_bold,
+                                         size, max_w, line_h, max_lines=1)
             cur_y -= line_h
         cur_y -= sentence_gap
 
-    draw_logo(c, y_bottom=80, size=110)
+    draw_logo(c)
 
 
 def render_elegant_close(c: canvas.Canvas, s: dict[str, Any],
