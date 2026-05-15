@@ -45,10 +45,26 @@ def _is_transient(exc: Exception) -> bool:
     return isinstance(exc, BotoCoreError)
 
 
-def upload_pdf(s3: Any, pdf_path: Path, *, draft_id: str, prefix: str = "wr2-pdf") -> str:
-    """Upload PDF to s3://BUCKET/{prefix}/{draft_id}.pdf, return public URL."""
-    key = f"{prefix}/{draft_id}.pdf"
+def upload_pdf(s3: Any, pdf_path: Path, *, draft_id: str,
+               prefix: str = "wr2-pdf",
+               content_addressed: bool = True) -> str:
+    """Upload PDF to Tigris S3, return public URL.
+
+    Fix 2026-05-15 [Codex find]: previously key was hardcoded as
+    `{prefix}/{draft_id}.pdf` — every retry/rerender overwrote the same
+    URL while Canva or CDN could serve stale bytes. New default:
+    content-addressed key `{prefix}/{draft_id}/{sha256_first8}.pdf` so
+    each render version is its own URL. Legacy single-key mode retained
+    via content_addressed=False for backwards compatibility (legacy
+    callers that rely on the predictable URL).
+    """
+    import hashlib as _hl
     body = pdf_path.read_bytes()
+    if content_addressed:
+        sha8 = _hl.sha256(body).hexdigest()[:8]
+        key = f"{prefix}/{draft_id}/{sha8}.pdf"
+    else:
+        key = f"{prefix}/{draft_id}.pdf"
 
     last_exc: Exception | None = None
     for attempt in range(1, MAX_RETRIES + 1):
@@ -60,8 +76,17 @@ def upload_pdf(s3: Any, pdf_path: Path, *, draft_id: str, prefix: str = "wr2-pdf
                 ContentType="application/pdf",
                 ACL="public-read",
             )
-            logger.info("Tigris upload OK: %s (attempt %d)", key, attempt)
-            return build_public_url(draft_id, prefix=prefix)
+            logger.info("Tigris upload OK: %s (attempt %d, sha256=%s)",
+                        key, attempt,
+                        _hl.sha256(body).hexdigest()[:12])
+            # Best-effort: verify Tigris HEAD before returning URL
+            try:
+                head = s3.head_object(Bucket=BUCKET, Key=key)
+                logger.info("Tigris HEAD ok: ETag=%s, len=%s",
+                            head.get("ETag", "?"), head.get("ContentLength", "?"))
+            except Exception as e:  # noqa: BLE001
+                logger.warning("Tigris HEAD verify failed (non-fatal): %s", e)
+            return f"https://{PUBLIC_HOST}/{key}"
         except (ClientError, BotoCoreError) as e:
             last_exc = e
             if not _is_transient(e):
@@ -77,7 +102,7 @@ def upload_pdf(s3: Any, pdf_path: Path, *, draft_id: str, prefix: str = "wr2-pdf
 
 
 def delete_pdf(s3: Any, *, draft_id: str, prefix: str = "wr2-pdf") -> None:
-    """Best-effort delete. Never raises (S3 lifecycle is the safety net)."""
+    """Best-effort delete of LEGACY single-key path. Never raises."""
     key = f"{prefix}/{draft_id}.pdf"
     try:
         s3.delete_object(Bucket=BUCKET, Key=key)
@@ -87,4 +112,7 @@ def delete_pdf(s3: Any, *, draft_id: str, prefix: str = "wr2-pdf") -> None:
 
 
 def build_public_url(draft_id: str, *, prefix: str = "wr2-pdf") -> str:
+    """Legacy URL builder. Returns predictable path even for content-addressed
+    keys are now used by upload_pdf; this helper kept for old callers that
+    pre-date the content-addressed change."""
     return f"https://{PUBLIC_HOST}/{prefix}/{draft_id}.pdf"

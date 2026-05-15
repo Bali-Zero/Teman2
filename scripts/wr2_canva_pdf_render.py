@@ -59,17 +59,63 @@ from reportlab.pdfbase.pdfmetrics import stringWidth
 from reportlab.pdfbase.ttfonts import TTFont
 from reportlab.pdfgen import canvas
 
-# ---------- Constants (mirror of tokens.json) ----------
+# ---------- Constants ----------
 W, H = 1080, 1350
 
-COLOR_BG_ANTRACITE = "#2C2F38"
-COLOR_BG_BLACK = "#000000"
-COLOR_TEXT_WHITE = "#FFFFFF"
-COLOR_TEXT_MUTED = "#9CA3AF"
-COLOR_ACCENT_YELLOW = "#F4C430"
-COLOR_STATUS_RED = "#C8102E"
-
+# ---------- Tokens loading (Fix 2026-05-15 [Codex find]) ----------
+# Previously colors were hardcoded constants "mirror of tokens.json". When
+# the skill maintainer updated tokens.json, the renderer kept using stale
+# values — skill fix appeared "done" but PDF never reflected it. New:
+# load tokens at startup with hardcoded fallback. Fallback values are
+# captured-2026-05-13; if tokens.json drifts, we log a warning + use the
+# new values (no hard fail to keep production resilient).
+TOKENS_PATH = Path.home() / ".claude/skills/bali-zero-brand/tokens.json"
 LOGO_PATH = Path.home() / ".claude/skills/bali-zero-brand/assets/logo.png"
+
+_TOKENS_FALLBACK = {
+    "bg_antracite": "#2C2F38",
+    "bg_black": "#000000",
+    "text_white": "#FFFFFF",
+    "text_muted": "#9CA3AF",
+    "accent_yellow": "#F4C430",
+    "status_red": "#C8102E",
+}
+
+
+def _load_brand_tokens() -> dict[str, str]:
+    """Load brand color tokens from tokens.json with fallback to constants."""
+    try:
+        if TOKENS_PATH.exists():
+            import json as _json
+            with TOKENS_PATH.open("r", encoding="utf-8") as f:
+                data = _json.load(f)
+            colors = data.get("color", {})
+            loaded = {
+                "bg_antracite": colors.get("bg", {}).get("antracite", {}).get("value", _TOKENS_FALLBACK["bg_antracite"]),
+                "bg_black": colors.get("bg", {}).get("black", {}).get("value", _TOKENS_FALLBACK["bg_black"]),
+                "text_white": colors.get("text", {}).get("white", {}).get("value", _TOKENS_FALLBACK["text_white"]),
+                "text_muted": colors.get("text", {}).get("muted", {}).get("value", _TOKENS_FALLBACK["text_muted"]),
+                "accent_yellow": colors.get("accent", {}).get("yellow", {}).get("value", _TOKENS_FALLBACK["accent_yellow"]),
+                "status_red": colors.get("status", {}).get("red", {}).get("value", _TOKENS_FALLBACK["status_red"]),
+            }
+            # Detect drift from fallback baseline (informational, not blocking)
+            drift = [k for k, v in loaded.items() if v.upper() != _TOKENS_FALLBACK[k].upper()]
+            if drift:
+                print(f"[wr2-render] tokens.json drift detected: {drift} (using new values)",
+                      file=sys.stderr)
+            return loaded
+    except Exception as e:
+        print(f"[wr2-render] tokens.json load failed ({e}), using fallback", file=sys.stderr)
+    return dict(_TOKENS_FALLBACK)
+
+
+_BRAND_TOKENS = _load_brand_tokens()
+COLOR_BG_ANTRACITE = _BRAND_TOKENS["bg_antracite"]
+COLOR_BG_BLACK = _BRAND_TOKENS["bg_black"]
+COLOR_TEXT_WHITE = _BRAND_TOKENS["text_white"]
+COLOR_TEXT_MUTED = _BRAND_TOKENS["text_muted"]
+COLOR_ACCENT_YELLOW = _BRAND_TOKENS["accent_yellow"]
+COLOR_STATUS_RED = _BRAND_TOKENS["status_red"]
 
 # ---------- Yellow highlight regex (Article 6.9 anchor family) ----------
 # These patterns identify "verifiable facts" tokens that get yellow color
@@ -1286,7 +1332,44 @@ def load_slides_from_pg(draft_id: str) -> dict[str, Any]:
     return slides_json
 
 
+def _log_canonicity_banner() -> None:
+    """Log interpreter + script + git SHA + tokens hash to stderr.
+
+    Fix 2026-05-15 [Codex find]: launchd plist pins .venv/bin/python,
+    _pdf_pipeline.py uses sys.executable, manual runs use system python3
+    — 3 interpreters in play with different sys.path/cached modules.
+    This banner makes the actual execution context observable at start
+    of every render so misalignment is immediately visible in logs.
+    """
+    import hashlib as _hl
+    import subprocess as _sp
+    script_path = Path(__file__).resolve()
+    canonical = Path.home() / "Desktop/nuzantara/scripts/wr2_canva_pdf_render.py"
+    git_sha = "unknown"
+    try:
+        git_sha = _sp.check_output(
+            ["git", "-C", str(canonical.parent.parent), "rev-parse", "--short", "HEAD"],
+            stderr=_sp.DEVNULL, timeout=2,
+        ).decode().strip()
+    except Exception:
+        pass
+    tokens_sha = "unknown"
+    try:
+        if TOKENS_PATH.exists():
+            tokens_sha = _hl.sha256(TOKENS_PATH.read_bytes()).hexdigest()[:12]
+    except Exception:
+        pass
+    print(f"[wr2-render] script={script_path}", file=sys.stderr)
+    print(f"[wr2-render] python={sys.executable} ({sys.version.split()[0]})", file=sys.stderr)
+    print(f"[wr2-render] git_sha={git_sha} tokens_sha256={tokens_sha}", file=sys.stderr)
+    if script_path.resolve() != canonical.resolve():
+        print(f"[wr2-render] ⚠️  WARNING: script path != canonical "
+              f"({canonical}). If this is a /tmp/LOCAL.py override, ABORT.",
+              file=sys.stderr)
+
+
 def main() -> int:
+    _log_canonicity_banner()
     p = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     src = p.add_mutually_exclusive_group(required=True)
     src.add_argument("--slides-json", type=str,

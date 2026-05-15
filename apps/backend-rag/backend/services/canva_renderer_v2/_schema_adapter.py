@@ -40,12 +40,42 @@ HERO_CACHE_DIR = Path("/tmp/wr2_hero_cache")
 
 
 def is_legacy_schema(data: dict[str, Any]) -> bool:
-    """Detect legacy schema by presence of `slide_type` on any slide."""
+    """Detect legacy schema by presence of `slide_type` on any slide.
+
+    Fix 2026-05-15 [Codex find]: when this returns True, log a HIGH-VISIBILITY
+    metric so we can detect storyboarder drift. Adapter accepting legacy
+    schema can hide that storyboard still emits old format. Future cutoff
+    (recommended 2026-06-15) should turn this into a hard fail via env
+    var WR2_DISALLOW_LEGACY_SCHEMA=1.
+    """
     slides = data.get("slides", [])
     if not slides:
         return False
     first = slides[0]
-    return "slide_type" in first and "layout_family" not in first
+    is_legacy = "slide_type" in first and "layout_family" not in first
+    if is_legacy:
+        # Metric: log to stderr with structured prefix so log scrapers can
+        # alert on it. Format mirrors Bali Zero cron-agent-python convention.
+        import os as _os
+        import sys as _sys
+        draft_id = data.get("draft_id") or data.get("carousel_id") or "unknown"
+        logger.warning(
+            "[wr2-schema-adapter] legacy_schema_adapted=1 draft_id=%s — "
+            "storyboarder emitted slide_type (pre-2026-05-13 format). "
+            "If this persists past 2026-06-15 it is a structural bug.",
+            draft_id,
+        )
+        print(f"[wr2-schema-adapter] METRIC legacy_schema_adapted=1 draft={draft_id}",
+              file=_sys.stderr)
+        # Optional hard-fail via env (recommended after cutoff)
+        if _os.environ.get("WR2_DISALLOW_LEGACY_SCHEMA", "").lower() in {"1", "true", "yes"}:
+            raise ValueError(
+                f"Legacy slide_type schema rejected for draft {draft_id} "
+                "(WR2_DISALLOW_LEGACY_SCHEMA=1). Storyboarder must emit "
+                "layout_family (v2 schema). Update storyboarder skill or "
+                "unset env var to bypass."
+            )
+    return is_legacy
 
 
 def _download_hero(url: str, slide_n: int) -> str | None:
