@@ -80,8 +80,165 @@ def scan_cross_tool() -> list[dict[str, Any]]:
     raise NotImplementedError("scan_cross_tool — implemented in Task 4")
 
 
+_SCRIPT_SUFFIXES = (".sh", ".py", ".zsh", ".bash")
+_INTERPRETERS = {"/bin/sh", "/bin/bash", "/bin/zsh", "/usr/bin/env", "/usr/bin/python3"}
+_INTERPRETER_BASENAMES = {
+    "python", "python3", "python3.11", "bash", "zsh", "sh", "env", "exec",
+    "uvicorn", "uv", "node",
+}
+
+
+def _is_interpreter(path: str) -> bool:
+    if path in _INTERPRETERS:
+        return True
+    name = Path(path).name
+    return name in _INTERPRETER_BASENAMES
+
+
+def _plist_to_json(plist_path: Path) -> dict[str, Any]:
+    """Convert plist to dict via plutil. Returns {} on failure."""
+    try:
+        result = subprocess.run(
+            ["plutil", "-convert", "json", "-o", "-", str(plist_path)],
+            capture_output=True, text=True, timeout=5,
+        )
+        if result.returncode != 0:
+            return {}
+        return json.loads(result.stdout)
+    except Exception:
+        return {}
+
+
+def _schedule_str(plist_dict: dict[str, Any]) -> str:
+    """Human-readable schedule from plist dict."""
+    if "StartCalendarInterval" in plist_dict:
+        sci = plist_dict["StartCalendarInterval"]
+        if isinstance(sci, list):
+            return f"calendar×{len(sci)}"
+        if isinstance(sci, dict):
+            weekday = sci.get("Weekday")
+            h = sci.get("Hour")
+            m = sci.get("Minute", 0)
+            h_s = f"{h:02}" if isinstance(h, int) else "*"
+            m_s = f"{m:02}" if isinstance(m, int) else "00"
+            if weekday is not None:
+                return f"weekly[d{weekday}]@{h_s}:{m_s}"
+            return f"daily@{h_s}:{m_s}"
+        return "calendar"
+    if "StartInterval" in plist_dict:
+        try:
+            s = int(plist_dict["StartInterval"])
+        except (TypeError, ValueError):
+            return "interval"
+        if s < 120:
+            return f"every {s}s"
+        if s < 3600:
+            return f"every {s // 60}min"
+        return f"every {s // 3600}h"
+    if plist_dict.get("RunAtLoad"):
+        return "run-at-load"
+    return "on-demand"
+
+
+def _script_path(plist_dict: dict[str, Any]) -> str:
+    """Pick the real workload script from Program/ProgramArguments.
+
+    Prefers, in order:
+      1. The first arg that is an existing file path.
+      2. The first arg ending in a recognized script suffix.
+      3. The first token (parsed cheaply) of a `-c` shell string that ends
+         in a recognized script suffix.
+      4. Program (if set) or ProgramArguments[0] as last-resort fallback.
+    """
+    args = list(plist_dict.get("ProgramArguments") or [])
+    program = plist_dict.get("Program", "") or ""
+    candidates = ([program] if program else []) + args
+
+    # Pass 1: bare args — existing files that are NOT interpreters
+    for a in candidates:
+        if not isinstance(a, str) or not a.startswith("/"):
+            continue
+        if _is_interpreter(a):
+            continue
+        if Path(a).exists():
+            return a
+
+    # Pass 2: bare args — suffix match on standalone paths (file may not exist;
+    # flagged via script_exists). Require no whitespace to avoid matching the
+    # tail of a shell-string arg.
+    for a in candidates:
+        if not isinstance(a, str) or " " in a:
+            continue
+        if a.endswith(_SCRIPT_SUFFIXES):
+            return a
+
+    # Pass 3: parse shell-string args (e.g. `-c` payloads). Skip interpreter
+    # invocations; pick the first script-like token.
+    for a in args:
+        if not isinstance(a, str) or " " not in a:
+            continue
+        tokens = a.split()
+        for tok in tokens:
+            t = tok.strip("`'\";|&()")
+            if not t.startswith("/"):
+                continue
+            if _is_interpreter(t):
+                continue
+            if t.endswith(_SCRIPT_SUFFIXES):
+                return t
+            if Path(t).exists():
+                return t
+
+    # Fallback: Program or first arg (likely an interpreter — better than empty)
+    if program:
+        return program
+    return args[0] if args else ""
+
+
+def _is_agentic(script_path_str: str) -> bool:
+    """Check if a cron script calls an LLM. Reads first 30 lines only.
+
+    Privacy: no full-file read, no external lookups.
+    """
+    if not script_path_str:
+        return False
+    p = Path(script_path_str)
+    if not p.exists() or not p.is_file():
+        return False
+    try:
+        lines = []
+        with p.open(encoding="utf-8", errors="ignore") as f:
+            for i, line in enumerate(f):
+                if i >= 30:
+                    break
+                lines.append(line)
+        header = "".join(lines)
+        return bool(AGENTIC_KEYWORDS.search(header))
+    except Exception:
+        return False
+
+
 def scan_crons() -> list[dict[str, Any]]:
-    raise NotImplementedError("scan_crons — implemented in Task 3")
+    """Scan all com.balizero.*.plist in ~/Library/LaunchAgents (sorted)."""
+    results = []
+    if not LAUNCHAGENTS_DIR.is_dir():
+        return results
+    for p in sorted(LAUNCHAGENTS_DIR.glob("com.balizero.*.plist")):
+        pdict = _plist_to_json(p)
+        if not pdict:
+            continue
+        label = pdict.get("Label", p.stem)
+        script = _script_path(pdict)
+        script_exists = bool(script) and Path(script).exists()
+        results.append({
+            "label": label,
+            "schedule": _schedule_str(pdict),
+            "script": script,
+            "agentic": _is_agentic(script),
+            "script_exists": script_exists,
+            "plist_path": str(p),
+        })
+    return results
 
 
 def scan_skills() -> list[dict[str, Any]]:
