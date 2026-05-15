@@ -101,7 +101,7 @@ export function ChatHeader({
             size="icon"
             onClick={onToggleSidebar}
             aria-label={isSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
-            className="flex-shrink-0"
+            className="flex-shrink-0 focus-ring"
           >
             <Menu className="w-5 h-5" />
           </Button>
@@ -111,7 +111,7 @@ export function ChatHeader({
             size="sm"
             disabled={isClockLoading}
             aria-label={isClockIn ? 'Clock Out' : 'Clock In'}
-            className={`gap-2 ${isClockIn ? 'bg-[var(--success)] hover:bg-[var(--success)]/90' : ''}`}
+            className={`gap-2 focus-ring ${isClockIn ? 'bg-[var(--success)] hover:bg-[var(--success)]/90' : ''}`}
           >
             {isClockLoading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -155,7 +155,7 @@ export function ChatHeader({
           <Button
             variant="ghost"
             size="icon"
-            className="relative"
+            className="relative focus-ring"
             aria-label="Notifications"
             onClick={() => router.push('/notifications')}
           >
