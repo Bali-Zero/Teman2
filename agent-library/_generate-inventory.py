@@ -77,7 +77,32 @@ def scan_subagents() -> list[dict[str, Any]]:
 
 
 def scan_cross_tool() -> list[dict[str, Any]]:
-    raise NotImplementedError("scan_cross_tool — implemented in Task 4")
+    """Scan Cursor rules and Gemini skills."""
+    results = []
+    if CURSOR_RULES_DIR.is_dir():
+        for p in sorted(CURSOR_RULES_DIR.glob("**/*.mdc")):
+            if not p.is_file():
+                continue
+            fm = parse_frontmatter(p)
+            name = (fm.get("description") or p.stem)[:60]
+            results.append({
+                "name": name,
+                "type": "cursor-rule",
+                "path": str(p.relative_to(REPO_ROOT)),
+            })
+    if GEMINI_SKILLS_DIR.is_dir():
+        for p in sorted(GEMINI_SKILLS_DIR.glob("**/*.md")):
+            if not p.is_file():
+                continue
+            fm = parse_frontmatter(p)
+            if not fm:
+                continue
+            results.append({
+                "name": fm.get("name", p.stem),
+                "type": "gemini-skill",
+                "path": str(p),
+            })
+    return results
 
 
 _SCRIPT_SUFFIXES = (".sh", ".py", ".zsh", ".bash")
@@ -242,7 +267,24 @@ def scan_crons() -> list[dict[str, Any]]:
 
 
 def scan_skills() -> list[dict[str, Any]]:
-    raise NotImplementedError("scan_skills — implemented in Task 4")
+    """Scan ~/.claude/skills/**/*.md for skill frontmatter."""
+    results = []
+    if not SKILLS_DIR.is_dir():
+        return results
+    for p in sorted(SKILLS_DIR.glob("**/*.md")):
+        if not p.is_file():
+            continue
+        if any(suffix in p.name for suffix in (".pre-T1", ".pre-T2", ".bak-", ".disabled")):
+            continue
+        fm = parse_frontmatter(p)
+        if not fm:
+            continue
+        results.append({
+            "name": fm.get("name", p.stem),
+            "description": (fm.get("description") or "")[:100],
+            "path": str(p),
+        })
+    return results
 
 
 def compute_drift(
