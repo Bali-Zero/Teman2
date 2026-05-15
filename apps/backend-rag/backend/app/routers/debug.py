@@ -115,23 +115,34 @@ async def get_logs(
     _: bool = Depends(verify_debug_access),
 ) -> dict[str, Any]:
     """
-    Get filtered logs.
+    Get recent application logs from the in-process ring buffer.
 
-    Note: This is a placeholder. In production, you would integrate with
-    a logging service like CloudWatch, ELK, or similar.
+    The ring buffer (``backend.app.services.log_ring_buffer``) is attached
+    to the root logger by :func:`configure_logging` and stores the last
+    ~2000 records. This endpoint is zero-dependency — it works in dev and
+    prod without flyctl auth or external aggregators like Loki / CloudWatch.
+
+    For long-term retention, scrape Fly stdout logs externally; this
+    endpoint is intended for live-debugging the running process.
 
     Args:
-        module: Optional module name filter
-        level: Optional log level filter
-        limit: Maximum number of logs
+        module: Optional logger-hierarchy filter (e.g. ``backend.app``).
+        level: Optional minimum level (DEBUG, INFO, WARNING, ERROR).
+        limit: Maximum number of records to return (1-1000).
 
     Returns:
-        Logs data
+        ``{success, logs, count, filters, timestamp}``.
     """
-    # TODO(#79): Wire to the real logging backend (Loki or fly logs --json).
+    # Closes TODO(#79): replaces hardcoded placeholder with real records.
+    from backend.app.services.log_ring_buffer import get_ring_buffer_handler
+
+    handler = get_ring_buffer_handler()
+    logs = handler.snapshot(module=module, level=level, limit=limit)
+
     return {
         "success": True,
-        "message": "Log retrieval not yet implemented. Integrate with logging service.",
+        "logs": logs,
+        "count": len(logs),
         "filters": {
             "module": module,
             "level": level,
