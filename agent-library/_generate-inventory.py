@@ -291,7 +291,36 @@ def compute_drift(
     subagents: list[dict[str, Any]],
     crons: list[dict[str, Any]],
 ) -> dict[str, list[str]]:
-    raise NotImplementedError("compute_drift — implemented in Task 5")
+    """Surface three classes of drift for the inventory health-check section."""
+    now = _time.time()
+    stale_cutoff = now - STALE_DAYS * 86400
+    missing_frontmatter = sorted(
+        a["path"] for a in subagents if not a["frontmatter_ok"]
+    )
+    orphaned_plists = sorted(
+        c["label"] for c in crons if c["script"] and not c["script_exists"]
+    )
+    stale_agents = sorted(
+        a["name"] for a in subagents if a["mtime"] < stale_cutoff
+    )
+    return {
+        "missing_frontmatter": missing_frontmatter,
+        "orphaned_plists": orphaned_plists,
+        "stale_agents": stale_agents,
+    }
+
+
+def _tools_str(tools: list[str] | str | None) -> str:
+    if not tools:
+        return ""
+    if isinstance(tools, str):
+        return tools
+    return ", ".join(tools[:4]) + ("…" if len(tools) > 4 else "")
+
+
+def _md_escape(text: str) -> str:
+    """Pipe-escape for markdown table cells. Compact whitespace."""
+    return text.replace("|", "\\|").replace("\n", " ").strip()
 
 
 def render(
@@ -301,7 +330,129 @@ def render(
     skills: list[dict[str, Any]],
     drift: dict[str, list[str]],
 ) -> str:
-    raise NotImplementedError("render — implemented in Task 5")
+    """Render the inventory markdown. Output is deterministic given inputs
+    except for the header timestamp (truncated to minute)."""
+    ts = datetime.now().strftime("%Y-%m-%d %H:%M WITA")
+    lines: list[str] = [
+        f"# Agent Library — Inventory (auto-generated {ts})",
+        "",
+        "<!-- regenerate: python3 agent-library/_generate-inventory.py -->",
+        "<!-- DO NOT hand-edit — changes will be overwritten -->",
+        "",
+        f"**Snapshot**: {len(subagents)} Claude subagents · "
+        f"{len([c for c in crons if c['agentic']])} agentic crons / "
+        f"{len([c for c in crons if not c['agentic']])} infra crons · "
+        f"{len(skills)} skills · {len(cross_tool)} cross-tool entries",
+        "",
+    ]
+
+    # Quick index — flat table for grep/Cmd-F
+    lines += [
+        "## Quick index",
+        "",
+        "| Name | Type | Model | Tools |",
+        "|---|---|---|---|",
+    ]
+    for a in subagents:
+        lines.append(
+            f"| {_md_escape(a['name'])} | subagent | {_md_escape(a['model'] or '—')} | "
+            f"{_md_escape(_tools_str(a['tools']) or '—')} |"
+        )
+    for c in cross_tool:
+        lines.append(f"| {_md_escape(c['name'])} | {c['type']} | — | — |")
+    for s in skills:
+        lines.append(f"| {_md_escape(s['name'])} | skill | — | — |")
+    lines.append("")
+
+    # Claude Code subagents — block per agent
+    lines += ["## Claude Code subagents", ""]
+    if not subagents:
+        lines += ["_(none found)_", ""]
+    for a in subagents:
+        lines += [
+            f"### {a['name']}",
+            "",
+            f"- **Model**: {a['model'] or '(not set)'}",
+            f"- **Tools**: {_tools_str(a['tools']) or '(not set)'}",
+            f"- **Description**: {a['description'] or '(missing)'}",
+            f"- **File**: `{a['path']}`",
+            "",
+        ]
+
+    # Cross-tool agents
+    lines += ["## Cross-tool agents", ""]
+    if cross_tool:
+        for c in cross_tool:
+            lines.append(f"- **{c['name']}** ({c['type']}) — `{c['path']}`")
+    else:
+        lines.append("_(none found)_")
+    lines.append("")
+
+    # Cron-agents — agentic vs infra
+    agentic_crons = [c for c in crons if c["agentic"]]
+    infra_crons = [c for c in crons if not c["agentic"]]
+
+    lines += ["## Cron-agents", ""]
+    lines += [
+        f"### Agentic crons ({len(agentic_crons)}) _(call an LLM)_",
+        "",
+        "| Label | Schedule | Script |",
+        "|---|---|---|",
+    ]
+    for c in agentic_crons:
+        script_short = Path(c["script"]).name if c["script"] else "—"
+        lines.append(
+            f"| {_md_escape(c['label'])} | {c['schedule']} | `{_md_escape(script_short)}` |"
+        )
+    lines += [
+        "",
+        f"### Infrastructure crons ({len(infra_crons)}) _(no LLM)_",
+        "",
+        "| Label | Schedule | Script |",
+        "|---|---|---|",
+    ]
+    for c in infra_crons:
+        script_short = Path(c["script"]).name if c["script"] else "—"
+        lines.append(
+            f"| {_md_escape(c['label'])} | {c['schedule']} | `{_md_escape(script_short)}` |"
+        )
+    lines.append("")
+
+    # Skills
+    lines += ["## Skills", ""]
+    if skills:
+        for s in skills:
+            lines.append(
+                f"- **{s['name']}** — {s['description']} (`{Path(s['path']).name}`)"
+            )
+    else:
+        lines.append("_(none found)_")
+    lines.append("")
+
+    # Drift warnings
+    lines += ["## Drift warnings", ""]
+    total_issues = sum(len(v) for v in drift.values())
+    if total_issues == 0:
+        lines.append("_No drift detected._")
+    else:
+        if drift["missing_frontmatter"]:
+            lines.append("**Missing YAML frontmatter:**")
+            for p in drift["missing_frontmatter"]:
+                lines.append(f"- `{p}`")
+            lines.append("")
+        if drift["orphaned_plists"]:
+            lines.append("**Orphaned plists (script not on disk):**")
+            for label in drift["orphaned_plists"]:
+                lines.append(f"- `{label}`")
+            lines.append("")
+        if drift["stale_agents"]:
+            lines.append(f"**Stale agents (mtime > {STALE_DAYS}d):**")
+            for name in drift["stale_agents"]:
+                lines.append(f"- {name}")
+            lines.append("")
+    lines.append("")
+
+    return "\n".join(lines)
 
 
 def main(dry_run: bool = False) -> int:
