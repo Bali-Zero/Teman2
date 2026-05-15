@@ -360,14 +360,14 @@ def wrap_simple(text: str, font: str, size: int, max_w: int,
     if max_lines is not None and len(lines) > max_lines:
         kept = lines[:max_lines]
         if ellipsis and kept:
-            while kept[-1] and stringWidth(kept[-1] + " …", font, size) > max_w:
+            while kept[-1] and stringWidth(kept[-1] + " ...", font, size) > max_w:
                 parts = kept[-1].rsplit(" ", 1)
                 if len(parts) == 1:
-                    while kept[-1] and stringWidth(kept[-1] + "…", font, size) > max_w:
+                    while kept[-1] and stringWidth(kept[-1] + "...", font, size) > max_w:
                         kept[-1] = kept[-1][:-1]
                     break
                 kept[-1] = parts[0]
-            kept[-1] = (kept[-1] + " …").strip()
+            kept[-1] = (kept[-1] + " ...").strip()
         return kept
     return lines
 
@@ -691,7 +691,10 @@ def render_dark_status_list(c: canvas.Canvas, s: dict[str, Any],
         heading, ctx.font_bold, max_w, max_size=48, min_size=36, max_lines=2)
     y_head = H - 130
     for line in head_lines:
-        c.setFillColor(HexColor(COLOR_TEXT_WHITE))
+        # Fix 2026-05-16 [user correction]: heading must be yellow (like
+        # thin-red-rule-divider), not white. User manually corrected both
+        # dark-status-list slides in Canva — baking into renderer.
+        c.setFillColor(HexColor(COLOR_ACCENT_YELLOW))
         c.setFont(ctx.font_bold, head_size)
         c.drawString(60, y_head, line)
         y_head -= head_size + 12
@@ -872,7 +875,7 @@ def render_timeline_pinboard(c: canvas.Canvas, s: dict[str, Any],
     c.rect(0, 0, W, H, fill=1, stroke=0)
 
     heading = (s.get("heading") or "").upper()
-    c.setFillColor(HexColor(COLOR_TEXT_WHITE))
+    c.setFillColor(HexColor(COLOR_ACCENT_YELLOW))
     c.setFont(ctx.font_bold, 36)
     c.drawString(60, H - 110, heading[:40])
 
@@ -927,7 +930,7 @@ def render_three_verdicts(c: canvas.Canvas, s: dict[str, Any],
     c.rect(0, 0, W, H, fill=1, stroke=0)
 
     heading = (s.get("heading") or "").upper()
-    c.setFillColor(HexColor(COLOR_TEXT_WHITE))
+    c.setFillColor(HexColor(COLOR_ACCENT_YELLOW))
     c.setFont(ctx.font_bold, 32)
     c.drawString(60, H - 110, heading[:40])
 
