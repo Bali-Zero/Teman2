@@ -1,248 +1,294 @@
 # Bali Zero Corporate Control System — Design Spec
-**Date:** 2026-05-15  
-**Author:** Antonello Siano (Zero) + Claude Sonnet 4.6  
-**Brainstorm panel:** DeepSeek V4 Pro + Gemini 3.1 Pro + Codex GPT-5.5  
-**Ground-truth:** NB-6 (Ops & Compliance / UU PDP) + NB-10 (Team Guides / Indonesian labor law)  
-**Status:** Draft — pending user review
+**Date:** 2026-05-15 (rev. 2026-05-16)
+**Author:** Zero (Bali Zero) + Claude Sonnet 4.6
+**Brainstorm panel:** DeepSeek V4 Pro + Gemini 3.1 Pro + Codex GPT-5.5
+**Ground-truth:** NB-6 (Ops & Compliance / UU PDP) + NB-10 (Team Guides / Indonesian labor law)
+**Status:** Draft — approvato verbalmente, pending firma lunedì 2026-05-19
 
 ---
 
 ## 1. Goal & Constraints
 
 ### Business goal
-Deploy a "trust + verify" corporate control package for 9 Indonesian team members by Q3 2026. The system must prevent data exfiltration and unauthorized use of corporate assets (WA Business number, client CRM, corporate email) without crossing into keylogger/screen-record territory.
+Sistema "trust + verify" per 10 dipendenti indonesiani, Q3 2026. Previene esfiltrazione dati e uso non autorizzato degli asset aziendali (numero WA Business, CRM clienti, email aziendale) senza keylogger né screen recording.
 
 ### Hard constraints
-| # | Constraint | Source |
+| # | Constraint | Fonte |
 |---|---|---|
-| C1 | Zero additional recurring cost (no Workspace Enterprise upgrade) | User |
-| C2 | No screen recording, no keyloggers | User: "non voglio essere un tiranno" |
-| C3 | Trust + verify ethos — anomaly alert, not continuous surveillance | User |
-| C4 | UU 27/2022 PDP compliant (DPIA + Privacy Notice + consent) | NB-6 ground-truth |
-| C5 | All contracts Bahasa Indonesia only (UU 24/2009 art. 31) | User |
-| C6 | Waarmerking notarization only (Level 2, ~Rp 200-500k/contract) | User |
-| C7 | SIM management: 15 corporate Telkomsel Halo Business SIMs already purchased | User |
-| C8 | Android standardization (all corporate phones) | Derived from MDM choice |
+| C1 | Zero costo ricorrente aggiuntivo (no Workspace Enterprise) | Bali Zero |
+| C2 | No screen recording, no keylogger | "non voglio essere un tiranno" |
+| C3 | Trust + verify — alert anomalia, non sorveglianza continua | Bali Zero |
+| C4 | UU 27/2022 PDP compliant (DPIA + Privacy Notice + consenso) | NB-6 |
+| C5 | Contratti solo Bahasa Indonesia (UU 24/2009 art. 31) | Bali Zero |
+| C6 | Waarmerking notarization only (~Rp 200–500k/contratto) | Bali Zero |
+| C7 | 15 SIM corporate Telkomsel Halo Business già acquistate | Bali Zero |
+| C8 | Standardizzazione Android (tutti i telefoni aziendali) | Derivato da MDM |
+| C9 | WA Business: app nativa mantenuta (no Cloud API pivot) | Bali Zero |
 
 ### Out of scope
-- Physical office infrastructure (armadietti, laptop purchase) — user's decision, not a system deliverable
-- Air decommissioned — Mini-Pro2 is the server companion, not relevant here
-- Workspace Enterprise upgrade — explicitly rejected
+- Infrastruttura fisica ufficio (armadietti, acquisto laptop)
+- Workspace Enterprise upgrade — esplicitamente rifiutato
 
 ---
 
 ## 2. Target Population
 
-9 team members subject to Q3 rollout. Cross-reference with `apps/backend-rag/backend/data/team_members.py` after KTP OCR extraction (Phase 1).
+**10 dipendenti** soggetti al rollout Q3 2026:
 
-Known from CRM (pending confirmation against 9 KTP):
-Vino · Krisna · Adit · Ari Firda · Dea · Surya · Damar · Sahira · Rina  
-(Asya excluded as Platform/Backend, admin-equivalent)
+| Nome | Ruolo | Non-compete |
+|---|---|---|
+| Asya | Platform / Backend | Sì |
+| Vino | Marketing | Sì |
+| Krisna | LKPM / Reporting | Sì |
+| Adit | Operations / Welcome | Sì |
+| Ari Firda | Visa / Immigration | Sì |
+| Dea | — | Sì |
+| Surya | Tax operations | Sì |
+| Damar | Marketing / War Room | Sì |
+| Sahira | Sales / WhatsApp | Sì |
+| Rina | Reception | Sì |
+
+Ragione sociale nei contratti: da determinare in stesura per ciascun dipendente tra:
+- PT Bayu Bali Nol
+- PT Bali Nol Impresariat
+- PT Bali Nol Konsultan
+
+Cross-reference con 9 KTP forniti + dati CRM (`apps/backend-rag/backend/data/team_members.py`) in Phase 1.
 
 ---
 
 ## 3. Architecture — 4 Layers
 
-### Layer 1 — Employment Contracts (PKWTT + 5 Annexes)
+### Layer 1 — Employment Contracts (PKWTT + 5 Allegati)
 
-**Primary legal pillars** (highest enforceability under Indonesian law):
-1. **Lampiran I — Kerahasiaan dan Non-Divulgasi (NDA/Confidentiality)**  
-   Perpetual duty of confidentiality on client data, pricing, processes. No time limit, no geographic limit. Strongest pillar under KUHPerdata.
+#### PKWTT principale
+Contratto a tempo indeterminato in Bahasa Indonesia. Firma lunedì 2026-05-19, consegna notaio per waarmerking successivamente.
 
-2. **Lampiran II — Penyerahan Hak Kekayaan Intelektual (IP Assignment)**  
-   All work product, code, content, client lists created during employment → assigned to PT. Work-for-hire language aligned with UU 28/2014 Hak Cipta.
+---
 
-3. **Lampiran III — Non-Solicit + Non-Compete (optional)**  
-   - **Non-solicit** (primary, strong): prohibition on soliciting Bali Zero clients and employees for 24 months post-termination. Anchored on NDA violation, not standalone.  
-   - **Non-compete** (optional, narrow): if included, limited to 12 months, geographic scope Bali only, requires 50% last-month salary as compensation during restriction period. Reference: PN Jakarta Timur No. 54/Pdt.G/2017/PN.Jkt.Tim.  
-   - **DO NOT CITE** MA RI 1331/K/Pdt/2010 — irrelevant Hukum Adat Bali inheritance case.
+#### Lampiran I — Kerahasiaan dan Non-Divulgasi (NDA)
+- Obbligo di riservatezza **perpetuo**, nessun limite geografico o temporale
+- Copre: dati cliente, prezzi, processi operativi, know-how aziendale
+- Pilastro primario — massima enforceability sotto KUHPerdata
+- Sopravvive alla cessazione del rapporto di lavoro
 
-4. **Lampiran IV — Acceptable Use Policy + Privacy Notice (UU PDP)**  
-   - Defines corporate-only use of: corporate email (Zoho), Google Drive (zero@balizero.com), WA Business number, CRM (kita.balizero.com).  
-   - Explicit prohibition: linking corporate WA Business to personal devices; personal Gmail/WA on corporate devices during office hours (09:00–18:00 WITA).  
-   - **Privacy Notice** (mandatory per NB-6/UU PDP): describes what monitoring data is collected (access logs, device enrollment status, anomaly alerts), purpose, retention period, employee rights.  
-   - **Informed consent** signature: employee acknowledges and consents to monitoring of company-owned systems.
+---
 
-5. **Lampiran V — Ganti Rugi Likuidasi (Liquidated Damages)**  
-   Graduated penalty schedule:
-   - Rp 5.000.000 per device: personal device found linked to corporate WA Business (physical audit)
-   - Rp 10.000.000 per incident: confirmed client data forwarded to external number
-   - Rp 25.000.000 per incident: NDA breach (client list, pricing exfiltration)
-   - Non-compete violation: 3× last-month salary (if Lampiran III non-compete opted in)  
-   All capped at "actual demonstrated loss + penalty multiplier ≤ 3×" to pass KUHPerdata reasonableness test.
+#### Lampiran II — Penyerahan Hak Kekayaan Intelektual (IP Assignment)
+- Tutto il lavoro creato durante il rapporto → ceduto a PT [X] (ragione sociale da determinare)
+- Copre: codice, contenuti, liste clienti, processi, materiali marketing
+- Allineato a UU 28/2014 Hak Cipta (work-for-hire)
 
-**Notarization:** Waarmerking only (certifies signatures, not content). ~Rp 200–500k per contract × 9 = ~Rp 2–4.5M one-time. Recommended batch at one notary appointment.
+---
 
-**DPIA status:** Required before deploying Layer 4 (anomaly monitoring). Lampiran IV Privacy Notice partially satisfies DPIA documentation obligation. Full DPIA assessment file: `research/compliance/2026-05-15-dpia-corporate-monitoring.md` (to be created in Phase 2).
+#### Lampiran III — Non-Solicit + Non-Compete
+**Non-solicit** (primario, forte):
+- Divieto di sollecitare clienti e dipendenti Bali Zero per 24 mesi post-termine
+- Ancorato a violazione NDA — massima enforceability
+
+**Non-compete** (tutti i 10 dipendenti):
+- Durata: 12 mesi post-termine
+- Ambito geografico: Bali
+- Settore: servizi immigration / tax / property / company setup Indonesia
+- Compensazione obbligatoria: 50% ultimo stipendio mensile lordo per ogni mese di restrizione
+- Riferimento giurisprudenziale: PN Jakarta Timur No. 54/Pdt.G/2017/PN.Jkt.Tim
+
+**VIETATO citare:** MA RI 1331/K/Pdt/2010 — caso Hukum Adat Bali (successione), zero rilevanza lavorativa.
+
+---
+
+#### Lampiran IV — Acceptable Use Policy + Privacy Notice (UU PDP)
+
+**Uso esclusivo aziendale degli strumenti:**
+- Email Zoho (`@balizero.com`)
+- Google Drive condiviso (`zero@balizero.com`, 5TB)
+- CRM (`kita.balizero.com`)
+- Numero WA Business Bali Zero
+
+**Divieti espliciti:**
+- Collegare il numero WA Business aziendale a dispositivi personali
+- Usare profilo personale (browser, email, WA) su strumenti aziendali durante 09:00–18:00 WITA
+- Rimozione SIM aziendale dal telefono aziendale durante orario di lavoro
+- Installazione app non autorizzate su dispositivi aziendali
+
+**Privacy Notice** (obbligatoria per UU PDP — non può essere sostituita solo dal PKWTT):
+- Cosa si monitora: log accessi CRM, stato enrollment MDM, alert anomalia, screenshot Linked Devices settimanale
+- Finalità: sicurezza asset aziendali e dati clienti
+- Retention: 12 mesi
+- Diritti del dipendente: accesso, rettifica, penghapusan (UU PDP Pasal 34)
+- Base giuridica: legittimo interesse del datore di lavoro su sistemi aziendali (UU ITE + UU PDP)
+
+**Firma di consenso esplicita** al monitoraggio dei sistemi di proprietà aziendale.
+
+---
+
+#### Lampiran V — Ganti Rugi dan Sanksi
+
+**Livello 1 — Penale liquidata (eseguibile senza prova di danno):**
+
+| Violazione | Importo |
+|---|---|
+| Device personale trovato collegato a WA Business aziendale | Rp 10.000.000 |
+| Mancato invio screenshot Linked Devices entro lunedì 10:00 WITA | Rp 2.000.000 per settimana |
+| Uso profilo personale su strumenti aziendali 09:00–18:00 WITA (documentato) | Rp 5.000.000 per incidente |
+| Export massivo o condivisione dati fuori @balizero.com (documentato) | Rp 15.000.000 per incidente |
+
+**Livello 2 — Penale per violazione grave:**
+
+| Violazione | Importo |
+|---|---|
+| Divulgazione dati riservati (prezzi, processi, dati cliente) a terzi | Rp 50.000.000 |
+| Sollecitazione cliente o dipendente Bali Zero entro 24 mesi post-termine | Rp 50.000.000 per soggetto sollecitato |
+| Violazione non-compete (Lampiran III) | Rp 150.000.000 fisso |
+
+**Livello 3 — Riserva di azione civile integrale:**
+
+> *"Pembayaran ganti rugi likuidasi sebagaimana dimaksud dalam Lampiran ini tidak menghapuskan hak PT [X] untuk menuntut ganti rugi penuh atas kerugian nyata yang diderita, termasuk kehilangan pendapatan, nilai seumur hidup klien, dan biaya hukum, melalui gugatan perdata berdasarkan Pasal 1365 KUHPerdata (perbuatan melawan hukum)."*
+
+(La penale contrattuale non estingue il diritto di PT [X] di richiedere il risarcimento integrale del danno effettivo — fatturato perso, valore lifetime cliente, spese legali — in sede civile ex art. 1365 KUHPerdata)
+
+**Livello 4 — Clausola UU ITE (apre strada al penale):**
+
+> *"Karyawan mengakui bahwa data klien, daftar harga, dan informasi rahasia perusahaan yang tersimpan dalam sistem perusahaan merupakan data elektronik yang dilindungi oleh UU No. 19 Tahun 2016 tentang ITE. Akses, pengambilan, atau penyebaran tanpa izin dapat dikenakan sanksi pidana sesuai Pasal 30 dan 32 UU ITE (ancaman pidana penjara hingga 8 tahun)."*
+
+(I dati nei sistemi aziendali sono protetti da UU ITE. Accesso/estrazione/divulgazione non autorizzati = reato penale fino a 8 anni)
+
+**Notarizzazione:** waarmerking ~Rp 200–500k × 10 = ~Rp 2–5M una tantum. Firma 2026-05-19, notaio successivamente.
 
 ---
 
 ### Layer 2 — Browser & Desktop Policy
 
-**Goal:** Prevent personal profile use and unauthorized access to personal cloud services from corporate devices during office hours. Zero additional recurring cost.
-
 #### 2a. Chrome Enterprise Core (free)
-- Enroll corporate Chrome profiles at `admin.google.com` under Workspace Business Plus (already active for `zero@balizero.com`).
-- Policies to enforce:
-  - `BrowserSignin: 2` (force sign-in to corporate account, prevent personal account)
-  - `URLBlocklist: ["accounts.google.com/*/personal*", "mail.google.com", "web.whatsapp.com", "wa.me"]` during office hours context
-  - `URLAllowlist: ["mail.zoho.com", "kita.balizero.com", "my.balizero.com", "drive.google.com/drive/folders/*"]` (zero@balizero.com shared drive)
-  - `SessionLength: 540` (9h forced re-login — kills personal session drift, no Enterprise required)
-  - `DefaultBrowserSettingEnabled: true` (block profile switch to personal)
-- **Limitation acknowledged (Gemini):** Chrome policy = browser only. Does not block Firefox, Edge, or hotspot bypass. Complemented by DNS filter (Layer 2b).
+Collegamento tecnico gestito da Bali Zero (admin.google.com, Workspace Business Plus già attivo su `zero@balizero.com`).
 
-#### 2b. DNS Filtering at office router
-- **Tool:** NextDNS free tier (300k queries/month, sufficient for 9 users).
-- Blocks at network level — immune to browser switch, hotspot cannot be controlled but is not company infrastructure.
-- Block categories: Personal email, Personal messaging (WhatsApp Web), Social media (if policy requires).
-- Office router DNS → NextDNS upstream. Apply to SSID corporate network only.
-- **Limitation:** Does not apply to corporate SIM data (personal hotspot). Covered by Lampiran IV Acceptable Use prohibition.
+Policies attive:
+- `BrowserSignin: 2` — login obbligatorio account aziendale, blocco switch a profilo personale
+- `URLBlocklist`: `web.whatsapp.com` (WA Web personale), `mail.google.com`, `accounts.google.com` (Gmail personale)
+- `URLAllowlist`: `mail.zoho.com`, `kita.balizero.com`, `my.balizero.com`, `drive.google.com`
+- `SessionLength: 540` — re-login ogni 9h (elimina drift sessione personale)
+- Alert automatico a management se rilevato switch a profilo non aziendale
 
-#### 2c. AppLocker (Windows Pro — where applicable)
-- Whitelist-only execution policy for corporate Windows devices.
-- Approved executables: Chrome (corporate profile), Zoho Desktop, Canva Desktop, VS Code (Asya only), Figma.
-- Block: Firefox, Edge, Telegram Desktop, WhatsApp Desktop.
-- Applied via Group Policy or local AppLocker rules (no domain controller required for local policy).
+#### 2b. NextDNS (free, log-only)
+- Filtro DNS al router ufficio — blocca/logga a livello di rete, immune al cambio browser
+- Modalità: **log-only** (trust + verify — non blocca, registra)
+- Copre tutta la rete WiFi aziendale
+- Non copre hotspot personale (hotspot = violazione Lampiran IV, non problema tecnico)
 
-#### 2d. Zoho Admin Policies
-- Enforce 2FA on all `@balizero.com` Zoho accounts.
-- IP allowlist: office static IP + Tailscale range (for remote work by authorized staff).
-- Audit log retention: 90 days.
-- Shared inbox for client-facing email: prevents individual mailbox exfiltration.
+#### 2c. AppLocker (Windows — dove applicabile)
+- Whitelist eseguibili: Chrome aziendale, Zoho Desktop, Canva, Figma
+- Block: Firefox, Edge, Telegram Desktop
+- **WA Desktop Mac: non bloccato** — comodo per uso aziendale, il controllo è sul profilo non sull'app
+
+#### 2d. Zoho Admin
+- 2FA obbligatoria su tutti gli account `@balizero.com`
+- IP allowlist: IP statico ufficio + range Tailscale (gratuito, già nel tailnet `balizero`)
+- Dispositivi ufficio in tailnet: Mac Pro, Mac Mini (sempre in ufficio), Mac Air (Ari)
+- Audit log retention: 90 giorni
 
 ---
 
-### Layer 3 — WhatsApp Business & Mobile Control
+### Layer 3 — WhatsApp Business & Mobile
 
-**Architectural decision: PIVOT to WhatsApp Business Cloud API (Meta official)**
+#### 3a. WA Business: app nativa mantenuta
+Nessun pivot a Cloud API. Si mantiene WA Business app nativa sui telefoni aziendali.
 
-All 3 LLM panelists independently recommended this pivot. Native WA Business app on corporate phones is eliminated.
+**Controllo Linked Devices — audit remoto settimanale:**
+- Ogni lunedì entro le 10:00 WITA: ciascun dipendente invia screenshot della schermata "Linked Devices" su canale Telegram aziendale dedicato (bot raccoglie, management verifica)
+- Mancato invio entro scadenza: Rp 2.000.000 (Lampiran V Livello 1)
+- Device personale trovato nello screenshot: Rp 10.000.000 (Lampiran V Livello 1)
+- Audit trail fotografico conservato 12 mesi
 
-#### 3a. WhatsApp Business Cloud API
-- **What it is:** Meta's official server-side API for WA Business. No "linked devices" concept. All messages route through Meta's cloud → Bali Zero backend → team dashboard.
-- **Why:** Eliminates the linked-device attack vector entirely. Employees respond from a shared inbox (e.g., Zoho Desk + WA channel, or lightweight custom UI) — no WA app needed.
-- **Implementation path:**
-  1. Create/verify Meta Business Manager account (`business.facebook.com`)
-  2. Add WA Business number (Bali Zero's current corporate number) to Meta Business Manager
-  3. Apply for Cloud API access (approved for Indonesian businesses)
-  4. Implement webhook → `apps/backend-rag/backend/channels/whatsapp/` (existing channel handler)
-  5. Team responds via shared dashboard (Phase 3 implementation detail)
-- **SIM role changes:** Corporate SIM no longer needs WA app. SIM is now exclusively: OTP token for corporate accounts + Telkomsel Halo data for field work.
+#### 3b. SIM come token bancario
+- Registro fisico: SIM ↔ dipendente (detenuto da Bali Zero)
+- PIN SIM abilitato su tutte le 15 SIM aziendali
+- Divieto rimozione SIM da telefono aziendale durante orario di lavoro (Lampiran IV)
+- **Protocollo exit:** sospensione SIM immediata al portale Telkomsel Business prima che il dipendente lasci l'edificio il giorno di termine
+- 2FA preferita via Authenticator app (non SMS) per ridurre rischio intercettazione OTP
 
-#### 3b. SIM Management (treat as bank token)
-Per Codex panel recommendation — SIM = identity root.
-- **Registry:** Antonello holds physical registry of all 15 SIMs (number ↔ employee name ↔ slot).
-- **SIM PIN:** All corporate SIMs have SIM PIN enabled. PIN known only to Antonello.
-- **Prohibition:** SIM removal from corporate phone during office hours. Covered by Lampiran IV.
-- **Exit-day protocol:** On termination/resignation → immediately suspend SIM at Telkomsel business portal before employee leaves building.
-- **OTP interception risk:** If employee keeps SIM outside office hours, they could receive OTPs for corporate accounts. Mitigated by: 2FA tied to Authenticator app (not SMS where possible) + SIM PIN.
-
-#### 3c. Miradore Free MDM (Android only)
-- 50-device free tier covers all 15 corporate phones.
-- Enforce: device encryption, screen lock PIN, remote wipe capability, app installation policy.
-- **Enroll:** All 15 corporate Android phones via QR code enrollment (Android Enterprise Work Profile or Device Owner mode).
-- **Policy:** Separate work profile — corporate apps in work profile, personal apps blocked in work profile. Work profile can be remotely wiped without affecting personal data.
-- **Audit:** Device compliance status visible in Miradore console (enrolled Y/N, last check-in, encryption Y/N).
-
-#### 3d. Weekly Physical Audit
-- **What:** Manager checks WA Business `Linked Devices` screen on corporate phone during team meeting.
-- **Frequency:** Weekly, Monday morning.
-- **Trigger for penalty:** Personal device found linked → Rp 5M per Lampiran V.
-- **Responsibility:** Team lead or Antonello (5 minutes per device, 9 × 5 = 45 min/week).
+#### 3c. Miradore Free MDM (Android, 50 device free)
+- Enrollment: tutti i 15 telefoni aziendali Android via QR code
+- Modalità: **Work Profile** (meno invasivo, conforme C2)
+  - App aziendali nel work profile
+  - Remote wipe del solo work profile (non tocca dati personali)
+  - NON rileva uso hotspot personale — coperto da Lampiran IV
+- Policy: encryption obbligatoria, PIN schermo, blocco installazione app non autorizzate nel work profile
 
 ---
 
-### Layer 4 — Anomaly-Based Monitoring
+### Layer 4 — Monitoraggio Anomalie
 
-**Philosophy (Codex):** No productivity score theatrics. Only anomaly detection for security events. Alerts go to management only, not visible to employees.
+Nessuna sorveglianza continua. Solo alert su eventi di sicurezza. Alert → management only, mai visibili ai dipendenti.
 
-#### 4a. Monitoring signals (CRM + backend logs)
-| Signal | Threshold | Action |
+| Segnale | Soglia | Azione |
 |---|---|---|
-| New device login to `kita.balizero.com` | Any | Telegram alert → Zero |
-| Bulk data export (>50 records CSV/PDF) | Any | Telegram alert → Zero |
-| Off-hours access (before 08:00 or after 20:00 WITA) | Any | Log, weekly digest |
-| External file share (Drive link shared outside `@balizero.com`) | Any | Telegram alert → Zero |
-| WA Cloud API: message forwarded to non-CRM number | >3/day | Telegram alert → Zero |
-| Failed 2FA attempt on Zoho | >3 consecutive | Telegram alert + account lock |
+| Nuovo dispositivo login CRM (`kita.balizero.com`) | Qualsiasi | Alert Telegram → Bali Zero management |
+| Export massivo (>50 record CSV/PDF) | Qualsiasi | Alert Telegram → Bali Zero management |
+| Accesso CRM fuori orario (prima 08:00 / dopo 20:00 WITA) | Qualsiasi | Log + digest settimanale |
+| Condivisione Drive fuori `@balizero.com` | Qualsiasi | Alert Telegram → Bali Zero management |
+| Fallimento 2FA Zoho consecutivo | >3 | Alert + blocco account automatico |
 
-#### 4b. Implementation touchpoints
-- CRM backend: `apps/backend-rag/backend/app/routers/` — add audit event emitter on export endpoints.
-- Cell pulse: `apps/cell/` — enroll anomaly detector as a new cell type.
-- Telegram alert: existing `TELEGRAM_BOT_TOKEN` + `TELEGRAM_OWNER_CHAT_ID` (1125336968).
-- Google Drive: `scripts/drive_poll_service.py` — extend to detect external share events.
+**NON monitorato:** contenuto messaggi, keystroke, schermo, dispositivi personali, attività private fuori orario.
 
-#### 4c. What is explicitly NOT monitored
-- Keystroke / screen content (keylogger prohibition)
-- Personal device activity
-- Personal phone usage
-- Off-site personal activities
-- Message content (only metadata: who, when, external Y/N)
+**Implementazione touchpoint:**
+- CRM: `apps/backend-rag/backend/app/routers/` — audit event emitter su endpoint export
+- Drive: `scripts/drive_poll_service.py` — estendere per rilevare external share
+- Telegram: `TELEGRAM_BOT_TOKEN` + `TELEGRAM_OWNER_CHAT_ID` esistenti
 
 ---
 
-## 4. Implementation Phases
+## 4. Fasi di Implementazione
 
-| Phase | Deliverables | Effort | Timeline |
+| Fase | Deliverable | Settimana |
+|---|---|---|
+| **1** | OCR 10 KTP → roster `research/hr/2026-05-16-team-roster-10-members.md`; draft 10 PKWTT + Lampiran I-V; firma 2026-05-19 | W1 |
+| **2** | Chrome Enterprise Core policies; Zoho 2FA + IP allowlist; NextDNS log-only; DPIA doc interno | W2 |
+| **3** | Miradore MDM enrollment 15 telefoni; registro SIM; canale Telegram Linked Devices | W3-4 |
+| **4** | CRM anomaly detector; Drive external-share alert; alert Telegram management | W5 |
+| **5** | Consegna contratti firmati al notaio per waarmerking | Post-W1 |
+
+**DPIA obbligatoria** prima del deploy Layer 4 (UU PDP — rischio sanzione Rp 60M).
+
+---
+
+## 5. Costi
+
+| Voce | Tipo | Costo |
+|---|---|---|
+| Chrome Enterprise Core | Ricorrente | Rp 0 (free) |
+| NextDNS | Ricorrente | Rp 0 (free tier) |
+| Miradore Free MDM | Ricorrente | Rp 0 (free ≤50 device) |
+| Tailscale | Ricorrente | Rp 0 (free) |
+| SIM corporate 15× | Ricorrente | Rp 825k/mese (già acquistate) |
+| PKWTT waarmerking × 10 | Una tantum | ~Rp 2–5M |
+| **Nuovo costo ricorrente** | | **Rp 0** |
+
+---
+
+## 6. Anchor Legali
+
+| Documento | Rilevanza | Status |
+|---|---|---|
+| UU 13/2003 Ketenagakerjaan + UU Cipta Kerja 6/2023 | Framework PKWTT | Verificato NB-10 |
+| KUHPerdata Pasal 1337-1338 | Non-compete + penali enforceability | Verificato |
+| KUHPerdata Pasal 1365 | Azione civile danno effettivo | Verificato |
+| UU 28/2014 Hak Cipta | IP Assignment | Verificato |
+| UU 27/2022 PDP | Compliance monitoraggio | Verificato NB-6 |
+| UU 19/2016 ITE Pasal 30+32 | Reato penale furto dati | Verificato |
+| UU 24/2009 Pasal 31 | Obbligo Bahasa Indonesia | Verificato |
+| PN Jakarta Timur 54/Pdt.G/2017/PN.Jkt.Tim | Precedente non-compete con LD = valido | Verificato NB-10 |
+
+**VIETATO citare:** MA RI 1331/K/Pdt/2010 (caso matrimoniale Hukum Adat Bali).
+
+---
+
+## 7. Rischi
+
+| Rischio | Prob | Impatto | Mitigazione |
 |---|---|---|---|
-| **Phase 1** | OCR 9 KTP → roster sheet; Draft 9 PKWTT + Lampiran I-V | 2-3 days | Week 1 |
-| **Phase 2** | Chrome Enterprise Core policies; Zoho 2FA + IP allowlist; NextDNS office router; DPIA doc | 1 day | Week 2 |
-| **Phase 3** | WA Cloud API enrollment + webhook integration; Miradore MDM enrollment 15 phones; SIM registry | 3-4 days | Week 3-4 |
-| **Phase 4** | CRM anomaly detector; Drive external-share alert; Cell pulse enrollment; Telegram alerts | 2 days | Week 5 |
-| **Phase 5** | Notary appointment (waarmerking × 9); Employee onboarding session | 1 day | Week 6 |
-
----
-
-## 5. Cost Summary
-
-| Item | Type | Cost |
-|---|---|---|
-| Chrome Enterprise Core | Recurring | Rp 0 (free) |
-| NextDNS | Recurring | Rp 0 (free tier) |
-| Miradore Free MDM | Recurring | Rp 0 (free, ≤50 devices) |
-| WA Business Cloud API | Recurring | Meta per-conversation pricing (~USD 0.005/conv) |
-| Corporate SIMs (15×) | Recurring | Rp 825k/month (already purchased) |
-| PKWTT waarmerking × 9 | One-time | ~Rp 2–4.5M |
-| Meta Business Manager | One-time | Rp 0 (free account) |
-| **Total new recurring** | | **~USD 0–50/month** (WA API usage only) |
-
----
-
-## 6. Legal Anchors & Citations
-
-| Document | Relevance | Status |
-|---|---|---|
-| UU 13/2003 Ketenagakerjaan + UU Cipta Kerja 6/2023 | PKWTT framework | Verified via NB-10 |
-| KUHPerdata Pasal 1337-1338 | Non-compete + liquidated damages enforceability | Verified |
-| UU 28/2014 Hak Cipta | IP Assignment | Verified |
-| UU 27/2022 PDP | Monitoring privacy compliance | Verified via NB-6 |
-| UU 24/2009 Pasal 31 | Bahasa Indonesia contract requirement | Verified |
-| PN Jakarta Timur No. 54/Pdt.G/2017/PN.Jkt.Tim | Non-compete precedent (fair + LD = valid) | Verified via NB-10 |
-| UU 19/2016 ITE + UU 27/2022 PDP | Employee monitoring lawfulness | Verified via NB-6 |
-
-**FORBIDDEN citation:** MA RI 1331/K/Pdt/2010 — Hukum Adat Bali inheritance case, zero relevance to employment law. DO NOT USE.
-
----
-
-## 7. Risks & Mitigations
-
-| Risk | Likelihood | Impact | Mitigation |
-|---|---|---|---|
-| Employee uses personal hotspot to bypass DNS filter | Medium | Low (policy violation only) | Lampiran IV prohibition (contractual deterrent); Miradore Work Profile does NOT detect this — requires manual spot-check |
-| WA Cloud API delivery latency vs. native app | Low | Medium | SLA monitoring; Meta guarantees 99.9% uptime |
-| Non-compete voided by court | Medium | Low (non-solicit + confidentiality intact) | Non-solicit is primary; non-compete is optional |
-| DPIA not completed before monitoring deploy | Low | High (UU PDP violation, up to Rp 60M fine) | Block Phase 4 on DPIA completion |
-| SIM OTP interception after hours | Low | Medium | Authenticator-app 2FA preferred over SMS |
-| Document forwarding in WA (10s exploit per DeepSeek) | Medium | High | CRM chokepoints: client docs stored in Drive, not WA |
-
----
-
-## 8. Open Decisions
-
-| # | Question | Default if not resolved |
-|---|---|---|
-| OD-1 | Non-compete in Lampiran III: include for all 9 or only client-facing roles? | Include for: Ari (visa), Sahira (sales), Adit (onboarding). Exclude: Krisna, Vino, Rina |
-| OD-2 | WA Cloud API shared inbox: Zoho Desk (existing) or lightweight custom UI? | Zoho Desk (existing subscription) |
-| OD-3 | NextDNS profile: block social media entirely or log-only? | Log-only (trust + verify) |
-| OD-4 | Miradore: Device Owner mode (full control) or Work Profile (split)? | Work Profile (less invasive, per C2 constraint) |
-| OD-5 | DPIA: internal document only or submit to KOMDIGI PSE/TDPSE? | Internal only (PSE registration is separate obligation) |
+| Non-compete voided in PHI | Media | Basso (non-solicit + NDA intatti) | Non-solicit è pilastro primario |
+| Dipendente usa hotspot per bypassare NextDNS | Media | Basso | Lampiran IV + penale Rp 5jt |
+| DPIA non completata prima di Layer 4 | Bassa | Alto (sanzione UU PDP Rp 60M) | Phase 4 bloccata su completamento DPIA |
+| Screenshot Linked Devices falsificato | Bassa | Medio | Audit fisico occasionale a sorpresa |
+| SIM intercettazione OTP fuori orario | Bassa | Medio | Authenticator app preferred, SIM PIN |
+| Forwarding documento WA in 10s (DeepSeek finding) | Media | Alto | Documenti cliente su Drive, mai su WA |
