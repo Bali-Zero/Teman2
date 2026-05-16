@@ -76,7 +76,7 @@ def pick_director_from_links(
         return None
 
     # Filter out fake founders
-    filtered = [l for l in links if l["client_id"] not in fake_founder_ids]
+    filtered = [lnk for lnk in links if lnk["client_id"] not in fake_founder_ids]
     if not filtered:
         return None
 
@@ -188,7 +188,7 @@ async def resolve_and_fix(
             company_id = row_dict["client_id"]
 
             links_raw = await conn.fetch(_LINKS_FOR_COMPANY_QUERY, company_id)
-            links = [dict(l) for l in links_raw]
+            links = [dict(lnk) for lnk in links_raw]
 
             picked = pick_director_from_links(links)
             decision = make_decision(row_dict, picked)

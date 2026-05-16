@@ -202,7 +202,7 @@ def render_practices_pipeline(
         for status, count in status_map.items():
             trend_lines.append(_delta_line(f"  {status}", count, prev_map.get(status, 0)))
         # Anomaly summary
-        anomalies = [l for l in trend_lines if "ANOMALIA" in l]
+        anomalies = [line for line in trend_lines if "ANOMALIA" in line]
         trend_section = f"""
 ## Confronto Settimana Precedente
 {chr(10).join(trend_lines)}

@@ -267,7 +267,7 @@ def enforce_diff_limits(worktree_path: Path) -> str | None:
             )
 
         # Conta file modificati
-        diff_lines = [l for l in result.stdout.strip().split("\n") if l.strip() and "|" in l]
+        diff_lines = [line for line in result.stdout.strip().split("\n") if line.strip() and "|" in line]
         files_changed = len(diff_lines)
         if files_changed > MAX_FILES_PER_COMMIT:
             return f"Too many files changed: {files_changed} > {MAX_FILES_PER_COMMIT}"

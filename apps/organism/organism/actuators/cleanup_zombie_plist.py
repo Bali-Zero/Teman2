@@ -46,7 +46,7 @@ class CleanupZombiePlist(ActuatorBase):
         return {
             "would_remove_count": len(zombies),
             "would_remove": [
-                {"path": str(p), "label": l} for p, l in zombies
+                {"path": str(p), "label": lbl} for p, lbl in zombies
             ],
         }
 

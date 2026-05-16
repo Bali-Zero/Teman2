@@ -570,8 +570,8 @@ def collect_cron_agent_logs() -> list[SystemCheck]:
         lines = text.splitlines()
         tail = lines[-200:] if len(lines) > 200 else lines
         matches = [
-            l for l in tail
-            if CRON_AGENT_ERROR_RE.search(l) or CRON_AGENT_EXIT_CODE_RE.search(l)
+            line for line in tail
+            if CRON_AGENT_ERROR_RE.search(line) or CRON_AGENT_EXIT_CODE_RE.search(line)
         ]
 
         if matches:
@@ -820,8 +820,8 @@ def collect_fly_resources() -> list[SystemCheck]:
         )
         if result.returncode == 0:
             oom_lines = [
-                l for l in result.stdout.splitlines()
-                if any(k in l.lower() for k in ["oom", "out of memory", "killed", "sigkill"])
+                line for line in result.stdout.splitlines()
+                if any(k in line.lower() for k in ["oom", "out of memory", "killed", "sigkill"])
             ]
             if oom_lines:
                 checks.append(SystemCheck(
@@ -893,8 +893,8 @@ def collect_llm_api_health() -> list[SystemCheck]:
             lines = result.stdout.splitlines()
             # Count recent LLM errors
             llm_errors = [
-                l for l in lines
-                if any(k in l for k in [
+                line for line in lines
+                if any(k in line for k in [
                     "Circuit breaker", "OPENED",
                     "All LLM models failed",
                     "Quota exhausted",
@@ -902,7 +902,7 @@ def collect_llm_api_health() -> list[SystemCheck]:
                     "ServiceUnavailable",
                 ])
             ]
-            circuit_opens = [l for l in llm_errors if "OPENED" in l]
+            circuit_opens = [line for line in llm_errors if "OPENED" in line]
 
             if circuit_opens:
                 checks.append(SystemCheck(
@@ -1202,7 +1202,7 @@ def _parse_log_section(sys_id: str, name: str, group: str, text: str) -> SystemC
         return SystemCheck(id=sys_id, name=name, group=group,
                            status="warning", message="Log file empty or missing")
 
-    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    lines = [line.strip() for line in text.splitlines() if line.strip()]
     if not lines:
         return SystemCheck(id=sys_id, name=name, group=group,
                            status="warning", message="No log entries")
