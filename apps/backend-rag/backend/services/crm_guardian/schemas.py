@@ -1,14 +1,23 @@
 """L1 semantic summary schemas for CRM-Guardian.
 
-Schema v1.0 — produced by Gemini 3 Pro via Panel Side on drive.google.com,
-parsed and validated at worker boundary before writing to clients.ai_summary
-(JSONB). Pydantic guarantees downstream consumers (AI Profile Card, alerts,
-NB-CRM brief generator) can trust the shape.
+Schema v2.0 (2026-05-16) — produced by Gemini 3 Pro via Panel Side on
+drive.google.com, parsed and validated at worker boundary before writing
+to clients.ai_summary (JSONB). Pydantic guarantees downstream consumers
+(AI Profile Card, alerts, NB-CRM brief generator) can trust the shape.
+
+v2.0 changes vs v1.0 (Phase 1 cross-folder activation, 2026-05-16):
+  - Company.tax_records: list[TaxRecord] — SPT history cross-folder
+  - Company.lkpm_history: list[LkpmRecord] — quarterly LKPM history
+  - Company.source_company_folders: list[str] — Drive folder IDs that
+    contributed to this summary (cliente root + linked companies via
+    client_company_links table)
+  - Removed narrative_id (Bahasa Indonesia narrative) — English-only output
+  - prompt_version default bumped to L1_extraction_v2
 
 Bumping schema_version: any change to field names/types that is NOT
 backward-compatible requires a new migration to add the new version to
 crm_guardian_summary_queue.schema_version default and a new prompt file
-under prompts/crm_guardian/.
+under prompts/.
 """
 from __future__ import annotations
 
@@ -17,7 +26,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-SCHEMA_VERSION = "v1.0"
+SCHEMA_VERSION = "v2.0"
 
 
 class Identity(BaseModel):
@@ -45,8 +54,49 @@ class VisaStatus(BaseModel):
     multiple_entry: bool | None = None
 
 
+class TaxRecord(BaseModel):
+    """Single tax filing record extracted from company Drive folder.
+
+    Phase 1 cross-folder: SPT extracted from cartelle company linkate via
+    client_company_links + cartelle 03_Tax sotto la cliente root.
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    period: str = Field(description="Filing period: '2024', 'Q1-2025', 'Masa-01-2025', etc.")
+    spt_type: Literal[
+        "SPT_Tahunan", "SPT_Masa_PPN", "SPT_Masa_PPh21",
+        "SPT_Masa_PPh23", "SPT_Masa_PPh25", "Other",
+    ] | None = None
+    filed_at: date | None = None
+    amount_idr: int | None = Field(default=None, description="Pajak terutang or bukti potong amount.")
+    status: Literal["filed", "pending", "overdue", "audited", "rejected", "unknown"] = "unknown"
+    source_file_id: str | None = Field(default=None, description="Drive file ID of source SPT document.")
+    notes: str | None = None
+
+
+class LkpmRecord(BaseModel):
+    """Single LKPM (Laporan Kegiatan Penanaman Modal) quarterly report.
+
+    Required by BKPM for PT PMA every quarter. Extracted from cartelle
+    company linkate (per Phase 1 cross-folder enqueue).
+    """
+    model_config = ConfigDict(extra="forbid")
+
+    period: str = Field(description="Quarter: 'Q1-2025', 'Q4-2024', etc.")
+    reported_at: date | None = None
+    realization_idr: int | None = Field(default=None, description="Realisasi investasi nilai IDR.")
+    employment_count: int | None = Field(default=None, description="Total tenaga kerja TKA + TKI.")
+    status: Literal["submitted", "draft", "rejected", "late", "unknown"] = "unknown"
+    source_file_id: str | None = None
+    notes: str | None = None
+
+
 class Company(BaseModel):
-    """Indonesian legal entity (PT PMA, CV, Perseroan)."""
+    """Indonesian legal entity (PT PMA, CV, Perseroan).
+
+    v2.0: includes tax_records + lkpm_history cross-folder, plus
+    source_company_folders tracking which Drive folder IDs contributed.
+    """
     model_config = ConfigDict(extra="forbid")
 
     legal_name: str | None = None
@@ -61,6 +111,20 @@ class Company(BaseModel):
     paid_up_capital_idr: int | None = None
     authorized_capital_idr: int | None = None
     registered_address: str | None = None
+
+    # v2.0: cross-folder tax + LKPM history
+    tax_records: list[TaxRecord] = Field(
+        default_factory=list,
+        description="SPT history extracted cross-folder (cliente 03_Tax + cartelle company linkate).",
+    )
+    lkpm_history: list[LkpmRecord] = Field(
+        default_factory=list,
+        description="LKPM quarterly history (only PT PMA — empty list per altri legal_form).",
+    )
+    source_company_folders: list[str] = Field(
+        default_factory=list,
+        description="Drive folder IDs delle cartelle company che hanno contribuito a questo summary.",
+    )
 
 
 class Shareholder(BaseModel):
@@ -172,7 +236,7 @@ class L1ClientSummary(BaseModel):
     source_file_fingerprint: str = Field(
         description="SHA256 of sorted (file_id, modifiedTime) — matches ai_summary_file_hash.",
     )
-    prompt_version: str = "L1_extraction_v1"
+    prompt_version: str = "L1_extraction_v2"
 
     # Core semantic layers (all optional — nullable Gemini extraction)
     identity: Identity = Field(default_factory=Identity)
@@ -185,12 +249,11 @@ class L1ClientSummary(BaseModel):
     compliance: Compliance = Field(default_factory=Compliance)
     profile: Profile = Field(default_factory=Profile)
 
-    # Free-form narrative layer (for NB-CRM brief + AI Profile Card "About")
+    # Free-form narrative layer (for NB-CRM brief + AI Profile Card "About").
+    # v2.0: ENGLISH ONLY — narrative_id removed (decision 2026-05-16).
     narrative_en: str | None = Field(
-        default=None, description="1-2 paragraph English narrative for brief/card.",
-    )
-    narrative_id: str | None = Field(
-        default=None, description="1-2 paragraph Bahasa Indonesia narrative (optional).",
+        default=None,
+        description="1-2 paragraph English narrative for brief/card. ALWAYS English even for Italian UI.",
     )
 
     # Extraction quality self-report from Gemini
@@ -210,6 +273,8 @@ __all__ = [
     "Identity",
     "VisaStatus",
     "Company",
+    "TaxRecord",
+    "LkpmRecord",
     "Shareholder",
     "PropertyAsset",
     "DocumentRef",
