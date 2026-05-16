@@ -5,12 +5,10 @@ _calculate_building_yield, _get_embedder, zone labels, restricted zones.
 Direct function calls (no TestClient/AsyncClient) for maximum coverage.
 """
 
-import json
 import os
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 
 # ============================================================
 # _classify_activity — full category coverage
@@ -237,7 +235,7 @@ def test_zone_labels_structure():
     assert isinstance(_ZONE_LABELS, dict)
     assert "K-1" in _ZONE_LABELS
     assert "W-1" in _ZONE_LABELS
-    for code, info in _ZONE_LABELS.items():
+    for _, info in _ZONE_LABELS.items():
         assert "label_en" in info
         assert "desc_en" in info
 

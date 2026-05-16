@@ -10,7 +10,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
 # ============================================================
 # Module-level LLM gateway mock
 # ============================================================
@@ -163,10 +162,10 @@ def test_get_llm_gateway_creates_new():
         with patch(
             "backend.services.rag.agentic.llm_gateway.LLMGateway",
             return_value=MagicMock(),
-        ) as mock_cls:
+        ):
             from backend.app.routers.kbli_notebook_chat import _get_llm_gateway
 
-            gw = _get_llm_gateway()
+            _get_llm_gateway()
             # Restores instance after test via autouse fixture
 
 
@@ -440,7 +439,7 @@ def test_known_kbli_codes_structure():
     assert isinstance(KNOWN_KBLI_CODES, dict)
     assert "47911" in KNOWN_KBLI_CODES
     assert "56301" in KNOWN_KBLI_CODES
-    for code, data in KNOWN_KBLI_CODES.items():
+    for _, data in KNOWN_KBLI_CODES.items():
         assert "title" in data
         assert "description" in data
         assert "pma_status" in data

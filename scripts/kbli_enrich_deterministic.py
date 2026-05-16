@@ -220,7 +220,7 @@ def build_what_you_need(code: dict) -> str:
     # Scale summary note
     if len(scale_blocks) > 1:
         scale_summary_parts = []
-        for (scale_str, risk_en, _, kewenangan, jangka_waktu, _) in scale_blocks:
+        for (scale_str, _risk_en, _, kewenangan, jangka_waktu, _) in scale_blocks:
             authority = kewenangan or "OSS"
             scale_summary_parts.append(f"{scale_str}: **{authority}** ({jangka_waktu})")
         scale_summary = "\n\n**Authority by scale:**\n" + " · ".join(scale_summary_parts)
