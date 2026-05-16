@@ -512,6 +512,27 @@ compliance_report_*.pdf
 # ============================================
 research/dev-tools/
 
+# ============================================
+# Ephemeral / sensitive research directories (2026-05-16 — post Gemini+DeepSeek panel)
+# Voice samples, CRM exports, HR data MUST stay local.
+# Single .md files at research/<domain>/YYYY-MM-DD-slug.md remain trackable (CLAUDE.md §16).
+# Only ephemeral subdirectories blocked.
+# ============================================
+research/marketing/zantara-visual-dataset/
+research/marketing/flow-assets/
+research/crm-exports/
+research/hr/
+research/agent-craft/
+research/nb-archive/
+research/nlm-elevation/
+research/seo_cell/
+
+# Voice samples (catch-all by name)
+**/antonello_voice_*.wav
+**/antonello_voice_*.m4a
+**/zero_voice_*.wav
+**/zero_voice_*.m4a
+
 # OpenCode / alternative AI tools
 .opencode/
 opencode.json
