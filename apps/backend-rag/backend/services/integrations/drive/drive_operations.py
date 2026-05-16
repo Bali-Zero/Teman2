@@ -67,6 +67,44 @@ class DriveOperationsManager:
 
         return response.json()
 
+    @drive_operation("search_files")
+    async def search_files(
+        self,
+        user_email: str,
+        query: str,
+        file_type: str | None = None,
+        page_size: int = 20,
+    ) -> list[dict[str, Any]]:
+        """Search files by name/content across the user's Drive."""
+        token = await self.auth_manager.get_access_token(user_email)
+        if not token:
+            raise PermissionError(f"Impossibile ottenere un token di accesso per {user_email}")
+
+        headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+
+        mime_map = {
+            "folder": "application/vnd.google-apps.folder",
+            "document": "application/vnd.google-apps.document",
+            "spreadsheet": "application/vnd.google-apps.spreadsheet",
+            "pdf": "application/pdf",
+        }
+
+        query_parts = ["trashed=false", f"name contains '{query}'"]
+        if file_type and file_type in mime_map:
+            query_parts.append(f"mimeType='{mime_map[file_type]}'")
+
+        params = {
+            "q": " and ".join(query_parts),
+            "pageSize": min(page_size, 50),
+            "fields": "files(id, name, mimeType, size, modifiedTime, webViewLink, parents)",
+        }
+
+        response = await self.http_client.get(
+            "https://www.googleapis.com/drive/v3/files", headers=headers, params=params,
+        )
+        response.raise_for_status()
+        return response.json().get("files", [])
+
     @drive_operation("get_file_metadata")
     async def get_file_metadata(self, user_email: str, file_id: str) -> dict[str, Any]:
         """
