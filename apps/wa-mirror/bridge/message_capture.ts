@@ -102,11 +102,11 @@ export class PgMessageContextStore implements MessageContextStore {
     const result = await query<{ id: number }>(
       `INSERT INTO whatsapp_message_context
          (client_id, practice_id, direction, team_member_phone,
-          counterpart_phone, body, message_text, message_date,
+          counterpart_phone, body, message_text, phone_number, message_date,
           media_type, media_mime, media_url, raw_baileys_event,
           baileys_message_id, team_member_email, source)
        VALUES
-         ($1, $2, $3, $4, $5, $6, $6, $7, $8, $9, $10,
+         ($1, $2, $3, $4, $5, $6, $6, $5, $7, $8, $9, $10,
           $11::jsonb, $12, $4, 'wa_mirror')
        ON CONFLICT (baileys_message_id) WHERE baileys_message_id IS NOT NULL
        DO UPDATE SET
@@ -117,6 +117,7 @@ export class PgMessageContextStore implements MessageContextStore {
          counterpart_phone = EXCLUDED.counterpart_phone,
          body = EXCLUDED.body,
          message_text = EXCLUDED.message_text,
+         phone_number = EXCLUDED.phone_number,
          message_date = EXCLUDED.message_date,
          media_type = EXCLUDED.media_type,
          media_mime = EXCLUDED.media_mime,

@@ -177,6 +177,7 @@ def run_gap_consumer(
     Returns stats {read, resolved, failed, skipped, unknown, errors}.
     """
     if stream_read is None:
+
         def stream_read() -> object:
             return stream_read_new(
                 STREAM_NEXUS_GAPS, CONSUMER_GROUP, CONSUMER_NAME, count=max_items
