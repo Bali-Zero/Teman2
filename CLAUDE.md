@@ -70,7 +70,7 @@ See [`INDEX.md`](INDEX.md) for the full atlas including packages, tessuti dati, 
 ### Tech Stack
 
 <!-- DOCSYNC:BACKEND_STATS_START -->
-- **Backend:** Python 3.11+, FastAPI, 265 routers, 562 services, 943 test files
+- **Backend:** Python 3.11+, FastAPI, 265 routers, 563 services, 944 test files
 <!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)
