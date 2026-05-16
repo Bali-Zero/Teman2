@@ -2,12 +2,11 @@
 from __future__ import annotations
 
 import pytest
-
 from mata_garuda.workers.gap_legacy import (
     _PREFIX_TRANSLATION,
     _TRANSLATION,
-    consume_unmapped_counter,
     coerce_to_canonical,
+    consume_unmapped_counter,
     is_legacy_shape,
 )
 

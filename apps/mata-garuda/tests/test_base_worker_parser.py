@@ -9,7 +9,6 @@ from __future__ import annotations
 
 from mata_garuda.workers.base_worker import _is_msg_id, _parse_xreadgroup
 
-
 # ── _is_msg_id ──────────────────────────────────────────────────────────
 
 
