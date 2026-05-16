@@ -9,7 +9,6 @@ Runs daily via launchd 09:00 WITA.
 """
 import json
 import logging
-import os
 import sys
 import time
 import urllib.parse
@@ -20,10 +19,11 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "apps" / "backend-rag"))
 
-from backend.services.canva_renderer_v2._token_storage import (  # noqa: E402
-    OrchestratorTokenStorage, TokenStorageError,
-)
 from backend.services.canva_renderer_v2._telegram import send_telegram  # noqa: E402
+from backend.services.canva_renderer_v2._token_storage import (  # noqa: E402
+    OrchestratorTokenStorage,
+    TokenStorageError,
+)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("token-watchdog")

@@ -24,8 +24,6 @@ in the same commit that introduces the file.
 from __future__ import annotations
 
 import fnmatch
-import os
-import re
 import subprocess
 import sys
 from pathlib import Path

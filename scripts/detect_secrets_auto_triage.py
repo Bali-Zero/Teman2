@@ -551,7 +551,7 @@ def main() -> int:
 
     if apply:
         BASELINE.write_text(json.dumps(baseline, indent=2, sort_keys=False) + "\n")
-        print(f"\n.secrets.baseline updated in place.")
+        print("\n.secrets.baseline updated in place.")
 
     if report:
         print("\n=== Residue by file (top 40) ===")

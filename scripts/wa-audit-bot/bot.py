@@ -8,11 +8,10 @@ Dipendenti inviano screenshot Linked Devices nel DM con il bot.
 Bot salva screenshot + log su disco, notifica management.
 """
 
-import asyncio
+import json
 import logging
 import os
-import json
-from datetime import datetime, date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -20,8 +19,8 @@ from telegram import Bot, Update
 from telegram.ext import (
     Application,
     CommandHandler,
-    MessageHandler,
     ContextTypes,
+    MessageHandler,
     filters,
 )
 

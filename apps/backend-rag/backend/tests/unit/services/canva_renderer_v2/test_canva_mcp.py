@@ -1,5 +1,5 @@
 """Canva MCP wrapper: call_tool + transient-vs-permanent classifier."""
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -8,7 +8,6 @@ pytestmark = pytest.mark.asyncio
 from backend.services.canva_renderer_v2._canva_mcp import (
     CanvaMcpClient,
     is_transient_error,
-    CanvaImportError,
 )
 
 

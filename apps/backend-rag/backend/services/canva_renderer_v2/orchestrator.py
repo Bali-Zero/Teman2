@@ -39,7 +39,6 @@ from backend.services.canva_renderer_v2._telegram import send_telegram
 from backend.services.canva_renderer_v2._telemetry import log_telemetry
 from backend.services.canva_renderer_v2._tigris import (
     TigrisError,
-    delete_pdf,
     delete_pdf_by_key,
     get_s3_client,
     upload_pdf,

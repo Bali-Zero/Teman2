@@ -4,7 +4,6 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from mata_garuda.workers.gap_consumer import (
     GAP_DISPATCH,
     process_gap,

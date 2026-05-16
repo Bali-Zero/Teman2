@@ -23,7 +23,6 @@ from zoneinfo import ZoneInfo
 
 from PIL import Image, ImageDraw, ImageFont
 
-
 logger = logging.getLogger("zantara_visual_dataset")
 
 Status = Literal["approved", "reference_only", "rejected"]
