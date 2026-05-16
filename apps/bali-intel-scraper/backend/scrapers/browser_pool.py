@@ -99,7 +99,7 @@ class BrowserPool:
 
         async with self._lock:
             # Close all pages
-            for page_id, pooled_page in list(self._pages.items()):
+            for _, pooled_page in list(self._pages.items()):
                 try:
                     await pooled_page.page.close()
                 except Exception:
@@ -107,7 +107,7 @@ class BrowserPool:
             self._pages.clear()
 
             # Close all contexts
-            for context_id, pooled_context in list(self._contexts.items()):
+            for _, pooled_context in list(self._contexts.items()):
                 try:
                     await pooled_context.context.close()
                 except Exception:
@@ -271,7 +271,7 @@ class BrowserPool:
 
             for page_id in pages_to_remove:
                 del self._pages[page_id]
-                for context_id, page_ids in self._context_pages.items():
+                for _, page_ids in self._context_pages.items():
                     page_ids.discard(page_id)
 
             # Clean up old contexts

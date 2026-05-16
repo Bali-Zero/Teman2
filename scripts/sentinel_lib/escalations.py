@@ -104,7 +104,7 @@ def read_all_escalations(include_resolved: bool = False) -> list[dict]:
     Returns a list of escalation dicts, newest first.
     """
     entries: list[dict] = []
-    for machine, path in _MACHINE_FILES.items():
+    for _, path in _MACHINE_FILES.items():
         if not path.exists():
             continue
         try:

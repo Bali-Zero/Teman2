@@ -94,7 +94,7 @@ class TestRegressionMonitor(unittest.TestCase):
     def test_collect_baseline_averages(self, mock_urlopen: MagicMock) -> None:
         """Baseline should average 2 probes."""
         responses = []
-        for ms_time in [100, 200]:
+        for _ in [100, 200]:
             mock_resp = MagicMock()
             mock_resp.status = 200
             mock_resp.read.return_value = json.dumps({"status": "ok"}).encode()

@@ -179,7 +179,7 @@ class SentinelActor:
         ]
 
         # Top items per source (max 3 each)
-        for source, count in by_source.items():
+        for source, _ in by_source.items():
             source_items = [i for i in items if i["sensor"] == source][:3]
             lines.append(f"\n{source.upper()}:")
             for item in source_items:

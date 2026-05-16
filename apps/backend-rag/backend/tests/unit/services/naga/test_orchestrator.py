@@ -2,11 +2,9 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -336,7 +334,7 @@ class TestResearch:
             "backend.services.naga.persist.save_session",
             new_callable=AsyncMock,
             return_value="sess-123",
-        ) as mock_save:
+        ):
             mock_gw.return_value = MagicMock(
                 tier="flash", domain="general", mode="oneshot"
             )
@@ -346,7 +344,7 @@ class TestResearch:
 
             from backend.services.naga.search_agents.base import AgentResponse
 
-            for cls_name in ["ExaSearchAgent", "BraveSearchAgent", "IndonesiaDomainAgent"]:
+            for _ in ["ExaSearchAgent", "BraveSearchAgent", "IndonesiaDomainAgent"]:
                 pass  # Already patched above
 
             orch = NagaOrchestrator(deps=mock_deps)

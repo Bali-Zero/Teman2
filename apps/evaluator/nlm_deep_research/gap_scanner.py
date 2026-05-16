@@ -794,7 +794,7 @@ def main() -> None:
         print(f"Last Layer B: {status['last_layer_b'] or 'never'}")
         print(f"Runs: Layer A={status['layer_a_runs']}, Layer B={status['layer_b_runs']}")
         print()
-        for domain, data in status["domains"].items():
+        for _, data in status["domains"].items():
             t = data["topics"]
             print(f"  {data['label']:35s} {data['health_pct']:5.1f}% fresh | "
                   f"F:{t['FRESH']} A:{t['AGING']} S:{t['STALE']} G:{t['GAP']} "

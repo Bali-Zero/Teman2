@@ -23,7 +23,7 @@ def main() -> int:
     url = base + path
     durations: list[float] = []
     errors = 0
-    for i in range(n):
+    for _ in range(n):
         t0 = time.perf_counter()
         try:
             with urllib.request.urlopen(url, timeout=5) as resp:

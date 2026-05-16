@@ -97,7 +97,7 @@ class PatternMiner:
         # Step 2: Within each check_type, cluster similar findings
         all_clusters: list[list[dict]] = []
 
-        for check_type, decisions in by_check_type.items():
+        for _, decisions in by_check_type.items():
             clusters = self._cluster_findings(decisions)
             all_clusters.extend(clusters)
 
