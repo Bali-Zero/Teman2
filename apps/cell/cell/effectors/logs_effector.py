@@ -93,8 +93,8 @@ class LogsEffector:
                     )
 
                 # Extract ERROR/WARN lines for summary
-                errors = [l for l in lines if any(kw in l.upper() for kw in ("ERROR", "CRITICAL", "EXCEPTION", "TRACEBACK"))]
-                warns = [l for l in lines if "WARN" in l.upper() and l not in errors]
+                errors = [line for line in lines if any(kw in line.upper() for kw in ("ERROR", "CRITICAL", "EXCEPTION", "TRACEBACK"))]
+                warns = [line for line in lines if "WARN" in line.upper() and line not in errors]
 
                 if errors:
                     summary = f"{len(errors)} errors in last {len(lines)} lines: {errors[0][:120]}"

@@ -79,7 +79,7 @@ def _xrevrange(stream: str, count: int = 200) -> list[dict[str, Any]]:
         return []
 
     items: list[dict[str, Any]] = []
-    lines = [l for l in raw.split("\n") if l.strip()]
+    lines = [line for line in raw.split("\n") if line.strip()]
     i = 0
     while i < len(lines):
         line = lines[i].strip()

@@ -120,7 +120,7 @@ def scan_watched_paths(
         # `exit code [1-9]` is the canonical cron-agent failure marker that
         # the plain regex in detect_anomaly() might miss when it is the only
         # signal in the file — pick it up explicitly.
-        has_exit_failure = any(_EXIT_CODE_RE.search(l) for l in lines)
+        has_exit_failure = any(_EXIT_CODE_RE.search(line) for line in lines)
 
         if per_file.critical_keywords:
             report.anomaly = True
