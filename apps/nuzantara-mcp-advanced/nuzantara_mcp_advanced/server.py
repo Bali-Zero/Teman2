@@ -128,7 +128,7 @@ async def check_deployment_readiness() -> dict:
         "ready": True,
         "timestamp": None
     }
-    
+
     # Check 1: Import chain
     try:
         result = subprocess.run(
@@ -148,7 +148,7 @@ async def check_deployment_readiness() -> dict:
         }
     except Exception as e:
         results["checks"]["import_chain"] = {"pass": False, "error": str(e)}
-    
+
     # Check 2: Core tests
     try:
         result = subprocess.run(
@@ -171,7 +171,7 @@ async def check_deployment_readiness() -> dict:
         }
     except Exception as e:
         results["checks"]["core_tests"] = {"pass": False, "error": str(e)}
-    
+
     # Check 3: Git status for rogue changes
     try:
         result = subprocess.run(
@@ -189,7 +189,7 @@ async def check_deployment_readiness() -> dict:
         }
     except Exception as e:
         results["checks"]["rogue_changes"] = {"pass": False, "error": str(e)}
-    
+
     results["ready"] = all(c.get("pass", False) for c in results["checks"].values())
     return results
 
@@ -226,7 +226,7 @@ async def run_backend_tests(test_path: str = "", verbose: bool = False) -> dict:
             env={**os.environ, "PYTHONPATH": "."},
             timeout=300,
         )
-        
+
         return {
             "success": result.returncode == 0,
             "return_code": result.returncode,
@@ -381,7 +381,7 @@ async def run_linting() -> dict:
             cwd=f"{PROJECT_ROOT}/apps/backend-rag",
             timeout=60,
         )
-        
+
         return {
             "format_ok": format_result.returncode == 0,
             "lint_ok": lint_result.returncode == 0,
@@ -415,7 +415,7 @@ async def check_system_health() -> dict:
         "overall": "unknown",
         "components": {}
     }
-    
+
     # Check backend health
     client = _get_health_client()
     try:
@@ -440,7 +440,7 @@ async def check_system_health() -> dict:
         }
     except Exception as e:
         health["components"]["services"] = {"status": "error", "error": str(e)}
-    
+
     # Determine overall health
     all_healthy = all(
         c.get("status") == "healthy" or c.get("status") == "ok"
@@ -448,7 +448,7 @@ async def check_system_health() -> dict:
         if isinstance(c, dict) and "status" in c
     )
     health["overall"] = "healthy" if all_healthy else "degraded"
-    
+
     return health
 
 
@@ -521,15 +521,15 @@ async def find_documentation(topic: str) -> dict:
             timeout=15,
         )
         files = result.stdout.strip().split("\n") if result.stdout.strip() else []
-        
+
         # Filter by topic relevance (simple keyword matching)
         topic_lower = topic.lower()
         relevant = [
             f for f in files
-            if topic_lower in f.lower() or 
+            if topic_lower in f.lower() or
             topic_lower.replace(" ", "_") in f.lower()
         ]
-        
+
         return {
             "topic": topic,
             "matches": len(relevant),
@@ -558,7 +558,7 @@ async def get_file_structure(path: str = "apps/backend-rag/backend") -> dict:
             timeout=15,
         )
         files = result.stdout.strip().split("\n") if result.stdout.strip() else []
-        
+
         # Organize by directory
         structure = {}
         for f in files:
@@ -572,7 +572,7 @@ async def get_file_structure(path: str = "apps/backend-rag/backend") -> dict:
             if "_files" not in current:
                 current["_files"] = []
             current["_files"].append(parts[-1])
-        
+
         return {
             "path": path,
             "total_files": len(files),

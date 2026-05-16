@@ -22,7 +22,7 @@ async def main():
     logger.info(f"Trovati {len(enriched_articles)} articoli arricchiti da pubblicare.")
 
     headers = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
-    
+
     async with httpx.AsyncClient(timeout=60.0) as client:
         for idx, article in enumerate(enriched_articles):
             # First submit to staging
@@ -30,7 +30,7 @@ async def main():
             content = enr.get("the_facts", "") + "\n\n" + enr.get("bali_zero_take", "")
             if not content.strip():
                 content = enr.get("executive_brief", article.get("text", ""))[:8000]
-                
+
             payload = {
                 "title": enr.get("headline", article.get("title", "")),
                 "content": content,
@@ -41,15 +41,15 @@ async def main():
             }
             if idx < 3:
                 payload["main_news_position"] = idx + 1
-            
+
             logger.info(f"Publishing {idx+1}/{len(enriched_articles)}: {payload['title'][:50]}...")
-            
+
             r = await client.post(f"{BACKEND_URL}/api/intel/scraper/submit", json=payload, headers=headers)
             if r.status_code in (200, 201):
                 res_data = r.json()
                 item_id = res_data.get("item_id")
                 intel_type = res_data.get("intel_type", "news")
-                
+
                 if item_id:
                     # Then force publish
                     pub_r = await client.post(f"{BACKEND_URL}/api/intel/staging/publish/{intel_type}/{item_id}", json={}, headers=headers)
@@ -59,7 +59,7 @@ async def main():
                         logger.error(f"❌ Failed to publish {item_id}: {pub_r.text}")
             else:
                 logger.error(f"❌ Failed to submit: {r.text}")
-            
+
             await asyncio.sleep(7) # Rate limit
 
 if __name__ == "__main__":

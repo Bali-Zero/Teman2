@@ -36,14 +36,14 @@ async def create_collection(client: QdrantClient):
     """Crea la collezione se non esiste."""
     collections = client.get_collections().collections
     exists = any(c.name == COLLECTION_NAME for c in collections)
-    
+
     if exists:
         logger.info(f"⚠️ Collezione '{COLLECTION_NAME}' già esistente - cancello e ricreo")
         client.delete_collection(COLLECTION_NAME)
         exists = False
-    
+
     logger.info(f"🛠️ Creazione collezione '{COLLECTION_NAME}'...")
-    
+
     client.create_collection(
         collection_name=COLLECTION_NAME,
         vectors_config={
@@ -63,34 +63,34 @@ async def create_collection(client: QdrantClient):
             full_scan_threshold=10000,
         ),
     )
-    
+
     # Indici payload
     logger.info("📑 Creazione indici payload...")
-    
+
     client.create_payload_index(
         collection_name=COLLECTION_NAME,
         field_name="category_key",
         field_schema=models.PayloadSchemaType.KEYWORD,
     )
-    
+
     client.create_payload_index(
         collection_name=COLLECTION_NAME,
         field_name="tier",
         field_schema=models.PayloadSchemaType.KEYWORD,
     )
-    
+
     client.create_payload_index(
         collection_name=COLLECTION_NAME,
         field_name="authority",
         field_schema=models.PayloadSchemaType.KEYWORD,
     )
-    
+
     client.create_payload_index(
         collection_name=COLLECTION_NAME,
         field_name="url",
         field_schema=models.PayloadSchemaType.KEYWORD,
     )
-    
+
     logger.success("✅ Collezione creata!")
     return True
 
@@ -112,20 +112,20 @@ async def load_sources():
     logger.info(f"   Collection: {COLLECTION_NAME}")
     logger.info(f"   URL: {QDRANT_URL}")
     logger.info("=" * 60)
-    
+
     # 1. Carica JSON
     if not SOURCES_FILE.exists():
         logger.error(f"❌ File non trovato: {SOURCES_FILE}")
         return
-    
+
     with open(SOURCES_FILE, 'r', encoding='utf-8') as f:
         data = json.load(f)
-    
+
     total_sources = data.get('total_sources', 0)
     logger.info(f"📚 Fonti da caricare: {total_sources}")
     logger.info(f"📂 Categorie: {data.get('total_categories', 0)}")
     print()
-    
+
     # 2. Connessione Qdrant
     qdrant_client = QdrantClient(
         url=QDRANT_URL,
@@ -133,22 +133,22 @@ async def load_sources():
         timeout=30,
         prefer_grpc=False,
     )
-    
+
     # 3. Crea collezione
     await create_collection(qdrant_client)
     print()
-    
+
     # 4. Connessione OpenAI
     openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
-    
+
     # 5. Prepara dati per upload
     logger.info("🔄 Generazione embeddings...")
     points = []
     point_id = 0
-    
+
     for category_key, category_data in tqdm(data['categories'].items(), desc="Categorie"):
         category_name = category_data.get('name', category_key)
-        
+
         for source in tqdm(category_data.get('sources', []), desc=f"  {category_name}", leave=False):
             # Testo per embedding
             text_for_embedding = f"""
@@ -158,14 +158,14 @@ Description: {source.get('description', '')}
 Authority: {source.get('authority', '')}
 URL: {source.get('url', '')}
             """.strip()
-            
+
             # Genera embedding
             try:
                 embedding = await generate_embedding(text_for_embedding, openai_client)
             except Exception as e:
                 logger.warning(f"⚠️ Errore embedding per {source.get('name')}: {e}")
                 continue
-            
+
             # Payload
             payload = {
                 "name": source.get('name'),
@@ -179,19 +179,19 @@ URL: {source.get('url', '')}
                 "category_priority": category_data.get('priority', ''),
                 "indexed_at": datetime.now().isoformat(),
             }
-            
+
             point = models.PointStruct(
                 id=point_id,
                 vector={"default": embedding},
                 payload=payload
             )
-            
+
             points.append(point)
             point_id += 1
-    
+
     # 6. Upload batch
     logger.info(f"⬆️ Upload {len(points)} punti a Qdrant...")
-    
+
     BATCH_SIZE = 100
     for i in tqdm(range(0, len(points), BATCH_SIZE), desc="Upload batches"):
         batch = points[i:i+BATCH_SIZE]
@@ -200,30 +200,30 @@ URL: {source.get('url', '')}
             points=batch,
             wait=True
         )
-    
+
     logger.success("✅ Upload completato!")
-    
+
     # 7. Verifica
     collection_info = qdrant_client.get_collection(COLLECTION_NAME)
     logger.info(f"📊 Punti nella collezione: {collection_info.points_count}")
-    
+
     # 8. Test retrieval
     logger.info("🔍 Test retrieval...")
     test_query = "Immigration visa regulations Indonesia"
     test_embedding = await generate_embedding(test_query, openai_client)
-    
+
     search_result = qdrant_client.query_points(
         collection_name=COLLECTION_NAME,
         query=test_embedding,
         using="default",
         limit=5
     )
-    
+
     logger.info(f"   Query: '{test_query}'")
     logger.info(f"   Top {len(search_result.points)} risultati:")
     for i, point in enumerate(search_result.points, 1):
         logger.info(f"      {i}. {point.payload['name']} (score: {point.score:.3f})")
-    
+
     logger.success("🎉 Caricamento completato con successo!")
 
 

@@ -29,7 +29,7 @@ if not match:
 
 if match:
     insertion_point = match.start(2)
-    
+
     new_codes = '''
   // ---------------------------------------------------------------------------
   // Creative Industries & Design Services (90xxx, 73xxx, 74xxx)
@@ -125,14 +125,14 @@ if match:
       "Game content design business in Bali? 74194 is brand new in KBLI 2025 — first dedicated game design code. It's BPS_ONLY, so NIB only for now. The key distinction: this is design work, not programming. Full game studio needs 74194 + 62199. Let me explain the setup.",
   },
 '''
-    
+
     # Insert new codes before the closing brace
     content = content[:insertion_point] + new_codes + content[insertion_point:]
-    
+
     # Write back
     with open('/Users/nuzantara/Desktop/kbli-navigator-rebuild/lib/kbli-gold-content.ts', 'w') as f:
         f.write(content)
-    
+
     print("Successfully added 6 new KBLI codes")
 else:
     print("Could not find insertion point")
