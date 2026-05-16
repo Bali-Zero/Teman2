@@ -21,6 +21,28 @@ def _reset_unmapped_counter():
     consume_unmapped_counter()
 
 
+def test_gap_dispatch_agent_names_match_registry():
+    """Every non-None GAP_DISPATCH value must be a name in the agent registry.
+
+    Regression guard for C.6 (2026-05-16): GAP_DISPATCH had "regulation_watcher"
+    while the registry name was "Regulation Watcher" — every gap routed to
+    that agent failed silently with "agent not registered". Symptom only
+    surfaced AFTER C.5 fixed the parser; before C.5 the routing never ran.
+    """
+    import mata_garuda.agents  # noqa: F401 — populate @register_agent registry
+    from mata_garuda.registry import get_agent
+
+    for gap_type, agent_name in GAP_DISPATCH.items():
+        if agent_name is None:
+            continue  # Phase 2 deferred or DLQ — no agent expected
+        agent = get_agent(agent_name)
+        assert agent is not None, (
+            f"GAP_DISPATCH[{gap_type!r}] = {agent_name!r} but no agent with "
+            f"that name is registered. Either register the agent or fix the "
+            f"name in GAP_DISPATCH to match @register_agent(name=...)."
+        )
+
+
 def test_gap_dispatch_table_complete():
     """8 canonical gap types + 2 explicit DLQ slots (C.4 2026-05-16)."""
     expected = {
@@ -118,7 +140,10 @@ def test_process_gap_dispatches_regulation_watcher_for_stale_official():
         xack=fake_xack,
     )
 
-    assert fake_dispatch.call_args.kwargs["agent_name"] == "regulation_watcher"
+    # GAP_DISPATCH must use the canonical registry name (with capital + space),
+    # not the snake_case alias. Mismatch caused 8h of "agent not registered"
+    # failures on 2026-05-16 — see C.6 commit message.
+    assert fake_dispatch.call_args.kwargs["agent_name"] == "Regulation Watcher"
     assert result["status"] == "resolved"
 
 
