@@ -21,8 +21,8 @@ from typing import Any
 import asyncpg
 from langchain_core.messages import HumanMessage, SystemMessage
 from langsmith import traceable
-from pydantic import BaseModel, Field, ValidationError
 from prometheus_client import Counter, Histogram
+from pydantic import BaseModel, Field, ValidationError
 
 from backend.services.rag.kg_graph_state import KGAgentState
 
@@ -178,19 +178,19 @@ Return ONLY a JSON object:
             ),
             timeout=30.0,
         )
-        
+
         # Aggiornamento stato con Pydantic model
         state["intent"] = parsed_result.intent
         state["extracted_entities"] = parsed_result.entities
-        
+
         # Store domain for routing decisions
         domain = parsed_result.domain if parsed_result.domain else domain_hints.get("domain", "general")
         state["domain"] = domain
-        
+
         # Update user_context with citizenship and domain
         state["user_context"]["citizenship"] = parsed_result.citizenship
         state["user_context"]["domain"] = domain
-        
+
         logger.info(
             f"✅ [Understand Query] Intent: {state['intent']}, "
             f"Domain: {domain}, "

@@ -75,7 +75,7 @@ class IntelPipeline:
         except (PermissionError, OSError):
             self.pipeline_dir = Path('/tmp/intel_pipeline_runs')
             self.pipeline_dir.mkdir(exist_ok=True)
-        
+
         # State tracking
         self.run_id = datetime.now().strftime('%Y%m%d_%H%M%S')
         self.state_file = self.pipeline_dir / f'run_{self.run_id}.json'
@@ -86,19 +86,19 @@ class IntelPipeline:
             'steps': {},
             'articles': []
         }
-    
+
     def log(self, message: str, level: str = 'INFO'):
         """Log with timestamp"""
         timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         print(f'[{timestamp}] [{level}] {message}')
         sys.stdout.flush()
-    
+
     def save_state(self):
         """Save pipeline state to disk"""
         with open(self.state_file, 'w') as f:
             json.dump(self.state, f, indent=2)
         self.log(f'State saved: {self.state_file.name}')
-    
+
     def update_step_status(self, step: str, status: str, data: Dict = None):
         """Update step status in state"""
         self.state['steps'][step] = {
@@ -107,13 +107,13 @@ class IntelPipeline:
             'data': data or {}
         }
         self.save_state()
-    
+
     def run_step(self, step: str) -> bool:
         """Execute single pipeline step"""
         self.log(f'{"="*60}')
         self.log(f'STEP: {step}')
         self.log(f'{"="*60}')
-        
+
         try:
             if step == '1_scraping':
                 return self.step_scraping()
@@ -146,7 +146,7 @@ class IntelPipeline:
             self.log(f'Step {step} failed: {e}', 'ERROR')
             self.update_step_status(step, 'failed', {'error': str(e)})
             return False
-    
+
     def step_scraping(self) -> bool:
         """Step 1: Scrape articles from sources via UnifiedScraper"""
         self.log('Starting article scraping...')
@@ -161,14 +161,14 @@ class IntelPipeline:
             from unified_scraper import UnifiedScraper
             categories = self.config.get('categories', ['immigration', 'tax', 'business'])
             limit      = self.config.get('limit_per_source', 5)
-            
+
             import asyncio
             scraper    = UnifiedScraper(categories=categories, limit_per_source=limit)
             async def _run_scraper():
                 res = await scraper.scrape_all()
                 await scraper.close()
                 return res
-            
+
             articles   = asyncio.run(_run_scraper())
             self.log(f'Scraped {len(articles)} articles from {scraper.stats.get("sources_processed",0)} sources')
 
@@ -259,7 +259,7 @@ class IntelPipeline:
             self.state['articles'] = self._mock_scraped_articles()
             self.update_step_status('1_scraping', 'failed', {'error': str(e)})
             return False
-    
+
     def step_validation(self) -> bool:
         """Step 2: Validate articles (URL dedup + title similarity dedup)
 
@@ -374,7 +374,7 @@ class IntelPipeline:
             'dupes_history': dupes_history,
         })
         return True
-    
+
     def step_qwen_filter(self) -> bool:
         """Step 2.5: LLM content quality scoring via Ollama (gemma4:26b).
 
@@ -1148,7 +1148,7 @@ class IntelPipeline:
             self.log(f'Enrichment error: {e}', 'ERROR')
             self.update_step_status('3_enrichment', 'failed', {'error': str(e)})
             return False
-    
+
     def _generate_intel_digest(self, enriched: List[Dict], unenriched: List[Dict]) -> Optional[Dict]:
         """Generate a recap article summarizing ALL scraped topics.
 
@@ -1360,7 +1360,7 @@ IMPORTANT:
         self.log(f'Cover images uploaded: {covers_uploaded}/{images_count}')
         self.update_step_status('8_images', 'completed', {'images_generated': images_count, 'covers_uploaded': covers_uploaded})
         return True
-    
+
     def step_seo(self) -> bool:
         """Step 5: SEO optimization via Gemini.
 
@@ -1415,7 +1415,7 @@ IMPORTANT:
             self.update_step_status('5_seo', 'failed', {'error': str(e)})
             # Non-fatal: pipeline continues without SEO
             return True
-    
+
     def step_approval(self) -> bool:
         """Step 6: Save all enriched articles to a review file + notify owner via Telegram.
 
@@ -1695,11 +1695,11 @@ IMPORTANT:
             'review_file': str(review_file),
         })
         return True
-    
+
     def step_publishing(self) -> bool:
         """Step 7: Publish approved articles"""
         self.log('Publishing articles...')
-        
+
         # FIX2: blocca publishing se approval pending
         approval_status = self.state.get('steps', {}).get('6_approval', {}).get('status', '')
         if approval_status == 'pending' and not self.config.get('auto_approve'):
@@ -1711,7 +1711,7 @@ IMPORTANT:
             self.log('Dry run mode - skipping actual publishing')
             self.update_step_status('7_publishing', 'skipped', {'reason': 'dry_run'})
             return True
-        
+
         # Pubblica articoli arricchiti via backend API
         import asyncio as _asyncio
         import httpx as _httpx
@@ -2015,14 +2015,14 @@ IMPORTANT:
                 'tier': 'T1',
             }
         ]
-    
+
     def run(self):
         """Execute full pipeline"""
         self.log(f'Starting Intel Pipeline - Run ID: {self.run_id}')
         self.log(f'Config: {json.dumps(self.config, indent=2)}')
-        
+
         steps_to_run = PIPELINE_STEPS
-        
+
         # Handle resume
         if self.config.get('resume_from'):
             resume_step = self.config['resume_from']
@@ -2030,13 +2030,13 @@ IMPORTANT:
                 idx = steps_to_run.index(resume_step)
                 steps_to_run = steps_to_run[idx:]
                 self.log(f'Resuming from: {resume_step}')
-        
+
         # Handle skip
         if self.config.get('skip_steps'):
             skip = self.config['skip_steps']
             steps_to_run = [s for s in steps_to_run if s not in skip]
             self.log(f'Skipping steps: {skip}')
-        
+
         # Execute pipeline
         for step in steps_to_run:
             success = self.run_step(step)
@@ -2046,11 +2046,11 @@ IMPORTANT:
                 self.state['failed_at'] = step
                 self.save_state()
                 return False
-        
+
         self.state['status'] = 'completed'
         self.state['completed_at'] = datetime.now().isoformat()
         self.save_state()
-        
+
         self.log(f'{"="*60}')
         self.log('PIPELINE COMPLETED')
         self.log(f'{"="*60}')
@@ -2071,7 +2071,7 @@ IMPORTANT:
             self.log(f'⚠️  Salvataggio intel_output_latest.json fallito: {e}', 'WARN')
 
         return True
-    
+
     def print_summary(self):
         """Print pipeline execution summary"""
         print('\n📊 PIPELINE SUMMARY\n')
@@ -2080,22 +2080,22 @@ IMPORTANT:
         print(f'Started: {self.state["started_at"]}')
         if self.state.get('completed_at'):
             print(f'Completed: {self.state["completed_at"]}')
-        
+
         print('\nSteps:')
         for step, data in self.state.get('steps', {}).items():
             status = data.get('status', 'unknown')
             print(f'  {step}: {status}')
-        
+
         print(f'\nState file: {self.state_file}')
 
 
 def main():
     parser = argparse.ArgumentParser(description='Intel Pipeline Orchestrator')
-    
+
     # Mode
     parser.add_argument('--mode', choices=['full', 'dry-run', 'test'], default='full',
                        help='Pipeline execution mode')
-    
+
     # Data selection
     parser.add_argument('--categories', default='immigration,tax,legal',
                        help='Comma-separated categories')
@@ -2103,7 +2103,7 @@ def main():
                        help='Limit articles per source')
     parser.add_argument('--min-score', type=int, default=40,
                        help='Minimum quality score')
-    
+
     # Flow control
     parser.add_argument('--resume-from', choices=PIPELINE_STEPS,
                        help='Resume from specific step')
@@ -2111,7 +2111,7 @@ def main():
                        help='Comma-separated steps to skip')
     parser.add_argument('--continue-on-error', action='store_true',
                        help='Continue pipeline even if step fails')
-    
+
     # Options
     parser.add_argument('--skip-images', action='store_true',
                        help='Skip image generation')
@@ -2142,13 +2142,13 @@ def main():
         'continue_on_error': args.continue_on_error,
         'max_enrich': args.max_enrich,
     }
-    
+
     if args.resume_from:
         config['resume_from'] = args.resume_from
-    
+
     if args.skip_steps:
         config['skip_steps'] = args.skip_steps.split(',')
-    
+
     # Run pipeline
     pipeline = IntelPipeline(config)
     success = pipeline.run()

@@ -153,7 +153,7 @@ def enrich_article_claude_cli(article: Dict[str, Any]) -> Dict[str, Any]:
         Dict with enrichment data
     """
     logger.info(f"Enriching: {article.get('title', 'Unknown')[:50]}...")
-    
+
     # Extract NLM context if available (from step 2.9)
     nlm_ctx = article.get('nlm_context') or {}
     nlm_legal = nlm_ctx.get('legal_basis', '')
@@ -178,15 +178,15 @@ def enrich_article_claude_cli(article: Dict[str, Any]) -> Dict[str, Any]:
         nlm_legal_basis=nlm_legal,
         nlm_web_findings=nlm_web,
     )
-    
+
     try:
         # Call Claude Code CLI
         logger.info("Calling Claude Code CLI...")
-        
+
         # Remove ANTHROPIC_API_KEY from environment to use OAuth
         env = os.environ.copy()
         env.pop('ANTHROPIC_API_KEY', None)
-        
+
         # Use absolute path so launchd (limited PATH) can find claude
         import shutil
         claude_bin = shutil.which('claude') or '/Users/nuzantara/.local/bin/claude'
@@ -199,21 +199,21 @@ def enrich_article_claude_cli(article: Dict[str, Any]) -> Dict[str, Any]:
             check=True,
             env=env
         )
-        
+
         output = result.stdout.strip()
         logger.info(f"Claude response: {len(output)} chars")
-        
+
         # Parse JSON from response
         # Claude might wrap in markdown code blocks, strip those
         if '```json' in output:
             output = output.split('```json')[1].split('```')[0].strip()
         elif '```' in output:
             output = output.split('```')[1].split('```')[0].strip()
-        
+
         # Try to find JSON object
         json_start = output.find('{')
         json_end = output.rfind('}') + 1
-        
+
         if json_start >= 0 and json_end > json_start:
             json_str = output[json_start:json_end]
             enriched = json.loads(json_str)
@@ -237,7 +237,7 @@ def enrich_article_claude_cli(article: Dict[str, Any]) -> Dict[str, Any]:
                 'error': 'No valid JSON in response',
                 'raw_response': output
             }
-            
+
     except subprocess.TimeoutExpired:
         logger.error("Claude CLI timeout (180s)")
         return {
@@ -278,18 +278,18 @@ def batch_enrich_articles(articles: list[Dict[str, Any]], max_articles: int = No
     """
     if max_articles:
         articles = articles[:max_articles]
-    
+
     logger.info(f"Batch enriching {len(articles)} articles...")
-    
+
     enriched_articles = []
     success_count = 0
     error_count = 0
-    
+
     for i, article in enumerate(articles, 1):
         logger.info(f"\n[{i}/{len(articles)}] Processing: {article.get('title', 'Unknown')[:50]}")
-        
+
         result = enrich_article_claude_cli(article)
-        
+
         if result['success']:
             success_count += 1
             enriched_articles.append({
@@ -303,13 +303,13 @@ def batch_enrich_articles(articles: list[Dict[str, Any]], max_articles: int = No
                 **article,
                 'enrichment_error': result.get('error')
             })
-    
+
     logger.info(f"\n{'='*60}")
     logger.info("BATCH COMPLETE")
     logger.info(f"  Success: {success_count}/{len(articles)}")
     logger.info(f"  Errors:  {error_count}/{len(articles)}")
     logger.info(f"{'='*60}")
-    
+
     return enriched_articles
 
 
@@ -327,19 +327,19 @@ if __name__ == "__main__":
         Immigration officials stated this change aims to attract high-skilled foreign talent and 
         boost the digital economy.'''
     }
-    
+
     print("="*60)
     print("TEST: Claude CLI Enricher")
     print("="*60)
     print()
-    
+
     result = enrich_article_claude_cli(test_article)
-    
+
     print("\n" + "="*60)
     print("RESULT:")
     print("="*60)
     print(json.dumps(result, indent=2, ensure_ascii=False))
-    
+
     if result['success']:
         print("\n🎉 TEST PASSED")
         sys.exit(0)

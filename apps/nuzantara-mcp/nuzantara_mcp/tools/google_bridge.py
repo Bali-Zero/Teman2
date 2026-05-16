@@ -20,7 +20,7 @@ async def upload_to_notebooklm(file_path: str, title: Optional[str] = None) -> d
     """
     if not os.path.exists(file_path):
         return {"error": f"File not found: {file_path}"}
-        
+
     from playwright.async_api import async_playwright
     async with async_playwright() as p:
         try:
@@ -31,28 +31,28 @@ async def upload_to_notebooklm(file_path: str, title: Optional[str] = None) -> d
             )
             page = await browser.new_page()
             await page.goto("https://notebooklm.google/", wait_until="networkidle")
-            
+
             # Check if we are logged in
             if await page.query_selector("text='Sign in'"):
                 return {"error": "Not logged in to Google. Please log in manually in the browser first."}
-            
+
             # Basic NotebookLM upload interaction (2026 UI)
             # Find the "New Notebook" button
             new_notebook_btn = await page.query_selector("text='New Notebook'")
             if not new_notebook_btn:
                 # Fallback to selector
                 new_notebook_btn = await page.query_selector("button:has-text('New Notebook')")
-            
+
             if new_notebook_btn:
                 await new_notebook_btn.click()
                 await page.wait_for_timeout(2000)
-                
+
                 # Look for "Local files" or upload area
                 async with page.expect_file_chooser() as fc_info:
                     await page.click("text='Local files'")
                 file_chooser = await fc_info.value
                 await file_chooser.set_files(file_path)
-                
+
                 await page.wait_for_timeout(8000) # Give more time for upload
                 return {"success": True, "msg": f"Uploaded {os.path.basename(file_path)} to NotebookLM"}
             else:

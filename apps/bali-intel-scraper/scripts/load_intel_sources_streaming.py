@@ -34,13 +34,13 @@ async def create_collection(client: QdrantClient):
     """Crea collezione."""
     collections = client.get_collections().collections
     exists = any(c.name == COLLECTION_NAME for c in collections)
-    
+
     if exists:
         logger.warning(f"⚠️ Cancello collezione esistente")
         client.delete_collection(COLLECTION_NAME)
-    
+
     logger.info(f"🛠️ Creazione collezione...")
-    
+
     client.create_collection(
         collection_name=COLLECTION_NAME,
         vectors_config={
@@ -58,12 +58,12 @@ async def create_collection(client: QdrantClient):
             ef_construct=100,
         ),
     )
-    
+
     # Indici
     client.create_payload_index(COLLECTION_NAME, "category_key", models.PayloadSchemaType.KEYWORD)
     client.create_payload_index(COLLECTION_NAME, "tier", models.PayloadSchemaType.KEYWORD)
     client.create_payload_index(COLLECTION_NAME, "url", models.PayloadSchemaType.KEYWORD)
-    
+
     logger.success("✅ Collezione creata!")
 
 
@@ -103,16 +103,16 @@ async def load_sources_streaming():
     logger.info(f"   Batch size: {BATCH_SIZE}")
     logger.info(f"   Timeout: {TIMEOUT}s")
     logger.info("=" * 60)
-    
+
     # Carica JSON
     with open(SOURCES_FILE, 'r', encoding='utf-8') as f:
         data = json.load(f)
-    
+
     total_sources = data.get('total_sources', 0)
     logger.info(f"📚 Fonti: {total_sources}")
     logger.info(f"📂 Categorie: {data.get('total_categories', 0)}")
     print()
-    
+
     # Client Qdrant con timeout aumentato
     qdrant_client = QdrantClient(
         url=QDRANT_URL,
@@ -120,29 +120,29 @@ async def load_sources_streaming():
         timeout=TIMEOUT,
         prefer_grpc=False,
     )
-    
+
     # Crea collezione
     await create_collection(qdrant_client)
     print()
-    
+
     # Client OpenAI
     openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
-    
+
     # Streaming upload
     logger.info("🔄 Inizio upload streaming...")
-    
+
     point_id = 0
     batch = []
     uploaded = 0
     failed = 0
     start_time = time.time()
-    
+
     for category_key, category_data in data['categories'].items():
         category_name = category_data.get('name', category_key)
         sources = category_data.get('sources', [])
-        
+
         logger.info(f"📁 {category_name}: {len(sources)} fonti")
-        
+
         for source in sources:
             # Genera embedding
             try:
@@ -153,9 +153,9 @@ Description: {source.get('description', '')}
 Authority: {source.get('authority', '')}
 URL: {source.get('url', '')}
                 """.strip()
-                
+
                 embedding = await generate_embedding(text_for_embedding, openai_client)
-                
+
                 # Payload
                 payload = {
                     "name": source.get('name'),
@@ -167,7 +167,7 @@ URL: {source.get('url', '')}
                     "category_name": category_name,
                     "indexed_at": datetime.now().isoformat(),
                 }
-                
+
                 # Aggiungi al batch
                 point = models.PointStruct(
                     id=point_id,
@@ -176,7 +176,7 @@ URL: {source.get('url', '')}
                 )
                 batch.append(point)
                 point_id += 1
-                
+
                 # Upload batch quando raggiunge dimensione target
                 if len(batch) >= BATCH_SIZE:
                     success = await upload_batch_with_retry(qdrant_client, batch)
@@ -188,14 +188,14 @@ URL: {source.get('url', '')}
                     else:
                         failed += len(batch)
                         logger.error(f"   ✗ Batch fallito ({failed} totali)")
-                    
+
                     batch = []
-                
+
             except Exception as e:
                 logger.warning(f"⚠️ Errore per {source.get('name')}: {e}")
                 failed += 1
                 continue
-    
+
     # Upload batch rimanente
     if batch:
         success = await upload_batch_with_retry(qdrant_client, batch)
@@ -203,7 +203,7 @@ URL: {source.get('url', '')}
             uploaded += len(batch)
         else:
             failed += len(batch)
-    
+
     # Report finale
     elapsed = time.time() - start_time
     logger.success("=" * 60)
@@ -212,26 +212,26 @@ URL: {source.get('url', '')}
     logger.success(f"   Falliti: {failed}")
     logger.success(f"   Tempo: {elapsed:.1f}s ({uploaded/elapsed:.1f}/s)")
     logger.success("=" * 60)
-    
+
     # Verifica
     info = qdrant_client.get_collection(COLLECTION_NAME)
     logger.info(f"📊 Punti in collezione: {info.points_count}")
-    
+
     # Test retrieval
     if info.points_count > 0:
         logger.info("🔍 Test query...")
         test_embedding = await generate_embedding("Immigration visa Indonesia", openai_client)
-        
+
         result = qdrant_client.query_points(
             collection_name=COLLECTION_NAME,
             query=test_embedding,
             using="default",
             limit=3
         )
-        
+
         for i, point in enumerate(result.points, 1):
             logger.info(f"   {i}. {point.payload['name']} ({point.score:.3f})")
-    
+
     logger.success("🎉 COMPLETATO CON SUCCESSO!")
 
 

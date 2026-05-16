@@ -68,7 +68,7 @@ class DatabaseConfig:
                 pool_timeout=int(os.getenv("DB_POOL_TIMEOUT", "30")),
                 pool_recycle=int(os.getenv("DB_POOL_RECYCLE", "1800")),
             )
-        
+
         return cls(
             host=os.getenv("DB_HOST", "localhost"),
             port=int(os.getenv("DB_PORT", "5432")),

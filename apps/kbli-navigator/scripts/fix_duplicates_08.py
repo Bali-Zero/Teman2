@@ -168,18 +168,18 @@ for code, new_content in [('77100', NEW_77100), ('79110', NEW_79110), ('82300', 
     pattern = f'  "{code}": {{'
     positions = [m.start() for m in re.finditer(re.escape(pattern), content)]
     print(f"{code}: {len(positions)} occurrences at lines {[content[:p].count(chr(10))+1 for p in positions]}")
-    
+
     if len(positions) < 2:
         print(f"  ERROR: Expected 2 occurrences for {code}, found {len(positions)}")
         continue
-    
+
     # Remove the LAST occurrence (the duplicate we just inserted)
     last_pos = positions[-1]
     last_end = find_entry_end(content, last_pos)
     removed_chunk = content[last_pos:last_end]
     print(f"  Removing duplicate at line {content[:last_pos].count(chr(10))+1}, length {len(removed_chunk)} chars")
     content = content[:last_pos] + content[last_end:]
-    
+
     # Now replace the FIRST (old) occurrence with new content
     first_pos = content.find(f'  "{code}": {{')
     if first_pos < 0:
@@ -189,7 +189,7 @@ for code, new_content in [('77100', NEW_77100), ('79110', NEW_79110), ('82300', 
     old_chunk = content[first_pos:first_end]
     print(f"  Replacing old entry at line {content[:first_pos].count(chr(10))+1}, length {len(old_chunk)} chars")
     content = content[:first_pos] + new_content + content[first_end:]
-    
+
     print(f"  ✓ {code} done. File now {len(content.split(chr(10)))} lines")
 
 # ============================================================

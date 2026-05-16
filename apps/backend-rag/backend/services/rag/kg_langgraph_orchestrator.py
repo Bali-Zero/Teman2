@@ -16,6 +16,7 @@ from typing import Any
 
 import asyncpg
 from langgraph.graph import END, StateGraph
+from prometheus_client import Counter, Histogram
 
 from backend.services.rag.kg_graph_nodes import (
     kg_checkpoint_operations_total,
@@ -31,8 +32,6 @@ from backend.services.rag.kg_subgraph_company import build_company_subgraph
 from backend.services.rag.kg_subgraph_property import build_property_subgraph
 from backend.services.rag.kg_subgraph_tax import build_tax_subgraph
 from backend.services.rag.kg_subgraph_visa import build_visa_subgraph
-
-from prometheus_client import Counter, Histogram
 
 logger = logging.getLogger(__name__)
 
@@ -211,7 +210,7 @@ def route_after_query_understanding(state: KGAgentState) -> str:
         "company": "company_subgraph",
         "kbli": "company_subgraph",
     }
-    
+
     if domain in domain_to_subgraph:
         target = domain_to_subgraph[domain]
         logger.info(f"📍 [Router] Domain='{domain}', routing strictly to {target}")

@@ -92,10 +92,10 @@ class UnifiedScraper:
             verify=False,
             follow_redirects=True
         )
-    
+
     async def close(self):
         await self.client.aclose()
-        
+
     def load_sources(self) -> List[Dict]:
         with open(SOURCES_FILE, 'r') as f:
             data = json.load(f)
@@ -135,7 +135,7 @@ class UnifiedScraper:
         url = source.get('url')
         if not url:
             return []
-        
+
         logger.info(f'Scraping: {source.get("name", url)[:50]}...')
 
         source_type = source.get('type', 'web')
@@ -153,12 +153,12 @@ class UnifiedScraper:
             feed = None
             if rss_text:
                 feed = await asyncio.to_thread(feedparser.parse, rss_text)
-            
+
             if not (feed and feed.entries) and rss_url != url:
                 rss_text = await self._fetch_rss(url)
                 if rss_text:
                     feed = await asyncio.to_thread(feedparser.parse, rss_text)
-            
+
             if not (feed and feed.entries):
                 try:
                     resp = await self.client.get(url)
@@ -169,7 +169,7 @@ class UnifiedScraper:
                         if discovered.startswith('/'):
                             p = urlparse(url)
                             discovered = f"{p.scheme}://{p.netloc}{discovered}"
-                        
+
                         r_text = await self._fetch_rss(discovered)
                         if r_text:
                             feed = await asyncio.to_thread(feedparser.parse, r_text)
@@ -195,13 +195,13 @@ class UnifiedScraper:
 
             if not articles:
                 logger.warning(f'  ⚠️  No content extracted for {url}')
-        
+
         except Exception as e:
             logger.error(f'  ❌ Error processing {url}: {str(e)[:100]}')
             self.stats['errors'] += 1
-        
+
         return articles
-    
+
     def _extract_from_feed_entry(self, entry, source: Dict) -> Optional[Dict]:
         try:
             return {
@@ -242,7 +242,7 @@ class UnifiedScraper:
                     candidates.append((href, text))
                 if len(candidates) >= self.limit_per_source * 3:
                     break
-            
+
             def parse_article(href, anchor_text):
                 try:
                     art = Article(href)
@@ -311,22 +311,22 @@ class UnifiedScraper:
     def generate_article_id(self, article: Dict) -> str:
         content = f"{article.get('url', '')}{article.get('title', '')}"
         return hashlib.md5(content.encode()).hexdigest()[:16]
-    
+
     async def scrape_all(self) -> List[Dict]:
         logger.info('='*60)
         logger.info('UNIFIED SCRAPER STARTED (ASYNC)')
         logger.info('='*60)
-        
+
         sources = self.load_sources()
         all_articles = []
-        
+
         # Batch sources to avoid overwhelming the network
         batch_size = 20
         for i in range(0, len(sources), batch_size):
             batch = sources[i:i+batch_size]
             tasks = [self.extract_articles_from_source(s) for s in batch]
             results = await asyncio.gather(*tasks)
-            
+
             for source_articles in results:
                 self.stats['sources_processed'] += 1
                 self.stats['articles_found'] += len(source_articles)
@@ -334,15 +334,15 @@ class UnifiedScraper:
                     article['id'] = self.generate_article_id(article)
                     score = self.score_article(article)
                     self.stats['articles_scored'] += 1
-                    
+
                     if score is not None:
                         article['quality_score'] = score
                         if score >= MIN_SCORE:
                             all_articles.append(article)
                             self.stats['articles_passed'] += 1
-        
+
         return all_articles
-    
+
     def save_results(self, articles: List[Dict]):
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         output_file = OUTPUT_DIR / f'{timestamp}_articles.json'
@@ -355,7 +355,7 @@ class UnifiedScraper:
             json.dump(output, f, indent=2, ensure_ascii=False)
         logger.info(f'\n💾 Saved: {output_file}')
         return output_file
-    
+
     def print_summary(self):
         logger.info('\n' + '='*60)
         logger.info('SCRAPING COMPLETE')
@@ -456,12 +456,12 @@ def main():
     parser.add_argument('--limit', type=int, default=5, help='Limit articles per source')
     parser.add_argument('--min-score', type=int, default=40, help='Minimum quality score')
     args = parser.parse_args()
-    
+
     global MIN_SCORE
     MIN_SCORE = args.min_score
-    
+
     scraper = UnifiedScraper(categories=args.categories.split(','), limit_per_source=args.limit)
-    
+
     async def run():
         articles = await scraper.scrape_all()
         output_file = scraper.save_results(articles)
@@ -469,7 +469,7 @@ def main():
         await scraper.close()
         print(f'\n✅ Output: {output_file}')
         return 0 if articles else 1
-        
+
     return asyncio.run(run())
 
 if __name__ == '__main__':
