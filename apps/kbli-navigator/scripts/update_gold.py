@@ -5,10 +5,10 @@ import re
 # ============================================================
 # Read files
 # ============================================================
-with open('lib/kbli-gold-content.ts', 'r') as f:
+with open('lib/kbli-gold-content.ts') as f:
     content = f.read()
 
-with open('app/kbli/[code]/page.tsx', 'r') as f:
+with open('app/kbli/[code]/page.tsx') as f:
     page = f.read()
 
 original_len = len(content.split('\n'))

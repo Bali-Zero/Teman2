@@ -85,9 +85,7 @@ class HomeostaticController:
         # 6. Circadian phase
         if self._sleep_start <= hour_utc < self._sleep_end:
             self.state.circadian_phase = "asleep"
-        elif hour_utc == (self._sleep_start - 1) % 24:
-            self.state.circadian_phase = "drowsy"
-        elif hour_utc == self._sleep_end:
+        elif hour_utc == (self._sleep_start - 1) % 24 or hour_utc == self._sleep_end:
             self.state.circadian_phase = "drowsy"
         else:
             self.state.circadian_phase = "awake"

@@ -179,7 +179,7 @@ def create_bundle(bundle_name: str, patterns: list[str], excludes: list[str]) ->
 
         for filepath in sorted(files_to_include):
             try:
-                with open(filepath, "r", encoding="utf-8") as infile:
+                with open(filepath, encoding="utf-8") as infile:
                     content = infile.read()
                 rel_path = os.path.relpath(filepath, PROJECT_ROOT)
                 outfile.write(f"\n{'=' * 60}\n")

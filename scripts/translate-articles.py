@@ -324,9 +324,7 @@ def main():
         # but in steady state it just means "everything already translated" —
         # a healthy idle, not a failure. Reserve "fail" for genuine errors
         # (which would surface elsewhere as exceptions/non-zero exit codes).
-        if total == 0:
-            sidecar_status = "ok"
-        elif success > 0 and skipped == 0:
+        if total == 0 or success > 0 and skipped == 0:
             sidecar_status = "ok"
         elif success == 0 and skipped == total:
             sidecar_status = "ok"  # idle: nothing new to translate

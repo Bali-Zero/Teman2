@@ -18,7 +18,7 @@ async def publish_article(article_file: Path, main_news_position: int = None):
     """Publish single article to backend"""
 
     # Read article data
-    with open(article_file, "r") as f:
+    with open(article_file) as f:
         article = json.load(f)
 
     # Prepare payload

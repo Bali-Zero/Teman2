@@ -447,14 +447,14 @@ async def handle_chat(request: web.Request) -> web.StreamResponse:
         # ── Path 3: Ollama fallback ──
         if not streamed:
             fallback_msg = json.dumps({"type": "system", "data": "Switching to local model..."})
-            await response.write(f"data: {fallback_msg}\n\n".encode("utf-8"))
+            await response.write(f"data: {fallback_msg}\n\n".encode())
             try:
                 async for sse_line in stream_ollama_react(query, config, mcp_client):
                     await response.write(sse_line.encode("utf-8"))
             except Exception as e2:
                 logger.error("All paths failed: %s", e2)
                 error_msg = json.dumps({"type": "error", "data": f"All AI backends unavailable: {e2}"})
-                await response.write(f"data: {error_msg}\n\n".encode("utf-8"))
+                await response.write(f"data: {error_msg}\n\n".encode())
                 await response.write(b"data: [DONE]\n\n")
 
     except ConnectionResetError:

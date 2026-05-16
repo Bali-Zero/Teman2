@@ -396,7 +396,7 @@ def render_inventory(rows: List[DocRow], clusters: List[ClusterDef]) -> str:
 
     orphan_rows = [r for r in rows if r.action.startswith("archive: orphan")]
     if orphan_rows:
-        out.append("### Orphans (mtime>{}d AND refs_in==0)".format(0))
+        out.append(f"### Orphans (mtime>{0}d AND refs_in==0)")
         for r in orphan_rows:
             out.append(f"- `{r.path}` (mtime={r.mtime_days}d, zero inbound refs)")
         out.append("")

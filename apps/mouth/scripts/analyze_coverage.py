@@ -277,7 +277,7 @@ def main():
         sys.exit(1)
 
     print(f"📖 Leggendo {coverage_file}...")
-    with open(coverage_file, "r", encoding="utf-8") as f:
+    with open(coverage_file, encoding="utf-8") as f:
         coverage_data = json.load(f)
 
     print("🔍 Analizzando coverage...")

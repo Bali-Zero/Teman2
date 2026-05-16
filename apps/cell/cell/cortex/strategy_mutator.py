@@ -373,9 +373,7 @@ class StrategyMutator:
             action_taken = ep.get("action_taken", "")
             outcome = ep.get("outcome", "partial")
 
-            if outcome == "failure" and action_taken not in proposed_actions:
-                improvements += 1
-            elif outcome == "success" and action_taken in proposed_actions:
+            if outcome == "failure" and action_taken not in proposed_actions or outcome == "success" and action_taken in proposed_actions:
                 improvements += 1
 
         return improvements / len(sample) if sample else 0.5

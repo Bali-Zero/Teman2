@@ -122,9 +122,7 @@ def select_top_per_domain(articles: List[Dict]) -> List[Dict]:
         # Store the normalized domain on the article for later use
         a["_news_domain"] = domain
 
-        if domain not in by_domain:
-            by_domain[domain] = a
-        elif a.get("quality_score", 0) > by_domain[domain].get("quality_score", 0):
+        if domain not in by_domain or a.get("quality_score", 0) > by_domain[domain].get("quality_score", 0):
             by_domain[domain] = a
 
     selected = []

@@ -252,7 +252,7 @@ async def test_extract_content_routes_audio():
 @pytest.mark.asyncio
 async def test_extract_content_utf8_fallback():
     """Unknown MIME type should attempt UTF-8 decode."""
-    raw = "Hello world in UTF-8".encode("utf-8")
+    raw = b"Hello world in UTF-8"
     text, meta = await extract_content(raw, "application/octet-stream", "file.bin")
     assert "Hello world" in text
 

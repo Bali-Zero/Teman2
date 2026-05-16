@@ -105,7 +105,7 @@ async def load_sources_streaming():
     logger.info("=" * 60)
 
     # Carica JSON
-    with open(SOURCES_FILE, 'r', encoding='utf-8') as f:
+    with open(SOURCES_FILE, encoding='utf-8') as f:
         data = json.load(f)
 
     total_sources = data.get('total_sources', 0)
