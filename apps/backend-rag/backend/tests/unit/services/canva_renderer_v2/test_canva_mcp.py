@@ -70,5 +70,9 @@ async def test_import_design_calls_mcp_tool():
     assert edit_url == "https://www.canva.com/design/DAGabc/edit"
     mock_session.call_tool.assert_awaited_once_with(
         "import-design-from-url",
-        arguments={"url": "https://example.com/foo.pdf", "title": "Test"},
+        arguments={
+            "url": "https://example.com/foo.pdf",
+            "name": "Test",
+            "user_intent": "Import WR2 carousel PDF into Canva for editing",
+        },
     )

@@ -97,7 +97,7 @@ class TeamDriveService:
 
     async def search_files(
         self, user_email: str, query: str, file_type: str | None = None, page_size: int = 20,
-    ) -> dict[str, Any]:
+    ) -> list[dict[str, Any]]:
         return await self.operations.search_files(
             user_email=user_email, query=query, file_type=file_type, page_size=page_size,
         )

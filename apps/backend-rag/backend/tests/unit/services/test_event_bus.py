@@ -147,6 +147,7 @@ class TestPGChannelMap:
         assert "compliance_alert" in PG_CHANNEL_MAP
         assert "intel_event" in PG_CHANNEL_MAP
         assert "lkpm_ingest_completed" in PG_CHANNEL_MAP
+        assert PG_CHANNEL_MAP["whatsapp_message_received"] == "whatsapp.message_received"
 
     def test_event_types_are_dotted(self) -> None:
         for event_type in PG_CHANNEL_MAP.values():
@@ -175,6 +176,42 @@ class TestPGNotificationRouting:
         assert received[0]["client_id"] == 42
         assert received[0]["_source"] == "pg_notify"
         assert received[0]["_event_type"] == "client.changed"
+
+    @pytest.mark.asyncio
+    async def test_pg_event_acknowledges_outbox_after_handler_success(self) -> None:
+        received: list[dict] = []
+
+        async def handler(payload: dict) -> None:
+            received.append(payload)
+
+        conn = MagicMock()
+        conn.execute = AsyncMock(return_value="UPDATE 1")
+
+        class _Acquire:
+            async def __aenter__(self) -> MagicMock:
+                return conn
+
+            async def __aexit__(self, *_args: object) -> None:
+                return None
+
+        class _Pool:
+            def acquire(self) -> _Acquire:
+                return _Acquire()
+
+        bus = EventBus(
+            db_dsn="postgresql://test:test@localhost/test",
+            db_pool=_Pool(),  # type: ignore[arg-type]
+        )
+        bus.subscribe("client.changed", handler)
+
+        await bus._handle_pg_event(
+            "client_changed",
+            '{"client_id": 42, "_outbox_id": 99}',
+        )
+
+        assert received
+        assert conn.execute.await_args.args[1] == 99
+        assert conn.execute.await_args.args[2] == "event_bus:client.changed"
 
     @pytest.mark.asyncio
     async def test_invalid_json_does_not_crash(self, bus: EventBus) -> None:
@@ -386,6 +423,74 @@ class TestHandlerRegistration:
         assert len(bus._subscribers["compliance.alert"]) == 2
         assert "intel.event" in bus._subscribers
         assert "lkpm.ingest_completed" in bus._subscribers
+        assert "whatsapp.message_received" in bus._subscribers
+
+    @pytest.mark.asyncio
+    async def test_whatsapp_message_received_logs_crm_interaction(self) -> None:
+        """Matched wa-mirror messages should enter the CRM interaction timeline."""
+        bus = EventBus(db_dsn="postgresql://test:test@localhost/test", db_pool=None)
+
+        conn = MagicMock()
+        conn.fetchrow = AsyncMock(
+            side_effect=[
+                {
+                    "id": 26650,
+                    "client_id": 42,
+                    "practice_id": 88,
+                    "direction": "inbound",
+                    "body": "Can you help with my KITAS renewal?",
+                    "message_text": "Can you help with my KITAS renewal?",
+                    "message_date": "2026-05-15T02:48:33+00:00",
+                    "team_member_email": "adit@balizero.com",
+                    "team_member_phone": "+628111111111",
+                    "counterpart_phone": "+628222222222",
+                    "media_type": "text",
+                    "media_stored_path": None,
+                },
+                None,
+            ]
+        )
+        conn.execute = AsyncMock(return_value="INSERT 0 1")
+
+        class _Acquire:
+            async def __aenter__(self) -> MagicMock:
+                return conn
+
+            async def __aexit__(self, *_args: object) -> None:
+                return None
+
+        class _Pool:
+            def acquire(self) -> _Acquire:
+                return _Acquire()
+
+        from backend.services.events.handlers import _recent_events, register_handlers
+
+        _recent_events.clear()
+        register_handlers(bus, _Pool())  # type: ignore[arg-type]
+
+        trace = await bus.emit(
+            "whatsapp.message_received",
+            {
+                "message_context_id": 26650,
+                "bridge_session_id": 6,
+                "team_member_email": "adit@balizero.com",
+                "client_id": 42,
+                "direction": "inbound",
+                "message_date": "2026-05-15T02:48:33.000Z",
+                "preview": "Can you help with my KITAS renewal?",
+                "_outbox_id": 15341,
+            },
+        )
+
+        assert trace.handler_count == 1
+        assert trace.errors == []
+        insert_sql = conn.execute.await_args.args[0]
+        insert_args = conn.execute.await_args.args[1:]
+        assert "INSERT INTO interactions" in insert_sql
+        assert insert_args[0] == 42
+        assert insert_args[1] == 88
+        assert insert_args[4] == "inbound"
+        assert '"wa_message_context_id": 26650' in insert_args[7]
 
     @pytest.mark.asyncio
     async def test_client_insert_triggers_background_tasks(self) -> None:

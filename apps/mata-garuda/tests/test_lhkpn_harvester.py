@@ -34,7 +34,9 @@ def test_harvest_by_nip_publishes_to_garuda_raw():
     assert stream == "garuda:raw"
     assert fields["agent"] == "lhkpn_harvester"
     assert "Budi Santoso" in fields["title"]
-    assert fields["source"] == "antv.kpk.go.id"
+    # Portal migrated 2026-04-26: antv.kpk.go.id is NXDOMAIN, KPK now
+    # serves at elhkpn.kpk.go.id (see research/2026-05-16-lhkpn-flow-triage.md).
+    assert fields["source"] == "elhkpn.kpk.go.id"
     assert fields["source_type"] == "lhkpn"
 
 

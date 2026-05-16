@@ -120,6 +120,71 @@ def test_get_logs(mock_settings, auth_headers):
     assert response.json()["success"] is True
 
 
+def test_get_logs_returns_ring_buffer_records(mock_settings, auth_headers):
+    """TODO(#79) closure: /debug/logs must return real records from the
+    process-wide ring buffer, not a hardcoded placeholder."""
+    import logging as _logging
+
+    from backend.app.services.log_ring_buffer import get_ring_buffer_handler
+
+    handler = get_ring_buffer_handler()
+    handler.clear()
+    # Emit a known record directly into the ring buffer.
+    handler.emit(
+        _logging.LogRecord(
+            name="zantara.test",
+            level=_logging.WARNING,
+            pathname="x",
+            lineno=1,
+            msg="probe-from-test",
+            args=(),
+            exc_info=None,
+        ),
+    )
+
+    response = client.get("/api/debug/logs?limit=10", headers=auth_headers)
+    assert response.status_code == 200
+    body = response.json()
+    assert body["success"] is True
+    assert "logs" in body
+    assert any(entry["message"] == "probe-from-test" for entry in body["logs"])
+    assert body["count"] >= 1
+
+
+def test_get_logs_filters_by_module(mock_settings, auth_headers):
+    """Module filter narrows results to a logger subtree."""
+    import logging as _logging
+
+    from backend.app.services.log_ring_buffer import get_ring_buffer_handler
+
+    handler = get_ring_buffer_handler()
+    handler.clear()
+    handler.emit(
+        _logging.LogRecord(
+            name="backend.app.routers.dream",
+            level=_logging.INFO,
+            pathname="x", lineno=1, msg="dream-msg", args=(), exc_info=None,
+        ),
+    )
+    handler.emit(
+        _logging.LogRecord(
+            name="backend.app.routers.newsletter",
+            level=_logging.INFO,
+            pathname="x", lineno=1, msg="newsletter-msg", args=(), exc_info=None,
+        ),
+    )
+
+    response = client.get(
+        "/api/debug/logs?module=backend.app.routers.dream",
+        headers=auth_headers,
+    )
+    assert response.status_code == 200
+    body = response.json()
+    messages = {entry["message"] for entry in body["logs"]}
+    assert "dream-msg" in messages
+    assert "newsletter-msg" not in messages
+
+
 def test_get_app_state(mock_settings, auth_headers):
     # We need to mock request.app.state somehow, but TestClient uses a real app instance.
     # We can inject state into the app instance used by client.

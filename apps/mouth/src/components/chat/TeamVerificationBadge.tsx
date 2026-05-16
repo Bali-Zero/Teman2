@@ -14,9 +14,7 @@ export const TeamVerificationBadge: React.FC<TeamVerificationBadgeProps> = ({
   domainLabel,
   onToggleCitations,
 }) => {
-  if (status === "not_needed") {
-    return null;
-  }
+  if (status === "not_needed") return null;
 
   if (status === "consulting") {
     return (
@@ -30,11 +28,11 @@ export const TeamVerificationBadge: React.FC<TeamVerificationBadgeProps> = ({
     );
   }
 
-  // status === "verified"
   return (
     <button
+      type="button"
       onClick={onToggleCitations}
-      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium text-amber-600 hover:text-amber-500 mt-3 select-none transition-colors cursor-pointer"
+      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium text-amber-600 hover:text-amber-500 mt-3 select-none transition-colors cursor-pointer focus-ring"
     >
       <Users size={13} />
       <span>Verificato dal team{domainLabel ? ` ${domainLabel}` : ""}</span>

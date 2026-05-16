@@ -40,14 +40,16 @@ export type PersistedMessageContext = CapturedMessageRecord & {
 };
 
 export type MessageContextStore = {
-  upsertMessage(row: Omit<PersistedMessageContext, "id" | "mediaStoredPath" | "ocrResult">): Promise<{
+  upsertMessage(
+    row: Omit<PersistedMessageContext, "id" | "mediaStoredPath" | "ocrResult">,
+  ): Promise<{
     id: number;
     row: PersistedMessageContext;
   }>;
   updateMediaStoredPath(
     id: number,
     mediaStoredPath: string,
-    ocrResult?: unknown | null
+    ocrResult?: unknown | null,
   ): Promise<void>;
 };
 
@@ -95,7 +97,7 @@ type MediaMessageShape = {
 
 export class PgMessageContextStore implements MessageContextStore {
   async upsertMessage(
-    row: Omit<PersistedMessageContext, "id" | "mediaStoredPath" | "ocrResult">
+    row: Omit<PersistedMessageContext, "id" | "mediaStoredPath" | "ocrResult">,
   ): Promise<{ id: number; row: PersistedMessageContext }> {
     const result = await query<{ id: number }>(
       `INSERT INTO whatsapp_message_context
@@ -136,7 +138,7 @@ export class PgMessageContextStore implements MessageContextStore {
         row.mediaUrl,
         safeJson(row.rawBaileysEvent),
         row.baileysMessageId,
-      ]
+      ],
     );
     const id = result.rows[0].id;
     return {
@@ -153,7 +155,7 @@ export class PgMessageContextStore implements MessageContextStore {
   async updateMediaStoredPath(
     id: number,
     mediaStoredPath: string,
-    ocrResult: unknown | null = null
+    ocrResult: unknown | null = null,
   ): Promise<void> {
     await query(
       `UPDATE whatsapp_message_context
@@ -161,7 +163,7 @@ export class PgMessageContextStore implements MessageContextStore {
               ocr_result = COALESCE($3::jsonb, ocr_result),
               updated_at = NOW()
         WHERE id = $1`,
-      [id, mediaStoredPath, ocrResult === null ? null : safeJson(ocrResult)]
+      [id, mediaStoredPath, ocrResult === null ? null : safeJson(ocrResult)],
     );
   }
 }
@@ -171,10 +173,10 @@ export class InMemoryMessageContextStore implements MessageContextStore {
   #nextId = 1;
 
   async upsertMessage(
-    row: Omit<PersistedMessageContext, "id" | "mediaStoredPath" | "ocrResult">
+    row: Omit<PersistedMessageContext, "id" | "mediaStoredPath" | "ocrResult">,
   ): Promise<{ id: number; row: PersistedMessageContext }> {
     const existing = this.rows.find(
-      (candidate) => candidate.baileysMessageId === row.baileysMessageId
+      (candidate) => candidate.baileysMessageId === row.baileysMessageId,
     );
     if (existing) {
       Object.assign(existing, row);
@@ -195,7 +197,7 @@ export class InMemoryMessageContextStore implements MessageContextStore {
   async updateMediaStoredPath(
     id: number,
     mediaStoredPath: string,
-    ocrResult: unknown | null = null
+    ocrResult: unknown | null = null,
   ): Promise<void> {
     const row = this.rows.find((candidate) => candidate.id === id);
     if (!row) return;
@@ -206,7 +208,7 @@ export class InMemoryMessageContextStore implements MessageContextStore {
 
 export async function persistCapturedMessage(
   message: CapturedMessageRecord,
-  deps: PersistDeps
+  deps: PersistDeps,
 ): Promise<{ id: number; row: PersistedMessageContext }> {
   const clientId = await deps.resolveClientId(message.counterpartPhone);
   const practiceId =
@@ -221,7 +223,7 @@ export async function persistCapturedMessage(
 
 export function extractMessageRecord(
   raw: BaileysMessageLike,
-  account: WaMirrorAccount
+  account: WaMirrorAccount,
 ): CapturedMessageRecord | null {
   const message = raw.message;
   if (!message) return null;
@@ -284,7 +286,10 @@ function extractMedia(message: unknown): {
   return { mediaType: "text", mediaMime: null, mediaUrl: null };
 }
 
-function mediaMeta(mediaType: MediaType, media: MediaMessageShape): {
+function mediaMeta(
+  mediaType: MediaType,
+  media: MediaMessageShape,
+): {
   mediaType: MediaType;
   mediaMime: string | null;
   mediaUrl: string | null;
@@ -296,9 +301,7 @@ function mediaMeta(mediaType: MediaType, media: MediaMessageShape): {
   };
 }
 
-function parseTimestamp(
-  value: BaileysMessageLike["messageTimestamp"]
-): Date {
+function parseTimestamp(value: BaileysMessageLike["messageTimestamp"]): Date {
   if (typeof value === "number") return new Date(value * 1000);
   if (typeof value === "string") return new Date(Number(value) * 1000);
   if (value && typeof value.toNumber === "function") {

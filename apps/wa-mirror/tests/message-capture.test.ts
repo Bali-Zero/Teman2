@@ -95,7 +95,7 @@ describe("extractMessageRecord", () => {
           },
         },
       },
-      account
+      account,
     );
 
     expect(record).toMatchObject({

@@ -1,0 +1,38 @@
+{
+  "run_at": "2026-05-16T07:00:00+08:00",
+  "today": "2026-05-16",
+  "yesterday_seen_count": 0,
+  "new_today_count": 1,
+  "partial": false,
+  "unreachable_sources": [
+    "https://www.hukumonline.com/berita/ (403)",
+    "https://muc.co.id/article (403)",
+    "https://ikpi.or.id/news/ (404)",
+    "https://peraturan.bpk.go.id/Search (403)",
+    "https://jdih.kemnaker.go.id/peraturan (SSL error)"
+  ],
+  "nb_query_errors": [],
+  "deltas": [
+    {
+      "citation": "PER-6/PJ/2026",
+      "title_id": "Peraturan Direktur Jenderal Pajak Nomor PER-6/PJ/2026",
+      "title_en": "Director General of Tax Regulation No. PER-6/PJ/2026 on GloBE (Global Minimum Tax) Reporting and Notification Requirements",
+      "service_line": ["tax"],
+      "enacted_date": "2026-05-04",
+      "summary": "Regola l'implementazione del Pillar Two OCSE (GloBE/global minimum tax): i WP GloBE devono indicare l'anno di imposizione nel SPT Tahunan PPh, e presentare notifiche separate per ciascun gruppo MNE di cui fanno parte entro 15 mesi dalla chiusura dell'anno fiscale (18 mesi per l'anno iniziale). Applicabile a MNE con ricavi consolidati >750M EUR in 2 degli ultimi 4 anni. Impatto diretto limitato su clienti Bali Zero (tipicamente PT PMA piccole); rilevante per clienti con strutture internazionali complesse.",
+      "source": "DDTCNews | https://news.ddtc.co.id/",
+      "verbatim_excerpt": "Wajib pajak GloBE mencantumkan tahun pengenaan GloBE dalam SPT Tahunan PPh dalam rangka melaksanakan GloBE sesuai dengan periode akuntansi yang digunakan. In the event a GloBE taxpayer becomes a member of more than one MNE group for a tax year, the GloBE taxpayer must submit separate notifications for each group.",
+      "confidence": "medium",
+      "cross_validated": false,
+      "first_seen_at": "2026-05-16T07:00:00+08:00",
+      "notes": "DDTCNews 2 articles (May 15, 2026). Not cross-validated by second independent source. GloBE threshold (EUR 750M revenue) means minimal direct impact on typical Bali Zero PT PMA client base."
+    }
+  ],
+  "dropped_candidates": [
+    {
+      "citation": "PMK 26/2026",
+      "reason": "Single headline mention only (DDTC May 14, 2026 — pajak rokok/HPTL exemption). Service line irrelevant to Bali Zero (no tobacco/HPTL service). No verbatim text retrievable. Dropped."
+    }
+  ],
+  "seen_citations": ["PER-6/PJ/2026"]
+}

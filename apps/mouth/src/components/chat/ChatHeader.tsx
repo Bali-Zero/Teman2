@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { api } from '@/lib/api';
-import { toast } from 'sonner';
+import { useEffect } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { api } from "@/lib/api";
+import { toast } from "sonner";
 import {
   Clock,
   User,
@@ -17,7 +17,7 @@ import {
   Settings,
   Camera,
   Loader2,
-} from 'lucide-react';
+} from "lucide-react";
 
 export interface ChatHeaderProps {
   isSidebarOpen: boolean;
@@ -34,7 +34,7 @@ export interface ChatHeaderProps {
   userMenuRef: React.RefObject<HTMLDivElement | null>;
   avatarInputRef: React.RefObject<HTMLInputElement | null>;
   onAvatarUpload: (event: React.ChangeEvent<HTMLInputElement>) => void;
-  onShowToast: (message: string, type: 'success' | 'error') => void;
+  onShowToast: (message: string, type: "success" | "error") => void;
 }
 
 export function ChatHeader({
@@ -60,34 +60,37 @@ export function ChatHeader({
   useEffect(() => {
     if (!showUserMenu) return;
     const handleClickOutside = (e: MouseEvent) => {
-      if (userMenuRef?.current && !userMenuRef.current.contains(e.target as Node)) {
+      if (
+        userMenuRef?.current &&
+        !userMenuRef.current.contains(e.target as Node)
+      ) {
         onToggleUserMenu();
       }
     };
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onToggleUserMenu();
+      if (e.key === "Escape") onToggleUserMenu();
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
     };
   }, [showUserMenu, onToggleUserMenu, userMenuRef]);
 
   const handleLogout = () => {
-    toast('Are you sure you want to logout?', {
+    toast("Are you sure you want to logout?", {
       action: {
-        label: 'Logout',
+        label: "Logout",
         onClick: async () => {
           try {
             await api.logout();
           } finally {
-            router.push('/login');
+            router.push("/login");
           }
         },
       },
-      cancel: { label: 'Cancel', onClick: () => toast.dismiss() },
+      cancel: { label: "Cancel", onClick: () => toast.dismiss() },
     });
   };
 
@@ -100,26 +103,30 @@ export function ChatHeader({
             variant="ghost"
             size="icon"
             onClick={onToggleSidebar}
-            aria-label={isSidebarOpen ? 'Close sidebar' : 'Open sidebar'}
-            className="flex-shrink-0"
+            aria-label={isSidebarOpen ? "Close sidebar" : "Open sidebar"}
+            className="flex-shrink-0 focus-ring"
           >
             <Menu className="w-5 h-5" />
           </Button>
           <Button
             onClick={onToggleClock}
-            variant={isClockIn ? 'default' : 'outline'}
+            variant={isClockIn ? "default" : "outline"}
             size="sm"
             disabled={isClockLoading}
-            aria-label={isClockIn ? 'Clock Out' : 'Clock In'}
-            className={`gap-2 ${isClockIn ? 'bg-[var(--success)] hover:bg-[var(--success)]/90' : ''}`}
+            aria-label={isClockIn ? "Clock Out" : "Clock In"}
+            className={`gap-2 focus-ring ${isClockIn ? "bg-[var(--success)] hover:bg-[var(--success)]/90" : ""}`}
           >
             {isClockLoading ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
               <Clock className="w-4 h-4" />
             )}
-            <span className="hidden sm:inline">{isClockIn ? 'Clock Out' : 'Clock In'}</span>
-            {isClockIn && <span className="w-2 h-2 rounded-full bg-white animate-pulse" />}
+            <span className="hidden sm:inline">
+              {isClockIn ? "Clock Out" : "Clock In"}
+            </span>
+            {isClockIn && (
+              <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+            )}
           </Button>
         </div>
 
@@ -127,8 +134,8 @@ export function ChatHeader({
         <div
           className={`absolute left-1/2 -translate-x-1/2 transition-all duration-500 ease-in-out ${
             messagesCount > 0
-              ? 'opacity-100 translate-y-0'
-              : 'opacity-0 -translate-y-4 pointer-events-none'
+              ? "opacity-100 translate-y-0"
+              : "opacity-0 -translate-y-4 pointer-events-none"
           }`}
         >
           <Image
@@ -155,9 +162,9 @@ export function ChatHeader({
           <Button
             variant="ghost"
             size="icon"
-            className="relative"
+            className="relative focus-ring"
             aria-label="Notifications"
-            onClick={() => router.push('/notifications')}
+            onClick={() => router.push("/notifications")}
           >
             <Bell className="w-5 h-5" />
           </Button>
@@ -196,7 +203,7 @@ export function ChatHeader({
                 )}
               </div>
               <ChevronDown
-                className={`w-4 h-4 text-[var(--foreground-muted)] hidden sm:block transition-transform ${showUserMenu ? 'rotate-180' : ''}`}
+                className={`w-4 h-4 text-[var(--foreground-muted)] hidden sm:block transition-transform ${showUserMenu ? "rotate-180" : ""}`}
               />
             </button>
 
@@ -206,9 +213,11 @@ export function ChatHeader({
                 {/* User Info */}
                 <div className="px-4 py-3 border-b border-[var(--border)]">
                   <p className="text-sm font-medium text-[var(--foreground)]">
-                    {userName || 'User'}
+                    {userName || "User"}
                   </p>
-                  <p className="text-xs text-[var(--foreground-muted)]">Online</p>
+                  <p className="text-xs text-[var(--foreground-muted)]">
+                    Online
+                  </p>
                 </div>
 
                 {/* Menu Items */}
@@ -227,7 +236,7 @@ export function ChatHeader({
                   <button
                     type="button"
                     onClick={() => {
-                      onShowToast('Settings coming soon!', 'success');
+                      onShowToast("Settings coming soon!", "success");
                       onToggleUserMenu();
                     }}
                     className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--background-elevated)] transition-colors text-sm text-[var(--foreground)]"
@@ -239,7 +248,7 @@ export function ChatHeader({
                     <button
                       type="button"
                       onClick={() => {
-                        router.push('/admin');
+                        router.push("/admin");
                         onToggleUserMenu();
                       }}
                       className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-[var(--background-elevated)] transition-colors text-sm text-[var(--foreground)]"

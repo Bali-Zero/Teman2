@@ -47,8 +47,10 @@ import argparse
 import json
 import os
 import re
+import shutil
 import sys
-from dataclasses import dataclass
+import tempfile
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -507,27 +509,47 @@ def _gradient_png(w: int, h: int, top_a: float, bot_a: float,
     return out_path
 
 
-def _crop_hero_to_canvas(hero_path: str, out_path: str) -> str | None:
-    if not Path(hero_path).exists():
+def _crop_hero_to_canvas(hero_path: str, out_path: str | Path,
+                         slide_index: int | None = None) -> str | None:
+    """Crop + resize hero image to 1080×1350. Returns out_path str or None.
+
+    Fix 2026-05-16 [audit]: warns explicitly on missing/corrupt file instead
+    of silently returning None (which produced blank slides with no stderr
+    indication). out_path should be a per-slide unique path (use ctx.tmp_dir)
+    to avoid parallel-run collisions on /tmp fixed filenames.
+    """
+    p = Path(hero_path)
+    if not p.exists():
+        label = f"slide {slide_index}" if slide_index is not None else hero_path
+        print(
+            f"[wr2-render] WARNING: hero image missing for {label}: {hero_path} "
+            f"— slide will render on antracite background (imagegen failed/pending?)",
+            file=sys.stderr,
+        )
         return None
     try:
         img = Image.open(hero_path).convert("RGB")
-    except Exception:
+    except Exception as e:
+        print(
+            f"[wr2-render] WARNING: hero image corrupt for {hero_path}: {e} "
+            f"— slide will render on antracite background",
+            file=sys.stderr,
+        )
         return None
     sw, sh = img.size
     target_ratio = W / H
     src_ratio = sw / sh
     if src_ratio > target_ratio:
         nw = int(sh * target_ratio)
-        l = (sw - nw) // 2
-        img = img.crop((l, 0, l + nw, sh))
+        left = (sw - nw) // 2
+        img = img.crop((left, 0, left + nw, sh))
     else:
         nh = int(sw / target_ratio)
         t = max(0, (sh - nh) // 2)
         img = img.crop((0, t, sw, t + nh))
     img = img.resize((W, H), Image.LANCZOS)
-    img.save(out_path, quality=92)
-    return out_path
+    img.save(str(out_path), quality=92)
+    return str(out_path)
 
 
 def draw_logo(c: canvas.Canvas, x_center: float = W / 2,
@@ -575,6 +597,7 @@ class RenderContext:
     slide_count: int
     is_inner: bool  # slides 2..N-1
     primary_regulation_code: str | None
+    tmp_dir: Path = field(default_factory=lambda: Path(tempfile.mkdtemp(prefix="wr2_")))
 
 
 def render_cover_photo(c: canvas.Canvas, s: dict[str, Any],
@@ -583,13 +606,16 @@ def render_cover_photo(c: canvas.Canvas, s: dict[str, Any],
     c.setFillColor(HexColor(COLOR_BG_ANTRACITE))
     c.rect(0, 0, W, H, fill=1, stroke=0)
 
-    hero = s.get("hero_image_path") or s.get("image_path")
+    hero = s.get("hero_image_path") or s.get("image_anchor_path") or s.get("image_path")
     if hero:
-        cropped = _crop_hero_to_canvas(hero, "/tmp/_wr2_cover_hero.jpg")
+        slide_idx = s.get("index", 1)
+        cropped = _crop_hero_to_canvas(
+            hero, ctx.tmp_dir / f"slide_{slide_idx}_hero.jpg",
+            slide_index=slide_idx)
         if cropped:
             c.drawImage(cropped, 0, 0, width=W, height=H)
             grad = _gradient_png(W, H // 2, 0.0, 0.92,
-                                 "/tmp/_wr2_cover_grad.png")
+                                 str(ctx.tmp_dir / f"slide_{slide_idx}_grad.png"))
             c.drawImage(grad, 0, 0, width=W, height=H // 2, mask="auto")
 
     # Regulation badge top-right (Article 14.4)
@@ -649,13 +675,17 @@ def render_photo_headline_yellow_sub(c: canvas.Canvas, s: dict[str, Any],
     c.setFillColor(HexColor(COLOR_BG_ANTRACITE))
     c.rect(0, 0, W, H, fill=1, stroke=0)
 
-    hero = s.get("hero_image_path") or s.get("image_path")
+    hero = s.get("hero_image_path") or s.get("image_anchor_path") or s.get("image_path")
     has_hero = False
     if hero:
-        cropped = _crop_hero_to_canvas(hero, "/tmp/_wr2_inner_hero.jpg")
+        slide_idx = s.get("index", "x")
+        cropped = _crop_hero_to_canvas(
+            hero, ctx.tmp_dir / f"slide_{slide_idx}_hero.jpg",
+            slide_index=slide_idx)
         if cropped:
             c.drawImage(cropped, 0, 0, width=W, height=H)
-            grad = _gradient_png(W, H, 0.55, 0.85, "/tmp/_wr2_inner_grad.png")
+            grad = _gradient_png(W, H, 0.55, 0.85,
+                                 str(ctx.tmp_dir / f"slide_{slide_idx}_grad.png"))
             c.drawImage(grad, 0, 0, width=W, height=H, mask="auto")
             has_hero = True
 
@@ -1020,15 +1050,17 @@ def render_three_verdicts(c: canvas.Canvas, s: dict[str, Any],
     }
     for i, v in enumerate(verdicts[:3]):
         x = 80 + i * (col_w + 40)
-        verdict_kind = (v.get("kind") or "neutral").lower()
+        # Schema alias: legacy {case/verdict/tone/marker} → canonical {label/kind/body}
+        verdict_kind = (v.get("kind") or v.get("tone") or v.get("marker") or "neutral").lower()
         color = color_map.get(verdict_kind, COLOR_TEXT_WHITE)
-        label = (v.get("label") or "").upper()
-        body = (v.get("body") or "")
+        label = (v.get("label") or v.get("case") or "").upper()
+        body = (v.get("body") or v.get("verdict") or v.get("consequence") or "")
 
-        # Label (large color)
+        # Label (large color) — cap at 12 chars; 44pt at col_w ≈ 293px fits 9-10 chars cleanly
+        font_size_lbl = 44 if len(label) <= 9 else 36
         c.setFillColor(HexColor(color))
-        c.setFont(ctx.font_bold, 44)
-        c.drawString(x, H - 280, label[:8])
+        c.setFont(ctx.font_bold, font_size_lbl)
+        c.drawString(x, H - 280, label[:12])
         # Body wrapped
         body_lines = wrap_simple(body, ctx.font_bold, 22, col_w)[:8]
         body_y = H - 340
@@ -1396,20 +1428,25 @@ def render_carousel(slides_json: dict[str, Any], out_pdf: str) -> int:
                                or slides_json.get("brief", {}).get(
                                    "primary_regulation_code"))
 
-    c = canvas.Canvas(out_pdf, pagesize=(W, H))
-    for i, s in enumerate(slides):
-        is_inner = (i > 0) and (i < n - 1)
-        ctx = RenderContext(
-            font_bold=font_bold,
-            font_reg=font_reg,
-            font_mono=font_mono,
-            slide_count=n,
-            is_inner=is_inner,
-            primary_regulation_code=primary_regulation_code,
-        )
-        render_slide(c, s, ctx)
-        c.showPage()
-    c.save()
+    tmp_dir = Path(tempfile.mkdtemp(prefix="wr2_"))
+    try:
+        c = canvas.Canvas(out_pdf, pagesize=(W, H))
+        for i, s in enumerate(slides):
+            is_inner = (i > 0) and (i < n - 1)
+            ctx = RenderContext(
+                font_bold=font_bold,
+                font_reg=font_reg,
+                font_mono=font_mono,
+                slide_count=n,
+                is_inner=is_inner,
+                primary_regulation_code=primary_regulation_code,
+                tmp_dir=tmp_dir,
+            )
+            render_slide(c, s, ctx)
+            c.showPage()
+        c.save()
+    finally:
+        shutil.rmtree(tmp_dir, ignore_errors=True)
     return n
 
 
