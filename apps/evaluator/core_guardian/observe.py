@@ -53,22 +53,22 @@ def run_pytest_failures() -> dict:
 def observe():
     """Run the observation cycle and save state."""
     logger.info("Starting observation cycle...")
-    
+
     ruff_state = run_ruff_check()
     pytest_state = run_pytest_failures()
-    
+
     state = {
         "timestamp": datetime.now().isoformat(),
         "ruff": ruff_state,
         "pytest": pytest_state,
         "status": "ready"
     }
-    
+
     STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-    
+
     with open(STATE_FILE, "w") as f:
         json.dump(state, f, indent=2)
-        
+
     logger.info(f"Observation complete. State saved to {STATE_FILE}")
 
 if __name__ == "__main__":
