@@ -13,6 +13,8 @@ subscribes to expected event types.
 """
 from __future__ import annotations
 
+import sys
+import types
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -33,6 +35,28 @@ def _reset_bridge_singleton():
     mod._bridge = None
     yield
     mod._bridge = None
+
+
+@pytest.fixture(autouse=True)
+def _mock_crm_cell():
+    """Stub crm_cell so dynamic `from crm_cell.hgt_publisher import StructuralPattern`
+    succeeds in unit tests where crm_cell is not installed.
+    """
+    crm_cell_mod = types.ModuleType("crm_cell")
+    hgt_publisher_mod = types.ModuleType("crm_cell.hgt_publisher")
+
+    class _FakeStructuralPattern:
+        def __init__(self, **kwargs):
+            for k, v in kwargs.items():
+                setattr(self, k, v)
+
+    hgt_publisher_mod.StructuralPattern = _FakeStructuralPattern
+    crm_cell_mod.hgt_publisher = hgt_publisher_mod
+    sys.modules["crm_cell"] = crm_cell_mod
+    sys.modules["crm_cell.hgt_publisher"] = hgt_publisher_mod
+    yield
+    sys.modules.pop("crm_cell", None)
+    sys.modules.pop("crm_cell.hgt_publisher", None)
 
 
 @pytest.fixture
