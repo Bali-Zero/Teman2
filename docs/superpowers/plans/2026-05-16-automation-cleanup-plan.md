@@ -16,6 +16,7 @@ rollback_strategy: per-intervention, see each section
 Snapshot 2026-05-16 ha mappato 280 automazioni distinte. 21 BROKEN su Pro, 2 P1 BROKEN su Mini, 1 SEC regression Mini, 1 SPOF EventBus→Organism, ridondanze cross-surface. Piano qui sotto risolve nell'ordine di rischio decrescente, con verifiche oggettive a ogni step.
 
 **Principi di esecuzione**:
+
 1. **Snapshot prima di toccare**: `tar` dei plist coinvolti in `~/.automation-cleanup-2026-05-16/backup/` prima di ogni modifica.
 2. **Una modifica per commit**: NO mega-PR. Atomicità per facilità rollback.
 3. **Verify-not-trust**: dopo ogni `launchctl bootout`/`bootstrap`, verificare `launchctl list | grep <label>` + `tail -50` del log nel minuto successivo.
@@ -23,6 +24,7 @@ Snapshot 2026-05-16 ha mappato 280 automazioni distinte. 21 BROKEN su Pro, 2 P1 
 5. **Rollback inline**: ogni intervento documenta il comando di rollback.
 
 **Pre-flight**:
+
 ```bash
 # 0.1 Snapshot LaunchAgents Pro + Mini
 mkdir -p ~/.automation-cleanup-2026-05-16/backup/{pro-launchagents,mini-launchagents}
@@ -50,6 +52,7 @@ git log -1 --oneline  # baseline commit
 **Trauma**: Mode 0644 con 3× `CLAUDE_CODE_OAUTH_TOKEN_*` + `TELEGRAM_BOT_TOKEN` in `EnvironmentVariables`. Regressione cicatrix 2026-04-29 P0-3.
 
 **Azioni**:
+
 ```bash
 # Step 1: chmod restrictive
 ssh mini 'chmod 0400 ~/Library/LaunchAgents/com.matagaruda.sentinel.daily.plist'
@@ -63,10 +66,12 @@ chmod 0400 ~/.automation-cleanup-2026-05-16/exposed-secrets-mini.json
 ```
 
 **Rotazione (manuale, NON autonomous-ops)**:
+
 - `CLAUDE_CODE_OAUTH_TOKEN_*` (3 token): regenerate via `claude /login` slot 1+2 + agent-specific. Bisogna **Antonello-in-loop** perché OAuth browser flow.
 - `TELEGRAM_BOT_TOKEN`: rotation via @BotFather `/revoke` + new token. Aggiornare poi tutti i plist che lo referenziano (grep mostrerà ~15 plist).
 
 **Verifica**:
+
 ```bash
 ssh mini 'ls -la ~/Library/LaunchAgents/com.matagaruda.sentinel.daily.plist'  # expect 0400
 ssh mini 'launchctl print gui/501/com.matagaruda.sentinel.daily | head -30'  # service still loaded
@@ -99,6 +104,7 @@ Per ogni risultato non-vuoto: `chmod 0400` + log in audit file.
 **Trauma**: cicatrix 2026-05-13 dice "Production cron disabled 2026-05-13: kill switch + `launchctl bootout`". Plist `.disabled-2026-05-16-renderer-off` esiste su disco MA il plist attivo è ancora loaded con exit=1 `socket.gaierror`.
 
 **Verifica stato attuale**:
+
 ```bash
 launchctl list | grep wr2.canva-renderer  # se appare = ancora loaded
 ls ~/Library/LaunchAgents/com.balizero.wr2.canva-renderer*  # quanti file?
@@ -107,6 +113,7 @@ psql "$DATABASE_URL" -c "SELECT key,value FROM system_settings WHERE key='wr2_ca
 ```
 
 **Azioni**:
+
 ```bash
 # Step 1: kill switch (se non già false)
 psql "$DATABASE_URL" -c "UPDATE system_settings SET value='false' WHERE key='wr2_canva_renderer_enabled';"
@@ -124,6 +131,7 @@ tail -20 ~/Library/Logs/com.balizero.wr2.canva-renderer.log  # confirm no new en
 ```
 
 **Rollback**:
+
 ```bash
 mv ~/Library/LaunchAgents/.disabled-2026-05-16-cleanup/com.balizero.wr2.canva-renderer.plist ~/Library/LaunchAgents/
 launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.balizero.wr2.canva-renderer.plist
@@ -135,6 +143,7 @@ psql "$DATABASE_URL" -c "UPDATE system_settings SET value='true' WHERE key='wr2_
 **Trauma**: cicatrix family `Backend prod down 2026-04-29` (drive_poll_service AttributeError pattern: silent attribute-missing crash).
 
 **Investigazione** (READ-ONLY, no modifiche):
+
 ```bash
 # Step 1: log recente
 tail -100 ~/Library/Logs/com.cell.organism.{out,err} 2>/dev/null
@@ -214,6 +223,7 @@ launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.nuzantara.pg-organis
 ```
 
 **Verifica** (300s dopo):
+
 ```bash
 tail -20 ~/logs/pg-organism-bridge-watchdog.log  # expect "PID=NNNNN last=..." entries every 5 min
 ```
@@ -252,6 +262,7 @@ echo "0 13 17 5 * tail -20 ~/Library/Logs/com.{nuzantara,balizero,cell}.{wr2.sup
 **Fix proposto**: bind `0.0.0.0:8990` invece di specifico Tailscale IP, oppure aggiungere sleep-guard.
 
 **Azioni** (richiede SSH Mini):
+
 ```bash
 ssh mini 'cat ~/Library/LaunchAgents/com.matagaruda.kg-query-api.plist' > /tmp/kg-query-api.plist
 
@@ -264,6 +275,7 @@ ssh mini 'grep -r "100.93.236.6" ~/Desktop/nuzantara/apps/mata-garuda/ --include
 ```
 
 **Opzione B (fallback)**: launchd wrapper con sleep-guard:
+
 ```bash
 #!/bin/bash
 # wait for tailscaled ready
@@ -272,6 +284,7 @@ exec python3 -m mata_garuda.kg_query_api
 ```
 
 **Verifica**:
+
 ```bash
 ssh mini 'launchctl print gui/501/com.matagaruda.kg-query-api | grep "last exit code"'
 ssh mini 'tail -30 ~/Library/Logs/com.matagaruda.kg-query-api.err'
@@ -293,6 +306,7 @@ ssh mini 'cat ~/scripts/fly-pg-tunnel-wrapper.sh' > /tmp/fly-pg-tunnel-mini.sh
 ```
 
 **Verifica**:
+
 ```bash
 ssh mini 'tail -30 ~/Library/Logs/com.nuzantara.fly-pg-tunnel.err | grep "no such host" | wc -l'
 # expect 0 in last 5 min after fix
@@ -331,6 +345,7 @@ gh run view <run_id> --log-failed | head -100
 ```
 
 **Triage per workflow**:
+
 - `docs-guardian`: probabile docsync drift (scripts/docs_sync.py disallinea regen)
 - `docs-sync`: stesso albero
 - `restore-drill`: backup Tigris test — verifica `FLY_API_TOKEN` (cicatrix 2026-05-14)
@@ -347,6 +362,7 @@ Per ognuno: capire causa, fix mirato, riavviare workflow. Ogni fix in commit sep
 **Trauma**: 4 job stessa ora (nlm-nb1-refresh, garuda-indexer, db-nlm-sync, curiosity_loop) → spike I/O contemporaneo, contention OAuth quota, log entanglement.
 
 **Fix**:
+
 ```
 # Prima
 30 20 * * * /path/to/nlm-nb1-refresh.sh
@@ -362,6 +378,7 @@ Per ognuno: capire causa, fix mirato, riavviare workflow. Ogni fix in commit sep
 ```
 
 **Atto**:
+
 ```bash
 crontab -l > /tmp/crontab-pre-spread.txt
 # Edit manuale: sed -i sostituzioni
@@ -382,18 +399,19 @@ crontab -l | grep -E "(nlm-nb1-refresh|garuda-indexer|db-nlm-sync|curiosity_loop
 **Lista** (da `/tmp/automation-map-pro-launchagents.md` + `/tmp/automation-map-cron-actions.md` cross-ref):
 
 1. `com.nuzantara.pg-organism-bridge-watchdog` (creato F2.3)
-2-5. 4 agenti orphan (`client-case-quote-generator`, `email-template-builder`, `wr2-external-bench`, `wr2-image-prompt-author`) — se mantenuti, enroll. Se retired, F8.
-6-11. 6 watchdog/*observatory* non enrolled (lista da Pro launchd report `## Duplicates suspected`)
-12-16. 5 cron-agent-python (compliance-ops, oss-monitor, intel-radar-daily-digest + 2 altri)
+   2-5. 4 agenti orphan (`client-case-quote-generator`, `email-template-builder`, `wr2-external-bench`, `wr2-image-prompt-author`) — se mantenuti, enroll. Se retired, F8.
+   6-11. 6 watchdog/_observatory_ non enrolled (lista da Pro launchd report `## Duplicates suspected`)
+   12-16. 5 cron-agent-python (compliance-ops, oss-monitor, intel-radar-daily-digest + 2 altri)
 
 **Atto**: edit YAML, una sezione per organ:
+
 ```yaml
 - id: <component>.<subcomponent>
   description: <one-liner>
-  runtime: pro_launchd  # or mini_launchd | fly_machine
+  runtime: pro_launchd # or mini_launchd | fly_machine
   schedule: <cron or interval>
-  severity_on_silence: warn  # or critical | none
-  emit_channels: []  # PG channels this organ publishes to (empty if leaf consumer)
+  severity_on_silence: warn # or critical | none
+  emit_channels: [] # PG channels this organ publishes to (empty if leaf consumer)
   consume_channels: []
   owner: zero
   test: <test path or "manual">
@@ -404,11 +422,13 @@ crontab -l | grep -E "(nlm-nb1-refresh|garuda-indexer|db-nlm-sync|curiosity_loop
 ### F6.2 — Symbiosis L3 hardening
 
 **6 producers Redis pub/sub non-compliant**:
+
 - kg_cache invalidation
 - ConfirmationService
 - WebSocket fan-out
 
 **Decision tree**:
+
 - Se downstream consumer accetta perdita eventi (es. UI cache invalidation è OK riloadare manualmente): documentare eccezione in `SYMBIOSIS.md` come "grandfathered, no durability needed: cache-only" + commento inline.
 - Se downstream consumer NON tollera perdita: migrazione a `events_outbox` + `pg_notify` con replay. Lavoro più sostanziale (~2h).
 
@@ -419,6 +439,7 @@ crontab -l | grep -E "(nlm-nb1-refresh|garuda-indexer|db-nlm-sync|curiosity_loop
 **Trauma**: producer attivo (mig 146), 0 consumers cablati. Eventi accumulano in `events_outbox` senza ack.
 
 **Decisione richiesta** (Antonello):
+
 - Opzione A: cablare consumer in `apps/backend-rag/backend/services/events/handlers/_core.py` (registra handler)
 - Opzione B: ritirare producer (drop trigger mig 146 con nuova migration)
 
@@ -430,14 +451,15 @@ crontab -l | grep -E "(nlm-nb1-refresh|garuda-indexer|db-nlm-sync|curiosity_loop
 
 **Decisione canonica per ciascuno**:
 
-| Job | Pro crontab | GH Actions | Decision raccomandata |
-|---|---|---|---|
-| `fly-watcher` | active | active | **GH Actions canonico** (CI/HA, no host dipendenza) → spegnere crontab Pro |
-| `fly-cost-alert` | active | active | idem |
-| `sentry-quota` | active | active | idem |
-| `fly-restart-detector` | active | active | **Pro crontab canonico** (cicatrix 2026-04-29 dice deve girare su host con accesso fly logs, GH Actions può perdere context) → spegnere GH workflow |
+| Job                    | Pro crontab | GH Actions | Decision raccomandata                                                                                                                               |
+| ---------------------- | ----------- | ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `fly-watcher`          | active      | active     | **GH Actions canonico** (CI/HA, no host dipendenza) → spegnere crontab Pro                                                                          |
+| `fly-cost-alert`       | active      | active     | idem                                                                                                                                                |
+| `sentry-quota`         | active      | active     | idem                                                                                                                                                |
+| `fly-restart-detector` | active      | active     | **Pro crontab canonico** (cicatrix 2026-04-29 dice deve girare su host con accesso fly logs, GH Actions può perdere context) → spegnere GH workflow |
 
 **Atto**:
+
 ```bash
 # 3 disable Pro crontab:
 crontab -l | sed '/fly-watcher\|fly-cost-alert\|sentry-quota/s/^/# DISABLED 2026-05-16 (GH canonical) /' | crontab -
@@ -455,6 +477,7 @@ gh workflow disable fly-restart-detector.yml
 ### F8.1 — Decisione `matagaruda.sentinel` Pro hourly vs Mini daily
 
 **Opzioni**:
+
 - A. **Pro-only hourly**: copre già daily (24× il volume). Spegni Mini daily.
 - B. **Split scope**: Mini=digest giornaliero (aggregato), Pro=alert orario (real-time).
 
@@ -470,12 +493,12 @@ gh workflow disable fly-restart-detector.yml
 
 ### F8.3 — 4 agenti orphan
 
-| Agent | Decisione raccomandata |
-|---|---|
-| `client-case-quote-generator` | Wire-in: ha use case ("quote case for [client]") chiaro — propose to Antonello |
-| `email-template-builder` | Wire-in: utile per Brevo template generation |
-| `wr2-external-bench` | Wire-in cron mensile (1st Monday) — già spec'd nel system prompt agent |
-| `wr2-image-prompt-author` | Wire-in pipeline WR2 Step 4.5 (tra storyboarder e layout-composer) — spec dice "Used by wr2-design-architect" ma non chiamato |
+| Agent                         | Decisione raccomandata                                                                                                        |
+| ----------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `client-case-quote-generator` | Wire-in: ha use case ("quote case for [client]") chiaro — propose to Antonello                                                |
+| `email-template-builder`      | Wire-in: utile per Brevo template generation                                                                                  |
+| `wr2-external-bench`          | Wire-in cron mensile (1st Monday) — già spec'd nel system prompt agent                                                        |
+| `wr2-image-prompt-author`     | Wire-in pipeline WR2 Step 4.5 (tra storyboarder e layout-composer) — spec dice "Used by wr2-design-architect" ma non chiamato |
 
 Per ciascuno: invocazione test, verificare output, decidere keep+enroll vs retire.
 
@@ -547,15 +570,15 @@ F9 (verify) ── tutto, dopo
 
 ## Rischi e mitigation
 
-| Rischio | Probabilità | Impatto | Mitigation |
-|---|---|---|---|
-| Telegram alarm storm durante cleanup | Media | Basso | F0.3 disable dispatcher, F9.4 re-enable |
-| Rotazione token rompe altri servizi | Media | Alto | F1 ordina rotation prima di chmod, Antonello-in-loop |
-| `cell.organism` fix richiede deploy Fly | Media | Medio | F2.2 investigation-only, no deploy in questa wave |
-| `kg-query-api` bind 0.0.0.0 espone porta | Bassa | Medio | Verifica firewall Mini, IP locked to Tailscale subnet |
-| pg-proxy cluster NON self-heals dopo 24h | Bassa | Medio | F3.1 decision gate, triage individuale se needed |
-| Spread crontab rompe upstream timing dependency | Bassa | Basso | F5 mantiene tutti a 20:30-20:39 UTC window |
-| Workflow GH re-fail dopo fix | Media | Basso | F4.3 triage individuale, ogni fix in PR separata |
+| Rischio                                         | Probabilità | Impatto | Mitigation                                            |
+| ----------------------------------------------- | ----------- | ------- | ----------------------------------------------------- |
+| Telegram alarm storm durante cleanup            | Media       | Basso   | F0.3 disable dispatcher, F9.4 re-enable               |
+| Rotazione token rompe altri servizi             | Media       | Alto    | F1 ordina rotation prima di chmod, Antonello-in-loop  |
+| `cell.organism` fix richiede deploy Fly         | Media       | Medio   | F2.2 investigation-only, no deploy in questa wave     |
+| `kg-query-api` bind 0.0.0.0 espone porta        | Bassa       | Medio   | Verifica firewall Mini, IP locked to Tailscale subnet |
+| pg-proxy cluster NON self-heals dopo 24h        | Bassa       | Medio   | F3.1 decision gate, triage individuale se needed      |
+| Spread crontab rompe upstream timing dependency | Bassa       | Basso   | F5 mantiene tutti a 20:30-20:39 UTC window            |
+| Workflow GH re-fail dopo fix                    | Media       | Basso   | F4.3 triage individuale, ogni fix in PR separata      |
 
 ## Out of scope (esplicito)
 
@@ -570,6 +593,7 @@ F9 (verify) ── tutto, dopo
 Questo piano **richiede approval Antonello** prima esecuzione (autonomous-ops L2 non copre rotation token o modifiche estese organs_registry).
 
 Prossimo step: **review 4-LLM panel** (Gemini + Codex + DeepSeek + NotebookLM NB-1) per:
+
 1. Killer flaw detection
 2. Ordine fasi (potrebbe esserci dipendenza che ho mancato)
 3. Verifica che cicatrix-scars siano correttamente referenziati

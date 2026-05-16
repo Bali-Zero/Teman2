@@ -1,14 +1,23 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { UI } from '@/constants';
-import { Send, ImageIcon, Plus, Loader2, Upload, Camera, Mic, X } from 'lucide-react';
-import { ChatRecordingOverlay } from './ChatRecordingOverlay';
-import { motion, AnimatePresence } from 'framer-motion';
-import Image from 'next/image';
-import { AttachedImage } from '@/hooks/useChatInput';
-import { AutoResizeTextarea } from '@/components/ui/auto-resize-textarea';
+import { useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { UI } from "@/constants";
+import {
+  Send,
+  ImageIcon,
+  Plus,
+  Loader2,
+  Upload,
+  Camera,
+  Mic,
+  X,
+} from "lucide-react";
+import { ChatRecordingOverlay } from "./ChatRecordingOverlay";
+import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
+import { AttachedImage } from "@/hooks/useChatInput";
+import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 
 export interface ChatInputBarProps {
   input: string;
@@ -57,18 +66,21 @@ export function ChatInputBar({
   useEffect(() => {
     if (!showAttachMenu) return;
     const handleClickOutside = (e: MouseEvent) => {
-      if (attachMenuRef.current && !attachMenuRef.current.contains(e.target as Node)) {
+      if (
+        attachMenuRef.current &&
+        !attachMenuRef.current.contains(e.target as Node)
+      ) {
         setShowAttachMenu(false);
       }
     };
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setShowAttachMenu(false);
+      if (e.key === "Escape") setShowAttachMenu(false);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    document.addEventListener('keydown', handleEscape);
+    document.addEventListener("mousedown", handleClickOutside);
+    document.addEventListener("keydown", handleEscape);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleEscape);
+      document.removeEventListener("mousedown", handleClickOutside);
+      document.removeEventListener("keydown", handleEscape);
     };
   }, [showAttachMenu, setShowAttachMenu, attachMenuRef]);
 
@@ -83,7 +95,7 @@ export function ChatInputBar({
     }
   };
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       if (showImagePrompt) {
         onImageGenerate();
@@ -175,18 +187,23 @@ export function ChatInputBar({
               size="sm"
               className={`h-7 w-7 p-0 rounded-full transition-all duration-200 focus-ring ${
                 isRecording
-                  ? 'bg-red-500 text-white hover:bg-red-600 animate-pulse scale-110'
-                  : 'text-zinc-600 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]'
+                  ? "bg-red-500 text-white hover:bg-red-600 animate-pulse scale-110"
+                  : "text-zinc-600 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]"
               }`}
               onClick={handleMicClick}
-              title={isRecording ? 'Stop Recording' : 'Start Recording'}
-              aria-label={isRecording ? 'Stop Recording' : 'Start Recording'}
+              title={isRecording ? "Stop Recording" : "Start Recording"}
+              aria-label={isRecording ? "Stop Recording" : "Start Recording"}
             >
-              <Mic className={`w-3.5 h-3.5 ${isRecording ? 'animate-bounce' : ''}`} />
+              <Mic
+                className={`w-3.5 h-3.5 ${isRecording ? "animate-bounce" : ""}`}
+              />
             </Button>
 
             {/* Recording Overlay */}
-            <ChatRecordingOverlay isRecording={isRecording} recordingTime={recordingTime} />
+            <ChatRecordingOverlay
+              isRecording={isRecording}
+              recordingTime={recordingTime}
+            />
 
             <Button
               variant="ghost"
@@ -207,7 +224,7 @@ export function ChatInputBar({
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowAttachMenu(!showAttachMenu)}
-                className={`rounded-xl focus-ring ${showAttachMenu ? 'text-[var(--accent)] bg-[var(--accent)]/10' : ''}`}
+                className={`rounded-xl focus-ring ${showAttachMenu ? "text-[var(--accent)] bg-[var(--accent)]/10" : ""}`}
                 aria-label="Attach file"
                 aria-haspopup="true"
                 aria-expanded={showAttachMenu}
@@ -254,8 +271,14 @@ export function ChatInputBar({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
-              placeholder={showImagePrompt ? 'Describe your image...' : 'Type your message...'}
-              aria-label={showImagePrompt ? 'Describe your image' : 'Type your message'}
+              placeholder={
+                showImagePrompt
+                  ? "Describe your image..."
+                  : "Type your message..."
+              }
+              aria-label={
+                showImagePrompt ? "Describe your image" : "Type your message"
+              }
               disabled={isLoading}
               rows={1}
               className="flex-1 border-0 bg-transparent focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:outline-none focus-visible:ring-offset-0 min-h-[40px] py-2 px-3 text-sm text-[#D8D6D0] placeholder:text-zinc-500 font-medium outline-none ring-0"
@@ -267,7 +290,11 @@ export function ChatInputBar({
               size="icon"
               className="rounded-full flex-shrink-0 w-10 h-10 glow-button border-0 focus-ring"
               aria-label={
-                isLoading ? 'Sending...' : showImagePrompt ? 'Generate image' : 'Send message'
+                isLoading
+                  ? "Sending..."
+                  : showImagePrompt
+                    ? "Generate image"
+                    : "Send message"
               }
             >
               {isLoading ? (

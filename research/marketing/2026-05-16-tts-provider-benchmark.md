@@ -20,27 +20,27 @@ Trovare alternative a ElevenLabs come TTS / voice-cloning provider per la voce "
 
 ## Comparative table — pricing per 1M caratteri (cloud) o licensing (open source)
 
-| Provider | API pricing /1M char | Voice cloning | Indonesian-English | Self-host | Quality signal |
-|---|---|---|---|---|---|
-| **ElevenLabs** v2 Multilingual | **$165–300** (Pro $99/mo → $0.165; PAYG $0.30) | Instant from Starter $6, Pro PVC from Creator $22 | Native Indonesian voice library + cloning preserves source accent | No | MOS 4.3 (highest commercial, reference) |
-| **ElevenLabs** v3 | $100 (launch promo) → $206 standard | Same as v2 | 70+ langs, audio tags | No | Best emotion, NOT realtime, alpha→GA Q1 2026 |
-| **ElevenLabs** Flash v2.5 | $66–103 | Instant only | 32 langs | No | MOS slightly below v2, but realtime |
-| **Cartesia Sonic-3** | ~$50 (15 cr/sec; $4/mo Pro tier instant clone) | Instant $4/mo; Pro clone $39/mo | "Multilingual" — Indonesian non confirmed in docs | No | TTFA 90ms, MOS ≈ ElevenLabs, top-3 Artificial Analysis |
-| **Hume Octave 2** | **$50 ($0.05/1K Business tier) – $76 ($7.60/1M cited)** | None at tier listed; expression-control native | 11 langs + 20 more "coming"; Indonesian **NOT confirmed** | No | Emotion-best, 50% cheaper than Octave 1, <200ms |
-| **MiniMax Speech 2.5T/2.6/2.8** | **$40 ($0.04/1K)** | Instant from **5s** of audio, 40+ langs | **Indonesian explicitly listed** | No (cloud only) | Top-tier WER, native sound tags, Hailuo backed |
-| **Speechify SIMBA 3.0** | **$10** ($0.01/1K, PAYG) | Yes, included | 60+ langs incl. Indonesian | No | **Top-10 Artificial Analysis leaderboard** above Google/Azure/AWS/OpenAI/ElevenLabs at fraction of cost |
-| **Inworld Realtime TTS 1.5/2** | $15 (Mini) / $25 (Max) / $35 (Pro tier) | From 15s of audio | Multilingual — Indonesian unverified | No | **Realtime TTS 1.5 Max = #1 Artificial Analysis Elo 1208** |
-| **OpenAI gpt-4o-mini-tts** | **$15** ($0.015/min audio) | None (13 fixed voices) | English-only voice library | No | Steerable via prompt, slightly robotic |
-| **PlayHT** (PlayDialog/Play 3.0) | $22–66 (subscription-derived) | Instant from 30s | Indonesian + 142 langs | No | Mid-tier MOS; conversation-tuned |
-| **Resemble AI** | $7.94 ($0.006/sec ≈ $0.36/min) | Included; enterprise watermarks | Multilingual, Indonesian via cloning | Yes (Chatterbox OSS) | Enterprise-compliance leader (perceptual hashing) |
-| **Azure Neural HD** | $91.75 (HD) / $14.11 (Standard) / $24 (Custom Neural Voice trained) | Custom Neural Voice (trained, slow) | 140+ langs incl. Indonesian | No | Enterprise-grade, slower iteration |
-| **Google Chirp 3 HD** | $30 | None on Chirp 3 HD | Multilingual; Indonesian on legacy WaveNet | No | "30 distinct styles", AudioML disfluencies |
-| **Amazon Polly Generative** | $30 | None | English-only on Generative tier | No | LLM-based, no streaming |
-| **WellSaid Labs** | ~$66 (Maker plan derivative) | Studio-trained (consent-strict) | English narration focus | No | Top consent posture, mid-tier accent range |
-| **Coqui XTTS-v2** (legacy OSS) | **$0** self-host | Zero-shot 10–20s | 16 langs incl. Indonesian | **Yes** (16GB+ GPU) | 94% of ElevenLabs quality; accent bleed from reference; archived 2024, fork at idiap |
-| **Fish Speech V1.5 / Audio S2** | **$0** self-host (V1.5) | Built-in zero-shot | 80+ langs (S2), Indonesian on cloud | **Yes** (V1.5) | TTS Arena Elo 1339; S2: WER 0.99% EN |
-| **Chatterbox / Chatterbox Multilingual** (Resemble OSS MIT) | **$0** self-host | Zero-shot 7–20s, emotion-exag control | 23+ langs incl. Indonesian | **Yes** (~350M params, fits Pro 48GB) | **63.75% blind preference vs ElevenLabs** (Dec 2025 evals) |
-| **Suno Bark / MaskGCT / Style-Bert-VITS2 / MeloTTS** | $0 self-host | Variable | Mostly EN/CN/JP-focused | Yes | Bark generative but glitchy; MaskGCT competitive; others narrow lang scope |
+| Provider                                                    | API pricing /1M char                                                | Voice cloning                                     | Indonesian-English                                                | Self-host                             | Quality signal                                                                                          |
+| ----------------------------------------------------------- | ------------------------------------------------------------------- | ------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| **ElevenLabs** v2 Multilingual                              | **$165–300** (Pro $99/mo → $0.165; PAYG $0.30)                      | Instant from Starter $6, Pro PVC from Creator $22 | Native Indonesian voice library + cloning preserves source accent | No                                    | MOS 4.3 (highest commercial, reference)                                                                 |
+| **ElevenLabs** v3                                           | $100 (launch promo) → $206 standard                                 | Same as v2                                        | 70+ langs, audio tags                                             | No                                    | Best emotion, NOT realtime, alpha→GA Q1 2026                                                            |
+| **ElevenLabs** Flash v2.5                                   | $66–103                                                             | Instant only                                      | 32 langs                                                          | No                                    | MOS slightly below v2, but realtime                                                                     |
+| **Cartesia Sonic-3**                                        | ~$50 (15 cr/sec; $4/mo Pro tier instant clone)                      | Instant $4/mo; Pro clone $39/mo                   | "Multilingual" — Indonesian non confirmed in docs                 | No                                    | TTFA 90ms, MOS ≈ ElevenLabs, top-3 Artificial Analysis                                                  |
+| **Hume Octave 2**                                           | **$50 ($0.05/1K Business tier) – $76 ($7.60/1M cited)**             | None at tier listed; expression-control native    | 11 langs + 20 more "coming"; Indonesian **NOT confirmed**         | No                                    | Emotion-best, 50% cheaper than Octave 1, <200ms                                                         |
+| **MiniMax Speech 2.5T/2.6/2.8**                             | **$40 ($0.04/1K)**                                                  | Instant from **5s** of audio, 40+ langs           | **Indonesian explicitly listed**                                  | No (cloud only)                       | Top-tier WER, native sound tags, Hailuo backed                                                          |
+| **Speechify SIMBA 3.0**                                     | **$10** ($0.01/1K, PAYG)                                            | Yes, included                                     | 60+ langs incl. Indonesian                                        | No                                    | **Top-10 Artificial Analysis leaderboard** above Google/Azure/AWS/OpenAI/ElevenLabs at fraction of cost |
+| **Inworld Realtime TTS 1.5/2**                              | $15 (Mini) / $25 (Max) / $35 (Pro tier)                             | From 15s of audio                                 | Multilingual — Indonesian unverified                              | No                                    | **Realtime TTS 1.5 Max = #1 Artificial Analysis Elo 1208**                                              |
+| **OpenAI gpt-4o-mini-tts**                                  | **$15** ($0.015/min audio)                                          | None (13 fixed voices)                            | English-only voice library                                        | No                                    | Steerable via prompt, slightly robotic                                                                  |
+| **PlayHT** (PlayDialog/Play 3.0)                            | $22–66 (subscription-derived)                                       | Instant from 30s                                  | Indonesian + 142 langs                                            | No                                    | Mid-tier MOS; conversation-tuned                                                                        |
+| **Resemble AI**                                             | $7.94 ($0.006/sec ≈ $0.36/min)                                      | Included; enterprise watermarks                   | Multilingual, Indonesian via cloning                              | Yes (Chatterbox OSS)                  | Enterprise-compliance leader (perceptual hashing)                                                       |
+| **Azure Neural HD**                                         | $91.75 (HD) / $14.11 (Standard) / $24 (Custom Neural Voice trained) | Custom Neural Voice (trained, slow)               | 140+ langs incl. Indonesian                                       | No                                    | Enterprise-grade, slower iteration                                                                      |
+| **Google Chirp 3 HD**                                       | $30                                                                 | None on Chirp 3 HD                                | Multilingual; Indonesian on legacy WaveNet                        | No                                    | "30 distinct styles", AudioML disfluencies                                                              |
+| **Amazon Polly Generative**                                 | $30                                                                 | None                                              | English-only on Generative tier                                   | No                                    | LLM-based, no streaming                                                                                 |
+| **WellSaid Labs**                                           | ~$66 (Maker plan derivative)                                        | Studio-trained (consent-strict)                   | English narration focus                                           | No                                    | Top consent posture, mid-tier accent range                                                              |
+| **Coqui XTTS-v2** (legacy OSS)                              | **$0** self-host                                                    | Zero-shot 10–20s                                  | 16 langs incl. Indonesian                                         | **Yes** (16GB+ GPU)                   | 94% of ElevenLabs quality; accent bleed from reference; archived 2024, fork at idiap                    |
+| **Fish Speech V1.5 / Audio S2**                             | **$0** self-host (V1.5)                                             | Built-in zero-shot                                | 80+ langs (S2), Indonesian on cloud                               | **Yes** (V1.5)                        | TTS Arena Elo 1339; S2: WER 0.99% EN                                                                    |
+| **Chatterbox / Chatterbox Multilingual** (Resemble OSS MIT) | **$0** self-host                                                    | Zero-shot 7–20s, emotion-exag control             | 23+ langs incl. Indonesian                                        | **Yes** (~350M params, fits Pro 48GB) | **63.75% blind preference vs ElevenLabs** (Dec 2025 evals)                                              |
+| **Suno Bark / MaskGCT / Style-Bert-VITS2 / MeloTTS**        | $0 self-host                                                        | Variable                                          | Mostly EN/CN/JP-focused                                           | Yes                                   | Bark generative but glitchy; MaskGCT competitive; others narrow lang scope                              |
 
 > Note pricing methodology: API per-1M figures derived from PAYG when published; subscription-derived figures (ElevenLabs Pro $99 / 600K credits = $165/1M; Play.ht Unlimited $99 / 2.5M cap = $40/1M effective) flagged as such. ElevenLabs cited overage rate $300/1M (Awesome Agents) suggests heavy penalty over plan quota — **MUST size plan correctly or get burned**.
 
@@ -81,6 +81,7 @@ Trovare alternative a ElevenLabs come TTS / voice-cloning provider per la voce "
 ### Self-hosted options (Ollama-style local on Pro/Mini)
 
 Pro M4 48GB easily runs:
+
 - **Chatterbox Multilingual** (~350M params, ~3–5GB VRAM): primary recommendation.
 - **Fish Speech V1.5** (DualAR transformer, ~7B-ish): second seat, especially if Chatterbox Indonesian disappoints.
 - **Coqui XTTS-v2 fork (idiap/coqui-ai-TTS)**: fallback only, accent bleed risk.
@@ -92,6 +93,7 @@ Mini M4 24GB: same models feasible at slower latency; suitable for batch overnig
 ElevenLabs' early-2025 Terms of Service controversy ("perpetual, irrevocable, royalty-free, worldwide license" to user voice recordings) caused Kukarella to publicly terminate partnership. Even post-walkback, ElevenLabs + Speechify + PlayHT + Lovo are flagged by Consumer Reports (Mar 2025) as having only checkbox-level consent attestation. **Resemble AI is the documented enterprise-compliance leader** — perceptual hashing watermarks embedded at synthesis time. **Cartesia** is developer-focused, terms moderate. **Self-hosted (Chatterbox/Fish/Coqui)** is the only path with zero data-leakage risk — audio never leaves Pro.
 
 For Zantara voice talent (whoever records the 45–75s reference WAV): require signed consent specifying (a) Bali Zero PT exclusive use, (b) editorial video distribution only, (c) no training on third-party model, (d) revocation right with 30-day notice. Template by tier:
+
 - MiniMax / Cartesia / Speechify: rely on platform ToS + signed consent for talent's protection.
 - Chatterbox/Fish self-host: stronger guarantee (no platform), but still need talent consent for ethical and Indonesian UU 27/2022 (PDP) compliance.
 
@@ -99,14 +101,14 @@ For Zantara voice talent (whoever records the 45–75s reference WAV): require s
 
 Assumptions: 18-week editorial cadence (per `2026-05-13-video-format-evergreen-b2b-services.md`), 40–55 published videos, avg 90s voice-over per video → ~22 min audio/week → ~33,000 char/week → ~140K char/month → **~1.7M char/year** of TTS inference.
 
-| Provider | Annual cost @ 1.7M char | vs. ElevenLabs Pro ($99/mo = $1,188/yr if absorbed in plan) |
-|---|---|---|
-| MiniMax Speech 2.8 | **$68/yr** (1.7M × $0.04/1K) | 17× cheaper |
-| Cartesia Pro tier | **$48/yr** (12× $4/mo, 1.2M credits/yr in plan + ~500K overage) | 25× cheaper than ElevenLabs PAYG; same order as plan |
-| Speechify SIMBA | **$17/yr** | 70× cheaper |
-| Chatterbox self-host | **$0/yr marginal** (Pro M4 already runs Ollama) | infinity-× cheaper |
-| ElevenLabs Pro plan | $1,188/yr if 1.7M fits in 7.2M credits (12mo × 600K) | reference |
-| ElevenLabs PAYG | $510/yr at $0.30/1K | reference |
+| Provider             | Annual cost @ 1.7M char                                         | vs. ElevenLabs Pro ($99/mo = $1,188/yr if absorbed in plan) |
+| -------------------- | --------------------------------------------------------------- | ----------------------------------------------------------- |
+| MiniMax Speech 2.8   | **$68/yr** (1.7M × $0.04/1K)                                    | 17× cheaper                                                 |
+| Cartesia Pro tier    | **$48/yr** (12× $4/mo, 1.2M credits/yr in plan + ~500K overage) | 25× cheaper than ElevenLabs PAYG; same order as plan        |
+| Speechify SIMBA      | **$17/yr**                                                      | 70× cheaper                                                 |
+| Chatterbox self-host | **$0/yr marginal** (Pro M4 already runs Ollama)                 | infinity-× cheaper                                          |
+| ElevenLabs Pro plan  | $1,188/yr if 1.7M fits in 7.2M credits (12mo × 600K)            | reference                                                   |
+| ElevenLabs PAYG      | $510/yr at $0.30/1K                                             | reference                                                   |
 
 **Switching savings:** if pilot confirms MiniMax + Chatterbox quality, annual TTS spend drops from ~$1,200 (ElevenLabs Pro) to **<$100** (MiniMax cloud) or **$0** (Chatterbox self-host). Reinvest into Veo 3.1 video credits or designer time.
 

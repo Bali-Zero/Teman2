@@ -70,6 +70,7 @@ ogImage: "/static/insights/tax/ppn-12-percent.jpg"
 twitterCard: "summary_large_image"
 locale: "it"
 ---
+
 import {
   Calculator,
   Checklist,
@@ -85,7 +86,11 @@ import { ArticleClusterCTA } from "@/components/blog/ArticleClusterCTA";
 L'aliquota PPN dell'Indonesia è ora del 12%, con decorrenza dal 1° gennaio 2026 — il secondo e ultimo passaggio previsto dalla UU HPP. Se la tua azienda addebita l'IVA o acquisti beni e servizi imponibili in Indonesia, questo cambiamento influisce sulla tua determinazione dei prezzi, sulla fatturazione e sugli obblighi di conformità mensili. Questo articolo spiega esattamente cosa è cambiato, chi paga di più, cosa rimane esente e cosa è necessario aggiornare nella configurazione del tuo e-Faktur. Per il quadro completo sulla conformità PPN, consulta la nostra [guida ai pilastri PPN/VAT](/tax/vat-ppn-guide).
 
 <KeyTakeaway>
-  **TL;DR:** - PPN aumentato al 12% a partire dal 1° gennaio 2026 ai sensi della UU HPP — rispetto all'11% dal aprile 2022 - Si applica alla maggior parte dei beni e servizi imponibili; alimenti di base, sanità, istruzione e servizi finanziari rimangono esenti - Le PT PMA e tutte le aziende registrate come PKP devono aggiornare immediatamente le impostazioni dell'aliquota e-Faktur
+  **TL;DR:** - PPN aumentato al 12% a partire dal 1° gennaio 2026 ai sensi della
+  UU HPP — rispetto all'11% dal aprile 2022 - Si applica alla maggior parte dei
+  beni e servizi imponibili; alimenti di base, sanità, istruzione e servizi
+  finanziari rimangono esenti - Le PT PMA e tutte le aziende registrate come PKP
+  devono aggiornare immediatamente le impostazioni dell'aliquota e-Faktur
 </KeyTakeaway>
 
 <HeaderWhatsAppCTA />
@@ -96,14 +101,14 @@ L'aliquota PPN dell'Indonesia è ora del 12%, con decorrenza dal 1° gennaio 202
 
 L'aumento dall'11% al 12% è il secondo di due passaggi legislati nell'ambito della UU HPP (Legge n. 7 del 2021 sull'Armonizzazione delle Normative Fiscali). Il primo passaggio ha portato l'aliquota dal 10% all'11% nell'aprile 2022. L'aliquota del 12% è in vigore dal 1° gennaio 2026.
 
-| Voce                                | Precedente            | Attuale             |
-| ---------------------------------- | -------------------- | ------------------ |
-| Aliquota PPN standard             | 11%                  | **1%**             |
-| Data di decorrenza della modifica  | 1 aprile 2022        | **1 gennaio 2026**  |
-| Base legale                        | UU HPP Art. 7(1)(a)  | UU HPP Art. 7(1)(b) |
-| Beni di lusso (beni con soglia PPnBM) | 11%                  | **12%**             |
-| Esportazioni a zero aliquota       | 0%                   | 0% (invariata)      |
-| Beni e servizi esenti             | Esenti                | Esenti (invariata)  |
+| Voce                                  | Precedente          | Attuale             |
+| ------------------------------------- | ------------------- | ------------------- |
+| Aliquota PPN standard                 | 11%                 | **1%**              |
+| Data di decorrenza della modifica     | 1 aprile 2022       | **1 gennaio 2026**  |
+| Base legale                           | UU HPP Art. 7(1)(a) | UU HPP Art. 7(1)(b) |
+| Beni di lusso (beni con soglia PPnBM) | 11%                 | **12%**             |
+| Esportazioni a zero aliquota          | 0%                  | 0% (invariata)      |
+| Beni e servizi esenti                 | Esenti              | Esenti (invariata)  |
 
 Una sfumatura importante: il governo ha introdotto un meccanismo **DPP Nilai Lain** (base imponibile alternativa) per determinati beni e servizi. In base a questo meccanismo, la base imponibile è calcolata come (11/12) del valore della fattura, quindi l'onere PPN effettivo su tali transazioni risulta essere l'11% del prezzo — anche se l'aliquota nominale è il 12%. Questa è stata una scelta politica deliberata per attutire l'impatto sui consumatori. I beni di lusso, tuttavia, sono tassati all'aliquota piena del 12% senza alcuna regolazione DPP Nilai Lain.
 
@@ -233,7 +238,8 @@ Dove il DPP (Dasar Pengenaan Pajak) è la base imponibile — il prezzo prima de
       options: [
         {
           value: "standard",
-          label: "Standard (12% nominale / ~11% effettivo tramite DPP Nilai Lain)",
+          label:
+            "Standard (12% nominale / ~11% effettivo tramite DPP Nilai Lain)",
         },
         { value: "luxury", label: "Beni di lusso (aliquota piena 12%)" },
       ],
@@ -270,11 +276,11 @@ Dove il DPP (Dasar Pengenaan Pajak) è la base imponibile — il prezzo prima de
 
 Uno studio legale PT PMA emette una fattura di consulenza a un cliente aziendale. L'onorario concordato è di 50.000.000 IDR prima delle tasse.
 
-|                                 | Importo (IDR) |
-| ------------------------------- | ------------ |
-| DPP (onorario professionale)   | 50.000.000   |
-| PPN 12% nominale (effettivo 11%) | 5.500.000    |
-| Totale fattura                 | 55.500.000   |
+|                                  | Importo (IDR) |
+| -------------------------------- | ------------- |
+| DPP (onorario professionale)     | 50.000.000    |
+| PPN 12% nominale (effettivo 11%) | 5.500.000     |
+| Totale fattura                   | 55.500.000    |
 
 Il cliente paga 55.500.000 IDR. La PT PMA versa 5.500.000 IDR alla DJP tramite SPT Masa PPN entro la fine del mese successivo.
 
@@ -282,11 +288,11 @@ Il cliente paga 55.500.000 IDR. La PT PMA versa 5.500.000 IDR alla DJP tramite S
 
 Una società immobiliare affitta un negozio a un inquilino al dettaglio a 20.000.000 IDR/mese.
 
-|                                 | Importo (IDR) |
-| ------------------------------- | ------------ |
-| Affitto mensile (DPP)          | 20.000.000   |
-| PPN 12% nominale (effettivo 11%) | 2.200.000    |
-| Totale fattura mensile          | 22.200.000   |
+|                                  | Importo (IDR) |
+| -------------------------------- | ------------- |
+| Affitto mensile (DPP)            | 20.000.000    |
+| PPN 12% nominale (effettivo 11%) | 2.200.000     |
+| Totale fattura mensile           | 22.200.000    |
 
 L'inquilino paga 22.200.000 IDR. Il locatore (entità PKP) deve emettere un e-Faktur valido e presentare il PPN nella corrispondente SPT Masa PPN mensile. Le locazioni residenziali dello stesso proprietario sono escluse — solo le unità commerciali generano l'obbligo PPN.
 
