@@ -652,9 +652,8 @@ apps/war-room/
 # Per-app Jest/Vitest coverage outputs
 apps/admin-dashboard/coverage/
 packages/core/coverage/
-# SQLite write-ahead log + shared memory (runtime, regenerated)
-data/seo_cell/*.db-wal
-data/seo_cell/*.db-shm
+# seo_cell runtime data (SQLite DB + WAL + birth_date.txt — all local)
+data/seo_cell/
 
 # F1 baseline artifacts (large screenshots/JSON dumps)
 .artifacts/
