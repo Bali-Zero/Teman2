@@ -20,16 +20,16 @@ nb1_status: SKIPPED — pattern bipolar verifier non applicabile (domanda è cod
 
 ## Empirical breakdown of `nexus:gaps` (live 2026-05-16)
 
-| (gap_type, attribute) | count | mappato in `_TRANSLATION` esistente? | dispatched a |
-|---|---:|---|---|
-| `missing_attribute / nip` | 1180 | ✅ | `gap.missing_nip` → lhkpn_harvester |
-| `missing_relation / officials_or_documents` | 886 | ❌ | DRAINED |
-| `stale_attribute / profile` | 885 | ✅ wildcard | `gap.stale_official` → regulation_watcher |
-| `missing_relation / procurement_link` | 580 | ❌ | DRAINED |
-| `missing_relation / WORKS_AT:Kanim Kelas I Khusus TPI Ngurah Rai` | 177 | ❌ | DRAINED |
-| `missing_attribute / lhkpn` | 177 | ✅ | `gap.missing_lhkpn` → lhkpn_harvester |
-| `missing_relation / officials_struktur` | 116 | ❌ (key in TRANSLATION ma per `missing_attribute`!) | DRAINED |
-| `missing_attribute / angkatan` | 58 | ✅ | `gap.missing_angkatan` → lhkpn_harvester |
+| (gap_type, attribute)                                             | count | mappato in `_TRANSLATION` esistente?                | dispatched a                              |
+| ----------------------------------------------------------------- | ----: | --------------------------------------------------- | ----------------------------------------- |
+| `missing_attribute / nip`                                         |  1180 | ✅                                                  | `gap.missing_nip` → lhkpn_harvester       |
+| `missing_relation / officials_or_documents`                       |   886 | ❌                                                  | DRAINED                                   |
+| `stale_attribute / profile`                                       |   885 | ✅ wildcard                                         | `gap.stale_official` → regulation_watcher |
+| `missing_relation / procurement_link`                             |   580 | ❌                                                  | DRAINED                                   |
+| `missing_relation / WORKS_AT:Kanim Kelas I Khusus TPI Ngurah Rai` |   177 | ❌                                                  | DRAINED                                   |
+| `missing_attribute / lhkpn`                                       |   177 | ✅                                                  | `gap.missing_lhkpn` → lhkpn_harvester     |
+| `missing_relation / officials_struktur`                           |   116 | ❌ (key in TRANSLATION ma per `missing_attribute`!) | DRAINED                                   |
+| `missing_attribute / angkatan`                                    |    58 | ✅                                                  | `gap.missing_angkatan` → lhkpn_harvester  |
 
 **Mappati**: 2300 (56.7%) — 1180 + 885 + 177 + 58
 **Drained "unmapped"**: 1759 (43.3%) — 886 + 580 + 177 + 116
@@ -38,18 +38,19 @@ nb1_status: SKIPPED — pattern bipolar verifier non applicabile (domanda è cod
 
 ## Convergent reasoning across 3 panelists
 
-| Criterio | DeepSeek | Gemini | Codex |
-|---|---|---|---|
-| Verdict | **C** | **C** | **C, rafforzando gap_legacy.py esistente** |
-| Law 4 graceful degradation | ✅ ACL isola, dead-letter su unknown | ✅ Schema firewall, dead-letter | ✅ Mappings noti continuano, valori nuovi → unmapped/DLQ |
-| Law 7 numeri prima | ✅ `translator.mappings.{found,unknown}` | ✅ `gaps.translated_successfully` + `gaps.unmapped_tuple` | ✅ `mapped_total{type,attr,to}` + `unmapped_total{type,attr}` + `drained_total` |
-| Future "stale_relation" / new attr | ✅ Single line addition | ✅ ACL catches at boundary | ✅ Aggiunge mapping o fallisce forte |
-| Loud failure 6mo | ✅ Translator alerts on unmapped | ✅ `UnmappedGapTranslationError` Sentry | ✅ Se unknown non ACK-drained in silenzio |
-| LHKPN feasibility | ✅ Translator emits exact `gap.missing_nip` | ✅ Agent contract preserved (zero internal change) | ✅ Ma A non basta — agent non sa demux phone/procurement |
+| Criterio                           | DeepSeek                                    | Gemini                                                    | Codex                                                                           |
+| ---------------------------------- | ------------------------------------------- | --------------------------------------------------------- | ------------------------------------------------------------------------------- |
+| Verdict                            | **C**                                       | **C**                                                     | **C, rafforzando gap_legacy.py esistente**                                      |
+| Law 4 graceful degradation         | ✅ ACL isola, dead-letter su unknown        | ✅ Schema firewall, dead-letter                           | ✅ Mappings noti continuano, valori nuovi → unmapped/DLQ                        |
+| Law 7 numeri prima                 | ✅ `translator.mappings.{found,unknown}`    | ✅ `gaps.translated_successfully` + `gaps.unmapped_tuple` | ✅ `mapped_total{type,attr,to}` + `unmapped_total{type,attr}` + `drained_total` |
+| Future "stale_relation" / new attr | ✅ Single line addition                     | ✅ ACL catches at boundary                                | ✅ Aggiunge mapping o fallisce forte                                            |
+| Loud failure 6mo                   | ✅ Translator alerts on unmapped            | ✅ `UnmappedGapTranslationError` Sentry                   | ✅ Se unknown non ACK-drained in silenzio                                       |
+| LHKPN feasibility                  | ✅ Translator emits exact `gap.missing_nip` | ✅ Agent contract preserved (zero internal change)        | ✅ Ma A non basta — agent non sa demux phone/procurement                        |
 
-**Twist Codex**: ha verificato direttamente il codice e ha visto che `gap_legacy.py:_TRANSLATION` esiste. La sua frase chiave: *"Raccomando C, ma usando/rafforzando l'adapter già esistente, non alias piatti in GAP_DISPATCH"*.
+**Twist Codex**: ha verificato direttamente il codice e ha visto che `gap_legacy.py:_TRANSLATION` esiste. La sua frase chiave: _"Raccomando C, ma usando/rafforzando l'adapter già esistente, non alias piatti in GAP_DISPATCH"_.
 
 **Punti minori divergenti**:
+
 - DeepSeek + Gemini hanno suggerito un nuovo file `gap_envelope_translator.py`
 - Codex ha visto che esiste già e propone di estenderlo
 - Codex ha distinto `procurement` vs `procurement_link` (attribute name drift OSINT→mata-garuda) e `phone`/`officials_or_documents` come gap senza agent target → DLQ esplicita
@@ -61,6 +62,7 @@ nb1_status: SKIPPED — pattern bipolar verifier non applicabile (domanda è cod
 File: `apps/mata-garuda/mata_garuda/workers/gap_legacy.py:54`
 
 Add 4 new mappings:
+
 ```python
 _TRANSLATION: dict[tuple[str, Optional[str]], str] = {
     # Existing (live)
@@ -105,12 +107,12 @@ Tipi come `missing_attribute / phone` non hanno agent designato (nessun `phone_h
 
 ## Effort + risk profile (totale)
 
-| Fix | Effort | Risk | Reversibilità | Autonomous? |
-|---|---|---|---|---|
-| C.1 estendere _TRANSLATION (4 entries) | 1h | LOW (additivo, no break) | Alta (revert 1 commit) | NO (tocca codice live mata-garuda — needs PR + 4-LLM spec already done) |
-| C.2 loud unmapped alert | 30min | LOW | Alta | NO (operator script + cron install) |
-| C.3 WORKS_AT prefix routing | 2-3h | MEDIUM (refactor `coerce_to_canonical`) | Media | NO (separate PR) |
-| C.4 DLQ esplicita | 1h | LOW | Alta | NO (separate PR) |
+| Fix                                     | Effort | Risk                                    | Reversibilità          | Autonomous?                                                             |
+| --------------------------------------- | ------ | --------------------------------------- | ---------------------- | ----------------------------------------------------------------------- |
+| C.1 estendere \_TRANSLATION (4 entries) | 1h     | LOW (additivo, no break)                | Alta (revert 1 commit) | NO (tocca codice live mata-garuda — needs PR + 4-LLM spec already done) |
+| C.2 loud unmapped alert                 | 30min  | LOW                                     | Alta                   | NO (operator script + cron install)                                     |
+| C.3 WORKS_AT prefix routing             | 2-3h   | MEDIUM (refactor `coerce_to_canonical`) | Media                  | NO (separate PR)                                                        |
+| C.4 DLQ esplicita                       | 1h     | LOW                                     | Alta                   | NO (separate PR)                                                        |
 
 **Sequenza raccomandata**: C.1 (sblocca 1759 entries immediatamente) → C.2 (previene future regression silente) → C.3+C.4 (consolidamento, non urgente).
 

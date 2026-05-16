@@ -21,17 +21,17 @@ Tutti i numeri verificati empiricamente in questa sessione (Pro, 2026-05-16). Ne
 
 ## TL;DR — semaforo per pilastro
 
-| Pilastro | Status | Numero chiave | Delta vs SYMBIOSIS §DOVE SIAMO |
-|---|---|---|---|
-| 1 Riflessione | 🟡 degradato | 1 reflection/day post 2026-05-08 (era 6-9/day) | Pilastro 1 si è "spento" silenziosamente |
+| Pilastro                 | Status          | Numero chiave                                                  | Delta vs SYMBIOSIS §DOVE SIAMO               |
+| ------------------------ | --------------- | -------------------------------------------------------------- | -------------------------------------------- |
+| 1 Riflessione            | 🟡 degradato    | 1 reflection/day post 2026-05-08 (era 6-9/day)                 | Pilastro 1 si è "spento" silenziosamente     |
 | 2 Accumulazione (Genome) | 🟡 sotto-attivo | 47 entries totali / 4 cellule / 124 skill in `kb.type='skill'` | Crescita lenta, HGT cross-machine ora aperto |
-| 2 Accumulazione (HGT) | 🟢 live | `cell:skills` 25 entries, bridge Fly→Pro OK | TICKET G chiuso 2026-05-13 |
-| 3 Condivisione | 🟢 live | `garuda:raw` 3088, `organism:events` 13185, `nexus:gaps` 4059 | Manca solo "Olimpo streams" pianificato |
-| 4 Confronto | 🟢 live | `consiglio_orchestrator.py` (5/6 promesse coperte) | Periodic deliberation correttamente killed |
-| 5 Sogno | ⚪ design only | Decay scheduler cron 02:30 esiste, nessun dream loop | Nessun avanzamento |
-| 6 Curiosità | 🟡 partial | 56 gap topics esistono, 4059 in `nexus:gaps` | Mai un primo ciclo Zero approve/reject |
-| 7 Misura | 🟢 live | IA=0.0192, FE=0.0000 (Pro 7d-median) | Numero da SYMBIOSIS confermato live |
-| 8 Simbiosi | 🟡 Fase 1 | micromanagement | Naturale, dipende dagli altri |
+| 2 Accumulazione (HGT)    | 🟢 live         | `cell:skills` 25 entries, bridge Fly→Pro OK                    | TICKET G chiuso 2026-05-13                   |
+| 3 Condivisione           | 🟢 live         | `garuda:raw` 3088, `organism:events` 13185, `nexus:gaps` 4059  | Manca solo "Olimpo streams" pianificato      |
+| 4 Confronto              | 🟢 live         | `consiglio_orchestrator.py` (5/6 promesse coperte)             | Periodic deliberation correttamente killed   |
+| 5 Sogno                  | ⚪ design only  | Decay scheduler cron 02:30 esiste, nessun dream loop           | Nessun avanzamento                           |
+| 6 Curiosità              | 🟡 partial      | 56 gap topics esistono, 4059 in `nexus:gaps`                   | Mai un primo ciclo Zero approve/reject       |
+| 7 Misura                 | 🟢 live         | IA=0.0192, FE=0.0000 (Pro 7d-median)                           | Numero da SYMBIOSIS confermato live          |
+| 8 Simbiosi               | 🟡 Fase 1       | micromanagement                                                | Naturale, dipende dagli altri                |
 
 **Verdetto sintetico**: 3 verde, 4 giallo, 1 bianco. **Il problema più urgente non è espansione (HGT/curiosità) ma regressione**: Pilastro 1 Riflessione si è degradato del −85% senza alert.
 
@@ -39,12 +39,12 @@ Tutti i numeri verificati empiricamente in questa sessione (Pro, 2026-05-16). Ne
 
 ### Pulse emissioni 7d (verificato `~/.cell-observatory/observatory.db`)
 
-| cell_id | cell_kind | green | yellow | red | totale 7d | first seen | last seen |
-|---|---|---:|---:|---:|---:|---|---|
-| `cell` (legacy `apps/cell/`) | cell | 4880 | 803 | 1539 | **7222** | 2026-05-02 | 2026-05-15 18:49 |
-| `ai-intel-sentinel` | cell | 34 | 15 | 5 | **54** | 2026-05-12 18:13 | 2026-05-16 02:27 |
-| `seo-guardian` | cell | 0 | 0 | 7 | **7** | 2026-05-12 03:37 | 2026-05-15 11:30 |
-| `smoke-test` | test | 0 | 0 | 0 | 0 | 2026-05-02 | 2026-05-02 (canary morto) |
+| cell_id                      | cell_kind | green | yellow |  red | totale 7d | first seen       | last seen                 |
+| ---------------------------- | --------- | ----: | -----: | ---: | --------: | ---------------- | ------------------------- |
+| `cell` (legacy `apps/cell/`) | cell      |  4880 |    803 | 1539 |  **7222** | 2026-05-02       | 2026-05-15 18:49          |
+| `ai-intel-sentinel`          | cell      |    34 |     15 |    5 |    **54** | 2026-05-12 18:13 | 2026-05-16 02:27          |
+| `seo-guardian`               | cell      |     0 |      0 |    7 |     **7** | 2026-05-12 03:37 | 2026-05-15 11:30          |
+| `smoke-test`                 | test      |     0 |      0 |    0 |         0 | 2026-05-02       | 2026-05-02 (canary morto) |
 
 **Lifetime cumulativo**: `cell` 14574 pulses, `ai-intel-sentinel` 54, `seo-guardian` 7, `smoke-test` 3.
 
@@ -66,6 +66,7 @@ Il `seo-cell-daily.sh` ha pure `CELL_OBSERVATORY_EMIT=1` (verificato `grep -c`).
 ### Organi enrolled vs emittenti
 
 `organs_registry.yaml` lista **118 organi**:
+
 - 87 cron + 25 daemon + 6 webhook = 118
 - 107 `pro_launchd` + 4 `mini_launchd` + 7 `fly_machine`
 
@@ -79,35 +80,37 @@ Il `seo-cell-daily.sh` ha pure `CELL_OBSERVATORY_EMIT=1` (verificato `grep -c`).
 
 `genome` table (cell-core schema, NON `kb.type`):
 
-| cell_origin | skill | scar | totale |
-|---|---:|---:|---:|
-| `ai-intel-sentinel` | 18 | 0 | 18 |
-| `claude-code-nuzantara` | 3 | 1 | 4 |
-| `mata-garuda` | 3 | 1 | 4 |
+| cell_origin             | skill | scar | totale |
+| ----------------------- | ----: | ---: | -----: |
+| `ai-intel-sentinel`     |    18 |    0 |     18 |
+| `claude-code-nuzantara` |     3 |    1 |      4 |
+| `mata-garuda`           |     3 |    1 |      4 |
 
 **Totale 26 entries** dal genoma.
 
 `knowledge` table (legacy log):
+
 - `nlm_fed` 1212, `harvested_item` 935, `scored_item` 766, `alert_forwarded` 258, `case_not_resolved` 198
 - `reflection` 126, `insight` 126, `skill` 124
 - `digest` 46, `episode` 37, `briefing` 28
 
 ### Pilastro 1 — Reflection cadence ⚠️ REGRESSIONE
 
-| Date | reflection count | agent breakdown |
-|---|---:|---|
-| 2026-05-05 | 5 | (multi-agent) |
-| 2026-05-06 | 6 | |
-| 2026-05-07 | **9** | peak |
-| 2026-05-08 | **7** | last day lhkpn_harvester ha riflesso |
-| 2026-05-09 | **1** | DROP |
-| 2026-05-10 | 1 | |
-| 2026-05-11 | 1 | |
-| 2026-05-12 | 1 | |
-| 2026-05-13 | 1 | |
-| 2026-05-14 | 1 | (solo `Regulation Watcher`) |
+| Date       | reflection count | agent breakdown                      |
+| ---------- | ---------------: | ------------------------------------ |
+| 2026-05-05 |                5 | (multi-agent)                        |
+| 2026-05-06 |                6 |                                      |
+| 2026-05-07 |            **9** | peak                                 |
+| 2026-05-08 |            **7** | last day lhkpn_harvester ha riflesso |
+| 2026-05-09 |            **1** | DROP                                 |
+| 2026-05-10 |                1 |                                      |
+| 2026-05-11 |                1 |                                      |
+| 2026-05-12 |                1 |                                      |
+| 2026-05-13 |                1 |                                      |
+| 2026-05-14 |                1 | (solo `Regulation Watcher`)          |
 
 **Breakdown agent**:
+
 - `lhkpn_harvester`: 94 reflection prima del 2026-05-08, **6 dopo**. Ultima reflection: **2026-05-08 12:33** → silenzioso da **8 giorni**.
 - `Regulation Watcher`: 19 prima, 7 dopo. Ultima: 2026-05-14 23:55 → live.
 
@@ -119,16 +122,16 @@ Il `seo-cell-daily.sh` ha pure `CELL_OBSERVATORY_EMIT=1` (verificato `grep -c`).
 
 ### Streams cross-machine
 
-| Stream | Length | Last entry | Note |
-|---|---:|---|---|
-| `cell:skills` (Pro) | **25** | 1778828102182-0 | Bridge Fly→Pro OK, cron skills-bridge-consumer 5min "no new events" |
-| `cell:feedback` (Pro) | 0 | — | Mai usato — sibling stream del Pilastro 2 |
-| `organism:events` (Pro) | **13185** | 1778870910665-0 | Supervisor consumer group `organism-supervisor` lag=0, pending=0 |
-| `garuda:raw` (Pro) | 3088 | — | Mata-garuda intel stream, Redis Streams nativi |
-| `garuda:enriched` | — | — | Esiste, non misurato |
-| `garuda:alerts` | 290 | — | |
-| `garuda:digest` | — | — | |
-| `nexus:gaps` | **4059** | — | Pilastro 6 Curiosità — gap topics accumulati |
+| Stream                  |    Length | Last entry      | Note                                                                |
+| ----------------------- | --------: | --------------- | ------------------------------------------------------------------- |
+| `cell:skills` (Pro)     |    **25** | 1778828102182-0 | Bridge Fly→Pro OK, cron skills-bridge-consumer 5min "no new events" |
+| `cell:feedback` (Pro)   |         0 | —               | Mai usato — sibling stream del Pilastro 2                           |
+| `organism:events` (Pro) | **13185** | 1778870910665-0 | Supervisor consumer group `organism-supervisor` lag=0, pending=0    |
+| `garuda:raw` (Pro)      |      3088 | —               | Mata-garuda intel stream, Redis Streams nativi                      |
+| `garuda:enriched`       |         — | —               | Esiste, non misurato                                                |
+| `garuda:alerts`         |       290 | —               |                                                                     |
+| `garuda:digest`         |         — | —               |                                                                     |
+| `nexus:gaps`            |  **4059** | —               | Pilastro 6 Curiosità — gap topics accumulati                        |
 
 ### Bridge skills-bridge-consumer
 
@@ -138,21 +141,22 @@ Bridge Fly→Pro funzionante, ma stream `cell:skills` quasi statico (25 entries,
 
 ## Organism layer — supervisor + bridge
 
-| Component | PID | Status |
-|---|---:|---|
-| `com.nuzantara.pg-organism-bridge` | 2680 | live, 13185 events trasportati |
-| `com.nuzantara.organism.supervisor` | 2690 | live, lag=0 sul consumer group |
-| `com.nuzantara.organism.control-panel` | 2689 | live |
-| `com.cell.organism` | 5255 | live (exit=256 ultimo, ma re-spawned) |
-| `com.nuzantara.cell-observatory` | 2681 | live, PG listener attivo |
-| `com.nuzantara.cell-observatory-prune` | — | cron, exit=0 |
-| `com.nuzantara.cell-observatory-selfcheck` | — | cron |
+| Component                                  |  PID | Status                                |
+| ------------------------------------------ | ---: | ------------------------------------- |
+| `com.nuzantara.pg-organism-bridge`         | 2680 | live, 13185 events trasportati        |
+| `com.nuzantara.organism.supervisor`        | 2690 | live, lag=0 sul consumer group        |
+| `com.nuzantara.organism.control-panel`     | 2689 | live                                  |
+| `com.cell.organism`                        | 5255 | live (exit=256 ultimo, ma re-spawned) |
+| `com.nuzantara.cell-observatory`           | 2681 | live, PG listener attivo              |
+| `com.nuzantara.cell-observatory-prune`     |    — | cron, exit=0                          |
+| `com.nuzantara.cell-observatory-selfcheck` |    — | cron                                  |
 
 **Conclusione**: organism layer è SOLIDO. Il "midollo spinale" della Symbiosis (bridge + supervisor + observatory) funziona. Il problema NON è infrastruttura — è che ci sono solo 3 cellule che inviano segnali nel midollo.
 
 ## Pilastro 4 — Confronto (Consiglio v1)
 
 `apps/backend-rag/backend/services/research/consiglio_orchestrator.py` esiste e copre 5/6 promesse:
+
 - P4.2 moderator ✅
 - P4.3 architectural diversity 4-LLM (Claude+Gemini+DeepSeek+NotebookLM) ✅
 - P4.4 output channels ✅
@@ -178,6 +182,7 @@ Il pilastro è "infrastruttura pronta, mai acceso".
 ## Pilastro 7 — Misura (T0-Pro snapshot)
 
 Da SYMBIOSIS.md §DOVE SIAMO row Pilastro 7:
+
 - **IA (Indice Autonomia)**: 0.0192 (7d-median, 2026-05-12 calc)
 - **FE (Frequenza Escalation)**: 0.0000 (6/9 giorni zero, 1 outlier 0.9598 il 2026-05-09)
 - Sample: 9 snapshots ultimi 7d
@@ -187,32 +192,33 @@ Da SYMBIOSIS.md §DOVE SIAMO row Pilastro 7:
 
 ## Gap consolidati (rispetto a SYMBIOSIS.md §DOVE SIAMO)
 
-| Pilastro | Promessa SYMBIOSIS | Reale 2026-05-16 | Gap |
-|---|---|---|---|
-| 1 Riflessione | live | live ma −85% throughput post 2026-05-08 | **REGRESSIONE silente** |
-| 2 Accumulazione | v1 + HGT live 2 organi | 4 cellule emittenti, 26 entries genome | Crescita lenta |
-| 2 HGT | bridge | TICKET G chiuso, 25 entries cross-machine | Manca scale (3+ cellule attive) |
-| 3 Condivisione | `cell:skills` + `garuda:raw` | 4 stream live | Olimpo streams + KG gap routing pendente |
-| 4 Confronto | non implementato | `consiglio_orchestrator.py` live | ✅ migliorato vs §DOVE SIAMO |
-| 5 Sogno | hypothesis | nessun loop | Identico |
-| 6 Curiosità | v1 live | 4059 gap, mai primo ciclo Zero | Identico (mai acceso) |
-| 7 Misura | live | IA=0.0192 | Identico |
-| 8 Simbiosi | Fase 1 | Fase 1 | Identico |
+| Pilastro        | Promessa SYMBIOSIS           | Reale 2026-05-16                          | Gap                                      |
+| --------------- | ---------------------------- | ----------------------------------------- | ---------------------------------------- |
+| 1 Riflessione   | live                         | live ma −85% throughput post 2026-05-08   | **REGRESSIONE silente**                  |
+| 2 Accumulazione | v1 + HGT live 2 organi       | 4 cellule emittenti, 26 entries genome    | Crescita lenta                           |
+| 2 HGT           | bridge                       | TICKET G chiuso, 25 entries cross-machine | Manca scale (3+ cellule attive)          |
+| 3 Condivisione  | `cell:skills` + `garuda:raw` | 4 stream live                             | Olimpo streams + KG gap routing pendente |
+| 4 Confronto     | non implementato             | `consiglio_orchestrator.py` live          | ✅ migliorato vs §DOVE SIAMO             |
+| 5 Sogno         | hypothesis                   | nessun loop                               | Identico                                 |
+| 6 Curiosità     | v1 live                      | 4059 gap, mai primo ciclo Zero            | Identico (mai acceso)                    |
+| 7 Misura        | live                         | IA=0.0192                                 | Identico                                 |
+| 8 Simbiosi      | Fase 1                       | Fase 1                                    | Identico                                 |
 
 ## Tre fronti aperti — analisi costo/impatto
 
-| Fronte | Effort | Impatto sintomatico | Reversibilità | Prerequisiti |
-|---|---|---|---|---|
-| **A — Cell silenti (Tier A residuo)** | 2-3h | Basso (3 cellule attive già; manca solo investigare seo-guardian 0 green + cell crash 1539 red 7d) | Alta | Nessuno |
-| **B — HGT activate 3+ cells** | 4-6h | Medio (porta 25→100+ entries `cell:skills`) | Alta | A done (cellule devono emettere) |
-| **C — Cross-cell reflection** | 6-10h (spec+impl) | Alto (sblocca Pilastro 1 maturazione) | Media (refactor) | Riflessione attiva ≥3 cellule |
-| **D — Reflection regression (NUOVO)** | 1-2h investigare | Alto (Pilastro 1 dichiarato live ma −85%) | Alta | Nessuno |
+| Fronte                                | Effort            | Impatto sintomatico                                                                                | Reversibilità    | Prerequisiti                     |
+| ------------------------------------- | ----------------- | -------------------------------------------------------------------------------------------------- | ---------------- | -------------------------------- |
+| **A — Cell silenti (Tier A residuo)** | 2-3h              | Basso (3 cellule attive già; manca solo investigare seo-guardian 0 green + cell crash 1539 red 7d) | Alta             | Nessuno                          |
+| **B — HGT activate 3+ cells**         | 4-6h              | Medio (porta 25→100+ entries `cell:skills`)                                                        | Alta             | A done (cellule devono emettere) |
+| **C — Cross-cell reflection**         | 6-10h (spec+impl) | Alto (sblocca Pilastro 1 maturazione)                                                              | Media (refactor) | Riflessione attiva ≥3 cellule    |
+| **D — Reflection regression (NUOVO)** | 1-2h investigare  | Alto (Pilastro 1 dichiarato live ma −85%)                                                          | Alta             | Nessuno                          |
 
 ## Raccomandazione
 
 **Aggiungere D al menu**. Pilastro 1 è "live but degraded" da 8 giorni senza alert. Investigare `lhkpn_harvester` reflection drop 2026-05-08 prima di lanciare progetti nuovi (HGT/curiosity) che assumono Pilastro 1 sano.
 
 Sequenza suggerita:
+
 1. **D (1-2h)** — root cause reflection regression
 2. **A (2-3h)** — chiudere residuo cell silenti (seo-guardian 0 green diagnosis)
 3. **B (4-6h)** — HGT activate 3+ cellule (ora prerequisiti veri)

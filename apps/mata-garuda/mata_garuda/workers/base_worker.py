@@ -133,7 +133,7 @@ def _parse_xreadgroup(raw: str, stream: str) -> list[dict]:
     items = []
     # Preserve empty lines (they may be empty values); only rstrip the
     # trailing whitespace + \r introduced by redis-cli line-buffering.
-    lines = [l.rstrip() for l in raw.split("\n")]
+    lines = [line.rstrip() for line in raw.split("\n")]
 
     i = 0
     while i < len(lines):

@@ -43,25 +43,26 @@ v3_1_review_gate: 3-LLM panel re-review REQUIRED before Antonello approval (per 
 
 ## Cosa cambia vs v2 (verdict-driven)
 
-| v2 finding | v3 fix |
-|---|---|
-| **K1 PARTIAL**: summary line 27 ancora dice `( crontab -l; echo ... ) \| crontab -` | Rimosso. F3.1 e F4/F5 usano SOLO temp-file + atomic `crontab <file>` o LaunchAgent. Mai `\| crontab -`, mai `crontab -e`. |
+| v2 finding                                                                                                                              | v3 fix                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| --------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **K1 PARTIAL**: summary line 27 ancora dice `( crontab -l; echo ... ) \| crontab -`                                                     | Rimosso. F3.1 e F4/F5 usano SOLO temp-file + atomic `crontab <file>` o LaunchAgent. Mai `\| crontab -`, mai `crontab -e`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | **K6 BROKEN**: target chiave `alert_dispatcher_enabled` non esiste in DB; "4 senders" hardcoded label sbagliati; solo log senza bootout | (a) Target reale: `federation_alert_mode` (verified). (b) CTE snapshot **observe-lock** via `FOR UPDATE` (NO mode change — `'silent'` is NOT a valid FederationAlertMode enum value, only `observe/dry_deliberate/dry_action/production` per models.py:37-43 verified). (c) Enumeration empirica completata: **25 LaunchAgent** chiamano Telegram direttamente. (d) **DECISION 2026-05-16 04:00 WITA**: NESSUN bootout, NESSUN mode-change. K6 si riduce a "snapshot mode prior + lock during cleanup + trap restore". Equivalente a un "observe-lock": il daemon resta in modalità OBSERVE (già current, già log-only), ma il piano cattura lo stato per detect tampering da altri tool durante la wave. |
-| **K7**: already correct in v2 | Copy verbatim (verified empirically `wr2_canva_renderer_enabled='true'`). |
-| **H3 PARTIAL**: validator command senza path argument | Comando verbatim README: `PYTHONPATH=apps/organism python3 -m organism.tools.validate_organs_registry apps/organism/organism/organs_registry.yaml --update-checksum` |
-| **H6 BROKEN**: "documented grandfathering" senza Test: citation valido | F2.3 mantiene polling 5min CON Test: citation reale (path file stub creato in TDD mode prima del watchdog deploy). Heartbeat-based watchdog = TODO follow-up PR separato. |
-| **H7 BROKEN**: 11 plist non enumerati, no readiness loop, Pro-only | F1.2 esegue enumeration empirica completa pre-F1.1 rotation. Mini count `mini-side-tbd` con reach-gate abort. |
-| **H9 BROKEN**: TODO Test: paths violano L4 audit gate | F6.2 DROPPED da v3. Spec separato PR 2026-05-17: prima TDD 6 test files, poi append SYMBIOSIS.md. |
-| **F0.6 REGRESSION**: hardcoded 17:00 sentinel | `at -f $RESTORE_SCRIPT now + 4 hours` (timing relativo a esecuzione reale). Pre-flight `atrun` daemon check. |
-| **F6.2 REGRESSION**: append a SYMBIOSIS.md mentre source table ancora dice 13 channels | DROPPED da v3 (vedi H9 above). PR follow-up update source table 13→14 + intel_lake_event + Test: citations in commit unico. |
-| **F2.3 REGRESSION**: watchdog script in `~/scripts/` non git-tracked | Script in `infra/scripts/pg-organism-bridge-watchdog.sh`, plist in `infra/launchagents/com.nuzantara.pg-organism-bridge-watchdog.plist`. F9 commit list cattura entrambi. |
-| **Mini UNREACHABLE 2026-05-16 evening** | TUTTI Mini-touching fases (F1.1-mini, F3.2, F3.3, F8.1) hanno reach-gate `ssh -o ConnectTimeout=3 -o BatchMode=yes mini 'echo ok'` → abort with `mini-side-tbd` marker se fail. |
+| **K7**: already correct in v2                                                                                                           | Copy verbatim (verified empirically `wr2_canva_renderer_enabled='true'`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **H3 PARTIAL**: validator command senza path argument                                                                                   | Comando verbatim README: `PYTHONPATH=apps/organism python3 -m organism.tools.validate_organs_registry apps/organism/organism/organs_registry.yaml --update-checksum`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| **H6 BROKEN**: "documented grandfathering" senza Test: citation valido                                                                  | F2.3 mantiene polling 5min CON Test: citation reale (path file stub creato in TDD mode prima del watchdog deploy). Heartbeat-based watchdog = TODO follow-up PR separato.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **H7 BROKEN**: 11 plist non enumerati, no readiness loop, Pro-only                                                                      | F1.2 esegue enumeration empirica completa pre-F1.1 rotation. Mini count `mini-side-tbd` con reach-gate abort.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| **H9 BROKEN**: TODO Test: paths violano L4 audit gate                                                                                   | F6.2 DROPPED da v3. Spec separato PR 2026-05-17: prima TDD 6 test files, poi append SYMBIOSIS.md.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| **F0.6 REGRESSION**: hardcoded 17:00 sentinel                                                                                           | `at -f $RESTORE_SCRIPT now + 4 hours` (timing relativo a esecuzione reale). Pre-flight `atrun` daemon check.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
+| **F6.2 REGRESSION**: append a SYMBIOSIS.md mentre source table ancora dice 13 channels                                                  | DROPPED da v3 (vedi H9 above). PR follow-up update source table 13→14 + intel_lake_event + Test: citations in commit unico.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| **F2.3 REGRESSION**: watchdog script in `~/scripts/` non git-tracked                                                                    | Script in `infra/scripts/pg-organism-bridge-watchdog.sh`, plist in `infra/launchagents/com.nuzantara.pg-organism-bridge-watchdog.plist`. F9 commit list cattura entrambi.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| **Mini UNREACHABLE 2026-05-16 evening**                                                                                                 | TUTTI Mini-touching fases (F1.1-mini, F3.2, F3.3, F8.1) hanno reach-gate `ssh -o ConnectTimeout=3 -o BatchMode=yes mini 'echo ok'` → abort with `mini-side-tbd` marker se fail.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 
 **Empirical baseline updates** (sostituiscono v2 baseline parziale):
+
 - PG channels: **14** (verified `grep PG_CHANNEL_MAP apps/backend-rag/backend/services/events/event_bus.py`)
 - system_settings.value type: **text** (NOT jsonb — verified via `\d system_settings` 2026-05-16 19:30 WITA)
 - Target chiave pause-alerts: **`federation_alert_mode`** (NOT `alert_dispatcher_enabled` — quella key non esiste)
-- Live LaunchAgents: **137** filtered to com.{balizero,nuzantara,cell,matagaruda}.* (verified `launchctl list | wc -l`)
+- Live LaunchAgents: **137** filtered to com.{balizero,nuzantara,cell,matagaruda}.\* (verified `launchctl list | wc -l`)
 - Telegram-direct senders: TBD (vedi F1.2 enumeration output)
 
 ---
@@ -197,6 +198,7 @@ git rev-parse HEAD > $DATED_BACKUP/state/git-baseline-sha.txt
 ```
 
 **Rollback safety net**:
+
 1. **Trap on EXIT** (F1.3 Step 3): re-asserts prior `federation_alert_mode` value if changed during cleanup. NO bootout to rollback (none performed).
 2. **TTL sentinel** (LaunchAgent runOnce at +4h, NOT `at` since `atrun` disabled-by-default on macOS Darwin 25.5): independent dalla shell session, defused in F9.5 on successful completion.
 
@@ -310,6 +312,7 @@ wc -l $ROTATION_SCOPE
 **Empirical evidence 2026-05-16 19:45 WITA**: 25 LaunchAgent chiamano Telegram direttamente (mapping in `$DATED_BACKUP/state/telegram-direct-labels.txt`, programmi in `$DATED_BACKUP/state/telegram-direct-files.txt`, pair table in `$DATED_BACKUP/state/telegram-direct-mapping.txt`). Lista include watchdog critici operativi: `cpu-monitor`, `disk-monitor`, `login-healthcheck`, `fly-restart-loop-detector`, `openclaw-children-watchdog`, `sentinel-meta-watchdog`, `supervisor-liveness-watchdog`, `nb-intel-delta-watcher`, `automap-watchdog`, etc.
 
 **Decision finale**: NESSUN bootout, NESSUN mode change. `FederationAlertMode` enum (verified `models.py:37-43`) accetta solo `observe/dry_deliberate/dry_action/production`. Il valore `'silent'` originalmente proposto **non esiste** — daemon writes raw via `set_db_mode()` lo rifiuterebbero, e raw psql writes lo accetterebbero ma `_dispatch_proposal()` non avrebbe branch matching → proposal stuck in `received`. Inoltre il valore current è **già `observe`** (log-only, safer-tier), che è esattamente ciò che il cleanup vuole. F1.3 si riduce quindi a:
+
 - snapshot di prior mode (already done in F0.4)
 - trap EXIT che ri-asserisce 'observe' se altri tool tentano un mode change durante la wave
 - documentation dei 25 direct-senders per operator awareness
@@ -357,10 +360,12 @@ grep -n "federation_alert_mode\|get_db_mode" ~/Desktop/nuzantara/apps/backend-ra
 ```
 
 **Rollback** (triggered by trap EXIT OR TTL `at +4h` script):
+
 - UPDATE `federation_alert_mode` back to `$PRIOR_FAM` (observe)
 - NO bootout to rollback (we did NOT bootout anything)
 
 **Why this differs from v2 verdict**:
+
 - v2 verdict claimed "4 Telegram-direct senders" — empirically there are **25**
 - Killing all 25 = killing operational watchdog → blind cleanup window
 - The single label cited as still-running by v2 verdict (`com.nuzantara.federation-alert-dispatcher`) is the federation router's daemon, which respects `federation_alert_mode='silent'` (verified: `grep federation_alert_mode federation_alert_daemon.py` returns matches)
@@ -382,6 +387,7 @@ grep -n "federation_alert_mode\|get_db_mode" ~/Desktop/nuzantara/apps/backend-ra
 > Plan **non procede F2+** finché F1.4 chiuso (Antonello segnala via `touch ~/.automation-cleanup-2026-05-16/state/F1.4-rotation-complete`).
 
 **Post-rotation verify**:
+
 ```bash
 # Test: no plist mode +044 con secrets dopo F1.4
 find ~/Library/LaunchAgents -name "com.*.plist" -exec sh -c '
@@ -430,6 +436,7 @@ rm -i ~/Library/LaunchAgents/.disabled-2026-05-16-renderer-off/com.balizero.wr2.
 ```
 
 **Verify**:
+
 ```bash
 launchctl list | grep wr2.canva-renderer  # expect empty
 psql "$DATABASE_URL_LOCAL" -tA -c "SELECT value FROM system_settings WHERE key='wr2_canva_renderer_enabled'"
@@ -437,6 +444,7 @@ psql "$DATABASE_URL_LOCAL" -tA -c "SELECT value FROM system_settings WHERE key='
 ```
 
 **Rollback** (usa snapshot, NOT hardcoded):
+
 ```bash
 mv ~/Library/LaunchAgents/.disabled-2026-05-16-cleanup/com.balizero.wr2.canva-renderer.plist \
    ~/Library/LaunchAgents/
@@ -593,6 +601,7 @@ sleep 320 && tail -5 ~/logs/pg-organism-bridge-watchdog.log
 **Test: citation**: `apps/backend-rag/backend/tests/services/events/test_bridge_heartbeat_polling_grandfathered.py` (created Step 3, stub @pytest.skip — gate for L4 audit-trail lint)
 
 **Rollback**:
+
 ```bash
 launchctl bootout gui/$(id -u)/com.nuzantara.pg-organism-bridge-watchdog
 rm ~/Library/LaunchAgents/com.nuzantara.pg-organism-bridge-watchdog.plist
@@ -620,6 +629,7 @@ done | tee $DATED_BACKUP/state/pg-proxy-cluster-baseline.txt
 ```
 
 **24h re-check via one-shot LaunchAgent (NON crontab)**:
+
 ```bash
 # Compute recheck deadline = now + 24h (avoid hardcoded 2026-05-17 13:00)
 RECHECK_EPOCH=$(($(date +%s) + 86400))
@@ -717,6 +727,7 @@ PYTHONPATH=apps/organism python3 -m organism.tools.validate_organs_registry \
 **Reason**: v2 F6.2 documented L3 exceptions in SYMBIOSIS.md with TODO Test: paths, violando L4 audit-trail gate (`scripts/lint_symbiosis_promises.py` enforced on CI).
 
 **Spec follow-up PR 2026-05-17 (`fix/symbiosis-l3-exceptions-test-citations`)**:
+
 1. Create 6 Test: files (TDD with real assertions, NOT @pytest.skip stubs):
    - `apps/backend-rag/backend/tests/services/cache/test_kg_cache_invalidation_loss_tolerance.py`
    - `apps/backend-rag/backend/tests/services/confirmation/test_confirmation_service_session_expire.py`
@@ -740,6 +751,7 @@ Identical to v2 F7 — already correct (AIL gating per ciascun surface duplicate
 Identical to v2 F8 — already correct (24h diff PRIMA decision, all AIL gated).
 
 **Modified gates**:
+
 - F8.1 Mini sentinel: gated on `MINI_REACHABLE` (abort if false, defer)
 - F8.2 observatory parallel: Pro-only (no Mini dependency)
 - F8.3 orphan agents: identical (AIL per ciascuno)
@@ -856,6 +868,7 @@ F3.2/F3.3 (Mini gated) ────────┤
 ## Out of scope (v3 explicit)
 
 (Identical to v2 + addenda):
+
 - **F6.2 Symbiosis L3 exceptions** — deferred to follow-up PR 2026-05-17 (TDD test files PRIMA del SYMBIOSIS.md append)
 - **Heartbeat-based watchdog** — F2.3 grandfathered polling; durable heartbeat consumer = separate PR
 - **Mini-touching fases** — F1.1-mini, F3.2, F3.3, F8.1 deferred until `MINI_REACHABLE=true`
@@ -864,23 +877,24 @@ F3.2/F3.3 (Mini gated) ────────┤
 
 ## Risks v3
 
-| Rischio | Probabilità | Impatto | Mitigation v3 |
-|---|---|---|---|
-| Trap on EXIT non fires (kill -9, SIGKILL) | Bassa | Alto | TTL `at +4h` indipendente — fires anche su shell killed |
-| `atrun` daemon non loaded | Media | Alto | F0.5 pre-flight check + AIL workaround documentato |
-| K6 observe-lock fallisce a catturare tampering | Bassa | Medio | F1.3 Step 2 paranoia race check + F9.5b post-cleanup value verify |
-| Mode change between F0.4 snapshot and F1.3 lock | Bassa | Basso | F1.3 Step 2 ABORTS cleanup if mismatch — explicit fail-loud, no silent override |
-| Mini reconnect mid-flight | Bassa | Basso | F0.1-Mini reach test at session start; mid-session reconnect ignored |
-| `federation_alert_mode='silent'` ha downstream consumer non documentato | Media | Medio | F0.5 grep `register_handler.*federation_alert_mode` per identificare consumer |
-| Token rotation breaks 11 plist | Media | Alto | F1.4 atomic via `~/.nuzantara-secrets.env` + verify loop |
-| L3 lint fails (Test: file missing) | Bassa | Basso | F2.3 Step 3 crea stub PRIMA del Step 5 bootstrap |
-| Atomic commit hygiene break | Bassa | Basso | F9.6 splittato in 3 commit + git status check |
+| Rischio                                                                 | Probabilità | Impatto | Mitigation v3                                                                   |
+| ----------------------------------------------------------------------- | ----------- | ------- | ------------------------------------------------------------------------------- |
+| Trap on EXIT non fires (kill -9, SIGKILL)                               | Bassa       | Alto    | TTL `at +4h` indipendente — fires anche su shell killed                         |
+| `atrun` daemon non loaded                                               | Media       | Alto    | F0.5 pre-flight check + AIL workaround documentato                              |
+| K6 observe-lock fallisce a catturare tampering                          | Bassa       | Medio   | F1.3 Step 2 paranoia race check + F9.5b post-cleanup value verify               |
+| Mode change between F0.4 snapshot and F1.3 lock                         | Bassa       | Basso   | F1.3 Step 2 ABORTS cleanup if mismatch — explicit fail-loud, no silent override |
+| Mini reconnect mid-flight                                               | Bassa       | Basso   | F0.1-Mini reach test at session start; mid-session reconnect ignored            |
+| `federation_alert_mode='silent'` ha downstream consumer non documentato | Media       | Medio   | F0.5 grep `register_handler.*federation_alert_mode` per identificare consumer   |
+| Token rotation breaks 11 plist                                          | Media       | Alto    | F1.4 atomic via `~/.nuzantara-secrets.env` + verify loop                        |
+| L3 lint fails (Test: file missing)                                      | Bassa       | Basso   | F2.3 Step 3 crea stub PRIMA del Step 5 bootstrap                                |
+| Atomic commit hygiene break                                             | Bassa       | Basso   | F9.6 splittato in 3 commit + git status check                                   |
 
 ---
 
 ## Approvazione
 
 v3 piano richiede **Antonello-in-loop** per:
+
 1. F1.4 (token rotation, browser OAuth) — gating per F2+
 2. F6.1 (post-F8.3 AIL decisions on 4 orphan agents)
 3. F6.3 (A vs B decision partner_commission_changed) — invariato da v2

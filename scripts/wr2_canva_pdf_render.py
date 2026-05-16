@@ -47,10 +47,9 @@ import argparse
 import json
 import os
 import re
-import sys
 import shutil
+import sys
 import tempfile
-import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -542,8 +541,8 @@ def _crop_hero_to_canvas(hero_path: str, out_path: str | Path,
     src_ratio = sw / sh
     if src_ratio > target_ratio:
         nw = int(sh * target_ratio)
-        l = (sw - nw) // 2
-        img = img.crop((l, 0, l + nw, sh))
+        left = (sw - nw) // 2
+        img = img.crop((left, 0, left + nw, sh))
     else:
         nh = int(sw / target_ratio)
         t = max(0, (sh - nh) // 2)

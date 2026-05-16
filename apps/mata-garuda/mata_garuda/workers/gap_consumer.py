@@ -78,7 +78,6 @@ def _default_dispatch_agent(agent_name: str, payload: dict[str, Any]) -> dict[st
     Exceptions propagate so the caller can convert them to status="error".
     """
     import mata_garuda.agents  # noqa: F401 — populate @register_agent registry
-
     from mata_garuda.registry import get_agent
     from mata_garuda.runtime.knowledge import KnowledgeBase
     from mata_garuda.runtime.lamarckian import run_with_lamarckian_feedback
@@ -178,9 +177,11 @@ def run_gap_consumer(
     Returns stats {read, resolved, failed, skipped, unknown, errors}.
     """
     if stream_read is None:
-        stream_read = lambda: stream_read_new(
-            STREAM_NEXUS_GAPS, CONSUMER_GROUP, CONSUMER_NAME, count=max_items
-        )
+
+        def stream_read() -> object:
+            return stream_read_new(
+                STREAM_NEXUS_GAPS, CONSUMER_GROUP, CONSUMER_NAME, count=max_items
+            )
 
     stats: dict[str, int] = {
         "read": 0,

@@ -1,10 +1,10 @@
-'use client';
+"use client";
 
-import React, { useState, memo } from 'react';
-import dynamic from 'next/dynamic';
-import remarkGfm from 'remark-gfm';
+import React, { useState, memo } from "react";
+import dynamic from "next/dynamic";
+import remarkGfm from "remark-gfm";
 
-const ReactMarkdown = dynamic(() => import('react-markdown'), { ssr: false });
+const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false });
 import {
   User,
   Copy,
@@ -25,20 +25,20 @@ import {
   Brain,
   Star,
   MessageSquarePlus,
-} from 'lucide-react';
-import { CitationCard } from '@/components/search/CitationCard';
-import { ToolUseIndicator } from './ToolUseIndicator';
-import { isKnownTool } from './tool-labels';
-import Image from 'next/image';
-import { motion, AnimatePresence } from 'framer-motion';
+} from "lucide-react";
+import { CitationCard } from "@/components/search/CitationCard";
+import { ToolUseIndicator } from "./ToolUseIndicator";
+import { isKnownTool } from "./tool-labels";
+import Image from "next/image";
+import { motion, AnimatePresence } from "framer-motion";
 
-import { formatMessageTime } from '@/lib/utils';
-import { Message } from '@/types';
-import { PricingTable } from './PricingTable';
-import { PricingResponse } from '@/types/pricing';
-import { TIMEOUTS, ANIMATION } from '@/constants';
-import { TeamVerificationBadge } from './TeamVerificationBadge';
-import { NLMCitationPanel } from './NLMCitationPanel';
+import { formatMessageTime } from "@/lib/utils";
+import { Message } from "@/types";
+import { PricingTable } from "./PricingTable";
+import { PricingResponse } from "@/types/pricing";
+import { TIMEOUTS, ANIMATION } from "@/constants";
+import { TeamVerificationBadge } from "./TeamVerificationBadge";
+import { NLMCitationPanel } from "./NLMCitationPanel";
 
 interface MessageBubbleProps {
   message: Message;
@@ -48,18 +48,21 @@ interface MessageBubbleProps {
 }
 
 const VerificationBadge = ({ score }: { score: number }) => {
-  let colorClass = 'text-[var(--error)] border-[var(--error)]/30 bg-[var(--error)]/10';
+  let colorClass =
+    "text-[var(--error)] border-[var(--error)]/30 bg-[var(--error)]/10";
   let icon = <ShieldAlert className="w-3 h-3" />;
-  let label = 'Low Confidence';
+  let label = "Low Confidence";
 
   if (score >= 80) {
-    colorClass = 'text-[var(--success)] border-[var(--success)]/30 bg-[var(--success)]/10';
+    colorClass =
+      "text-[var(--success)] border-[var(--success)]/30 bg-[var(--success)]/10";
     icon = <ShieldCheck className="w-3 h-3" />;
-    label = 'Verified';
+    label = "Verified";
   } else if (score >= 50) {
-    colorClass = 'text-[var(--warning)] border-[var(--warning)]/30 bg-[var(--warning)]/10';
+    colorClass =
+      "text-[var(--warning)] border-[var(--warning)]/30 bg-[var(--warning)]/10";
     icon = <Shield className="w-3 h-3" />;
-    label = 'Medium Confidence';
+    label = "Medium Confidence";
   }
 
   return (
@@ -78,22 +81,30 @@ const VerificationBadge = ({ score }: { score: number }) => {
   );
 };
 
-const TrustHeader = ({ metadata }: { metadata: NonNullable<Message['metadata']> }) => {
+const TrustHeader = ({
+  metadata,
+}: {
+  metadata: NonNullable<Message["metadata"]>;
+}) => {
   return (
     <div className="flex flex-wrap items-center gap-2 text-[10px] font-medium text-[var(--foreground-muted)] mb-3 select-none">
       {metadata.route_used && (
         <div className="flex items-center gap-1 bg-[var(--background-secondary)] px-1.5 py-0.5 rounded border border-[var(--border)]">
           <Zap
             size={10}
-            className={metadata.route_used.includes('deep') ? 'text-purple-400' : 'text-blue-400'}
+            className={
+              metadata.route_used.includes("deep")
+                ? "text-purple-400"
+                : "text-blue-400"
+            }
           />
           <span>
-            {metadata.route_used.toLowerCase().includes('fast')
-              ? 'FAST'
-              : metadata.route_used.toLowerCase().includes('pro')
-                ? 'PRO'
-                : metadata.route_used.toLowerCase().includes('deep')
-                  ? 'DEEP'
+            {metadata.route_used.toLowerCase().includes("fast")
+              ? "FAST"
+              : metadata.route_used.toLowerCase().includes("pro")
+                ? "PRO"
+                : metadata.route_used.toLowerCase().includes("deep")
+                  ? "DEEP"
                   : metadata.route_used.toUpperCase()}
           </span>
         </div>
@@ -115,34 +126,37 @@ const TrustHeader = ({ metadata }: { metadata: NonNullable<Message['metadata']> 
 };
 
 const EmotionalBadge = ({ emotion }: { emotion: string }) => {
-  if (emotion === 'NEUTRAL') return null;
+  if (emotion === "NEUTRAL") return null;
 
   // Map emotions to colors/icons
-  const config: Record<string, { color: string; icon: React.ReactNode; label: string }> = {
+  const config: Record<
+    string,
+    { color: string; icon: React.ReactNode; label: string }
+  > = {
     URGENT: {
-      color: 'text-red-400 bg-red-400/10 border-red-400/20',
+      color: "text-red-400 bg-red-400/10 border-red-400/20",
       icon: <Zap size={12} />,
-      label: 'Priority Mode',
+      label: "Priority Mode",
     },
     CONFUSED: {
-      color: 'text-orange-400 bg-orange-400/10 border-orange-400/20',
+      color: "text-orange-400 bg-orange-400/10 border-orange-400/20",
       icon: <HelpCircle size={12} />,
-      label: 'Simplified Explanation',
+      label: "Simplified Explanation",
     }, // BreastCheck is not a valid icon, using HelpCircle like or similar
     STRESSED: {
-      color: 'text-yellow-400 bg-yellow-400/10 border-yellow-400/20',
+      color: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20",
       icon: <HeartHandshake size={12} />,
-      label: 'Supportive Tone',
+      label: "Supportive Tone",
     },
     EXCITED: {
-      color: 'text-green-400 bg-green-400/10 border-green-400/20',
+      color: "text-green-400 bg-green-400/10 border-green-400/20",
       icon: <Sparkles size={12} />,
-      label: 'Enthusiastic',
+      label: "Enthusiastic",
     },
   };
 
   const defaultConf = {
-    color: 'text-blue-400 bg-blue-400/10 border-blue-400/20',
+    color: "text-blue-400 bg-blue-400/10 border-blue-400/20",
     icon: <Sparkles size={12} />,
     label: emotion,
   };
@@ -158,7 +172,7 @@ const EmotionalBadge = ({ emotion }: { emotion: string }) => {
   );
 };
 
-const nlmUiEnabled = process.env.NEXT_PUBLIC_ENABLE_NLM_UI !== 'false';
+const nlmUiEnabled = process.env.NEXT_PUBLIC_ENABLE_NLM_UI !== "false";
 
 function MessageBubbleComponent({
   message,
@@ -166,8 +180,16 @@ function MessageBubbleComponent({
   isLast,
   onFollowUpClick,
 }: MessageBubbleProps) {
-  const { role, content, sources, imageUrl, timestamp, steps, verification_score } = message;
-  const isUser = role === 'user';
+  const {
+    role,
+    content,
+    sources,
+    imageUrl,
+    timestamp,
+    steps,
+    verification_score,
+  } = message;
+  const isUser = role === "user";
   const [copied, setCopied] = useState(false);
   const bubbleContentRef = React.useRef<HTMLDivElement>(null);
   const [isThinkingExpanded, setIsThinkingExpanded] = useState(false);
@@ -195,7 +217,7 @@ function MessageBubbleComponent({
     const shouldAnimate = isLast && !isUser && isRecent && content;
 
     if (shouldAnimate) {
-      setDisplayedContent('');
+      setDisplayedContent("");
       let currentIndex = 0;
       const text = content;
       let animationFrameId: number;
@@ -253,13 +275,13 @@ function MessageBubbleComponent({
       .reverse()
       .find(
         (step) =>
-          step.type === 'tool_end' &&
+          step.type === "tool_end" &&
           step.data.result &&
-          (step.data.result.includes('official_notice') ||
-            step.data.result.includes('single_entry_visas'))
+          (step.data.result.includes("official_notice") ||
+            step.data.result.includes("single_entry_visas")),
       );
 
-    if (toolStep && toolStep.type === 'tool_end') {
+    if (toolStep && toolStep.type === "tool_end") {
       try {
         const data = JSON.parse(toolStep.data.result);
         if (data.success && data.data) {
@@ -282,11 +304,11 @@ function MessageBubbleComponent({
     <motion.div
       initial={{ opacity: 0, y: 10, scale: 0.98 }}
       animate={{ opacity: 1, y: 0, scale: 1 }}
-      transition={{ duration: ANIMATION.FRAMER_DEFAULT, ease: 'easeOut' }}
-      className={`flex w-full ${isUser ? 'justify-end' : 'justify-start'} mb-6 group`}
+      transition={{ duration: ANIMATION.FRAMER_DEFAULT, ease: "easeOut" }}
+      className={`flex w-full ${isUser ? "justify-end" : "justify-start"} mb-6 group`}
     >
       <div
-        className={`flex max-w-[85%] md:max-w-[75%] gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
+        className={`flex max-w-[85%] md:max-w-[75%] gap-3 ${isUser ? "flex-row-reverse" : "flex-row"}`}
       >
         {/* Avatar */}
         <div
@@ -294,15 +316,20 @@ function MessageBubbleComponent({
           flex-shrink-0 flex items-center justify-center
           ${
             isUser
-              ? 'w-10 h-10 rounded-full shadow-lg bg-[var(--background-secondary)] text-[var(--foreground)]' // Larger (25%), no border
-              : 'w-14 h-14 -ml-2 bg-transparent border-0 shadow-none' // PURE LOGO. NO CONTAINER.
+              ? "w-10 h-10 rounded-full shadow-lg bg-[var(--background-secondary)] text-[var(--foreground)]" // Larger (25%), no border
+              : "w-14 h-14 -ml-2 bg-transparent border-0 shadow-none" // PURE LOGO. NO CONTAINER.
           }
         `}
         >
           {isUser ? (
             userAvatar ? (
               <div className="relative w-full h-full rounded-full overflow-hidden">
-                <Image src={userAvatar} alt="User" fill className="object-cover" />
+                <Image
+                  src={userAvatar}
+                  alt="User"
+                  fill
+                  className="object-cover"
+                />
               </div>
             ) : (
               <User size={16} />
@@ -320,14 +347,16 @@ function MessageBubbleComponent({
         </div>
 
         {/* Message Content */}
-        <div className={`flex flex-col ${isUser ? 'items-end' : 'items-start'} min-w-0`}>
+        <div
+          className={`flex flex-col ${isUser ? "items-end" : "items-start"} min-w-0`}
+        >
           <div
             className={`
             relative px-5 py-3.5 rounded-2xl shadow-sm text-sm leading-relaxed overflow-hidden
             ${
               isUser
-                ? 'user-message-gradient text-white rounded-tr-sm shadow-md border-0'
-                : 'bg-[var(--background-elevated)] text-[var(--foreground)] rounded-tl-sm border border-[var(--border)]/50'
+                ? "user-message-gradient text-white rounded-tr-sm shadow-md border-0"
+                : "bg-[var(--background-elevated)] text-[var(--foreground)] rounded-tl-sm border border-[var(--border)]/50"
             }
           `}
           >
@@ -355,7 +384,8 @@ function MessageBubbleComponent({
                     </div>
                   )}
 
-                  {(message.metadata.collective_memory_facts?.length ?? 0) > 0 && (
+                  {(message.metadata.collective_memory_facts?.length ?? 0) >
+                    0 && (
                     <div
                       className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-teal-500/10 text-teal-400 border border-teal-500/20"
                       title={`${message.metadata.collective_memory_facts?.length} collective facts used`}
@@ -372,7 +402,9 @@ function MessageBubbleComponent({
             )}
 
             {/* Tool-use chips (always visible, compact) */}
-            {!isUser && (steps?.length ?? 0) > 0 && <ToolUseSummary steps={steps ?? []} />}
+            {!isUser && (steps?.length ?? 0) > 0 && (
+              <ToolUseSummary steps={steps ?? []} />
+            )}
 
             {/* Thinking Process (for AI) */}
             {!isUser && (steps?.length ?? 0) > 0 && (
@@ -396,44 +428,54 @@ function MessageBubbleComponent({
                   {isThinkingExpanded && (
                     <motion.div
                       initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
+                      animate={{ height: "auto", opacity: 1 }}
                       exit={{ height: 0, opacity: 0 }}
                       className="overflow-hidden"
                     >
                       <div className="pl-3 border-l-2 border-[var(--border)] space-y-2 py-1">
                         {steps?.map((step, idx) => (
-                          <div key={idx} className="text-xs text-[var(--foreground-secondary)]">
+                          <div
+                            key={idx}
+                            className="text-xs text-[var(--foreground-secondary)]"
+                          >
                             <span className="opacity-70 mr-1">{idx + 1}.</span>
-                            {step.type === 'status' && <span>{step.data}</span>}
+                            {step.type === "status" && <span>{step.data}</span>}
 
                             {/* STANDARD TOOLS */}
-                            {step.type === 'tool_start' && step.data.name !== 'database_query' && (
-                              <span className="text-blue-400">
-                                Using tool: <strong>{step.data.name}</strong>
-                              </span>
-                            )}
+                            {step.type === "tool_start" &&
+                              step.data.name !== "database_query" && (
+                                <span className="text-blue-400">
+                                  Using tool: <strong>{step.data.name}</strong>
+                                </span>
+                              )}
 
                             {/* DEEP DIVE (DATABASE QUERY) - SPECIAL RENDERING */}
-                            {step.type === 'tool_start' && step.data.name === 'database_query' && (
-                              <span className="text-indigo-400 flex items-center gap-1.5 font-medium">
-                                <BookOpen size={12} />
-                                <span>Deep Reading Document...</span>
-                              </span>
-                            )}
+                            {step.type === "tool_start" &&
+                              step.data.name === "database_query" && (
+                                <span className="text-indigo-400 flex items-center gap-1.5 font-medium">
+                                  <BookOpen size={12} />
+                                  <span>Deep Reading Document...</span>
+                                </span>
+                              )}
 
-                            {step.type === 'tool_end' && (
-                              <span className="text-emerald-400">Tool Completed</span>
+                            {step.type === "tool_end" && (
+                              <span className="text-emerald-400">
+                                Tool Completed
+                              </span>
                             )}
 
                             {/* Reasoning Steps */}
-                            {step.type === 'reasoning_step' && (
+                            {step.type === "reasoning_step" && (
                               <div className="flex flex-col gap-1 mt-1 mb-2">
                                 <div className="flex items-center gap-1.5 font-medium">
-                                  <Sparkles size={12} className="text-purple-400" />
+                                  <Sparkles
+                                    size={12}
+                                    className="text-purple-400"
+                                  />
                                   <span className="text-purple-400">
                                     {step.data.phase
                                       ? `${step.data.phase.charAt(0).toUpperCase() + step.data.phase.slice(1)}: `
-                                      : ''}
+                                      : ""}
                                     {step.data.status}
                                   </span>
                                 </div>
@@ -457,7 +499,8 @@ function MessageBubbleComponent({
                                         return (
                                           <div className="text-[var(--warning)] flex items-center gap-1">
                                             <ShieldAlert size={10} />
-                                            {details.corrections.length} Corrections Applied
+                                            {details.corrections.length}{" "}
+                                            Corrections Applied
                                           </div>
                                         );
                                       }
@@ -481,7 +524,9 @@ function MessageBubbleComponent({
               ref={bubbleContentRef}
               className="prose prose-invert prose-sm max-w-none break-words"
             >
-              <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayedContent}</ReactMarkdown>
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                {displayedContent}
+              </ReactMarkdown>
             </div>
 
             {/* Verification Badge */}
@@ -493,7 +538,7 @@ function MessageBubbleComponent({
             {nlmUiEnabled &&
               !isUser &&
               message.metadata?.nlm_status &&
-              message.metadata.nlm_status !== 'not_needed' && (
+              message.metadata.nlm_status !== "not_needed" && (
                 <TeamVerificationBadge
                   status={message.metadata.nlm_status}
                   domainLabel={message.metadata.nlm_domain_label}
@@ -508,7 +553,7 @@ function MessageBubbleComponent({
               message.metadata.nlm_citations.length > 0 && (
                 <NLMCitationPanel
                   citations={message.metadata.nlm_citations}
-                  domainLabel={message.metadata.nlm_domain_label ?? ''}
+                  domainLabel={message.metadata.nlm_domain_label ?? ""}
                   expanded={showCitations}
                   onToggle={() => setShowCitations(false)}
                 />
@@ -518,7 +563,9 @@ function MessageBubbleComponent({
             {!isUser && pricingData && <PricingTable data={pricingData} />}
 
             {/* Sources */}
-            {!isUser && sources && sources.length > 0 && <CitationCard sources={sources} />}
+            {!isUser && sources && sources.length > 0 && (
+              <CitationCard sources={sources} />
+            )}
 
             {/* Follow-up Questions */}
             {!isUser &&
@@ -530,16 +577,18 @@ function MessageBubbleComponent({
                     SUGGESTED FOLLOW-UPS
                   </p>
                   <div className="flex flex-wrap gap-2">
-                    {message.metadata.followup_questions.map((question, idx) => (
-                      <button
-                        type="button"
-                        key={idx}
-                        onClick={() => onFollowUpClick?.(question)}
-                        className="text-xs text-left px-3 py-1.5 rounded-lg bg-[var(--background-secondary)] hover:bg-[var(--accent)]/10 hover:text-[var(--accent)] border border-[var(--border)] transition-colors duration-200 focus-ring"
-                      >
-                        {question}
-                      </button>
-                    ))}
+                    {message.metadata.followup_questions.map(
+                      (question, idx) => (
+                        <button
+                          type="button"
+                          key={idx}
+                          onClick={() => onFollowUpClick?.(question)}
+                          className="text-xs text-left px-3 py-1.5 rounded-lg bg-[var(--background-secondary)] hover:bg-[var(--accent)]/10 hover:text-[var(--accent)] border border-[var(--border)] transition-colors duration-200 focus-ring"
+                        >
+                          {question}
+                        </button>
+                      ),
+                    )}
                   </div>
                 </div>
               )}
@@ -583,7 +632,7 @@ function MessageBubbleComponent({
   );
 }
 
-type ToolStep = NonNullable<Message['steps']>[number];
+type ToolStep = NonNullable<Message["steps"]>[number];
 
 /**
  * Compact, always-visible chip row that surfaces tool invocations during
@@ -593,20 +642,25 @@ type ToolStep = NonNullable<Message['steps']>[number];
  * expander below to avoid jargon noise in the main bubble.
  */
 function ToolUseSummary({ steps }: { steps: ToolStep[] }) {
-  const chips: Array<{ key: string; toolName: string; status: 'running' | 'done' }> = [];
+  const chips: Array<{
+    key: string;
+    toolName: string;
+    status: "running" | "done";
+  }> = [];
   let running: { toolName: string; key: string } | null = null;
 
   steps.forEach((step, idx) => {
-    if (step.type === 'tool_call' || step.type === 'tool_start') {
-      const toolName = step.type === 'tool_call' ? step.data.tool : step.data.name;
+    if (step.type === "tool_call" || step.type === "tool_start") {
+      const toolName =
+        step.type === "tool_call" ? step.data.tool : step.data.name;
       if (!isKnownTool(toolName)) return;
       const key = `${toolName}-${idx}`;
-      chips.push({ key, toolName, status: 'running' });
+      chips.push({ key, toolName, status: "running" });
       running = { toolName, key };
-    } else if (step.type === 'tool_end' || step.type === 'observation') {
+    } else if (step.type === "tool_end" || step.type === "observation") {
       if (running) {
         const last = chips.find((c) => c.key === running!.key);
-        if (last) last.status = 'done';
+        if (last) last.status = "done";
         running = null;
       }
     }
@@ -617,7 +671,11 @@ function ToolUseSummary({ steps }: { steps: ToolStep[] }) {
   return (
     <div className="flex flex-wrap gap-1.5 mb-2" data-testid="tool-use-summary">
       {chips.map((chip) => (
-        <ToolUseIndicator key={chip.key} toolName={chip.toolName} status={chip.status} />
+        <ToolUseIndicator
+          key={chip.key}
+          toolName={chip.toolName}
+          status={chip.status}
+        />
       ))}
     </div>
   );

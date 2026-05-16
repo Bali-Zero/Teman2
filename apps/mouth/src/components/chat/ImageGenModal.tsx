@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useState, useCallback, useEffect } from 'react';
-import { X, Sparkles } from 'lucide-react';
+import { useState, useCallback, useEffect } from "react";
+import { X, Sparkles } from "lucide-react";
 
 export interface ImageGenModalProps {
   isOpen: boolean;
@@ -12,32 +12,36 @@ export interface ImageGenModalProps {
 /**
  * Image generation modal component
  */
-export function ImageGenModal({ isOpen, onClose, onSubmit }: ImageGenModalProps) {
-  const [prompt, setPrompt] = useState('');
+export function ImageGenModal({
+  isOpen,
+  onClose,
+  onSubmit,
+}: ImageGenModalProps) {
+  const [prompt, setPrompt] = useState("");
 
   const handleSubmit = useCallback(() => {
     if (!prompt.trim()) return;
     onSubmit(prompt.trim());
-    setPrompt('');
+    setPrompt("");
   }, [prompt, onSubmit]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         handleSubmit();
       }
     },
-    [handleSubmit]
+    [handleSubmit],
   );
 
   useEffect(() => {
     if (!isOpen) return;
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
   if (!isOpen) return null;
@@ -63,7 +67,9 @@ export function ImageGenModal({ isOpen, onClose, onSubmit }: ImageGenModalProps)
               <h3 id="image-gen-title" className="text-white font-semibold">
                 Generate Image
               </h3>
-              <p className="text-xs text-gray-400">Describe what you want to create</p>
+              <p className="text-xs text-gray-400">
+                Describe what you want to create
+              </p>
             </div>
           </div>
           <button
