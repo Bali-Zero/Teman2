@@ -1,5 +1,5 @@
 """Canva MCP wrapper: call_tool + transient-vs-permanent classifier."""
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -8,7 +8,6 @@ pytestmark = pytest.mark.asyncio
 from backend.services.canva_renderer_v2._canva_mcp import (
     CanvaMcpClient,
     is_transient_error,
-    CanvaImportError,
 )
 
 
@@ -70,5 +69,9 @@ async def test_import_design_calls_mcp_tool():
     assert edit_url == "https://www.canva.com/design/DAGabc/edit"
     mock_session.call_tool.assert_awaited_once_with(
         "import-design-from-url",
-        arguments={"url": "https://example.com/foo.pdf", "title": "Test"},
+        arguments={
+            "url": "https://example.com/foo.pdf",
+            "name": "Test",
+            "user_intent": "Import WR2 carousel PDF into Canva for editing",
+        },
     )
