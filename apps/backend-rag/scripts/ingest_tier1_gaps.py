@@ -168,12 +168,12 @@ async def run_ingestion(
     # Apply filters
     laws = TIER1_LAWS
     if domain_filter:
-        laws = [l for l in laws if l["domain"] == domain_filter.lower()]
+        laws = [law for law in laws if law["domain"] == domain_filter.lower()]
         if not laws:
             logger.error("No laws for domain: '%s'. Valid: property, immigration, tax", domain_filter)
             return
     if file_filter:
-        laws = [l for l in laws if file_filter.lower() in l["filename"].lower()]
+        laws = [law for law in laws if file_filter.lower() in law["filename"].lower()]
         if not laws:
             logger.error("No files matching: '%s'", file_filter)
             return

@@ -544,11 +544,11 @@ def call_gemini_cli(system: str, user_prompt: str, timeout: int = 120) -> str:
     # Strip CLI noise lines (Keychain errors, MCP logs) — keep only JSON
     lines = result.stdout.splitlines()
     clean = "\n".join(
-        l for l in lines
-        if not l.startswith("Keychain") and not l.startswith("Using") and
-           not l.startswith("Loaded") and not l.startswith("Server") and
-           not l.startswith("Scheduling") and not l.startswith("Executing") and
-           not l.startswith("MCP")
+        line for line in lines
+        if not line.startswith("Keychain") and not line.startswith("Using") and
+           not line.startswith("Loaded") and not line.startswith("Server") and
+           not line.startswith("Scheduling") and not line.startswith("Executing") and
+           not line.startswith("MCP")
     ).strip()
     return clean
 

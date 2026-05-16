@@ -178,7 +178,7 @@ def run_mypy() -> dict:
             cwd=str(BACKEND_DIR), timeout=180,
             env=build_test_env(),
         )
-        lines = [l for l in result.stdout.splitlines() if l.strip()]
+        lines = [line for line in result.stdout.splitlines() if line.strip()]
         errors = len(lines)
         return {"errors": errors, "output": result.stdout[:2000], "status": "ok" if errors == 0 else "failed"}
     except FileNotFoundError:
@@ -206,7 +206,7 @@ def run_vulture() -> dict:
             cwd=str(BACKEND_DIR), timeout=120,
             env=build_test_env(),
         )
-        lines = [l for l in result.stdout.splitlines() if l.strip()]
+        lines = [line for line in result.stdout.splitlines() if line.strip()]
         dead = len(lines)
         return {"dead_code": dead, "output": result.stdout[:2000], "status": "ok" if dead == 0 else "found"}
     except FileNotFoundError:

@@ -9,15 +9,12 @@ Tests for scripts/fix_lkpm_q1_2026_client_ids.py
 
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
-
 from scripts.fix_lkpm_q1_2026_client_ids import (
     KNOWN_FAKE_FOUNDER_IDS,
     make_decision,
     pick_director_from_links,
     resolve_and_fix,
 )
-
 
 # =====================================================================
 # Helpers
@@ -60,8 +57,8 @@ class _FakeRecord(dict):
     def __getattr__(self, name: str):
         try:
             return self[name]
-        except KeyError:
-            raise AttributeError(name)
+        except KeyError as exc:
+            raise AttributeError(name) from exc
 
 
 def _make_pool_for_fix(
@@ -77,7 +74,7 @@ def _make_pool_for_fix(
             return [_FakeRecord(row) for row in lkpm_rows]
         if "client_company_links" in sql:
             company_id = args[0]
-            return [_FakeRecord(l) for l in links_by_company.get(company_id, [])]
+            return [_FakeRecord(link) for link in links_by_company.get(company_id, [])]
         return []
 
     conn.fetch = fake_fetch

@@ -182,10 +182,10 @@ def test_idempotent(aged_fixture):
     _run_audit(aged_fixture, *common)
     first = (aged_fixture / "docs" / "DOCS_INVENTORY.md").read_text()
     # Strip timestamp line; body must be identical
-    first_body = "\n".join(l for l in first.splitlines() if "Last run:" not in l)
+    first_body = "\n".join(line for line in first.splitlines() if "Last run:" not in line)
     _run_audit(aged_fixture, *common)
     second = (aged_fixture / "docs" / "DOCS_INVENTORY.md").read_text()
-    second_body = "\n".join(l for l in second.splitlines() if "Last run:" not in l)
+    second_body = "\n".join(line for line in second.splitlines() if "Last run:" not in line)
     assert first_body == second_body
 
 
