@@ -276,7 +276,7 @@ async def reset_system() -> Dict[str, str]:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Reset failed: {str(e)}",
-        )
+        ) from e
 
 
 # Middleware for tracking request health

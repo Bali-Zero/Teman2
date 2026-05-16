@@ -33,7 +33,7 @@ class RestartAgent(ActuatorBase):
         )
         try:
             out, err = await asyncio.wait_for(proc.communicate(), timeout=30.0)
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError as exc:
             try:
                 proc.kill()
                 await proc.wait()
@@ -41,7 +41,7 @@ class RestartAgent(ActuatorBase):
                 pass
             raise RuntimeError(
                 f"launchctl kickstart timed out after 30s (label={label})"
-            )
+            ) from exc
         return {
             "agent_ref": agent_ref, "label": label,
             "returncode": proc.returncode,

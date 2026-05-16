@@ -170,7 +170,7 @@ async def query(
     except Exception as e:
         logger.error("query_failed", run_id=run_id, error=str(e), exc_info=True)
         detail = str(e) if settings.debug else "Internal server error"
-        raise HTTPException(status_code=500, detail=detail)
+        raise HTTPException(status_code=500, detail=detail) from e
 
 
 _STREAM_HEARTBEAT_SECONDS = 2.0

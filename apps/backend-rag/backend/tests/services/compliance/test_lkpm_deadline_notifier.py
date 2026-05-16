@@ -11,6 +11,7 @@ Tests for backend.services.compliance.lkpm_deadline_notifier
 """
 
 from datetime import datetime, timezone
+from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -21,13 +22,11 @@ from backend.services.compliance.lkpm_deadline_notifier import (
     KILLSWITCH_KEY,
     TAX_CONSULTANT_MANAGER,
     TAX_CONSULTANTS_NON_MANAGER,
-    TELEGRAM_URGENCY_DAYS,
     LKPMDeadlineNotifier,
     _compute_days_until_deadline,
     _first_name_from_email,
     _format_deadline,
 )
-
 
 # =====================================================================
 # Helpers
@@ -62,8 +61,8 @@ class _FakeRecord(dict):
     def __getattr__(self, name: str):
         try:
             return self[name]
-        except KeyError:
-            raise AttributeError(name)
+        except KeyError as exc:
+            raise AttributeError(name) from exc
 
 
 def _make_pool(
