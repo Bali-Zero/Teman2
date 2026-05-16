@@ -460,6 +460,14 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)packages/cell-core/cell_core/types\.py$"),
         "cell-core types.py: Crockford-base32 alphabet literal for ULID factory, not a secret",
     ),
+    # Zantara visual dataset metadata: manifest.json stores SHA-256 file
+    # checksums ("sha256": "abc123...") for image asset integrity. These
+    # are content-derived hashes of PNG/JPG files in the same directory,
+    # never API keys or tokens.
+    (
+        re.compile(r"(^|/)research/marketing/zantara-visual-dataset/.*/metadata/.*\.json$"),
+        "zantara-visual-dataset metadata: SHA-256 file checksums for image assets, not secrets",
+    ),
 ]
 
 # Hard blocks — if the path matches any of these, NEVER auto-approve even if
@@ -543,7 +551,7 @@ def main() -> int:
 
     if apply:
         BASELINE.write_text(json.dumps(baseline, indent=2, sort_keys=False) + "\n")
-        print(f"\n.secrets.baseline updated in place.")
+        print("\n.secrets.baseline updated in place.")
 
     if report:
         print("\n=== Residue by file (top 40) ===")

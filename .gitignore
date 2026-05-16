@@ -512,6 +512,27 @@ compliance_report_*.pdf
 # ============================================
 research/dev-tools/
 
+# ============================================
+# Ephemeral research directories (2026-05-16 convention post Gemini+DeepSeek panel)
+# Auditable but NOT in git tree until explicit promote.
+# Risk: committed PII/strategy data permanently in main (Gemini hazard #2).
+# Voice samples + CRM exports + HR data MUST stay local.
+# ============================================
+research/marketing/zantara-visual-dataset/
+research/marketing/flow-assets/
+research/crm-exports/
+research/hr/
+research/agent-craft/
+research/nb-archive/
+research/nlm-elevation/
+research/seo_cell/
+
+# Voice samples (any path)
+**/antonello_voice_*.wav
+**/antonello_voice_*.m4a
+**/zero_voice_*.wav
+**/zero_voice_*.m4a
+
 # OpenCode / alternative AI tools
 .opencode/
 opencode.json
@@ -631,9 +652,8 @@ apps/war-room/
 # Per-app Jest/Vitest coverage outputs
 apps/admin-dashboard/coverage/
 packages/core/coverage/
-# SQLite write-ahead log + shared memory (runtime, regenerated)
-data/seo_cell/*.db-wal
-data/seo_cell/*.db-shm
+# seo_cell runtime data (SQLite DB + WAL + birth_date.txt — all local)
+data/seo_cell/
 
 # F1 baseline artifacts (large screenshots/JSON dumps)
 .artifacts/
@@ -658,3 +678,4 @@ docs/codex-reviews/
 
 # Mini-Pro2 venv aside (transient backup during venv recreations)
 apps/backend-rag/.venv.mini-aside-*/
+apps/mouth/scripts/output/

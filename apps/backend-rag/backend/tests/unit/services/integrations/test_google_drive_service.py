@@ -471,6 +471,39 @@ class TestListFolderFiles:
         assert result["files"][0]["size_bytes"] == 1024
         assert result["files"][1]["is_folder"] is True
 
+    async def test_cursor_pagination_uses_page_token(self):
+        """When page_token is provided, Drive pageToken param is sent and result uses cursor."""
+        svc, _, _ = _make_service()
+        svc.get_valid_token = AsyncMock(return_value="token")
+        mock_client = AsyncMock()
+        mock_client.is_closed = False
+        mock_client.get.return_value = _make_mock_response(200, {
+            "files": [{"id": "f3", "name": "c.pdf", "mimeType": "application/pdf", "size": "512", "modifiedTime": "2026-01-01", "createdTime": "2026-01-01"}],
+            "nextPageToken": "cursor-next",
+        })
+        svc._client = mock_client
+        result = await svc.list_folder_files("user-1", "folder-1", limit=50, page_token="cursor-abc")
+        # pageToken must appear in the params sent to Drive
+        call_params = mock_client.get.call_args[1]["params"]
+        assert call_params.get("pageToken") == "cursor-abc"
+        assert result["next_page_token"] == "cursor-next"
+        assert result["has_more"] is True
+        assert result["files"][0]["id"] == "f3"
+
+    async def test_no_page_token_returns_none_when_no_more(self):
+        """Without page_token and no more data, next_page_token is None and has_more False."""
+        svc, _, _ = _make_service()
+        svc.get_valid_token = AsyncMock(return_value="token")
+        mock_client = AsyncMock()
+        mock_client.is_closed = False
+        mock_client.get.return_value = _make_mock_response(200, {
+            "files": [{"id": "f1", "name": "a.pdf", "mimeType": "application/pdf", "size": "100", "modifiedTime": "2026-01-01", "createdTime": "2026-01-01"}],
+        })
+        svc._client = mock_client
+        result = await svc.list_folder_files("user-1", "folder-1", limit=10, offset=0)
+        assert result["next_page_token"] is None
+        assert result["has_more"] is False
+
 
 @pytest.mark.asyncio
 class TestUploadFileToFolder:

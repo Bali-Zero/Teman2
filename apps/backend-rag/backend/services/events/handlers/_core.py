@@ -10,6 +10,7 @@ Design rules:
   - Handlers MUST be idempotent — events can be delivered more than once.
 """
 
+import json
 import logging
 import time
 from datetime import datetime, timezone
@@ -314,10 +315,26 @@ def register_handlers(
                 name=f"compliance_log_{client_id}",
             )
 
+    # ── whatsapp.message_received ─────────────────────────────────────
+    async def on_whatsapp_message_received(payload: dict[str, Any]) -> None:
+        """Fan matched wa-mirror messages into the CRM interaction timeline."""
+        message_context_id = _coerce_int(payload.get("message_context_id"))
+        if message_context_id is None:
+            logger.warning("whatsapp.message_received missing message_context_id")
+            return
+
+        dedup_key = f"whatsapp_message:{message_context_id}"
+        if _is_duplicate(dedup_key):
+            return
+
+        _store_context("whatsapp.message_received", message_context_id, payload)
+        await _log_whatsapp_message_interaction(db_pool, payload)
+
     # ── Register all handlers ──────────────────────────────────────────
     bus.subscribe("client.changed", on_client_changed)
     bus.subscribe("practice.status_changed", on_practice_status_changed)
     bus.subscribe("compliance.alert", on_compliance_alert)
+    bus.subscribe("whatsapp.message_received", on_whatsapp_message_received)
 
     # ── Compliance + intel handlers (2026-04-18 PR) ────────────────────
     try:
@@ -448,6 +465,139 @@ async def _log_interaction(
             )
     except Exception as e:
         logger.debug(f"Interaction log failed: {e}")
+
+
+def _coerce_int(value: Any) -> int | None:
+    """Best-effort int conversion for JSON payload identifiers."""
+    if value is None:
+        return None
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
+async def _log_whatsapp_message_interaction(
+    db_pool: asyncpg.Pool,
+    payload: dict[str, Any],
+) -> None:
+    """Create one CRM interaction for a matched wa-mirror message.
+
+    The source of truth remains ``whatsapp_message_context``. This fan-in
+    creates a timeline projection only when the message is already matched to
+    a CRM client; prospect-only rows stay in WhatsApp context until lead review.
+    """
+    message_context_id = _coerce_int(payload.get("message_context_id"))
+    if message_context_id is None:
+        return
+
+    try:
+        async with db_pool.acquire() as conn:
+            row = await conn.fetchrow(
+                """
+                SELECT id, client_id, practice_id, direction, body, message_text,
+                       message_date, team_member_email, team_member_phone,
+                       counterpart_phone, media_type, media_stored_path
+                  FROM whatsapp_message_context
+                 WHERE id = $1
+                """,
+                message_context_id,
+            )
+
+            client_id = _coerce_int(
+                row["client_id"] if row else payload.get("client_id")
+            )
+            if client_id is None:
+                logger.info(
+                    "whatsapp.message_received prospect-only context id=%s",
+                    message_context_id,
+                )
+                return
+
+            existing = await conn.fetchrow(
+                """
+                SELECT id
+                  FROM interactions
+                 WHERE metadata->>'wa_message_context_id' = $1
+                 LIMIT 1
+                """,
+                str(message_context_id),
+            )
+            if existing:
+                return
+
+            practice_id = _coerce_int(row["practice_id"] if row else None)
+            direction = (row["direction"] if row else payload.get("direction")) or "inbound"
+            media_type = (row["media_type"] if row else None) or "text"
+            body = (
+                (row["body"] if row else None)
+                or (row["message_text"] if row else None)
+                or payload.get("preview")
+                or f"[{media_type}]"
+            )
+            message_date = (
+                row["message_date"] if row else payload.get("message_date")
+            )
+            team_member = (
+                (row["team_member_email"] if row else None)
+                or payload.get("team_member_email")
+                or "wa-mirror"
+            )
+            summary = str(body).strip()[:300] or f"[{media_type}]"
+            title = f"WhatsApp {direction} message"
+            metadata = {
+                "source": "wa_mirror",
+                "wa_message_context_id": message_context_id,
+                "bridge_session_id": _coerce_int(payload.get("bridge_session_id")),
+                "team_member_email": team_member,
+                "team_member_phone": row["team_member_phone"] if row else None,
+                "counterpart_phone": row["counterpart_phone"] if row else None,
+                "media_type": media_type,
+                "media_stored_path": row["media_stored_path"] if row else None,
+                "outbox_id": _coerce_int(payload.get("_outbox_id")),
+            }
+
+            await conn.execute(
+                """
+                INSERT INTO interactions (
+                    client_id, practice_id, type, channel, title, content,
+                    direction, summary, full_content, metadata, created_at,
+                    created_by, team_member, interaction_type, subject,
+                    interaction_date, priority
+                )
+                VALUES (
+                    $1, $2, 'message', 'whatsapp', $3, $4, $5, $6, $7,
+                    $8::jsonb, NOW(), $9, $9, 'whatsapp_message', $10,
+                    COALESCE($11::timestamptz, NOW()), 'normal'
+                )
+                """,
+                client_id,
+                practice_id,
+                title,
+                summary,
+                direction,
+                summary,
+                str(body),
+                json.dumps(metadata, ensure_ascii=False, default=str),
+                str(team_member),
+                title,
+                message_date,
+            )
+
+        try:
+            from backend.core.cache import invalidate_cache
+
+            await invalidate_cache("zantara:crm_interactions_stats:*")
+            await invalidate_cache(f"zantara:crm_clients:{client_id}:*")
+        except Exception as exc:
+            logger.debug("WhatsApp interaction cache invalidation skipped: %s", exc)
+    except Exception as exc:
+        logger.error(
+            "WhatsApp CRM interaction fan-in failed for context id=%s: %s",
+            message_context_id,
+            exc,
+            exc_info=True,
+        )
 
 
 async def _check_client_expiry_on_completion(

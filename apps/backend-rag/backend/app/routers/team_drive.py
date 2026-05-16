@@ -486,7 +486,9 @@ async def search_files(
     Search for files by name.
     """
     try:
+        user_email = current_user.get("email", "")
         files = await drive.search_files(
+            user_email=user_email,
             query=q,
             file_type=file_type,
             page_size=page_size,

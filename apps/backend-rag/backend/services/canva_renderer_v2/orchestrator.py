@@ -39,12 +39,14 @@ from backend.services.canva_renderer_v2._telegram import send_telegram
 from backend.services.canva_renderer_v2._telemetry import log_telemetry
 from backend.services.canva_renderer_v2._tigris import (
     TigrisError,
-    delete_pdf,
     delete_pdf_by_key,
     get_s3_client,
     upload_pdf,
 )
-from backend.services.canva_renderer_v2._token_storage import TokenStorageError
+from backend.services.canva_renderer_v2._token_storage import (
+    OrchestratorTokenStorage,
+    TokenStorageError,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -213,6 +215,44 @@ async def process_draft(
     return True
 
 
+async def _proactive_token_refresh() -> bool:
+    """Refresh Canva access token if expired or expiring within 5min.
+
+    Returns True if token is valid (or was refreshed). Returns False on
+    failure (caller should alert + return OAUTH_REFRESH_REVOKED).
+    Silent no-op when token is still fresh.
+    """
+    import json as _json
+    import urllib.parse
+    import urllib.request
+    try:
+        storage = OrchestratorTokenStorage()
+        if not storage.needs_refresh():
+            return True
+        data = storage.load_sync()
+        body = urllib.parse.urlencode({
+            "grant_type": "refresh_token",
+            "refresh_token": data["refresh_token"],
+            "client_id": data["client_id"],
+            "client_secret": data["client_secret"],
+        }).encode()
+        req = urllib.request.Request(
+            "https://mcp.canva.com/token", data=body, method="POST"
+        )
+        req.add_header("Content-Type", "application/x-www-form-urlencoded")
+        with urllib.request.urlopen(req, timeout=20) as resp:
+            new_tokens = _json.loads(resp.read())
+        storage.save_sync(new_tokens)
+        logger.info("Canva access token proactively refreshed (expires_in=%s)", new_tokens.get("expires_in"))
+        return True
+    except TokenStorageError as e:
+        logger.error("Token storage error during proactive refresh: %s", e)
+        return False
+    except Exception as e:
+        logger.error("Canva token refresh failed: %s", e)
+        return False
+
+
 async def run() -> ExitCode:
     _configure_logging()
     dsn = os.environ.get("DATABASE_URL")
@@ -243,6 +283,14 @@ async def run() -> ExitCode:
         if not draft_ids:
             logger.info("no pending drafts")
             return ExitCode.OK
+
+        # Proactive token refresh before MCP session opens
+        if not await _proactive_token_refresh():
+            send_telegram(
+                "🚨 WR2 Canva token refresh FAILED before run — check logs.\n"
+                "Run scripts/wr2_bootstrap_canva_oauth.py on Pro if refresh_token revoked."
+            )
+            return ExitCode.OAUTH_REFRESH_REVOKED
 
         lease_owner = _lease_owner()
         s3 = get_s3_client()

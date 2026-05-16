@@ -24,8 +24,6 @@ in the same commit that introduces the file.
 from __future__ import annotations
 
 import fnmatch
-import os
-import re
 import subprocess
 import sys
 from pathlib import Path
@@ -116,6 +114,10 @@ WHITELIST_DIRS: set[str] = {
     "tests",
     "tools",
     "research",
+    # Curated personal library: 01-inventory.md generated artifact + future
+    # 02-patterns.md, 03-lessons.md (manual). Separate from research/ (raw
+    # capture) and scripts/ (build/utility). See agent-library/README.md.
+    "agent-library",
 }
 
 # Allowed tracked dotfiles directories.

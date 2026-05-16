@@ -263,6 +263,7 @@ class TestEmbeddingsGenerator:
         mock_st.return_value = mock_transformer
 
         generator = EmbeddingsGenerator(provider="sentence-transformers")
+        await generator.clear_cache()  # prevent cache hit masking the error
         with pytest.raises(Exception, match="Encoding error"):
             await generator.generate_embeddings(["test"])
 

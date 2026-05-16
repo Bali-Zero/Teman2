@@ -114,6 +114,12 @@ PG_CHANNEL_MAP: dict[str, str] = {
     # Consumers: analytics dashboards, retention loop, future onboarding cell.
     # See: docs/sprint3/crm-cell-design.md § Q2c.
     "crm_welcome_completed": "crm.welcome_completed",
+    # Emitted by apps/wa-mirror after a one-to-one WhatsApp message is
+    # persisted to whatsapp_message_context. Payload: {message_context_id,
+    # bridge_session_id, team_member_email, client_id, direction,
+    # message_date, preview, _outbox_id}. Consumer: CRM interaction timeline
+    # fan-in in events.handlers._core.
+    "whatsapp_message_received": "whatsapp.message_received",
     # Emitted by asset_provenance INSERT/UPDATE trigger (migration 155, Sprint
     # 3 W2 Mata-Garuda L4.5 cell promotion). Payload: {provenance_id,
     # asset_kind, asset_id, source, confidence, owner, valid_until,
@@ -483,7 +489,50 @@ class EventBus:
         data["_channel"] = channel
         data["_received_at"] = datetime.now(timezone.utc).isoformat()
 
-        await self.emit(event_type, data, source="pg_notify")
+        trace = await self.emit(event_type, data, source="pg_notify")
+        if not trace.errors:
+            await self._ack_outbox_if_present(data, event_type)
+
+    async def _ack_outbox_if_present(
+        self,
+        payload: dict[str, Any],
+        event_type: str,
+    ) -> None:
+        """Acknowledge durable outbox rows after direct PG handler success."""
+        if self._db_pool is None:
+            return
+
+        raw_outbox_id = payload.get("_outbox_id")
+        if raw_outbox_id is None:
+            return
+
+        try:
+            outbox_id = int(raw_outbox_id)
+        except (TypeError, ValueError):
+            logger.warning(
+                "EventBus: invalid _outbox_id on '%s': %r",
+                event_type,
+                raw_outbox_id,
+            )
+            return
+
+        try:
+            from backend.services.events.outbox import acknowledge
+
+            async with self._db_pool.acquire() as conn:
+                await acknowledge(
+                    conn,
+                    outbox_id,
+                    consumer_id=f"event_bus:{event_type}",
+                )
+        except Exception as exc:  # noqa: BLE001 — ack failure must not block handlers
+            logger.error(
+                "EventBus: outbox ack failed for id=%d event_type=%s: %s",
+                outbox_id,
+                event_type,
+                exc,
+                exc_info=True,
+            )
 
     # ── Observability ──────────────────────────────────────────────────
 
