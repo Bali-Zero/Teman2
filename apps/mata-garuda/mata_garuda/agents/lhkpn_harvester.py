@@ -2,11 +2,20 @@
 Mata Garuda — LHKPN Harvester Agent.
 
 Harvests Indonesian state officials' wealth declarations from
-antv.kpk.go.id/elhkpn/. Closes 4 of 8 gap types from the gap detector:
+``elhkpn.kpk.go.id`` (KPK migrated from ``antv.kpk.go.id`` on 2026-04-26
+to a SPA + reCAPTCHA v3 portal — see
+``research/2026-05-16-lhkpn-flow-triage.md``).
+
+Closes 4 of 8 gap types from the gap detector:
 - gap.missing_nip
 - gap.missing_lhkpn
 - gap.missing_angkatan
 - gap.stale_official (when the staleness is on LHKPN-related fields)
+
+The actual portal interaction lives in OSINT-Nexus
+(``osint_nexus.scrapers.lhkpn``); this agent shells out to it via
+``mata_garuda.tools.lhkpn_tools`` to keep the Mata Garuda runtime free
+of heavy browser/playwright dependencies (CLAUDE.md §1).
 
 Layer: 1 (Harvester)
 
@@ -60,11 +69,12 @@ def harvest_lhkpn_for_nip(nip: str) -> dict[str, Any]:
 
     fields = {
         "title": title,
-        "url": (
-            f"https://antv.kpk.go.id/elhkpn/index.php/searchpenyelenggara/"
-            f"profilelhkpn/{nip}"
-        ),
-        "source": "antv.kpk.go.id",
+        # Portal migrated 2026-04-26: antv.kpk.go.id is NXDOMAIN; the
+        # post-migration SPA at elhkpn.kpk.go.id has no per-NIP deep
+        # link, so we point at the search root and let consumers
+        # cross-reference via the NIP in `content`.
+        "url": "https://elhkpn.kpk.go.id/",
+        "source": "elhkpn.kpk.go.id",
         "source_type": "lhkpn",
         "content": content,
         "agent": "lhkpn_harvester",
@@ -116,7 +126,8 @@ def get_lhkpn_harvester(model: str = "claude") -> Agent:
         return """You are the LHKPN Harvester agent for Mata Garuda intelligence hub.
 
 Your mission: given a person's name or NIP, fetch their wealth declaration from
-antv.kpk.go.id and publish to the garuda:raw Redis Stream.
+elhkpn.kpk.go.id (the post-2026-04-26 KPK e-Announcement portal) and
+publish to the garuda:raw Redis Stream.
 
 WORKFLOW:
 1. If you have a NIP, call harvest_lhkpn_for_nip(nip)
@@ -125,17 +136,18 @@ WORKFLOW:
 4. On failure → call case_not_resolved with the reason
 
 CONSTRAINTS (from GENOME.md):
-- Source: https://antv.kpk.go.id/elhkpn/
-- Rate limit: 10 req/min (6s between calls — handled in tools)
-- User-Agent rotation on 403 (handled in tools)
+- Source: https://elhkpn.kpk.go.id/ (SPA + reCAPTCHA v3)
+- Rate limit: 10 req/min (6s between calls — handled by OSINT-Nexus scraper)
+- reCAPTCHA token injected by OSINT-Nexus browser-core (no UA rotation needed)
+- Scraping is delegated via subprocess to osint_nexus.cli.lhkpn_scrape
 - Maximum 1 person per gap (avoid flooding)
 - NEVER export data outside Mata Garuda (OSINT blindato)
 - All data goes to garuda:raw Redis Stream only
 
 ERROR HANDLING:
-- Empty profile → case_not_resolved with "NIP not found or HTTP failure"
+- Empty profile → case_not_resolved with "NIP not found or scraper failure"
 - No search results → case_not_resolved with "no search results for {name}"
-- 3 consecutive 403s → escalate to meta-agent (handled in tools)
+- Scraper timeout / reCAPTCHA failure → escalate via reflection
 """
 
     return Agent(
