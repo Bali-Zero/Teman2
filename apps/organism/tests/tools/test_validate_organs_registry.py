@@ -8,15 +8,11 @@ validation errors. Tests cover the 8 classes of failure documented in
 """
 from __future__ import annotations
 
-import hashlib
-import json
 from pathlib import Path
 
 import pytest
 import yaml
-
 from organism.tools import validate_organs_registry as vg
-
 
 # ---------- helpers ----------------------------------------------------------
 

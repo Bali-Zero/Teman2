@@ -2,9 +2,7 @@
 Tests for GeminiJakselService - OpenRouter fallback coverage.
 """
 
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 
 def test_openrouter_fallback_missing():

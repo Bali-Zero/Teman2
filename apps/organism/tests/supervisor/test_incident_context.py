@@ -1,6 +1,6 @@
 import pytest
-from organism.schemas import Event, Severity, IncidentContext
-from organism.supervisor.incident_context import IncidentStore, INCIDENT_KEY_PREFIX, INCIDENT_TTL
+from organism.schemas import Event, IncidentContext, Severity
+from organism.supervisor.incident_context import INCIDENT_KEY_PREFIX, IncidentStore
 
 
 @pytest.mark.asyncio

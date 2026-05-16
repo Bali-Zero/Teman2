@@ -19,8 +19,8 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import re
 import os
+import re
 import subprocess
 import sys
 from dataclasses import asdict, dataclass, field

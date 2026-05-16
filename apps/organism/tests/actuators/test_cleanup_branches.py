@@ -1,5 +1,6 @@
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import AsyncMock, patch
 from organism.actuators.cleanup_branches import CleanupBranches
 from organism.redis_bus import EventBus
 

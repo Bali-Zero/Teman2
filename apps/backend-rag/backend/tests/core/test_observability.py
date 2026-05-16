@@ -18,12 +18,10 @@ import socket
 import subprocess
 import sys
 import textwrap
-import time
 from typing import Any
 from unittest import mock
 
 import pytest
-
 
 MODULE = "backend.core.observability"
 

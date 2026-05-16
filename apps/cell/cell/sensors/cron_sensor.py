@@ -6,7 +6,6 @@ OpenClaw agent and cron script on completion. Format:
 
 ts is a Unix timestamp (seconds). status is "ok" or "failed".
 """
-import glob
 import json
 import logging
 import os

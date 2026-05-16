@@ -1,6 +1,5 @@
 """Tests for Layer 2 workers — normalizer and scorer."""
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 
 class TestNormalizer:
@@ -64,8 +63,9 @@ class TestScorer:
 
     @patch("mata_garuda.workers.scorer.subprocess.run")
     def test_score_with_ollama_success(self, mock_run):
-        from mata_garuda.workers.scorer import score_with_ollama
         import json
+
+        from mata_garuda.workers.scorer import score_with_ollama
 
         mock_run.return_value = MagicMock(
             returncode=0,
@@ -99,8 +99,9 @@ class TestBaseWorker:
 class TestConfig:
     def test_streams_defined(self):
         from mata_garuda.config import (
-            STREAM_RAW, STREAM_ENRICHED, STREAM_ALERTS,
-            STREAM_DIGEST, STREAM_OSINT, STREAM_FEEDBACK,
+            STREAM_ALERTS,
+            STREAM_ENRICHED,
+            STREAM_RAW,
         )
         assert STREAM_RAW == "garuda:raw"
         assert STREAM_ENRICHED == "garuda:enriched"
@@ -118,7 +119,11 @@ class TestConfig:
         assert TG_ZERO_CHAT_ID == "1125336968"
 
     def test_ai_sources_configured(self):
-        from mata_garuda.config import AI_YOUTUBE_CHANNELS, ARXIV_CATEGORIES, AI_RSS_FEEDS
+        from mata_garuda.config import (
+            AI_RSS_FEEDS,
+            AI_YOUTUBE_CHANNELS,
+            ARXIV_CATEGORIES,
+        )
 
         assert len(AI_YOUTUBE_CHANNELS) >= 5
         assert "cs.AI" in ARXIV_CATEGORIES

@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from backend.services.olympus.models import OlympusRule
 from backend.services.olympus.rules_engine import RulesEngine
-
 
 # ---------------------------------------------------------------------------
 # Helpers

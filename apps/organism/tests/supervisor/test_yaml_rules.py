@@ -1,7 +1,5 @@
-import pytest
 from organism.schemas import Event, Severity
 from organism.supervisor.yaml_rules import RuleMatcher
-
 
 BASE_YAML = """
 rules:

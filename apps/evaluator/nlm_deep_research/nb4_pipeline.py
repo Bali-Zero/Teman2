@@ -10,13 +10,11 @@ Run via:
 
 import json
 import logging
-import os
 import time
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 from .circuit_breaker import CircuitBreakerRegistry
 from .claim_extractor import (
@@ -26,12 +24,12 @@ from .claim_extractor import (
     load_claims_count,
 )
 from .registry import SourceRegistry
-from .source_snapshot import take_snapshot
 from .source_management import (
-    compute_nhs,
-    classify_nhs,
     NotebookHealthInput,
+    classify_nhs,
+    compute_nhs,
 )
+from .source_snapshot import take_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -196,7 +194,7 @@ class NB4Pipeline:
         self.state_file = Path(state_file)
         self.claims_file = Path(claims_file)
         self.registry = SourceRegistry(registry_file)
-        self.circuit_breakers: Optional[CircuitBreakerRegistry] = None
+        self.circuit_breakers: CircuitBreakerRegistry | None = None
         self.dry_run = dry_run
         self.force = force
         self._nlm_query = nlm_query_fn
@@ -424,7 +422,7 @@ class NB4Pipeline:
         return CLUSTER_ROTATION.get(weekday, ("A", "Corporate Tax (PPh Badan)"))
 
     def _run_query(
-        self, level: str, cluster_key: str, conversation_id: Optional[str] = None
+        self, level: str, cluster_key: str, conversation_id: str | None = None
     ) -> dict:
         query_map = L1_QUERIES if level == "L1" else L2_QUERIES
         query_text = query_map.get(cluster_key, query_map.get(cluster_key.split("+")[0], ""))
@@ -605,7 +603,10 @@ def main():
     nlm_query_fn = None
     if not args.dry_run:
         try:
-            from apps.evaluator.nlm_deep_research.nlm_bridge import nlm_query, check_nlm_available
+            from apps.evaluator.nlm_deep_research.nlm_bridge import (
+                check_nlm_available,
+                nlm_query,
+            )
             if check_nlm_available():
                 nlm_query_fn = nlm_query
             else:

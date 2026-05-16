@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import time
-from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -16,7 +14,6 @@ from backend.services.ingestion.performance_monitor import (
     PerformanceMetric,
     PerformanceMonitor,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

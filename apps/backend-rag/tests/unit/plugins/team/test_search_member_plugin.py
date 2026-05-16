@@ -4,8 +4,6 @@ Tests for TeamMemberSearchPlugin.
 
 from unittest.mock import MagicMock
 
-import pytest
-
 from backend.core.plugins import PluginCategory
 
 

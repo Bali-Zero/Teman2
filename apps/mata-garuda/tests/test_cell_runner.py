@@ -1,9 +1,9 @@
 """Tests for mata_garuda.cell.runner — builds and runs PulseLoop."""
-import pytest
 from datetime import datetime, timezone
-from unittest.mock import patch, MagicMock, AsyncMock
+from unittest.mock import MagicMock, patch
 
-from cell_core.types import PulseResult, Phase
+import pytest
+from cell_core.types import PulseResult
 
 
 class TestBuildPulseLoop:
@@ -21,8 +21,8 @@ class TestBuildPulseLoop:
         assert isinstance(pl, PulseLoop)
 
     def test_lifecycle_phase(self):
-        from mata_garuda.cell.runner import MG_BIRTH_DATE
         from cell_core.lifecycle import Maturation
+        from mata_garuda.cell.runner import MG_BIRTH_DATE
 
         m = Maturation(birth_date=MG_BIRTH_DATE)
         # MG born 2026-04-01, should be past embrione
@@ -34,15 +34,18 @@ class TestSinglePulse:
     @pytest.mark.asyncio
     async def test_single_pulse_runs(self, tmp_path):
         """Verify a single pulse completes with fake sensors."""
-        from mata_garuda.cell.runner import build_pulse_loop
-        from cell_core.types import SensorReading, SafetyCheckResult
+        from cell_core.homeostasis import HomeostaticController
+        from cell_core.lifecycle import Maturation
+        from cell_core.pulse import PulseLoop
+        from cell_core.types import SafetyCheckResult, SensorReading
 
         # Build with fakes
-        from mata_garuda.cell.memory_bridge import BridgeSTM, KnowledgeBridgeLTM, ReflectionEpisodicStore
+        from mata_garuda.cell.memory_bridge import (
+            BridgeSTM,
+            KnowledgeBridgeLTM,
+            ReflectionEpisodicStore,
+        )
         from mata_garuda.cell.thinker import PassthroughThinker
-        from cell_core.pulse import PulseLoop
-        from cell_core.lifecycle import Maturation
-        from cell_core.homeostasis import HomeostaticController
 
         class FakeSensor:
             name = "fake"

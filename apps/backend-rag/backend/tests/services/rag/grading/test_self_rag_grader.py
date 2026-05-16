@@ -5,8 +5,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from backend.services.rag.grading.context import GradingContext, RetrievedDoc
 from backend.services.rag.grading.schemas import GradeDecision
 from backend.services.rag.grading.self_rag_grader import SelfRAGGrader
@@ -25,7 +23,7 @@ class TestSelfRAGGrader:
             contents = [f"Document about visa process step {i}" for i in range(len(scores))]
         return [
             RetrievedDoc(content=c, score=s, source=f"collection_{i}")
-            for i, (s, c) in enumerate(zip(scores, contents))
+            for i, (s, c) in enumerate(zip(scores, contents, strict=False))
         ]
 
     # ── PASS cases ──

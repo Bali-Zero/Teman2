@@ -25,7 +25,7 @@ import argparse
 import asyncio
 import json
 import sys
-from collections import Counter, defaultdict
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -106,7 +106,7 @@ def print_summary(classified: list[tuple[Rule, dict]]) -> None:
 
 def write_excel(classified: list[tuple[Rule, dict]], drive) -> None:
     from openpyxl import Workbook
-    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.styles import Font, PatternFill
     from openpyxl.utils import get_column_letter
 
     wb = Workbook()

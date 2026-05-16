@@ -14,7 +14,6 @@ import logging
 import os
 import sqlite3
 import threading
-from datetime import datetime, timezone
 from pathlib import Path
 
 from cell_core.metabolic.definitions import (

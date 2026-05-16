@@ -1,6 +1,5 @@
 """Telemetry: JSONL append-only with size-based rotation."""
 import json
-from pathlib import Path
 
 from backend.services.canva_renderer_v2._telemetry import log_telemetry
 

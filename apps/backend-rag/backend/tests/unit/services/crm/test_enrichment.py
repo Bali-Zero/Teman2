@@ -6,10 +6,9 @@ and conversation title generation.
 """
 
 import json
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
 
 
 def _make_pool(conn=None):
@@ -33,6 +32,7 @@ def _make_pool(conn=None):
 class TestAsyncpgJSONEncoder:
     def test_uuid_serialization(self):
         from uuid import UUID
+
         from backend.services.crm.enrichment import AsyncpgJSONEncoder
         val = UUID("12345678-1234-5678-1234-567812345678")
         result = json.dumps(val, cls=AsyncpgJSONEncoder)
@@ -40,12 +40,14 @@ class TestAsyncpgJSONEncoder:
 
     def test_datetime_serialization(self):
         from datetime import datetime, timezone
+
         from backend.services.crm.enrichment import AsyncpgJSONEncoder
         result = json.dumps(datetime(2026, 1, 1, tzinfo=timezone.utc), cls=AsyncpgJSONEncoder)
         assert "2026-01-01" in result
 
     def test_date_serialization(self):
         from datetime import date
+
         from backend.services.crm.enrichment import AsyncpgJSONEncoder
         result = json.dumps(date(2026, 6, 15), cls=AsyncpgJSONEncoder)
         assert "2026-06-15" in result
@@ -53,7 +55,7 @@ class TestAsyncpgJSONEncoder:
     def test_unknown_type_raises(self):
         from backend.services.crm.enrichment import AsyncpgJSONEncoder
         with pytest.raises(TypeError):
-            json.dumps(set([1, 2]), cls=AsyncpgJSONEncoder)
+            json.dumps({1, 2}, cls=AsyncpgJSONEncoder)
 
 
 # ---------------------------------------------------------------------------
@@ -259,7 +261,8 @@ class TestBirthplaceEnrichmentService:
         svc, _, _ = self._make_service()
         mock_client = AsyncMock()
         mock_client.is_closed = False
-        mock_resp = MagicMock(); mock_resp.status_code = 200
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
         mock_client.get.return_value = mock_resp
         svc._client = mock_client
         svc.get_clients_needing_enrichment = AsyncMock(return_value=[])
@@ -289,7 +292,8 @@ class TestConversationTitleGenerator:
         from backend.services.crm.enrichment import generate_conversation_title
         with patch("backend.services.crm.enrichment._generate_title_via_ollama", new_callable=AsyncMock) as m_o, \
              patch("backend.services.crm.enrichment._generate_title_via_gemini", new_callable=AsyncMock) as m_g:
-            m_o.return_value = None; m_g.return_value = "Company Setup"
+            m_o.return_value = None
+            m_g.return_value = "Company Setup"
             result = await generate_conversation_title("c1", "How do I set up a PT PMA company")
         assert result == "Company Setup"
 
@@ -297,7 +301,8 @@ class TestConversationTitleGenerator:
         from backend.services.crm.enrichment import generate_conversation_title
         with patch("backend.services.crm.enrichment._generate_title_via_ollama", new_callable=AsyncMock) as m_o, \
              patch("backend.services.crm.enrichment._generate_title_via_gemini", new_callable=AsyncMock) as m_g:
-            m_o.return_value = None; m_g.return_value = None
+            m_o.return_value = None
+            m_g.return_value = None
             assert await generate_conversation_title("c1", "A long enough message for generation") is None
 
 

@@ -1,15 +1,12 @@
 """Tests for nb_monitor.collectors.log_scraper."""
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
-import pytest
-
 from mata_garuda.scripts.nb_monitor.collectors.log_scraper import (
-    iter_nlm_events,
-    count_nlm_events_by_uuid,
     NLMEvent,
+    count_nlm_events_by_uuid,
+    iter_nlm_events,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"

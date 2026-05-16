@@ -2,7 +2,7 @@
 Tests for ZantaraAIClient - streaming, error handling, fallbacks.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 

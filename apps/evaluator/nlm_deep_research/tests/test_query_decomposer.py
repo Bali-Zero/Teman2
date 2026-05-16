@@ -8,20 +8,13 @@ from __future__ import annotations
 import json
 from unittest.mock import patch
 
-import pytest
-
 from apps.evaluator.nlm_deep_research.query_decomposer import (
     CLUSTER_OBJECTIVES,
     MAX_QUERIES_PER_DECOMPOSITION,
     MIN_QUERIES_PER_DECOMPOSITION,
-    DecompositionResult,
     QueryDecomposer,
-    _call_ollama,
     _parse_query_array,
-    decompose_query,
-    get_decomposer,
 )
-
 
 # ---------------------------------------------------------------------------
 # _parse_query_array

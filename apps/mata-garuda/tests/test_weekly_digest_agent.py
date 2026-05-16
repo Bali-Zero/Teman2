@@ -4,11 +4,8 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
-import pytest
-
 from mata_garuda.agents import weekly_digest_agent as wda
 from mata_garuda.runtime.knowledge import KnowledgeBase
-
 
 NOW = datetime(2026, 4, 19, 8, 0, tzinfo=timezone.utc)  # Sunday
 

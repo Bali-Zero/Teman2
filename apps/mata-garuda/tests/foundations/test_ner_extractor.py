@@ -1,8 +1,8 @@
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
+
 from mata_garuda.foundations.ner_extractor import (
-    NERExtractor,
     NamedEntity,
+    NERExtractor,
 )
 
 
@@ -66,8 +66,8 @@ def test_pipeline_initialised_only_once_under_concurrent_calls():
 
     To exercise the actual lock path (not just _get_pipeline), we spy on the
     real `_get_pipeline` and assert the underlying pipeline factory ran once."""
-    import threading
     import sys
+    import threading
     import types
 
     # Inject a fake `transformers` module with a counting `pipeline` factory.

@@ -15,11 +15,10 @@ Key features:
 - Integration with response verification pipeline
 """
 
+import asyncio
 import logging
 import time
 from typing import Any
-
-import asyncio
 
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
@@ -56,8 +55,6 @@ from backend.services.rag.agentic._reasoning_loop_helpers import (
 )
 from backend.services.rag.agentic._reasoning_policy import (
     apply_shared_trusted_flippers,
-    detect_llm_has_tools,
-    detect_pricing_data_in_answer,
     should_apply_low_evidence_policy,
 )
 from backend.services.rag.agentic._reasoning_stubs import get_localized_stub

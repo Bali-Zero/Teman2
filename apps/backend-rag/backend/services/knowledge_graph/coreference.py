@@ -9,7 +9,6 @@ Resolves references like:
 """
 
 import logging
-import os
 import re
 from dataclasses import dataclass, field
 from typing import Any

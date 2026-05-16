@@ -12,19 +12,19 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from typing import Any, AsyncGenerator
+from collections.abc import AsyncGenerator
+from typing import Any
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
+from nuzantara_schemas.events import SSEMessage, StreamEventType, StreamNodeEvent
+from nuzantara_schemas.state import ChannelType, GraphState
 from pydantic import BaseModel, Field
 
 from nuzantara_graph.api.middleware import get_current_user, rate_limit
 from nuzantara_graph.config import settings
-from nuzantara_graph.dependencies import get_services
 from nuzantara_graph.services import Services
-from nuzantara_schemas.events import SSEMessage, StreamEventType, StreamNodeEvent
-from nuzantara_schemas.state import ChannelType, GraphState
 
 logger = structlog.get_logger()
 

@@ -2,9 +2,7 @@
 Tests for AutonomousScheduler - task loop execution.
 """
 
-from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 
 from backend.services.misc.autonomous_scheduler import AutonomousScheduler
 

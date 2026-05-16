@@ -31,7 +31,6 @@ Heuristics for classification:
   both-conflict if same label exists on both with different state.
 """
 import re
-import sys
 
 PRO_TSV = "/tmp/pro-plists.tsv"
 MINI_TXT = "/tmp/mini-plists.txt"
@@ -332,8 +331,8 @@ def main():
         out.append(f"    resource_class: {rc}")
         out.append(f"    schedule: {sched}")
         out.append(f"    candidate_migrate: {cand}")
-        out.append(f"    last_migrated: null")
-        out.append(f"    git_sha: null")
+        out.append("    last_migrated: null")
+        out.append("    git_sha: null")
         out.append(f"    notes:{notes_yaml}")
         out.append("")
 

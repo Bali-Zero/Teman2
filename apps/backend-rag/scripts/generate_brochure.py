@@ -21,8 +21,6 @@ from __future__ import annotations
 
 import io
 import json
-import os
-import sys
 from pathlib import Path
 
 # ─────────────────────────────────────────────────────────
@@ -41,8 +39,7 @@ OUTPUT_PATH.parent.mkdir(parents=True, exist_ok=True)
 # ─────────────────────────────────────────────────────────
 import numpy as np
 from PIL import Image as PILImage
-
-from reportlab.lib.colors import Color, HexColor, white, black
+from reportlab.lib.colors import Color, HexColor, white
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
@@ -54,6 +51,7 @@ from reportlab.platypus import (
     BaseDocTemplate,
     Flowable,
     Frame,
+    KeepTogether,
     NextPageTemplate,
     PageBreak,
     PageTemplate,
@@ -61,7 +59,6 @@ from reportlab.platypus import (
     Spacer,
     Table,
     TableStyle,
-    KeepTogether,
 )
 
 # ─────────────────────────────────────────────────────────
@@ -226,7 +223,7 @@ def _prepare_logo(path: Path) -> ImageReader | None:
     try:
         img = PILImage.open(path).convert("RGBA")
         arr = np.array(img, dtype=np.float32)
-        r, g, b, a = arr[..., 0], arr[..., 1], arr[..., 2], arr[..., 3]
+        r, g, b, _a = arr[..., 0], arr[..., 1], arr[..., 2], arr[..., 3]
         brightness = 0.299 * r + 0.587 * g + 0.114 * b
         # Dark pixels (near-black background) → transparent
         mask = brightness < 30

@@ -7,10 +7,8 @@ Follows spec §5: file-based, zero coupling, atomic writes, audit trail.
 import json
 import logging
 import os
-import uuid
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -157,7 +155,7 @@ def generate_handoff(
     notebook_id: str,
     query_cluster: str,
     queries_executed: int,
-    domain_denylist: Optional[list[str]] = None,
+    domain_denylist: list[str] | None = None,
 ) -> dict:
     """Generate complete handoff package per schema v1.0.
 
@@ -267,7 +265,7 @@ def validate_handoff_schema(package: dict) -> tuple[bool, list[str]]:
     return len(errors) == 0, errors
 
 
-def save_handoff(package: dict, output_dir: Optional[str] = None) -> Path:
+def save_handoff(package: dict, output_dir: str | None = None) -> Path:
     """Save handoff package as dated JSON + latest.json symlink.
 
     Args:

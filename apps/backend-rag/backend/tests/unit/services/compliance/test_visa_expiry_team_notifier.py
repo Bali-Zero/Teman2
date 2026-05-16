@@ -2,22 +2,21 @@
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from backend.services.compliance.visa_expiry_team_notifier import (
+    _LABEL_COLOURS,
+    _ROW_COLOURS,
     ADMIN_EMAIL,
     ALERT_THRESHOLDS,
     VisaExpiryTeamNotifier,
     _build_client_row,
     _fmt_date,
-    _LABEL_COLOURS,
-    _ROW_COLOURS,
 )
-
 
 # ---------------------------------------------------------------------------
 # _fmt_date

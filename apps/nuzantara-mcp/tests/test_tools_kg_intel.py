@@ -1,12 +1,11 @@
 """Tests for kg_intel tool (Bridge A: Pro MCP -> Mini KG)."""
 from __future__ import annotations
 
-import os
-from typing import Any, Awaitable, Callable
+from collections.abc import Awaitable, Callable
+from typing import Any
 
 import httpx
 import pytest
-
 from nuzantara_mcp.tools import kg_intel
 
 

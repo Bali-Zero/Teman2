@@ -1,35 +1,32 @@
 """Tests for nb_monitor.report."""
 from __future__ import annotations
 
-from dataclasses import dataclass
 from datetime import datetime, timezone
-
-import pytest
 
 from mata_garuda.scripts.nb_monitor.report import (
     ReportEntry,
-    render_weekly_report,
     iso_year_week,
+    render_weekly_report,
 )
 from mata_garuda.scripts.nb_monitor.tier import Tier
 
 
 def _entry(**over) -> ReportEntry:
-    base = dict(
-        rank=1,
-        uuid="1ed02e54-542f-426a-94f8-53c5ffde4b7d",
-        name="NB-INTEL-Immigration",
-        tier=Tier.ALIVE,
-        read_freq_7d=120,
-        read_freq_30d=480,
-        delta_7d_vs_lastweek=10,
-        age_days=30,
-        skill_derivation_count=None,
-        downstream_cite_rate=None,
-        source_freshness_age_days=15,
-        push_success_rate=0.99,
-        instrumentation_status="ok",
-    )
+    base = {
+        "rank": 1,
+        "uuid": "1ed02e54-542f-426a-94f8-53c5ffde4b7d",
+        "name": "NB-INTEL-Immigration",
+        "tier": Tier.ALIVE,
+        "read_freq_7d": 120,
+        "read_freq_30d": 480,
+        "delta_7d_vs_lastweek": 10,
+        "age_days": 30,
+        "skill_derivation_count": None,
+        "downstream_cite_rate": None,
+        "source_freshness_age_days": 15,
+        "push_success_rate": 0.99,
+        "instrumentation_status": "ok",
+    }
     base.update(over)
     return ReportEntry(**base)
 

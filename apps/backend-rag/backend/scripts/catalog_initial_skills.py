@@ -31,10 +31,9 @@ import argparse
 import ast
 import json
 import logging
-import os
 import sys
 from collections import Counter
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")

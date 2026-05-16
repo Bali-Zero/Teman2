@@ -12,12 +12,10 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from backend.services.naga.search_agents.base import AgentResponse, SearchResult
 from backend.services.naga.search_agents.domain_agent import (
     GOV_DOMAINS,
     IndonesiaDomainAgent,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -56,7 +54,7 @@ class TestDomainAgentCallsAskLegal:
             return_value={"answer": "KITAS requires sponsor.", "sources": ["visa_oracle"]}
         )
         agent = _make_agent(ask_legal=mock_ask)
-        resp = await agent.search("visa requirements", "what docs for KITAS?")
+        await agent.search("visa requirements", "what docs for KITAS?")
 
         mock_ask.assert_awaited_once()
         # The combined query should contain both query and sub_question
@@ -94,7 +92,7 @@ class TestDomainAgentCallsSearchIntel:
             ]
         )
         agent = _make_agent(search_intel=mock_intel)
-        resp = await agent.search("immigration policy", "latest changes")
+        await agent.search("immigration policy", "latest changes")
 
         mock_intel.assert_awaited_once()
 

@@ -27,13 +27,11 @@ import argparse
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
-import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import List, Optional
+from typing import List
 
 LINK_RE = re.compile(r"\[([^\]]*)\]\(([^)]+)\)")
 PROMPT_TEMPLATE = """You are helping fix broken markdown links in a technical documentation repo.
@@ -154,7 +152,7 @@ def context_for_link(repo: Path, bl: BrokenLink, ctx_lines: int = 3) -> str:
     return "\n".join(lines[start:end])
 
 
-def ask_claude(bl: BrokenLink, context: str, timeout: int) -> Optional[dict]:
+def ask_claude(bl: BrokenLink, context: str, timeout: int) -> dict | None:
     """Invoke `claude -p` with a strict JSON prompt. Returns parsed dict or None."""
     prompt = PROMPT_TEMPLATE.format(
         file_path=bl.file_path,
@@ -264,7 +262,7 @@ def apply_fix(repo: Path, bl: BrokenLink, decision: dict) -> bool:
         # drift).
         candidate_repo_rel = (repo / new_path).resolve()
         candidate_file_rel = (file_path.parent / new_path).resolve()
-        resolved: Optional[Path] = None
+        resolved: Path | None = None
         for cand in (candidate_repo_rel, candidate_file_rel):
             try:
                 cand.relative_to(repo.resolve())
@@ -317,7 +315,7 @@ def apply_fix(repo: Path, bl: BrokenLink, decision: dict) -> bool:
     return True
 
 
-def snapshot_file(repo: Path, rel: str) -> Optional[str]:
+def snapshot_file(repo: Path, rel: str) -> str | None:
     try:
         return (repo / rel).read_text(encoding="utf-8")
     except OSError:
@@ -329,7 +327,7 @@ def restore_file(repo: Path, rel: str, content: str) -> None:
 
 
 def validate_no_regression(repo: Path, original_broken_count: int,
-                           cluster_args: List[str], whitelist_args: List[str]) -> Optional[int]:
+                           cluster_args: List[str], whitelist_args: List[str]) -> int | None:
     """Re-run audit; return broken count or None if audit failed."""
     cmd = [
         sys.executable, str(repo / "scripts" / "docs_audit.py"),

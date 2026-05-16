@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
+
 from backend.services.research.empirical_ig_analyzer import (
-    EmpiricalIGAnalyzer,
     ClassifiedPost,
+    EmpiricalIGAnalyzer,
 )
 
 
@@ -111,7 +113,7 @@ def test_classify_hooks_falls_back_on_unparseable_output():
 def test_classify_hooks_sends_batch_prompt_to_claude():
     """Verify the subprocess call uses `claude -p` with a prompt mentioning
     hook_type categories and all post_ids."""
-    from unittest.mock import patch, MagicMock
+    from unittest.mock import patch
     analyzer = EmpiricalIGAnalyzer(ig_sensor=None)
     posts = [
         {"post_id": "p1", "caption": "A"},

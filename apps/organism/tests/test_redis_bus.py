@@ -1,8 +1,8 @@
-import pytest
 import json
-from pathlib import Path
-from organism.schemas import Event, Severity
+
+import pytest
 from organism.redis_bus import EventBus
+from organism.schemas import Event, Severity
 
 
 @pytest.mark.asyncio

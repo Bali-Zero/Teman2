@@ -5,7 +5,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import pytest
 from backend.services.research.baseline_builder import (
     BaselineBuilder,
     BaselineSnapshot,

@@ -2,7 +2,6 @@
 Tests for MemoryOrchestrator error handling - degraded mode, health status.
 """
 
-from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 

@@ -1,7 +1,5 @@
 """Tests for permission-based auth dependencies — S03 Sprint 3."""
 
-import pytest
-from unittest.mock import MagicMock
 
 
 class TestCheckPermission:

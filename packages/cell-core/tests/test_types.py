@@ -2,8 +2,6 @@
 import time
 from datetime import datetime, timezone
 
-import pytest
-
 
 def test_phase_enum_values():
     from cell_core.types import Phase

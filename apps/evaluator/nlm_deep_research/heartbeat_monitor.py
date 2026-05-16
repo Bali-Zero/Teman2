@@ -34,12 +34,11 @@ import os
 import subprocess
 import sys
 import tempfile
-import time
-import urllib.request
 import urllib.error
+import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +76,7 @@ STATUS_EMOJI: dict[str, str] = {
 # ---------------------------------------------------------------------------
 
 
-def load_registry(registry_path: Optional[Path] = None) -> dict[str, dict[str, Any]]:
+def load_registry(registry_path: Path | None = None) -> dict[str, dict[str, Any]]:
     """Load the pipeline heartbeat registry from JSON.
 
     Args:
@@ -101,8 +100,8 @@ def load_registry(registry_path: Optional[Path] = None) -> dict[str, dict[str, A
 
 def record_success(
     pipeline_name: str,
-    duration_seconds: Optional[float] = None,
-    state_dir: Optional[Path] = None,
+    duration_seconds: float | None = None,
+    state_dir: Path | None = None,
 ) -> None:
     """Write a success timestamp for a pipeline.
 
@@ -153,8 +152,8 @@ def record_success(
 
 def _read_heartbeat_state(
     pipeline_name: str,
-    state_dir: Optional[Path] = None,
-) -> Optional[dict[str, Any]]:
+    state_dir: Path | None = None,
+) -> dict[str, Any] | None:
     """Read the heartbeat state file for a pipeline.
 
     Args:
@@ -205,8 +204,8 @@ def _classify_staleness(
 
 
 def check_all_heartbeats(
-    registry_path: Optional[Path] = None,
-    state_dir: Optional[Path] = None,
+    registry_path: Path | None = None,
+    state_dir: Path | None = None,
 ) -> list[dict[str, Any]]:
     """Check all pipeline heartbeats against registry config.
 
@@ -420,7 +419,7 @@ def _send_telegram(text: str, dry_run: bool = False) -> bool:
         return False
 
 
-def _format_last_run(last_success: Optional[str]) -> str:
+def _format_last_run(last_success: str | None) -> str:
     """Format the last success time for display.
 
     Args:
@@ -482,7 +481,7 @@ def send_alert(statuses: list[dict[str, Any]], dry_run: bool = False) -> None:
 
 def send_daily_digest(
     statuses: list[dict[str, Any]],
-    memory: Optional[dict[str, Any]] = None,
+    memory: dict[str, Any] | None = None,
     dry_run: bool = False,
 ) -> None:
     """Send a full daily digest of all pipeline statuses.
@@ -544,10 +543,10 @@ def send_daily_digest(
 
 
 def truth_dashboard(
-    registry: Optional[dict[str, dict[str, Any]]] = None,
-    state_dir: Optional[Path] = None,
-    logs_dir: Optional[Path] = None,
-    today: Optional[datetime] = None,
+    registry: dict[str, dict[str, Any]] | None = None,
+    state_dir: Path | None = None,
+    logs_dir: Path | None = None,
+    today: datetime | None = None,
 ) -> list[dict[str, Any]]:
     """Cross 3 independent signals per pipeline to detect silent failures.
 
@@ -588,7 +587,7 @@ def truth_dashboard(
         # Signal 1: ARCH-9 heartbeat
         hb = _read_heartbeat_state(pipeline_name, sdir)
         arch9_present = hb is not None
-        arch9_age_h: Optional[float] = None
+        arch9_age_h: float | None = None
         if arch9_present:
             last_success = hb.get("last_success")  # type: ignore[union-attr]
             if last_success:
@@ -626,8 +625,8 @@ def truth_dashboard(
                     candidates = sorted(sdir.glob(f"nlm_{short}_*.last.json"))
                     if candidates:
                         gateway_file = candidates[0]
-        gateway_data: Optional[dict] = None
-        gateway_age_h: Optional[float] = None
+        gateway_data: dict | None = None
+        gateway_age_h: float | None = None
         if gateway_file.exists():
             try:
                 gateway_data = json.loads(gateway_file.read_text())

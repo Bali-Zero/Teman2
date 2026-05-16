@@ -1,6 +1,10 @@
 """Tests for Olympus v3 models."""
-import pytest
-from backend.services.olympus.models import HeartbeatSnapshot, PulseAction, OlympusRule, InsightRecord
+from backend.services.olympus.models import (
+    HeartbeatSnapshot,
+    InsightRecord,
+    OlympusRule,
+    PulseAction,
+)
 
 
 class TestHeartbeatSnapshot:

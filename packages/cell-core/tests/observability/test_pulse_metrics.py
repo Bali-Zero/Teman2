@@ -2,10 +2,8 @@
 from __future__ import annotations
 
 import pytest
-
 from cell_core.observability._prom_compat import HAS_PROM
-from cell_core.observability.pulse_metrics import PulseMetrics, PHASES, OUTCOMES
-
+from cell_core.observability.pulse_metrics import PHASES, PulseMetrics
 
 # ── Skip if prometheus_client not installed ──────────────────────
 pytestmark = pytest.mark.skipif(not HAS_PROM, reason="prometheus_client not installed")

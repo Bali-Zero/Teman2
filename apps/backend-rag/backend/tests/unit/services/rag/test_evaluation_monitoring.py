@@ -5,10 +5,9 @@ Covers: safe_register_metric, QueryMetricsRecord, AlertThresholds,
 """
 
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
-
 
 # ============================================================================
 # safe_register_metric
@@ -17,8 +16,9 @@ import pytest
 class TestSafeRegisterMetric:
 
     def test_register_new_metric(self):
+        from prometheus_client import REGISTRY, Gauge
+
         from backend.services.rag.evaluation.monitoring import safe_register_metric
-        from prometheus_client import Gauge, REGISTRY
 
         # Use a unique name to avoid collision
         name = "test_unique_metric_safe_register_12345"
@@ -36,8 +36,9 @@ class TestSafeRegisterMetric:
             pass
 
     def test_register_existing_returns_existing(self):
+        from prometheus_client import REGISTRY, Gauge
+
         from backend.services.rag.evaluation.monitoring import safe_register_metric
-        from prometheus_client import Gauge, REGISTRY
 
         name = "test_duplicate_metric_67890"
         if name in REGISTRY._names_to_collectors:

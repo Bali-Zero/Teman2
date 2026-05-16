@@ -1,7 +1,6 @@
 # scripts/zantara-gateway/test_gateway.py
 """Tests for gateway core."""
 
-import pytest
 from gateway import ndjson_line_to_sse, verify_gateway_token
 
 # ── NDJSON → SSE conversion ──

@@ -5,11 +5,15 @@ Covers: PluginExecutor — execute, cache, rate_limit, circuit_breaker, metrics
 
 import asyncio
 import time
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
+from backend.core.plugins.executor import (
+    CIRCUIT_BREAKER_COOLDOWN_SECONDS,
+    CIRCUIT_BREAKER_FAILURE_THRESHOLD,
+    PluginExecutor,
+)
 from backend.core.plugins.plugin import (
     Plugin,
     PluginCategory,
@@ -17,12 +21,6 @@ from backend.core.plugins.plugin import (
     PluginMetadata,
     PluginOutput,
 )
-from backend.core.plugins.executor import (
-    CIRCUIT_BREAKER_COOLDOWN_SECONDS,
-    CIRCUIT_BREAKER_FAILURE_THRESHOLD,
-    PluginExecutor,
-)
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers

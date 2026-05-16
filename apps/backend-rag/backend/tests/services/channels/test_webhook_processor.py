@@ -9,7 +9,6 @@ Tests use mocked asyncpg connection (AsyncMock) — same pattern as
 """
 from __future__ import annotations
 
-import asyncio
 import json
 from unittest.mock import AsyncMock, MagicMock
 
@@ -19,7 +18,6 @@ from backend.services.channels.webhook_processor import (
     WebhookProcessor,
     _compute_backoff_seconds,
 )
-
 
 # ── _compute_backoff_seconds ──────────────────────────────────────────────
 

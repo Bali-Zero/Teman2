@@ -1,6 +1,6 @@
-import pytest
 import fakeredis
 import fakeredis.aioredis
+import pytest
 
 
 @pytest.fixture(autouse=True)
@@ -42,7 +42,7 @@ def _forbid_real_subprocess(request):
     if request.node.get_closest_marker("allow_real_subprocess"):
         yield
         return
-    from unittest.mock import patch, AsyncMock
+    from unittest.mock import patch
     with patch(
         "asyncio.create_subprocess_exec",
         side_effect=RuntimeError("real subprocess forbidden in organism tests"),

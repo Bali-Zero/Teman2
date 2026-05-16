@@ -6,8 +6,6 @@ tools are required to run the test suite.
 
 from __future__ import annotations
 
-import asyncio
-import subprocess
 from io import BytesIO
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -17,7 +15,6 @@ import pytest
 from zantara_media.indexer.handlers import extract_content
 from zantara_media.indexer.handlers.image_handler import extract_image
 from zantara_media.indexer.handlers.pdf_handler import extract_pdf
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -72,8 +69,6 @@ async def test_pdf_extraction_pypdf():
 @pytest.mark.asyncio
 async def test_pdf_text_layer_returns_pypdf_method():
     """A PDF with extractable text should use the 'pypdf' method."""
-    from pypdf import PdfReader, PdfWriter
-    from pypdf.generic import NameObject, ArrayObject, DictionaryObject, StreamObject
 
     # We mock the _extract_with_pypdf function to return known text
     with patch(
@@ -174,7 +169,6 @@ async def test_audio_transcription():
 
     # We need to intercept the temp-dir usage and provide a fake .txt file.
     import tempfile
-    import os
 
     original_tmpdir = tempfile.TemporaryDirectory
 

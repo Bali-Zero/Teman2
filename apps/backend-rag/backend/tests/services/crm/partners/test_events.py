@@ -14,12 +14,10 @@ from decimal import Decimal
 import pytest
 
 from backend.services.crm.partners.events import (
-    PARTNER_COMMISSION_CHANGED,
     handle_practice_status_changed,
     register_partner_handlers,
 )
 from backend.services.events.event_bus import EventBus
-
 
 # ---------------------------------------------------------------------------
 # FakePool helper

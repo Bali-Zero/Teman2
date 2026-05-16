@@ -8,7 +8,6 @@ Author: Claude Sonnet
 Date: 2026-02-10
 """
 
-import json
 import logging
 import time
 from collections.abc import AsyncIterator

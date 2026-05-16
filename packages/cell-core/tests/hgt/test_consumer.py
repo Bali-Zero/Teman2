@@ -1,8 +1,7 @@
 """Tests for HGT Consumer."""
 import pytest
-
 from cell_core.hgt.consumer import HGTConsumer
-from cell_core.hgt.publisher import HGTPublisher, STREAM_SKILLS
+from cell_core.hgt.publisher import HGTPublisher
 
 
 @pytest.mark.asyncio

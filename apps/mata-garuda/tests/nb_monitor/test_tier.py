@@ -1,8 +1,6 @@
 """Tests for nb_monitor.tier."""
 from __future__ import annotations
 
-import pytest
-
 from mata_garuda.scripts.nb_monitor.tier import (
     Tier,
     TierInputs,
@@ -11,7 +9,7 @@ from mata_garuda.scripts.nb_monitor.tier import (
 
 
 def _inputs(**overrides) -> TierInputs:
-    base = dict(read_freq_7d=20, push_success_rate=0.99, age_days=30)
+    base = {"read_freq_7d": 20, "push_success_rate": 0.99, "age_days": 30}
     base.update(overrides)
     return TierInputs(**base)
 

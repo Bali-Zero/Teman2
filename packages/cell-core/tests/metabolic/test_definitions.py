@@ -1,6 +1,5 @@
 """Tests for metabolic definitions — dataclasses and formatters."""
 from cell_core.metabolic.definitions import (
-    DIRECTION_HIGHER_BETTER,
     DIRECTION_LOWER_BETTER,
     METRIC_AUTONOMY_INDEX,
     METRIC_ESCALATION_FREQ,

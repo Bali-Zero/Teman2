@@ -1,9 +1,7 @@
 """Tests for cell_core.reasoner — tier escalation framework."""
-import asyncio
 import json
 
 import pytest
-
 from cell_core.types import Proposal
 
 

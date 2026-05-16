@@ -2,7 +2,7 @@
 Tests for Intel Router - staging, approval, and publication endpoints.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import FastAPI

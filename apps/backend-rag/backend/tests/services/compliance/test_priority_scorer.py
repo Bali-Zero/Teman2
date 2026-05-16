@@ -1,9 +1,7 @@
 """Tests for priority_scorer.py — composite priority calculation."""
 
-import pytest
 
 from backend.services.compliance.priority_scorer import (
-    PriorityResult,
     calculate_priority,
     sort_forecasts,
 )

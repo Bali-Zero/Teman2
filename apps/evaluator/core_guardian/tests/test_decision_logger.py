@@ -3,7 +3,7 @@ import json
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
@@ -45,8 +45,9 @@ class TestDecisionLogger(unittest.TestCase):
 
     def test_fallback_log_writes_jsonl(self) -> None:
         """Fallback log should write valid JSONL."""
-        import decision_logger
         import tempfile
+
+        import decision_logger
 
         with tempfile.NamedTemporaryFile(mode="w", suffix=".jsonl", delete=False) as f:
             tmp_path = Path(f.name)
@@ -81,6 +82,7 @@ class TestDecisionLoggerQueries(unittest.TestCase):
     def test_get_recent_decisions_empty_without_db(self) -> None:
         """Should return empty list when DB not available."""
         import asyncio
+
         import decision_logger
         decision_logger._pool = None
 
@@ -91,6 +93,7 @@ class TestDecisionLoggerQueries(unittest.TestCase):
     def test_get_risk_trend_empty_without_db(self) -> None:
         """Should return empty list when DB not available."""
         import asyncio
+
         import decision_logger
         decision_logger._pool = None
 
@@ -101,6 +104,7 @@ class TestDecisionLoggerQueries(unittest.TestCase):
     def test_get_latest_risk_score_none_without_db(self) -> None:
         """Should return None when DB not available."""
         import asyncio
+
         import decision_logger
         decision_logger._pool = None
 

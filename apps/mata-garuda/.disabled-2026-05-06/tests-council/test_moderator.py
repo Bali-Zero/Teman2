@@ -5,12 +5,10 @@ Tests synthesis logic and fallback behavior.
 """
 from __future__ import annotations
 
-import asyncio
 import json
 from unittest.mock import patch
 
 import pytest
-
 from mata_garuda.council.models import AgentVote, ConsensusResult, Dissent
 from mata_garuda.council.moderator import ModeratorLLM
 

@@ -17,14 +17,12 @@ tracing + metrics, patches on module-level helpers
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from backend.services.llm_clients.pricing import TokenUsage
 from backend.services.tools.definitions import AgentState, ToolCall
-
 
 # ---------------------------------------------------------------------------
 # Autouse tracing + metrics patches (shared with test_reasoning_coverage.py)
@@ -561,7 +559,7 @@ class TestTier1Regeneration:
 
         async def send(*a, **k):
             call["i"] += 1
-            if kwargs_fc := k.get("enable_function_calling"):
+            if k.get("enable_function_calling"):
                 pass
             else:
                 # tier1 regen call disables function calling

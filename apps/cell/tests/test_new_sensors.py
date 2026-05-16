@@ -2,11 +2,9 @@
 import json
 import os
 import tempfile
-from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 
 # ── OllamaSensor ──────────────────────────────────────────────────────────────
 
@@ -97,8 +95,9 @@ def test_backup_sensor_red_no_files():
 
 
 def test_backup_sensor_yellow_old_file():
-    from cell.sensors.backup_sensor import BackupSensor
     import time
+
+    from cell.sensors.backup_sensor import BackupSensor
     with tempfile.TemporaryDirectory() as tmpdir:
         backup_file = os.path.join(tmpdir, "nuzantara_old.sql.gz")
         with open(backup_file, "w") as f:
@@ -115,8 +114,9 @@ def test_backup_sensor_yellow_old_file():
 # ── CronSensor ────────────────────────────────────────────────────────────────
 
 def test_cron_sensor_green():
-    from cell.sensors.cron_sensor import CronSensor
     import time
+
+    from cell.sensors.cron_sensor import CronSensor
     with tempfile.TemporaryDirectory() as tmpdir:
         state_file = os.path.join(tmpdir, "intel_scraper.last.json")
         with open(state_file, "w") as f:
@@ -128,8 +128,9 @@ def test_cron_sensor_green():
 
 
 def test_cron_sensor_red_stale():
-    from cell.sensors.cron_sensor import CronSensor
     import time
+
+    from cell.sensors.cron_sensor import CronSensor
     with tempfile.TemporaryDirectory() as tmpdir:
         state_file = os.path.join(tmpdir, "intel_scraper.last.json")
         old_ts = int(time.time()) - 80 * 3600
@@ -143,8 +144,9 @@ def test_cron_sensor_red_stale():
 
 
 def test_cron_sensor_yellow_failed_status():
-    from cell.sensors.cron_sensor import CronSensor
     import time
+
+    from cell.sensors.cron_sensor import CronSensor
     with tempfile.TemporaryDirectory() as tmpdir:
         state_file = os.path.join(tmpdir, "intel_scraper.last.json")
         with open(state_file, "w") as f:
@@ -251,8 +253,8 @@ async def test_vercel_sensor_redirect_green():
 
 @pytest.mark.asyncio
 async def test_vercel_sensor_error_red():
-    from cell.sensors.vercel_sensor import VercelSensor
     import httpx
+    from cell.sensors.vercel_sensor import VercelSensor
     mock_client = AsyncMock()
     mock_client.head = AsyncMock(side_effect=httpx.TimeoutException("timeout"))
     sensor = VercelSensor(client=mock_client, urls=["https://kita.balizero.com"])
@@ -275,7 +277,6 @@ async def test_local_effector_unknown_action():
 @pytest.mark.asyncio
 async def test_local_effector_ollama_restart_success():
     from cell.effectors.local_effector import LocalEffector
-    import asyncio
     eff = LocalEffector()
 
     async def fake_exec(*args, **kwargs):

@@ -1,5 +1,5 @@
 import pytest
-from organism.supervisor.mutex import Mutex, MUTEX_KEY_PREFIX
+from organism.supervisor.mutex import Mutex
 
 
 @pytest.mark.asyncio

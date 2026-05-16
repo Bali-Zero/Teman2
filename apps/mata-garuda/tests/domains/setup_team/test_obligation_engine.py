@@ -9,9 +9,6 @@ from __future__ import annotations
 import json
 import sqlite3
 from datetime import date
-from pathlib import Path
-
-import pytest
 
 from mata_garuda.domains.setup_team.obligation_engine import (
     SCHEMA_DDL,
@@ -25,19 +22,19 @@ from mata_garuda.domains.setup_team.types import Regulation
 
 
 def _make_regulation(**overrides) -> Regulation:
-    base = dict(
-        source_id="pasal-id:test-1",
-        domain="regulation",
-        tier=1,
-        title="UU 27/2022 PDP",
-        url="https://pasal.id/laws/test-1",
-        published_at=date(2022, 9, 27),
-        body_excerpt=(
+    base = {
+        "source_id": "pasal-id:test-1",
+        "domain": "regulation",
+        "tier": 1,
+        "title": "UU 27/2022 PDP",
+        "url": "https://pasal.id/laws/test-1",
+        "published_at": date(2022, 9, 27),
+        "body_excerpt": (
             "Pasal 4 ayat (2): Pengendali wajib lapor pelanggaran dalam 3x24 jam. "
             "KBLI 63122 termasuk dalam pengaturan."
         ),
-        tags=("layer:pasal-id",),
-    )
+        "tags": ("layer:pasal-id",),
+    }
     base.update(overrides)
     return Regulation(**base)
 

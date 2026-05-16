@@ -26,7 +26,6 @@ import sys
 import time
 import traceback
 from dataclasses import asdict, dataclass
-from typing import Any
 
 import httpx
 import psutil

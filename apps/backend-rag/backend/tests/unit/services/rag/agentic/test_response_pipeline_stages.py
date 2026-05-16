@@ -9,7 +9,7 @@ RESPONSE_PIPELINE.md. Each test keyed to a stage or invariant ID.
 from __future__ import annotations
 
 from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -22,7 +22,6 @@ from backend.services.rag.agentic.pipeline import (
     VerificationStage,
     create_default_pipeline,
 )
-
 
 # ============================================================================
 # Group 1 — Pipeline.process None handling (I-P1)

@@ -6,14 +6,13 @@ POST /knowledge-graph/persist-sample.
 """
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend.app.routers.autonomous_agents import agent_executions, router
-
 
 # ============================================================
 # FIXTURES
@@ -276,7 +275,7 @@ def test_get_scheduler_status_failure(client):
     """Should return success=False when scheduler raises exception."""
     # Patch the module where it is defined so the lazy import sees it
     import backend.services.misc.autonomous_scheduler as _sched_mod
-    original = getattr(_sched_mod, "get_autonomous_scheduler", None)
+    getattr(_sched_mod, "get_autonomous_scheduler", None)
 
     with patch.object(_sched_mod, "get_autonomous_scheduler", side_effect=Exception("scheduler unavailable")):
         response = client.get("/api/autonomous-agents/scheduler/status")
@@ -357,7 +356,7 @@ def test_disable_scheduler_task_not_found(client):
 def test_extract_kg_sample_qdrant_unavailable(client):
     """Should return 503 when Qdrant retriever not available."""
     import backend.app.main_cloud as _main
-    original_state = getattr(_main.app, "state", None)
+    getattr(_main.app, "state", None)
     # Remove retriever from state
     _main.app.state.retriever = None
     try:

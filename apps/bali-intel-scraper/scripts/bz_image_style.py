@@ -570,6 +570,6 @@ if __name__ == "__main__":
         print(f"\n{'='*70}")
         print(f"TITLE:    {tc['title']}")
         print(f"CATEGORY: {tc['category']} | MOOD: {mood}")
-        print(f"PROMPT:")
+        print("PROMPT:")
         prompt = build_cover_prompt(**tc)
         print(prompt)

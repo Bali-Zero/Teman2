@@ -1,6 +1,5 @@
 """Tests for cell_core.homeostasis."""
 import pytest
-from cell_core.types import HomeostaticState
 
 
 class TestHomeostaticController:

@@ -2,7 +2,6 @@
 """Phase 2: Validate generated content against source JSON using Gemma3:12b.
 Cross-checks: risk levels, PMA status, hallucinated numbers.
 """
-import json
 import re
 
 # Match "high risk" but NOT "medium-high risk" (negative lookbehind for "medium-")
@@ -29,9 +28,9 @@ def validate_pma_consistency(generated: dict, source: dict) -> list[str]:
     content_text = " ".join(str(v) for v in generated.values())
 
     if pma_status == "TERTUTUP" and "100% foreign" in content_text.lower():
-        errors.append(f"PMA CONTRADICTION: Source says TERTUTUP but content mentions 100% foreign ownership")
+        errors.append("PMA CONTRADICTION: Source says TERTUTUP but content mentions 100% foreign ownership")
     if pma_status == "TERBUKA" and "closed to foreign" in content_text.lower():
-        errors.append(f"PMA CONTRADICTION: Source says TERBUKA but content says closed to foreign")
+        errors.append("PMA CONTRADICTION: Source says TERBUKA but content says closed to foreign")
 
     return errors
 

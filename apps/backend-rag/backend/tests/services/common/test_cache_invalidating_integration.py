@@ -12,7 +12,6 @@ and seeds some cache keys that should be wiped after the mutation succeeds.
 """
 from __future__ import annotations
 
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

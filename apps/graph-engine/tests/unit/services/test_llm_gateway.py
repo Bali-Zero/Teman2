@@ -1,8 +1,7 @@
 """Tests for the LLM gateway."""
 
 import pytest
-
-from nuzantara_graph.services.llm_gateway import CircuitBreaker, LLMGateway, LLMResponse
+from nuzantara_graph.services.llm_gateway import CircuitBreaker, LLMGateway
 
 
 class TestCircuitBreaker:

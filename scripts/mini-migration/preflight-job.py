@@ -28,13 +28,11 @@ from __future__ import annotations
 
 import argparse
 import ast
-import os
 import pathlib
 import re
 import subprocess
 import sys
-import tempfile
-from typing import Iterable
+from collections.abc import Iterable
 
 # ---------------------------------------------------------------------------
 # Patterns flagged as Pro-bound dependencies
@@ -311,7 +309,7 @@ def main() -> int:
     # === Layer 1: fetch plist ===
     plist = fetch_pro_plist(label)
     if not plist:
-        print(f"[preflight] FATAL: cannot fetch plist from Pro")
+        print("[preflight] FATAL: cannot fetch plist from Pro")
         return 2
     print(f"[preflight] plist size: {len(plist)} bytes")
 
@@ -350,7 +348,7 @@ def main() -> int:
         for pat, line in literal_hits[:5]:
             print(f"  - {pat} -> {line}")
         return 1
-    print(f"[preflight] Layer 1 (literal grep) PASS")
+    print("[preflight] Layer 1 (literal grep) PASS")
 
     # === Layer 3: required repos ===
     repo_issues = check_required_repos(referenced_paths)
@@ -359,7 +357,7 @@ def main() -> int:
         for repo, msg in repo_issues:
             print(f"  - {repo}: {msg}")
         return 1
-    print(f"[preflight] Layer 3 (required repos) PASS")
+    print("[preflight] Layer 3 (required repos) PASS")
 
     # === Layer 4: required interpreters ===
     interp_issues = check_required_interpreters(aggregated)
@@ -368,7 +366,7 @@ def main() -> int:
         for interp, msg in interp_issues:
             print(f"  - {interp}: {msg}")
         return 1
-    print(f"[preflight] Layer 4 (interpreters) PASS")
+    print("[preflight] Layer 4 (interpreters) PASS")
 
     # === Layer 2: import-trace ===
     seed_modules = find_python_modules_in_text(aggregated)
@@ -398,9 +396,9 @@ def main() -> int:
             for mod, why, where in forbidden[:5]:
                 print(f"  - {mod} ({why}) — found via {where}")
             return 1
-        print(f"[preflight] Layer 2 (import-trace) PASS")
+        print("[preflight] Layer 2 (import-trace) PASS")
     else:
-        print(f"[preflight] Layer 2: no Python modules referenced (shell-only, skip)")
+        print("[preflight] Layer 2: no Python modules referenced (shell-only, skip)")
 
     print(f"\n[preflight] verdict: PASS — {label} can be migrated to Mini")
     return 0

@@ -21,7 +21,6 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-
 # ── helpers ───────────────────────────────────────────────────────────
 
 
@@ -48,7 +47,6 @@ def authed_client():
     Overrides ``verify_internal_api_key`` to be a no-op so the router-side
     behavior can be tested in isolation.
     """
-    from backend.app.routers import observed_shell
     from backend.app.utils.internal_api_auth import verify_internal_api_key
 
     app = _build_app()
@@ -146,7 +144,9 @@ def test_emit_with_no_db_pool_does_not_500(authed_client):
     # No mock of ObservedShellBus — real one is called with db_pool=None.
     # ObservedShellBus.emit() never raises (Sprint 0 invariant), so endpoint
     # returns 202 even when DB is absent.
-    import tempfile, pathlib
+    import pathlib
+    import tempfile
+
     from backend.services.events import observed_shell as obs_mod
 
     with tempfile.NamedTemporaryFile(suffix=".jsonl", delete=False) as fh:

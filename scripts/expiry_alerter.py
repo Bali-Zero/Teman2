@@ -18,11 +18,11 @@ import os
 import smtplib
 import subprocess
 import sys
-import urllib.request
 import urllib.parse
-from datetime import datetime, timezone, timedelta
-from email.mime.text import MIMEText
+import urllib.request
+from datetime import datetime, timedelta, timezone
 from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 from pathlib import Path
 
 WITA = timezone(timedelta(hours=8))
@@ -67,7 +67,6 @@ def _load_env() -> dict[str, str]:
 
 def _query_expiries() -> list[dict]:
     """Query CRM for upcoming expirations AND overdue practices via fly ssh to backend."""
-    import base64
     code = '''import asyncio,os,asyncpg,json
 async def m():
  c=await asyncpg.connect(os.environ["DATABASE_URL"])
@@ -257,8 +256,8 @@ def _build_team_email(assigned_to: str, items: list[dict]) -> tuple[str, str]:
             title = item.get("practice_title", "?")
             days_late = abs(item["days"])
             lines.append(f"  • {item['full_name']} — {title} (telat {days_late} hari)")
-            lines.append(f"    → Jika klien tidak lanjut, ubah status ke 'declined'")
-            lines.append(f"    → Jika masih jalan, update step terbaru di CRM")
+            lines.append("    → Jika klien tidak lanjut, ubah status ke 'declined'")
+            lines.append("    → Jika masih jalan, update step terbaru di CRM")
             if item.get("phone"):
                 lines.append(f"    📞 {item['phone']}")
             lines.append("")
@@ -270,9 +269,9 @@ def _build_team_email(assigned_to: str, items: list[dict]) -> tuple[str, str]:
             exp_type = "Paspor" if item["exp_type"] == "passport" else item.get("practice_title", "Visa")
             lines.append(f"  • {item['full_name']} — {exp_type}: {item['label']}")
             if item["days"] < 0:
-                lines.append(f"    → Jika klien sudah pergi/tidak aktif, update profil di CRM")
+                lines.append("    → Jika klien sudah pergi/tidak aktif, update profil di CRM")
             else:
-                lines.append(f"    → Hubungi klien untuk mulai proses perpanjangan")
+                lines.append("    → Hubungi klien untuk mulai proses perpanjangan")
             if item.get("phone"):
                 lines.append(f"    📞 {item['phone']}")
             lines.append("")

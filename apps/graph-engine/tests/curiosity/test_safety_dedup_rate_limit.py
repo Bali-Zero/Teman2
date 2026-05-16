@@ -4,9 +4,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from nuzantara_graph.curiosity.models import (
-    GapTopic,
     ResearchEvidence,
 )
 from nuzantara_graph.curiosity.orchestrator import (

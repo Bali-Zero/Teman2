@@ -20,18 +20,14 @@ Pattern: cell/actor.py asyncio.to_thread() for sync→async wrapping.
 from __future__ import annotations
 
 import asyncio
-import json
 import logging
 import uuid
 from datetime import datetime, timezone
 from statistics import mean
-from typing import Optional
 
 from mata_garuda.council.agents import (
     CouncilAgent,
     OllamaAdapter,
-    _format_agent_prompt,
-    _parse_vote_json,
     get_default_agents,
 )
 from mata_garuda.council.consensus import score_consensus
@@ -57,9 +53,9 @@ class CouncilOrchestrator:
 
     def __init__(
         self,
-        agents: Optional[list[CouncilAgent]] = None,
-        moderator: Optional[ModeratorLLM] = None,
-        store: Optional[CouncilStore] = None,
+        agents: list[CouncilAgent] | None = None,
+        moderator: ModeratorLLM | None = None,
+        store: CouncilStore | None = None,
         min_agents: int = 2,
         total_timeout: int = TOTAL_TIMEOUT_S,
     ):
@@ -206,7 +202,7 @@ class CouncilOrchestrator:
         topic: Topic,
         votes: list[AgentVote],
         consensus: ConsensusResult,
-    ) -> Optional[AgentVote]:
+    ) -> AgentVote | None:
         """Invoke devil's advocate using the fastest-responding agent."""
         if not votes:
             return None

@@ -8,9 +8,6 @@ from __future__ import annotations
 
 import sqlite3
 from datetime import datetime, timezone
-from pathlib import Path
-
-import pytest
 
 from mata_garuda.scripts.nb_monitor.run import RunConfig, execute_once
 

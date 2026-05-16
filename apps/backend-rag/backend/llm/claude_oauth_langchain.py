@@ -20,7 +20,8 @@ from __future__ import annotations
 import json
 import logging
 import re
-from typing import Any, Iterator
+from collections.abc import Iterator
+from typing import Any
 
 from backend.llm.claude_oauth_client import (
     ClaudeOAuthError,
@@ -374,7 +375,6 @@ def _augment_messages_with_schema(input_value: Any, schema_hint: str) -> list[An
 def _build_runnable_class() -> type:
     """Build ``_ClaudeStructuredRunnable`` lazily so import has no langchain dep."""
     from langchain_core.runnables import Runnable  # noqa: PLC0415
-    from langchain_core.runnables.config import RunnableConfig  # noqa: PLC0415  # noqa: F401
 
     class _ClaudeStructuredRunnable(Runnable):  # type: ignore[misc, valid-type]
         """LangChain Runnable that wraps the Claude OAuth chat model.

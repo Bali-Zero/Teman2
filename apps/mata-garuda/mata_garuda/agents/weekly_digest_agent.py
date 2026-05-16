@@ -9,7 +9,6 @@ Layer 4 Analista. Autonomy L1.
 """
 from __future__ import annotations
 
-import json
 import logging
 import os
 import subprocess
@@ -26,7 +25,9 @@ from mata_garuda.tools.knowledge_tools import kb_search, kb_store
 from mata_garuda.tools.stream_tools import stream_publish
 from mata_garuda.tools.tg_tools import send_tg_alert
 from mata_garuda.types import Agent
-from mata_garuda.workers.base_worker import redis_cmd  # noqa: F401 — re-used by _xrevrange
+from mata_garuda.workers.base_worker import (
+    redis_cmd,  # noqa: F401 — re-used by _xrevrange
+)
 
 logger = logging.getLogger("mata_garuda.agents.weekly_digest")
 
@@ -170,19 +171,23 @@ def _markdown_to_html(md: str) -> str:
             continue
         if stripped.startswith("# "):
             if in_list:
-                html_parts.append("</ul>"); in_list = False
+                html_parts.append("</ul>")
+                in_list = False
             html_parts.append(f"<h1>{stripped[2:]}</h1>")
         elif stripped.startswith("## "):
             if in_list:
-                html_parts.append("</ul>"); in_list = False
+                html_parts.append("</ul>")
+                in_list = False
             html_parts.append(f"<h2>{stripped[3:]}</h2>")
         elif stripped.startswith("- "):
             if not in_list:
-                html_parts.append("<ul>"); in_list = True
+                html_parts.append("<ul>")
+                in_list = True
             html_parts.append(f"<li>{stripped[2:]}</li>")
         else:
             if in_list:
-                html_parts.append("</ul>"); in_list = False
+                html_parts.append("</ul>")
+                in_list = False
             html_parts.append(f"<p>{stripped}</p>")
     if in_list:
         html_parts.append("</ul>")

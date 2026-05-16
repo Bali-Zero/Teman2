@@ -10,14 +10,11 @@ from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
-import pytest
-
 from backend.services.experience.models import (
     TrajectoryQuery,
     TrajectoryRecord,
 )
 from backend.services.experience.service import ExperienceService
-
 
 # ─── Persistence ──────────────────────────────────────────────────────
 

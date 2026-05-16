@@ -13,7 +13,6 @@ import json
 import logging
 import re
 import subprocess
-from typing import Optional
 
 from mata_garuda.council.models import (
     AgentVote,

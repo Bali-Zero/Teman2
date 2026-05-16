@@ -1,17 +1,15 @@
 """Tests for LLM pricing configuration and token cost calculator."""
 
 import pytest
-from unittest.mock import patch
 
 from backend.services.llm_clients.pricing import (
-    TokenUsage,
     LLM_PRICING,
+    TokenUsage,
     calculate_cost,
     create_token_usage,
     get_model_pricing,
     list_available_models,
 )
-
 
 # ---------------------------------------------------------------------------
 # calculate_cost

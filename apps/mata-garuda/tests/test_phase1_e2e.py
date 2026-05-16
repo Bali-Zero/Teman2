@@ -19,9 +19,8 @@ Gate for declaring Phase 1 closed.
 """
 from __future__ import annotations
 
-import json
 from pathlib import Path
-from unittest.mock import MagicMock, call
+from unittest.mock import MagicMock
 
 from mata_garuda.bridge.cursor import BridgeCursor
 from mata_garuda.bridge.envelope import Envelope
@@ -33,7 +32,6 @@ from mata_garuda.bridge.nerve import (
     pull_once,
     push_once,
 )
-
 
 # ── Helpers ────────────────────────────────────────────────────────────
 

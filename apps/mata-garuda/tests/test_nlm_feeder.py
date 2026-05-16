@@ -1,14 +1,11 @@
 """Tests for NLM Feeder worker — W3 Wave 1."""
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from mata_garuda.config import NLM_DOMAIN_ROUTING, NLM_NOTEBOOKS
 from mata_garuda.runtime.knowledge import KnowledgeBase
 from mata_garuda.workers import nlm_feeder
-
 
 # ── config wiring ──────────────────────────────────────────────────────────
 

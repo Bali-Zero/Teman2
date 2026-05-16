@@ -1,7 +1,8 @@
 """Tests for cell_core.safety — kill switches, DNA loader, DNA interpreter."""
 import json
+
 import pytest
-from cell_core.types import DNAConfig, DNARule, Proposal, SafetyCheckResult
+from cell_core.types import DNAConfig, DNARule, Proposal
 
 
 class TestSafetyGate:
@@ -50,7 +51,7 @@ class TestDNALoader:
         assert loader.verify_integrity("badhash") is False
 
     def test_verify_or_raise(self, tmp_path):
-        from cell_core.safety import DNALoader, DNAIntegrityError
+        from cell_core.safety import DNAIntegrityError, DNALoader
         dna_file = tmp_path / "dna.json"
         dna_file.write_text('{"rules": [], "constraints": {}}')
         loader = DNALoader(str(dna_file))

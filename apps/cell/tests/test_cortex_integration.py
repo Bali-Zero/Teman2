@@ -1,8 +1,7 @@
 """Tests for Cortex orchestrator integration."""
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from cell.cortex.cortex import Cortex
 from cell.lifecycle.maturation import LifecyclePhase, Maturation
 

@@ -3,10 +3,7 @@ Unit tests for backend/core/plugins/registry.py
 Covers: PluginRegistry — register, unregister, get, list, search, discover, stats, tools
 """
 
-import asyncio
-from pathlib import Path
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -18,7 +15,6 @@ from backend.core.plugins.plugin import (
     PluginOutput,
 )
 from backend.core.plugins.registry import PluginRegistry
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers — concrete plugin implementations for tests
@@ -132,7 +128,6 @@ async def test_register_on_load_failure_rolls_back(registry):
     cls = _make_plugin_class("test.failing")
 
     # Patch on_load to raise
-    original_on_load = cls.on_load
     async def _bad_on_load(self):
         raise RuntimeError("load failed")
     cls.on_load = _bad_on_load

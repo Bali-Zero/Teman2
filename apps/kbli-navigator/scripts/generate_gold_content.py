@@ -13,13 +13,12 @@ Usage:
   python scripts/generate_gold_content.py --ollama-host http://192.168.0.19:11434 --skip-existing
 """
 
-import json
-import sys
-import re
 import argparse
+import json
+import re
+import sys
 import urllib.request
 from pathlib import Path
-from typing import Optional
 
 # ---------------------------------------------------------------------------
 # Paths

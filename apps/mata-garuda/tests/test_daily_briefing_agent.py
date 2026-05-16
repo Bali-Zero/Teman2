@@ -2,13 +2,10 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
-from unittest.mock import MagicMock, patch
-
-import pytest
+from unittest.mock import patch
 
 from mata_garuda.agents import daily_briefing_agent as dba
 from mata_garuda.runtime.knowledge import KnowledgeBase
-
 
 NOW = datetime(2026, 4, 20, 10, 0, tzinfo=timezone.utc)
 

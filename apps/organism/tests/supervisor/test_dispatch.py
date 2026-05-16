@@ -1,15 +1,12 @@
 import pytest
-from pathlib import Path
-from organism.schemas import ActionDecision, Event, Severity
+from organism.blackout import BlackoutManager
+from organism.schemas import ActionDecision
+from organism.supervisor.circuit_breaker import CircuitBreaker
 from organism.supervisor.dispatch import (
     Dispatcher,
     DispatchOutcome,
-    SAFE_ACTUATORS,
-    HUMAN_ONLY_ACTUATORS,
 )
-from organism.supervisor.circuit_breaker import CircuitBreaker
 from organism.supervisor.mutex import Mutex
-from organism.blackout import BlackoutManager
 
 
 def _decision(actuator="restart_agent", target="core-guardian"):

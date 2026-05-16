@@ -1,13 +1,10 @@
 """Tests for API routes — query, stream, and health endpoints."""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-
 from fastapi.testclient import TestClient
-
-from nuzantara_graph.main import app
-from nuzantara_graph.graph.builder import build_graph
 from helpers.mocks import make_mock_services
+from nuzantara_graph.graph.builder import build_graph
+from nuzantara_graph.main import app
 
 
 def _make_test_llm():

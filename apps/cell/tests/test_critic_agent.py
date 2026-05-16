@@ -6,8 +6,10 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
 import pytest
-
 from cell.cortex.critic import (
+    _DEFAULT_HEURISTIC,
+    _HEURISTIC_EXPECTATIONS,
+    _OUTCOME_SCORE,
     SCAR_CONFIDENCE,
     SCAR_THRESHOLD_N,
     SCAR_WINDOW_HOURS,
@@ -15,13 +17,8 @@ from cell.cortex.critic import (
     VALID_HEALTH,
     WEAKNESS_PATTERN_THRESHOLD,
     CriticAgent,
-    Critique,
     Expectation,
-    _DEFAULT_HEURISTIC,
-    _HEURISTIC_EXPECTATIONS,
-    _OUTCOME_SCORE,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

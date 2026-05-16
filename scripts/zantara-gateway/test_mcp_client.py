@@ -2,9 +2,9 @@
 """Tests for MCP tool client."""
 
 import asyncio
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from mcp_client import MCPToolClient
 
 

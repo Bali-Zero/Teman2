@@ -8,9 +8,7 @@ DO NOT DELETE OR WEAKEN THESE TESTS.
 """
 from __future__ import annotations
 
-import pytest
-
-from mata_garuda.council.models import AgentVote, ConsensusResult, Dissent
+from mata_garuda.council.models import AgentVote, ConsensusResult
 from mata_garuda.council.orchestrator import CouncilOrchestrator
 
 

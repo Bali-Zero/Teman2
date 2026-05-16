@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-import asyncio
 from datetime import date, timedelta
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from backend.services.compliance.predictive_engine import (
-    ComplianceForecast,
     PredictiveComplianceEngine,
     is_engine_enabled,
 )

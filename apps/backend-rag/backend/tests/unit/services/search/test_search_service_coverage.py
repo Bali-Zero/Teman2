@@ -6,12 +6,10 @@ Covers: _uses_named_vectors, SearchService (search, search_with_reranking,
         _init_bm25_with_retry, _alert_bm25_failure, property accessors).
 """
 
-import asyncio
 from collections import OrderedDict
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Module-level function test
@@ -110,13 +108,13 @@ def search_service(mock_settings):
 class TestLevelToTiers:
 
     def test_level_0(self):
-        from backend.services.search.search_service import SearchService
         from backend.app.models import TierLevel
+        from backend.services.search.search_service import SearchService
         assert SearchService.LEVEL_TO_TIERS[0] == [TierLevel.S]
 
     def test_level_3(self):
-        from backend.services.search.search_service import SearchService
         from backend.app.models import TierLevel
+        from backend.services.search.search_service import SearchService
         tiers = SearchService.LEVEL_TO_TIERS[3]
         assert TierLevel.D in tiers
 
