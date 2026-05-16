@@ -57,7 +57,6 @@ def is_legacy_schema(data: dict[str, Any]) -> bool:
         # Metric: log to stderr with structured prefix so log scrapers can
         # alert on it. Format mirrors Bali Zero cron-agent-python convention.
         import os as _os
-        import sys as _sys
         draft_id = data.get("draft_id") or data.get("carousel_id") or "unknown"
         logger.warning(
             "[wr2-schema-adapter] legacy_schema_adapted=1 draft_id=%s — "
@@ -65,8 +64,6 @@ def is_legacy_schema(data: dict[str, Any]) -> bool:
             "If this persists past 2026-06-15 it is a structural bug.",
             draft_id,
         )
-        print(f"[wr2-schema-adapter] METRIC legacy_schema_adapted=1 draft={draft_id}",
-              file=_sys.stderr)
         # Optional hard-fail via env (recommended after cutoff)
         if _os.environ.get("WR2_DISALLOW_LEGACY_SCHEMA", "").lower() in {"1", "true", "yes"}:
             raise ValueError(
