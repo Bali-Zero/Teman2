@@ -25,10 +25,10 @@ Pilastro 1 Riflessione "live" in SYMBIOSIS.md ma `lhkpn_harvester` ha smesso di 
 
 ### Reflection cadence per agent
 
-| Agent | reflection < 2026-05-08 | reflection ≥ 2026-05-08 | last reflection |
-|---|---:|---:|---|
-| `lhkpn_harvester` | 94 | **6** (ultima il 12:33 dell'8 mag) | **2026-05-08 12:33:13** |
-| `Regulation Watcher` | 19 | 7 | 2026-05-14 23:55:08 (live) |
+| Agent                | reflection < 2026-05-08 |            reflection ≥ 2026-05-08 | last reflection            |
+| -------------------- | ----------------------: | ---------------------------------: | -------------------------- |
+| `lhkpn_harvester`    |                      94 | **6** (ultima il 12:33 dell'8 mag) | **2026-05-08 12:33:13**    |
+| `Regulation Watcher` |                      19 |                                  7 | 2026-05-14 23:55:08 (live) |
 
 (Source: `apps/mata-garuda/data/knowledge.db` `knowledge` table `type='reflection'`)
 
@@ -45,10 +45,12 @@ Pilastro 1 Riflessione "live" in SYMBIOSIS.md ma `lhkpn_harvester` ha smesso di 
 ### nexus:gaps stream state
 
 `redis-cli XINFO GROUPS nexus:gaps`:
+
 - Consumer group `gap-consumer`: pending=91, last-delivered-id=`1778580005447-0`, **entries-read=4059, lag=0**
 - Last entry timestamp: `1778580005447-0` → 2026-05-12 18:00:05 (ms unix epoch)
 
 Stream contenuto totale 4059 entries, breakdown gap_type:
+
 - `missing_relation`: 1759
 - `missing_attribute`: 1415
 - `stale_attribute`: 885
@@ -58,6 +60,7 @@ Stream contenuto totale 4059 entries, breakdown gap_type:
 ### Logs evidence
 
 `~/logs/matagaruda-gap-consumer-err.log` campione:
+
 ```
 2026-05-12 18:14:34,861 WARNING mata_garuda.workers.gap_legacy:
   Legacy gap drained: msg_id=1778580005400-0 gap_type='' attribute=None
@@ -88,6 +91,7 @@ GAP_DISPATCH: dict[str, Optional[str]] = {
 ```
 
 **Stream payload reale (XREVRANGE)**:
+
 ```
 gap_type → "missing_relation"     (1759 entries)
 gap_type → "missing_attribute"    (1415 entries)
@@ -105,17 +109,20 @@ Quando è successo il drift: tra 2026-05-07 e 2026-05-08 (ultima reflection lhkp
 `docker-compose.yml` in OSINT-Nexus definisce container `osint-neo4j` con `restart: unless-stopped` MA Docker host è giù.
 
 **Conseguenza**: `garuda-gap-detector.sh:23` esegue:
+
 ```bash
 if ! /usr/bin/nc -z localhost 17687 2>/dev/null; then
     echo "[gap-detector] FATAL: Neo4j unreachable on port 17687" >> "$LOG"
     exit 4
 fi
 ```
+
 → exit 4 ogni 12h dal 2026-05-11.
 
 ### Layer 3 — Governance: no alert su Pilastro 1 collapse
 
 Nessun Telegram notifier:
+
 - `garuda-gap-detector.sh` exit 4 non triggera nulla (launchd `StandardErrorPath` solo file)
 - `gap_consumer.py` 2137 "Legacy gap drained" warning solo a log, no aggregato
 - `lhkpn_harvester` reflection drop 94→6 non monitorato da niente
@@ -148,6 +155,7 @@ Triggera prossimo gap-detector run alle 07:00/18:00 WITA next.
 Due scelte mutuamente esclusive (decisione Antonello):
 
 **Opzione A (preferibile)**: aggiungere alias mapping in `gap_consumer.py:GAP_DISPATCH` per i tipi che effettivamente arrivano:
+
 ```python
 GAP_DISPATCH: dict[str, Optional[str]] = {
     # New OSINT-Nexus taxonomy (post-2026-05-08)
@@ -160,6 +168,7 @@ GAP_DISPATCH: dict[str, Optional[str]] = {
     # ... (resto del dict come è)
 }
 ```
+
 Pro: 1 file edit, backward compat, nessun touch OSINT-Nexus.
 Con: lhkpn_harvester deve gestire un `attribute` field per discriminare nip vs lhkpn vs angkatan internamente (probabilmente già lo fa via `_gap_type` injection).
 
@@ -170,6 +179,7 @@ Raccomando A.
 ### Fix 3 (CHEAP, 30min) — Alert su Pilastro 1 degradation
 
 Aggiungere a `~/scripts/garuda-gap-detector.sh` post-exit-trap:
+
 ```bash
 EXIT_CODE=$?
 if [ $EXIT_CODE -ne 0 ]; then
@@ -213,3 +223,65 @@ fi
 9. `~/logs/matagaruda-gap-consumer-err.log` 2137 "Legacy gap drained" warnings
 10. `~/Desktop/OSINT-Nexus/docker-compose.yml` neo4j container definition (17687→7687)
 11. `docker info` + `pgrep "Docker Desktop"` empirical Docker host status
+
+## Fix shipped 2026-05-16 — empirical verification
+
+**Commit**: `2b0658d19` (PR #677 merged into `main` 2026-05-16 03:33 WITA)
+**Title**: `feat(mata-garuda): C.1-C.4 — fix Pilastro 1 reflection regression via Anti-Corruption Layer`
+
+### What shipped (C.1-C.4)
+
+| Sub-fix | Implementation                                                                                                                                                                                                                                                                               | Coverage                                                                               |
+| ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| C.1     | `gap_legacy._TRANSLATION` extended with 3 new tuples: `(missing_relation, officials_struktur)` → `gap.kanim_struktur`, `(missing_relation, officials_or_documents)` → `gap.orphan_org`, `(missing_relation, procurement_link)` → `gap.missing_procurement`                                   | 1582/1759 previously-drained entries now mapped                                        |
+| C.2     | In-process `_UNMAPPED_COUNTER` + `consume_unmapped_counter()` snapshot API; `run_gap_consumer` persists snapshots to `knowledge.db` as `type='unmapped_gap'`; daily cron `com.matagaruda.unmapped-audit.daily.plist` (09:00 WITA) alerts Telegram via `hotfix-notify.sh` when 24h total > 50 | Loud failure signature replaces silent decay                                           |
+| C.3     | `_PREFIX_TRANSLATION` + `_lookup_prefix()` for `WORKS_AT:<kanim_name>` structured attributes                                                                                                                                                                                                 | Remaining 177 → `gap.kanim_struktur`. Total coverage 4059/4059 (100%) on snapshot data |
+| C.4     | `GAP_DISPATCH` adds `gap.dlq:phone` / `gap.dlq:profile` (None target); `_TRANSLATION` routes the 2 known orphan attrs to DLQ instead of drain                                                                                                                                                | DLQ visible in counters, distinct from genuinely-unknown shapes                        |
+
+**Tests**: 43 new + updated assertions in `test_gap_legacy.py` + `test_gap_consumer.py`. Suite green (`PYTHONPATH=. pytest tests/test_gap_legacy.py tests/test_gap_consumer.py -q` → 43 passed in 6.14s, verified live this session).
+
+### Empirical state Pro 2026-05-16 09:13 WITA (post-shipped)
+
+| Metric                                               | Value                                                   | Interpretation                                                                                                                |
+| ---------------------------------------------------- | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| Docker Desktop                                       | running                                                 | Layer 2 root cause resolved (no FATAL since 2026-05-15)                                                                       |
+| Neo4j port 17687                                     | open                                                    | gap-detector can run                                                                                                          |
+| `nexus:gaps` stream length                           | 4074 (was 4059 on brainstorm day)                       | +15 new gaps emitted post-fix                                                                                                 |
+| Consumer group `gap-consumer` lag                    | 0 (entries-read=4074, last-delivered=`1778888945278-0`) | Consumer caught up to stream head                                                                                             |
+| PEL pending                                          | 101                                                     | 101 messages dispatched + processed but **NOT ACK-ed** (per design: `case_resolved=False` → no ack so message can be retried) |
+| `knowledge` rows `type='unmapped_gap'` last 24h      | 9                                                       | C.2 counter live, rate <1/h — translation matrix correct                                                                      |
+| `knowledge` rows `type='case_not_resolved'` last 24h | **82**                                                  | Agent received the case but failed to resolve                                                                                 |
+| `knowledge` rows `type='reflection'` last 24h        | **1 (Regulation Watcher only)**                         | `lhkpn_harvester` reflection still 0 — last reflection still 2026-05-08 12:33:13                                              |
+
+### Verdict
+
+**Layer 1 (architectural drift)**: ✅ resolved by C.1-C.4. The `_TRANSLATION` matrix is correct (9/24h unmapped vs 2137 pre-fix).
+
+**Layer 2 (operational)**: ✅ Docker + Neo4j up, stream accumulating.
+
+**Layer 3 (governance)**: 🟡 daily audit cron installed (50/24h threshold via Telegram), but real-time alert path (rolling 1h window, 10% threshold via `emit_pg` to PG channel) remains a separate sprint — requires architectural choice between (a) cross-app `PG_CHANNEL_MAP` registration in `apps/backend-rag/.../event_bus.py` + new migration for outbox replay, (b) Redis XADD `organism:events` (SYMBIOSIS Law 3 pattern), or (c) HTTP POST to backend-rag endpoint. OSINT-blindato Law 2 prefers (b) but loses "emit_pg" literal semantics.
+
+**Layer 4 (downstream — NEW, surfaced by this verification)**: 🔴 **lhkpn_harvester does NOT resolve cases**. Even with translation fixed and 100% mapping, 82 `case_not_resolved` in 24h means the agent receives the gap correctly but cannot complete the case (NIP search fails? LHKPN lookup blocked? KPK rate limit?). This is **upstream of reflection**: reflection happens only on `case_resolved=True` (gap_consumer.py:158-167). The Pilastro 1 silence persists for `lhkpn_harvester` not because the dispatcher is broken, but because the dispatch target fails.
+
+**Recommended next**:
+
+1. Investigate Layer 4 separately: read 5-10 most recent `case_not_resolved` entries for `lhkpn_harvester`, identify failure mode (KPK auth, profile-not-found, network), file separate ticket. Out of scope of PR #677.
+2. Defer Layer 3 real-time alert until brainstorm on architectural placement (PG channel cross-app vs Redis stream). 4-LLM panel before implementation (CLAUDE.md feedback rule 2026-05-13).
+3. Keep daily Telegram audit cron as fallback; revisit threshold (50/24h) after 14 days of empirical data.
+
+### Out of scope of this verification
+
+- Real-time `emit_pg` alert (Layer 3 evolution, separate sprint)
+- Layer 4 `lhkpn_harvester` case failure analysis (separate root-cause investigation)
+- Operator-side scripts (`garuda-gap-detector.sh` exit-non-zero alert, `chmod 0444` plist hardening)
+
+### Verification sources (this session, 2026-05-16 09:13 WITA)
+
+12. `git log --oneline -- apps/mata-garuda/mata_garuda/workers/gap_legacy.py` showing commit `2b0658d19` on `main`
+13. `docker info` + `nc -z localhost 17687` → both green
+14. `redis-cli XLEN nexus:gaps` → 4074; `XINFO GROUPS nexus:gaps` → lag=0, pending=101
+15. `sqlite3 knowledge.db "SELECT agent, COUNT(*) FROM knowledge WHERE type='reflection' AND created_at > datetime('now','-7 days') GROUP BY agent"` → only `Regulation Watcher` (7)
+16. `sqlite3 knowledge.db "SELECT COUNT(*) FROM knowledge WHERE type='case_not_resolved' AND created_at > datetime('now','-24 hours')"` → 82
+17. `sqlite3 knowledge.db "SELECT COUNT(*) FROM knowledge WHERE type='unmapped_gap' AND created_at > datetime('now','-24 hours')"` → 9
+18. `tail ~/logs/matagaruda-gap-consumer-err.log` showing Python output "Gap consumer: no new gaps in nexus:gaps" — accurate because PEL doesn't show as "new" to consumer
+19. `PYTHONPATH=. pytest tests/test_gap_legacy.py tests/test_gap_consumer.py -q` → 43 passed in 6.14s
