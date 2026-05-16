@@ -144,12 +144,14 @@ async def _init_search_service(app: FastAPI) -> Any:
     from backend.services.misc.cultural_insights_service import CulturalInsightsService
     from backend.services.routing.conflict_resolver import ConflictResolver
     from backend.services.routing.query_router_integration import QueryRouterIntegration
+    from backend.services.routing.surface_router import SurfaceRouter
     from backend.services.search.search_service import SearchService
 
     # Create shared services
     collection_manager = CollectionManager(qdrant_url=settings.qdrant_url)
     conflict_resolver = ConflictResolver()
     query_router = QueryRouterIntegration()
+    surface_router = SurfaceRouter()
 
     # Create cultural insights service (requires embedder)
     from backend.core.embeddings import create_embeddings_generator
@@ -184,6 +186,7 @@ async def _init_search_service(app: FastAPI) -> Any:
     app.state.conflict_resolver = conflict_resolver
     app.state.cultural_insights = cultural_insights
     app.state.query_router = query_router
+    app.state.surface_router = surface_router
     app.state.search_service = search_service
 
     # Verify Qdrant is actually reachable before registering as HEALTHY.
