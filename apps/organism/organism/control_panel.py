@@ -26,9 +26,9 @@ def _verify_token(x_organism_token: str | None) -> None:
     token_path = os.getenv("ORGANISM_TOKEN_PATH", "/etc/organism/token")
     try:
         expected = Path(token_path).read_text().strip()
-    except FileNotFoundError:
+    except FileNotFoundError as exc:
         logger.warning("Token file not found at %s", token_path)
-        raise HTTPException(status_code=503, detail="token not configured")
+        raise HTTPException(status_code=503, detail="token not configured") from exc
     if not x_organism_token or x_organism_token != expected:
         logger.warning("Invalid token attempt")
         raise HTTPException(status_code=401, detail="invalid token")

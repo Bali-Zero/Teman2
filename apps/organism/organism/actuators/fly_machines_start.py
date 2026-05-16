@@ -54,7 +54,7 @@ class FlyMachinesStart(ActuatorBase):
         )
         try:
             out, err = await asyncio.wait_for(proc.communicate(), timeout=60.0)
-        except asyncio.TimeoutError:
+        except asyncio.TimeoutError as exc:
             try:
                 proc.kill()
                 await proc.wait()
@@ -62,7 +62,7 @@ class FlyMachinesStart(ActuatorBase):
                 pass
             raise RuntimeError(
                 f"fly machines start timed out after 60s (argv={argv})"
-            )
+            ) from exc
         return {
             "argv": argv,
             "returncode": proc.returncode,

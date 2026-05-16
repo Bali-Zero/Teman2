@@ -43,7 +43,7 @@ def fetch_kaskus_threads(
     try:
         html = _render_page(url)
     except Exception as e:
-        raise ValueError(f'Failed to render Kaskus page: {e}')
+        raise ValueError(f'Failed to render Kaskus page: {e}') from e
 
     soup = BeautifulSoup(html, 'lxml')
 
