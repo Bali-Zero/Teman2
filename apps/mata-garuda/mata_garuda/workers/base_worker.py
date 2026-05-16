@@ -100,30 +100,56 @@ def content_hash(text: str) -> str:
     return hashlib.sha256(text.encode()).hexdigest()[:16]
 
 
+def _is_msg_id(line: str) -> bool:
+    """True if `line` looks like a Redis Stream message ID (timestamp-seq).
+
+    Empty/whitespace lines return False (so they are NOT mistaken for IDs
+    and can flow through as legitimate empty values in the field stream).
+    """
+    if not line:
+        return False
+    if not line[0].isdigit():
+        return False
+    if "-" not in line:
+        return False
+    # Defensive: confirm timestamp-seq shape (digits-digits)
+    parts = line.split("-", 1)
+    return len(parts) == 2 and parts[0].isdigit() and parts[1].isdigit()
+
+
 def _parse_xreadgroup(raw: str, stream: str) -> list[dict]:
     """Parse XREADGROUP output into list of {id, data} dicts.
 
     redis-cli output format is not JSON — it's a flat list of alternating
     keys and values. We parse it line by line.
+
+    Empty values (e.g. ``entity_nip`` blank for an Organization gap) are
+    PRESERVED as empty strings, not silently dropped. The previous
+    implementation stripped empty lines wholesale, which shifted every
+    key/value pair after the first empty value and silently corrupted
+    `gap_type`, `attribute`, etc. Discovered 2026-05-16 during Pilastro 1
+    reflection regression debug — see research/symbiosis/.../dispatch-alias.
     """
     items = []
-    lines = [l.strip() for l in raw.split("\n") if l.strip()]
+    # Preserve empty lines (they may be empty values); only rstrip the
+    # trailing whitespace + \r introduced by redis-cli line-buffering.
+    lines = [l.rstrip() for l in raw.split("\n")]
 
-    # Simple heuristic parse — redis-cli outputs stream name, then entries
     i = 0
     while i < len(lines):
         line = lines[i]
-        # Look for message IDs (format: timestamp-seq)
-        if "-" in line and line[0].isdigit():
+        if _is_msg_id(line):
             msg_id = line
             data = {}
-            # Read key-value pairs that follow
+            # Read key-value pairs until the next message ID. Empty lines
+            # between two non-ID lines are real values, not separators.
             j = i + 1
-            while j < len(lines) and not (lines[j][0].isdigit() and "-" in lines[j]):
+            while j < len(lines) and not _is_msg_id(lines[j]):
                 if j + 1 < len(lines):
                     key = lines[j]
                     val = lines[j + 1]
-                    data[key] = val
+                    if key:  # field names are always non-empty
+                        data[key] = val
                     j += 2
                 else:
                     break
