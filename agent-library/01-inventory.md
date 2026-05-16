@@ -1,9 +1,9 @@
-# Agent Library — Inventory (auto-generated 2026-05-16 07:10 WITA)
+# Agent Library — Inventory (auto-generated 2026-05-16 08:17 WITA)
 
 <!-- regenerate: python3 agent-library/_generate-inventory.py -->
 <!-- DO NOT hand-edit — changes will be overwritten -->
 
-**Snapshot**: 16 Claude subagents · 35 agentic crons / 107 infra crons (142 total launchd) · 25 skills · 9 cross-tool entries
+**Snapshot**: 16 Claude subagents · 35 agentic crons / 106 infra crons (141 total launchd) · 25 skills · 14 cross-tool entries
 
 ## Quick index
 
@@ -25,6 +25,11 @@
 | wr2-layout-composer | subagent | sonnet | Read, Write, Edit, Glob, Grep, Bash |
 | wr2-storyboarder | subagent | sonnet | Read, Glob, Grep, Bash |
 | yield-optimizer | subagent | sonnet | Read, Bash |
+| Nuzantara project identity, stack, golden rules and owner pr | cursor-rule | — | — |
+| FastAPI backend rules — Python patterns, async, imports, tes | cursor-rule | — | — |
+| Next.js frontend rules — TypeScript, Tailwind, App Router pa | cursor-rule | — | — |
+| Deploy rules — Fly.io backend, Vercel frontend, Dockerfile c | cursor-rule | — | — |
+| KBLI 2025 rules — Indonesian business classification codes, | cursor-rule | — | — |
 | backend-deploy | gemini-skill | — | — |
 | batch-processor | gemini-skill | — | — |
 | crm-data-extraction | gemini-skill | — | — |
@@ -176,6 +181,11 @@
 
 ## Cross-tool agents
 
+- **Nuzantara project identity, stack, golden rules and owner pr** (cursor-rule) — `.cursor/rules/00-always.mdc`
+- **FastAPI backend rules — Python patterns, async, imports, tes** (cursor-rule) — `.cursor/rules/01-backend.mdc`
+- **Next.js frontend rules — TypeScript, Tailwind, App Router pa** (cursor-rule) — `.cursor/rules/02-frontend.mdc`
+- **Deploy rules — Fly.io backend, Vercel frontend, Dockerfile c** (cursor-rule) — `.cursor/rules/03-deploy.mdc`
+- **KBLI 2025 rules — Indonesian business classification codes, ** (cursor-rule) — `.cursor/rules/04-kbli.mdc`
 - **backend-deploy** (gemini-skill) — `/Users/nuzantara/.gemini/skills/backend-deploy/SKILL.md`
 - **batch-processor** (gemini-skill) — `/Users/nuzantara/.gemini/skills/batch-processor/SKILL.md`
 - **crm-data-extraction** (gemini-skill) — `/Users/nuzantara/.gemini/skills/crm-data-extraction/SKILL.md`
@@ -188,7 +198,7 @@
 
 ## Cron-agents
 
-_Prefix breakdown: com.balizero=73 · com.nuzantara=51 · com.cell=2 · com.matagaruda=16_
+_Prefix breakdown: com.balizero=73 · com.nuzantara=51 · com.cell=1 · com.matagaruda=16_
 
 ### Agentic crons (35) _(call an LLM)_
 
@@ -230,7 +240,7 @@ _Prefix breakdown: com.balizero=73 · com.nuzantara=51 · com.cell=2 · com.mata
 | com.nuzantara.sentinel-meta-watchdog | every 10min | `sentinel_meta_watchdog.sh` | — |
 | com.nuzantara.zombie-hunter | every 60s | `zombie-hunter.sh` | Zombie process hunter: kills orphaned Python/Node processes that consume resourc |
 
-### Infrastructure crons (107) _(no LLM)_
+### Infrastructure crons (106) _(no LLM)_
 
 | Label | Schedule | Script | Catalog note |
 |---|---|---|---|
@@ -262,7 +272,7 @@ _Prefix breakdown: com.balizero=73 · com.nuzantara=51 · com.cell=2 · com.mata
 | com.balizero.sota.m13-collect | on-demand | `wr2-cron-wrapper.sh` | — |
 | com.balizero.sota.m13-monthly | daily@04:30 | `wr2-cron-wrapper.sh` | — |
 | com.balizero.sota.m13-weekly | weekly[d0]@06:00 | `wr2-cron-wrapper.sh` | — |
-| com.balizero.wa-audit-bot | run-at-load | `run-bot.sh` | — |
+| com.balizero.wa-audit-bot | run-at-load | `bot.py` | — |
 | com.balizero.wa-mirror | run-at-load | `index.js` | — |
 | com.balizero.wr2.canva-apply | on-demand | `wr2-script-wrapper.sh` | — |
 | com.balizero.wr2.canva-gc.weekly | weekly[d1]@04:30 | `wr2-script-wrapper.sh` | — |
@@ -292,7 +302,6 @@ _Prefix breakdown: com.balizero=73 · com.nuzantara=51 · com.cell=2 · com.mata
 | com.balizero.wr2.topic-selector | daily@05:10 | `wr2-script-wrapper.sh` | — |
 | com.balizero.wr2.trend-hunter | on-demand | `wr2-cron-wrapper.sh` | — |
 | com.cell.metabolic-rollup | daily@23:45 | `metabolic_rollup_pro.sh` | — |
-| com.cell.organism | run-at-load | `python` | Cell organism: autonomous PulseLoop agent. Sense→Think→Act→Reflect→Dream→Mature. |
 | com.matagaruda.bridge.adaptive | every 60s | `matagaruda-bridge.sh` | Mata Garuda bridge — bidirectional Pro<->Fly nerve. Pulls bridge_outbox events f |
 | com.matagaruda.gap.consumer | every 10min | `matagaruda-gap-consumer.sh` | Mata Garuda gap consumer — reads nexus:gaps stream (currently 552 entries), disp |
 | com.matagaruda.invalidation-sweep | daily@04:13 | `mata_garuda_invalidation_sweep_wrapper.sh` | — |
@@ -372,4 +381,6 @@ _Prefix breakdown: com.balizero=73 · com.nuzantara=51 · com.cell=2 · com.mata
 
 ## Drift warnings
 
-_No drift detected._
+**Orphaned plists (script not on disk):**
+- `com.balizero.wr2.plist-watchdog`
+
