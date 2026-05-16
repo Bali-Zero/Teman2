@@ -56,10 +56,10 @@ GAP_DISPATCH: dict[str, Optional[str]] = {
     "gap.missing_nip":          "lhkpn_harvester",
     "gap.missing_lhkpn":        "lhkpn_harvester",
     "gap.missing_angkatan":     "lhkpn_harvester",
-    "gap.stale_official":       "regulation_watcher",
-    "gap.orphan_org":           "regulation_watcher",
-    "gap.missing_office":       "regulation_watcher",
-    "gap.kanim_struktur":       "regulation_watcher",
+    "gap.stale_official":       "Regulation Watcher",
+    "gap.orphan_org":           "Regulation Watcher",
+    "gap.missing_office":       "Regulation Watcher",
+    "gap.kanim_struktur":       "Regulation Watcher",
     "gap.missing_procurement":  None,  # Phase 2: lpse_harvester
     # C.4 — explicit DLQ for orphan attribute namespaces.
     # The 4-LLM brainstorm 2026-05-16 (research/symbiosis/.../dispatch-alias)
