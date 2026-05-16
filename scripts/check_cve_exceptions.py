@@ -45,7 +45,7 @@ def _parse_date(raw: Any, field: str, idx: int) -> date:
         except ValueError as exc:
             raise SystemExit(
                 f"Entry #{idx}: field '{field}'='{raw}' is not a valid YYYY-MM-DD date ({exc})"
-            )
+            ) from exc
     raise SystemExit(f"Entry #{idx}: field '{field}' must be a date or YYYY-MM-DD string, got {type(raw).__name__}")
 
 

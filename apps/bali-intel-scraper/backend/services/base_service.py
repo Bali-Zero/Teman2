@@ -216,7 +216,7 @@ def service_method(operation_name: str):
                         status_code=500,
                         details={"original_error": type(e).__name__},
                         retryable=True,
-                    )
+                    ) from e
 
         @wraps(func)
         def sync_wrapper(self: "BaseService", *args, **kwargs):
@@ -291,7 +291,7 @@ def service_method(operation_name: str):
                         status_code=500,
                         details={"original_error": type(e).__name__},
                         retryable=True,
-                    )
+                    ) from e
 
         # Return appropriate wrapper based on whether func is async
         import inspect

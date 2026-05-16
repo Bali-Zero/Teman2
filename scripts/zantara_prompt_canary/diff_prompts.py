@@ -50,7 +50,7 @@ def _load_modules() -> tuple[object, object, dict]:
             f"❌ failed to import backend prompts modules: {exc}\n"
             "   make sure you ran:  PYTHONPATH=apps/backend-rag python3 ...\n",
         )
-        raise SystemExit(2)
+        raise SystemExit(2) from exc
     return zantara_core, zantara_core_v2, BUSINESS_PHRASES_I18N
 
 
