@@ -29,7 +29,7 @@ def test_golden_each_domain_has_10_queries():
 
 def test_golden_each_query_has_required_fields():
     g = run_cep.load_golden(GOLDEN_PATH)
-    for domain, q in run_cep.iter_queries(g):
+    for _, q in run_cep.iter_queries(g):
         assert "id" in q
         assert "query" in q and len(q["query"]) > 5
         assert "required_facts" in q and isinstance(q["required_facts"], list)

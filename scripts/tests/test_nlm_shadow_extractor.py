@@ -93,7 +93,7 @@ def test_extract_for_notebook_dry_run_known_domain():
 
 def test_all_domains_have_required_fields():
     ext = _load_extractor()
-    for domain, data in ext.DOMAIN_TO_NB.items():
+    for _, data in ext.DOMAIN_TO_NB.items():
         assert "id" in data and len(data["id"]) > 30
         assert "label" in data
         assert "extract_prompt_subject" in data

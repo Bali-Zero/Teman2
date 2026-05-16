@@ -450,7 +450,7 @@ def cleanup_old_snapshots(max_per_notebook: int = 7) -> Dict[str, Any]:
     deleted: List[str] = []
     kept = 0
 
-    for label, files in groups.items():
+    for _, files in groups.items():
         # Sort by modification time (newest first)
         files.sort(key=lambda p: p.stat().st_mtime, reverse=True)
 

@@ -83,7 +83,7 @@ class WebSocketManager:
             return
 
         # Remove from all rooms
-        for room_name, clients in self.rooms.items():
+        for _, clients in self.rooms.items():
             clients.discard(client_id)
 
         # Remove connection

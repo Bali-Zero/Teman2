@@ -170,7 +170,7 @@ def plan_deletions(
     to_delete: list[dict[str, str]] = []
     to_keep: list[dict[str, str]] = []
 
-    for title, items in sorted(duplicates.items()):
+    for _, items in sorted(duplicates.items()):
         # Last item in the list is the newest (NLM adds sequentially)
         newest = items[-1]
         older = items[:-1]

@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -11,7 +10,6 @@ from backend.services.knowledge_graph.community_detection import (
     Community,
     CommunityDetector,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -217,7 +215,7 @@ class TestDetect:
         edges = []
         nodes = []
         # Cluster 1: A-B-C-D-E (fully connected)
-        for i, src in enumerate(["A", "B", "C", "D", "E"]):
+        for _, src in enumerate(["A", "B", "C", "D", "E"]):
             nodes.append({"entity_id": src})
             for tgt in ["A", "B", "C", "D", "E"]:
                 if src != tgt:

@@ -129,7 +129,7 @@ class AIBatchProcessor:
 
         except Exception as e:
             # Fail all pending requests
-            for request_id, future in pending.items():
+            for _, future in pending.items():
                 if not future.done():
                     future.set_exception(e)
 
