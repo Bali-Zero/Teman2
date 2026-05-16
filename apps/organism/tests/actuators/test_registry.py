@@ -10,7 +10,7 @@ W1_BASELINE = {"restart_agent", "cleanup_log", "notify_telegram", "quarantine"}
 @pytest.mark.asyncio
 async def test_registry_has_all_baseline_actuators(fake_redis):
     reg = build_actuator_registry(redis=fake_redis)
-    assert W1_BASELINE <= set(reg.keys())
+    assert set(reg.keys()) >= W1_BASELINE
 
 
 @pytest.mark.asyncio

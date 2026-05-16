@@ -210,7 +210,7 @@ class TestPhaseTransitionMatrix:
 
     def test_valid_phases_constant(self):
         from sentinel_lib.circuit_breaker import VALID_PHASES
-        assert VALID_PHASES == frozenset({"T0", "T1", "T2", "T3", "T4", "TERMINAL"})
+        assert frozenset({"T0", "T1", "T2", "T3", "T4", "TERMINAL"}) == VALID_PHASES
 
 
 # ─────────────────────────────────────────────────────────────────────────────

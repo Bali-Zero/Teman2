@@ -577,7 +577,7 @@ def _watchdog_core() -> None:
             format_report as _cache_format,
         )
         _cache_findings = _cache_audit(PROJECT_ROOT)
-        _baseline_cache = baseline.get("cache_audit_count", None)
+        _baseline_cache = baseline.get("cache_audit_count")
         logger.info(f"Cache audit: {len(_cache_findings)} endpoint senza invalidate_cache")
         if _baseline_cache is None:
             # Prima run — salva baseline silenziosamente
@@ -608,7 +608,7 @@ def _watchdog_core() -> None:
         )
         _catch_result = _catch_audit(PROJECT_ROOT)
         _catch_count = _catch_result.total
-        _baseline_catch = baseline.get("empty_catch_count", None)
+        _baseline_catch = baseline.get("empty_catch_count")
         logger.info(f"Empty catch audit: {_catch_count} findings in {_catch_result.files_scanned} files")
         if _baseline_catch is None:
             baseline["empty_catch_count"] = _catch_count
@@ -636,7 +636,7 @@ def _watchdog_core() -> None:
         )
         _rbac_result = _rbac_audit(PROJECT_ROOT)
         _rbac_errors = len([f for f in _rbac_result.findings if f.severity == "error"])
-        _baseline_rbac = baseline.get("rbac_error_count", None)
+        _baseline_rbac = baseline.get("rbac_error_count")
         logger.info(f"RBAC audit: {_rbac_errors} errors, {_rbac_result.total - _rbac_errors} warnings across {_rbac_result.endpoints_scanned} endpoints")
         if _baseline_rbac is None:
             baseline["rbac_error_count"] = _rbac_errors
@@ -664,7 +664,7 @@ def _watchdog_core() -> None:
         )
         _dead_result = _dead_audit(PROJECT_ROOT)
         _dead_count = _dead_result.total
-        _baseline_dead = baseline.get("dead_code_count", None)
+        _baseline_dead = baseline.get("dead_code_count")
         logger.info(f"Dead code audit: {_dead_count} findings in {_dead_result.files_scanned} files")
         if _baseline_dead is None:
             baseline["dead_code_count"] = _dead_count
@@ -692,7 +692,7 @@ def _watchdog_core() -> None:
         )
         _contract_result = _contract_audit(PROJECT_ROOT)
         _ghost_count = _contract_result.total
-        _baseline_ghost = baseline.get("ghost_endpoint_count", None)
+        _baseline_ghost = baseline.get("ghost_endpoint_count")
         logger.info(
             f"API contract audit: {_ghost_count} ghost endpoints "
             f"(frontend: {len(_contract_result.frontend_endpoints)}, backend: {len(_contract_result.backend_endpoints)})"

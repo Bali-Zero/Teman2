@@ -163,7 +163,7 @@ def test_agent_registers_and_wires_config(mod, agent_name, source_domain):
     assert agent.name == agent_name
 
     # Wiring: SOURCE_DOMAIN matches expected, allow prefixes non-empty
-    assert mod.SOURCE_DOMAIN == source_domain
+    assert source_domain == mod.SOURCE_DOMAIN
     assert mod.ALLOW_PREFIXES and all(
         source_domain in p or p.startswith("https://www.") for p in mod.ALLOW_PREFIXES
     )

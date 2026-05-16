@@ -97,7 +97,7 @@ class UnifiedScraper:
         await self.client.aclose()
 
     def load_sources(self) -> List[Dict]:
-        with open(SOURCES_FILE, 'r') as f:
+        with open(SOURCES_FILE) as f:
             data = json.load(f)
         sources = []
         categories_data = data.get('categories', {})

@@ -125,9 +125,7 @@ def classify_error(error: Exception) -> ErrorCategory:
         return ErrorCategory.VALIDATION
     elif isinstance(error, NotFoundError):
         return ErrorCategory.NOT_FOUND
-    elif isinstance(error, ExternalServiceError):
-        return ErrorCategory.EXTERNAL
-    elif isinstance(error, RateLimitError):
+    elif isinstance(error, ExternalServiceError) or isinstance(error, RateLimitError):
         return ErrorCategory.EXTERNAL
     elif "database" in str(error).lower() or "connection" in str(error).lower():
         return ErrorCategory.DATABASE

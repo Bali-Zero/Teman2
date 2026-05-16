@@ -242,8 +242,8 @@ def build_html(inputs: ReportInputs) -> str:
     )
     for cause, color in ROOT_CAUSE_COLORS.items():
         parts.append(
-            '<span class="item"><span class="swatch" style="background:{c}"></span>'
-            "{label}</span>".format(c=color, label=_escape_html(cause))
+            f'<span class="item"><span class="swatch" style="background:{color}"></span>'
+            f"{_escape_html(cause)}</span>"
         )
     parts.append("</div>")
 
@@ -279,7 +279,7 @@ def build_html(inputs: ReportInputs) -> str:
     # Warnings section
     warns = sorted(set(inputs.warnings))
     if warns:
-        parts.append("<details><summary>Warnings ({n})</summary><ul>".format(n=len(warns)))
+        parts.append(f"<details><summary>Warnings ({len(warns)})</summary><ul>")
         for w in warns[:100]:
             parts.append(f"<li><code>{_escape_html(w)}</code></li>")
         parts.append("</ul></details>")

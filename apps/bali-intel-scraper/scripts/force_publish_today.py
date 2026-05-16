@@ -13,7 +13,7 @@ async def main():
         logger.error("SCRAPER_API_KEY env var not set — aborting")
         return
 
-    with open(RUN_FILE, "r") as f:
+    with open(RUN_FILE) as f:
         data = json.load(f)
 
     articles = data.get("articles", [])

@@ -5,7 +5,7 @@ Per spec: if Qdrant fails, Postgres must never be written.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from unittest.mock import AsyncMock, MagicMock, call
 
 import pytest
@@ -32,7 +32,7 @@ def _make_file(
         mime_type=mime_type,
         parents=parents or ["1n3VjN-YZGGH-6-yByxIi0rLGxi4iTDu1"],
         size=size,
-        modified_time=datetime(2024, 6, 15, tzinfo=timezone.utc),
+        modified_time=datetime(2024, 6, 15, tzinfo=UTC),
         version=3,
         trashed=False,
     )

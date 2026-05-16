@@ -289,10 +289,10 @@ def test_schema_creates_obligations_table_with_indexes(tmp_path):
 
 
 def test_valid_obligation_types_includes_5_canonical():
-    assert VALID_OBLIGATION_TYPES == {
+    assert {
         "filing",
         "reporting",
         "payment",
         "operational",
         "registration",
-    }
+    } == VALID_OBLIGATION_TYPES

@@ -6,7 +6,7 @@ Script to add 6 new KBLI gold codes while removing any existing duplicates.
 import re
 
 # Read the file
-with open('/Users/nuzantara/Desktop/kbli-navigator-rebuild/lib/kbli-gold-content.ts', 'r') as f:
+with open('/Users/nuzantara/Desktop/kbli-navigator-rebuild/lib/kbli-gold-content.ts') as f:
     content = f.read()
 
 # Codes to add/replace

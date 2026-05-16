@@ -370,11 +370,11 @@ def _drive_upload_json(
         f"{json.dumps(metadata)}\r\n"
         f"--{boundary}\r\n"
         f"Content-Type: application/json\r\n\r\n"
-    ).encode("utf-8") + body_bytes + f"\r\n--{boundary}--\r\n".encode("utf-8")
+    ).encode() + body_bytes + f"\r\n--{boundary}--\r\n".encode()
 
     # Sanity check boundary not present in payload (defense-in-depth)
     if boundary.encode("utf-8") in body_bytes:
-        raise BackupError(f"multipart boundary collision with payload — regenerate")
+        raise BackupError("multipart boundary collision with payload — regenerate")
 
     def _post() -> dict[str, Any]:
         req = urllib.request.Request(

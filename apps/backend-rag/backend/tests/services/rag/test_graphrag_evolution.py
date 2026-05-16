@@ -12,9 +12,7 @@ Run: cd apps/backend-rag && PYTHONPATH=. python -m pytest backend/tests/services
 """
 
 import hashlib
-import math
-import re
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -49,7 +47,7 @@ class TestQueryPlan:
 
         plan = QueryPlan(query="What is KITAS?")
         assert len(plan.query_hash) == 16
-        expected = hashlib.sha256("What is KITAS?".encode()).hexdigest()[:16]
+        expected = hashlib.sha256(b"What is KITAS?").hexdigest()[:16]
         assert plan.query_hash == expected
 
     def test_kg_strategy_enum_values(self) -> None:
@@ -421,7 +419,6 @@ class TestKGAutoExpansion:
     @pytest.mark.asyncio
     async def test_extracts_from_source_chunks_not_response(self) -> None:
         """CRITICAL: Must extract from source chunks, NOT from LLM response text."""
-        from contextlib import asynccontextmanager
 
         from backend.services.rag.kg_auto_expansion import KGAutoExpansion
 
