@@ -725,23 +725,31 @@ class GoogleDriveService:
         limit: int = 50,
         offset: int = 0,
         search: str | None = None,
+        page_token: str | None = None,
     ) -> dict[str, Any]:
         """
         List files in a specific folder with pagination and search.
+
+        Supports both cursor-based (page_token) and offset-based pagination.
+        When page_token is provided, offset is ignored and Drive's native
+        cursor pagination is used — avoiding full-scan on large folders.
 
         Args:
             user_id: User ID
             folder_id: Google Drive folder ID
             limit: Max number of files to return (default: 50, max: 200)
-            offset: Offset for pagination
+            offset: Offset for pagination (ignored when page_token is set)
             search: Optional search query (searches in file name)
+            page_token: Drive API page token for cursor-based pagination
 
         Returns:
             {
                 "files": [...],
                 "total": 23,
                 "limit": 50,
-                "offset": 0
+                "offset": 0,
+                "next_page_token": "abc..." | None,
+                "has_more": True | False,
             }
         """
         access_token = await self.get_valid_token(user_id)
@@ -756,16 +764,21 @@ class GoogleDriveService:
             query_parts.append(f"name contains '{safe_search}'")
         query = " and ".join(query_parts)
 
-        # Calculate page token from offset (Drive API uses page tokens, not offset)
-        # For simplicity, we'll fetch all and paginate in memory for now
-        # TODO(#82): Switch to native Drive pageToken pagination (offset is deprecated).
-
-        params = {
+        params: dict[str, Any] = {
             "q": query,
             "fields": "nextPageToken, files(id, name, mimeType, size, modifiedTime, createdTime, webViewLink, thumbnailLink)",
             "orderBy": "folder, name",
-            "pageSize": min(limit + offset, 200),  # Fetch enough to cover offset
+            "pageSize": min(limit, 200),
         }
+
+        if page_token:
+            # Cursor-based: one Drive page, no in-memory scan
+            params["pageToken"] = page_token
+        else:
+            # Offset-based fallback: fetch enough rows to apply offset in memory.
+            # Capped at 200 (Drive API max) — callers with large offsets should
+            # switch to cursor-based via the next_page_token in the response.
+            params["pageSize"] = min(limit + offset, 200)
 
         client = self._get_client()
         response = await client.get(
@@ -783,11 +796,13 @@ class GoogleDriveService:
 
         data = response.json()
         files = data.get("files", [])
+        next_page_token: str | None = data.get("nextPageToken")
 
-        # Apply offset and limit in memory
-        paginated_files = files[offset : offset + limit]
+        if page_token:
+            paginated_files = files
+        else:
+            paginated_files = files[offset : offset + limit]
 
-        # Transform files to include proxy URLs
         transformed_files = []
         for file_info in paginated_files:
             file_id = file_info.get("id")
@@ -809,10 +824,11 @@ class GoogleDriveService:
 
         return {
             "files": transformed_files,
-            "total": len(files),  # Total available (may be more than returned)
+            "total": len(files),
             "limit": limit,
-            "offset": offset,
-            "has_more": len(files) > offset + limit,
+            "offset": 0 if page_token else offset,
+            "next_page_token": next_page_token,
+            "has_more": next_page_token is not None or (not page_token and len(files) > offset + limit),
         }
 
     async def get_folder_structure(
