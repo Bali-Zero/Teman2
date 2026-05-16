@@ -2,7 +2,7 @@
 """Fix duplicate entries created by Session 08 script for 77100, 79110, 82300"""
 import re
 
-with open('lib/kbli-gold-content.ts', 'r') as f:
+with open('lib/kbli-gold-content.ts') as f:
     content = f.read()
 
 print(f"Starting: {len(content.split(chr(10)))} lines")

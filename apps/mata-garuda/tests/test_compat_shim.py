@@ -29,7 +29,7 @@ def test_legacy_dict_byte_identical_to_pre_pr_snapshot():
 def test_legacy_dict_matches_registry():
     from mata_garuda.config import NLM_NOTEBOOKS
     from mata_garuda.notebook_registry import get_legacy_notebooks_dict
-    assert NLM_NOTEBOOKS == get_legacy_notebooks_dict()
+    assert get_legacy_notebooks_dict() == NLM_NOTEBOOKS
 
 
 def test_legacy_dict_keys_match_expected_set():

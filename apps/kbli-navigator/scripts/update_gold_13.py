@@ -2,10 +2,10 @@
 """Apply Session 13 gold content — 6 Wholesale Food/Grocery KBLI codes"""
 import re
 
-with open('lib/kbli-gold-content.ts', 'r') as f:
+with open('lib/kbli-gold-content.ts') as f:
     content = f.read()
 
-with open('app/kbli/[code]/page.tsx', 'r') as f:
+with open('app/kbli/[code]/page.tsx') as f:
     page = f.read()
 
 print(f"Starting: {len(content.split(chr(10)))} lines")

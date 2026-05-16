@@ -342,7 +342,7 @@ class TestSkillLibraryCapacity:
         assert count == 5
         # Verify the LIMIT in the UPDATE subquery
         call_args = conn.execute.call_args[0]
-        assert 5 == call_args[1]  # $1 parameter = excess
+        assert call_args[1] == 5  # $1 parameter = excess
 
     @pytest.mark.asyncio
     async def test_custom_max_active(self, mock_pool):

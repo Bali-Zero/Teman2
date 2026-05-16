@@ -9,6 +9,7 @@ import logging
 import os
 import sys
 from pathlib import Path
+from datetime import UTC
 
 
 # Load .env from apps/backend-rag/.env (sibling app)
@@ -74,7 +75,7 @@ async def async_main(worker_name: str, dry_run: bool) -> int:
             )
             if row and row["expires_at"]:
                 from datetime import datetime, timezone
-                days_left = (row["expires_at"] - datetime.now(tz=timezone.utc)).days
+                days_left = (row["expires_at"] - datetime.now(tz=UTC)).days
                 if days_left < 7:
                     await send_critical_alert(
                         f"⚠️ GARUDA: Google Drive OAuth token expires in {days_left} days!\n"

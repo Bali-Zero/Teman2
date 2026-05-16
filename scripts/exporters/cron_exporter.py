@@ -51,7 +51,7 @@ def collect_metrics() -> dict[str, dict[str, Any]]:
 
     for filepath in jsonl_files:
         try:
-            with open(filepath, "r") as f:
+            with open(filepath) as f:
                 for line in f:
                     line = line.strip()
                     if not line:

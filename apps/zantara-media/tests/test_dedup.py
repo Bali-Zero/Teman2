@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -30,7 +30,7 @@ def _make_file(
         mime_type=mime_type,
         parents=parents or ["1n3VjN-YZGGH-6-yByxIi0rLGxi4iTDu1"],
         size=size,
-        modified_time=datetime(2024, 1, 1, tzinfo=timezone.utc),
+        modified_time=datetime(2024, 1, 1, tzinfo=UTC),
         version=version,
         trashed=False,
     )

@@ -6,7 +6,7 @@ All external services are mocked.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -34,7 +34,7 @@ def make_drive_file(
         mime_type=mime_type,
         parents=parents or ["1c9QnRb22XdcrFH8ukxgJeWW41soZhzVq"],  # photos subfolder
         size=size,
-        modified_time=datetime(2026, 4, 14, 10, 0, 0, tzinfo=timezone.utc),
+        modified_time=datetime(2026, 4, 14, 10, 0, 0, tzinfo=UTC),
         version=version,
         trashed=False,
     )
