@@ -45,7 +45,8 @@ LOG = logging.getLogger("crm_guardian.worker")
 
 CHROME_PROFILE_DIR = Path.home() / ".chrome-cdp-profile"
 CHROME_PROFILE_NAME = "Profile 1"  # antonellosiano@gmail.com / Gemini Ultra
-DEFAULT_PROMPT_FILE = BACKEND_RAG / "backend/services/crm_guardian/prompts/L1_extraction_v1.md"
+DEFAULT_PROMPT_FILE = BACKEND_RAG / "backend/services/crm_guardian/prompts/L1_extraction_v2.md"
+PROMPT_VERSION_V2 = "L1_extraction_v2"
 
 RAW_DUMP_DIR = Path.home() / ".crm_guardian" / "raw_dumps"
 RAW_DUMP_DIR.mkdir(parents=True, exist_ok=True)
@@ -119,6 +120,216 @@ async def resolve_folder_name(drive_service, folder_id: str) -> str | None:
     except Exception as e:
         LOG.warning("resolve_folder_name failed: %s", e)
         return None
+
+
+# ---------------------------------------------------------------------------
+# Phase 1 cross-folder: linked companies via client_company_links
+# ---------------------------------------------------------------------------
+
+
+async def fetch_linked_companies(conn, client_id: int) -> list[dict[str, Any]]:
+    """Return active company links for this client with their Drive folder ID.
+
+    Used by Phase 1 cross-folder L1 v2 extraction. Filters:
+      - status = 'active' (skip resigned/terminated/pending)
+      - companies.google_drive_folder_id IS NOT NULL (skip companies without
+        their own Drive folder — those rely on the client's 02_Company
+        subfolder only)
+    """
+    rows = await conn.fetch(
+        """
+        SELECT
+            ccl.company_id,
+            ccl.role,
+            ccl.is_primary,
+            c.company_name,
+            c.google_drive_folder_id
+        FROM client_company_links ccl
+        JOIN companies c ON c.id = ccl.company_id
+        WHERE ccl.client_id = $1
+          AND ccl.status = 'active'
+          AND c.google_drive_folder_id IS NOT NULL
+        ORDER BY ccl.is_primary DESC, ccl.id ASC
+        """,
+        client_id,
+    )
+    return [dict(r) for r in rows]
+
+
+async def aggregate_cross_folder_files(
+    drive_service,
+    client_folder_id: str,
+    linked_companies: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], dict[str, str]]:
+    """Aggregate file list across cliente root + linked company folders.
+
+    Returns:
+      - flat_files: list of {id, name, modifiedTime, ...} across all folders
+        (each enriched with 'source_folder_id' so we can attribute provenance
+        in the fingerprint without re-querying Drive)
+      - folder_id_to_name: lookup for the @mention step
+
+    Fingerprint algorithm: SHA256 over sorted (file_id, modifiedTime) pairs
+    across ALL contributing folders. A change in ANY folder bumps the
+    fingerprint and re-enqueues the cliente.
+    """
+    flat_files: list[dict[str, Any]] = []
+    folder_id_to_name: dict[str, str] = {}
+
+    # Cliente root
+    try:
+        cliente_files = await list_drive_files(drive_service, client_folder_id)
+        for f in cliente_files:
+            f["source_folder_id"] = client_folder_id
+        flat_files.extend(cliente_files)
+        cliente_name = await resolve_folder_name(drive_service, client_folder_id)
+        if cliente_name:
+            folder_id_to_name[client_folder_id] = cliente_name
+    except Exception as e:
+        LOG.warning("client folder %s aggregation failed: %s", client_folder_id, e)
+
+    # Linked company folders
+    for company in linked_companies:
+        cf_id = company["google_drive_folder_id"]
+        if not cf_id:
+            continue
+        try:
+            cf_files = await list_drive_files(drive_service, cf_id)
+            for f in cf_files:
+                f["source_folder_id"] = cf_id
+            flat_files.extend(cf_files)
+            folder_id_to_name[cf_id] = company["company_name"] or cf_id
+        except Exception as e:
+            LOG.warning(
+                "company folder %s (%s) aggregation failed: %s",
+                cf_id, company.get("company_name"), e,
+            )
+            continue
+
+    return flat_files, folder_id_to_name
+
+
+def compute_cross_folder_fingerprint(files: list[dict[str, Any]]) -> str:
+    """Fingerprint includes source_folder_id so a file moving between folders
+    bumps the hash (compute_fingerprint() above ignores folder provenance).
+    """
+    pairs = sorted(
+        (f.get("source_folder_id", ""), f["id"], f.get("modifiedTime", ""))
+        for f in files
+    )
+    blob = json.dumps(pairs, separators=(",", ":"), sort_keys=True)
+    return hashlib.sha256(blob.encode()).hexdigest()
+
+
+def build_cross_folder_context_block(
+    client_id: int,
+    client_root_folder: str,
+    linked_companies: list[dict[str, Any]],
+) -> str:
+    """Render the <CROSS_FOLDER_CONTEXT> block that L1_extraction_v2 expects.
+
+    Format spec lives in
+    apps/backend-rag/backend/services/crm_guardian/prompts/L1_extraction_v2.md
+    """
+    lines = [
+        "<CROSS_FOLDER_CONTEXT>",
+        f"client_id: {client_id}",
+        f"client_root_folder: {client_root_folder}",
+    ]
+    if linked_companies:
+        lines.append("linked_company_folders:")
+        for c in linked_companies:
+            lines.append(f"  - id: {c['google_drive_folder_id']}")
+            lines.append(f"    company_name: {c['company_name']}")
+            lines.append(f"    company_id: {c['company_id']}")
+            lines.append(f"    role: {c['role']}")
+            lines.append(f"    is_primary: {'true' if c['is_primary'] else 'false'}")
+    else:
+        lines.append("linked_company_folders: []")
+    lines.append("</CROSS_FOLDER_CONTEXT>")
+    return "\n".join(lines)
+
+
+# ---------------------------------------------------------------------------
+# Queue lifecycle helpers (Phase 1)
+# ---------------------------------------------------------------------------
+
+
+async def queue_mark_running(conn, client_id: int, run_id: str) -> int | None:
+    """Mark the pending queue row for this client as 'running'.
+
+    Returns the queue row id or None if no pending row exists (e.g. manual
+    --client-id invocation without prior enqueue).
+    """
+    row = await conn.fetchrow(
+        """
+        UPDATE crm_guardian_summary_queue
+        SET status = 'running',
+            attempts = attempts + 1,
+            last_attempt_at = NOW(),
+            started_at = COALESCE(started_at, NOW()),
+            run_id = $2::uuid
+        WHERE client_id = $1 AND status = 'pending'
+        RETURNING id
+        """,
+        client_id, run_id,
+    )
+    return row["id"] if row else None
+
+
+async def queue_mark_terminal(
+    conn,
+    queue_id: int | None,
+    status: str,
+    *,
+    last_error: str | None = None,
+    duration_ms: int | None = None,
+    raw_response_path: str | None = None,
+) -> None:
+    """Mark queue row terminal (success | error | skipped | stale)."""
+    if queue_id is None:
+        return
+    next_retry: Any = None
+    if status == "error":
+        # exponential backoff seeded from migration 180 config:
+        # retry_backoff_minutes=15, max_retries=3
+        attempts_row = await conn.fetchrow(
+            "SELECT attempts FROM crm_guardian_summary_queue WHERE id = $1",
+            queue_id,
+        )
+        attempts = attempts_row["attempts"] if attempts_row else 1
+        if attempts < 3:
+            backoff_minutes = 15 * (2 ** (attempts - 1))
+            next_retry = f"NOW() + INTERVAL '{backoff_minutes} minutes'"
+            # build SQL inline because asyncpg does not accept interval literals
+            # as parameters in all driver versions
+            await conn.execute(
+                f"""
+                UPDATE crm_guardian_summary_queue
+                SET status = 'error',
+                    completed_at = NOW(),
+                    last_error = $2,
+                    next_retry_at = {next_retry},
+                    duration_ms = COALESCE($3, duration_ms),
+                    raw_response_path = COALESCE($4, raw_response_path)
+                WHERE id = $1
+                """,
+                queue_id, last_error, duration_ms, raw_response_path,
+            )
+            return
+        # else: max retries reached, leave next_retry_at NULL
+    await conn.execute(
+        """
+        UPDATE crm_guardian_summary_queue
+        SET status = $2,
+            completed_at = NOW(),
+            last_error = $3,
+            duration_ms = COALESCE($4, duration_ms),
+            raw_response_path = COALESCE($5, raw_response_path)
+        WHERE id = $1
+        """,
+        queue_id, status, last_error, duration_ms, raw_response_path,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -361,42 +572,120 @@ async def run_one_client(
     dry_run: bool,
     run_id: str,
 ) -> dict[str, Any]:
+    """Process one cliente Phase 1 cross-folder.
+
+    Flow:
+      1. Fetch client + linked companies (active links with own Drive folder)
+      2. Aggregate file list across cliente root + linked company folders
+      3. Compute cross-folder fingerprint, skip if unchanged
+      4. Mark queue row 'running' (if invoked --from-queue)
+      5. Build <CROSS_FOLDER_CONTEXT> block and inject before prompt body
+      6. Open Gemini chat with cliente root @mention (workaround: Gemini
+         @mention supports ONE folder at a time; the linked companies are
+         exposed via the context block + Gemini's natural attention to
+         folder names mentioned in the prompt text)
+      7. Capture response, validate L1 v2, write DB
+      8. Mark queue row terminal (success | error | skipped)
+    """
+    started = datetime.now(timezone.utc)
+    queue_id: int | None = None
+
     client = await fetch_client(conn, client_id)
     if not client:
+        await queue_mark_terminal(
+            conn, queue_id, "error", last_error="client not found",
+        )
         return {"client_id": client_id, "status": "error", "error": "client not found"}
     if not client.get("folder_id"):
+        await queue_mark_terminal(
+            conn, queue_id, "skipped", last_error="no folder_id",
+        )
         return {"client_id": client_id, "status": "skipped", "error": "no folder_id"}
 
     folder_id = client["folder_id"]
 
+    # Phase 1 cross-folder: resolve linked companies BEFORE listing files
     try:
-        files = await list_drive_files(drive_service, folder_id)
+        linked_companies = await fetch_linked_companies(conn, client_id)
     except Exception as e:
-        return {"client_id": client_id, "status": "error", "error": f"list files: {e}"}
-    fingerprint = compute_fingerprint(files)
-    if client.get("ai_summary_file_hash") == fingerprint:
-        return {"client_id": client_id, "status": "skipped", "error": "fingerprint unchanged"}
+        LOG.warning("[client=%d] linked companies query failed: %s", client_id, e)
+        linked_companies = []
 
-    folder_name = await resolve_folder_name(drive_service, folder_id)
+    LOG.info(
+        "[client=%d] linked companies: %d (%s)",
+        client_id, len(linked_companies),
+        ", ".join(c.get("company_name", "?") for c in linked_companies) or "none",
+    )
+
+    # Aggregate files across all folders for fingerprint
+    try:
+        flat_files, folder_id_to_name = await aggregate_cross_folder_files(
+            drive_service, folder_id, linked_companies,
+        )
+    except Exception as e:
+        await queue_mark_terminal(
+            conn, queue_id, "error", last_error=f"aggregate cross-folder: {e}",
+        )
+        return {"client_id": client_id, "status": "error", "error": f"aggregate: {e}"}
+
+    fingerprint = compute_cross_folder_fingerprint(flat_files)
+    if client.get("ai_summary_file_hash") == fingerprint:
+        # Idempotent skip — even mark queue success since result is stable
+        await queue_mark_terminal(
+            conn, queue_id, "skipped", last_error="fingerprint unchanged",
+        )
+        return {
+            "client_id": client_id, "status": "skipped",
+            "error": "fingerprint unchanged",
+            "linked_companies": len(linked_companies),
+        }
+
+    # Mark queue row 'running' (no-op if invoked via --client-id w/o queue)
+    queue_id = await queue_mark_running(conn, client_id, run_id)
+
+    folder_name = folder_id_to_name.get(folder_id) or await resolve_folder_name(
+        drive_service, folder_id,
+    )
     if not folder_name:
+        await queue_mark_terminal(
+            conn, queue_id, "error", last_error="folder_name not resolved",
+        )
         return {"client_id": client_id, "status": "error", "error": "folder_name not resolved"}
-    LOG.info("[client=%d] folder_name=%r  files=%d", client_id, folder_name, len(files))
+
+    LOG.info(
+        "[client=%d] folder_name=%r files=%d (cliente root + %d linked)",
+        client_id, folder_name, len(flat_files), len(linked_companies),
+    )
+
+    # Build <CROSS_FOLDER_CONTEXT> block (L1_extraction_v2 requirement)
+    context_block = build_cross_folder_context_block(
+        client_id, folder_id, linked_companies,
+    )
+    full_prompt = f"{context_block}\n\n{prompt_template}"
 
     # 1. Start fresh chat
     await start_new_chat(page)
 
-    # 2. @mention the folder
+    # 2. @mention the cliente root folder. Gemini @mention only attaches one
+    # folder at a time; linked companies are referenced via the context block.
+    # If Gemini Ultra ever exposes a multi-folder selector, switch here.
     if not await attach_folder_via_at_mention(page, folder_name):
+        await queue_mark_terminal(
+            conn, queue_id, "error", last_error="at-mention failed",
+        )
         return {"client_id": client_id, "status": "error", "error": "at-mention failed"}
 
-    # 3. Paste prompt body + send
-    if not await submit_prompt_body(page, prompt_template):
+    # 3. Paste full prompt (context block + L1 v2 instructions) + send
+    if not await submit_prompt_body(page, full_prompt):
+        await queue_mark_terminal(
+            conn, queue_id, "error", last_error="submit failed",
+        )
         return {"client_id": client_id, "status": "error", "error": "submit failed"}
 
     # 4. Wait + capture
     response_text = await wait_for_response(page)
 
-    # 5. Save raw dump
+    # 5. Save raw dump (audit + post-mortem on parse failures)
     dump_path = RAW_DUMP_DIR / f"client_{client_id}_{int(datetime.now().timestamp())}.txt"
     dump_path.write_text(response_text, encoding="utf-8")
     LOG.info("[client=%d] dump saved: %s (%d chars)", client_id, dump_path, len(response_text))
@@ -404,6 +693,11 @@ async def run_one_client(
     # 6. Extract JSON
     payload = extract_json_block(response_text)
     if payload is None:
+        await queue_mark_terminal(
+            conn, queue_id, "error",
+            last_error="no JSON block in response",
+            raw_response_path=str(dump_path),
+        )
         return {
             "client_id": client_id, "status": "error",
             "error": "no JSON block", "raw_dump": str(dump_path),
@@ -411,22 +705,39 @@ async def run_one_client(
 
     # 7. Enrich with server-known metadata
     payload.setdefault("schema_version", SCHEMA_VERSION)
+    payload.setdefault("prompt_version", PROMPT_VERSION_V2)
     payload["client_id"] = client_id
     payload["generated_at"] = datetime.now(timezone.utc).isoformat()
     payload["source_folder_id"] = folder_id
-    payload["source_file_count"] = len(files)
+    payload["source_file_count"] = len(flat_files)
     payload["source_file_fingerprint"] = fingerprint
+
+    # Inject server-side source_company_folders (override any LLM guess)
+    if "company" not in payload or not isinstance(payload.get("company"), dict):
+        payload["company"] = {}
+    payload["company"]["source_company_folders"] = [
+        c["google_drive_folder_id"] for c in linked_companies
+    ]
 
     # 8. Pydantic validate
     try:
         summary = L1ClientSummary.model_validate(payload)
     except Exception as e:
+        await queue_mark_terminal(
+            conn, queue_id, "error",
+            last_error=f"pydantic validation: {e}",
+            raw_response_path=str(dump_path),
+        )
         return {
             "client_id": client_id, "status": "error",
             "error": f"pydantic validation: {e}", "raw_dump": str(dump_path),
         }
 
-    # 9. Write DB
+    duration_ms = int(
+        (datetime.now(timezone.utc) - started).total_seconds() * 1000,
+    )
+
+    # 9. Write DB (skipped on dry_run)
     if not dry_run:
         await conn.execute(
             """
@@ -448,7 +759,36 @@ async def run_one_client(
                     $3::jsonb, 'success', false, $4::uuid, $5)
             """,
             str(client_id), client_id, summary.model_dump_json(),
-            run_id, f"gemini_webapp fp={fingerprint[:12]}",
+            run_id,
+            f"gemini_webapp fp={fingerprint[:12]} linked={len(linked_companies)}",
+        )
+        await queue_mark_terminal(
+            conn, queue_id, "success",
+            duration_ms=duration_ms,
+            raw_response_path=str(dump_path),
+        )
+    else:
+        # In dry_run, write only the audit event (no clients.ai_summary update).
+        await conn.execute(
+            """
+            INSERT INTO crm_guardian_events
+            (invariant_id, action, target_type, target_id, client_id,
+             after_state, status, dry_run, run_id, notes)
+            VALUES ('I10_summary_l1', 'generate_summary', 'client', $1, $2,
+                    $3::jsonb, 'dry_run', true, $4::uuid, $5)
+            """,
+            str(client_id), client_id, summary.model_dump_json(),
+            run_id,
+            f"DRY_RUN fp={fingerprint[:12]} linked={len(linked_companies)}",
+        )
+        # queue row stays running on dry_run so operator can flip dry_run=false
+        # and re-process without manual re-enqueue. Mark 'skipped' instead with
+        # explicit reason so the row is not orphaned.
+        await queue_mark_terminal(
+            conn, queue_id, "skipped",
+            last_error="dry_run mode (audit-only)",
+            duration_ms=duration_ms,
+            raw_response_path=str(dump_path),
         )
 
     return {
@@ -458,6 +798,9 @@ async def run_one_client(
         "tier": summary.profile.tier,
         "confidence": summary.extraction_confidence,
         "fingerprint": fingerprint[:12],
+        "linked_companies": len(linked_companies),
+        "files_total": len(flat_files),
+        "duration_ms": duration_ms,
         "raw_dump": str(dump_path),
     }
 
