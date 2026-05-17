@@ -11,9 +11,8 @@ Tests: happy path + error path + edge cases for maximal coverage.
 """
 
 import os
-import sys
 from datetime import datetime
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -33,7 +32,6 @@ from backend.app.modules.crm.company_router import (
     _infer_doc_type,
     company_record_to_dict,
 )
-
 
 # ============================================================================
 # Fixtures
@@ -206,9 +204,10 @@ class TestInferDocType:
 class TestListCompanies:
     @pytest.mark.asyncio
     async def test_list_companies_no_filters(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -219,20 +218,20 @@ class TestListCompanies:
         test_app.dependency_overrides[get_database_pool] = lambda: mock_db_pool
         test_app.dependency_overrides[get_current_user] = lambda: mock_current_user
 
-        record = _make_company_record()
-        data = dict(
-            id=1, uuid="uuid-123", company_name="Test", company_type="PT PMA",
-            brand_name=None, kbli_code="62019", kbli_description="IT",
-            nib="123", npwp_company="00.000", akta_pendirian_no=None,
-            akta_pendirian_date=None, akta_perubahan_no=None,
-            akta_perubahan_date=None, sk_menhumkam_no=None,
-            sk_menhumkam_date=None, registered_address=None,
-            office_address=None, city="Denpasar", province="Bali",
-            postal_code=None, company_phone=None, company_email=None,
-            status="active", setup_progress=0, google_drive_folder_id=None,
-            custom_fields=None, created_at=datetime(2025, 1, 1),
-            updated_at=None, created_by="admin", associates_count=3,
-        )
+        _make_company_record()
+        data = {
+            "id": 1, "uuid": "uuid-123", "company_name": "Test", "company_type": "PT PMA",
+            "brand_name": None, "kbli_code": "62019", "kbli_description": "IT",
+            "nib": "123", "npwp_company": "00.000", "akta_pendirian_no": None,
+            "akta_pendirian_date": None, "akta_perubahan_no": None,
+            "akta_perubahan_date": None, "sk_menhumkam_no": None,
+            "sk_menhumkam_date": None, "registered_address": None,
+            "office_address": None, "city": "Denpasar", "province": "Bali",
+            "postal_code": None, "company_phone": None, "company_email": None,
+            "status": "active", "setup_progress": 0, "google_drive_folder_id": None,
+            "custom_fields": None, "created_at": datetime(2025, 1, 1),
+            "updated_at": None, "created_by": "admin", "associates_count": 3,
+        }
         row = MagicMock()
         row.__getitem__ = lambda s, k: data[k]
 
@@ -245,9 +244,10 @@ class TestListCompanies:
 
     @pytest.mark.asyncio
     async def test_list_companies_with_search(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -268,9 +268,10 @@ class TestListCompanies:
 class TestCreateCompany:
     @pytest.mark.asyncio
     async def test_create_company_success(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -302,9 +303,10 @@ class TestCreateCompany:
 class TestGetCompany:
     @pytest.mark.asyncio
     async def test_get_company_success(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -330,9 +332,10 @@ class TestGetCompany:
 
     @pytest.mark.asyncio
     async def test_get_company_not_found(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -353,9 +356,10 @@ class TestGetCompany:
 class TestUpdateCompany:
     @pytest.mark.asyncio
     async def test_update_success(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -380,9 +384,10 @@ class TestUpdateCompany:
 
     @pytest.mark.asyncio
     async def test_update_no_valid_fields(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -402,9 +407,10 @@ class TestUpdateCompany:
 
     @pytest.mark.asyncio
     async def test_update_not_found(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -428,9 +434,10 @@ class TestUpdateCompany:
 class TestDeleteCompany:
     @pytest.mark.asyncio
     async def test_delete_success(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -450,9 +457,10 @@ class TestDeleteCompany:
 
     @pytest.mark.asyncio
     async def test_delete_not_found(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -473,9 +481,10 @@ class TestDeleteCompany:
 class TestClientCompanyLink:
     @pytest.mark.asyncio
     async def test_get_company_clients(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -495,9 +504,10 @@ class TestClientCompanyLink:
 
     @pytest.mark.asyncio
     async def test_get_company_clients_not_found(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -516,9 +526,10 @@ class TestClientCompanyLink:
 
     @pytest.mark.asyncio
     async def test_link_client_success(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -543,9 +554,10 @@ class TestClientCompanyLink:
 
     @pytest.mark.asyncio
     async def test_link_client_already_linked(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -570,9 +582,10 @@ class TestClientCompanyLink:
 
     @pytest.mark.asyncio
     async def test_unlink_client_success(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -591,9 +604,10 @@ class TestClientCompanyLink:
 
     @pytest.mark.asyncio
     async def test_unlink_client_not_found(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -614,9 +628,10 @@ class TestClientCompanyLink:
 class TestCompanyDocuments:
     @pytest.mark.asyncio
     async def test_get_documents(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -635,9 +650,10 @@ class TestCompanyDocuments:
 
     @pytest.mark.asyncio
     async def test_get_documents_with_type_filter(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -656,9 +672,10 @@ class TestCompanyDocuments:
 
     @pytest.mark.asyncio
     async def test_create_document_success(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -683,9 +700,10 @@ class TestCompanyDocuments:
 
     @pytest.mark.asyncio
     async def test_create_document_company_not_found(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -707,9 +725,10 @@ class TestCompanyDocuments:
 
     @pytest.mark.asyncio
     async def test_delete_document_success(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -728,9 +747,10 @@ class TestCompanyDocuments:
 
     @pytest.mark.asyncio
     async def test_delete_document_not_found(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -751,9 +771,10 @@ class TestCompanyDocuments:
 class TestTaxRecord:
     @pytest.mark.asyncio
     async def test_get_tax_record_found(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)
@@ -788,9 +809,10 @@ class TestTaxRecord:
 
     @pytest.mark.asyncio
     async def test_get_tax_record_not_found(self, mock_db_pool, mock_current_user):
-        from fastapi.testclient import TestClient
-        from backend.app.modules.crm.company_router import router
         from fastapi import FastAPI
+        from fastapi.testclient import TestClient
+
+        from backend.app.modules.crm.company_router import router
 
         test_app = FastAPI()
         test_app.include_router(router)

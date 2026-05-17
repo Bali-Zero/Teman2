@@ -3,10 +3,11 @@ Rule-Based Deduplicator (No LLM)
 Zero cost, instant, deterministic duplicate detection
 """
 
-import json
 import hashlib
-from pathlib import Path
+import json
 from datetime import datetime
+from pathlib import Path
+from typing import Dict, Set, Tuple
 
 
 class RuleBasedDeduplicator:

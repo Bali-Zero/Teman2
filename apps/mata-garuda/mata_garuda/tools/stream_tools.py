@@ -8,7 +8,6 @@ Stream: garuda:raw — raw harvested data from Layer 1 agents.
 """
 from __future__ import annotations
 
-import json
 import logging
 import subprocess
 from datetime import datetime

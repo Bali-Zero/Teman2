@@ -17,7 +17,6 @@ Covers:
 
 import asyncio
 import logging
-import time
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -370,8 +369,9 @@ class TestUnderstandQueryNode:
 
     @pytest.mark.asyncio
     async def test_llm_json_parse_error_fallback(self) -> None:
-        from backend.services.rag.kg_graph_nodes import understand_query_node
         from pydantic import ValidationError
+
+        from backend.services.rag.kg_graph_nodes import understand_query_node
 
         # Simulate the structured-output parser raising ValidationError when
         # the upstream LLM returns malformed JSON. The node catches it and

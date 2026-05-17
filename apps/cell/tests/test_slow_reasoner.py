@@ -1,9 +1,9 @@
 """Tests for SLOW reasoner + DNA interpreter."""
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-from cell.slow.reasoner import SlowReasoner, ReasonerProposal
-from cell.core.dna_interpreter import DNAInterpreter, ValidationResult
+from unittest.mock import AsyncMock, patch
 
+import pytest
+from cell.core.dna_interpreter import DNAInterpreter
+from cell.slow.reasoner import SlowReasoner
 
 # --- Reasoner ---
 

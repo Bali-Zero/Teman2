@@ -1,7 +1,8 @@
 """Metabolic cost tracker — every action costs energy.
 Enforces daily budget with partitions. Reserve partition is NEVER accessible by CELL."""
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
+
 
 @dataclass
 class CostEntry:

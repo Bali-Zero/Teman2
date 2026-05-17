@@ -7,14 +7,11 @@ import sys
 from pathlib import Path
 from textwrap import dedent
 
-import pytest
-
 SCRIPTS_DIR = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(SCRIPTS_DIR))
 
 import filter_safety_findings as safety_mod  # type: ignore[import-not-found]
 import filter_snyk_findings as snyk_mod  # type: ignore[import-not-found]
-
 
 # ---------------------------------------------------------------------------
 # Snyk filter

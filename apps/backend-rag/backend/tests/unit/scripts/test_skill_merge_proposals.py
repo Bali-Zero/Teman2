@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import json
 import math
-from pathlib import Path
 
 import pytest
 
@@ -267,7 +266,6 @@ def test_find_candidates_full_triple_text_passed_to_embedder():
 def test_main_writes_proposals_jsonl(tmp_path, monkeypatch):
     """Integration smoke: seed the Genome with two near-duplicate skills,
     run main with the stub embedder, assert a jsonl line appears."""
-    from cell_core.genome import Genome
     from backend.services.skill.models import SkillRecord
     from backend.services.skill.service import SkillService
 

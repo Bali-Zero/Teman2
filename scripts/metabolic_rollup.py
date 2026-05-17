@@ -20,7 +20,6 @@ import argparse
 import json
 import logging
 import os
-import subprocess
 import sys
 import time
 from datetime import datetime, timezone
@@ -72,8 +71,8 @@ def send_telegram(text: str) -> bool:
         logger.warning("TELEGRAM_BOT_TOKEN not set, skipping notification")
         return False
     try:
-        import urllib.request
         import urllib.parse
+        import urllib.request
 
         url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
         data = urllib.parse.urlencode({

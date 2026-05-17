@@ -23,8 +23,7 @@ attribute fields + ≥3 verbatim quotes from real comments.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field, asdict
-from typing import Any
+from dataclasses import asdict, dataclass, field
 
 logger = logging.getLogger(__name__)
 

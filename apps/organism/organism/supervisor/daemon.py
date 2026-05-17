@@ -28,19 +28,19 @@ import json
 import logging
 import os
 import time
+from collections.abc import Awaitable, Callable, Mapping
 from pathlib import Path
-from typing import Any, Awaitable, Callable, Mapping
+from typing import Any
 
 from organism.blackout import BlackoutManager
 from organism.schemas import Event
 from organism.supervisor.active_flag import ActiveFlag
 from organism.supervisor.circuit_breaker import CircuitBreaker
 from organism.supervisor.decider import Decider
-from organism.supervisor.dispatch import Dispatcher, DispatchOutcome
+from organism.supervisor.dispatch import Dispatcher
 from organism.supervisor.incident_context import IncidentStore
 from organism.supervisor.mutex import Mutex
 from organism.supervisor.yaml_rules import RuleMatcher
-
 
 log = logging.getLogger(__name__)
 

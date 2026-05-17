@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from backend.services.olympus.guardian import OlympusGuardian
 from backend.services.olympus.models import PulseAction
-
 
 # ---------------------------------------------------------------------------
 # Helpers

@@ -6,7 +6,7 @@ pipeline_truth_dashboard view.
 """
 
 import json
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from apps.evaluator.nlm_deep_research.heartbeat_monitor import (

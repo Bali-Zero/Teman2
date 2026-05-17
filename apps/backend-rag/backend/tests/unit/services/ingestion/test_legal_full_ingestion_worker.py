@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import asyncio
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch, mock_open
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -137,7 +136,7 @@ class TestDownloadPdf:
         with patch(
             "backend.services.ingestion.legal_full_ingestion_worker.httpx.AsyncClient",
             return_value=mock_client,
-        ), patch("pathlib.Path.write_bytes") as mock_write, patch(
+        ), patch("pathlib.Path.write_bytes"), patch(
             "tempfile.mkdtemp", return_value="/tmp/test_dl"
         ):
             from backend.services.ingestion.legal_full_ingestion_worker import (

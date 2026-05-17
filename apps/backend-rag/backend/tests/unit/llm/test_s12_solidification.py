@@ -349,7 +349,6 @@ class TestR2TimeoutInConfig:
 
     def test_get_config_includes_http_options(self):
         """_get_config must embed HttpOptions(timeout=...) in GenerateContentConfig."""
-        from google.genai import types
 
         from backend.llm.genai_client import GenAIClient
 

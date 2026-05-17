@@ -11,7 +11,6 @@ event tick — i.e. without `await`-ing on heavy services like
 """
 from __future__ import annotations
 
-import json
 import time
 from unittest.mock import AsyncMock, MagicMock, patch
 

@@ -32,7 +32,7 @@ import logging
 import math
 import os
 import sys
-from typing import Any, Iterable, Protocol
+from typing import Any, Protocol
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(message)s")
 logger = logging.getLogger(__name__)
@@ -58,7 +58,7 @@ def cosine_distance(v1: list[float], v2: list[float]) -> float:
     dot = 0.0
     n1 = 0.0
     n2 = 0.0
-    for a, b in zip(v1, v2):
+    for a, b in zip(v1, v2, strict=False):
         dot += a * b
         n1 += a * a
         n2 += b * b
@@ -145,7 +145,7 @@ def _default_embedder() -> Embedder:
     gen = EmbeddingsGenerator()
 
     class _RealEmbedder:
-        def embed(self, text: str, skill_id: str | None = None) -> list[float]:
+        def embed(self, text: str, skill_id: str | None = None) -> list[float]:  # noqa: ARG002
             import asyncio
             return asyncio.run(gen.generate_single_embedding(text))
 

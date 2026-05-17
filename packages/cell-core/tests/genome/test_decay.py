@@ -4,11 +4,10 @@ Decision: Ebbinghaus-aligned exponential decay.
 Formula: new_conf = confidence * (decay_rate ** days_unused)
 Guards: scars immune, min_idle_days=7, silence_threshold=0.3
 """
-import pytest
 import sqlite3
-import time
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 
+import pytest
 from cell_core.genome import Genome
 
 

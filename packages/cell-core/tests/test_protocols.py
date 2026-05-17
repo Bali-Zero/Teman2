@@ -1,5 +1,4 @@
 """Tests for cell_core.protocols — runtime_checkable Protocol compliance."""
-import pytest
 
 
 class TestSensorProtocol:

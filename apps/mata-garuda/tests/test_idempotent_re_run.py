@@ -1,10 +1,8 @@
 """Tests for idempotent APOPTOSIS re-run + crash-safety."""
 from __future__ import annotations
 
-import json
 import sys
 from pathlib import Path
-from unittest.mock import MagicMock, patch
 
 import pytest
 

@@ -14,22 +14,14 @@ DO NOT MODIFY THESE TESTS without Zero's explicit approval.
 from __future__ import annotations
 
 import ast
-import inspect
-import textwrap
 from pathlib import Path
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from nuzantara_graph.curiosity.models import (
-    GapTopic,
-    KGProposal,
-    ProposalType,
     ResearchEvidence,
-    Tier,
 )
 from nuzantara_graph.curiosity.orchestrator import CuriosityOrchestrator
-from nuzantara_graph.curiosity.proposals import KGProposalStore
 
 
 class TestProposeOnlyInvariant:

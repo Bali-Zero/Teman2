@@ -5,11 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
-
-from backend.services.olympus.models import PulseAction
-from backend.services.olympus.pulse import Pulse, _SAFE_VACUUM_TABLES
-
+from backend.services.olympus.pulse import _SAFE_VACUUM_TABLES, Pulse
 
 # ---------------------------------------------------------------------------
 # Helpers

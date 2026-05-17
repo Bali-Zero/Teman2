@@ -23,7 +23,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from qdrant_client import QdrantClient, models
-from qdrant_client.models import Distance, PointStruct, SparseVector, VectorParams
+from qdrant_client.models import Distance, PointStruct, SparseVector
 
 from backend.kb.politics.hierarchical.chunker import HierarchicalChunker
 from backend.kb.politics.hierarchical.embedder import BM25SparseEncoder, LocalEmbedder
@@ -107,7 +107,7 @@ def main() -> None:
 
     # 5. Upsert
     points = []
-    for i, (chunk, dvec) in enumerate(zip(chunks, dense_vecs)):
+    for i, (chunk, dvec) in enumerate(zip(chunks, dense_vecs, strict=False)):
         vector: dict = {"dense": dvec}
         if hybrid and sparse_vecs:
             sv = sparse_vecs[i]

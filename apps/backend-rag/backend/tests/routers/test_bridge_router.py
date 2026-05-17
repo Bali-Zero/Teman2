@@ -7,7 +7,6 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-
 VALID_KEY = "test-bridge-key-12345"
 
 
@@ -20,8 +19,8 @@ def set_bridge_key(monkeypatch):
 @pytest.fixture
 def app_with_bridge():
     """Build a minimal FastAPI app with only the bridge router + mocked db pool dep."""
-    from backend.app.routers import bridge as bridge_router
     from backend.app.deps.database import get_database_pool
+    from backend.app.routers import bridge as bridge_router
 
     app = FastAPI()
     app.include_router(bridge_router.router)
@@ -75,7 +74,6 @@ def test_get_events_unauthorized_wrong_key(client):
 
 def test_get_events_returns_outbox_rows(client, app_with_bridge):
     """Authorized GET returns events from the outbox via fetch_outbox_events."""
-    from backend.services.bridge import outbox as outbox_mod
 
     # Patch fetch_outbox_events to return fake rows
     monkey = pytest.MonkeyPatch()
@@ -182,6 +180,7 @@ def test_get_events_503_when_bridge_api_key_unset(monkeypatch):
     monkeypatch.delenv("BRIDGE_API_KEY", raising=False)
 
     from fastapi import FastAPI
+
     from backend.app.routers import bridge as bridge_router
 
     app = FastAPI()
@@ -239,6 +238,7 @@ def test_get_skills_503_when_skills_key_unset(monkeypatch):
     """If BRIDGE_SKILLS_API_KEY env var is missing, return 503."""
     monkeypatch.delenv("BRIDGE_SKILLS_API_KEY", raising=False)
     from fastapi import FastAPI
+
     from backend.app.routers import bridge as bridge_router
 
     app = FastAPI()
@@ -258,6 +258,7 @@ def test_get_skills_503_when_redis_unavailable_and_no_redis_url(monkeypatch):
     monkeypatch.setenv("BRIDGE_SKILLS_API_KEY", SKILLS_KEY)
     monkeypatch.delenv("REDIS_URL", raising=False)
     from fastapi import FastAPI
+
     from backend.app.routers import bridge as bridge_router
 
     app = FastAPI()
@@ -288,6 +289,7 @@ def test_get_skills_falls_back_to_redis_url_on_light_init(monkeypatch):
     monkeypatch.setenv("REDIS_URL", "redis://localhost:6379")
 
     from fastapi import FastAPI
+
     from backend.app.routers import bridge as bridge_router
 
     app = FastAPI()

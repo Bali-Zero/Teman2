@@ -8,8 +8,6 @@ avoid touching real NotebookLM cloud.
 
 import json
 import subprocess
-import sys
-from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -47,7 +45,7 @@ def test_verify_ingestion_happy_path(tmp_path, monkeypatch):
             # marker is the 12-char hex after "Query marker:"
             marker_line = [line for line in text.splitlines() if "Query marker:" in line][0]
             captured_marker["m"] = marker_line.split("Query marker:")[1].strip().rstrip(".")
-            return _fake_completed(stdout=f"Source ID: fake-src-id\n✓ Added")
+            return _fake_completed(stdout="Source ID: fake-src-id\n✓ Added")
         if cmd[1] == "notebook" and cmd[2] == "query":
             # Echo the marker back as if NLM found it
             m = captured_marker.get("m", "")

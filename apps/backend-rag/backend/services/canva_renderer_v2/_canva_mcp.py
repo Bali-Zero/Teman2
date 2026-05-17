@@ -10,7 +10,6 @@ OAuth handled by OrchestratorTokenStorage passed to OAuthClientProvider.
 """
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import re
@@ -110,7 +109,7 @@ class CanvaMcpClient:
         self._stream_cm = None
         self._http_client: httpx.AsyncClient | None = None
 
-    async def __aenter__(self) -> "CanvaMcpClient":
+    async def __aenter__(self) -> CanvaMcpClient:
         storage = OrchestratorTokenStorage()
         info = await storage.get_client_info()
         oauth = OAuthClientProvider(

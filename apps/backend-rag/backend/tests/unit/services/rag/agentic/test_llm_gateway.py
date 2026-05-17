@@ -8,7 +8,7 @@ Covers: LLMGateway init, _available property, set_gemini_tools,
         _send_with_fallback, tier constants.
 """
 
-from unittest.mock import AsyncMock, MagicMock, PropertyMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -19,7 +19,6 @@ from backend.services.rag.agentic.llm_gateway import (
     TIER_PRO,
     LLMGateway,
 )
-
 
 # ============================================================================
 # Fixtures

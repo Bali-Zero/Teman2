@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Apply Session 07 gold content updates to kbli-gold-content.ts and page.tsx"""
-import re
 
 # ============================================================
 # Read files
@@ -406,13 +405,13 @@ else:
     if close_bracket > 0:
         # Insert HERO_IMAGES before the };
         page = page[:close_bracket + 1] + HERO_IMAGES + '};\n' + page[close_bracket + 4:]
-        print(f"✓ Hero images inserted in page.tsx (before closing}})")
+        print("✓ Hero images inserted in page.tsx (before closing})")
     else:
         # Try finding the end of 96900 entry differently
         idx96900_end = page.find('\n  },\n};', idx)
         if idx96900_end > 0:
             page = page[:idx96900_end + 6] + '\n' + HERO_IMAGES + '};' + page[idx96900_end + 8:]
-            print(f"✓ Hero images inserted using alt method")
+            print("✓ Hero images inserted using alt method")
         else:
             print("ERROR: could not insert hero images")
 

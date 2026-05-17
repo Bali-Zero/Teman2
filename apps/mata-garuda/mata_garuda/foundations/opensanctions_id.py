@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import json
 from dataclasses import dataclass
-from typing import Optional
 
 import httpx
 from tenacity import retry, stop_after_attempt, wait_exponential

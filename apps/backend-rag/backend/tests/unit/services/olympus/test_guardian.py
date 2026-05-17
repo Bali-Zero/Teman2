@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-import asyncio
-import json
 from datetime import datetime, timezone
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from backend.services.olympus.models import PulseAction
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -181,7 +177,7 @@ class TestRunPulseOnce:
         guardian.alerts = AsyncMock()
         guardian.alerts.send_pulse_summary = AsyncMock()
 
-        actions = await guardian.run_pulse_once()
+        await guardian.run_pulse_once()
 
         mock_rules.lower_confidence.assert_awaited_once_with("bloat_threshold")
         mock_rules.record_applied.assert_not_awaited()

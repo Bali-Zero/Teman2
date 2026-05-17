@@ -34,7 +34,6 @@ import json
 import logging
 import os
 import sys
-import tempfile
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -45,7 +44,6 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "apps" / "backend-rag"))
 
 import asyncpg  # noqa: E402
-
 from backend.services.canva_renderer import build_canva_pending  # noqa: E402
 from backend.services.canva_renderer.claude_invoker import (  # noqa: E402
     CanvaApplyResult,

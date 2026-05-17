@@ -1,9 +1,8 @@
 # tests/test_self_model.py
 """Tests for CELL's self-model — persistent identity across restarts."""
-import json
 import os
 import tempfile
-import pytest
+
 from cell.identity.self_model import SelfModel, SelfModelManager
 
 

@@ -6,14 +6,9 @@ All external calls (gemini CLI, nlm CLI, Telegram) are mocked.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from apps.evaluator.nlm_deep_research.freshness_monitor import (
-    COVERAGE_MATRIX_FILE,
-    FRESHNESS_STATE_FILE,
     MAX_REMEDIATIONS_PER_RUN,
     REGULATORY_DOMAINS,
     RESEARCH_QUERY_TEMPLATES,
@@ -22,7 +17,6 @@ from apps.evaluator.nlm_deep_research.freshness_monitor import (
     run_scan,
 )
 from apps.evaluator.nlm_deep_research.gap_scanner import DOMAIN_TOPICS
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

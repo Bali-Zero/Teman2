@@ -2,20 +2,18 @@
 from __future__ import annotations
 
 import sqlite3
-import time
 from pathlib import Path
 
 import pytest
-
 from mata_garuda.scripts.nb_monitor.persist import (
-    MetricRow,
     AlertRecord,
+    MetricRow,
     connect,
     ensure_schema,
-    insert_metric_row,
-    insert_alert_record,
-    fetch_latest_per_uuid,
     fetch_alert_last_sent,
+    fetch_latest_per_uuid,
+    insert_alert_record,
+    insert_metric_row,
 )
 
 

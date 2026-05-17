@@ -139,7 +139,6 @@ def infer_one(slug: str, segment: str, sources: list[str]) -> Persona:
                 continue
 
     # Fallback: extract first balanced JSON object
-    import re
     # Find from first "{" to end, then progressively shorten until valid JSON
     first_brace = stdout.find("{")
     if first_brace >= 0:

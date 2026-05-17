@@ -7,7 +7,7 @@ Covers: clean_image_generation_response, get_ab_test_manager,
 """
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -22,7 +22,6 @@ from backend.app.routers.agentic_rag import (
     get_conversation_history_for_agentic,
     get_metrics_tracker,
 )
-
 
 # ============================================================================
 # clean_image_generation_response

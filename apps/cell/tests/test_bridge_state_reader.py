@@ -15,13 +15,11 @@ import json
 from pathlib import Path
 from typing import Any
 
-
 from cell.sensors.bridge_state_reader import (
     BridgeReading,
-    BridgeStateReader,
     BridgeSource,
+    BridgeStateReader,
 )
-
 
 # ---------- helpers ----------------------------------------------------------
 
@@ -203,6 +201,7 @@ def test_unsupported_bridge_type_returns_error(tmp_path):
 
 
 from unittest.mock import MagicMock, patch
+
 import httpx as _httpx_mod  # alias to avoid shadowing if test names collide
 
 

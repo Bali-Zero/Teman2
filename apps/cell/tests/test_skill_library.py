@@ -1,16 +1,14 @@
 """Tests for cortex SkillLibrary — CRUD, recall, decay, embedding, capacity."""
 
 import json
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import numpy as np
 import pytest
-
 from cell.cortex.skill_library import (
     DECAY_DAYS_THRESHOLD,
     DECAY_FITNESS_THRESHOLD,
-    DEFAULT_MAX_ACTIVE,
     EMBEDDING_DIM,
     VALID_STATUSES,
     Skill,
@@ -18,7 +16,6 @@ from cell.cortex.skill_library import (
     compute_embedding,
     cosine_similarity,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -47,24 +44,24 @@ def _conn_from_pool(pool: AsyncMock) -> AsyncMock:
 
 def _make_skill(**overrides) -> Skill:
     """Create a Skill with sensible defaults, overridable by kwargs."""
-    defaults = dict(
-        id=1,
-        name="test_skill",
-        trigger_nl="when something happens",
-        action_sequence=["step1", "step2"],
-        rationale_nl="because it helps",
-        fitness=0.8,
-        success_count=8,
-        failure_count=2,
-        use_count=10,
-        generation=0,
-        parent_id=None,
-        embedding=compute_embedding("test"),
-        status="active",
-        created_at=datetime.now(timezone.utc),
-        last_used_at=datetime.now(timezone.utc),
-        last_decay_check=datetime.now(timezone.utc),
-    )
+    defaults = {
+        "id": 1,
+        "name": "test_skill",
+        "trigger_nl": "when something happens",
+        "action_sequence": ["step1", "step2"],
+        "rationale_nl": "because it helps",
+        "fitness": 0.8,
+        "success_count": 8,
+        "failure_count": 2,
+        "use_count": 10,
+        "generation": 0,
+        "parent_id": None,
+        "embedding": compute_embedding("test"),
+        "status": "active",
+        "created_at": datetime.now(timezone.utc),
+        "last_used_at": datetime.now(timezone.utc),
+        "last_decay_check": datetime.now(timezone.utc),
+    }
     defaults.update(overrides)
     return Skill(**defaults)
 

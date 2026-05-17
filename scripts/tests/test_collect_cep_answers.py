@@ -9,8 +9,6 @@ from io import BytesIO
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 
 def _load_collector():
     p = Path(__file__).resolve().parents[2] / "scripts" / "nlm_activation" / "collect_cep_answers.py"

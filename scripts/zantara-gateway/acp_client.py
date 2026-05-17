@@ -23,8 +23,8 @@ issue where _rpc() and prompt_stream() competed for stdout lines.
 import asyncio
 import json
 import logging
+from collections.abc import AsyncIterator
 from pathlib import Path
-from typing import Any, AsyncIterator
 
 logger = logging.getLogger("zantara-gateway.acp")
 

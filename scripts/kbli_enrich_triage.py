@@ -4,9 +4,8 @@ Runs 6 parallel Gemini CLI processes (batches of ~200 codes each).
 """
 import json
 import subprocess
-import os
-from pathlib import Path
 from concurrent.futures import ProcessPoolExecutor, as_completed
+from pathlib import Path
 
 GEMINI_BIN = "/opt/homebrew/bin/gemini"
 

@@ -2,7 +2,7 @@
 Tests for LLMGateway - multi-tier LLM routing with fallback cascade.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -139,7 +139,7 @@ class TestLLMGatewayCreateChatWithHistory:
         assert session is not None
 
     def test_create_chat_different_tiers(self, gateway):
-        from backend.services.rag.agentic.llm_gateway import TIER_FLASH, TIER_LITE, TIER_PRO
+        from backend.services.rag.agentic.llm_gateway import TIER_FLASH, TIER_PRO
         assert TIER_FLASH != TIER_PRO or TIER_FLASH == TIER_PRO  # May be aliased
 
 

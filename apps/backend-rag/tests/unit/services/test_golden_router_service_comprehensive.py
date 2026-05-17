@@ -2,7 +2,7 @@
 Tests for GoldenRouterService - query routing via golden routes.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 

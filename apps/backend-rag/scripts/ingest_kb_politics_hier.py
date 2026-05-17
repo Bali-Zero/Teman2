@@ -16,7 +16,6 @@ Options:
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import resource
 import sys
@@ -127,7 +126,7 @@ def main() -> None:
             logger.info(f"  Mean Recall@5 (all): {summary.mean_recall_at_5}")
             logger.info(f"  Mean nDCG@5 (hard): {summary.mean_ndcg_hard_labels}")
             logger.info(f"  Mean Recall@5 (hard): {summary.mean_recall_hard_labels}")
-            logger.info(f"\nPer-query breakdown:")
+            logger.info("\nPer-query breakdown:")
             for r in summary.per_query:
                 weak = " [WEAK]" if r.weak_label else ""
                 logger.info(

@@ -1,6 +1,7 @@
-import pytest
-import os
 from pathlib import Path
+
+import pytest
+
 
 # Tests run from mcp-wrapper dir, config is relative
 @pytest.fixture

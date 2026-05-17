@@ -1,10 +1,9 @@
 """Integration tests for correction cycles and fail-fast behavior."""
 
 import pytest
-
-from nuzantara_graph.graph.builder import build_graph
-from nuzantara_schemas.state import GraphState, IntentType, RetrievedDocument
 from helpers.mocks import make_mock_services
+from nuzantara_graph.graph.builder import build_graph
+from nuzantara_schemas.state import GraphState, RetrievedDocument
 
 
 class TestFailFast:

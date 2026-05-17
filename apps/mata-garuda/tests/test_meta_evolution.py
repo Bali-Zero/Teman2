@@ -1,5 +1,4 @@
 """Tests for Meta-Evolution agents — SourceHealth + MetaCognition."""
-import pytest
 from pathlib import Path
 
 

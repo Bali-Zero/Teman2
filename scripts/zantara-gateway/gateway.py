@@ -13,19 +13,18 @@ import logging
 import os
 import shutil
 import ssl
-from pathlib import Path
 from collections.abc import AsyncIterator
+from pathlib import Path
 from typing import Any
 
 import httpx
-from aiohttp import web
-
 from acp_client import ACPGeminiClient
-from claude_client import stream_claude_cli
-from config import GatewayConfig, load_config
+from aiohttp import web
 from gemini_api_client import stream_gemini_api
 from http_tool_executor import HTTPToolExecutor
 from mcp_client import MCPToolClient
+
+from config import GatewayConfig, load_config
 
 logger = logging.getLogger("zantara-gateway")
 

@@ -2,7 +2,6 @@
 Integration tests for backend process split.
 Verifies main_api.py and main_rag.py import correctly and have the right routes.
 """
-import pytest
 
 
 def test_main_api_imports_cleanly():

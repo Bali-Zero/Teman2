@@ -5,12 +5,11 @@ Tests alert sending, rate limiting, latency digest,
 and multi-channel dispatch (Telegram, Slack, Discord).
 """
 
-import time
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
+import pytest
 
 
 def _make_service(
@@ -392,7 +391,6 @@ class TestDiscordAlert:
 
 class TestStartDigestLoop:
     def test_creates_task(self):
-        import asyncio
         svc = _make_service()
         with patch("asyncio.create_task") as mock_ct:
             mock_ct.return_value = MagicMock(done=MagicMock(return_value=False))
@@ -400,7 +398,6 @@ class TestStartDigestLoop:
             mock_ct.assert_called_once()
 
     def test_no_double_start(self):
-        import asyncio
         svc = _make_service()
         mock_task = MagicMock()
         mock_task.done.return_value = False

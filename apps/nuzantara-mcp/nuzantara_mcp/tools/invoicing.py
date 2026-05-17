@@ -1,6 +1,5 @@
 """Invoicing Tools - 3 tools for invoice generation and management."""
 
-from typing import Optional
 
 from nuzantara_mcp.auth import require_role
 

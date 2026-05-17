@@ -2,14 +2,11 @@
 from __future__ import annotations
 
 import subprocess
-from unittest.mock import patch, MagicMock
-
-import pytest
+from unittest.mock import patch
 
 from mata_garuda.scripts.nb_monitor.collectors.nlm_freshness import (
     fetch_source_count,
     fetch_source_freshness_age_days,
-    NLMFreshnessError,
 )
 
 

@@ -11,14 +11,12 @@ import argparse
 import asyncio
 import logging
 import os
-import sys
 from datetime import date
 from pathlib import Path
 
 import asyncpg
 
-from backend.services.hr.owner_cashout.parser import CashoutRow
-from backend.services.hr.owner_cashout.pdf_parser import parse_cashout_pdf, parse_bonus_pdf
+from backend.services.hr.owner_cashout.pdf_parser import parse_bonus_pdf, parse_cashout_pdf
 from backend.services.hr.owner_cashout.sync_service import upsert_week
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")

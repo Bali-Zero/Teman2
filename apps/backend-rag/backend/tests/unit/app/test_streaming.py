@@ -4,10 +4,7 @@ Covers: _parse_history, ChatStreamRequest model, bali_zero_chat_stream GET,
 chat_stream_post POST, event_stream generation, error handling.
 """
 
-import json
 import os
-import sys
-from pathlib import Path
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -27,7 +24,6 @@ from backend.app.streaming import (
     bali_zero_chat_stream,
     chat_stream_post,
 )
-
 
 # --------------------------------------------------------------------------- #
 # Fixtures

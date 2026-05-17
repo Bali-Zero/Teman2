@@ -27,8 +27,8 @@ from __future__ import annotations
 
 import functools
 import time
-from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator, Callable
+from collections.abc import Callable
+from typing import Any
 
 import structlog
 

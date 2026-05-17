@@ -2,7 +2,6 @@
 Unit tests for Knowledge Graph data models (S05: KGExtractor class removed)
 """
 
-import pytest
 
 from backend.services.knowledge_graph.extractor import (
     ExtractedEntity,

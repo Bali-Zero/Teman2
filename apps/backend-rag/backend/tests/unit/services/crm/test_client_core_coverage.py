@@ -5,15 +5,12 @@ Covers: ClientValidator, PracticeValidator, InteractionValidator, sanitize_input
         CRMAuditor, EnhancedCRMService, get_enhanced_crm_service
 """
 
-import asyncio
 from datetime import datetime
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from backend.app.core.exceptions import DatabaseError, ResourceNotFoundError, ValidationError
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fixtures — mock DB pool
@@ -88,7 +85,6 @@ from backend.services.crm.client_core import (
     sanitize_input,
     validate_uuid,
 )
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 # sanitize_input

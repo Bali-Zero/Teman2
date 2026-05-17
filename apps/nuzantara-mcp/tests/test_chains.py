@@ -5,9 +5,7 @@ NB-1 validated: mock-only is correct; integration tests live in backend-rag.
 """
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
-
-from nuzantara_mcp.workflows.chains import register, _should_notify, _notification_log
+from nuzantara_mcp.workflows.chains import _notification_log, _should_notify, register
 
 
 def _register_chains(mock_mcp, mock_call, mock_call_safe):

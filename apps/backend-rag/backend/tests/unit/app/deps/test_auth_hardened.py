@@ -1,6 +1,5 @@
 """Tests for hardened JWT authentication — S03 Sprint 1."""
 
-import os
 import uuid
 from datetime import datetime, timedelta, timezone
 from unittest.mock import MagicMock, patch
@@ -32,8 +31,8 @@ class TestTokenCreation:
 
     def test_access_token_has_jti(self):
         """Tokens must include a unique jti claim for revocation support."""
-        from backend.app.routers.auth import create_access_token
         from backend.app.core.config import settings
+        from backend.app.routers.auth import create_access_token
 
         token = create_access_token(
             data={"sub": "user-1", "email": "test@balizero.com", "role": "admin"},
@@ -45,8 +44,8 @@ class TestTokenCreation:
 
     def test_access_token_has_type_claim(self):
         """Tokens must include type=access claim."""
-        from backend.app.routers.auth import create_access_token
         from backend.app.core.config import settings
+        from backend.app.routers.auth import create_access_token
 
         token = create_access_token(
             data={"sub": "user-1", "email": "test@balizero.com", "role": "admin"},
@@ -57,8 +56,8 @@ class TestTokenCreation:
 
     def test_access_token_has_iat(self):
         """Tokens must include iat (issued-at) claim."""
-        from backend.app.routers.auth import create_access_token
         from backend.app.core.config import settings
+        from backend.app.routers.auth import create_access_token
 
         token = create_access_token(
             data={"sub": "user-1", "email": "test@balizero.com", "role": "admin"},
@@ -211,6 +210,7 @@ class TestDevSecretsRemoved:
     def test_jwt_validator_no_hardcoded_default(self):
         """JWT validator should not contain the old dev secret string."""
         import inspect
+
         from backend.app.core.config import Settings
 
         source = inspect.getsource(Settings.validate_jwt_secret)
@@ -219,6 +219,7 @@ class TestDevSecretsRemoved:
     def test_api_keys_validator_no_hardcoded_default(self):
         """API keys validator should not contain the old dev key string."""
         import inspect
+
         from backend.app.core.config import Settings
 
         source = inspect.getsource(Settings.validate_api_keys)
@@ -230,8 +231,8 @@ class TestFullAuthFlowS03:
 
     def test_new_token_has_all_s03_claims(self):
         """Tokens created after S03 have exp, iat, jti, type claims."""
-        from backend.app.routers.auth import create_access_token
         from backend.app.core.config import settings
+        from backend.app.routers.auth import create_access_token
 
         token = create_access_token(
             data={"sub": "u1", "email": "zero@balizero.com", "role": "admin"},
@@ -247,8 +248,8 @@ class TestFullAuthFlowS03:
 
     def test_new_token_accepted_by_deps_auth(self):
         """Token from create_access_token passes get_current_user."""
-        from backend.app.routers.auth import create_access_token
         from backend.app.deps.auth import get_current_user
+        from backend.app.routers.auth import create_access_token
 
         token = create_access_token(
             data={"sub": "u1", "email": "zero@balizero.com", "role": "admin"},
@@ -346,6 +347,7 @@ class TestSprint3QuickFixes:
     def test_scraper_key_no_hardcoded_default(self):
         """intel_scraper_api_key should not default to dev_scraper_key."""
         import inspect
+
         from backend.app.core.config import Settings
         source = inspect.getsource(Settings)
         assert 'default="dev_scraper_key"' not in source
@@ -353,53 +355,61 @@ class TestSprint3QuickFixes:
     def test_identity_service_no_residual_secret(self):
         """identity/service.py should not contain known weak secret strings."""
         import inspect
+
         from backend.app.modules.identity.service import IdentityService
         source = inspect.getsource(IdentityService.__init__)
         assert "zantara_default_secret_key_2025" not in source
 
     def test_type_claim_validated_for_new_tokens(self):
         """Tokens with type=access should pass."""
-        from backend.app.deps.auth import get_current_user
         from backend.app.core.config import settings
+        from backend.app.deps.auth import get_current_user
         now = datetime.now(timezone.utc)
         token = jose_jwt.encode(
             {"sub": "u1", "email": "t@b.com", "role": "admin",
              "exp": now + timedelta(hours=1), "type": "access"},
             settings.jwt_secret_key, algorithm="HS256",
         )
-        request = MagicMock(); request.state = MagicMock(spec=[])
-        creds = MagicMock(); creds.credentials = token
+        request = MagicMock()
+        request.state = MagicMock(spec=[])
+        creds = MagicMock()
+        creds.credentials = token
         user = get_current_user(request, creds)
         assert user["email"] == "t@b.com"
 
     def test_type_claim_rejects_refresh_tokens(self):
         """Tokens with type=refresh should be rejected."""
-        from backend.app.deps.auth import get_current_user
-        from backend.app.core.config import settings
         from fastapi import HTTPException
+
+        from backend.app.core.config import settings
+        from backend.app.deps.auth import get_current_user
         now = datetime.now(timezone.utc)
         token = jose_jwt.encode(
             {"sub": "u1", "email": "t@b.com", "role": "admin",
              "exp": now + timedelta(hours=1), "type": "refresh"},
             settings.jwt_secret_key, algorithm="HS256",
         )
-        request = MagicMock(); request.state = MagicMock(spec=[])
-        creds = MagicMock(); creds.credentials = token
+        request = MagicMock()
+        request.state = MagicMock(spec=[])
+        creds = MagicMock()
+        creds.credentials = token
         with pytest.raises(HTTPException) as exc_info:
             get_current_user(request, creds)
         assert exc_info.value.status_code == 401
 
     def test_type_claim_absent_passes_backward_compat(self):
         """Pre-S03 tokens without type claim should still pass."""
-        from backend.app.deps.auth import get_current_user
         from backend.app.core.config import settings
+        from backend.app.deps.auth import get_current_user
         now = datetime.now(timezone.utc)
         token = jose_jwt.encode(
             {"sub": "u1", "email": "t@b.com", "role": "admin",
              "exp": now + timedelta(hours=1)},
             settings.jwt_secret_key, algorithm="HS256",
         )
-        request = MagicMock(); request.state = MagicMock(spec=[])
-        creds = MagicMock(); creds.credentials = token
+        request = MagicMock()
+        request.state = MagicMock(spec=[])
+        creds = MagicMock()
+        creds.credentials = token
         user = get_current_user(request, creds)
         assert user["email"] == "t@b.com"

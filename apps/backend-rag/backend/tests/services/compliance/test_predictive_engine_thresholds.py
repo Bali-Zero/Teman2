@@ -4,14 +4,12 @@ falling back to the hardcoded default (7 days) when key missing.
 """
 from __future__ import annotations
 
-import pytest
 import asyncpg
+import pytest
 
 from backend.services.compliance.predictive_engine import (
-    PredictiveComplianceEngine,
     _load_urgent_threshold,
 )
-
 
 pytestmark = pytest.mark.integration
 

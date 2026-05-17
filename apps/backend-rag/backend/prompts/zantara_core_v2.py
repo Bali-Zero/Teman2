@@ -26,9 +26,7 @@ from backend.prompts.zantara_core import (
     KNOWLEDGE_GOVERNANCE,  # XML structural, no IT-only phrases
     LANGUAGE_PROTOCOL,  # the protocol itself; reused verbatim
     SYSTEM_INSTRUCTIONS,  # XML structural, no IT-only phrases
-    CREATOR_PERSONA,  # specifically targeted at Antonello — preserved
-    TEAM_PERSONA,  # specifically targeted at internal team — preserved
-)
+    )
 
 
 # Helper: render a {lang: phrase} dict as a 3-line model instruction so the

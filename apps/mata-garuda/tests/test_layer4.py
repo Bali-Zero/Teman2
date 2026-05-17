@@ -1,5 +1,4 @@
 """Tests for Layer 4 analyst agents — AI Digest and Code Patch Proposer."""
-import pytest
 from pathlib import Path
 
 

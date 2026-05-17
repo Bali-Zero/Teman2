@@ -1,18 +1,14 @@
 # apps/cell/tests/test_achievement_gate.py
 """Tests for AchievementGate — achievement-based lifecycle gating."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
 
-from cell.lifecycle.maturation import LifecyclePhase, Maturation
+import pytest
 from cell.lifecycle.achievement_gate import (
-    AchievementGate,
     _PHASE_RANK,
-    _AGE_FLOORS,
-    _ESCAPE_HATCH_DAYS,
-    _REQUIREMENTS,
+    AchievementGate,
 )
-
+from cell.lifecycle.maturation import LifecyclePhase, Maturation
 
 # ---------------------------------------------------------------------------
 # Fixtures

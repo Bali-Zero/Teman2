@@ -1,10 +1,8 @@
 """Tests for renewal_rules.py — RenewalRule matching logic."""
 
-import pytest
 
 from backend.services.compliance.renewal_rules import (
     RENEWAL_RULES,
-    RenewalRule,
     match_rule,
 )
 

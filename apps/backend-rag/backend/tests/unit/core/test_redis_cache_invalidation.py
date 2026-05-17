@@ -7,9 +7,7 @@ invalidate_faq_cache, and get_redis_memory_info in RedisManager.
 All Redis connections are mocked to avoid requiring a live Redis server.
 """
 
-import asyncio
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, patch
 
 import pytest
 
@@ -225,7 +223,7 @@ class TestGetRedisMemoryInfo:
         mgr._async_client = mock_client
         mgr._available = True
 
-        with patch("backend.app.metrics.metrics_collector") as mock_metrics:
+        with patch("backend.app.metrics.metrics_collector"):
             info = await mgr.get_redis_memory_info()
 
         assert info["used_memory"] == 1048576

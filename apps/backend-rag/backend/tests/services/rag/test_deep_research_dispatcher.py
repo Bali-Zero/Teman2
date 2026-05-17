@@ -12,7 +12,6 @@ import pytest
 
 from backend.services.rag.deep_research_dispatcher import (
     QUEUE_KEY,
-    RESULT_PREFIX,
     DeepResearchDispatcher,
     ResearchJob,
 )

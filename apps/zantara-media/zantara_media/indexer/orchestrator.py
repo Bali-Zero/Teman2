@@ -9,7 +9,6 @@ import os
 import shutil
 import subprocess
 from contextlib import asynccontextmanager
-from typing import Optional
 
 import asyncpg
 
@@ -129,9 +128,9 @@ async def run_indexer(worker_name: str = "default") -> dict:
     # 4. Init components
     from .drive_client import DriveClient
     from .embedder import Embedder
-    from .qdrant_writer import QdrantWriter
-    from .postgres_writer import PostgresWriter
     from .pipeline import Pipeline
+    from .postgres_writer import PostgresWriter
+    from .qdrant_writer import QdrantWriter
 
     drive = DriveClient()
     embedder = Embedder()

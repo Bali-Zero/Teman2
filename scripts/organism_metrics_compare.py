@@ -28,13 +28,12 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sqlite3
 import statistics
 import subprocess
-import sqlite3
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 # ── Config ─────────────────────────────────────────────────────────────────────
@@ -269,7 +268,7 @@ def render_compare(
             f"last={pro_s['last']!s:<8s}  range=[{pro_s['min']!s}..{pro_s['max']!s}]"
         )
     else:
-        lines.append(f"  Pro  (host)   : no data")
+        lines.append("  Pro  (host)   : no data")
 
     # Air host
     if air_host_s["non_null"] > 0:
@@ -278,7 +277,7 @@ def render_compare(
             f"last={air_host_s['last']!s:<8s}  range=[{air_host_s['min']!s}..{air_host_s['max']!s}]"
         )
     else:
-        lines.append(f"  Air  (host)   : no data")
+        lines.append("  Air  (host)   : no data")
 
     # Air global (system-level, only when metric is TTR/DO)
     if metric in ("ttr", "do") and air_global_s["non_null"] > 0:

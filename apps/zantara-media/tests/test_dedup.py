@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone, UTC
+from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from zantara_media.indexer.drive_client import DriveFile
 from zantara_media.indexer.pipeline import Pipeline, compute_content_hash
-
 
 # ---------------------------------------------------------------------------
 # Helpers

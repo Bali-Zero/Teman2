@@ -10,8 +10,6 @@ import tempfile
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from mata_garuda.council.topics import TopicSelector, _infer_category
 
 

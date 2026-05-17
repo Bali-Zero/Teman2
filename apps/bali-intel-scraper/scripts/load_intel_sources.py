@@ -13,12 +13,13 @@ Total Sources: ~520 (deduplicated)
 import asyncio
 import json
 import os
-from pathlib import Path
-from loguru import logger
-from qdrant_client import QdrantClient, models
-from openai import AsyncOpenAI
-from tqdm import tqdm
 from datetime import datetime
+from pathlib import Path
+
+from loguru import logger
+from openai import AsyncOpenAI
+from qdrant_client import QdrantClient, models
+from tqdm import tqdm
 
 # Configurazione
 COLLECTION_NAME = "intel_authoritative_sources"
@@ -107,7 +108,7 @@ async def generate_embedding(text: str, openai_client: AsyncOpenAI) -> list[floa
 async def load_sources():
     """Carica tutte le fonti in Qdrant."""
     logger.info("=" * 60)
-    logger.info(f"📊 LOADING INTEL SOURCES TO QDRANT")
+    logger.info("📊 LOADING INTEL SOURCES TO QDRANT")
     logger.info(f"   Collection: {COLLECTION_NAME}")
     logger.info(f"   URL: {QDRANT_URL}")
     logger.info("=" * 60)

@@ -1,7 +1,6 @@
 """Tests for MCP wrapper server logic (unit tests, no subprocess needed)."""
 
 import json
-import os
 import sys
 from pathlib import Path
 
@@ -9,8 +8,8 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from server import make_error_response, filter_tools_list
 from permissions import PermissionChecker
+from server import filter_tools_list, make_error_response
 
 
 @pytest.fixture

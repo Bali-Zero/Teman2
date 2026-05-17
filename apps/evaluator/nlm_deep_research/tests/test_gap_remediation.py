@@ -8,20 +8,15 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 # Make the project importable
 sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 
 from apps.evaluator.nlm_deep_research.gap_scanner import (
-    COVERAGE_MATRIX_FILE,
     MAX_REMEDIATIONS_PER_RUN,
     _add_source_to_notebook,
-    _classify_freshness,
     _run_gemini_search,
     run_remediation,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

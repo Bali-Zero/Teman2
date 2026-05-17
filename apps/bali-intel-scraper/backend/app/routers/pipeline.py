@@ -58,8 +58,8 @@ async def _run_pipeline_job(job_id: str, req: PipelineRunRequest) -> None:
         if scripts_dir not in sys.path:
             sys.path.insert(0, scripts_dir)
 
-        from rss_fetcher import GoogleNewsRSSFetcher  # type: ignore
         from intel_pipeline import IntelPipeline  # type: ignore
+        from rss_fetcher import GoogleNewsRSSFetcher  # type: ignore
 
         _jobs[job_id]["stage"] = "fetching_rss"
         logger.info(f"[{job_id}] Fetching Google News RSS...")

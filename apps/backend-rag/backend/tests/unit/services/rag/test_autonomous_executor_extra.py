@@ -65,7 +65,7 @@ class TestTaskTemplates:
             assert task_type in TASK_TEMPLATES
 
     def test_all_templates_have_valid_fields(self):
-        for _, steps in TASK_TEMPLATES.items():
+        for _task_type, steps in TASK_TEMPLATES.items():
             for step in steps:
                 assert "action" in step
                 assert "description" in step
@@ -73,7 +73,7 @@ class TestTaskTemplates:
                 assert "rollback_action" in step
 
     def test_retry_config_covers_critical_actions(self):
-        for _, steps in TASK_TEMPLATES.items():
+        for _task_type, steps in TASK_TEMPLATES.items():
             for step in steps:
                 if step["safety_level"] in (StepSafety.CRITICAL, StepSafety.IRREVERSIBLE):
                     assert step["action"] in RETRY_CONFIG, \

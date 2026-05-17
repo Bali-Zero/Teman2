@@ -17,7 +17,6 @@ import asyncio
 import logging
 import os
 import sys
-from datetime import datetime
 
 import asyncpg
 
@@ -121,7 +120,7 @@ async def backfill(conn: asyncpg.Connection) -> dict:
                 "chat",
                 "whatsapp",
                 "whatsapp",
-                f"WhatsApp conversation",
+                "WhatsApp conversation",
                 summary,
                 summary,
                 full_content,

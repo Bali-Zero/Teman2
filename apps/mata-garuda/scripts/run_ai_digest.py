@@ -26,9 +26,9 @@ from pathlib import Path
 # Add parent to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from mata_garuda.config import NLM_NOTEBOOKS, TG_ZERO_CHAT_ID
 from mata_garuda.runtime.knowledge import KnowledgeBase
-from mata_garuda.tools.stream_tools import stream_publish, stream_read
-from mata_garuda.config import TG_ZERO_CHAT_ID, NLM_NOTEBOOKS
+from mata_garuda.tools.stream_tools import stream_publish
 
 
 def query_nlm(question: str) -> str:

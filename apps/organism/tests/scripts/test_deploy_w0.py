@@ -24,13 +24,11 @@ from __future__ import annotations
 
 import os
 import shutil
-import stat
 import subprocess
 import textwrap
 from pathlib import Path
 
 import pytest
-
 
 ORGANISM_APP = Path(__file__).resolve().parents[2]  # apps/organism/
 SCRIPT = ORGANISM_APP / "scripts" / "deploy_w0.sh"

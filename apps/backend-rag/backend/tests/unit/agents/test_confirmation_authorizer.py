@@ -36,10 +36,8 @@ from backend.services.agents.team_agent_config import (
 )
 from backend.services.agents.tool_authorizer import (
     AuthDecision,
-    AuthResult,
     ToolAuthorizer,
 )
-
 
 # ─────────────────────────────────────────────────────────────────────────
 # AgentRole — new requires_confirmation field

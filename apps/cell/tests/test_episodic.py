@@ -1,10 +1,9 @@
 # tests/test_episodic.py
 """Tests for episodic memory — CELL remembers moments, not statistics."""
 import time
-import math
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
+import pytest
 from cell.memory.episodic import Episode, EpisodicMemory
 
 

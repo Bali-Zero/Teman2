@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-import pytest
-
 from mata_garuda.workers.scorer import classify_by_keyword, score_with_ollama
 
 

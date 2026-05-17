@@ -4,12 +4,9 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
-import pytest
-
 from mata_garuda.agents import nlm_expander_agent as nea
 from mata_garuda.config import NLM_DOMAIN_ROUTING, NLM_NOTEBOOKS
 from mata_garuda.runtime.knowledge import KnowledgeBase
-
 
 NOW = datetime(2026, 4, 19, 9, 0, tzinfo=timezone.utc)  # Sunday
 

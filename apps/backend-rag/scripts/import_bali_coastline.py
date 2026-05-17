@@ -17,14 +17,12 @@ Optional: fiona (for shapefile reading) — falls back to OGR subprocess
 
 import argparse
 import asyncio
-import io
 import json
 import logging
 import os
 import subprocess
 import sys
 import tempfile
-import zipfile
 from pathlib import Path
 
 import asyncpg
@@ -193,7 +191,7 @@ async def backfill_sea_distance(conn: asyncpg.Connection) -> None:
     logger.info("Backfilling sea_distance_m for %d zones...", total)
 
     # Batch update using PostGIS geography distance (accurate meters)
-    updated = await conn.execute("""
+    await conn.execute("""
         UPDATE bali_zoning_layers z
         SET sea_distance_m = sub.dist_m
         FROM (

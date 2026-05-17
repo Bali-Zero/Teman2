@@ -15,8 +15,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-import pytest
-
 from cell.core.pulse import classify_http_status
 from cell.fast.health_triage import HealthStatus
 from cell.sensors.health_sensor import HealthReading

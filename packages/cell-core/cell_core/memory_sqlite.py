@@ -13,7 +13,6 @@ import logging
 import sqlite3
 import time
 from collections import Counter
-from pathlib import Path
 from typing import Any
 
 from cell_core.types import Episode, LearnedRule

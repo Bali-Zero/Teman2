@@ -24,7 +24,6 @@ from cell_core.observability._prom_compat import (
     Counter,
     Gauge,
     Histogram,
-    HAS_PROM,
 )
 
 logger = logging.getLogger("cell_core.observability")

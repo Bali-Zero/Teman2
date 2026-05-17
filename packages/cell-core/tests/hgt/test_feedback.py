@@ -1,8 +1,6 @@
 """Tests for Vertical Feedback (child→parent improvement proposals)."""
 import pytest
-import time
-
-from cell_core.hgt.feedback import VerticalFeedback, STREAM_FEEDBACK
+from cell_core.hgt.feedback import STREAM_FEEDBACK, VerticalFeedback
 
 
 @pytest.mark.asyncio

@@ -8,8 +8,6 @@ import pytest
 from backend.services.compliance.templates_i18n import (
     TEMPLATE_REGISTRY,
     render_template,
-    TemplateCategory,
-    TemplateField,
 )
 
 

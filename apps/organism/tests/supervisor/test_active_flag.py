@@ -1,8 +1,6 @@
 """Tests for ActiveFlag — file-based kill switch for W2 dispatch."""
 from pathlib import Path
 
-import pytest
-
 from organism.supervisor.active_flag import ActiveFlag
 
 

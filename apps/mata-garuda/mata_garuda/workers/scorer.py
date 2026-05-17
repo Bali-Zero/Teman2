@@ -23,7 +23,6 @@ from mata_garuda.config import (
 )
 from mata_garuda.runtime.knowledge import KnowledgeBase
 from mata_garuda.workers.base_worker import (
-    redis_cmd,
     stream_ack,
     stream_publish,
     stream_read_new,

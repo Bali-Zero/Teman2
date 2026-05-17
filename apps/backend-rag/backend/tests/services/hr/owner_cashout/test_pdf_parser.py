@@ -1,7 +1,6 @@
 """Tests for PDF parser — runs against actual PDFs in ~/Downloads."""
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest

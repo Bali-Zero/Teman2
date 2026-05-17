@@ -1,10 +1,10 @@
-import pytest
-from pathlib import Path
 from unittest.mock import AsyncMock, patch
+
+import pytest
 from organism.actuators.propose_yaml_rule import (
-    ProposeYamlRule,
     REQUIRED_CANDIDATE_KEYS,
     RULE_ID_RE,
+    ProposeYamlRule,
 )
 from organism.redis_bus import EventBus
 
@@ -224,6 +224,7 @@ async def test_auto_merge_failure_still_reports_pr_url(fake_redis, tmp_path, mon
 async def test_execute_emits_failed_event_on_validation_error(fake_redis, tmp_path, monkeypatch):
     """Critical fix: structured errors must emit propose_yaml_rule_failed, not _done."""
     import json
+
     from organism.redis_bus import EventBus
     bus = EventBus(redis=fake_redis, jsonl_path=tmp_path / "e.jsonl")
     monkeypatch.setattr("organism.emit._get_bus", lambda: bus)

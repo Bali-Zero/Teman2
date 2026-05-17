@@ -1,7 +1,7 @@
 """Tests for DB-backed API key resolution — S03 Sprint 1."""
 
 import hashlib
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 

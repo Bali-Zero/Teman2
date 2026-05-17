@@ -16,7 +16,6 @@ import logging
 import math
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from backend.kb.politics.hierarchical.retriever import HierarchicalRetriever, RetrievalResult
 

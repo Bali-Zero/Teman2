@@ -7,26 +7,29 @@ Uses: httpx + asyncio + newspaper3k + Ollama scoring
 Output: data/scraped/YYYYMMDD_HHMMSS_articles.json
 """
 
-import json
-import sys
 import asyncio
 import hashlib
-from pathlib import Path
+import json
+import sys
 from datetime import datetime
+from pathlib import Path
+from typing import Dict, List
 from urllib.parse import urlparse
+
 from dateutil import parser as date_parser
 
 try:
-    from newspaper import Article
     import feedparser
     import httpx
     from bs4 import BeautifulSoup
+    from newspaper import Article
 except ImportError as e:
     print(f"Missing dependency: {e}")
     print("Install: pip install newspaper3k feedparser beautifulsoup4 lxml httpx")
     sys.exit(1)
 
 import logging
+
 logging.basicConfig(
     level=logging.INFO,
     format='[%(asctime)s] [%(levelname)s] %(message)s',
@@ -201,7 +204,7 @@ class UnifiedScraper:
 
         return articles
 
-    def _extract_from_feed_entry(self, entry, source: dict) -> dict | None:
+    def _extract_from_feed_entry(self, entry, source: Dict) -> Dict | None:
         try:
             return {
                 'title': entry.get('title', ''),
@@ -276,7 +279,7 @@ class UnifiedScraper:
             logger.warning(f'  Listing error: {e}')
         return articles
 
-    def score_article(self, article: dict) -> int | None:
+    def score_article(self, article: Dict) -> int | None:
         title   = (article.get('title', '') or '').lower()
         summary = (article.get('summary', '') or article.get('text', '') or '').lower()
         source  = (article.get('source_name', '') or '').lower()

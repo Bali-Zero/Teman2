@@ -15,8 +15,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 from fastapi import FastAPI
 
-from backend.app.core.service_health import ServiceStatus
-
 # Add backend to path
 backend_path = Path(__file__).parent.parent.parent.parent.parent
 if str(backend_path) not in sys.path:

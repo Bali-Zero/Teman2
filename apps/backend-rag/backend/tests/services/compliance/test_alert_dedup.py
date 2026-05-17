@@ -3,8 +3,6 @@ alert_dedup: build dedup_key per category + severity-upgrade promotion logic.
 """
 from __future__ import annotations
 
-from datetime import date, timedelta
-
 import pytest
 
 from backend.services.compliance.alert_dedup import (

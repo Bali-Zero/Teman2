@@ -17,10 +17,8 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
 
 from mata_garuda.tools.task_tools import (
     TASK_STREAM,
@@ -113,8 +111,8 @@ def dispatch_task(task: TaskRequest, dry_run: bool = False) -> str:
             return f"would dispatch to {agent_name}"
 
         # Import here to avoid circular imports
-        from mata_garuda.registry import registry
         import mata_garuda.agents  # noqa: F401 — trigger registration
+        from mata_garuda.registry import registry
 
         agent_info = None
         for name, info in registry.agents_info.items():

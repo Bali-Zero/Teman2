@@ -1,7 +1,8 @@
+from datetime import timezone
+
 import pytest
-from datetime import datetime, timezone
+from organism.schemas import ActionDecision, Event, Severity
 from pydantic import ValidationError
-from organism.schemas import Event, Severity, ActionDecision
 
 
 def test_event_minimal_valid():

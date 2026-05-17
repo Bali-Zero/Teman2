@@ -11,15 +11,10 @@ Covers:
 - ingest_intel_to_qdrant (helper)
 """
 
-import json
 import os
-import time
-from datetime import datetime, timezone
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Helper: convert_staging_to_enriched_article
@@ -295,8 +290,8 @@ class TestIngestIntelToQdrant:
 class TestRegisterNotification:
     @pytest.mark.asyncio
     async def test_success(self) -> None:
-        from backend.app.routers.intel_scraper import register_notification
         from backend.app.routers.intel import RegisterNotificationRequest
+        from backend.app.routers.intel_scraper import register_notification
 
         mock_handler = MagicMock()
         mock_handler.register_notification = MagicMock()
@@ -322,8 +317,8 @@ class TestRegisterNotification:
 class TestSubmitFromScraper:
     @pytest.mark.asyncio
     async def test_success(self) -> None:
-        from backend.app.routers.intel_scraper import submit_from_scraper
         from backend.app.routers.intel import ScraperSubmission
+        from backend.app.routers.intel_scraper import submit_from_scraper
 
         with (
             patch("backend.app.routers.intel_scraper.classification_service") as mock_cls,
@@ -357,8 +352,8 @@ class TestSubmitFromScraper:
 
     @pytest.mark.asyncio
     async def test_duplicate(self) -> None:
-        from backend.app.routers.intel_scraper import submit_from_scraper
         from backend.app.routers.intel import ScraperSubmission
+        from backend.app.routers.intel_scraper import submit_from_scraper
 
         with (
             patch("backend.app.routers.intel_scraper.classification_service") as mock_cls,
@@ -386,8 +381,9 @@ class TestSubmitFromScraper:
     @pytest.mark.asyncio
     async def test_service_error(self) -> None:
         from fastapi import HTTPException
-        from backend.app.routers.intel_scraper import submit_from_scraper
+
         from backend.app.routers.intel import ScraperSubmission
+        from backend.app.routers.intel_scraper import submit_from_scraper
 
         with patch("backend.app.routers.intel_scraper.classification_service") as mock_cls:
             mock_cls.classify_intel_type.side_effect = Exception("Classification error")
@@ -404,8 +400,8 @@ class TestSubmitFromScraper:
 
     @pytest.mark.asyncio
     async def test_with_cover_image(self) -> None:
-        from backend.app.routers.intel_scraper import submit_from_scraper
         from backend.app.routers.intel import ScraperSubmission
+        from backend.app.routers.intel_scraper import submit_from_scraper
 
         with (
             patch("backend.app.routers.intel_scraper.classification_service") as mock_cls,
@@ -446,6 +442,7 @@ class TestPublishStagingItem:
     @pytest.mark.asyncio
     async def test_not_found(self) -> None:
         from fastapi import HTTPException
+
         from backend.app.routers.intel_scraper import publish_staging_item
 
         with (
@@ -462,6 +459,7 @@ class TestPublishStagingItem:
     @pytest.mark.asyncio
     async def test_qdrant_failure(self) -> None:
         from fastapi import HTTPException
+
         from backend.app.routers.intel_scraper import publish_staging_item
 
         with (

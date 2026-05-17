@@ -1,7 +1,7 @@
-import asyncio
-import pytest
-import asyncpg
 from unittest.mock import AsyncMock, MagicMock
+
+import asyncpg
+import pytest
 from cell_observatory.collector import Collector
 
 

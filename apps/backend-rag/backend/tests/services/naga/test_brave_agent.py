@@ -6,9 +6,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from backend.services.naga.search_agents.base import AgentResponse, SearchResult
+from backend.services.naga.search_agents.base import AgentResponse
 from backend.services.naga.search_agents.brave_agent import BraveSearchAgent
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
