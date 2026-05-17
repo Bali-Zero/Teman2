@@ -576,3 +576,27 @@ export interface PortalMatter {
   next_deadline: string | null;
   next_step: string | null;
 }
+
+export interface PortalApprovedIntelligenceFact {
+  category: "identity" | "person" | "compliance";
+  label: string;
+  detail: string;
+  confidence: string;
+}
+
+export interface PortalApprovedIntelligence {
+  available: boolean;
+  status: "approved" | "pending";
+  company_name: string | null;
+  summary: string | null;
+  last_reviewed_at: string | null;
+  facts: PortalApprovedIntelligenceFact[];
+  missing_items: string[];
+  next_steps: string[];
+}
+
+export interface PortalMatterDetail extends PortalMatter {
+  status_label: string;
+  description: string;
+  approved_intelligence: PortalApprovedIntelligence;
+}
