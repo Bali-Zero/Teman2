@@ -89,6 +89,41 @@ async def create_workspace_ai_snapshot(
             created_by,
         )
 
+    return _response_from_row(row)
+
+
+async def fetch_workspace_ai_review_queue(
+    pool: asyncpg.Pool,
+    *,
+    status: Literal["draft", "approved", "rejected"] = "draft",
+    limit: int = 25,
+) -> list[WorkspaceAiSnapshotResponse]:
+    """Return Workspace AI snapshots for the team review inbox."""
+    safe_limit = max(1, min(int(limit), 100))
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(_REVIEW_QUEUE_SQL, status, safe_limit)
+
+    return [_response_from_row(row) for row in rows]
+
+
+async def approve_workspace_ai_snapshot(
+    pool: asyncpg.Pool,
+    *,
+    snapshot_id: str,
+    approved_by: str | None,
+) -> WorkspaceAiSnapshotResponse:
+    """Approve one draft Workspace AI snapshot for Business Story use."""
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow(_APPROVE_SQL, snapshot_id, approved_by)
+
+    if row is None:
+        raise LookupError("workspace_ai_snapshot_not_found_or_not_draft")
+
+    return _response_from_row(row)
+
+
+def _response_from_row(row: Any) -> WorkspaceAiSnapshotResponse:
+    approved_at = row["approved_at"]
     return WorkspaceAiSnapshotResponse(
         id=str(row["id"]),
         company_id=row["company_id"],
@@ -102,7 +137,7 @@ async def create_workspace_ai_snapshot(
         status=row["status"],
         created_by=row["created_by"],
         approved_by=row["approved_by"],
-        approved_at=row["approved_at"].isoformat() if row["approved_at"] else None,
+        approved_at=approved_at.isoformat() if approved_at else None,
         created_at=row["created_at"].isoformat(),
     )
 
@@ -160,6 +195,56 @@ INSERT INTO crm_workspace_ai_snapshots (
     facts,
     created_by
 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9)
+RETURNING
+    id,
+    company_id,
+    client_id,
+    company_name,
+    provider,
+    notebook_id,
+    note_id,
+    source_file_ids,
+    facts,
+    status,
+    created_by,
+    approved_by,
+    approved_at,
+    created_at
+"""
+
+
+_REVIEW_QUEUE_SQL = """
+SELECT
+    id,
+    company_id,
+    client_id,
+    company_name,
+    provider,
+    notebook_id,
+    note_id,
+    source_file_ids,
+    facts,
+    status,
+    created_by,
+    approved_by,
+    approved_at,
+    created_at
+FROM crm_workspace_ai_snapshots
+WHERE status = $1
+ORDER BY created_at DESC
+LIMIT $2
+"""
+
+
+_APPROVE_SQL = """
+UPDATE crm_workspace_ai_snapshots
+SET
+    status = 'approved',
+    approved_by = $2,
+    approved_at = NOW(),
+    updated_at = NOW()
+WHERE id = $1::uuid
+  AND status = 'draft'
 RETURNING
     id,
     company_id,
