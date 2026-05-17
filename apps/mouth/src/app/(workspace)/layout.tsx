@@ -11,7 +11,6 @@ import { logger } from "@/lib/logger";
 import { ErrorBoundary } from "@/components/optimization";
 import { CellWidget } from "@/components/cell/CellWidget";
 import { ZantaraWidget } from "@/components/workspace/ZantaraWidget";
-import { WorkspaceAssistant } from "@/components/workspace/WorkspaceAssistant";
 import { KitaCommandPalette } from "@/components/workspace/KitaCommandPalette";
 import { I18nProvider } from "@/i18n";
 import { routeTitles } from "@/types/navigation";
@@ -50,6 +49,18 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   });
 
   // Clock-in is now automatic on login (PANOPTICON Phase 0)
+
+  // Cmd+J shortcut to toggle Zantara
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "j") {
+        e.preventDefault();
+        setIsZantaraOpen((prev) => !prev);
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, []);
 
   // Load user profile
   const loadUserProfile = useCallback(async () => {
@@ -95,29 +106,18 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
 
   // Check authentication and load data
   useEffect(() => {
-    // Add a small delay to ensure token is available after login redirect
-    // This prevents redirect loops when coming from login page
     const checkAuth = () => {
       const loadData = async () => {
         setIsLoading(true);
         try {
-          // Load profile first (critical), clock status can fail gracefully
-          // This call uses httpOnly cookies — works across all *.balizero.com subdomains
-          // even when localStorage is empty (e.g. first visit on calendar.balizero.com)
           await loadUserProfile();
 
-          // Check if user is a client - redirect to portal
           const profile = api.getUserProfile();
           if (profile?.role === "client") {
-            // Clients should use the portal, not the team workspace
             router.push("/portal");
             return;
           }
-
-          // Clock-in is now automatic on login (PANOPTICON Phase 0)
         } catch (error) {
-          // Profile load failed = not authenticated → redirect to login
-          // Always use kita.balizero.com for login (auth hub), preserving return URL
           const currentUrl =
             typeof window !== "undefined" ? window.location.href : "";
           const loginBase = "https://kita.balizero.com/login";
@@ -157,25 +157,10 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
       loadData();
     };
 
-    // Small delay to ensure localStorage is fully available after page reload
     const timeoutId = setTimeout(checkAuth, 100);
     return () => clearTimeout(timeoutId);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // ← Run only once on mount to avoid infinite loop
-
-  // isOnline status is now managed server-side (PANOPTICON)
-
-  // Cmd+J shortcut — toggle Zantara widget
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "j") {
-        e.preventDefault();
-        setIsZantaraOpen((p) => !p);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
 
   // Handle logout
   const handleLogout = async () => {
@@ -236,7 +221,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
     document.addEventListener("keydown", handleKeyDown);
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
-      // Return focus to the toggle that opened the dialog (a11y best practice)
       mobileMenuToggleRef.current?.focus();
     };
   }, [isMobileMenuOpen]);
@@ -248,7 +232,8 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         id="main-content"
         aria-busy="true"
         aria-live="polite"
-        className="min-h-screen flex items-center justify-center bg-transparent"
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: "var(--bz-base, #0f1419)" }}
       >
         <div className="flex flex-col items-center gap-4">
           <div
@@ -256,7 +241,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
             role="status"
             aria-label="Loading workspace"
           />
-          {/* Use --bz-text-1 (#edeae4) — passes WCAG AA on workspace surfaces. */}
           <p className="text-sm text-[var(--bz-text-1)]">Loading…</p>
         </div>
       </main>
@@ -269,20 +253,23 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         <a href="#main-content" className="bz-skip-link">
           Skip to main content
         </a>
-        <div className="min-h-screen bg-transparent">
-          {/* Desktop Sidebar — labelled landmark so AT can list it */}
+        <div
+          className="min-h-screen"
+          style={{ background: "var(--bz-base, #0f1419)" }}
+        >
+          {/* Desktop Sidebar */}
           <div className="hidden md:block">
             <AppSidebar
               user={user}
               unreadWhatsApp={0}
               onLogout={handleLogout}
-              ariaLabel="Primary"
-              onZantaraToggle={() => setIsZantaraOpen((p) => !p)}
+              onZantaraToggle={() => setIsZantaraOpen((prev) => !prev)}
               isZantaraOpen={isZantaraOpen}
+              ariaLabel="Primary"
             />
           </div>
 
-          {/* Mobile Sidebar Overlay (dialog) */}
+          {/* Mobile Sidebar Overlay */}
           {isMobileMenuOpen && (
             <>
               <div
@@ -301,9 +288,9 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
                   user={user}
                   unreadWhatsApp={0}
                   onLogout={handleLogout}
-                  ariaLabel="Primary (mobile)"
-                  onZantaraToggle={() => setIsZantaraOpen((p) => !p)}
+                  onZantaraToggle={() => setIsZantaraOpen((prev) => !prev)}
                   isZantaraOpen={isZantaraOpen}
+                  ariaLabel="Primary (mobile)"
                 />
               </div>
             </>
@@ -311,7 +298,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
 
           {/* Main Content */}
           <div className="md:ml-[216px] min-h-screen flex flex-col transition-all duration-300">
-            {/* Header */}
             <Header
               userName={user.name}
               onMobileMenuToggle={handleMobileMenuToggle}
@@ -320,16 +306,12 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
               mobileMenuToggleRef={mobileMenuToggleRef}
             />
 
-            {/* Page Content — single labelled <main> landmark */}
             <main
               id="main-content"
               aria-labelledby="bz-page-title"
               tabIndex={-1}
               className="flex-1 p-4 md:p-6 lg:p-8"
             >
-              {/* Visually-hidden h1 ensures every workspace route satisfies
-                page-has-heading-one, even when the in-page header uses a
-                small visual title or the page itself has no h1. */}
               <h1 id="bz-page-title" className="sr-only">
                 {pageTitle}
               </h1>
