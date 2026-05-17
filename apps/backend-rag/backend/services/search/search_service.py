@@ -248,23 +248,35 @@ class SearchService:
         enable_fallbacks: bool,
     ) -> dict[str, Any]:
         """Route a query through SurfaceRouter when available, with safe fallback."""
-        if collection_override:
-            return self.query_router.route_query(
+        def legacy_route() -> dict[str, Any]:
+            routing_info = self.query_router.route_query(
                 query=query,
                 collection_override=collection_override,
                 enable_fallbacks=enable_fallbacks,
             )
+            collection_name = routing_info["collection_name"]
+            routing_info.setdefault("collections", [collection_name])
+            routing_info.setdefault("confidence", 0.0)
+            routing_info.setdefault("is_pricing", False)
+            routing_info.setdefault("is_multi_domain", len(routing_info["collections"]) > 1)
+            routing_info.setdefault("active_domains", [])
+            return routing_info
+
+        if collection_override:
+            return legacy_route()
 
         surface_router = getattr(self, "surface_router", None)
         if surface_router is None:
-            return self.query_router.route_query(
-                query=query,
-                collection_override=None,
-                enable_fallbacks=enable_fallbacks,
-            )
+            return legacy_route()
 
         try:
             decision = await surface_router.adecide(query)
+            if not decision.primary_collection or not decision.collections:
+                logger.info(
+                    "SurfaceRouter returned non-Qdrant surface=%s; falling back to QueryRouterIntegration",
+                    decision.surface,
+                )
+                return legacy_route()
             collections = decision.collections if enable_fallbacks else [decision.primary_collection]
             logger.info(
                 "SurfaceRouter selected collection=%s surface=%s domain=%s confidence=%.2f layer=%s",
@@ -290,11 +302,7 @@ class SearchService:
                 exc,
                 exc_info=True,
             )
-            return self.query_router.route_query(
-                query=query,
-                collection_override=None,
-                enable_fallbacks=enable_fallbacks,
-            )
+            return legacy_route()
 
     async def _init_bm25_with_retry(self) -> bool:
         """Initialize BM25 with retry and fallback."""
