@@ -138,32 +138,62 @@ async def test_run_backend_tests() -> None:
     mock_result.stdout = "3 passed in 1.0s"
     mock_result.stderr = ""
 
-    with patch.object(srv, "subprocess") as mock_subprocess:
-        mock_subprocess.run.return_value = mock_result
+    with patch.object(srv, "_backend_python", return_value="/venv/bin/python"), \
+         patch.object(srv, "_run_command", new_callable=AsyncMock) as mock_run:
+        mock_run.return_value = mock_result
         fn = srv.run_backend_tests.fn if hasattr(srv.run_backend_tests, 'fn') else srv.run_backend_tests
         result = await fn(test_path="backend/tests/", verbose=True)
 
     assert result["success"] is True
     assert "3 passed" in result["stdout"]
+    mock_run.assert_awaited_once()
 
 
 @pytest.mark.asyncio
-async def test_execute_recovery_restart() -> None:
-    """execute_recovery_action with restart should call fly apps restart."""
+async def test_execute_recovery_restart_defaults_to_dry_run() -> None:
+    """execute_recovery_action should not mutate Fly by default."""
+    import nuzantara_mcp_advanced.server as srv
+
+    fn = srv.execute_recovery_action.fn if hasattr(srv.execute_recovery_action, 'fn') else srv.execute_recovery_action
+    result = await fn(action="restart")
+
+    assert result["success"] is True
+    assert result["dry_run"] is True
+    assert result["requires_confirmation"] is True
+    assert result["command"] == ["fly", "apps", "restart", srv.FLY_APP]
+
+
+@pytest.mark.asyncio
+async def test_execute_recovery_restart_blocked_without_env() -> None:
+    """execute_recovery_action should require explicit env gating."""
+    import nuzantara_mcp_advanced.server as srv
+
+    fn = srv.execute_recovery_action.fn if hasattr(srv.execute_recovery_action, 'fn') else srv.execute_recovery_action
+    result = await fn(action="restart", confirm=True, dry_run=False)
+
+    assert result["success"] is False
+    assert result["blocked"] is True
+    assert srv.MUTATION_CONFIRM_ENV in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_execute_recovery_restart_confirmed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """execute_recovery_action with restart should call fly apps restart only when gated."""
     import nuzantara_mcp_advanced.server as srv
 
     mock_result = MagicMock()
     mock_result.returncode = 0
     mock_result.stdout = "Machines restarted"
     mock_result.stderr = ""
+    monkeypatch.setenv(srv.MUTATION_CONFIRM_ENV, "1")
 
-    with patch.object(srv, "subprocess") as mock_subprocess:
-        mock_subprocess.run.return_value = mock_result
-        mock_subprocess.TimeoutExpired = TimeoutError
+    with patch.object(srv, "_run_command", new_callable=AsyncMock) as mock_run:
+        mock_run.return_value = mock_result
         fn = srv.execute_recovery_action.fn if hasattr(srv.execute_recovery_action, 'fn') else srv.execute_recovery_action
-        result = await fn(action="restart")
+        result = await fn(action="restart", confirm=True, dry_run=False)
 
     assert result["success"] is True
+    mock_run.assert_awaited_once()
 
 
 @pytest.mark.asyncio
