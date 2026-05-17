@@ -74,7 +74,7 @@ _ENABLE_GRADING_GATES = os.getenv("ENABLE_GRADING_GATES", "false").lower() in ("
 _ENABLE_SELF_RAG = os.getenv("ENABLE_SELF_RAG", "false").lower() in ("true", "1", "yes")
 _ENABLE_CRAG_ROUTER = os.getenv("ENABLE_CRAG_ROUTER", "false").lower() in ("true", "1", "yes")
 _ENABLE_HYDE = os.getenv("ENABLE_HYDE", "false").lower() in ("true", "1", "yes")
-_ENABLE_NLM_ORCHESTRATOR = os.getenv("ENABLE_NLM_ORCHESTRATOR", "false").lower() in ("true", "1", "yes")
+# R5 Phase 6: _ENABLE_NLM_ORCHESTRATOR removed — NLM routing decommissioned, Qdrant+KG canonical
 _ENABLE_DEEP_RESEARCH = os.getenv("ENABLE_DEEP_RESEARCH", "false").lower() in ("true", "1", "yes")
 
 
@@ -103,7 +103,7 @@ class OrchestratorCore:
         faq_cache: Any = None,  # NotebookLMCacheService
         db_pool: Any = None,
         kg_langgraph_orchestrator: Any = None,  # KGLangGraphOrchestrator
-        nlm_enrichment_service: Any = None,  # NLMEnrichmentService
+        nlm_enrichment_service: Any = None,  # R5 Phase 6: DEPRECATED — kept for signature compat
         retriever: Any = None,  # SearchService — used for embedding-based semantic cache
         specialized_service_router: Any = None,  # SpecializedServiceRouter
         nlm_orchestrator: Any = None,  # NLMOrchestrator (SOTA 2026)
@@ -137,7 +137,7 @@ class OrchestratorCore:
         self.semantic_cache = semantic_cache
         self.faq_cache = faq_cache  # FAQ cache (exact match, < 1ms)
         self.kg_langgraph_orchestrator = kg_langgraph_orchestrator  # Phase 3: LangGraph KG
-        self.nlm_enrichment_service = nlm_enrichment_service  # NLM CAUTIOUS-zone enrichment
+        # R5 Phase 6: nlm_enrichment_service deprecated — arg accepted for compat, not stored
         self.db_pool = db_pool  # Store for later use
         self.retriever = retriever  # SearchService — for embedding-based semantic cache lookup
         self._specialized_router = specialized_service_router  # Complex query fast-path
@@ -816,7 +816,7 @@ class OrchestratorCore:
                     from backend.services.rag.crag_router import CRAGRouter
                     _crag_router = CRAGRouter(
                         enable_hyde=_ENABLE_HYDE,
-                        enable_nlm_orchestrator=_ENABLE_NLM_ORCHESTRATOR,
+                        enable_nlm_orchestrator=False,  # R5 Phase 6: NLM decommissioned
                         enable_deep_research=_ENABLE_DEEP_RESEARCH,
                     )
                     _crag_router.route(query_plan)
@@ -910,55 +910,6 @@ class OrchestratorCore:
         if kg_fast_result:
             logger.info("✅ [R5 KG] Fast-path returned answer (skipping ReAct loop)")
             return kg_fast_result
-
-        # 3c. NLM Speculative Fire — launch in parallel with the rest of the pipeline.
-        # Placed AFTER all early-return gates/cache checks to avoid task leaks.
-        # The result is consumed only if evidence lands in the CAUTIOUS zone (0.15–0.60).
-        nlm_task: asyncio.Task | None = None
-        nlm_cached_result: dict | None = None
-        nlm_domain: dict | None = None
-
-        if self.nlm_enrichment_service:
-            from backend.services.oracle.nlm_notebook_registry import (
-                resolve_multi_notebook,
-                resolve_notebook,
-            )
-
-            # ARCH-4: Check for multi-domain query first
-            multi_matches = resolve_multi_notebook(query)
-            if len(multi_matches) >= 2:
-                try:
-                    from backend.services.oracle.cross_notebook_correlator import (
-                        get_correlator,
-                    )
-                    spawn(
-                        get_correlator().query_async(query),
-                        name="orchestrator_cross_notebook",
-                    )
-                    logger.debug(
-                        "ARCH-4: cross-notebook task launched for %d domains: %s",
-                        len(multi_matches),
-                        [m["domain"] for m in multi_matches],
-                    )
-                except Exception as exc:
-                    logger.debug("ARCH-4: cross-notebook import failed: %s", exc)
-
-            nlm_match = resolve_notebook(query)
-            if nlm_match:
-                nlm_domain = nlm_match
-                # Check NLM cache first (scoped by notebook_id)
-                if self.faq_cache:
-                    try:
-                        nlm_cached_result = await self.faq_cache.get(
-                            query, notebook_id=nlm_match["notebook_id"],
-                        )
-                    except Exception as e:
-                        logger.debug(f"NLM cache get skipped: {e}")
-                # Launch async NLM query only on cache miss
-                if not nlm_cached_result:
-                    nlm_task = asyncio.create_task(
-                        self.nlm_enrichment_service.query(nlm_match["notebook_id"], query),
-                    )
 
         # 4. Route query (intent classification + tier selection)
         model_tier, deep_think_mode, state = await self.routing_manager.route_query(query)
@@ -1089,66 +1040,8 @@ class OrchestratorCore:
                 f"🔗 [KG LangGraph] Workflow included in response: {langgraph_workflow.get('type')}",
             )
 
-        # 13. NLM Enrichment merge — only in CAUTIOUS zone
+        # 13. R5 Phase 6: NLM Enrichment merge removed — nlm_task/nlm_domain always None
         evidence_score = getattr(state, "evidence_score", None)
-        trusted = getattr(state, "trusted_tools_used", True)
-        cautious = evidence_score is not None and 0.15 <= evidence_score <= 0.60 and not trusted
-
-        nlm_result: dict | None = None
-        if cautious and (nlm_cached_result or nlm_task):
-            try:
-                if nlm_cached_result:
-                    nlm_result = nlm_cached_result
-                elif nlm_task:
-                    nlm_result = await asyncio.wait_for(nlm_task, timeout=3.0)
-            except (asyncio.TimeoutError, asyncio.CancelledError) as exc:
-                logger.warning("NLM enrichment skipped (timeout/cancel): %s", exc)
-                nlm_result = None
-            except Exception as exc:
-                logger.warning("NLM enrichment skipped (error): %s", exc)
-                nlm_result = None
-        elif nlm_task and not nlm_task.done():
-            # Not in CAUTIOUS zone — cancel the speculative task (§I-O4).
-            nlm_task.cancel()
-            try:
-                await nlm_task
-            except asyncio.CancelledError:
-                # Expected outcome of cancel() — normal path.
-                pass
-            except Exception as exc:  # noqa: BLE001 — see §U3
-                # §U3 (docs/audits/2026-04-22-orchestrator-state-machine.md): the speculative NLM task runs
-                # outside the main critical path; any error it raises is
-                # surfaced here but must not block the response. Log at
-                # DEBUG level so ops can still diagnose a misbehaving
-                # NLM provider via `grep "NLM task cancel-path exception"`.
-                logger.debug(
-                    "NLM task cancel-path exception swallowed: %s: %s",
-                    type(exc).__name__,
-                    exc,
-                )
-
-        if nlm_result and nlm_domain:
-            result.nlm_enrichment = {
-                "domain": nlm_domain.get("domain", ""),
-                "domain_label": nlm_domain.get("label", ""),
-                "citations": nlm_result.get("citations", []),
-                "summary": nlm_result.get("answer", ""),
-            }
-            logger.info(
-                "NLM enrichment merged (non-streaming) for domain=%s",
-                nlm_domain.get("domain"),
-            )
-            # Cache the result for future queries
-            if self.faq_cache and not nlm_cached_result:
-                try:
-                    await self.faq_cache.set(
-                        query,
-                        nlm_result.get("answer", ""),
-                        metadata=nlm_result,
-                        notebook_id=nlm_domain.get("notebook_id", ""),
-                    )
-                except Exception as e:
-                    logger.debug(f"NLM cache set skipped: {e}")
 
         # 14. [GraphRAG v6] KG Auto-Expansion (fire-and-forget)
         # Extract from SOURCE CHUNKS, not from LLM response — avoids feedback loop.
