@@ -86,3 +86,72 @@ async def test_create_workspace_ai_snapshot_draft_uses_team_actor() -> None:
     assert result == response
     create_snapshot.assert_awaited_once()
     assert create_snapshot.await_args.kwargs["created_by"] == "team@balizero.com"
+
+
+@pytest.mark.asyncio
+async def test_review_workspace_ai_snapshots_returns_draft_queue() -> None:
+    from backend.app.routers.crm_intelligence import review_workspace_ai_snapshots
+    from backend.services.crm.workspace_ai_snapshots import WorkspaceAiSnapshotResponse
+
+    response = WorkspaceAiSnapshotResponse(
+        id="snapshot-draft",
+        company_id=7,
+        client_id=None,
+        company_name="OCEAN CLOTHES AND SHOES PT",
+        provider="gemini",
+        facts=[],
+        status="draft",
+        created_by="crm-drive-autowatcher",
+        created_at="2026-05-12T15:45:00+00:00",
+    )
+
+    with patch(
+        "backend.app.routers.crm_intelligence.fetch_workspace_ai_review_queue",
+        new=AsyncMock(return_value=[response]),
+    ) as fetch_queue:
+        result = await review_workspace_ai_snapshots(
+            status="draft",
+            limit=25,
+            pool=MagicMock(),
+            _current_user={"email": "team@balizero.com", "role": "team"},
+        )
+
+    assert result == [response]
+    fetch_queue.assert_awaited_once()
+    assert fetch_queue.await_args.kwargs["status"] == "draft"
+    assert fetch_queue.await_args.kwargs["limit"] == 25
+
+
+@pytest.mark.asyncio
+async def test_approve_workspace_ai_snapshot_uses_team_actor() -> None:
+    from backend.app.routers.crm_intelligence import approve_workspace_ai_snapshot_draft
+    from backend.services.crm.workspace_ai_snapshots import WorkspaceAiSnapshotResponse
+
+    response = WorkspaceAiSnapshotResponse(
+        id="snapshot-1",
+        company_id=7,
+        client_id=None,
+        company_name="OCEAN CLOTHES AND SHOES PT",
+        provider="gemini",
+        facts=[],
+        status="approved",
+        created_by="crm-drive-autowatcher",
+        approved_by="team@balizero.com",
+        approved_at="2026-05-13T15:45:00+00:00",
+        created_at="2026-05-12T15:45:00+00:00",
+    )
+
+    with patch(
+        "backend.app.routers.crm_intelligence.approve_workspace_ai_snapshot",
+        new=AsyncMock(return_value=response),
+    ) as approve_snapshot:
+        result = await approve_workspace_ai_snapshot_draft(
+            "snapshot-1",
+            pool=MagicMock(),
+            current_user={"email": "team@balizero.com", "role": "team"},
+        )
+
+    assert result == response
+    approve_snapshot.assert_awaited_once()
+    assert approve_snapshot.await_args.kwargs["snapshot_id"] == "snapshot-1"
+    assert approve_snapshot.await_args.kwargs["approved_by"] == "team@balizero.com"

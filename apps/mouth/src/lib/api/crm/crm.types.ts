@@ -142,6 +142,25 @@ export interface TaxCompanyPilotWorkspaceAiSnapshot {
   created_at?: string | null;
 }
 
+export type WorkspaceAiSnapshotReviewStatus = "draft" | "approved" | "rejected";
+
+export interface WorkspaceAiSnapshotReviewItem {
+  id: string;
+  company_id?: number | null;
+  client_id?: number | null;
+  company_name: string;
+  provider: "notebooklm" | "gemini" | "manual";
+  notebook_id?: string | null;
+  note_id?: string | null;
+  source_file_ids: string[];
+  facts: TaxCompanyPilotWorkspaceAiFact[];
+  status: WorkspaceAiSnapshotReviewStatus;
+  created_by?: string | null;
+  approved_by?: string | null;
+  approved_at?: string | null;
+  created_at: string;
+}
+
 export interface TaxCompanyPilotEvidenceStory {
   person_name: string;
   company_name: string;

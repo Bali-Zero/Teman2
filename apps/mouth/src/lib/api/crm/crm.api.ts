@@ -26,6 +26,8 @@ import type {
   TaxCompanyPilotKey,
   TaxCompanyPilotMap,
   AiSummaryResponse,
+  WorkspaceAiSnapshotReviewItem,
+  WorkspaceAiSnapshotReviewStatus,
 } from "./crm.types";
 import type {
   RequiredDocument,
@@ -224,6 +226,30 @@ export class CrmApi {
     queryParams.append("limit", limit.toString());
     return this.client.request<TaxCompanyPilotMap[]>(
       `/api/crm/intelligence/evidence-dossiers?${queryParams.toString()}`,
+    );
+  }
+
+  async getWorkspaceAiReviewQueue({
+    status = "draft",
+    limit = 25,
+  }: {
+    status?: WorkspaceAiSnapshotReviewStatus;
+    limit?: number;
+  } = {}): Promise<WorkspaceAiSnapshotReviewItem[]> {
+    const queryParams = new URLSearchParams();
+    queryParams.append("status", status);
+    queryParams.append("limit", limit.toString());
+    return this.client.request<WorkspaceAiSnapshotReviewItem[]>(
+      `/api/crm/intelligence/workspace-ai-snapshots/review?${queryParams.toString()}`,
+    );
+  }
+
+  async approveWorkspaceAiSnapshot(
+    snapshotId: string,
+  ): Promise<WorkspaceAiSnapshotReviewItem> {
+    return this.client.request<WorkspaceAiSnapshotReviewItem>(
+      `/api/crm/intelligence/workspace-ai-snapshots/${encodeURIComponent(snapshotId)}/approve`,
+      { method: "POST" },
     );
   }
 

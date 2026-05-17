@@ -1,9 +1,9 @@
 """Team-only CRM intelligence endpoints."""
 
-from typing import Annotated
+from typing import Annotated, Literal
 
 import asyncpg
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from backend.app.dependencies import get_database_pool, require_team_member
 from backend.services.crm.evidence_dossier import build_evidence_dossiers
@@ -11,7 +11,9 @@ from backend.services.crm.tax_company_pilot import TaxCompanyPilotMap
 from backend.services.crm.workspace_ai_snapshots import (
     WorkspaceAiSnapshotCreate,
     WorkspaceAiSnapshotResponse,
+    approve_workspace_ai_snapshot,
     create_workspace_ai_snapshot,
+    fetch_workspace_ai_review_queue,
 )
 
 router = APIRouter(prefix="/api/crm/intelligence", tags=["crm-intelligence"])
@@ -49,3 +51,39 @@ async def create_workspace_ai_snapshot_draft(
         payload,
         created_by=created_by,
     )
+
+
+@router.get("/workspace-ai-snapshots/review", response_model=list[WorkspaceAiSnapshotResponse])
+async def review_workspace_ai_snapshots(
+    status: Literal["draft", "approved", "rejected"] = "draft",
+    limit: Annotated[int, Query(ge=1, le=100)] = 25,
+    pool: asyncpg.Pool = Depends(get_database_pool),
+    _current_user: dict = Depends(require_team_member),
+) -> list[WorkspaceAiSnapshotResponse]:
+    """Return Workspace AI snapshots awaiting team review."""
+    return await fetch_workspace_ai_review_queue(
+        pool,
+        status=status,
+        limit=limit,
+    )
+
+
+@router.post("/workspace-ai-snapshots/{snapshot_id}/approve", response_model=WorkspaceAiSnapshotResponse)
+async def approve_workspace_ai_snapshot_draft(
+    snapshot_id: str,
+    pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict = Depends(require_team_member),
+) -> WorkspaceAiSnapshotResponse:
+    """Approve a draft Workspace AI snapshot for Business Story use."""
+    approved_by = current_user.get("email") if isinstance(current_user, dict) else None
+    try:
+        return await approve_workspace_ai_snapshot(
+            pool,
+            snapshot_id=snapshot_id,
+            approved_by=approved_by,
+        )
+    except LookupError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail="Workspace AI snapshot not found or not in draft status.",
+        ) from exc

@@ -1,20 +1,44 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
 import { TaxCompanyPilotWorkspace } from "@/components/crm/TaxCompanyPilotWorkspace";
 import { api } from "@/lib/api";
-import type { TaxCompanyPilotMap } from "@/lib/api/crm/crm.types";
+import type {
+  TaxCompanyPilotMap,
+  WorkspaceAiSnapshotReviewItem,
+} from "@/lib/api/crm/crm.types";
 
 export default function TaxCompanyPilotPage() {
+  const queryClient = useQueryClient();
   const { data, isLoading, error } = useQuery<TaxCompanyPilotMap[]>({
     queryKey: ["crm-evidence-dossiers", "ocean", "bimala"],
     queryFn: async () =>
       api.crm.getEvidenceDossiers({
         companies: ["ocean", "bimala"],
         limit: 2,
-      }),
+    }),
     staleTime: 5 * 60_000,
+  });
+  const reviewQueue = useQuery<WorkspaceAiSnapshotReviewItem[]>({
+    queryKey: ["crm-workspace-ai-review", "draft"],
+    queryFn: async () =>
+      api.crm.getWorkspaceAiReviewQueue({ status: "draft", limit: 25 }),
+    staleTime: 60_000,
+  });
+  const approveSnapshot = useMutation({
+    mutationFn: (snapshotId: string) =>
+      api.crm.approveWorkspaceAiSnapshot(snapshotId),
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["crm-workspace-ai-review"],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["crm-evidence-dossiers"],
+        }),
+      ]);
+    },
   });
 
   if (isLoading) {
@@ -36,5 +60,13 @@ export default function TaxCompanyPilotPage() {
     );
   }
 
-  return <TaxCompanyPilotWorkspace maps={data} />;
+  return (
+    <TaxCompanyPilotWorkspace
+      maps={data}
+      reviewSnapshots={reviewQueue.data ?? []}
+      reviewLoading={reviewQueue.isLoading}
+      approvingSnapshotId={approveSnapshot.variables ?? null}
+      onApproveSnapshot={(snapshotId) => approveSnapshot.mutate(snapshotId)}
+    />
+  );
 }

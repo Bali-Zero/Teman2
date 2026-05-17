@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { TaxCompanyPilotWorkspace } from "./TaxCompanyPilotWorkspace";
 import type { TaxCompanyPilotMap } from "@/lib/api/crm/crm.types";
@@ -281,5 +281,54 @@ describe("TaxCompanyPilotWorkspace", () => {
     expect(consoleError.mock.calls.flat().join("\n")).not.toContain(
       "Encountered two children with the same key",
     );
+  });
+
+  it("renders Workspace AI draft review queue with approve action", () => {
+    const onApproveSnapshot = vi.fn();
+
+    render(
+      <TaxCompanyPilotWorkspace
+        maps={[oceanMap]}
+        reviewSnapshots={[
+          {
+            id: "snapshot-draft",
+            company_id: 7,
+            client_id: null,
+            company_name: "OCEAN CLOTHES AND SHOES PT",
+            provider: "gemini",
+            source_file_ids: ["drive-file-1"],
+            facts: [
+              {
+                category: "identity",
+                label: "Company evidence",
+                detail: "Company source documents are indexed for review.",
+                source_file_ids: ["drive-file-1"],
+                confidence: "medium",
+              },
+            ],
+            status: "draft",
+            created_by: "crm-drive-autowatcher",
+            approved_by: null,
+            approved_at: null,
+            created_at: "2026-05-12T15:45:00+00:00",
+          },
+        ]}
+        onApproveSnapshot={onApproveSnapshot}
+      />,
+    );
+
+    expect(screen.getByText("Workspace AI review")).toBeInTheDocument();
+    expect(screen.getByText("1 draft")).toBeInTheDocument();
+    expect(
+      screen.getByText("Company source documents are indexed for review."),
+    ).toBeInTheDocument();
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: "Approve Workspace AI draft for OCEAN CLOTHES AND SHOES PT",
+      }),
+    );
+
+    expect(onApproveSnapshot).toHaveBeenCalledWith("snapshot-draft");
   });
 });

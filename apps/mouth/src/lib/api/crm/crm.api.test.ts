@@ -151,6 +151,64 @@ describe("CrmApi", () => {
     });
   });
 
+  describe("workspace AI review", () => {
+    it("should fetch workspace AI draft review queue", async () => {
+      const mockQueue = [
+        {
+          id: "snapshot-draft",
+          company_id: 7,
+          client_id: null,
+          company_name: "OCEAN CLOTHES AND SHOES PT",
+          provider: "gemini",
+          source_file_ids: [],
+          facts: [],
+          status: "draft",
+          created_by: "crm-drive-autowatcher",
+          approved_by: null,
+          approved_at: null,
+          created_at: "2026-05-12T15:45:00+00:00",
+        },
+      ];
+      mockClient.request.mockResolvedValue(mockQueue);
+
+      const result = await crmApi.getWorkspaceAiReviewQueue({
+        status: "draft",
+        limit: 25,
+      });
+
+      expect(mockClient.request).toHaveBeenCalledWith(
+        "/api/crm/intelligence/workspace-ai-snapshots/review?status=draft&limit=25",
+      );
+      expect(result).toEqual(mockQueue);
+    });
+
+    it("should approve a workspace AI draft", async () => {
+      const mockApproved = {
+        id: "snapshot-draft",
+        company_id: 7,
+        client_id: null,
+        company_name: "OCEAN CLOTHES AND SHOES PT",
+        provider: "gemini",
+        source_file_ids: [],
+        facts: [],
+        status: "approved",
+        created_by: "crm-drive-autowatcher",
+        approved_by: "team@balizero.com",
+        approved_at: "2026-05-13T15:45:00+00:00",
+        created_at: "2026-05-12T15:45:00+00:00",
+      };
+      mockClient.request.mockResolvedValue(mockApproved);
+
+      const result = await crmApi.approveWorkspaceAiSnapshot("snapshot-draft");
+
+      expect(mockClient.request).toHaveBeenCalledWith(
+        "/api/crm/intelligence/workspace-ai-snapshots/snapshot-draft/approve",
+        { method: "POST" },
+      );
+      expect(result).toEqual(mockApproved);
+    });
+  });
+
   describe("markInteractionRead", () => {
     it("should mark interaction as read", async () => {
       const mockResponse = {
