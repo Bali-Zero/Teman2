@@ -67,7 +67,7 @@ class IdentityService:
             hashed_bytes = hashed_password.encode("utf-8")
             return bcrypt.checkpw(plain_bytes, hashed_bytes)
         except Exception as e:
-            logger.error(f"Bcrypt verification failed: {e}")
+            logger.error("Bcrypt verification failed: %s", e)
             return False
 
     async def get_db_connection(self) -> asyncpg.Connection:
@@ -94,7 +94,7 @@ class IdentityService:
         """
         # Validate PIN format (4-8 digits, same as Node.js)
         if not pin or not pin.isdigit() or len(pin) < 4 or len(pin) > 8:
-            logger.warning(f"Invalid PIN format for {email}")
+            logger.warning("Invalid PIN format for %s", email)
             return None
 
         conn = None
@@ -114,7 +114,7 @@ class IdentityService:
             row = await conn.fetchrow(query, email)
 
             if not row:
-                logger.warning(f"User not found or inactive: {email}")
+                logger.warning("User not found or inactive: %s", email)
                 return None
 
             # Check if account is locked
@@ -139,10 +139,10 @@ class IdentityService:
                     """,
                     row["id"],
                 )
-                logger.warning(f"❌ Invalid PIN for {email} (hash verification failed)")
+                logger.warning("❌ Invalid PIN for %s (hash verification failed)", email)
                 return None
 
-            logger.info(f"✅ PIN verified successfully for {email}")
+            logger.info("✅ PIN verified successfully for %s", email)
 
             # Reset failed attempts on successful login
             await conn.execute(
@@ -180,7 +180,7 @@ class IdentityService:
             return user
 
         except Exception as e:
-            logger.error(f"Authentication error for {email}: {e}", exc_info=True)
+            logger.error("Authentication error for %s: %s", email, e, exc_info=True)
             return None
         finally:
             if conn:

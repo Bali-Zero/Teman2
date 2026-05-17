@@ -160,5 +160,5 @@ async def generate_content(request: GenerateRequest) -> dict[str, Any]:
 
         return {"text": message.content[0].text, "success": True}
     except Exception as e:
-        logger.error(f"AI Generation failed: {e}")
+        logger.error("AI Generation failed: %s", e)
         return {"text": "AI generation unavailable momentarily.", "success": False}

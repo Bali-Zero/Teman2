@@ -53,7 +53,7 @@ async def contribute_fact(
 
         return {"success": True, "message": f"Fact {result['status']}", "data": result}
     except Exception as e:
-        logger.error(f"Error contributing to collective memory: {e}")
+        logger.error("Error contributing to collective memory: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -77,7 +77,7 @@ async def refute_fact(
 
         return {"success": True, "message": f"Fact {result['status']}", "data": result}
     except Exception as e:
-        logger.error(f"Error refuting fact: {e}")
+        logger.error("Error refuting fact: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -97,7 +97,7 @@ async def get_collective_facts(
 
         return {"success": True, "facts": facts, "count": len(facts)}
     except Exception as e:
-        logger.error(f"Error getting collective facts: {e}")
+        logger.error("Error getting collective facts: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -114,5 +114,5 @@ async def get_collective_stats(
 
         return {"success": True, "data": stats}
     except Exception as e:
-        logger.error(f"Error getting stats: {e}")
+        logger.error("Error getting stats: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e

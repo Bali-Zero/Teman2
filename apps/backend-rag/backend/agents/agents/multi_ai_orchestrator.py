@@ -253,7 +253,7 @@ async def main():
             logger.info(result["review"])
 
     except Exception as e:
-        logger.error(f"❌ Error: {e}")
+        logger.error("❌ Error: %s", e)
         import traceback
 
         traceback.print_exc()

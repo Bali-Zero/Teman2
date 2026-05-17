@@ -98,7 +98,7 @@ class ComplianceTrackerService:
             self.tracker_stats["compliance_type_distribution"].get(compliance_type, 0) + 1
         )
 
-        logger.info(f"📋 Added compliance item: {item_id} - {title} (deadline: {deadline})")
+        logger.info("📋 Added compliance item: %s - %s (deadline: %s)", item_id, title, deadline)
 
         return item
 
@@ -164,7 +164,7 @@ class ComplianceTrackerService:
         # Update stats
         self.tracker_stats["active_items"] -= 1
 
-        logger.info(f"✅ Resolved compliance item: {item_id}")
+        logger.info("✅ Resolved compliance item: %s", item_id)
         return True
 
     def get_all_items(self, client_id: str | None = None) -> list[ComplianceItem]:

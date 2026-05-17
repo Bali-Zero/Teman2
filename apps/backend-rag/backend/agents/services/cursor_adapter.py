@@ -42,7 +42,7 @@ class CursorAdapter:
             )
             return result.returncode == 0
         except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
-            logger.warning(f"⚠️ Could not open file in Cursor: {e}")
+            logger.warning("⚠️ Could not open file in Cursor: %s", e)
             return False
 
     def open_folder(self, folder_path: str) -> bool:
@@ -55,7 +55,7 @@ class CursorAdapter:
             )
             return result.returncode == 0
         except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
-            logger.warning(f"⚠️ Could not open folder in Cursor: {e}")
+            logger.warning("⚠️ Could not open folder in Cursor: %s", e)
             return False
 
     def diff_files(self, file1: str, file2: str) -> str | None:
@@ -71,7 +71,7 @@ class CursorAdapter:
                 return result.stdout
             return None
         except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
-            logger.warning(f"⚠️ Cursor diff failed: {e}")
+            logger.warning("⚠️ Cursor diff failed: %s", e)
             return None
 
     def update_cursor_rules(self, rules: str) -> bool:
@@ -82,7 +82,7 @@ class CursorAdapter:
             logger.info(f"✅ Updated .cursorrules at {self.cursor_rules_file}")
             return True
         except OSError as e:
-            logger.error(f"❌ Failed to update .cursorrules: {e}")
+            logger.error("❌ Failed to update .cursorrules: %s", e)
             return False
 
     def read_cursor_rules(self) -> str | None:
@@ -93,7 +93,7 @@ class CursorAdapter:
                     return f.read()
             return None
         except OSError as e:
-            logger.warning(f"⚠️ Could not read .cursorrules: {e}")
+            logger.warning("⚠️ Could not read .cursorrules: %s", e)
             return None
 
     def is_available(self) -> bool:

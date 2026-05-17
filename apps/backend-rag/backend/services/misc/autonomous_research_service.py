@@ -246,7 +246,7 @@ class AutonomousResearchService:
         Returns:
             ResearchStep with results
         """
-        logger.info(f"   [Step {step_number}] Query: '{query}'")
+        logger.info("   [Step %s] Query: '%s'", step_number, query)
 
         # Select collection
         collection = self.select_next_collection(query, collections_searched)
@@ -309,7 +309,7 @@ class AutonomousResearchService:
             return step
 
         except Exception as e:
-            logger.error(f"   [Step {step_number}] Error: {e}")
+            logger.error("   [Step %s] Error: %s", step_number, e)
             return ResearchStep(
                 step_number=step_number,
                 collection=collection,
@@ -402,7 +402,7 @@ Format:
             return synthesis, overall_confidence
 
         except Exception as e:
-            logger.error(f"❌ Synthesis error: {e}")
+            logger.error("❌ Synthesis error: %s", e)
             # Fallback: simple concatenation
             fallback = f"Research findings for: {original_query}\n\n"
             for step in research_steps:
@@ -429,7 +429,7 @@ Format:
 
         self.research_stats["total_researches"] += 1
 
-        logger.info(f"🔍 Starting autonomous research: '{query}'")
+        logger.info("🔍 Starting autonomous research: '%s'", query)
 
         research_steps = []
         collections_searched = []
@@ -463,7 +463,7 @@ Format:
                 reasoning_chain.append(
                     f"Terminating: High confidence achieved ({step.confidence:.2f})",
                 )
-                logger.info(f"   High confidence reached at step {iteration}")
+                logger.info("   High confidence reached at step %s", iteration)
                 break
 
             if step.results_found == 0 and iteration > 1:
@@ -481,7 +481,7 @@ Format:
 
             if not has_gaps:
                 reasoning_chain.append("Terminating: Sufficient information gathered")
-                logger.info(f"   Sufficient info at step {iteration}")
+                logger.info("   Sufficient info at step %s", iteration)
                 break
 
             reasoning_chain.append(f"Gap detected: {gap_rationale}")

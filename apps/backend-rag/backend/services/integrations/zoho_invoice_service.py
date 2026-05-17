@@ -149,7 +149,7 @@ class ZohoInvoiceService:
                 logger.info(f"Found existing Zoho customer: {customer['contact_id']}")
                 return customer
         except Exception as e:
-            logger.warning(f"Error searching for customer: {e}")
+            logger.warning("Error searching for customer: %s", e)
 
         # Create new contact
         contact_data = {
@@ -300,10 +300,10 @@ Zantara — Bali Zero Team
                 f"/invoices/{invoice_id}/email",
                 json_data=email_data,
             )
-            logger.info(f"Invoice {invoice_id} email sent to {to_email}")
+            logger.info("Invoice %s email sent to %s", invoice_id, to_email)
             return True
         except Exception as e:
-            logger.error(f"Failed to send invoice email: {e}")
+            logger.error("Failed to send invoice email: %s", e)
             return False
 
     async def get_invoice_pdf(
@@ -329,7 +329,7 @@ Zantara — Bali Zero Team
             accept_json=False,
         )
 
-        logger.info(f"Downloaded PDF for invoice {invoice_id}")
+        logger.info("Downloaded PDF for invoice %s", invoice_id)
         return pdf_bytes
 
     async def create_and_send_invoice(
@@ -381,7 +381,7 @@ Zantara — Bali Zero Team
             }
 
         except Exception as e:
-            logger.error(f"Failed to create/send Zoho Invoice: {e}", exc_info=True)
+            logger.error("Failed to create/send Zoho Invoice: %s", e, exc_info=True)
             return {
                 "success": False,
                 "error": str(e),

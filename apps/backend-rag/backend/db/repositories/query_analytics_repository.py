@@ -116,7 +116,7 @@ class QueryAnalyticsRepository(BaseRepository):
             True if updated successfully
         """
         if feedback not in ("thumbs_up", "thumbs_down"):
-            logger.warning(f"Invalid feedback value: {feedback}")
+            logger.warning("Invalid feedback value: %s", feedback)
             return False
 
         try:

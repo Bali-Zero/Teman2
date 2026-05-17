@@ -301,7 +301,7 @@ class EpisodicMemoryService:
                     metadata or {},
                 )
 
-                logger.info(f"Added episodic event for {user_id}: {title}")
+                logger.info("Added episodic event for %s: %s", user_id, title)
 
                 return {
                     "status": "created",
@@ -313,7 +313,7 @@ class EpisodicMemoryService:
                 }
 
         except Exception as e:
-            logger.error(f"Failed to add event: {e}")
+            logger.error("Failed to add event: %s", e)
             return {"status": "error", "message": str(e)}
 
     async def get_timeline(
@@ -406,7 +406,7 @@ class EpisodicMemoryService:
                 ]
 
         except Exception as e:
-            logger.error(f"Failed to get timeline: {e}")
+            logger.error("Failed to get timeline: %s", e)
             return []
 
     async def get_recent_events(
@@ -477,7 +477,7 @@ class EpisodicMemoryService:
         )
 
         if result.get("status") == "created":
-            logger.info(f"Extracted episodic event from conversation: {title}")
+            logger.info("Extracted episodic event from conversation: %s", title)
             return result
 
         return None
@@ -535,7 +535,7 @@ class EpisodicMemoryService:
                 )
                 return result == "DELETE 1"
         except Exception as e:
-            logger.error(f"Failed to delete event: {e}")
+            logger.error("Failed to delete event: %s", e)
             return False
 
     async def get_stats(self, user_id: str) -> dict[str, Any]:
@@ -574,5 +574,5 @@ class EpisodicMemoryService:
                 }
 
         except Exception as e:
-            logger.error(f"Failed to get stats: {e}")
+            logger.error("Failed to get stats: %s", e)
             return {}

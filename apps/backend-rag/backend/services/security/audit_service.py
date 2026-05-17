@@ -57,4 +57,4 @@ class SecurityAuditService:
                 details_json,
             )
         except Exception as e:
-            logger.error(f"S03-S2: Security audit log failed: {e} (action={action})")
+            logger.error("S03-S2: Security audit log failed: %s (action=%s)", e, action)

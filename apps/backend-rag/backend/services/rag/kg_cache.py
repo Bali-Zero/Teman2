@@ -204,7 +204,7 @@ class KGCache:
 
                 self._cache = get_cache_service()
             except Exception as e:
-                logger.warning(f"KG cache init failed, caching disabled: {e}")
+                logger.warning("KG cache init failed, caching disabled: %s", e)
                 self._cache = None
             self._initialized = True
         return self._cache
@@ -361,7 +361,7 @@ class KGCache:
         if cache is None:
             return 0
         count = await cache.clear_pattern("zantara:kg:*")
-        logger.info(f"KG cache invalidated: {count} entries cleared")
+        logger.info("KG cache invalidated: %s entries cleared", count)
         return count
 
 

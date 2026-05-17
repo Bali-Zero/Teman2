@@ -241,7 +241,7 @@ class MigrationManager:
             )
 
             if not row or not row["rollback_sql"]:
-                logger.warning(f"No rollback SQL for {migration_name}")
+                logger.warning("No rollback SQL for %s", migration_name)
                 return False
 
             async with conn.transaction():
@@ -257,7 +257,7 @@ class MigrationManager:
                     migration_name,
                 )
 
-        logger.info(f"✅ Rolled back migration: {migration_name}")
+        logger.info("✅ Rolled back migration: %s", migration_name)
         return True
 
     async def discover_migrations(self) -> list[BaseMigration]:
@@ -479,7 +479,7 @@ class MigrationManager:
                 else:
                     failed.append({"number": migration_number, "error": "Migration returned False"})
             except Exception as e:
-                logger.error(f"Failed to apply migration {migration_number}: {e}")
+                logger.error("Failed to apply migration %s: %s", migration_number, e)
                 failed.append({"number": migration_number, "error": str(e)})
 
         return {"applied": applied, "skipped": [], "failed": failed}

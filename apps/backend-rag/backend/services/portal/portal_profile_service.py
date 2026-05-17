@@ -44,7 +44,7 @@ class PortalProfileService:
         """
         if not email or not email.strip():
             logger.warning(
-                f"Skipping portal profile for client {client_id}: no email",
+                "Skipping portal profile for client %s: no email", client_id,
             )
             return None
 
@@ -73,13 +73,12 @@ class PortalProfileService:
                 )
 
                 logger.info(
-                    f"Portal profile ensured for client {client_id} "
-                    f"(email={email}, member_id={member_id})",
+                    "Portal profile ensured for client %s (email=%s, member_id=%s)", client_id, email, member_id,
                 )
                 return member_id
 
         except Exception as e:
             logger.error(
-                f"Failed to create portal profile for client {client_id}: {e}",
+                "Failed to create portal profile for client %s: %s", client_id, e,
             )
             return None

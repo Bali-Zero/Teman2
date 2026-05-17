@@ -68,7 +68,7 @@ class ChannelRouter:
             router.register_adapter("telegram", telegram_adapter)
         """
         self.adapters[channel_name] = adapter
-        logger.info(f"✅ Registered channel adapter: {channel_name}")
+        logger.info("✅ Registered channel adapter: %s", channel_name)
 
     async def route_message(self, channel: str, raw_event: dict) -> None:
         """
@@ -106,13 +106,13 @@ class ChannelRouter:
                 f"Available channels: {list(self.adapters.keys())}",
             )
 
-        logger.info(f"🔀 Routing message from {channel}")
+        logger.info("🔀 Routing message from %s", channel)
 
         try:
             # 2. Normalize incoming message
             message = await adapter.receive_message(raw_event)
             if message is None:
-                logger.debug(f"Adapter returned None (echo/skip) for {channel}")
+                logger.debug("Adapter returned None (echo/skip) for %s", channel)
                 return
 
             logger.info(
@@ -164,10 +164,10 @@ class ChannelRouter:
             # 8. Stream response via adapter
             await adapter.stream_response(channel_id, response_stream)
 
-            logger.info(f"✅ Successfully routed and processed message from {channel}")
+            logger.info("✅ Successfully routed and processed message from %s", channel)
 
         except Exception as e:
-            logger.error(f"❌ Error routing message from {channel}: {e}", exc_info=True)
+            logger.error("❌ Error routing message from %s: %s", channel, e, exc_info=True)
             raise
 
     def _extract_channel_id(self, metadata: dict[str, Any]) -> str:
@@ -251,7 +251,7 @@ class ChannelRouter:
                 json.dumps(metadata or {}),
             )
         except Exception as e:
-            logger.debug(f"[PERSIST] Could not save message: {e}")
+            logger.debug("[PERSIST] Could not save message: %s", e)
 
     async def _enrich_with_routing(self, message: ChannelMessage, channel: str) -> None:
         """Resolve client identity, classify intent, and create/join thread.
@@ -311,7 +311,7 @@ class ChannelRouter:
                 )
 
         except Exception as e:
-            logger.debug(f"Routing enrichment failed (non-fatal): {e}")
+            logger.debug("Routing enrichment failed (non-fatal): %s", e)
 
     async def _resolve_client_id(self, message: ChannelMessage, db_pool: Any) -> int | None:
         """Resolve CRM client_id from channel-specific identifiers."""
@@ -337,7 +337,7 @@ class ChannelRouter:
                     return await self._identity_resolver.find_client_by_email(user_id)
 
         except Exception as e:
-            logger.debug(f"Client identity resolution failed: {e}")
+            logger.debug("Client identity resolution failed: %s", e)
         return None
 
     def is_channel_registered(self, channel: str) -> bool:

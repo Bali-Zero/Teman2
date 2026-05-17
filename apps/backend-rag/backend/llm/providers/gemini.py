@@ -44,7 +44,7 @@ class GeminiProvider(LLMProvider):
                 f"GeminiProvider initialized: model={self._model_name}, available={self._available}",
             )
         except Exception as e:
-            logger.warning(f"Failed to initialize GeminiProvider: {e}")
+            logger.warning("Failed to initialize GeminiProvider: %s", e)
             self._available = False
 
     @property

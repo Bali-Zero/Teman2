@@ -56,8 +56,7 @@ class UnpaidInvoiceNotifier:
                 - skipped (bool): True when no overdue invoices exist
         """
         logger.info(
-            "[UnpaidInvoiceNotifier] Starting overdue invoice check "
-            f"(threshold: {OVERDUE_DAYS} days)",
+            "[UnpaidInvoiceNotifier] Starting overdue invoice check (threshold: %s days)", OVERDUE_DAYS,
         )
 
         try:
@@ -227,8 +226,7 @@ class UnpaidInvoiceNotifier:
 """.strip()
 
         logger.info(
-            f"[UnpaidInvoiceNotifier] Sending reminder to {ACCOUNTING_EMAIL} "
-            f"via Brevo ({n} invoice(s))",
+            "[UnpaidInvoiceNotifier] Sending reminder to %s via Brevo (%s invoice(s))", ACCOUNTING_EMAIL, n,
         )
 
         async with httpx.AsyncClient(timeout=30.0) as client:

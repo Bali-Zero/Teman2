@@ -45,7 +45,7 @@ class DailyCheckinNotifier:
 
         self.running = True
         self.task = asyncio.create_task(self._scheduler_loop())
-        logger.info(f"📧 Daily check-in notifier started (sends at {CHECK_TIME_HOUR}:00 Bali time)")
+        logger.info("📧 Daily check-in notifier started (sends at %s:00 Bali time)", CHECK_TIME_HOUR)
 
     async def stop(self) -> None:
         """Stop the notifier."""
@@ -73,10 +73,10 @@ class DailyCheckinNotifier:
                 ):
                     await self._send_daily_report()
                     last_sent_date = today
-                    logger.info(f"📧 Daily check-in email sent for {today}")
+                    logger.info("📧 Daily check-in email sent for %s", today)
 
             except Exception as e:
-                logger.error(f"❌ Daily notifier error: {e}")
+                logger.error("❌ Daily notifier error: %s", e)
 
             # Check every minute
             try:
@@ -278,10 +278,10 @@ class DailyCheckinNotifier:
                 server.login(settings.smtp_user, settings.smtp_password)
                 server.send_message(msg)
 
-            logger.info(f"✅ Daily check-in email sent to {ADMIN_EMAIL}")
+            logger.info("✅ Daily check-in email sent to %s", ADMIN_EMAIL)
 
         except Exception as e:
-            logger.error(f"❌ Failed to send daily email: {e}")
+            logger.error("❌ Failed to send daily email: %s", e)
 
     async def send_now(self) -> None:
         """Send the report immediately (for testing)."""

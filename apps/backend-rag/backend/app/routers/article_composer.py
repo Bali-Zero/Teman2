@@ -786,7 +786,7 @@ async def publish_article(request: PublishRequest) -> PublishResponse:
             cover_image_path = f"/static/news/{image_filename}"
 
             files_to_commit.append({"path": image_git_path, "content": image_data})
-            logger.info(f"Will upload cover image: {image_git_path}")
+            logger.info("Will upload cover image: %s", image_git_path)
 
         # 2. Generate MDX content
         mdx_content = generate_mdx_content(request.article, slug, cover_image_path)
@@ -811,7 +811,7 @@ async def publish_article(request: PublishRequest) -> PublishResponse:
         # Build article URL
         article_url = f"https://balizero.com/{category_folder}/{slug}"
 
-        logger.info(f"✅ Article published: {article_url}")
+        logger.info("✅ Article published: %s", article_url)
         logger.info(f"   Commit: {result.get('commit_sha', 'N/A')[:7]}")
 
         # Trigger IndexNow for faster search engine indexing
@@ -830,7 +830,7 @@ async def publish_article(request: PublishRequest) -> PublishResponse:
                 )
                 logger.info(f"   IndexNow: {indexnow_resp.status_code}")
         except Exception as e:
-            logger.warning(f"   IndexNow failed (non-blocking): {e}")
+            logger.warning("   IndexNow failed (non-blocking): %s", e)
 
         # Trigger Google Indexing API for faster Google indexing
         try:
@@ -860,7 +860,7 @@ async def publish_article(request: PublishRequest) -> PublishResponse:
             else:
                 logger.info("   Google Indexing API: skipped (no credentials)")
         except Exception as e:
-            logger.warning(f"   Google Indexing API failed (non-blocking): {e}")
+            logger.warning("   Google Indexing API failed (non-blocking): %s", e)
 
         # Track metrics
         article_publish_requests.labels(
@@ -877,13 +877,13 @@ async def publish_article(request: PublishRequest) -> PublishResponse:
         )
 
     except GitHubPublisherError as e:
-        logger.error(f"GitHub publish error: {e}")
+        logger.error("GitHub publish error: %s", e)
         article_publish_requests.labels(
             status="github_error", has_cover_image=str(has_cover_image),
         ).inc()
         return PublishResponse(success=False, message="Failed to publish to GitHub", error=str(e))
     except Exception as e:
-        logger.error(f"Publish failed: {e}", exc_info=True)
+        logger.error("Publish failed: %s", e, exc_info=True)
         article_publish_requests.labels(status="error", has_cover_image=str(has_cover_image)).inc()
         return PublishResponse(success=False, message="Failed to publish article", error=str(e))
 

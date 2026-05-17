@@ -140,7 +140,7 @@ def calculate_cost(
     # Fallback to unknown pricing
     if pricing is None:
         pricing = LLM_PRICING["unknown"]
-        logger.warning(f"Unknown model pricing: {model}, using default rates")
+        logger.warning("Unknown model pricing: %s, using default rates", model)
 
     # Calculate cost (pricing is per 1M tokens)
     input_cost = (prompt_tokens / 1_000_000) * pricing["input"]

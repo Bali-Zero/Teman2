@@ -91,7 +91,7 @@ class QdrantDebugger:
                     config=data.get("config", {}),
                 )
         except Exception as e:
-            logger.error(f"Failed to get collection health for {collection_name}: {e}")
+            logger.error("Failed to get collection health for %s: %s", collection_name, e)
             return CollectionHealth(
                 name=collection_name,
                 points_count=0,
@@ -127,7 +127,7 @@ class QdrantDebugger:
 
                 return health_statuses
         except Exception as e:
-            logger.error(f"Failed to get all collections health: {e}")
+            logger.error("Failed to get all collections health: %s", e)
             return []
 
     async def analyze_query_performance(
@@ -177,7 +177,7 @@ class QdrantDebugger:
                 )
         except Exception as e:
             duration_ms = (time.time() - start_time) * 1000
-            logger.error(f"Query performance analysis failed: {e}")
+            logger.error("Query performance analysis failed: %s", e)
             return QueryPerformance(
                 collection=collection,
                 query=f"vector_search_{len(query_vector)}d",
@@ -213,7 +213,7 @@ class QdrantDebugger:
                     "config": data.get("config", {}),
                 }
         except Exception as e:
-            logger.error(f"Failed to get collection stats for {collection_name}: {e}")
+            logger.error("Failed to get collection stats for %s: %s", collection_name, e)
             return {
                 "name": collection_name,
                 "error": str(e),
@@ -247,5 +247,5 @@ class QdrantDebugger:
                     return results[0]
                 return None
         except Exception as e:
-            logger.error(f"Failed to inspect document {document_id} in {collection}: {e}")
+            logger.error("Failed to inspect document %s in %s: %s", document_id, collection, e)
             return None

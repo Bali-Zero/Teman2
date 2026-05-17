@@ -87,8 +87,8 @@ class WhatsAppNotificationService:
         try:
             return await asyncio.wait_for(_send_with_retry(), timeout=timeout)
         except asyncio.TimeoutError:
-            logger.error(f"Timeout sending WhatsApp message to {phone}")
+            logger.error("Timeout sending WhatsApp message to %s", phone)
             return None
         except Exception as e:
-            logger.error(f"Error sending WhatsApp message to {phone}: {e}", exc_info=True)
+            logger.error("Error sending WhatsApp message to %s: %s", phone, e, exc_info=True)
             return None

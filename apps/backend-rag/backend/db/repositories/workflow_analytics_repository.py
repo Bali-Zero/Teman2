@@ -109,7 +109,7 @@ class WorkflowAnalyticsRepository(BaseRepository):
             True if updated successfully.
         """
         if feedback_score is not None and not (0.0 <= feedback_score <= 5.0):
-            logger.warning(f"Invalid feedback score: {feedback_score}")
+            logger.warning("Invalid feedback score: %s", feedback_score)
             return False
 
         try:

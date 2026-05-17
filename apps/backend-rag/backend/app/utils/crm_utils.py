@@ -162,7 +162,7 @@ async def verify_client_access(
 
     # Access denied (only reachable if allow_assigned=False)
     logger.warning(
-        f"RBAC: User {user_email} denied access to client {client_id} (assigned_to: {assigned_to})",
+        "RBAC: User %s denied access to client %s (assigned_to: %s)", user_email, client_id, assigned_to,
     )
     raise HTTPException(
         status_code=403,

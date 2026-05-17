@@ -127,7 +127,7 @@ class TwitterChannelAdapter(BaseChannel):
                 },
             )
         except Exception as e:
-            logger.error(f"Failed to parse X webhook: {e}")
+            logger.error("Failed to parse X webhook: %s", e)
             raise
 
     async def send_response(self, channel_id: str, response: ChannelResponse) -> None:
@@ -150,13 +150,13 @@ class TwitterChannelAdapter(BaseChannel):
         try:
             resp = await self.client.post(url, json=payload, headers=headers)
             if resp.status_code == 201:
-                logger.info(f"✅ Sent X DM to {channel_id}")
+                logger.info("✅ Sent X DM to %s", channel_id)
             else:
                 logger.error(
                     f"X API error {resp.status_code}: {resp.text} (channel_id={channel_id})",
                 )
         except Exception as e:
-            logger.error(f"X DM send failed: {e}")
+            logger.error("X DM send failed: %s", e)
             raise  # Let send_response_safe() catch and route to DLQ
 
     async def send_status_update(self, channel_id: str, status: str) -> None:

@@ -51,7 +51,6 @@ async def get_db_pool() -> asyncpg.Pool:
         statement_cache_size=0,
     )
     logger.info(
-        f"DB pool created: min={_POOL_MIN_SIZE}, max={_POOL_MAX_SIZE}, "
-        f"cmd_timeout={_COMMAND_TIMEOUT}s, idle_recycle={_MAX_INACTIVE_CONN_LIFETIME}s"
+        "DB pool created: min=%s, max=%s, cmd_timeout=%ss, idle_recycle=%ss", _POOL_MIN_SIZE, _POOL_MAX_SIZE, _COMMAND_TIMEOUT, _MAX_INACTIVE_CONN_LIFETIME
     )
     return pool

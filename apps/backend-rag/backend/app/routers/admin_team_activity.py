@@ -154,7 +154,7 @@ async def get_overview(
             "top_users": [dict(u) for u in top_users],
         }
     except Exception as e:
-        logger.error(f"Failed to get overview: {e}")
+        logger.error("Failed to get overview: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -234,7 +234,7 @@ async def get_messages(
             "messages": [dict(r) for r in rows],
         }
     except Exception as e:
-        logger.error(f"Failed to get messages: {e}")
+        logger.error("Failed to get messages: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -397,7 +397,7 @@ async def get_team_stats(
             "team_stats": [dict(r) for r in rows],
         }
     except Exception as e:
-        logger.error(f"Failed to get team stats: {e}")
+        logger.error("Failed to get team stats: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -460,7 +460,7 @@ async def get_timesheet(
             "records": [dict(r) for r in rows],
         }
     except Exception as e:
-        logger.error(f"Failed to get timesheet: {e}")
+        logger.error("Failed to get timesheet: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -524,7 +524,7 @@ async def get_crm_actions(
             "actions": [dict(r) for r in rows],
         }
     except Exception as e:
-        logger.error(f"Failed to get CRM actions: {e}")
+        logger.error("Failed to get CRM actions: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -578,7 +578,7 @@ async def get_practice_stats(
             "practice_stats": [dict(r) for r in rows],
         }
     except Exception as e:
-        logger.error(f"Failed to get practice stats: {e}")
+        logger.error("Failed to get practice stats: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -657,7 +657,7 @@ async def export_messages(
         )
 
     except Exception as e:
-        logger.error(f"Failed to export messages: {e}")
+        logger.error("Failed to export messages: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -749,5 +749,5 @@ async def get_crm_activity(
         return {"success": True, "total": total, "items": items}
 
     except Exception as e:
-        logger.error(f"Failed to query CRM activity: {e}")
+        logger.error("Failed to query CRM activity: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e

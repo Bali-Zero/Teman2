@@ -185,7 +185,7 @@ class KnowledgeGraphBuilder:
                 )
 
                 if not row:
-                    logger.debug(f"Conversation {conversation_id} not found")
+                    logger.debug("Conversation %s not found", conversation_id)
                     return
 
                 messages_json = row["messages"]
@@ -207,7 +207,7 @@ class KnowledgeGraphBuilder:
                     else:
                         full_text = str(messages_json)
                 except (TypeError, ValueError, KeyError) as e:
-                    logger.warning(f"Failed to parse messages JSON for {conversation_id}: {e}")
+                    logger.warning("Failed to parse messages JSON for %s: %s", conversation_id, e)
                     full_text = str(messages_json)
 
                 # 1. Extract entities
@@ -271,17 +271,17 @@ class KnowledgeGraphBuilder:
 
         except asyncpg.PostgresError as e:
             logger.error(
-                f"Database error processing conversation {conversation_id}: {e}", exc_info=True,
+                "Database error processing conversation %s: %s", conversation_id, e, exc_info=True,
             )
         except Exception as e:
             logger.error(
-                f"Unexpected error processing conversation {conversation_id}: {e}", exc_info=True,
+                "Unexpected error processing conversation %s: %s", conversation_id, e, exc_info=True,
             )
 
     async def build_graph_from_all_conversations(self, days_back: int = 30) -> None:
         """Process all recent conversations"""
         if days_back < 1 or days_back > 365:
-            logger.warning(f"Invalid days_back value: {days_back}, using default 30")
+            logger.warning("Invalid days_back value: %s, using default 30", days_back)
             days_back = 30
 
         try:
@@ -304,15 +304,15 @@ class KnowledgeGraphBuilder:
                 try:
                     await self.process_conversation(conv_id)
                 except Exception as e:
-                    logger.error(f"Error processing conversation {conv_id}: {e}", exc_info=True)
+                    logger.error("Error processing conversation %s: %s", conv_id, e, exc_info=True)
 
             logger.info(f"✅ Knowledge graph built from {len(conversation_ids)} conversations")
 
         except asyncpg.PostgresError as e:
-            logger.error(f"Database error building graph: {e}", exc_info=True)
+            logger.error("Database error building graph: %s", e, exc_info=True)
             raise
         except Exception as e:
-            logger.error(f"Unexpected error building graph: {e}", exc_info=True)
+            logger.error("Unexpected error building graph: %s", e, exc_info=True)
             raise
 
     async def get_entity_insights(self, top_n: int = 20) -> dict[str, Any]:

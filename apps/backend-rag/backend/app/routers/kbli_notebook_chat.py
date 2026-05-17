@@ -225,11 +225,11 @@ async def _translate_query_for_kbli(query: str) -> str:
 
         # Validate translation is not empty
         if not translated or not translated.strip():
-            logger.warning(f"⚠️ Translation returned empty from {model_used}, using original")
+            logger.warning("⚠️ Translation returned empty from %s, using original", model_used)
             return query
 
         translated = translated.strip().strip('"').strip("'")
-        logger.info(f"🌐 Query translation: '{query}' → '{translated}' (model: {model_used})")
+        logger.info("🌐 Query translation: '%s' → '%s' (model: %s)", query, translated, model_used)
         return translated
     except Exception as e:
         logger.warning(f"Query translation failed ({type(e).__name__}), using original: {e}")
@@ -414,7 +414,7 @@ async def _generate_kbli_explanation(
 
         # CRITICAL: Validate response is not empty
         if not response_text or not response_text.strip():
-            logger.error(f"❌ LLM returned empty response. Model: {model_used}, Usage: {usage}")
+            logger.error("❌ LLM returned empty response. Model: %s, Usage: %s", model_used, usage)
             raise RuntimeError(f"LLM returned empty response from model {model_used}")
 
         logger.info(
@@ -611,7 +611,7 @@ def _is_multi_domain_query(query: str) -> bool:
 
     if is_multi_domain:
         logger.info(
-            f"🌐 Multi-domain query detected: business={has_business}, visa={has_visa}, legal={has_legal}",
+            "🌐 Multi-domain query detected: business=%s, visa=%s, legal=%s", has_business, has_visa, has_legal,
         )
 
     return is_multi_domain
@@ -640,9 +640,9 @@ async def _fetch_parent_documents_from_kbli_table(codes: list[str], pool) -> dic
                     f"✅ Fetched {len(rows)} parent documents from kbli_documents (avg {sum(len(d) for d in parent_docs.values()) // len(parent_docs)} chars)",
                 )
             else:
-                logger.warning(f"⚠️ No parent documents found in kbli_documents for codes: {codes}")
+                logger.warning("⚠️ No parent documents found in kbli_documents for codes: %s", codes)
     except Exception as e:
-        logger.error(f"❌ Failed to fetch parent documents: {e}")
+        logger.error("❌ Failed to fetch parent documents: %s", e)
 
     return parent_docs
 
@@ -728,15 +728,15 @@ async def chat_kbli(
                                 pma_status=props.get("pma_status", "Verify at OSS"),
                                 risk_category=props.get("kategori_risiko", "Verify at OSS"),
                             )
-                            logger.info(f"⚠️ Direct lookup fallback to kg_nodes: {code}")
+                            logger.info("⚠️ Direct lookup fallback to kg_nodes: %s", code)
                             break
                 except Exception as lookup_err:
-                    logger.warning(f"Direct lookup failed for {code}: {lookup_err}")
+                    logger.warning("Direct lookup failed for %s: %s", code, lookup_err)
 
         # P0 FIX: If KBLI code in query but not found in PostgreSQL, try Qdrant payload filter
         if codes_from_query and not direct_kbli_match:
             code = codes_from_query[0]
-            logger.info(f"🔢 Code {code} not in kg_nodes, trying Qdrant payload filter lookup")
+            logger.info("🔢 Code %s not in kg_nodes, trying Qdrant payload filter lookup", code)
             qdrant_payload = await _get_kbli_payload_from_qdrant(code)
             if qdrant_payload:
                 direct_kbli_match = KBLISearchResult(
@@ -1011,7 +1011,7 @@ async def chat_kbli(
 
             logger.info(f"✅ Found {len(results)} KBLI results from Qdrant")
         except Exception as q_err:
-            logger.warning(f"⚠️ Qdrant search failed, falling back to PostgreSQL: {q_err}")
+            logger.warning("⚠️ Qdrant search failed, falling back to PostgreSQL: %s", q_err)
             # Fallback to Postgres search by name/code
             try:
                 db_pool = await get_optional_database_pool(http_request)
@@ -1042,7 +1042,7 @@ async def chat_kbli(
                             f"✅ Found {len(results)} KBLI results from PostgreSQL fallback",
                         )
             except Exception as db_err:
-                logger.error(f"❌ PostgreSQL fallback failed: {db_err}")
+                logger.error("❌ PostgreSQL fallback failed: %s", db_err)
 
         # Detect KBLI codes from results
         codes_from_results = [r.code for r in results if r.code != "N/A"]
@@ -1100,7 +1100,7 @@ async def chat_kbli(
                         or ["Explore more KBLI codes", "Contact Bali Zero team"],
                     )
             except Exception as kg_err:
-                logger.error(f"❌ KG Orchestrator failed, falling back to KBLI-only: {kg_err}")
+                logger.error("❌ KG Orchestrator failed, falling back to KBLI-only: %s", kg_err)
                 # Fall through to standard KBLI processing
 
         # Check for non-business queries (KITAS/visa/immigration OR recommendations)
@@ -1220,7 +1220,7 @@ async def chat_kbli(
                     ]
                 )
             ) or query_lower.strip() == term:
-                logger.info(f"📚 Glossary shortcut triggered for term: {term}")
+                logger.info("📚 Glossary shortcut triggered for term: %s", term)
                 return KBLINotebookChatResponse(
                     answer=glossary_answer,
                     detected_kbli=[],
@@ -1243,7 +1243,7 @@ async def chat_kbli(
 
         if not has_direct_match and not filtered_results and results:
             logger.warning(
-                f"⚠️ All results below threshold {MIN_RELEVANCE_SCORE}. Triggering ABSTAIN.",
+                "⚠️ All results below threshold %s. Triggering ABSTAIN.", MIN_RELEVANCE_SCORE,
             )
             query_lang = _detect_language(kbli_request.query)
             if query_lang == "Indonesian":

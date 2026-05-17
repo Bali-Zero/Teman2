@@ -187,7 +187,7 @@ class ReRanker:
                 return reranked_docs[:top_k]
 
             except Exception as e:
-                logger.error(f"❌ Re-ranking failed (Ze-Rank 2): {e}")
+                logger.error("❌ Re-ranking failed (Ze-Rank 2): %s", e)
                 set_span_status("error", str(e))
                 # Fallback to original order
                 return documents[:top_k]

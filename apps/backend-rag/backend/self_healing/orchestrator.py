@@ -112,7 +112,7 @@ class SelfHealingOrchestrator:
                     },
                 })
             except Exception as exc:  # noqa: BLE001
-                logger.debug(f"reporter.report raised: {exc}")
+                logger.debug("reporter.report raised: %s", exc)
 
         return outcome
 

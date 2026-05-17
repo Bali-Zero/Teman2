@@ -186,7 +186,7 @@ class CrossEncoderRerankerMixin:
                     )
 
                 except Exception as e:
-                    logger.error(f"❌ Cross-encoder reranking failed: {e}")
+                    logger.error("❌ Cross-encoder reranking failed: %s", e)
                     # Fallback to vector search results (already set)
                     results["rerank_error"] = str(e)
             else:
@@ -262,7 +262,7 @@ class CrossEncoderRerankerMixin:
                 apply_filters=True,
             )
         except Exception as e:
-            logger.warning(f"Hybrid search failed, falling back to regular search: {e}")
+            logger.warning("Hybrid search failed, falling back to regular search: %s", e)
             candidates = await self.search(
                 query=query,
                 user_level=user_level,
@@ -312,7 +312,7 @@ class CrossEncoderRerankerMixin:
                     )
 
                 except Exception as e:
-                    logger.error(f"❌ Cross-encoder reranking failed: {e}")
+                    logger.error("❌ Cross-encoder reranking failed: %s", e)
                     results["rerank_error"] = str(e)
 
         if metrics_available and pipeline_start:

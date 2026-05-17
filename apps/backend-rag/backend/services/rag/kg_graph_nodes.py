@@ -199,8 +199,7 @@ Return ONLY a JSON object:
         )
     except ValidationError as e:
         logger.error(
-            f"❌ [Understand Query] LLM output validation failed: {e}. "
-            f"Falling back to domain hints.",
+            "❌ [Understand Query] LLM output validation failed: %s. Falling back to domain hints.", e,
         )
         state["intent"] = domain_hints.get("intent", "general")
         state["domain"] = domain_hints.get("domain", "general")
@@ -447,7 +446,7 @@ async def resolve_entities_node(
     # Phase 1: Filter non-KBLI entities, check cache for the rest
     for entity_str in state["extracted_entities"]:
         if _is_non_kbli_entity(entity_str):
-            logger.info(f"🛂 [Resolve] Non-KBLI entity detected, skipping KG lookup: {entity_str}")
+            logger.info("🛂 [Resolve] Non-KBLI entity detected, skipping KG lookup: %s", entity_str)
             continue
 
         # Check cache first
@@ -496,7 +495,7 @@ async def resolve_entities_node(
                         entity_str, {"entity_id": eid, "confidence": conf},
                     )
                     kg_entity_resolution_total.labels(outcome="exact_match").inc()
-                    logger.info(f"✅ [Resolve] Exact match: {entity_str} → {eid}")
+                    logger.info("✅ [Resolve] Exact match: %s → %s", entity_str, eid)
                 else:
                     fuzzy_needed.append(entity_str)
 
@@ -549,7 +548,7 @@ async def resolve_entities_node(
                     # Cache the miss too (avoids repeated DB lookups for unknown entities)
                     await cache.set_resolved_entity(entity_str, {"entity_id": "", "confidence": 0})
                     kg_entity_resolution_total.labels(outcome="miss").inc()
-                    logger.warning(f"⚠️ [Resolve] No match found for: {entity_str}")
+                    logger.warning("⚠️ [Resolve] No match found for: %s", entity_str)
 
     state["current_entities"] = entity_ids
     state["confidence_scores"] = confidence_scores

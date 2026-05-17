@@ -80,7 +80,7 @@ def validate_path(
                 pass  # path not relative to cwd — will be blocked below
 
     if not allowed:
-        logger.warning(f"Path traversal attempt blocked: {path}")
+        logger.warning("Path traversal attempt blocked: %s", path)
         raise ValueError(f"Access denied: path '{path}' is outside allowed directories")
 
     # Check if path must exist

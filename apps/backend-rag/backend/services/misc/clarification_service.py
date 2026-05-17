@@ -174,7 +174,7 @@ class ClarificationService:
                 f"🤔 [Clarification] Ambiguous query detected (confidence: {confidence:.2f}, type: {ambiguity_type.value})",
             )
             for reason in reasons:
-                logger.info(f"   - {reason}")
+                logger.info("   - %s", reason)
         else:
             logger.info(f"✅ [Clarification] Query is clear (confidence: {confidence:.2f})")
 

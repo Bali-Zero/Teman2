@@ -48,7 +48,7 @@ class WeeklyEmailReporter:
         self.running = True
         self.task = asyncio.create_task(self._scheduler_loop())
         logger.info(
-            f"📧 Weekly email reporter started (sends Sundays at {CHECK_TIME_HOUR}:00 Bali time)",
+            "📧 Weekly email reporter started (sends Sundays at %s:00 Bali time)", CHECK_TIME_HOUR,
         )
 
     async def stop(self) -> None:
@@ -78,10 +78,10 @@ class WeeklyEmailReporter:
                 ):
                     await self._send_weekly_report()
                     last_sent_date = today
-                    logger.info(f"📧 Weekly email activity report sent for week ending {today}")
+                    logger.info("📧 Weekly email activity report sent for week ending %s", today)
 
             except Exception as e:
-                logger.error(f"❌ Weekly reporter error: {e}")
+                logger.error("❌ Weekly reporter error: %s", e)
 
             # Check every minute
             try:
@@ -370,10 +370,10 @@ class WeeklyEmailReporter:
                 start_tls=bool(settings.smtp_use_tls),
             )
 
-            logger.info(f"✅ Weekly email report sent to {ADMIN_EMAIL}")
+            logger.info("✅ Weekly email report sent to %s", ADMIN_EMAIL)
 
         except Exception as e:
-            logger.error(f"❌ Failed to send weekly email report: {e}")
+            logger.error("❌ Failed to send weekly email report: %s", e)
 
     async def send_now(self) -> None:
         """Send the report immediately (for testing)."""

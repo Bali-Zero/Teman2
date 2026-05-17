@@ -261,7 +261,7 @@ class KGAgenticOrchestrator:
                 return response
 
             except Exception as e:
-                logger.error(f"❌ KG-Agentic orchestration failed: {e}", exc_info=True)
+                logger.error("❌ KG-Agentic orchestration failed: %s", e, exc_info=True)
                 reasoning_trace.append(f"Error during orchestration: {str(e)}")
 
                 # Return fallback response
@@ -291,7 +291,7 @@ class KGAgenticOrchestrator:
             logger.debug(f"Intent classified: {result['category']} ({result['confidence']:.2f})")
             return result
         except Exception as e:
-            logger.warning(f"Intent classification failed: {e}")
+            logger.warning("Intent classification failed: %s", e)
             return {
                 "category": "unknown",
                 "confidence": 0.5,
@@ -324,7 +324,7 @@ class KGAgenticOrchestrator:
             return kg_context
 
         except Exception as e:
-            logger.warning(f"KG context retrieval failed: {e}")
+            logger.warning("KG context retrieval failed: %s", e)
             # Return empty context on error
             return KGContext(
                 entities_found=[],
@@ -362,7 +362,7 @@ class KGAgenticOrchestrator:
             # Execute search
             if target_collections:
                 # Search specific collections
-                logger.info(f"Searching collections: {target_collections}")
+                logger.info("Searching collections: %s", target_collections)
 
                 # Execute searches in parallel for better performance
                 search_tasks = []
@@ -421,7 +421,7 @@ class KGAgenticOrchestrator:
                 return {"sources": [], "content": ""}, ["federated_all"]
 
         except Exception as e:
-            logger.error(f"Vector search failed: {e}", exc_info=True)
+            logger.error("Vector search failed: %s", e, exc_info=True)
             return {"sources": [], "content": ""}, []
 
     def _route_collections(
@@ -614,7 +614,7 @@ Answer:"""
             }
 
         except Exception as e:
-            logger.error(f"LLM synthesis failed: {e}", exc_info=True)
+            logger.error("LLM synthesis failed: %s", e, exc_info=True)
             return {
                 "answer": (
                     "Mi dispiace, non sono riuscito a sintetizzare una risposta completa. "

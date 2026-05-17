@@ -191,7 +191,7 @@ class MemoryOrchestrator:
         except Exception as e:
             critical_failures.append(("memory_service", str(e)))
             logger.error(
-                f"❌ CRITICAL: Memory service initialization failed: {e}",
+                "❌ CRITICAL: Memory service initialization failed: %s", e,
                 extra={"error_type": type(e).__name__},
             )
 
@@ -200,28 +200,28 @@ class MemoryOrchestrator:
             self._fact_extractor = MemoryFactExtractor()
         except Exception as e:
             non_critical_failures.append(("fact_extractor", str(e)))
-            logger.warning(f"⚠️ Fact extractor initialization failed: {e}")
+            logger.warning("⚠️ Fact extractor initialization failed: %s", e)
 
         try:
             # NON-CRITICAL: Collective memory
             self._collective_memory = CollectiveMemoryService(pool=self._db_pool)
         except Exception as e:
             non_critical_failures.append(("collective_memory", str(e)))
-            logger.warning(f"⚠️ Collective memory initialization failed: {e}")
+            logger.warning("⚠️ Collective memory initialization failed: %s", e)
 
         try:
             # NON-CRITICAL: Episodic memory
             self._episodic_memory = EpisodicMemoryService(pool=self._db_pool)
         except Exception as e:
             non_critical_failures.append(("episodic_memory", str(e)))
-            logger.warning(f"⚠️ Episodic memory initialization failed: {e}")
+            logger.warning("⚠️ Episodic memory initialization failed: %s", e)
 
         try:
             # NON-CRITICAL: Knowledge graph repository
             self._kg_repository = KnowledgeGraphRepository(db_pool=self._db_pool)
         except Exception as e:
             non_critical_failures.append(("kg_repository", str(e)))
-            logger.warning(f"⚠️ Knowledge graph repository initialization failed: {e}")
+            logger.warning("⚠️ Knowledge graph repository initialization failed: %s", e)
 
         # Determine status
         if critical_failures:
@@ -298,7 +298,7 @@ class MemoryOrchestrator:
                 metadata={"component": "memory_orchestrator", "failures": dict(failures)},
             )
         except Exception as e:
-            logger.warning(f"Could not send Telegram alert for critical failure: {e}")
+            logger.warning("Could not send Telegram alert for critical failure: %s", e)
 
     async def _alert_degraded_mode(self, failures: list[tuple[str, str]]) -> None:
         """Alert on degraded mode activation via logger + Telegram."""
@@ -331,7 +331,7 @@ class MemoryOrchestrator:
                 },
             )
         except Exception as e:
-            logger.debug(f"Could not send Telegram alert for degraded mode: {e}")
+            logger.debug("Could not send Telegram alert for degraded mode: %s", e)
 
     async def close(self) -> None:
         """
@@ -350,7 +350,7 @@ class MemoryOrchestrator:
             logger.info("✅ MemoryOrchestrator closed")
 
         except Exception as e:
-            logger.error(f"❌ Error closing MemoryOrchestrator: {e}")
+            logger.error("❌ Error closing MemoryOrchestrator: %s", e)
 
     def _ensure_initialized(self) -> None:
         """Raise error if not initialized or unavailable."""
@@ -384,7 +384,7 @@ class MemoryOrchestrator:
 
         if self._status == MemoryServiceStatus.DEGRADED:
             # In degraded mode, return limited context
-            logger.debug(f"Returning degraded context for {user_email}")
+            logger.debug("Returning degraded context for %s", user_email)
             try:
                 from backend.app.metrics import memory_context_degraded_total
 
@@ -421,7 +421,7 @@ class MemoryOrchestrator:
                                 limit=10,
                             )
                     except Exception as e:
-                        logger.warning(f"Failed to get collective memory: {e}")
+                        logger.warning("Failed to get collective memory: %s", e)
 
                 # Get episodic memory (timeline of events)
                 timeline_summary: str = ""
@@ -432,9 +432,9 @@ class MemoryOrchestrator:
                             limit=5,
                         )
                         if timeline_summary:
-                            logger.debug(f"Retrieved timeline summary for {user_email}")
+                            logger.debug("Retrieved timeline summary for %s", user_email)
                     except Exception as e:
-                        logger.warning(f"Failed to get episodic memory: {e}")
+                        logger.warning("Failed to get episodic memory: %s", e)
 
                 # Get knowledge graph entities for context
                 kg_entities: list[dict] = []
@@ -447,7 +447,7 @@ class MemoryOrchestrator:
                         if kg_entities:
                             logger.debug(f"Retrieved {len(kg_entities)} KG entities for query")
                     except Exception as e:
-                        logger.warning(f"Failed to get KG entities: {e}")
+                        logger.warning("Failed to get KG entities: %s", e)
 
                 # Build context
                 has_data = (
@@ -479,7 +479,7 @@ class MemoryOrchestrator:
                         f"{len(context.profile_facts)} personal facts, {len(collective_facts)} collective facts",
                     )
                 else:
-                    logger.debug(f"📝 No existing memory for {user_email}")
+                    logger.debug("📝 No existing memory for %s", user_email)
 
                 return context
 
@@ -559,7 +559,7 @@ class MemoryOrchestrator:
                 )
 
                 if not raw_facts:
-                    logger.debug(f"No facts extracted for {user_email}")
+                    logger.debug("No facts extracted for %s", user_email)
                     return MemoryProcessResult(
                         facts_extracted=0,
                         facts_saved=0,
@@ -598,7 +598,7 @@ class MemoryOrchestrator:
                             if success:
                                 facts_saved += 1
                         except Exception as e:
-                            logger.warning(f"Failed to save fact: {e}")
+                            logger.warning("Failed to save fact: %s", e)
 
                     # Update conversation counter
                     try:
@@ -607,7 +607,7 @@ class MemoryOrchestrator:
                             counter_name="conversations",
                         )
                     except Exception as e:
-                        logger.warning(f"Failed to increment counter: {e}")
+                        logger.warning("Failed to increment counter: %s", e)
 
                 # Extract and save episodic events (timeline)
                 if self._episodic_memory:
@@ -622,7 +622,7 @@ class MemoryOrchestrator:
                                 f"📅 Saved episodic event: {event_result.get('title', '')[:50]}",
                             )
                     except Exception as e:
-                        logger.warning(f"Failed to extract episodic event: {e}")
+                        logger.warning("Failed to extract episodic event: %s", e)
 
                 processing_time = (time.time() - start_time) * 1000
 
@@ -643,7 +643,7 @@ class MemoryOrchestrator:
                 lock.release()
 
         except asyncio.TimeoutError:
-            logger.warning(f"Write lock timeout for user {user_email}")
+            logger.warning("Write lock timeout for user %s", user_email)
             # Return empty result instead of failing
             return MemoryProcessResult(
                 facts_extracted=0,
@@ -651,7 +651,7 @@ class MemoryOrchestrator:
                 processing_time_ms=(time.time() - start_time) * 1000,
             )
         except Exception as e:
-            logger.error(f"❌ Error processing conversation for {user_email}: {e}")
+            logger.error("❌ Error processing conversation for %s: %s", user_email, e)
             return MemoryProcessResult(
                 error=str(e),
                 processing_time_ms=(time.time() - start_time) * 1000,
@@ -679,7 +679,7 @@ class MemoryOrchestrator:
                     max_summary_length=raw_stats.get("max_summary_length", 500),
                 )
         except Exception as e:
-            logger.error(f"Error getting stats: {e}")
+            logger.error("Error getting stats: %s", e)
 
         return MemoryStats()
 
@@ -700,7 +700,7 @@ class MemoryOrchestrator:
             if self._memory_service:
                 return await self._memory_service.search(query, limit)
         except Exception as e:
-            logger.error(f"Error searching facts: {e}")
+            logger.error("Error searching facts: %s", e)
 
         return []
 
@@ -728,6 +728,6 @@ class MemoryOrchestrator:
             if self._memory_service:
                 return await self._memory_service.get_relevant_facts(user_email, query)
         except Exception as e:
-            logger.error(f"Error getting relevant facts: {e}")
+            logger.error("Error getting relevant facts: %s", e)
 
         return []

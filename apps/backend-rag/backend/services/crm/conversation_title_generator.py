@@ -43,5 +43,5 @@ async def generate_conversation_title(
     if title:
         return title
 
-    logger.warning(f"All title generation methods failed for conv {conversation_id}")
+    logger.warning("All title generation methods failed for conv %s", conversation_id)
     return None

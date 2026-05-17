@@ -94,14 +94,14 @@ class TelegramBotService:
             if not result.get("ok"):
                 error_code = result.get("error_code", "unknown")
                 description = result.get("description", "Unknown error")
-                logger.error(f"Telegram API error [{error_code}]: {description}")
+                logger.error("Telegram API error [%s]: %s", error_code, description)
                 raise ValueError(f"Telegram API error [{error_code}]: {description}")
 
-            logger.info(f"Message sent to chat {chat_id}")
+            logger.info("Message sent to chat %s", chat_id)
             return result
 
         except httpx.HTTPError as e:
-            logger.error(f"Failed to send Telegram message: {e}")
+            logger.error("Failed to send Telegram message: %s", e)
             raise
 
     async def send_photo(
@@ -154,14 +154,14 @@ class TelegramBotService:
             if not result.get("ok"):
                 error_code = result.get("error_code", "unknown")
                 description = result.get("description", "Unknown error")
-                logger.error(f"Telegram API error [{error_code}]: {description}")
+                logger.error("Telegram API error [%s]: %s", error_code, description)
                 raise ValueError(f"Telegram API error [{error_code}]: {description}")
 
-            logger.info(f"Photo sent to chat {chat_id}")
+            logger.info("Photo sent to chat %s", chat_id)
             return result
 
         except httpx.HTTPError as e:
-            logger.error(f"Failed to send Telegram photo: {e}")
+            logger.error("Failed to send Telegram photo: %s", e)
             raise
 
     async def send_chat_action(
@@ -191,7 +191,7 @@ class TelegramBotService:
             )
             return response.status_code == 200
         except Exception as e:
-            logger.warning(f"Failed to send chat action: {e}")
+            logger.warning("Failed to send chat action: %s", e)
             return False
 
     async def set_webhook(
@@ -232,11 +232,11 @@ class TelegramBotService:
             response.raise_for_status()
             result = response.json()
 
-            logger.info(f"Webhook set to {url}: {result}")
+            logger.info("Webhook set to %s: %s", url, result)
             return result
 
         except httpx.HTTPError as e:
-            logger.error(f"Failed to set webhook: {e}")
+            logger.error("Failed to set webhook: %s", e)
             raise
 
     async def delete_webhook(self) -> dict[str, Any]:
@@ -251,11 +251,11 @@ class TelegramBotService:
             response.raise_for_status()
             result = response.json()
 
-            logger.info(f"Webhook deleted: {result}")
+            logger.info("Webhook deleted: %s", result)
             return result
 
         except httpx.HTTPError as e:
-            logger.error(f"Failed to delete webhook: {e}")
+            logger.error("Failed to delete webhook: %s", e)
             raise
 
     async def get_webhook_info(self) -> dict[str, Any]:
@@ -271,7 +271,7 @@ class TelegramBotService:
             return response.json()
 
         except httpx.HTTPError as e:
-            logger.error(f"Failed to get webhook info: {e}")
+            logger.error("Failed to get webhook info: %s", e)
             raise
 
     async def get_me(self) -> dict[str, Any]:
@@ -287,7 +287,7 @@ class TelegramBotService:
             return response.json()
 
         except httpx.HTTPError as e:
-            logger.error(f"Failed to get bot info: {e}")
+            logger.error("Failed to get bot info: %s", e)
             raise
 
     async def answer_callback_query(
@@ -325,11 +325,11 @@ class TelegramBotService:
                 json=payload,
             )
             result = response.json()
-            logger.debug(f"Answered callback query: {result}")
+            logger.debug("Answered callback query: %s", result)
             return result
 
         except httpx.HTTPError as e:
-            logger.error(f"Failed to answer callback query: {e}")
+            logger.error("Failed to answer callback query: %s", e)
             raise
 
     async def get_file(self, file_id: str) -> dict[str, Any]:
@@ -349,14 +349,14 @@ class TelegramBotService:
             if not result.get("ok"):
                 error_code = result.get("error_code", "unknown")
                 description = result.get("description", "Unknown error")
-                logger.error(f"Telegram getFile error [{error_code}]: {description}")
+                logger.error("Telegram getFile error [%s]: %s", error_code, description)
                 raise ValueError(f"Telegram getFile error [{error_code}]: {description}")
 
-            logger.info(f"Got file info for {file_id}")
+            logger.info("Got file info for %s", file_id)
             return result.get("result", {})
 
         except httpx.HTTPError as e:
-            logger.error(f"Failed to get file: {e}")
+            logger.error("Failed to get file: %s", e)
             raise
 
     async def download_file(self, file_path: str) -> bytes:
@@ -374,7 +374,7 @@ class TelegramBotService:
             return response.content
 
         except httpx.HTTPError as e:
-            logger.error(f"Failed to download file {file_path}: {e}")
+            logger.error("Failed to download file %s: %s", file_path, e)
             raise
 
     async def edit_message_text(
@@ -423,13 +423,13 @@ class TelegramBotService:
             if not result.get("ok"):
                 error_code = result.get("error_code", "unknown")
                 description = result.get("description", "Unknown error")
-                logger.error(f"Telegram API error [{error_code}]: {description}")
+                logger.error("Telegram API error [%s]: %s", error_code, description)
 
-            logger.debug(f"Edited message {message_id} in chat {chat_id}")
+            logger.debug("Edited message %s in chat %s", message_id, chat_id)
             return result
 
         except httpx.HTTPError as e:
-            logger.error(f"Failed to edit message: {e}")
+            logger.error("Failed to edit message: %s", e)
             raise
 
 

@@ -135,7 +135,7 @@ Answer briefly (2-3 sentences):"""
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
-        logger.error(f"LLM generation failed: {e}")
+        logger.error("LLM generation failed: %s", e)
         return "Mi dispiace, non riesco a rispondere in questo momento."
 
 
@@ -202,7 +202,7 @@ async def voice_query(
         )
 
     except Exception as e:
-        logger.error(f"Voice query failed: {e}", exc_info=True)
+        logger.error("Voice query failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail="Voice query failed") from e
 
 

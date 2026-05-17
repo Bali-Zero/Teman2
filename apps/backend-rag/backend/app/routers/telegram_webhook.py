@@ -80,7 +80,7 @@ async def _resolve_team_agent(request: Request, chat_id: int | None) -> dict[str
         return ctx
 
     except Exception as e:
-        logger.warning(f"Agent mesh lookup failed for chat_id={chat_id}: {e}")
+        logger.warning("Agent mesh lookup failed for chat_id=%s: %s", chat_id, e)
         return None
 
 router = APIRouter(prefix="/webhook", tags=["telegram"])
@@ -113,11 +113,11 @@ async def handle_intel_callback(callback_query: dict[str, Any]) -> bool:
     _, action, intel_type, item_id = parts
 
     if action not in ("approve", "reject"):
-        logger.warning(f"Unknown intel callback action: {action}")
+        logger.warning("Unknown intel callback action: %s", action)
         return False
 
     logger.info(
-        f"Intel callback: {action} from {voter_name} ({voter_id})",
+        "Intel callback: %s from %s (%s)", action, voter_name, voter_id,
         extra={"intel_type": intel_type, "item_id": item_id, "action": action},
     )
 
@@ -161,7 +161,7 @@ async def handle_intel_callback(callback_query: dict[str, Any]) -> bool:
     if approve_count >= required:
         # Quorum reached — publish
         logger.info(
-            f"Approval quorum reached ({approve_count}/{required})",
+            "Approval quorum reached (%s/%s)", approve_count, required,
             extra={"intel_type": intel_type, "item_id": item_id},
         )
 
@@ -175,7 +175,7 @@ async def handle_intel_callback(callback_query: dict[str, Any]) -> bool:
             )
         except Exception as e:
             logger.error(
-                f"Auto-publish failed after approval: {e}",
+                "Auto-publish failed after approval: %s", e,
                 exc_info=True,
                 extra={"intel_type": intel_type, "item_id": item_id},
             )
@@ -196,7 +196,7 @@ async def handle_intel_callback(callback_query: dict[str, Any]) -> bool:
     elif reject_count >= required:
         # Rejection quorum reached — archive
         logger.info(
-            f"Rejection quorum reached ({reject_count}/{required})",
+            "Rejection quorum reached (%s/%s)", reject_count, required,
             extra={"intel_type": intel_type, "item_id": item_id},
         )
 
@@ -207,7 +207,7 @@ async def handle_intel_callback(callback_query: dict[str, Any]) -> bool:
             staging_service.archive_item(intel_type, item_id, "rejected")
         except Exception as e:
             logger.error(
-                f"Archive after rejection failed: {e}",
+                "Archive after rejection failed: %s", e,
                 exc_info=True,
                 extra={"intel_type": intel_type, "item_id": item_id},
             )
@@ -278,7 +278,7 @@ async def telegram_webhook(
         callback_query = update.get("callback_query")
         if callback_query:
             callback_data = callback_query.get("data", "")
-            logger.info(f"📨 Telegram callback_query {update_id}: data={callback_data}")
+            logger.info("📨 Telegram callback_query %s: data=%s", update_id, callback_data)
 
             if callback_data.startswith("intel:"):
                 handled = await handle_intel_callback(callback_query)
@@ -344,7 +344,7 @@ async def telegram_webhook(
                 if result:
                     return {"ok": True, "update_id": update_id, "type": "cover_image_upload"}
             except Exception as e:
-                logger.error(f"Cover image handler failed: {e}", exc_info=True)
+                logger.error("Cover image handler failed: %s", e, exc_info=True)
             # Fall through to channel router if handler didn't match
 
         # Route message through ChannelRouter
@@ -361,7 +361,7 @@ async def telegram_webhook(
         return {"ok": True, "update_id": update_id}
 
     except Exception as e:
-        logger.error(f"Failed to process Telegram webhook: {e}", exc_info=True)
+        logger.error("Failed to process Telegram webhook: %s", e, exc_info=True)
 
         # Record error metric
         try:

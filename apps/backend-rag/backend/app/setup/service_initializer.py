@@ -178,7 +178,7 @@ async def _init_search_service(app: FastAPI) -> Any:
 
             add_cross_encoder_reranking(search_service)
         except Exception as e:
-            logger.warning(f"⚠️ Cross-encoder reranking setup failed (non-critical): {e}")
+            logger.warning("⚠️ Cross-encoder reranking setup failed (non-critical): %s", e)
 
     # Store services in app state for dependency injection. ONLY done on
     # the success path — partially-initialized state would mislead
@@ -214,7 +214,7 @@ async def _init_search_service(app: FastAPI) -> Any:
             error=f"SearchService created but Qdrant unreachable: {qdrant_err}",
         )
         logger.error(
-            f"❌ SearchService created but Qdrant unreachable — marking UNAVAILABLE: {qdrant_err}",
+            "❌ SearchService created but Qdrant unreachable — marking UNAVAILABLE: %s", qdrant_err,
         )
 
     return search_service
@@ -303,7 +303,7 @@ async def _init_tool_stack(app: FastAPI) -> Any:
         logger.info(f"✅ MCP Client initialized with {len(mcp_client.available_tools)} tools")
         service_registry.register("mcp", ServiceStatus.HEALTHY, critical=False)
     except Exception as e:
-        logger.warning(f"⚠️ MCP Client initialization failed (non-critical): {e}")
+        logger.warning("⚠️ MCP Client initialization failed (non-critical): %s", e)
         service_registry.register("mcp", ServiceStatus.DEGRADED, critical=False)
 
     tool_executor = ToolExecutor(
@@ -390,7 +390,7 @@ async def _init_specialized_agents(
     except Exception as e:
         # Exception contains service init error, not credentials
         logger.error(
-            f"❌ Failed to initialize AutonomousResearchService: {e}",
+            "❌ Failed to initialize AutonomousResearchService: %s", e,
         )  # nosemgrep: python-logger-credential-disclosure
 
     try:
@@ -401,14 +401,14 @@ async def _init_specialized_agents(
     except Exception as e:
         # Exception contains service init error, not credentials
         logger.error(
-            f"❌ Failed to initialize CrossOracleSynthesisService: {e}",
+            "❌ Failed to initialize CrossOracleSynthesisService: %s", e,
         )  # nosemgrep: python-logger-credential-disclosure
 
     try:
         client_journey_orchestrator = ClientJourneyOrchestrator()
         logger.info("✅ ClientJourneyOrchestrator initialized")
     except Exception as e:
-        logger.error(f"❌ Failed to initialize ClientJourneyOrchestrator: {e}")
+        logger.error("❌ Failed to initialize ClientJourneyOrchestrator: %s", e)
 
     return autonomous_research_service, cross_oracle_synthesis_service, client_journey_orchestrator
 
@@ -547,7 +547,7 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 app.state.graph_service = graph_service
                 logger.info("✅ GraphService initialized")
             except Exception as e:
-                logger.warning(f"⚠️ GraphService initialization failed (non-critical): {e}")
+                logger.warning("⚠️ GraphService initialization failed (non-critical): %s", e)
                 app.state.graph_service = None
 
             service_registry.register("database", ServiceStatus.HEALTHY, critical=False)
@@ -596,7 +596,7 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                     error=str(e),
                     critical=False,
                 )
-                logger.error(f"❌ Database initialization failed permanently: {e}")
+                logger.error("❌ Database initialization failed permanently: %s", e)
                 try:
                     from backend.app.metrics import database_init_permanent_failure_total
 
@@ -638,7 +638,7 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 service_registry.register(
                     "database", ServiceStatus.UNAVAILABLE, error=str(e), critical=False,
                 )
-                logger.error(f"❌ Unexpected error initializing database: {e}")
+                logger.error("❌ Unexpected error initializing database: %s", e)
                 app.state.ts_service = None
                 app.state.db_pool = None
                 app.state.db_init_error = str(e)
@@ -687,7 +687,7 @@ async def _database_health_check_loop(db_pool: asyncpg.Pool) -> None:
                     pass
 
             except Exception as e:
-                logger.warning(f"Database health check failed: {e}")
+                logger.warning("Database health check failed: %s", e)
                 service_registry.register(
                     "database",
                     ServiceStatus.DEGRADED,
@@ -711,13 +711,13 @@ async def _database_health_check_loop(db_pool: asyncpg.Pool) -> None:
                         service_registry.register("database", ServiceStatus.HEALTHY)
                         logger.info("✅ Database pool recovered successfully")
                     except Exception as recovery_err:
-                        logger.error(f"❌ Database pool recovery failed: {recovery_err}")
+                        logger.error("❌ Database pool recovery failed: %s", recovery_err)
 
         except asyncio.CancelledError:
             logger.info("Database health check loop cancelled")
             break
         except Exception as e:
-            logger.exception(f"Error in database health check loop: {e}")
+            logger.exception("Error in database health check loop: %s", e)
 
 
 async def initialize_faq_cache_service(app: FastAPI) -> None:
@@ -756,7 +756,7 @@ async def initialize_faq_cache_service(app: FastAPI) -> None:
             service_registry.register("faq_cache", ServiceStatus.DEGRADED)
 
     except Exception as e:
-        logger.warning(f"⚠️  FAQ Cache initialization failed: {e}")
+        logger.warning("⚠️  FAQ Cache initialization failed: %s", e)
         app.state.faq_cache = None
         service_registry.register("faq_cache", ServiceStatus.DEGRADED, error=str(e))
 
@@ -813,7 +813,7 @@ async def initialize_crm_and_memory_services(
         logger.info("✅ CollectiveMemoryWorkflow initialized")
     except Exception as e:
         service_registry.register("memory", ServiceStatus.DEGRADED, error=str(e), critical=False)
-        logger.error(f"❌ Failed to initialize CRM/Memory services: {e}")
+        logger.error("❌ Failed to initialize CRM/Memory services: %s", e)
         # Do NOT reset db_pool here, as it affects other services
         app.state.crm_init_error = str(e)
 
@@ -855,7 +855,7 @@ async def initialize_intelligent_router(
             app.state.collaborator_service = collaborator_service
             logger.info("✅ CollaboratorService initialized")
         except Exception as e:
-            logger.warning(f"⚠️ CollaboratorService initialization failed: {e}")
+            logger.warning("⚠️ CollaboratorService initialization failed: %s", e)
             app.state.collaborator_service = None
 
     # Initialize IntelligentRouter (critical services are guaranteed available)
@@ -877,7 +877,7 @@ async def initialize_intelligent_router(
         logger.info("✅ IntelligentRouter initialized with full services")
     except Exception as e:
         service_registry.register("router", ServiceStatus.UNAVAILABLE, error=str(e), critical=True)
-        logger.error(f"❌ Failed to initialize IntelligentRouter: {e}")
+        logger.error("❌ Failed to initialize IntelligentRouter: %s", e)
         app.state.intelligent_router = None
 
     # Initialize SpecializedServiceRouter (wraps the 3 specialized services for OrchestratorCore)
@@ -893,7 +893,7 @@ async def initialize_intelligent_router(
         service_registry.register("specialized_router", ServiceStatus.HEALTHY, critical=False)
         logger.info("✅ SpecializedServiceRouter initialized (AutonomousResearch + CrossOracle + ClientJourney)")
     except Exception as e:
-        logger.warning(f"⚠️ SpecializedServiceRouter initialization failed (non-critical): {e}")
+        logger.warning("⚠️ SpecializedServiceRouter initialization failed (non-critical): %s", e)
         app.state.specialized_router = None
 
 
@@ -948,7 +948,7 @@ async def _init_background_services(
         service_registry.register(
             "health_monitor", ServiceStatus.DEGRADED, error=str(e), critical=False,
         )
-        logger.error(f"❌ Failed to initialize Health Monitor: {e}")
+        logger.error("❌ Failed to initialize Health Monitor: %s", e)
 
     # WebSocket Redis Listener
     try:
@@ -959,7 +959,7 @@ async def _init_background_services(
         logger.info("✅ WebSocket Redis Listener started")
     except Exception as e:
         service_registry.register("websocket", ServiceStatus.DEGRADED, error=str(e), critical=False)
-        logger.error(f"❌ Failed to start WebSocket Redis Listener: {e}")
+        logger.error("❌ Failed to start WebSocket Redis Listener: %s", e)
 
     # Proactive Compliance Monitor (Business Value)
     try:
@@ -975,7 +975,7 @@ async def _init_background_services(
         service_registry.register(
             "compliance", ServiceStatus.DEGRADED, error=str(e), critical=False,
         )
-        logger.error(f"❌ Failed to initialize Compliance Monitor: {e}")
+        logger.error("❌ Failed to initialize Compliance Monitor: %s", e)
 
     # Autonomous Scheduler (All Autonomous Agents)
     try:
@@ -995,7 +995,7 @@ async def _init_background_services(
         service_registry.register(
             "autonomous_scheduler", ServiceStatus.DEGRADED, error=str(e), critical=False,
         )
-        logger.error(f"❌ Failed to initialize Autonomous Scheduler: {e}")
+        logger.error("❌ Failed to initialize Autonomous Scheduler: %s", e)
 
 
 
@@ -1066,7 +1066,7 @@ async def initialize_channel_router(
             try:
                 await orchestrator.initialize()
             except Exception as e:
-                logger.warning(f"⚠️ Orchestrator async init failed (non-fatal): {e}")
+                logger.warning("⚠️ Orchestrator async init failed (non-fatal): %s", e)
 
         # Initialize ConversationEngine (bridge between channels and orchestrator)
         conversation_engine = ConversationEngine(orchestrator)
@@ -1159,13 +1159,13 @@ async def initialize_channel_router(
 
         # Log registered channels
         available_channels = channel_router.get_available_channels()
-        logger.info(f"📡 Multi-Channel Architecture ready: {available_channels}")
+        logger.info("📡 Multi-Channel Architecture ready: %s", available_channels)
 
     except Exception as e:
         service_registry.register(
             "channel_router", ServiceStatus.DEGRADED, error=str(e), critical=False,
         )
-        logger.error(f"❌ Failed to initialize Channel Router: {e}", exc_info=True)
+        logger.error("❌ Failed to initialize Channel Router: %s", e, exc_info=True)
         app.state.channel_router_init_error = str(e)
 
 
@@ -1196,7 +1196,7 @@ async def initialize_services(app: FastAPI) -> None:
         app.state.redis_manager = redis_manager
         logger.info(f"RedisManager initialized (available={redis_manager.available})")
     except Exception as e:
-        logger.warning(f"RedisManager initialization failed: {e} — Redis features disabled")
+        logger.warning("RedisManager initialization failed: %s — Redis features disabled", e)
 
     # 0.1 KG cache proactive invalidation listener (HIGH-13).
     # Subscribes to `zantara:kg:invalidate` and wipes local KG cache entries
@@ -1286,7 +1286,7 @@ async def initialize_services(app: FastAPI) -> None:
         app.state.collaborator_service = collaborator_service
         logger.info("✅ CollaboratorService initialized")
     except Exception as e:
-        logger.warning(f"⚠️ CollaboratorService initialization failed: {e}")
+        logger.warning("⚠️ CollaboratorService initialization failed: %s", e)
         app.state.collaborator_service = None
 
     # 8. Intelligent Router
@@ -1336,7 +1336,7 @@ async def initialize_services(app: FastAPI) -> None:
         service_registry.register(
             "health_monitor", ServiceStatus.DEGRADED, error=str(e), critical=False,
         )
-        logger.error(f"❌ Failed to initialize Health Monitor: {e}")
+        logger.error("❌ Failed to initialize Health Monitor: %s", e)
 
     # 10c. Olympus DB Guardian
     # Background workers kill switch (2026-04-12 incident): skip Olympus when
@@ -1359,7 +1359,7 @@ async def initialize_services(app: FastAPI) -> None:
             service_registry.register(
                 "olympus", ServiceStatus.DEGRADED, error=str(e), critical=False,
             )
-            logger.error(f"❌ Failed to initialize Olympus: {e}")
+            logger.error("❌ Failed to initialize Olympus: %s", e)
     else:
         logger.warning("⚠️ Olympus skipped: no db_pool")
 
@@ -1387,11 +1387,11 @@ async def initialize_services(app: FastAPI) -> None:
             set_llm_gateway(llm_gateway)
             logger.info("✅ LLMGateway created and injected into LangGraph agent nodes")
         except Exception as llm_error:
-            logger.warning(f"⚠️ LLMGateway initialization failed: {llm_error}")
+            logger.warning("⚠️ LLMGateway initialization failed: %s", llm_error)
             logger.info("Agent workflow will use fallback mock responses")
 
     except Exception as e:
-        logger.warning(f"⚠️ LangGraph agent service injection failed: {e}")
+        logger.warning("⚠️ LangGraph agent service injection failed: %s", e)
         logger.info("Agent workflow will continue with fallback behavior")
 
     # 13. R5 Phase 6: NLM Enrichment Service decommissioned — Qdrant+KG are canonical
@@ -1403,7 +1403,7 @@ async def initialize_services(app: FastAPI) -> None:
 
         logger.info("✅ Workflow chain executors registered")
     except Exception as e:
-        logger.warning(f"⚠️ Workflow chain registration failed (non-critical): {e}")
+        logger.warning("⚠️ Workflow chain registration failed (non-critical): %s", e)
 
     logger.info("DEBUG: Setting services_initialized to True")
     app.state.services_initialized = True
@@ -1498,7 +1498,7 @@ async def initialize_services_light(app: FastAPI) -> None:
         service_registry.register("database", ServiceStatus.HEALTHY)
         logger.info("✅ DB pool initialized (light)")
     except Exception as e:
-        logger.error(f"❌ DB pool failed in light init: {e}")
+        logger.error("❌ DB pool failed in light init: %s", e)
         service_registry.register("database", ServiceStatus.UNAVAILABLE, error=str(e))
         raise RuntimeError(f"DB pool failed in light init: {e}") from e
 
@@ -1510,7 +1510,7 @@ async def initialize_services_light(app: FastAPI) -> None:
         service_registry.register("cache", ServiceStatus.HEALTHY, critical=False)
         logger.info("✅ Redis cache initialized (light)")
     except Exception as e:
-        logger.warning(f"⚠️ Redis cache failed (non-critical): {e}")
+        logger.warning("⚠️ Redis cache failed (non-critical): %s", e)
         app.state.cache = None
 
     # Background workers kill switch — set DISABLE_BACKGROUND_WORKERS=1 to skip
@@ -1539,7 +1539,7 @@ async def initialize_services_light(app: FastAPI) -> None:
             await ts_service.start_auto_logout_monitor()
             logger.info("✅ Timesheet service initialized (light)")
         except Exception as e:
-            logger.warning(f"⚠️ Timesheet service failed (non-critical): {e}")
+            logger.warning("⚠️ Timesheet service failed (non-critical): %s", e)
             app.state.ts_service = None
             app.state.attendance_monitor = None
 
@@ -1553,7 +1553,7 @@ async def initialize_services_light(app: FastAPI) -> None:
             app.state.olympus = olympus
             logger.info("✅ Olympus DB Guardian initialized (light)")
         except Exception as e:
-            logger.warning(f"⚠️ Olympus Guardian failed (non-critical): {e}")
+            logger.warning("⚠️ Olympus Guardian failed (non-critical): %s", e)
             app.state.olympus = None
 
     # 5. Mark RAG services as intentionally not-initialized (light mode)

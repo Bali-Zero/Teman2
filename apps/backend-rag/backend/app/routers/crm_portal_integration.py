@@ -258,7 +258,7 @@ async def send_portal_invite(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to send portal invite: {e}")
+        logger.error("Failed to send portal invite: %s", e)
         raise HTTPException(
             status_code=500,
             detail="Failed to send invitation",
@@ -302,7 +302,7 @@ async def get_portal_preview(
             },
         }
     except Exception as e:
-        logger.error(f"Failed to get portal preview for client {client_id}: {e}")
+        logger.error("Failed to get portal preview for client %s: %s", client_id, e)
         raise HTTPException(
             status_code=500,
             detail="Failed to load portal preview",
@@ -398,7 +398,7 @@ async def get_client_messages(
             "data": data,
         }
     except Exception as e:
-        logger.error(f"Failed to get messages for client {client_id}: {e}")
+        logger.error("Failed to get messages for client %s: %s", client_id, e)
         raise HTTPException(
             status_code=500,
             detail="Failed to load messages",
@@ -448,7 +448,7 @@ async def send_message_to_client(
                 },
             }
     except Exception as e:
-        logger.error(f"Failed to send message to client {client_id}: {e}")
+        logger.error("Failed to send message to client %s: %s", client_id, e)
         raise HTTPException(
             status_code=500,
             detail="Failed to send message",
@@ -485,7 +485,7 @@ async def mark_client_message_read(
                 "message": "Message marked as read",
             }
     except Exception as e:
-        logger.error(f"Failed to mark message {message_id} as read: {e}")
+        logger.error("Failed to mark message %s as read: %s", message_id, e)
         raise HTTPException(
             status_code=500,
             detail="Failed to update message",

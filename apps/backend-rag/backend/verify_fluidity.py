@@ -20,7 +20,7 @@ async def test_identity_intent():
     classifier = IntentClassifier()
     query = "tu chi sei"
     result = await classifier.classify_intent(query)
-    logger.info(f"Query: '{query}'")
+    logger.info("Query: '%s'", query)
     logger.info(f"Intent classified: {result.get('intent', result.get('category', 'unknown'))}")
     logger.info(f"Skip RAG: {result.get('skip_rag', False)}")
 
@@ -82,7 +82,7 @@ async def test_fluid_fallback_implementation():
         logger.info("✅ PASS: Both ABSTAIN (critical) and Tier 1 (non-critical) paths exist")
     else:
         logger.info(
-            f"⚠️  WARNING: Missing paths - ABSTAIN: {has_abstain_path}, Tier 1: {has_tier1_path}",
+            "⚠️  WARNING: Missing paths - ABSTAIN: %s, Tier 1: %s", has_abstain_path, has_tier1_path,
         )
 
 
@@ -113,7 +113,7 @@ async def test_critical_domain_detection():
         for query, intent in critical_queries:
             is_critical = _is_critical_domain(query, intent)
             status = "✅" if is_critical else "❌"
-            logger.info(f"  {status} '{query}' -> {is_critical}")
+            logger.info("  %s '%s' -> %s", status, query, is_critical)
             if not is_critical:
                 all_critical_correct = False
 
@@ -122,7 +122,7 @@ async def test_critical_domain_detection():
         for query, intent in non_critical_queries:
             is_critical = _is_critical_domain(query, intent)
             status = "✅" if not is_critical else "❌"
-            logger.info(f"  {status} '{query}' -> {is_critical}")
+            logger.info("  %s '%s' -> %s", status, query, is_critical)
             if is_critical:
                 all_non_critical_correct = False
 
@@ -132,7 +132,7 @@ async def test_critical_domain_detection():
             logger.info("\n❌ FAIL: Critical domain detection has issues")
 
     except ImportError as e:
-        logger.info(f"❌ FAIL: Could not import _is_critical_domain: {e}")
+        logger.info("❌ FAIL: Could not import _is_critical_domain: %s", e)
 
 
 async def test_constants():

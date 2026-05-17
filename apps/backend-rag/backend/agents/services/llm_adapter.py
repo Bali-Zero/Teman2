@@ -197,11 +197,11 @@ class LLMAdapter:
 
         logger.info("🔥 LLM Adapter initialized - QWEN-FIRST MODE (Enhanced)")
         logger.info(f"   Primary: {primary_provider.value}")
-        logger.info(f"   Model: {ollama_model}")
-        logger.info(f"   Max Retries: {max_retries}")
-        logger.info(f"   Retry Jitter: {retry_jitter}s")
-        logger.info(f"   Circuit Breaker: {circuit_breaker_failure_threshold} failures → OPEN")
-        logger.info(f"   Auto-start Ollama: {auto_start_ollama}")
+        logger.info("   Model: %s", ollama_model)
+        logger.info("   Max Retries: %s", max_retries)
+        logger.info("   Retry Jitter: %ss", retry_jitter)
+        logger.info("   Circuit Breaker: %s failures → OPEN", circuit_breaker_failure_threshold)
+        logger.info("   Auto-start Ollama: %s", auto_start_ollama)
 
     def _classify_error(self, error: Exception) -> ErrorType:
         """Classify error type for intelligent retry decision"""
@@ -394,7 +394,7 @@ class LLMAdapter:
                 # Permanent errors - don't retry
                 if last_error_type == ErrorType.PERMANENT:
                     self.metrics.permanent_errors += 1
-                    logger.error(f"❌ Permanent error (no retry): {e}. Returning mock response.")
+                    logger.error("❌ Permanent error (no retry): %s. Returning mock response.", e)
                     break  # Exit retry loop immediately
 
                 # Check circuit breaker again (might have opened during retries)
@@ -484,10 +484,10 @@ class LLMAdapter:
                 else:
                     logger.warning("⚠️ Ollama start command issued but not responding yet")
             except Exception as e:
-                logger.warning(f"⚠️ Could not start Ollama: {e}")
+                logger.warning("⚠️ Could not start Ollama: %s", e)
 
         except Exception as e:
-            logger.warning(f"⚠️ Error checking/starting Ollama: {e}")
+            logger.warning("⚠️ Error checking/starting Ollama: %s", e)
 
     async def _call_ollama(self, request: LLMRequest) -> LLMResponse:
         """Call Ollama API (Qwen) - Direct call, no retry logic here (handled in generate)"""
@@ -638,7 +638,7 @@ class LLMAdapter:
             else:
                 health["ollama"] = False
         except Exception as e:
-            logger.warning(f"Ollama health check failed: {e}")
+            logger.warning("Ollama health check failed: %s", e)
             health["ollama"] = False
 
         health["mock"] = True  # Always available
@@ -686,7 +686,7 @@ def get_llm_adapter() -> LLMAdapter:
             ollama_model=ollama_model,
             ollama_url=ollama_url,
         )
-        logger.info(f"🔥 LLM Adapter singleton created with model: {ollama_model}")
+        logger.info("🔥 LLM Adapter singleton created with model: %s", ollama_model)
     return _llm_adapter
 
 

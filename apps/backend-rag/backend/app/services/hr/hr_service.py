@@ -201,7 +201,7 @@ class HRService:
             if not row:
                 msg = f"Bonus {bonus_id} not found or not pending"
                 raise ValueError(msg)
-            logger.info(f"Bonus {bonus_id} approved by {approved_by}")
+            logger.info("Bonus %s approved by %s", bonus_id, approved_by)
             return dict(row)
 
     async def get_bonus_summary(
@@ -430,7 +430,7 @@ class HRService:
             if not row:
                 msg = f"Period {period_id} not found or not in 'calculated' status"
                 raise ValueError(msg)
-            logger.info(f"Payroll period {period_id} approved by {approved_by}")
+            logger.info("Payroll period %s approved by %s", period_id, approved_by)
             return dict(row)
 
     async def mark_payroll_paid(self, period_id: int) -> dict[str, Any]:
@@ -454,7 +454,7 @@ class HRService:
                     WHERE payroll_period_id = $1 AND status = 'approved'
                 """, period_id)
 
-                logger.info(f"Payroll period {period_id} marked as paid")
+                logger.info("Payroll period %s marked as paid", period_id)
                 return dict(row)
 
     # ─── LEAVE ───────────────────────────────────────────────────────
@@ -542,7 +542,7 @@ class HRService:
                 """, req["total_days"], req["employee_id"],
                     req["leave_type_id"], req["start_date"].year)
 
-                logger.info(f"Leave request {request_id} approved by {reviewed_by}")
+                logger.info("Leave request %s approved by %s", request_id, reviewed_by)
                 return dict(req)
 
     async def reject_leave(
@@ -572,7 +572,7 @@ class HRService:
                 """, req["total_days"], req["employee_id"],
                     req["leave_type_id"], req["start_date"].year)
 
-                logger.info(f"Leave request {request_id} rejected by {reviewed_by}")
+                logger.info("Leave request %s rejected by %s", request_id, reviewed_by)
                 return dict(req)
 
     async def get_leave_request(

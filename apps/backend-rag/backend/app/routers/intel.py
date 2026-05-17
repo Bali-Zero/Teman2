@@ -239,7 +239,7 @@ async def bulk_approve_items(type: str, item_ids: list[str]) -> Any:
         except Exception as e:
             results["failed"] += 1
             results["errors"].append(f"{item_id}: {str(e)}")
-            logger.error(f"Bulk approve failed for {item_id}: {e}", exc_info=True)
+            logger.error("Bulk approve failed for %s: %s", item_id, e, exc_info=True)
 
     staging_service.update_staging_queue_metrics()
     return results
@@ -275,7 +275,7 @@ async def bulk_reject_items(type: str, item_ids: list[str]) -> Any:
         except Exception as e:
             results["failed"] += 1
             results["errors"].append(f"{item_id}: {str(e)}")
-            logger.error(f"Bulk reject failed for {item_id}: {e}", exc_info=True)
+            logger.error("Bulk reject failed for %s: %s", item_id, e, exc_info=True)
 
     staging_service.update_staging_queue_metrics()
     return results
@@ -447,7 +447,7 @@ async def upload_cover_image(
         image_data = base64.b64decode(request.cover_image_base64)
     except Exception as e:
         logger.error(
-            f"Invalid base64 image: {e}",
+            "Invalid base64 image: %s", e,
             extra={"type": type, "item_id": item_id},
         )
         raise HTTPException(status_code=400, detail=f"Invalid base64 image: {e}") from e
@@ -520,7 +520,7 @@ async def reject_staging_item(type: str, item_id: str) -> dict[str, Any]:
         return {"success": True, "message": "Item rejected and archived", "id": item_id}
     except Exception as e:
         logger.error(
-            f"Rejection failed: {e}", exc_info=True, extra={"type": type, "item_id": item_id},
+            "Rejection failed: %s", e, exc_info=True, extra={"type": type, "item_id": item_id},
         )
         raise HTTPException(status_code=500, detail=str(e)) from e
 

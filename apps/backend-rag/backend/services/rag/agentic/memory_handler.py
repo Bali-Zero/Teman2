@@ -94,7 +94,7 @@ class MemoryHandler:
                 await self._memory_orchestrator.initialize()
                 logger.info("MemoryOrchestrator initialized for AgenticRAG")
             except (asyncpg.PostgresError, asyncpg.InterfaceError, ValueError, RuntimeError) as e:
-                logger.warning(f"Failed to initialize MemoryOrchestrator: {e}", exc_info=True)
+                logger.warning("Failed to initialize MemoryOrchestrator: %s", e, exc_info=True)
                 return None
         return self._memory_orchestrator
 
@@ -183,7 +183,7 @@ class MemoryHandler:
             if metrics_collector:
                 metrics_collector.record_memory_lock_timeout(user_id=user_id)
         except (asyncpg.PostgresError, ValueError, RuntimeError) as e:
-            logger.warning(f"Failed to save memory: {e}", exc_info=True)
+            logger.warning("Failed to save memory: %s", e, exc_info=True)
 
     def create_save_task(
         self,

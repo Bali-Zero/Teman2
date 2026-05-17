@@ -81,7 +81,7 @@ async def _load_conversation_history(client_id: int | None, limit: int = 10) -> 
         # Rows are newest-first; reverse to chronological order
         return [f"[{row['direction']}] {row['content']}" for row in reversed(rows)]
     except Exception as e:
-        logger.warning(f"[GRAPH] Failed to load conversation history for client {client_id}: {e}")
+        logger.warning("[GRAPH] Failed to load conversation history for client %s: %s", client_id, e)
         return []
 
 
@@ -192,7 +192,7 @@ async def retrieve_node(state: WorkflowState) -> WorkflowState:
         }
 
     except Exception as e:
-        logger.error(f"[RETRIEVE_NODE] Error: {e}", exc_info=True)
+        logger.error("[RETRIEVE_NODE] Error: %s", e, exc_info=True)
         # Add error to state but don't fail the workflow
         errors = state.get("errors", [])
         errors.append(f"Retrieval error: {str(e)}")
@@ -314,7 +314,7 @@ Your response (JSON array only):"""
                     relevance_scores = relevance_scores[: len(documents)]
 
         except (json.JSONDecodeError, ValueError, AttributeError) as e:
-            logger.warning(f"[GRADE_NODE] Failed to parse LLM scores: {e}")
+            logger.warning("[GRADE_NODE] Failed to parse LLM scores: %s", e)
             # Fallback to retrieval scores
             relevance_scores = retrieved_scores
 
@@ -345,7 +345,7 @@ Your response (JSON array only):"""
         }
 
     except Exception as e:
-        logger.error(f"[GRADE_NODE] Error: {e}", exc_info=True)
+        logger.error("[GRADE_NODE] Error: %s", e, exc_info=True)
         # On error, pass through all documents (safe fallback)
         errors = state.get("errors", [])
         errors.append(f"Grading error: {str(e)}")
@@ -453,7 +453,7 @@ Your answer:"""
         }
 
     except Exception as e:
-        logger.error(f"[GENERATE_NODE] Error: {e}", exc_info=True)
+        logger.error("[GENERATE_NODE] Error: %s", e, exc_info=True)
         # Return error message as generation
         errors = state.get("errors", [])
         errors.append(f"Generation error: {str(e)}")
@@ -700,7 +700,7 @@ async def invoke_rag_workflow(question: str, metadata: dict[str, Any] = None) ->
         logger.info(f"[WORKFLOW] Completed successfully. Path: {final_state.get('execution_path')}")
         return final_state
     except Exception as e:
-        logger.error(f"[WORKFLOW] Error during execution: {e}", exc_info=True)
+        logger.error("[WORKFLOW] Error during execution: %s", e, exc_info=True)
         return {
             **initial_state,
             "errors": [str(e)],

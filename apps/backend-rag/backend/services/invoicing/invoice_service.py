@@ -77,13 +77,13 @@ class InvoiceAutomationService:
         Returns:
             dict with results of all operations
         """
-        logger.info(f"Invoice automation triggered for practice {practice_id} by {triggered_by}")
+        logger.info("Invoice automation triggered for practice %s by %s", practice_id, triggered_by)
 
         try:
             # Step 1: Fetch practice and client data
             practice_data = await self._fetch_practice_data(practice_id)
             if not practice_data:
-                logger.error(f"Practice {practice_id} not found")
+                logger.error("Practice %s not found", practice_id)
                 return {"success": False, "error": "Practice not found"}
 
             client_data = await self._fetch_client_data(practice_data["client_id"])
@@ -92,7 +92,7 @@ class InvoiceAutomationService:
                 return {"success": False, "error": "Client not found"}
 
             # Step 2: Generate invoice PDF locally
-            logger.info(f"Generating invoice PDF for practice {practice_id}")
+            logger.info("Generating invoice PDF for practice %s", practice_id)
             try:
                 invoice_number = self.invoice_generator.generate_invoice_number(practice_id)
 
@@ -130,13 +130,13 @@ class InvoiceAutomationService:
                 )
 
                 filename = f"Invoice_{invoice_number}.pdf"
-                logger.info(f"PDF generated: {filename}")
+                logger.info("PDF generated: %s", filename)
 
             except (OSError, ValueError, KeyError) as pdf_error:
-                logger.warning(f"Failed to generate PDF: {pdf_error}")
+                logger.warning("Failed to generate PDF: %s", pdf_error)
                 return {"success": False, "error": f"PDF generation failed: {pdf_error}"}
             except Exception as pdf_error:
-                logger.exception(f"Unexpected error generating PDF for practice {practice_id}")
+                logger.exception("Unexpected error generating PDF for practice %s", practice_id)
                 return {"success": False, "error": f"PDF generation failed: {pdf_error}"}
 
             # Step 3: Send invoice email to client
@@ -205,14 +205,14 @@ class InvoiceAutomationService:
                     filename=filename,
                 )
                 asya_notified = True
-                logger.info(f"Accounting notification sent to {ACCOUNTING_EMAIL}")
+                logger.info("Accounting notification sent to %s", ACCOUNTING_EMAIL)
             except httpx.HTTPStatusError as notify_error:
                 logger.warning(
                     f"Email API returned {notify_error.response.status_code} "
                     f"sending accounting notification: {notify_error}",
                 )
             except httpx.HTTPError as notify_error:
-                logger.warning(f"Failed to notify accounting: {notify_error}")
+                logger.warning("Failed to notify accounting: %s", notify_error)
             except Exception:
                 logger.exception("Unexpected error sending accounting notification")
 
@@ -229,14 +229,14 @@ class InvoiceAutomationService:
                 )
                 drive_file_id = upload_result.get("id")
                 drive_web_link = upload_result.get("webViewLink")
-                logger.info(f"Invoice backup uploaded to Drive: {drive_file_id}")
+                logger.info("Invoice backup uploaded to Drive: %s", drive_file_id)
             except GoogleHttpError as drive_error:
                 logger.warning(
                     f"Google Drive API error uploading invoice backup: "
                     f"{drive_error.status_code} {drive_error.reason}",
                 )
             except OSError as drive_error:
-                logger.warning(f"Network error uploading invoice backup to Drive: {drive_error}")
+                logger.warning("Network error uploading invoice backup to Drive: %s", drive_error)
             except Exception:
                 logger.exception("Unexpected error uploading invoice backup to Drive")
                 # Continue even if Drive upload fails
@@ -258,7 +258,7 @@ class InvoiceAutomationService:
                 triggered_by=triggered_by,
             )
 
-            logger.info(f"Invoice automation completed successfully for practice {practice_id}")
+            logger.info("Invoice automation completed successfully for practice %s", practice_id)
 
             return {
                 "success": True,
@@ -276,7 +276,7 @@ class InvoiceAutomationService:
             )
             return {"success": False, "error": str(error)}
         except Exception as error:
-            logger.exception(f"Unexpected error in invoice automation for practice {practice_id}")
+            logger.exception("Unexpected error in invoice automation for practice %s", practice_id)
             return {"success": False, "error": str(error)}
 
     async def _send_invoice_email_to_client(
@@ -329,7 +329,7 @@ class InvoiceAutomationService:
         )
         response.raise_for_status()
 
-        logger.info(f"Invoice email sent to {client_email} from zantara@ (cc: {cc_emails})")
+        logger.info("Invoice email sent to %s from zantara@ (cc: %s)", client_email, cc_emails)
         return True
 
     async def _send_accounting_notification(
@@ -380,7 +380,7 @@ class InvoiceAutomationService:
         )
         response.raise_for_status()
 
-        logger.info(f"Accounting notification sent to {ACCOUNTING_EMAIL} from zantara@")
+        logger.info("Accounting notification sent to %s from zantara@", ACCOUNTING_EMAIL)
         return True
 
     async def _fetch_practice_data(self, practice_id: int) -> dict | None:
@@ -591,7 +591,7 @@ class InvoiceAutomationService:
                 f"Invoice {invoice_info['invoice_number']} created and sent",
             )
 
-        logger.info(f"Practice {practice_id} updated with invoice information")
+        logger.info("Practice %s updated with invoice information", practice_id)
 
     async def regenerate_invoice(
         self,
@@ -606,5 +606,5 @@ class InvoiceAutomationService:
         - Need to send updated version
         - Previous automation failed
         """
-        logger.info(f"Manual invoice regeneration requested for practice {practice_id}")
+        logger.info("Manual invoice regeneration requested for practice %s", practice_id)
         return await self.trigger_on_sending_invoice(practice_id, triggered_by)

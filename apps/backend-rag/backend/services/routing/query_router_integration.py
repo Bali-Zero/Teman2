@@ -105,7 +105,7 @@ class QueryRouterIntegration:
         """
         # Check for override first
         if collection_override:
-            logger.info(f"🔧 Using override collection: {collection_override}")
+            logger.info("🔧 Using override collection: %s", collection_override)
             return {
                 "collection_name": collection_override,
                 "collections": [collection_override],
@@ -130,8 +130,7 @@ class QueryRouterIntegration:
         is_multi_domain = len(active_domains) > 1
         if is_multi_domain and not enable_fallbacks:
             logger.info(
-                f"🔀 [Routing] Multi-domain query detected ({active_domains}), "
-                f"auto-enabling fallbacks",
+                "🔀 [Routing] Multi-domain query detected (%s), auto-enabling fallbacks", active_domains,
             )
             enable_fallbacks = True
 
@@ -158,7 +157,7 @@ class QueryRouterIntegration:
                     target_collection = domain_to_collection.get(domain)
                     if target_collection and target_collection not in collections:
                         collections.append(target_collection)
-                        logger.info(f"📎 [Routing] Added {target_collection} for domain '{domain}'")
+                        logger.info("📎 [Routing] Added %s for domain '%s'", target_collection, domain)
 
             logger.info(
                 f"🎯 [Routing] Primary: {primary_collection} "
@@ -175,7 +174,7 @@ class QueryRouterIntegration:
                 "active_domains": active_domains,
             }
         collection_name = self.router.route(query)
-        logger.info(f"🧭 [Routing] Collection: {collection_name}")
+        logger.info("🧭 [Routing] Collection: %s", collection_name)
         return {
             "collection_name": collection_name,
             "collections": [collection_name],

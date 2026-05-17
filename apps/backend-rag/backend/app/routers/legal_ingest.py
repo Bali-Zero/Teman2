@@ -119,7 +119,7 @@ async def ingest_legal_document(request: LegalIngestRequest) -> LegalIngestRespo
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error in legal ingestion endpoint: {e}", exc_info=True)
+        logger.error("Error in legal ingestion endpoint: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to ingest legal document: {str(e)}",
@@ -205,7 +205,7 @@ async def upload_legal_document(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error uploading legal document: {e}", exc_info=True)
+        logger.error("Error uploading legal document: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to ingest legal document: {str(e)}",
@@ -215,9 +215,9 @@ async def upload_legal_document(
         if temp_path and temp_path.exists():
             try:
                 os.remove(temp_path)
-                logger.debug(f"Cleaned up temp file: {temp_path}")
+                logger.debug("Cleaned up temp file: %s", temp_path)
             except Exception as e:
-                logger.warning(f"Failed to clean up temp file {temp_path}: {e}")
+                logger.warning("Failed to clean up temp file %s: %s", temp_path, e)
 
 
 @router.post("/ingest-batch", status_code=status.HTTP_200_OK)
@@ -245,7 +245,7 @@ async def ingest_legal_documents_batch(
             )
             results.append({"file_path": file_path, **result})
         except Exception as e:
-            logger.error(f"Error ingesting {file_path}: {e}")
+            logger.error("Error ingesting %s: %s", file_path, e)
             results.append(
                 {
                     "file_path": file_path,
@@ -286,7 +286,7 @@ async def get_collection_stats(collection_name: str = "legal_unified") -> dict[s
             "message": "Collection stats endpoint - implementation pending",
         }
     except Exception as e:
-        logger.error(f"Error getting collection stats: {e}")
+        logger.error("Error getting collection stats: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get collection stats: {str(e)}",
@@ -364,7 +364,7 @@ async def register_parent_document(
         }
 
     except Exception as e:
-        logger.error(f"Failed to register parent document: {e}", exc_info=True)
+        logger.error("Failed to register parent document: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to register parent document: {str(e)}",
@@ -427,7 +427,7 @@ async def get_parent_documents(
         }
 
     except Exception as e:
-        logger.error(f"Failed to query parent_documents: {e}", exc_info=True)
+        logger.error("Failed to query parent_documents: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to query parent documents: {str(e)}",
@@ -488,7 +488,7 @@ async def get_bab_full_text(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to query BAB text: {e}", exc_info=True)
+        logger.error("Failed to query BAB text: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to query BAB text: {str(e)}",
@@ -609,7 +609,7 @@ async def ingest_legal_full(
         )
 
     except Exception as e:
-        logger.error(f"Error creating legal ingest job: {e}", exc_info=True)
+        logger.error("Error creating legal ingest job: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to create ingest job: {str(e)}",
@@ -659,7 +659,7 @@ async def get_legal_ingest_job(job_id: str) -> LegalIngestJobResponse:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error fetching legal ingest job: {e}", exc_info=True)
+        logger.error("Error fetching legal ingest job: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch job: {str(e)}",

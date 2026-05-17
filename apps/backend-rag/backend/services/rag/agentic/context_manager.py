@@ -83,7 +83,7 @@ async def fetch_profile_and_history(
                     WHERE CAST(up.id AS TEXT) = $1 OR up.email = $1
                 """
                 logger.info(
-                    f"🧠 [ContextManager] Executing profile query for user_id: {user_id}, session_id: {session_id}",
+                    "🧠 [ContextManager] Executing profile query for user_id: %s, session_id: %s", user_id, session_id,
                 )
                 row = await conn.fetchrow(query_combined, user_id, session_id)
             else:
@@ -111,7 +111,7 @@ async def fetch_profile_and_history(
                     WHERE CAST(up.id AS TEXT) = $1 OR up.email = $1
                 """
                 logger.info(
-                    f"🧠 [ContextManager] Executing profile query for user_id: {user_id} (no session_id)",
+                    "🧠 [ContextManager] Executing profile query for user_id: %s (no session_id)", user_id,
                 )
                 row = await conn.fetchrow(query_combined, user_id)
 
@@ -147,7 +147,7 @@ async def fetch_profile_and_history(
                         context["entities"] = mem_cache.get_entities(conversation_id)
 
     except (asyncpg.PostgresError, asyncpg.InterfaceError, json.JSONDecodeError, KeyError) as e:
-        logger.error(f"Failed to fetch profile/history for {user_id}: {e}", exc_info=True)
+        logger.error("Failed to fetch profile/history for %s: %s", user_id, e, exc_info=True)
 
     return context
 
@@ -186,7 +186,7 @@ async def fetch_memory_facts(
         return memory_data
 
     try:
-        logger.warning(f"🧠 [ContextManager] Loading memory facts for user: {user_id}")
+        logger.warning("🧠 [ContextManager] Loading memory facts for user: %s", user_id)
 
         # Pass query for query-aware collective memory retrieval
         memory_context = await memory_orchestrator.get_user_context(user_id, query=query)
@@ -210,12 +210,12 @@ async def fetch_memory_facts(
             logger.warning(f"📋 [ContextManager] Sample facts: {memory_context.profile_facts[:3]}")
         else:
             logger.warning(
-                f"⚠️  [ContextManager] NO profile facts found for {user_id} - user recognition will fail!",
+                "⚠️  [ContextManager] NO profile facts found for %s - user recognition will fail!", user_id,
             )
 
     except (asyncpg.PostgresError, ValueError, RuntimeError, KeyError) as e:
         logger.error(
-            f"❌ [ContextManager] Failed to fetch memory context for {user_id}: {e}",
+            "❌ [ContextManager] Failed to fetch memory context for %s: %s", user_id, e,
             exc_info=True,
         )
 
@@ -273,7 +273,7 @@ async def get_user_context(
             logger.warning("Memory cache lookup skipped - user_id not found in cache")
             pass
         except (KeyError, ValueError, RuntimeError) as e:
-            logger.warning(f"⚠️ Memory cache lookup failed: {e}", exc_info=True)
+            logger.warning("⚠️ Memory cache lookup failed: %s", e, exc_info=True)
 
     # Keep original user_id (email) for memory queries
     original_user_id = user_id
@@ -310,7 +310,7 @@ async def get_user_context(
 
     # Handle profile result
     if isinstance(profile_data, Exception):
-        logger.error(f"❌ Profile fetch failed: {profile_data}", exc_info=True)
+        logger.error("❌ Profile fetch failed: %s", profile_data)
         profile_time = 0.0
     else:
         profile_result, profile_time = profile_data
@@ -319,7 +319,7 @@ async def get_user_context(
 
     # Handle memory result
     if isinstance(memory_data, Exception):
-        logger.error(f"❌ Memory fetch failed: {memory_data}", exc_info=True)
+        logger.error("❌ Memory fetch failed: %s", memory_data)
         # Fallback: empty facts (graceful degradation)
         context["facts"] = []
         context["collective_facts"] = []

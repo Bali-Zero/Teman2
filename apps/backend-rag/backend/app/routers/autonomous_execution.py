@@ -178,7 +178,7 @@ async def approve_step(
 
     executor.record_approval(plan_id, step_id, request.approved)
     action = "approved" if request.approved else "rejected"
-    logger.info(f"Step {step_id} in plan {plan_id} {action}")
+    logger.info("Step %s in plan %s %s", step_id, plan_id, action)
 
     await invalidate_cache("zantara:autonomous_execution:*")
     return {"status": action, "plan_id": plan_id, "step_id": step_id}

@@ -63,7 +63,7 @@ class CompletedProcessService:
         Returns:
             dict with results of all operations
         """
-        logger.info(f"Process completion automation triggered for practice {practice_id}")
+        logger.info("Process completion automation triggered for practice %s", practice_id)
 
         try:
             # Fetch practice and client data
@@ -101,7 +101,7 @@ class CompletedProcessService:
                     )
                     client_notified = True
                 except Exception as e:
-                    logger.error(f"Failed to send completion email to client: {e}")
+                    logger.error("Failed to send completion email to client: %s", e)
 
             team_notified = False
             if team_leader_email:
@@ -115,7 +115,7 @@ class CompletedProcessService:
                     )
                     team_notified = True
                 except Exception as e:
-                    logger.error(f"Failed to notify team leader: {e}")
+                    logger.error("Failed to notify team leader: %s", e)
 
             # Log activity
             activity_desc = (
@@ -144,7 +144,7 @@ class CompletedProcessService:
 
         except Exception as error:
             logger.error(
-                f"Process completion automation failed for practice {practice_id}: {error}",
+                "Process completion automation failed for practice %s: %s", practice_id, error,
                 exc_info=True,
             )
             return {"success": False, "error": str(error)}
@@ -278,7 +278,7 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
             cc=team_member_email if team_member_email and team_member_email != client_email else None,
             include_logo=True,
         )
-        logger.info(f"Completion email sent to client {client_email}")
+        logger.info("Completion email sent to client %s", client_email)
 
     async def _send_team_leader_completion_notification(
         self,
@@ -397,13 +397,13 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
                 json=payload,
             )
             response.raise_for_status()
-            logger.info(f"Email sent to {to_email} via Brevo")
+            logger.info("Email sent to %s via Brevo", to_email)
             await record_email_result(
                 self.db_pool, row_id, status="sent", provider="brevo",
             )
             return
         except Exception as brevo_error:
-            logger.warning(f"Brevo failed for {to_email}, trying Zoho: {brevo_error}")
+            logger.warning("Brevo failed for %s, trying Zoho: %s", to_email, brevo_error)
             brevo_err_msg = str(brevo_error)
 
         # 2) Zoho fallback
@@ -413,7 +413,7 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
                 subject=subject,
                 body=body,
             )
-            logger.info(f"Email sent to {to_email} via Zoho fallback")
+            logger.info("Email sent to %s via Zoho fallback", to_email)
             await record_email_result(
                 self.db_pool, row_id, status="sent", provider="zoho",
                 error_message=f"brevo_failed: {brevo_err_msg}",
@@ -422,7 +422,7 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
         except Exception as zoho_error:
             combined_err = f"brevo: {brevo_err_msg} | zoho: {zoho_error}"
             logger.error(
-                f"Both Brevo and Zoho failed for {to_email}: {combined_err}",
+                "Both Brevo and Zoho failed for %s: %s", to_email, combined_err,
             )
             await record_email_result(
                 self.db_pool, row_id, status="failed", provider="zoho",

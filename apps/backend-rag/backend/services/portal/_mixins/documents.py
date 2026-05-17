@@ -298,7 +298,7 @@ class PortalDocumentsMixin:
                 "Upload blocked for security reasons.",
             )
 
-        logger.info(f"✅ Virus scan passed for {file_name}")
+        logger.info("✅ Virus scan passed for %s", file_name)
 
         # Calculate file size
         file_size_kb = len(file_content) // 1024
@@ -306,7 +306,7 @@ class PortalDocumentsMixin:
         # Memory optimization: skip OCR for very large files (> 50MB)
         skip_ocr = file_size_kb > 51200  # 50MB
         if skip_ocr:
-            logger.warning(f"File too large for OCR ({file_size_kb}KB), skipping: {file_name}")
+            logger.warning("File too large for OCR (%sKB), skipping: %s", file_size_kb, file_name)
 
         # =========================================================================
         # STEP 0: RATE LIMITING & VALIDATION
@@ -510,7 +510,7 @@ class PortalDocumentsMixin:
                 )
             except Exception as e:
                 if not self._is_undefined_table_error(e):
-                    logger.warning(f"Could not create timeline event for upload: {e}")
+                    logger.warning("Could not create timeline event for upload: %s", e)
 
             logger.info(
                 f"✅ Document processed and stored: {file_name} for client {client_id}, "
@@ -541,9 +541,9 @@ class PortalDocumentsMixin:
                             document_type=document_type,
                         ),
                     )
-                    logger.info(f"Smart OCR dispatch triggered for portal upload: {file_name}")
+                    logger.info("Smart OCR dispatch triggered for portal upload: %s", file_name)
             except Exception as e:
-                logger.error(f"Smart OCR dispatch failed for portal upload {file_name}: {e}")
+                logger.error("Smart OCR dispatch failed for portal upload %s: %s", file_name, e)
 
             # =========================================================================
             # STEP 7: NOTIFY ASSIGNED LEAD
@@ -745,7 +745,7 @@ class PortalDocumentsMixin:
                 result["error"] = "Upload failed after all retries"
 
         except Exception as e:
-            logger.error(f"Failed to upload to Google Drive: {e}", exc_info=True)
+            logger.error("Failed to upload to Google Drive: %s", e, exc_info=True)
             result["error"] = str(e)
 
         return result
@@ -810,7 +810,7 @@ class PortalDocumentsMixin:
             )
 
         except Exception as e:
-            logger.error(f"Service Account upload failed: {e}", exc_info=True)
+            logger.error("Service Account upload failed: %s", e, exc_info=True)
             result["error"] = f"Service Account upload failed: {str(e)}"
 
         return result
@@ -847,7 +847,7 @@ class PortalDocumentsMixin:
             return new_folder.get("id")
 
         except Exception as e:
-            logger.error(f"Failed to get/create folder '{folder_name}': {e}")
+            logger.error("Failed to get/create folder '%s': %s", folder_name, e)
             return None
 
     async def _notify_lead_about_document(
@@ -880,7 +880,7 @@ class PortalDocumentsMixin:
                 )
 
                 if not client:
-                    logger.debug(f"Client {client_id} not found, skipping notification")
+                    logger.debug("Client %s not found, skipping notification", client_id)
                     return
 
                 # Fallback to admin if no assigned lead
@@ -935,9 +935,9 @@ Questa è una notifica automatica da Bali Zero CRM.
                         )
                         resp.raise_for_status()
                     sent = True
-                    logger.info(f"📧 Document upload notification sent to {lead_email} via Brevo")
+                    logger.info("📧 Document upload notification sent to %s via Brevo", lead_email)
                 except Exception as brevo_err:
-                    logger.warning(f"Brevo failed for doc notification, trying Zoho: {brevo_err}")
+                    logger.warning("Brevo failed for doc notification, trying Zoho: %s", brevo_err)
 
                 # Fallback: Zoho
                 if not sent:
@@ -947,7 +947,7 @@ Questa è una notifica automatica da Bali Zero CRM.
                         body=body,
                     )
                     logger.info(
-                        f"📧 Document upload notification sent to {lead_email} via Zoho",
+                        "📧 Document upload notification sent to %s via Zoho", lead_email,
                     )
 
                 # Also insert CRM notification alert for the bell
@@ -964,11 +964,11 @@ Questa è una notifica automatica da Bali Zero CRM.
                         f"[Portal] {client['full_name']} uploaded {document_type.replace('_', ' ').title()}",
                     )
                 except Exception as alert_err:
-                    logger.debug(f"CRM alert insert failed (non-critical): {alert_err}")
+                    logger.debug("CRM alert insert failed (non-critical): %s", alert_err)
 
         except Exception as e:
             # Don't fail upload if notification fails
-            logger.error(f"Failed to send document upload notification: {e}", exc_info=True)
+            logger.error("Failed to send document upload notification: %s", e, exc_info=True)
 
 
 __all__ = ["PortalDocumentsMixin"]

@@ -76,7 +76,7 @@ class AudioService:
                 return transcript.text
 
         except Exception as e:
-            logger.error(f"Audio transcription failed: {e}")
+            logger.error("Audio transcription failed: %s", e)
             raise e
 
     async def generate_speech(
@@ -109,7 +109,7 @@ class AudioService:
                     return output_path
                 return audio_content
         except Exception as e:
-            logger.warning(f"Pollinations TTS failed, trying OpenAI fallback: {e}")
+            logger.warning("Pollinations TTS failed, trying OpenAI fallback: %s", e)
 
         # Fallback to OpenAI
         if self.openai_client:
@@ -122,7 +122,7 @@ class AudioService:
                     return output_path
                 return audio_content
             except Exception as e:
-                logger.error(f"OpenAI TTS also failed: {e}")
+                logger.error("OpenAI TTS also failed: %s", e)
                 raise e
         else:
             raise ValueError("All TTS providers failed and OpenAI fallback not available")
@@ -156,7 +156,7 @@ class AudioService:
                 # Might be JSON error response
                 try:
                     error_data = response.json()
-                    logger.warning(f"Pollinations returned JSON instead of audio: {error_data}")
+                    logger.warning("Pollinations returned JSON instead of audio: %s", error_data)
                 except (ValueError, httpx.DecodingError):
                     logger.debug("Pollinations returned non-audio, non-JSON response")
                 return None
@@ -167,7 +167,7 @@ class AudioService:
             logger.warning("Pollinations TTS timeout")
             return None
         except Exception as e:
-            logger.warning(f"Pollinations TTS error: {e}")
+            logger.warning("Pollinations TTS error: %s", e)
             return None
 
     @llm_cost_tracked(provider="openai_audio", static_model="tts-1")

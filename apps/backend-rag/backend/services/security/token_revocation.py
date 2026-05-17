@@ -34,7 +34,7 @@ class TokenRevocationService:
             return False
         try:
             await self._redis.setex(f"revoked:{jti}", ttl_seconds, reason)
-            logger.info(f"S03: Token revoked jti={jti} reason={reason} ttl={ttl_seconds}s")
+            logger.info("S03: Token revoked jti=%s reason=%s ttl=%ss", jti, reason, ttl_seconds)
             return True
         except (RedisError, OSError) as e:
             logger.warning("S03: Token revocation failed jti=%s: %s", jti, e)
@@ -64,7 +64,7 @@ class TokenRevocationService:
             return False
         try:
             await self._redis.setex(f"revoked_user:{user_email}", 86400, reason)
-            logger.info(f"S03: All tokens revoked for {user_email} reason={reason}")
+            logger.info("S03: All tokens revoked for %s reason=%s", user_email, reason)
             return True
         except (RedisError, OSError) as e:
             logger.warning("S03: User revocation failed %s: %s", user_email, e)

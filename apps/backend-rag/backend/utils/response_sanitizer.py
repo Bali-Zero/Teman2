@@ -56,7 +56,7 @@ def sanitize_zantara_response(response: str) -> str:
 
     for pattern in bad_patterns:
         if re.search(pattern, cleaned, re.IGNORECASE):
-            logger.warning(f"🚨 SANITIZER MATCH: pattern '{pattern}' matched! Replacing response.")
+            logger.warning("🚨 SANITIZER MATCH: pattern '%s' matched! Replacing response.", pattern)
             cleaned = replacement_msg
             break  # Early exit once we find a match
 

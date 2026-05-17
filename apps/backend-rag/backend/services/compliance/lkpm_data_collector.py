@@ -129,7 +129,7 @@ class LKPMDataCollector:
         company_id: str | None = None,
     ) -> LKPMDraft:
         """Pull data from Jurnal.id and categorize into LKPM format."""
-        logger.info(f"Collecting Jurnal data for client {client_id}, {quarter} {year}")
+        logger.info("Collecting Jurnal data for client %s, %s %s", client_id, quarter, year)
 
         start_date, end_date = self._quarter_dates(quarter, year)
 
@@ -293,7 +293,7 @@ class LKPMDataCollector:
                     tki = int(fields.get("tki_count", 0))
 
         except Exception as e:
-            logger.warning(f"Employment data query failed: {e}")
+            logger.warning("Employment data query failed: %s", e)
             tka = 0
             tki = 0
 

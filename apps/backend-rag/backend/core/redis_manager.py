@@ -111,7 +111,7 @@ class RedisManager:
             self._stats["connections_created"] += 1
             logger.info("Redis sync client connected")
         except Exception as e:
-            logger.warning(f"Redis sync client unavailable: {e}")
+            logger.warning("Redis sync client unavailable: %s", e)
             self._sync_client = None
 
         # Initialize async client (for all async components)
@@ -129,7 +129,7 @@ class RedisManager:
             self._stats["connections_created"] += 1
             logger.info("Redis async client connected")
         except Exception as e:
-            logger.warning(f"Redis async client unavailable: {e}")
+            logger.warning("Redis async client unavailable: %s", e)
             self._async_client = None
 
         self._available = self._sync_client is not None or self._async_client is not None
@@ -157,7 +157,7 @@ class RedisManager:
     def register_component(self, name: str, status: str) -> None:
         """Register a component's Redis status."""
         self._components[name] = status
-        logger.debug(f"Redis component registered: {name}={status}")
+        logger.debug("Redis component registered: %s=%s", name, status)
 
     async def health_check(self) -> dict[str, Any]:
         """
@@ -198,7 +198,7 @@ class RedisManager:
             result["memory_used"] = info.get("used_memory_human", "unknown")
 
         except Exception as e:
-            logger.error(f"Redis health check failed: {e}")
+            logger.error("Redis health check failed: %s", e)
             result["error"] = str(e)
 
         return result
@@ -309,14 +309,14 @@ class RedisManager:
                     self._stats["connections_created"] += 1
                     logger.info("Redis sync client restored — rate limiting is now distributed")
                 except Exception as sync_err:
-                    logger.warning(f"Redis sync client restore failed (async-only mode): {sync_err}")
+                    logger.warning("Redis sync client restore failed (async-only mode): %s", sync_err)
                     self._sync_client = None
 
                 self._available = True
                 logger.info("Redis reconnected successfully — distributed rate limiting restored")
                 return
             except Exception as e:
-                logger.warning(f"Redis reconnect failed: {e}")
+                logger.warning("Redis reconnect failed: %s", e)
 
         logger.debug("Redis reconnect loop exited")
 
@@ -341,7 +341,7 @@ class RedisManager:
             Number of keys deleted
         """
         if not self._available or self._async_client is None:
-            logger.debug(f"Redis unavailable — skipping invalidation for pattern: {pattern}")
+            logger.debug("Redis unavailable — skipping invalidation for pattern: %s", pattern)
             return 0
 
         try:
@@ -356,10 +356,10 @@ class RedisManager:
                 if cursor == 0:
                     break
             if deleted > 0:
-                logger.info(f"Cache invalidated: {deleted} keys matching '{pattern}'")
+                logger.info("Cache invalidated: %s keys matching '%s'", deleted, pattern)
             return deleted
         except Exception as e:
-            logger.error(f"Cache invalidation failed for pattern '{pattern}': {e}")
+            logger.error("Cache invalidation failed for pattern '%s': %s", pattern, e)
             return 0
 
     async def invalidate_collection_cache(self, collection_name: str) -> int:
@@ -449,7 +449,7 @@ class RedisManager:
                 pass
 
         except Exception as e:
-            logger.error(f"Failed to get Redis memory info: {e}")
+            logger.error("Failed to get Redis memory info: %s", e)
             result["error"] = str(e)
 
         return result

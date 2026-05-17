@@ -44,7 +44,7 @@ class BruteForceDetector:
         try:
             return bool(await self._redis.exists(self._block_key(ip, email)))
         except (RedisError, OSError) as e:
-            logger.warning(f"S03: Brute force check failed (fail-open): {e}")
+            logger.warning("S03: Brute force check failed (fail-open): %s", e)
             return False
         except Exception:
             logger.exception("S03: Brute force check unexpected error (fail-open)")
@@ -64,9 +64,9 @@ class BruteForceDetector:
                     self._block_seconds,
                     f"brute_force:{count}_attempts",
                 )
-                logger.warning(f"S03: Brute force block ip={ip} email={email} attempts={count}")
+                logger.warning("S03: Brute force block ip=%s email=%s attempts=%s", ip, email, count)
         except (RedisError, OSError) as e:
-            logger.warning(f"S03: Brute force record failed: {e}")
+            logger.warning("S03: Brute force record failed: %s", e)
         except Exception:
             logger.exception("S03: Brute force record unexpected error")
 
@@ -76,6 +76,6 @@ class BruteForceDetector:
         try:
             await self._redis.delete(self._fail_key(ip, email), self._block_key(ip, email))
         except (RedisError, OSError) as e:
-            logger.warning(f"S03: Brute force clear failed: {e}")
+            logger.warning("S03: Brute force clear failed: %s", e)
         except Exception:
             logger.exception("S03: Brute force clear unexpected error")

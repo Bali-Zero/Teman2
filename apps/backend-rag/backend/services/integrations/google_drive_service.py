@@ -137,7 +137,7 @@ class GoogleDriveService:
         Raises:
             ValueError: If token exchange fails
         """
-        logger.info(f"[GDRIVE] Exchanging code for user {user_id}")
+        logger.info("[GDRIVE] Exchanging code for user %s", user_id)
 
         client = self._get_client()
         response = await client.post(
@@ -153,7 +153,7 @@ class GoogleDriveService:
 
         if response.status_code != 200:
             error_data = response.json()
-            logger.error(f"[GDRIVE] Token exchange failed: {error_data}")
+            logger.error("[GDRIVE] Token exchange failed: %s", error_data)
             raise ValueError(
                 f"Token exchange failed: {error_data.get('error_description', 'Unknown error')}",
             )
@@ -173,7 +173,7 @@ class GoogleDriveService:
             expires_at=expires_at,
         )
 
-        logger.info(f"[GDRIVE] Successfully connected for user {user_id}")
+        logger.info("[GDRIVE] Successfully connected for user %s", user_id)
         return token_data
 
     async def _store_tokens(
@@ -256,7 +256,7 @@ class GoogleDriveService:
                 self._oauth_system_disabled_logged = True
             return None
 
-        logger.info(f"[GDRIVE] Refreshing token for user {user_id}")
+        logger.info("[GDRIVE] Refreshing token for user %s", user_id)
 
         client = self._get_client()
         response = await client.post(
@@ -270,7 +270,7 @@ class GoogleDriveService:
         )
 
         if response.status_code != 200:
-            logger.error(f"[GDRIVE] Token refresh failed for user {user_id}")
+            logger.error("[GDRIVE] Token refresh failed for user %s", user_id)
             return None
 
         token_data = response.json()
@@ -324,7 +324,7 @@ class GoogleDriveService:
                 user_id,
             )
 
-        logger.info(f"[GDRIVE] Disconnected for user {user_id}")
+        logger.info("[GDRIVE] Disconnected for user %s", user_id)
         return True
 
     # =========================================================================
@@ -376,7 +376,7 @@ class GoogleDriveService:
 
         if response.status_code != 200:
             error = response.json()
-            logger.error(f"[GDRIVE] List files failed: {error}")
+            logger.error("[GDRIVE] List files failed: %s", error)
             raise ValueError(
                 f"Failed to list files: {error.get('error', {}).get('message', 'Unknown error')}",
             )
@@ -595,7 +595,7 @@ class GoogleDriveService:
 
         if response.status_code != 200:
             error = response.json()
-            logger.error(f"[GDRIVE] Create folder failed: {error}")
+            logger.error("[GDRIVE] Create folder failed: %s", error)
             raise ValueError(
                 f"Failed to create folder: {error.get('error', {}).get('message', 'Unknown error')}",
             )
@@ -697,11 +697,11 @@ class GoogleDriveService:
                     if len(parts) == 1:
                         folder_id_cache[name] = subfolder["id"]
                 except Exception as e:
-                    logger.error(f"[GDRIVE] Failed to create subfolder {subfolder_path}: {e}")
+                    logger.error("[GDRIVE] Failed to create subfolder %s: %s", subfolder_path, e)
                     continue
 
             logger.info(
-                f"[GDRIVE] Created client folder structure for {client_name}: {root_folder_id}",
+                "[GDRIVE] Created client folder structure for %s: %s", client_name, root_folder_id,
             )
 
             return {
@@ -712,7 +712,7 @@ class GoogleDriveService:
             }
 
         except Exception as e:
-            logger.error(f"[GDRIVE] Failed to create client folder for {client_name}: {e}")
+            logger.error("[GDRIVE] Failed to create client folder for %s: %s", client_name, e)
             return {
                 "success": False,
                 "error": str(e),
@@ -789,7 +789,7 @@ class GoogleDriveService:
 
         if response.status_code != 200:
             error = response.json()
-            logger.error(f"[GDRIVE] List folder files failed: {error}")
+            logger.error("[GDRIVE] List folder files failed: %s", error)
             raise ValueError(
                 f"Failed to list files: {error.get('error', {}).get('message', 'Unknown error')}",
             )
@@ -880,7 +880,7 @@ class GoogleDriveService:
 
         if response.status_code != 200:
             error = response.json()
-            logger.error(f"[GDRIVE] Get folder structure failed: {error}")
+            logger.error("[GDRIVE] Get folder structure failed: %s", error)
             raise ValueError(
                 f"Failed to get folder structure: {error.get('error', {}).get('message', 'Unknown error')}",
             )
@@ -1009,7 +1009,7 @@ class GoogleDriveService:
 
         if metadata_response.status_code != 200:
             error = metadata_response.json()
-            logger.error(f"[GDRIVE] Upload file metadata failed: {error}")
+            logger.error("[GDRIVE] Upload file metadata failed: %s", error)
             raise ValueError(
                 f"Failed to upload file: {error.get('error', {}).get('message', 'Unknown error')}",
             )
@@ -1034,7 +1034,7 @@ class GoogleDriveService:
                 if upload_response.headers.get("content-type", "").startswith("application/json")
                 else {}
             )
-            logger.error(f"[GDRIVE] Upload file content failed: {error}")
+            logger.error("[GDRIVE] Upload file content failed: %s", error)
             raise ValueError(
                 f"Failed to upload file content: {error.get('error', {}).get('message', 'Unknown error')}",
             )
@@ -1044,7 +1044,7 @@ class GoogleDriveService:
         size_bytes = int(file_info.get("size", 0)) if file_info.get("size") else len(file_content)
 
         logger.info(
-            f"[GDRIVE] Uploaded file '{file_name}' ({size_bytes} bytes) to folder {folder_id}",
+            "[GDRIVE] Uploaded file '%s' (%s bytes) to folder %s", file_name, size_bytes, folder_id,
         )
 
         return {

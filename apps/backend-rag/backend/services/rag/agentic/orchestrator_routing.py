@@ -60,7 +60,7 @@ class OrchestratorRoutingManager:
         """
         logger.debug("Calling verify_intent...")
         intent = await self.intent_classifier.classify_intent(query)
-        logger.debug(f"Intent classified: {intent}")
+        logger.debug("Intent classified: %s", intent)
         return intent
 
     def select_model_tier(

@@ -182,7 +182,7 @@ class LegalChunker:
             if pasal_length > char_limit:
                 # Split by Ayat first
                 logger.debug(
-                    f"Pasal {pasal_num} too large ({pasal_length} chars), splitting by Ayat",
+                    "Pasal %s too large (%s chars), splitting by Ayat", pasal_num, pasal_length,
                 )
                 ayat_chunks = self._split_by_ayat(pasal_text, pasal_num)
 

@@ -261,7 +261,7 @@ async def build_context(
                         client_profile = meta
 
         except Exception as e:
-            logger.warning(f"Failed to load context for {phone}: {e}")
+            logger.warning("Failed to load context for %s: %s", phone, e)
 
     # Detect language from current message + history
     detected_language = detect_language(message_text, conversation_history)
@@ -314,7 +314,7 @@ async def build_context(
                     )
                 # If no existing row, it will be created when we save the conversation later
         except Exception as e:
-            logger.warning(f"Failed to save profile for {phone}: {e}")
+            logger.warning("Failed to save profile for %s: %s", phone, e)
 
     return {
         "client_name": sender_name,

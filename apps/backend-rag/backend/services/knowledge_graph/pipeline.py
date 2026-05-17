@@ -251,7 +251,7 @@ class KGPipeline:
             return result
 
         except Exception as e:
-            logger.error(f"Error processing chunk {chunk_id}: {e}")
+            logger.error("Error processing chunk %s: %s", chunk_id, e)
             self.stats.errors += 1
             return ExtractionResult(chunk_id=chunk_id, raw_text=text)
 
@@ -323,7 +323,7 @@ class KGPipeline:
                     )
                     self.stats.entities_persisted += 1
                 except Exception as e:
-                    logger.error(f"Failed to persist entity {eid}: {e}")
+                    logger.error("Failed to persist entity %s: %s", eid, e)
 
             # Persist relations (with schema validation)
             validator = SchemaValidator()
@@ -376,7 +376,7 @@ class KGPipeline:
                     )
                     self.stats.relations_persisted += 1
                 except Exception as e:
-                    logger.warning(f"Failed to persist relation {rel_id}: {e}")
+                    logger.warning("Failed to persist relation %s: %s", rel_id, e)
 
             # Log validation summary
             summary = validator.result.summary()
@@ -421,7 +421,7 @@ class KGPipeline:
             if isinstance(result, ExtractionResult):
                 valid_results.append(result)
             elif isinstance(result, Exception):
-                logger.error(f"Batch processing error: {result}")
+                logger.error("Batch processing error: %s", result)
                 self.stats.errors += 1
 
         return valid_results
@@ -446,7 +446,7 @@ class KGPipeline:
         self.stats = PipelineStats(start_time=datetime.now(tz=timezone.utc))
 
         total = len(chunks)
-        logger.info(f"Starting KG Pipeline for {total} chunks")
+        logger.info("Starting KG Pipeline for %s chunks", total)
 
         # Process in batches
         for i in range(0, total, self.config.batch_size):
@@ -500,7 +500,7 @@ class KGPipeline:
 
         self.stats = PipelineStats(start_time=datetime.now(tz=timezone.utc))
 
-        logger.info(f"Starting KG Pipeline from Qdrant collection '{collection_name}'")
+        logger.info("Starting KG Pipeline from Qdrant collection '%s'", collection_name)
 
         # Initialize Qdrant client
         qdrant = QdrantClient(collection_name=collection_name)
@@ -510,7 +510,7 @@ class KGPipeline:
             # Get collection stats
             stats = await qdrant.get_collection_stats()
             total_docs = stats.get("total_documents", 0)
-            logger.info(f"Collection has {total_docs} documents")
+            logger.info("Collection has %s documents", total_docs)
 
             if limit:
                 total_docs = min(total_docs, limit)

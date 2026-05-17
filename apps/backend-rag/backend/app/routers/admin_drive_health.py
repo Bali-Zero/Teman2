@@ -208,14 +208,14 @@ async def trigger_drive_poll(request: Request) -> dict[str, Any]:
 
         result = await poll_drive_changes()
         processed = result.get("processed", 0)
-        logger.info(f"Drive poll triggered via API: {processed} new files processed")
+        logger.info("Drive poll triggered via API: %s new files processed", processed)
         return {
             "status": "ok",
             "processed": processed,
             "result": result,
         }
     except Exception as e:
-        logger.error(f"Drive poll failed: {e}", exc_info=True)
+        logger.error("Drive poll failed: %s", e, exc_info=True)
         return {"status": "error", "message": str(e)}
 
 
@@ -346,7 +346,7 @@ async def backfill_drive_documents(
                 except Exception as e:
                     errors += 1
                     if errors <= 5:
-                        logger.warning(f"Backfill client #{cid}: {e}")
+                        logger.warning("Backfill client #%s: %s", cid, e)
 
                 if (i + 1) % 200 == 0:
                     logger.info(

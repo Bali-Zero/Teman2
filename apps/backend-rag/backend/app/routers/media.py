@@ -50,7 +50,7 @@ async def generate_image(request: ImagePrompt) -> Any:
         # Service returned an error
         error_msg = result.get("error", "Unknown error")
         error_details = result.get("details", "")
-        logger.error(f"❌ Image generation failed: {error_msg} - {error_details}")
+        logger.error("❌ Image generation failed: %s - %s", error_msg, error_details)
 
         # Return proper HTTP status codes for different error types
         if "not configured" in error_msg:
@@ -63,7 +63,7 @@ async def generate_image(request: ImagePrompt) -> Any:
         # Re-raise HTTP exceptions as-is
         raise
     except Exception as e:
-        logger.error(f"❌ Unexpected image generation error: {e}", exc_info=True)
+        logger.error("❌ Unexpected image generation error: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
             detail={"success": False, "error": "Internal server error", "details": str(e)},
@@ -102,7 +102,7 @@ async def upload_file(file: UploadFile = File(...)) -> dict[str, Any]:
         }
 
     except Exception as e:
-        logger.error(f"File upload error: {e}")
+        logger.error("File upload error: %s", e)
         raise HTTPException(
             status_code=500,
             detail={"success": False, "error": "Upload failed", "details": str(e)},

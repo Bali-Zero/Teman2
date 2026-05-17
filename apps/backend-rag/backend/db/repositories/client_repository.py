@@ -94,7 +94,7 @@ class ClientRepository(BaseRepository):
         except Exception as e:
             # 3) LOGGING STRUTTURATO: Nessun silent swallow
             logger.error(
-                f"Errore imprevisto durante la ricerca dinamica dei clienti con filtri {filters}: {e}",
+                "Errore imprevisto durante la ricerca dinamica dei clienti con filtri %s: %s", filters, e,
                 exc_info=True,
             )
             raise
@@ -244,13 +244,13 @@ class ClientRepository(BaseRepository):
                 raise
             except asyncpg.ForeignKeyViolationError as e:
                 logger.error(
-                    f"Violazione Foreign Key durante la creazione cliente/compagnia: {e}",
+                    "Violazione Foreign Key durante la creazione cliente/compagnia: %s", e,
                     exc_info=True,
                 )
                 raise
             except Exception as e:
                 logger.error(
-                    f"Fallimento critico e rollback nella transazione create_client_with_details: {e}",
+                    "Fallimento critico e rollback nella transazione create_client_with_details: %s", e,
                     exc_info=True,
                 )
                 raise

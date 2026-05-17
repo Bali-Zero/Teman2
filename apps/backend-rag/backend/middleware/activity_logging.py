@@ -214,7 +214,7 @@ class ActivityLoggingMiddleware(BaseHTTPMiddleware):
 
             except Exception as log_error:
                 # Don't fail the request if logging fails
-                logger.warning(f"⚠️ Failed to log API call: {log_error}")
+                logger.warning("⚠️ Failed to log API call: %s", log_error)
 
             # Log slow requests
             if response_time_ms > 1000:

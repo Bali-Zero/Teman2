@@ -107,7 +107,7 @@ class MemoryFactExtractor:
             return facts
 
         except Exception as e:
-            logger.error(f"❌ [FactExtractor] Extraction failed: {e}")
+            logger.error("❌ [FactExtractor] Extraction failed: %s", e)
             return []
 
     def _extract_from_text(self, text: str, source: str = "user") -> list[dict]:

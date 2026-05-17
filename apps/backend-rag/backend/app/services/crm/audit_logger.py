@@ -66,7 +66,7 @@ class CRMAuditLogger:
             changes = self._detect_changes(old_state, new_state)
 
             if not changes:
-                logger.warning(f"No changes detected for {entity_type} {entity_id}")
+                logger.warning("No changes detected for %s %s", entity_type, entity_id)
                 return True
 
             async with pool.acquire() as conn:
@@ -106,7 +106,7 @@ class CRMAuditLogger:
             return True
 
         except Exception as e:
-            logger.error(f"Failed to log audit entry: {e}", exc_info=True)
+            logger.error("Failed to log audit entry: %s", e, exc_info=True)
             return False
 
     def _detect_changes(
@@ -265,7 +265,7 @@ class CRMAuditLogger:
                 return [dict(row) for row in rows]
 
         except Exception as e:
-            logger.error(f"Failed to retrieve audit trail: {e}", exc_info=True)
+            logger.error("Failed to retrieve audit trail: %s", e, exc_info=True)
             return []
 
 
@@ -321,7 +321,7 @@ def audit_change(entity_type: str, change_type: str = "update") -> Any:
                     else:
                         logger.warning("⚠️ No database pool available for audit logging")
                 except Exception as e:
-                    logger.error(f"Failed to fetch client state: {e}", exc_info=True)
+                    logger.error("Failed to fetch client state: %s", e, exc_info=True)
 
             # Execute the function
             result = await func(*args, **kwargs)

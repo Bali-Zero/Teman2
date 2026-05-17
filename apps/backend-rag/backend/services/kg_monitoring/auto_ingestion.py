@@ -230,10 +230,10 @@ Return ONLY the JSON object, no other text."""
             logger.info("✅ Ingestion tracking tables initialized")
 
         except asyncpg.PostgresError as e:
-            logger.error(f"Failed to initialize DB tables: {e}")
+            logger.error("Failed to initialize DB tables: %s", e)
             raise
         except OSError as e:
-            logger.error(f"DB connection error during table init: {e}")
+            logger.error("DB connection error during table init: %s", e)
             raise
         except Exception as e:
             logger.exception("Unexpected error initializing DB tables")
@@ -448,7 +448,7 @@ Return ONLY the JSON object, no other text."""
             )
 
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse LLM response as JSON: {e}")
+            logger.error("Failed to parse LLM response as JSON: %s", e)
             logger.debug(f"Response text: {text[:500]}")
             # Fallback
             return ExtractedDocument(

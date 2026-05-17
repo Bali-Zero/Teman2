@@ -72,7 +72,7 @@ async def get_instagram_conversations(
                     if msgs and isinstance(msgs, list):
                         last_msg_text = msgs[-1].get("content", "")[:100]
                 except Exception as e:
-                    logger.error(f"Failed to parse Instagram messages: {e}")
+                    logger.error("Failed to parse Instagram messages: %s", e)
                     pass
 
                 metadata_raw = row["metadata"]
@@ -83,7 +83,7 @@ async def get_instagram_conversations(
                     )
                     client_name = meta.get("sender_name") or meta.get("client_name") or client_name
                 except Exception as e:
-                    logger.error(f"Failed to parse Instagram metadata: {e}")
+                    logger.error("Failed to parse Instagram metadata: %s", e)
                     pass
 
                 conversations.append(
@@ -98,7 +98,7 @@ async def get_instagram_conversations(
                 )
             return conversations
     except Exception as e:
-        logger.error(f"IG FAIL: {e}")
+        logger.error("IG FAIL: %s", e)
         return []
 
 
@@ -132,7 +132,7 @@ async def get_instagram_messages(
                 )
             return result
     except Exception as e:
-        logger.error(f"Failed to get Instagram messages: {e}")
+        logger.error("Failed to get Instagram messages: %s", e)
         return []
 
 
@@ -264,7 +264,7 @@ async def instagram_webhook(request: Request) -> dict[str, Any]:
 
         return {"status": "ok"}
     except Exception as e:
-        logger.error(f"Failed to route IG message: {e}")
+        logger.error("Failed to route IG message: %s", e)
         try:
             from backend.app.metrics import metrics_collector
             metrics_collector.record_webhook_request(channel="instagram", status="error")

@@ -50,7 +50,7 @@ class ClaimExtractor:
         if record_type == "jurisdiction":
             return self._extract_jurisdiction_claims(record)
 
-        logger.warning(f"Unknown record type: {record_type}")
+        logger.warning("Unknown record type: %s", record_type)
         return []
 
     def _extract_person_claims(self, r: dict[str, Any]) -> list[str]:

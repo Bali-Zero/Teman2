@@ -46,7 +46,7 @@ class SessionService:
         if redis_client is not None:
             self.redis = redis_client
             self._register_component("active")
-            logger.info(f"SessionService initialized via RedisManager ({ttl_hours}h TTL)")
+            logger.info("SessionService initialized via RedisManager (%sh TTL)", ttl_hours)
             return
 
         # Fallback: get from RedisManager
@@ -58,10 +58,10 @@ class SessionService:
             if client is not None:
                 self.redis = client
                 self._register_component("active")
-                logger.info(f"SessionService initialized via RedisManager ({ttl_hours}h TTL)")
+                logger.info("SessionService initialized via RedisManager (%sh TTL)", ttl_hours)
                 return
         except Exception as e:
-            logger.debug(f"RedisManager init skipped: {e}")
+            logger.debug("RedisManager init skipped: %s", e)
 
         # Legacy fallback: create own connection
         if redis_url:
@@ -74,10 +74,10 @@ class SessionService:
                     socket_timeout=5,
                 )
                 self._register_component("active_legacy")
-                logger.info(f"SessionService initialized with direct URL ({ttl_hours}h TTL)")
+                logger.info("SessionService initialized with direct URL (%sh TTL)", ttl_hours)
                 return
             except Exception as e:
-                logger.error(f"Failed to initialize SessionService: {e}")
+                logger.error("Failed to initialize SessionService: %s", e)
                 raise
 
         raise ValueError("SessionService requires redis_client, RedisManager, or redis_url")
@@ -89,7 +89,7 @@ class SessionService:
 
             RedisManager.get_instance().register_component("session_service", status)
         except Exception as e:
-            logger.debug(f"Could not register session_service component: {e}")
+            logger.debug("Could not register session_service component: %s", e)
 
     async def health_check(self) -> bool:
         """Check if Redis connection is healthy"""
@@ -97,7 +97,7 @@ class SessionService:
             await self.redis.ping()
             return True
         except Exception as e:
-            logger.error(f"❌ Redis health check failed: {e}")
+            logger.error("❌ Redis health check failed: %s", e)
             return False
 
     async def create_session(self) -> str:
@@ -111,10 +111,10 @@ class SessionService:
         try:
             # Initialize with empty history
             await self.redis.setex(f"session:{session_id}", self.ttl, json.dumps([]))
-            logger.info(f"🆕 Created session: {session_id}")
+            logger.info("🆕 Created session: %s", session_id)
             return session_id
         except Exception as e:
-            logger.error(f"❌ Failed to create session: {e}")
+            logger.error("❌ Failed to create session: %s", e)
             raise
 
     async def get_history(self, session_id: str) -> list[dict] | None:
@@ -130,17 +130,17 @@ class SessionService:
         try:
             data = await self.redis.get(f"session:{session_id}")
             if not data:
-                logger.warning(f"⚠️ Session not found or expired: {session_id}")
+                logger.warning("⚠️ Session not found or expired: %s", session_id)
                 return None
 
             history = json.loads(data)
             logger.info(f"📚 Retrieved {len(history)} messages from session {session_id}")
             return history
         except json.JSONDecodeError as e:
-            logger.error(f"❌ Failed to parse session data: {e}")
+            logger.error("❌ Failed to parse session data: %s", e)
             return None
         except Exception as e:
-            logger.error(f"❌ Failed to get session: {e}")
+            logger.error("❌ Failed to get session: %s", e)
             return None
 
     async def update_history(self, session_id: str, history: list[dict]) -> bool:
@@ -165,7 +165,7 @@ class SessionService:
             logger.info(f"💾 Updated session {session_id} with {len(history)} messages")
             return True
         except Exception as e:
-            logger.error(f"❌ Failed to update session: {e}")
+            logger.error("❌ Failed to update session: %s", e)
             return False
 
     async def delete_session(self, session_id: str) -> bool:
@@ -181,12 +181,12 @@ class SessionService:
         try:
             deleted = await self.redis.delete(f"session:{session_id}")
             if deleted > 0:
-                logger.info(f"🗑️ Deleted session: {session_id}")
+                logger.info("🗑️ Deleted session: %s", session_id)
                 return True
-            logger.warning(f"⚠️ Session not found for deletion: {session_id}")
+            logger.warning("⚠️ Session not found for deletion: %s", session_id)
             return False
         except Exception as e:
-            logger.error(f"❌ Failed to delete session: {e}")
+            logger.error("❌ Failed to delete session: %s", e)
             return False
 
     async def extend_ttl(self, session_id: str) -> bool:
@@ -205,10 +205,10 @@ class SessionService:
         try:
             extended = await self.redis.expire(f"session:{session_id}", self.ttl)
             if extended:
-                logger.debug(f"⏰ Extended TTL for session {session_id}")
+                logger.debug("⏰ Extended TTL for session %s", session_id)
             return extended
         except Exception as e:
-            logger.error(f"❌ Failed to extend TTL: {e}")
+            logger.error("❌ Failed to extend TTL: %s", e)
             return False
 
     async def get_session_info(self, session_id: str) -> dict | None:
@@ -243,7 +243,7 @@ class SessionService:
                 "ttl_hours": round(ttl_seconds / 3600, 2),
             }
         except Exception as e:
-            logger.error(f"❌ Failed to get session info: {e}")
+            logger.error("❌ Failed to get session info: %s", e)
             return None
 
     async def cleanup_expired_sessions(self) -> int:
@@ -313,7 +313,7 @@ class SessionService:
                         else:
                             ranges["51+"] += 1
                     except json.JSONDecodeError as e:
-                        logger.debug(f"JSON decode error in session analytics: {e}")
+                        logger.debug("JSON decode error in session analytics: %s", e)
 
             active_sessions = len([c for c in message_counts if c > 0])
             avg_messages = sum(message_counts) / len(message_counts) if message_counts else 0
@@ -330,7 +330,7 @@ class SessionService:
             return analytics
 
         except Exception as e:
-            logger.error(f"❌ Failed to get analytics: {e}")
+            logger.error("❌ Failed to get analytics: %s", e)
             return {
                 "error": str(e),
                 "total_sessions": 0,
@@ -368,7 +368,7 @@ class SessionService:
             )
             return True
         except Exception as e:
-            logger.error(f"❌ Failed to update session with custom TTL: {e}")
+            logger.error("❌ Failed to update session with custom TTL: %s", e)
             return False
 
     async def extend_ttl_custom(self, session_id: str, ttl_hours: int) -> bool:
@@ -386,10 +386,10 @@ class SessionService:
             ttl = timedelta(hours=ttl_hours)
             extended = await self.redis.expire(f"session:{session_id}", ttl)
             if extended:
-                logger.info(f"⏰ Extended TTL for session {session_id} to {ttl_hours}h")
+                logger.info("⏰ Extended TTL for session %s to %sh", session_id, ttl_hours)
             return extended
         except Exception as e:
-            logger.error(f"❌ Failed to extend TTL: {e}")
+            logger.error("❌ Failed to extend TTL: %s", e)
             return False
 
     async def export_session(self, session_id: str, format: str = "json") -> str | None:
@@ -439,7 +439,7 @@ class SessionService:
             )
 
         except Exception as e:
-            logger.error(f"❌ Failed to export session: {e}")
+            logger.error("❌ Failed to export session: %s", e)
             return None
 
     async def close(self) -> None:
@@ -448,7 +448,7 @@ class SessionService:
             await self.redis.close()
             logger.info("🔌 SessionService connection closed")
         except Exception as e:
-            logger.error(f"❌ Failed to close SessionService: {e}")
+            logger.error("❌ Failed to close SessionService: %s", e)
 
 
 # Example usage
@@ -466,7 +466,7 @@ async def main() -> None:
 
     # Create session
     session_id = await service.create_session()
-    logger.info(f"Created session: {session_id}")
+    logger.info("Created session: %s", session_id)
 
     # Update history
     history = [
@@ -477,11 +477,11 @@ async def main() -> None:
 
     # Retrieve history
     retrieved = await service.get_history(session_id)
-    logger.info(f"Retrieved: {retrieved}")
+    logger.info("Retrieved: %s", retrieved)
 
     # Get session info
     info = await service.get_session_info(session_id)
-    logger.info(f"Session info: {info}")
+    logger.info("Session info: %s", info)
 
     # Clean up
     await service.delete_session(session_id)

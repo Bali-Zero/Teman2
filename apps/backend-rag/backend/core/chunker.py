@@ -208,7 +208,7 @@ class TextChunker:
             return chunk_objects
 
         except Exception as e:
-            logger.error(f"Error chunking text: {e}")
+            logger.error("Error chunking text: %s", e)
             raise
 
     def chunk_by_pages(
@@ -280,7 +280,7 @@ class TextChunker:
                 else:
                     raw_chunks = [page_text]
             except Exception as e:
-                logger.error(f"Error chunking page {page_idx}: {e}")
+                logger.error("Error chunking page %s: %s", page_idx, e)
                 raise
 
             if self.chunk_overlap > 0 and len(raw_chunks) > 1:

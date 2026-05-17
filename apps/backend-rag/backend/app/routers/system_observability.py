@@ -42,7 +42,7 @@ async def get_system_health(
         return await service.run_all_checks(use_cache=True)
 
     except Exception as e:
-        logger.error(f"❌ System health check failed: {e}")
+        logger.error("❌ System health check failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -74,7 +74,7 @@ async def get_postgres_tables(
         finally:
             await conn.close()
     except Exception as e:
-        logger.error(f"❌ Failed to list tables: {e}")
+        logger.error("❌ Failed to list tables: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -143,7 +143,7 @@ async def get_table_data(
         finally:
             await conn.close()
     except Exception as e:
-        logger.error(f"❌ Failed to fetch table data: {e}")
+        logger.error("❌ Failed to fetch table data: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -182,7 +182,7 @@ async def get_qdrant_collections(
             return data["result"]  # { collections: [...] }
 
     except Exception as e:
-        logger.error(f"❌ Failed to list Qdrant collections: {e}")
+        logger.error("❌ Failed to list Qdrant collections: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -213,5 +213,5 @@ async def get_qdrant_points(
             return resp.json()["result"]
 
     except Exception as e:
-        logger.error(f"❌ Failed to fetch Qdrant points: {e}")
+        logger.error("❌ Failed to fetch Qdrant points: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e

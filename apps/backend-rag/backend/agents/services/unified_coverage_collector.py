@@ -86,13 +86,13 @@ class UnifiedCoverageCollector:
     ) -> ComponentCoverage | None:
         """Collect coverage from Python/pytest backend"""
         try:
-            logger.info(f"🔍 Collecting backend coverage: {component_name}")
+            logger.info("🔍 Collecting backend coverage: %s", component_name)
 
             # Run pytest coverage
             coverage_json = component_path / "coverage.json"
             # If coverage.json doesn't exist, generate it
             if not coverage_json.exists():
-                logger.info(f"   Generating coverage for {component_name}...")
+                logger.info("   Generating coverage for %s...", component_name)
                 # Longer timeout for large projects (30 minutes)
                 timeout = 1800.0 if component_name == "backend-rag" else 600.0
                 result = subprocess.run(
@@ -108,7 +108,7 @@ class UnifiedCoverageCollector:
                     # Continue anyway - might have partial coverage
 
             if not coverage_json.exists():
-                logger.warning(f"   ⚠️ No coverage.json found for {component_name}")
+                logger.warning("   ⚠️ No coverage.json found for %s", component_name)
                 return None
 
             # Parse coverage.json
@@ -153,8 +153,7 @@ class UnifiedCoverageCollector:
 
         except subprocess.TimeoutExpired:
             logger.warning(
-                f"⏱️ Coverage generation timeout for {component_name} - "
-                f"using existing coverage.json if available",
+                "⏱️ Coverage generation timeout for %s - using existing coverage.json if available", component_name,
             )
             # Try to use existing coverage.json even if generation timed out
             if coverage_json.exists():
@@ -179,10 +178,10 @@ class UnifiedCoverageCollector:
                         timestamp=datetime.now(tz=timezone.utc).isoformat(),
                     )
                 except Exception as e2:
-                    logger.error(f"❌ Error reading existing coverage: {e2}")
+                    logger.error("❌ Error reading existing coverage: %s", e2)
             return None
         except Exception as e:
-            logger.error(f"❌ Error collecting backend coverage for {component_name}: {e}")
+            logger.error("❌ Error collecting backend coverage for %s: %s", component_name, e)
             return None
 
     def collect_frontend_coverage(
@@ -190,7 +189,7 @@ class UnifiedCoverageCollector:
     ) -> ComponentCoverage | None:
         """Collect coverage from TypeScript/JS frontend"""
         try:
-            logger.info(f"🔍 Collecting frontend coverage: {component_name}")
+            logger.info("🔍 Collecting frontend coverage: %s", component_name)
 
             # Check for different coverage formats
             lcov_file = component_path / "coverage" / "lcov.info"
@@ -198,7 +197,7 @@ class UnifiedCoverageCollector:
 
             # Try to generate coverage if not exists
             if not lcov_file.exists() and not coverage_json.exists():
-                logger.info(f"   Generating coverage for {component_name}...")
+                logger.info("   Generating coverage for %s...", component_name)
                 # Check package.json for test:coverage script
                 package_json = component_path / "package.json"
                 if package_json.exists():
@@ -222,8 +221,7 @@ class UnifiedCoverageCollector:
                                     logger.warning("   ⚠️ Coverage generation had issues")
                             except subprocess.TimeoutExpired:
                                 logger.warning(
-                                    f"⏱️ Coverage generation timeout for {component_name} - "
-                                    f"skipping generation, will use existing if available",
+                                    "⏱️ Coverage generation timeout for %s - skipping generation, will use existing if available", component_name,
                                 )
 
             # Parse LCOV format (preferred)
@@ -235,11 +233,11 @@ class UnifiedCoverageCollector:
                 return self._parse_vitest_json(coverage_json, component_name, component_path)
 
             else:
-                logger.warning(f"   ⚠️ No coverage files found for {component_name}")
+                logger.warning("   ⚠️ No coverage files found for %s", component_name)
                 return None
 
         except Exception as e:
-            logger.error(f"❌ Error collecting frontend coverage for {component_name}: {e}")
+            logger.error("❌ Error collecting frontend coverage for %s: %s", component_name, e)
             return None
 
     def _parse_lcov(

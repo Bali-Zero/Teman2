@@ -246,7 +246,7 @@ class NotebookLMCacheService:
 
             if keys:
                 deleted = await self.redis_client.delete(*keys)
-                logger.info(f"✅ Cleared {deleted} cache entries")
+                logger.info("✅ Cleared %s cache entries", deleted)
                 return deleted
             logger.info("ℹ️ No cache entries to clear")
             return 0

@@ -170,13 +170,13 @@ class ActivityLogger:
                 )
 
             logger.debug(
-                f"📝 Logged activity: {action_type} by {user_email}",
+                "📝 Logged activity: %s by %s", action_type, user_email,
                 extra={"action_type": action_type, "user_email": user_email},
             )
             return True
 
         except Exception as e:
-            logger.error(f"❌ Failed to log activity: {e}", exc_info=True)
+            logger.error("❌ Failed to log activity: %s", e, exc_info=True)
             return False
 
     async def log_interaction(
@@ -254,13 +254,13 @@ class ActivityLogger:
                 )
 
             logger.debug(
-                f"💬 Logged interaction: {interaction_type} ({direction}) by {user_email}",
+                "💬 Logged interaction: %s (%s) by %s", interaction_type, direction, user_email,
                 extra={"interaction_type": interaction_type, "user_email": user_email},
             )
             return True
 
         except Exception as e:
-            logger.error(f"❌ Failed to log interaction: {e}", exc_info=True)
+            logger.error("❌ Failed to log interaction: %s", e, exc_info=True)
             return False
 
     async def log_api_call(
@@ -337,7 +337,7 @@ class ActivityLogger:
             # Only log errors or slow requests
             if response_status >= 400 or response_time_ms > 1000:
                 logger.debug(
-                    f"🔍 Logged API call: {method} {endpoint} → {response_status} ({response_time_ms}ms)",
+                    "🔍 Logged API call: %s %s → %s (%sms)", method, endpoint, response_status, response_time_ms,
                     extra={
                         "method": method,
                         "endpoint": endpoint,
@@ -404,7 +404,7 @@ class ActivityLogger:
                         browser,
                         os,
                     )
-                    logger.info(f"🔐 Session started: {user_email} ({session_id})")
+                    logger.info("🔐 Session started: %s (%s)", user_email, session_id)
 
                 elif event_type == "logout":
                     # Close session
@@ -418,7 +418,7 @@ class ActivityLogger:
                         """,
                         session_id,
                     )
-                    logger.info(f"🔓 Session ended: {user_email} ({session_id})")
+                    logger.info("🔓 Session ended: %s (%s)", user_email, session_id)
 
                 elif event_type == "activity":
                     # Update last activity
@@ -435,7 +435,7 @@ class ActivityLogger:
             return True
 
         except Exception as e:
-            logger.error(f"❌ Failed to log session event: {e}", exc_info=True)
+            logger.error("❌ Failed to log session event: %s", e, exc_info=True)
             return False
 
 

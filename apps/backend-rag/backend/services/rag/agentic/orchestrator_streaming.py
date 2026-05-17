@@ -124,7 +124,7 @@ class OrchestratorStreamingManager:
                 return validated_event.model_dump(exclude_none=True)
             except ValidationError as e:
                 logger.error(
-                    f"❌ [Stream] Event validation failed: {e}",
+                    "❌ [Stream] Event validation failed: %s", e,
                     extra={
                         "correlation_id": correlation_id,
                         "validation_errors": str(e.errors()),

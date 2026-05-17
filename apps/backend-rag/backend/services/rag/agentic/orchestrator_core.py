@@ -165,7 +165,7 @@ class OrchestratorCore:
                 self._kg_auto_expansion = KGAutoExpansion(db_pool=db_pool)
                 logger.info("✅ [GraphRAG v6] KGAutoExpansion ready (quarantine pattern)")
             except Exception as e:
-                logger.warning(f"⚠️ [GraphRAG v6] KGAutoExpansion init skipped: {e}")
+                logger.warning("⚠️ [GraphRAG v6] KGAutoExpansion init skipped: %s", e)
 
         # Phase 6: Multi-Agent Coordinator (lazy-initialized)
         self._multi_agent_coordinator: MultiAgentCoordinator | None = None
@@ -177,7 +177,7 @@ class OrchestratorCore:
                 )
                 logger.info("✅ [Phase 6] MultiAgentCoordinator ready")
             except Exception as e:
-                logger.warning(f"⚠️ [Phase 6] MultiAgentCoordinator init skipped: {e}")
+                logger.warning("⚠️ [Phase 6] MultiAgentCoordinator init skipped: %s", e)
 
         # R5 Phase 5: SurfaceRouter KG fast-path
         # Post-init injectable (service_initializer sets core._surface_router = surface_router).
@@ -246,7 +246,7 @@ class OrchestratorCore:
             return None
 
         except Exception as e:
-            logger.warning(f"⚠️ FAQ Cache error: {e}")
+            logger.warning("⚠️ FAQ Cache error: %s", e)
 
             # Record error metric
             try:
@@ -294,7 +294,7 @@ class OrchestratorCore:
                         if raw:
                             query_embedding = np.array(raw, dtype=np.float32)
                     except Exception as emb_err:
-                        logger.debug(f"Embedding for semantic cache skipped: {emb_err}")
+                        logger.debug("Embedding for semantic cache skipped: %s", emb_err)
 
                 cached = await self.semantic_cache.get_cached_result(query, query_embedding)
                 if cached:
@@ -317,7 +317,7 @@ class OrchestratorCore:
                     )
                 set_span_attribute("cache_hit", "false")
             except (KeyError, ValueError, RuntimeError) as e:
-                logger.warning(f"Cache lookup failed: {e}", exc_info=True)
+                logger.warning("Cache lookup failed: %s", e, exc_info=True)
                 set_span_status("error", str(e))
 
         return None
@@ -351,7 +351,7 @@ class OrchestratorCore:
             with trace_span("entity.extraction", {"query_length": len(query)}):
                 entities = await self.entity_extractor.extract_entities(query)
                 if any(entities.values()):
-                    logger.info(f"🔍 [Entity Extraction] Extracted entities: {entities}")
+                    logger.info("🔍 [Entity Extraction] Extracted entities: %s", entities)
                     set_span_attribute("entities_found", str(entities))
                 set_span_status("ok")
                 return entities
@@ -370,7 +370,7 @@ class OrchestratorCore:
                     )
                 return kg_context
             except Exception as e:
-                logger.warning(f"⚠️ [KG Legacy] Failed to get graph context: {e}")
+                logger.warning("⚠️ [KG Legacy] Failed to get graph context: %s", e)
                 return None
 
         async def _fetch_langgraph_workflow_task() -> None:
@@ -410,7 +410,7 @@ class OrchestratorCore:
                     return result
             except Exception as e:
                 logger.warning(
-                    f"⚠️ [KG LangGraph] Failed to synthesize workflow: {e}", exc_info=True,
+                    "⚠️ [KG LangGraph] Failed to synthesize workflow: %s", e, exc_info=True,
                 )
                 set_span_status("error", str(e))
                 return None
@@ -431,7 +431,7 @@ class OrchestratorCore:
 
         # Handle entity extraction result
         if isinstance(extracted_entities, Exception):
-            logger.error(f"❌ Entity extraction failed: {extracted_entities}", exc_info=True)
+            logger.error("❌ Entity extraction failed: %s", extracted_entities)
             extracted_entities = {}
         else:
             entity_time = time.time() - entity_start
@@ -439,7 +439,7 @@ class OrchestratorCore:
 
         # Handle KG context result (legacy)
         if isinstance(kg_context, Exception):
-            logger.error(f"❌ KG retrieval failed: {kg_context}", exc_info=True)
+            logger.error("❌ KG retrieval failed: %s", kg_context)
             kg_context = None
         elif kg_context:
             kg_time = time.time() - kg_start
@@ -447,7 +447,7 @@ class OrchestratorCore:
 
         # Handle LangGraph result (Phase 3)
         if isinstance(langgraph_result, Exception):
-            logger.error(f"❌ KG LangGraph failed: {langgraph_result}", exc_info=True)
+            logger.error("❌ KG LangGraph failed: %s", langgraph_result)
             langgraph_result = None
         elif langgraph_result:
             langgraph_time = time.time() - langgraph_start
@@ -601,7 +601,7 @@ class OrchestratorCore:
                 execution_time_ms=execution_time_ms,
             )
         except Exception as e:
-            logger.warning(f"Failed to track workflow analytics: {e}")
+            logger.warning("Failed to track workflow analytics: %s", e)
 
     # ------------------------------------------------------------------
     # R5 Phase 5: KG fast-path
@@ -741,13 +741,13 @@ class OrchestratorCore:
                 return state, model_used_name, token_usage, loop_duration
             except (RuntimeError, ValueError, TimeoutError) as react_error:
                 # Specific error types from ReAct loop execution
-                logger.error(f"❌ ReAct loop failed: {react_error}", exc_info=True)
+                logger.error("❌ ReAct loop failed: %s", react_error, exc_info=True)
                 set_span_status("error", str(react_error))
                 raise
             except Exception as unexpected_error:
                 # Catch-all for unexpected errors with detailed logging
                 logger.critical(
-                    f"🚨 Unexpected error in ReAct loop: {unexpected_error}",
+                    "🚨 Unexpected error in ReAct loop: %s", unexpected_error,
                     exc_info=True,
                     extra={"error_type": type(unexpected_error).__name__},
                 )
@@ -874,7 +874,7 @@ class OrchestratorCore:
                         tools_called=["legal_agent", "financial_agent", "timeline_agent"],
                     )
             except Exception as e:
-                logger.warning(f"⚠️ [Phase 6] Multi-agent failed, falling back to ReAct: {e}")
+                logger.warning("⚠️ [Phase 6] Multi-agent failed, falling back to ReAct: %s", e)
 
         # 3b.5. SpecializedServiceRouter — complex query fast-path
         # Routes to AutonomousResearch, CrossOracleSynthesis, or ClientJourney
@@ -931,7 +931,7 @@ class OrchestratorCore:
         )
 
         # 7. Execute ReAct loop
-        logger.info(f"🚀 [AgenticRAG] Processing query with ReAct loop (Model tier: {model_tier})")
+        logger.info("🚀 [AgenticRAG] Processing query with ReAct loop (Model tier: %s)", model_tier)
         state, model_used_name, token_usage, reasoning_duration = await self.execute_react_loop(
             state=state,
             chat=chat,
@@ -960,7 +960,7 @@ class OrchestratorCore:
         context_used = self.metrics_manager.calculate_context_used(state)
 
         # Retrieval debug logging
-        logger.info(f"\U0001f4da [Retrieval] Collections interrogated: {collections_used}")
+        logger.info("📚 [Retrieval] Collections interrogated: %s", collections_used)
         source_collections = (
             list(
                 {
@@ -1106,7 +1106,7 @@ class OrchestratorCore:
                     decision.collections,
                 )
         except Exception as e:
-            logger.debug(f"⚠️ [GraphRAG v6 SHADOW] Planner error: {e}")
+            logger.debug("⚠️ [GraphRAG v6 SHADOW] Planner error: %s", e)
 
     async def _run_grading_gates(
         self,
@@ -1316,7 +1316,7 @@ class OrchestratorCore:
                 error_message=error_message,
             )
         except Exception as e:
-            logger.warning(f"Failed to log query analytics (non-critical): {e}")
+            logger.warning("Failed to log query analytics (non-critical): %s", e)
 
     # ========== COMMON METHODS FOR STREAMING AND NON-STREAMING ==========
 
@@ -1348,7 +1348,7 @@ class OrchestratorCore:
         try:
             user_context, optimized_history = await _load_context()
         except Exception as e:
-            logger.error(f"❌ Context loading failed: {e}", exc_info=True)
+            logger.error("❌ Context loading failed: %s", e, exc_info=True)
             user_context = {}
             optimized_history = []
 
@@ -1364,7 +1364,7 @@ class OrchestratorCore:
                 workflow,
             ) = await _extract_entities_kg_with_context()
         except Exception as e:
-            logger.error(f"❌ KG extraction failed: {e}", exc_info=True)
+            logger.error("❌ KG extraction failed: %s", e, exc_info=True)
             extracted_entities = {}
             system_context_for_prompt = ""
 
@@ -1476,12 +1476,12 @@ class OrchestratorCore:
 
         # 🔍 DEBUG: Log full context breakdown
         logger.debug("🔍 [ORCHESTRATOR DEBUG] ===== CONTEXT BREAKDOWN =====")
-        logger.debug(f"🔍 Query: {query}")
+        logger.debug("🔍 Query: %s", query)
         logger.debug(f"🔍 System prompt length: {len(system_prompt)} chars")
         logger.debug(f"🔍 KG context length: {len(system_context_for_prompt)} chars")
         logger.debug(f"🔍 User context facts: {len(safe_user_context.get('facts', []))} facts")
         logger.debug(f"🔍 Conversation history: {len(history)} messages")
-        logger.debug(f"🔍 Deep think mode: {deep_think_mode}")
+        logger.debug("🔍 Deep think mode: %s", deep_think_mode)
         logger.debug(f"🔍 First 1000 chars of KG context:\n{system_context_for_prompt[:1000]}...")
         logger.debug("🔍 ===== END CONTEXT BREAKDOWN =====")
 

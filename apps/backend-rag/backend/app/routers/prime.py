@@ -69,7 +69,7 @@ async def search_kbli(q: str = Query(..., min_length=2)) -> dict[str, Any]:
         logger.info(f"🔍 [Prime/KBLI] Search for '{q}' returned zones: {list(matching_zones)}")
         return {"query": q, "matching_zone_codes": list(matching_zones), "status": "success"}
     except Exception as e:
-        logger.error(f"❌ [Prime/KBLI] Search failed: {e}", exc_info=True)
+        logger.error("❌ [Prime/KBLI] Search failed: %s", e, exc_info=True)
         return {"status": "error", "message": str(e), "matching_zone_codes": []}
 
 
@@ -85,7 +85,7 @@ try:
     logger.info(f"✅ [Prime] Loaded building codes for {len(_BUILDING_CODES)} zone types")
 except Exception as _e:
     _BUILDING_CODES = {}
-    logger.warning(f"⚠️ [Prime] Could not load building codes: {_e}")
+    logger.warning("⚠️ [Prime] Could not load building codes: %s", _e)
 
 
 def _calculate_building_yield(zone_code: str) -> dict[str, Any] | None:
@@ -110,7 +110,7 @@ def _calculate_building_yield(zone_code: str) -> dict[str, Any] | None:
             "notes": data.get("note", ""),
         }
     except Exception as exc:
-        logger.warning(f"⚠️ [Prime] Building codes parse error for {zone_code}: {exc}")
+        logger.warning("⚠️ [Prime] Building codes parse error for %s: %s", zone_code, exc)
         return None
 
 
@@ -664,7 +664,7 @@ async def _query_batara(lat: float, lng: float) -> dict[str, Any] | None:
             }
 
     except Exception as exc:
-        logger.warning(f"⚠️ [Prime] BATARA query failed ({lat},{lng}): {exc}")
+        logger.warning("⚠️ [Prime] BATARA query failed (%s,%s): %s", lat, lng, exc)
         return None
 
 
@@ -682,7 +682,7 @@ async def _query_price(lat: float, lng: float) -> float | None:
         if row and row["avg_price_per_are"]:
             return float(row["avg_price_per_are"])
     except Exception as exc:
-        logger.debug(f"[Prime] Price lookup skipped: {exc}")
+        logger.debug("[Prime] Price lookup skipped: %s", exc)
     return None
 
 
@@ -776,7 +776,7 @@ async def _search_local_intel(
         return articles
 
     except Exception as exc:
-        logger.warning(f"[Prime] Intel search skipped: {exc}")
+        logger.warning("[Prime] Intel search skipped: %s", exc)
         return []
 
 
@@ -875,7 +875,7 @@ async def get_zoning(
         }
 
     except Exception as e:
-        logger.error(f"❌ [Prime] Zoning query failed: {e}", exc_info=True)
+        logger.error("❌ [Prime] Zoning query failed: %s", e, exc_info=True)
         return {"status": "error", "message": "Zoning lookup failed.", "lat": lat, "lng": lng}
 
 
@@ -1025,5 +1025,5 @@ async def get_zones_geojson() -> dict[str, Any]:
         return result
 
     except Exception as e:
-        logger.error(f"❌ [Prime/GeoJSON] Failed to load zones: {e}", exc_info=True)
+        logger.error("❌ [Prime/GeoJSON] Failed to load zones: %s", e, exc_info=True)
         return {"type": "FeatureCollection", "features": []}

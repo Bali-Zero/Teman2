@@ -112,7 +112,7 @@ class ZohoOAuthService:
         Raises:
             ValueError: If token exchange fails
         """
-        logger.debug(f"Starting OAuth code exchange for user {user_id}")
+        logger.debug("Starting OAuth code exchange for user %s", user_id)
 
         if not self.client_id or not self.client_secret:
             logger.error("Zoho OAuth not configured - missing credentials")
@@ -236,7 +236,7 @@ class ZohoOAuthService:
 
         # Final validation
         if not primary_email or "@" not in primary_email:
-            logger.error(f"Invalid email extracted from Zoho account: '{primary_email}'")
+            logger.error("Invalid email extracted from Zoho account: '%s'", primary_email)
             raise ValueError("Could not extract valid email address from Zoho account")
 
         return {
@@ -325,7 +325,7 @@ class ZohoOAuthService:
 
             # Check if token is expired or about to expire
             if expires_at <= now + self.TOKEN_EXPIRY_BUFFER:
-                logger.info(f"Refreshing Zoho token for user {user_id}")
+                logger.info("Refreshing Zoho token for user %s", user_id)
                 return await self._refresh_token(
                     user_id=user_id,
                     account_id=row["account_id"],
@@ -371,7 +371,7 @@ class ZohoOAuthService:
         token_data = response.json()
 
         if "error" in token_data:
-            logger.error(f"Token refresh error: {token_data}")
+            logger.error("Token refresh error: %s", token_data)
             # Invalidate stored token so we stop retrying on every request
             async with self.db_pool.acquire() as conn:
                 await conn.execute(
@@ -404,7 +404,7 @@ class ZohoOAuthService:
                 account_id,
             )
 
-        logger.info(f"Zoho token refreshed for user {user_id}")
+        logger.info("Zoho token refreshed for user %s", user_id)
         return token_data["access_token"]
 
     async def get_account_id(self, user_id: str) -> str:
@@ -495,7 +495,7 @@ class ZohoOAuthService:
                         params={"token": row["refresh_token"]},
                     )
                 except Exception as e:
-                    logger.warning(f"Failed to revoke Zoho token: {e}")
+                    logger.warning("Failed to revoke Zoho token: %s", e)
 
             # Delete from database
             await conn.execute(
@@ -509,5 +509,5 @@ class ZohoOAuthService:
                 user_id,
             )
 
-            logger.info(f"Zoho account disconnected for user {user_id}")
+            logger.info("Zoho account disconnected for user %s", user_id)
             return True

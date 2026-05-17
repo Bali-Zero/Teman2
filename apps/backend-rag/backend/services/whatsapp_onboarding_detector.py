@@ -95,13 +95,13 @@ class OnboardingIntentDetector:
         if not self._has_onboarding_intent(message_text):
             return None
 
-        logger.info(f"🎯 New client onboarding intent detected from {phone}")
+        logger.info("🎯 New client onboarding intent detected from %s", phone)
 
         # Extract information from message
         extracted = self._extract_info(message_text, sender_name)
 
         if not extracted.get("name"):
-            logger.warning(f"Cannot trigger onboarding: missing name for {phone}")
+            logger.warning("Cannot trigger onboarding: missing name for %s", phone)
             return None
 
         # Trigger chain_new_client_onboarding via MCP
@@ -116,7 +116,7 @@ class OnboardingIntentDetector:
             logger.info(f"✅ Onboarding chain triggered for {phone}: {result.get('client_id')}")
             return result
         except Exception as e:
-            logger.error(f"Failed to trigger onboarding chain for {phone}: {e}")
+            logger.error("Failed to trigger onboarding chain for %s: %s", phone, e)
             return None
 
     def _has_onboarding_intent(self, message_text: str) -> bool:
@@ -203,7 +203,7 @@ class OnboardingIntentDetector:
 
         # Note: The actual implementation depends on how the MCP chain is exposed
         # This is a placeholder that would need to be connected to the actual MCP invocation
-        logger.info(f"Would trigger chain_new_client_onboarding with: {payload}")
+        logger.info("Would trigger chain_new_client_onboarding with: %s", payload)
 
         # Return mock result for now
         return {

@@ -356,14 +356,14 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         # Priority 0: Admin API Key via X-Debug-Key header (for admin/cron endpoints)
         debug_key = request.headers.get("X-Debug-Key")
         if debug_key and settings.admin_api_key and debug_key == settings.admin_api_key:
-            logger.info(f"Admin key authenticated via X-Debug-Key from {client_host}")
+            logger.info("Admin key authenticated via X-Debug-Key from %s", client_host)
             return {"role": "admin", "email": "admin@internal", "auth_method": "admin_key", "user_id": "admin"}
 
         # Priority 1: API Key Authentication (fastest, bypasses database)
         api_key = request.headers.get("X-API-Key")
         if api_key:
             # Log authentication attempt without exposing API key
-            logger.debug(f"API Key authentication attempt from {client_host}")
+            logger.debug("API Key authentication attempt from %s", client_host)
             user_context = self.api_key_auth.validate_api_key(api_key)
             if user_context:
                 logger.info(
@@ -372,7 +372,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                 return user_context
             else:
                 # API Key provided but invalid = immediate failure
-                logger.warning(f"Invalid API Key attempt from {client_host}")
+                logger.warning("Invalid API Key attempt from %s", client_host)
                 return None
 
         # Priority 2: Header JWT Authentication (takes precedence over cookie when present)
@@ -382,7 +382,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
 
         if auth_header and auth_header.startswith("Bearer "):
             if not self.api_auth_bypass_db:
-                logger.debug(f"Header JWT authentication attempt from {client_host}")
+                logger.debug("Header JWT authentication attempt from %s", client_host)
                 jwt_user = await self.authenticate_jwt(request)
                 if jwt_user:
                     jwt_user["auth_method"] = "jwt_header"
@@ -392,7 +392,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                     return jwt_user
                 else:
                     # JWT provided but invalid = immediate failure
-                    logger.debug(f"Invalid Header JWT from {client_host}")
+                    logger.debug("Invalid Header JWT from %s", client_host)
                     return None
             else:
                 logger.warning("JWT authentication bypassed by configuration")
@@ -401,7 +401,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         # Priority 3: Cookie JWT Authentication (fallback for browser clients without Authorization header)
         cookie_token = get_jwt_from_cookie(request)
         if cookie_token:
-            logger.debug(f"Cookie JWT authentication attempt from {client_host}")
+            logger.debug("Cookie JWT authentication attempt from %s", client_host)
 
             # Validate CSRF for state-changing requests (POST, PUT, DELETE, PATCH)
             if settings.csrf_enabled and not is_csrf_exempt(request) and not validate_csrf(request):
@@ -419,7 +419,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                 return jwt_user
             else:
                 # Cookie JWT provided but invalid = immediate failure
-                logger.warning(f"Invalid Cookie JWT from {client_host}")
+                logger.warning("Invalid Cookie JWT from %s", client_host)
                 return None
 
         # No authentication provided = failure for non-public endpoints
@@ -461,10 +461,10 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             }
 
         except JWTError as e:
-            logger.warning(f"JWT token validation failed: {e}")
+            logger.warning("JWT token validation failed: %s", e)
             return None
         except Exception as e:
-            logger.warning(f"Unexpected JWT token error: {e}")
+            logger.warning("Unexpected JWT token error: %s", e)
             return None
 
     async def authenticate_jwt(self, request: Request) -> dict[str, Any] | None:
@@ -504,10 +504,10 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             }
 
         except JWTError as e:
-            logger.debug(f"JWT validation failed: {e}")
+            logger.debug("JWT validation failed: %s", e)
             return None
         except Exception as e:
-            logger.debug(f"Unexpected JWT error: {e}")
+            logger.debug("Unexpected JWT error: %s", e)
             return None
 
     def get_auth_stats(self) -> dict[str, Any]:

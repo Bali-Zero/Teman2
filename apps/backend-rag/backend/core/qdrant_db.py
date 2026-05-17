@@ -571,7 +571,7 @@ class QdrantClient:
                             "total_found": len(results),
                         }
                     except Exception as retry_err:
-                        logger.error(f"Retry with named vector failed: {retry_err}")
+                        logger.error("Retry with named vector failed: %s", retry_err)
                 # For 4xx errors (client errors), return empty results
                 logger.error(f"Qdrant search failed: {e.response.status_code} - {error_text}")
                 return {
@@ -583,7 +583,7 @@ class QdrantClient:
                     "total_found": 0,
                 }
             except Exception as e:
-                logger.error(f"Qdrant request error: {e}")
+                logger.error("Qdrant request error: %s", e)
                 raise QdrantConnectionError(f"Qdrant connection error: {e}") from e
 
         start_time = time.time()
@@ -612,7 +612,7 @@ class QdrantClient:
                 elapsed = time.time() - start_time
                 _qdrant_metrics["errors"] += 1
                 set_span_status("error", str(e))
-                logger.error(f"Qdrant search error after retries: {e}", exc_info=True)
+                logger.error("Qdrant search error after retries: %s", e, exc_info=True)
                 return {
                     "ids": [],
                     "documents": [],
@@ -659,11 +659,11 @@ class QdrantClient:
                     "error": f"HTTP {e.response.status_code}",
                 }
             except Exception as e:
-                logger.error(f"Qdrant request error getting stats: {e}")
+                logger.error("Qdrant request error getting stats: %s", e)
                 return {"collection_name": self.collection_name, "error": str(e)}
 
         except Exception as e:
-            logger.error(f"Error getting Qdrant stats: {e}")
+            logger.error("Error getting Qdrant stats: %s", e)
             return {"collection_name": self.collection_name, "error": str(e)}
 
     async def create_collection(
@@ -714,11 +714,11 @@ class QdrantClient:
                 )
                 return False
             except Exception as e:
-                logger.error(f"Qdrant request error creating collection: {e}")
+                logger.error("Qdrant request error creating collection: %s", e)
                 return False
 
         except Exception as e:
-            logger.error(f"Error creating collection: {e}")
+            logger.error("Error creating collection: %s", e)
             return False
 
     async def upsert_documents(
@@ -842,18 +842,18 @@ class QdrantClient:
                                 error_msg += f": {e.response.text}"
                             errors.append(error_msg)
                             logger.error(
-                                f"Qdrant upsert batch failed even with named vectors: {error_msg}",
+                                "Qdrant upsert batch failed even with named vectors: %s", error_msg,
                             )
                     else:
                         error_msg = f"HTTP {e.response.status_code}"
                         if hasattr(e.response, "text"):
                             error_msg += f": {e.response.text}"
                         errors.append(error_msg)
-                        logger.error(f"Qdrant upsert batch failed: {error_msg}")
+                        logger.error("Qdrant upsert batch failed: %s", error_msg)
                 except Exception as e:
                     error_msg = f"Request error: {e}"
                     errors.append(error_msg)
-                    logger.error(f"Qdrant upsert batch request error: {error_msg}")
+                    logger.error("Qdrant upsert batch request error: %s", error_msg)
 
             if errors:
                 return {
@@ -879,7 +879,7 @@ class QdrantClient:
             }
 
         except Exception as e:
-            logger.error(f"Error upserting to Qdrant: {e}", exc_info=True)
+            logger.error("Error upserting to Qdrant: %s", e, exc_info=True)
             raise
 
     def collection(self) -> Any:
@@ -943,11 +943,11 @@ class QdrantClient:
                 logger.error(f"Qdrant get failed: {e.response.status_code} - {e.response.text}")
                 return {"ids": [], "embeddings": [], "documents": [], "metadatas": []}
             except Exception as e:
-                logger.error(f"Qdrant get request error: {e}")
+                logger.error("Qdrant get request error: %s", e)
                 return {"ids": [], "embeddings": [], "documents": [], "metadatas": []}
 
         except Exception as e:
-            logger.error(f"Qdrant get error: {e}")
+            logger.error("Qdrant get error: %s", e)
             return {"ids": [], "embeddings": [], "documents": [], "metadatas": []}
 
     async def delete(
@@ -983,10 +983,10 @@ class QdrantClient:
                 logger.error(f"Qdrant delete failed: {e.response.status_code} - {e.response.text}")
                 return {"success": False, "error": f"HTTP {e.response.status_code}"}
             except Exception as e:
-                logger.error(f"Qdrant delete request error: {e}")
+                logger.error("Qdrant delete request error: %s", e)
                 raise QdrantConnectionError(f"Qdrant connection error: {e}") from e
         except Exception as e:
-            logger.error(f"Error deleting from Qdrant: {e}")
+            logger.error("Error deleting from Qdrant: %s", e)
             raise
 
     async def scroll(
@@ -1033,11 +1033,11 @@ class QdrantClient:
                 logger.error(f"Qdrant scroll failed: {e.response.status_code}")
                 return []
             except Exception as e:
-                logger.error(f"Qdrant scroll request error: {e}")
+                logger.error("Qdrant scroll request error: %s", e)
                 return []
 
         except Exception as e:
-            logger.error(f"Error scrolling Qdrant collection: {e}")
+            logger.error("Error scrolling Qdrant collection: %s", e)
             return []
 
     async def peek(
@@ -1078,11 +1078,11 @@ class QdrantClient:
                 logger.error(f"Qdrant peek failed: {e.response.status_code}")
                 return {"ids": [], "documents": [], "metadatas": []}
             except Exception as e:
-                logger.error(f"Qdrant peek request error: {e}")
+                logger.error("Qdrant peek request error: %s", e)
                 return {"ids": [], "documents": [], "metadatas": []}
 
         except Exception as e:
-            logger.error(f"Error peeking Qdrant collection: {e}")
+            logger.error("Error peeking Qdrant collection: %s", e)
             return {"ids": [], "documents": [], "metadatas": []}
 
     async def hybrid_search(
@@ -1204,7 +1204,7 @@ class QdrantClient:
                     "error": error_text,
                 }
             except Exception as e:
-                logger.error(f"Qdrant hybrid search request error: {e}")
+                logger.error("Qdrant hybrid search request error: %s", e)
                 raise QdrantConnectionError(f"Qdrant connection error: {e}") from e
 
         start_time = time.time()
@@ -1233,7 +1233,7 @@ class QdrantClient:
                 elapsed = time.time() - start_time
                 _qdrant_metrics["errors"] += 1
                 set_span_status("error", str(e))
-                logger.error(f"Qdrant hybrid search error after retries: {e}", exc_info=True)
+                logger.error("Qdrant hybrid search error after retries: %s", e, exc_info=True)
                 # Fall back to dense search on error
                 return await self.search(query_embedding, filter=filter, limit=limit)
 
@@ -1324,11 +1324,11 @@ class QdrantClient:
                     if hasattr(e.response, "text"):
                         error_msg += f": {e.response.text}"
                     errors.append(error_msg)
-                    logger.error(f"Qdrant upsert batch failed: {error_msg}")
+                    logger.error("Qdrant upsert batch failed: %s", error_msg)
                 except Exception as e:
                     error_msg = f"Request error: {e}"
                     errors.append(error_msg)
-                    logger.error(f"Qdrant upsert batch request error: {error_msg}")
+                    logger.error("Qdrant upsert batch request error: %s", error_msg)
 
             if errors:
                 return {
@@ -1353,5 +1353,5 @@ class QdrantClient:
             }
 
         except Exception as e:
-            logger.error(f"Error upserting with sparse vectors: {e}", exc_info=True)
+            logger.error("Error upserting with sparse vectors: %s", e, exc_info=True)
             raise

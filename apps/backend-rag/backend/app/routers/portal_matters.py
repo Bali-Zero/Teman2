@@ -321,7 +321,7 @@ async def list_matters(
             )
             matters = [_shape_matter(r) for r in rows]
         except Exception as e:  # table/column may not yet exist in dev
-            logger.warning(f"matters list fetch failed: {e}")
+            logger.warning("matters list fetch failed: %s", e)
             matters = []
 
     return {"matters": matters}
@@ -395,7 +395,7 @@ async def get_matter_detail(
                     client_id,
                 )
             except asyncpg.PostgresError as e:
-                logger.warning(f"approved intelligence fetch failed: {e}")
+                logger.warning("approved intelligence fetch failed: %s", e)
                 rows = []
 
     matter["approved_intelligence"] = _client_safe_intelligence_from_rows(

@@ -165,7 +165,7 @@ async def dispatch_ocr_by_folder(
 
     # Passport detection
     if "passport" in fn_lower or (folder_lower.startswith("00_") and "passport" in fn_lower):
-        logger.info(f"OCR dispatch: passport detected for client {client_id}, file {filename}")
+        logger.info("OCR dispatch: passport detected for client %s, file %s", client_id, filename)
         ocr_result = await _auto_ocr_passport(db_pool, client_id, file_id)
         await _kg_link_after_ocr(
             db_pool, file_id=file_id, client_id=client_id,
@@ -186,7 +186,7 @@ async def dispatch_ocr_by_folder(
     ]
     if any(kw in fn_lower for kw in visa_keywords):
         if any(kw in fn_lower for kw in visa_keywords) or "permit" in fn_lower or "stay" in fn_lower:
-            logger.info(f"OCR dispatch: visa detected for client {client_id}, file {filename}")
+            logger.info("OCR dispatch: visa detected for client %s, file %s", client_id, filename)
             ocr_result = await _auto_ocr_visa(db_pool, client_id, file_id, doc_id)
             await _kg_link_after_ocr(
                 db_pool, file_id=file_id, client_id=client_id,
@@ -202,7 +202,7 @@ async def dispatch_ocr_by_folder(
 
     # NIB detection
     if "nib" in fn_lower or "berusaha" in fn_lower or "oss" in fn_lower:
-        logger.info(f"OCR dispatch: NIB detected for client {client_id}, file {filename}")
+        logger.info("OCR dispatch: NIB detected for client %s, file %s", client_id, filename)
         ocr_result = await _auto_ocr_nib(db_pool, client_id, file_id, doc_id)
         await _kg_link_after_ocr(
             db_pool, file_id=file_id, client_id=client_id,
@@ -218,7 +218,7 @@ async def dispatch_ocr_by_folder(
 
     # NPWP detection
     if "npwp" in fn_lower or ("tax" in fn_lower and "id" in fn_lower):
-        logger.info(f"OCR dispatch: NPWP detected for client {client_id}, file {filename}")
+        logger.info("OCR dispatch: NPWP detected for client %s, file %s", client_id, filename)
         ocr_result = await _auto_ocr_npwp(db_pool, client_id, file_id, doc_id)
         await _kg_link_after_ocr(
             db_pool, file_id=file_id, client_id=client_id,
@@ -240,7 +240,7 @@ async def dispatch_ocr_by_folder(
     if any(kw in fn_lower for kw in profile_keywords) or dtype_lower in (
         "company profile", "profile perseroan", "company_profile",
     ):
-        logger.info(f"OCR dispatch: company_profile for client {client_id}")
+        logger.info("OCR dispatch: company_profile for client %s", client_id)
         result = await _auto_ocr_company_profile(db_pool, client_id, file_id, doc_id)
         await _kg_link_after_ocr(
             db_pool, file_id=file_id, client_id=client_id,
@@ -262,8 +262,7 @@ async def dispatch_ocr_by_folder(
     # Gemini API). The classifier is robust against filename obfuscation
     # ("IMG_2847.pdf", "scan_001.jpeg", clienti che caricano dal cellulare).
     logger.info(
-        f"OCR dispatch: filename '{filename}' did not match Tier 1 keywords — "
-        f"trying content classifier for client {client_id}",
+        "OCR dispatch: filename '%s' did not match Tier 1 keywords — trying content classifier for client %s", filename, client_id,
     )
     classification = await _auto_classify_content(file_id)
 
@@ -311,8 +310,7 @@ async def dispatch_ocr_by_folder(
             result = await handler_call()
         except Exception as e:
             logger.error(
-                f"OCR dispatch: handler {handler_name} failed after content "
-                f"classification for file {filename}: {e}",
+                "OCR dispatch: handler %s failed after content classification for file %s: %s", handler_name, filename, e,
             )
             return {
                 "dispatched": False,

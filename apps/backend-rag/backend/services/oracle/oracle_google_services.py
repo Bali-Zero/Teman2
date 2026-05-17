@@ -52,7 +52,7 @@ class GoogleServices:
                 self._initialize_drive_service()
 
             except Exception as e:
-                logger.error(f"❌ Failed to initialize Google services: {e}")
+                logger.error("❌ Failed to initialize Google services: %s", e)
                 logger.warning(
                     "⚠️ Continuing without Google services - some Oracle features may be unavailable",
                 )
@@ -80,7 +80,7 @@ class GoogleServices:
                         creds_dict = json.loads(decoded)
                         logger.info("✅ Loaded Google credentials from base64-encoded env var")
                     except Exception as e:
-                        logger.debug(f"Google creds base64 decode failed: {e}")
+                        logger.debug("Google creds base64 decode failed: %s", e)
 
             # Create credentials from dict or fallback to file
             if creds_dict and creds_dict.get("type") == "service_account":
@@ -105,7 +105,7 @@ class GoogleServices:
             logger.info("✅ Google Drive service initialized successfully")
 
         except Exception as e:
-            logger.error(f"❌ Error initializing Google Drive service: {e}")
+            logger.error("❌ Error initializing Google Drive service: %s", e)
             self._drive_service = None
 
     @property
@@ -184,7 +184,7 @@ class GoogleServices:
         }
 
         model_name = model_mapping.get(use_case, "gemini-2.0-flash-lite")
-        logger.info(f"🧠 Using {model_name} for {use_case}")
+        logger.info("🧠 Using %s for %s", model_name, use_case)
         return model_name
 
 
