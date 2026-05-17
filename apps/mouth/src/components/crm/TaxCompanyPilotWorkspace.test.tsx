@@ -314,7 +314,7 @@ describe("TaxCompanyPilotWorkspace", () => {
           },
         ]}
         autoApproveResult={{
-          policy_version: "workspace-ai-v1-factual-structural",
+          policy_version: "workspace-ai-v2-consultant-narrative",
           dry_run: true,
           evaluated: 1,
           eligible_count: 1,
@@ -330,7 +330,7 @@ describe("TaxCompanyPilotWorkspace", () => {
 
     expect(screen.getByText("Workspace AI review")).toBeInTheDocument();
     expect(screen.getByText("1 draft")).toBeInTheDocument();
-    expect(screen.getByText("1 safe · 0 held")).toBeInTheDocument();
+    expect(screen.getByText("1 ready · 0 held")).toBeInTheDocument();
     expect(
       screen.getByText("Company source documents are indexed for review."),
     ).toBeInTheDocument();
@@ -343,8 +343,8 @@ describe("TaxCompanyPilotWorkspace", () => {
 
     expect(onApproveSnapshot).toHaveBeenCalledWith("snapshot-draft");
 
-    fireEvent.click(screen.getByRole("button", { name: "Check safe" }));
-    fireEvent.click(screen.getByRole("button", { name: "Approve safe" }));
+    fireEvent.click(screen.getByRole("button", { name: "Check stories" }));
+    fireEvent.click(screen.getByRole("button", { name: "Approve stories" }));
 
     expect(onAutoApproveDryRun).toHaveBeenCalledOnce();
     expect(onAutoApproveApply).toHaveBeenCalledOnce();
