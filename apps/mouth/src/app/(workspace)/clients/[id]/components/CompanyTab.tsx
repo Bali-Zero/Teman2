@@ -11,6 +11,7 @@ import type {
   CompanyDocument,
 } from "@/lib/api/crm/crm.types";
 
+import { AiSummaryCard } from "./AiSummaryCard";
 import { formatCapital } from "./company/editorial-tokens";
 import { EditorialHero } from "./company/EditorialHero";
 import { IdentityRow } from "./company/IdentityRow";
@@ -189,7 +190,11 @@ export function CompanyTab({
                 if (full.documents?.length) setCompanyDocs(full.documents);
               })
               .catch((err) => {
-                logger.error('[CompanyTab] Failed to load company details', {}, err instanceof Error ? err : new Error(String(err)));
+                logger.error(
+                  "[CompanyTab] Failed to load company details",
+                  {},
+                  err instanceof Error ? err : new Error(String(err)),
+                );
                 setAssociates([
                   {
                     client_name: client.full_name,
@@ -294,7 +299,13 @@ export function CompanyTab({
             api.crm
               .getCompanyDocuments(found.id)
               .then((docs) => !cancelled && setCompanyDocs(docs))
-              .catch((err) => { logger.error('[CompanyTab] Failed to load company documents', {}, err instanceof Error ? err : new Error(String(err))); });
+              .catch((err) => {
+                logger.error(
+                  "[CompanyTab] Failed to load company documents",
+                  {},
+                  err instanceof Error ? err : new Error(String(err)),
+                );
+              });
             return;
           }
         }
@@ -333,9 +344,12 @@ export function CompanyTab({
       <>
         <div className="rounded-xl border border-dashed border-[var(--bz-border)] bg-[var(--bz-surface)]/50 p-12 text-center space-y-4">
           <Building2 className="w-12 h-12 mx-auto text-[var(--bz-text-2)] mb-3 opacity-40" />
-          <p className="text-sm font-medium text-[var(--bz-text-1)]">No company linked</p>
+          <p className="text-sm font-medium text-[var(--bz-text-1)]">
+            No company linked
+          </p>
           <p className="text-xs text-[var(--bz-text-2)] max-w-xs mx-auto">
-            This client has no associated company. Create a new company or link an existing one.
+            This client has no associated company. Create a new company or link
+            an existing one.
           </p>
           <button
             onClick={() => setIsAddingCompany(true)}
@@ -418,6 +432,10 @@ export function CompanyTab({
   // ── RENDER ─────────────────────────────────────────────────────────────
   return (
     <div className="max-w-[960px] mx-auto">
+      {/* AI Summary (CRM-Guardian L1 cross-folder) */}
+      <div className="mb-4">
+        <AiSummaryCard clientId={clientId} section="company" />
+      </div>
       {/* ── TOOLBAR ────────────────────────────────────────────────────── */}
       <div className="flex justify-end gap-2 mb-3">
         {co?.company_id && (
@@ -425,18 +443,28 @@ export function CompanyTab({
             onClick={async () => {
               setIsSyncingDrive(true);
               try {
-                const res = await api.post(`/api/crm/companies/${co.company_id}/sync-drive`, {}) as {
-                  added: number; skipped: number; total_in_folder: number;
+                const res = (await api.post(
+                  `/api/crm/companies/${co.company_id}/sync-drive`,
+                  {},
+                )) as {
+                  added: number;
+                  skipped: number;
+                  total_in_folder: number;
                 };
-                toast.success(`Drive sync: ${res.added} added, ${res.skipped} skipped`, {
-                  description: `${res.total_in_folder} files in folder`,
-                });
+                toast.success(
+                  `Drive sync: ${res.added} added, ${res.skipped} skipped`,
+                  {
+                    description: `${res.total_in_folder} files in folder`,
+                  },
+                );
                 if (res.added > 0) {
                   setReloadTrigger((t) => t + 1);
                   void onRefresh();
                 }
               } catch (err) {
-                toast.error("Drive sync failed", { description: (err as Error).message });
+                toast.error("Drive sync failed", {
+                  description: (err as Error).message,
+                });
               } finally {
                 setIsSyncingDrive(false);
               }
@@ -484,15 +512,19 @@ export function CompanyTab({
         capital={capital}
         shareholderCount={(() => {
           try {
-            const cf = typeof co?.custom_fields === 'string'
-              ? JSON.parse(co.custom_fields as string)
-              : co?.custom_fields;
+            const cf =
+              typeof co?.custom_fields === "string"
+                ? JSON.parse(co.custom_fields as string)
+                : co?.custom_fields;
             const sh = cf?.shareholders;
             if (sh) {
-              const parsed = typeof sh === 'string' ? JSON.parse(sh) : sh;
-              if (Array.isArray(parsed) && parsed.length > 0) return parsed.length;
+              const parsed = typeof sh === "string" ? JSON.parse(sh) : sh;
+              if (Array.isArray(parsed) && parsed.length > 0)
+                return parsed.length;
             }
-          } catch { /* ignore */ }
+          } catch {
+            /* ignore */
+          }
           return associates.length;
         })()}
         foundingYear={foundingYear}
@@ -583,38 +615,69 @@ export function CompanyTab({
           <DividerLabel text="Document Vault" />
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {[
-              { docType: "akta_pendirian", label: "Akta Pendirian", hint: "PDF/JPG" },
-              { docType: "sk_decree", label: "SK Kemenkumham", hint: "PDF/JPG" },
+              {
+                docType: "akta_pendirian",
+                label: "Akta Pendirian",
+                hint: "PDF/JPG",
+              },
+              {
+                docType: "sk_decree",
+                label: "SK Kemenkumham",
+                hint: "PDF/JPG",
+              },
               { docType: "npwp", label: "NPWP Perusahaan", hint: "PDF/JPG" },
               { docType: "nib", label: "NIB", hint: "PDF/JPG" },
-              { docType: "company_profile", label: "Company Profile", hint: "PDF" },
+              {
+                docType: "company_profile",
+                label: "Company Profile",
+                hint: "PDF",
+              },
               { docType: "wlkp", label: "WLKP", hint: "PDF" },
               { docType: "bpjs", label: "BPJS Ketenagakerjaan", hint: "PDF" },
-              { docType: "organogram", label: "Bagan Organisasi", hint: "PDF/JPG" },
-              { docType: "rekening_koran", label: "Rekening Koran", hint: "PDF" },
+              {
+                docType: "organogram",
+                label: "Bagan Organisasi",
+                hint: "PDF/JPG",
+              },
+              {
+                docType: "rekening_koran",
+                label: "Rekening Koran",
+                hint: "PDF",
+              },
             ].map((item) => {
               // Search company docs first, then client docs with pma category
-              const typeNorm = item.docType.toLowerCase().replace(/_/g, '');
+              const typeNorm = item.docType.toLowerCase().replace(/_/g, "");
               const matchType = (dt: string) => {
-                const norm = (dt || '').toLowerCase().replace(/_/g, '');
+                const norm = (dt || "").toLowerCase().replace(/_/g, "");
                 return norm === typeNorm || dt === item.docType;
               };
-              const fromCompany = companyDocs.find((d) => matchType(d.document_type));
+              const fromCompany = companyDocs.find((d) =>
+                matchType(d.document_type),
+              );
               const fromClient = !fromCompany
-                ? (documents || []).filter(d => d.document_category === 'pma').find((d) => matchType(d.document_type))
+                ? (documents || [])
+                    .filter((d) => d.document_category === "pma")
+                    .find((d) => matchType(d.document_type))
                 : null;
               // Map ClientDocument to CompanyDocument-compatible shape for the vault slot
-              const existing: CompanyDocument | null = fromCompany ?? (fromClient ? {
-                id: fromClient.id,
-                uuid: '',
-                document_type: fromClient.document_type,
-                status: (fromClient.status as CompanyDocument['status']) ?? 'active',
-                google_drive_file_id: fromClient.file_id,
-                google_drive_file_url: fromClient.google_drive_file_url ?? fromClient.file_url,
-                file_name: fromClient.file_name,
-                is_verified: fromClient.status === 'verified',
-                created_at: fromClient.created_at ?? '',
-              } : null);
+              const existing: CompanyDocument | null =
+                fromCompany ??
+                (fromClient
+                  ? {
+                      id: fromClient.id,
+                      uuid: "",
+                      document_type: fromClient.document_type,
+                      status:
+                        (fromClient.status as CompanyDocument["status"]) ??
+                        "active",
+                      google_drive_file_id: fromClient.file_id,
+                      google_drive_file_url:
+                        fromClient.google_drive_file_url ?? fromClient.file_url,
+                      file_name: fromClient.file_name,
+                      is_verified: fromClient.status === "verified",
+                      created_at: fromClient.created_at ?? "",
+                    }
+                  : null);
               return (
                 <CompanyDocUpload
                   key={item.docType}

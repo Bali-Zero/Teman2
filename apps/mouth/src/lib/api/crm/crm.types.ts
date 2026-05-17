@@ -961,3 +961,158 @@ export interface PortalMessageThread {
   created_at: string;
   practice_id?: number;
 }
+
+// AI Summary (CRM-Guardian Phase 1 cross-folder L1)
+// Returned by GET /api/crm/clients/{id}/ai-summary.
+// Backend: apps/backend-rag/backend/app/routers/crm_clients.py
+// Schema:  apps/backend-rag/backend/services/crm_guardian/schemas.py (L1ClientSummary v2.0)
+export interface AiSummaryResponse {
+  client_id: number;
+  summary: L1ClientSummary | null;
+  generated_at: string | null;
+  schema_version: string | null;
+  fingerprint: string | null;
+  status: "available" | "not_generated" | "pending";
+}
+
+export interface L1ClientSummary {
+  schema_version: string;
+  prompt_version?: string;
+  client_id: number;
+  generated_at?: string;
+  source_folder_id?: string;
+  source_file_count?: number;
+  source_file_fingerprint?: string;
+  identity?: AiIdentity;
+  visa?: AiVisaStatus;
+  company?: AiCompany;
+  shareholders?: AiShareholder[];
+  properties?: AiPropertyAsset[];
+  documents?: AiDocumentRef[];
+  timeline?: AiTimelineEvent[];
+  compliance?: AiCompliance;
+  profile?: AiProfile;
+  narrative_en?: string | null;
+  extraction_confidence?: number | null;
+  extraction_notes?: string[];
+}
+
+export interface AiIdentity {
+  full_name?: string | null;
+  date_of_birth?: string | null;
+  birthplace?: string | null;
+  nationality?: string | null;
+  passport_number?: string | null;
+  passport_expires_at?: string | null;
+  npwp_personal?: string | null;
+}
+
+export interface AiVisaStatus {
+  visa_type?: string | null;
+  stay_permit_number?: string | null;
+  issued_at?: string | null;
+  valid_until?: string | null;
+  sponsor_company?: string | null;
+  multiple_entry?: boolean | null;
+}
+
+export interface AiCompany {
+  legal_name?: string | null;
+  legal_form?: string | null;
+  nib?: string | null;
+  npwp_corporate?: string | null;
+  akta_number?: string | null;
+  akta_date?: string | null;
+  sk_kemenkumham?: string | null;
+  kbli_codes?: string[];
+  kbli_primary?: string | null;
+  paid_up_capital_idr?: number | null;
+  authorized_capital_idr?: number | null;
+  registered_address?: string | null;
+  tax_records?: AiTaxRecord[];
+  lkpm_history?: AiLkpmRecord[];
+  source_company_folders?: string[];
+}
+
+export interface AiTaxRecord {
+  period: string;
+  spt_type?: string | null;
+  filed_at?: string | null;
+  amount_idr?: number | null;
+  status: string;
+  source_file_id?: string | null;
+  notes?: string | null;
+}
+
+export interface AiLkpmRecord {
+  period: string;
+  reported_at?: string | null;
+  realization_idr?: number | null;
+  employment_count?: number | null;
+  status: string;
+  source_file_id?: string | null;
+  notes?: string | null;
+}
+
+export interface AiShareholder {
+  name: string;
+  percentage?: number | null;
+  role?: string | null;
+  nationality?: string | null;
+}
+
+export interface AiPropertyAsset {
+  label?: string | null;
+  address?: string | null;
+  tenure?: string | null;
+  pbg_status?: string | null;
+  lease_expires_at?: string | null;
+}
+
+export interface AiDocumentRef {
+  file_id: string;
+  file_name: string;
+  doc_type: string;
+  issued_at?: string | null;
+  expires_at?: string | null;
+  subject_entity?: string | null;
+  key_fields?: Record<string, string>;
+}
+
+export interface AiTimelineEvent {
+  event_date: string;
+  event_type: string;
+  description: string;
+  source_file_id?: string | null;
+}
+
+export interface AiCompliance {
+  lkpm_last_reported?: string | null;
+  lkpm_next_due?: string | null;
+  spt_tahunan_last?: string | null;
+  bpjs_enrolled?: boolean | null;
+  passport_days_until_expiry?: number | null;
+  visa_days_until_expiry?: number | null;
+  red_flags?: string[];
+}
+
+export interface AiProfile {
+  archetype:
+    | "individual_expat"
+    | "individual_investor"
+    | "pt_pma_owner"
+    | "family_member"
+    | "property_holder"
+    | "business_only"
+    | "other";
+  tier: "VIP" | "standard" | "archive" | "unknown";
+  primary_service:
+    | "visa_immigration"
+    | "company_setup"
+    | "tax"
+    | "property"
+    | "hr_payroll"
+    | "mixed"
+    | "unknown";
+  rationale?: string | null;
+}

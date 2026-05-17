@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from "react";
 import {
   User,
   Users,
@@ -15,14 +15,15 @@ import {
   Download,
   Eye,
   Loader2,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { toast } from 'sonner';
-import { api } from '@/lib/api';
-import { fileToBase64 } from '@/lib/utils';
-import type { FamilyMember, ClientDocument } from '@/lib/api/crm/crm.types';
-import { ALERT_COLORS } from './constants';
-import { extractDriveFileId } from './utils';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
+import { api } from "@/lib/api";
+import { fileToBase64 } from "@/lib/utils";
+import type { FamilyMember, ClientDocument } from "@/lib/api/crm/crm.types";
+import { ALERT_COLORS } from "./constants";
+import { extractDriveFileId } from "./utils";
+import { AiSummaryCard } from "./AiSummaryCard";
 
 // ============================================
 // FAMILY MEMBER UPLOAD BUTTON (internal)
@@ -37,7 +38,7 @@ function FamilyMemberUploadButton({
   clientId: number;
   memberId: number;
   memberName: string;
-  documentType: 'passport' | 'visa';
+  documentType: "passport" | "visa";
   onRefresh: () => Promise<void> | void;
 }) {
   const [isUploading, setIsUploading] = useState(false);
@@ -63,7 +64,9 @@ function FamilyMemberUploadButton({
     const poll = async () => {
       if (ocrAbortedRef.current) return;
       try {
-        const status = (await api.request(`/api/crm/clients/${clientId}/ocr-status`)) as {
+        const status = (await api.request(
+          `/api/crm/clients/${clientId}/ocr-status`,
+        )) as {
           pending_ocr: number;
         };
         if (status.pending_ocr === 0 || attempts >= 10) {
@@ -88,40 +91,48 @@ function FamilyMemberUploadButton({
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+    const allowedTypes = [
+      "image/jpeg",
+      "image/jpg",
+      "image/png",
+      "application/pdf",
+    ];
     if (!allowedTypes.includes(file.type)) {
-      toast.error('Invalid file type', {
-        description: 'Please upload JPG, PNG, or PDF',
+      toast.error("Invalid file type", {
+        description: "Please upload JPG, PNG, or PDF",
       });
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
-      toast.error('File too large', { description: 'Maximum 10MB' });
+      toast.error("File too large", { description: "Maximum 10MB" });
       return;
     }
     setIsUploading(true);
     try {
       const base64 = await fileToBase64(file);
-      const response = (await api.post(`/api/crm/clients/${clientId}/documents/upload`, {
-        file: base64,
-        file_name: file.name,
-        document_type: documentType,
-        mime_type: file.type,
-        family_member_id: memberId,
-      })) as { success: boolean; message?: string };
+      const response = (await api.post(
+        `/api/crm/clients/${clientId}/documents/upload`,
+        {
+          file: base64,
+          file_name: file.name,
+          document_type: documentType,
+          mime_type: file.type,
+          family_member_id: memberId,
+        },
+      )) as { success: boolean; message?: string };
       if (response.success) {
         toast.success(
-          `${documentType === 'passport' ? 'Passport' : 'Visa'} uploaded for ${memberName} — OCR in corso...`
+          `${documentType === "passport" ? "Passport" : "Visa"} uploaded for ${memberName} — OCR in corso...`,
         );
         pollOcrStatus();
       } else {
-        toast.error('Upload failed', { description: response.message });
+        toast.error("Upload failed", { description: response.message });
       }
     } catch (err) {
-      toast.error('Upload failed', { description: (err as Error).message });
+      toast.error("Upload failed", { description: (err as Error).message });
     } finally {
       setIsUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
@@ -151,10 +162,10 @@ function FamilyMemberUploadButton({
           <Upload className="w-3.5 h-3.5" />
         )}
         {isUploading
-          ? 'Uploading...'
+          ? "Uploading..."
           : ocrPolling
-            ? 'OCR in corso...'
-            : `Upload ${documentType === 'passport' ? 'Passport' : 'Visa'}`}
+            ? "OCR in corso..."
+            : `Upload ${documentType === "passport" ? "Passport" : "Visa"}`}
       </Button>
     </>
   );
@@ -183,18 +194,18 @@ export function FamilyTab({
   const handleDelete = (id: number, name: string) => {
     toast(`Remove ${name} from family members?`, {
       action: {
-        label: 'Remove',
+        label: "Remove",
         onClick: async () => {
           try {
             await api.crm.deleteFamilyMember(clientId, id);
-            toast.success('Family member removed');
+            toast.success("Family member removed");
             await onRefresh();
           } catch (err) {
-            toast.error('Error', { description: (err as Error).message });
+            toast.error("Error", { description: (err as Error).message });
           }
         },
       },
-      cancel: { label: 'Cancel', onClick: () => toast.dismiss() },
+      cancel: { label: "Cancel", onClick: () => toast.dismiss() },
     });
   };
 
@@ -204,8 +215,12 @@ export function FamilyTab({
 
   return (
     <div className="space-y-4">
+      {/* AI Summary (CRM-Guardian L1 cross-folder, shareholders/family slice) */}
+      <AiSummaryCard clientId={clientId} section="family" />
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">Family Members</h3>
+        <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
+          Family Members
+        </h3>
         <Button size="sm" className="gap-2" onClick={onAddClick}>
           <Plus className="w-4 h-4" />
           Add Member
@@ -225,12 +240,12 @@ export function FamilyTab({
           {familyMembers.map((member) => {
             const memberDocs = getMemberDocuments(member.id);
             const memberPassportDoc = memberDocs.find((d) =>
-              d.document_type?.toLowerCase().includes('passport')
+              d.document_type?.toLowerCase().includes("passport"),
             );
             const memberVisaDoc = memberDocs.find(
               (d) =>
-                d.document_type?.toLowerCase().includes('kitas') ||
-                d.document_type?.toLowerCase().includes('visa')
+                d.document_type?.toLowerCase().includes("kitas") ||
+                d.document_type?.toLowerCase().includes("visa"),
             );
 
             return (
@@ -245,7 +260,9 @@ export function FamilyTab({
                       <User className="w-5 h-5 text-[var(--bz-accent)]" />
                     </div>
                     <div>
-                      <h4 className="font-semibold text-[var(--bz-text-1)]">{member.full_name}</h4>
+                      <h4 className="font-semibold text-[var(--bz-text-1)]">
+                        {member.full_name}
+                      </h4>
                       <span className="inline-block px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 text-xs capitalize">
                         {member.relationship}
                       </span>
@@ -284,7 +301,9 @@ export function FamilyTab({
                           <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                             Nationality
                           </p>
-                          <p className="text-sm font-medium">{member.nationality}</p>
+                          <p className="text-sm font-medium">
+                            {member.nationality}
+                          </p>
                         </div>
                       )}
                       {member.date_of_birth && (
@@ -296,8 +315,9 @@ export function FamilyTab({
                             {formatDate(member.date_of_birth)}
                             <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[rgba(255,255,255,0.06)] text-[var(--bz-text-2)]">
                               {Math.floor(
-                                (Date.now() - new Date(member.date_of_birth).getTime()) /
-                                  (365.25 * 86400000)
+                                (Date.now() -
+                                  new Date(member.date_of_birth).getTime()) /
+                                  (365.25 * 86400000),
                               )}
                               y
                             </span>
@@ -309,7 +329,9 @@ export function FamilyTab({
                           <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)]">
                             Email
                           </p>
-                          <p className="text-sm font-medium truncate">{member.email}</p>
+                          <p className="text-sm font-medium truncate">
+                            {member.email}
+                          </p>
                         </div>
                       )}
                       {member.phone && (
@@ -326,7 +348,9 @@ export function FamilyTab({
                         <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1">
                           Notes
                         </p>
-                        <p className="text-xs text-[var(--bz-text-2)]">{member.notes}</p>
+                        <p className="text-xs text-[var(--bz-text-2)]">
+                          {member.notes}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -355,20 +379,23 @@ export function FamilyTab({
                                 </p>
                                 {(() => {
                                   const daysLeft = Math.ceil(
-                                    (new Date(member.passport_expiry).getTime() - Date.now()) /
-                                      86400000
+                                    (new Date(
+                                      member.passport_expiry,
+                                    ).getTime() -
+                                      Date.now()) /
+                                      86400000,
                                   );
                                   const color =
                                     daysLeft < 0
-                                      ? 'text-red-500'
+                                      ? "text-red-500"
                                       : daysLeft <= 180
-                                        ? 'text-yellow-500'
-                                        : 'text-green-500';
+                                        ? "text-yellow-500"
+                                        : "text-green-500";
                                   const label =
                                     daysLeft < 0
                                       ? `Expired ${Math.abs(daysLeft)}d ago`
                                       : daysLeft === 0
-                                        ? 'Expires today'
+                                        ? "Expires today"
                                         : daysLeft <= 365
                                           ? `⏰ ${daysLeft}d left`
                                           : `${Math.floor(daysLeft / 30)}mo left`;
@@ -391,30 +418,34 @@ export function FamilyTab({
                             Document on file — upload to extract data via OCR
                           </p>
                         )}
-                        {member.passport_alert && member.passport_alert !== 'green' && (
-                          <div
-                            className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${ALERT_COLORS[member.passport_alert]}`}
-                          >
-                            <AlertTriangle className="w-3 h-3" />
-                            {member.passport_expiry
-                              ? (() => {
-                                  const d = Math.ceil(
-                                    (new Date(member.passport_expiry).getTime() - Date.now()) /
-                                      86400000
-                                  );
-                                  return d < 0
-                                    ? `Expired ${Math.abs(d)}d ago`
-                                    : d === 0
-                                      ? 'Expires today'
-                                      : `⏰ ${d}d left`;
-                                })()
-                              : member.passport_alert === 'expired'
-                                ? 'Expired'
-                                : member.passport_alert === 'red'
-                                  ? 'Expiring soon'
-                                  : 'Renewal recommended'}
-                          </div>
-                        )}
+                        {member.passport_alert &&
+                          member.passport_alert !== "green" && (
+                            <div
+                              className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${ALERT_COLORS[member.passport_alert]}`}
+                            >
+                              <AlertTriangle className="w-3 h-3" />
+                              {member.passport_expiry
+                                ? (() => {
+                                    const d = Math.ceil(
+                                      (new Date(
+                                        member.passport_expiry,
+                                      ).getTime() -
+                                        Date.now()) /
+                                        86400000,
+                                    );
+                                    return d < 0
+                                      ? `Expired ${Math.abs(d)}d ago`
+                                      : d === 0
+                                        ? "Expires today"
+                                        : `⏰ ${d}d left`;
+                                  })()
+                                : member.passport_alert === "expired"
+                                  ? "Expired"
+                                  : member.passport_alert === "red"
+                                    ? "Expiring soon"
+                                    : "Renewal recommended"}
+                            </div>
+                          )}
                         {memberPassportDoc?.google_drive_file_url && (
                           <div className="flex gap-1.5">
                             <Button
@@ -423,9 +454,13 @@ export function FamilyTab({
                               className="gap-1.5 text-xs h-7 px-2"
                               onClick={() => {
                                 const fileId = extractDriveFileId(
-                                  memberPassportDoc.google_drive_file_url!
+                                  memberPassportDoc.google_drive_file_url!,
                                 );
-                                if (fileId) window.open(`/api/documents/proxy/${fileId}`, '_blank');
+                                if (fileId)
+                                  window.open(
+                                    `/api/documents/proxy/${fileId}`,
+                                    "_blank",
+                                  );
                               }}
                             >
                               <Eye className="w-3 h-3" />
@@ -437,12 +472,12 @@ export function FamilyTab({
                               className="gap-1.5 text-xs h-7 px-2"
                               onClick={() => {
                                 const fileId = extractDriveFileId(
-                                  memberPassportDoc.google_drive_file_url!
+                                  memberPassportDoc.google_drive_file_url!,
                                 );
                                 if (fileId) {
-                                  const link = document.createElement('a');
+                                  const link = document.createElement("a");
                                   link.href = `/api/documents/proxy/${fileId}`;
-                                  link.download = `passport_${member.full_name.replace(/\s+/g, '_')}.jpg`;
+                                  link.download = `passport_${member.full_name.replace(/\s+/g, "_")}.jpg`;
                                   document.body.appendChild(link);
                                   link.click();
                                   document.body.removeChild(link);
@@ -465,7 +500,9 @@ export function FamilyTab({
                     ) : (
                       <div className="rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-base)]/30 p-4 text-center space-y-3">
                         <CreditCard className="w-6 h-6 mx-auto text-[var(--bz-text-2)] opacity-30 mb-1" />
-                        <p className="text-xs text-[var(--bz-text-2)]">No passport data</p>
+                        <p className="text-xs text-[var(--bz-text-2)]">
+                          No passport data
+                        </p>
                         <FamilyMemberUploadButton
                           clientId={clientId}
                           memberId={member.id}
@@ -501,19 +538,21 @@ export function FamilyTab({
                                 </p>
                                 {(() => {
                                   const daysLeft = Math.ceil(
-                                    (new Date(member.visa_expiry).getTime() - Date.now()) / 86400000
+                                    (new Date(member.visa_expiry).getTime() -
+                                      Date.now()) /
+                                      86400000,
                                   );
                                   const color =
                                     daysLeft < 0
-                                      ? 'text-red-500'
+                                      ? "text-red-500"
                                       : daysLeft <= 90
-                                        ? 'text-yellow-500'
-                                        : 'text-green-500';
+                                        ? "text-yellow-500"
+                                        : "text-green-500";
                                   const label =
                                     daysLeft < 0
                                       ? `Expired ${Math.abs(daysLeft)}d ago`
                                       : daysLeft === 0
-                                        ? 'Expires today'
+                                        ? "Expires today"
                                         : daysLeft <= 365
                                           ? `⏰ ${daysLeft}d left`
                                           : `${Math.floor(daysLeft / 30)}mo left`;
@@ -536,7 +575,7 @@ export function FamilyTab({
                             Document on file — upload to extract data via OCR
                           </p>
                         )}
-                        {member.visa_alert && member.visa_alert !== 'green' && (
+                        {member.visa_alert && member.visa_alert !== "green" && (
                           <div
                             className={`text-xs px-2 py-1 rounded inline-flex items-center gap-1 ${ALERT_COLORS[member.visa_alert]}`}
                           >
@@ -544,19 +583,21 @@ export function FamilyTab({
                             {member.visa_expiry
                               ? (() => {
                                   const d = Math.ceil(
-                                    (new Date(member.visa_expiry).getTime() - Date.now()) / 86400000
+                                    (new Date(member.visa_expiry).getTime() -
+                                      Date.now()) /
+                                      86400000,
                                   );
                                   return d < 0
                                     ? `Expired ${Math.abs(d)}d ago`
                                     : d === 0
-                                      ? 'Expires today'
+                                      ? "Expires today"
                                       : `⏰ ${d}d left`;
                                 })()
-                              : member.visa_alert === 'expired'
-                                ? 'Expired'
-                                : member.visa_alert === 'red'
-                                  ? 'Expiring soon'
-                                  : 'Renewal recommended'}
+                              : member.visa_alert === "expired"
+                                ? "Expired"
+                                : member.visa_alert === "red"
+                                  ? "Expiring soon"
+                                  : "Renewal recommended"}
                           </div>
                         )}
                         {memberVisaDoc?.google_drive_file_url && (
@@ -567,9 +608,13 @@ export function FamilyTab({
                               className="gap-1.5 text-xs h-7 px-2"
                               onClick={() => {
                                 const fileId = extractDriveFileId(
-                                  memberVisaDoc.google_drive_file_url!
+                                  memberVisaDoc.google_drive_file_url!,
                                 );
-                                if (fileId) window.open(`/api/documents/proxy/${fileId}`, '_blank');
+                                if (fileId)
+                                  window.open(
+                                    `/api/documents/proxy/${fileId}`,
+                                    "_blank",
+                                  );
                               }}
                             >
                               <Eye className="w-3 h-3" />
@@ -581,12 +626,12 @@ export function FamilyTab({
                               className="gap-1.5 text-xs h-7 px-2"
                               onClick={() => {
                                 const fileId = extractDriveFileId(
-                                  memberVisaDoc.google_drive_file_url!
+                                  memberVisaDoc.google_drive_file_url!,
                                 );
                                 if (fileId) {
-                                  const link = document.createElement('a');
+                                  const link = document.createElement("a");
                                   link.href = `/api/documents/proxy/${fileId}`;
-                                  link.download = `visa_${member.full_name.replace(/\s+/g, '_')}.jpg`;
+                                  link.download = `visa_${member.full_name.replace(/\s+/g, "_")}.jpg`;
                                   document.body.appendChild(link);
                                   link.click();
                                   document.body.removeChild(link);
@@ -609,7 +654,9 @@ export function FamilyTab({
                     ) : (
                       <div className="rounded-lg border border-dashed border-[var(--bz-border)] bg-[var(--bz-base)]/30 p-4 text-center space-y-3">
                         <Globe className="w-6 h-6 mx-auto text-[var(--bz-text-2)] opacity-30 mb-1" />
-                        <p className="text-xs text-[var(--bz-text-2)]">No visa data</p>
+                        <p className="text-xs text-[var(--bz-text-2)]">
+                          No visa data
+                        </p>
                         <FamilyMemberUploadButton
                           clientId={clientId}
                           memberId={member.id}

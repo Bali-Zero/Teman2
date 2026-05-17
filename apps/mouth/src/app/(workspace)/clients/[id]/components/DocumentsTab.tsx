@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   User,
   Globe,
@@ -12,9 +12,10 @@ import {
   AlertTriangle,
   ChevronDown,
   ChevronRight,
-} from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import type { ClientDocument } from '@/lib/api/crm/crm.types';
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { ClientDocument } from "@/lib/api/crm/crm.types";
+import { AiSummaryCard } from "./AiSummaryCard";
 
 export function DocumentsTab({
   clientId,
@@ -34,12 +35,12 @@ export function DocumentsTab({
   onRefresh: () => Promise<void>;
 }) {
   const categoryLabels: Record<string, string> = {
-    immigration: 'Immigration',
-    pma: 'Company',
-    tax: 'Tax',
-    personal: 'Personal',
-    family: 'Family',
-    other: 'Other',
+    immigration: "Immigration",
+    pma: "Company",
+    tax: "Tax",
+    personal: "Personal",
+    family: "Family",
+    other: "Other",
   };
 
   const categoryIcons: Record<string, React.ElementType> = {
@@ -52,26 +53,41 @@ export function DocumentsTab({
   };
 
   const sortedCategories = Object.keys(documentsByCategory).sort((a, b) => {
-    const order = ['immigration', 'pma', 'tax', 'personal', 'family', 'other'];
+    const order = ["immigration", "pma", "tax", "personal", "family", "other"];
     return order.indexOf(a) - order.indexOf(b);
   });
 
   // Compute expiry urgency for a document
   const getExpiryBadge = (doc: ClientDocument) => {
     if (!doc.expiry_date) return null;
-    const daysLeft = Math.ceil((new Date(doc.expiry_date).getTime() - Date.now()) / 86400000);
+    const daysLeft = Math.ceil(
+      (new Date(doc.expiry_date).getTime() - Date.now()) / 86400000,
+    );
     if (daysLeft < 0)
-      return { label: `Expired ${Math.abs(daysLeft)}d ago`, cls: 'bg-red-500/20 text-red-400' };
-    if (daysLeft === 0) return { label: 'Expires today', cls: 'bg-red-500/20 text-red-400' };
+      return {
+        label: `Expired ${Math.abs(daysLeft)}d ago`,
+        cls: "bg-red-500/20 text-red-400",
+      };
+    if (daysLeft === 0)
+      return { label: "Expires today", cls: "bg-red-500/20 text-red-400" };
     if (daysLeft <= 30)
-      return { label: `⏰ ${daysLeft}d left`, cls: 'bg-red-500/15 text-red-400' };
+      return {
+        label: `⏰ ${daysLeft}d left`,
+        cls: "bg-red-500/15 text-red-400",
+      };
     if (daysLeft <= 90)
-      return { label: `⏰ ${daysLeft}d left`, cls: 'bg-yellow-500/15 text-yellow-400' };
+      return {
+        label: `⏰ ${daysLeft}d left`,
+        cls: "bg-yellow-500/15 text-yellow-400",
+      };
     if (daysLeft <= 365)
-      return { label: `⏰ ${daysLeft}d left`, cls: 'bg-[var(--bz-base)] text-[var(--bz-text-2)]' };
+      return {
+        label: `⏰ ${daysLeft}d left`,
+        cls: "bg-[var(--bz-base)] text-[var(--bz-text-2)]",
+      };
     return {
       label: `${Math.floor(daysLeft / 30)}mo left`,
-      cls: 'bg-[var(--bz-base)] text-[var(--bz-text-2)]',
+      cls: "bg-[var(--bz-base)] text-[var(--bz-text-2)]",
     };
   };
 
@@ -79,18 +95,24 @@ export function DocumentsTab({
   const getUrgentCount = (docs: ClientDocument[]) =>
     docs.filter((d) => {
       if (!d.expiry_date) return false;
-      const days = Math.ceil((new Date(d.expiry_date).getTime() - Date.now()) / 86400000);
+      const days = Math.ceil(
+        (new Date(d.expiry_date).getTime() - Date.now()) / 86400000,
+      );
       return days <= 90;
     }).length;
 
   const [collapsed, setCollapsed] = useState<Record<string, boolean>>({});
 
-  const toggleCollapse = (cat: string) => setCollapsed((prev) => ({ ...prev, [cat]: !prev[cat] }));
+  const toggleCollapse = (cat: string) =>
+    setCollapsed((prev) => ({ ...prev, [cat]: !prev[cat] }));
 
   // Total urgent docs across all categories
   const totalUrgent = documents.filter((d) => {
     if (!d.expiry_date) return false;
-    return Math.ceil((new Date(d.expiry_date).getTime() - Date.now()) / 86400000) <= 90;
+    return (
+      Math.ceil((new Date(d.expiry_date).getTime() - Date.now()) / 86400000) <=
+      90
+    );
   }).length;
 
   if (documents.length === 0) {
@@ -111,9 +133,13 @@ export function DocumentsTab({
 
   return (
     <div className="space-y-4">
+      {/* AI Summary (CRM-Guardian L1 cross-folder, documents slice) */}
+      <AiSummaryCard clientId={clientId} section="documents" />
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">Documents</h3>
+          <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
+            Documents
+          </h3>
           <p className="text-sm text-[var(--bz-text-2)]">
             {documents.length} docs · {sortedCategories.length} categories
             {totalUrgent > 0 && (
@@ -139,10 +165,14 @@ export function DocumentsTab({
         // Sort: urgent first, then by expiry date
         const sortedCatDocs = [...catDocs].sort((a, b) => {
           const aUrgent = a.expiry_date
-            ? Math.ceil((new Date(a.expiry_date).getTime() - Date.now()) / 86400000)
+            ? Math.ceil(
+                (new Date(a.expiry_date).getTime() - Date.now()) / 86400000,
+              )
             : 9999;
           const bUrgent = b.expiry_date
-            ? Math.ceil((new Date(b.expiry_date).getTime() - Date.now()) / 86400000)
+            ? Math.ceil(
+                (new Date(b.expiry_date).getTime() - Date.now()) / 86400000,
+              )
             : 9999;
           return aUrgent - bUrgent;
         });
@@ -178,17 +208,22 @@ export function DocumentsTab({
                   const badge = getExpiryBadge(doc);
                   const isUrgent =
                     doc.expiry_date &&
-                    Math.ceil((new Date(doc.expiry_date).getTime() - Date.now()) / 86400000) <= 30;
+                    Math.ceil(
+                      (new Date(doc.expiry_date).getTime() - Date.now()) /
+                        86400000,
+                    ) <= 30;
                   return (
                     <div
                       key={doc.id}
                       className={`flex items-center justify-between rounded-lg border bg-[var(--bz-surface)] p-3 hover:bg-[var(--bz-surface)]/80 transition-colors ${
-                        isUrgent ? 'border-red-500/30' : 'border-[var(--bz-border)]'
+                        isUrgent
+                          ? "border-red-500/30"
+                          : "border-[var(--bz-border)]"
                       }`}
                     >
                       <div className="flex items-center gap-3 min-w-0">
                         <FileText
-                          className={`w-4 h-4 shrink-0 ${isUrgent ? 'text-red-400' : 'text-[var(--bz-text-2)]'}`}
+                          className={`w-4 h-4 shrink-0 ${isUrgent ? "text-red-400" : "text-[var(--bz-text-2)]"}`}
                         />
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-[var(--bz-text-1)] truncate">
@@ -196,18 +231,24 @@ export function DocumentsTab({
                           </p>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             <span className="text-xs text-[var(--bz-text-2)] capitalize">
-                              {doc.document_type?.replace(/_/g, ' ')}
+                              {doc.document_type?.replace(/_/g, " ")}
                             </span>
                             {badge && (
                               <span
                                 className={`text-xs px-1.5 py-0.5 rounded ${badge.cls}`}
-                                title={doc.expiry_date ? `Expires: ${formatDate(doc.expiry_date)}` : undefined}
+                                title={
+                                  doc.expiry_date
+                                    ? `Expires: ${formatDate(doc.expiry_date)}`
+                                    : undefined
+                                }
                               >
                                 {badge.label}
                               </span>
                             )}
-                            {doc.status === 'verified' && (
-                              <span className="text-xs text-green-500">✓ Verified</span>
+                            {doc.status === "verified" && (
+                              <span className="text-xs text-green-500">
+                                ✓ Verified
+                              </span>
                             )}
                           </div>
                         </div>
