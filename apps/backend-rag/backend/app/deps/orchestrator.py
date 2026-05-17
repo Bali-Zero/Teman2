@@ -48,12 +48,10 @@ async def get_orchestrator(request: Request) -> Any:
 
         db_pool = getattr(request.app.state, "db_pool", None)
         search_service = getattr(request.app.state, "search_service", None)
-        nlm_enrichment_service = getattr(request.app.state, "nlm_enrichment_service", None)
         specialized_router = getattr(request.app.state, "specialized_router", None)
         _agentic_rag_orchestrator = create_agentic_rag(
             retriever=search_service,
             db_pool=db_pool,
-            nlm_enrichment_service=nlm_enrichment_service,
             specialized_service_router=specialized_router,
         )
 
