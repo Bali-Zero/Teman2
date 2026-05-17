@@ -2,7 +2,7 @@
 
 import importlib
 import json
-from unittest.mock import MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -185,14 +185,13 @@ async def test_execute_recovery_restart_confirmed(monkeypatch: pytest.MonkeyPatc
     mock_result.stderr = ""
     monkeypatch.setenv(srv.MUTATION_CONFIRM_ENV, "1")
 
-    with patch.object(srv, "subprocess") as mock_subprocess:
-        mock_subprocess.run.return_value = mock_result
-        mock_subprocess.TimeoutExpired = TimeoutError
+    with patch.object(srv, "_run_command", new_callable=AsyncMock) as mock_run:
+        mock_run.return_value = mock_result
         fn = srv.execute_recovery_action.fn if hasattr(srv.execute_recovery_action, 'fn') else srv.execute_recovery_action
         result = await fn(action="restart", confirm=True, dry_run=False)
 
     assert result["success"] is True
-    mock_subprocess.run.assert_called_once()
+    mock_run.assert_awaited_once()
 
 
 @pytest.mark.asyncio

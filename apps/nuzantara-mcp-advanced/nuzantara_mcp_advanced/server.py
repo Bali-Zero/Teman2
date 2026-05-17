@@ -12,10 +12,12 @@ Tools:
 """
 
 import asyncio
+import fnmatch
 import json
 import logging
 import os
 from pathlib import Path
+import shutil
 import subprocess
 from typing import Optional
 
@@ -99,6 +101,32 @@ def _safe_project_path(relative_path: str) -> str:
     if project_root not in (candidate, *candidate.parents):
         raise ValueError(f"Path escapes project root: {relative_path}")
     return str(candidate)
+
+
+def _list_matching_files(root: str, pattern: str) -> list[str]:
+    """List files with a standard-library fallback when ripgrep is unavailable."""
+    root_path = Path(root)
+    return [
+        str(path)
+        for path in root_path.rglob("*")
+        if path.is_file() and fnmatch.fnmatch(path.name, pattern)
+    ]
+
+
+def _search_files(query: str, root: str, pattern: str) -> list[str]:
+    """Search files with a standard-library fallback when ripgrep is unavailable."""
+    matches: list[str] = []
+    for file_path in _list_matching_files(root, pattern):
+        try:
+            with open(file_path, encoding="utf-8", errors="ignore") as fh:
+                for line_number, line in enumerate(fh, start=1):
+                    if query in line:
+                        matches.append(f"{file_path}:{line_number}:{line.rstrip()}")
+                        if len(matches) >= 20:
+                            return matches
+        except OSError:
+            continue
+    return matches
 
 
 def _get_health_client() -> httpx.AsyncClient:
@@ -551,18 +579,26 @@ async def search_codebase(query: str, file_pattern: str = "*.py") -> dict:
         Matching files and line numbers
     """
     try:
-        result = await _run_command(
-            [
-                "rg", "-n",
-                "--glob", file_pattern,
-                "--",
+        if shutil.which("rg"):
+            result = await _run_command(
+                [
+                    "rg", "-n",
+                    "--glob", file_pattern,
+                    "--",
+                    query,
+                    f"{BACKEND_ROOT}/backend",
+                ],
+                cwd=PROJECT_ROOT,
+                timeout=30,
+            )
+            lines = result.stdout.strip().split("\n") if result.stdout.strip() else []
+        else:
+            lines = await asyncio.to_thread(
+                _search_files,
                 query,
                 f"{BACKEND_ROOT}/backend",
-            ],
-            cwd=PROJECT_ROOT,
-            timeout=30,
-        )
-        lines = result.stdout.strip().split("\n") if result.stdout.strip() else []
+                file_pattern,
+            )
         return {
             "matches": len(lines),
             "results": lines[:20]  # Limit to 20 results
@@ -587,13 +623,16 @@ async def find_documentation(topic: str) -> dict:
         List of relevant documentation files
     """
     try:
-        # Search in docs directory
-        result = await _run_command(
-            ["rg", "--files", "--glob", "*.md", f"{PROJECT_ROOT}/docs"],
-            cwd=PROJECT_ROOT,
-            timeout=15,
-        )
-        files = result.stdout.strip().split("\n") if result.stdout.strip() else []
+        docs_root = f"{PROJECT_ROOT}/docs"
+        if shutil.which("rg"):
+            result = await _run_command(
+                ["rg", "--files", "--glob", "*.md", docs_root],
+                cwd=PROJECT_ROOT,
+                timeout=15,
+            )
+            files = result.stdout.strip().split("\n") if result.stdout.strip() else []
+        else:
+            files = await asyncio.to_thread(_list_matching_files, docs_root, "*.md")
 
         # Filter by topic relevance (simple keyword matching)
         topic_lower = topic.lower()
@@ -625,12 +664,15 @@ async def get_file_structure(path: str = "apps/backend-rag/backend") -> dict:
     """
     try:
         target_path = _safe_project_path(path)
-        result = await _run_command(
-            ["rg", "--files", "--glob", "*.py", target_path],
-            cwd=PROJECT_ROOT,
-            timeout=15,
-        )
-        files = result.stdout.strip().split("\n") if result.stdout.strip() else []
+        if shutil.which("rg"):
+            result = await _run_command(
+                ["rg", "--files", "--glob", "*.py", target_path],
+                cwd=PROJECT_ROOT,
+                timeout=15,
+            )
+            files = result.stdout.strip().split("\n") if result.stdout.strip() else []
+        else:
+            files = await asyncio.to_thread(_list_matching_files, target_path, "*.py")
 
         # Organize by directory
         structure = {}
