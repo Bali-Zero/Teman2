@@ -11,9 +11,11 @@ Tools:
 - System diagnostics
 """
 
+import asyncio
 import json
 import logging
 import os
+from pathlib import Path
 import subprocess
 from typing import Optional
 
@@ -27,6 +29,8 @@ logger = logging.getLogger("nuzantara-mcp-advanced")
 BACKEND_URL = os.getenv("NUZANTARA_BACKEND_URL", "https://nuzantara-rag.fly.dev")
 FLY_APP = os.getenv("FLY_APP", "nuzantara-rag")
 PROJECT_ROOT = os.getenv("NUZANTARA_ROOT", "/Users/nuzantara/Desktop/nuzantara")
+BACKEND_ROOT = os.path.join(PROJECT_ROOT, "apps/backend-rag")
+MUTATION_CONFIRM_ENV = "NUZANTARA_MCP_ADVANCED_ALLOW_MUTATION"
 
 mcp = FastMCP(
     name="Nuzantara Advanced Operations",
@@ -35,6 +39,66 @@ mcp = FastMCP(
 
 # Persistent HTTP client for health checks (Golden Rule #10)
 _health_client: Optional[httpx.AsyncClient] = None
+
+
+def _backend_python() -> str:
+    """Return the backend virtualenv Python when available."""
+    override = os.getenv("NUZANTARA_BACKEND_PYTHON")
+    if override:
+        return override
+
+    for venv_name in (".venv", "venv"):
+        candidate = os.path.join(BACKEND_ROOT, venv_name, "bin", "python")
+        if os.path.exists(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    raise FileNotFoundError(
+        f"Backend virtualenv Python not found under {BACKEND_ROOT}; "
+        "set NUZANTARA_BACKEND_PYTHON to an explicit interpreter."
+    )
+
+
+def _backend_tool(tool_name: str) -> str:
+    """Return a backend virtualenv tool path when available."""
+    override = os.getenv(f"NUZANTARA_BACKEND_{tool_name.upper()}_BIN")
+    if override:
+        return override
+
+    for venv_name in (".venv", "venv"):
+        candidate = os.path.join(BACKEND_ROOT, venv_name, "bin", tool_name)
+        if os.path.exists(candidate) and os.access(candidate, os.X_OK):
+            return candidate
+    raise FileNotFoundError(
+        f"Backend virtualenv tool '{tool_name}' not found under {BACKEND_ROOT}; "
+        f"set NUZANTARA_BACKEND_{tool_name.upper()}_BIN to an explicit executable."
+    )
+
+
+async def _run_command(
+    cmd: list[str],
+    *,
+    cwd: str,
+    timeout: int,
+    env: Optional[dict[str, str]] = None,
+) -> subprocess.CompletedProcess[str]:
+    """Run a subprocess without blocking the MCP event loop."""
+    return await asyncio.to_thread(
+        subprocess.run,
+        cmd,
+        capture_output=True,
+        text=True,
+        cwd=cwd,
+        env=env,
+        timeout=timeout,
+    )
+
+
+def _safe_project_path(relative_path: str) -> str:
+    """Resolve a user-supplied relative project path without escaping the repo."""
+    candidate = (Path(PROJECT_ROOT) / relative_path).resolve()
+    project_root = Path(PROJECT_ROOT).resolve()
+    if project_root not in (candidate, *candidate.parents):
+        raise ValueError(f"Path escapes project root: {relative_path}")
+    return str(candidate)
 
 
 def _get_health_client() -> httpx.AsyncClient:
@@ -62,11 +126,9 @@ async def check_fly_status() -> dict:
     Requires flyctl to be installed and authenticated.
     """
     try:
-        result = subprocess.run(
+        result = await _run_command(
             ["fly", "status", "--app", FLY_APP, "--json"],
-            capture_output=True,
-            text=True,
-            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+            cwd=BACKEND_ROOT,
             timeout=30,
         )
         if result.returncode == 0:
@@ -80,11 +142,9 @@ async def _fetch_fly_logs(lines: int = 50, filter_str: Optional[str] = None) -> 
     """Internal log fetcher (callable by other functions without FunctionTool wrapping)."""
     try:
         cmd = ["fly", "logs", "--app", FLY_APP, "-n", str(lines)]
-        result = subprocess.run(
+        result = await _run_command(
             cmd,
-            capture_output=True,
-            text=True,
-            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+            cwd=BACKEND_ROOT,
             timeout=30,
         )
         logs = result.stdout
@@ -131,14 +191,12 @@ async def check_deployment_readiness() -> dict:
 
     # Check 1: Import chain
     try:
-        result = subprocess.run(
+        result = await _run_command(
             [
-                "python", "-c",
+                _backend_python(), "-c",
                 "from backend.app.dependencies import get_current_user; print('OK')"
             ],
-            capture_output=True,
-            text=True,
-            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+            cwd=BACKEND_ROOT,
             env={**os.environ, "PYTHONPATH": "."},
             timeout=30,
         )
@@ -151,17 +209,15 @@ async def check_deployment_readiness() -> dict:
 
     # Check 2: Core tests
     try:
-        result = subprocess.run(
+        result = await _run_command(
             [
-                "python", "-m", "pytest",
+                _backend_python(), "-m", "pytest",
                 "backend/tests/services/rag/test_kg_langgraph.py",
                 "backend/tests/services/rag/test_kg_subgraphs.py",
                 "backend/tests/services/rag/test_confidence.py",
                 "-q"
             ],
-            capture_output=True,
-            text=True,
-            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+            cwd=BACKEND_ROOT,
             env={**os.environ, "PYTHONPATH": "."},
             timeout=120,
         )
@@ -174,10 +230,8 @@ async def check_deployment_readiness() -> dict:
 
     # Check 3: Git status for rogue changes
     try:
-        result = subprocess.run(
+        result = await _run_command(
             ["git", "diff", "--name-only", "HEAD", "--", "apps/backend-rag/backend/"],
-            capture_output=True,
-            text=True,
             cwd=PROJECT_ROOT,
             timeout=15,
         )
@@ -211,18 +265,16 @@ async def run_backend_tests(test_path: str = "", verbose: bool = False) -> dict:
         Test results with pass/fail counts and output
     """
     try:
-        cmd = ["python", "-m", "pytest"]
+        cmd = [_backend_python(), "-m", "pytest"]
         if test_path:
             cmd.append(test_path)
         if verbose:
             cmd.append("-v")
         cmd.append("--tb=short")
 
-        result = subprocess.run(
+        result = await _run_command(
             cmd,
-            capture_output=True,
-            text=True,
-            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+            cwd=BACKEND_ROOT,
             env={**os.environ, "PYTHONPATH": "."},
             timeout=300,
         )
@@ -288,13 +340,20 @@ async def analyze_fly_health(lines: int = 100) -> dict:
 
 
 @mcp.tool()
-async def execute_recovery_action(action: str, machine_id: Optional[str] = None) -> dict:
+async def execute_recovery_action(
+    action: str,
+    machine_id: Optional[str] = None,
+    confirm: bool = False,
+    dry_run: bool = True,
+) -> dict:
     """
     Execute a recovery action for the Fly.io application.
 
     Args:
         action: "restart" or "redeploy"
         machine_id: Optional specific machine ID to target
+        confirm: Must be true for non-dry-run execution
+        dry_run: Return the command without executing it by default
 
     Returns:
         Execution result status.
@@ -311,11 +370,28 @@ async def execute_recovery_action(action: str, machine_id: Optional[str] = None)
         else:
             return {"success": False, "error": f"Unsupported action: {action}"}
 
-        result = subprocess.run(
+        if dry_run:
+            return {
+                "success": True,
+                "dry_run": True,
+                "requires_confirmation": True,
+                "command": cmd,
+            }
+
+        if not confirm or os.getenv(MUTATION_CONFIRM_ENV) != "1":
+            return {
+                "success": False,
+                "blocked": True,
+                "error": (
+                    "Recovery actions are mutation-gated. "
+                    f"Pass confirm=true and set {MUTATION_CONFIRM_ENV}=1 to execute."
+                ),
+                "command": cmd,
+            }
+
+        result = await _run_command(
             cmd,
-            capture_output=True,
-            text=True,
-            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+            cwd=BACKEND_ROOT,
             timeout=300,
         )
 
@@ -339,11 +415,9 @@ async def run_type_checking() -> dict:
         Type checking results with error count
     """
     try:
-        result = subprocess.run(
-            ["mypy", "backend/", "--ignore-missing-imports"],
-            capture_output=True,
-            text=True,
-            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+        result = await _run_command(
+            [_backend_tool("mypy"), "backend/", "--ignore-missing-imports"],
+            cwd=BACKEND_ROOT,
             timeout=120,
         )
         return {
@@ -365,20 +439,16 @@ async def run_linting() -> dict:
     """
     try:
         # Check formatting
-        format_result = subprocess.run(
-            ["ruff", "format", "--check", "backend/"],
-            capture_output=True,
-            text=True,
-            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+        format_result = await _run_command(
+            [_backend_tool("ruff"), "format", "--check", "backend/"],
+            cwd=BACKEND_ROOT,
             timeout=60,
         )
 
         # Check linting
-        lint_result = subprocess.run(
-            ["ruff", "check", "backend/"],
-            capture_output=True,
-            text=True,
-            cwd=f"{PROJECT_ROOT}/apps/backend-rag",
+        lint_result = await _run_command(
+            [_backend_tool("ruff"), "check", "backend/"],
+            cwd=BACKEND_ROOT,
             timeout=60,
         )
 
@@ -481,11 +551,15 @@ async def search_codebase(query: str, file_pattern: str = "*.py") -> dict:
         Matching files and line numbers
     """
     try:
-        result = subprocess.run(
-            ["grep", "-r", "-n", "--include", file_pattern, query,
-             f"{PROJECT_ROOT}/apps/backend-rag/backend"],
-            capture_output=True,
-            text=True,
+        result = await _run_command(
+            [
+                "rg", "-n",
+                "--glob", file_pattern,
+                "--",
+                query,
+                f"{BACKEND_ROOT}/backend",
+            ],
+            cwd=PROJECT_ROOT,
             timeout=30,
         )
         lines = result.stdout.strip().split("\n") if result.stdout.strip() else []
@@ -514,10 +588,9 @@ async def find_documentation(topic: str) -> dict:
     """
     try:
         # Search in docs directory
-        result = subprocess.run(
-            ["find", f"{PROJECT_ROOT}/docs", "-type", "f", "-name", "*.md"],
-            capture_output=True,
-            text=True,
+        result = await _run_command(
+            ["rg", "--files", "--glob", "*.md", f"{PROJECT_ROOT}/docs"],
+            cwd=PROJECT_ROOT,
             timeout=15,
         )
         files = result.stdout.strip().split("\n") if result.stdout.strip() else []
@@ -551,10 +624,10 @@ async def get_file_structure(path: str = "apps/backend-rag/backend") -> dict:
         Directory tree structure
     """
     try:
-        result = subprocess.run(
-            ["find", f"{PROJECT_ROOT}/{path}", "-type", "f", "-name", "*.py"],
-            capture_output=True,
-            text=True,
+        target_path = _safe_project_path(path)
+        result = await _run_command(
+            ["rg", "--files", "--glob", "*.py", target_path],
+            cwd=PROJECT_ROOT,
             timeout=15,
         )
         files = result.stdout.strip().split("\n") if result.stdout.strip() else []
@@ -562,7 +635,7 @@ async def get_file_structure(path: str = "apps/backend-rag/backend") -> dict:
         # Organize by directory
         structure = {}
         for f in files:
-            rel_path = f.replace(f"{PROJECT_ROOT}/{path}/", "")
+            rel_path = os.path.relpath(f, target_path)
             parts = rel_path.split("/")
             current = structure
             for part in parts[:-1]:
