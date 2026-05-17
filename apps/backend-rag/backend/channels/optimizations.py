@@ -86,7 +86,7 @@ class ChannelRateLimiter:
         self.last_refill[channel_id] = now
 
         if self.tokens[channel_id] < 1:
-            logger.warning(f"Rate limit (burst): {channel_id}")
+            logger.warning("Rate limit (burst): %s", channel_id)
             return False
 
         # --- Per-minute / per-hour: try Redis first ---
@@ -102,10 +102,10 @@ class ChannelRateLimiter:
         # --- Fallback: in-memory counters ---
         self._cleanup_old_counts(channel_id, now)
         if len(self.minute_counts[channel_id]) >= self.config.max_requests_per_minute:
-            logger.warning(f"Rate limit (minute, in-memory): {channel_id}")
+            logger.warning("Rate limit (minute, in-memory): %s", channel_id)
             return False
         if len(self.hour_counts[channel_id]) >= self.config.max_requests_per_hour:
-            logger.warning(f"Rate limit (hour, in-memory): {channel_id}")
+            logger.warning("Rate limit (hour, in-memory): %s", channel_id)
             return False
 
         # Consume
@@ -137,7 +137,7 @@ class ChannelRateLimiter:
                 await redis.expire(minute_key, 60)
 
             if minute_count > self.config.max_requests_per_minute:
-                logger.warning(f"Rate limit (minute, Redis): {channel_id} count={minute_count}")
+                logger.warning("Rate limit (minute, Redis): %s count=%s", channel_id, minute_count)
                 # Decrement back since we're rejecting
                 await redis.decr(minute_key)
                 return False
@@ -148,7 +148,7 @@ class ChannelRateLimiter:
                 await redis.expire(hour_key, 3600)
 
             if hour_count > self.config.max_requests_per_hour:
-                logger.warning(f"Rate limit (hour, Redis): {channel_id} count={hour_count}")
+                logger.warning("Rate limit (hour, Redis): %s count=%s", channel_id, hour_count)
                 await redis.decr(hour_key)
                 # Also undo the minute increment
                 await redis.decr(minute_key)
@@ -157,7 +157,7 @@ class ChannelRateLimiter:
             return True
 
         except Exception as e:
-            logger.debug(f"Redis rate limit check failed, falling back to in-memory: {e}")
+            logger.debug("Redis rate limit check failed, falling back to in-memory: %s", e)
             return None
 
     def _cleanup_old_counts(self, channel_id: str, now: float) -> None:
@@ -209,7 +209,7 @@ class MessageDeduplicator:
 
             # Check if seen
             if message_hash in self.seen_hashes:
-                logger.info(f"Duplicate message detected: {message_hash}")
+                logger.info("Duplicate message detected: %s", message_hash)
                 return True
 
             # Mark as seen
@@ -291,7 +291,7 @@ class ConnectionPool:
                     timeout=self.timeout,
                     limits=httpx.Limits(max_connections=self.max_connections),
                 )
-                logger.info(f"Created HTTP client pool for {channel}")
+                logger.info("Created HTTP client pool for %s", channel)
 
             return self.clients[channel]
 
@@ -300,7 +300,7 @@ class ConnectionPool:
         async with self._lock:
             for channel, client in self.clients.items():
                 await client.aclose()
-                logger.info(f"Closed HTTP client pool for {channel}")
+                logger.info("Closed HTTP client pool for %s", channel)
             self.clients.clear()
 
 
@@ -379,7 +379,7 @@ class DeliveryManager:
             logger.info(f"DLQ: persisted failed message to PG ({record['channel']}:{record['channel_id']})")
             return True
         except Exception as e:
-            logger.warning(f"DLQ: PG write failed, trying Redis fallback: {e}")
+            logger.warning("DLQ: PG write failed, trying Redis fallback: %s", e)
             return False
 
     async def _persist_to_redis(self, record: dict[str, Any]) -> bool:
@@ -394,7 +394,7 @@ class DeliveryManager:
             logger.info(f"DLQ: persisted to Redis fallback ({record['channel']}:{record['channel_id']})")
             return True
         except Exception as e:
-            logger.error(f"DLQ: Redis LPUSH also failed — message LOST: {e}")
+            logger.error("DLQ: Redis LPUSH also failed — message LOST: %s", e)
             return False
 
     async def _drain_redis_dlq(self) -> int:
@@ -429,10 +429,10 @@ class DeliveryManager:
                     logger.debug("DLQ drain: PG still unavailable, stopping drain")
                     break
         except Exception as e:
-            logger.warning(f"DLQ drain error: {e}")
+            logger.warning("DLQ drain error: %s", e)
 
         if drained > 0:
-            logger.info(f"DLQ: drained {drained} items from Redis to PG")
+            logger.info("DLQ: drained %s items from Redis to PG", drained)
         return drained
 
     async def _process_dlq(self, adapters: dict[str, Any]) -> None:
@@ -508,7 +508,7 @@ class DeliveryManager:
                 logger.info("DLQ retry loop cancelled")
                 break
             except Exception as e:
-                logger.error(f"DLQ retry loop error: {e}")
+                logger.error("DLQ retry loop error: %s", e)
                 await asyncio.sleep(60)
 
     _alert_client: Any = None  # Persistent httpx client for TG alerts (Golden Rule #10)
@@ -553,7 +553,7 @@ class DeliveryManager:
             })
             logger.info(f"DLQ: sent exhaustion alert for message {row['id']}")
         except Exception as alert_err:
-            logger.warning(f"DLQ: failed to send exhaustion alert: {alert_err}")
+            logger.warning("DLQ: failed to send exhaustion alert: %s", alert_err)
 
     async def start_retry_loop(self, adapters: dict[str, Any]) -> None:
         """Start the background DLQ retry loop."""

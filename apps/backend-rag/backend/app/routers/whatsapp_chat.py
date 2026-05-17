@@ -126,7 +126,7 @@ _Log automatico - ogni conversazione viene tracciata_
             disable_notification=True,  # Silent notification
         )
     except Exception as e:
-        logger.error(f"Failed to send conversation log to Zero: {e}")
+        logger.error("Failed to send conversation log to Zero: %s", e)
 
 
 async def notify_human_telegram(
@@ -218,9 +218,9 @@ Rispondi direttamente su WhatsApp!
             text=notification_text,
             parse_mode="Markdown",
         )
-        logger.info(f"Telegram notification sent for WhatsApp escalation from {phone}")
+        logger.info("Telegram notification sent for WhatsApp escalation from %s", phone)
     except Exception as e:
-        logger.error(f"Failed to send Telegram notification: {e}")
+        logger.error("Failed to send Telegram notification: %s", e)
 
 
 async def process_whatsapp_message(
@@ -247,7 +247,7 @@ async def process_whatsapp_message(
 
         # 0. ALLOWLIST CHECK: Silently ignore numbers not in whitelist
         if not whatsapp_triage_service.is_allowed(phone):
-            logger.info(f"Ignored message from non-allowed number: {phone}")
+            logger.info("Ignored message from non-allowed number: %s", phone)
             return
 
         # 1. TRIAGE: Personal or Business?
@@ -257,7 +257,7 @@ async def process_whatsapp_message(
             sender_name=sender_name,
         )
 
-        logger.info(f"Triage decision for {phone}: {decision} (reason: {reason})")
+        logger.info("Triage decision for %s: %s (reason: %s)", phone, decision, reason)
 
         # 1.5. AUTO-DETECT NEW CLIENT ONBOARDING INTENT
         # Check if message indicates new client onboarding before processing
@@ -269,7 +269,7 @@ async def process_whatsapp_message(
                 sender_name=sender_name,
             )
             if onboarding_result:
-                logger.info(f"🎯 Auto-triggered onboarding chain for {phone}: {onboarding_result}")
+                logger.info("🎯 Auto-triggered onboarding chain for %s: %s", phone, onboarding_result)
                 # Send confirmation message to client
                 await whatsapp_service.send_message(
                     phone=phone,
@@ -285,7 +285,7 @@ async def process_whatsapp_message(
                     )
                 return
         except Exception as e:
-            logger.error(f"Onboarding detection failed for {phone}: {e}", exc_info=True)
+            logger.error("Onboarding detection failed for %s: %s", phone, e, exc_info=True)
             # Continue with normal flow if detection fails
 
         # 2. ESCALATE TO HUMAN
@@ -310,7 +310,7 @@ async def process_whatsapp_message(
                 try:
                     ctx = await build_context(phone, sender_name, message_text, db_pool)
                 except Exception as e:
-                    logger.error(f"Error building context for WhatsApp: {e}", exc_info=True)
+                    logger.error("Error building context for WhatsApp: %s", e, exc_info=True)
                     ctx = None
 
             await notify_human_telegram(
@@ -322,7 +322,7 @@ async def process_whatsapp_message(
                 conversation_history=ctx.get("conversation_history"),
             )
 
-            logger.info(f"Message from {phone} escalated to human (reason: {reason})")
+            logger.info("Message from %s escalated to human (reason: %s)", phone, reason)
             return
 
         # 3. OFFER CHOICE (ambiguous)
@@ -333,7 +333,7 @@ async def process_whatsapp_message(
                 text=welcome_msg,
                 reply_to_message_id=message_id,
             )
-            logger.info(f"Welcome message sent to {phone}")
+            logger.info("Welcome message sent to %s", phone)
             return
 
         # 4. AI CAN HANDLE — Gemini 3 Flash with RAG (direct response, no Claude)
@@ -342,7 +342,7 @@ async def process_whatsapp_message(
 
         db_pool = _get_db_pool(request)
 
-        logger.info(f"🚀 Processing query from {phone} with Gemini 3 Flash (RAG + Zan persona)")
+        logger.info("🚀 Processing query from %s with Gemini 3 Flash (RAG + Zan persona)", phone)
 
         start_time = time.time()
 
@@ -440,7 +440,7 @@ async def process_whatsapp_message(
                     client_profile=ctx["client_profile"],
                     conversation_history=ctx["conversation_history"],
                 )
-                logger.info(f"🔔 AI escalation triggered for {phone}")
+                logger.info("🔔 AI escalation triggered for %s", phone)
 
             # Save conversation to PostgreSQL
             await _save_conversation(
@@ -476,7 +476,7 @@ async def process_whatsapp_message(
             )
 
     except Exception as e:
-        logger.error(f"Error processing WhatsApp message from {phone}: {e}", exc_info=True)
+        logger.error("Error processing WhatsApp message from %s: %s", phone, e, exc_info=True)
 
         try:
             await whatsapp_service.send_message(
@@ -485,7 +485,7 @@ async def process_whatsapp_message(
                 reply_to_message_id=message_id,
             )
         except Exception as send_error:
-            logger.error(f"Failed to send error message: {send_error}")
+            logger.error("Failed to send error message: %s", send_error)
 
 
 def _get_db_pool(request: Request) -> Any:
@@ -495,7 +495,7 @@ def _get_db_pool(request: Request) -> Any:
 
         return get_database(request)
     except Exception as e:
-        logger.error(f"Error getting database for WhatsApp chat: {e}", exc_info=True)
+        logger.error("Error getting database for WhatsApp chat: %s", e, exc_info=True)
         return None
 
 
@@ -552,9 +552,9 @@ async def _save_conversation(
                     json.dumps(client_profile),
                 )
 
-        logger.info(f"💾 Conversation saved for {phone} (session: {session_id})")
+        logger.info("💾 Conversation saved for %s (session: %s)", phone, session_id)
     except Exception as e:
-        logger.warning(f"Failed to save conversation for {phone}: {e}")
+        logger.warning("Failed to save conversation for %s: %s", phone, e)
 
 
 @router.get("")
@@ -654,7 +654,7 @@ async def whatsapp_webhook(
         raw_payload = json.loads(body)
         webhook = WhatsAppWebhook(**raw_payload)
     except Exception as e:
-        logger.error(f"❌ WhatsApp webhook body parse error: {e}")
+        logger.error("❌ WhatsApp webhook body parse error: %s", e)
         raise HTTPException(status_code=400, detail="Invalid request body")
 
     logger.info(f"Webhook received: {webhook.object}, {len(webhook.entry)} entries")
@@ -713,17 +713,17 @@ async def whatsapp_webhook(
                 message_id = msg.get("id")
                 message_type = msg.get("type")
 
-                logger.info(f"Message from {phone}: type={message_type}, id={message_id}")
+                logger.info("Message from %s: type=%s, id=%s", phone, message_type, message_id)
 
                 if message_type != "text":
-                    logger.info(f"Ignoring non-text message type: {message_type}")
+                    logger.info("Ignoring non-text message type: %s", message_type)
                     continue
 
                 text_obj = msg.get("text", {})
                 text = text_obj.get("body", "")
 
                 if not text:
-                    logger.warning(f"Empty text body from {phone}")
+                    logger.warning("Empty text body from %s", phone)
                     continue
 
                 background_tasks.add_task(
@@ -735,7 +735,7 @@ async def whatsapp_webhook(
                     request=request,
                 )
 
-                logger.info(f"Message from {phone} scheduled for processing")
+                logger.info("Message from %s scheduled for processing", phone)
 
     # Record webhook metric
     try:

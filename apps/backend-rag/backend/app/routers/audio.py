@@ -38,7 +38,7 @@ async def transcribe_audio(
         text = await audio_service.transcribe_audio(file_obj, language=language)
         return {"text": text}
     except Exception as e:
-        logger.error(f"Transcribe endpoint error: {e}")
+        logger.error("Transcribe endpoint error: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -60,5 +60,5 @@ async def generate_speech(
         # Return as streaming response
         return StreamingResponse(io.BytesIO(audio_content), media_type="audio/mpeg")
     except Exception as e:
-        logger.error(f"Speech endpoint error: {e}")
+        logger.error("Speech endpoint error: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e

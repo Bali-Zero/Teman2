@@ -81,7 +81,7 @@ async def calculate_scenario_pricing(
     try:
         from backend.services.pricing.dynamic_pricing_service import DynamicPricingService
     except ImportError as e:
-        logger.error(f"DynamicPricingService import failed: {e}")
+        logger.error("DynamicPricingService import failed: %s", e)
         raise HTTPException(status_code=503, detail="Dynamic pricing service unavailable")
 
     cross_oracle = getattr(request.app.state, "cross_oracle_synthesis_service", None)
@@ -129,5 +129,5 @@ async def calculate_scenario_pricing(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Dynamic pricing calculation failed: {e}", exc_info=True)
+        logger.error("Dynamic pricing calculation failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail="Pricing calculation failed")

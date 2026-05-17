@@ -124,7 +124,7 @@ async def get_current_user(
 
     # Get user from database using connection pool
     async with db_pool.acquire() as conn:
-        logger.debug(f"Validating user: {user_id}")
+        logger.debug("Validating user: %s", user_id)
         query = """
             SELECT id::text, email, full_name as name, role, 'active' as status, NULL::jsonb as metadata, language as language_preference, avatar
             FROM team_members
@@ -136,7 +136,7 @@ async def get_current_user(
             log_warning(logger, "User validation failed", user_id=user_id)
             raise credentials_exception
 
-        logger.debug(f"User validated: {user_id}")
+        logger.debug("User validated: %s", user_id)
         return dict(row)
 
 
@@ -176,10 +176,10 @@ async def _auto_clockin_if_needed(
                 """,
                 user_id, email,
             )
-            logger.info(f"🟢 Auto clock-in: {email} (from login)")
+            logger.info("🟢 Auto clock-in: %s (from login)", email)
             return True
     except Exception as e:
-        logger.warning(f"⚠️ Auto clock-in failed for {email}: {e}")
+        logger.warning("⚠️ Auto clock-in failed for %s: %s", email, e)
         return False
 
 
@@ -229,7 +229,7 @@ async def login(
         except HTTPException:
             raise
         except Exception as e:
-            logger.debug(f"S03: Brute force check skipped: {e}")
+            logger.debug("S03: Brute force check skipped: %s", e)
 
         async with db_pool.acquire() as conn:
             # Real database authentication using team_members
@@ -610,7 +610,7 @@ async def revoke_all_sessions(
             revocation_svc = TokenRevocationService(redis_client=redis_client)
             await revocation_svc.revoke_all_user_tokens(user_email, reason="user_requested")
         except Exception as e:
-            logger.warning(f"S03-S2: Revoke-all failed for {user_email}: {e}")
+            logger.warning("S03-S2: Revoke-all failed for %s: %s", user_email, e)
 
     # Audit log
     try:
@@ -627,7 +627,7 @@ async def revoke_all_sessions(
                 details={"reason": "user_requested"},
             )
     except Exception as e:
-        logger.warning(f"S03-S2: Audit log failed for revoke-all: {e}")
+        logger.warning("S03-S2: Audit log failed for revoke-all: %s", e)
 
     return {"success": True, "message": "All sessions revoked"}
 

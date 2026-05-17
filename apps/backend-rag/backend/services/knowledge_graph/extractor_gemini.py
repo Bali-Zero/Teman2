@@ -67,7 +67,7 @@ class GeminiKGExtractor:
         # Build schema prompt
         self.schema_prompt = self._build_schema_prompt()
 
-        logger.info(f"GeminiKGExtractor initialised via genai_client facade: model={model}")
+        logger.info("GeminiKGExtractor initialised via genai_client facade: model=%s", model)
 
     def _build_schema_prompt(self) -> str:
         """Build the schema description for prompts"""
@@ -201,7 +201,7 @@ Extract entities and relations now (ensure every entity has at least one relatio
                 # Try to extract JSON from response
                 json_match = re.search(r"\{[\s\S]*\}", content)
                 if not json_match:
-                    logger.warning(f"No JSON found in response for chunk {chunk_id}")
+                    logger.warning("No JSON found in response for chunk %s", chunk_id)
                     return ExtractionResult(chunk_id=chunk_id, raw_text=text)
                 data = json.loads(json_match.group())
 
@@ -216,7 +216,7 @@ Extract entities and relations now (ensure every entity has at least one relatio
             )
 
         except Exception as e:
-            logger.error(f"Gemini extraction failed for chunk {chunk_id}: {e}")
+            logger.error("Gemini extraction failed for chunk %s: %s", chunk_id, e)
             return ExtractionResult(chunk_id=chunk_id, raw_text=text)
 
     def _parse_entities(self, entities_data: list) -> list[ExtractedEntity]:
@@ -238,7 +238,7 @@ Extract entities and relations now (ensure every entity has at least one relatio
                             break
 
                 if not entity_type:
-                    logger.debug(f"Unknown entity type: {type_str}")
+                    logger.debug("Unknown entity type: %s", type_str)
                     continue
 
                 entities.append(
@@ -252,7 +252,7 @@ Extract entities and relations now (ensure every entity has at least one relatio
                     ),
                 )
             except Exception as ex:
-                logger.debug(f"Failed to parse entity: {ex}")
+                logger.debug("Failed to parse entity: %s", ex)
 
         return entities
 
@@ -269,7 +269,7 @@ Extract entities and relations now (ensure every entity has at least one relatio
                         break
 
                 if not rel_type:
-                    logger.debug(f"Unknown relation type: {type_str}")
+                    logger.debug("Unknown relation type: %s", type_str)
                     continue
 
                 relations.append(
@@ -283,6 +283,6 @@ Extract entities and relations now (ensure every entity has at least one relatio
                     ),
                 )
             except Exception as ex:
-                logger.debug(f"Failed to parse relation: {ex}")
+                logger.debug("Failed to parse relation: %s", ex)
 
         return relations

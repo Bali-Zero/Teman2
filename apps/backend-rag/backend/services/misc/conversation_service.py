@@ -45,7 +45,7 @@ class ConversationService:
                 f"✅ Saved {len(messages)} messages to memory cache for session {session_id}",
             )
         except Exception as e:
-            logger.warning(f"⚠️ Failed to save to memory cache: {e}")
+            logger.warning("⚠️ Failed to save to memory cache: %s", e)
 
         conversation_id = 0
         db_success = False
@@ -80,7 +80,7 @@ class ConversationService:
                 logger.warning("⚠️ DB Pool unavailable, skipping DB save")
 
         except Exception as e:
-            logger.error(f"❌ DB Save failed: {e}")
+            logger.error("❌ DB Save failed: %s", e)
             if not db_success:
                 logger.info("⚠️ Continuing with memory-only persistence")
 
@@ -132,7 +132,7 @@ class ConversationService:
 
                             messages = json.loads(messages)
             except Exception as e:
-                logger.error(f"Failed to fetch history from DB: {e}")
+                logger.error("Failed to fetch history from DB: %s", e)
                 source = "fallback_failed"
 
         if not messages:
@@ -144,7 +144,7 @@ class ConversationService:
                         messages = cached
                         source = "memory_cache"
             except Exception as e:
-                logger.warning(f"Failed to fetch history from memory cache: {e}")
+                logger.warning("Failed to fetch history from memory cache: %s", e)
 
         return {
             "messages": messages[-limit:] if limit else messages,

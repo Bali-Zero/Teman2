@@ -122,7 +122,7 @@ class GeminiAdapter:
         except subprocess.TimeoutExpired:
             raise RuntimeError("Gemini CLI timeout")
         except Exception as e:
-            logger.error(f"❌ Gemini CLI failed: {e}")
+            logger.error("❌ Gemini CLI failed: %s", e)
             raise
 
 
@@ -233,7 +233,7 @@ class CursorAdapter:
             )
 
         except Exception as e:
-            logger.warning(f"⚠️ Cursor integration limited: {e}")
+            logger.warning("⚠️ Cursor integration limited: %s", e)
             raise
 
 
@@ -272,7 +272,7 @@ class MultiAIAdapter:
 
             self.cursor = get_cursor_adapter(project_root)
         except Exception as e:
-            logger.warning(f"⚠️ Cursor adapter not available: {e}")
+            logger.warning("⚠️ Cursor adapter not available: %s", e)
             self.cursor = None
 
         # Windsurf adapter (IDE integration)
@@ -283,7 +283,7 @@ class MultiAIAdapter:
             if self.windsurf.is_available():
                 logger.info("✅ Windsurf disponibile")
         except Exception as e:
-            logger.warning(f"⚠️ Windsurf adapter not available: {e}")
+            logger.warning("⚠️ Windsurf adapter not available: %s", e)
             self.windsurf = None
 
         # Google Colab adapter
@@ -292,7 +292,7 @@ class MultiAIAdapter:
 
             self.google_colab = get_colab_adapter()
         except Exception as e:
-            logger.warning(f"⚠️ Google Colab adapter not available: {e}")
+            logger.warning("⚠️ Google Colab adapter not available: %s", e)
             self.google_colab = None
 
         # Google Cloud Shell Editor adapter
@@ -301,7 +301,7 @@ class MultiAIAdapter:
 
             self.google_cloud_shell = get_cloud_shell_adapter()
         except Exception as e:
-            logger.warning(f"⚠️ Google Cloud Shell adapter not available: {e}")
+            logger.warning("⚠️ Google Cloud Shell adapter not available: %s", e)
             self.google_cloud_shell = None
 
         # Routing map: task_type -> preferred AI
@@ -449,7 +449,7 @@ class MultiAIAdapter:
                         metadata={"fallback": True},
                     )
                 except Exception as e2:
-                    logger.error(f"❌ Qwen fallback also failed: {e2}")
+                    logger.error("❌ Qwen fallback also failed: %s", e2)
                     raise
             raise
 
@@ -463,7 +463,7 @@ class MultiAIAdapter:
             if result.returncode == 0:
                 available.append(AITool.GEMINI)
         except Exception as e:
-            logger.debug(f"Gemini CLI not available: {e}")
+            logger.debug("Gemini CLI not available: %s", e)
 
         # Check Claude API
         if self.claude.client:
@@ -487,7 +487,7 @@ class MultiAIAdapter:
             if result.returncode == 0:
                 available.append(AITool.CURSOR)
         except Exception as e:
-            logger.debug(f"Cursor CLI not available: {e}")
+            logger.debug("Cursor CLI not available: %s", e)
 
         return available
 

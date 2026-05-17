@@ -152,7 +152,7 @@ async def semantic_search(query: SearchQuery, request: Request) -> SearchRespons
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Search error: {e}", exc_info=True)
+        logger.error("Search error: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}") from e
 
 
@@ -181,7 +181,7 @@ async def search_health(request: Request) -> dict[str, Any]:
             "vector_db": "connected",
         }
     except Exception as e:
-        logger.error(f"Health check failed: {e}", exc_info=True)
+        logger.error("Health check failed: %s", e, exc_info=True)
         raise HTTPException(status_code=503, detail=f"Knowledge service unhealthy: {str(e)}") from e
 
 
@@ -227,7 +227,7 @@ async def get_parent_documents_debug(document_id: str) -> dict[str, Any]:
         return {"document_id": document_id, "total_bab": len(bab_list), "bab": bab_list}
 
     except Exception as e:
-        logger.error(f"Error fetching parent documents: {e}", exc_info=True)
+        logger.error("Error fetching parent documents: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Failed to fetch parent documents: {str(e)}",
         ) from e
@@ -272,5 +272,5 @@ async def get_bab_public(
         return {"document_id": document_id, "total_bab": len(bab_list), "bab": bab_list}
 
     except Exception as e:
-        logger.error(f"Error: {e}", exc_info=True)
+        logger.error("Error: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e

@@ -221,7 +221,7 @@ async def get_services_status(
         registry_status = service_registry.get_status()
         services_status["registry"] = registry_status
     except Exception as e:
-        logger.warning(f"Failed to get service registry status: {e}")
+        logger.warning("Failed to get service registry status: %s", e)
         services_status["registry"] = {"error": str(e)}
 
     # Check individual services
@@ -562,7 +562,7 @@ async def get_parent_documents(
         }
 
     except Exception as e:
-        logger.error(f"Failed to query parent_documents: {e}", exc_info=True)
+        logger.error("Failed to query parent_documents: %s", e, exc_info=True)
         return {
             "success": False,
             "error": str(e),
@@ -622,7 +622,7 @@ async def get_bab_full_text(
         }
 
     except Exception as e:
-        logger.error(f"Failed to query BAB text: {e}", exc_info=True)
+        logger.error("Failed to query BAB text: %s", e, exc_info=True)
         return {
             "success": False,
             "error": str(e),
@@ -686,7 +686,7 @@ async def run_performance_profiling(
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
-        logger.error(f"Performance profiling failed: {e}", exc_info=True)
+        logger.error("Performance profiling failed: %s", e, exc_info=True)
         return {
             "success": False,
             "error": str(e),
@@ -750,7 +750,7 @@ async def get_postgres_connection(
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
-        logger.error(f"PostgreSQL connection test failed: {e}", exc_info=True)
+        logger.error("PostgreSQL connection test failed: %s", e, exc_info=True)
         return {
             "success": False,
             "error": str(e),
@@ -786,7 +786,7 @@ async def get_postgres_tables(
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
-        logger.error(f"Failed to get tables: {e}", exc_info=True)
+        logger.error("Failed to get tables: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -825,7 +825,7 @@ async def get_postgres_table_details(
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
-        logger.error(f"Failed to get table details: {e}", exc_info=True)
+        logger.error("Failed to get table details: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -856,7 +856,7 @@ async def get_postgres_indexes(
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
-        logger.error(f"Failed to get indexes: {e}", exc_info=True)
+        logger.error("Failed to get indexes: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -887,7 +887,7 @@ async def get_postgres_table_stats(
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
-        logger.error(f"Failed to get table stats: {e}", exc_info=True)
+        logger.error("Failed to get table stats: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -913,7 +913,7 @@ async def get_postgres_database_stats(
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
-        logger.error(f"Failed to get database stats: {e}", exc_info=True)
+        logger.error("Failed to get database stats: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -957,10 +957,10 @@ async def execute_postgres_query(
         }
     except ValueError as e:
         # Query validation failed
-        logger.warning(f"Query validation failed: {e}")
+        logger.warning("Query validation failed: %s", e)
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Query execution failed: {e}", exc_info=True)
+        logger.error("Query execution failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -993,7 +993,7 @@ async def get_postgres_slow_queries(
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
-        logger.error(f"Failed to get slow queries: {e}", exc_info=True)
+        logger.error("Failed to get slow queries: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -1020,7 +1020,7 @@ async def get_postgres_locks(
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
-        logger.error(f"Failed to get locks: {e}", exc_info=True)
+        logger.error("Failed to get locks: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -1046,7 +1046,7 @@ async def get_postgres_connection_stats(
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
-        logger.error(f"Failed to get connection stats: {e}", exc_info=True)
+        logger.error("Failed to get connection stats: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 

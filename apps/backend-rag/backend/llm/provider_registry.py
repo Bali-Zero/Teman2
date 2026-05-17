@@ -23,7 +23,7 @@ def register_provider(name: str, provider_class: type[LLMProvider]) -> None:
         provider_class: The LLMProvider subclass to register
     """
     _PROVIDER_REGISTRY[name.lower()] = provider_class
-    logger.debug(f"Registered LLM provider: {name}")
+    logger.debug("Registered LLM provider: %s", name)
 
 
 def get_provider(name: str, **kwargs) -> LLMProvider | None:
@@ -39,13 +39,13 @@ def get_provider(name: str, **kwargs) -> LLMProvider | None:
     """
     provider_class = _PROVIDER_REGISTRY.get(name.lower())
     if provider_class is None:
-        logger.warning(f"Unknown provider: {name}")
+        logger.warning("Unknown provider: %s", name)
         return None
 
     try:
         return provider_class(**kwargs)
     except Exception as e:
-        logger.error(f"Failed to create provider {name}: {e}")
+        logger.error("Failed to create provider %s: %s", name, e)
         return None
 
 

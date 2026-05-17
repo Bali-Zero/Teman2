@@ -114,7 +114,7 @@ class PricingService:
             )
 
             if not json_path.exists():
-                logger.warning(f"Official prices file not found at {json_path}")
+                logger.warning("Official prices file not found at %s", json_path)
                 self.prices = {}
                 self.loaded = False
                 return
@@ -123,7 +123,7 @@ class PricingService:
                 self.prices = json.load(f)
 
             self.loaded = True
-            logger.info(f"Loaded official prices from {json_path}")
+            logger.info("Loaded official prices from %s", json_path)
 
             # Count services across the full 9-category 2026 schema, descending
             # into ``tax_accounting`` sub-blocks so the log line reflects the
@@ -138,7 +138,7 @@ class PricingService:
             )
 
         except Exception as e:
-            logger.error(f"Error loading official prices: {e}")
+            logger.error("Error loading official prices: %s", e)
             self.prices = {}
             self.loaded = False
 

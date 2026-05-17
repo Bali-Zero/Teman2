@@ -298,7 +298,7 @@ class KnowledgeGraphRepository:
                 }
 
         except asyncpg.PostgresError as e:
-            logger.error(f"Database error getting insights: {e}", exc_info=True)
+            logger.error("Database error getting insights: %s", e, exc_info=True)
             return {
                 "top_entities": [],
                 "hubs": [],
@@ -306,7 +306,7 @@ class KnowledgeGraphRepository:
                 "generated_at": datetime.now(tz=timezone.utc).isoformat(),
             }
         except Exception as e:
-            logger.error(f"Unexpected error getting insights: {e}", exc_info=True)
+            logger.error("Unexpected error getting insights: %s", e, exc_info=True)
             return {
                 "top_entities": [],
                 "hubs": [],
@@ -362,7 +362,7 @@ class KnowledgeGraphRepository:
                 ]
 
         except Exception as e:
-            logger.warning(f"Error getting user related entities: {e}")
+            logger.warning("Error getting user related entities: %s", e)
             return []
 
     async def get_entity_context_for_query(
@@ -423,7 +423,7 @@ class KnowledgeGraphRepository:
                 ]
 
         except Exception as e:
-            logger.warning(f"Error getting entity context: {e}")
+            logger.warning("Error getting entity context: %s", e)
             return []
 
     async def semantic_search_entities(
@@ -487,10 +487,10 @@ class KnowledgeGraphRepository:
                 ]
 
         except asyncpg.PostgresError as e:
-            logger.error(f"Database error in semantic search: {e}", exc_info=True)
+            logger.error("Database error in semantic search: %s", e, exc_info=True)
             return []
         except Exception as e:
-            logger.error(f"Unexpected error in semantic search: {e}", exc_info=True)
+            logger.error("Unexpected error in semantic search: %s", e, exc_info=True)
             return []
 
     async def get_entity_by_id(self, entity_id: str) -> dict[str, Any] | None:
@@ -534,7 +534,7 @@ class KnowledgeGraphRepository:
                 }
 
         except Exception as e:
-            logger.error(f"Error getting entity by ID: {e}")
+            logger.error("Error getting entity by ID: %s", e)
             return None
 
     async def get_entity_relationships(
@@ -604,7 +604,7 @@ class KnowledgeGraphRepository:
                 ]
 
         except Exception as e:
-            logger.error(f"Error getting entity relationships: {e}")
+            logger.error("Error getting entity relationships: %s", e)
             return []
 
     async def get_graph_stats(self) -> dict[str, Any]:
@@ -648,7 +648,7 @@ class KnowledgeGraphRepository:
                 }
 
         except Exception as e:
-            logger.error(f"Error getting graph stats: {e}")
+            logger.error("Error getting graph stats: %s", e)
             return {
                 "total_nodes": 0,
                 "total_edges": 0,

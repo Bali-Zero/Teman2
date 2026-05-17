@@ -26,7 +26,7 @@ class OracleConfiguration:
             missing_vars.append("DATABASE_URL")
 
         if missing_vars:
-            logger.warning(f"⚠️ Missing required environment variables: {missing_vars}")
+            logger.warning("⚠️ Missing required environment variables: %s", missing_vars)
             # Don't raise error at import time - allow graceful degradation
             # raise ValueError(f"Missing required environment variables: {missing_vars}")
 

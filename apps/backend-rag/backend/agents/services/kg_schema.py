@@ -77,8 +77,8 @@ class KnowledgeGraphSchema:
                     )
 
         except asyncpg.PostgresError as e:
-            logger.error(f"Database error verifying schema: {e}", exc_info=True)
+            logger.error("Database error verifying schema: %s", e, exc_info=True)
             raise
         except Exception as e:
-            logger.error(f"Unexpected error verifying schema: {e}", exc_info=True)
+            logger.error("Unexpected error verifying schema: %s", e, exc_info=True)
             raise

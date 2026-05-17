@@ -92,7 +92,7 @@ class IntelAnalyticsService:
                                     analytics["type_breakdown"][archive_type]["approved"] += 1
                                     analytics["type_breakdown"][archive_type]["processed"] += 1
                     except Exception as e:
-                        logger.warning(f"Failed to process approved file {file_path}: {e}")
+                        logger.warning("Failed to process approved file %s: %s", file_path, e)
                         continue
 
             # Count rejected
@@ -112,7 +112,7 @@ class IntelAnalyticsService:
                                     analytics["type_breakdown"][archive_type]["rejected"] += 1
                                     analytics["type_breakdown"][archive_type]["processed"] += 1
                     except Exception as e:
-                        logger.warning(f"Failed to process rejected file {file_path}: {e}")
+                        logger.warning("Failed to process rejected file %s: %s", file_path, e)
                         continue
 
             # Count published (news only)
@@ -132,7 +132,7 @@ class IntelAnalyticsService:
                                         analytics["summary"]["total_published"] += 1
                                         analytics["type_breakdown"]["news"]["published"] += 1
                         except Exception as e:
-                            logger.warning(f"Failed to process published file {file_path}: {e}")
+                            logger.warning("Failed to process published file %s: %s", file_path, e)
                             continue
 
         analytics["summary"]["total_processed"] = (
@@ -212,7 +212,7 @@ class IntelAnalyticsService:
                                                 daily["rejected"] += 1
                             except Exception as e:
                                 logger.warning(
-                                    f"Failed to process daily trend file {file_path}: {e}",
+                                    "Failed to process daily trend file %s: %s", file_path, e,
                                 )
                                 continue
 
@@ -233,7 +233,7 @@ class IntelAnalyticsService:
                                             daily["published"] += 1
                             except Exception as e:
                                 logger.warning(
-                                    f"Failed to process daily published file {file_path}: {e}",
+                                    "Failed to process daily published file %s: %s", file_path, e,
                                 )
                                 continue
 

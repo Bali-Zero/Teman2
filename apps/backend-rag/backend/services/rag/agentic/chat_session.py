@@ -56,7 +56,7 @@ class ChatSession:
             )
             logger.debug(f"ChatSession initialized with {len(self.history)} history items")
         except Exception as e:
-            logger.error(f"Failed to initialize ChatSession: {e}", exc_info=True)
+            logger.error("Failed to initialize ChatSession: %s", e, exc_info=True)
             raise
 
     async def send_message(self, message: str) -> Any:
@@ -77,7 +77,7 @@ class ChatSession:
             logger.debug(f"Message sent to {self.model}, response received")
             return response
         except Exception as e:
-            logger.error(f"Failed to send message: {e}", exc_info=True)
+            logger.error("Failed to send message: %s", e, exc_info=True)
             raise
 
     async def send_message_stream(self, message: str) -> AsyncGenerator[str, None]:
@@ -108,7 +108,7 @@ class ChatSession:
                                 yield part.text
 
         except Exception as e:
-            logger.error(f"Failed to stream message: {e}", exc_info=True)
+            logger.error("Failed to stream message: %s", e, exc_info=True)
             raise
 
     def get_history(self) -> list[dict]:
@@ -124,7 +124,7 @@ class ChatSession:
             content: Message content
         """
         self.history.append({"role": role, "parts": [{"text": content}]})
-        logger.debug(f"Added {role} message to history")
+        logger.debug("Added %s message to history", role)
 
 
 class MockChatSession:

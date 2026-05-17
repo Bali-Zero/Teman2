@@ -135,7 +135,7 @@ def handle_anthropic_error(
             },
             request_id=request_id,
         )
-        logger.error("DeepSeek connection error", extra=error_context, exc_info=True)
+        logger.error("DeepSeek connection error", extra=error_context)
         return HTTPException(status_code=503, detail=api_error.model_dump())
 
     msg = str(error).lower()
@@ -161,7 +161,7 @@ def handle_anthropic_error(
         },
         request_id=request_id,
     )
-    logger.error("LLM API error", extra=error_context, exc_info=True)
+    logger.error("LLM API error", extra=error_context)
     return HTTPException(status_code=500, detail=api_error.model_dump())
 
 
@@ -224,7 +224,7 @@ def handle_validation_error(
         "error_message": str(error),
     }
 
-    logger.error("Validation error", extra=error_context, exc_info=True)
+    logger.error("Validation error", extra=error_context)
 
     return APIError.create(
         code=ErrorCode.VALIDATION_ERROR,
@@ -255,7 +255,7 @@ def log_error_with_context(
     }
 
     if level.upper() == "ERROR":
-        logger.error("Error occurred", extra=log_data, exc_info=True)
+        logger.error("Error occurred", extra=log_data)
     elif level.upper() == "WARNING":
         logger.warning("Warning occurred", extra=log_data)
     else:

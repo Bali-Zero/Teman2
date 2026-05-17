@@ -180,7 +180,7 @@ class QueryGates:
         """
         out_of_domain, reason = is_out_of_domain(query)
         if out_of_domain and reason:
-            logger.info(f"Query rejected as out-of-domain: {reason}")
+            logger.info("Query rejected as out-of-domain: %s", reason)
             answer_text = OUT_OF_DOMAIN_RESPONSES.get(reason, OUT_OF_DOMAIN_RESPONSES["unknown"])
             return GateResult(
                 triggered=True,

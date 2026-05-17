@@ -214,7 +214,7 @@ class BaseChannel(ABC):
                         metadata=response.metadata,
                     )
             except Exception as dlq_err:
-                logger.error(f"DLQ persist also failed: {dlq_err}")
+                logger.error("DLQ persist also failed: %s", dlq_err)
             return False
 
     # ==================== Helper Methods (Optional) ====================

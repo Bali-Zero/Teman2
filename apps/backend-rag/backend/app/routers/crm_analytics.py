@@ -196,7 +196,7 @@ async def get_client_overview(
             }
 
     except Exception as e:
-        logger.error(f"Failed to fetch client overview: {e}", exc_info=True)
+        logger.error("Failed to fetch client overview: %s", e, exc_info=True)
         raise handle_database_error(e)
 
 
@@ -271,7 +271,7 @@ async def get_team_performance(
             return results
 
     except Exception as e:
-        logger.error(f"Failed to fetch team performance: {e}", exc_info=True)
+        logger.error("Failed to fetch team performance: %s", e, exc_info=True)
         raise handle_database_error(e)
 
 
@@ -359,7 +359,7 @@ async def get_revenue_summary(
             }
 
     except Exception as e:
-        logger.error(f"Failed to fetch revenue summary: {e}", exc_info=True)
+        logger.error("Failed to fetch revenue summary: %s", e, exc_info=True)
         raise handle_database_error(e)
 
 
@@ -418,7 +418,7 @@ async def get_processes_by_type(
             return results
 
     except Exception as e:
-        logger.error(f"Failed to fetch processes by type: {e}", exc_info=True)
+        logger.error("Failed to fetch processes by type: %s", e, exc_info=True)
         raise handle_database_error(e)
 
 
@@ -495,5 +495,5 @@ async def get_client_trend(
             return results
 
     except Exception as e:
-        logger.error(f"Failed to fetch client trend: {e}", exc_info=True)
+        logger.error("Failed to fetch client trend: %s", e, exc_info=True)
         raise handle_database_error(e)

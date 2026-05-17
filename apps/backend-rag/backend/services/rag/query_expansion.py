@@ -198,7 +198,7 @@ Example output: ["variant 1", "variant 2"]"""
             pattern = re.compile(r"\b" + re.escape(term.lower()) + r"\b", re.IGNORECASE)
             self._synonym_patterns[pattern] = synonyms
 
-        logger.info(f"✅ QueryExpander initialized (max_variants={max_variants})")
+        logger.info("✅ QueryExpander initialized (max_variants=%s)", max_variants)
 
     def _get_genai_client(self) -> Any | None:
         """Lazy load GenAI client."""
@@ -208,10 +208,10 @@ Example output: ["variant 1", "variant 2"]"""
                 if client.is_available:
                     self._genai_client = client
             except (ImportError, AttributeError, RuntimeError) as e:
-                logger.warning(f"Failed to initialize GenAI client (import/runtime): {e}")
+                logger.warning("Failed to initialize GenAI client (import/runtime): %s", e)
             except Exception as e:  # noqa: BLE001 — expansion must degrade gracefully if LLM absent
                 logger.warning(
-                    f"Failed to initialize GenAI client (unexpected): {e}",
+                    "Failed to initialize GenAI client (unexpected): %s", e,
                     exc_info=True,
                 )
         return self._genai_client
@@ -285,13 +285,13 @@ Example output: ["variant 1", "variant 2"]"""
 
         except (json.JSONDecodeError, KeyError, ValueError, asyncio.TimeoutError) as e:
             logger.warning(
-                f"Query expansion failed (parse/timeout), returning original: {e}",
+                "Query expansion failed (parse/timeout), returning original: %s", e,
                 extra={"query": query[:50], "error": str(e)},
             )
             return [query]
         except Exception as e:  # noqa: BLE001 — expansion is best-effort; never block the search pipeline
             logger.warning(
-                f"Query expansion failed (unexpected), returning original: {e}",
+                "Query expansion failed (unexpected), returning original: %s", e,
                 extra={"query": query[:50], "error": str(e)},
                 exc_info=True,
             )
@@ -381,10 +381,10 @@ Example output: ["variant 1", "variant 2"]"""
             return result
 
         except (json.JSONDecodeError, KeyError, ValueError, asyncio.TimeoutError) as e:
-            logger.warning(f"Translation failed (parse/timeout): {e}")
+            logger.warning("Translation failed (parse/timeout): %s", e)
             return []
         except Exception as e:  # noqa: BLE001 — translation is best-effort; never crash retrieval
-            logger.warning(f"Translation failed (unexpected): {e}", exc_info=True)
+            logger.warning("Translation failed (unexpected): %s", e, exc_info=True)
             return []
 
     def _dictionary_translate(self, query: str, languages: list[str]) -> set[str]:
@@ -472,9 +472,9 @@ Example output: ["variant 1", "variant 2"]"""
         except asyncio.TimeoutError:
             logger.debug("LLM translation timeout, using dictionary only")
         except LLMStructuredOutputError as e:
-            logger.debug(f"LLM translation failed schema validation: {e}")
+            logger.debug("LLM translation failed schema validation: %s", e)
         except Exception as e:  # noqa: BLE001 — LLM translation is best-effort; dictionary path continues
-            logger.debug(f"LLM translation failed (unexpected): {e}")
+            logger.debug("LLM translation failed (unexpected): %s", e)
 
         return variants
 
@@ -562,14 +562,14 @@ Example output: ["variant 1", "variant 2"]"""
                             # Cache the result
                             await self.cache_service.set(cache_key, variants, ttl=3600)
                     except json.JSONDecodeError as e:
-                        logger.debug(f"Query rephrase JSON parse skipped: {e}")
+                        logger.debug("Query rephrase JSON parse skipped: %s", e)
 
         except asyncio.TimeoutError:
             logger.debug("LLM rephrasing timeout")
         except (json.JSONDecodeError, KeyError, ValueError) as e:
-            logger.debug(f"LLM rephrasing failed (parse/data): {e}")
+            logger.debug("LLM rephrasing failed (parse/data): %s", e)
         except Exception as e:  # noqa: BLE001 — rephrasing is best-effort; caller uses whatever variants exist
-            logger.debug(f"LLM rephrasing failed (unexpected): {e}")
+            logger.debug("LLM rephrasing failed (unexpected): %s", e)
 
         return variants[:num_variants]
 

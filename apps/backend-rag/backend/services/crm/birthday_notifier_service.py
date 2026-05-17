@@ -390,11 +390,11 @@ class BirthdayNotifierService:
                 # Small delay between emails
                 await asyncio.sleep(2)
 
-            logger.info(f"Birthday notifications complete: {stats}")
+            logger.info("Birthday notifications complete: %s", stats)
             return stats
 
         except Exception as e:
-            logger.error(f"Birthday notification run failed: {e}")
+            logger.error("Birthday notification run failed: %s", e)
             stats["error"] = str(e)
             return stats
 

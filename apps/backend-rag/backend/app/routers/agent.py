@@ -166,7 +166,7 @@ async def invoke_agent(
         success = not bool(errors)
 
         if not success:
-            logger.warning(f"[AGENT_API] Workflow completed with errors: {errors}")
+            logger.warning("[AGENT_API] Workflow completed with errors: %s", errors)
 
         # Build response
         response = AgentInvokeResponse(
@@ -186,7 +186,7 @@ async def invoke_agent(
         return response
 
     except Exception as e:
-        logger.error(f"[AGENT_API] Error invoking workflow: {e}", exc_info=True)
+        logger.error("[AGENT_API] Error invoking workflow: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to invoke agent workflow: {str(e)}",
@@ -234,7 +234,7 @@ async def agent_health() -> AgentHealthResponse:
         )
 
     except ImportError as e:
-        logger.error(f"[AGENT_API] Health check failed: {e}", exc_info=True)
+        logger.error("[AGENT_API] Health check failed: %s", e, exc_info=True)
         return AgentHealthResponse(
             status="unhealthy",
             graph_loaded=False,
@@ -243,7 +243,7 @@ async def agent_health() -> AgentHealthResponse:
         )
 
     except Exception as e:
-        logger.error(f"[AGENT_API] Health check error: {e}", exc_info=True)
+        logger.error("[AGENT_API] Health check error: %s", e, exc_info=True)
         return AgentHealthResponse(
             status="degraded",
             graph_loaded=False,

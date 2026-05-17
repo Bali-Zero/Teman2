@@ -72,7 +72,7 @@ async def on_startup() -> None:
     try:
         app.state.alert_service = AlertService()
     except Exception as e:
-        logger.error(f"Failed to initialize AlertService: {e}")
+        logger.error("Failed to initialize AlertService: %s", e)
 
     await initialize_services(app)
     await initialize_plugins(app)

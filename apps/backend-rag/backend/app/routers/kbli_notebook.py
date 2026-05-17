@@ -173,7 +173,7 @@ async def kbli_llm_health() -> Any:
 
     except Exception as e:
         health_status["error"] = f"Health check failed: {str(e)}"
-        logger.error(f"❌ LLM health check error: {e}", exc_info=True)
+        logger.error("❌ LLM health check error: %s", e, exc_info=True)
 
     return health_status
 
@@ -204,7 +204,7 @@ async def _get_kbli_payload_from_qdrant(code: str) -> dict | None:
                 if points:
                     return points[0].get("payload", {})
     except Exception as e:
-        logger.warning(f"Qdrant lookup for KBLI {code} failed (non-critical): {e}")
+        logger.warning("Qdrant lookup for KBLI %s failed (non-critical): %s", code, e)
     return None
 
 
@@ -240,7 +240,7 @@ async def search_kbli(
 ) -> Any:
     """Search for KBLI codes using semantic search (Qdrant)."""
     start_time = time.time()
-    logger.info(f"🔍 KBLI Search Request: '{query}' (limit: {limit})")
+    logger.info("🔍 KBLI Search Request: '%s' (limit: %s)", query, limit)
 
     try:
         embedding = await _resolve_embedding(search_service, query)
@@ -269,10 +269,10 @@ async def search_kbli(
         )
         return search_results
     except httpx.HTTPStatusError as e:
-        logger.warning(f"⚠️ KBLI Search Qdrant error: {e}")
+        logger.warning("⚠️ KBLI Search Qdrant error: %s", e)
         raise HTTPException(status_code=503, detail="Search engine temporarily unavailable") from e
     except httpx.TimeoutException as e:
-        logger.warning(f"⚠️ KBLI Search timeout: {e}")
+        logger.warning("⚠️ KBLI Search timeout: %s", e)
         raise HTTPException(status_code=503, detail="Search engine temporarily unavailable") from e
     except Exception as e:
         logger.error(f"❌ KBLI Search Failed: {str(e)}", exc_info=True)
@@ -294,7 +294,7 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
         if cached_data:
             return KBLIDetail(**cached_data)
 
-    logger.info(f"🧐 KBLI Inspection (Dynamic TTL {ttl}s): {code}")
+    logger.info("🧐 KBLI Inspection (Dynamic TTL %ss): %s", ttl, code)
     if not pool:
         logger.error("❌ Database pool not available for KBLI inspection")
         raise HTTPException(
@@ -311,7 +311,7 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
             )
 
             if not node:
-                logger.warning(f"⚠️ KBLI {code} not found in Knowledge Graph")
+                logger.warning("⚠️ KBLI %s not found in Knowledge Graph", code)
                 raise HTTPException(status_code=404, detail=f"KBLI code {code} not found")
 
             # 2. Extract Properties
@@ -396,7 +396,7 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
                     if lic.risk_level == "Unknown":
                         lic.risk_level = qdrant_risk
 
-            logger.info(f"✅ KBLI {code} details retrieved (pma={pma_status}, risk={risk_profile})")
+            logger.info("✅ KBLI %s details retrieved (pma=%s, risk=%s)", code, pma_status, risk_profile)
 
             result = KBLIDetail(
                 code=code,
@@ -420,11 +420,11 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
         raise
     except (ConnectionResetError, OSError) as e:
         # Stale connection from Fly.io cold start — expire and signal retry
-        logger.warning(f"⚠️ KBLI Inspection stale connection for {code}: {e}")
+        logger.warning("⚠️ KBLI Inspection stale connection for %s: %s", code, e)
         try:
             await pool.expire_connections()
         except Exception as pool_err:
-            logger.debug(f"Pool expire skipped: {pool_err}")
+            logger.debug("Pool expire skipped: %s", pool_err)
         raise HTTPException(
             status_code=503,
             detail="Database connection reset — please retry",
@@ -433,17 +433,17 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
     except Exception as e:
         err_msg = str(e)
         if "connection was closed" in err_msg or "connection is closed" in err_msg:
-            logger.warning(f"⚠️ KBLI Inspection closed connection for {code}: {e}")
+            logger.warning("⚠️ KBLI Inspection closed connection for %s: %s", code, e)
             try:
                 await pool.expire_connections()
             except Exception as pool_err:
-                logger.debug(f"Pool expire skipped: {pool_err}")
+                logger.debug("Pool expire skipped: %s", pool_err)
             raise HTTPException(
                 status_code=503,
                 detail="Database connection reset — please retry",
                 headers={"Retry-After": "5"},
             ) from e
-        logger.error(f"❌ KBLI Inspection Error for {code}: {err_msg}", exc_info=True)
+        logger.error("❌ KBLI Inspection Error for %s: %s", code, err_msg, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal processing error: {err_msg}") from e
 
 

@@ -118,7 +118,7 @@ class IntelStagingService:
                 try:
                     temp_file.unlink()
                 except Exception as e:
-                    logger.debug(f"Failed to clean up temp file {temp_file}: {e}")
+                    logger.debug("Failed to clean up temp file %s: %s", temp_file, e)
                     pass
             raise
 
@@ -148,7 +148,7 @@ class IntelStagingService:
                 return json.load(f)
         except Exception as e:
             logger.error(
-                f"Error reading staging file {file_path}: {e}",
+                "Error reading staging file %s: %s", file_path, e,
                 exc_info=True,
                 extra={"intel_type": intel_type, "item_id": item_id},
             )
@@ -192,13 +192,13 @@ class IntelStagingService:
                         # No date, consider it a duplicate
                         return data
             except json.JSONDecodeError as e:
-                logger.warning(f"Invalid JSON in staging file {file_path}: {e}")
+                logger.warning("Invalid JSON in staging file %s: %s", file_path, e)
                 continue
             except PermissionError as e:
-                logger.warning(f"Permission denied reading {file_path}: {e}")
+                logger.warning("Permission denied reading %s: %s", file_path, e)
                 continue
             except Exception as e:
-                logger.error(f"Error reading staging file {file_path}: {e}", exc_info=True)
+                logger.error("Error reading staging file %s: %s", file_path, e, exc_info=True)
                 continue
         return None
 
@@ -242,7 +242,7 @@ class IntelStagingService:
         for category, directory in dirs_to_check:
             if not directory.exists():
                 logger.warning(
-                    f"Directory does not exist: {directory}",
+                    "Directory does not exist: %s", directory,
                     extra={"category": category},
                 )
                 continue
@@ -272,7 +272,7 @@ class IntelStagingService:
                         )
                 except Exception as e:
                     logger.error(
-                        f"Error reading staging file {file_path}: {e}",
+                        "Error reading staging file %s: %s", file_path, e,
                         exc_info=True,
                         extra={"file": str(file_path), "category": category},
                     )
@@ -304,7 +304,7 @@ class IntelStagingService:
                             )
                     except Exception as e:
                         logger.error(
-                            f"Error reading archived file {file_path}: {e}",
+                            "Error reading archived file %s: %s", file_path, e,
                             extra={"file": str(file_path), "category": category},
                         )
 
@@ -344,7 +344,7 @@ class IntelStagingService:
             shutil.move(str(file_path), str(archive_path))
 
         except Exception as e:
-            logger.error(f"Failed to archive file {file_path} to {archive_path}: {e}")
+            logger.error("Failed to archive file %s to %s: %s", file_path, archive_path, e)
             raise
 
         return archive_path
@@ -366,4 +366,4 @@ class IntelStagingService:
             intel_staging_queue_size.labels(intel_type="visa").set(visa_count)
             intel_staging_queue_size.labels(intel_type="news").set(news_count)
         except Exception as e:
-            logger.warning(f"Failed to update staging queue size metrics: {e}")
+            logger.warning("Failed to update staging queue size metrics: %s", e)

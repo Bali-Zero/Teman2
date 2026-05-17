@@ -377,7 +377,7 @@ async def _send_via_zoho_smtp(
             attachments=attachments,
         )
     except Exception as e:
-        logger.error(f"Zoho SMTP failed for {to_email}: {e}")
+        logger.error("Zoho SMTP failed for %s: %s", to_email, e)
         return False
 
 
@@ -442,7 +442,7 @@ async def _send_via_brevo(
         logger.error(f"Brevo API error {resp.status_code}: {resp.text[:300]}")
         return False
     except Exception as e:
-        logger.error(f"Brevo failed for {to_email}: {e}")
+        logger.error("Brevo failed for %s: %s", to_email, e)
         return False
 
 

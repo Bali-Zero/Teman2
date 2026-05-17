@@ -40,7 +40,7 @@ class ComplianceNotificationService:
         Returns:
             True if sent successfully
         """
-        logger.info(f"📤 Sending alert {alert_id} via {via}")
+        logger.info("📤 Sending alert %s via %s", alert_id, via)
 
         if self.notification_service:
             # Use notification service
@@ -49,12 +49,12 @@ class ComplianceNotificationService:
                     client_id=client_id, message=message, via=via,
                 )
             except Exception as e:
-                logger.error(f"Error sending notification: {e}")
+                logger.error("Error sending notification: %s", e)
                 success = False
         else:
             # Log only (no notification service)
-            logger.info(f"   To: {client_id}")
-            logger.info(f"   Message: {message}")
+            logger.info("   To: %s", client_id)
+            logger.info("   Message: %s", message)
             success = True
 
         return success

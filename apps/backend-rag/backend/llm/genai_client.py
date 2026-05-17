@@ -63,7 +63,7 @@ try:
     GENAI_AVAILABLE = True
     logger.info("✅ google-genai SDK loaded successfully")
 except ImportError as e:
-    logger.warning(f"⚠️ google-genai SDK not available: {e}")
+    logger.warning("⚠️ google-genai SDK not available: %s", e)
     # Try legacy SDK as fallback
     try:
         import google.generativeai  # noqa: F401
@@ -91,11 +91,11 @@ def _setup_service_account_credentials() -> tuple[bool, str | None]:
             # CRITICAL: Set env var so SDK finds it!
             os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = gac_path
             logger.info(
-                f"✅ Service Account credentials loaded from file: {gac_path} (project: {project_id})",
+                "✅ Service Account credentials loaded from file: %s (project: %s)", gac_path, project_id,
             )
             return True, project_id
         except Exception as e:
-            logger.warning(f"⚠️ Failed to read GOOGLE_APPLICATION_CREDENTIALS file: {e}")
+            logger.warning("⚠️ Failed to read GOOGLE_APPLICATION_CREDENTIALS file: %s", e)
             # Fallback to other methods
 
     # 2. Check for JSON Content (Legacy / Fly.io Secrets)
@@ -156,7 +156,7 @@ def _setup_service_account_credentials() -> tuple[bool, str | None]:
         return True, project_id
 
     except (OSError, json.JSONDecodeError, KeyError) as e:
-        logger.warning(f"⚠️ Failed to setup Service Account credentials: {e}")
+        logger.warning("⚠️ Failed to setup Service Account credentials: %s", e)
         return False, None
 
 
@@ -255,11 +255,11 @@ class GenAIClient:
                 self._available = True
                 self._auth_method = "service_account_vertexai"
                 logger.info(
-                    f"✅ GenAI client initialized with Vertex AI (project: {_sa_project_id})",
+                    "✅ GenAI client initialized with Vertex AI (project: %s)", _sa_project_id,
                 )
                 return
             except Exception as e:
-                logger.warning(f"⚠️ Vertex AI Service Account auth failed: {e}")
+                logger.warning("⚠️ Vertex AI Service Account auth failed: %s", e)
 
         # Fallback to GOOGLE_API_KEY (AI Studio)
         if not self.api_key:
@@ -272,7 +272,7 @@ class GenAIClient:
             self._auth_method = "api_key"
             logger.info("✅ GenAI client initialized with API Key (AI Studio)")
         except Exception as e:
-            logger.error(f"❌ Failed to initialize GenAI client: {e}")
+            logger.error("❌ Failed to initialize GenAI client: %s", e)
 
     @property
     def is_available(self) -> bool:

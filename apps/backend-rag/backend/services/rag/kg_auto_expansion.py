@@ -564,7 +564,7 @@ class KGAutoExpansion:
 
         except Exception as e:
             result.errors.append(str(e))
-            logger.warning(f"⚠️ [KG AutoExpand] Error: {e}", exc_info=True)
+            logger.warning("⚠️ [KG AutoExpand] Error: %s", e, exc_info=True)
 
         return result
 

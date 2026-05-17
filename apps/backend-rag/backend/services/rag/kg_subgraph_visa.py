@@ -224,11 +224,10 @@ async def identify_visa_type_node(
                     if kg_visa_type in _VISA_TYPE_TO_ENTITY_TYPE:
                         visa_type = kg_visa_type
                         logger.info(
-                            f"✅ [Visa Subgraph] KG override: employment:{employment_type} "
-                            f"REQUIRES {kg_visa_type}",
+                            "✅ [Visa Subgraph] KG override: employment:%s REQUIRES %s", employment_type, kg_visa_type,
                         )
         except Exception as e:
-            logger.warning(f"⚠️ [Visa Subgraph] KG employment lookup failed: {e}")
+            logger.warning("⚠️ [Visa Subgraph] KG employment lookup failed: %s", e)
 
     state["visa_type"] = visa_type
     state["purpose"] = purpose
@@ -323,7 +322,7 @@ async def check_rptka_requirements_node(state: VisaState, db_pool: asyncpg.Pool)
                 kg_sources += 1
 
     except Exception as e:
-        logger.warning(f"⚠️ [Visa Subgraph] KG RPTKA query failed, using fallback: {e}")
+        logger.warning("⚠️ [Visa Subgraph] KG RPTKA query failed, using fallback: %s", e)
 
     # Fallback if KG has no RPTKA data
     if not rptka_steps:
@@ -399,7 +398,7 @@ async def get_visa_requirements_node(state: VisaState, db_pool: asyncpg.Pool) ->
                         requirements["validity"] = props["validity"]
                 kg_sources += 1
                 logger.info(
-                    f"✅ [Visa Subgraph] Got node properties for {entity_type} from KG",
+                    "✅ [Visa Subgraph] Got node properties for %s from KG", entity_type,
                 )
 
             # Query 2: Get REQUIRES edges (required documents/permits)
@@ -476,7 +475,7 @@ async def get_visa_requirements_node(state: VisaState, db_pool: asyncpg.Pool) ->
                     requirements["validity"] = validity
 
     except Exception as e:
-        logger.warning(f"⚠️ [Visa Subgraph] KG visa requirements query failed: {e}")
+        logger.warning("⚠️ [Visa Subgraph] KG visa requirements query failed: %s", e)
 
     # Fallback: fill missing fields from hardcoded data
     fallback = _FALLBACK_REQUIREMENTS.get(visa_type, {})
@@ -505,8 +504,7 @@ async def get_visa_requirements_node(state: VisaState, db_pool: asyncpg.Pool) ->
     state["kg_sources_used"] = state.get("kg_sources_used", 0) + kg_sources
 
     logger.info(
-        f"✅ [Visa Subgraph] Requirements added for {visa_type} "
-        f"(KG sources: {kg_sources})",
+        "✅ [Visa Subgraph] Requirements added for %s (KG sources: %s)", visa_type, kg_sources,
     )
 
     return state

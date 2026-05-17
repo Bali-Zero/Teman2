@@ -52,7 +52,7 @@ class UserContextService:
         try:
             return await db_manager.get_user_profile(user_email)
         except Exception as e:
-            logger.warning(f"Error loading user profile: {e}")
+            logger.warning("Error loading user profile: %s", e)
             return None
 
     async def get_user_personality(self, user_email: str) -> dict[str, Any]:
@@ -71,7 +71,7 @@ class UserContextService:
         try:
             return self.personality_service.get_user_personality(user_email)
         except Exception as e:
-            logger.warning(f"PersonalityService error: {e}")
+            logger.warning("PersonalityService error: %s", e)
             return {"personality_type": "professional"}
 
     async def get_user_memory_facts(self, user_email: str) -> list[str]:
@@ -94,7 +94,7 @@ class UserContextService:
             if user_memory and user_memory.profile_facts:
                 return user_memory.profile_facts
         except Exception as e:
-            logger.warning(f"MemoryService error: {e}")
+            logger.warning("MemoryService error: %s", e)
 
         return []
 

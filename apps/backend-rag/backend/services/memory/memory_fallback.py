@@ -64,7 +64,7 @@ class InMemoryConversationCache:
             # Filter out common false positives
             if name.lower() not in ["zantara", "bali", "jakarta", "indonesia", "qui", "un", "una"]:
                 entities["user_name"] = name
-                logger.debug(f"🧠 Extracted name: {name}")
+                logger.debug("🧠 Extracted name: %s", name)
 
         # City extraction
         cities = [
@@ -104,7 +104,7 @@ class InMemoryConversationCache:
         if budget_match:
             full_match = content[budget_match.start() : budget_match.end()]
             entities["budget"] = full_match
-            logger.debug(f"🧠 Extracted budget: {full_match}")
+            logger.debug("🧠 Extracted budget: %s", full_match)
 
     def get_entities(self, conversation_id: str) -> dict[str, Any]:
         """Get extracted entities for a conversation."""

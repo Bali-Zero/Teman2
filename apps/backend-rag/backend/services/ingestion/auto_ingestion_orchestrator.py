@@ -274,7 +274,7 @@ class AutoIngestionOrchestrator:
                 )
                 scraped_items.append(content)
         except Exception as e:
-            logger.error(f"Scraping error: {e}")
+            logger.error("Scraping error: %s", e)
             raise  # Re-raise exception instead of returning empty list
 
         # Update last scraped
@@ -367,7 +367,7 @@ Answer with YES or NO and a brief reason."""
                     tier2_filtered.append(content)
 
             except Exception as e:
-                logger.error(f"ZANTARA AI filtering error: {e}")
+                logger.error("ZANTARA AI filtering error: %s", e)
                 # Include by default if error
                 tier2_filtered.append(content)
 
@@ -432,10 +432,10 @@ Answer with YES or NO and a brief reason."""
                 )
 
             except Exception as e:
-                logger.error(f"Ingestion error: {e}")
+                logger.error("Ingestion error: %s", e)
                 raise  # Re-raise in production instead of silently continuing
 
-        logger.info(f"✅ Ingested {ingested_count} items")
+        logger.info("✅ Ingested %s items", ingested_count)
 
         return ingested_count
 
@@ -506,7 +506,7 @@ Answer with YES or NO and a brief reason."""
 
             self.orchestrator_stats["failed_jobs"] += 1
 
-            logger.error(f"❌ Job failed: {job_id} - {e}")
+            logger.error("❌ Job failed: %s - %s", job_id, e)
 
         return job
 

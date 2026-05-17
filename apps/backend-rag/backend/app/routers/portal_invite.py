@@ -194,7 +194,7 @@ async def send_invitation(
                 logger.info(f"Invitation email sent to {request.email}")
         except Exception as email_err:
             email_error = str(email_err)
-            logger.warning(f"Failed to send invitation email: {email_err}")
+            logger.warning("Failed to send invitation email: %s", email_err)
 
         logger.info(
             f"Invitation created for client {request.client_id} by {current_user.get('email')}",
@@ -215,7 +215,7 @@ async def send_invitation(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Failed to create invitation: {e}")
+        logger.error("Failed to create invitation: %s", e)
         raise HTTPException(
             status_code=500,
             detail="Failed to create invitation",
@@ -246,7 +246,7 @@ async def get_client_invitations(
             "data": invitations,
         }
     except Exception as e:
-        logger.error(f"Failed to get invitations for client {client_id}: {e}")
+        logger.error("Failed to get invitations for client %s: %s", client_id, e)
         raise HTTPException(
             status_code=500,
             detail="Failed to retrieve invitations",
@@ -285,7 +285,7 @@ async def resend_invitation(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Failed to resend invitation: {e}")
+        logger.error("Failed to resend invitation: %s", e)
         raise HTTPException(
             status_code=500,
             detail="Failed to resend invitation",
@@ -333,7 +333,7 @@ async def validate_token(
         )
 
     except Exception as e:
-        logger.error(f"Token validation failed: {e}")
+        logger.error("Token validation failed: %s", e)
         return ValidateTokenResponse(
             valid=False,
             error="server_error",
@@ -370,7 +370,7 @@ async def complete_registration(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Registration failed: {e}")
+        logger.error("Registration failed: %s", e)
         raise HTTPException(
             status_code=500,
             detail="Registration failed. Please try again or contact support.",

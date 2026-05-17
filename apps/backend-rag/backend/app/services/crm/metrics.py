@@ -147,7 +147,7 @@ class CRMMetricsCollector:
             return results
 
         except Exception as e:
-            logger.error(f"Failed to update CRM metrics: {e}", exc_info=True)
+            logger.error("Failed to update CRM metrics: %s", e, exc_info=True)
             return {"error": str(e), "timestamp": datetime.now(tz=timezone.utc).isoformat(), "success": False}
 
     async def update_client_metrics(self, results: dict[str, Any]) -> None:
@@ -199,7 +199,7 @@ class CRMMetricsCollector:
                 results["metrics_updated"].append("client_status_changes")
 
         except Exception as e:
-            logger.error(f"Failed to update client metrics: {e}")
+            logger.error("Failed to update client metrics: %s", e)
             results["errors"].append(f"client_metrics: {str(e)}")
 
     async def update_application_metrics(self, results: dict[str, Any]) -> None:
@@ -253,7 +253,7 @@ class CRMMetricsCollector:
                 results["metrics_updated"].append("application_processing_duration")
 
         except Exception as e:
-            logger.error(f"Failed to update application metrics: {e}")
+            logger.error("Failed to update application metrics: %s", e)
             results["errors"].append(f"application_metrics: {str(e)}")
 
     async def update_business_metrics(self, results: dict[str, Any]) -> None:
@@ -308,7 +308,7 @@ class CRMMetricsCollector:
                 results["metrics_updated"].append("client_lifecycle_duration")
 
         except Exception as e:
-            logger.error(f"Failed to update business metrics: {e}")
+            logger.error("Failed to update business metrics: %s", e)
             results["errors"].append(f"business_metrics: {str(e)}")
 
     async def update_operational_metrics(self, results: dict[str, Any]) -> None:
@@ -346,7 +346,7 @@ class CRMMetricsCollector:
                 results["metrics_updated"].append("interaction_response_time")
 
         except Exception as e:
-            logger.error(f"Failed to update operational metrics: {e}")
+            logger.error("Failed to update operational metrics: %s", e)
             results["errors"].append(f"operational_metrics: {str(e)}")
 
     async def get_metrics_summary(self) -> dict[str, Any]:
@@ -397,7 +397,7 @@ class CRMMetricsCollector:
                 }
 
         except Exception as e:
-            logger.error(f"Failed to get metrics summary: {e}")
+            logger.error("Failed to get metrics summary: %s", e)
             return {"error": str(e), "timestamp": datetime.now(tz=timezone.utc).isoformat()}
 
 
@@ -478,5 +478,5 @@ async def schedule_metrics_updates() -> None:
             await metrics_collector.update_all_metrics()
             await asyncio.sleep(300)  # Update every 5 minutes
         except Exception as e:
-            logger.error(f"Error in scheduled metrics update: {e}")
+            logger.error("Error in scheduled metrics update: %s", e)
             await asyncio.sleep(60)  # Retry after 1 minute on error

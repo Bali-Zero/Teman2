@@ -184,14 +184,14 @@ class ClientIdentityResolver:
                     normalized,
                 )
             else:
-                logger.warning(f"Unknown channel: {channel}")
+                logger.warning("Unknown channel: %s", channel)
                 return False
 
             rows_affected = result.split()[-1] if result else "0"
             success = int(rows_affected) > 0
 
             if success:
-                logger.info(f"✅ Linked {channel} {identifier} → client #{client_id}")
+                logger.info("✅ Linked %s %s → client #%s", channel, identifier, client_id)
 
             return success
 
@@ -224,12 +224,12 @@ class ClientIdentityResolver:
             client_id = await self.find_client_by_email(identifier)
 
         if client_id:
-            logger.info(f"✅ Found existing client #{client_id} via {channel}")
+            logger.info("✅ Found existing client #%s via %s", client_id, channel)
             return (client_id, False)
 
         # 2. Client not found - create new if data provided
         if not client_data:
-            logger.warning(f"⚠️ Client not found for {channel}={identifier}, no data to create")
+            logger.warning("⚠️ Client not found for %s=%s, no data to create", channel, identifier)
             return (None, False)
 
         async with self.db_pool.acquire() as conn:
@@ -256,7 +256,7 @@ class ClientIdentityResolver:
             )
 
             new_client_id = row["id"]
-            logger.info(f"✅ Created new client #{new_client_id} from {channel}")
+            logger.info("✅ Created new client #%s from %s", new_client_id, channel)
 
             # Auto-link to messaging_user
             await self.link_messaging_user_to_client(channel, identifier, new_client_id)
@@ -415,7 +415,7 @@ async def check_duplicates(
 
     state["is_duplicate"] = False
     state["matched_client_id"] = None
-    logger.info(f"✅ No duplicates found for client_id={client_id}")
+    logger.info("✅ No duplicates found for client_id=%s", client_id)
     return state
 
 
@@ -748,7 +748,7 @@ async def trigger_lead_assignment(
 
     except Exception as e:
         logger.error(
-            f"❌ Lead assignment workflow failed for client #{client_id}: {e}", exc_info=True,
+            "❌ Lead assignment workflow failed for client #%s: %s", client_id, e, exc_info=True,
         )
         return {
             "client_id": client_id,

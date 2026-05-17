@@ -310,7 +310,7 @@ async def assign_thread(
             parse_mode="Markdown",
         )
     except Exception as e:
-        logger.debug(f"Assignment notification failed (non-fatal): {e}")
+        logger.debug("Assignment notification failed (non-fatal): %s", e)
 
     await invalidate_cache("zantara:omnichannel:*")
     return {"status": "assigned", "thread_id": str(thread_id), "assigned_to": assignee}
@@ -458,7 +458,7 @@ async def _emit_thread_event(
                 },
             }))
     except Exception as e:
-        logger.debug(f"WebSocket emit failed (non-fatal): {e}")
+        logger.debug("WebSocket emit failed (non-fatal): %s", e)
 
 
 async def _send_via_channel(
@@ -473,11 +473,11 @@ async def _send_via_channel(
 
         adapter = channel_router.adapters.get(channel)
         if not adapter:
-            logger.warning(f"No adapter registered for channel: {channel}")
+            logger.warning("No adapter registered for channel: %s", channel)
             return
 
         # Extract channel_id from thread metadata
         # For now, we log a warning — full outbound routing needs channel_id
         logger.info(f"Outbound reply via {channel}: {content[:50]}...")
     except Exception as e:
-        logger.warning(f"Outbound send failed: {e}")
+        logger.warning("Outbound send failed: %s", e)

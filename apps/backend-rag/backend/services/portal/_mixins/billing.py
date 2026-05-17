@@ -78,7 +78,7 @@ class PortalBillingMixin:
                 )
             except Exception as e:
                 # invoices table may not exist — fallback to practices JSONB
-                logger.warning(f"invoices table query failed, falling back to JSONB: {e}")
+                logger.warning("invoices table query failed, falling back to JSONB: %s", e)
                 rows = []
 
         invoices = []
@@ -287,7 +287,7 @@ class PortalBillingMixin:
                         "Portal: profile update",
                     )
                 except Exception as e:
-                    logger.warning(f"Failed to insert portal_profile_update alert for client {client_id}: {e}")
+                    logger.warning("Failed to insert portal_profile_update alert for client %s: %s", client_id, e)
 
                 # Insert portal_messages record so CRM team can see the change in thread view
                 try:
@@ -301,7 +301,7 @@ class PortalBillingMixin:
                         f"Client updated their profile via the portal: {fields_label}.",
                     )
                 except Exception as e:
-                    logger.warning(f"Failed to insert portal_messages record for client {client_id}: {e}")
+                    logger.warning("Failed to insert portal_messages record for client %s: %s", client_id, e)
 
             return await self._get_profile_data(conn, client_id)
 

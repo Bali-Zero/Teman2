@@ -149,7 +149,7 @@ class WhatsAppChannelAdapter(BaseChannel):
             )
 
         except Exception as e:
-            logger.error(f"Failed to parse WhatsApp webhook: {e}", exc_info=True)
+            logger.error("Failed to parse WhatsApp webhook: %s", e, exc_info=True)
             raise
 
     async def send_response(self, channel_id: str, response: ChannelResponse) -> None:
@@ -182,10 +182,10 @@ class WhatsAppChannelAdapter(BaseChannel):
             result = await self.client.post(url, json=payload, headers=headers)
             result.raise_for_status()
 
-            logger.info(f"✅ Sent WhatsApp message to {channel_id}")
+            logger.info("✅ Sent WhatsApp message to %s", channel_id)
 
         except Exception as e:
-            logger.error(f"Error sending WhatsApp response: {e}", exc_info=True)
+            logger.error("Error sending WhatsApp response: %s", e, exc_info=True)
             raise  # Let send_response_safe() catch and route to DLQ
 
     async def send_status_update(self, channel_id: str, status: str) -> None:
@@ -193,7 +193,7 @@ class WhatsAppChannelAdapter(BaseChannel):
         WhatsApp doesn't support typing indicators.
         This method is a no-op for compatibility.
         """
-        logger.debug(f"WhatsApp status update (no-op): {status} for {channel_id}")
+        logger.debug("WhatsApp status update (no-op): %s for %s", status, channel_id)
 
     async def stream_response(
         self, channel_id: str, response_stream: AsyncIterator[ChannelResponse],
@@ -234,7 +234,7 @@ class WhatsAppChannelAdapter(BaseChannel):
                 logger.info(f"✅ Completed WhatsApp stream: {len(accumulated_text)} chars")
 
         except Exception as e:
-            logger.error(f"Error streaming to WhatsApp: {e}", exc_info=True)
+            logger.error("Error streaming to WhatsApp: %s", e, exc_info=True)
 
             # Send error message (via DLQ-safe wrapper in case API is down)
             error_text = self.formatter.format_error("Si è verificato un errore. Riprova.")

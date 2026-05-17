@@ -179,7 +179,7 @@ async def score_priority(
             elif active_count >= 3:
                 is_vip = True
     except Exception as e:
-        logger.debug(f"VIP check failed (non-fatal): {e}")
+        logger.debug("VIP check failed (non-fatal): %s", e)
 
     # Complaint always at least HIGH
     if intent == MessageIntent.COMPLAINT and priority == Priority.NORMAL:

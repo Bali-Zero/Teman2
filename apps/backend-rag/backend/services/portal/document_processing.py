@@ -150,7 +150,7 @@ class DocumentOCR:
                 result["success"] = False
         except Exception as e:
             result["error"] = f"OCR extraction failed: {e}"
-            logger.error(f"OCR extraction failed for {file_name}: {e}")
+            logger.error("OCR extraction failed for %s: %s", file_name, e)
 
         return result
 
@@ -161,7 +161,7 @@ class DocumentOCR:
             try:
                 return magic.from_buffer(file_content, mime=True)
             except Exception as e:
-                logger.debug(f"libmagic MIME detection failed, using extension fallback: {e}")
+                logger.debug("libmagic MIME detection failed, using extension fallback: %s", e)
 
         # Fallback to extension-based detection
         import mimetypes
@@ -317,7 +317,7 @@ class DocumentOCR:
             return response.get("text", "")
 
         except Exception as e:
-            logger.error(f"Gemini Vision OCR failed: {e}")
+            logger.error("Gemini Vision OCR failed: %s", e)
             return ""
 
 
@@ -460,7 +460,7 @@ class ExpiryDetector:
 
                 return f"{year:04d}-{month:02d}-{day:02d}"
         except Exception as e:
-            logger.debug(f"Date normalization skipped for value: {e}")
+            logger.debug("Date normalization skipped for value: %s", e)
         return None
 
 

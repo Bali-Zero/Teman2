@@ -203,7 +203,7 @@ class ClientValuePredictor:
                 try:
                     client_data = client_scores.get(client_id)
                     if not client_data:
-                        logger.warning(f"No score data for client {client_id}")
+                        logger.warning("No score data for client %s", client_id)
                         continue
 
                     async with self.db_pool.acquire() as conn, conn.transaction():
@@ -265,7 +265,7 @@ class ClientValuePredictor:
                 except Exception as e:
                     error_msg = f"Client {client_id}: {str(e)}"
                     results["errors"].append(error_msg)
-                    logger.error(f"❌ Error processing client {client_id}: {e}", exc_info=True)
+                    logger.error("❌ Error processing client %s: %s", client_id, e, exc_info=True)
 
             # Send summary to team
             from backend.app.core.config import settings
@@ -287,7 +287,7 @@ All clients scored and segmented automatically!""",
                             },
                         )
                 except (httpx.HTTPError, OSError) as e:
-                    logger.error(f"Failed to send Slack notification: {e}", exc_info=True)
+                    logger.error("Failed to send Slack notification: %s", e, exc_info=True)
 
             return results
 
@@ -295,7 +295,7 @@ All clients scored and segmented automatically!""",
             return await asyncio.wait_for(_run(), timeout=timeout)
 
         except asyncio.TimeoutError:
-            logger.error(f"Timeout in run_daily_nurturing after {timeout}s")
+            logger.error("Timeout in run_daily_nurturing after %ss", timeout)
             return {
                 "vip_nurtured": 0,
                 "high_risk_contacted": 0,
@@ -303,7 +303,7 @@ All clients scored and segmented automatically!""",
                 "errors": [f"Operation timed out after {timeout}s"],
             }
         except asyncpg.PostgresError as e:
-            logger.error(f"Database error in run_daily_nurturing: {e}", exc_info=True)
+            logger.error("Database error in run_daily_nurturing: %s", e, exc_info=True)
             return {
                 "vip_nurtured": 0,
                 "high_risk_contacted": 0,
@@ -311,7 +311,7 @@ All clients scored and segmented automatically!""",
                 "errors": [f"Database error: {str(e)}"],
             }
         except Exception as e:
-            logger.error(f"Unexpected error in run_daily_nurturing: {e}", exc_info=True)
+            logger.error("Unexpected error in run_daily_nurturing: %s", e, exc_info=True)
             return {
                 "vip_nurtured": 0,
                 "high_risk_contacted": 0,

@@ -85,7 +85,7 @@ class MemoryServicePostgres:
             )
             logger.info("✅ PostgreSQL connection pool created")
         except (asyncpg.PostgresError, asyncpg.InterfaceError, ValueError, OSError) as e:
-            logger.error(f"❌ PostgreSQL connection failed: {e}", exc_info=True)
+            logger.error("❌ PostgreSQL connection failed: %s", e, exc_info=True)
             self.use_postgres = False
 
     async def close(self) -> None:
@@ -113,7 +113,7 @@ class MemoryServicePostgres:
         """
         # 1. Check cache (skip if force_refresh)
         if not force_refresh and user_id in self.memory_cache:
-            logger.debug(f"💾 Memory cache hit for {user_id}")
+            logger.debug("💾 Memory cache hit for %s", user_id)
             return self.memory_cache[user_id]
 
         # 2. Check PostgreSQL
@@ -164,7 +164,7 @@ class MemoryServicePostgres:
                     )
 
                     self.memory_cache[user_id] = memory
-                    logger.info(f"✅ Loaded memory from PostgreSQL for {user_id}")
+                    logger.info("✅ Loaded memory from PostgreSQL for %s", user_id)
                     return memory
 
             except (
@@ -173,7 +173,7 @@ class MemoryServicePostgres:
                 json.JSONDecodeError,
                 KeyError,
             ) as e:
-                logger.error(f"❌ PostgreSQL load failed for {user_id}: {e}", exc_info=True)
+                logger.error("❌ PostgreSQL load failed for %s: %s", user_id, e, exc_info=True)
 
         # 3. Create new memory
         memory = UserMemory(
@@ -184,7 +184,7 @@ class MemoryServicePostgres:
             updated_at=datetime.now(tz=timezone.utc),
         )
         self.memory_cache[user_id] = memory
-        logger.info(f"📝 Created new memory for {user_id}")
+        logger.info("📝 Created new memory for %s", user_id)
         return memory
 
     async def save_memory(self, memory: UserMemory) -> bool:
@@ -257,7 +257,7 @@ class MemoryServicePostgres:
         # Check if already exists
         existing_lower = [f.lower() for f in memory.profile_facts]
         if fact.lower() in existing_lower:
-            logger.debug(f"Fact already exists for {user_id}: {fact}")
+            logger.debug("Fact already exists for %s: %s", user_id, fact)
             return False
 
         # Save to PostgreSQL memory_facts table
@@ -277,10 +277,10 @@ class MemoryServicePostgres:
                         datetime.now(tz=timezone.utc),
                     )
 
-                    logger.info(f"✅ Added fact to PostgreSQL for {user_id}: {fact}")
+                    logger.info("✅ Added fact to PostgreSQL for %s: %s", user_id, fact)
 
             except (asyncpg.PostgresError, asyncpg.InterfaceError, ValueError) as e:
-                logger.error(f"❌ Failed to add fact for {user_id}: {e}", exc_info=True)
+                logger.error("❌ Failed to add fact for %s: %s", user_id, e, exc_info=True)
                 return False
 
         # Add to memory and trim
@@ -292,7 +292,7 @@ class MemoryServicePostgres:
         # Update cache
         self.memory_cache[user_id] = memory
 
-        logger.info(f"✅ Added fact for {user_id}: {fact}")
+        logger.info("✅ Added fact for %s: %s", user_id, fact)
         return True
 
     async def update_summary(self, user_id: str, summary: str) -> bool:
@@ -318,7 +318,7 @@ class MemoryServicePostgres:
         # Save
         success = await self.save_memory(memory)
         if success:
-            logger.info(f"✅ Updated summary for {user_id}")
+            logger.info("✅ Updated summary for %s", user_id)
         return success
 
     async def increment_counter(self, user_id: str, counter_name: str) -> bool:
@@ -424,7 +424,7 @@ class MemoryServicePostgres:
             KeyError,
             ValueError,
         ) as e:
-            logger.error(f"❌ Memory retrieve failed for {user_id}: {e}", exc_info=True)
+            logger.error("❌ Memory retrieve failed for %s: %s", user_id, e, exc_info=True)
             # Return empty structure on error - graceful degradation
             return {
                 "user_id": user_id,
@@ -502,14 +502,14 @@ class MemoryServicePostgres:
                     return results
 
             except asyncpg.exceptions.PostgresConnectionError as e:
-                logger.error(f"❌ PostgreSQL connection error during search: {e}", exc_info=True)
+                logger.error("❌ PostgreSQL connection error during search: %s", e, exc_info=True)
             except asyncpg.exceptions.QueryCanceledError as e:
-                logger.error(f"❌ PostgreSQL query timeout during search: {e}", exc_info=True)
+                logger.error("❌ PostgreSQL query timeout during search: %s", e, exc_info=True)
             except (asyncpg.PostgresError, asyncpg.InterfaceError, ValueError) as e:
-                logger.error(f"❌ PostgreSQL search failed: {e}", exc_info=True)
+                logger.error("❌ PostgreSQL search failed: %s", e, exc_info=True)
 
         # Fallback to in-memory cache search
-        logger.info(f"Falling back to in-memory cache search for '{query}'")
+        logger.info("Falling back to in-memory cache search for '%s'", query)
         results = []
         query_lower = query.lower()
 
@@ -559,7 +559,7 @@ class MemoryServicePostgres:
             return results[:limit]
 
         except (ValueError, KeyError, AttributeError) as e:
-            logger.error(f"❌ Cache search failed: {e}", exc_info=True)
+            logger.error("❌ Cache search failed: %s", e, exc_info=True)
             return []
 
     async def get_relevant_facts(self, user_id: str, query: str) -> list[str]:
@@ -603,7 +603,7 @@ class MemoryServicePostgres:
                 json.JSONDecodeError,
                 KeyError,
             ) as e:
-                logger.error(f"Error fetching history: {e}", exc_info=True)
+                logger.error("Error fetching history: %s", e, exc_info=True)
 
         return []
 
@@ -633,7 +633,7 @@ class MemoryServicePostgres:
                     }
 
             except (asyncpg.PostgresError, asyncpg.InterfaceError, KeyError) as e:
-                logger.error(f"Error getting PostgreSQL stats: {e}", exc_info=True)
+                logger.error("Error getting PostgreSQL stats: %s", e, exc_info=True)
 
         return {
             "cached_users": len(self.memory_cache),

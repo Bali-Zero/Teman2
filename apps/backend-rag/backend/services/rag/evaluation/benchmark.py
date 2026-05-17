@@ -137,7 +137,7 @@ class RAGBenchmark:
             try:
                 self.reranker = CrossEncoderRerankerMixin()
             except Exception as e:
-                logger.warning(f"Failed to initialize reranker: {e}")
+                logger.warning("Failed to initialize reranker: %s", e)
                 self.reranker = None
 
         logger.info("RAGBenchmark initialized")
@@ -259,7 +259,7 @@ class RAGBenchmark:
             )
             context_texts = [r["text"] for r in reranked]
         except Exception as e:
-            logger.warning(f"Reranking failed: {e}, using original order")
+            logger.warning("Reranking failed: %s, using original order", e)
             context_texts = [r["text"] for r in results.get("results", [])[:limit]]
 
         duration = (time.time() - start) * 1000
@@ -365,7 +365,7 @@ class RAGBenchmark:
         Returns:
             Method results
         """
-        logger.info(f"Evaluating method: {method}")
+        logger.info("Evaluating method: %s", method)
         start_time = time.time()
 
         evaluation_results: list[EvaluationResult] = []
@@ -540,7 +540,7 @@ class RAGBenchmark:
             logger.info(f"Saved benchmark results to database: {result.id}")
 
         except Exception as e:
-            logger.error(f"Failed to save benchmark results: {e}")
+            logger.error("Failed to save benchmark results: %s", e)
             raise
 
     async def get_historical_results(
@@ -588,7 +588,7 @@ class RAGBenchmark:
             return [dict(row) for row in rows]
 
         except Exception as e:
-            logger.error(f"Failed to get historical results: {e}")
+            logger.error("Failed to get historical results: %s", e)
             return []
 
     def generate_report(self, result: BenchmarkResult) -> str:
@@ -670,7 +670,7 @@ class RAGBenchmark:
         report = self.generate_report(result)
         with open(filepath, "w", encoding="utf-8") as f:
             f.write(report)
-        logger.info(f"Saved report to {filepath}")
+        logger.info("Saved report to %s", filepath)
 
 
 async def create_evaluation_tables() -> None:

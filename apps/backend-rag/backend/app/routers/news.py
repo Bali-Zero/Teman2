@@ -36,9 +36,9 @@ async def _enqueue_post_publish(
                 """,
                 slug, title, category, article_id,
             )
-        logger.info(f"📥 Enqueued {slug} for post-publish processing")
+        logger.info("📥 Enqueued %s for post-publish processing", slug)
     except Exception as exc:
-        logger.warning(f"Failed to enqueue {slug} for post-publish: {exc}")
+        logger.warning("Failed to enqueue %s for post-publish: %s", slug, exc)
 
 router = APIRouter(prefix="/api/news", tags=["News"])
 
@@ -201,7 +201,7 @@ async def list_news(
         )
 
     except Exception as e:
-        logger.error(f"Error listing news: {e}")
+        logger.error("Error listing news: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -226,7 +226,7 @@ async def get_categories(
             "categories": [{"name": row["category"], "count": row["count"]} for row in rows],
         }
     except Exception as e:
-        logger.error(f"Error getting categories: {e}")
+        logger.error("Error getting categories: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -279,7 +279,7 @@ async def get_news_by_slug(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error getting news by slug: {e}")
+        logger.error("Error getting news by slug: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -339,7 +339,7 @@ async def create_news(
         return result
 
     except Exception as e:
-        logger.error(f"Error creating news: {e}")
+        logger.error("Error creating news: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -401,7 +401,7 @@ async def create_news_bulk(
         return {"success": True, "created": created, "duplicates": duplicates, "total": len(items)}
 
     except Exception as e:
-        logger.error(f"Error bulk creating news: {e}")
+        logger.error("Error bulk creating news: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -428,7 +428,7 @@ async def update_news_image(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error updating news image: {e}")
+        logger.error("Error updating news image: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -461,7 +461,7 @@ async def update_news_status(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error updating news status: {e}")
+        logger.error("Error updating news status: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -498,7 +498,7 @@ async def subscribe_to_news(
         return {"success": True, "message": "Subscribed successfully"}
 
     except Exception as e:
-        logger.error(f"Error subscribing: {e}")
+        logger.error("Error subscribing: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -524,7 +524,7 @@ async def unsubscribe_from_news(
         return {"success": True, "message": "Unsubscribed successfully"}
 
     except Exception as e:
-        logger.error(f"Error unsubscribing: {e}")
+        logger.error("Error unsubscribing: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -597,5 +597,5 @@ async def get_rss_feed(
         return Response(content=rss, media_type="application/rss+xml")
 
     except Exception as e:
-        logger.error(f"Error generating RSS feed: {e}")
+        logger.error("Error generating RSS feed: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e

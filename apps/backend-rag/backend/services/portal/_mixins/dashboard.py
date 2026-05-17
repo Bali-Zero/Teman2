@@ -79,7 +79,7 @@ class PortalDashboardMixin:
                     client_id,
                 )
             except Exception as e:
-                logger.warning(f"Could not fetch visa practice: {e}")
+                logger.warning("Could not fetch visa practice: %s", e)
 
             # Get companies
             companies = []
@@ -94,7 +94,7 @@ class PortalDashboardMixin:
                     client_id,
                 )
             except Exception as e:
-                logger.warning(f"Could not fetch companies: {e}")
+                logger.warning("Could not fetch companies: %s", e)
 
             # Get primary company name
             primary_company = next(
@@ -123,7 +123,7 @@ class PortalDashboardMixin:
                     client_id,
                 )
             except Exception as e:
-                logger.warning(f"Could not fetch action items: {e}")
+                logger.warning("Could not fetch action items: %s", e)
 
             # Get unread messages count
             unread_count = 0
@@ -141,7 +141,7 @@ class PortalDashboardMixin:
                     or 0
                 )
             except Exception as e:
-                logger.warning(f"Could not fetch unread messages count: {e}")
+                logger.warning("Could not fetch unread messages count: %s", e)
 
             # Get document counts
             doc_counts = None
@@ -158,7 +158,7 @@ class PortalDashboardMixin:
                     client_id,
                 )
             except Exception as e:
-                logger.warning(f"Could not fetch document counts: {e}")
+                logger.warning("Could not fetch document counts: %s", e)
 
             # Build visa response
             visa_data = self._build_visa_dashboard_data(visa_practice)
@@ -798,7 +798,7 @@ class PortalDashboardMixin:
                     client_id,
                 )
             except Exception as e:
-                logger.warning(f"Could not fetch tax practices: {e}")
+                logger.warning("Could not fetch tax practices: %s", e)
 
             # Generate standard tax deadlines
             today = datetime.now(timezone.utc)
@@ -938,7 +938,7 @@ class PortalDashboardMixin:
                     )
             except Exception as e:
                 if not self._is_undefined_table_error(e):
-                    logger.warning(f"Could not fetch timeline_events: {e}")
+                    logger.warning("Could not fetch timeline_events: %s", e)
 
             # Get recent messages
             try:
@@ -972,7 +972,7 @@ class PortalDashboardMixin:
                         },
                     )
             except Exception as e:
-                logger.warning(f"Could not fetch messages for timeline: {e}")
+                logger.warning("Could not fetch messages for timeline: %s", e)
 
             # Get recent documents
             try:
@@ -1002,7 +1002,7 @@ class PortalDashboardMixin:
                         },
                     )
             except Exception as e:
-                logger.warning(f"Could not fetch documents for timeline: {e}")
+                logger.warning("Could not fetch documents for timeline: %s", e)
 
             # Get recent practice updates
             try:
@@ -1039,7 +1039,7 @@ class PortalDashboardMixin:
                         },
                     )
             except Exception as e:
-                logger.warning(f"Could not fetch practices for timeline: {e}")
+                logger.warning("Could not fetch practices for timeline: %s", e)
 
             # Add upcoming deadlines (future events)
             today = datetime.now(timezone.utc)

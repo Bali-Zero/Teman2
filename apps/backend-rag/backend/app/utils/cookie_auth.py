@@ -113,7 +113,7 @@ def set_auth_cookies(
     )
 
     logger.debug(
-        f"Auth cookies set: domain={domain}, secure={secure}, samesite={samesite}, max_age={max_age}s",
+        "Auth cookies set: domain=%s, secure=%s, samesite=%s, max_age=%ss", domain, secure, samesite, max_age,
     )
 
     return csrf_token
@@ -140,7 +140,7 @@ def clear_auth_cookies(response: Response) -> None:
             samesite=samesite,
         )
 
-    logger.debug(f"Auth cookies cleared: domain={domain}")
+    logger.debug("Auth cookies cleared: domain=%s", domain)
 
 
 def get_jwt_from_cookie(request: Request) -> str | None:

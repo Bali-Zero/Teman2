@@ -314,6 +314,8 @@ select = [
     "UP",  # pyupgrade
     "ARG", # flake8-unused-arguments
     "SIM", # flake8-simplify
+    "G",   # flake8-logging-format (G001..G202 — lazy-eval logging)
+    "LOG", # flake8-logging (LOG001..LOG015 — logger usage correctness)
 ]
 
 # Ignore specific rules
@@ -321,6 +323,13 @@ ignore = [
     "E501",  # line too long (handled by black/ruff format)
     "B008",  # do not perform function calls in argument defaults
     "C901",  # too complex
+    # ---- TEMPORARY: residuals from the G004 codemod (chore/ruff-g004-lazy-logging-2026-05-18) ----
+    # The bulk of f-string→%s conversions landed in that PR (2443 sites across 392 files);
+    # ~1789 sites remain that ruff cannot auto-rewrite (extra={...} kwarg, format specs like
+    # {:.2f}, chained subscripts). Re-enable each rule below as the residuals are cleared:
+    "G004",  # logging-f-string — 1389 residual; track in follow-up PR
+    "G201",  # logging-exc-info → use logger.exception() — 400 residual, no autofix
+    "G003",  # logging-string-concat — 13 residual, mostly verify_fluidity.py separators
 ]
 
 # Exclude directories
@@ -337,10 +346,11 @@ exclude = [
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]  # Allow unused imports
-"tests/*" = ["S101", "ARG", "SIM", "B", "UP", "F403", "F811", "E402"]  # Allow assert, unused args, simplifications, star imports, redefinitions, late imports in tests
-"tests/**/*" = ["S101", "ARG", "SIM", "B", "UP", "F403", "F811", "E402"]  # Same for nested test dirs
-"backend/tests/**/*" = ["F403", "F811", "SIM", "ARG", "E402", "B017"]  # Allow star imports, redefinitions, simplifications, unused args, late imports, assert exceptions in backend tests
-"scripts/*.py" = ["E402", "SIM", "B007", "B904", "ARG001", "ARG002", "B005"]  # Scripts may have non-standard patterns
+"tests/*" = ["S101", "ARG", "SIM", "B", "UP", "F403", "F811", "E402", "G", "LOG"]  # Allow assert, unused args, simplifications, star imports, redefinitions, late imports, f-string logging in tests
+"tests/**/*" = ["S101", "ARG", "SIM", "B", "UP", "F403", "F811", "E402", "G", "LOG"]  # Same for nested test dirs
+"backend/tests/**/*" = ["F403", "F811", "SIM", "ARG", "E402", "B017", "G", "LOG"]  # Allow star imports, redefinitions, simplifications, unused args, late imports, assert exceptions, f-string logging in backend tests
+"scripts/*.py" = ["E402", "SIM", "B007", "B904", "ARG001", "ARG002", "B005", "G", "LOG"]  # Scripts may have non-standard patterns; f-string logging OK in CLI one-shots
+"backend/migrations/scripts/*.py" = ["G", "LOG"]  # Migration CLI one-shots — f-string OK
 "backend/app/routers/*.py" = ["ARG001", "B904", "SIM"]  # FastAPI routers: dependency injection + error handling + cosmetic simplifications
 "backend/app/**/*.py" = ["SIM"]  # App modules - cosmetic simplifications
 "backend/app/modules/**/router*.py" = ["ARG001", "B904"]  # Same for module routers
@@ -348,12 +358,12 @@ exclude = [
 "backend/app/modules/**/test_*.py" = ["ARG001", "B904"]  # Test files in modules
 "backend/agents/**/test_*.py" = ["ARG001"]  # Test files in agents
 "backend/generals/tests/*.py" = ["ARG002"]  # General test files
-"backend/migrations/*.py" = ["ARG001", "E402"]  # Migration scripts with placeholder params and late imports
-"backend/cli/*.py" = ["E402"]  # CLI scripts with late imports
+"backend/migrations/*.py" = ["ARG001", "E402", "G", "LOG"]  # Migration scripts with placeholder params and late imports; f-string OK in CLI one-shots
+"backend/cli/*.py" = ["E402", "G", "LOG"]  # CLI scripts with late imports; f-string OK in CLI one-shots
 "backend/app/routers/agents.py" = ["E402"]  # Lazy imports
 "backend/app/routers/monitoring_rag.py" = ["E402"]  # Lazy imports
-"backend/jobs/*.py" = ["ARG001"]  # Job scripts with placeholder params
-"backend/scripts/*.py" = ["ARG001", "E402", "SIM"]  # Utility scripts
+"backend/jobs/*.py" = ["ARG001", "G", "LOG"]  # Job scripts with placeholder params; f-string OK in CLI one-shots
+"backend/scripts/*.py" = ["ARG001", "E402", "SIM", "G", "LOG"]  # Utility scripts; f-string OK in CLI one-shots
 "backend/verify_soul_persona.py" = ["E402"]  # Verification script with late imports
 "add_docstrings.py" = ["ARG001"]  # Root level script
 "_archive/**/*.py" = ["ARG", "E402", "B904"]  # Archived code

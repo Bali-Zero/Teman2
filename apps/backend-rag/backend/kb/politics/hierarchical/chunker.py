@@ -100,7 +100,7 @@ class HierarchicalChunker:
         # Build parent text (full record representation)
         parent_text = self._build_parent_text(record)
         if not parent_text.strip():
-            logger.warning(f"Empty parent text for record {record_id} at {source_path}:{line_offset}")
+            logger.warning("Empty parent text for record %s at %s:%s", record_id, source_path, line_offset)
             return []
 
         language = _detect_language(parent_text)
@@ -156,13 +156,13 @@ class HierarchicalChunker:
                     try:
                         record = json.loads(line)
                     except json.JSONDecodeError as e:
-                        logger.warning(f"Corrupt JSON at {source}:{line_idx}: {e}")
+                        logger.warning("Corrupt JSON at %s:%s: %s", source, line_idx, e)
                         continue
 
                     record_chunks = self.chunk_record(record, source, line_idx)
                     chunks.extend(record_chunks)
         except OSError as e:
-            logger.error(f"Cannot read {source}: {e}")
+            logger.error("Cannot read %s: %s", source, e)
 
         return chunks
 

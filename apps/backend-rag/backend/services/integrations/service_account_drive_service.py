@@ -45,7 +45,7 @@ class ServiceAccountDriveService:
                 service_account_info = parsed
                 logger.info("✅ Loaded Google credentials from raw JSON")
         except json.JSONDecodeError as e:
-            logger.debug(f"SA creds not raw JSON, trying base64: {e}")
+            logger.debug("SA creds not raw JSON, trying base64: %s", e)
 
         # Try base64-encoded JSON
         if not service_account_info:
@@ -56,7 +56,7 @@ class ServiceAccountDriveService:
                     service_account_info = parsed
                     logger.info("✅ Loaded Google credentials from base64-encoded JSON")
             except Exception as e:
-                logger.debug(f"SA creds base64 decode failed: {e}")
+                logger.debug("SA creds base64 decode failed: %s", e)
 
         if not service_account_info:
             raise ValueError(
@@ -74,7 +74,7 @@ class ServiceAccountDriveService:
         # Domain-wide delegation configured in Google Admin Console for this SA
         delegated_user = "zero@balizero.com"
         self.credentials = base_credentials.with_subject(delegated_user)
-        logger.info(f"✅ Using Domain-wide delegation, impersonating: {delegated_user}")
+        logger.info("✅ Using Domain-wide delegation, impersonating: %s", delegated_user)
 
         # Build API client
         self.service = build("drive", "v3", credentials=self.credentials)
@@ -294,10 +294,10 @@ class ServiceAccountDriveService:
                 if len(parts) == 1:
                     folder_id_cache[name] = subfolder["id"]
             except Exception as e:
-                logger.error(f"Failed to create subfolder {subfolder_path}: {e}")
+                logger.error("Failed to create subfolder %s: %s", subfolder_path, e)
                 continue
 
-        logger.info(f"✅ Created client folder structure for {client_name}: {root_folder_id}")
+        logger.info("✅ Created client folder structure for %s: %s", client_name, root_folder_id)
 
         # Persist folder IDs to DB so DrivePollService can match files to clients
         if db_pool:
@@ -321,9 +321,9 @@ class ServiceAccountDriveService:
                                 subfolder_path,
                                 subfolder_data["id"],
                             )
-                logger.info(f"✅ Drive folder IDs persisted to DB for client {client_id}")
+                logger.info("✅ Drive folder IDs persisted to DB for client %s", client_id)
             except Exception as e:
-                logger.error(f"Failed to persist drive folder IDs for client {client_id}: {e}")
+                logger.error("Failed to persist drive folder IDs for client %s: %s", client_id, e)
 
         return {
             "success": True,
@@ -350,7 +350,7 @@ class ServiceAccountDriveService:
             supportsAllDrives=True,
         )
         result = await asyncio.to_thread(request.execute)
-        logger.info(f"Moved file {file_id} from {from_parent_id} to {to_parent_id}")
+        logger.info("Moved file %s from %s to %s", file_id, from_parent_id, to_parent_id)
         return result
 
     async def get_start_page_token(self) -> str:

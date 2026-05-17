@@ -158,7 +158,7 @@ class QualityCheckService:
 
         logger.info("✅ QualityCheckService initialized")
         logger.info(f"   Min accept score: {min_accept_score:.0%}")
-        logger.info(f"   Strict mode: {strict_mode}")
+        logger.info("   Strict mode: %s", strict_mode)
 
     async def validate(self, extracted_doc) -> QualityReport:
         """

@@ -169,7 +169,7 @@ class PerformanceMonitor:
 
     async def start_monitoring(self, interval_seconds: int = 60) -> None:
         """Start continuous performance monitoring"""
-        logger.info(f"Starting performance monitoring with {interval_seconds}s interval")
+        logger.info("Starting performance monitoring with %ss interval", interval_seconds)
 
         while True:
             try:
@@ -180,7 +180,7 @@ class PerformanceMonitor:
 
                 await asyncio.sleep(interval_seconds)
             except Exception as e:
-                logger.error(f"Error in monitoring loop: {e}")
+                logger.error("Error in monitoring loop: %s", e)
                 await asyncio.sleep(interval_seconds)
 
     async def _collect_metrics(self) -> None:
@@ -412,7 +412,7 @@ class PerformanceMonitor:
             alert.resolved_at = datetime.now(tz=timezone.utc)
             del self.active_alerts[alert_id]
 
-            logger.info(f"Alert resolved: {alert_id}")
+            logger.info("Alert resolved: %s", alert_id)
             return True
         return False
 

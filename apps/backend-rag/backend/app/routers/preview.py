@@ -124,13 +124,13 @@ async def get_preview(article_id: str) -> HTMLResponse:
                         "<head>", '<head>\n<meta name="robots" content="noindex, nofollow">',
                     )
 
-                logger.info(f"Serving preview: {article_id}")
+                logger.info("Serving preview: %s", article_id)
                 return HTMLResponse(content=html_content, status_code=200)
             except Exception as e:
-                logger.error(f"Error reading preview {article_id}: {e}")
+                logger.error("Error reading preview %s: %s", article_id, e)
                 raise HTTPException(status_code=500, detail="Error reading preview") from e
 
-    logger.warning(f"Preview not found: {article_id}")
+    logger.warning("Preview not found: %s", article_id)
     raise HTTPException(status_code=404, detail=f"Preview not found. Article ID: {article_id}")
 
 

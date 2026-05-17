@@ -103,7 +103,7 @@ class MigrationRunner:
                 else:
                     spec = importlib.util.spec_from_file_location(module_name, migration_file)
                     if spec is None or spec.loader is None:
-                        logger.warning(f"Could not load spec for {migration_file}")
+                        logger.warning("Could not load spec for %s", migration_file)
                         continue
                     module = importlib.util.module_from_spec(spec)
                     sys.modules[module_path] = module
@@ -125,10 +125,10 @@ class MigrationRunner:
                                 f"Discovered migration {migration_number}: {instance.description}",
                             )
                         except Exception as e:
-                            logger.warning(f"Could not instantiate migration {name}: {e}")
+                            logger.warning("Could not instantiate migration %s: %s", name, e)
 
             except Exception as e:
-                logger.warning(f"Error loading migration file {migration_file}: {e}")
+                logger.warning("Error loading migration file %s: %s", migration_file, e)
 
         logger.info(f"Discovered {len(self._migration_classes)} migrations")
         return self._migration_classes
@@ -153,7 +153,7 @@ class MigrationRunner:
                     if dep in migrations:
                         graph[num].add(dep)
                     else:
-                        logger.warning(f"Migration {num} depends on {dep}, but migration not found")
+                        logger.warning("Migration %s depends on %s, but migration not found", num, dep)
 
         # Topological sort
         ordered: list[int] = []
@@ -255,18 +255,18 @@ class MigrationRunner:
                 logger.info(f"Applying migration {migration_number}: {migration_class.__name__}")
 
                 if dry_run:
-                    logger.info(f"[DRY RUN] Would apply migration {migration_number}")
+                    logger.info("[DRY RUN] Would apply migration %s", migration_number)
                     applied.append(migration_number)
                 else:
                     instance = migration_class()
                     success = await instance.apply()
                     if success:
                         applied.append(migration_number)
-                        logger.info(f"✅ Migration {migration_number} applied successfully")
+                        logger.info("✅ Migration %s applied successfully", migration_number)
                     else:
                         error_msg = f"Migration {migration_number} failed to apply"
                         errors.append({"migration": migration_number, "error": error_msg})
-                        logger.error(f"❌ {error_msg}")
+                        logger.error("❌ %s", error_msg)
 
                         if stop_on_error:
                             break
@@ -274,7 +274,7 @@ class MigrationRunner:
             except Exception as e:
                 error_msg = f"Error applying migration {migration_number}: {e}"
                 errors.append({"migration": migration_number, "error": str(e)})
-                logger.error(f"❌ {error_msg}")
+                logger.error("❌ %s", error_msg)
 
                 if stop_on_error:
                     break

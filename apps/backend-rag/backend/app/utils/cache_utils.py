@@ -58,7 +58,7 @@ def cached(
             # Get cache service
             cache = getattr(self, cache_attr, None)
             if cache is None:
-                logger.warning(f"No cache service found at {cache_attr}, executing without cache")
+                logger.warning("No cache service found at %s, executing without cache", cache_attr)
                 return await func(self, *args, **kwargs)
 
             # Generate cache key
@@ -68,10 +68,10 @@ def cached(
             try:
                 cached_value = await cache.get(cache_key)
                 if cached_value is not None:
-                    logger.debug(f"Cache hit: {cache_key}")
+                    logger.debug("Cache hit: %s", cache_key)
                     return cached_value
             except Exception as e:
-                logger.warning(f"Cache get error: {e}")
+                logger.warning("Cache get error: %s", e)
 
             # Execute function
             result = await func(self, *args, **kwargs)
@@ -79,9 +79,9 @@ def cached(
             # Store in cache
             try:
                 await cache.set(cache_key, result, ttl=ttl)
-                logger.debug(f"Cache set: {cache_key}")
+                logger.debug("Cache set: %s", cache_key)
             except Exception as e:
-                logger.warning(f"Cache set error: {e}")
+                logger.warning("Cache set error: %s", e)
 
             return result
 
@@ -128,7 +128,7 @@ class CacheWarmer:
                 await self.cache.set(key, data, ttl=ttl)
                 results[key] = True
             except Exception as e:
-                logger.warning(f"Cache warmup failed for {key}: {e}")
+                logger.warning("Cache warmup failed for %s: %s", key, e)
                 results[key] = False
 
         self._warmup_tasks.clear()

@@ -77,7 +77,7 @@ async def extract_text_from_pdf_async(
             compatible default (False) returns only the text string.
     """
     try:
-        logger.info(f"Parsing PDF (async): {file_path}")
+        logger.info("Parsing PDF (async): %s", file_path)
 
         reader = PdfReader(file_path)
         text_parts: list[str] = []
@@ -92,7 +92,7 @@ async def extract_text_from_pdf_async(
                 else:
                     extracted_pages.append("")
             except Exception as e:
-                logger.warning(f"Error extracting page {page_num}: {e}")
+                logger.warning("Error extracting page %s: %s", page_num, e)
                 extracted_pages.append("")
                 continue
 
@@ -122,7 +122,7 @@ async def extract_text_from_pdf_async(
             except DocumentParseError:
                 raise
             except Exception as ocr_error:
-                logger.warning(f"OCR extraction failed: {ocr_error}")
+                logger.warning("OCR extraction failed: %s", ocr_error)
                 if not full_text.strip():
                     raise DocumentParseError(f"No text extracted from PDF: {file_path}")
 
@@ -167,7 +167,7 @@ def extract_text_from_pdf(
         DocumentParseError: If parsing fails
     """
     try:
-        logger.info(f"Parsing PDF: {file_path}")
+        logger.info("Parsing PDF: %s", file_path)
 
         reader = PdfReader(file_path)
         text_parts: list[str] = []
@@ -182,7 +182,7 @@ def extract_text_from_pdf(
                 else:
                     extracted_pages.append("")
             except Exception as e:
-                logger.warning(f"Error extracting page {page_num}: {e}")
+                logger.warning("Error extracting page %s: %s", page_num, e)
                 extracted_pages.append("")
                 continue
 
@@ -229,7 +229,7 @@ def extract_text_from_pdf(
                                     return vision_text, []
                                 return vision_text
                     except Exception as vision_err:
-                        logger.warning(f"Vision extraction failed: {vision_err}")
+                        logger.warning("Vision extraction failed: %s", vision_err)
 
                     raise DocumentParseError(
                         f"No text extracted from PDF (even with OCR/Vision): {file_path}",
@@ -237,7 +237,7 @@ def extract_text_from_pdf(
             except DocumentParseError:
                 raise
             except Exception as ocr_error:
-                logger.warning(f"OCR extraction failed: {ocr_error}")
+                logger.warning("OCR extraction failed: %s", ocr_error)
                 if not full_text.strip():
                     raise DocumentParseError(f"No text extracted from PDF: {file_path}")
 
@@ -276,7 +276,7 @@ async def extract_text_from_pdf_ocr_async(file_path: str) -> str:
         total_pages = len(doc)
         doc.close()
 
-        logger.info(f"Processing {total_pages} pages with Gemini Vision OCR...")
+        logger.info("Processing %s pages with Gemini Vision OCR...", total_pages)
 
         # OCR prompt optimized for text extraction
         ocr_prompt = """Extract all text from this page.
@@ -288,7 +288,7 @@ If the page is blank or contains no text, return an empty string."""
         text_parts = []
         for page_num in range(1, total_pages + 1):
             try:
-                logger.info(f"OCR processing page {page_num}/{total_pages}...")
+                logger.info("OCR processing page %s/%s...", page_num, total_pages)
                 page_text = await vision_service.analyze_page(
                     pdf_path=file_path, page_number=page_num, prompt=ocr_prompt, is_drive_file=False,
                 )
@@ -296,13 +296,13 @@ If the page is blank or contains no text, return an empty string."""
                     text_parts.append(page_text)
                     logger.info(f"✅ Page {page_num}: extracted {len(page_text)} characters")
                 else:
-                    logger.warning(f"⚠️ Page {page_num}: no text extracted")
+                    logger.warning("⚠️ Page %s: no text extracted", page_num)
 
                 # Rate limiting for Gemini Vision (Free Tier: 15 RPM)
                 # 4s delay = 15 RPM
                 await asyncio.sleep(4.0)
             except Exception as page_error:
-                logger.warning(f"Error processing page {page_num}: {page_error}")
+                logger.warning("Error processing page %s: %s", page_num, page_error)
                 continue
 
         full_text = "\n\n".join(text_parts)
@@ -316,7 +316,7 @@ If the page is blank or contains no text, return an empty string."""
         return ""
 
     except Exception as e:
-        logger.error(f"Vision OCR extraction failed: {e}")
+        logger.error("Vision OCR extraction failed: %s", e)
         return ""
 
 
@@ -333,7 +333,7 @@ def extract_text_from_pdf_ocr(file_path: str) -> str:
     try:
         import fitz  # PyMuPDF
 
-        logger.info(f"Attempting OCR extraction from PDF: {file_path}")
+        logger.info("Attempting OCR extraction from PDF: %s", file_path)
         doc = fitz.open(file_path)
         text_parts = []
 
@@ -353,7 +353,7 @@ def extract_text_from_pdf_ocr(file_path: str) -> str:
                     except Exception:
                         # If OCR not available, try alternative extraction
                         logger.warning(
-                            f"OCR not available for page {page_num}, trying alternative extraction",
+                            "OCR not available for page %s, trying alternative extraction", page_num,
                         )
                         # Convert page to image and use vision model as fallback
                         page.get_pixmap()
@@ -363,7 +363,7 @@ def extract_text_from_pdf_ocr(file_path: str) -> str:
                 if text:
                     text_parts.append(text)
             except Exception as e:
-                logger.warning(f"Error extracting page {page_num} with OCR: {e}")
+                logger.warning("Error extracting page %s with OCR: %s", page_num, e)
                 continue
 
         doc.close()
@@ -373,7 +373,7 @@ def extract_text_from_pdf_ocr(file_path: str) -> str:
         logger.warning("PyMuPDF (fitz) not available for OCR extraction")
         return ""
     except Exception as e:
-        logger.error(f"OCR extraction failed: {e}")
+        logger.error("OCR extraction failed: %s", e)
         return ""
 
 
@@ -394,7 +394,7 @@ def extract_text_from_docx(file_path: str) -> str:
         raise DocumentParseError("python-docx not installed. Install with: pip install python-docx")
 
     try:
-        logger.info(f"Parsing DOCX: {file_path}")
+        logger.info("Parsing DOCX: %s", file_path)
 
         doc = Document(file_path)
         text_parts = []
@@ -440,7 +440,7 @@ def extract_text_from_epub(file_path: str) -> str:
         DocumentParseError: If parsing fails
     """
     try:
-        logger.info(f"Parsing EPUB: {file_path}")
+        logger.info("Parsing EPUB: %s", file_path)
 
         book = epub.read_epub(file_path)
         text_parts = []
@@ -456,7 +456,7 @@ def extract_text_from_epub(file_path: str) -> str:
                     if text:
                         text_parts.append(text)
                 except Exception as e:
-                    logger.warning(f"Error extracting chapter: {e}")
+                    logger.warning("Error extracting chapter: %s", e)
                     continue
 
         full_text = "\n\n".join(text_parts)
@@ -485,7 +485,7 @@ def extract_text_from_txt(file_path: str) -> str:
         DocumentParseError: If parsing fails
     """
     try:
-        logger.info(f"Reading TXT: {file_path}")
+        logger.info("Reading TXT: %s", file_path)
         with open(file_path, encoding="utf-8") as f:
             text = f.read()
 
@@ -583,6 +583,6 @@ def get_document_info(file_path: str) -> dict:
             )
 
     except Exception as e:
-        logger.warning(f"Could not extract metadata from {file_path}: {e}")
+        logger.warning("Could not extract metadata from %s: %s", file_path, e)
 
     return info

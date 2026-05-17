@@ -53,7 +53,7 @@ async def enqueue_workflow(
         thread_id,
         payload,
     )
-    logger.info(f"Enqueued workflow job {job_id} chain={chain_id} thread={thread_id}")
+    logger.info("Enqueued workflow job %s chain=%s thread=%s", job_id, chain_id, thread_id)
     return job_id
 
 
@@ -131,7 +131,7 @@ async def _execute_job(job: dict[str, Any], app_state: Any) -> None:
     thread_id = job["thread_id"]
     payload = job["payload"]
 
-    logger.info(f"Executing chain={chain_id} thread={thread_id}")
+    logger.info("Executing chain=%s thread=%s", chain_id, thread_id)
 
     from backend.services.workflow.executor import execute_chain
 
@@ -160,9 +160,9 @@ async def _process_job(
                 await asyncio.sleep(HEARTBEAT_INTERVAL_SECONDS)
                 try:
                     await _heartbeat(hb_conn, job_id)
-                    logger.debug(f"Heartbeat job {job_id}")
+                    logger.debug("Heartbeat job %s", job_id)
                 except Exception as e:
-                    logger.warning(f"Heartbeat failed for {job_id}: {e}")
+                    logger.warning("Heartbeat failed for %s: %s", job_id, e)
 
     try:
         heartbeat_task = asyncio.create_task(_run_heartbeat())
@@ -170,10 +170,10 @@ async def _process_job(
 
         async with db_pool.acquire() as conn:
             await _ack_job(conn, job_id)
-        logger.info(f"Job {job_id} completed OK")
+        logger.info("Job %s completed OK", job_id)
 
     except Exception as e:
-        logger.error(f"Job {job_id} failed: {e}", exc_info=True)
+        logger.error("Job %s failed: %s", job_id, e, exc_info=True)
         async with db_pool.acquire() as conn:
             await _fail_job(conn, job_id, str(e), retry_count)
     finally:
@@ -204,5 +204,5 @@ async def run_worker(db_pool: asyncpg.Pool, app_state: Any) -> None:
             logger.info("Workflow queue worker shutting down")
             break
         except Exception as e:
-            logger.error(f"Worker loop error: {e}", exc_info=True)
+            logger.error("Worker loop error: %s", e, exc_info=True)
             await asyncio.sleep(WORKER_POLL_INTERVAL_SECONDS)

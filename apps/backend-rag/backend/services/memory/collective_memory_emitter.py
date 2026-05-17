@@ -36,9 +36,9 @@ class CollectiveMemoryEmitter:
             }
 
             await self._send_sse_event(event_source, event_data)
-            logger.info(f"📤 Emitted collective_memory_stored: {memory_key}")
+            logger.info("📤 Emitted collective_memory_stored: %s", memory_key)
         except Exception as e:
-            logger.error(f"❌ Failed to emit memory_stored: {e}")
+            logger.error("❌ Failed to emit memory_stored: %s", e)
 
     async def emit_preference_detected(
         self,
@@ -60,9 +60,9 @@ class CollectiveMemoryEmitter:
             }
 
             await self._send_sse_event(event_source, event_data)
-            logger.info(f"📤 Emitted preference_detected: {member} -> {preference}")
+            logger.info("📤 Emitted preference_detected: %s -> %s", member, preference)
         except Exception as e:
-            logger.error(f"❌ Failed to emit preference_detected: {e}")
+            logger.error("❌ Failed to emit preference_detected: %s", e)
 
     async def emit_milestone_detected(
         self,
@@ -86,9 +86,9 @@ class CollectiveMemoryEmitter:
             }
 
             await self._send_sse_event(event_source, event_data)
-            logger.info(f"📤 Emitted milestone_detected: {member} -> {milestone_type}")
+            logger.info("📤 Emitted milestone_detected: %s -> %s", member, milestone_type)
         except Exception as e:
-            logger.error(f"❌ Failed to emit milestone_detected: {e}")
+            logger.error("❌ Failed to emit milestone_detected: %s", e)
 
     async def emit_relationship_updated(
         self,
@@ -112,9 +112,9 @@ class CollectiveMemoryEmitter:
             }
 
             await self._send_sse_event(event_source, event_data)
-            logger.info(f"📤 Emitted relationship_updated: {member_a} <-> {member_b}")
+            logger.info("📤 Emitted relationship_updated: %s <-> %s", member_a, member_b)
         except Exception as e:
-            logger.error(f"❌ Failed to emit relationship_updated: {e}")
+            logger.error("❌ Failed to emit relationship_updated: %s", e)
 
     async def emit_memory_consolidated(
         self, event_source: Any, action: str, original_memories: list, new_memory: str, reason: str,
@@ -131,9 +131,9 @@ class CollectiveMemoryEmitter:
             }
 
             await self._send_sse_event(event_source, event_data)
-            logger.info(f"📤 Emitted memory_consolidated: {action}")
+            logger.info("📤 Emitted memory_consolidated: %s", action)
         except Exception as e:
-            logger.error(f"❌ Failed to emit memory_consolidated: {e}")
+            logger.error("❌ Failed to emit memory_consolidated: %s", e)
 
     async def _send_sse_event(self, event_source: Any, data: dict[str, Any]) -> None:
         """Invia evento SSE"""
@@ -149,7 +149,7 @@ class CollectiveMemoryEmitter:
                 # Fallback: usa yield se è un generator
                 logger.warning("⚠️ Event source doesn't have send/write method")
         except Exception as e:
-            logger.error(f"❌ Failed to send SSE event: {e}")
+            logger.error("❌ Failed to send SSE event: %s", e)
 
 
 # Singleton globale

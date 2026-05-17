@@ -90,7 +90,7 @@ async def _fetch_pending(state: IntelReviewState, app_state: Any) -> IntelReview
         logger.info(f"intel.review: fetched {len(items)} pending items")
     except Exception as e:
         # Table may not exist yet or column names differ — non-fatal, log and continue
-        logger.warning(f"intel.review: fetch_pending failed: {e}")
+        logger.warning("intel.review: fetch_pending failed: %s", e)
         state["errors"].append(f"fetch_pending: {e}")
         state["pending_items"] = []
 
@@ -165,7 +165,7 @@ async def _assess_items(state: IntelReviewState, _app_state: Any) -> IntelReview
                 },
             )
         except Exception as e:
-            logger.warning(f"intel.review: assessment failed for {item_id}: {e}")
+            logger.warning("intel.review: assessment failed for %s: %s", item_id, e)
             assessments.append(
                 {
                     "id": item_id,
@@ -204,7 +204,7 @@ async def _notify_team(state: IntelReviewState, _app_state: Any) -> IntelReviewS
         from backend.app.routers.intel import approval_service as approval_svc
         from backend.app.routers.intel import staging_service as staging_svc
     except ImportError as exc:
-        logger.warning(f"intel.review: cannot import intel services: {exc}")
+        logger.warning("intel.review: cannot import intel services: %s", exc)
         state["errors"].append(f"notify_team: import failed: {exc}")
         state["notified_ids"] = []
         return state
@@ -218,9 +218,9 @@ async def _notify_team(state: IntelReviewState, _app_state: Any) -> IntelReviewS
             if data:
                 await approval_svc.send_approval_notification(item_type, item_id, data, None, None)
                 notified.append(item_id)
-                logger.info(f"intel.review: notified team for {item_id} ({item_type})")
+                logger.info("intel.review: notified team for %s (%s)", item_id, item_type)
         except Exception as e:
-            logger.warning(f"intel.review: notify failed for {item_id}: {e}")
+            logger.warning("intel.review: notify failed for %s: %s", item_id, e)
             state["errors"].append(f"notify_team: {item_id}: {e}")
 
     state["notified_ids"] = notified
@@ -254,8 +254,7 @@ async def _summarize(state: IntelReviewState, _app_state: Any) -> IntelReviewSta
     state["summary"] = summary
 
     logger.info(
-        f"intel.review: complete — reviewed={total} significant={significant} "
-        f"notified={notified} errors={errors}",
+        "intel.review: complete — reviewed=%s significant=%s notified=%s errors=%s", total, significant, notified, errors,
     )
     return state
 

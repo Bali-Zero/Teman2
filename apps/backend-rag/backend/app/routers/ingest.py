@@ -64,7 +64,7 @@ async def upload_and_ingest(
         # Non-blocking file writing (offload to thread)
         await asyncio.to_thread(save_upload_file_sync, temp_path, content)
 
-        logger.info(f"Uploaded file saved: {temp_path}")
+        logger.info("Uploaded file saved: %s", temp_path)
 
         # Ingest book
         service = IngestionService()
@@ -79,7 +79,7 @@ async def upload_and_ingest(
         return BookIngestionResponse(**result)
 
     except Exception as e:
-        logger.error(f"Upload ingestion error: {e}")
+        logger.error("Upload ingestion error: %s", e)
         raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}") from e
 
 
@@ -111,7 +111,7 @@ async def ingest_local_file(request: BookIngestionRequest) -> BookIngestionRespo
         return BookIngestionResponse(**result)
 
     except Exception as e:
-        logger.error(f"File ingestion error: {e}")
+        logger.error("File ingestion error: %s", e)
         raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}") from e
 
 
@@ -164,7 +164,7 @@ async def batch_ingest(
                     failed += 1
 
             except Exception as e:
-                logger.error(f"Error ingesting {book_path}: {e}")
+                logger.error("Error ingesting %s: %s", book_path, e)
                 results.append(
                     BookIngestionResponse(
                         success=False,
@@ -196,7 +196,7 @@ async def batch_ingest(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Batch ingestion error: {e}")
+        logger.error("Batch ingestion error: %s", e)
         raise HTTPException(status_code=500, detail=f"Batch ingestion failed: {str(e)}") from e
 
 
@@ -220,5 +220,5 @@ async def get_ingestion_stats() -> dict[str, Any]:
         }
 
     except Exception as e:
-        logger.error(f"Stats error: {e}")
+        logger.error("Stats error: %s", e)
         raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}") from e

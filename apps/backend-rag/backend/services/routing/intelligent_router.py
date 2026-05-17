@@ -101,7 +101,7 @@ class IntelligentRouter:
             Dict with response, sources, and proactive suggestions
         """
         try:
-            logger.info(f"🚦 [Router] Routing message for user {user_id} via Agentic RAG")
+            logger.info("🚦 [Router] Routing message for user %s via Agentic RAG", user_id)
 
             # Delegate to Orchestrator
             result = await self.orchestrator.process_query(
@@ -146,7 +146,7 @@ class IntelligentRouter:
             return response_data
 
         except Exception as e:
-            logger.error(f"❌ [Router] Routing error: {e}")
+            logger.error("❌ [Router] Routing error: %s", e)
             raise Exception(f"Routing failed: {str(e)}") from e
 
     async def stream_chat(
@@ -162,7 +162,7 @@ class IntelligentRouter:
         Delegates to AgenticRAGOrchestrator.stream_query
         """
         try:
-            logger.info(f"🚦 [Router Stream] Starting stream for user {user_id} via Agentic RAG")
+            logger.info("🚦 [Router Stream] Starting stream for user %s via Agentic RAG", user_id)
 
             # Stream from Orchestrator
             # FIX: Pass conversation history and session ID down
@@ -183,7 +183,7 @@ class IntelligentRouter:
             logger.info("✅ [Router Stream] Completed")
 
         except Exception as e:
-            logger.error(f"❌ [Router Stream] Error: {e}")
+            logger.error("❌ [Router Stream] Error: %s", e)
             raise Exception(f"Streaming failed: {str(e)}") from e
 
     def get_stats(self) -> dict:

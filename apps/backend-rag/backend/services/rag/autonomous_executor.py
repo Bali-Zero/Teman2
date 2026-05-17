@@ -399,7 +399,7 @@ class AutonomousExecutor:
             raise KeyError(f"Plan {plan_id} not found")
 
         await self._update_plan_status(plan, ExecutionStatus.IN_PROGRESS)
-        logger.info(f"Starting execution of plan {plan_id}")
+        logger.info("Starting execution of plan %s", plan_id)
 
         for i, step in enumerate(plan["steps"]):
             plan["current_step"] = i
@@ -431,7 +431,7 @@ class AutonomousExecutor:
         plan["completed_at"] = datetime.now(UTC).isoformat()
         if self._persistent:
             await self._persist_plan_completion(plan)
-        logger.info(f"Plan {plan_id} completed successfully")
+        logger.info("Plan %s completed successfully", plan_id)
         return plan
 
     async def _execute_step_with_retry(
@@ -496,7 +496,7 @@ class AutonomousExecutor:
                 clients = await self.crm_service.search_clients(user_email, limit=1)
                 if not clients:
                     raise ValueError(f"Client {user_email} not found in CRM")
-            logger.info(f"Verified client data for {user_email}")
+            logger.info("Verified client data for %s", user_email)
 
         elif action in (
             "check_npwp_eligibility",
@@ -504,14 +504,14 @@ class AutonomousExecutor:
             "check_kbli_codes",
             "verify_shareholders",
         ):
-            logger.info(f"Eligibility check passed for {action}")
+            logger.info("Eligibility check passed for %s", action)
 
         elif action in (
             "prepare_npwp_documents",
             "prepare_kitas_documents",
             "prepare_incorporation_docs",
         ):
-            logger.info(f"Documents prepared for {action}")
+            logger.info("Documents prepared for %s", action)
 
         elif action in (
             "submit_to_djp",
@@ -520,13 +520,13 @@ class AutonomousExecutor:
             "register_oss",
             "schedule_biometrics",
         ):
-            logger.info(f"CRITICAL action executed (simulated): {action} for {user_email}")
+            logger.info("CRITICAL action executed (simulated): %s for %s", action, user_email)
 
         elif action in ("track_npwp_status", "track_kitas_status", "obtain_nib"):
-            logger.info(f"Tracking/finalizing: {action}")
+            logger.info("Tracking/finalizing: %s", action)
 
         else:
-            logger.warning(f"Unknown action: {action}, skipping")
+            logger.warning("Unknown action: %s, skipping", action)
 
     # ------------------------------------------------------------------
     # Approval flow
@@ -561,9 +561,9 @@ class AutonomousExecutor:
                     ],
                 )
             except Exception as e:
-                logger.error(f"Failed to send Telegram approval request: {e}")
+                logger.error("Failed to send Telegram approval request: %s", e)
 
-        logger.info(f"Approval requested for {approval_key}")
+        logger.info("Approval requested for %s", approval_key)
 
     async def _wait_for_approval(
         self,
@@ -603,7 +603,7 @@ class AutonomousExecutor:
             await asyncio.sleep(poll_interval)
             elapsed += poll_interval
 
-        logger.warning(f"Approval timed out for {approval_key}")
+        logger.warning("Approval timed out for %s", approval_key)
         return False
 
     async def record_approval(
@@ -622,7 +622,7 @@ class AutonomousExecutor:
             self._memory_approvals[approval_key] = approved
 
         action = "approved" if approved else "rejected"
-        logger.info(f"Approval recorded for {plan_id}_{step_id}: {action}")
+        logger.info("Approval recorded for %s_%s: %s", plan_id, step_id, action)
 
     # ------------------------------------------------------------------
     # Rollback

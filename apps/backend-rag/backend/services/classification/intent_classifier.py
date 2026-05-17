@@ -682,7 +682,7 @@ class IntentClassifier:
             return result
 
         except Exception as e:
-            logger.error(f"🏷️ [IntentClassifier] Error: {e}")
+            logger.error("🏷️ [IntentClassifier] Error: %s", e)
             # Fallback: route to Fast
             return {
                 "category": "unknown",

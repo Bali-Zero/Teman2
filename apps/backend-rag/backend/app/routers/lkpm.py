@@ -82,7 +82,7 @@ async def save_client_config(
         config_id = await service.save_client_config(config)
         return {"success": True, "config_id": config_id}
     except Exception as e:
-        logger.error(f"Failed to save client config: {e}", exc_info=True)
+        logger.error("Failed to save client config: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -111,7 +111,7 @@ async def submit_data(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Form submission failed: {e}", exc_info=True)
+        logger.error("Form submission failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -137,7 +137,7 @@ async def sync_jurnal(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Jurnal sync failed: {e}", exc_info=True)
+        logger.error("Jurnal sync failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -224,7 +224,7 @@ async def validate_draft(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Validation failed: {e}", exc_info=True)
+        logger.error("Validation failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -257,7 +257,7 @@ async def get_ready_pack(
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Ready pack generation failed: {e}", exc_info=True)
+        logger.error("Ready pack generation failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -277,7 +277,7 @@ async def approve_draft(
     try:
         return await service.approve_draft(draft_id)
     except Exception as e:
-        logger.error(f"Approval failed: {e}", exc_info=True)
+        logger.error("Approval failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -293,7 +293,7 @@ async def mark_submitted(
     try:
         return await service.mark_submitted(draft_id, submitted_by or current_user)
     except Exception as e:
-        logger.error(f"Mark submitted failed: {e}", exc_info=True)
+        logger.error("Mark submitted failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -310,7 +310,7 @@ async def upload_receipt(
     try:
         return await service.upload_receipt(draft_id, receipt_number, receipt_file_url)
     except Exception as e:
-        logger.error(f"Receipt upload failed: {e}", exc_info=True)
+        logger.error("Receipt upload failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -338,7 +338,7 @@ async def get_my_history(
             "items": [item.model_dump() for item in items],
         }
     except Exception as e:
-        logger.error(f"Failed to get LKPM history for portal client: {e}", exc_info=True)
+        logger.error("Failed to get LKPM history for portal client: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -366,7 +366,7 @@ async def get_my_receipts(
         }
     except Exception as e:
         logger.error(
-            f"Failed to get LKPM receipts for portal client: {e}", exc_info=True,
+            "Failed to get LKPM receipts for portal client: %s", e, exc_info=True,
         )
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -395,7 +395,7 @@ async def get_receipts_by_client(
         }
     except Exception as e:
         logger.error(
-            f"Failed to get LKPM receipts for client {client_id}: {e}",
+            "Failed to get LKPM receipts for client %s: %s", client_id, e,
             exc_info=True,
         )
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -419,7 +419,7 @@ async def get_receipts_for_report(
         }
     except Exception as e:
         logger.error(
-            f"Failed to get LKPM receipts for report {lkpm_report_id}: {e}",
+            "Failed to get LKPM receipts for report %s: %s", lkpm_report_id, e,
             exc_info=True,
         )
         raise HTTPException(status_code=500, detail=str(e)) from e

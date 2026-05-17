@@ -91,7 +91,7 @@ class PricingPlugin(Plugin):
             service_type = input_data.service_type
             query = input_data.query
 
-            logger.debug(f"Pricing query: service_type={service_type}, query={query}")
+            logger.debug("Pricing query: service_type=%s, query=%s", service_type, query)
 
             # If query provided, search specifically
             if query:
@@ -138,5 +138,5 @@ class PricingPlugin(Plugin):
             )
 
         except Exception as e:
-            logger.error(f"Pricing plugin error: {e}", exc_info=True)
+            logger.error("Pricing plugin error: %s", e, exc_info=True)
             return PricingQueryOutput(success=False, error=f"Pricing lookup failed: {str(e)}")

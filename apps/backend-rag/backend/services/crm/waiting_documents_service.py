@@ -62,7 +62,7 @@ class WaitingDocumentsService:
         Returns:
             dict with results of all operations
         """
-        logger.info(f"Waiting documents automation triggered for practice {practice_id}")
+        logger.info("Waiting documents automation triggered for practice %s", practice_id)
 
         try:
             practice_data = await self._fetch_practice_data(practice_id)
@@ -90,12 +90,12 @@ class WaitingDocumentsService:
                     )
                     results["team_leader_notified"] = True
                     logger.info(
-                        f"Waiting docs notification sent to team leader {team_leader_email}",
+                        "Waiting docs notification sent to team leader %s", team_leader_email,
                     )
                 except Exception as e:
-                    logger.error(f"Failed to notify team leader: {e}")
+                    logger.error("Failed to notify team leader: %s", e)
             else:
-                logger.warning(f"No team leader assigned for practice {practice_id}")
+                logger.warning("No team leader assigned for practice %s", practice_id)
 
             # Send email to client
             if client_data.get("email"):
@@ -109,7 +109,7 @@ class WaitingDocumentsService:
                     results["client_notified"] = True
                     logger.info(f"Document request email sent to client {client_data['email']}")
                 except Exception as e:
-                    logger.error(f"Failed to send document request to client: {e}")
+                    logger.error("Failed to send document request to client: %s", e)
             else:
                 logger.warning(f"Client {client_data['id']} has no email")
 
@@ -119,12 +119,12 @@ class WaitingDocumentsService:
                 description="Waiting documents - notifications sent to team leader and client",
             )
 
-            logger.info(f"Waiting documents automation completed for practice {practice_id}")
+            logger.info("Waiting documents automation completed for practice %s", practice_id)
             return {"success": True, **results}
 
         except Exception as error:
             logger.error(
-                f"Waiting documents automation failed for practice {practice_id}: {error}",
+                "Waiting documents automation failed for practice %s: %s", practice_id, error,
                 exc_info=True,
             )
             return {"success": False, "error": str(error)}
@@ -284,13 +284,13 @@ Zantara — Bali Zero Team
                 json=payload,
             )
             response.raise_for_status()
-            logger.info(f"Email sent to {to_email} via Brevo")
+            logger.info("Email sent to %s via Brevo", to_email)
             await record_email_result(
                 self.db_pool, row_id, status="sent", provider="brevo",
             )
             return
         except Exception as brevo_error:
-            logger.warning(f"Brevo failed for {to_email}, trying Zoho: {brevo_error}")
+            logger.warning("Brevo failed for %s, trying Zoho: %s", to_email, brevo_error)
             brevo_err_msg = str(brevo_error)
 
         # 2) Zoho fallback — wrapped so that a double-failure is observable.
@@ -300,7 +300,7 @@ Zantara — Bali Zero Team
                 subject=subject,
                 body=body,
             )
-            logger.info(f"Email sent to {to_email} via Zoho fallback")
+            logger.info("Email sent to %s via Zoho fallback", to_email)
             await record_email_result(
                 self.db_pool, row_id, status="sent", provider="zoho",
                 error_message=f"brevo_failed: {brevo_err_msg}",
@@ -309,7 +309,7 @@ Zantara — Bali Zero Team
         except Exception as zoho_error:
             combined_err = f"brevo: {brevo_err_msg} | zoho: {zoho_error}"
             logger.error(
-                f"Both Brevo and Zoho failed for {to_email}: {combined_err}",
+                "Both Brevo and Zoho failed for %s: %s", to_email, combined_err,
             )
             await record_email_result(
                 self.db_pool, row_id, status="failed", provider="zoho",

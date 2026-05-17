@@ -175,7 +175,7 @@ class UnifiedTestForceOrchestrator:
 
         except Exception as e:
             error_msg = f"Unified analysis failed: {e}"
-            logger.error(f"❌ {error_msg}")
+            logger.error("❌ %s", error_msg)
             import traceback
 
             traceback.print_exc()
@@ -249,7 +249,7 @@ class UnifiedTestForceOrchestrator:
                         test_results["tests_failed"] += 1
 
             except Exception as e:
-                logger.error(f"   ❌ Failed to generate test: {e}")
+                logger.error("   ❌ Failed to generate test: %s", e)
                 test_results["tests_failed"] += 1
 
         return test_results
@@ -314,7 +314,7 @@ Generate complete test file."""
                 logger.warning("⚠️ Fallback to Mock - Qwen unavailable")
                 return None
         except Exception as e:
-            logger.error(f"❌ Qwen generation failed: {e}")
+            logger.error("❌ Qwen generation failed: %s", e)
             return None
 
     def _save_test_file(self, gap: dict[str, Any], test_code: str) -> str | None:
@@ -355,11 +355,11 @@ Generate complete test file."""
             with open(test_file_path, "w") as f:
                 f.write(test_code)
 
-            logger.info(f"   ✅ Test salvato: {test_file_path}")
+            logger.info("   ✅ Test salvato: %s", test_file_path)
             return str(test_file_path)
 
         except Exception as e:
-            logger.error(f"   ❌ Errore salvataggio test: {e}")
+            logger.error("   ❌ Errore salvataggio test: %s", e)
             return None
 
     async def _run_test(self, test_file_path: str, gap: dict[str, Any]) -> bool:
@@ -380,10 +380,10 @@ Generate complete test file."""
                     cwd=Path("apps") / component,
                 )
                 if result.returncode == 0:
-                    logger.info(f"   ✅ Test passato: {test_file_path}")
+                    logger.info("   ✅ Test passato: %s", test_file_path)
                     return True
                 else:
-                    logger.warning(f"   ⚠️ Test fallito: {test_file_path}")
+                    logger.warning("   ⚠️ Test fallito: %s", test_file_path)
                     logger.debug(f"   Output: {result.stderr[:200]}")
                     return False
             else:
@@ -398,14 +398,14 @@ Generate complete test file."""
                     cwd=Path("apps") / component,
                 )
                 if result.returncode == 0:
-                    logger.info(f"   ✅ Test passato: {test_file_path}")
+                    logger.info("   ✅ Test passato: %s", test_file_path)
                     return True
                 else:
-                    logger.warning(f"   ⚠️ Test fallito: {test_file_path}")
+                    logger.warning("   ⚠️ Test fallito: %s", test_file_path)
                     return False
 
         except Exception as e:
-            logger.warning(f"   ⚠️ Errore esecuzione test: {e}")
+            logger.warning("   ⚠️ Errore esecuzione test: %s", e)
             return False
 
     async def _recalculate_coverage_after_tests(self) -> dict[str, Any] | None:
@@ -429,7 +429,7 @@ Generate complete test file."""
                 }
             return None
         except Exception as e:
-            logger.warning(f"   ⚠️ Errore ricalcolo coverage: {e}")
+            logger.warning("   ⚠️ Errore ricalcolo coverage: %s", e)
             return None
 
     def _generate_summary(self, results: dict[str, Any]) -> dict[str, Any]:

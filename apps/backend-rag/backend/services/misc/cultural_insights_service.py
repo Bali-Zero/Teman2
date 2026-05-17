@@ -95,7 +95,7 @@ class CulturalInsightsService:
             return True
 
         except Exception as e:
-            logger.error(f"❌ Failed to add cultural insight: {e}", exc_info=True)
+            logger.error("❌ Failed to add cultural insight: %s", e, exc_info=True)
             return False
 
     async def query_insights(
@@ -164,7 +164,7 @@ class CulturalInsightsService:
             return formatted_results
 
         except Exception as e:
-            logger.error(f"❌ Cultural insights query failed: {e}", exc_info=True)
+            logger.error("❌ Cultural insights query failed: %s", e, exc_info=True)
             return []
 
     async def get_topics_coverage(self) -> dict[str, int]:
@@ -180,5 +180,5 @@ class CulturalInsightsService:
             logger.warning("⚠️ get_topics_coverage() not yet implemented")
             return {}
         except Exception as e:
-            logger.error(f"❌ Failed to get cultural topics coverage: {e}")
+            logger.error("❌ Failed to get cultural topics coverage: %s", e)
             return {}

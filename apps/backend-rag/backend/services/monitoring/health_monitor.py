@@ -80,7 +80,7 @@ class HealthMonitor:
         # Persistent HTTP client
         self._client: httpx.AsyncClient | None = None
 
-        logger.info(f"✅ HealthMonitor initialized (check_interval={check_interval}s)")
+        logger.info("✅ HealthMonitor initialized (check_interval=%ss)", check_interval)
 
     def _get_client(self) -> httpx.AsyncClient:
         """Get or create the shared async client."""
@@ -140,7 +140,7 @@ class HealthMonitor:
                 await self._check_health()
                 await self._check_resources()
             except Exception as e:
-                logger.error(f"❌ Critical error in health check loop: {e}", exc_info=True)
+                logger.error("❌ Critical error in health check loop: %s", e, exc_info=True)
 
             try:
                 await asyncio.sleep(self.check_interval)
@@ -148,7 +148,7 @@ class HealthMonitor:
                 logger.info("👋 HealthMonitor loop cancelled")
                 break
             except Exception as e:
-                logger.error(f"❌ Sleep interrupted in health monitor: {e}")
+                logger.error("❌ Sleep interrupted in health monitor: %s", e)
                 break
 
     def set_services(
@@ -249,7 +249,7 @@ class HealthMonitor:
             self._update_resource_metrics(rss_mb, mem_percent, cpu_percent)
 
         except Exception as e:
-            logger.debug(f"Resource check failed (non-critical): {e}")
+            logger.debug("Resource check failed (non-critical): %s", e)
 
     async def _check_pg_health(self) -> None:
         """
@@ -288,9 +288,7 @@ class HealthMonitor:
                     if not getattr(self, "_wal_privilege_warned", False):
                         self._wal_privilege_warned = True
                         logger.info(
-                            "WAL monitoring disabled: pg_ls_waldir() requires pg_monitor role. "
-                            "Run: GRANT pg_monitor TO backend_rag_v2; to enable. "
-                            f"Error: {wal_err}"
+                            "WAL monitoring disabled: pg_ls_waldir() requires pg_monitor role. Run: GRANT pg_monitor TO backend_rag_v2; to enable. Error: %s", wal_err
                         )
 
                 # Alert thresholds
@@ -305,11 +303,11 @@ class HealthMonitor:
                     # Use timezone-aware UTC time (utcnow() is deprecated in Python 3.12+)
                     now_hour_wita = (datetime.now(timezone.utc).hour + 8) % 24
                     if 2 <= now_hour_wita < 6 or dead_tup > 50000:
-                        logger.info(f"Auto-triggering VACUUM ANALYZE ({dead_tup} dead tuples)")
+                        logger.info("Auto-triggering VACUUM ANALYZE (%s dead tuples)", dead_tup)
                         try:
                             await conn.execute("VACUUM ANALYZE")
                         except Exception as ve:
-                            logger.warning(f"VACUUM ANALYZE failed: {ve}")
+                            logger.warning("VACUUM ANALYZE failed: %s", ve)
                 elif dead_tup > 5000:
                     await self._send_resource_alert_throttled(
                         "pg_dead_tuples_warn",
@@ -327,7 +325,7 @@ class HealthMonitor:
                     )
 
         except Exception as e:
-            logger.debug(f"PG health check failed (non-critical): {e}")
+            logger.debug("PG health check failed (non-critical): %s", e)
 
     async def _check_db_pool_saturation(self) -> None:
         """Alert if DB connection pool is near exhaustion."""
@@ -351,7 +349,7 @@ class HealthMonitor:
                         unit=f"% ({pool_size}/{pool_max} connections)",
                     )
         except Exception as e:
-            logger.debug(f"DB pool check failed: {e}")
+            logger.debug("DB pool check failed: %s", e)
 
     async def _send_resource_alert_throttled(
         self, resource: str, current: float, threshold: float, unit: str = "%",
@@ -405,7 +403,7 @@ class HealthMonitor:
         )
 
         self.last_alert_time[f"down_{service_name}"] = datetime.now(tz=timezone.utc)
-        logger.error(f"🚨 ALERT SENT: {service_name} is DOWN")
+        logger.error("🚨 ALERT SENT: %s is DOWN", service_name)
 
     async def _send_recovery_alert(self, service_name: str) -> None:
         """Send alert when service recovers"""
@@ -420,7 +418,7 @@ class HealthMonitor:
             },
         )
 
-        logger.info(f"✅ ALERT SENT: {service_name} RECOVERED")
+        logger.info("✅ ALERT SENT: %s RECOVERED", service_name)
 
     # =========================================================================
     # Individual service checks
@@ -443,7 +441,7 @@ class HealthMonitor:
             )
             return response.status_code == 200
         except Exception as e:
-            logger.debug(f"Qdrant health check failed: {e}")
+            logger.debug("Qdrant health check failed: %s", e)
             return False
 
     async def _check_postgresql(self, memory_service: Any) -> bool:
@@ -467,7 +465,7 @@ class HealthMonitor:
                         if result == 1:
                             return True
                 except Exception as e:
-                    logger.warning(f"PostgreSQL (memory_service.pool) failed: {e}")
+                    logger.warning("PostgreSQL (memory_service.pool) failed: %s", e)
 
         # Strategy 3: Try db_pool from app_state
         if self.app_state:
@@ -479,7 +477,7 @@ class HealthMonitor:
                         if result == 1:
                             return True
                 except Exception as e:
-                    logger.warning(f"PostgreSQL (app_state.db_pool) failed: {e}")
+                    logger.warning("PostgreSQL (app_state.db_pool) failed: %s", e)
 
         # Strategy 4: Direct connection test (fallback)
         try:
@@ -492,7 +490,7 @@ class HealthMonitor:
             else:
                 logger.warning("PostgreSQL: DATABASE_URL not set")
         except Exception as e:
-            logger.warning(f"PostgreSQL (direct connect) failed: {e}")
+            logger.warning("PostgreSQL (direct connect) failed: %s", e)
 
         logger.warning(
             f"PostgreSQL health check failed: "
@@ -538,7 +536,7 @@ class HealthMonitor:
 
             return False
         except Exception as e:
-            logger.warning(f"AI Router health check exception: {e}")
+            logger.warning("AI Router health check exception: %s", e)
             return False
 
     # =========================================================================
@@ -586,7 +584,7 @@ class HealthMonitor:
                 "boot_time": _BOOT_TIMESTAMP.isoformat(),
             }
         except Exception as e:
-            logger.debug(f"Health check silently failed: {e}")
+            logger.debug("Health check silently failed: %s", e)
 
         # DB pool info
         pool_info: dict[str, Any] = {}

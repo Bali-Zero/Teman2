@@ -235,12 +235,12 @@ class EventBus:
                 err_msg = f"{handler.__qualname__}: timed out after {_HANDLER_TIMEOUT_S}s"
                 errors.append(err_msg)
                 self._error_counts[event_type] += 1
-                logger.error(f"EventBus handler timeout on '{event_type}': {err_msg}")
+                logger.error("EventBus handler timeout on '%s': %s", event_type, err_msg)
             except Exception as e:
                 err_msg = f"{handler.__qualname__}: {e}"
                 errors.append(err_msg)
                 self._error_counts[event_type] += 1
-                logger.error(f"EventBus handler error on '{event_type}': {err_msg}")
+                logger.error("EventBus handler error on '%s': %s", event_type, err_msg)
 
         duration_ms = (time.monotonic() - t0) * 1000
 
@@ -340,8 +340,7 @@ class EventBus:
                 break
             except Exception as exc:
                 logger.error(
-                    f"EventBus PG listener error, reconnecting in "
-                    f"{_RECONNECT_DELAY_S}s: {exc}"
+                    "EventBus PG listener error, reconnecting in %ss: %s", _RECONNECT_DELAY_S, exc
                 )
                 await self._close_conn()
                 if self._running:
@@ -483,7 +482,7 @@ class EventBus:
 
         event_type = PG_CHANNEL_MAP.get(channel)
         if not event_type:
-            logger.warning(f"EventBus: unmapped PG channel '{channel}'")
+            logger.warning("EventBus: unmapped PG channel '%s'", channel)
             return
 
         # Enrich payload with metadata

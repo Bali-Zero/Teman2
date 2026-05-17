@@ -61,7 +61,7 @@ class MetricsPusher:
         auth_bytes = base64.b64encode(auth_string.encode()).decode()
         self.auth_header = f"Basic {auth_bytes}"
 
-        logger.info(f"MetricsPusher initialized for {remote_write_url}")
+        logger.info("MetricsPusher initialized for %s", remote_write_url)
 
     def _parse_prometheus_text(self, text: str) -> list[dict[str, Any]]:
         """
@@ -125,7 +125,7 @@ class MetricsPusher:
                             },
                         )
             except (ValueError, IndexError) as e:
-                logger.debug(f"Failed to parse metric line: {line} - {e}")
+                logger.debug("Failed to parse metric line: %s - %s", line, e)
                 continue
 
         return metrics
@@ -219,7 +219,7 @@ class MetricsPusher:
 
             return generate_latest(REGISTRY).decode("utf-8")
         except Exception as e:
-            logger.error(f"Failed to collect metrics: {e}")
+            logger.error("Failed to collect metrics: %s", e)
             return ""
 
     async def _push_metrics(self) -> bool:
@@ -270,7 +270,7 @@ class MetricsPusher:
                 return False
 
         except Exception as e:
-            logger.error(f"Error pushing metrics: {e}")
+            logger.error("Error pushing metrics: %s", e)
             return False
 
     async def _run_loop(self):
@@ -281,7 +281,7 @@ class MetricsPusher:
             try:
                 await self._push_metrics()
             except Exception as e:
-                logger.error(f"Error in metrics push loop: {e}")
+                logger.error("Error in metrics push loop: %s", e)
 
             try:
                 await asyncio.sleep(self.push_interval)

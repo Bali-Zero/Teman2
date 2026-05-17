@@ -48,7 +48,7 @@ class AgentExecutionResponse(BaseModel):
 async def _run_conversation_trainer_task(execution_id: str, days_back: int) -> Any:
     """Background task for conversation trainer execution"""
     try:
-        logger.info(f"🤖 Starting Conversation Trainer (execution_id: {execution_id})")
+        logger.info("🤖 Starting Conversation Trainer (execution_id: %s)", execution_id)
 
         agent_executions[execution_id]["status"] = "running"
 
@@ -91,10 +91,10 @@ async def _run_conversation_trainer_task(execution_id: str, days_back: int) -> A
             },
         )
 
-        logger.info(f"✅ Conversation Trainer completed (execution_id: {execution_id})")
+        logger.info("✅ Conversation Trainer completed (execution_id: %s)", execution_id)
 
     except Exception as e:
-        logger.error(f"❌ Conversation Trainer failed: {e}", exc_info=True)
+        logger.error("❌ Conversation Trainer failed: %s", e, exc_info=True)
         agent_executions[execution_id].update(
             {
                 "status": "failed",
@@ -148,7 +148,7 @@ async def run_conversation_trainer(
 async def _run_client_value_predictor_task(execution_id: str) -> None:
     """Background task for client value predictor execution"""
     try:
-        logger.info(f"💰 Starting Client Value Predictor (execution_id: {execution_id})")
+        logger.info("💰 Starting Client Value Predictor (execution_id: %s)", execution_id)
 
         agent_executions[execution_id]["status"] = "running"
 
@@ -176,10 +176,10 @@ async def _run_client_value_predictor_task(execution_id: str) -> None:
             },
         )
 
-        logger.info(f"✅ Client Value Predictor completed (execution_id: {execution_id})")
+        logger.info("✅ Client Value Predictor completed (execution_id: %s)", execution_id)
 
     except Exception as e:
-        logger.error(f"❌ Client Value Predictor failed: {e}", exc_info=True)
+        logger.error("❌ Client Value Predictor failed: %s", e, exc_info=True)
         agent_executions[execution_id].update(
             {
                 "status": "failed",
@@ -230,7 +230,7 @@ async def _run_knowledge_graph_builder_task(
 ) -> None:
     """Background task for knowledge graph builder execution"""
     try:
-        logger.info(f"🕸️ Starting Knowledge Graph Builder (execution_id: {execution_id})")
+        logger.info("🕸️ Starting Knowledge Graph Builder (execution_id: %s)", execution_id)
 
         agent_executions[execution_id]["status"] = "running"
 
@@ -267,10 +267,10 @@ async def _run_knowledge_graph_builder_task(
             },
         )
 
-        logger.info(f"✅ Knowledge Graph Builder completed (execution_id: {execution_id})")
+        logger.info("✅ Knowledge Graph Builder completed (execution_id: %s)", execution_id)
 
     except Exception as e:
-        logger.error(f"❌ Knowledge Graph Builder failed: {e}", exc_info=True)
+        logger.error("❌ Knowledge Graph Builder failed: %s", e, exc_info=True)
         agent_executions[execution_id].update(
             {
                 "status": "failed",
@@ -458,7 +458,7 @@ async def extract_kg_sample(
         }
 
     except Exception as e:
-        logger.error(f"KG sample extraction failed: {e}", exc_info=True)
+        logger.error("KG sample extraction failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -561,7 +561,7 @@ async def persist_kg_sample(
         }
 
     except Exception as e:
-        logger.error(f"KG persist failed: {e}", exc_info=True)
+        logger.error("KG persist failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -604,7 +604,7 @@ async def get_autonomous_agents_status() -> dict[str, Any]:
 
             return None
         except Exception as e:
-            logger.debug(f"Could not get next_run from scheduler: {e}")
+            logger.debug("Could not get next_run from scheduler: %s", e)
             return None
 
     # Helper function to get agent execution stats
@@ -760,7 +760,7 @@ async def get_scheduler_status() -> dict[str, Any]:
             "timestamp": datetime.now(tz=timezone.utc).replace(tzinfo=None).isoformat(),
         }
     except Exception as e:
-        logger.error(f"Failed to get scheduler status: {e}")
+        logger.error("Failed to get scheduler status: %s", e)
         return {
             "success": False,
             "error": str(e),
@@ -792,7 +792,7 @@ async def enable_scheduler_task(task_name: str) -> dict[str, Any]:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to enable task: {e}")
+        logger.error("Failed to enable task: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -820,5 +820,5 @@ async def disable_scheduler_task(task_name: str) -> dict[str, Any]:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to disable task: {e}")
+        logger.error("Failed to disable task: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e

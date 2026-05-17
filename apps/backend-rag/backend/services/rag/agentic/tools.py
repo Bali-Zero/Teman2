@@ -149,7 +149,7 @@ class VectorSearchTool(BaseTool):
             if collection:
                 # LLM specified a collection - trust its judgment
                 target_collections = [collection]
-                logger.info(f"🔍 [Vector Search] LLM selected collection: {collection}")
+                logger.info("🔍 [Vector Search] LLM selected collection: %s", collection)
             else:
                 # No collection specified - search ALL (federated)
                 target_collections = AVAILABLE_COLLECTIONS.copy()
@@ -199,10 +199,10 @@ class VectorSearchTool(BaseTool):
                             )
                         return target_col, res.get("results", [])
                 except asyncio.TimeoutError:
-                    logger.warning(f"⏱️ Search timeout for collection {target_col}")
+                    logger.warning("⏱️ Search timeout for collection %s", target_col)
                     return target_col, []
                 except Exception as e:
-                    logger.warning(f"Search failed for {target_col}: {e}")
+                    logger.warning("Search failed for %s: %s", target_col, e)
                     return target_col, []
 
             if use_hybrid:
@@ -376,7 +376,7 @@ class VisionTool(BaseTool):
                     continue
 
             if not is_allowed:
-                logger.warning(f"🛡️ VisionTool path traversal blocked: {file_path}")
+                logger.warning("🛡️ VisionTool path traversal blocked: %s", file_path)
                 return (
                     "Error: Access denied. File must be in one of the following directories: "
                     + ", ".join(settings.get_vision_allowed_dirs)
@@ -392,7 +392,7 @@ class VisionTool(BaseTool):
             result = await self.vision_service.query_with_vision(query, [doc], include_images=True)
             return f"Analysis result: {result['answer']}"
         except Exception as e:
-            logger.error(f"Vision analysis failed: {e}")
+            logger.error("Vision analysis failed: %s", e)
             return f"Vision analysis error: {e}"
 
 
@@ -451,7 +451,7 @@ class PricingTool(BaseTool):
                 result = self.pricing_service.get_pricing(service_type)
             return str(result)
         except Exception as e:
-            logger.error(f"Pricing lookup failed: {e}")
+            logger.error("Pricing lookup failed: %s", e)
             return str({
                 "error": True,
                 "message": f"Pricing lookup failed: {e}",
@@ -566,7 +566,7 @@ class TeamKnowledgeTool(BaseTool):
             return json.dumps({"matches": matches, "count": len(matches)})
 
         except Exception as e:
-            logger.error(f"Team knowledge lookup failed: {e}")
+            logger.error("Team knowledge lookup failed: %s", e)
             return json.dumps({"error": str(e)})
 
 
@@ -635,7 +635,7 @@ class ImageGenerationTool(BaseTool):
                 )
 
             except Exception as e:
-                logger.error(f"[ImageGen] Failed: {e}")
+                logger.error("[ImageGen] Failed: %s", e)
                 set_span_status("error", str(e))
                 return json.dumps(
                     {"success": False, "error": f"Image generation failed: {e}"},
@@ -800,7 +800,7 @@ class WebSearchTool(BaseTool):
                         results = data.get("results", [])
                         ai_answer = data.get("answer")  # Tavily provides AI-generated answer
                     except Exception as e:
-                        logger.warning(f"⚠️ [WebSearch] Tavily failed: {e}, trying Brave...")
+                        logger.warning("⚠️ [WebSearch] Tavily failed: %s, trying Brave...", e)
 
                 # Fallback to Brave
                 if not results and brave_key:
@@ -810,7 +810,7 @@ class WebSearchTool(BaseTool):
                         provider = "brave"
                         results = data.get("web", {}).get("results", [])
                     except Exception as e:
-                        logger.error(f"❌ [WebSearch] Brave also failed: {e}")
+                        logger.error("❌ [WebSearch] Brave also failed: %s", e)
                         raise
 
                 if not results:
@@ -886,7 +886,7 @@ class WebSearchTool(BaseTool):
                     },
                 )
             except Exception as e:
-                logger.error(f"❌ [WebSearch] Error: {e}")
+                logger.error("❌ [WebSearch] Error: %s", e)
                 set_span_status("error", str(e))
                 return json.dumps(
                     {
@@ -957,7 +957,7 @@ class TimeSheetTool(BaseTool):
                         if m.get("email", "").lower() == email.lower():
                             return m.get("id")
         except Exception as e:
-            logger.debug(f"[TimeSheetTool] Failed to lookup user by email {email}: {e}")
+            logger.debug("[TimeSheetTool] Failed to lookup user by email %s: %s", email, e)
         return None
 
     async def execute(self, action: str, email: str, **kwargs) -> str:
@@ -1140,7 +1140,7 @@ class CRMTool(BaseTool):
                     return json.dumps({"error": f"Unknown query_type: {query_type}"})
 
         except Exception as e:
-            logger.error(f"[CRMTool] Query failed: {e}")
+            logger.error("[CRMTool] Query failed: %s", e)
             return json.dumps({"error": f"CRM query failed: {str(e)}"})
 
 

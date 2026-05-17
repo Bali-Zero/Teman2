@@ -102,9 +102,9 @@ class ZantaraAIClient:
                 if not self._genai_client.is_available:
                     raise RuntimeError("GenAI client initialization failed")
                 auth_method = getattr(self._genai_client, "_auth_method", "unknown")
-                logger.info(f"✅ Gemini AI Client initialized (auth: {auth_method})")
+                logger.info("✅ Gemini AI Client initialized (auth: %s)", auth_method)
             except Exception as e:
-                logger.error(f"❌ Failed to configure Gemini: {e}")
+                logger.error("❌ Failed to configure Gemini: %s", e)
                 if settings.environment == "production":
                     raise ValueError(f"CRITICAL: Failed to configure Gemini in production: {e}")
                 self.mock_mode = True
@@ -360,7 +360,7 @@ class ZantaraAIClient:
             content_preview = msg.get("content", "")[:200] + (
                 "..." if len(msg.get("content", "")) > 200 else ""
             )
-            logger.debug(f"  [{i}] {role}: {content_preview}")
+            logger.debug("  [%s] %s: %s", i, role, content_preview)
         logger.debug("=" * 80)
 
         # Handle Mock Mode
@@ -405,7 +405,7 @@ class ZantaraAIClient:
             }
 
         except (ConnectionError, TimeoutError) as e:
-            logger.error(f"❌ GenAI Connection Error: {e}")
+            logger.error("❌ GenAI Connection Error: %s", e)
             raise
         except Exception as e:
             error_msg = str(e).lower()
@@ -420,7 +420,7 @@ class ZantaraAIClient:
                     "API key was reported as leaked. Please use another API key. "
                     "Contact the technical team to update GOOGLE_API_KEY.",
                 ) from e
-            logger.error(f"❌ GenAI Error: {e}", exc_info=True)
+            logger.error("❌ GenAI Error: %s", e, exc_info=True)
             raise
 
     async def stream(
@@ -448,7 +448,7 @@ class ZantaraAIClient:
         Yields:
             str: Text chunks as they arrive from AI
         """
-        logger.info(f"🌊 [ZantaraAI] Starting stream for user {user_id}")
+        logger.info("🌊 [ZantaraAI] Starting stream for user %s", user_id)
 
         # Validate inputs
         self._validate_inputs(
@@ -466,7 +466,7 @@ class ZantaraAIClient:
         logger.debug("🔍 [DRY RUN] Full Prompt Assembly for stream")
         logger.debug("=" * 80)
         logger.debug(f"System Prompt ({len(system)} chars):\n{system}")
-        logger.debug(f"User Message: {message}")
+        logger.debug("User Message: %s", message)
         if conversation_history:
             logger.debug(f"Conversation History ({len(conversation_history)} messages):")
             for i, msg in enumerate(conversation_history):
@@ -477,14 +477,14 @@ class ZantaraAIClient:
                 content_preview = msg.get("content", "")[:200] + (
                     "..." if len(msg.get("content", "")) > 200 else ""
                 )
-                logger.debug(f"  [{i}] {role}: {content_preview}")
+                logger.debug("  [%s] %s: %s", i, role, content_preview)
         else:
             logger.debug("Conversation History: None")
         logger.debug("=" * 80)
 
         # Mock Mode
         if self.mock_mode:
-            logger.info(f"🎭 [ZantaraAI] MOCK MODE streaming for user {user_id}")
+            logger.info("🎭 [ZantaraAI] MOCK MODE streaming for user %s", user_id)
             response = f"This is a MOCK stream response to: {message}. In production mode, this would be connected to Gemini AI."
             words = response.split()
             for word in words:
@@ -538,14 +538,14 @@ class ZantaraAIClient:
                     logger.warning("⚠️ [ZantaraAI] No content received in stream")
                     raise ValueError("No content received from stream")
 
-                logger.info(f"✅ [ZantaraAI] Stream completed successfully for user {user_id}")
+                logger.info("✅ [ZantaraAI] Stream completed successfully for user %s", user_id)
                 return
 
             except ValueError as e:
                 # Handle API key leaked error specifically
                 error_msg = str(e).lower()
                 if "leaked" in error_msg or "api key" in error_msg:
-                    logger.critical(f"🚨 [ZantaraAI] API key error for user {user_id}: {e}")
+                    logger.critical("🚨 [ZantaraAI] API key error for user %s: %s", user_id, e)
                     fallback_response = get_fallback_message("api_key_error", language)
                     words = fallback_response.split()
                     for word in words:
@@ -561,7 +561,7 @@ class ZantaraAIClient:
                 error_msg = str(e).lower()
                 # Check for API key errors in exception message
                 if "403" in error_msg or "leaked" in error_msg or "api key" in error_msg:
-                    logger.critical(f"🚨 [ZantaraAI] API key error for user {user_id}: {e}")
+                    logger.critical("🚨 [ZantaraAI] API key error for user %s: %s", user_id, e)
                     fallback_response = get_fallback_message("api_key_error", language)
                     words = fallback_response.split()
                     for word in words:

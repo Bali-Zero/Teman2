@@ -35,7 +35,7 @@ class StepManagerService:
         from backend.services.misc.client_journey_orchestrator import JourneyStatus, StepStatus
 
         if step.status == StepStatus.COMPLETED:
-            logger.warning(f"Step {step_id} already completed")
+            logger.warning("Step %s already completed", step_id)
             return False
 
         step.status = StepStatus.IN_PROGRESS
@@ -68,7 +68,7 @@ class StepManagerService:
         from backend.services.misc.client_journey_orchestrator import StepStatus
 
         if step.status == StepStatus.COMPLETED:
-            logger.warning(f"Step {step_id} already completed")
+            logger.warning("Step %s already completed", step_id)
             return False
 
         step.status = StepStatus.COMPLETED

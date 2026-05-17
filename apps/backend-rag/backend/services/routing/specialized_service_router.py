@@ -180,7 +180,7 @@ class SpecializedServiceRouter:
         if needs_research:
             logger.info("🛣️ [SpecializedServiceRouter] AUTONOMOUS RESEARCH detected")
             logger.info(
-                f"   Ambiguous: {has_ambiguous_term}, Long: {is_long_query}, How-to: {has_how_to}",
+                "   Ambiguous: %s, Long: %s, How-to: %s", has_ambiguous_term, is_long_query, has_how_to,
             )
 
         return needs_research
@@ -228,7 +228,7 @@ class SpecializedServiceRouter:
             }
 
         except Exception as e:
-            logger.error(f"🛣️ [SpecializedServiceRouter] Error: {e}")
+            logger.error("🛣️ [SpecializedServiceRouter] Error: %s", e)
             return None
 
     def detect_cross_oracle(self, message: str, category: str) -> bool:
@@ -264,7 +264,7 @@ class SpecializedServiceRouter:
         if needs_cross_oracle:
             logger.info("🛣️ [SpecializedServiceRouter] CROSS-ORACLE SYNTHESIS detected")
             logger.info(
-                f"   Business setup: {has_business_setup_term}, Comprehensive: {wants_comprehensive_plan}",
+                "   Business setup: %s, Comprehensive: %s", has_business_setup_term, wants_comprehensive_plan,
             )
 
         return needs_cross_oracle
@@ -315,7 +315,7 @@ class SpecializedServiceRouter:
             }
 
         except Exception as e:
-            logger.error(f"🛣️ [SpecializedServiceRouter] Error: {e}")
+            logger.error("🛣️ [SpecializedServiceRouter] Error: %s", e)
             return None
 
     def detect_client_journey(self, message: str, _category: str) -> bool:
@@ -391,5 +391,5 @@ class SpecializedServiceRouter:
             }
 
         except Exception as e:
-            logger.error(f"🛣️ [SpecializedServiceRouter] Error: {e}")
+            logger.error("🛣️ [SpecializedServiceRouter] Error: %s", e)
             return None

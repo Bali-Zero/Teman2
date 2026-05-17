@@ -98,7 +98,7 @@ async def admin_zoho_callback(
             "account": result.get("email"),
         }
     except Exception as e:
-        logger.error(f"Zoho OAuth callback failed: {e}", exc_info=True)
+        logger.error("Zoho OAuth callback failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Zoho OAuth failed: {str(e)}") from e
     finally:
         if pool:
@@ -196,7 +196,7 @@ async def zoho_oauth_callback_redirect(
         """)
 
     except Exception as e:
-        logger.error(f"Zoho OAuth callback failed: {e}", exc_info=True)
+        logger.error("Zoho OAuth callback failed: %s", e, exc_info=True)
         return {"error": str(e)}
 
 

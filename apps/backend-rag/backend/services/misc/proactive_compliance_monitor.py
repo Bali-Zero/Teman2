@@ -141,7 +141,7 @@ class ProactiveComplianceMonitor:
             except asyncio.CancelledError:
                 pass  # Expected during shutdown
             except Exception as e:
-                logger.debug(f"Task cleanup exception (safe to ignore): {e}")
+                logger.debug("Task cleanup exception (safe to ignore): %s", e)
         logger.info("🛑 ProactiveComplianceMonitor stopped")
 
     async def _monitoring_loop(self) -> None:
@@ -156,7 +156,7 @@ class ProactiveComplianceMonitor:
                     # Also generate alerts for dashboard
                     self.generate_alerts()
                 except Exception as e:
-                    logger.error(f"❌ Error in compliance monitoring loop: {e}")
+                    logger.error("❌ Error in compliance monitoring loop: %s", e)
 
                 # Wait for next interval
                 try:
@@ -508,5 +508,5 @@ class ProactiveComplianceMonitor:
             return alerts
 
         except Exception as e:
-            logger.error(f"Error generating alerts: {e}")
+            logger.error("Error generating alerts: %s", e)
             return []

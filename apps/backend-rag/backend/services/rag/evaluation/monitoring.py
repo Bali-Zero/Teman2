@@ -334,11 +334,11 @@ class RetrievalQualityMonitor:
 
             self._unflushed_count = 0
             self._last_flush_time = datetime.now(tz=timezone.utc).replace(tzinfo=None)
-            logger.info(f"RetrievalQualityMonitor: flushed {flushed} day(s) to PostgreSQL")
+            logger.info("RetrievalQualityMonitor: flushed %s day(s) to PostgreSQL", flushed)
             return flushed
 
         except Exception as e:
-            logger.error(f"Failed to flush RAG stats to PostgreSQL: {e}")
+            logger.error("Failed to flush RAG stats to PostgreSQL: %s", e)
             return 0
 
     async def load_historical_stats(self, days: int = 30) -> list[dict[str, Any]]:
@@ -372,7 +372,7 @@ class RetrievalQualityMonitor:
                 )
                 return [dict(row) for row in rows]
         except Exception as e:
-            logger.error(f"Failed to load historical RAG stats: {e}")
+            logger.error("Failed to load historical RAG stats: %s", e)
             return []
 
     async def _maybe_flush(self) -> None:
@@ -458,7 +458,7 @@ class RetrievalQualityMonitor:
             )
 
         except Exception as e:
-            logger.error(f"Failed to record query metrics: {e}")
+            logger.error("Failed to record query metrics: %s", e)
 
     def record_retrieval_score(self, score: float) -> None:
         """
@@ -482,7 +482,7 @@ class RetrievalQualityMonitor:
                 logger.warning(f"Low retrieval score detected: {score:.3f}")
 
         except Exception as e:
-            logger.error(f"Failed to record retrieval score: {e}")
+            logger.error("Failed to record retrieval score: %s", e)
 
     def record_abstain(self, domain: str = "general", reason: str = "low_confidence") -> None:
         """
@@ -519,10 +519,10 @@ class RetrievalQualityMonitor:
             except RuntimeError:
                 logger.debug("no running event loop — abstain flush deferred")
 
-            logger.info(f"Recorded ABSTAIN: domain={domain}, reason={reason}")
+            logger.info("Recorded ABSTAIN: domain=%s, reason=%s", domain, reason)
 
         except Exception as e:
-            logger.error(f"Failed to record abstain: {e}")
+            logger.error("Failed to record abstain: %s", e)
 
     def record_cache_access(self, hit: bool) -> None:
         """
@@ -537,7 +537,7 @@ class RetrievalQualityMonitor:
             else:
                 cache_misses_total.inc()
         except Exception as e:
-            logger.error(f"Failed to record cache access: {e}")
+            logger.error("Failed to record cache access: %s", e)
 
     def record_reranker_effectiveness(
         self, before_scores: list[float], after_scores: list[float],
@@ -562,7 +562,7 @@ class RetrievalQualityMonitor:
             logger.debug(f"Reranker improvement: {improvement:.3f}")
 
         except Exception as e:
-            logger.error(f"Failed to record reranker effectiveness: {e}")
+            logger.error("Failed to record reranker effectiveness: %s", e)
 
     def set_alert_thresholds(self, thresholds: AlertThresholds) -> None:
         """
@@ -683,7 +683,7 @@ class RetrievalQualityMonitor:
             }
 
         except Exception as e:
-            logger.error(f"Failed to get dashboard data: {e}")
+            logger.error("Failed to get dashboard data: %s", e)
             return self._empty_dashboard_data(time_range)
 
     async def get_scores_trend(self, days: int = 7) -> list[dict[str, Any]]:
@@ -729,7 +729,7 @@ class RetrievalQualityMonitor:
             return trend
 
         except Exception as e:
-            logger.error(f"Failed to get scores trend: {e}")
+            logger.error("Failed to get scores trend: %s", e)
             return []
 
     async def get_abstain_statistics(self, days: int = 7) -> dict[str, Any]:
@@ -772,7 +772,7 @@ class RetrievalQualityMonitor:
             }
 
         except Exception as e:
-            logger.error(f"Failed to get abstain statistics: {e}")
+            logger.error("Failed to get abstain statistics: %s", e)
             return {
                 "period_days": days,
                 "total_abstains": 0,
@@ -828,7 +828,7 @@ class RetrievalQualityMonitor:
             }
 
         except Exception as e:
-            logger.error(f"Failed to get latency percentiles: {e}")
+            logger.error("Failed to get latency percentiles: %s", e)
             return {
                 "period_days": days,
                 "total_queries": 0,
@@ -852,7 +852,7 @@ class RetrievalQualityMonitor:
                 evidence_score_distribution.observe(record.retrieval_score)
 
         except Exception as e:
-            logger.error(f"Failed to update Prometheus metrics: {e}")
+            logger.error("Failed to update Prometheus metrics: %s", e)
 
     def _parse_time_range(self, time_range: str) -> timedelta:
         """Parse time range string to timedelta."""

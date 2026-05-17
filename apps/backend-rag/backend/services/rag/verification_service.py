@@ -75,7 +75,7 @@ class VerificationService:
                 if self._genai_client.is_available:
                     logger.debug("🛡️ [VerificationService] GenAI client loaded")
             except Exception as e:
-                logger.warning(f"⚠️ [VerificationService] Failed to initialize client: {e}")
+                logger.warning("⚠️ [VerificationService] Failed to initialize client: %s", e)
         return self._genai_client
 
     @property
@@ -165,7 +165,7 @@ Return a JSON object with this exact structure:
             # Determine validity threshold (strict)
             is_valid = score >= 0.7  # Allow minor deviations, but reject major issues
 
-            logger.info(f"🛡️ [Verifier] Status: {status} | Score: {score}")
+            logger.info("🛡️ [Verifier] Status: %s | Score: %s", status, score)
 
             return VerificationResult(
                 is_valid=is_valid,
@@ -177,7 +177,7 @@ Return a JSON object with this exact structure:
             )
 
         except Exception as e:
-            logger.error(f"❌ [Verifier] Error during verification: {e}")
+            logger.error("❌ [Verifier] Error during verification: %s", e)
             # Fail safe: allow it but log error, or block?
             # Better to block high-stakes, but for now we'll allow with warning.
             return VerificationResult(

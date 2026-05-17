@@ -74,7 +74,7 @@ async def read_range(spreadsheet_id: str, range: str) -> dict[str, Any]:
         rows = await svc.read_range(spreadsheet_id, clean_range)
         return {"status": "success", "rows": rows, "count": len(rows)}
     except Exception as e:
-        logger.error(f"[SHEETS] Read failed: {e}", exc_info=True)
+        logger.error("[SHEETS] Read failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -86,7 +86,7 @@ async def read_range_post(req: ReadRequest) -> dict[str, Any]:
         rows = await svc.read_range(req.spreadsheet_id, req.range)
         return {"status": "success", "rows": rows, "count": len(rows)}
     except Exception as e:
-        logger.error(f"[SHEETS] Read failed: {e}", exc_info=True)
+        logger.error("[SHEETS] Read failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -99,7 +99,7 @@ async def write_range(req: WriteRequest) -> dict[str, Any]:
         await invalidate_cache("zantara:sheets:*")
         return {"status": "success", "updated_cells": result.get("updatedCells", 0)}
     except Exception as e:
-        logger.error(f"[SHEETS] Write failed: {e}", exc_info=True)
+        logger.error("[SHEETS] Write failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -115,7 +115,7 @@ async def append_rows(req: WriteRequest) -> dict[str, Any]:
             "updated_range": result.get("updates", {}).get("updatedRange", ""),
         }
     except Exception as e:
-        logger.error(f"[SHEETS] Append failed: {e}", exc_info=True)
+        logger.error("[SHEETS] Append failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -131,7 +131,7 @@ async def find_row(req: FindRequest) -> dict[str, Any]:
             return {"status": "not_found", "row": None}
         return {"status": "found", "row": row_num}
     except Exception as e:
-        logger.error(f"[SHEETS] Find failed: {e}", exc_info=True)
+        logger.error("[SHEETS] Find failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -158,5 +158,5 @@ async def update_row(req: UpdateRowRequest) -> dict[str, Any]:
             "updated_cells": result.get("updatedCells", 0),
         }
     except Exception as e:
-        logger.error(f"[SHEETS] Update row failed: {e}", exc_info=True)
+        logger.error("[SHEETS] Update row failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e

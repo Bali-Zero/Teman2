@@ -160,9 +160,9 @@ class LLMGateway:
                 if client.is_available:
                     self._genai_client = client
                     auth_method = getattr(self._genai_client, "_auth_method", "unknown")
-                    logger.debug(f"✅ LLMGateway: GenAI client loaded (auth: {auth_method})")
+                    logger.debug("✅ LLMGateway: GenAI client loaded (auth: %s)", auth_method)
             except Exception as e:
-                logger.warning(f"Failed to initialize GenAI client: {e}")
+                logger.warning("Failed to initialize GenAI client: %s", e)
         return self._genai_client
 
     @property
@@ -228,7 +228,7 @@ class LLMGateway:
                 self._openrouter_client = OpenRouterClient(default_tier=ModelTier.RAG)
                 logger.info("✅ LLMGateway: OpenRouter client initialized (lazy)")
             except (httpx.HTTPError, ValueError, KeyError) as e:
-                logger.error(f"❌ LLMGateway: Failed to initialize OpenRouter: {e}", exc_info=True)
+                logger.error("❌ LLMGateway: Failed to initialize OpenRouter: %s", e, exc_info=True)
                 return None
         return self._openrouter_client
 
@@ -386,7 +386,7 @@ class LLMGateway:
 
         # Log with structured context
         error_context = get_error_context(error, model=model_name)
-        logger.warning(f"LLM call failed for {model_name}", extra=error_context)
+        logger.warning("LLM call failed for %s", model_name, extra=error_context)
 
         # Record metrics if circuit opened
         if circuit.is_open():
@@ -457,7 +457,7 @@ class LLMGateway:
         for model_name in models_to_try:
             # Check circuit breaker
             if self._is_circuit_open(model_name):
-                logger.debug(f"Circuit breaker OPEN for {model_name}, skipping")
+                logger.debug("Circuit breaker OPEN for %s, skipping", model_name)
                 llm_circuit_breaker_open_total.labels(model=model_name).inc()
                 continue
 
@@ -501,13 +501,13 @@ class LLMGateway:
                 llm_fallback_depth.observe(query_cost_tracker["depth"])
                 llm_query_cost_usd.observe(query_cost_tracker["cost"])
 
-                logger.debug(f"✅ LLMGateway: {model_name} response received")
+                logger.debug("✅ LLMGateway: %s response received", model_name)
                 return (text_content, model_name, response, token_usage)
 
             except ResourceExhausted as e:
                 # Quota exceeded - record failure with error classification
                 self._record_failure(model_name, e)
-                logger.warning(f"Quota exhausted for {model_name}: {e}")
+                logger.warning("Quota exhausted for %s: %s", model_name, e)
                 llm_quota_exhausted_total.labels(model=model_name).inc()
                 metrics_collector.record_llm_fallback(model_name, "next_model")
                 continue
@@ -515,7 +515,7 @@ class LLMGateway:
             except ServiceUnavailable as e:
                 # Service unavailable - record failure with error classification
                 self._record_failure(model_name, e)
-                logger.warning(f"Service unavailable for {model_name}: {e}")
+                logger.warning("Service unavailable for %s: %s", model_name, e)
                 llm_service_unavailable_total.labels(model=model_name).inc()
                 metrics_collector.record_llm_fallback(model_name, "next_model")
                 continue
@@ -524,7 +524,7 @@ class LLMGateway:
                 # Other errors - record failure with error classification
                 self._record_failure(model_name, e)
                 error_type = type(e).__name__
-                logger.warning(f"Error with {model_name}: {e}")
+                logger.warning("Error with %s: %s", model_name, e)
                 llm_model_error_total.labels(model=model_name, error_type=error_type).inc()
                 metrics_collector.record_llm_fallback(model_name, "next_model")
                 continue
@@ -545,7 +545,7 @@ class LLMGateway:
 
             return (openrouter_response, "openrouter", None, token_usage)
         except Exception as openrouter_error:
-            logger.error(f"❌ LLMGateway: OpenRouter fallback also failed: {openrouter_error}")
+            logger.error("❌ LLMGateway: OpenRouter fallback also failed: %s", openrouter_error)
             # All fallbacks exhausted
             raise RuntimeError(
                 "All models in fallback chain failed (including OpenRouter)",
@@ -599,7 +599,7 @@ class LLMGateway:
                             ),
                         )
                     except Exception as img_err:
-                        logger.warning(f"⚠️ Failed to process image: {img_err}")
+                        logger.warning("⚠️ Failed to process image: %s", img_err)
 
             if not parts:
                 return text  # Fallback to plain text if no parts built
@@ -726,8 +726,7 @@ class LLMGateway:
                 if hasattr(response, "candidates") and response.candidates:
                     finish_reason = getattr(response.candidates[0], "finish_reason", None)
                 logger.warning(
-                    f"⚠️ LLMGateway: Empty response from {model_name}. "
-                    f"Finish reason: {finish_reason}. Possible safety block or content filter.",
+                    "⚠️ LLMGateway: Empty response from %s. Finish reason: %s. Possible safety block or content filter.", model_name, finish_reason,
                 )
 
             # Add user message to history
@@ -852,8 +851,7 @@ class LLMGateway:
                             else None
                         )
                         logger.warning(
-                            f"⚠️ LLMGateway: Empty text response from {model_name}. "
-                            f"Finish reason: {finish_reason}. Possible safety block.",
+                            "⚠️ LLMGateway: Empty text response from %s. Finish reason: %s. Possible safety block.", model_name, finish_reason,
                         )
                 else:
                     set_span_attribute("has_function_call", "false")
@@ -861,7 +859,7 @@ class LLMGateway:
                 set_span_attribute("response_length", len(text_content))
             except ValueError as e:
                 # Function call detected or other error - reasoning.py will extract it from response_obj
-                logger.warning(f"⚠️ LLMGateway: ValueError extracting text: {e}")
+                logger.warning("⚠️ LLMGateway: ValueError extracting text: %s", e)
                 text_content = ""
                 set_span_attribute("has_function_call", "true")
                 set_span_attribute("response_length", 0)
@@ -954,7 +952,7 @@ class LLMGateway:
                     status["gemini_flash"] = True
                     logger.debug("✅ LLMGateway Health: Gemini Flash is healthy")
             except Exception as e:
-                logger.warning(f"⚠️ LLMGateway Health: Gemini Flash check failed: {e}")
+                logger.warning("⚠️ LLMGateway Health: Gemini Flash check failed: %s", e)
 
             # Test Gemini Pro
             try:
@@ -967,7 +965,7 @@ class LLMGateway:
                     status["gemini_pro"] = True
                     logger.debug("✅ LLMGateway Health: Gemini Pro is healthy")
             except Exception as e:
-                logger.warning(f"⚠️ LLMGateway Health: Gemini Pro check failed: {e}")
+                logger.warning("⚠️ LLMGateway Health: Gemini Pro check failed: %s", e)
 
             # Test Gemini Fallback (Stable)
             try:
@@ -980,7 +978,7 @@ class LLMGateway:
                     status["gemini_flash_lite"] = True
                     logger.debug("✅ LLMGateway Health: Gemini Fallback is healthy")
             except Exception as e:
-                logger.warning(f"⚠️ LLMGateway Health: Gemini Fallback check failed: {e}")
+                logger.warning("⚠️ LLMGateway Health: Gemini Fallback check failed: %s", e)
 
         # Test OpenRouter (lazy init)
         client = self._get_openrouter_client()
@@ -1000,7 +998,7 @@ class LLMGateway:
                 await self._openrouter_client.close()
                 logger.info("✅ LLMGateway: OpenRouter client closed")
             except Exception as e:
-                logger.warning(f"⚠️ LLMGateway: Error closing OpenRouter client: {e}")
+                logger.warning("⚠️ LLMGateway: Error closing OpenRouter client: %s", e)
 
         # GenAI client pooling is managed by SDK, but we null it out for safety
         self._genai_client = None

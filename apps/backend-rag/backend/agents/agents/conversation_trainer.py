@@ -104,7 +104,7 @@ class ConversationTrainer:
     ) -> dict[str, Any] | None:
         """Find patterns in successful conversations"""
         if days_back < 1 or days_back > 365:
-            logger.warning(f"Invalid days_back value: {days_back}, using default 7")
+            logger.warning("Invalid days_back value: %s, using default 7", days_back)
             days_back = 7
 
         try:
@@ -132,7 +132,7 @@ class ConversationTrainer:
                 )
 
                 if not rows:
-                    logger.info(f"No high-rated conversations found in last {days_back} days")
+                    logger.info("No high-rated conversations found in last %s days", days_back)
                     return None
 
                 # Prepare conversation data for analysis
@@ -197,9 +197,9 @@ Return JSON:
                             analysis = json.loads(analysis_text[json_start:json_end])
                             return analysis
                     except asyncio.TimeoutError:
-                        logger.error(f"Timeout analyzing patterns with AI after {timeout}s")
+                        logger.error("Timeout analyzing patterns with AI after %ss", timeout)
                     except Exception as e:
-                        logger.error(f"Error analyzing patterns with AI: {e}", exc_info=True)
+                        logger.error("Error analyzing patterns with AI: %s", e, exc_info=True)
 
                 # Fallback: return basic analysis
                 return {
@@ -212,10 +212,10 @@ Return JSON:
                 }
 
         except asyncpg.PostgresError as e:
-            logger.error(f"Database error analyzing winning patterns: {e}", exc_info=True)
+            logger.error("Database error analyzing winning patterns: %s", e, exc_info=True)
             return None
         except Exception as e:
-            logger.error(f"Unexpected error analyzing winning patterns: {e}", exc_info=True)
+            logger.error("Unexpected error analyzing winning patterns: %s", e, exc_info=True)
             return None
 
     async def generate_prompt_update(self, analysis: dict[str, Any], timeout: float = 60.0) -> str:
@@ -242,9 +242,9 @@ Return ONLY the prompt text, no explanations."""
                 )
                 return improved_prompt.strip()
             except asyncio.TimeoutError:
-                logger.error(f"Timeout generating prompt update after {timeout}s")
+                logger.error("Timeout generating prompt update after %ss", timeout)
             except Exception as e:
-                logger.error(f"Error generating prompt update: {e}", exc_info=True)
+                logger.error("Error generating prompt update: %s", e, exc_info=True)
 
         # Fallback: return analysis summary
         patterns = analysis.get("successful_patterns", [])
@@ -287,12 +287,12 @@ Based on analysis of successful conversations:
             try:
                 safe_git_checkout_new(branch_name, cwd=repo_path)
             except Exception as e:
-                logger.warning(f"Branch {branch_name} may already exist: {e}")
+                logger.warning("Branch %s may already exist: %s", branch_name, e)
                 # Try to checkout existing branch
                 try:
                     safe_git_checkout(branch_name, cwd=repo_path)
                 except Exception as checkout_error:
-                    logger.error(f"Failed to checkout branch {branch_name}: {checkout_error}")
+                    logger.error("Failed to checkout branch %s: %s", branch_name, checkout_error)
                     raise RuntimeError(f"Failed to checkout branch: {checkout_error}")
 
             # 2. Update prompt file
@@ -328,19 +328,19 @@ See `{prompt_file}` for updated system prompt.
 
             # 5. Branch and commit created locally
             # No remote push - deploy manually via flyctl deploy
-            logger.info(f"Branch {branch_name} created and committed locally.")
-            logger.info(f"✅ Improvement branch ready: {branch_name}")
+            logger.info("Branch %s created and committed locally.", branch_name)
+            logger.info("✅ Improvement branch ready: %s", branch_name)
             logger.info("Review changes and deploy manually via flyctl deploy if approved.")
             return branch_name
 
         except subprocess.TimeoutExpired as e:
-            logger.error(f"Subprocess timeout creating PR: {e}", exc_info=True)
+            logger.error("Subprocess timeout creating PR: %s", e, exc_info=True)
             raise RuntimeError(f"Timeout creating PR: {e}") from e
         except subprocess.CalledProcessError as e:
-            logger.error(f"Subprocess error creating PR: {e}", exc_info=True)
+            logger.error("Subprocess error creating PR: %s", e, exc_info=True)
             raise RuntimeError(f"Failed to create PR: {e}") from e
         except Exception as e:
-            logger.error(f"Unexpected error creating PR: {e}", exc_info=True)
+            logger.error("Unexpected error creating PR: %s", e, exc_info=True)
             raise
 
 
@@ -368,7 +368,7 @@ async def run_conversation_trainer(days_back: int = 7) -> None:
         # 3. Create PR
         pr_branch = await trainer.create_improvement_pr(improved_prompt, analysis)
 
-        logger.info(f"✅ Created PR on branch: {pr_branch}")
+        logger.info("✅ Created PR on branch: %s", pr_branch)
 
         # 4. Notify team
         from backend.app.core.config import settings
@@ -387,8 +387,8 @@ async def run_conversation_trainer(days_back: int = 7) -> None:
             except (httpx.HTTPError, OSError) as e:
                 # Slack down or network blip — cron must still succeed,
                 # but do not swallow cancellation/system-exit.
-                logger.error(f"Failed to send Slack notification: {e}", exc_info=True)
+                logger.error("Failed to send Slack notification: %s", e, exc_info=True)
 
     except Exception as e:
-        logger.error(f"Error in ConversationTrainer: {e}", exc_info=True)
+        logger.error("Error in ConversationTrainer: %s", e, exc_info=True)
         raise

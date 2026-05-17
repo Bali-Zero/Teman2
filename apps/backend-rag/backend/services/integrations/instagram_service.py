@@ -98,14 +98,14 @@ class InstagramService:
                 error_data = result.get("error", {})
                 error_msg = error_data.get("message", "Unknown error")
                 error_code = error_data.get("code", response.status_code)
-                logger.error(f"Instagram API error [{error_code}]: {error_msg}")
+                logger.error("Instagram API error [%s]: %s", error_code, error_msg)
                 raise ValueError(f"Instagram API error [{error_code}]: {error_msg}")
 
-            logger.info(f"Instagram message sent to {recipient_id}")
+            logger.info("Instagram message sent to %s", recipient_id)
             return result
 
         except httpx.HTTPError as e:
-            logger.error(f"Failed to send Instagram message: {e}")
+            logger.error("Failed to send Instagram message: %s", e)
             raise
 
     async def mark_message_seen(self, sender_id: str) -> bool:
@@ -140,7 +140,7 @@ class InstagramService:
             return response.status_code == 200
 
         except Exception as e:
-            logger.warning(f"Failed to mark Instagram message as seen: {e}")
+            logger.warning("Failed to mark Instagram message as seen: %s", e)
             return False
 
     async def get_profile(self) -> dict[str, Any]:
@@ -169,13 +169,13 @@ class InstagramService:
             if response.status_code != 200:
                 error_data = result.get("error", {})
                 error_msg = error_data.get("message", "Unknown error")
-                logger.error(f"Instagram profile error: {error_msg}")
+                logger.error("Instagram profile error: %s", error_msg)
                 raise ValueError(f"Instagram profile error: {error_msg}")
 
             return result
 
         except httpx.HTTPError as e:
-            logger.error(f"Failed to get Instagram profile: {e}")
+            logger.error("Failed to get Instagram profile: %s", e)
             raise
 
     def chunk_message(self, text: str, max_length: int = 950) -> list[str]:

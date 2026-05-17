@@ -82,7 +82,7 @@ async def list_family(
             )
             members = [_shape_member(r) for r in rows]
         except Exception as e:
-            logger.warning(f"family list fetch failed: {e}")
+            logger.warning("family list fetch failed: %s", e)
             members = []
 
     adults = [m for m in members if m["is_adult"]]

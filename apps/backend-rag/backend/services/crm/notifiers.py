@@ -259,7 +259,7 @@ class BirthdayNotifierService:
                 else:
                     stats["failed"] += 1
                 await asyncio.sleep(2)
-            logger.info(f"Birthday notifications complete: {stats}")
+            logger.info("Birthday notifications complete: %s", stats)
             return stats
         except (asyncpg.PostgresError, OSError) as e:
             logger.warning(

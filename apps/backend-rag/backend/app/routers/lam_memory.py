@@ -31,11 +31,11 @@ async def _get_qdrant() -> QdrantClient:
         _qdrant = QdrantClient(qdrant_url=settings.qdrant_url, collection_name=COLLECTION)
         try:
             await _qdrant.get_stats()
-            logger.info(f"✅ LAM memory: connected to '{COLLECTION}'")
+            logger.info("✅ LAM memory: connected to '%s'", COLLECTION)
         except Exception:
             # Collection may not exist yet — create it on first save
             logger.info(
-                f"LAM memory: collection '{COLLECTION}' not found, will create on first write",
+                "LAM memory: collection '%s' not found, will create on first write", COLLECTION,
             )
     return _qdrant
 
@@ -128,7 +128,7 @@ async def save_episode(request: SaveEpisodeRequest) -> SaveEpisodeResponse:
         return SaveEpisodeResponse(id=episode_id, status="saved")
 
     except Exception as e:
-        logger.error(f"LAM save_episode failed: {e}", exc_info=True)
+        logger.error("LAM save_episode failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -190,10 +190,10 @@ async def recall_similar(request: RecallRequest) -> RecallResponse:
         err_str = str(e)
         # Collection not found = expected when no episodes have been saved yet
         if "not found" in err_str.lower() or "doesn't exist" in err_str.lower() or "404" in err_str:
-            logger.info(f"LAM recall: collection '{COLLECTION}' not yet created — returning empty")
+            logger.info("LAM recall: collection '%s' not yet created — returning empty", COLLECTION)
             elapsed_ms = (time.time() - start) * 1000
             return RecallResponse(results=[], query=request.query, execution_time_ms=elapsed_ms)
-        logger.error(f"LAM recall failed: {e}", exc_info=True)
+        logger.error("LAM recall failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -233,10 +233,10 @@ async def list_recent_episodes(limit: int = 10, agent: str | None = None) -> Lis
         err_str = str(e)
         if "not found" in err_str.lower() or "doesn't exist" in err_str.lower() or "404" in err_str:
             logger.info(
-                f"LAM list_episodes: collection '{COLLECTION}' not yet created — returning empty",
+                "LAM list_episodes: collection '%s' not yet created — returning empty", COLLECTION,
             )
             return ListEpisodesResponse(episodes=[], total=0)
-        logger.error(f"LAM list_episodes failed: {e}", exc_info=True)
+        logger.error("LAM list_episodes failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -246,9 +246,9 @@ async def delete_episode(episode_id: str) -> dict[str, str]:
     try:
         db = await _get_qdrant()
         await db.delete([episode_id])
-        logger.info(f"LAM episode deleted: {episode_id}")
+        logger.info("LAM episode deleted: %s", episode_id)
         await invalidate_cache("zantara:lam_memory:*")
         return {"status": "deleted", "id": episode_id}
     except Exception as e:
-        logger.error(f"LAM delete_episode failed: {e}", exc_info=True)
+        logger.error("LAM delete_episode failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e

@@ -80,7 +80,7 @@ async def _get_redis() -> Any:
             manager.register_component("scheduler_locks", "active")
         return client
     except Exception as e:
-        logger.debug(f"Failed to get Redis client: {e}")
+        logger.debug("Failed to get Redis client: %s", e)
         return None
 
 
@@ -103,7 +103,7 @@ async def _acquire_task_lock(task_name: str, ttl_seconds: int) -> bool:
         acquired = await client.set(lock_key, _WORKER_ID, nx=True, ex=ttl_seconds)
         return bool(acquired)
     except Exception as e:
-        logger.debug(f"Lock acquisition error for {task_name}: {e}")
+        logger.debug("Lock acquisition error for %s: %s", task_name, e)
         return True  # On error, run anyway
 
 
@@ -162,7 +162,7 @@ class AutonomousScheduler:
             task_func=task_func,
             enabled=enabled,
         )
-        logger.info(f"📋 Registered task: {name} (interval={interval_seconds}s, enabled={enabled})")
+        logger.info("📋 Registered task: %s (interval=%ss, enabled=%s)", name, interval_seconds, enabled)
 
     async def _run_task_loop(self, task: ScheduledTask) -> None:
         """Run a single task in a loop"""
@@ -285,7 +285,7 @@ class AutonomousScheduler:
         """Enable a task"""
         if name in self.tasks:
             self.tasks[name].enabled = True
-            logger.info(f"✅ Task enabled: {name}")
+            logger.info("✅ Task enabled: %s", name)
             return True
         return False
 
@@ -293,7 +293,7 @@ class AutonomousScheduler:
         """Disable a task"""
         if name in self.tasks:
             self.tasks[name].enabled = False
-            logger.info(f"⏸️ Task disabled: {name}")
+            logger.info("⏸️ Task disabled: %s", name)
             return True
         return False
 
@@ -358,7 +358,7 @@ async def create_and_start_scheduler(
             )
             logger.info("✅ Auto-Ingestion Orchestrator registered (24h interval)")
         except Exception as e:
-            logger.error(f"❌ Failed to register Auto-Ingestion: {e}")
+            logger.error("❌ Failed to register Auto-Ingestion: %s", e)
 
     # ═══════════════════════════════════════════════════════════════════════════
     # 2. BACKEND SELF-HEALING AGENT (every 5 minutes)
@@ -390,7 +390,7 @@ async def create_and_start_scheduler(
             )
             logger.info("✅ Backend Self-Healing Agent registered (5min interval)")
         except Exception as e:
-            logger.error(f"❌ Failed to register Self-Healing Agent: {e}")
+            logger.error("❌ Failed to register Self-Healing Agent: %s", e)
 
     # ═══════════════════════════════════════════════════════════════════════════
     # 3. CONVERSATION TRAINER AGENT (every 6 hours)
@@ -426,11 +426,11 @@ async def create_and_start_scheduler(
 
                     # 3. Create PR with improvements
                     pr_branch = await trainer.create_improvement_pr(improved_prompt, analysis)
-                    logger.info(f"✅ Conversation Trainer: PR {pr_branch} created")
+                    logger.info("✅ Conversation Trainer: PR %s created", pr_branch)
 
                 except Exception as e:
                     logger.error(
-                        f"Error in Conversation Trainer prompt generation/PR creation: {e}",
+                        "Error in Conversation Trainer prompt generation/PR creation: %s", e,
                         exc_info=True,
                     )
 
@@ -442,7 +442,7 @@ async def create_and_start_scheduler(
             )
             logger.info("⏸️ Conversation Trainer registered but DISABLED (migrated to OpenClaw)")
         except Exception as e:
-            logger.error(f"❌ Failed to register Conversation Trainer: {e}")
+            logger.error("❌ Failed to register Conversation Trainer: %s", e)
 
     # ═══════════════════════════════════════════════════════════════════════════
     # 5. GOLDEN ROUTES SEEDER (one-time at startup)
@@ -456,7 +456,7 @@ async def create_and_start_scheduler(
                     # Check if already seeded
                     count = await conn.fetchval("SELECT COUNT(*) FROM golden_routes")
                     if count > 0:
-                        logger.debug(f"Golden Routes already seeded ({count} routes)")
+                        logger.debug("Golden Routes already seeded (%s routes)", count)
                         return
                     logger.info("🌟 Seeding Golden Routes...")
 
@@ -533,7 +533,7 @@ async def create_and_start_scheduler(
                 enabled=True,
             )
         except Exception as e:
-            logger.error(f"❌ Failed to register Golden Routes Seeder: {e}")
+            logger.error("❌ Failed to register Golden Routes Seeder: %s", e)
 
     # ═══════════════════════════════════════════════════════════════════════════
     # 6. RENEWAL ALERTS CHECKER (every 12 hours)
@@ -603,7 +603,7 @@ async def create_and_start_scheduler(
                     pending = await conn.fetchval(
                         "SELECT COUNT(*) FROM renewal_alerts WHERE status = 'pending'",
                     )
-                    logger.info(f"✅ Renewal Alerts Checker done. {pending} alerts pending.")
+                    logger.info("✅ Renewal Alerts Checker done. %s alerts pending.", pending)
 
             scheduler.register_task(
                 name="renewal_alerts",
@@ -613,7 +613,7 @@ async def create_and_start_scheduler(
             )
             logger.info("⏸️ Renewal Alerts registered but DISABLED (migrated to OpenClaw)")
         except Exception as e:
-            logger.error(f"❌ Failed to register Renewal Alerts: {e}")
+            logger.error("❌ Failed to register Renewal Alerts: %s", e)
 
     # ═══════════════════════════════════════════════════════════════════════════
     # TASK 8: BIRTHPLACE ENRICHMENT (Ollama)
@@ -635,7 +635,7 @@ async def create_and_start_scheduler(
                     stats = await run_birthplace_enrichment_task(db_pool)
                     logger.info(f"🎭 Birthplace Enrichment: {stats.get('successful', 0)} enriched")
                 except Exception as e:
-                    logger.error(f"❌ Birthplace Enrichment error: {e}", exc_info=True)
+                    logger.error("❌ Birthplace Enrichment error: %s", e, exc_info=True)
 
             scheduler.register_task(
                 name="birthplace_enrichment",
@@ -645,7 +645,7 @@ async def create_and_start_scheduler(
             )
             logger.info("✅ Birthplace Enrichment registered (24h interval)")
         except Exception as e:
-            logger.error(f"❌ Failed to register Birthplace Enrichment: {e}")
+            logger.error("❌ Failed to register Birthplace Enrichment: %s", e)
 
     # ═══════════════════════════════════════════════════════════════════════════
     # TASK 9: BIRTHDAY EMAIL SERVICE
@@ -662,7 +662,7 @@ async def create_and_start_scheduler(
                 stats = await run_birthday_notifier_task(db_pool)
                 logger.info(f"🎂 Birthday Notifier: {stats.get('sent', 0)} emails sent")
             except Exception as e:
-                logger.error(f"❌ Birthday Notifier error: {e}", exc_info=True)
+                logger.error("❌ Birthday Notifier error: %s", e, exc_info=True)
 
         scheduler.register_task(
             name="birthday_notifier",
@@ -672,7 +672,7 @@ async def create_and_start_scheduler(
         )
         logger.info("⏸️ Birthday Notifier registered but DISABLED (migrated to OpenClaw)")
     except Exception as e:
-        logger.error(f"❌ Failed to register Birthday Notifier: {e}")
+        logger.error("❌ Failed to register Birthday Notifier: %s", e)
 
     # ═══════════════════════════════════════════════════════════════════════════
     # TASK 10: CONVERSATION CLEANUP (daily)
@@ -694,7 +694,7 @@ async def create_and_start_scheduler(
                             f"{result['anonymized_count']} anonymized",
                         )
                 except Exception as e:
-                    logger.error(f"❌ Conversation cleanup error: {e}", exc_info=True)
+                    logger.error("❌ Conversation cleanup error: %s", e, exc_info=True)
 
             scheduler.register_task(
                 name="conversation_cleanup",
@@ -704,7 +704,7 @@ async def create_and_start_scheduler(
             )
             logger.info("✅ Conversation Cleanup registered (24h interval)")
         except Exception as e:
-            logger.error(f"❌ Failed to register Conversation Cleanup: {e}")
+            logger.error("❌ Failed to register Conversation Cleanup: %s", e)
 
     # ═══════════════════════════════════════════════════════════════════════════
     # TASK 11: DAILY OPS AUTOPILOT (daily at 08:00 WITA / 00:00 UTC)
@@ -736,11 +736,10 @@ async def create_and_start_scheduler(
                 articles = result.get("report", {}).get("intel", {}).get("articles_composed", 0)
 
                 logger.info(
-                    f"🤖 Daily Ops Autopilot completed: "
-                    f"{reminders} reminders sent, {articles} articles composed",
+                    "🤖 Daily Ops Autopilot completed: %s reminders sent, %s articles composed", reminders, articles,
                 )
             except Exception as e:
-                logger.error(f"❌ Daily Ops Autopilot error: {e}", exc_info=True)
+                logger.error("❌ Daily Ops Autopilot error: %s", e, exc_info=True)
 
         scheduler.register_task(
             name="daily_ops_autopilot",
@@ -750,7 +749,7 @@ async def create_and_start_scheduler(
         )
         logger.info("⏸️ Daily Ops Autopilot registered but DISABLED (migrated to OpenClaw)")
     except Exception as e:
-        logger.error(f"❌ Failed to register Daily Ops Autopilot: {e}")
+        logger.error("❌ Failed to register Daily Ops Autopilot: %s", e)
 
     # ═══════════════════════════════════════════════════════════════════════════
     # TASK 12: DRIVE CHANGES POLLING (every 5 minutes)
@@ -765,9 +764,9 @@ async def create_and_start_scheduler(
                 result = await poll_drive_changes()
                 processed = result.get("processed", 0)
                 if processed > 0:
-                    logger.info(f"📂 Drive Poll: {processed} new files processed for OCR")
+                    logger.info("📂 Drive Poll: %s new files processed for OCR", processed)
             except Exception as e:
-                logger.error(f"Drive Poll error: {e}", exc_info=True)
+                logger.error("Drive Poll error: %s", e, exc_info=True)
 
         scheduler.register_task(
             name="drive_changes_poll",
@@ -777,7 +776,7 @@ async def create_and_start_scheduler(
         )
         logger.info("⏸️ Drive Changes Polling DISABLED (moved to Air cron)")
     except Exception as e:
-        logger.error(f"Failed to register Drive Changes Polling: {e}")
+        logger.error("Failed to register Drive Changes Polling: %s", e)
 
     # ═══════════════════════════════════════════════════════════════════════════
     # KG INCREMENTAL BUILDER (daily — disabled on Fly.io, run via Air/Pro cron)
@@ -801,7 +800,7 @@ async def create_and_start_scheduler(
             )
             logger.info("✅ KGIncrementalBuilder registered (24h, Gemini Free Tier)")
         except Exception as e:
-            logger.error(f"❌ Failed to register KGIncrementalBuilder: {e}")
+            logger.error("❌ Failed to register KGIncrementalBuilder: %s", e)
 
     # Start the scheduler
     await scheduler.start()

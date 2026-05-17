@@ -162,7 +162,7 @@ class CollectionManager:
 
         # Check if collection is defined
         if name not in self.collection_definitions:
-            logger.warning(f"⚠️ Unknown collection: {name}")
+            logger.warning("⚠️ Unknown collection: %s", name)
             return None
 
         # Get actual collection name (handle aliases)
@@ -173,10 +173,10 @@ class CollectionManager:
         try:
             client = QdrantClient(qdrant_url=self.qdrant_url, collection_name=actual_name)
             self._collections_cache[name] = client
-            logger.debug(f"✅ Lazy-loaded collection: {name} -> {actual_name}")
+            logger.debug("✅ Lazy-loaded collection: %s -> %s", name, actual_name)
             return client
         except Exception as e:
-            logger.error(f"❌ Failed to create collection client for {name}: {e}")
+            logger.error("❌ Failed to create collection client for %s: %s", name, e)
             return None
 
     def get_all_collections(self) -> dict[str, QdrantClient]:

@@ -64,7 +64,7 @@ class KnowledgeService:
 
         # Get Qdrant URL from centralized config
         qdrant_url = settings.qdrant_url
-        logger.info(f"🔄 Connecting to Qdrant: {qdrant_url}")
+        logger.info("🔄 Connecting to Qdrant: %s", qdrant_url)
 
         # Initialize collections pointing to Qdrant
         logger.info("🔄 Initializing Qdrant collection clients...")
@@ -165,7 +165,7 @@ class KnowledgeService:
             "berapa",
         ]
 
-        logger.info(f"KnowledgeService initialized with Qdrant URL: {qdrant_url}")
+        logger.info("KnowledgeService initialized with Qdrant URL: %s", qdrant_url)
 
     @cached(ttl=300, prefix="rag_search_deprecated")
     async def search(
@@ -198,7 +198,7 @@ class KnowledgeService:
                 f"Query: '{query[:50]}...', embedding_dim={len(query_embedding)}, provider={self.embedder.provider}",
             )
             logger.debug(
-                f"Parameters: collection_override={collection_override}, user_level={user_level}, limit={limit}",
+                "Parameters: collection_override=%s, user_level=%s, limit=%s", collection_override, user_level, limit,
             )
 
             # Detect if pricing query
@@ -207,7 +207,7 @@ class KnowledgeService:
             # Route to appropriate collection
             if collection_override:
                 collection_name = collection_override
-                logger.debug(f"Using override collection: {collection_name}")
+                logger.debug("Using override collection: %s", collection_name)
             elif is_pricing_query:
                 collection_name = "bali_zero_pricing_hybrid"
                 logger.debug("PRICING QUERY DETECTED → Using bali_zero_pricing_hybrid collection")
@@ -217,7 +217,7 @@ class KnowledgeService:
             # Select the appropriate vector DB client
             vector_db = self.collections.get(collection_name)
             if not vector_db:
-                logger.error(f"Unknown collection: {collection_name}, defaulting to visa_oracle")
+                logger.error("Unknown collection: %s, defaulting to visa_oracle", collection_name)
                 vector_db = self.collections["visa_oracle"]
                 collection_name = "visa_oracle"
 
@@ -236,7 +236,7 @@ class KnowledgeService:
                 chroma_filter = None
                 tier_values = []
 
-            logger.debug(f"Final collection: {collection_name}")
+            logger.debug("Final collection: %s", collection_name)
 
             # Search (async)
             from backend.services.search.search_service import _uses_named_vectors
@@ -292,7 +292,7 @@ class KnowledgeService:
             }
 
         except Exception as e:
-            logger.error(f"Search error: {e}")
+            logger.error("Search error: %s", e)
             raise
 
     def _init_reranker(self):

@@ -141,7 +141,7 @@ class APIKeyAuth:
             legacy_role = result["role"]
             legacy_perms = result.get("permissions", ["read"])
             await self.auto_migrate_key(api_key, legacy_role, legacy_perms, conn)
-            logger.info(f"S03: Legacy API key used, auto-migrating to DB (role={legacy_role})")
+            logger.info("S03: Legacy API key used, auto-migrating to DB (role=%s)", legacy_role)
 
         return result
 
@@ -237,7 +237,7 @@ class APIKeyAuth:
                     "permissions": list(row["permissions"]) if row["permissions"] else ["read"],
                 }
         except Exception as e:
-            logger.warning(f"DB API key lookup failed: {e}")
+            logger.warning("DB API key lookup failed: %s", e)
 
         return None
 

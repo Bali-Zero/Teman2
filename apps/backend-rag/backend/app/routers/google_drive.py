@@ -132,7 +132,7 @@ async def oauth_callback(
 
     # Handle OAuth errors
     if error:
-        logger.error(f"[GDRIVE] OAuth error: {error}")
+        logger.error("[GDRIVE] OAuth error: %s", error)
         return RedirectResponse(
             url=f"{frontend_url}/settings/integrations?error={error}",
             status_code=302,
@@ -203,7 +203,7 @@ async def oauth_callback(
                 status_code=302,
             )
         except Exception as e:
-            logger.error(f"[GDRIVE] System token exchange error: {e}")
+            logger.error("[GDRIVE] System token exchange error: %s", e)
             return RedirectResponse(
                 url=f"{frontend_url}/settings/integrations?error=system_token_error",
                 status_code=302,
@@ -223,13 +223,13 @@ async def oauth_callback(
 
     try:
         await service.exchange_code(code, user_id)
-        logger.info(f"[GDRIVE] Successfully connected for user {user_id}")
+        logger.info("[GDRIVE] Successfully connected for user %s", user_id)
         return RedirectResponse(
             url=f"{frontend_url}/settings/integrations?success=google_drive_connected",
             status_code=302,
         )
     except Exception as e:
-        logger.error(f"[GDRIVE] Token exchange failed: {e}")
+        logger.error("[GDRIVE] Token exchange failed: %s", e)
         return RedirectResponse(
             url=f"{frontend_url}/settings/integrations?error=token_exchange_failed",
             status_code=302,
@@ -285,7 +285,7 @@ async def get_system_status(
                     data = response.json()
                     connected_as = data.get("user", {}).get("emailAddress")
         except Exception as e:
-            logger.warning(f"[GDRIVE] Could not get connected account info: {e}")
+            logger.warning("[GDRIVE] Could not get connected account info: %s", e)
 
     return SystemConnectionStatus(
         oauth_connected=is_connected,
@@ -327,7 +327,7 @@ async def get_system_auth_url(
     state = f"{GoogleDriveService.SYSTEM_USER_ID}:{secrets.token_urlsafe(32)}"
     auth_url = service.get_authorization_url(state)
 
-    logger.info(f"[GDRIVE] Admin {user_email} requested SYSTEM OAuth URL")
+    logger.info("[GDRIVE] Admin %s requested SYSTEM OAuth URL", user_email)
     return {"auth_url": auth_url}
 
 
@@ -353,7 +353,7 @@ async def disconnect_system(
     service = GoogleDriveService(db_pool)
     success = await service.disconnect(GoogleDriveService.SYSTEM_USER_ID)
 
-    logger.info(f"[GDRIVE] Admin {user_email} disconnected SYSTEM OAuth")
+    logger.info("[GDRIVE] Admin %s disconnected SYSTEM OAuth", user_email)
     return {"success": success, "message": "Sistema Google Drive disconnesso"}
 
 

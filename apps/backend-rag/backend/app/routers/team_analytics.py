@@ -48,7 +48,7 @@ async def get_work_patterns(
         patterns = await service.analyze_work_patterns(user_email, days)
         return {"success": True, "data": patterns}
     except Exception as e:
-        logger.error(f"Failed to analyze work patterns: {e}")
+        logger.error("Failed to analyze work patterns: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -63,7 +63,7 @@ async def get_productivity_scores(
         scores = await service.calculate_productivity_scores(days)
         return {"success": True, "scores": scores}
     except Exception as e:
-        logger.error(f"Failed to calculate productivity scores: {e}")
+        logger.error("Failed to calculate productivity scores: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -78,7 +78,7 @@ async def get_burnout_signals(
         signals = await service.detect_burnout_signals(user_email)
         return {"success": True, "signals": signals}
     except Exception as e:
-        logger.error(f"Failed to detect burnout signals: {e}")
+        logger.error("Failed to detect burnout signals: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -94,7 +94,7 @@ async def get_performance_trends(
         trends = await service.analyze_performance_trends(user_email, weeks)
         return {"success": True, "trends": trends}
     except Exception as e:
-        logger.error(f"Failed to analyze performance trends: {e}")
+        logger.error("Failed to analyze performance trends: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -109,7 +109,7 @@ async def get_workload_balance(
         balance = await service.analyze_workload_balance(days)
         return {"success": True, "balance": balance}
     except Exception as e:
-        logger.error(f"Failed to analyze workload balance: {e}")
+        logger.error("Failed to analyze workload balance: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -125,7 +125,7 @@ async def get_optimal_hours(
         optimal = await service.identify_optimal_hours(user_email, days)
         return {"success": True, "optimal_hours": optimal}
     except Exception as e:
-        logger.error(f"Failed to identify optimal hours: {e}")
+        logger.error("Failed to identify optimal hours: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -140,5 +140,5 @@ async def get_team_insights(
         insights = await service.generate_team_insights(days)
         return {"success": True, "insights": insights}
     except Exception as e:
-        logger.error(f"Failed to generate team insights: {e}")
+        logger.error("Failed to generate team insights: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e

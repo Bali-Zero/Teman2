@@ -174,13 +174,13 @@ class ABTestManager:
             >>> print(variant)  # "dense_only" or "hybrid"
         """
         if experiment not in self.experiments:
-            logger.warning(f"Experiment '{experiment}' not found, defaulting to control variant")
+            logger.warning("Experiment '%s' not found, defaulting to control variant", experiment)
             return Variant.CONTROL
 
         config = self.experiments[experiment]
 
         if not config.enabled:
-            logger.debug(f"Experiment '{experiment}' is disabled, returning control variant")
+            logger.debug("Experiment '%s' is disabled, returning control variant", experiment)
             return config.variants[0]
 
         # Check cache first
@@ -290,11 +290,10 @@ class ABTestManager:
                 metadata=metadata,
             )
             logger.debug(
-                f"Recorded metric '{metric}={value}' for experiment '{experiment}' "
-                f"variant '{variant}'",
+                "Recorded metric '%s=%s' for experiment '%s' variant '%s'", metric, value, experiment, variant,
             )
         except Exception as e:
-            logger.error(f"Failed to record metric: {e}")
+            logger.error("Failed to record metric: %s", e)
             # Don't raise - metrics recording should not break the main flow
 
     async def get_experiment_results(self, experiment: str) -> dict[str, Any]:
@@ -370,7 +369,7 @@ class ABTestManager:
             }
 
         except Exception as e:
-            logger.error(f"Failed to get experiment results: {e}")
+            logger.error("Failed to get experiment results: %s", e)
             return {"error": str(e), "experiment": experiment}
 
     async def is_significant(self, experiment: str, metric: str = "ctr") -> bool:
@@ -389,7 +388,7 @@ class ABTestManager:
 
                 Example:
                     >>> if await ab_manager.is_significant("hybrid_vs_dense"):
-                    ...     print("Experiment has significant results!")
+                    ...     logger.info("Experiment has significant results!")
         """
         results = await self.get_experiment_results(experiment)
 
@@ -530,7 +529,7 @@ class ABTestManager:
         """
         if experiment in self.experiments:
             self.experiments[experiment].enabled = True
-            logger.info(f"Enabled experiment: {experiment}")
+            logger.info("Enabled experiment: %s", experiment)
             return True
         return False
 
@@ -546,7 +545,7 @@ class ABTestManager:
         """
         if experiment in self.experiments:
             self.experiments[experiment].enabled = False
-            logger.info(f"Disabled experiment: {experiment}")
+            logger.info("Disabled experiment: %s", experiment)
             return True
         return False
 

@@ -46,10 +46,10 @@ class AICRMExtractor:
             self.client = ai_client if ai_client else ZantaraAIClient()
             logger.info(f"✅ AICRMExtractor initialized with ZANTARA AI for {settings.COMPANY_NAME}")
         except (ImportError, RuntimeError, AttributeError) as e:
-            logger.error(f"❌ Failed to initialize ZANTARA AI (import/runtime): {e}", exc_info=True)
+            logger.error("❌ Failed to initialize ZANTARA AI (import/runtime): %s", e, exc_info=True)
             raise
         except Exception as e:  # noqa: BLE001 — unknown failure modes in LLM client init must surface
-            logger.error(f"❌ Failed to initialize ZANTARA AI (unexpected): {e}", exc_info=True)
+            logger.error("❌ Failed to initialize ZANTARA AI (unexpected): %s", e, exc_info=True)
             raise
 
     async def extract_from_conversation(
@@ -109,14 +109,14 @@ Extract the following information and return ONLY valid JSON (no markdown, no ex
 
             return extracted_data
         except json.JSONDecodeError as e:
-            logger.error(f"❌ Failed to parse extraction JSON: {e}", exc_info=True)
-            logger.error(f"Raw response: {content}", exc_info=True)
+            logger.error("❌ Failed to parse extraction JSON: %s", e, exc_info=True)
+            logger.error("Raw response: %s", content, exc_info=True)
             return self._get_empty_extraction()
         except (httpx.HTTPError, KeyError, ValueError) as e:
-            logger.error(f"❌ Extraction failed (LLM/data): {e}", exc_info=True)
+            logger.error("❌ Extraction failed (LLM/data): %s", e, exc_info=True)
             return self._get_empty_extraction()
         except Exception as e:  # noqa: BLE001 — fallback so extraction never crashes caller
-            logger.error(f"❌ Extraction failed (unexpected): {e}", exc_info=True)
+            logger.error("❌ Extraction failed (unexpected): %s", e, exc_info=True)
             return self._get_empty_extraction()
 
     def _get_empty_extraction(self) -> dict:
@@ -162,10 +162,10 @@ def get_extractor(ai_client: Any = None) -> AICRMExtractor:
             _extractor_instance = AICRMExtractor(ai_client=ai_client)
             logger.info("✅ AI CRM Extractor initialized")
         except (ImportError, RuntimeError, AttributeError) as e:
-            logger.warning(f"⚠️  AI CRM Extractor not available (import/runtime): {e}")
+            logger.warning("⚠️  AI CRM Extractor not available (import/runtime): %s", e)
             raise
         except Exception as e:  # noqa: BLE001 — unknown init failures must still surface to caller
-            logger.warning(f"⚠️  AI CRM Extractor not available (unexpected): {e}")
+            logger.warning("⚠️  AI CRM Extractor not available (unexpected): %s", e)
             raise
     return _extractor_instance
 
@@ -231,10 +231,10 @@ class BirthplaceEnrichmentService:
             logger.error("Ollama request timed out")
             return None
         except httpx.HTTPError as e:
-            logger.error(f"Ollama request failed (HTTP): {e}")
+            logger.error("Ollama request failed (HTTP): %s", e)
             return None
         except Exception as e:  # noqa: BLE001 — enrichment is best-effort, never crash cron caller
-            logger.error(f"Ollama request failed (unexpected): {e}", exc_info=True)
+            logger.error("Ollama request failed (unexpected): %s", e, exc_info=True)
             return None
 
     def build_enrichment_prompt(self, birthplace: str, nationality: str | None) -> str:
@@ -273,17 +273,17 @@ Return ONLY the JSON object, no additional text."""
         client_id = client["id"]
         birthplace = client["birthplace"]
         nationality = client.get("nationality")
-        logger.info(f"Enriching birthplace for client {client_id}: {birthplace}")
+        logger.info("Enriching birthplace for client %s: %s", client_id, birthplace)
 
         prompt = self.build_enrichment_prompt(birthplace, nationality)
         response = await self.call_ollama(prompt)
         if not response:
-            logger.warning(f"No response from Ollama for client {client_id}")
+            logger.warning("No response from Ollama for client %s", client_id)
             return False
 
         enrichment_data = self.parse_enrichment_response(response)
         if not enrichment_data:
-            logger.warning(f"Failed to parse enrichment for client {client_id}")
+            logger.warning("Failed to parse enrichment for client %s", client_id)
             return False
 
         try:
@@ -304,13 +304,13 @@ Return ONLY the JSON object, no additional text."""
                     """,
                     json.dumps(existing), client_id,
                 )
-                logger.info(f"Successfully enriched client {client_id}")
+                logger.info("Successfully enriched client %s", client_id)
                 return True
         except (asyncpg.PostgresError, json.JSONDecodeError, TypeError) as e:
-            logger.error(f"Failed to update client {client_id} (DB/serialization): {e}", exc_info=True)
+            logger.error("Failed to update client %s (DB/serialization): %s", client_id, e, exc_info=True)
             return False
         except Exception as e:  # noqa: BLE001 — enrichment never crashes the batch loop
-            logger.error(f"Failed to update client {client_id} (unexpected): {e}", exc_info=True)
+            logger.error("Failed to update client %s (unexpected): %s", client_id, e, exc_info=True)
             return False
 
     async def run_batch_enrichment(self) -> dict[str, Any]:
@@ -326,12 +326,12 @@ Return ONLY the JSON object, no additional text."""
                 stats["error"] = "Ollama not available"
                 return stats
         except httpx.HTTPError as e:
-            logger.warning(f"⚠️ Birthplace Enrichment skipped: Cannot connect to Ollama ({e}).")
+            logger.warning("⚠️ Birthplace Enrichment skipped: Cannot connect to Ollama (%s).", e)
             stats["error"] = f"Cannot connect to Ollama: {e}"
             return stats
         except Exception as e:  # noqa: BLE001 — availability probe must never propagate to scheduler
             logger.warning(
-                f"⚠️ Birthplace Enrichment skipped: unexpected error probing Ollama ({e}).",
+                "⚠️ Birthplace Enrichment skipped: unexpected error probing Ollama (%s).", e,
                 exc_info=True,
             )
             stats["error"] = f"Ollama probe error: {e}"
@@ -354,7 +354,7 @@ Return ONLY the JSON object, no additional text."""
             await asyncio.sleep(1)
 
         stats["completed_at"] = datetime.now(timezone.utc).isoformat()
-        logger.info(f"Enrichment batch complete: {stats}")
+        logger.info("Enrichment batch complete: %s", stats)
         return stats
 
 
@@ -403,14 +403,14 @@ async def generate_conversation_title(
     if title:
         return title
 
-    logger.warning(f"All title generation methods failed for conv {conversation_id}")
+    logger.warning("All title generation methods failed for conv %s", conversation_id)
     return None
 
 
 async def _generate_title_via_ollama(conversation_id: str, prompt: str, max_length: int) -> str | None:
     try:
         from backend.llm.ollama_client import MODEL_FAST, ollama_chat
-        logger.info(f"Generating title for conv {conversation_id} via Ollama ({MODEL_FAST})...")
+        logger.info("Generating title for conv %s via Ollama (%s)...", conversation_id, MODEL_FAST)
         result = await ollama_chat(
             messages=[{"role": "user", "content": prompt}],
             model=MODEL_FAST,
@@ -421,14 +421,14 @@ async def _generate_title_via_ollama(conversation_id: str, prompt: str, max_leng
         if not result:
             return None
         title = _clean_title(result, max_length)
-        logger.info(f'✅ Generated title for conv {conversation_id} via Ollama: "{title}"')
+        logger.info('✅ Generated title for conv %s via Ollama: "%s"', conversation_id, title)
         return title
     except (httpx.HTTPError, ValueError, KeyError) as e:
-        logger.warning(f"Ollama title generation error for conv {conversation_id}: {e}")
+        logger.warning("Ollama title generation error for conv %s: %s", conversation_id, e)
         return None
     except Exception as e:  # noqa: BLE001 — title generation is best-effort; Gemini fallback follows
         logger.warning(
-            f"Ollama title generation unexpected error for conv {conversation_id}: {e}",
+            "Ollama title generation unexpected error for conv %s: %s", conversation_id, e,
             exc_info=True,
         )
         return None
@@ -441,7 +441,7 @@ async def _generate_title_via_gemini(conversation_id: str, prompt: str, max_leng
         if not client or not client.is_available:
             logger.warning("GenAI client not available, skipping Gemini fallback")
             return None
-        logger.info(f"Generating title for conv {conversation_id} via Gemini Flash...")
+        logger.info("Generating title for conv %s via Gemini Flash...", conversation_id)
         result = await client.generate_content(
             contents=prompt,
             model="gemini-2.0-flash-lite",
@@ -451,14 +451,14 @@ async def _generate_title_via_gemini(conversation_id: str, prompt: str, max_leng
         if not result or not result.get("text"):
             return None
         title = _clean_title(result["text"], max_length)
-        logger.info(f'✅ Generated title for conv {conversation_id} via Gemini: "{title}"')
+        logger.info('✅ Generated title for conv %s via Gemini: "%s"', conversation_id, title)
         return title
     except (httpx.HTTPError, ValueError, KeyError) as e:
-        logger.warning(f"Gemini title generation error for conv {conversation_id}: {e}")
+        logger.warning("Gemini title generation error for conv %s: %s", conversation_id, e)
         return None
     except Exception as e:  # noqa: BLE001 — title generation is best-effort and must never crash caller
         logger.warning(
-            f"Gemini title generation unexpected error for conv {conversation_id}: {e}",
+            "Gemini title generation unexpected error for conv %s: %s", conversation_id, e,
             exc_info=True,
         )
         return None

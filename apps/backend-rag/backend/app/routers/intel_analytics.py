@@ -72,7 +72,7 @@ async def get_system_metrics() -> Any:
             else:
                 agent_status = "not_configured"
         except Exception as e:
-            logger.warning(f"Could not check agent health: {e}")
+            logger.warning("Could not check agent health: %s", e)
             agent_status = "unknown"
 
         # Calculate metrics
@@ -121,7 +121,7 @@ async def get_system_metrics() -> Any:
             QdrantClient(collection_name="visa_oracle")
             metrics["qdrant_health"] = "healthy"
         except Exception as e:
-            logger.warning(f"Qdrant health check failed: {e}", exc_info=True)
+            logger.warning("Qdrant health check failed: %s", e, exc_info=True)
             metrics["qdrant_health"] = "degraded"
 
         # Calculate next scheduled run
@@ -131,7 +131,7 @@ async def get_system_metrics() -> Any:
                 next_run = last_dt + timedelta(hours=IntelConstants.SCHEDULER_RUN_INTERVAL_HOURS)
                 metrics["next_scheduled_run"] = next_run.isoformat()
             except (ValueError, TypeError) as e:
-                logger.debug(f"Failed to parse last_approved date: {e}")
+                logger.debug("Failed to parse last_approved date: %s", e)
 
         # Calculate average response time based on recent approvals
         response_times = []
@@ -166,7 +166,7 @@ async def get_system_metrics() -> Any:
         return metrics
 
     except Exception as e:
-        logger.error(f"Failed to calculate system metrics: {e}", exc_info=True)
+        logger.error("Failed to calculate system metrics: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Metrics calculation failed: {str(e)}") from e
 
 
@@ -245,7 +245,7 @@ async def search_intel(request: IntelSearchRequest) -> dict[str, Any]:
                     )
 
             except Exception as e:
-                logger.warning(f"Error searching collection {collection_name}: {e}")
+                logger.warning("Error searching collection %s: %s", collection_name, e)
                 continue
 
         # Sort by similarity score
@@ -257,7 +257,7 @@ async def search_intel(request: IntelSearchRequest) -> dict[str, Any]:
         return {"results": all_results, "total": len(all_results)}
 
     except Exception as e:
-        logger.error(f"Intel search error: {e}")
+        logger.error("Intel search error: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -281,7 +281,7 @@ async def store_intel(request: IntelStoreRequest) -> dict[str, Any]:
         return {"success": True, "collection": collection_name, "id": request.id}
 
     except Exception as e:
-        logger.error(f"Store intel error: {e}")
+        logger.error("Store intel error: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -345,7 +345,7 @@ async def get_critical_items(
                         ]
                 except Exception as scroll_error:
                     logger.warning(
-                        f"Qdrant scroll with filter failed, falling back to peek: {scroll_error}",
+                        "Qdrant scroll with filter failed, falling back to peek: %s", scroll_error,
                     )
                     results = await client.peek(limit=100)
                     filtered_metadatas = []
@@ -386,7 +386,7 @@ async def get_critical_items(
         }
 
     except Exception as e:
-        logger.error(f"Get critical items error: {e}")
+        logger.error("Get critical items error: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -427,7 +427,7 @@ async def get_trends(
         }
 
     except Exception as e:
-        logger.error(f"Get trends error: {e}")
+        logger.error("Get trends error: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -440,7 +440,7 @@ async def get_intelligence_analytics(days: int = IntelConstants.TRENDS_ANALYSIS_
         return analytics_service.get_intelligence_analytics(days)
 
     except Exception as e:
-        logger.error(f"Failed to calculate analytics: {e}", exc_info=True)
+        logger.error("Failed to calculate analytics: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500, detail=f"Analytics calculation failed: {str(e)}",
         ) from e
@@ -464,5 +464,5 @@ async def get_collection_stats(collection: str) -> dict[str, Any]:
         }
 
     except Exception as e:
-        logger.error(f"Get stats error: {e}")
+        logger.error("Get stats error: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e

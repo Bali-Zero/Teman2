@@ -227,7 +227,7 @@ async def test_notification(
                     error_msg = result.error_message
             except Exception as e:
                 error_msg = str(e)
-                logger.error(f"Test email send failed: {e}", exc_info=True)
+                logger.error("Test email send failed: %s", e, exc_info=True)
 
         return TestNotificationResponse(
             success=True,
@@ -253,7 +253,7 @@ async def test_notification(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Test notification failed: {e}", exc_info=True)
+        logger.error("Test notification failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 

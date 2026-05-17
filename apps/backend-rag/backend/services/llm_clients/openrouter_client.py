@@ -321,7 +321,7 @@ try:
     openrouter_client = OpenRouterClient(default_tier=ModelTier.RAG)
     logger.debug("OpenRouterClient singleton created.")
 except Exception as e:
-    logger.error(f"Failed to create OpenRouterClient: {e}")
+    logger.error("Failed to create OpenRouterClient: %s", e)
     openrouter_client = None
 
 
@@ -366,7 +366,7 @@ if __name__ == "__main__":
         # Check credits
         logger.info("\n💰 Checking credits...")
         credits = await openrouter_client.check_credits()
-        logger.info(f"   Credits info: {credits}")
+        logger.info("   Credits info: %s", credits)
 
         # Test with native fallback
         logger.info("\n📝 Test 1: RAG tier with native fallback")

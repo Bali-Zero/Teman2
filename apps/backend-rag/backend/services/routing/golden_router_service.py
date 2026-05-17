@@ -58,7 +58,7 @@ class GoldenRouterService:
                     settings.database_url, min_size=1, max_size=5,
                 )
             except Exception as e:
-                logger.error(f"Failed to create DB pool: {e}")
+                logger.error("Failed to create DB pool: %s", e)
                 raise
         return self.db_pool
 
@@ -147,9 +147,9 @@ class GoldenRouterService:
                         return
                     logger.warning("⚠️ Cache mismatch (count differs). Regenerating...")
                 except (json.JSONDecodeError, ValueError, TypeError) as e:
-                    logger.warning(f"⚠️ Failed to load cache: {e}")
+                    logger.warning("⚠️ Failed to load cache: %s", e)
                 except Exception as e:
-                    logger.warning(f"⚠️ Failed to load cache: {e}")
+                    logger.warning("⚠️ Failed to load cache: %s", e)
 
             # 2. Generate Fresh
             logger.info(f"⏳ Generating embeddings for {len(queries)} routes...")
@@ -169,15 +169,15 @@ class GoldenRouterService:
                 embeddings_list = self.route_embeddings.tolist()
                 with open(CACHE_FILE, "w", encoding="utf-8") as f:
                     json.dump(embeddings_list, f)
-                logger.info(f"💾 Saved embeddings to {CACHE_FILE}")
+                logger.info("💾 Saved embeddings to %s", CACHE_FILE)
             except (TypeError, ValueError) as e:
-                logger.warning(f"⚠️ Failed to serialize embeddings to JSON: {e}")
+                logger.warning("⚠️ Failed to serialize embeddings to JSON: %s", e)
             except Exception as e:
-                logger.warning(f"⚠️ Failed to save cache: {e}")
+                logger.warning("⚠️ Failed to save cache: %s", e)
 
             logger.info("✅ Golden Route Embeddings Ready!")
         except Exception as e:
-            logger.error(f"❌ Failed to generate route embeddings: {e}")
+            logger.error("❌ Failed to generate route embeddings: %s", e)
 
     async def route(self, query: str, user_id: str | None = None) -> dict | None:
         """
@@ -202,7 +202,7 @@ class GoldenRouterService:
                         "score": result.get("similarity", 0),
                     }
             except Exception as e:
-                logger.warning(f"GoldenAnswerService.find_similar failed: {e}")
+                logger.warning("GoldenAnswerService.find_similar failed: %s", e)
 
         # Fallback to original routing logic
         if not self.routes_cache or self.route_embeddings is None:
@@ -256,7 +256,7 @@ class GoldenRouterService:
                     route_id,
                 )
         except Exception as e:
-            logger.warning(f"Failed to update route stats: {e}")
+            logger.warning("Failed to update route stats: %s", e)
 
     async def add_route(
         self,

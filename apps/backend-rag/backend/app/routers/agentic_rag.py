@@ -506,7 +506,7 @@ async def get_conversation_history_for_agentic(
             # If user_id doesn't look like an email, try to get email from team_members
             if "@" not in user_email:
                 logger.debug(
-                    f"🔍 user_id '{user_id}' doesn't look like email, trying to find email...",
+                    "🔍 user_id '%s' doesn't look like email, trying to find email...", user_id,
                 )
                 email_row = await conn.fetchrow(
                     """
@@ -518,9 +518,9 @@ async def get_conversation_history_for_agentic(
                 )
                 if email_row and email_row.get("email"):
                     user_email = email_row["email"]
-                    logger.info(f"✅ Found email for user_id '{user_id}': {user_email}")
+                    logger.info("✅ Found email for user_id '%s': %s", user_id, user_email)
                 else:
-                    logger.warning(f"⚠️ Could not find email for user_id '{user_id}', using as-is")
+                    logger.warning("⚠️ Could not find email for user_id '%s', using as-is", user_id)
 
             # Try conversation_id first, then session_id, then most recent
             if conversation_id:
@@ -569,7 +569,7 @@ async def get_conversation_history_for_agentic(
             return []
 
     except Exception as e:
-        logger.warning(f"⚠️ Failed to retrieve conversation history: {e}")
+        logger.warning("⚠️ Failed to retrieve conversation history: %s", e)
         return []
 
 
@@ -650,7 +650,7 @@ async def stream_agentic_rag(
 
         # Validate query is not empty
         if not request_body.query or not request_body.query.strip():
-            logger.warning(f"⚠️ Empty query received - rejecting (correlation_id={correlation_id})")
+            logger.warning("⚠️ Empty query received - rejecting (correlation_id=%s)", correlation_id)
             set_span_status("error", "Empty query")
             raise HTTPException(status_code=400, detail="Query cannot be empty")
 
@@ -715,7 +715,7 @@ async def stream_agentic_rag(
                         f"(correlation_id={correlation_id})",
                     )
                 except Exception as e:
-                    logger.warning(f"Failed to load history: {e}")
+                    logger.warning("Failed to load history: %s", e)
                     # Yield error but continue
                     error_event = {
                         "type": "error",
@@ -732,7 +732,7 @@ async def stream_agentic_rag(
             # Check for client disconnect before starting stream
             if await http_request.is_disconnected():
                 logger.warning(
-                    f"⚠️ Client disconnected before stream start (correlation_id={correlation_id})",
+                    "⚠️ Client disconnected before stream start (correlation_id=%s)", correlation_id,
                 )
                 return
 
@@ -804,7 +804,7 @@ async def stream_agentic_rag(
 
                     # Check for client disconnect
                     if await http_request.is_disconnected():
-                        logger.info(f"Client disconnected: {correlation_id}")
+                        logger.info("Client disconnected: %s", correlation_id)
                         break
 
                     # Track event type and tokens
@@ -836,7 +836,7 @@ async def stream_agentic_rag(
 
                 except json.JSONEncodeError as e:
                     error_count += 1
-                    logger.error(f"JSON serialization failed: {e}")
+                    logger.error("JSON serialization failed: %s", e)
                     error_event = {
                         "type": "error",
                         "data": {
@@ -851,7 +851,7 @@ async def stream_agentic_rag(
 
                 except Exception as e:
                     error_count += 1
-                    logger.exception(f"Error processing stream event: {e}")
+                    logger.exception("Error processing stream event: %s", e)
                     error_event = {
                         "type": "error",
                         "data": {
@@ -879,7 +879,7 @@ async def stream_agentic_rag(
             events_yielded += 1
 
         except Exception as e:
-            logger.exception(f"Fatal error in stream: {e}")
+            logger.exception("Fatal error in stream: %s", e)
             fatal_error_event = {
                 "type": "error",
                 "data": {
@@ -933,7 +933,7 @@ async def stream_agentic_rag(
                             f"session_id={request_body.session_id}",
                         )
                 except Exception as persist_error:
-                    logger.warning(f"⚠️ Failed to persist conversation: {persist_error}")
+                    logger.warning("⚠️ Failed to persist conversation: %s", persist_error)
                     persisted = False
 
             # Yield final metadata with persistence info
@@ -1074,7 +1074,7 @@ async def stream_workspace_agent(
     agent_role: AgentRole | None = get_agent_role(user_email)
     if not agent_role:
         logger.warning(
-            f"🚫 workspace-stream denied: {user_email} is not a registered team agent",
+            "🚫 workspace-stream denied: %s is not a registered team agent", user_email,
         )
         raise HTTPException(
             status_code=403,
@@ -1154,12 +1154,11 @@ async def stream_workspace_agent(
                         db_pool=db_pool,
                     )
                 except Exception as e:
-                    logger.warning(f"workspace-stream: failed to load history: {e}")
+                    logger.warning("workspace-stream: failed to load history: %s", e)
 
             if await http_request.is_disconnected():
                 logger.warning(
-                    f"workspace-stream: client disconnected before stream start "
-                    f"(correlation_id={correlation_id})",
+                    "workspace-stream: client disconnected before stream start (correlation_id=%s)", correlation_id,
                 )
                 return
 
@@ -1205,8 +1204,7 @@ async def stream_workspace_agent(
 
                 if await http_request.is_disconnected():
                     logger.info(
-                        f"workspace-stream: client disconnected mid-stream "
-                        f"(correlation_id={correlation_id})",
+                        "workspace-stream: client disconnected mid-stream (correlation_id=%s)", correlation_id,
                     )
                     break
 
@@ -1217,7 +1215,7 @@ async def stream_workspace_agent(
             events_yielded += 1
 
         except Exception as e:
-            logger.exception(f"workspace-stream fatal error: {e}")
+            logger.exception("workspace-stream fatal error: %s", e)
             yield (
                 f"data: {json.dumps({'type': 'error', 'data': {'error_type': 'fatal_error', 'message': str(e), 'fatal': True, 'correlation_id': correlation_id}})}\n\n"
             )
@@ -1258,7 +1256,7 @@ async def stream_workspace_agent(
                     persisted = conversation_id_persisted is not None
                 except Exception as persist_error:
                     logger.warning(
-                        f"workspace-stream: failed to persist conversation: {persist_error}",
+                        "workspace-stream: failed to persist conversation: %s", persist_error,
                     )
                     persisted = False
 
@@ -1400,7 +1398,7 @@ async def trigger_proactivity(
                 event_json = json.dumps(event)
                 yield f"data: {event_json}\n\n"
         except Exception as e:
-            logger.error(f"❌ [Proactive] Stream Error: {e}")
+            logger.error("❌ [Proactive] Stream Error: %s", e)
             yield f"data: {json.dumps({'type': 'error', 'data': {'message': str(e)}})}\n\n"
 
         yield f"data: {json.dumps({'type': 'done', 'data': None})}\n\n"

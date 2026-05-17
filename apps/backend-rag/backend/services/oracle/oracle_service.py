@@ -152,7 +152,7 @@ class OracleService:
                 mode_config=communication_modes, dry_run=True,
             )
         except (OSError, FileNotFoundError, ValueError, KeyError) as e:
-            logger.warning(f"Failed to load communication modes: {e}", exc_info=True)
+            logger.warning("Failed to load communication modes: %s", e, exc_info=True)
             self.response_validator = ZantaraResponseValidator(mode_config={}, dry_run=True)
 
         # Initialize sub-services
@@ -185,7 +185,7 @@ class OracleService:
             try:
                 self._db_pool = await asyncpg.create_pool(dsn=config.database_url)
             except Exception as e:
-                logger.error(f"Failed to create asyncpg pool: {e}")
+                logger.error("Failed to create asyncpg pool: %s", e)
                 # Fallback or re-raise depending on criticality.
                 # RAG might partially work without DB (except for Memory/Team tools)
                 raise
@@ -241,7 +241,7 @@ class OracleService:
                 if database_url:
                     self._golden_answer_service = GoldenAnswerService(database_url)
             except (asyncpg.PostgresError, ValueError, RuntimeError) as e:
-                logger.warning(f"GoldenAnswerService init failed: {e}", exc_info=True)
+                logger.warning("GoldenAnswerService init failed: %s", e, exc_info=True)
         return self._golden_answer_service
 
     @property
@@ -253,7 +253,7 @@ class OracleService:
                 if database_url:
                     self._memory_service = MemoryServicePostgres(database_url)
             except (asyncpg.PostgresError, ValueError, RuntimeError) as e:
-                logger.warning(f"MemoryServicePostgres init failed: {e}", exc_info=True)
+                logger.warning("MemoryServicePostgres init failed: %s", e, exc_info=True)
         return self._memory_service
 
     @property
@@ -277,7 +277,7 @@ class OracleService:
                 database_url = config.database_url if hasattr(config, "database_url") else None
                 self._memory_orchestrator = MemoryOrchestrator(database_url=database_url)
             except (asyncpg.PostgresError, ValueError, RuntimeError) as e:
-                logger.warning(f"MemoryOrchestrator init failed: {e}", exc_info=True)
+                logger.warning("MemoryOrchestrator init failed: %s", e, exc_info=True)
                 # Create a basic orchestrator that will operate in degraded mode
                 self._memory_orchestrator = MemoryOrchestrator()
         return self._memory_orchestrator
@@ -289,7 +289,7 @@ class OracleService:
                 await self.memory_orchestrator.initialize()
             return True
         except (asyncpg.PostgresError, ValueError, RuntimeError) as e:
-            logger.warning(f"Failed to initialize memory orchestrator: {e}", exc_info=True)
+            logger.warning("Failed to initialize memory orchestrator: %s", e, exc_info=True)
             return False
 
     async def _save_memory_facts(
@@ -331,7 +331,7 @@ class OracleService:
                 )
 
         except (asyncpg.PostgresError, ValueError, RuntimeError) as e:
-            logger.warning(f"Failed to save memory facts via orchestrator: {e}", exc_info=True)
+            logger.warning("Failed to save memory facts via orchestrator: %s", e, exc_info=True)
 
     async def process_query(
         self,
@@ -476,7 +476,7 @@ class OracleService:
             RuntimeError,
         ) as e:
             execution_time = (time.time() - start_time) * 1000
-            logger.error(f"Oracle service error: {e}", exc_info=True)
+            logger.error("Oracle service error: %s", e, exc_info=True)
 
             # Error Analytics (delegated to OracleAnalyticsService)
             await self.analytics.store_query_analytics(

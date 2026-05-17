@@ -37,7 +37,7 @@ class DocumentRetrievalService:
 
         try:
             clean_name = os.path.splitext(os.path.basename(filename))[0]
-            logger.info(f"🔍 Searching for document: {clean_name}")
+            logger.info("🔍 Searching for document: %s", clean_name)
 
             search_queries = [
                 f"name contains '{clean_name}' and mimeType = 'application/pdf' and trashed = false",
@@ -79,5 +79,5 @@ class DocumentRetrievalService:
             return None
 
         except Exception as e:
-            logger.error(f"❌ Error downloading from Drive: {e}")
+            logger.error("❌ Error downloading from Drive: %s", e)
             return None

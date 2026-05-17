@@ -306,12 +306,12 @@ class EmbeddingsGenerator:
             self._init_openai(model=None)
 
         except Exception as e:
-            logger.error(f"🔌 [EmbeddingsGenerator] Failed to load Sentence Transformers: {e}")
+            logger.error("🔌 [EmbeddingsGenerator] Failed to load Sentence Transformers: %s", e)
             logger.error("   Falling back to OpenAI...")
             try:
                 self._init_openai(model=None)
             except Exception as openai_error:
-                logger.error(f"🔌 [EmbeddingsGenerator] Both providers failed: {openai_error}")
+                logger.error("🔌 [EmbeddingsGenerator] Both providers failed: %s", openai_error)
                 raise
 
     async def generate_embeddings(self, texts: list[str]) -> list[list[float]]:
@@ -377,7 +377,7 @@ class EmbeddingsGenerator:
                 # HierarchicalIndexer) expects len(embeddings) == len(texts) and
                 # otherwise produces silent partial-ingest with chunks_created=0.
                 # Propagating the error lets the caller fail loudly + log clearly.
-                logger.error(f"Error generating embeddings: {e}")
+                logger.error("Error generating embeddings: %s", e)
                 set_span_status("error", str(e))
                 raise
 
@@ -505,7 +505,7 @@ class EmbeddingsGenerator:
             return embeddings_list
 
         except Exception as e:
-            logger.error(f"Sentence Transformers error: {e}")
+            logger.error("Sentence Transformers error: %s", e)
             raise
 
     async def generate_single_embedding(self, text: str) -> list[float]:

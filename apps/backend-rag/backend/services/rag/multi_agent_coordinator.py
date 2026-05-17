@@ -216,7 +216,7 @@ class LegalAgent:
             }
 
         except Exception as e:
-            logger.error(f"❌ [LegalAgent] Failed: {e}", exc_info=True)
+            logger.error("❌ [LegalAgent] Failed: %s", e, exc_info=True)
             return {
                 "legal_analysis": "Legal analysis unavailable due to processing error.",
                 "agent_outputs": [
@@ -293,7 +293,7 @@ class FinancialAgent:
             }
 
         except Exception as e:
-            logger.error(f"❌ [FinancialAgent] Failed: {e}", exc_info=True)
+            logger.error("❌ [FinancialAgent] Failed: %s", e, exc_info=True)
             return {
                 "financial_breakdown": "Financial breakdown unavailable due to processing error.",
                 "agent_outputs": [
@@ -411,7 +411,7 @@ class TimelineAgent:
             }
 
         except Exception as e:
-            logger.error(f"❌ [TimelineAgent] Failed: {e}", exc_info=True)
+            logger.error("❌ [TimelineAgent] Failed: %s", e, exc_info=True)
             return {
                 "timeline_estimate": "Timeline estimate unavailable due to processing error.",
                 "agent_outputs": [
@@ -562,7 +562,7 @@ class MultiAgentCoordinator:
             }
 
         except Exception as e:
-            logger.error(f"❌ [Synthesizer] Failed: {e}", exc_info=True)
+            logger.error("❌ [Synthesizer] Failed: %s", e, exc_info=True)
             # Fallback: concatenate raw outputs
             fallback = (
                 f"**Legal Requirements:**\n{state.get('legal_analysis', 'N/A')}\n\n"
@@ -723,7 +723,7 @@ def requires_multi_agent(query: str, entities: list[dict[str, Any]] | None = Non
     ]
     conjunction_count = sum(1 for p in multi_part_patterns if p in q)
     if conjunction_count >= 2:
-        logger.debug(f"🔀 [MultiAgent] Triggered: {conjunction_count} conjunctions")
+        logger.debug("🔀 [MultiAgent] Triggered: %s conjunctions", conjunction_count)
         return True
 
     return False

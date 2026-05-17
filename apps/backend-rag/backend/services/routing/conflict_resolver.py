@@ -183,8 +183,7 @@ class ConflictResolver:
             self.stats["conflicts_resolved"] += 1
 
             logger.info(
-                f"✅ [Conflict Resolved] {winner_coll} (preferred) > {loser_coll} - "
-                f"reason: {resolution_reason}",
+                "✅ [Conflict Resolved] %s (preferred) > %s - reason: %s", winner_coll, loser_coll, resolution_reason,
             )
 
         return resolved_results, conflict_reports

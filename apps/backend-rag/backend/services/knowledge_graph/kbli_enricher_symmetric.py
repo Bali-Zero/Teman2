@@ -39,7 +39,7 @@ class KBLIEnricher:
 
                         if not row:
                             logger.warning(
-                                f"⚠️ [KBLI:{code}] Node not found in Postgres. Creating placeholder node...",
+                                "⚠️ [KBLI:%s] Node not found in Postgres. Creating placeholder node...", code,
                             )
                             # Create node if missing (optional, based on your preference)
                             await conn.execute(
@@ -83,13 +83,13 @@ class KBLIEnricher:
                             entity_id,
                         )
 
-                        logger.info(f"✅ [KBLI:{code}] Symmetric enrichment complete in Postgres.")
+                        logger.info("✅ [KBLI:%s] Symmetric enrichment complete in Postgres.", code)
                         return True
 
                 except Exception as e:
                     attempt += 1
                     logger.error(
-                        f"❌ [KBLI:{code}] Postgres update failed (Attempt {attempt}): {e}",
+                        "❌ [KBLI:%s] Postgres update failed (Attempt %s): %s", code, attempt, e,
                     )
                     await asyncio.sleep(1 * attempt)
 

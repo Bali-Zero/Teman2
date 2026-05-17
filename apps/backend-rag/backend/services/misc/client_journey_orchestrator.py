@@ -449,13 +449,13 @@ class ClientJourneyOrchestrator:
         """
         journey = self.get_journey(journey_id)
         if not journey:
-            logger.error(f"Journey not found: {journey_id}")
+            logger.error("Journey not found: %s", journey_id)
             return False
 
         # Check prerequisites (delegated to PrerequisitesCheckerService)
         prereqs_met, missing = self.check_prerequisites(journey, step_id)
         if not prereqs_met:
-            logger.warning(f"Cannot start step {step_id}: missing prerequisites {missing}")
+            logger.warning("Cannot start step %s: missing prerequisites %s", step_id, missing)
             return False
 
         # Start step (delegated to StepManagerService)

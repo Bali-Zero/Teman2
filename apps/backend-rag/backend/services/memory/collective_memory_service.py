@@ -211,8 +211,7 @@ class CollectiveMemoryService:
                                 memory_id,
                             )
                             logger.info(
-                                f"🎉 [Collective] Fact #{memory_id} promoted to collective "
-                                f"(sources: {actual_source_count})",
+                                "🎉 [Collective] Fact #%s promoted to collective (sources: %s)", memory_id, actual_source_count,
                             )
 
                         logger.info(
@@ -268,7 +267,7 @@ class CollectiveMemoryService:
                     }
 
                 except Exception as e:
-                    logger.error(f"Failed to add collective contribution: {e}")
+                    logger.error("Failed to add collective contribution: %s", e)
                     return {"status": "error", "error": str(e)}
 
     async def refute_fact(
@@ -326,7 +325,7 @@ class CollectiveMemoryService:
                 # Auto-remove if confidence too low
                 if updated["confidence"] < 0.2:
                     await conn.execute("DELETE FROM collective_memories WHERE id = $1", memory_id)
-                    logger.info(f"🗑️ [Collective] Fact #{memory_id} removed due to low confidence")
+                    logger.info("🗑️ [Collective] Fact #%s removed due to low confidence", memory_id)
                     return {"status": "removed", "reason": "low_confidence"}
 
                 return {
@@ -336,7 +335,7 @@ class CollectiveMemoryService:
                 }
 
             except Exception as e:
-                logger.error(f"Failed to refute fact: {e}")
+                logger.error("Failed to refute fact: %s", e)
                 return {"status": "error", "error": str(e)}
 
     async def get_collective_context(
@@ -388,7 +387,7 @@ class CollectiveMemoryService:
                 return [row["content"] for row in rows]
 
             except Exception as e:
-                logger.error(f"Failed to get collective context: {e}")
+                logger.error("Failed to get collective context: %s", e)
                 return []
 
     async def get_all_memories(
@@ -447,7 +446,7 @@ class CollectiveMemoryService:
                 ]
 
             except Exception as e:
-                logger.error(f"Failed to get all memories: {e}")
+                logger.error("Failed to get all memories: %s", e)
                 return []
 
     async def get_memory_sources(self, memory_id: int) -> list[dict]:

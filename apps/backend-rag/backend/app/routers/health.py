@@ -157,14 +157,14 @@ async def get_qdrant_stats() -> dict[str, Any]:
                     except Exception:
                         pass
                 except Exception as coll_err:
-                    logger.debug(f"Skip failed collection {coll_name}: {coll_err}")
+                    logger.debug("Skip failed collection %s: %s", coll_name, coll_err)
 
         return {
             "collections": len(collections_data),
             "total_documents": total_documents,
         }
     except Exception as e:
-        logger.warning(f"Failed to get Qdrant stats: {e}")
+        logger.warning("Failed to get Qdrant stats: %s", e)
         return {"collections": 0, "total_documents": 0, "error": str(e)}
 
 
@@ -366,7 +366,7 @@ async def health_check(request: Request, response: Response) -> HealthResponse:
             )
         except AttributeError as ae:
             # Embedder not fully initialized yet
-            logger.warning(f"Health check: Embedder partially initialized: {ae}")
+            logger.warning("Health check: Embedder partially initialized: %s", ae)
             return HealthResponse(
                 status="initializing",
                 version="v100-qdrant",
@@ -376,7 +376,7 @@ async def health_check(request: Request, response: Response) -> HealthResponse:
 
     except Exception as e:
         # Log error but don't crash - return degraded status
-        logger.error(f"Health check error: {e}", exc_info=True)
+        logger.error("Health check error: %s", e, exc_info=True)
         return HealthResponse(
             status="degraded",
             version="v100-qdrant",
@@ -556,7 +556,7 @@ async def detailed_health(request: Request) -> dict[str, Any]:
         if registry:
             service_registry_status = registry.get_status()
     except Exception as e:
-        logger.warning(f"Failed to get service registry status: {e}")
+        logger.warning("Failed to get service registry status: %s", e)
 
     # Check KG LangGraph Orchestrator (Phase 3)
     try:
@@ -736,7 +736,7 @@ async def qdrant_metrics() -> dict[str, Any]:
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
-        logger.error(f"Failed to get Qdrant metrics: {e}", exc_info=True)
+        logger.error("Failed to get Qdrant metrics: %s", e, exc_info=True)
         return {
             "status": "error",
             "error": str(e),
@@ -849,7 +849,7 @@ async def knowledge_graph_stats(request: Request) -> dict[str, Any]:
             }
 
     except Exception as e:
-        logger.error(f"Failed to get KG stats: {e}", exc_info=True)
+        logger.error("Failed to get KG stats: %s", e, exc_info=True)
         return {
             "status": "error",
             "error": str(e),
@@ -1006,7 +1006,7 @@ async def collections_health(request: Request) -> dict[str, Any]:
             if collection_manager and hasattr(collection_manager, "get_collection_freshness"):
                 freshness = collection_manager.get_collection_freshness()
     except Exception as e:
-        logger.warning(f"Failed to get collection freshness: {e}")
+        logger.warning("Failed to get collection freshness: %s", e)
 
     # Get live point counts from Qdrant
     qdrant_stats = await get_qdrant_stats()
@@ -1027,7 +1027,7 @@ async def collections_health(request: Request) -> dict[str, Any]:
                 except Exception:
                     pass
     except Exception as e:
-        logger.warning(f"Failed to get live Qdrant counts: {e}")
+        logger.warning("Failed to get live Qdrant counts: %s", e)
 
     # Merge freshness + live counts
     collections: dict[str, Any] = {}
