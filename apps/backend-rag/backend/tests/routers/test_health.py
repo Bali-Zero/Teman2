@@ -40,6 +40,17 @@ class TestRouterStructure:
             "error": "boom",
         }
 
+    @pytest.mark.unit
+    def test_skills_mirror_probe_detects_registry_drift(self) -> None:
+        probe = health_module._build_skills_mirror_probe(
+            live_counts={"bali_zero_skills_hybrid": 613},
+            freshness={},
+        )
+
+        assert probe["collection"] == "bali_zero_skills_hybrid"
+        assert probe["status"] == "registry_drift"
+        assert "missing_from_collection_manager" in probe["issues"]
+
 
 class TestHealthEndpoints:
     @pytest.mark.integration
@@ -125,4 +136,3 @@ class TestHealthEndpoints:
         assert body["status"] == "degraded"
         assert body["services"]["database"]["status"] == "healthy"
         assert body["services"]["redis"]["details"]["connected"] is True
-
