@@ -134,6 +134,17 @@ class TestTaxSurface:
         d = _route(router, "pajak badan annual report")
         assert d.domain == "tax"
 
+    @pytest.mark.asyncio
+    async def test_async_tax_rate_query_matches_sync_routing(self, router):
+        """Tax rate queries must not drift to pricing on the async path."""
+        query = "corporate income tax rate for PMA company"
+
+        sync_decision = router.decide(query)
+        async_decision = await router.adecide(query)
+
+        assert sync_decision.surface == Surface.QDRANT_TAX
+        assert async_decision.surface == Surface.QDRANT_TAX
+
 
 # ---------------------------------------------------------------------------
 # 3. Company / KBLI surface (8 queries)

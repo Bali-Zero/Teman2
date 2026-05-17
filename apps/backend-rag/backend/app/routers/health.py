@@ -17,6 +17,7 @@ from fastapi import APIRouter, Request, Response
 
 from backend.app.core.config import settings
 from backend.app.models import HealthResponse
+from backend.core.collection_registry import SKILLS_MIRROR_COLLECTION
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +30,40 @@ STARTUP_WARMUP_DEADLINE_S = float(os.getenv("STARTUP_WARMUP_DEADLINE_S", "180"))
 
 
 _qdrant_client: httpx.AsyncClient | None = None
+
+
+def _build_skills_mirror_probe(
+    live_counts: dict[str, int],
+    freshness: dict[str, Any],
+) -> dict[str, Any]:
+    """Build a read-only health/drift probe for the skills mirror collection."""
+    live_points = live_counts.get(SKILLS_MIRROR_COLLECTION)
+    registered = SKILLS_MIRROR_COLLECTION in freshness
+    issues: list[str] = []
+
+    if not registered:
+        issues.append("missing_from_collection_manager")
+    if live_points is None:
+        issues.append("missing_from_qdrant")
+    elif live_points == 0:
+        issues.append("empty_collection")
+
+    if not registered:
+        status = "registry_drift"
+    elif live_points is None:
+        status = "missing"
+    elif live_points == 0:
+        status = "empty"
+    else:
+        status = "ok"
+
+    return {
+        "collection": SKILLS_MIRROR_COLLECTION,
+        "status": status,
+        "registered": registered,
+        "live_points": live_points,
+        "issues": issues,
+    }
 
 
 def _get_qdrant_client() -> httpx.AsyncClient:
@@ -1009,6 +1044,7 @@ async def collections_health(request: Request) -> dict[str, Any]:
         "total_collections": len(collections),
         "total_documents": qdrant_stats.get("total_documents", 0),
         "collections": collections,
+        "skills_mirror": _build_skills_mirror_probe(live_counts, freshness),
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
 
