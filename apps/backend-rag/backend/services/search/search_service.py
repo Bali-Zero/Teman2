@@ -249,6 +249,14 @@ class SearchService:
         enable_fallbacks: bool,
     ) -> dict[str, Any]:
         """Route a query through SurfaceRouter when available, with safe fallback."""
+        def canonicalize_collections(collections: list[str]) -> list[str]:
+            canonical: list[str] = []
+            for collection in collections:
+                resolved = canonicalize_collection_name(collection)
+                if resolved and resolved not in canonical:
+                    canonical.append(resolved)
+            return canonical
+
         def legacy_route() -> dict[str, Any]:
             routing_info = self.query_router.route_query(
                 query=query,
@@ -264,14 +272,6 @@ class SearchService:
             routing_info.setdefault("is_multi_domain", len(collections) > 1)
             routing_info.setdefault("active_domains", [])
             return routing_info
-
-        def canonicalize_collections(collections: list[str]) -> list[str]:
-            canonical: list[str] = []
-            for collection in collections:
-                resolved = canonicalize_collection_name(collection)
-                if resolved and resolved not in canonical:
-                    canonical.append(resolved)
-            return canonical
 
         if collection_override:
             return legacy_route()
