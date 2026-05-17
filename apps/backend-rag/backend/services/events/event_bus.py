@@ -36,6 +36,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
+import orjson
 
 logger = logging.getLogger(__name__)
 
@@ -286,7 +287,8 @@ class EventBus:
         # Lightweight size warning preserved from phase 1 — outbox.publish
         # re-serialises with _outbox_id injected, so we flag the raw size
         # before it grows further.
-        payload_str = json.dumps(payload, default=str)
+        # orjson 3-10× faster; .decode() because downstream loggers expect str
+        payload_str = orjson.dumps(payload, default=str).decode()
         if len(payload_str) > 7500:
             logger.warning(
                 f"EventBus: PG payload for '{channel}' is {len(payload_str)} bytes "
@@ -413,7 +415,8 @@ class EventBus:
                         payload: dict[str, Any], _ch: str = pg_channel
                     ) -> None:
                         await self._handle_pg_event(
-                            _ch, json.dumps(payload, default=str)
+                            # orjson 3-10× faster; .decode() because _handle_pg_event expects str
+                            _ch, orjson.dumps(payload, default=str).decode()
                         )
 
                     try:

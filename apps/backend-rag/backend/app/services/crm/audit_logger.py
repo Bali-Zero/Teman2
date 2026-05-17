@@ -5,11 +5,11 @@ Tracks all state changes with user attribution and timestamps
 
 import functools
 import inspect
-import json
 from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
+import orjson
 
 from backend.app.utils.logging_utils import get_logger
 
@@ -82,10 +82,11 @@ class CRMAuditLogger:
                     entity_id,
                     change_type,
                     user_email,
-                    json.dumps(old_state, default=str),
-                    json.dumps(new_state, default=str),
-                    json.dumps(changes, default=str),
-                    json.dumps(metadata or {}, default=str),
+                    # orjson 3-10× faster; .decode() because CRM audit columns are TEXT not JSONB
+                    orjson.dumps(old_state, default=str).decode(),
+                    orjson.dumps(new_state, default=str).decode(),
+                    orjson.dumps(changes, default=str).decode(),
+                    orjson.dumps(metadata or {}, default=str).decode(),
                     datetime.now(tz=timezone.utc),
                 )
 

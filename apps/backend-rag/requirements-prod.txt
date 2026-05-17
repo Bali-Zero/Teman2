@@ -108,6 +108,7 @@ scikit-learn>=1.3.0  # Required for GoldenAnswerService cosine similarity
 # - pandas (large, optional for this app)
 # Force rebuild 2026-02-13_00:12:41
 python-json-logger>=2.0.0
+orjson>=3.10.0  # 3-10× faster JSON serialization (FastAPI default response, hot path: pii_scanner, audit_logger, event_bus)
 aiosmtplib>=3.0.0
 apscheduler==3.11.2
 

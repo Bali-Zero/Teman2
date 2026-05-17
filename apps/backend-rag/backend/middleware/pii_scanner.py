@@ -12,6 +12,7 @@ import json
 import logging
 from typing import Any
 
+import orjson
 from presidio_analyzer import AnalyzerEngine, Pattern, PatternRecognizer
 from presidio_anonymizer import AnonymizerEngine
 
@@ -253,7 +254,7 @@ class PIIScannerMiddleware:
         redacted_body = raw_body
         if "application/json" in content_type and raw_body:
             try:
-                payload = json.loads(raw_body)
+                payload = orjson.loads(raw_body)
                 total_redacted = 0
                 all_patterns: list[str] = []
                 for field in self._REDACT_FIELDS:
@@ -286,7 +287,8 @@ class PIIScannerMiddleware:
                             user_hash=hash_subject(subject),
                         ),
                     )
-                redacted_body = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+                # orjson.dumps returns bytes already (UTF-8, non-ASCII passthrough) — no .encode() needed
+                redacted_body = orjson.dumps(payload)
             except (json.JSONDecodeError, UnicodeDecodeError) as exc:
                 # UU PDP audit: an agentic endpoint declared JSON but returned
                 # an unparsable body. Pass-through is safe (no redaction can
