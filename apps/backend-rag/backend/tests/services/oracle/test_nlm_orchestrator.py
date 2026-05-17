@@ -175,13 +175,13 @@ class TestNLMOrchestrator:
 # ── Sprint 1a golden tests: extended routing via NLM_EXTENDED_ROUTING ────────
 
 # The 5 notebooks that were orphaned on the backend side before Sprint 1a.
-NB_5_PROPERTY = "d9438180-5e63-4e2a-a473-6061101f6a8d"
-NB_6_OPERATIONS = "85207af3-352f-4554-8d2a-18f42cc541ba"
-NB_7_EDITORIAL = "f51ab8a0-50d0-49f1-a64f-ebc131fed7b8"
-NB_8_LIFESTYLE = "4fd8cd0f-93f1-4e43-9c9e-86c0d581852c"
-NB_10_TEAM = "f0307c2c-9220-4160-93c8-f4a6ef4a3b65"
+NB_5_PROPERTY = "93314ad3-177e-4d2f-956b-fe4be3e47697"
+NB_6_OPERATIONS = "7fbf37ed-e290-491a-98f5-677d6371ad62"
+NB_7_EDITORIAL = "42687fcb-87fc-40b1-8af8-8a2ff91f9c4c"
+NB_8_LIFESTYLE = "aa9ac5d7-5090-46c7-9d09-89cec4ba13de"
+NB_10_TEAM = "b319f1b3-74a1-415f-b8c0-c0626b008f29"
 # And the legacy-fallback used before the fix.
-NB_3_COMPANY = "933509f9-1561-403d-bd44-4a7a67a36df2"
+NB_3_COMPANY = "045f3cdb-ef62-488c-90ba-82594928b671"
 
 
 class TestExtendedRoutingFlag:
@@ -238,7 +238,7 @@ class TestExtendedRoutingFlag:
         monkeypatch.delenv("NLM_EXTENDED_ROUTING", raising=False)
         orch = self._make_orch()
         assert orch._resolve_notebooks("visa", is_cross_domain=False) == [
-            "cff93ab0-813a-42f2-a8de-36987e724271"
+            "271c7159-0c32-49a1-bda8-803c8e0993a6"
         ]
         assert orch._resolve_notebooks("tax", is_cross_domain=False) == [
             "d4b2eedb-9863-4a1a-81ff-a11b0b45d853"
@@ -284,7 +284,7 @@ class TestExtendedRoutingFlag:
         monkeypatch.setenv("NLM_EXTENDED_ROUTING", "yes")
         orch = self._make_orch()
         assert orch._resolve_notebooks("visa", is_cross_domain=False) == [
-            "cff93ab0-813a-42f2-a8de-36987e724271"
+            "271c7159-0c32-49a1-bda8-803c8e0993a6"
         ]
         assert orch._resolve_notebooks("tax", is_cross_domain=False) == [
             "d4b2eedb-9863-4a1a-81ff-a11b0b45d853"

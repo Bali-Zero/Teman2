@@ -2,7 +2,7 @@
 title: Employment & IP Defense — Indonesian PKWT Contracts (Master Index)
 domain: company
 subdomain: employment_law_ip_protection
-notebook: NB-3 (Company & Licensing) — UUID 933509f9-1561-403d-bd44-4a7a67a36df2
+notebook: NB-3 (Company & Licensing) — UUID 045f3cdb-ef62-488c-90ba-82594928b671
 collection: legal_unified_hybrid_hybrid
 generated_at: 2026-04-25
 generator: Exa Research Pro (exa-research-pro model, $1.56)
