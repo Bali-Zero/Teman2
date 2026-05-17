@@ -154,6 +154,28 @@ def get_qdrant_metrics() -> dict[str, Any]:
     return metrics
 
 
+def _build_point_payload(
+    *,
+    text: str,
+    metadata: dict[str, Any],
+    flatten_payload: bool,
+) -> dict[str, Any]:
+    """Build a Qdrant payload, optionally keeping metadata at top level."""
+    if not flatten_payload:
+        return {"text": text, "metadata": metadata}
+
+    flat_metadata = {key: value for key, value in metadata.items() if key != "metadata"}
+    return {**flat_metadata, "text": text}
+
+
+def _extract_point_metadata(payload: dict[str, Any]) -> dict[str, Any]:
+    """Extract metadata from nested legacy payloads or flat legal payloads."""
+    nested_metadata = payload.get("metadata")
+    if isinstance(nested_metadata, dict):
+        return nested_metadata
+    return {key: value for key, value in payload.items() if key not in {"text", "metadata"}}
+
+
 async def _retry_with_backoff(
     func, max_retries: int = MAX_RETRIES, base_delay: float = RETRY_BASE_DELAY,
 ):
@@ -431,7 +453,7 @@ class QdrantClient:
                 formatted_results = {
                     "ids": [str(r["id"]) for r in results],
                     "documents": [r["payload"].get("text", "") for r in results],
-                    "metadatas": [r["payload"].get("metadata", {}) for r in results],
+                    "metadatas": [_extract_point_metadata(r["payload"]) for r in results],
                     "distances": [
                         1.0 - r["score"] for r in results
                     ],  # Convert similarity to distance
@@ -508,7 +530,9 @@ class QdrantClient:
                         return {
                             "ids": [str(r["id"]) for r in results],
                             "documents": [r["payload"].get("text", "") for r in results],
-                            "metadatas": [r["payload"].get("metadata", {}) for r in results],
+                            "metadatas": [
+                                _extract_point_metadata(r["payload"]) for r in results
+                            ],
                             "distances": [1.0 - r["score"] for r in results],
                             "scores": [r["score"] for r in results],
                             "total_found": len(results),
@@ -671,6 +695,7 @@ class QdrantClient:
         metadatas: list[dict[str, Any]],
         ids: list[str] | None = None,
         batch_size: int = 500,
+        flatten_payload: bool = False,
     ) -> dict[str, Any]:
         """
         Insert or update documents in the collection.
@@ -682,6 +707,7 @@ class QdrantClient:
             metadatas: List of metadata dictionaries
             ids: Optional list of document IDs (auto-generated if not provided)
             batch_size: Number of documents per batch (default: 500)
+            flatten_payload: Put metadata fields at top level instead of nested under "metadata"
 
         Returns:
             Dictionary with operation results
@@ -725,7 +751,11 @@ class QdrantClient:
                     point = {
                         "id": batch_ids[j],
                         "vector": batch_embeddings[j],
-                        "payload": {"text": batch_chunks[j], "metadata": batch_metadatas[j]},
+                        "payload": _build_point_payload(
+                            text=batch_chunks[j],
+                            metadata=batch_metadatas[j],
+                            flatten_payload=flatten_payload,
+                        ),
                     }
                     points.append(point)
 
@@ -756,10 +786,11 @@ class QdrantClient:
                             point = {
                                 "id": batch_ids[j],
                                 "vector": {"dense": batch_embeddings[j]},
-                                "payload": {
-                                    "text": batch_chunks[j],
-                                    "metadata": batch_metadatas[j],
-                                },
+                                "payload": _build_point_payload(
+                                    text=batch_chunks[j],
+                                    metadata=batch_metadatas[j],
+                                    flatten_payload=flatten_payload,
+                                ),
                             }
                             points.append(point)
 
@@ -872,7 +903,7 @@ class QdrantClient:
 
                     payload_data = point.get("payload", {})
                     formatted["documents"].append(payload_data.get("text", ""))
-                    formatted["metadatas"].append(payload_data.get("metadata", {}))
+                    formatted["metadatas"].append(_extract_point_metadata(payload_data))
 
                 return formatted
             except httpx.HTTPStatusError as e:
@@ -1002,7 +1033,9 @@ class QdrantClient:
                 return {
                     "ids": [str(p["id"]) for p in points],
                     "documents": [p.get("payload", {}).get("text", "") for p in points],
-                    "metadatas": [p.get("payload", {}).get("metadata", {}) for p in points],
+                    "metadatas": [
+                        _extract_point_metadata(p.get("payload", {})) for p in points
+                    ],
                 }
 
             except httpx.HTTPStatusError as e:
@@ -1089,7 +1122,7 @@ class QdrantClient:
                 formatted_results = {
                     "ids": [str(r["id"]) for r in results],
                     "documents": [r["payload"].get("text", "") for r in results],
-                    "metadatas": [r["payload"].get("metadata", {}) for r in results],
+                    "metadatas": [_extract_point_metadata(r["payload"]) for r in results],
                     "distances": [1.0 - r.get("score", 0) for r in results],
                     "scores": [r.get("score", 0) for r in results],
                     "total_found": len(results),
@@ -1173,6 +1206,7 @@ class QdrantClient:
         metadatas: list[dict[str, Any]],
         ids: list[str] | None = None,
         batch_size: int = 500,
+        flatten_payload: bool = False,
     ) -> dict[str, Any]:
         """
         Insert or update documents with both dense and sparse vectors.
@@ -1184,6 +1218,7 @@ class QdrantClient:
             metadatas: List of metadata dictionaries
             ids: Optional list of document IDs
             batch_size: Number of documents per batch
+            flatten_payload: Put metadata fields at top level instead of nested under "metadata"
 
         Returns:
             Dictionary with operation results
@@ -1227,7 +1262,11 @@ class QdrantClient:
                             "dense": batch_embeddings[j],
                             "bm25": batch_sparse[j],
                         },
-                        "payload": {"text": batch_chunks[j], "metadata": batch_metadatas[j]},
+                        "payload": _build_point_payload(
+                            text=batch_chunks[j],
+                            metadata=batch_metadatas[j],
+                            flatten_payload=flatten_payload,
+                        ),
                     }
                     points.append(point)
 
