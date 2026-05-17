@@ -11,7 +11,7 @@ For every Indonesian regulation in the Google Sheet 'list peraturan':
 
 Sheet: 1Je7eAK3ya_P5yY9L_JtnwRzkTDrucnzgZ4PvvWlb2us
 PERATURAN folder: 1jcLQ6slWAeQupE8jQjp4EFjAfwlNfteM
-NB-6 notebook: 85207af3-352f-4554-8d2a-18f42cc541ba
+NB-6 notebook: 7fbf37ed-e290-491a-98f5-677d6371ad62
 
 Auth:
   - Google: GOOGLE_SERVICE_ACCOUNT_JSON env var (SA credentials)
@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 
 SHEET_ID = "1Je7eAK3ya_P5yY9L_JtnwRzkTDrucnzgZ4PvvWlb2us"
 PERATURAN_FOLDER_ID = "1jcLQ6slWAeQupE8jQjp4EFjAfwlNfteM"
-NB6_NOTEBOOK_ID = "85207af3-352f-4554-8d2a-18f42cc541ba"
+NB6_NOTEBOOK_ID = "7fbf37ed-e290-491a-98f5-677d6371ad62"
 
 BACKEND_URL = os.getenv("BACKEND_URL", "https://nuzantara-rag.fly.dev")
 SCRAPER_API_KEY = os.getenv("SCRAPER_API_KEY", "internal-scraper-key")

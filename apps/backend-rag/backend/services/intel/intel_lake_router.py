@@ -48,11 +48,11 @@ logger = logging.getLogger(__name__)
 
 # ─── NB-INTEL NotebookLM UUIDs (production, verified) ───────────────────────
 
-NB_INTEL_IMMIGRATION = "1ed02e54-542f-426a-94f8-53c5ffde4b7d"
-NB_INTEL_TAX = "7fb12c9c-4e12-4a8d-9bd1-c5b857bf310f"
-NB_INTEL_REGULATION = "a17f134e-b9ab-42d9-bfc2-5bbc45165c76"
-NB_INTEL_PRESS = "9d262101-abeb-4e15-af9c-c38e028c62fe"
-NB_INTEL_AI_RESEARCH = "dc5d01cd-e99f-4c8f-aae4-75060b43d0de"
+NB_INTEL_IMMIGRATION = "78573978-4564-4bdc-b082-fbd625c2d33d"
+NB_INTEL_TAX = "78b45ad8-ddce-4bd8-bdf0-3b45800897da"
+NB_INTEL_REGULATION = "80821295-703f-40ab-a32a-f0307e43ae2a"
+NB_INTEL_PRESS = "caec5b82-287c-464f-844f-02e2c8f04c21"
+NB_INTEL_AI_RESEARCH = "d48c4933-4d93-4d1e-8753-23b88145ba78"
 
 
 # ─── Routing rules (closed-set, applied top-to-bottom; first match wins) ────

@@ -46,7 +46,7 @@ from .source_management import (
 logger = logging.getLogger(__name__)
 
 # NB-2 configuration
-NB2_NOTEBOOK_ID = "cff93ab0-813a-42f2-a8de-36987e724271"
+NB2_NOTEBOOK_ID = "271c7159-0c32-49a1-bda8-803c8e0993a6"
 
 # File paths
 STATE_FILE = "apps/evaluator/nlm_nb2_pipeline_state.json"

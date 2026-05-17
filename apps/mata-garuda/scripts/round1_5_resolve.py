@@ -46,7 +46,7 @@ DELETE_PREFIX = f"[ARCHIVED-DELETE-{TODAY}]"
 # -----------------------------------------------------------------------------
 
 NB9 = "d2a05271-2f65-4c02-a44d-eefeb7c7f7cd"  # NB-9 Research Lab
-AIR = "dc5d01cd-e99f-4c8f-aae4-75060b43d0de"  # NB-INTEL-AIResearch (already ACTIVE)
+AIR = "d48c4933-4d93-4d1e-8753-23b88145ba78"  # NB-INTEL-AIResearch (already ACTIVE)
 
 
 # (uuid, action, target_or_label)
