@@ -13,6 +13,27 @@ anti-pattern, esempio concreto `file:line`, trade-off, scar correlato.
 shape). Lesson = incident evidence showing why the pattern exists.
 Lessons live in `03-lessons.md`.
 
+### Status taxonomy
+
+Per evitare confusione fra design corrente e gap noti, ogni pattern ha
+`Status:` field:
+
+- **implemented** — pattern attualmente live nel codebase, esempio concreto
+  funzionante.
+- **partial** — implementato parzialmente (manca componente di completezza,
+  es. cascade senza breaker state, NB query senza freshness check).
+- **proposed** — pattern non ancora in codebase; documentato qui come
+  target architecture.
+
+### Citation policy
+
+Code citations (`<path>:<line>`) puntano a git-versioned files in
+`apps/`, `scripts/`, `~/.claude/agents/` — anchor stabile via commit hash.
+Memory file citations (`~/.claude/projects/.../memory/*.md`) sono PER
+NATURA volatili (rinominate, archiviate). Quando possibile cito scar-ID
+stabile (es. "Wave 2 Pro 2026-04-29") invece di `lessons.md:N`. Quando
+cito memory:line, è best-effort al moment-of-write, non stable contract.
+
 ## Index
 
 | #   | Pattern                                            | Category      |
@@ -30,6 +51,8 @@ Lessons live in `03-lessons.md`.
 ---
 
 ## Pattern 1: Single-flight / lease / idempotency guard
+
+**Status**: implemented (canva_renderer_v2 lease primitives + wr2_supervisor \_draft_locks)
 
 **Quando usarlo**: cron loop o orchestrator che pesca task da queue condivisa. Senza claim atomico, due worker possono processare la stessa unità.
 
@@ -57,6 +80,8 @@ CAS atomico in SQL: UPDATE...WHERE lease_owner IS NULL RETURNING. Worker che per
 
 ## Pattern 2: Durable queue / outbox / DLQ / replay contract
 
+**Status**: implemented (events_outbox PG + intel-lake-outbox-drain + dlq-autopilot + outbox-prune.daily/weekly)
+
 **Quando usarlo**: ogni side-effect cross-process che deve sopravvivere a crash, restart, deploy. Producer scrive a outbox in stessa tx del side-effect; consumer separato drena outbox; failures vanno a DLQ con retry policy.
 
 **Anti-pattern**: producer fires-and-forgets (HTTP POST, pg_notify, Redis publish) senza outbox — listener crash window = eventi persi for-ever. Cf. cicatrix `EventBus is PG LISTEN/NOTIFY but Symbiosis docs say Redis Streams`.
@@ -83,6 +108,8 @@ Companion: `scripts/outbox_prune.py` (daily, retention 30d), `~/.claude/agents/.
 ---
 
 ## Pattern 3: Heartbeat / liveness / watchdog contract
+
+**Status**: implemented (wr2_supervisor_heartbeat + 3 watchdog cron: pg-organism, wr2-canva-lease, fly-restart-loop-detector)
 
 **Quando usarlo**: ogni long-running daemon (supervisor, listener, sync). Distinguere 4 stati: alive (recent heartbeat), stuck (no heartbeat N min), stale (heartbeat ma metrics ferme), silently-degraded (heartbeat + metrics ma output wrong).
 
@@ -114,6 +141,8 @@ Due canali ridondanti (DB row + file) — se uno fail, l'altro tiene. Watchdog s
 
 ## Pattern 4: Provider cascade + circuit breaker + degraded-mode boundary
 
+**Status**: partial (cascade implementato; breaker state + degraded-mode marking NON ancora — gap noto)
+
 **Quando usarlo**: cron job autonomo che dipende da provider esterno (LLM quota, API, external DB). Cascade fallback OK, ma serve breaker state + cooldown + semantic-validation per non mascherare bad output as success.
 
 **Anti-pattern**: cascade puro stdout-grep senza breaker state — Tier-1 sempre tentato anche dopo 10 fail consecutivi (waste latency). Senza degraded-mode boundary, Tier-4 (Ollama local) output può finire in cliente come fosse Tier-1 quality.
@@ -138,6 +167,8 @@ L'esempio attuale è cascade puro. Pattern completo richiederebbe: (a) state fil
 
 ## Pattern 5: Empirical post-action verification
 
+**Status**: implemented (regulatory-watcher disk-state check + lessons_hallucinating_tool_output rule globale CLAUDE.md §Anti-hallucination)
+
 **Quando usarlo**: dopo ogni side-effect non-locale (Write, Bash mutation, deploy, enqueue, publish, migration apply, PR create, source sync). Lo status code è il livello più alto di indirezione — sotto vivono i fail silenziosi.
 
 **Anti-pattern**: trust del solo exit code 0 / HTTP 200 / "success" log line. Pattern di fail silenzioso: file scompaiono (sibling cleanup), processo "completa" con exit=0 (launchd masking), metric=0 con log success ("Applied: 26 migrations" stale count). Cf. memory `lessons_hallucinating_tool_output_is_diabolical.md` regola #3 ("dopo Write ri-verifica con ls -la SUBITO").
@@ -161,6 +192,8 @@ Pattern generalizzato: post-deploy `curl health endpoint`; post-migration `SELEC
 ---
 
 ## Pattern 6: Ground-truth verifier with freshness check (NotebookLM)
+
+**Status**: partial (NB routing implementato in wr2-brief-interpreter; freshness check NON ancora implementato — gap noto)
 
 **Quando usarlo**: domain-critical query (regulatory, KBLI, visa, tax, property) dove single-LLM hallucination su normativa Indonesia = costo catastrofico. NB-INTEL specifico per il dominio funge da ground-truth.
 
@@ -188,6 +221,8 @@ Estrae citation verbatim (`PP 18/2021`, `KEP-71/PJ/2026`) + concrete numbers + f
 
 ## Pattern 7: Bounded adversarial review gate
 
+**Status**: implemented (devils-advocate agent + 4-LLM panel rule da 2026-05-13)
+
 **Quando usarlo**: pre-publish gate su output high-stakes (dossier, research, quote, strategy, spec critical-path). Fan-out parallel a 2-4 reviewer adversarial con cap iterazioni.
 
 **Anti-pattern**: single-reviewer (mono-bias provider-correlato); loop infinito di refinement (devils-advocate caught empirically PPh21 Q3 2026: P4-P7 sono medium-only nitpicks editorial); review sequenziale (slow + biases later LLM by earlier output); skipping "il design sembra ovvio" — l'ovvio è dove i killer flaw si nascondono.
@@ -212,6 +247,8 @@ Pre-publish artifact: `~/.claude/agents/devils-advocate.md` ("find the legal fla
 
 ## Pattern 8: Parallel wave orchestration with capacity caps
 
+**Status**: implemented (superpowers:dispatching-parallel-agents skill + cap 4 documented operational rule)
+
 **Quando usarlo**: ≥2 task indipendenti senza shared state né dipendenze sequenziali. Orchestrator dispatcha N agent paralleli (cf. `superpowers:dispatching-parallel-agents`). Topology centralized (orchestrator-led) preferita: error amplification 4.4× vs independent (no-coord) 17.2× (Kim et al. 2025 arxiv 2512.08296).
 
 **Anti-pattern**: >4 sessioni parallele se ≥1 tocca prod esterna (LLM provider capacity exhaustion wave-level); brainstorm cap >3 scambi (gonfiamento scope FASE 2 wave 2026-05-07); scope esterno-irreversibile in wave parallela (prod deploy concorrente); independent topology (peer-to-peer no coordination → 17.2× error).
@@ -233,6 +270,8 @@ se 1 tocca prod esterna.
 ---
 
 ## Pattern 9: Artifact provenance / hash anchoring
+
+**Status**: implemented (wr2-design-architect Art 5.10 Contract C + \_audit-checklist.sh hero-sha mode)
 
 **Quando usarlo**: pipeline che riusa asset (immagini, embedding, document fragment) da run precedenti. Ogni reuse decision deve essere loggata con source + hash, mai silenziosa.
 
