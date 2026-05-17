@@ -11,8 +11,6 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import pytest
-
 from backend.services.oracle import nlm_notebook_registry as reg
 
 
@@ -106,8 +104,8 @@ def test_resolve_notebook_returns_none_when_stale_and_gated(tmp_path, monkeypatc
     state = tmp_path / "state.json"
     old = (datetime.now(tz=timezone.utc) - timedelta(hours=48)).isoformat()
     _write_state(state, {
-        # Use the actual NB-2 UUID from registry
-        "cff93ab0-813a-42f2-a8de-36987e724271": {
+        # Use the actual NB-2 UUID from registry (zero@balizero.com)
+        "271c7159-0c32-49a1-bda8-803c8e0993a6": {
             "last": {"started_at": old, "status": "ok", "uuid": "x"},
         }
     })
@@ -125,7 +123,8 @@ def test_resolve_notebook_returns_nb_when_fresh_and_gated(tmp_path, monkeypatch)
     state = tmp_path / "state.json"
     now = datetime.now(tz=timezone.utc).isoformat()
     _write_state(state, {
-        "cff93ab0-813a-42f2-a8de-36987e724271": {
+        # NB-2 UUID on zero@balizero.com (migration chore/nlm-migrate-zero-account-2026-05-18)
+        "271c7159-0c32-49a1-bda8-803c8e0993a6": {
             "last": {"started_at": now, "status": "ok", "uuid": "fresh"},
         }
     })
