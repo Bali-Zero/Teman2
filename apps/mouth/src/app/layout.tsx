@@ -12,7 +12,6 @@ import { QueryProvider } from "@/components/providers/QueryProvider";
 import { ErrorBoundary } from "@/components/optimization";
 import { WebVitalsMonitor } from "@/components/providers/WebVitalsMonitor";
 import { ThemeProvider } from "@balizero/core/components/ThemeProvider";
-import { WhatsAppFAB } from "@balizero/core/components/WhatsAppFAB";
 import { inter } from "@balizero/core/fonts/inter";
 import { cormorant } from "@balizero/core/fonts/cormorant";
 import { LazyToaster } from "@/components/providers/LazyToaster";
@@ -244,8 +243,6 @@ export default function RootLayout({
             >
               {children}
             </ErrorBoundary>
-            {/* Persistent WhatsApp FAB — visible on every page */}
-            <WhatsAppFAB />
           </ThemeProvider>
           <LazyToaster />
         </QueryProvider>
