@@ -6,7 +6,6 @@ Tracks crawl state to avoid re-processing existing content.
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set
 
 from backend.core.cache import cache
 from backend.core.logger import get_logger, LogAction
@@ -21,9 +20,9 @@ class CrawlState:
     source_id: str
     last_crawl_time: datetime
     last_content_hash: str
-    urls_seen: Set[str]
-    urls_crawled: Set[str]
-    urls_failed: Dict[str, str]  # url -> error
+    urls_seen: set[str]
+    urls_crawled: set[str]
+    urls_failed: dict[str, str]  # url -> error
     items_count: int = 0
     new_items_count: int = 0
 
@@ -39,12 +38,12 @@ class IncrementalTracker:
         """Generate cache key for source."""
         return f"{self.source_prefix}:state:{source_id}"
 
-    async def get_last_crawl_time(self, source_id: str) -> Optional[datetime]:
+    async def get_last_crawl_time(self, source_id: str) -> datetime | None:
         """Get last successful crawl time."""
         state = await self.get_state(source_id)
         return state.last_crawl_time if state else None
 
-    async def get_state(self, source_id: str) -> Optional[CrawlState]:
+    async def get_state(self, source_id: str) -> CrawlState | None:
         """Retrieve crawl state from cache."""
         cache_key = self._get_cache_key(source_id)
         data = await cache.get(cache_key)
@@ -96,7 +95,7 @@ class IncrementalTracker:
         self,
         source_id: str,
         url: str,
-        content_hash: Optional[str] = None,
+        content_hash: str | None = None,
         max_age_hours: int = 24,
     ) -> bool:
         """
@@ -120,10 +119,7 @@ class IncrementalTracker:
 
             # Check age
             age = datetime.now() - state.last_crawl_time
-            if age > timedelta(hours=max_age_hours):
-                return True
-
-            return False
+            return age > timedelta(hours=max_age_hours)
 
         return True
 
@@ -132,8 +128,8 @@ class IncrementalTracker:
         source_id: str,
         url: str,
         success: bool = True,
-        error: Optional[str] = None,
-        content_hash: Optional[str] = None,
+        error: str | None = None,
+        content_hash: str | None = None,
     ) -> None:
         """Mark URL as seen in crawl state."""
         state = await self.get_state(source_id)
@@ -204,7 +200,7 @@ class IncrementalTracker:
                 },
             )
 
-    async def get_stats(self, source_id: str) -> Dict:
+    async def get_stats(self, source_id: str) -> dict:
         """Get crawl statistics for source."""
         state = await self.get_state(source_id)
 
@@ -238,8 +234,8 @@ class IncrementalFeedProcessor:
         self.tracker = tracker
 
     async def filter_new_items(
-        self, source_id: str, items: List[Dict], date_field: str = "published"
-    ) -> List[Dict]:
+        self, source_id: str, items: list[dict], date_field: str = "published"
+    ) -> list[dict]:
         """
         Filter items to only return new ones.
 

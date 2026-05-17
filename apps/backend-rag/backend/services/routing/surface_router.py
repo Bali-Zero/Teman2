@@ -1,4 +1,4 @@
-"""SurfaceRouter — R5 Phase 3.
+"""SurfaceRouter — R5 Phase 3+4.
 
 2-layer routing:
   Layer 1: Keyword scoring via QueryRouterIntegration (< 1 ms, ~80 % of queries).
@@ -6,6 +6,7 @@
 
 Feature flag: SURFACE_ROUTER_ENABLED env var (default "false" — shadow mode).
 Skills surface: bali_zero_skills_hybrid on Qdrant Cloud (R5 AIL #1, 2026-05-17).
+KG surface: routes entity/relationship queries to KGOrchestrator (Neo4j, R5 Phase 4, 2026-05-17).
 
 Ref: docs/superpowers/specs/2026-05-16-r5-phase3-surface-router-design.md
 """
@@ -46,6 +47,8 @@ class Surface:
     QDRANT_PRICING = "qdrant_pricing"
     QDRANT_NEWS = "qdrant_news"
     QDRANT_SKILLS = "qdrant_skills"
+    # R5 Phase 4: Neo4j KG as 8th surface — entity/relationship queries
+    KG = "kg"
 
 
 # ---------------------------------------------------------------------------
@@ -132,6 +135,27 @@ _NEWS_TERMS: frozenset[str] = frozenset({
     "pengumuman", "announcement",
 })
 
+# KG-trigger keywords — entity/relationship queries routed to Neo4j KGOrchestrator
+# Multilingual: EN + IT + ID (R5 Phase 4, 2026-05-17)
+_KG_ENTITY_KEYWORDS: frozenset[str] = frozenset({
+    # Entity resolution
+    "chi è", "who is", "siapa", "direttore", "direktur", "owner of", "pemilik",
+    "entity", "entità", "entitas",
+    # Relationship traversal
+    "relazione tra", "relationship between", "hubungan antara",
+    "collegato a", "linked to", "terhubung ke", "terhubung dengan",
+    "connected to", "kolega", "associated with",
+    # Structure / hierarchy
+    "struttura societaria", "company structure", "struktur perusahaan",
+    "organigramma", "company ownership", "kepemilikan perusahaan",
+    "ownership structure", "shareholder", "pemegang saham",
+    # Graph-specific
+    "graph traversal", "graph search", "knowledge graph",
+    "chi conosce", "who knows", "siapa yang mengenal",
+    "collegato a quale", "linked to which",
+    "entity relationship", "relasi entitas",
+})
+
 
 # ---------------------------------------------------------------------------
 # SurfaceDecision dataclass
@@ -147,6 +171,7 @@ class SurfaceDecision:
     layer_used: int           # 1 = keyword, 2 = haiku
     is_local_only: bool
     latency_ms: float
+    is_kg_surface: bool = False  # R5 Phase 4: True → route to KGOrchestrator, skip Qdrant
 
 
 def _make_decision(
@@ -166,6 +191,22 @@ def _make_decision(
         layer_used=layer_used,
         is_local_only=False,  # R5 AIL #1: skills moved to Qdrant Cloud (bali_zero_skills_hybrid)
         latency_ms=latency_ms,
+        is_kg_surface=False,
+    )
+
+
+def _make_kg_decision(latency_ms: float) -> SurfaceDecision:
+    """Build a KG SurfaceDecision — no Qdrant collections, routes to KGOrchestrator."""
+    return SurfaceDecision(
+        surface=Surface.KG,
+        primary_collection="",  # no Qdrant collection — caller uses KGOrchestrator
+        collections=[],
+        domain="kg",
+        confidence=0.88,
+        layer_used=1,
+        is_local_only=False,
+        latency_ms=latency_ms,
+        is_kg_surface=True,
     )
 
 
@@ -185,7 +226,8 @@ def _get_integration() -> QueryRouterIntegration:
 _HAIKU_SYSTEM = (
     "You are a query router for Bali Zero, an Indonesian business services company. "
     "Classify the user query into exactly ONE domain from this list: "
-    "visa, tax, company, property, pricing, news, skills. "
+    "visa, tax, company, property, pricing, news, skills, kg. "
+    "Use 'kg' for entity/relationship queries (who is, ownership structure, graph traversal). "
     "Reply ONLY with a JSON object: "
     '{"domain": "<domain>", "confidence": <0.0-1.0>}'
 )
@@ -224,6 +266,15 @@ class SurfaceRouter:
         if self._integration is None:
             self._integration = _get_integration()
         return self._integration
+
+    # ------------------------------------------------------------------
+    # KG detection (entity/relationship queries → Neo4j KGOrchestrator)
+    # R5 Phase 4 — checked BEFORE skills and pricing to prioritise entity intent
+    # ------------------------------------------------------------------
+
+    def _is_kg_query(self, query: str) -> bool:
+        q = query.lower()
+        return any(kw in q for kw in _KG_ENTITY_KEYWORDS)
 
     # ------------------------------------------------------------------
     # Skills detection (pre-check before domain routing)
@@ -305,8 +356,11 @@ class SurfaceRouter:
                 "pricing": Surface.QDRANT_PRICING,
                 "news": Surface.QDRANT_NEWS,
                 "skills": Surface.QDRANT_SKILLS,
+                "kg": Surface.KG,
             }
             surface = domain_surface_map.get(domain, Surface.QDRANT_VISA)
+            if surface == Surface.KG:
+                return _make_kg_decision(latency_ms=0.0)
             return _make_decision(surface, domain, haiku_confidence, layer_used=2, latency_ms=0.0)
         except (TimeoutError, asyncio.TimeoutError):
             logger.warning("SurfaceRouter: Haiku timeout on query '%s'", query[:60])
@@ -339,6 +393,11 @@ class SurfaceRouter:
         For Haiku enrichment on ambiguous queries, use adecide() from async context.
         """
         t0 = time.perf_counter()
+
+        # R5 Phase 4: KG surface — entity/relationship queries (checked first)
+        if self._is_kg_query(query):
+            elapsed = (time.perf_counter() - t0) * 1000
+            return _make_kg_decision(elapsed)
 
         # Fast pre-checks (ordered by specificity — pricing first to catch "KITAS renewal cost")
         if self._is_skills_query(query):
@@ -383,6 +442,11 @@ class SurfaceRouter:
     async def adecide(self, query: str) -> SurfaceDecision:
         """Route a query with optional Haiku enrichment for ambiguous cases."""
         t0 = time.perf_counter()
+
+        # R5 Phase 4: KG surface — entity/relationship queries (no Haiku needed)
+        if self._is_kg_query(query):
+            elapsed = (time.perf_counter() - t0) * 1000
+            return _make_kg_decision(elapsed)
 
         # Fast pre-checks (no Haiku needed)
         if self._is_skills_query(query):

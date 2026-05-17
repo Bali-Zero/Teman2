@@ -1054,6 +1054,12 @@ async def initialize_channel_router(
             )
             logger.info(f"✅ Fallback orchestrator created with {len(tools)} tools")
 
+            # R5 Phase 5: inject SurfaceRouter into OrchestratorCore for KG fast-path
+            surface_router = getattr(app.state, "surface_router", None)
+            if surface_router and hasattr(orchestrator, "core"):
+                orchestrator.core._surface_router = surface_router
+                logger.info("✅ [R5 Phase 5] SurfaceRouter injected into OrchestratorCore")
+
             # Eagerly initialize async components (MemoryOrchestrator, KG LangGraph)
             # to avoid first-query latency spike
             try:

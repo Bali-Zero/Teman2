@@ -6,7 +6,6 @@ Used by the nuzantara-rag autonomous scheduler to wake up and run
 the bali-intel-scraper daily.
 """
 
-import asyncio
 import logging
 import os
 import uuid

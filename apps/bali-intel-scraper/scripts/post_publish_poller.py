@@ -146,8 +146,7 @@ def run_seo(slug: str, category: str) -> bool:
     body = match.group(2)
 
     # Already optimized?
-    if "answerSnippet" in fm_raw and "Check article for specific dates" not in fm_raw:
-        if "mean for expats in Bali?" not in fm_raw:
+    if "answerSnippet" in fm_raw and "Check article for specific dates" not in fm_raw and "mean for expats in Bali?" not in fm_raw:
             log("  ⏭ SEO already optimized")
             return True
 

@@ -42,7 +42,7 @@ import time
 import uuid
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
-from typing import AsyncIterator
+from collections.abc import AsyncIterator
 
 from .event_bridge import IntelScraperEventBridge
 from .hgt_publisher import IntelScraperHGTBridge, StructuralPattern

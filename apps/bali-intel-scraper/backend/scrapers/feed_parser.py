@@ -6,7 +6,6 @@ Efficiently parses news feeds for article discovery.
 
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, Optional
 
 import aiohttp
 import feedparser
@@ -24,12 +23,12 @@ class FeedEntry:
 
     title: str
     link: str
-    description: Optional[str] = None
-    published: Optional[datetime] = None
-    author: Optional[str] = None
-    categories: List[str] = None
-    content: Optional[str] = None
-    guid: Optional[str] = None
+    description: str | None = None
+    published: datetime | None = None
+    author: str | None = None
+    categories: list[str] = None
+    content: str | None = None
+    guid: str | None = None
 
     def __post_init__(self):
         if self.categories is None:
@@ -42,10 +41,10 @@ class Feed:
 
     title: str
     link: str
-    description: Optional[str] = None
-    language: Optional[str] = None
-    last_build_date: Optional[datetime] = None
-    entries: List[FeedEntry] = None
+    description: str | None = None
+    language: str | None = None
+    last_build_date: datetime | None = None
+    entries: list[FeedEntry] = None
 
     def __post_init__(self):
         if self.entries is None:
@@ -55,14 +54,13 @@ class Feed:
 class FeedParser:
     """Parse RSS and Atom feeds."""
 
-    async def fetch_feed(self, url: str, timeout: int = 30) -> Optional[str]:
+    async def fetch_feed(self, url: str, timeout: int = 30) -> str | None:
         """Fetch feed content."""
         try:
             parsed = urlparse(url)
             await limit_scrape_request(parsed.netloc)
 
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
+            async with aiohttp.ClientSession() as session, session.get(
                     url,
                     timeout=aiohttp.ClientTimeout(total=timeout),
                     headers={
@@ -120,7 +118,7 @@ class FeedParser:
 
         return feed_data
 
-    def _parse_entry(self, entry: Dict) -> FeedEntry:
+    def _parse_entry(self, entry: dict) -> FeedEntry:
         """Parse single feed entry."""
         # Parse published date
         published = None
@@ -149,7 +147,7 @@ class FeedParser:
             guid=entry.get("id") or entry.get("guid"),
         )
 
-    async def parse_url(self, url: str, timeout: int = 30) -> Optional[Feed]:
+    async def parse_url(self, url: str, timeout: int = 30) -> Feed | None:
         """Fetch and parse feed from URL."""
         content = await self.fetch_feed(url, timeout)
 
@@ -175,7 +173,7 @@ class FeedParser:
             )
             return None
 
-    async def get_new_entries(self, url: str, since: datetime) -> List[FeedEntry]:
+    async def get_new_entries(self, url: str, since: datetime) -> list[FeedEntry]:
         """
         Get entries newer than specified date.
 
@@ -205,7 +203,7 @@ class FeedParser:
 
         return new_entries
 
-    def detect_feed_url(self, html_content: str, base_url: str) -> List[str]:
+    def detect_feed_url(self, html_content: str, base_url: str) -> list[str]:
         """Detect feed URLs from HTML."""
         feed_urls = []
 
@@ -242,12 +240,12 @@ class FeedParser:
 feed_parser = FeedParser()
 
 
-async def parse_feed(url: str) -> Optional[Feed]:
+async def parse_feed(url: str) -> Feed | None:
     """Quick function to parse a feed."""
     return await feed_parser.parse_url(url)
 
 
-async def get_new_entries(url: str, since: datetime) -> List[FeedEntry]:
+async def get_new_entries(url: str, since: datetime) -> list[FeedEntry]:
     """Quick function to get new feed entries."""
     return await feed_parser.get_new_entries(url, since)
 

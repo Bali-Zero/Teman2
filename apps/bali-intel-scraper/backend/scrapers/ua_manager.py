@@ -6,7 +6,6 @@ Provides realistic browser user agents to avoid detection.
 
 import random
 from dataclasses import dataclass
-from typing import List, Optional, Dict
 from datetime import datetime
 
 from backend.core.logger import get_logger
@@ -23,7 +22,7 @@ class UserAgent:
     os: str
     device: str
     usage_count: int = 0
-    last_used: Optional[datetime] = None
+    last_used: datetime | None = None
 
 
 class UserAgentManager:
@@ -103,7 +102,7 @@ class UserAgentManager:
         ),
     ]
 
-    def __init__(self, user_agents: Optional[List[UserAgent]] = None):
+    def __init__(self, user_agents: list[UserAgent] | None = None):
         self._user_agents = user_agents or self.DEFAULT_UAS.copy()
         self._current_index = 0
 
@@ -126,7 +125,7 @@ class UserAgentManager:
         ua.last_used = datetime.now()
         return ua.string
 
-    def get_by_browser(self, browser: str) -> Optional[str]:
+    def get_by_browser(self, browser: str) -> str | None:
         """Get a user agent for specific browser."""
         matching = [
             ua for ua in self._user_agents if ua.browser.lower() == browser.lower()
@@ -138,7 +137,7 @@ class UserAgentManager:
             return ua.string
         return None
 
-    def get_by_device(self, device: str) -> Optional[str]:
+    def get_by_device(self, device: str) -> str | None:
         """Get a user agent for specific device type."""
         matching = [
             ua for ua in self._user_agents if ua.device.lower() == device.lower()
@@ -165,7 +164,7 @@ class UserAgentManager:
         ua.last_used = datetime.now()
         return ua.string
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """Get usage statistics."""
         return {
             "total": len(self._user_agents),
@@ -177,7 +176,7 @@ class UserAgentManager:
             else None,
         }
 
-    def _count_by(self, field: str) -> Dict[str, int]:
+    def _count_by(self, field: str) -> dict[str, int]:
         """Count user agents by field."""
         counts = {}
         for ua in self._user_agents:

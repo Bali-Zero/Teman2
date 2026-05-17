@@ -5,9 +5,7 @@ Fallback: uses Telethon if TELEGRAM_API_ID/TELEGRAM_API_HASH are set (more messa
 """
 
 import os
-import re
 from datetime import datetime
-from typing import List, Dict
 
 import httpx
 from bs4 import BeautifulSoup
@@ -17,7 +15,7 @@ def fetch_telegram_channel_sync(
     channel_username: str,
     limit: int = 10,
     hours_back: int = 24,
-) -> List[Dict]:
+) -> list[dict]:
     """Fetch messages from a public Telegram channel.
 
     Uses t.me/s/ public preview (no auth). Falls back to Telethon if API creds are set.
@@ -31,7 +29,7 @@ def fetch_telegram_channel_sync(
     return _fetch_via_preview(channel_username, limit)
 
 
-def _fetch_via_preview(channel_username: str, limit: int = 10) -> List[Dict]:
+def _fetch_via_preview(channel_username: str, limit: int = 10) -> list[dict]:
     """Scrape t.me/s/<channel> public preview page — no auth required."""
     url = f'https://t.me/s/{channel_username}'
     resp = httpx.get(
@@ -105,7 +103,7 @@ def _fetch_via_telethon(
     hours_back: int,
     api_id: int,
     api_hash: str,
-) -> List[Dict]:
+) -> list[dict]:
     """Fetch via Telethon API (richer data, requires auth)."""
     import asyncio
     from datetime import timedelta, timezone

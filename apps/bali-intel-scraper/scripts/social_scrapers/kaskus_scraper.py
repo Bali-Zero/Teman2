@@ -8,7 +8,6 @@ No authentication required for public forums.
 
 import time
 from datetime import datetime
-from typing import List, Dict
 from urllib.parse import urljoin
 
 import httpx
@@ -35,7 +34,7 @@ def _render_page(url: str, wait_ms: int = 5000) -> str:
 def fetch_kaskus_threads(
     url: str,
     limit: int = 10,
-) -> List[Dict]:
+) -> list[dict]:
     """Fetch thread listings from a Kaskus forum page."""
     threads = []
 

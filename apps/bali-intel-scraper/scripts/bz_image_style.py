@@ -59,7 +59,6 @@ import os
 import re
 import subprocess
 import sys
-from typing import Optional
 
 # ── Mood classification ──────────────────────────────────────────────────────
 
@@ -425,7 +424,7 @@ def _load_img_token_chain() -> list[tuple[str, str]]:
     return chain
 
 
-def _prompt_via_claude(title: str, category: str, summary: str, mood: str) -> Optional[str]:
+def _prompt_via_claude(title: str, category: str, summary: str, mood: str) -> str | None:
     """Call Claude Haiku via CLI subprocess to generate visual concept.
     Multi-account fallback: tries TOKEN_1→2→3→legacy→keychain.
     Returns the raw prompt string, or None if CLI unavailable/failed."""
@@ -488,8 +487,8 @@ def _assemble_prompt(visual_concept: str, mood: str) -> str:
 def build_cover_prompt(
     title: str,
     category: str = "general",
-    summary: Optional[str] = None,
-    mood: Optional[str] = None,
+    summary: str | None = None,
+    mood: str | None = None,
 ) -> str:
     """Generate a cinematic Flux image prompt for an intel article cover.
 
@@ -524,7 +523,7 @@ def build_slide_prompt(
     title: str,
     body: str = "",
     style_hint: str = "",
-    mood: Optional[str] = None,
+    mood: str | None = None,
 ) -> str:
     """Generate a background photo prompt for war room carousel slides.
 
@@ -547,7 +546,6 @@ def build_slide_prompt(
 # ── CLI for standalone testing ───────────────────────────────────────────────
 
 if __name__ == "__main__":
-    import json
 
     test_cases = [
         {

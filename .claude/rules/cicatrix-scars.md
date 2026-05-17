@@ -56,30 +56,17 @@ Temporary fix was a runtime symlink (fragile: destroyed by `git worktree remove`
 
 ---
 
-### ⚠️ STRUCTURAL: LegalIngestionService bypasses OpenAI 300k token batch limit (2026-05-10)
+### ✅ RESOLVED: LegalIngestionService bypasses OpenAI 300k token batch limit (2026-05-10 → resolved post-2026-05-10)
 
-_Discovered: 2026-05-10 ~15:00 WITA during regulatory-ingest batch on 8 Indonesian regulations · Severity: P1 (silent data loss — reports success but 0 chunks created) · Workaround: skip files >2MB until embed batching shipped_
+_Discovered: 2026-05-10 ~15:00 WITA · **RESOLVED** (verified 2026-05-17 by reading `backend/core/embeddings.py`) · Move to archive at next cleanup._
 
-**TRAUMA:** `LegalIngestionService.ingest_legal_document()` → `EmbeddingsGenerator._embed_batch()` sends ALL chunks in a single OpenAI request. Hard limit: 300,000 tokens/request. On `400 max_tokens_per_request`, pipeline does NOT fatal-error: `_embed_batch()` returns partial/empty array → `HierarchicalIndexer._upsert_hierarchical_chunks()` gets mismatched lengths → `ValueError: chunks, embeddings… must have same length` → outer catch logs "Ingestion failed" but returns `{ok=True, chunks_created=0}`.
+**RESOLUTION:** `EmbeddingsGenerator.generate_embeddings_batch()` now implements two-level batching (lines 409-509 of `embeddings.py`):
+- Level 1: item batches of max 50 texts
+- Level 2: `_split_by_token_budget()` splits each item batch into sub-batches ≤200k tokens
+- `_embed_batch()` propagates exceptions instead of swallowing (cicatrix comment at line 374-382)
+- `_truncate_oversized_input()` handles single inputs >8192 tokens
 
-```
-[done] Permenkumham 22/2023 → chunks=0 in 32s  ← reports "done" but ZERO chunks indexed
-```
-
-3 of 8 affected: Permenkumham 22/2023 (460k tokens), 11/2024 (11MB), Permen ATR/BPN 18/2021 (4.8MB). All three remain only in NotebookLM, NOT in Qdrant `legal_unified_2026`.
-
-**ANTIBODY (proposed, NOT yet implemented):**
-1. Split chunks into sub-batches of max 200k tokens (tiktoken `cl100k_base`) before OpenAI call.
-2. `_embed_batch()` MUST raise on ANY 4xx; caller MUST verify `len(embeddings) == len(chunks)`.
-3. CI test: synthetic >300k-token list → assert success with all chunks OR explicit `ValueError`, never silent `chunks_created=0`.
-
-**Workaround:** `find -size -2M`; treat `chunks_created=0` as failure regardless of `status="ok"`.
-
-**GOTCHA:**
-- `ValueError: must have same length` looks like a chunker bug — it's upstream API rejection. Check OpenAI logs first.
-- `{success: True, chunks_created: 0}` is the failure signature. Always check `chunks_created > 0`.
-- Splitting PDFs manually is destructive (breaks BAB/Pasal hierarchy). Fix must be API-level batching.
-- Files: `backend/core/embeddings.py`, `backend/core/legal/hierarchical_indexer.py`, `backend/services/ingestion/legal_ingestion_service.py`.
+3 affected documents (Permenkumham 22/2023, 11/2024, Permen ATR/BPN 18/2021) need re-ingest against `legal_unified_hybrid_hybrid` — they were 0 chunks before the fix shipped.
 
 ---
 

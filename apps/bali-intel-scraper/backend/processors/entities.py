@@ -6,7 +6,6 @@ Extracts people, organizations, locations, and other entities from text.
 
 import re
 from dataclasses import dataclass
-from typing import Dict, List
 import json
 
 from backend.services.ai_engine import ai_engine, AIProvider
@@ -68,7 +67,7 @@ class EntityExtractor:
     def __init__(self, use_ai: bool = True):
         self.use_ai = use_ai
 
-    async def extract(self, text: str) -> Dict[str, List[Entity]]:
+    async def extract(self, text: str) -> dict[str, list[Entity]]:
         """Extract all entity types from text."""
         entities = {
             "PERSON": [],
@@ -123,7 +122,7 @@ class EntityExtractor:
 
         return entities
 
-    async def _extract_with_ai(self, text: str) -> Dict[str, List[Entity]]:
+    async def _extract_with_ai(self, text: str) -> dict[str, list[Entity]]:
         """Extract entities using AI."""
         prompt = f"""Extract named entities from this text. Return JSON:
 {{
@@ -167,24 +166,24 @@ Text: {text[:3000]}"""
         except json.JSONDecodeError:
             return {}
 
-    async def extract_locations(self, text: str) -> List[Entity]:
+    async def extract_locations(self, text: str) -> list[Entity]:
         """Extract location entities specifically."""
         entities = await self.extract(text)
         return entities.get("LOCATION", [])
 
-    async def extract_people(self, text: str) -> List[Entity]:
+    async def extract_people(self, text: str) -> list[Entity]:
         """Extract person entities specifically."""
         entities = await self.extract(text)
         return entities.get("PERSON", [])
 
-    async def extract_organizations(self, text: str) -> List[Entity]:
+    async def extract_organizations(self, text: str) -> list[Entity]:
         """Extract organization entities specifically."""
         entities = await self.extract(text)
         return entities.get("ORGANIZATION", [])
 
     def format_for_indexing(
-        self, entities: Dict[str, List[Entity]]
-    ) -> Dict[str, List[str]]:
+        self, entities: dict[str, list[Entity]]
+    ) -> dict[str, list[str]]:
         """Format entities for search indexing."""
         return {label: [e.text for e in ents] for label, ents in entities.items()}
 
@@ -192,7 +191,7 @@ Text: {text[:3000]}"""
 extractor = EntityExtractor()
 
 
-async def extract_entities(text: str) -> Dict[str, List[Entity]]:
+async def extract_entities(text: str) -> dict[str, list[Entity]]:
     """Quick function to extract entities."""
     return await extractor.extract(text)
 

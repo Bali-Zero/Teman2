@@ -11,11 +11,10 @@ Chiamato da: backend Fly.io dopo ogni publish dalla news-room
 import json
 import os
 import subprocess
-import sys
 import threading
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
+from urllib.parse import urlparse
 
 SCRIPT_DIR = Path(__file__).parent
 VENV_PYTHON = SCRIPT_DIR.parent / ".venv" / "bin" / "python3"
