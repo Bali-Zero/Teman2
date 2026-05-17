@@ -62,12 +62,12 @@ _CHAT_ID = os.environ.get("TELEGRAM_OWNER_CHAT_ID", "")
 
 NOTEBOOKS: dict[str, dict[str, str]] = {
     "nb2": {
-        "id": "cff93ab0-813a-42f2-a8de-36987e724271",
+        "id": "271c7159-0c32-49a1-bda8-803c8e0993a6",
         "label": "Immigration & Visa",
         "domain": "immigration",
     },
     "nb3": {
-        "id": "933509f9-1561-403d-bd44-4a7a67a36df2",
+        "id": "045f3cdb-ef62-488c-90ba-82594928b671",
         "label": "Company Setup",
         "domain": "company",
     },
@@ -77,27 +77,27 @@ NOTEBOOKS: dict[str, dict[str, str]] = {
         "domain": "tax",
     },
     "nb5": {
-        "id": "d9438180-5e63-4e2a-a473-6061101f6a8d",
+        "id": "93314ad3-177e-4d2f-956b-fe4be3e47697",
         "label": "Property & Real Estate",
         "domain": "property",
     },
     "nb6": {
-        "id": "85207af3-352f-4554-8d2a-18f42cc541ba",
+        "id": "7fbf37ed-e290-491a-98f5-677d6371ad62",
         "label": "Operations & Compliance",
         "domain": "operations",
     },
     "nb7": {
-        "id": "f51ab8a0-50d0-49f1-a64f-ebc131fed7b8",
+        "id": "42687fcb-87fc-40b1-8af8-8a2ff91f9c4c",
         "label": "Editorial & Content",
         "domain": "editorial",
     },
     "nb8": {
-        "id": "4fd8cd0f-93f1-4e43-9c9e-86c0d581852c",
+        "id": "aa9ac5d7-5090-46c7-9d09-89cec4ba13de",
         "label": "Expat Life Bali",
         "domain": "expat",
     },
     "nb10": {
-        "id": "f0307c2c-9220-4160-93c8-f4a6ef4a3b65",
+        "id": "b319f1b3-74a1-415f-b8c0-c0626b008f29",
         "label": "Team Guides Bali Zero",
         "domain": "team",
     },

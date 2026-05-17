@@ -56,7 +56,7 @@ def _nlm_add_url(notebook_id: str, url: str) -> bool:
         return False
     try:
         result = subprocess.run(
-            ["nlm", "source", "add", notebook_id, "--url", url],
+            ["nlm", "source", "add", "--profile", "zero", notebook_id, "--url", url],
             capture_output=True, text=True, timeout=60,
         )
         return result.returncode == 0
@@ -123,7 +123,7 @@ def _nlm_add_text(notebook_id: str, title: str, text: str) -> bool:
 
         for attempt in (1, 2):
             result = subprocess.run(
-                ["nlm", "source", "add", notebook_id, "--file", str(tmp)],
+                ["nlm", "source", "add", "--profile", "zero", notebook_id, "--file", str(tmp)],
                 capture_output=True, text=True, timeout=60,
             )
             if result.returncode == 0:

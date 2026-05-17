@@ -35,7 +35,7 @@ from .source_management import (
 logger = logging.getLogger(__name__)
 
 # NB-8 configuration
-NB8_NOTEBOOK_ID = "4fd8cd0f-93f1-4e43-9c9e-86c0d581852c"
+NB8_NOTEBOOK_ID = "aa9ac5d7-5090-46c7-9d09-89cec4ba13de"
 
 # File paths
 STATE_FILE = "apps/evaluator/nlm_nb8_pipeline_state.json"

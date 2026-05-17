@@ -12,7 +12,7 @@ Timeout: 30s per NLM call.
 import asyncio
 import logging
 import re
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -25,10 +25,10 @@ EVIDENCE_MAX: float = 0.60
 
 # NLM notebook IDs by domain
 DOMAIN_NOTEBOOK_MAP: dict[str, str] = {
-    "visa": "cff93ab0-813a-42f2-a8de-36987e724271",        # NB-2
-    "immigration": "cff93ab0-813a-42f2-a8de-36987e724271",  # NB-2
+    "visa": "271c7159-0c32-49a1-bda8-803c8e0993a6",        # NB-2
+    "immigration": "271c7159-0c32-49a1-bda8-803c8e0993a6",  # NB-2
     "tax": "d4b2eedb-9863-4a1a-81ff-a11b0b45d853",         # NB-4
-    "legal": "933509f9-1561-403d-bd44-4a7a67a36df2",        # NB-3
+    "legal": "045f3cdb-ef62-488c-90ba-82594928b671",        # NB-3
 }
 
 # Redis rate-limit key and max calls per hour
@@ -73,7 +73,7 @@ def _load_nlm_query() -> Any:
     except Exception as exc:  # pragma: no cover
         logger.warning("nlm_verifier: nlm_query unavailable (%s) — verifier disabled", exc)
 
-        def _noop(*args: Any, **kwargs: Any) -> dict:  # type: ignore[misc]
+        def _noop(*_args: Any, **_kwargs: Any) -> dict:  # type: ignore[misc]
             return {"status": "unavailable", "answer": ""}
 
         _nlm_query_fn = _noop
@@ -91,7 +91,7 @@ async def should_verify(
     evidence_score: float,
     is_greeting: bool,
     is_pricing: bool,
-    redis_client: Optional[Any] = None,
+    redis_client: Any | None = None,
 ) -> bool:
     """Decide whether this response warrants NLM verification.
 
@@ -138,8 +138,8 @@ async def verify_response(
     zantara_answer: str,
     domain: str,
     evidence_score: float,
-    db_pool: Optional[Any] = None,
-    redis_client: Optional[Any] = None,
+    db_pool: Any | None = None,
+    redis_client: Any | None = None,
 ) -> None:
     """Run NLM verification for a Zantara response — fire and forget.
 
@@ -216,7 +216,7 @@ async def verify_response(
 # ---------------------------------------------------------------------------
 
 
-def _detect_discrepancy(zantara: str, nlm: str) -> Optional[str]:
+def _detect_discrepancy(zantara: str, nlm: str) -> str | None:
     """Basic v1 discrepancy detection between two answer strings.
 
     Checks:
@@ -265,7 +265,7 @@ def _detect_discrepancy(zantara: str, nlm: str) -> Optional[str]:
 
 
 async def _log_discrepancy(
-    pool: Optional[Any],
+    pool: Any | None,
     query: str,
     zantara_answer: str,
     nlm_answer: str,
