@@ -596,7 +596,11 @@ main,
   }
 
   .glass-panel-deep {
-    @apply bg-black/40 backdrop-blur-xl border border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.4)];
+    background: var(--bz-elevated, #1b222b);
+    backdrop-filter: blur(20px) saturate(1.2);
+    -webkit-backdrop-filter: blur(20px) saturate(1.2);
+    border-right: 1px solid var(--bz-border, rgba(255, 255, 255, 0.05));
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
   }
 
   .glass-card-warm {

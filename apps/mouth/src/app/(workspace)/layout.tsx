@@ -10,7 +10,7 @@ import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { ErrorBoundary } from "@/components/optimization";
 import { CellWidget } from "@/components/cell/CellWidget";
-import { WorkspaceAssistant } from "@/components/workspace/WorkspaceAssistant";
+import { ZantaraWidget } from "@/components/workspace/ZantaraWidget";
 import { KitaCommandPalette } from "@/components/workspace/KitaCommandPalette";
 import { I18nProvider } from "@/i18n";
 import { routeTitles } from "@/types/navigation";
@@ -36,6 +36,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   const mobileSidebarRef = useRef<HTMLDivElement | null>(null);
   const mobileMenuToggleRef = useRef<HTMLButtonElement | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isZantaraOpen, setIsZantaraOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState({
     name: "",
@@ -163,6 +164,18 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
 
   // isOnline status is now managed server-side (PANOPTICON)
 
+  // Cmd+J shortcut — toggle Zantara widget
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "j") {
+        e.preventDefault();
+        setIsZantaraOpen((p) => !p);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
   // Handle logout
   const handleLogout = async () => {
     try {
@@ -234,7 +247,8 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         id="main-content"
         aria-busy="true"
         aria-live="polite"
-        className="min-h-screen flex items-center justify-center bg-transparent"
+        className="min-h-screen flex items-center justify-center"
+        style={{ background: "var(--bz-base, #0f1419)" }}
       >
         <div className="flex flex-col items-center gap-4">
           <div
@@ -255,7 +269,10 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
         <a href="#main-content" className="bz-skip-link">
           Skip to main content
         </a>
-        <div className="min-h-screen bg-transparent">
+        <div
+          className="min-h-screen"
+          style={{ background: "var(--bz-base, #0f1419)" }}
+        >
           {/* Desktop Sidebar — labelled landmark so AT can list it */}
           <div className="hidden md:block">
             <AppSidebar
@@ -263,6 +280,8 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
               unreadWhatsApp={0}
               onLogout={handleLogout}
               ariaLabel="Primary"
+              onZantaraToggle={() => setIsZantaraOpen((p) => !p)}
+              isZantaraOpen={isZantaraOpen}
             />
           </div>
 
@@ -286,6 +305,8 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
                   unreadWhatsApp={0}
                   onLogout={handleLogout}
                   ariaLabel="Primary (mobile)"
+                  onZantaraToggle={() => setIsZantaraOpen((p) => !p)}
+                  isZantaraOpen={isZantaraOpen}
                 />
               </div>
             </>
@@ -328,7 +349,10 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
           </div>
         </div>
         {!isTerminalPage && <CellWidget />}
-        {!isTerminalPage && <WorkspaceAssistant />}
+        <ZantaraWidget
+          open={isZantaraOpen}
+          onClose={() => setIsZantaraOpen(false)}
+        />
         <KitaCommandPalette />
       </ToastProvider>
     </I18nProvider>
