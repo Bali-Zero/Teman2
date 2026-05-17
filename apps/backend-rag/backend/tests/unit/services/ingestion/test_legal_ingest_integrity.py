@@ -50,7 +50,7 @@ def test_preflight_allows_explicit_process_env_override() -> None:
 
 
 def test_preflight_rejects_wrong_target_collection() -> None:
-    """Legal/regulatory ingestion must only target the legal collection family."""
+    """Legal/regulatory ingestion must only target the allowed collection family."""
     from backend.services.ingestion.legal_ingestion_service import (
         LegalIngestIntegrityError,
         LegalIngestPreflight,
@@ -69,6 +69,37 @@ def test_preflight_rejects_wrong_target_collection() -> None:
 
     with pytest.raises(LegalIngestIntegrityError, match="target collection"):
         validate_legal_ingest_preflight(preflight)
+
+
+def test_preflight_accepts_tax_genius_canonical() -> None:
+    """tax_genius is an allowed secondary-authority target (PwC, Big-4 guides, OECD reports)."""
+    from backend.services.ingestion.legal_ingestion_service import (
+        LegalIngestPreflight,
+        validate_legal_ingest_preflight,
+    )
+
+    preflight = LegalIngestPreflight(
+        configured_qdrant_url="http://localhost:6333",
+        process_qdrant_url="http://localhost:6333",
+        env_file_qdrant_url="http://localhost:6333",
+        requested_collection="tax_genius",
+        resolved_collection="tax_genius_hybrid",
+        allow_process_env_override=False,
+        environment="development",
+    )
+
+    validate_legal_ingest_preflight(preflight)
+
+
+def test_allowed_canonical_collections_contains_legal_and_tax() -> None:
+    """Whitelist must include legal_unified (primary) and tax_genius (secondary)."""
+    from backend.services.ingestion.legal_ingestion_service import (
+        ALLOWED_CANONICAL_COLLECTIONS,
+        LEGAL_CANONICAL_COLLECTION,
+    )
+
+    assert LEGAL_CANONICAL_COLLECTION in ALLOWED_CANONICAL_COLLECTIONS
+    assert "tax_genius" in ALLOWED_CANONICAL_COLLECTIONS
 
 
 def test_validate_legal_ingest_result_rejects_failed_service_result() -> None:
