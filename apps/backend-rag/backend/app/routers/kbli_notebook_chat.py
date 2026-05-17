@@ -67,7 +67,7 @@ KBLI_MASTER_PROMPT = (
     "If a user asks what these terms mean, explain them directly using this glossary.\n\n"
     "KNOWN KBLI CODES (use these exact definitions when asked):\n"
     "- 47911 = PERDAGANGAN ECERAN MELALUI MEDIA UNTUK BERBAGAI MACAM BARANG — Retail trade of various consumer goods via internet/digital media platforms. PMA: TERBATAS (restricted).\n"
-    "- 56101 = AKTIVITAS PENYEDIAAN MAKANAN DI BANGUNAN TETAP (RESTORAN) — Restaurant services with permanent building. PMA: TERBUKA (open to foreigners), Risiko: Menengah Rendah.\n"
+    "- 56101 = AKTIVITAS PENYEDIAAN MAKANAN DI BANGUNAN TETAP (RESTORAN) — Restaurant services with permanent building. PMA: TERBUKA (open to foreigners). Risiko is scale-dependent; for PMA/Besar: Menengah Tinggi.\n"
     "- 56210 = AKTIVITAS JASA BOGA UNTUK ACARA TERTENTU (EVENT CATERING) — Event catering/katering. PMA: TERBUKA (open to foreigners), Risiko: Menengah Tinggi.\n"
     "- 56290 = AKTIVITAS JASA BOGA LAINNYA — Other food service activities. PMA: TERBATAS.\n"
     "If a user asks about these codes by number, explain them directly from this list.\n\n"
@@ -124,6 +124,39 @@ KBLI_MASTER_PROMPT = (
     "Only mention additional codes if they directly clarify the answer (e.g., comparing restaurant vs catering).\n"
     "Be thorough but conversational — explain everything they need to know without being robotic."
 )
+
+FOREIGN_INVESTMENT_QUERY_MARKERS: tuple[str, ...] = (
+    "pma",
+    "foreign",
+    "foreigner",
+    "foreign-owned",
+    "foreign owned",
+    "foreign investment",
+    "asing",
+    "investor",
+    "100%",
+)
+
+PMA_SCALE_CONTEXT_BY_CODE: dict[str, str] = {
+    "56101": (
+        "The user is asking about a PT PMA or foreign-owned restaurant, so evaluate "
+        "licensing as skala usaha Besar. Canonical KBLI 2025 data for 56101 shows "
+        "Besar risk: Menengah Tinggi; licensing: NIB dan Sertifikat Standar; PB-UMKU "
+        "can include SLHS, SKPL A/B/C when alcohol is sold, and NKV. Do not describe "
+        "a PT PMA restaurant as Menengah Rendah."
+    ),
+}
+
+
+def _is_foreign_investment_query(query: str) -> bool:
+    normalized = query.lower()
+    return any(marker in normalized for marker in FOREIGN_INVESTMENT_QUERY_MARKERS)
+
+
+def _scale_specific_pma_context_note(code: str, query: str) -> str:
+    if not _is_foreign_investment_query(query):
+        return ""
+    return PMA_SCALE_CONTEXT_BY_CODE.get(code, "")
 
 
 _TRANSLATE_SYSTEM = (
@@ -291,8 +324,8 @@ async def _generate_kbli_explanation_gemini(
 
 
 @cached(
-    ttl=43200, prefix="kbli_explain_v26",
-)  # Cache explanations for 12 hours (v26: 56301 PMA status corrected to TERBUKA)
+    ttl=43200, prefix="kbli_explain_v27",
+)  # Cache explanations for 12 hours (v27: 56101 PMA/Besar risk corrected to Menengah Tinggi)
 async def _generate_kbli_explanation(
     query: str, results: list[KBLISearchResult], parent_docs: dict[str, str] = None,
 ) -> str:
@@ -316,6 +349,10 @@ async def _generate_kbli_explanation(
         if hasattr(r, "expert_legal") and r.expert_legal:
             ex = r.expert_legal
             expert_info = f"\n  Expert Data (PP 28/2025): Bab {ex.get('bab')}, Pasal {ex.get('pasal')}. PB-UMKU: {', '.join(ex.get('pb_umku', []))}. Note: {ex.get('pma_implications')}"
+
+        scale_note = _scale_specific_pma_context_note(r.code, query)
+        if scale_note:
+            expert_info = f"{expert_info}\n  PMA/foreign-owned scale note: {scale_note}"
 
         # Use full parent document content if available, otherwise fall back to truncated description
         if parent_docs and r.code in parent_docs:
