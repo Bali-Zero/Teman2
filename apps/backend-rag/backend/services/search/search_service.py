@@ -25,6 +25,7 @@ from qdrant_client.http import exceptions as qdrant_exceptions
 from backend.app.core.config import settings
 from backend.app.models import TierLevel
 from backend.core.cache import cached
+from backend.core.collection_registry import canonicalize_collection_name
 from backend.services.ingestion.collection_manager import CollectionManager
 from backend.services.ingestion.collection_warmup_service import CollectionWarmupService
 from backend.services.misc.cultural_insights_service import CulturalInsightsService
@@ -116,6 +117,7 @@ class SearchService:
         cultural_insights: CulturalInsightsService | None = None,
         query_router: Any | None = None,
         query_expander: QueryExpander | None = None,
+        surface_router: Any | None = None,
     ) -> None:
         """Initialize SearchService with dependency injection.
 
@@ -201,6 +203,7 @@ class SearchService:
             from backend.services.routing.query_router_integration import QueryRouterIntegration
 
             self.query_router = QueryRouterIntegration()
+        self.surface_router = surface_router
 
         # Initialize cultural insights service (requires embedder)
         self._cultural_insights = cultural_insights or CulturalInsightsService(
@@ -238,6 +241,82 @@ class SearchService:
 
         logger.info(f"✅ SearchService initialized with Qdrant URL: {qdrant_url}")
         logger.info("✅ Using dependency injection for modular services")
+
+    async def _route_search_query(
+        self,
+        query: str,
+        collection_override: str | None,
+        enable_fallbacks: bool,
+    ) -> dict[str, Any]:
+        """Route a query through SurfaceRouter when available, with safe fallback."""
+        def legacy_route() -> dict[str, Any]:
+            routing_info = self.query_router.route_query(
+                query=query,
+                collection_override=collection_override,
+                enable_fallbacks=enable_fallbacks,
+            )
+            collection_name = routing_info["collection_name"]
+            routing_info.setdefault("collections", [collection_name])
+            routing_info.setdefault("confidence", 0.0)
+            routing_info.setdefault("is_pricing", False)
+            routing_info.setdefault("is_multi_domain", len(routing_info["collections"]) > 1)
+            routing_info.setdefault("active_domains", [])
+            return routing_info
+
+        def canonicalize_collections(collections: list[str]) -> list[str]:
+            canonical: list[str] = []
+            for collection in collections:
+                resolved = canonicalize_collection_name(collection)
+                if resolved and resolved not in canonical:
+                    canonical.append(resolved)
+            return canonical
+
+        if collection_override:
+            return legacy_route()
+
+        surface_router = getattr(self, "surface_router", None)
+        if surface_router is None:
+            return legacy_route()
+
+        try:
+            decision = await surface_router.adecide(query)
+            if not decision.primary_collection or not decision.collections:
+                logger.info(
+                    "SurfaceRouter returned non-Qdrant surface=%s; falling back to QueryRouterIntegration",
+                    decision.surface,
+                )
+                return legacy_route()
+            primary_collection = canonicalize_collection_name(decision.primary_collection)
+            collections = canonicalize_collections(
+                decision.collections if enable_fallbacks else [decision.primary_collection]
+            )
+            if not primary_collection or not collections:
+                return legacy_route()
+            logger.info(
+                "SurfaceRouter selected collection=%s surface=%s domain=%s confidence=%.2f layer=%s",
+                primary_collection,
+                decision.surface,
+                decision.domain,
+                decision.confidence,
+                decision.layer_used,
+            )
+            return {
+                "collection_name": primary_collection,
+                "collections": collections,
+                "confidence": decision.confidence,
+                "is_pricing": decision.domain == "pricing",
+                "is_multi_domain": len(collections) > 1,
+                "active_domains": [decision.domain],
+                "surface": decision.surface,
+                "surface_layer": decision.layer_used,
+            }
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "SurfaceRouter routing failed; falling back to QueryRouterIntegration: %s",
+                exc,
+                exc_info=True,
+            )
+            return legacy_route()
 
     async def _init_bm25_with_retry(self) -> bool:
         """Initialize BM25 with retry and fallback."""
@@ -417,8 +496,10 @@ class SearchService:
             raise ValueError("Failed to generate query embedding")
 
         # Route to appropriate collection
-        routing_info = self.query_router.route_query(
-            query=query, collection_override=collection_override, enable_fallbacks=False,
+        routing_info = await self._route_search_query(
+            query=query,
+            collection_override=collection_override,
+            enable_fallbacks=False,
         )
         collection_name = routing_info["collection_name"]
 
@@ -1191,9 +1272,11 @@ class SearchService:
             # Generate query embedding once (reuse for all collections)
             query_embedding = await self.embedder.generate_query_embedding(query)
 
-            # Route query with fallbacks (using QueryRouterIntegration)
-            routing_info = self.query_router.route_query(
-                query=query, collection_override=None, enable_fallbacks=enable_fallbacks,
+            # Route query with fallbacks through the same SurfaceRouter-aware path.
+            routing_info = await self._route_search_query(
+                query=query,
+                collection_override=None,
+                enable_fallbacks=enable_fallbacks,
             )
             primary_collection = routing_info["collection_name"]
             collections_to_search = routing_info["collections"]
