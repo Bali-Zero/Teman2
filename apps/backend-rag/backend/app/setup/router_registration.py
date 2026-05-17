@@ -128,6 +128,7 @@ def include_routers(api: FastAPI) -> None:
         visa_check,  # [4APPS] Homepage Visa Check app (Clock + Match branches)
         visa_oracle,
         voice,
+        wa_mirror_messages,
         webhooks,
         websocket,
         whatsapp_chat,
@@ -275,6 +276,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(
         whatsapp_conversations.router,
     )  # Omnichannel WhatsApp conversations API (dashboard only)
+    api.include_router(wa_mirror_messages.router)  # Read-only wa-mirror CRM timeline API
     api.include_router(instagram_chat.router)  # Instagram DM auto-reply via RAG
     api.include_router(instagram_chat.webhook_router)  # [NEW] Instagram webhook
     api.include_router(intel_lake.router)  # Intel Lake Wave 1 ingest (mig 168)
@@ -487,6 +489,7 @@ def include_light_routers(api: FastAPI) -> None:
         twitter,  # RE-ENABLED 2026-04-29 (P0-6 zero-crash audit) — CRC was actually working
         visa_check,  # [4APPS] Homepage Visa Check app (Clock + Match branches)
         visa_oracle,
+        wa_mirror_messages,
         webhooks,
         websocket,
         whatsapp_conversations,
@@ -588,6 +591,7 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(twitter.router)  # P0-6 re-enabled 2026-04-29
     api.include_router(twitter.webhook_router)  # P0-6 re-enabled 2026-04-29
     api.include_router(whatsapp_conversations.router)
+    api.include_router(wa_mirror_messages.router)  # /api/wa/messages read-only mirror timeline
     api.include_router(instagram_chat.router)
     api.include_router(instagram_chat.webhook_router)
     api.include_router(webhooks.router)
