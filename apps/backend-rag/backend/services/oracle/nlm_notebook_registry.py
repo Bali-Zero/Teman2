@@ -1,5 +1,9 @@
 """NLM Notebook Registry — static mapping of domains to NotebookLM notebook IDs.
 
+# R5 Phase 6 DEPRECATED (2026-05-17): NLM routing removed from RAG pipeline.
+# NB UUIDs here (NB-2..NB-8) are preserved for human-facing NLM UI and NAGA agent.
+# RAG orchestrator no longer routes queries through these notebooks.
+
 Each domain has:
 - notebook_id: operational notebook (NB-Xb) — T2+T3 verified guides
 - primary_notebook_id: oracle notebook (NB-Xa) — T0+T1 law only (None until created)
@@ -17,9 +21,8 @@ from __future__ import annotations
 import json
 import logging
 import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -210,8 +213,8 @@ def _max_stale_hours() -> int:
 def check_ingestion_freshness(
     notebook_id: str,
     *,
-    max_stale_hours: Optional[int] = None,
-    state_path: Optional[Path] = None,
+    max_stale_hours: int | None = None,
+    state_path: Path | None = None,
 ) -> dict[str, object]:
     """Inspect the most recent ingestion canary for a notebook.
 
@@ -359,7 +362,7 @@ def resolve_notebook(
     query: str,
     *,
     enforce_freshness: bool | None = None,
-    max_stale_hours: Optional[int] = None,
+    max_stale_hours: int | None = None,
 ) -> dict[str, object] | None:
     """Resolve a user query to the best-matching NLM notebook.
 

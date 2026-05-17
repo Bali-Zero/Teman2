@@ -1,5 +1,8 @@
 """ARCH-4: Cross-Notebook Intelligence Correlator.
 
+# R5 Phase 6 DEPRECATED (2026-05-17): removed from RAG pipeline (Qdrant+KG canonical).
+# PRESERVED for NAGA agent and future multi-NB research workflows — do not delete.
+
 Detects multi-domain queries and fan-outs to multiple NotebookLM notebooks
 in parallel. Extracts atomic claims from each response, builds a correlation
 matrix (AGREE / CONTRADICT / COMPLEMENT), and synthesizes a unified answer
@@ -429,7 +432,7 @@ def _call_ollama_synthesis(
     except (json.JSONDecodeError, TypeError, ValueError) as exc:
         logger.warning("Ollama synthesis serialization error: %s", exc)
         return None
-    except Exception as exc:
+    except Exception:
         logger.exception("Unexpected error in Ollama synthesis")
         return None
 

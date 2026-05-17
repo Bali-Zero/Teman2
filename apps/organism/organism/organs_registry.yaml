@@ -1,6 +1,6 @@
 version: 1
 checksum_algo: sha256
-checksum: 3bf9146ac12938499ca0a0f89f6c0dc3b83fbecea6c5b6192524daa050a31e71
+checksum: ae5dcddb59506cffea8caa8169eceb46e6e0bf857a5bac84be3519beb9d5d63c
 organs:
   - id: infra.postgres
     runtime: fly_machine
@@ -52,6 +52,45 @@ organs:
     cicatrix_refs:
       - 2026-04-29-startup-failed-mask
       - 2026-04-29-drive-poll-attribute-error
+  - id: backend.surface_router
+    runtime: fly_machine
+    type: daemon
+    expected_hb_seconds: 60
+    owner_module: apps/backend-rag/backend/services/routing/surface_router.py
+    dependencies:
+      - backend.api
+      - infra.postgres
+    recovery_action: fly_machines_start
+    recovery_params:
+      app: nuzantara-rag
+      process_group: api
+    severity_on_silence: warning
+    notes:
+      R5 Phase 3 — in-process routing organ. Routes queries to KG vs vector vs
+      NLM. Always-on since Phase 3 deploy.
+    cicatrix_refs: []
+  - id: backend.kg_langgraph_orchestrator
+    runtime: fly_machine
+    type: daemon
+    enabled: false
+    disabled_reason:
+      "R5 Phase 5: feature-flagged via ENABLE_KG_LANGGRAPH=false (default).
+      Enable via fly secrets set ENABLE_KG_LANGGRAPH=1 on nuzantara-rag. Fast-path wired
+      in OrchestratorCore._try_kg_fast_path() — safe to enable per domain."
+    expected_hb_seconds: 60
+    owner_module: apps/backend-rag/backend/services/rag/kg_langgraph_orchestrator.py
+    dependencies:
+      - backend.api
+      - infra.postgres
+    recovery_action: fly_machines_start
+    recovery_params:
+      app: nuzantara-rag
+      process_group: api
+    severity_on_silence: warning
+    notes:
+      R5 Phase 5 — KG LangGraph fast-path organ. Bypasses vector search for entity-heavy
+      queries when subgraph available.
+    cicatrix_refs: []
   - id: backend.crm.drive_poll
     runtime: pro_launchd
     type: cron
@@ -970,6 +1009,10 @@ organs:
       host: pro
       label: com.balizero.nlm-bridge
     severity_on_silence: critical
+    notes:
+      "R5 Phase 6 (2026-05-17): RAG pipeline no longer routes through NLM. Bridge
+      kept for NAGA agent (non-RAG NLM queries) and human-facing NLM UI. Severity critical
+      unchanged — NAGA depends on it."
     cicatrix_refs: []
   - id: cell.observatory
     runtime: pro_launchd

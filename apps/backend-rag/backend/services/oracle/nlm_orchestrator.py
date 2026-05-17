@@ -1,5 +1,10 @@
 """NLM Orchestrator — unified NotebookLM routing with multi-domain support.
 
+# R5 Phase 6 DEPRECATED (2026-05-17): NLM routing removed from RAG pipeline.
+# Qdrant (vector) + KG LangGraph are now canonical for all Core domains.
+# This module is PRESERVED for NAGA agent (non-RAG NLM queries) — do not delete.
+# RAG orchestrator no longer instantiates or calls this module.
+
 Wraps NLMEnrichmentService + NotebookLMCacheService + CrossNotebookCorrelator
 into a single interface. Expands from 4 to 8+ domains.
 
@@ -10,7 +15,7 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -301,7 +306,7 @@ class NLMOrchestrator:
         all_citations: list[dict[str, Any]] = []
         queried: list[str] = []
 
-        for nb_id, result in zip(notebook_ids, results):
+        for nb_id, result in zip(notebook_ids, results, strict=False):
             if isinstance(result, Exception):
                 logger.warning("NLM multi-query: %s failed (%s)", nb_id, result)
                 continue

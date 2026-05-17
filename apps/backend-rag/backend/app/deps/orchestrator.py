@@ -48,13 +48,17 @@ async def get_orchestrator(request: Request) -> Any:
 
         db_pool = getattr(request.app.state, "db_pool", None)
         search_service = getattr(request.app.state, "search_service", None)
-        nlm_enrichment_service = getattr(request.app.state, "nlm_enrichment_service", None)
         specialized_router = getattr(request.app.state, "specialized_router", None)
         _agentic_rag_orchestrator = create_agentic_rag(
             retriever=search_service,
             db_pool=db_pool,
-            nlm_enrichment_service=nlm_enrichment_service,
             specialized_service_router=specialized_router,
         )
+
+        # R5 Phase 5: inject SurfaceRouter for KG fast-path
+        surface_router = getattr(request.app.state, "surface_router", None)
+        if surface_router and hasattr(_agentic_rag_orchestrator, "core"):
+            _agentic_rag_orchestrator.core._surface_router = surface_router
+            logger.info("✅ [R5 Phase 5] SurfaceRouter injected into OrchestratorCore (main singleton)")
 
     return _agentic_rag_orchestrator

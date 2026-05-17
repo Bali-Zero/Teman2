@@ -63,8 +63,8 @@ from .pipeline import (
     create_default_pipeline,
 )
 from .tools import (
-    CRMTool,
     CalculatorTool,
+    CRMTool,
     ImageGenerationTool,
     PricingTool,
     TeamKnowledgeTool,
@@ -116,7 +116,7 @@ def create_agentic_rag(
     _web_search_client=None,
     semantic_cache: "SemanticCache" = None,
     clarification_service: "ClarificationService" = None,
-    nlm_enrichment_service: Any = None,
+    nlm_enrichment_service: Any = None,  # noqa: ARG001 R5 Phase 6: DEPRECATED — call-site compat
     specialized_service_router: Any = None,
 ) -> AgenticRAGOrchestrator:
     """
@@ -183,7 +183,6 @@ def create_agentic_rag(
         semantic_cache=semantic_cache,
         retriever=retriever,
         clarification_service=clarification_service,
-        nlm_enrichment_service=nlm_enrichment_service,
         specialized_service_router=specialized_service_router,
     )
     logger.debug("create_agentic_rag: Orchestrator instantiated")

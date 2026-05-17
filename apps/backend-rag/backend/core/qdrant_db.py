@@ -21,6 +21,12 @@ except ImportError:
     settings = None
 
 try:
+    from backend.core.collection_registry import canonicalize_collection_name
+except ImportError:
+    def canonicalize_collection_name(collection_name: str) -> str:
+        return collection_name
+
+try:
     from backend.core.exceptions import (
         QdrantConnectionError,
         QdrantServerError,
@@ -152,6 +158,28 @@ def get_qdrant_metrics() -> dict[str, Any]:
         metrics["upsert_avg_docs_per_call"] = 0.0
 
     return metrics
+
+
+def _build_point_payload(
+    *,
+    text: str,
+    metadata: dict[str, Any],
+    flatten_payload: bool,
+) -> dict[str, Any]:
+    """Build a Qdrant payload, optionally keeping metadata at top level."""
+    if not flatten_payload:
+        return {"text": text, "metadata": metadata}
+
+    flat_metadata = {key: value for key, value in metadata.items() if key != "metadata"}
+    return {**flat_metadata, "text": text}
+
+
+def _extract_point_metadata(payload: dict[str, Any]) -> dict[str, Any]:
+    """Extract metadata from nested legacy payloads or flat legal payloads."""
+    nested_metadata = payload.get("metadata")
+    if isinstance(nested_metadata, dict):
+        return nested_metadata
+    return {key: value for key, value in payload.items() if key not in {"text", "metadata"}}
 
 
 async def _retry_with_backoff(
@@ -320,7 +348,10 @@ class QdrantClient:
         return headers
 
     def _convert_filter_to_qdrant_format(
-        self, filter_dict: dict[str, Any],
+        self,
+        filter_dict: dict[str, Any] | None,
+        *,
+        include_flat_payload: bool = False,
     ) -> dict[str, Any] | None:
         """
         Convert simplified filter format to Qdrant filter format.
@@ -339,8 +370,25 @@ class QdrantClient:
         if not filter_dict:
             return None
 
-        must_conditions = []
-        must_not_conditions = []
+        must_conditions: list[dict[str, Any]] = []
+        must_not_conditions: list[dict[str, Any]] = []
+
+        def _match_condition(key: str, match: dict[str, Any]) -> dict[str, Any]:
+            nested = {"key": f"metadata.{key}", "match": match}
+            if not include_flat_payload:
+                return nested
+            return {
+                "should": [
+                    nested,
+                    {"key": key, "match": match},
+                ]
+            }
+
+        def _must_not_conditions(key: str, match: dict[str, Any]) -> list[dict[str, Any]]:
+            conditions = [{"key": f"metadata.{key}", "match": match}]
+            if include_flat_payload:
+                conditions.append({"key": key, "match": match})
+            return conditions
 
         for key, value in filter_dict.items():
             if isinstance(value, dict):
@@ -350,22 +398,22 @@ class QdrantClient:
                     match_values = value["$in"]
                     if match_values:
                         must_conditions.append(
-                            {"key": f"metadata.{key}", "match": {"any": match_values}},
+                            _match_condition(key, {"any": match_values}),
                         )
                 elif "$ne" in value:
                     # Must NOT match this value
-                    must_not_conditions.append(
-                        {"key": f"metadata.{key}", "match": {"value": value["$ne"]}},
+                    must_not_conditions.extend(
+                        _must_not_conditions(key, {"value": value["$ne"]}),
                     )
                 elif "$nin" in value:
                     # Must NOT match any of these values
                     for excluded_value in value["$nin"]:
-                        must_not_conditions.append(
-                            {"key": f"metadata.{key}", "match": {"value": excluded_value}},
+                        must_not_conditions.extend(
+                            _must_not_conditions(key, {"value": excluded_value}),
                         )
             else:
                 # Direct value match
-                must_conditions.append({"key": f"metadata.{key}", "match": {"value": value}})
+                must_conditions.append(_match_condition(key, {"value": value}))
 
         result = {}
         if must_conditions:
@@ -374,6 +422,10 @@ class QdrantClient:
             result["must_not"] = must_not_conditions
 
         return result if result else None
+
+    def _include_flat_payload_filters(self) -> bool:
+        """Return True for collections that may contain top-level metadata fields."""
+        return canonicalize_collection_name(self.collection_name) == "legal_unified"
 
     async def search(
         self,
@@ -416,7 +468,10 @@ class QdrantClient:
 
             # Add filter if provided (Qdrant filter format)
             if filter:
-                qdrant_filter = self._convert_filter_to_qdrant_format(filter)
+                qdrant_filter = self._convert_filter_to_qdrant_format(
+                    filter,
+                    include_flat_payload=self._include_flat_payload_filters(),
+                )
                 if qdrant_filter:
                     payload["filter"] = qdrant_filter
 
@@ -431,7 +486,7 @@ class QdrantClient:
                 formatted_results = {
                     "ids": [str(r["id"]) for r in results],
                     "documents": [r["payload"].get("text", "") for r in results],
-                    "metadatas": [r["payload"].get("metadata", {}) for r in results],
+                    "metadatas": [_extract_point_metadata(r["payload"]) for r in results],
                     "distances": [
                         1.0 - r["score"] for r in results
                     ],  # Convert similarity to distance
@@ -508,7 +563,9 @@ class QdrantClient:
                         return {
                             "ids": [str(r["id"]) for r in results],
                             "documents": [r["payload"].get("text", "") for r in results],
-                            "metadatas": [r["payload"].get("metadata", {}) for r in results],
+                            "metadatas": [
+                                _extract_point_metadata(r["payload"]) for r in results
+                            ],
                             "distances": [1.0 - r["score"] for r in results],
                             "scores": [r["score"] for r in results],
                             "total_found": len(results),
@@ -671,6 +728,7 @@ class QdrantClient:
         metadatas: list[dict[str, Any]],
         ids: list[str] | None = None,
         batch_size: int = 500,
+        flatten_payload: bool = False,
     ) -> dict[str, Any]:
         """
         Insert or update documents in the collection.
@@ -682,6 +740,7 @@ class QdrantClient:
             metadatas: List of metadata dictionaries
             ids: Optional list of document IDs (auto-generated if not provided)
             batch_size: Number of documents per batch (default: 500)
+            flatten_payload: Put metadata fields at top level instead of nested under "metadata"
 
         Returns:
             Dictionary with operation results
@@ -725,7 +784,11 @@ class QdrantClient:
                     point = {
                         "id": batch_ids[j],
                         "vector": batch_embeddings[j],
-                        "payload": {"text": batch_chunks[j], "metadata": batch_metadatas[j]},
+                        "payload": _build_point_payload(
+                            text=batch_chunks[j],
+                            metadata=batch_metadatas[j],
+                            flatten_payload=flatten_payload,
+                        ),
                     }
                     points.append(point)
 
@@ -756,10 +819,11 @@ class QdrantClient:
                             point = {
                                 "id": batch_ids[j],
                                 "vector": {"dense": batch_embeddings[j]},
-                                "payload": {
-                                    "text": batch_chunks[j],
-                                    "metadata": batch_metadatas[j],
-                                },
+                                "payload": _build_point_payload(
+                                    text=batch_chunks[j],
+                                    metadata=batch_metadatas[j],
+                                    flatten_payload=flatten_payload,
+                                ),
                             }
                             points.append(point)
 
@@ -872,7 +936,7 @@ class QdrantClient:
 
                     payload_data = point.get("payload", {})
                     formatted["documents"].append(payload_data.get("text", ""))
-                    formatted["metadatas"].append(payload_data.get("metadata", {}))
+                    formatted["metadatas"].append(_extract_point_metadata(payload_data))
 
                 return formatted
             except httpx.HTTPStatusError as e:
@@ -948,7 +1012,10 @@ class QdrantClient:
 
             # Add filter if provided
             if metadata_filter:
-                qdrant_filter = self._convert_filter_to_qdrant_format(metadata_filter)
+                qdrant_filter = self._convert_filter_to_qdrant_format(
+                    metadata_filter,
+                    include_flat_payload=self._include_flat_payload_filters(),
+                )
                 if qdrant_filter:
                     payload["filter"] = qdrant_filter
 
@@ -1002,7 +1069,9 @@ class QdrantClient:
                 return {
                     "ids": [str(p["id"]) for p in points],
                     "documents": [p.get("payload", {}).get("text", "") for p in points],
-                    "metadatas": [p.get("payload", {}).get("metadata", {}) for p in points],
+                    "metadatas": [
+                        _extract_point_metadata(p.get("payload", {})) for p in points
+                    ],
                 }
 
             except httpx.HTTPStatusError as e:
@@ -1074,7 +1143,10 @@ class QdrantClient:
 
             # Add filter if provided
             if filter:
-                qdrant_filter = self._convert_filter_to_qdrant_format(filter)
+                qdrant_filter = self._convert_filter_to_qdrant_format(
+                    filter,
+                    include_flat_payload=self._include_flat_payload_filters(),
+                )
                 if qdrant_filter:
                     payload["filter"] = qdrant_filter
 
@@ -1089,7 +1161,7 @@ class QdrantClient:
                 formatted_results = {
                     "ids": [str(r["id"]) for r in results],
                     "documents": [r["payload"].get("text", "") for r in results],
-                    "metadatas": [r["payload"].get("metadata", {}) for r in results],
+                    "metadatas": [_extract_point_metadata(r["payload"]) for r in results],
                     "distances": [1.0 - r.get("score", 0) for r in results],
                     "scores": [r.get("score", 0) for r in results],
                     "total_found": len(results),
@@ -1173,6 +1245,7 @@ class QdrantClient:
         metadatas: list[dict[str, Any]],
         ids: list[str] | None = None,
         batch_size: int = 500,
+        flatten_payload: bool = False,
     ) -> dict[str, Any]:
         """
         Insert or update documents with both dense and sparse vectors.
@@ -1184,6 +1257,7 @@ class QdrantClient:
             metadatas: List of metadata dictionaries
             ids: Optional list of document IDs
             batch_size: Number of documents per batch
+            flatten_payload: Put metadata fields at top level instead of nested under "metadata"
 
         Returns:
             Dictionary with operation results
@@ -1227,7 +1301,11 @@ class QdrantClient:
                             "dense": batch_embeddings[j],
                             "bm25": batch_sparse[j],
                         },
-                        "payload": {"text": batch_chunks[j], "metadata": batch_metadatas[j]},
+                        "payload": _build_point_payload(
+                            text=batch_chunks[j],
+                            metadata=batch_metadatas[j],
+                            flatten_payload=flatten_payload,
+                        ),
                     }
                     points.append(point)
 
