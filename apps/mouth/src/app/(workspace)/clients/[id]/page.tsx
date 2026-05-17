@@ -951,6 +951,7 @@ export default function ClientDetailPage() {
           formatTime={formatTime}
           clientCreatedAt={client.created_at}
           clientFirstContact={client.first_contact_date}
+          clientId={clientId}
         />
       )}
 
