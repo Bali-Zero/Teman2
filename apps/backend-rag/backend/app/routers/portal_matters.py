@@ -183,6 +183,11 @@ def _client_safe_intelligence_from_rows(rows: list[Any]) -> dict[str, Any]:
     safe = _empty_client_safe_intelligence()
     if not rows:
         return safe
+    if len(rows) > 1:
+        logger.warning(
+            "Multiple approved intelligence candidates found for portal matter; withholding client-safe summary"
+        )
+        return safe
 
     company_name = _sanitize_client_text(rows[0].get("company_name"))
     approved_at = rows[0].get("approved_at")
@@ -271,29 +276,25 @@ async def get_matter_detail(
 ) -> dict[str, Any]:
     client_id = client["client_id"]
     async with pool.acquire() as conn:
-        try:
-            row = await conn.fetchrow(
-                """
-                SELECT p.id,
-                       pt.name AS title,
-                       pt.category,
-                       p.status,
-                       p.missing_documents,
-                       p.expiry_date,
-                       p.updated_at
-                FROM practices p
-                JOIN practice_types pt ON pt.id = p.practice_type_id
-                WHERE p.id = $1
-                  AND p.client_id = $2
-                  AND (p.client_visible IS TRUE OR p.client_visible IS NULL)
-                  AND p.status NOT IN ('cancelled', 'rejected')
-                """,
-                matter_id,
-                client_id,
-            )
-        except Exception as e:
-            logger.warning(f"matter detail fetch failed: {e}")
-            row = None
+        row = await conn.fetchrow(
+            """
+            SELECT p.id,
+                   pt.name AS title,
+                   pt.category,
+                   p.status,
+                   p.missing_documents,
+                   p.expiry_date,
+                   p.updated_at
+            FROM practices p
+            JOIN practice_types pt ON pt.id = p.practice_type_id
+            WHERE p.id = $1
+              AND p.client_id = $2
+              AND (p.client_visible IS TRUE OR p.client_visible IS NULL)
+              AND p.status NOT IN ('cancelled', 'rejected')
+            """,
+            matter_id,
+            client_id,
+        )
 
         if row is None:
             raise HTTPException(status_code=404, detail="Matter not found")
