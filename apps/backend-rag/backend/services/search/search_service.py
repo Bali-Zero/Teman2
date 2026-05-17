@@ -277,6 +277,8 @@ class SearchService:
         surface_router = getattr(self, "surface_router", None)
         if surface_router is None:
             return legacy_route()
+        if not getattr(surface_router, "enabled", False):
+            return legacy_route()
 
         try:
             decision = await surface_router.adecide(query)

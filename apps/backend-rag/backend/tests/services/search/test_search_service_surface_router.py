@@ -26,6 +26,7 @@ async def test_prepare_search_context_uses_surface_router_when_available() -> No
         route_query=MagicMock(return_value={"collection_name": "visa_oracle"}),
     )
     service.surface_router = SimpleNamespace(
+        enabled=True,
         adecide=AsyncMock(
             return_value=SimpleNamespace(
                 surface="qdrant_skills",
@@ -68,6 +69,7 @@ async def test_route_search_query_falls_back_for_non_qdrant_surface() -> None:
         ),
     )
     service.surface_router = SimpleNamespace(
+        enabled=True,
         adecide=AsyncMock(
             return_value=SimpleNamespace(
                 surface="kg_agentic",
@@ -99,6 +101,7 @@ async def test_route_search_query_canonicalizes_surface_collections() -> None:
     service = SearchService.__new__(SearchService)
     service.query_router = SimpleNamespace(route_query=MagicMock())
     service.surface_router = SimpleNamespace(
+        enabled=True,
         adecide=AsyncMock(
             return_value=SimpleNamespace(
                 surface="qdrant_company",
@@ -128,3 +131,31 @@ async def test_route_search_query_canonicalizes_surface_collections() -> None:
         "training_conversations_hybrid",
         "legal_unified",
     ]
+
+
+@pytest.mark.asyncio
+async def test_route_search_query_uses_legacy_router_when_surface_router_disabled() -> None:
+    """SurfaceRouter must remain shadowed unless explicitly enabled."""
+    service = SearchService.__new__(SearchService)
+    service.query_router = SimpleNamespace(
+        route_query=MagicMock(
+            return_value={
+                "collection_name": "visa_oracle",
+            },
+        ),
+    )
+    service.surface_router = SimpleNamespace(
+        enabled=False,
+        adecide=AsyncMock(),
+    )
+
+    routing_info = await service._route_search_query(
+        "KITAS renewal documents",
+        collection_override=None,
+        enable_fallbacks=True,
+    )
+
+    service.surface_router.adecide.assert_not_called()
+    service.query_router.route_query.assert_called_once()
+    assert routing_info["collection_name"] == "visa_oracle"
+    assert routing_info["collections"] == ["visa_oracle"]
