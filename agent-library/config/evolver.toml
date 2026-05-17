@@ -1,0 +1,89 @@
+# EvoSkill evolver config — Bali Zero Nuzantara agent-library auto-evolver
+#
+# Loaded by scripts/agent-library-evolver-run.sh via:
+#     uv run evoskill run --config agent-library/config/evolver.toml
+#
+# Spec: docs/superpowers/specs/2026-05-17-agent-library-evoskill-design.md
+# Status: Phase 0 (smoke) — no real LLM call yet, BUDGET_USD=0.10 cap.
+# Phase 1 onwards: cron Sunday 03:00 WITA, BUDGET_USD=1.00 prod cap.
+
+[provider]
+# DeepSeek V4 Pro API — proposer + skill-builder + synthesis
+# Per v2 Codex panel finding #2 HIGH: avoids ChatGPT Pro autonomous-loop
+# rate-limit risk (Cloudflare + 500-msg/3h quota).
+# Reasoning effort modes: low | high | max — CLAUDE.md §"DeepSeek V4 Pro"
+name = "deepseek"
+model = "deepseek-v4-pro"
+reasoning_effort = "high"
+
+[entailment]
+# Cross-vendor information isolation per v2 Codex panel finding B
+# (CoEvoSkills paper anti-pattern: same provider for proposer + verifier
+# creates self-confirming loop). Free OAuth tier — cost $0.
+provider = "google"
+model = "gemini-3.1-pro-preview"
+
+[entailment.fallback]
+# When Gemini quota-exhausts (~30 calls/run × 4 runs/month = 120/month
+# typically under free tier; concurrent agents can exhaust earlier).
+# NotebookLM Bali Zero NB-1 as ground-truth fallback.
+provider = "notebooklm"
+notebook_uuid = "38a99d22-c2ec-4d18-9bbc-86fa4c1d72cb"  # NB-1-General Bali Zero
+
+[loop]
+# Frontier top-k retained between iterations (skill set diversity)
+frontier_k = 3
+# Max iterations per weekly run (~30 prompts cap inside)
+max_iterations = 10
+# Held-out validation fraction (rotated each iter)
+holdout_fraction = 0.2
+# Per-prompt cap inside the run (panel finding #2)
+max_prompts = 30
+
+[budget]
+# Single env-var ceiling enforced in wrapper per v3 Codex finding E.
+# Phase 0 smoke: 0.10. Phase 1 prod: 1.00 (default in wrapper).
+# Per-iteration check, fail-closed on missing telemetry (v3 Codex finding 5).
+# Env var BUDGET_USD overrides this — wrapper always wins.
+default_usd = 1.00
+# Wrapper script: scripts/agent-library-evolver-run.sh
+
+[output]
+# Direct write (no symlink — v1 panel finding #4)
+proposals_dir = "agent-library/proposals"
+# Sub-directory format: YYYY-MM-DD/
+date_format = "%Y-%m-%d"
+
+[dedup]
+# FTS5 BM25 score vs existing 02-patterns.md + 03-lessons.md (v3 Codex
+# finding 4 unification — was inconsistent FTS5 vs cosine 0.85).
+# Reject if top match score < 1.5 (lower = more similar = reject).
+# Threshold NOT calibrated on real corpus — known limitation v1
+# (see agent-library/proposals/.known-limitations-v1.md, smoke test
+# pending Phase 1).
+method = "fts5_bm25"
+reject_below = 1.5
+
+[evidence]
+# Existence-linter rules
+rules_path = "agent-library/config/evidence-rules.yaml"
+
+[redaction]
+# Privacy redaction layer (v3 Codex finding C — Symbiosis Law 2 OSINT
+# blindato + UU PDP). MANDATORY pre-LLM call. Fail-closed if redaction
+# missing/empty (v4 Codex finding 2 HIGH).
+rules_path = "agent-library/config/redaction-rules.yaml"
+
+[telegram]
+# Alert recipient — Zero's @zero0101010101010 chat with @Balizerobot.
+# Verified live 2026-04-07 (CLAUDE.md GitHub Secrets section).
+chat_id = "1125336968"
+
+[lifecycle]
+# Cadence: Sunday 03:00 WITA via launchd.
+# After wr2 Reflexion (Sun 02:30), before Mon SessionStart loads.
+cron = "0 3 * * 0"
+# Single-flight via PG advisory lock (prevents cron-creates-trigger-for-cron loop)
+single_flight = true
+# Auto-prune proposals older than N days (kept for re-promotion via watchlist)
+prune_after_days = 30

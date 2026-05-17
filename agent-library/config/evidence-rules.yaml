@@ -1,0 +1,57 @@
+# Evidence-linter rules — Bali Zero Nuzantara agent-library evolver
+#
+# Loaded by scripts/_evidence_lint.py (Phase 1 implementation).
+# Every proposal SKILL.md MUST satisfy at least one rule below;
+# unverifiable refs → reject.
+#
+# Spec: docs/superpowers/specs/2026-05-17-agent-library-evoskill-design.md §3a
+
+rules:
+  # ─── File reference: "<path>:<line>" or "<path>:<line>-<line>" ───
+  - id: file_line_ref
+    description: file path + line number that resolves on disk
+    pattern: '`?([a-zA-Z0-9_./~-]+\.[a-zA-Z0-9]+):(\d+)(?:-(\d+))?`?'
+    verify: file_exists_and_line_in_range
+    examples:
+      - "`apps/backend-rag/backend/services/crm_guardian/ocr.py:42`"
+      - "`scripts/regulatory-watcher-run.sh:14-31`"
+
+  # ─── Git commit: 8-40 hex chars, must resolve via git rev-parse ───
+  - id: commit_hash
+    description: git commit SHA that resolves
+    pattern: '\b([0-9a-f]{8,40})\b'
+    verify: git_rev_parse
+    examples:
+      - "`e2c834776`"
+      - "`4e495ee8f4bcadc5178d3a39e4984eb089c03052`"
+
+  # ─── External URL: HEAD request, 2s timeout, expect 2xx/3xx ───
+  - id: external_url
+    description: HTTP(S) URL that returns success
+    pattern: 'https?://[^\s)>]+'
+    verify: http_head_2xx_or_3xx
+    timeout_sec: 2
+    examples:
+      - "https://github.com/sentient-agi/EvoSkill/releases/tag/v1.1.0"
+
+  # ─── Memory file: "~/.claude/projects/.../memory/<name>.md" ───
+  - id: memory_file_ref
+    description: memory file path that exists
+    pattern: '~/.claude/projects/[^/]+/memory/([a-zA-Z0-9_-]+\.md)'
+    verify: file_exists
+    examples:
+      - "`~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons_hallucinating_tool_output_is_diabolical.md`"
+
+  # ─── Cicatrix scar entry: "scar XYZ in cicatrix-scars.md:line" ───
+  - id: cicatrix_scar_ref
+    description: reference to a cicatrix-scars.md scar by section header
+    pattern: '### \S+ (RESOLVED|STRUCTURAL): [^(]+\(\d{4}-\d{2}-\d{2}'
+    verify: section_header_grep_in_cicatrix
+    examples:
+      - "### ⚠️ STRUCTURAL: 53 LaunchAgents Pro, only 7 (13%) have KeepAlive=true (2026-04-29)"
+
+# Aggregate gate:
+#   - PASS: ≥1 rule matched AND verifier returned True
+#   - FAIL: 0 rules matched OR any verifier returned False
+gate:
+  min_verified_refs: 1

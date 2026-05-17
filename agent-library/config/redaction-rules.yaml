@@ -1,0 +1,110 @@
+# Privacy redaction rules — Bali Zero Nuzantara agent-library evolver
+#
+# Loaded by scripts/_redact_pii.py (Phase 1 implementation).
+# Strips PII / internal data from context BEFORE any external LLM call
+# (DeepSeek API + Gemini OAuth + NotebookLM NB query). Fail-closed:
+# if redaction module fails or returns empty, abort the run (v4 Codex
+# finding 2 HIGH).
+#
+# Spec: docs/superpowers/specs/2026-05-17-agent-library-evoskill-design.md §1.5
+# Compliance: Symbiosis Law 2 (OSINT blindato) + UU PDP Indonesian privacy.
+
+# ─── Indonesian regulatory identifiers ───
+identifiers:
+  - id: npwp
+    description: Nomor Pokok Wajib Pajak (15-digit Indonesian taxpayer ID)
+    pattern: '\b\d{2}\.\d{3}\.\d{3}\.\d-\d{3}\.\d{3}\b'
+    replace: "[NPWP-REDACTED]"
+
+  - id: nib
+    description: Nomor Induk Berusaha (13-digit Indonesian business ID)
+    pattern: '\b\d{13}\b'
+    replace: "[NIB-REDACTED]"
+
+  - id: ktp
+    description: NIK / KTP (16-digit Indonesian national ID)
+    pattern: '\b\d{16}\b'
+    replace: "[KTP-REDACTED]"
+
+  - id: kitas_kitap
+    description: ITAS / ITAP number (KITAS/KITAP, format varies)
+    pattern: '\b(?:2C|2D|2E|3E|RPTKA)\d{8,12}[A-Z]?\b'
+    replace: "[KITAS-REDACTED]"
+
+  - id: imta
+    description: IMTA permit number
+    pattern: '\bIMTA[/\-]\d+[/\-]\d{4}\b'
+    replace: "[IMTA-REDACTED]"
+
+  - id: passport
+    description: passport number (multi-format heuristic — generic 6-9 alphanumeric)
+    # Conservative: only matches when preceded by "passport"/"paspor" word
+    pattern: '(?i)(?:passport|paspor)\s*(?:no\.?|number)?\s*[:#]?\s*([A-Z0-9]{6,9})'
+    replace: "passport [PASSPORT-REDACTED]"
+
+# ─── Personal data ───
+personal:
+  - id: crm_client_names
+    description: client first+last names from clients table (dynamically loaded)
+    # Phase 1: load from psql -c "SELECT full_name FROM clients" and build
+    # alternation regex. Placeholder for static smoke test.
+    pattern: "__DYNAMIC_CRM_CLIENT_NAMES__"
+    replace: "[CLIENT-NAME-REDACTED]"
+
+  - id: team_emails
+    description: team @balizero.com email addresses
+    pattern: '\b(zero|asya|surya|ari\.firda|adit|sahira|krisna|damar|vino|veronika|rina|ruslana|subhi)@balizero\.com\b'
+    replace: "[TEAM-EMAIL-REDACTED]"
+
+  - id: antonello_personal_email
+    description: Antonello's personal Gmail
+    pattern: '\bantonellosiano@gmail\.com\b'
+    replace: "[OWNER-PERSONAL-EMAIL-REDACTED]"
+
+  - id: phone_numbers
+    description: WhatsApp / phone (Indonesian +62, Italian +39, generic E.164)
+    pattern: '\+\d{1,3}\s?\d{2,4}\s?\d{3,4}\s?\d{3,4}'
+    replace: "[PHONE-REDACTED]"
+
+# ─── Internal-only entries (Symbiosis Law 2) ───
+internal:
+  - id: osint_internal_block
+    description: |
+      Entire blocks tagged [osint-internal] are dropped — OSINT data
+      NEVER leaves Pro. The redactor strips from "[osint-internal]" to
+      the next blank line (or end of file).
+    pattern: '\[osint-internal\][\s\S]*?(?=\n\n|\Z)'
+    replace: "[OSINT-INTERNAL-BLOCK-DROPPED]"
+
+  - id: kura_kura_btid_case
+    description: |
+      Kura Kura Bali / PT BTID case 2026-05-12 dossier — out of repo
+      Nuzantara per Antonello directive (OSINT-Nexus/dossiers/). Any
+      reference in mem dump → strip.
+    pattern: '(?i)(kura.?kura|BTID|btid)\s+[^\n]+'
+    replace: "[INTERNAL-DOSSIER-REDACTED]"
+
+  - id: ip_addresses
+    description: IPv4 internal/private addresses (Tailscale + LAN)
+    pattern: '\b(?:10|172\.(?:1[6-9]|2\d|3[01])|192\.168|100\.\d+)\.\d+\.\d+\b'
+    replace: "[INTERNAL-IP-REDACTED]"
+
+  - id: ssh_alias
+    description: ssh pro / ssh mini / ssh air shortcuts
+    pattern: '\bssh\s+(pro|mini|air)\b'
+    replace: "ssh [MACHINE-ALIAS-REDACTED]"
+
+  - id: fly_app_internal
+    description: Fly.io app machine IDs + secrets refs
+    pattern: '\b(?:d894e65bede478|FLY_API_TOKEN|TELEGRAM_BOT_TOKEN)\b'
+    replace: "[FLY-INTERNAL-REDACTED]"
+
+# ─── Aggregate gate ───
+gate:
+  # If redaction would produce empty output (everything stripped), abort.
+  min_remaining_chars: 100
+  # Fail-closed on rule-application error (broken regex, missing file).
+  fail_on_error: true
+  # Idempotency check: applying redactor twice produces identical output.
+  # Smoke test: scripts/test_redact_pii.py (Phase 1).
+  idempotent: true
