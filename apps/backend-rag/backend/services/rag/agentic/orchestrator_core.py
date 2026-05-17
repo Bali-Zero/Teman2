@@ -178,6 +178,11 @@ class OrchestratorCore:
             except Exception as e:
                 logger.warning(f"⚠️ [Phase 6] MultiAgentCoordinator init skipped: {e}")
 
+        # R5 Phase 5: SurfaceRouter KG fast-path
+        # Post-init injectable (service_initializer sets core._surface_router = surface_router).
+        # None = shadow mode: KG routing disabled, falls through to ReAct loop.
+        self._surface_router: Any = None
+
     async def check_faq_cache(
         self,
         query: str,
@@ -597,6 +602,82 @@ class OrchestratorCore:
         except Exception as e:
             logger.warning(f"Failed to track workflow analytics: {e}")
 
+    # ------------------------------------------------------------------
+    # R5 Phase 5: KG fast-path
+    # ------------------------------------------------------------------
+
+    async def _try_kg_fast_path(
+        self,
+        query: str,
+        user_context: dict[str, Any],
+        extracted_entities: dict[str, Any],
+        start_time: float,
+    ) -> CoreResult | None:
+        """Route to KGLangGraphOrchestrator when SurfaceRouter decides KG surface.
+
+        Returns CoreResult on KG hit, None to fall through to the standard ReAct loop.
+        Failures degrade gracefully (return None) per Symbiosis Law 4.
+        """
+        if self._surface_router is None or self.kg_langgraph_orchestrator is None:
+            return None
+
+        try:
+            decision = self._surface_router.decide(query)
+        except Exception as exc:
+            logger.warning("⚠️ [R5 KG] SurfaceRouter.decide failed: %s", exc)
+            return None
+
+        if not decision.is_kg_surface:
+            return None
+
+        logger.info(
+            "🔀 [R5 KG] Fast-path activated: surface=kg, confidence=%.2f",
+            decision.confidence,
+        )
+
+        try:
+            if not hasattr(self.kg_langgraph_orchestrator, "app") or self.kg_langgraph_orchestrator.app is None:
+                await self.kg_langgraph_orchestrator.initialize()
+
+            kg_result = await self.kg_langgraph_orchestrator.query(
+                query=query,
+                user_context=user_context,
+            )
+        except Exception as exc:
+            logger.warning("⚠️ [R5 KG] KGLangGraphOrchestrator.query failed: %s — falling through to ReAct", exc)
+            return None
+
+        if not kg_result:
+            return None
+
+        answer_parts: list[str] = []
+        if kg_result.get("workflow"):
+            answer_parts.append(self._format_workflow_for_prompt(kg_result["workflow"]))
+        if kg_result.get("reasoning"):
+            answer_parts.append(str(kg_result["reasoning"]))
+        answer = "\n\n".join(answer_parts) or "Nessuna entità trovata nel Knowledge Graph."
+
+        sources = [
+            {
+                "type": "kg",
+                "source": "neo4j_knowledge_graph",
+                "domain": "kg",
+                "surface": "kg",
+            }
+        ]
+        if kg_result.get("evidence"):
+            for ev in kg_result["evidence"]:
+                sources.append({"type": "kg", "source": "neo4j_kg_entity", **ev})
+
+        return CoreResult(
+            answer=answer,
+            sources=sources,
+            model_used="kg_langgraph",
+            entities=extracted_entities,
+            timings={"total": time.time() - start_time, "kg_fast_path": time.time() - start_time},
+            tools_called=["kg_langgraph"],
+        )
+
     @traceable(run_type="chain", name="ReAct Loop", tags=["nuzantara", "react"])
     async def execute_react_loop(
         self,
@@ -818,6 +899,17 @@ class OrchestratorCore:
                     timings={"total": time.time() - start_time},
                     tools_called=[ssr_result.get("category", "specialized_service")],
                 )
+
+        # 3b.6. R5 Phase 5: KG fast-path — entity/relationship queries bypass Qdrant ReAct loop
+        kg_fast_result = await self._try_kg_fast_path(
+            query=query,
+            user_context=user_context,
+            extracted_entities=extracted_entities,
+            start_time=start_time,
+        )
+        if kg_fast_result:
+            logger.info("✅ [R5 KG] Fast-path returned answer (skipping ReAct loop)")
+            return kg_fast_result
 
         # 3c. NLM Speculative Fire — launch in parallel with the rest of the pipeline.
         # Placed AFTER all early-return gates/cache checks to avoid task leaks.
