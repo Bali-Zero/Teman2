@@ -214,6 +214,40 @@ def test_rejects_prospect_queue_for_non_admin(
     assert response.status_code == 403
 
 
+def test_member_practice_timeline_requires_assigned_practice(
+    member_user: dict[str, str],
+    mock_db_pool: MagicMock,
+    mock_db_conn: AsyncMock,
+) -> None:
+    """Non-admin practice timelines must use the CRM practice ownership filter."""
+    mock_db_conn.fetchval.return_value = True
+    mock_db_conn.fetch.return_value = [message_row()]
+    client = make_client(member_user, mock_db_pool)
+
+    response = client.get("/api/wa/messages?practice_id=88")
+
+    assert response.status_code == 200
+    visibility_query, *visibility_params = mock_db_conn.fetchval.await_args.args
+    assert "p.assigned_to = $2" in visibility_query
+    assert "p.created_by = $2" in visibility_query
+    assert "c.assigned_to = $2" in visibility_query
+    assert visibility_params == [88, "member@balizero.com"]
+
+
+def test_rejects_member_practice_timeline_when_not_assigned(
+    member_user: dict[str, str],
+    mock_db_pool: MagicMock,
+    mock_db_conn: AsyncMock,
+) -> None:
+    mock_db_conn.fetchval.return_value = False
+    client = make_client(member_user, mock_db_pool)
+
+    response = client.get("/api/wa/messages?practice_id=88")
+
+    assert response.status_code == 404
+    mock_db_conn.fetch.assert_not_awaited()
+
+
 def test_wa_mirror_router_registered_in_manifest_and_runtime() -> None:
     from backend.app.setup.router_manifest import ROUTER_MANIFEST
     from backend.app.setup.router_registration import include_light_routers, include_routers
