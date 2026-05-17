@@ -10,7 +10,17 @@ subagents, cross-tool agents (Cursor rules, Gemini skills), launchd crons
 |---|---|
 | `_generate-inventory.py` | Generator script — pure Python I/O, no network, no LLM, no secrets |
 | `01-inventory.md` | Generated artifact — committed to git, **never hand-edited** |
+| `02-patterns.md` | **Hand-written** — 9 recurring patterns with `file:line` examples and trade-offs |
+| `03-lessons.md` | **Hand-written** — 20 curated lessons (3 categories) + 5 meta-patterns |
 | `README.md` | This file |
+
+## Hand-written vs auto-generated
+
+`01-inventory.md` is regenerated via `make inventory` (auto-gen, never
+hand-edit). `02-patterns.md` and `03-lessons.md` are hand-written
+companions — pedagogical commentary that the generator can't produce
+automatically. Modify directly via PR. Spec:
+[`docs/superpowers/specs/2026-05-17-agent-library-patterns-lessons-design.md`](../docs/superpowers/specs/2026-05-17-agent-library-patterns-lessons-design.md).
 
 ## When to regenerate
 
