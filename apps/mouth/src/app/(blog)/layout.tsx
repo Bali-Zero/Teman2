@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { NavShell, BZLogo, WhatsAppFAB } from "@balizero/core";
+import { NavShell, BZLogo } from "@balizero/core";
 import { ZantaraFAB } from "@/app/v2/_components/ZantaraFAB";
 import { Footer } from "@/app/v2/_components/Footer";
 import { I18nProvider } from "@/i18n";
@@ -52,7 +52,6 @@ export default function BlogLayout({ children }: { children: ReactNode }) {
         <main className="flex-1 pt-14">{children}</main>
         <Footer />
         <ZantaraFAB />
-        <WhatsAppFAB />
       </div>
     </I18nProvider>
   );
