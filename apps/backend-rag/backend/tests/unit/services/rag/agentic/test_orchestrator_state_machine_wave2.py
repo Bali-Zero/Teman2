@@ -39,7 +39,6 @@ from backend.services.rag.agentic.query_gates import QueryGates
 from backend.services.rag.agentic.schema import CoreResult
 from backend.services.tools.definitions import AgentState, BaseTool
 
-
 # ---------------------------------------------------------------------------
 # Fixtures (adapted from test_orchestrator_coverage.py::orchestrator_setup)
 # ---------------------------------------------------------------------------
@@ -413,74 +412,9 @@ class TestSpecializedRouter:
 
 # =============================================================================
 # O13-partial — NLM speculative task creation
+# R5 Phase 6 REMOVED: NLM speculative fire decommissioned 2026-05-17.
+# TestNLMTaskLifecycle deleted — tested dead code paths.
 # =============================================================================
-
-
-@pytest.mark.asyncio
-class TestNLMTaskLifecycle:
-    """O13: NLM task lifecycle — created iff `resolve_notebook` returns a match
-    AND `nlm_enrichment_service` present AND cache miss.
-    """
-
-    async def test_nlm_task_created_on_cache_miss_and_match(self, orch, _stub_final_state):
-        """O13: resolve_notebook returns domain match, faq_cache miss →
-        nlm_enrichment_service.query is invoked as a background task.
-        """
-        query_calls: list[tuple] = []
-
-        nlm_service = MagicMock()
-        async def _nlm_query(nb_id, q):
-            query_calls.append((nb_id, q))
-            return {"answer": "NLM result", "citations": []}
-        nlm_service.query = _nlm_query
-        orch.core.nlm_enrichment_service = nlm_service
-
-        # Force cautious evidence band so the task is awaited + merged
-        _stub_final_state.evidence_score = 0.4
-        _stub_final_state.trusted_tools_used = False
-
-        with patch(
-            "backend.services.oracle.nlm_notebook_registry.resolve_notebook",
-            return_value={
-                "domain": "immigration",
-                "notebook_id": "nb-immig-1",
-                "label": "Immigration",
-            },
-        ), patch(
-            "backend.services.oracle.nlm_notebook_registry.resolve_multi_notebook",
-            return_value=[],
-        ):
-            await orch.process_query("KITAS requirements?", "user@test.com")
-
-        # query was spawned with (notebook_id, query) positional args
-        # Note: the background task may complete or be cancelled depending on
-        # evidence-score branch, but the call itself must have fired.
-        await asyncio.sleep(0.05)  # give the task a tick to run / cancel
-        assert len(query_calls) == 1, f"expected 1 query, got {query_calls}"
-        assert query_calls[0][0] == "nb-immig-1"
-
-    async def test_nlm_task_not_created_when_no_match(self, orch, _stub_final_state):
-        """O13: resolve_notebook returns None → no task is created."""
-        query_calls: list[tuple] = []
-
-        nlm_service = MagicMock()
-        async def _nlm_query(nb_id, q):
-            query_calls.append((nb_id, q))
-            return {"answer": "unreached", "citations": []}
-        nlm_service.query = _nlm_query
-        orch.core.nlm_enrichment_service = nlm_service
-
-        with patch(
-            "backend.services.oracle.nlm_notebook_registry.resolve_notebook",
-            return_value=None,
-        ), patch(
-            "backend.services.oracle.nlm_notebook_registry.resolve_multi_notebook",
-            return_value=[],
-        ):
-            await orch.process_query("Random unrelated query", "user@test.com")
-
-        await asyncio.sleep(0.05)
-        assert query_calls == []
 
 
 # =============================================================================
@@ -517,95 +451,10 @@ class TestReactLoopRaise:
 
 
 # =============================================================================
-# O20 / O21 — NLM merge lifecycle (cautious await / non-cautious cancel)
+# O20 / O21 — NLM merge lifecycle
+# R5 Phase 6 REMOVED: NLM merge block decommissioned 2026-05-17.
+# TestNLMMergeLifecycle deleted — tested dead code paths.
 # =============================================================================
-
-
-@pytest.mark.asyncio
-class TestNLMMergeLifecycle:
-    """O20: cautious evidence (0.15 ≤ ev ≤ 0.60 AND not trusted) → nlm_task
-    awaited + result.nlm_enrichment attached.
-    O21: not-cautious evidence AND task pending → nlm_task.cancel() is called.
-    Invariant I-O4: task is always either awaited or cancelled, never leaked.
-    """
-
-    async def test_cautious_evidence_awaits_and_merges_nlm(
-        self, orch, _stub_final_state,
-    ):
-        """O20: ev=0.4 (cautious, in [0.15, 0.60]) + trusted=False →
-        nlm_task is awaited, result.nlm_enrichment is populated.
-        """
-        _stub_final_state.evidence_score = 0.4
-        _stub_final_state.trusted_tools_used = False
-
-        nlm_service = MagicMock()
-        # Return a real coroutine so asyncio.create_task works
-        async def _nlm_query(nb_id, q):
-            return {
-                "answer": "NLM enrichment text",
-                "citations": [{"source": "pasal 1", "url": "https://x"}],
-            }
-        nlm_service.query = _nlm_query
-        orch.core.nlm_enrichment_service = nlm_service
-
-        with patch(
-            "backend.services.oracle.nlm_notebook_registry.resolve_notebook",
-            return_value={
-                "domain": "immigration",
-                "notebook_id": "nb-1",
-                "label": "Immigration NB",
-            },
-        ), patch(
-            "backend.services.oracle.nlm_notebook_registry.resolve_multi_notebook",
-            return_value=[],
-        ):
-            result = await orch.process_query("KITAS rules?", "user@test.com")
-
-        assert result.nlm_enrichment is not None
-        assert result.nlm_enrichment["domain"] == "immigration"
-        assert result.nlm_enrichment["domain_label"] == "Immigration NB"
-        assert "NLM enrichment text" in result.nlm_enrichment["summary"]
-        assert len(result.nlm_enrichment["citations"]) == 1
-
-    async def test_non_cautious_evidence_cancels_nlm_task(
-        self, orch, _stub_final_state,
-    ):
-        """O21 + I-O4: ev=0.85 (above cautious ceiling) → NLM task is cancelled,
-        not awaited. No nlm_enrichment on result.
-        """
-        _stub_final_state.evidence_score = 0.85
-        _stub_final_state.trusted_tools_used = True
-
-        # Track whether the nlm service sees a cancelled task
-        cancel_event = asyncio.Event()
-
-        nlm_service = MagicMock()
-        async def _slow_nlm_query(nb_id, q):
-            try:
-                await asyncio.sleep(10)  # long enough that cancellation wins
-            except asyncio.CancelledError:
-                cancel_event.set()
-                raise
-            return {"answer": "unreached", "citations": []}
-        nlm_service.query = _slow_nlm_query
-        orch.core.nlm_enrichment_service = nlm_service
-
-        with patch(
-            "backend.services.oracle.nlm_notebook_registry.resolve_notebook",
-            return_value={
-                "domain": "immigration",
-                "notebook_id": "nb-1",
-                "label": "Immigration NB",
-            },
-        ), patch(
-            "backend.services.oracle.nlm_notebook_registry.resolve_multi_notebook",
-            return_value=[],
-        ):
-            result = await orch.process_query("KITAS rules?", "user@test.com")
-
-        assert result.nlm_enrichment is None
-        # Task was cancelled rather than awaited — confirms I-O4
-        assert cancel_event.is_set()
 
 
 # =============================================================================
