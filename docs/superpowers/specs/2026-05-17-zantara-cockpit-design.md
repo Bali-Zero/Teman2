@@ -10,7 +10,7 @@
 
 **v1 panel** (4-LLM 2026-05-17): 4 CRITICAL convergent 2-3/3:
 
-1. **Migration 178 collision** vs existing `178_dream_room_state.sql` (Codex empirical + devils-advocate F1) → **v2 fix**: renumber 180+181
+1. **Migration 178 collision** vs existing `178_dream_room_state.sql` (Codex empirical + devils-advocate F1) → **v2 fix**: renumber 182+183 (was 180+181 in plan; 180 taken by crm_guardian PR #694, 181 freed but kept original 178/179)
 2. **Action layer mutates DB-directly bypass services + lease** (Codex contradiction L178-L181 vs L397, devils-advocate F5) → **v2 fix**: intent-table pattern, cockpit writes only to `cockpit_intents`, existing services/cron consume
 3. **9 POST endpoints + rate-limit posticipato S5** (DeepSeek CRITICAL, Codex CRITICAL) → **v2 fix**: rate-limit from S1, action allowlist hardcoded, no `gh pr merge` from cockpit
 4. **3 SSE streams + PG pool max=3 starvation** (DeepSeek CRITICAL, Codex HIGH, devils-advocate F3 verified empirically `db.ts:20`) → **v2 fix**: singleton SSE multiplexed + dedicated pg.Client outside pool
@@ -110,7 +110,7 @@ CSS variables in `cockpit-shell.css`, scoped to `data-cockpit="true"` root.
 
 ### Action layer — intent-table pattern (v2 CRITICAL fix)
 
-Cockpit **NEVER** writes directly to PG tables with services + lease + state machines (`war_room_drafts`, `intel_items`). Writes to **`cockpit_intents`** (mig 181), existing services/cron consume.
+Cockpit **NEVER** writes directly to PG tables with services + lease + state machines (`war_room_drafts`, `intel_items`). Writes to **`cockpit_intents`** (mig 183), existing services/cron consume.
 
 ```
 # READ-ONLY endpoints (S1):
@@ -143,7 +143,7 @@ POST /api/cockpit/intent/create       {action, params, reason} → INSERT cockpi
 3. **Rate-limit FROM S1** (panel CRITICAL): in-memory Map TTL, 5 failed → 5min lockout per client
 4. **2-step modal** + 1s delay + reason text required for any intent
 5. **Action allowlist hardcoded** in `lib/cockpit-allowlist.ts`: 35 agentic cron labels
-6. **Audit log immutable**: `cockpit_audit_log` with HMAC-SHA256 chain (mig 180)
+6. **Audit log immutable**: `cockpit_audit_log` with HMAC-SHA256 chain (mig 182)
 7. **No `gh pr merge`** from cockpit (panel CRITICAL): cockpit emits intent, Antonello merges manually
 8. **No direct DB writes** to live tables: cockpit → `cockpit_intents` + `cockpit_audit_log` only
 
@@ -151,7 +151,7 @@ POST /api/cockpit/intent/create       {action, params, reason} → INSERT cockpi
 
 - `178_dream_room_state.sql` exists (verified Codex)
 - `179_newsletter_confirmation_token_unique.sql` exists
-- Cockpit migrations: **180** audit, **181** intents
+- Cockpit migrations: **182** audit, **183** intents
 
 ### Realtime — v2 SINGLETON multiplexed (post-panel)
 
@@ -205,8 +205,8 @@ apps/admin-dashboard-local/
     audit.test.ts
 
 apps/backend-rag/backend/db/migrations_v2/
-  180_cockpit_audit_log.sql           # HMAC chain
-  181_cockpit_intents.sql             # intent queue
+  182_cockpit_audit_log.sql           # HMAC chain
+  183_cockpit_intents.sql             # intent queue
 ```
 
 ---

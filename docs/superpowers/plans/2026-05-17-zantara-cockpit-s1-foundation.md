@@ -4,7 +4,7 @@
 
 **Goal:** Foundation of Zantara Cockpit at `localhost:3100/cockpit`: Bloomberg neon-green theme + 12-widget grid skeleton + 2 LIVE widget (GlobalPulse + DecisionsAttesa) + intent-table action skeleton + PIN auth + rate-limit + HMAC audit + start script. Smoke: page opens, 2 widget work, PIN gate enforced, allowlist+reason validated, no DB writes to live tables.
 
-**Architecture:** Extend existing `apps/admin-dashboard-local/` (Next.js 16.1.6). New `/cockpit` route with 4×3 grid. New CSS `cockpit-shell.css`. New `lib/cockpit-*.ts` helpers. 2 PG migrations (180 audit + 181 intents). bcrypt PIN in middleware. NO SSE in S1 (polling only).
+**Architecture:** Extend existing `apps/admin-dashboard-local/` (Next.js 16.1.6). New `/cockpit` route with 4×3 grid. New CSS `cockpit-shell.css`. New `lib/cockpit-*.ts` helpers. 2 PG migrations (182 audit + 183 intents). bcrypt PIN in middleware. NO SSE in S1 (polling only).
 
 **Tech Stack:** Next.js 16.1.6 App Router, React 18, Tailwind 3.4, JetBrains Mono via `next/font/google`, bcryptjs 3.0.3 (root), pg 8, launchctl subprocess, gh CLI subprocess, Node crypto HMAC.
 
@@ -16,8 +16,8 @@
 
 | Path                                                                                                                              | Action                |
 | --------------------------------------------------------------------------------------------------------------------------------- | --------------------- |
-| `apps/backend-rag/backend/db/migrations_v2/180_cockpit_audit_log.sql`                                                             | CREATE                |
-| `apps/backend-rag/backend/db/migrations_v2/181_cockpit_intents.sql`                                                               | CREATE                |
+| `apps/backend-rag/backend/db/migrations_v2/182_cockpit_audit_log.sql`                                                             | CREATE                |
+| `apps/backend-rag/backend/db/migrations_v2/183_cockpit_intents.sql`                                                               | CREATE                |
 | `apps/admin-dashboard-local/package.json`                                                                                         | MODIFY (+bcryptjs)    |
 | `apps/admin-dashboard-local/app/cockpit/{layout,page}.tsx`                                                                        | CREATE                |
 | `apps/admin-dashboard-local/app/cockpit/cockpit-shell.css`                                                                        | CREATE                |
@@ -32,21 +32,21 @@
 
 ### Task 1: Verify pre-conditions
 
-- [ ] **Step 1**: `ls apps/backend-rag/backend/db/migrations_v2/ | grep -E '^(180|181)_'` → expected empty
+- [ ] **Step 1**: `ls apps/backend-rag/backend/db/migrations_v2/ | grep -E '^(182|183)_'` → expected empty (180 + 181 now taken by crm_guardian PR #694 and pre-existing dream_room/newsletter, renumbered to 182/183 in v2)
 - [ ] **Step 2**: `cd ~/Desktop/nuzantara-wt-cockpit && npm ls bcryptjs 2>&1 | head -3` → expected `bcryptjs@3.0.3`
 - [ ] **Step 3**: `cd ~/Desktop/nuzantara-wt-cockpit && git status --short` → expected empty (post-spec-commit)
 - [ ] **Step 4**: Confirm proceed
 
 ---
 
-### Task 2: Migration 180 — cockpit_audit_log
+### Task 2: Migration 182 — cockpit_audit_log
 
-**Files:** Create `apps/backend-rag/backend/db/migrations_v2/180_cockpit_audit_log.sql`
+**Files:** Create `apps/backend-rag/backend/db/migrations_v2/182_cockpit_audit_log.sql`
 
 - [ ] **Step 1: Write SQL**
 
 ```sql
--- 180_cockpit_audit_log.sql
+-- 182_cockpit_audit_log.sql
 -- Immutable audit log with HMAC chain integrity
 -- === FORWARD ===
 CREATE TABLE IF NOT EXISTS cockpit_audit_log (
@@ -72,19 +72,19 @@ COMMENT ON TABLE cockpit_audit_log IS 'Immutable audit log for Zantara Cockpit. 
 -- DROP TABLE IF EXISTS cockpit_audit_log;
 ```
 
-- [ ] **Step 2**: `grep -E '^(CREATE|DROP|COMMENT)' apps/backend-rag/backend/db/migrations_v2/180_cockpit_audit_log.sql` → 7 lines
-- [ ] **Step 3**: `git add ... && git commit -m "feat(cockpit): migration 180 cockpit_audit_log with HMAC chain"`
+- [ ] **Step 2**: `grep -E '^(CREATE|DROP|COMMENT)' apps/backend-rag/backend/db/migrations_v2/182_cockpit_audit_log.sql` → 7 lines
+- [ ] **Step 3**: `git add ... && git commit -m "feat(cockpit): migration 182 cockpit_audit_log with HMAC chain"`
 
 ---
 
-### Task 3: Migration 181 — cockpit_intents
+### Task 3: Migration 183 — cockpit_intents
 
-**Files:** Create `apps/backend-rag/backend/db/migrations_v2/181_cockpit_intents.sql`
+**Files:** Create `apps/backend-rag/backend/db/migrations_v2/183_cockpit_intents.sql`
 
 - [ ] **Step 1: Write SQL**
 
 ```sql
--- 181_cockpit_intents.sql
+-- 183_cockpit_intents.sql
 -- Intent queue: cockpit writes here, existing services consume
 -- Decouples UI from production state machines
 -- === FORWARD ===
@@ -113,7 +113,7 @@ COMMENT ON TABLE cockpit_intents IS 'Intent queue from Zantara Cockpit. Consumer
 ```
 
 - [ ] **Step 2**: grep verify (similar to Task 2)
-- [ ] **Step 3**: commit `feat(cockpit): migration 181 cockpit_intents queue`
+- [ ] **Step 3**: commit `feat(cockpit): migration 183 cockpit_intents queue`
 
 ---
 
@@ -1664,7 +1664,7 @@ npx next dev -p 3100
 
 **1. Spec coverage:**
 
-- Migrations 180+181: Tasks 2, 3 ✓
+- Migrations 182+183: Tasks 2, 3 ✓
 - Bloomberg theme: Tasks 5, 6 ✓
 - 12-widget grid: Task 8 ✓
 - Live widgets: Tasks 20, 21 ✓
