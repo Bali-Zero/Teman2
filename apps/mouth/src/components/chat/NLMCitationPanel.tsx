@@ -1,7 +1,18 @@
 "use client";
 
 import React from "react";
-import { BookOpen, ChevronDown, ChevronUp, FileText } from "lucide-react";
+import { BookOpen, ChevronDown, FileText } from "lucide-react";
+import { useChatLocale } from "@/hooks/useChatLocale";
+
+const LABELS = {
+  official_sources: {
+    en: "Official sources",
+    it: "Fonti ufficiali",
+    id: "Sumber resmi",
+    fr: "Sources officielles",
+    ru: "Официальные источники",
+  },
+};
 
 interface NLMCitation {
   source_file: string;
@@ -23,6 +34,10 @@ export const NLMCitationPanel: React.FC<NLMCitationPanelProps> = ({
   expanded,
   onToggle,
 }) => {
+  const locale = useChatLocale();
+  const officialSourcesLabel =
+    LABELS.official_sources[locale] ?? LABELS.official_sources.en;
+
   return (
     <div className="mt-3 rounded-lg border-l-2 border-amber-600 overflow-hidden">
       {/* Header — always visible, toggles expand */}
@@ -34,10 +49,15 @@ export const NLMCitationPanel: React.FC<NLMCitationPanelProps> = ({
       >
         <div className="flex items-center gap-2 text-xs font-medium text-amber-600">
           <BookOpen size={14} />
-          <span>Fonti ufficiali — {domainLabel}</span>
+          <span>
+            {officialSourcesLabel} — {domainLabel}
+          </span>
         </div>
         <div className="text-zinc-400">
-          {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          <ChevronDown
+            size={14}
+            className={`transition-transform duration-200 ${expanded ? "rotate-180" : ""}`}
+          />
         </div>
       </button>
 
@@ -45,7 +65,7 @@ export const NLMCitationPanel: React.FC<NLMCitationPanelProps> = ({
       <div
         className="transition-[max-height,opacity] duration-300 ease-in-out overflow-hidden"
         style={{
-          maxHeight: expanded ? `${citations.length * 120 + 16}px` : "0px",
+          maxHeight: expanded ? `${citations.length * 150 + 16}px` : "0px",
           opacity: expanded ? 1 : 0,
         }}
       >

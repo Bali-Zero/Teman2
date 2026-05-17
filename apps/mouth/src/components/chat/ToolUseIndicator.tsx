@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 import {
   Loader2,
   CheckCircle2,
@@ -15,9 +15,9 @@ import {
   Scale,
   ImagePlus,
   type LucideIcon,
-} from 'lucide-react';
-import { DEFAULT_LOCALE, LOCALES, type Locale } from '@/i18n/types';
-import { getToolLabel } from './tool-labels';
+} from "lucide-react";
+import { useChatLocale } from "@/hooks/useChatLocale";
+import { getToolLabel } from "./tool-labels";
 
 const TOOL_ICON_MAP: Record<string, LucideIcon> = {
   search_emails: Mail,
@@ -38,48 +38,30 @@ const TOOL_ICON_MAP: Record<string, LucideIcon> = {
 
 export interface ToolUseIndicatorProps {
   toolName: string;
-  status: 'running' | 'done';
+  status: "running" | "done";
   /**
    * Override for tests. When omitted the locale is read from the same
    * `blog-language` localStorage key used by `<I18nProvider>`.
    */
-  localeOverride?: Locale;
+  localeOverride?: string;
 }
 
-/**
- * Read the persisted locale without depending on `<I18nProvider>`, since the
- * `/chat` route is not currently wrapped in it. Falls back to DEFAULT_LOCALE
- * during SSR.
- */
-function useChatLocale(override?: Locale): Locale {
-  const [locale, setLocale] = useState<Locale>(override ?? DEFAULT_LOCALE);
-
-  useEffect(() => {
-    if (override) return;
-    if (typeof window === 'undefined') return;
-    try {
-      const saved = window.localStorage.getItem('blog-language');
-      if (saved && (LOCALES as readonly string[]).includes(saved)) {
-        setLocale(saved as Locale);
-      }
-    } catch {
-      /* ignore storage errors */
-    }
-  }, [override]);
-
-  return locale;
-}
-
-export function ToolUseIndicator({ toolName, status, localeOverride }: ToolUseIndicatorProps) {
-  const locale = useChatLocale(localeOverride);
+export function ToolUseIndicator({
+  toolName,
+  status,
+  localeOverride,
+}: ToolUseIndicatorProps) {
+  const chatLocale = useChatLocale();
+  const locale = (localeOverride as any) ?? chatLocale;
   const label = getToolLabel(toolName, locale, status);
   const Icon = TOOL_ICON_MAP[toolName] ?? Search;
 
-  const isRunning = status === 'running';
-  const baseClass = 'inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-md border';
+  const isRunning = status === "running";
+  const baseClass =
+    "inline-flex items-center gap-1.5 text-xs px-2 py-1 rounded-md border";
   const stateClass = isRunning
-    ? 'bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/30'
-    : 'bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30';
+    ? "bg-[var(--accent)]/10 text-[var(--accent)] border-[var(--accent)]/30"
+    : "bg-[var(--success)]/10 text-[var(--success)] border-[var(--success)]/30";
 
   return (
     <div
