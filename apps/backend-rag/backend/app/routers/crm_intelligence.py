@@ -4,19 +4,27 @@ from typing import Annotated, Literal
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel, Field
 
 from backend.app.dependencies import get_database_pool, require_team_member
 from backend.services.crm.evidence_dossier import build_evidence_dossiers
 from backend.services.crm.tax_company_pilot import TaxCompanyPilotMap
 from backend.services.crm.workspace_ai_snapshots import (
+    WorkspaceAiAutoApproveResult,
     WorkspaceAiSnapshotCreate,
     WorkspaceAiSnapshotResponse,
     approve_workspace_ai_snapshot,
+    auto_approve_workspace_ai_snapshots,
     create_workspace_ai_snapshot,
     fetch_workspace_ai_review_queue,
 )
 
 router = APIRouter(prefix="/api/crm/intelligence", tags=["crm-intelligence"])
+
+
+class WorkspaceAiAutoApproveRequest(BaseModel):
+    dry_run: bool = True
+    limit: int = Field(default=25, ge=1, le=100)
 
 
 @router.get("/evidence-dossiers", response_model=list[TaxCompanyPilotMap])
@@ -65,6 +73,23 @@ async def review_workspace_ai_snapshots(
         pool,
         status=status,
         limit=limit,
+    )
+
+
+@router.post(
+    "/workspace-ai-snapshots/auto-approve",
+    response_model=WorkspaceAiAutoApproveResult,
+)
+async def auto_approve_workspace_ai_snapshot_drafts(
+    payload: WorkspaceAiAutoApproveRequest,
+    pool: asyncpg.Pool = Depends(get_database_pool),
+    _current_user: dict = Depends(require_team_member),
+) -> WorkspaceAiAutoApproveResult:
+    """Dry-run or apply policy auto-approval for safe Workspace AI drafts."""
+    return await auto_approve_workspace_ai_snapshots(
+        pool,
+        limit=payload.limit,
+        dry_run=payload.dry_run,
     )
 
 

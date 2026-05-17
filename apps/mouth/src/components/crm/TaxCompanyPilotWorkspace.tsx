@@ -19,6 +19,7 @@ import type {
   TaxCompanyPilotMap,
   TaxCompanyPilotNextAction,
   TaxCompanyPilotPersonDossier,
+  WorkspaceAiAutoApproveResult,
   WorkspaceAiSnapshotReviewItem,
 } from "@/lib/api/crm/crm.types";
 
@@ -460,12 +461,20 @@ function WorkspaceAiReviewPanel({
   snapshots,
   loading = false,
   approvingSnapshotId = null,
+  autoApproveResult = null,
+  autoApproving = false,
   onApproveSnapshot,
+  onAutoApproveDryRun,
+  onAutoApproveApply,
 }: {
   snapshots: WorkspaceAiSnapshotReviewItem[];
   loading?: boolean;
   approvingSnapshotId?: string | null;
+  autoApproveResult?: WorkspaceAiAutoApproveResult | null;
+  autoApproving?: boolean;
   onApproveSnapshot?: (snapshotId: string) => void;
+  onAutoApproveDryRun?: () => void;
+  onAutoApproveApply?: () => void;
 }) {
   if (!loading && snapshots.length === 0) return null;
 
@@ -480,11 +489,38 @@ function WorkspaceAiReviewPanel({
           <Sparkles size={16} />
           Workspace AI review
         </div>
-        <span className="rounded bg-white px-2.5 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
-          {loading
-            ? "Checking drafts"
-            : `${draftCount} draft${draftCount === 1 ? "" : "s"}`}
-        </span>
+        <div className="flex flex-wrap items-center gap-2">
+          {autoApproveResult && (
+            <span className="rounded bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-800 ring-1 ring-emerald-200">
+              {autoApproveResult.dry_run
+                ? `${autoApproveResult.eligible_count} safe · ${autoApproveResult.blocked_count} held`
+                : `${autoApproveResult.approved_count} approved · ${autoApproveResult.blocked_count} held`}
+            </span>
+          )}
+          <button
+            type="button"
+            disabled={!onAutoApproveDryRun || autoApproving}
+            onClick={() => onAutoApproveDryRun?.()}
+            className="inline-flex items-center gap-1.5 rounded-md border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 disabled:cursor-not-allowed disabled:text-slate-300"
+          >
+            <Sparkles size={13} />
+            Check safe
+          </button>
+          <button
+            type="button"
+            disabled={!onAutoApproveApply || autoApproving}
+            onClick={() => onAutoApproveApply?.()}
+            className="inline-flex items-center gap-1.5 rounded-md bg-emerald-700 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+          >
+            <ShieldCheck size={13} />
+            Approve safe
+          </button>
+          <span className="rounded bg-white px-2.5 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
+            {loading
+              ? "Checking drafts"
+              : `${draftCount} draft${draftCount === 1 ? "" : "s"}`}
+          </span>
+        </div>
       </div>
       {snapshots.length > 0 && (
         <div className="grid gap-3 lg:grid-cols-2">
@@ -538,13 +574,21 @@ export function TaxCompanyPilotWorkspace({
   reviewSnapshots = [],
   reviewLoading = false,
   approvingSnapshotId = null,
+  autoApproveResult = null,
+  autoApproving = false,
   onApproveSnapshot,
+  onAutoApproveDryRun,
+  onAutoApproveApply,
 }: {
   maps: TaxCompanyPilotMap[];
   reviewSnapshots?: WorkspaceAiSnapshotReviewItem[];
   reviewLoading?: boolean;
   approvingSnapshotId?: string | null;
+  autoApproveResult?: WorkspaceAiAutoApproveResult | null;
+  autoApproving?: boolean;
   onApproveSnapshot?: (snapshotId: string) => void;
+  onAutoApproveDryRun?: () => void;
+  onAutoApproveApply?: () => void;
 }) {
   const totalPeople = maps.reduce((sum, map) => sum + map.persons.length, 0);
   const totalDocuments = maps.reduce(
@@ -607,7 +651,11 @@ export function TaxCompanyPilotWorkspace({
         snapshots={reviewSnapshots}
         loading={reviewLoading}
         approvingSnapshotId={approvingSnapshotId}
+        autoApproveResult={autoApproveResult}
+        autoApproving={autoApproving}
         onApproveSnapshot={onApproveSnapshot}
+        onAutoApproveDryRun={onAutoApproveDryRun}
+        onAutoApproveApply={onAutoApproveApply}
       />
       <div className="grid gap-4 xl:grid-cols-2">
         {maps.map((map, index) => (
