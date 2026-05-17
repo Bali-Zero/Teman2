@@ -103,7 +103,7 @@ class AgenticRAGOrchestrator:
         clarification_service: ClarificationService = None,
         entity_extractor: EntityExtractionService = None,
         llm_gateway: LLMGateway = None,
-        nlm_enrichment_service: Any = None,
+        nlm_enrichment_service: Any = None,  # R5 Phase 6: DEPRECATED — kept for compat
         specialized_service_router: Any = None,  # SpecializedServiceRouter
     ) -> None:
         """Initialize the AgenticRAGOrchestrator.
@@ -277,7 +277,6 @@ class AgenticRAGOrchestrator:
             faq_cache=self.faq_cache,  # FAQ cache (exact match, < 1ms)
             db_pool=db_pool,
             kg_langgraph_orchestrator=self.kg_langgraph_orchestrator,
-            nlm_enrichment_service=self.nlm_enrichment_service,
             retriever=retriever,  # QW2: needed for embedding-based semantic cache lookup
             specialized_service_router=self.specialized_service_router,
         )

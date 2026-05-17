@@ -76,7 +76,7 @@ class HierarchicalIndexer:
         return self.db_pool
 
     async def index_legal_document(
-        self, document_text: str, document_id: str, metadata: dict,
+        self, document_text: str, document_id: str, metadata: dict[str, Any],
     ) -> dict[str, Any]:
         """
         Indicizza documento con struttura gerarchica completa.
@@ -178,6 +178,7 @@ class HierarchicalIndexer:
                 chunks_to_index.append(h_chunk)
 
         # 6. Genera embeddings solo per i chunk (Pasal)
+        chunks_upserted = 0
         if chunks_to_index:
             chunk_texts = [c.text for c in chunks_to_index]
             embeddings = await self.embeddings.generate_embeddings(chunk_texts)
@@ -189,7 +190,9 @@ class HierarchicalIndexer:
                 sparse_vectors = self.sparse_vectorizer.generate_batch_sparse_vectors(chunk_texts)
 
             # 7. Upsert chunks con struttura gerarchica
-            await self._upsert_hierarchical_chunks(chunks_to_index, embeddings, sparse_vectors)
+            chunks_upserted = await self._upsert_hierarchical_chunks(
+                chunks_to_index, embeddings, sparse_vectors
+            )
 
         # 8. Upsert parent documents (BAB completi) - NO embedding, solo storage
         if parent_documents:
@@ -198,6 +201,7 @@ class HierarchicalIndexer:
         return {
             "document_id": document_id,
             "chunks_indexed": len(chunks_to_index),
+            "chunks_upserted": chunks_upserted,
             "parent_documents": len(parent_documents),
             "total_bab": len(structure.get("batang_tubuh", [])),
             "total_pasal": len(structure.get("pasal_list", [])),
@@ -279,8 +283,11 @@ class HierarchicalIndexer:
         chunks_to_index.append(chunk)
 
     async def _upsert_hierarchical_chunks(
-        self, chunks: list[HierarchicalChunk], embeddings, sparse_vectors=None,
-    ):
+        self,
+        chunks: list[HierarchicalChunk],
+        embeddings: list[list[float]],
+        sparse_vectors: list[dict[str, Any]] | None = None,
+    ) -> int:
         """Upsert chunks con payload gerarchico"""
         import uuid
 
@@ -322,16 +329,30 @@ class HierarchicalIndexer:
                 sparse_vectors=sparse_vectors,
                 metadatas=metadatas,
                 ids=ids,
+                flatten_payload=True,
             )
             if not res.get("success"):
                 raise RuntimeError(f"Qdrant hybrid upsert failed: {res.get('error')}")
         else:
             logger.info(f"Upserting {len(ids)} chunks with Dense vectors only")
             res = await self.qdrant.upsert_documents(
-                chunks=chunk_texts, embeddings=embeddings, metadatas=metadatas, ids=ids,
+                chunks=chunk_texts,
+                embeddings=embeddings,
+                metadatas=metadatas,
+                ids=ids,
+                flatten_payload=True,
             )
             if not res.get("success"):
                 raise RuntimeError(f"Qdrant dense upsert failed: {res.get('error')}")
+
+        documents_added = int(res.get("documents_added", 0))
+        if documents_added <= 0:
+            raise RuntimeError("Qdrant legal upsert failed: zero upserts")
+        if documents_added != len(ids):
+            raise RuntimeError(
+                f"Qdrant legal upsert incomplete: {documents_added}/{len(ids)} chunks upserted"
+            )
+        return documents_added
 
     async def _upsert_parent_documents(self, parent_docs: list[dict]) -> None:
         """

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -46,6 +48,22 @@ class Settings(BaseSettings):
     retrieval_top_k: int = 10
     rerank_top_k: int = 5
     semantic_cache_ttl_seconds: int = 3600
+    checkpointer_enabled: bool = Field(
+        default=False,
+        description="Enable LangGraph checkpoint persistence. Disabled by default to avoid DB writes.",
+    )
+    checkpointer_backend: Literal["postgres", "memory"] = Field(
+        default="postgres",
+        description="Checkpoint backend. 'memory' is explicit test/dev only.",
+    )
+    checkpointer_database_url: str = Field(
+        default="",
+        description="Dedicated PostgreSQL URL for LangGraph checkpoints.",
+    )
+    checkpointer_postgres_pipeline: bool = Field(
+        default=True,
+        description="Use psycopg pipeline mode for PostgresSaver writes.",
+    )
 
     # Auth
     jwt_secret: str = ""

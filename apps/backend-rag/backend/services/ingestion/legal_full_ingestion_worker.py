@@ -240,13 +240,17 @@ async def _process_one_job(db_pool: asyncpg.Pool, app_state: Any) -> None:  # no
 
             pdf_path = await _download_pdf(source_url, tipo, nomor, anno)
 
-            from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
+            from backend.services.ingestion.legal_ingestion_service import (
+                LegalIngestionService,
+                validate_legal_ingest_result,
+            )
 
             service = LegalIngestionService()
             result = await service.ingest_legal_document(
                 file_path=str(pdf_path),
                 title=titolo,
             )
+            validate_legal_ingest_result(result)
             chunks = result.get("chunks_created", 0)
             if not titolo:
                 titolo = result.get("book_title", f"{tipo} {nomor}/{anno}")

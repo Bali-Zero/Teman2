@@ -108,6 +108,65 @@ class TestQdrantFilterConversion:
         assert "must_not" in result
 
 
+class TestQdrantFlatPayloadFilterConversion:
+    """Tests for mixed legacy nested and flat legal payload filters."""
+
+    @pytest.fixture
+    def client(self):
+        """Create QdrantClient instance."""
+        return QdrantClient(
+            qdrant_url="http://localhost:6333",
+            collection_name="legal_unified_hybrid_hybrid",
+        )
+
+    def test_include_flat_payload_filters_for_legal_collection(self, client):
+        assert client._include_flat_payload_filters() is True
+
+    def test_convert_filter_direct_value_matches_nested_or_flat(self, client):
+        result = client._convert_filter_to_qdrant_format(
+            {"document_id": "PP_123_2024"},
+            include_flat_payload=True,
+        )
+
+        assert result is not None
+        assert result["must"] == [
+            {
+                "should": [
+                    {"key": "metadata.document_id", "match": {"value": "PP_123_2024"}},
+                    {"key": "document_id", "match": {"value": "PP_123_2024"}},
+                ]
+            }
+        ]
+
+    def test_convert_filter_in_operator_matches_nested_or_flat(self, client):
+        result = client._convert_filter_to_qdrant_format(
+            {"legal_type": {"$in": ["PP", "UU"]}},
+            include_flat_payload=True,
+        )
+
+        assert result is not None
+        assert result["must"] == [
+            {
+                "should": [
+                    {"key": "metadata.legal_type", "match": {"any": ["PP", "UU"]}},
+                    {"key": "legal_type", "match": {"any": ["PP", "UU"]}},
+                ]
+            }
+        ]
+
+    def test_convert_filter_ne_operator_excludes_nested_and_flat(self, client):
+        result = client._convert_filter_to_qdrant_format(
+            {"legal_status": {"$ne": "revoked"}},
+            include_flat_payload=True,
+        )
+
+        assert result is not None
+        assert result["must_not"] == [
+            {"key": "metadata.legal_status", "match": {"value": "revoked"}},
+            {"key": "legal_status", "match": {"value": "revoked"}},
+        ]
+
+
 class TestQdrantClientHelpers:
     """Tests for QdrantClient helper methods"""
 
