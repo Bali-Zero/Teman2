@@ -113,6 +113,29 @@ def test_client_safe_intelligence_hides_source_fields_and_backend_jargon() -> No
     assert "Backend" not in serialized
 
 
+def test_client_safe_intelligence_preserves_plain_company_name_and_confidence() -> None:
+    rows = [
+        {
+            "company_name": "Backend Office PT",
+            "approved_at": datetime(2026, 5, 17, tzinfo=timezone.utc),
+            "facts": [
+                {
+                    "category": "identity",
+                    "label": "Backend office status",
+                    "detail": "The company is ready for client review.",
+                    "confidence": "kg-verified",
+                }
+            ],
+        }
+    ]
+
+    result = _client_safe_intelligence_from_rows(rows)
+
+    assert result["company_name"] == "Backend Office PT"
+    assert result["facts"][0]["label"] == "Backend office status"
+    assert result["facts"][0]["confidence"] == "medium"
+
+
 def test_client_safe_intelligence_withholds_when_multiple_companies_match() -> None:
     rows = [
         {
@@ -236,3 +259,42 @@ async def test_get_matter_detail_returns_client_safe_approved_intelligence() -> 
         }
     ]
     assert "source_file_ids" not in json.dumps(payload)
+    fetch_sql = mock_conn.fetch.await_args.args[0]
+    assert "snap.client_id = $1" in fetch_sql
+
+
+@pytest.mark.asyncio
+async def test_get_matter_detail_does_not_fetch_intelligence_for_tax_matter() -> None:
+    from fastapi import FastAPI
+    from fastapi.testclient import TestClient
+
+    from backend.app.dependencies import get_database_pool
+    from backend.app.routers.portal import get_current_client
+    from backend.app.routers.portal_matters import router
+
+    app = FastAPI()
+    app.include_router(router)
+
+    mock_conn = AsyncMock()
+    mock_conn.fetchrow.return_value = _row(id=11, title="Monthly Tax", category="tax")
+
+    class _PoolCtx:
+        async def __aenter__(self):
+            return mock_conn
+
+        async def __aexit__(self, *a):
+            return False
+
+    class _Pool:
+        def acquire(self):
+            return _PoolCtx()
+
+    app.dependency_overrides[get_current_client] = lambda: {"client_id": 42}
+    app.dependency_overrides[get_database_pool] = lambda: _Pool()
+
+    client = TestClient(app)
+    r = client.get("/api/portal/matters/11")
+
+    assert r.status_code == 200
+    assert r.json()["matter"]["approved_intelligence"]["available"] is False
+    mock_conn.fetch.assert_not_awaited()

@@ -113,7 +113,7 @@ def _shape_matter(row: asyncpg.Record) -> dict[str, Any]:
         "progress": _STATUS_TO_PROGRESS.get(status, 50),
         "pending_docs": pending,
         "next_deadline": row["expiry_date"].isoformat() if row["expiry_date"] else None,
-        "next_step": _NEXT_STEP_COPY.get(status, "Wait for the next update"),
+        "next_step": status,
     }
 
 
@@ -128,6 +128,7 @@ def _shape_matter_detail(row: asyncpg.Record) -> dict[str, Any]:
         **matter,
         "status_label": status_label,
         "description": description,
+        "next_step": _NEXT_STEP_COPY.get(status, "Wait for the next update"),
         "approved_intelligence": _empty_client_safe_intelligence(),
     }
 
@@ -167,6 +168,19 @@ def _sanitize_client_text(value: Any) -> str:
     return text.strip(" -")
 
 
+def _sanitize_client_label(value: Any) -> str:
+    """Sanitize short labels without rewriting ordinary client-facing words."""
+    text = _URL_RE.sub("", str(value or "").strip())
+    text = re.sub(r"\bsource_file_ids?\b", "document references", text, flags=re.IGNORECASE)
+    text = re.sub(r"\s+", " ", text)
+    return text.strip(" -")
+
+
+def _sanitize_confidence(value: Any) -> str:
+    raw = str(value or "medium").strip().lower()
+    return raw if raw in {"low", "medium", "high", "confirmed"} else "medium"
+
+
 def _parse_facts(value: Any) -> list[dict[str, Any]]:
     if not value:
         return []
@@ -189,7 +203,7 @@ def _client_safe_intelligence_from_rows(rows: list[Any]) -> dict[str, Any]:
         )
         return safe
 
-    company_name = _sanitize_client_text(rows[0].get("company_name"))
+    company_name = _sanitize_client_label(rows[0].get("company_name"))
     approved_at = rows[0].get("approved_at")
     safe.update(
         {
@@ -206,8 +220,8 @@ def _client_safe_intelligence_from_rows(rows: list[Any]) -> dict[str, Any]:
         for fact in _parse_facts(row.get("facts")):
             category = fact.get("category")
             detail = _sanitize_client_text(fact.get("detail"))
-            label = _sanitize_client_text(fact.get("label"))
-            confidence = _sanitize_client_text(fact.get("confidence") or "medium")
+            label = _sanitize_client_label(fact.get("label"))
+            confidence = _sanitize_confidence(fact.get("confidence"))
             if not detail:
                 continue
             if category == "gap":
@@ -303,7 +317,7 @@ async def get_matter_detail(
 
         rows = []
         category = str(row["category"] or "").lower()
-        if category in {"company", "tax", "property"}:
+        if category == "company":
             try:
                 rows = await conn.fetch(
                     """
@@ -316,6 +330,7 @@ async def get_matter_detail(
                     JOIN companies c ON c.id = snap.company_id
                     JOIN client_company_links ccl ON ccl.company_id = snap.company_id
                     WHERE ccl.client_id = $1
+                      AND snap.client_id = $1
                       AND snap.status = 'approved'
                     ORDER BY snap.company_id,
                              snap.approved_at DESC NULLS LAST,
@@ -324,7 +339,7 @@ async def get_matter_detail(
                     """,
                     client_id,
                 )
-            except Exception as e:
+            except asyncpg.PostgresError as e:
                 logger.warning(f"approved intelligence fetch failed: {e}")
                 rows = []
 
