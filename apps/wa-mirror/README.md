@@ -1,6 +1,6 @@
 # wa-mirror — Bali Zero team WhatsApp → CRM bridge
 
-**Status**: scaffolding 2026-05-13 (LEVA WA-Mirror, transparent multi-account)
+**Status**: capture bridge scaffold + read-only CRM API v1 (2026-05-17)
 **Runs on**: Mini-Pro2 (24/7 server)
 **Language**: Node.js 22 + `@whiskeysockets/baileys`
 **Data store**: PostgreSQL `nuzantara_rag` (tables `whatsapp_*`, migrations 173/175/177)
@@ -50,9 +50,9 @@ After this bridge: each team member's WhatsApp is registered as a **WhatsApp Web
 │     ├─ PG: whatsapp_message_context (existing, 14k rows) +          │
 │     │       whatsapp_team_sessions (new, migration 173)              │
 │     │                                                                │
-│     ├─ FastAPI /api/wa/messages?practice_id=N                        │
+│     ├─ FastAPI /api/wa/messages?practice_id=N (read-only, CRM-safe)  │
 │     │                                                                │
-│     └─ kita.balizero.com practice timeline panel                     │
+│     └─ kita.balizero.com practice timeline panel (frontend follow-up)│
 └─────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -149,6 +149,41 @@ the OLD `whatsapp_team_sessions` row.
   `whatsapp_message_received`
 - **CRM**: timeline rendering reuses existing practice timeline panel,
   conditional on `client_id` match
+
+## Read-only CRM API
+
+Implemented backend endpoint:
+
+```http
+GET /api/wa/messages?practice_id=390
+GET /api/wa/messages?client_id=42
+GET /api/wa/messages?prospect_only=true
+```
+
+Contract:
+
+- Requires authenticated team access.
+- Requires at least one filter: `client_id`, `practice_id`, or
+  `prospect_only=true`.
+- `practice_id` visibility follows the same CRM practice RBAC helper used by
+  `crm_practices`.
+- `client_id` visibility follows the current CRM client policy: authenticated
+  team members can view clients.
+- `prospect_only=true` returns unmatched one-to-one rows where
+  `client_id IS NULL AND practice_id IS NULL`; this is restricted to CRM admins.
+- Response is a Pydantic allowlist only: `id`, CRM ids, direction, team member
+  phone, counterpart phone, body, timestamp, media type/mime, and booleans for
+  media/OCR presence.
+- Response never exposes `raw_baileys_event`, raw payloads, quoted-message
+  internals, group internals, `media_url`, `media_stored_path`, signed media
+  tokens, or raw `ocr_result`.
+- Router registration is explicit in both full and light backend registration
+  paths to avoid silent production 404s.
+
+Not implemented in this worker slice:
+
+- kita frontend timeline panel wiring.
+- Any send operation or dashboard reply flow.
 
 ## Files
 
