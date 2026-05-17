@@ -77,6 +77,7 @@ def test_client_safe_intelligence_hides_source_fields_and_backend_jargon() -> No
                     ),
                     "source_file_ids": ["raw-drive-id"],
                     "confidence": "confirmed",
+                    "client_safe": True,
                 },
                 {
                     "category": "gap",
@@ -84,6 +85,7 @@ def test_client_safe_intelligence_hides_source_fields_and_backend_jargon() -> No
                     "detail": "Run OCR on the source folder before client approval.",
                     "source_file_ids": ["raw-gap-id"],
                     "confidence": "medium",
+                    "client_safe": True,
                 },
                 {
                     "category": "next_action",
@@ -91,6 +93,7 @@ def test_client_safe_intelligence_hides_source_fields_and_backend_jargon() -> No
                     "detail": "Review the company status with the client.",
                     "source_file_ids": ["raw-next-id"],
                     "confidence": "medium",
+                    "client_safe": True,
                 },
             ],
         }
@@ -135,6 +138,7 @@ def test_client_safe_intelligence_preserves_plain_company_name_and_confidence() 
                     "label": "Backend office status",
                     "detail": "The company is ready for client review.",
                     "confidence": "kg-verified",
+                    "approved_for_client": True,
                 }
             ],
         }
@@ -145,6 +149,35 @@ def test_client_safe_intelligence_preserves_plain_company_name_and_confidence() 
     assert result["company_name"] == "Backend Office PT"
     assert result["facts"][0]["label"] == "Backend office status"
     assert result["facts"][0]["confidence"] == "medium"
+
+
+def test_client_safe_intelligence_skips_unapproved_or_raw_evidence_facts() -> None:
+    rows = [
+        {
+            "company_name": "PT Internal Draft",
+            "approved_at": datetime(2026, 5, 17, tzinfo=timezone.utc),
+            "facts": [
+                {
+                    "category": "identity",
+                    "label": "Internal raw note",
+                    "detail": "Raw evidence id 1ABCDEFghijklmnopqrstuvwxyz987654321.",
+                    "confidence": "confirmed",
+                },
+                {
+                    "category": "identity",
+                    "label": "Client safe but raw",
+                    "detail": "Use document id abcdefghijklmnopqrstuvwxyz123456.",
+                    "confidence": "confirmed",
+                    "client_safe": True,
+                },
+            ],
+        }
+    ]
+
+    result = _client_safe_intelligence_from_rows(rows)
+
+    assert result["available"] is False
+    assert result["facts"] == []
 
 
 def test_client_safe_intelligence_withholds_when_multiple_companies_match() -> None:
@@ -228,6 +261,7 @@ async def test_get_matter_detail_returns_client_safe_approved_intelligence() -> 
                     "detail": "The company profile is approved for client review.",
                     "source_file_ids": ["hidden-source"],
                     "confidence": "confirmed",
+                    "approved_for_client": True,
                 },
                 {
                     "category": "next_action",
@@ -235,6 +269,7 @@ async def test_get_matter_detail_returns_client_safe_approved_intelligence() -> 
                     "detail": "Confirm the next filing date.",
                     "source_file_ids": ["hidden-next"],
                     "confidence": "medium",
+                    "approved_for_client": True,
                 },
             ],
         }

@@ -76,6 +76,12 @@ _NEXT_STEP_COPY = {
 }
 
 _URL_RE = re.compile(r"(?:https?://|www\.|(?:drive|docs)\.google\.com/)\S+", re.IGNORECASE)
+_RAW_EVIDENCE_RE = re.compile(
+    r"\b(?:[A-Za-z0-9_-]{24,}|drive\.google|docs\.google|"
+    r"source[_ -]?file|file[_ -]?id|document[_ -]?id|folder[_ -]?id|"
+    r"notebooklm|ocr|kg)\b",
+    re.IGNORECASE,
+)
 
 
 def _empty_client_safe_intelligence() -> dict[str, Any]:
@@ -197,6 +203,18 @@ def _sanitize_confidence(value: Any) -> str:
     return raw if raw in {"low", "medium", "high", "confirmed"} else "medium"
 
 
+def _is_client_safe_fact(fact: dict[str, Any]) -> bool:
+    if fact.get("client_safe") is True or fact.get("approved_for_client") is True:
+        return True
+    visibility = str(fact.get("visibility") or "").strip().lower()
+    audience = str(fact.get("audience") or "").strip().lower()
+    return visibility in {"client", "portal"} or audience in {"client", "portal"}
+
+
+def _looks_like_raw_evidence(value: str) -> bool:
+    return bool(_RAW_EVIDENCE_RE.search(value or ""))
+
+
 def _parse_facts(value: Any) -> list[dict[str, Any]]:
     if not value:
         return []
@@ -222,24 +240,19 @@ def _client_safe_intelligence_from_rows(rows: list[Any]) -> dict[str, Any]:
 
     company_name = _sanitize_client_label(rows[0].get("company_name"))
     approved_at = rows[0].get("approved_at")
-    safe.update(
-        {
-            "available": True,
-            "status": "approved",
-            "company_name": company_name or None,
-            "last_reviewed_at": approved_at.isoformat()
-            if hasattr(approved_at, "isoformat")
-            else approved_at,
-        }
-    )
-
     for row in rows:
         for fact in _parse_facts(row.get("facts")):
+            if not _is_client_safe_fact(fact):
+                continue
             category = fact.get("category")
-            detail = _sanitize_client_text(fact.get("detail"))
-            label = _sanitize_client_label(fact.get("label"))
+            detail = _sanitize_client_text(
+                fact.get("client_safe_detail") or fact.get("client_detail") or fact.get("detail")
+            )
+            label = _sanitize_client_label(
+                fact.get("client_safe_label") or fact.get("client_label") or fact.get("label")
+            )
             confidence = _sanitize_confidence(fact.get("confidence"))
-            if not detail:
+            if not detail or _looks_like_raw_evidence(detail) or _looks_like_raw_evidence(label):
                 continue
             if category == "gap":
                 safe["missing_items"].append(detail)
@@ -254,6 +267,21 @@ def _client_safe_intelligence_from_rows(rows: list[Any]) -> dict[str, Any]:
                         "confidence": confidence,
                     }
                 )
+
+    has_content = bool(safe["facts"] or safe["missing_items"] or safe["next_steps"])
+    if not has_content:
+        return safe
+
+    safe.update(
+        {
+            "available": True,
+            "status": "approved",
+            "company_name": company_name or None,
+            "last_reviewed_at": approved_at.isoformat()
+            if hasattr(approved_at, "isoformat")
+            else approved_at,
+        }
+    )
 
     if safe["facts"]:
         safe["summary"] = safe["facts"][0]["detail"]
