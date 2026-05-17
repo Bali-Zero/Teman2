@@ -5,11 +5,13 @@ _ensure_drive_folder_exists, _get_kg_extractor, detect_legal_document.
 """
 
 import os
-import time
-from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, mock_open, patch
+from typing import TYPE_CHECKING
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+
+if TYPE_CHECKING:
+    from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
 
 os.environ.setdefault("JWT_SECRET_KEY", "test_jwt_secret_key_for_testing_only_min_32_chars")
 os.environ.setdefault("API_KEYS", "test_api_key_1")
@@ -167,7 +169,7 @@ class TestIngestSuccess:
             service.classifier.classify_book_tier.assert_not_called()
 
     @pytest.mark.asyncio
-    async def test_ingestion_with_collection_override(self, service: MagicMock) -> None:
+    async def test_ingestion_with_wrong_collection_override_fails(self, service: MagicMock) -> None:
         service.cleaner.clean.return_value = "cleaned"
         service.metadata_extractor.extract.return_value = {
             "type": "PERMEN", "type_abbrev": "PERMEN", "number": "10",
@@ -193,7 +195,8 @@ class TestIngestSuccess:
                 collection_name="custom_collection",
             )
 
-            assert result["success"] is True
+            assert result["success"] is False
+            assert "target collection" in result["error"]
 
     @pytest.mark.asyncio
     async def test_ingestion_generates_document_id(self, service: MagicMock) -> None:
