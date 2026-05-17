@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+  <dict>
+    <!-- Bali Zero Nuzantara agent-library-evolver — weekly LaunchAgent
+
+         Spec: docs/superpowers/specs/2026-05-17-agent-library-evoskill-design.md
+         Status: Phase 0 — file on disk, NOT bootstrapped yet.
+                 Bootstrap deferred to Phase 1 first-live-run.
+
+         To bootstrap (Phase 1):
+             launchctl bootstrap gui/$(id -u) \
+                 ~/Library/LaunchAgents/com.balizero.agent-library-evolver.weekly.plist
+
+         To unload:
+             launchctl bootout gui/$(id -u)/com.balizero.agent-library-evolver.weekly
+    -->
+
+    <key>Label</key>
+    <string>com.balizero.agent-library-evolver.weekly</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/bin/bash</string>
+      <string>/Users/nuzantara/Desktop/nuzantara/scripts/agent-library-evolver-run.sh</string>
+    </array>
+
+    <!-- Sunday 03:00 WITA (after wr2 Reflexion 02:30, before Mon SessionStart) -->
+    <key>StartCalendarInterval</key>
+    <dict>
+      <key>Weekday</key>
+      <integer>0</integer>
+      <key>Hour</key>
+      <integer>3</integer>
+      <key>Minute</key>
+      <integer>0</integer>
+    </dict>
+
+    <!-- Cron pattern: short-lived weekly run, NOT a long-running daemon -->
+    <key>KeepAlive</key>
+    <false/>
+    <key>RunAtLoad</key>
+    <false/>
+
+    <!-- Working dir = repo root so relative paths in run.sh resolve -->
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+      <key>SECRETS_FILE</key>
+      <string>/Users/nuzantara/.nuzantara-secrets.env</string>
+      <key>EVOSKILL_VENDOR_DIR</key>
+      <string>/Users/nuzantara/Desktop/nuzantara/vendor/evoskill</string>
+      <key>EVOSKILL_CONFIG_PATH</key>
+      <string>/Users/nuzantara/Desktop/nuzantara/agent-library/config/evolver.toml</string>
+      <key>EVOSKILL_PROPOSALS_DIR</key>
+      <string>/Users/nuzantara/Desktop/nuzantara/agent-library/proposals</string>
+      <key>EVOSKILL_TELEMETRY_DIR</key>
+      <string>/Users/nuzantara/.agent/decisions/agent-library-evolver/telemetry</string>
+      <!-- Budget default. Per-run override possible via launchctl setenv -->
+      <key>BUDGET_USD</key>
+      <string>1.00</string>
+    </dict>
+
+    <!-- Logs (survive reboots — not /tmp) -->
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/agent-library-evolver.out.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/agent-library-evolver.err.log</string>
+
+    <!-- macOS LaunchAgent low-priority CPU class — weekly cron, not interactive -->
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <!-- Nice value: be polite if Sunday 03:00 collides with other crons -->
+    <key>Nice</key>
+    <integer>5</integer>
+  </dict>
+</plist>
