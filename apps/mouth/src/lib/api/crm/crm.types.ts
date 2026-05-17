@@ -161,6 +161,28 @@ export interface WorkspaceAiSnapshotReviewItem {
   created_at: string;
 }
 
+export interface WorkspaceAiAutoApproveDecision {
+  snapshot_id: string;
+  company_id?: number | null;
+  company_name: string;
+  policy_version: string;
+  eligible: boolean;
+  approved: boolean;
+  reason: string;
+  blocked_reasons: string[];
+  fact_count: number;
+}
+
+export interface WorkspaceAiAutoApproveResult {
+  policy_version: string;
+  dry_run: boolean;
+  evaluated: number;
+  eligible_count: number;
+  blocked_count: number;
+  approved_count: number;
+  decisions: WorkspaceAiAutoApproveDecision[];
+}
+
 export interface TaxCompanyPilotEvidenceStory {
   person_name: string;
   company_name: string;

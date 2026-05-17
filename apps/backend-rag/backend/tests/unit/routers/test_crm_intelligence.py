@@ -155,3 +155,40 @@ async def test_approve_workspace_ai_snapshot_uses_team_actor() -> None:
     approve_snapshot.assert_awaited_once()
     assert approve_snapshot.await_args.kwargs["snapshot_id"] == "snapshot-1"
     assert approve_snapshot.await_args.kwargs["approved_by"] == "team@balizero.com"
+
+
+@pytest.mark.asyncio
+async def test_auto_approve_workspace_ai_snapshots_uses_policy_service() -> None:
+    from backend.app.routers.crm_intelligence import (
+        WorkspaceAiAutoApproveRequest,
+        auto_approve_workspace_ai_snapshot_drafts,
+    )
+    from backend.services.crm.workspace_ai_snapshots import (
+        AUTO_APPROVE_POLICY_VERSION,
+        WorkspaceAiAutoApproveResult,
+    )
+
+    response = WorkspaceAiAutoApproveResult(
+        dry_run=False,
+        evaluated=2,
+        eligible_count=1,
+        blocked_count=1,
+        approved_count=1,
+        decisions=[],
+    )
+
+    with patch(
+        "backend.app.routers.crm_intelligence.auto_approve_workspace_ai_snapshots",
+        new=AsyncMock(return_value=response),
+    ) as auto_approve:
+        result = await auto_approve_workspace_ai_snapshot_drafts(
+            WorkspaceAiAutoApproveRequest(dry_run=False, limit=10),
+            pool=MagicMock(),
+            _current_user={"email": "team@balizero.com", "role": "team"},
+        )
+
+    assert result == response
+    assert result.policy_version == AUTO_APPROVE_POLICY_VERSION
+    auto_approve.assert_awaited_once()
+    assert auto_approve.await_args.kwargs["dry_run"] is False
+    assert auto_approve.await_args.kwargs["limit"] == 10

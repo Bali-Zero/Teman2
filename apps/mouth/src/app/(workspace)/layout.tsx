@@ -10,7 +10,6 @@ import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { ErrorBoundary } from "@/components/optimization";
 import { CellWidget } from "@/components/cell/CellWidget";
-import { ZantaraWidget } from "@/components/workspace/ZantaraWidget";
 import { WorkspaceAssistant } from "@/components/workspace/WorkspaceAssistant";
 import { KitaCommandPalette } from "@/components/workspace/KitaCommandPalette";
 import { I18nProvider } from "@/i18n";
@@ -37,7 +36,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   const mobileSidebarRef = useRef<HTMLDivElement | null>(null);
   const mobileMenuToggleRef = useRef<HTMLButtonElement | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isZantaraOpen, setIsZantaraOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState({
     name: "",
@@ -165,18 +163,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
 
   // isOnline status is now managed server-side (PANOPTICON)
 
-  // Cmd+J shortcut — toggle Zantara widget
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "j") {
-        e.preventDefault();
-        setIsZantaraOpen((p) => !p);
-      }
-    };
-    window.addEventListener("keydown", handler);
-    return () => window.removeEventListener("keydown", handler);
-  }, []);
-
   // Handle logout
   const handleLogout = async () => {
     try {
@@ -277,8 +263,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
               unreadWhatsApp={0}
               onLogout={handleLogout}
               ariaLabel="Primary"
-              onZantaraToggle={() => setIsZantaraOpen((p) => !p)}
-              isZantaraOpen={isZantaraOpen}
             />
           </div>
 
@@ -302,8 +286,6 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
                   unreadWhatsApp={0}
                   onLogout={handleLogout}
                   ariaLabel="Primary (mobile)"
-                  onZantaraToggle={() => setIsZantaraOpen((p) => !p)}
-                  isZantaraOpen={isZantaraOpen}
                 />
               </div>
             </>
@@ -346,10 +328,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
           </div>
         </div>
         {!isTerminalPage && <CellWidget />}
-        <ZantaraWidget
-          open={isZantaraOpen}
-          onClose={() => setIsZantaraOpen(false)}
-        />
+        {!isTerminalPage && <WorkspaceAssistant />}
         <KitaCommandPalette />
       </ToastProvider>
     </I18nProvider>
