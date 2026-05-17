@@ -118,6 +118,11 @@ WHITELIST_DIRS: set[str] = {
     # 02-patterns.md, 03-lessons.md (manual). Separate from research/ (raw
     # capture) and scripts/ (build/utility). See agent-library/README.md.
     "agent-library",
+    # Vendored third-party source (Apache 2.0 + similar permissive licenses
+    # only). Each vendor/<pkg>/UPSTREAM.md documents the upstream SHA + the
+    # diff list. Currently: vendor/evoskill/ — EvoSkill v1.1.0 stripped of
+    # Anthropic deps per CLAUDE.md hard rule. See PR #721.
+    "vendor",
 }
 
 # Allowed tracked dotfiles directories.
