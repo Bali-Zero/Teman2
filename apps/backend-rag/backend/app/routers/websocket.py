@@ -49,7 +49,7 @@ class ConnectionManager:
                     self.active_connections[user_id].remove(websocket)
                 if not self.active_connections[user_id]:
                     del self.active_connections[user_id]
-        logger.info(f"🔌 WebSocket disconnected: {user_id}")
+        logger.info("🔌 WebSocket disconnected: %s", user_id)
 
     async def send_personal_message(self, message: dict, user_id: str) -> None:
         """Send message to all connections of a specific user"""
@@ -60,7 +60,7 @@ class ConnectionManager:
                 try:
                     await connection.send_json(message)
                 except Exception as e:
-                    logger.warning(f"⚠️ Failed to send WS message to {user_id}: {e}")
+                    logger.warning("⚠️ Failed to send WS message to %s: %s", user_id, e)
                     # Cleanup dead connection
                     await self.disconnect(connection, user_id)
 
@@ -177,10 +177,10 @@ async def websocket_endpoint(websocket: WebSocket) -> Any:
                 continue
 
     except WebSocketDisconnect:
-        logger.info(f"🔌 WebSocket client disconnected: {user_id}")
+        logger.info("🔌 WebSocket client disconnected: %s", user_id)
         await manager.disconnect(websocket, user_id)
     except Exception as e:
-        logger.error(f"❌ WebSocket error for {user_id}: {e}", exc_info=True)
+        logger.error("❌ WebSocket error for %s: %s", user_id, e, exc_info=True)
         await manager.disconnect(websocket, user_id)
     finally:
         heartbeat_task.cancel()
@@ -288,7 +288,7 @@ async def redis_listener() -> Any:
     except asyncio.CancelledError:
         logger.info("🛑 Redis listener cancelled")
     except Exception as e:
-        logger.error(f"❌ Redis listener error: {e}")
+        logger.error("❌ Redis listener error: %s", e)
     finally:
         await pubsub.close()
         # Don't close redis_client — it's shared via RedisManager

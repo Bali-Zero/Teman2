@@ -68,7 +68,7 @@ class CodeChangeDetector:
             return []
 
         except Exception as e:
-            logger.error(f"Error getting git diff: {e}")
+            logger.error("Error getting git diff: %s", e)
             return self._fallback_get_files(since_commit)
 
     def _fallback_get_files(self, since_commit: str | None = None) -> list[Path]:
@@ -88,7 +88,7 @@ class CodeChangeDetector:
             return []
 
         except Exception as e:
-            logger.error(f"Fallback file detection failed: {e}")
+            logger.error("Fallback file detection failed: %s", e)
             return []
 
     def get_file_changes(self, file_path: Path) -> dict[str, Any]:
@@ -130,7 +130,7 @@ class CodeChangeDetector:
             }
 
         except Exception as e:
-            logger.error(f"Error analyzing file changes: {e}")
+            logger.error("Error analyzing file changes: %s", e)
             return {
                 "file": str(file_path),
                 "added_functions": [],
@@ -193,7 +193,7 @@ class TestCreatorAgent:
             "coverage_improvement": 0.0,
         }
 
-        logger.info(f"🎯 TestCreatorAgent initialized for {repo_path}")
+        logger.info("🎯 TestCreatorAgent initialized for %s", repo_path)
 
     async def scan_and_generate(self, max_files: int = 10) -> dict[str, Any]:
         """
@@ -222,7 +222,7 @@ class TestCreatorAgent:
                     result = await self.process_file(file_path)
                     results.append(result)
                 except Exception as e:
-                    logger.error(f"❌ Failed to process {file_path}: {e}")
+                    logger.error("❌ Failed to process %s: %s", file_path, e)
                     results.append({"file": str(file_path), "success": False, "error": str(e)})
 
             # Generate summary
@@ -247,7 +247,7 @@ class TestCreatorAgent:
 
         except Exception as e:
             error_msg = f"Scan failed: {e}"
-            logger.error(f"❌ {error_msg}")
+            logger.error("❌ %s", error_msg)
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
                     time.time() - start_time, success=False, error=error_msg,
@@ -265,13 +265,13 @@ class TestCreatorAgent:
             Processing result
         """
         start_time = time.time()
-        logger.info(f"🔄 Processing file: {file_path}")
+        logger.info("🔄 Processing file: %s", file_path)
 
         try:
             # Analyze file changes
             changes = self.change_detector.get_file_changes(file_path)
             if not changes["has_changes"]:
-                logger.debug(f"⏭️ No changes detected in {file_path}")
+                logger.debug("⏭️ No changes detected in %s", file_path)
                 return {"file": str(file_path), "success": True, "action": "skipped"}
 
             # Get file context
@@ -294,7 +294,7 @@ class TestCreatorAgent:
 
                 if test_result["success"]:
                     self.stats["tests_passed"] += 1
-                    logger.info(f"✅ Tests passed for {file_path}")
+                    logger.info("✅ Tests passed for %s", file_path)
                 else:
                     self.stats["tests_failed"] += 1
                     logger.warning(
@@ -315,7 +315,7 @@ class TestCreatorAgent:
                     "test_result": test_result,
                 }
             else:
-                logger.warning(f"⚠️ Test validation failed for {file_path}")
+                logger.warning("⚠️ Test validation failed for %s", file_path)
                 return {
                     "file": str(file_path),
                     "success": False,
@@ -325,7 +325,7 @@ class TestCreatorAgent:
 
         except Exception as e:
             error_msg = f"Error processing {file_path}: {e}"
-            logger.error(f"❌ {error_msg}")
+            logger.error("❌ %s", error_msg)
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
                     time.time() - start_time, success=False, error=error_msg,
@@ -365,7 +365,7 @@ class TestCreatorAgent:
             }
 
         except Exception as e:
-            logger.error(f"Error analyzing context for {file_path}: {e}")
+            logger.error("Error analyzing context for %s: %s", file_path, e)
             return {
                 "imports": [],
                 "classes": [],
@@ -469,7 +469,7 @@ Return ONLY the complete Python test code. No explanations, no markdown formatti
                 return self._generate_mock_test(context, changes)
 
         except Exception as e:
-            logger.error(f"❌ Test generation failed: {e}")
+            logger.error("❌ Test generation failed: %s", e)
             return self._generate_mock_test(context, changes)
 
     def _generate_import_section(self, context: dict[str, Any]) -> str:
@@ -549,17 +549,17 @@ class Test{context["module_name"].title()}:
 
             # Save test file
             test_file.write_text(test_code, encoding="utf-8")
-            logger.info(f"💾 Test saved to {test_file}")
+            logger.info("💾 Test saved to %s", test_file)
 
             return {"valid": True, "test_file": str(test_file)}
 
         except SyntaxError as e:
             error_msg = f"Syntax error in generated test: {e}"
-            logger.error(f"❌ {error_msg}")
+            logger.error("❌ %s", error_msg)
             return {"valid": False, "error": error_msg}
         except Exception as e:
             error_msg = f"Error saving test: {e}"
-            logger.error(f"❌ {error_msg}")
+            logger.error("❌ %s", error_msg)
             return {"valid": False, "error": error_msg}
 
     async def _run_tests(self, test_file: Path) -> dict[str, Any]:
@@ -575,19 +575,19 @@ class Test{context["module_name"].title()}:
             success = result.returncode == 0
 
             if success:
-                logger.info(f"✅ Tests passed: {test_file}")
+                logger.info("✅ Tests passed: %s", test_file)
                 return {"success": True, "output": result.stdout}
             else:
-                logger.warning(f"⚠️ Tests failed: {test_file}")
+                logger.warning("⚠️ Tests failed: %s", test_file)
                 return {"success": False, "error": result.stderr, "output": result.stdout}
 
         except subprocess.TimeoutExpired:
             error_msg = "Test execution timed out"
-            logger.error(f"❌ {error_msg}")
+            logger.error("❌ %s", error_msg)
             return {"success": False, "error": error_msg}
         except Exception as e:
             error_msg = f"Error running tests: {e}"
-            logger.error(f"❌ {error_msg}")
+            logger.error("❌ %s", error_msg)
             return {"success": False, "error": error_msg}
 
     def get_stats(self) -> dict[str, Any]:

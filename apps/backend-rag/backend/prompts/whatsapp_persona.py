@@ -166,7 +166,7 @@ def _load_full_pricing(lang: str = "en") -> str:
 
         return "\n".join(sections)
     except Exception as e:
-        logger.warning(f"Failed to load pricing for WhatsApp persona: {e}")
+        logger.warning("Failed to load pricing for WhatsApp persona: %s", e)
         return ""
 
 

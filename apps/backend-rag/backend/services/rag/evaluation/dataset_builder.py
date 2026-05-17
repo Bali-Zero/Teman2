@@ -336,7 +336,7 @@ class DatasetBuilder:
         """
         templates = self.templates.get(category, [])
         if not templates:
-            logger.warning(f"No templates for category: {category}")
+            logger.warning("No templates for category: %s", category)
             return []
 
         questions = []
@@ -385,7 +385,7 @@ Jawaban (maksimal 3 paragraf, dalam Bahasa Indonesia):"""
             )
             return response.content.strip()
         except Exception as e:
-            logger.error(f"Failed to generate synthetic answer: {e}")
+            logger.error("Failed to generate synthetic answer: %s", e)
             return f"[Failed to generate answer: {str(e)}]"
 
     def create_expert_samples(self) -> list[EvaluationSample]:
@@ -776,7 +776,7 @@ Jawaban (maksimal 3 paragraf, dalam Bahasa Indonesia):"""
         with open(filepath, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
 
-        logger.info(f"Saved dataset to {filepath}")
+        logger.info("Saved dataset to %s", filepath)
 
     def load_dataset(self, filepath: str) -> list[EvaluationSample]:
         """

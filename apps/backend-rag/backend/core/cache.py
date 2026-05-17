@@ -230,7 +230,7 @@ class CacheService:
             self.stats["misses"] += 1
             return None
         except Exception as e:
-            logger.error(f"Cache get error: {e}")
+            logger.error("Cache get error: %s", e)
             self.stats["errors"] += 1
             return None
 
@@ -251,7 +251,7 @@ class CacheService:
             self._memory_cache.set(key, value, ttl)
             return True
         except Exception as e:
-            logger.error(f"Cache set error: {e}")
+            logger.error("Cache set error: %s", e)
             self.stats["errors"] += 1
             return False
 
@@ -264,7 +264,7 @@ class CacheService:
                 return True
             return self._memory_cache.delete(key)
         except Exception as e:
-            logger.error(f"Cache delete error: {e}")
+            logger.error("Cache delete error: %s", e)
             return False
 
     async def clear_pattern(self, pattern: str) -> int:
@@ -278,7 +278,7 @@ class CacheService:
                 return 0
             return self._memory_cache.clear_pattern(pattern)
         except Exception as e:
-            logger.error(f"Cache clear error: {e}")
+            logger.error("Cache clear error: %s", e)
             return 0
 
     def get_stats(self) -> dict:
@@ -354,12 +354,12 @@ def cached(
             if cached_value is not None:
                 # Sanitize cache_key for logging
                 sanitized_key = f"{cache_key[:8]}..." if len(cache_key) > 8 else cache_key[:8]
-                logger.debug(f"✅ Cache HIT: {sanitized_key}")
+                logger.debug("✅ Cache HIT: %s", sanitized_key)
                 return cached_value
 
             # Cache miss - execute function
             sanitized_key = f"{cache_key[:8]}..." if len(cache_key) > 8 else cache_key[:8]
-            logger.debug(f"❌ Cache MISS: {sanitized_key}")
+            logger.debug("❌ Cache MISS: %s", sanitized_key)
             result = await func(*args, **kwargs)
 
             # Store in cache
@@ -385,7 +385,7 @@ async def invalidate_cache(pattern: str = "zantara:*", cache_service: CacheServi
     """
     cache_inst = cache_service if cache_service is not None else get_cache_service()
     count = await cache_inst.clear_pattern(pattern)
-    logger.info(f"🗑️ Invalidated {count} cache entries matching '{pattern}'")
+    logger.info("🗑️ Invalidated %s cache entries matching '%s'", count, pattern)
     return count
 
 
@@ -432,7 +432,7 @@ async def invalidate_all_caches(
 
         semantic_count = await invalidate_semantic_cache_async()
     except Exception as e:
-        logger.warning(f"Semantic cache invalidation failed (non-fatal): {e}")
+        logger.warning("Semantic cache invalidation failed (non-fatal): %s", e)
 
     # 3. Semantic search cache (SemanticCache class, Redis-backed)
     try:
@@ -441,11 +441,11 @@ async def invalidate_all_caches(
         if _semantic_cache is not None:
             await _semantic_cache.clear_cache()
     except Exception as e:
-        logger.debug(f"Search semantic cache clear skipped: {e}")
+        logger.debug("Search semantic cache clear skipped: %s", e)
 
     total = cache_count + semantic_count
     logger.info(
-        f"Unified invalidation: {cache_count} cache_service + {semantic_count} semantic_cache = {total} total",
+        "Unified invalidation: %s cache_service + %s semantic_cache = %s total", cache_count, semantic_count, total,
     )
     return {"cache_service": cache_count, "semantic_cache": semantic_count}
 

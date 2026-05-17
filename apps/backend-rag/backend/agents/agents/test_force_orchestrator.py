@@ -36,7 +36,7 @@ try:
 
     TEST_FORCE_AVAILABLE = True
 except ImportError as e:
-    logger.info(f"❌ Test Force imports failed: {e}")
+    logger.info("❌ Test Force imports failed: %s", e)
     TEST_FORCE_AVAILABLE = False
 
 
@@ -73,7 +73,7 @@ class TestForceOrchestrator:
         self.running = False
         self.shutdown_requested = False
 
-        logger.info(f"🎭 TestForce Orchestrator initialized for {repo_path}")
+        logger.info("🎭 TestForce Orchestrator initialized for %s", repo_path)
 
     def _initialize_agents(self):
         """Initialize all Test Force agents."""
@@ -101,7 +101,7 @@ class TestForceOrchestrator:
             logger.info("✅ All Test Force agents initialized")
 
         except Exception as e:
-            logger.error(f"❌ Failed to initialize agents: {e}")
+            logger.error("❌ Failed to initialize agents: %s", e)
             self.agents = {}
 
     async def run_full_scan(self, options: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -136,7 +136,7 @@ class TestForceOrchestrator:
             max_concurrent = options.get("max_concurrent", 3)  # Max concurrent agents
 
             if parallel_execution:
-                logger.info(f"🚀 Running agents in PARALLEL mode (max {max_concurrent} concurrent)")
+                logger.info("🚀 Running agents in PARALLEL mode (max %s concurrent)", max_concurrent)
                 # Phase 1: Coverage analysis (runs first, needed by others)
                 coverage_gaps = []
                 if "guardian" in self.agents and options.get("run_guardian", True):
@@ -208,7 +208,7 @@ class TestForceOrchestrator:
                     )
                     for (agent_name, _), result in zip(tasks, task_results, strict=False):
                         if isinstance(result, Exception):
-                            logger.error(f"❌ {agent_name} failed: {result}")
+                            logger.error("❌ %s failed: %s", agent_name, result)
                             results["agent_results"][agent_name] = {
                                 "success": False,
                                 "error": str(result),
@@ -269,7 +269,7 @@ class TestForceOrchestrator:
 
         except Exception as e:
             error_msg = f"Full scan failed: {e}"
-            logger.error(f"❌ {error_msg}")
+            logger.error("❌ %s", error_msg)
             if self.orchestrator_metrics:
                 self.orchestrator_metrics.record_operation(
                     time.time() - start_time, success=False, error=error_msg,
@@ -324,7 +324,7 @@ class TestForceOrchestrator:
         Args:
             interval: Check interval in seconds (default: 5 minutes)
         """
-        logger.info(f"👁️ Starting watch mode with {interval}s interval...")
+        logger.info("👁️ Starting watch mode with %ss interval...", interval)
         self.running = True
 
         # Setup signal handlers
@@ -363,7 +363,7 @@ class TestForceOrchestrator:
                     await asyncio.sleep(1)
 
         except Exception as e:
-            logger.error(f"❌ Watch mode error: {e}")
+            logger.error("❌ Watch mode error: %s", e)
         finally:
             self.running = False
             logger.info("🛑 Watch mode stopped")
@@ -429,7 +429,7 @@ class TestForceOrchestrator:
             logger.info(f"   {status} {agent_name}: {agent_info['duration']:.2f}s")
 
             for metric, value in agent_info.get("key_metrics", {}).items():
-                logger.info(f"      - {metric}: {value}")
+                logger.info("      - %s: %s", metric, value)
 
     def generate_report(self, results: dict[str, Any], format: str = "markdown") -> str:
         """Generate comprehensive report."""
@@ -480,16 +480,16 @@ class TestForceOrchestrator:
             try:
                 if hasattr(agent, "cleanup"):
                     await agent.cleanup()
-                logger.info(f"✅ Cleaned up {agent_name}")
+                logger.info("✅ Cleaned up %s", agent_name)
             except Exception as e:
-                logger.error(f"❌ Error cleaning up {agent_name}: {e}")
+                logger.error("❌ Error cleaning up %s: %s", agent_name, e)
 
         # Cleanup LLM adapter
         try:
             await close_llm_adapter()
             logger.info("✅ Cleaned up LLM adapter")
         except Exception as e:
-            logger.error(f"❌ Error cleaning up LLM adapter: {e}")
+            logger.error("❌ Error cleaning up LLM adapter: %s", e)
 
         logger.info("✅ Test Force Orchestrator cleanup complete")
 
@@ -608,7 +608,7 @@ async def main():
         # Save metrics if requested
         if args.save_metrics and orchestrator.metrics_collector:
             snapshot_file = orchestrator.metrics_collector.save_snapshot()
-            logger.info(f"📊 Metrics saved to: {snapshot_file}")
+            logger.info("📊 Metrics saved to: %s", snapshot_file)
 
         # Print summary
         if args.mode == "scan":

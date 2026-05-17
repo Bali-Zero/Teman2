@@ -140,7 +140,7 @@ async def get_analytics_dashboard(
         finally:
             await redis.aclose()
     except Exception as e:
-        logger.debug(f"Dashboard cache miss or Redis unavailable: {e}")
+        logger.debug("Dashboard cache miss or Redis unavailable: %s", e)
 
     start_time = time.time()
     cutoff = datetime.now(tz=timezone.utc) - timedelta(days=period)
@@ -264,7 +264,7 @@ async def get_analytics_dashboard(
             ]
 
     except Exception as e:
-        logger.error(f"Dashboard query error: {e}", exc_info=True)
+        logger.error("Dashboard query error: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Dashboard error: {str(e)}") from e
 
     dashboard["generated_at"] = datetime.now(tz=timezone.utc).isoformat()
@@ -281,7 +281,7 @@ async def get_analytics_dashboard(
         finally:
             await redis.aclose()
     except Exception as e:
-        logger.debug(f"Failed to cache dashboard: {e}")
+        logger.debug("Failed to cache dashboard: %s", e)
 
     return dashboard
 

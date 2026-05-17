@@ -118,13 +118,13 @@ async def ollama_generate(
         return text
 
     except httpx.ConnectError:
-        logger.debug(f"Ollama not running at {OLLAMA_BASE_URL}")
+        logger.debug("Ollama not running at %s", OLLAMA_BASE_URL)
         return None
     except httpx.TimeoutException:
-        logger.warning(f"Ollama timeout ({timeout}s) for model {model}")
+        logger.warning("Ollama timeout (%ss) for model %s", timeout, model)
         return None
     except Exception as e:
-        logger.warning(f"Ollama error ({model}): {e}")
+        logger.warning("Ollama error (%s): %s", model, e)
         return None
 
 
@@ -181,13 +181,13 @@ async def ollama_chat(
         return text
 
     except httpx.ConnectError:
-        logger.debug(f"Ollama not running at {OLLAMA_BASE_URL}")
+        logger.debug("Ollama not running at %s", OLLAMA_BASE_URL)
         return None
     except httpx.TimeoutException:
-        logger.warning(f"Ollama chat timeout ({timeout}s) for model {model}")
+        logger.warning("Ollama chat timeout (%ss) for model %s", timeout, model)
         return None
     except Exception as e:
-        logger.warning(f"Ollama chat error ({model}): {e}")
+        logger.warning("Ollama chat error (%s): %s", model, e)
         return None
 
 
@@ -242,13 +242,13 @@ async def ollama_chat_kg(
         return text
 
     except httpx.ConnectError:
-        logger.debug(f"Ollama not running at {OLLAMA_BASE_URL}")
+        logger.debug("Ollama not running at %s", OLLAMA_BASE_URL)
         return None
     except httpx.TimeoutException:
-        logger.warning(f"Ollama KG timeout ({timeout}s) for model {model}")
+        logger.warning("Ollama KG timeout (%ss) for model %s", timeout, model)
         return None
     except Exception as e:
-        logger.warning(f"Ollama KG error ({model}): {e}")
+        logger.warning("Ollama KG error (%s): %s", model, e)
         return None
 
 
@@ -264,5 +264,5 @@ async def is_ollama_available(model: str | None = None) -> bool:
             return any(model in m for m in models)
         return True
     except Exception as e:
-        logger.debug(f"Ollama availability check failed: {e}")
+        logger.debug("Ollama availability check failed: %s", e)
         return False

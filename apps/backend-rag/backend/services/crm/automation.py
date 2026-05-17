@@ -151,13 +151,13 @@ async def _send_with_brevo_fallback(
                 json={"to": to_email, "subject": subject, "body": html_body},
             )
             response.raise_for_status()
-        logger.info(f"Email sent to {to_email} via Brevo")
+        logger.info("Email sent to %s via Brevo", to_email)
         return
     except (httpx.HTTPError, httpx.InvalidURL) as brevo_error:
-        logger.warning(f"Brevo failed for {to_email}, trying Zoho: {brevo_error}")
+        logger.warning("Brevo failed for %s, trying Zoho: %s", to_email, brevo_error)
     except Exception as brevo_error:  # noqa: BLE001 — defensive fallback before Zoho retry
         logger.warning(
-            f"Brevo failed for {to_email} (unexpected error), trying Zoho: {brevo_error}",
+            "Brevo failed for %s (unexpected error), trying Zoho: %s", to_email, brevo_error,
             exc_info=True,
         )
 
@@ -231,22 +231,22 @@ class ProcessAutomationService:
         Returns:
             dict with results of all operations
         """
-        logger.info(f"Process start automation triggered for practice {practice_id}")
+        logger.info("Process start automation triggered for practice %s", practice_id)
 
         try:
             practice_data, client_data = await _fetch_practice_with_client(
                 self.db_pool, practice_id,
             )
             if not practice_data:
-                logger.error(f"Practice {practice_id} not found", exc_info=True)
+                logger.error("Practice %s not found", practice_id)
                 return {"success": False, "error": "Practice not found"}
             if not client_data:
-                logger.error(f"Client for practice {practice_id} not found")
+                logger.error("Client for practice %s not found", practice_id)
                 return {"success": False, "error": "Client not found"}
 
             team_leader_email = practice_data.get("assigned_to") or practice_data.get("created_by")
             if not team_leader_email:
-                logger.warning(f"No team leader assigned for practice {practice_id}")
+                logger.warning("No team leader assigned for practice %s", practice_id)
 
             results = {
                 "client_notified": False,
@@ -263,10 +263,10 @@ class ProcessAutomationService:
                     results["client_notified"] = True
                     logger.info(f"Process start email sent to client {client_data['email']}")
                 except (httpx.HTTPError, ValueError) as e:
-                    logger.error(f"Failed to send process start email to client: {e}", exc_info=True)
+                    logger.error("Failed to send process start email to client: %s", e, exc_info=True)
                 except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
                     logger.error(
-                        f"Unexpected error sending process start email to client: {e}",
+                        "Unexpected error sending process start email to client: %s", e,
                         exc_info=True,
                     )
             else:
@@ -281,13 +281,13 @@ class ProcessAutomationService:
                     )
                     results["team_leader_notified"] = True
                     logger.info(
-                        f"Process start notification sent to team leader {team_leader_email}",
+                        "Process start notification sent to team leader %s", team_leader_email,
                     )
                 except (httpx.HTTPError, ValueError) as e:
-                    logger.error(f"Failed to send notification to team leader: {e}", exc_info=True)
+                    logger.error("Failed to send notification to team leader: %s", e, exc_info=True)
                 except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
                     logger.error(
-                        f"Unexpected error notifying team leader: {e}",
+                        "Unexpected error notifying team leader: %s", e,
                         exc_info=True,
                     )
 
@@ -299,12 +299,12 @@ class ProcessAutomationService:
                 "Process started - notifications sent to client and team leader",
             )
 
-            logger.info(f"Process start automation completed for practice {practice_id}")
+            logger.info("Process start automation completed for practice %s", practice_id)
             return {"success": True, **results}
 
         except Exception as error:
             logger.error(
-                f"Process start automation failed for practice {practice_id}: {error}",
+                "Process start automation failed for practice %s: %s", practice_id, error,
                 exc_info=True,
             )
             return {"success": False, "error": str(error)}
@@ -466,7 +466,7 @@ class CompletedProcessService:
         Returns:
             dict with results of all operations
         """
-        logger.info(f"Process completion automation triggered for practice {practice_id}")
+        logger.info("Process completion automation triggered for practice %s", practice_id)
 
         try:
             practice_data, client_data = await _fetch_practice_with_client(
@@ -495,10 +495,10 @@ class CompletedProcessService:
                     )
                     client_notified = True
                 except (httpx.HTTPError, ValueError) as e:
-                    logger.error(f"Failed to send completion email to client: {e}", exc_info=True)
+                    logger.error("Failed to send completion email to client: %s", e, exc_info=True)
                 except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
                     logger.error(
-                        f"Unexpected error sending completion email to client: {e}",
+                        "Unexpected error sending completion email to client: %s", e,
                         exc_info=True,
                     )
 
@@ -513,10 +513,10 @@ class CompletedProcessService:
                     )
                     team_notified = True
                 except (httpx.HTTPError, ValueError) as e:
-                    logger.error(f"Failed to notify team leader: {e}", exc_info=True)
+                    logger.error("Failed to notify team leader: %s", e, exc_info=True)
                 except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
                     logger.error(
-                        f"Unexpected error notifying team leader about completion: {e}",
+                        "Unexpected error notifying team leader about completion: %s", e,
                         exc_info=True,
                     )
 
@@ -537,7 +537,7 @@ class CompletedProcessService:
 
         except Exception as error:
             logger.error(
-                f"Process completion automation failed for practice {practice_id}: {error}",
+                "Process completion automation failed for practice %s: %s", practice_id, error,
                 exc_info=True,
             )
             return {"success": False, "error": str(error)}
@@ -642,7 +642,7 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
 """
 
         await _send_with_brevo_fallback(self.zoho_email_service, client_email, subject, body)
-        logger.info(f"Completion email sent to client {client_email}")
+        logger.info("Completion email sent to client %s", client_email)
 
     async def _send_team_leader_completion_notification(
         self,
@@ -735,7 +735,7 @@ class WaitingDocumentsService:
         Returns:
             dict with results of all operations
         """
-        logger.info(f"Waiting documents automation triggered for practice {practice_id}")
+        logger.info("Waiting documents automation triggered for practice %s", practice_id)
 
         try:
             practice_data, client_data = await _fetch_practice_with_client(
@@ -762,17 +762,17 @@ class WaitingDocumentsService:
                     )
                     results["team_leader_notified"] = True
                     logger.info(
-                        f"Waiting docs notification sent to team leader {team_leader_email}",
+                        "Waiting docs notification sent to team leader %s", team_leader_email,
                     )
                 except (httpx.HTTPError, ValueError) as e:
-                    logger.error(f"Failed to notify team leader: {e}", exc_info=True)
+                    logger.error("Failed to notify team leader: %s", e, exc_info=True)
                 except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
                     logger.error(
-                        f"Unexpected error notifying team leader (waiting docs): {e}",
+                        "Unexpected error notifying team leader (waiting docs): %s", e,
                         exc_info=True,
                     )
             else:
-                logger.warning(f"No team leader assigned for practice {practice_id}")
+                logger.warning("No team leader assigned for practice %s", practice_id)
 
             if client_data.get("email"):
                 try:
@@ -784,10 +784,10 @@ class WaitingDocumentsService:
                     results["client_notified"] = True
                     logger.info(f"Document request email sent to client {client_data['email']}")
                 except (httpx.HTTPError, ValueError) as e:
-                    logger.error(f"Failed to send document request to client: {e}", exc_info=True)
+                    logger.error("Failed to send document request to client: %s", e, exc_info=True)
                 except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
                     logger.error(
-                        f"Unexpected error sending document request to client: {e}",
+                        "Unexpected error sending document request to client: %s", e,
                         exc_info=True,
                     )
             else:
@@ -801,12 +801,12 @@ class WaitingDocumentsService:
                 "Waiting documents - notifications sent to team leader and client",
             )
 
-            logger.info(f"Waiting documents automation completed for practice {practice_id}")
+            logger.info("Waiting documents automation completed for practice %s", practice_id)
             return {"success": True, **results}
 
         except Exception as error:
             logger.error(
-                f"Waiting documents automation failed for practice {practice_id}: {error}",
+                "Waiting documents automation failed for practice %s: %s", practice_id, error,
                 exc_info=True,
             )
             return {"success": False, "error": str(error)}

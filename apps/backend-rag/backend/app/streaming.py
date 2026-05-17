@@ -115,9 +115,9 @@ async def bali_zero_chat_stream(
             if collaborator and collaborator.id != "anonymous":
                 logger.info(f"✅ Identified user: {collaborator.name} ({collaborator.role})")
             else:
-                logger.info(f"👤 User not in team database: {user_email}")
+                logger.info("👤 User not in team database: %s", user_email)
         except Exception as e:
-            logger.warning(f"⚠️ Collaborator lookup failed: {e}")
+            logger.warning("⚠️ Collaborator lookup failed: %s", e)
 
     # Load user memory from persistent storage
     memory_service = request.app.state.memory_service
@@ -135,7 +135,7 @@ async def bali_zero_chat_stream(
                     f"✅ Loaded memory for {user_id}: {len(memory_obj.profile_facts)} facts",
                 )
         except Exception as e:
-            logger.warning(f"⚠️ Failed to load memory for {user_id}: {e}")
+            logger.warning("⚠️ Failed to load memory for %s: %s", user_id, e)
 
     # TRACING: Record span for streaming request (completes before response streams)
     query_hash = hashlib.sha256(query.encode()).hexdigest()[:8]
@@ -186,7 +186,7 @@ async def bali_zero_chat_stream(
                     # Check chunk timeout (time since last chunk)
                     current_time = asyncio.get_event_loop().time()
                     if current_time - last_chunk_time > CHUNK_TIMEOUT_SECONDS:
-                        logger.warning(f"Chunk timeout exceeded ({CHUNK_TIMEOUT_SECONDS}s)")
+                        logger.warning("Chunk timeout exceeded (%ss)", CHUNK_TIMEOUT_SECONDS)
                         yield f"data: {json.dumps({'type': 'error', 'data': 'Response timeout - please try again'}, ensure_ascii=False)}\n\n"
                         return
                     last_chunk_time = current_time
@@ -218,7 +218,7 @@ async def bali_zero_chat_stream(
                                 metadata_data = json.loads(json_str)
                                 yield f"data: {json.dumps({'type': 'metadata', 'data': metadata_data}, ensure_ascii=False)}\n\n"
                             except Exception as e:
-                                logger.warning(f"Failed to parse legacy metadata chunk: {e}")
+                                logger.warning("Failed to parse legacy metadata chunk: %s", e)
                         else:
                             yield f"data: {json.dumps({'type': 'token', 'data': chunk}, ensure_ascii=False)}\n\n"
                     else:
@@ -251,14 +251,14 @@ async def bali_zero_chat_stream(
                                 f"🧠 Collective Memory processed for {input_state['user_id']}",
                             )
                         except Exception as e:
-                            logger.error(f"❌ Collective Memory failed: {e}")
+                            logger.error("❌ Collective Memory failed: %s", e)
 
                     background_tasks.add_task(run_collective_memory, collective_workflow, state)
             except Exception as e:
-                logger.error(f"⚠️ Collective Memory background task failed: {e}")
+                logger.error("⚠️ Collective Memory background task failed: %s", e)
 
         except asyncio.TimeoutError:
-            logger.error(f"Stream timeout after {STREAM_TIMEOUT_SECONDS}s for user {user_id}")
+            logger.error("Stream timeout after %ss for user %s", STREAM_TIMEOUT_SECONDS, user_id)
             yield f"data: {json.dumps({'type': 'error', 'data': 'Response timeout - the request took too long. Please try again.'}, ensure_ascii=False)}\n\n"
         except Exception as exc:
             logger.exception("Streaming error: %s", exc)
@@ -329,7 +329,7 @@ async def chat_stream_post(
         from datetime import datetime, timezone
 
         session_id = f"session-{datetime.now(tz=timezone.utc).replace(tzinfo=None).strftime('%Y%m%d-%H%M%S')}-{uuid.uuid4().hex[:8]}"
-        logger.info(f"🆕 Generated new session_id: {session_id}")
+        logger.info("🆕 Generated new session_id: %s", session_id)
 
     if (
         not conversation_history_list
@@ -346,7 +346,7 @@ async def chat_stream_post(
                     f"📜 Loaded {len(conversation_history_list)} messages from {history_data.get('source')} for session {session_id}",
                 )
         except Exception as e:
-            logger.warning(f"⚠️ Failed to fetch history for session {session_id}: {e}")
+            logger.warning("⚠️ Failed to fetch history for session %s: %s", session_id, e)
 
     collaborator = None
     collaborator_service = get_app_state(request.app.state, "collaborator_service")
@@ -356,9 +356,9 @@ async def chat_stream_post(
             if collaborator and collaborator.id != "anonymous":
                 logger.info(f"✅ Identified user: {collaborator.name} ({collaborator.role})")
             else:
-                logger.info(f"👤 User not in team database: {user_email}")
+                logger.info("👤 User not in team database: %s", user_email)
         except Exception as e:
-            logger.warning(f"⚠️ Collaborator lookup failed: {e}")
+            logger.warning("⚠️ Collaborator lookup failed: %s", e)
 
     memory_service = request.app.state.memory_service
     user_memory = None
@@ -375,7 +375,7 @@ async def chat_stream_post(
                     f"✅ Loaded memory for {user_id}: {len(memory_obj.profile_facts)} facts",
                 )
         except Exception as e:
-            logger.warning(f"⚠️ Failed to load memory for {user_id}: {e}")
+            logger.warning("⚠️ Failed to load memory for %s: %s", user_id, e)
 
     # TRACING: Record span for streaming request (completes before response streams)
     query_hash = hashlib.sha256(body.message.encode()).hexdigest()[:8]
@@ -428,7 +428,7 @@ async def chat_stream_post(
                     # Check chunk timeout (time since last chunk)
                     current_time = asyncio.get_event_loop().time()
                     if current_time - last_chunk_time > CHUNK_TIMEOUT_SECONDS:
-                        logger.warning(f"Chunk timeout exceeded ({CHUNK_TIMEOUT_SECONDS}s)")
+                        logger.warning("Chunk timeout exceeded (%ss)", CHUNK_TIMEOUT_SECONDS)
                         yield f"data: {json.dumps({'type': 'error', 'data': 'Response timeout - please try again'}, ensure_ascii=False)}\n\n"
                         return
                     last_chunk_time = current_time
@@ -445,7 +445,7 @@ async def chat_stream_post(
                         elif chunk_type == "done":
                             yield f"data: {json.dumps({'type': 'done', 'data': chunk_data}, ensure_ascii=False)}\n\n"
                         else:
-                            logger.warning(f"Unknown chunk type: {chunk_type}")
+                            logger.warning("Unknown chunk type: %s", chunk_type)
                     elif isinstance(chunk, str):
                         if chunk.startswith("[METADATA]"):
                             try:
@@ -453,7 +453,7 @@ async def chat_stream_post(
                                 metadata_data = json.loads(json_str)
                                 yield f"data: {json.dumps({'type': 'metadata', 'data': metadata_data}, ensure_ascii=False)}\n\n"
                             except Exception as e:
-                                logger.warning(f"Failed to parse legacy metadata chunk: {e}")
+                                logger.warning("Failed to parse legacy metadata chunk: %s", e)
                         else:
                             ai_full_response += chunk
                             yield f"data: {json.dumps({'type': 'token', 'data': chunk}, ensure_ascii=False)}\n\n"
@@ -475,9 +475,9 @@ async def chat_stream_post(
                         session_id=session_id_to_save,
                         metadata=body.metadata,
                     )
-                    logger.info(f"💾 Saved conversation for {user_email}")
+                    logger.info("💾 Saved conversation for %s", user_email)
                 except Exception as e:
-                    logger.error(f"❌ Failed to save conversation: {e}")
+                    logger.error("❌ Failed to save conversation: %s", e)
 
             try:
                 collective_workflow = get_app_state(request.app.state, "collective_memory_workflow")
@@ -505,19 +505,19 @@ async def chat_stream_post(
                                 f"🧠 Collective Memory processed for {input_state['user_id']}",
                             )
                         except Exception as e:
-                            logger.error(f"❌ Collective Memory failed: {e}")
+                            logger.error("❌ Collective Memory failed: %s", e)
 
                     background_tasks.add_task(run_collective_memory, collective_workflow, state)
             except Exception as e:
-                logger.error(f"⚠️ Collective Memory background task failed: {e}")
+                logger.error("⚠️ Collective Memory background task failed: %s", e)
 
         except asyncio.TimeoutError:
-            logger.error(f"Stream timeout after {STREAM_TIMEOUT_SECONDS}s for user {user_id}")
+            logger.error("Stream timeout after %ss for user %s", STREAM_TIMEOUT_SECONDS, user_id)
             yield f"data: {json.dumps({'type': 'error', 'data': 'Response timeout - the request took too long. Please try again.'}, ensure_ascii=False)}\n\n"
         except ValueError as ve:
             error_msg = str(ve).lower()
             if "leaked" in error_msg or "api key" in error_msg:
-                logger.critical(f"🚨 API key error in stream: {ve}")
+                logger.critical("🚨 API key error in stream: %s", ve)
                 error_data = {
                     "type": "error",
                     "data": "API key was reported as leaked. Please use another API key. The technical team has been notified.",

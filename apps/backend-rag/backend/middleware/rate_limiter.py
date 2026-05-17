@@ -187,7 +187,7 @@ class RateLimiter:
             # other failure mode: Redis was down at boot and comes back.
             self.metrics["redis_errors"] += 1
             self._last_error = f"{type(e).__name__}: {e}"
-            logger.warning(f"Rate limit Redis error, falling back to in-memory: {e}")
+            logger.warning("Rate limit Redis error, falling back to in-memory: %s", e)
             # Fail-safe: in-memory with half limit so a Redis outage doesn't
             # multiply effective capacity by the number of replicas.
             safe_limit = max(1, limit // 2)

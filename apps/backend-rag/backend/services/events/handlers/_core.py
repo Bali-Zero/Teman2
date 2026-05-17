@@ -103,7 +103,7 @@ def register_handlers(
         if _is_duplicate(dedup_key):
             return
 
-        logger.info(f"🔔 Event client.changed: {operation} client_id={client_id} email={email}")
+        logger.info("🔔 Event client.changed: %s client_id=%s email=%s", operation, client_id, email)
 
         # Invalidate CRM cache
         try:
@@ -111,7 +111,7 @@ def register_handlers(
 
             await invalidate_cache("zantara:crm_clients_stats:*")
         except Exception as e:
-            logger.debug(f"Cache invalidation skipped: {e}")
+            logger.debug("Cache invalidation skipped: %s", e)
 
         # Store in cross-chain context
         _store_context("client.changed", client_id, payload)
@@ -140,11 +140,11 @@ def register_handlers(
                         },
                     )
         except Exception as e:
-            logger.error(f"Bridge outbox write failed for client {client_id}: {e}")
+            logger.error("Bridge outbox write failed for client %s: %s", client_id, e)
 
         # On new client: create Drive folder + log interaction
         if operation == "INSERT":
-            logger.info(f"🆕 New client created: id={client_id}, email={email}")
+            logger.info("🆕 New client created: id=%s, email=%s", client_id, email)
             # Create Drive folder in background (non-blocking)
             spawn(
                 _create_drive_folder(db_pool, client_id),
@@ -182,7 +182,7 @@ def register_handlers(
             return
 
         logger.info(
-            f"🔔 Event practice.status_changed: practice_id={practice_id} {old_status}→{new_status}"
+            "🔔 Event practice.status_changed: practice_id=%s %s→%s", practice_id, old_status, new_status
         )
 
         # Invalidate practice cache
@@ -191,7 +191,7 @@ def register_handlers(
 
             await invalidate_cache("zantara:crm_practices:*")
         except Exception as e:
-            logger.debug(f"Cache invalidation skipped: {e}")
+            logger.debug("Cache invalidation skipped: %s", e)
 
         # Store in cross-chain context
         _store_context("practice.status_changed", practice_id, payload)
@@ -220,7 +220,7 @@ def register_handlers(
                         },
                     )
         except Exception as e:
-            logger.error(f"Bridge outbox write failed for practice {practice_id}: {e}")
+            logger.error("Bridge outbox write failed for practice %s: %s", practice_id, e)
 
         # On completion: check if client has other expiring docs
         if new_status == "completed" and client_id:
@@ -267,8 +267,7 @@ def register_handlers(
             return
 
         logger.info(
-            f"🔔 Event compliance.alert: severity={severity} "
-            f"client_id={client_id} type={alert_type}"
+            "🔔 Event compliance.alert: severity=%s client_id=%s type=%s", severity, client_id, alert_type
         )
 
         # Store in cross-chain context
@@ -290,7 +289,7 @@ def register_handlers(
                         },
                     )
             except Exception as e:
-                logger.error(f"Bridge outbox write failed for compliance alert: {e}")
+                logger.error("Bridge outbox write failed for compliance alert: %s", e)
 
         # High/critical: Telegram alert
         if severity in ("high", "critical"):
@@ -427,7 +426,7 @@ async def _create_drive_folder(db_pool: asyncpg.Pool, client_id: int) -> None:
                 client_id,
             )
         if existing:
-            logger.debug(f"Drive folder already exists for client {client_id}")
+            logger.debug("Drive folder already exists for client %s", client_id)
             return
 
         folder_id = drive_svc.create_folder(folder_name)
@@ -438,9 +437,9 @@ async def _create_drive_folder(db_pool: asyncpg.Pool, client_id: int) -> None:
                     folder_id,
                     client_id,
                 )
-            logger.info(f"📁 Drive folder created for client {client_id}: {folder_id}")
+            logger.info("📁 Drive folder created for client %s: %s", client_id, folder_id)
     except Exception as e:
-        logger.error(f"Drive folder creation failed for client {client_id}: {e}")
+        logger.error("Drive folder creation failed for client %s: %s", client_id, e)
 
 
 async def _log_interaction(
@@ -464,7 +463,7 @@ async def _log_interaction(
                 channel,
             )
     except Exception as e:
-        logger.debug(f"Interaction log failed: {e}")
+        logger.debug("Interaction log failed: %s", e)
 
 
 def _coerce_int(value: Any) -> int | None:
@@ -644,7 +643,7 @@ async def _check_client_expiry_on_completion(
                 "internal",
             )
     except Exception as e:
-        logger.debug(f"Expiry check failed for client {client_id}: {e}")
+        logger.debug("Expiry check failed for client %s: %s", client_id, e)
 
 
 async def _send_admin_telegram(title: str, message: str) -> None:
@@ -655,7 +654,7 @@ async def _send_admin_telegram(title: str, message: str) -> None:
         svc = AlertService()
         await svc.send_alert(title=title, message=message, level=AlertLevel.WARNING)
     except Exception as e:
-        logger.debug(f"Telegram alert failed: {e}")
+        logger.debug("Telegram alert failed: %s", e)
 
 
 async def _run_predictive_scan_for_client(
@@ -714,4 +713,4 @@ async def _run_predictive_scan_for_client(
             top.priority_score,
         )
     except Exception as e:
-        logger.debug(f"Predictive scan failed for client {client_id}: {e}")
+        logger.debug("Predictive scan failed for client %s: %s", client_id, e)

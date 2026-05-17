@@ -144,7 +144,7 @@ class HierarchicalIngestor:
         root = Path(root)
 
         # Chunk all files
-        logger.info(f"Chunking directory: {root}")
+        logger.info("Chunking directory: %s", root)
         chunks = self._chunker.chunk_directory(root)
         if not chunks:
             return {"success": False, "error": "No chunks produced", "docs": 0}
@@ -198,7 +198,7 @@ class HierarchicalIngestor:
         }
         if self._sparse_encoder:
             stats["bm25_vocab_size"] = self._sparse_encoder.vocab_size
-        logger.info(f"Ingest complete: {stats}")
+        logger.info("Ingest complete: %s", stats)
         return stats
 
     def ingest_chunks(self, chunks: list[Chunk]) -> dict[str, Any]:

@@ -105,7 +105,7 @@ class ToolExecutor:
             try:
                 # Check if this is a ZantaraTools function (Python - direct execution)
                 if tool_name in self.zantara_tool_names and self.zantara_tools:
-                    logger.info(f"🔧 [ZantaraTools] Executing: {tool_name} (Python)")
+                    logger.info("🔧 [ZantaraTools] Executing: %s (Python)", tool_name)
 
                     # Execute ZantaraTools directly
                     result = await self.zantara_tools.execute_tool(
@@ -114,7 +114,7 @@ class ToolExecutor:
 
                     if not result.get("success"):
                         error_message = result.get("error", "Unknown error")
-                        logger.error(f"❌ [ZantaraTools] {tool_name} failed: {error_message}")
+                        logger.error("❌ [ZantaraTools] %s failed: %s", tool_name, error_message)
                         results.append(
                             {
                                 "type": "tool_result",
@@ -132,14 +132,14 @@ class ToolExecutor:
                     else:
                         content_text = str(payload)
 
-                    logger.info(f"✅ [ZantaraTools] {tool_name} executed successfully")
+                    logger.info("✅ [ZantaraTools] %s executed successfully", tool_name)
                     results.append(
                         {"type": "tool_result", "tool_use_id": tool_id, "content": content_text},
                     )
 
                 # Check if this is an MCP tool
                 elif self.mcp_client and self.mcp_client.is_mcp_tool(tool_name):
-                    logger.info(f"🔌 [MCP] Executing: {tool_name}")
+                    logger.info("🔌 [MCP] Executing: %s", tool_name)
 
                     result = await self.mcp_client.execute_tool(
                         tool_name=tool_name, params=tool_input,
@@ -147,7 +147,7 @@ class ToolExecutor:
 
                     if not result.get("success"):
                         error_message = result.get("error", "Unknown MCP error")
-                        logger.error(f"❌ [MCP] {tool_name} failed: {error_message}")
+                        logger.error("❌ [MCP] %s failed: %s", tool_name, error_message)
                         results.append(
                             {
                                 "type": "tool_result",
@@ -165,7 +165,7 @@ class ToolExecutor:
                     else:
                         content_text = str(payload)
 
-                    logger.info(f"✅ [MCP] {tool_name} executed successfully")
+                    logger.info("✅ [MCP] %s executed successfully", tool_name)
                     results.append(
                         {"type": "tool_result", "tool_use_id": tool_id, "content": content_text},
                     )
@@ -178,7 +178,7 @@ class ToolExecutor:
                     error_message = (
                         f"Tool '{tool_name}' not available. Available tools: {', '.join(available)}"
                     )
-                    logger.warning(f"⚠️ Tool not found: {tool_name}")
+                    logger.warning("⚠️ Tool not found: %s", tool_name)
                     results.append(
                         {
                             "type": "tool_result",
@@ -189,7 +189,7 @@ class ToolExecutor:
                     )
 
             except Exception as e:
-                logger.error(f"❌ Tool execution failed for {tool_name}: {e}")
+                logger.error("❌ Tool execution failed for %s: %s", tool_name, e)
                 results.append(
                     {
                         "type": "tool_result",
@@ -222,7 +222,7 @@ class ToolExecutor:
         try:
             # Check if this is a ZantaraTools function (Python - direct execution)
             if tool_name in self.zantara_tool_names and self.zantara_tools:
-                logger.info(f"🔧 [ZantaraTools/Prefetch] Executing: {tool_name} (Python)")
+                logger.info("🔧 [ZantaraTools/Prefetch] Executing: %s (Python)", tool_name)
 
                 # Execute ZantaraTools directly
                 result = await self.zantara_tools.execute_tool(
@@ -231,27 +231,27 @@ class ToolExecutor:
 
                 if not result.get("success"):
                     error_message = result.get("error", "Unknown error")
-                    logger.error(f"❌ [ZantaraTools/Prefetch] {tool_name} failed: {error_message}")
+                    logger.error("❌ [ZantaraTools/Prefetch] %s failed: %s", tool_name, error_message)
                     return {"success": False, "error": error_message}
 
                 # Extract data from ZantaraTools result
                 payload = result.get("data", result)
-                logger.info(f"✅ [ZantaraTools/Prefetch] {tool_name} executed successfully")
+                logger.info("✅ [ZantaraTools/Prefetch] %s executed successfully", tool_name)
                 return {"success": True, "result": payload}
 
             # Check if this is an MCP tool
             if self.mcp_client and self.mcp_client.is_mcp_tool(tool_name):
-                logger.info(f"🔌 [MCP/Prefetch] Executing: {tool_name}")
+                logger.info("🔌 [MCP/Prefetch] Executing: %s", tool_name)
 
                 result = await self.mcp_client.execute_tool(tool_name=tool_name, params=tool_input)
 
                 if not result.get("success"):
                     error_message = result.get("error", "Unknown MCP error")
-                    logger.error(f"❌ [MCP/Prefetch] {tool_name} failed: {error_message}")
+                    logger.error("❌ [MCP/Prefetch] %s failed: %s", tool_name, error_message)
                     return {"success": False, "error": error_message}
 
                 payload = result.get("data", result)
-                logger.info(f"✅ [MCP/Prefetch] {tool_name} executed successfully")
+                logger.info("✅ [MCP/Prefetch] %s executed successfully", tool_name)
                 return {"success": True, "result": payload}
 
             # Tool not found - return error with available tools
@@ -261,11 +261,11 @@ class ToolExecutor:
             error_message = (
                 f"Tool '{tool_name}' not available. Available tools: {', '.join(available)}"
             )
-            logger.warning(f"⚠️ [Prefetch] Tool not found: {tool_name}")
+            logger.warning("⚠️ [Prefetch] Tool not found: %s", tool_name)
             return {"success": False, "error": error_message}
 
         except Exception as e:
-            logger.error(f"❌ [Prefetch] Tool execution failed for {tool_name}: {e}")
+            logger.error("❌ [Prefetch] Tool execution failed for %s: %s", tool_name, e)
             return {"success": False, "error": str(e)}
 
     def get_all_tools_for_ai(self) -> list[dict]:
@@ -302,7 +302,7 @@ class ToolExecutor:
                     f"📋 Loaded {len(zantara_tool_defs)} ZantaraTools (Python): {[t['name'] for t in zantara_tool_defs]}",
                 )
             except Exception as e:
-                logger.error(f"❌ Failed to load ZantaraTools: {e}")
+                logger.error("❌ Failed to load ZantaraTools: %s", e)
 
         logger.info(f"📋 Total tools loaded for AI: {len(tools)}")
         return tools

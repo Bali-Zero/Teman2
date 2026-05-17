@@ -60,13 +60,13 @@ class ProcessAutomationService:
         Returns:
             dict with results of all operations
         """
-        logger.info(f"Process start automation triggered for practice {practice_id}")
+        logger.info("Process start automation triggered for practice %s", practice_id)
 
         try:
             # Fetch practice and client data
             practice_data = await self._fetch_practice_data(practice_id)
             if not practice_data:
-                logger.error(f"Practice {practice_id} not found")
+                logger.error("Practice %s not found", practice_id)
                 return {"success": False, "error": "Practice not found"}
 
             client_data = await self._fetch_client_data(practice_data["client_id"])
@@ -77,7 +77,7 @@ class ProcessAutomationService:
             # Get team leader email
             team_leader_email = practice_data.get("assigned_to") or practice_data.get("created_by")
             if not team_leader_email:
-                logger.warning(f"No team leader assigned for practice {practice_id}")
+                logger.warning("No team leader assigned for practice %s", practice_id)
                 team_leader_email = None
 
             results = {
@@ -97,7 +97,7 @@ class ProcessAutomationService:
                     results["client_notified"] = True
                     logger.info(f"Process start email sent to client {client_data['email']}")
                 except Exception as e:
-                    logger.error(f"Failed to send process start email to client: {e}")
+                    logger.error("Failed to send process start email to client: %s", e)
             else:
                 logger.warning(f"Client {client_data['id']} has no email")
 
@@ -111,10 +111,10 @@ class ProcessAutomationService:
                     )
                     results["team_leader_notified"] = True
                     logger.info(
-                        f"Process start notification sent to team leader {team_leader_email}",
+                        "Process start notification sent to team leader %s", team_leader_email,
                     )
                 except Exception as e:
-                    logger.error(f"Failed to send notification to team leader: {e}")
+                    logger.error("Failed to send notification to team leader: %s", e)
 
             # Log activity
             await self._log_activity(
@@ -123,7 +123,7 @@ class ProcessAutomationService:
                 description="Process started - notifications sent to client and team leader",
             )
 
-            logger.info(f"Process start automation completed for practice {practice_id}")
+            logger.info("Process start automation completed for practice %s", practice_id)
 
             return {
                 "success": True,
@@ -132,7 +132,7 @@ class ProcessAutomationService:
 
         except Exception as error:
             logger.error(
-                f"Process start automation failed for practice {practice_id}: {error}",
+                "Process start automation failed for practice %s: %s", practice_id, error,
                 exc_info=True,
             )
             return {"success": False, "error": str(error)}
@@ -259,10 +259,10 @@ P.S. Keep an eye on your WhatsApp—we'll be sending you updates there too! 😊
                     json=payload,
                 )
                 response.raise_for_status()
-            logger.info(f"Email sent to {to_email} via Brevo")
+            logger.info("Email sent to %s via Brevo", to_email)
             return
         except Exception as brevo_error:
-            logger.warning(f"Brevo failed for {to_email}, trying Zoho: {brevo_error}")
+            logger.warning("Brevo failed for %s, trying Zoho: %s", to_email, brevo_error)
 
         # Fallback: Zoho
         await self.zoho_email_service.send_email(

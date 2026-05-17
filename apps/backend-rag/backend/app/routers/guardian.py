@@ -143,7 +143,7 @@ async def get_decisions(
         async with pool.acquire() as conn:
             rows = await conn.fetch(query, *params)
     except Exception as e:
-        logger.error(f"Failed to query guardian decisions: {e}")
+        logger.error("Failed to query guardian decisions: %s", e)
         raise HTTPException(status_code=500, detail="Database query failed")
 
     decisions = []
@@ -188,7 +188,7 @@ async def get_risk_score(
                 ORDER BY date DESC
             """)
     except Exception as e:
-        logger.error(f"Failed to query risk scores: {e}")
+        logger.error("Failed to query risk scores: %s", e)
         raise HTTPException(status_code=500, detail="Database query failed")
 
     current = None
@@ -235,7 +235,7 @@ async def get_risk_score_history(
                 str(days),
             )
     except Exception as e:
-        logger.error(f"Failed to query risk score history: {e}")
+        logger.error("Failed to query risk score history: %s", e)
         raise HTTPException(status_code=500, detail="Database query failed")
 
     scores = [RiskScoreSnapshot(**dict(row)) for row in rows]

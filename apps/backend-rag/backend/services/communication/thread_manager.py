@@ -108,7 +108,7 @@ class ThreadManager:
             subject,
             json.dumps(metadata),
         )
-        logger.info(f"Created thread {thread_id} for client_id={client_id} channel={channel}")
+        logger.info("Created thread %s for client_id=%s channel=%s", thread_id, client_id, channel)
         return thread_id
 
     async def add_message_to_thread(
@@ -164,7 +164,7 @@ class ThreadManager:
             """,
             thread_id, email,
         )
-        logger.info(f"Thread {thread_id} assigned to {email}")
+        logger.info("Thread %s assigned to %s", thread_id, email)
 
     async def resolve_thread(self, thread_id: UUID) -> None:
         """Mark thread as resolved."""
@@ -176,7 +176,7 @@ class ThreadManager:
             """,
             thread_id,
         )
-        logger.info(f"Thread {thread_id} resolved")
+        logger.info("Thread %s resolved", thread_id)
 
     async def update_thread(
         self,

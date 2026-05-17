@@ -52,7 +52,7 @@ class OpenRouterProvider(LLMProvider):
                 f"OpenRouterProvider initialized: tier={self._tier}, available={self._available}",
             )
         except Exception as e:
-            logger.warning(f"Failed to initialize OpenRouterProvider: {e}")
+            logger.warning("Failed to initialize OpenRouterProvider: %s", e)
             self._available = False
 
     @property

@@ -191,7 +191,7 @@ async def create_document(
                 ),
             )
         except Exception as e:
-            logger.error(f"Portal notification for doc upload failed: {e}")
+            logger.error("Portal notification for doc upload failed: %s", e)
 
         await invalidate_cache("zantara:crm_clients_stats:*")
         return {
@@ -632,7 +632,7 @@ async def upload_document_base64(
                         client_id,
                     )
                 except Exception as e:
-                    logger.error(f"Failed to create root folder: {e}")
+                    logger.error("Failed to create root folder: %s", e)
                     raise HTTPException(
                         status_code=500, detail=f"Failed to create root folder: {e}",
                     ) from e
@@ -712,7 +712,7 @@ async def upload_document_base64(
                                 )
                                 prev_folder_id = prev_data["id"]
                             except Exception as e:
-                                logger.error(f"Failed to create Previous Visa folder: {e}")
+                                logger.error("Failed to create Previous Visa folder: %s", e)
                                 prev_folder_id = None
                         else:
                             prev_folder_id = prev_folder["id"]
@@ -730,7 +730,7 @@ async def upload_document_base64(
                                 )
                                 logger.info(f"Rotated visa doc {existing_actual['id']} to Previous Visa")
                             except Exception as e:
-                                logger.error(f"Visa rotation failed: {e}")
+                                logger.error("Visa rotation failed: %s", e)
 
             # Upload File
             try:
@@ -837,7 +837,7 @@ async def upload_document_base64(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Upload failed: {e}")
+        logger.error("Upload failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 

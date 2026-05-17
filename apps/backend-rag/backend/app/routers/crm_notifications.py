@@ -97,7 +97,7 @@ async def mark_notification_read(
                 notification_id,
             )
     except Exception as e:
-        logger.error(f"Failed to mark notification {notification_id} as read: {e}")
+        logger.error("Failed to mark notification %s as read: %s", notification_id, e)
         raise HTTPException(status_code=500, detail="Database error")
     if not row:
         return {"id": notification_id, "status": "already_read"}

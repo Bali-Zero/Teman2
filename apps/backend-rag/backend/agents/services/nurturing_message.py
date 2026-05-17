@@ -64,7 +64,7 @@ class NurturingMessageService:
             )
             return self._generate_fallback_message(client_data)
         except Exception as e:
-            logger.error(f"Error generating nurturing message: {e}", exc_info=True)
+            logger.error("Error generating nurturing message: %s", e, exc_info=True)
             return self._generate_fallback_message(client_data)
 
     def _build_prompt(self, client_data: dict[str, Any]) -> str:

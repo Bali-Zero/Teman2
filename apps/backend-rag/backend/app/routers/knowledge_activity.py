@@ -59,6 +59,6 @@ async def log_knowledge_activity(
         return {"success": True, "message": "Activity logged"}
 
     except Exception as e:
-        logger.error(f"Failed to log KB activity: {e}")
+        logger.error("Failed to log KB activity: %s", e)
         # Don't fail the request - logging is non-critical
         return {"success": False, "message": str(e)}

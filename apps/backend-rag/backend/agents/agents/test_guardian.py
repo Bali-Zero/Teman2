@@ -126,7 +126,7 @@ class TestGuardian:
             local_model = os.getenv("OLLAMA_MODEL", "qwen2.5:latest")
         # Force provider to "local" (Ollama/Qwen) - NO GEMINI!
         if provider not in ["local", "mock"]:
-            logger.warning(f"⚠️ Provider '{provider}' not supported. Using 'local' (Qwen)")
+            logger.warning("⚠️ Provider '%s' not supported. Using 'local' (Qwen)", provider)
             provider = "local"
 
         self.provider = provider
@@ -147,7 +147,7 @@ class TestGuardian:
             if ZANTARA_AVAILABLE:
                 self.ai_client = ZantaraAIClient()
                 if provider == "local":
-                    logger.info(f"🔥 Qwen Mode: Using Local LLM ({local_model})")
+                    logger.info("🔥 Qwen Mode: Using Local LLM (%s)", local_model)
                     self.ai_client.mock_mode = True
             else:
                 self.ai_client = None
@@ -159,7 +159,7 @@ class TestGuardian:
         if not init_file.exists():
             init_file.touch()
 
-        logger.info(f"🛡️ TestGuardian ready with provider: {provider}")
+        logger.info("🛡️ TestGuardian ready with provider: %s", provider)
 
     async def _generate_text(
         self, prompt: str, max_tokens: int = 4000, temperature: float = 0.2,
@@ -222,7 +222,7 @@ class TestGuardian:
                     duration=time.time() - start_time, success=False,
                 )
 
-            logger.error(f"❌ LLM generation failed: {e}")
+            logger.error("❌ LLM generation failed: %s", e)
             return "# Mock Generated Test Code - Generation Failed"
 
     async def _legacy_generate_text(self, prompt: str, max_tokens: int, temperature: float) -> str:
@@ -256,7 +256,7 @@ class TestGuardian:
                     return ""
         except (httpx.HTTPError, OSError, ValueError) as e:
             # ValueError covers malformed JSON from resp.json()
-            logger.error(f"Failed to call Ollama: {e}")
+            logger.error("Failed to call Ollama: %s", e)
             return ""
 
     def analyze_coverage(self) -> list[dict[str, Any]]:
@@ -351,8 +351,8 @@ class TestGuardian:
             logger.info(
                 f"   Overall coverage: {overall_coverage:.1f}% (target: {COVERAGE_THRESHOLD}%)",
             )
-            logger.info(f"   Files analyzed: {total_files}")
-            logger.info(f"   Files below threshold: {files_below_threshold}")
+            logger.info("   Files analyzed: %s", total_files)
+            logger.info("   Files below threshold: %s", files_below_threshold)
             logger.info(f"   Coverage gaps identified: {len(gaps)}")
 
             if gaps:
@@ -374,7 +374,7 @@ class TestGuardian:
 
         except subprocess.TimeoutExpired:
             error_msg = "Coverage analysis timed out after 5 minutes"
-            logger.error(f"❌ {error_msg}")
+            logger.error("❌ %s", error_msg)
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
                     time.time() - start_time, success=False, error=error_msg,
@@ -383,7 +383,7 @@ class TestGuardian:
 
         except Exception as e:
             error_msg = f"Error analyzing coverage: {e}"
-            logger.error(f"❌ {error_msg}")
+            logger.error("❌ %s", error_msg)
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
                     time.time() - start_time, success=False, error=error_msg,
@@ -408,10 +408,10 @@ class TestGuardian:
             context += f"Functions defined: {', '.join(analyzer.functions)}\n"
             return context, code
         except SyntaxError as e:
-            logger.warning(f"Failed to parse {file_path_str}: {e}")
+            logger.warning("Failed to parse %s: %s", file_path_str, e)
             return "Context extraction failed (syntax error)", code
         except Exception as e:
-            logger.warning(f"Context extraction failed for {file_path_str}: {e}")
+            logger.warning("Context extraction failed for %s: %s", file_path_str, e)
             return f"Context extraction failed: {type(e).__name__}", code
 
     async def generate_test(self, gap: dict[str, Any]) -> str:
@@ -475,7 +475,7 @@ REQUIREMENTS:
 
             # 3. Check
             if result.returncode == 0:
-                logger.info(f"✅ PASSED! Test for {target_file} secured.")
+                logger.info("✅ PASSED! Test for %s secured.", target_file)
                 return True
 
             # 4. Heal
@@ -499,7 +499,7 @@ TASK: Return the FIXED Python code only.
             # Clean response again
             test_code = test_code.replace("```python", "").replace("```", "").strip()
 
-        logger.error(f"💀 GIVE UP. Could not fix test for {target_file} after {MAX_RETRIES} tries.")
+        logger.error("💀 GIVE UP. Could not fix test for %s after %s tries.", target_file, MAX_RETRIES)
         # Cleanup failed test to not break build
         if test_path.exists():
             test_path.unlink()

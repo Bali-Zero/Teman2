@@ -568,12 +568,12 @@ class QueryRouter:
         primary_score = domain_scores[primary_domain]
 
         # Debug logging
-        logger.debug(f"Domain scores: {domain_scores}")
+        logger.debug("Domain scores: %s", domain_scores)
 
         # Intelligent sub-routing based on primary domain + modifiers
         if primary_score == 0:
             collection = "legal_unified"
-            logger.info(f"🧭 Route: {collection} (default - no keyword matches)")
+            logger.info("🧭 Route: %s (default - no keyword matches)", collection)
         elif primary_domain == "tax":
             collection = "tax_genius"
             logger.info(f"🧭 Route: {collection} (tax unified: tax={domain_scores['tax']})")
@@ -612,7 +612,7 @@ class QueryRouter:
         elif primary_domain == "team":
             collection = "bali_zero_pricing_hybrid"
             logger.warning(
-                f"⚠️ Route: {collection} (team query fallback - no dedicated live collection)",
+                "⚠️ Route: %s (team query fallback - no dedicated live collection)", collection,
             )
         else:  # books
             # Fallback for books if collection missing
@@ -659,12 +659,12 @@ class QueryRouter:
         Returns:
             Collection name from 9 available collections
         """
-        logger.info(f"\U0001f50d [QueryRouter] Query: {query}")
+        logger.info("🔍 [QueryRouter] Query: %s", query)
 
         # Check priority overrides first
         override = self._check_priority_overrides(query)
         if override:
-            logger.info(f"\u26a1 [QueryRouter] Priority override → {override}")
+            logger.info("⚡ [QueryRouter] Priority override → %s", override)
             return override
 
         # Calculate domain scores
@@ -675,21 +675,21 @@ class QueryRouter:
         detected_keywords = {}
         for domain in active_scores:
             detected_keywords[domain] = self.keyword_matcher.get_matched_keywords(query, domain)
-        logger.info(f"\U0001f3af [QueryRouter] Detected keywords: {detected_keywords}")
-        logger.info(f"\U0001f4ca [QueryRouter] Domain scores: {active_scores}")
+        logger.info("🎯 [QueryRouter] Detected keywords: %s", detected_keywords)
+        logger.info("📊 [QueryRouter] Domain scores: %s", active_scores)
 
         # Detect multi-domain queries
         active_domains = self.keyword_matcher.detect_multi_domain(query)
         if len(active_domains) > 1:
-            logger.info(f"\U0001f500 [QueryRouter] MULTI-DOMAIN query: {active_domains}")
+            logger.info("🔀 [QueryRouter] MULTI-DOMAIN query: %s", active_domains)
 
         # Determine collection
         collection = self._determine_collection(domain_scores, query)
-        logger.info(f"\U0001f4e6 [QueryRouter] Primary collection: {collection}")
+        logger.info("📦 [QueryRouter] Primary collection: %s", collection)
 
         # Log fallback chain
         fallback_chain = self.FALLBACK_CHAINS.get(collection, [])
-        logger.info(f"\U0001f504 [QueryRouter] Fallback chain: {fallback_chain}")
+        logger.info("🔄 [QueryRouter] Fallback chain: %s", fallback_chain)
 
         return collection
 

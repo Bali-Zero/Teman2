@@ -106,7 +106,7 @@ class LegalMetadataExtractor:
 
         metadata["status"] = status
         if status:
-            logger.debug(f"Extracted status: {status}")
+            logger.debug("Extracted status: %s", status)
 
         # Build full title
         metadata["full_title"] = self._build_full_title(metadata)

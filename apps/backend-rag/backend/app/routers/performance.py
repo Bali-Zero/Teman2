@@ -26,7 +26,7 @@ async def get_performance_metrics() -> dict[str, Any]:
         metrics = perf_monitor.get_metrics()
         return {"success": True, "metrics": metrics}
     except Exception as e:
-        logger.error(f"Failed to get performance metrics: {e}")
+        logger.error("Failed to get performance metrics: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -38,7 +38,7 @@ async def clear_caches() -> dict[str, Any]:
         await search_cache.clear()
         return {"success": True, "status": "caches_cleared"}
     except Exception as e:
-        logger.error(f"Failed to clear caches: {e}")
+        logger.error("Failed to clear caches: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -49,7 +49,7 @@ async def clear_embedding_cache() -> dict[str, Any]:
         await embedding_cache.clear()
         return {"success": True, "status": "embedding_cache_cleared"}
     except Exception as e:
-        logger.error(f"Failed to clear embedding cache: {e}")
+        logger.error("Failed to clear embedding cache: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -60,7 +60,7 @@ async def clear_search_cache() -> dict[str, Any]:
         await search_cache.clear()
         return {"success": True, "status": "search_cache_cleared"}
     except Exception as e:
-        logger.error(f"Failed to clear search cache: {e}")
+        logger.error("Failed to clear search cache: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -84,5 +84,5 @@ async def get_cache_stats() -> dict[str, Any]:
             "search_cache": search_stats,
         }
     except Exception as e:
-        logger.error(f"Failed to get cache stats: {e}")
+        logger.error("Failed to get cache stats: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e

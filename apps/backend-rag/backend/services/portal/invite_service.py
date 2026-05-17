@@ -93,7 +93,7 @@ class InviteService:
                 created_by,
             )
 
-            logger.info(f"Created invitation for client {client_id} ({email}) by {created_by}")
+            logger.info("Created invitation for client %s (%s) by %s", client_id, email, created_by)
 
             return {
                 "invitation_id": invitation["id"],

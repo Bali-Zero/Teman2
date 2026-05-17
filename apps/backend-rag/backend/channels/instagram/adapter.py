@@ -62,12 +62,12 @@ class InstagramChannelAdapter(BaseChannel):
 
             # Primary echo check: Meta's native is_echo flag
             if message_data.get("is_echo", False):
-                logger.debug(f"Skipping echo message from {sender_id} (is_echo=True)")
+                logger.debug("Skipping echo message from %s (is_echo=True)", sender_id)
                 return None
 
             # Secondary fallback: sender matches our own account ID
             if sender_id == self.instagram_config.instagram_account_id:
-                logger.debug(f"Skipping echo message from {sender_id} (sender == account_id)")
+                logger.debug("Skipping echo message from %s (sender == account_id)", sender_id)
                 return None
 
             message_text = message_data.get("text", "")
@@ -85,7 +85,7 @@ class InstagramChannelAdapter(BaseChannel):
                 },
             )
         except Exception as e:
-            logger.error(f"Failed to parse Instagram webhook: {e}")
+            logger.error("Failed to parse Instagram webhook: %s", e)
             raise
 
     async def send_response(self, channel_id: str, response: ChannelResponse) -> None:
@@ -103,7 +103,7 @@ class InstagramChannelAdapter(BaseChannel):
 
         try:
             await self.client.post(url, json=payload, headers=headers)
-            logger.info(f"✅ Sent Instagram message to {channel_id}")
+            logger.info("✅ Sent Instagram message to %s", channel_id)
 
             # Mark message as seen to prevent read-receipt webhook loops
             seen_url = "https://graph.facebook.com/v18.0/me/messages"
@@ -114,9 +114,9 @@ class InstagramChannelAdapter(BaseChannel):
             try:
                 await self.client.post(seen_url, json=seen_payload, headers=headers)
             except Exception as e:
-                logger.debug(f"mark_seen non-critical failure: {e}")
+                logger.debug("mark_seen non-critical failure: %s", e)
         except Exception as e:
-            logger.error(f"Instagram send failed: {e}")
+            logger.error("Instagram send failed: %s", e)
             raise  # Let send_response_safe() catch and route to DLQ
 
     async def send_status_update(self, channel_id: str, status: str) -> None:

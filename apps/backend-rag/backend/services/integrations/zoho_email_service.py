@@ -188,10 +188,10 @@ class ZohoEmailService:
                     has_attachments,
                     attachment_count,
                 )
-                logger.debug(f"[Email Activity] Logged {operation} for user={user_id}")
+                logger.debug("[Email Activity] Logged %s for user=%s", operation, user_id)
         except Exception as e:
             # Don't fail the main operation if logging fails
-            logger.warning(f"[Email Activity] Failed to log activity: {e}")
+            logger.warning("[Email Activity] Failed to log activity: %s", e)
 
     async def _get_headers(self, user_id: str) -> dict[str, str]:
         """
@@ -246,7 +246,7 @@ class ZohoEmailService:
         headers = await self._get_headers(user_id)
         url = f"{self.api_domain}/api/accounts/{account_id}{endpoint}"
 
-        logger.debug(f"[Email API] {method} {endpoint} for user={user_id}")
+        logger.debug("[Email API] %s %s for user=%s", method, endpoint, user_id)
 
         client = self._get_client()
         response = await client.request(
@@ -283,7 +283,7 @@ class ZohoEmailService:
         Returns:
             List of folder objects
         """
-        logger.info(f"[Email] Listing folders for user={user_id}")
+        logger.info("[Email] Listing folders for user=%s", user_id)
         response = await self._request(user_id, "GET", "/folders")
         folders = response.get("data", [])
         logger.debug(f"[Email] Found {len(folders)} folders for user={user_id}")
@@ -341,8 +341,7 @@ class ZohoEmailService:
             Dict with emails, total count, and has_more flag
         """
         logger.info(
-            f"[Email] Listing emails user={user_id} folder={folder_id} "
-            f"limit={limit} start={start} search={search_key}",
+            "[Email] Listing emails user=%s folder=%s limit=%s start=%s search=%s", user_id, folder_id, limit, start, search_key,
         )
         params: dict[str, Any] = {
             "folderId": folder_id,
@@ -461,7 +460,7 @@ class ZohoEmailService:
         try:
             await self.mark_read(user_id, [message_id], is_read=True)
         except Exception as e:
-            logger.warning(f"Failed to mark email as read: {e}")
+            logger.warning("Failed to mark email as read: %s", e)
 
         # Return in format matching frontend EmailDetail
         is_html = "<" in content and ">" in content
@@ -609,7 +608,7 @@ class ZohoEmailService:
 
             message_id = response.get("data", {}).get("messageId")
             duration = time.time() - start_time
-            logger.info(f"[Email] Email sent successfully user={user_id} message_id={message_id}")
+            logger.info("[Email] Email sent successfully user=%s message_id=%s", user_id, message_id)
             metrics_collector.record_email_operation(
                 operation="send", user_id=user_id, status="success", duration_seconds=duration,
             )
@@ -661,8 +660,7 @@ class ZohoEmailService:
         """
         action = "replyall" if reply_all else "reply"
         logger.info(
-            f"[Email] Replying to email user={user_id} message_id={message_id} "
-            f"reply_all={reply_all} to={to_address}",
+            "[Email] Replying to email user=%s message_id=%s reply_all=%s to=%s", user_id, message_id, reply_all, to_address,
         )
 
         # Build payload with required toAddress
@@ -688,7 +686,7 @@ class ZohoEmailService:
 
         reply_message_id = response.get("data", {}).get("messageId")
         logger.info(
-            f"[Email] Reply sent successfully user={user_id} reply_message_id={reply_message_id}",
+            "[Email] Reply sent successfully user=%s reply_message_id=%s", user_id, reply_message_id,
         )
 
         # Log activity for weekly report
@@ -721,7 +719,7 @@ class ZohoEmailService:
         Returns:
             Send result
         """
-        logger.info(f"[Email] Forwarding email user={user_id} message_id={message_id} to={to}")
+        logger.info("[Email] Forwarding email user=%s message_id=%s to=%s", user_id, message_id, to)
         payload: dict[str, Any] = {
             "toAddress": ",".join(to),
         }
@@ -738,7 +736,7 @@ class ZohoEmailService:
 
         fwd_message_id = response.get("data", {}).get("messageId")
         logger.info(
-            f"[Email] Email forwarded successfully user={user_id} fwd_message_id={fwd_message_id}",
+            "[Email] Email forwarded successfully user=%s fwd_message_id=%s", user_id, fwd_message_id,
         )
 
         # Log activity for weekly report
@@ -804,7 +802,7 @@ class ZohoEmailService:
             Success status
         """
         logger.info(
-            f"[Email] Toggling flag user={user_id} message_id={message_id} flagged={is_flagged}",
+            "[Email] Toggling flag user=%s message_id=%s flagged=%s", user_id, message_id, is_flagged,
         )
         await self._request(
             user_id,
@@ -891,11 +889,11 @@ class ZohoEmailService:
 
             if not trash_folder_id:
                 # Critical failure if we can't find trash
-                logger.error(f"[Email] Could not find Trash folder for user={user_id}")
+                logger.error("[Email] Could not find Trash folder for user=%s", user_id)
                 raise ValueError("Trash folder not found. Cannot delete emails.")
 
             # Step 2: Move to Trash
-            logger.info(f"[Email] Moving messages to Trash folder_id={trash_folder_id}")
+            logger.info("[Email] Moving messages to Trash folder_id=%s", trash_folder_id)
             await self.move_to_folder(user_id, message_ids, trash_folder_id)
 
             duration = time.time() - start_time
@@ -940,8 +938,7 @@ class ZohoEmailService:
             Attachment content as bytes
         """
         logger.info(
-            f"[Email] Downloading attachment user={user_id} "
-            f"message_id={message_id} attachment_id={attachment_id}",
+            "[Email] Downloading attachment user=%s message_id=%s attachment_id=%s", user_id, message_id, attachment_id,
         )
         account_id = await self._get_account_id(user_id)
         headers = await self._get_headers(user_id)
@@ -1008,7 +1005,7 @@ class ZohoEmailService:
                 f"File too large: {file_size_mb:.1f}MB exceeds {MAX_FILE_SIZE_MB}MB limit. "
                 f"Filename: {filename}"
             )
-            logger.error(f"[Email] {error_msg}")
+            logger.error("[Email] %s", error_msg)
             raise ValueError(error_msg)
 
         # Validate filename length before sanitization
@@ -1017,7 +1014,7 @@ class ZohoEmailService:
                 f"Filename too long: {len(filename)} characters exceeds 255 character limit. "
                 f"Filename: {filename}"
             )
-            logger.error(f"[Email] {error_msg}")
+            logger.error("[Email] %s", error_msg)
             raise ValueError(error_msg)
 
         # Sanitize filename (remove spaces, special chars, truncate)
@@ -1196,5 +1193,5 @@ class ZohoEmailService:
             # Sum unread from all folders
             return sum(f.get("unread_count", 0) for f in folders)
         except Exception as e:
-            logger.warning(f"Failed to get unread count: {e}")
+            logger.warning("Failed to get unread count: %s", e)
             return 0

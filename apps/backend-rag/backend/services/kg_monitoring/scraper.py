@@ -284,7 +284,7 @@ class LegalScraper:
             raise ValueError(f"Unknown source: {source_id}")
 
         if not source.enabled:
-            logger.warning(f"Source {source_id} is disabled")
+            logger.warning("Source %s is disabled", source_id)
             return []
 
         logger.info(f"🔍 Scraping {source.name} (max {max_pages} pages)")
@@ -296,7 +296,7 @@ class LegalScraper:
             documents.extend(page_docs)
 
             if len(page_docs) < per_page:
-                logger.info(f"   Reached end of results at page {page}")
+                logger.info("   Reached end of results at page %s", page)
                 break
 
         self.scrape_stats["documents_found"] += len(documents)
@@ -318,7 +318,7 @@ class LegalScraper:
         for search_path in source.search_paths:
             try:
                 url = self._build_search_url(source, search_path, page, per_page)
-                logger.debug(f"   Fetching: {url}")
+                logger.debug("   Fetching: %s", url)
 
                 response = await self._fetch_with_retry(client, url, source)
                 if not response:
@@ -333,16 +333,16 @@ class LegalScraper:
                         if doc:
                             documents.append(doc)
                     except (AttributeError, ValueError, TypeError) as e:
-                        logger.warning(f"   Failed to parse item: {e}")
+                        logger.warning("   Failed to parse item: %s", e)
                     except Exception as e:
                         logger.exception("   Unexpected error parsing document item")
 
             except httpx.HTTPError as e:
-                logger.warning(f"   HTTP error scraping {search_path}: {e}")
+                logger.warning("   HTTP error scraping %s: %s", search_path, e)
             except (AttributeError, ValueError) as e:
-                logger.warning(f"   Parse error scraping {search_path}: {e}")
+                logger.warning("   Parse error scraping %s: %s", search_path, e)
             except Exception as e:
-                logger.exception(f"   Unexpected error scraping {search_path}")
+                logger.exception("   Unexpected error scraping %s", search_path)
 
         return documents
 
@@ -402,25 +402,25 @@ class LegalScraper:
             except httpx.HTTPStatusError as e:
                 self.scrape_stats["failed_requests"] += 1
                 status = e.response.status_code
-                logger.warning(f"   HTTP {status} for {url}")
+                logger.warning("   HTTP %s for %s", status, url)
                 if status in _BLOCK_STATUSES:
                     saw_block_status = True
                 if status == 429:  # Rate limited
                     wait_time = (attempt + 1) * 5
-                    logger.info(f"   Rate limited, waiting {wait_time}s...")
+                    logger.info("   Rate limited, waiting %ss...", wait_time)
                     await asyncio.sleep(wait_time)
                 elif attempt < source.max_retries - 1:
                     await asyncio.sleep(2**attempt)  # Exponential backoff
 
             except (httpx.TimeoutException, httpx.ConnectError, OSError) as e:
                 self.scrape_stats["failed_requests"] += 1
-                logger.warning(f"   Request error: {e}")
+                logger.warning("   Request error: %s", e)
                 if attempt < source.max_retries - 1:
                     await asyncio.sleep(2**attempt)
 
             except Exception as e:
                 self.scrape_stats["failed_requests"] += 1
-                logger.exception(f"   Unexpected request error for {url}")
+                logger.exception("   Unexpected request error for %s", url)
                 if attempt < source.max_retries - 1:
                     await asyncio.sleep(2**attempt)
 
@@ -429,8 +429,7 @@ class LegalScraper:
         # ~10–100× slower than httpx and we don't want it on every timeout.
         if source.use_playwright_fallback and saw_block_status:
             logger.info(
-                f"   httpx exhausted retries with block statuses for {url}; "
-                "trying Playwright fallback.",
+                "   httpx exhausted retries with block statuses for %s; trying Playwright fallback.", url,
             )
             pw_response = await self._fetch_with_playwright(url, source)
             if pw_response is not None:
@@ -486,7 +485,7 @@ class LegalScraper:
                 await context.close()
                 await browser.close()
         except Exception as e:
-            logger.warning(f"   Playwright fallback failed for {url}: {e}")
+            logger.warning("   Playwright fallback failed for %s: %s", url, e)
             return None
 
         self.scrape_stats["playwright_fallback_successes"] += 1
@@ -629,10 +628,10 @@ class LegalScraper:
                 documents = await self.scrape_source(source_id, max_pages, per_page)
                 results[source_id] = documents
             except (httpx.HTTPError, OSError) as e:
-                logger.warning(f"Failed to scrape {source_id}: {e}")
+                logger.warning("Failed to scrape %s: %s", source_id, e)
                 results[source_id] = []
             except Exception as e:
-                logger.exception(f"Unexpected error scraping {source_id}")
+                logger.exception("Unexpected error scraping %s", source_id)
                 results[source_id] = []
 
         return results
@@ -659,10 +658,10 @@ class LegalScraper:
         """Disable a source"""
         if source_id in self.sources:
             self.sources[source_id].enabled = False
-            logger.info(f"⛔ Disabled source: {source_id}")
+            logger.info("⛔ Disabled source: %s", source_id)
 
     def enable_source(self, source_id: str) -> None:
         """Enable a source"""
         if source_id in self.sources:
             self.sources[source_id].enabled = True
-            logger.info(f"✅ Enabled source: {source_id}")
+            logger.info("✅ Enabled source: %s", source_id)

@@ -42,7 +42,7 @@ async def run_worker(db_pool: asyncpg.Pool, app_state: Any) -> None:  # noqa: AN
             logger.info("🛑 LegalFullIngestionWorker cancelled — shutting down")
             return
         except Exception as e:
-            logger.error(f"⚠️ Worker loop error (non-fatal): {e}", exc_info=True)
+            logger.error("⚠️ Worker loop error (non-fatal): %s", e, exc_info=True)
         await asyncio.sleep(WORKER_INTERVAL)
 
 
@@ -118,10 +118,10 @@ def _build_drive_service() -> Any:
             subject=impersonate_user if impersonate_user else None,
         )
         if impersonate_user:
-            logger.info(f"🔑 Drive service: DWD as {impersonate_user}")
+            logger.info("🔑 Drive service: DWD as %s", impersonate_user)
         return build("drive", "v3", credentials=credentials)
     except Exception as e:
-        logger.warning(f"⚠️ Could not build Drive service: {e}")
+        logger.warning("⚠️ Could not build Drive service: %s", e)
         return None
 
 
@@ -227,7 +227,7 @@ async def _process_one_job(db_pool: asyncpg.Pool, app_state: Any) -> None:  # no
     current_status = job["status"]
 
     logger.info(
-        f"▶️  Processing legal job {job_id} ({tipo} {nomor}/{anno}) status={current_status}"
+        "▶️  Processing legal job %s (%s %s/%s) status=%s", job_id, tipo, nomor, anno, current_status
     )
 
     pdf_path: Path | None = None
@@ -264,7 +264,7 @@ async def _process_one_job(db_pool: asyncpg.Pool, app_state: Any) -> None:  # no
                     titolo=titolo,
                 )
             current_status = "qdrant_done"
-            logger.info(f"✅ Step 1 done: {chunks} chunks ingested")
+            logger.info("✅ Step 1 done: %s chunks ingested", chunks)
 
         # ── Step 2: Drive Upload ──────────────────────────────────────────────
         if current_status == "qdrant_done":
@@ -310,14 +310,14 @@ async def _process_one_job(db_pool: asyncpg.Pool, app_state: Any) -> None:  # no
                 if existing:
                     drive_file_id = existing["file_id"]
                     drive_url = existing["web_view_link"]
-                    logger.info(f"ℹ️  Drive: file already exists ({drive_file_id}), skipping")
+                    logger.info("ℹ️  Drive: file already exists (%s), skipping", drive_file_id)
                 else:
                     upload_result = await asyncio.to_thread(
                         _drive_upload_file, drive_service, pdf_path, anno_id, canonical_name
                     )
                     drive_file_id = upload_result["file_id"]
                     drive_url = upload_result["web_view_link"]
-                    logger.info(f"✅ Step 2 done: Drive file_id={drive_file_id}")
+                    logger.info("✅ Step 2 done: Drive file_id=%s", drive_file_id)
 
             async with db_pool.acquire() as conn:
                 await _update_job(
@@ -355,9 +355,9 @@ async def _process_one_job(db_pool: asyncpg.Pool, app_state: Any) -> None:  # no
                         resp.raise_for_status()
                         nlm_data = resp.json()
                         nlm_source_id = nlm_data.get("source_id", "")
-                        logger.info(f"✅ Step 3 done: NLM source_id={nlm_source_id}")
+                        logger.info("✅ Step 3 done: NLM source_id=%s", nlm_source_id)
                 except (httpx.ConnectTimeout, httpx.ConnectError, httpx.TimeoutException) as e:
-                    logger.warning(f"⚠️  NLM bridge unreachable — skipping: {e}")
+                    logger.warning("⚠️  NLM bridge unreachable — skipping: %s", e)
                     nlm_source_id = "unreachable"
             elif not nb_id:
                 logger.warning(f"⚠️  No notebook ID for nb_target={nb_target!r} — skipping NLM step")
@@ -399,7 +399,7 @@ async def _process_one_job(db_pool: asyncpg.Pool, app_state: Any) -> None:  # no
                         values=[row_data],
                     )
                     sheets_row = str(result.get("updated_range", ""))
-                    logger.info(f"✅ Step 4 done: Sheets row={sheets_row}")
+                    logger.info("✅ Step 4 done: Sheets row=%s", sheets_row)
                 else:
                     logger.warning("⚠️  sheets_service not in app_state — skipping Sheets step")
                     sheets_row = "skipped"
@@ -409,11 +409,11 @@ async def _process_one_job(db_pool: asyncpg.Pool, app_state: Any) -> None:  # no
 
             async with db_pool.acquire() as conn:
                 await _update_job(conn, job_id, status="complete", sheets_row=sheets_row)
-            logger.info(f"🎉 Job {job_id} complete!")
+            logger.info("🎉 Job %s complete!", job_id)
 
     except Exception as e:
         error_msg = f"{current_status}: {e}"
-        logger.error(f"❌ Job {job_id} failed at {current_status}: {e}", exc_info=True)
+        logger.error("❌ Job %s failed at %s: %s", job_id, current_status, e, exc_info=True)
         async with db_pool.acquire() as conn:
             await _update_job(conn, job_id, status="failed", error=error_msg)
     finally:

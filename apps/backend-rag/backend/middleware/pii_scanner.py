@@ -264,7 +264,7 @@ class PIIScannerMiddleware:
                         all_patterns.extend(patterns)
                 if total_redacted > 0:
                     logger.info(
-                        f"[PIIScanner] Redacted {total_redacted} PII entities from agentic response on {path}"
+                        "[PIIScanner] Redacted %s PII entities from agentic response on %s", total_redacted, path
                     )
                     # Persist a durable audit row per distinct pattern.
                     subject = None

@@ -56,14 +56,14 @@ class ClientService:
             client_id = created_record["id"]
             invalidate_client_cache(client_id)
 
-            logger.info(f"Cliente creato con successo nel Service Layer: ID {client_id}")
+            logger.info("Cliente creato con successo nel Service Layer: ID %s", client_id)
             return created_record
 
         except asyncpg.UniqueViolationError as e:
             # 4. Mappatura eccezioni ("Silent Swallows" replacement)
             # Trasforma l'errore DB in un'eccezione custom riconosciuta dall'applicativo
             logger.error(
-                f"Conflitto di risorse: email o numero di telefono già presenti. Dettagli: {e}",
+                "Conflitto di risorse: email o numero di telefono già presenti. Dettagli: %s", e,
                 exc_info=True,
             )
             raise ResourceConflictError(
@@ -73,6 +73,6 @@ class ClientService:
         except Exception as e:
             # Propaga altri errori critici mantenendo la traccia nei log
             logger.error(
-                f"Errore imprevisto nella logica di business di create_client: {e}", exc_info=True,
+                "Errore imprevisto nella logica di business di create_client: %s", e, exc_info=True,
             )
             raise

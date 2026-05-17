@@ -95,10 +95,10 @@ async def _resolve_desa_code_from_latlng(lat: float, lng: float, gmaps_api_key: 
                     return val
         return None
     except (httpx.HTTPError, ValueError, KeyError) as e:
-        logger.warning(f"⚠️ [Zoning] Google Maps geocoding failed: {e}")
+        logger.warning("⚠️ [Zoning] Google Maps geocoding failed: %s", e)
         return None
     except Exception as e:  # noqa: BLE001 — geocoding is optional; fall through to next provider
-        logger.warning(f"⚠️ [Zoning] Google Maps geocoding failed unexpectedly: {e}", exc_info=True)
+        logger.warning("⚠️ [Zoning] Google Maps geocoding failed unexpectedly: %s", e, exc_info=True)
         return None
 
 
@@ -125,10 +125,10 @@ async def _fetch_badung_provider(desa_code: str, db_pool: asyncpg.Pool) -> int:
             return 0
         data = resp.json()
     except (httpx.HTTPError, ValueError) as e:
-        logger.warning(f"⚠️ [Zoning] Badung fetch failed: {e}")
+        logger.warning("⚠️ [Zoning] Badung fetch failed: %s", e)
         return 0
     except Exception as e:  # noqa: BLE001 — provider outage must not crash ingestion caller
-        logger.warning(f"⚠️ [Zoning] Badung fetch failed unexpectedly: {e}", exc_info=True)
+        logger.warning("⚠️ [Zoning] Badung fetch failed unexpectedly: %s", e, exc_info=True)
         return 0
 
     features = data.get("features", []) if isinstance(data, dict) else []
@@ -183,10 +183,10 @@ async def _fetch_gistaru_provider(desa_code: str, db_pool: asyncpg.Pool) -> int:
             return 0
         data = resp.json()
     except (httpx.HTTPError, ValueError) as e:
-        logger.warning(f"⚠️ [Zoning] GISTARU fetch failed: {e}")
+        logger.warning("⚠️ [Zoning] GISTARU fetch failed: %s", e)
         return 0
     except Exception as e:  # noqa: BLE001 — provider outage must not crash ingestion caller
-        logger.warning(f"⚠️ [Zoning] GISTARU fetch failed unexpectedly: {e}", exc_info=True)
+        logger.warning("⚠️ [Zoning] GISTARU fetch failed unexpectedly: %s", e, exc_info=True)
         return 0
 
     features = data.get("features", []) if isinstance(data, dict) else []
@@ -251,10 +251,10 @@ async def _execute_batch_insert(rows: list[tuple[Any, ...]], db_pool: asyncpg.Po
                     count = len(rows)
             return count or len(rows)
     except asyncpg.PostgresError as e:
-        logger.error(f"❌ [Zoning] Batch insert failed (DB): {e}")
+        logger.error("❌ [Zoning] Batch insert failed (DB): %s", e)
         return 0
     except Exception as e:  # noqa: BLE001 — insert failure must not crash ingestion job
-        logger.error(f"❌ [Zoning] Batch insert failed (unexpected): {e}", exc_info=True)
+        logger.error("❌ [Zoning] Batch insert failed (unexpected): %s", e, exc_info=True)
         return 0
 
 
@@ -278,10 +278,10 @@ async def _check_existing_zoning(
                 return dict(row)
         return None
     except asyncpg.PostgresError as e:
-        logger.error(f"❌ [Zoning] DB check failed: {e}")
+        logger.error("❌ [Zoning] DB check failed: %s", e)
         return None
     except Exception as e:  # noqa: BLE001 — cache-lookup failure must fall through to live providers
-        logger.error(f"❌ [Zoning] DB check failed unexpectedly: {e}", exc_info=True)
+        logger.error("❌ [Zoning] DB check failed unexpectedly: %s", e, exc_info=True)
         return None
 
 
@@ -332,7 +332,7 @@ async def get_property_zoning(state: PropertyState, config: dict) -> dict:
         return {"zoning_info": {"error": "Could not resolve village code for location"}}
 
     # 3. Fetch and ingest from official government API
-    logger.info(f"📥 [Zoning] Cache miss. Fetching desa {desa_code} from gov API...")
+    logger.info("📥 [Zoning] Cache miss. Fetching desa %s from gov API...", desa_code)
     inserted = await _fetch_and_ingest_desa(desa_code, db_pool)
     if inserted > 0:
         # Check again after ingestion
@@ -493,7 +493,7 @@ async def identify_property_type_node(state: Any, llm: Any = None) -> dict:
     else:
         prop_type = "hak_pakai" if is_foreign else "hak_milik"
 
-    logger.info(f"[Property/legacy] Identified type={prop_type}, foreign={is_foreign}")
+    logger.info("[Property/legacy] Identified type=%s, foreign=%s", prop_type, is_foreign)
     return {"property_type": prop_type, "is_foreign_buyer": is_foreign}
 
 
@@ -537,13 +537,13 @@ async def get_property_requirements_node(state: Any, db_pool: Any = None) -> dic
                         })
                     kg_sources = len(rows)
                     logger.info(
-                        f"[Property/legacy] Got {kg_sources} requirements from KG for {prop_type}",
+                        "[Property/legacy] Got %s requirements from KG for %s", kg_sources, prop_type,
                     )
         except asyncpg.PostgresError as e:
-            logger.warning(f"[Property/legacy] KG query failed (DB), using fallback: {e}")
+            logger.warning("[Property/legacy] KG query failed (DB), using fallback: %s", e)
         except Exception as e:  # noqa: BLE001 — fallback below runs on any KG failure
             logger.warning(
-                f"[Property/legacy] KG query failed unexpectedly, using fallback: {e}",
+                "[Property/legacy] KG query failed unexpectedly, using fallback: %s", e,
                 exc_info=True,
             )
 
@@ -551,7 +551,7 @@ async def get_property_requirements_node(state: Any, db_pool: Any = None) -> dic
     if not requirements:
         reqs = _LEGACY_REQUIREMENTS_DB.get(prop_type, {})
         requirements = [{"requirement_type": "ownership", "details": reqs}]
-        logger.info(f"[Property/legacy] Using fallback requirements for {prop_type}")
+        logger.info("[Property/legacy] Using fallback requirements for %s", prop_type)
 
     return {
         "property_requirements": requirements,

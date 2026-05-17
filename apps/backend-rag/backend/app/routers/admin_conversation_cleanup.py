@@ -111,8 +111,7 @@ async def run_conversation_cleanup(
             ) or 0
 
             logger.info(
-                f"[DRY RUN] Would delete {deleted_count} conversations, "
-                f"anonymize {anonymized_count} conversations"
+                "[DRY RUN] Would delete %s conversations, anonymize %s conversations", deleted_count, anonymized_count
             )
         else:
             # 1. Hard-delete old conversations

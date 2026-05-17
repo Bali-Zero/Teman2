@@ -40,7 +40,7 @@ class ImageGenerationService:
 
             image_url = f"https://image.pollinations.ai/prompt/{quote(prompt)}"
 
-            logger.info(f"Image generated successfully: {image_url}")
+            logger.info("Image generated successfully: %s", image_url)
 
             return {
                 "success": True,
@@ -50,5 +50,5 @@ class ImageGenerationService:
             }
 
         except Exception as e:
-            logger.error(f"Image generation failed: {e}")
+            logger.error("Image generation failed: %s", e)
             return {"success": False, "error": "Image generation failed", "details": str(e)}

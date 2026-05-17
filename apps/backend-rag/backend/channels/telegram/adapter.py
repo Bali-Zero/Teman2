@@ -154,7 +154,7 @@ class TelegramChannelAdapter(BaseChannel):
             )
 
         except Exception as e:
-            logger.error(f"Failed to parse Telegram update: {e}", exc_info=True)
+            logger.error("Failed to parse Telegram update: %s", e, exc_info=True)
             raise
 
     async def send_response(self, channel_id: str, response: ChannelResponse) -> None:
@@ -189,12 +189,12 @@ class TelegramChannelAdapter(BaseChannel):
                 self._last_message_id = message.get("message_id")
                 self._last_chat_id = channel_id
 
-                logger.info(f"✅ Sent Telegram message to chat {channel_id}")
+                logger.info("✅ Sent Telegram message to chat %s", channel_id)
             else:
-                logger.error(f"Failed to send Telegram message: {result}")
+                logger.error("Failed to send Telegram message: %s", result)
 
         except Exception as e:
-            logger.error(f"Error sending Telegram response: {e}", exc_info=True)
+            logger.error("Error sending Telegram response: %s", e, exc_info=True)
             raise  # Let send_response_safe() catch and route to DLQ
 
     async def send_status_update(self, channel_id: str, status: str) -> None:
@@ -220,11 +220,11 @@ class TelegramChannelAdapter(BaseChannel):
             # Send chat action (typing indicator)
             await self.bot_service.send_chat_action(chat_id=channel_id, action=action)
 
-            logger.debug(f"📍 Sent Telegram status '{status}' to chat {channel_id}")
+            logger.debug("📍 Sent Telegram status '%s' to chat %s", status, channel_id)
 
         except Exception as e:
             # Non-critical error, just log
-            logger.warning(f"Failed to send Telegram status update: {e}")
+            logger.warning("Failed to send Telegram status update: %s", e)
 
     async def stream_response(
         self, channel_id: str, response_stream: AsyncIterator[ChannelResponse],
@@ -262,7 +262,7 @@ class TelegramChannelAdapter(BaseChannel):
                 message = initial_result.get("result", {})
                 message_id = message.get("message_id")
                 logger.info(
-                    f"📝 Created initial Telegram message {message_id} in chat {channel_id}",
+                    "📝 Created initial Telegram message %s in chat %s", message_id, channel_id,
                 )
 
             # Process stream events
@@ -317,7 +317,7 @@ class TelegramChannelAdapter(BaseChannel):
 
                     except Exception as e:
                         # Edit failed (maybe message unchanged) - continue
-                        logger.debug(f"Edit message failed (non-fatal): {e}")
+                        logger.debug("Edit message failed (non-fatal): %s", e)
 
             # Send final complete message
             if accumulated_text and message_id:
@@ -347,7 +347,7 @@ class TelegramChannelAdapter(BaseChannel):
                 )
 
         except Exception as e:
-            logger.error(f"Error streaming to Telegram: {e}", exc_info=True)
+            logger.error("Error streaming to Telegram: %s", e, exc_info=True)
 
             # Send error message
             if message_id:

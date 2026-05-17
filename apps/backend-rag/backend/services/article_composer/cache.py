@@ -50,7 +50,7 @@ class CacheService:
             self.enabled = True
             logger.info("Redis cache initialized successfully")
         except Exception as e:
-            logger.warning(f"Redis connection failed - caching disabled: {e}")
+            logger.warning("Redis connection failed - caching disabled: %s", e)
             self.enabled = False
 
     async def close(self) -> None:
@@ -75,7 +75,7 @@ class CacheService:
                 return json.loads(value)
             return None
         except Exception as e:
-            logger.warning(f"Cache get error: {e}")
+            logger.warning("Cache get error: %s", e)
             return None
 
     async def set(self, key: str, value: Any, ttl: int = CACHE_TTL_COMPOSE) -> None:
@@ -90,7 +90,7 @@ class CacheService:
                 json.dumps(value, default=str),
             )
         except Exception as e:
-            logger.warning(f"Cache set error: {e}")
+            logger.warning("Cache set error: %s", e)
 
     async def delete(self, key: str) -> None:
         """Delete key from cache"""
@@ -100,7 +100,7 @@ class CacheService:
         try:
             await self.redis_client.delete(key)
         except Exception as e:
-            logger.warning(f"Cache delete error: {e}")
+            logger.warning("Cache delete error: %s", e)
 
     async def get_compose_cache(self, title: str, content: str, category: str) -> dict | None:
         """Get cached compose result"""
@@ -137,7 +137,7 @@ class CacheService:
                 await self.redis_client.delete(*keys)
                 logger.info(f"Invalidated {len(keys)} cache entries")
         except Exception as e:
-            logger.warning(f"Cache invalidation error: {e}")
+            logger.warning("Cache invalidation error: %s", e)
 
 
 # Global cache service instance

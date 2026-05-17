@@ -61,7 +61,7 @@ class DriveCircuitBreaker:
         self._last_failure_time = time.time()
         if self._failures >= self.failure_threshold:
             if self._state != "open":
-                logger.error(f"Drive circuit breaker OPEN dopo {self._failures} errori consecutivi", exc_info=True)
+                logger.error(f"Drive circuit breaker OPEN dopo {self._failures} errori consecutivi")
             self._state = "open"
 
     async def call(
@@ -117,7 +117,7 @@ def _send_telegram_alert(message: str) -> None:
         )
         logger.info("Telegram alert circuit breaker inviato")
     except (urllib.error.URLError, OSError, ValueError) as ex:
-        logger.warning(f"Telegram alert fallito: {ex}")
+        logger.warning("Telegram alert fallito: %s", ex)
     except Exception:
         logger.exception("Telegram alert fallito con errore inatteso")
 
@@ -150,7 +150,7 @@ async def poll_drive_changes() -> dict[str, Any]:
             return {"status": "circuit_open", "processed": 0}
         return result
     except (HttpError, asyncpg.PostgresError, OSError) as e:
-        logger.warning(f"Drive poll failed with known error: {e}")
+        logger.warning("Drive poll failed with known error: %s", e)
         return {"status": "error", "error": str(e)}
     except Exception as e:
         logger.exception("Drive poll failed with unexpected error")
@@ -189,7 +189,7 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                     VALUES ('drive_poll_page_token', $1, NOW())""",
                     page_token,
                 )
-                logger.info(f"Drive poll: initialized page token {page_token}")
+                logger.info("Drive poll: initialized page token %s", page_token)
                 return {"status": "initialized", "processed": 0}
 
         # 2. Get changes since last poll
@@ -284,17 +284,17 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                             )
                         subfolder_map[parent_id] = (client_id, folder_name)
                         logger.info(
-                            f"Drive poll: registered nested folder '{parent_name}' for client {client_id}",
+                            "Drive poll: registered nested folder '%s' for client %s", parent_name, client_id,
                         )
                     else:
                         skipped += 1
                         continue
                 except (HttpError, asyncpg.PostgresError, KeyError) as e:
-                    logger.debug(f"Drive poll: could not resolve parent {parent_id}: {e}")
+                    logger.debug("Drive poll: could not resolve parent %s: %s", parent_id, e)
                     skipped += 1
                     continue
                 except Exception:
-                    logger.exception(f"Drive poll: unexpected error resolving parent {parent_id}")
+                    logger.exception("Drive poll: unexpected error resolving parent %s", parent_id)
                     skipped += 1
                     continue
 
@@ -328,16 +328,16 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                             client_id, content_hash,
                         )
                         if hash_dup:
-                            logger.info(f"Drive poll: skipped duplicate content hash for {file_name} (matches doc {hash_dup})")
+                            logger.info("Drive poll: skipped duplicate content hash for %s (matches doc %s)", file_name, hash_dup)
                             skipped += 1
                             continue
             except (HttpError, asyncpg.PostgresError, OSError) as e:
-                logger.debug(f"Could not compute content hash for {file_name}: {e}")
+                logger.debug("Could not compute content hash for %s: %s", file_name, e)
             except Exception:
-                logger.exception(f"Unexpected error computing content hash for {file_name}")
+                logger.exception("Unexpected error computing content hash for %s", file_name)
 
             logger.info(
-                f"Drive poll: new file '{file_name}' in {folder_name} for client {client_id}",
+                "Drive poll: new file '%s' in %s for client %s", file_name, folder_name, client_id,
             )
 
             # Create document record with auto-categorization
@@ -350,7 +350,7 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                 folder_lower = folder_name.lower()
                 if folder_lower in ("01_immigration", "actual visa", "previous visa") or "immigration" in folder_lower:
                     doc_category = "immigration"
-                    logger.info(f"Drive poll: folder hint upgraded '{file_name}' from 'other' to 'immigration'")
+                    logger.info("Drive poll: folder hint upgraded '%s' from 'other' to 'immigration'", file_name)
 
             # Detect if file is in Actual Visa / Previous Visa subfolder
             subfolder_value = None
@@ -412,9 +412,9 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                 )
                 processed += 1
             except (HttpError, asyncpg.PostgresError, OSError) as e:
-                logger.warning(f"Drive poll: OCR dispatch failed for {file_name}: {e}")
+                logger.warning("Drive poll: OCR dispatch failed for %s: %s", file_name, e)
             except Exception:
-                logger.exception(f"Drive poll: OCR dispatch failed unexpectedly for {file_name}")
+                logger.exception("Drive poll: OCR dispatch failed unexpectedly for %s", file_name)
 
         # 5. Save new page token
         async with db_pool.acquire() as conn:
@@ -435,7 +435,7 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
         }
 
     except (HttpError, asyncpg.PostgresError, OSError, KeyError) as e:
-        logger.warning(f"Drive poll failed: {e}")
+        logger.warning("Drive poll failed: %s", e)
         raise  # ri-lancia per permettere al circuit breaker di contare i failures
     except Exception:
         logger.exception("Drive poll failed with unexpected error")

@@ -92,7 +92,7 @@ async def proxy_drive_file(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"[PROXY] Unexpected error: {e}")
+        logger.error("[PROXY] Unexpected error: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
@@ -177,7 +177,7 @@ async def get_drive_thumbnail(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"[THUMBNAIL] Unexpected error: {e}")
+        logger.error("[THUMBNAIL] Unexpected error: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 

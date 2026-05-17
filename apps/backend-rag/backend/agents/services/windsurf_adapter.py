@@ -43,7 +43,7 @@ class WindsurfAdapter:
                         timeout=5.0,
                     )
                     if result.returncode == 0:
-                        logger.info(f"✅ Windsurf trovato: {path}")
+                        logger.info("✅ Windsurf trovato: %s", path)
                         return path
                 except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError):
                     continue
@@ -59,11 +59,11 @@ class WindsurfAdapter:
             )
             if result.returncode == 0:
                 version = result.stdout.decode().strip()
-                logger.info(f"✅ Windsurf disponibile: {version}")
+                logger.info("✅ Windsurf disponibile: %s", version)
                 return True
             return False
         except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
-            logger.debug(f"Windsurf non disponibile: {e}")
+            logger.debug("Windsurf non disponibile: %s", e)
             return False
 
     def open_file(self, file_path: str) -> bool:
@@ -77,7 +77,7 @@ class WindsurfAdapter:
             )
             return result.returncode == 0
         except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
-            logger.warning(f"⚠️ Could not open file in Windsurf: {e}")
+            logger.warning("⚠️ Could not open file in Windsurf: %s", e)
             return False
 
     def open_folder(self, folder_path: str) -> bool:
@@ -90,7 +90,7 @@ class WindsurfAdapter:
             )
             return result.returncode == 0
         except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
-            logger.warning(f"⚠️ Could not open folder in Windsurf: {e}")
+            logger.warning("⚠️ Could not open folder in Windsurf: %s", e)
             return False
 
     async def generate(self, prompt: str, context: dict[str, Any] | None = None) -> str:

@@ -84,7 +84,7 @@ async def _generate_and_update_title(
             )
         else:
             logger.info(
-                f"Title generation returned None for conversation {conversation_id}, using fallback",
+                "Title generation returned None for conversation %s, using fallback", conversation_id,
             )
 
     except Exception as e:
@@ -229,7 +229,7 @@ async def save_conversation(
             f"✅ Saved {len(request.messages)} messages to memory cache for session {session_id}",
         )
     except Exception as e:
-        logger.warning(f"⚠️ Failed to save to memory cache: {e}")
+        logger.warning("⚠️ Failed to save to memory cache: %s", e)
         # Continue - DB save is more important
 
     # Phase 2: Save to DB with retry mechanism
@@ -266,7 +266,7 @@ async def save_conversation(
                                 if hasattr(mem_cache, "mark_synced"):
                                     mem_cache.mark_synced(session_id, conversation_id)
                             except Exception as e:
-                                logger.debug(f"Cache sync marker not available: {e}")
+                                logger.debug("Cache sync marker not available: %s", e)
 
                             log_success(
                                 logger,
@@ -300,7 +300,7 @@ async def save_conversation(
                                         name=f"conv_title:{conversation_id}",
                                     )
                                     logger.info(
-                                        f"🎯 Triggered async title generation for conversation {conversation_id}",
+                                        "🎯 Triggered async title generation for conversation %s", conversation_id,
                                     )
 
                             break  # Success - exit retry loop
@@ -311,7 +311,7 @@ async def save_conversation(
         except Exception as e:
             if attempt == max_retries - 1:
                 # Final attempt failed - log error and queue for async retry
-                logger.error(f"❌ DB Save failed after {max_retries} attempts: {e}")
+                logger.error("❌ DB Save failed after %s attempts: %s", max_retries, e)
                 # Note: In production, you might want to queue this for async retry
                 # For now, we continue with cache-only persistence
                 metrics_collector.record_cache_db_consistency_error(session_id=session_id)
@@ -425,7 +425,7 @@ async def get_conversation_history(
                     messages_count=len(messages),
                 )
         except Exception as e:
-            logger.warning(f"⚠️ Memory cache retrieval failed: {e}")
+            logger.warning("⚠️ Memory cache retrieval failed: %s", e)
 
     # Limit messages if needed
     total_messages = len(messages)

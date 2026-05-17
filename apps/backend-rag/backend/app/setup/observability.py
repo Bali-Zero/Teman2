@@ -123,7 +123,7 @@ def setup_observability(app: FastAPI) -> None:
                 )
 
         except Exception as e:
-            logger.warning(f"⚠️ Failed to setup OpenTelemetry tracing: {e}")
+            logger.warning("⚠️ Failed to setup OpenTelemetry tracing: %s", e)
 
     elif settings.otel_enabled and not OTEL_AVAILABLE:
         logger.warning(

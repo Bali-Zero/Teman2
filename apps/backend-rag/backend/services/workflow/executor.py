@@ -23,7 +23,7 @@ def register_chain(chain_id: str) -> Callable:
 
     def decorator(fn: Callable) -> Callable:
         _CHAIN_REGISTRY[chain_id] = fn
-        logger.debug(f"Registered chain executor: {chain_id}")
+        logger.debug("Registered chain executor: %s", chain_id)
         return fn
 
     return decorator
@@ -46,7 +46,7 @@ async def execute_chain(
             f"Available: {list(_CHAIN_REGISTRY.keys())}",
         )
 
-    logger.info(f"Dispatching chain_id={chain_id} thread_id={thread_id}")
+    logger.info("Dispatching chain_id=%s thread_id=%s", chain_id, thread_id)
     result = await executor(payload=payload, thread_id=thread_id, app_state=app_state)
     return result or {}
 

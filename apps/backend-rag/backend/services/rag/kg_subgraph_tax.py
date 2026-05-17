@@ -231,10 +231,10 @@ async def get_tax_obligations_node(state: TaxState, db_pool: asyncpg.Pool) -> Ta
                 })
                 kg_sources = len(rows)
                 logger.info(
-                    f"✅ [Tax Subgraph] Got {kg_sources} tax obligations from KG for {entity_type}",
+                    "✅ [Tax Subgraph] Got %s tax obligations from KG for %s", kg_sources, entity_type,
                 )
     except Exception as e:
-        logger.warning(f"⚠️ [Tax Subgraph] KG tax query failed, using fallback: {e}")
+        logger.warning("⚠️ [Tax Subgraph] KG tax query failed, using fallback: %s", e)
 
     # Fallback to hardcoded if KG empty
     if kg_sources == 0:
@@ -247,10 +247,10 @@ async def get_tax_obligations_node(state: TaxState, db_pool: asyncpg.Pool) -> Ta
             "details": obligations,
             "source": "hardcoded_fallback",
         })
-        logger.info(f"📌 [Tax Subgraph] Using fallback tax obligations for {entity_type}")
+        logger.info("📌 [Tax Subgraph] Using fallback tax obligations for %s", entity_type)
 
     state["kg_sources_used"] = state.get("kg_sources_used", 0) + kg_sources
-    logger.info(f"✅ [Tax Subgraph] Added tax obligations for {entity_type} (KG sources: {kg_sources})")
+    logger.info("✅ [Tax Subgraph] Added tax obligations for %s (KG sources: %s)", entity_type, kg_sources)
 
     return state
 

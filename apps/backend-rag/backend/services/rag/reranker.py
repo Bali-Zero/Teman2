@@ -150,8 +150,7 @@ class CrossEncoderReranker:
 
             except ImportError as e:
                 logger.error(
-                    f"❌ Failed to import sentence-transformers: {e}. "
-                    "Install with: pip install sentence-transformers",
+                    "❌ Failed to import sentence-transformers: %s. Install with: pip install sentence-transformers", e,
                 )
                 self.enabled = False
                 return None
@@ -228,7 +227,7 @@ class CrossEncoderReranker:
             return scores.tolist() if hasattr(scores, "tolist") else list(scores)
 
         except Exception as e:
-            logger.error(f"❌ Score computation failed: {e}")
+            logger.error("❌ Score computation failed: %s", e)
             return [0.0] * len(documents)
 
     async def compute_scores_async(
@@ -369,7 +368,7 @@ class CrossEncoderReranker:
                 return reranked_docs[:top_k]
 
             except Exception as e:
-                logger.error(f"❌ Re-ranking failed: {e}")
+                logger.error("❌ Re-ranking failed: %s", e)
                 set_span_status("error", str(e))
                 # Fallback to original order
                 return documents[:top_k]

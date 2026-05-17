@@ -76,7 +76,7 @@ class TeamTimesheetService:
             try:
                 await self._process_auto_logout()
             except Exception as e:
-                logger.error(f"❌ Auto-logout check failed: {e}")
+                logger.error("❌ Auto-logout check failed: %s", e)
 
             # Check every 5 minutes
             try:
@@ -137,7 +137,7 @@ class TeamTimesheetService:
                         "clocked_in_at": bali_time.isoformat(),
                     }
                 logger.info(
-                    f"🔄 Stale session detected for {email}. Last action: {last_action_date}. Allowing new clock-in.",
+                    "🔄 Stale session detected for %s. Last action: %s. Allowing new clock-in.", email, last_action_date,
                 )
 
             # Insert clock-in

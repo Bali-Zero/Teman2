@@ -178,13 +178,13 @@ class SearchService:
                 if metrics_collector:
                     metrics_collector.bm25_initialization_success_total.inc()
             except ImportError as e:
-                logger.error(f"❌ BM25Vectorizer import failed: {e}")
+                logger.error("❌ BM25Vectorizer import failed: %s", e)
                 if metrics_collector:
                     metrics_collector.bm25_initialization_failed_total.labels(
                         error_type="import_error",
                     ).inc()
             except Exception as e:
-                logger.warning(f"⚠️ Failed to initialize BM25Vectorizer: {e}")
+                logger.warning("⚠️ Failed to initialize BM25Vectorizer: %s", e)
                 if metrics_collector:
                     metrics_collector.bm25_initialization_failed_total.labels(
                         error_type=type(e).__name__,
@@ -192,7 +192,7 @@ class SearchService:
 
         # Get Qdrant URL from centralized config
         qdrant_url = settings.qdrant_url
-        logger.info(f"🔄 Connecting to Qdrant: {qdrant_url}")
+        logger.info("🔄 Connecting to Qdrant: %s", qdrant_url)
 
         # Initialize dependencies (use provided or create new)
         self.collection_manager = collection_manager or CollectionManager(qdrant_url=qdrant_url)
@@ -239,7 +239,7 @@ class SearchService:
             "timestamp_resolutions": 0,
         }
 
-        logger.info(f"✅ SearchService initialized with Qdrant URL: {qdrant_url}")
+        logger.info("✅ SearchService initialized with Qdrant URL: %s", qdrant_url)
         logger.info("✅ Using dependency injection for modular services")
 
     async def _route_search_query(
@@ -346,7 +346,7 @@ class SearchService:
 
             except ImportError as e:
                 logger.error(
-                    f"❌ BM25Vectorizer import failed: {e}",
+                    "❌ BM25Vectorizer import failed: %s", e,
                     extra={
                         "attempt": attempt + 1,
                         "max_attempts": self._max_bm25_init_attempts,
@@ -407,7 +407,7 @@ class SearchService:
                 },
             )
         except Exception as alert_error:
-            logger.error(f"Failed to send BM25 failure alert: {alert_error}")
+            logger.error("Failed to send BM25 failure alert: %s", alert_error)
 
     @property
     def cultural_insights(self) -> Any:
@@ -510,7 +510,7 @@ class SearchService:
         # Get vector DB client
         vector_db = self.collection_manager.get_collection(collection_name)
         if not vector_db:
-            logger.error(f"❌ Unknown collection: {collection_name}, defaulting to legal_unified")
+            logger.error("❌ Unknown collection: %s, defaulting to legal_unified", collection_name)
             vector_db = self.collection_manager.get_collection("legal_unified")
             collection_name = "legal_unified"
             if not vector_db:
@@ -605,11 +605,11 @@ class SearchService:
                 f"Query: '{query[:50]}...', embedding_dim={len(query_embedding)}, provider={self.embedder.provider}",
             )
             logger.debug(
-                f"Parameters: collection_override={collection_override}, user_level={user_level}, limit={limit}",
+                "Parameters: collection_override=%s, user_level=%s, limit=%s", collection_override, user_level, limit,
             )
-            logger.debug(f"Final collection: {collection_name}")
+            logger.debug("Final collection: %s", collection_name)
             if chroma_filter:
-                logger.debug(f"Filter applied: {chroma_filter}")
+                logger.debug("Filter applied: %s", chroma_filter)
 
             # Try hybrid search if BM25 available
             if self._bm25_enabled and self._bm25_vectorizer:
@@ -634,7 +634,7 @@ class SearchService:
 
                 except Exception as e:
                     logger.warning(
-                        f"⚠️ Hybrid search failed, falling back to dense-only: {e}",
+                        "⚠️ Hybrid search failed, falling back to dense-only: %s", e,
                         extra={
                             "query": query[:100],
                             "collection": collection_name,
@@ -908,7 +908,7 @@ class SearchService:
                 logger.info(f"🔧 ReRanker (Ze-Rank 2) initialized: enabled={self._reranker.enabled}")
             else:
                 logger.warning(
-                    f"⚠️ Unknown reranker_backend '{backend}', falling back to cross-encoder",
+                    "⚠️ Unknown reranker_backend '%s', falling back to cross-encoder", backend,
                 )
                 from backend.services.rag.reranker import CrossEncoderReranker
 
@@ -1114,12 +1114,12 @@ class SearchService:
                 try:
                     await cache.set(cache_key, result)
                 except Exception as cache_err:
-                    logger.debug(f"Cache write failed (non-critical): {cache_err}")
+                    logger.debug("Cache write failed (non-critical): %s", cache_err)
 
             return result
 
         except Exception as e:
-            logger.error(f"Hybrid search error: {e}", exc_info=True)
+            logger.error("Hybrid search error: %s", e, exc_info=True)
             # Fallback to regular search on error
             return await self.search(
                 query=query,
@@ -1306,7 +1306,7 @@ class SearchService:
                 """
                 vector_db = self.collection_manager.get_collection(collection_name)
                 if not vector_db:
-                    logger.warning(f"⚠️ Collection not found: {collection_name}, skipping")
+                    logger.warning("⚠️ Collection not found: %s, skipping", collection_name)
                     return collection_name, []
 
                 # Determine allowed tiers (only for zantara_books)
@@ -1356,7 +1356,7 @@ class SearchService:
 
             for result in search_results:
                 if isinstance(result, Exception):
-                    logger.error(f"Search task failed: {result}")
+                    logger.error("Search task failed: %s", result)
                     continue
                 collection_name, formatted_results = result
 
@@ -1432,7 +1432,7 @@ class SearchService:
             RuntimeError,
             Exception,  # Catch route_query/embedding/etc failures for fallback
         ) as e:
-            logger.error(f"Search with conflict resolution error: {e}", exc_info=True)
+            logger.error("Search with conflict resolution error: %s", e, exc_info=True)
             # Fallback to simple search
             return await self.search(query, user_level, limit, tier_filter)
 
@@ -1524,5 +1524,5 @@ class SearchService:
             return {"query": query, "results": formatted_results, "collection": collection_name}
 
         except (qdrant_exceptions.UnexpectedResponse, httpx.HTTPError, ValueError, KeyError) as e:
-            logger.error(f"Collection search failed: {e}", exc_info=True)
+            logger.error("Collection search failed: %s", e, exc_info=True)
             return {"results": [], "error": str(e)}

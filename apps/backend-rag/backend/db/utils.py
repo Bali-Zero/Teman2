@@ -51,7 +51,7 @@ def db_retry(max_retries: int = 3, delay: float = 1.0, backoff_factor: float = 2
                     else:
                         # If not transient or max retries reached, re-raise
                         if attempt == max_retries:
-                            logger.error(f"❌ DB Operation failed after {max_retries} retries: {e}")
+                            logger.error("❌ DB Operation failed after %s retries: %s", max_retries, e)
                         raise last_error
             return None  # Should not be reached
 

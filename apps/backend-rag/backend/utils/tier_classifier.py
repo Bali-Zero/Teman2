@@ -162,11 +162,11 @@ class TierClassifier:
         # Check author-based classification first (most reliable)
         author_lower = book_author.lower()
         if any(author in author_lower for author in self.TIER_S_AUTHORS):
-            logger.info(f"Classified as Tier S based on author: {book_author}")
+            logger.info("Classified as Tier S based on author: %s", book_author)
             return TierLevel.S
 
         if any(author in author_lower for author in self.TIER_A_AUTHORS):
-            logger.info(f"Classified as Tier A based on author: {book_author}")
+            logger.info("Classified as Tier A based on author: %s", book_author)
             return TierLevel.A
 
         # Score each tier based on keyword matches
@@ -184,7 +184,7 @@ class TierClassifier:
             return best_tier
 
         # Default to Tier C if no clear match
-        logger.info(f"No clear match for '{book_title}', defaulting to Tier C")
+        logger.info("No clear match for '%s', defaulting to Tier C", book_title)
         return TierLevel.C
 
     def get_min_access_level(self, tier: TierLevel) -> int:

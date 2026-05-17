@@ -57,7 +57,7 @@ async def create_session(service: SessionService = Depends(get_session_service))
         await invalidate_cache("zantara:sessions:*")
         return {"success": True, "session_id": session_id}
     except Exception as e:
-        logger.error(f"Failed to create session: {e}")
+        logger.error("Failed to create session: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -74,7 +74,7 @@ async def get_session(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to get session: {e}")
+        logger.error("Failed to get session: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -94,7 +94,7 @@ async def update_session(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to update session: {e}")
+        logger.error("Failed to update session: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -116,7 +116,7 @@ async def update_session_with_ttl(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to update session: {e}")
+        logger.error("Failed to update session: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -130,7 +130,7 @@ async def delete_session(
         await invalidate_cache("zantara:sessions:*")
         return {"success": success, "session_id": session_id}
     except Exception as e:
-        logger.error(f"Failed to delete session: {e}")
+        logger.error("Failed to delete session: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -144,7 +144,7 @@ async def extend_session_ttl(
         success = await service.extend_ttl(session_id)
         return {"success": success, "session_id": session_id}
     except Exception as e:
-        logger.error(f"Failed to extend TTL: {e}")
+        logger.error("Failed to extend TTL: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -159,7 +159,7 @@ async def extend_session_ttl_custom(
         success = await service.extend_ttl_custom(session_id, request.ttl_hours)
         return {"success": success, "session_id": session_id}
     except Exception as e:
-        logger.error(f"Failed to extend TTL: {e}")
+        logger.error("Failed to extend TTL: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -176,7 +176,7 @@ async def get_session_info(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to get session info: {e}")
+        logger.error("Failed to get session info: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -195,7 +195,7 @@ async def export_session(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to export session: {e}")
+        logger.error("Failed to export session: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -206,7 +206,7 @@ async def get_analytics(service: SessionService = Depends(get_session_service)) 
         analytics = await service.get_analytics()
         return {"success": True, "analytics": analytics}
     except Exception as e:
-        logger.error(f"Failed to get analytics: {e}")
+        logger.error("Failed to get analytics: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -220,7 +220,7 @@ async def cleanup_sessions(
         await invalidate_cache("zantara:sessions:*")
         return {"success": True, "cleaned": cleaned}
     except Exception as e:
-        logger.error(f"Failed to cleanup sessions: {e}")
+        logger.error("Failed to cleanup sessions: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -231,5 +231,5 @@ async def health_check(service: SessionService = Depends(get_session_service)) -
         healthy = await service.health_check()
         return {"success": healthy, "service": "session"}
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
+        logger.error("Health check failed: %s", e)
         return {"success": False, "service": "session", "error": str(e)}

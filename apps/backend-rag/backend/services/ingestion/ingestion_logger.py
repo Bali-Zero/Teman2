@@ -282,13 +282,12 @@ class IngestionLogger:
 
         # Also log to standard logger for backward compatibility
         self.std_logger.error(
-            f"Parsing error for {document_id}: {error_details}",
+            "Parsing error for %s: %s", document_id, error_details,
             extra={
                 "document_id": document_id,
                 "file_path": file_path,
                 "error_type": error_type,
             },
-            exc_info=True,
         )
 
     def metadata_extracted(
@@ -399,14 +398,13 @@ class IngestionLogger:
 
         # Also log to standard logger
         self.std_logger.error(
-            f"Ingestion failed for {document_id}: {error_details}",
+            "Ingestion failed for %s: %s", document_id, error_details,
             extra={
                 "document_id": document_id,
                 "file_path": file_path,
                 "stage": stage.value,
                 "error_type": error_type,
             },
-            exc_info=True,
         )
 
     def scraper_data_normalized(

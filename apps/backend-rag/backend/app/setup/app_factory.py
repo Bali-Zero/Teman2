@@ -43,11 +43,11 @@ async def _safe_stop(name: str, coro) -> None:
     """Stop a service with timeout. Logs warning if it hangs."""
     try:
         await asyncio.wait_for(coro, timeout=SHUTDOWN_TIMEOUT)
-        logger.info(f"✅ {name} stopped")
+        logger.info("✅ %s stopped", name)
     except asyncio.TimeoutError:
-        logger.warning(f"⚠️ {name} stop() timed out after {SHUTDOWN_TIMEOUT}s — skipping")
+        logger.warning("⚠️ %s stop() timed out after %ss — skipping", name, SHUTDOWN_TIMEOUT)
     except Exception as e:
-        logger.warning(f"⚠️ {name} stop() error: {e}")
+        logger.warning("⚠️ %s stop() error: %s", name, e)
 
 
 @asynccontextmanager
@@ -106,7 +106,7 @@ async def lifespan(app: FastAPI):
 
             await asyncio.to_thread(init_observability, "nuzantara-rag")
         except Exception as e:
-            logger.warning(f"⚠️ Langfuse init skipped: {e}")
+            logger.warning("⚠️ Langfuse init skipped: %s", e)
 
         try:
             from backend.services.monitoring.alert_service import AlertService
@@ -114,14 +114,14 @@ async def lifespan(app: FastAPI):
             app.state.alert_service = AlertService()
             logger.info("✅ AlertService initialized")
         except Exception as e:
-            logger.error(f"⚠️ Failed to initialize AlertService: {e}")
+            logger.error("⚠️ Failed to initialize AlertService: %s", e)
 
         from backend.app.setup.service_initializer import initialize_services
 
         try:
             await initialize_services(app)
         except RuntimeError as e:
-            logger.critical(f"❌ CRITICAL: Service initialization failed: {e}")
+            logger.critical("❌ CRITICAL: Service initialization failed: %s", e)
             app.state.startup_failed = True
             app.state.startup_error = str(e)
             return  # Stop background init, health check will report 503
@@ -137,7 +137,7 @@ async def lifespan(app: FastAPI):
             app.state.notification_scheduler = await init_scheduler(app.state.db_pool)
             logger.info("✅ Notification Scheduler initialized")
         except Exception as e:
-            logger.error(f"⚠️ Failed to initialize Notification Scheduler: {e}")
+            logger.error("⚠️ Failed to initialize Notification Scheduler: %s", e)
 
         # P0-0: mark startup complete so /health stops returning warmup status.
         app.state.startup_complete = True
@@ -151,7 +151,7 @@ async def lifespan(app: FastAPI):
             await asyncio.to_thread(lambda: reranker.model)  # triggers _load_model() off event loop
             logger.info("✅ CrossEncoder model warm-up complete")
         except Exception as e:
-            logger.warning(f"⚠️ CrossEncoder warm-up failed (non-critical): {e}")
+            logger.warning("⚠️ CrossEncoder warm-up failed (non-critical): %s", e)
 
         # Background workers kill switch (2026-04-12 incident).
         # When DISABLE_BACKGROUND_WORKERS=1 we skip every long-running async
@@ -182,7 +182,7 @@ async def lifespan(app: FastAPI):
                 app.state._workflow_worker_task = worker_task
                 logger.info("✅ Workflow queue worker started (PG SKIP LOCKED)")
             except Exception as e:
-                logger.error(f"⚠️ Failed to initialize Workflow Queue: {e}")
+                logger.error("⚠️ Failed to initialize Workflow Queue: %s", e)
 
             # Initialize Legal Full Ingestion Worker
             try:
@@ -194,7 +194,7 @@ async def lifespan(app: FastAPI):
                 app.state._legal_worker_task = legal_worker_task
                 logger.info("✅ Legal ingestion worker started (PG SKIP LOCKED)")
             except Exception as e:
-                logger.error(f"⚠️ Failed to initialize Legal Ingestion Worker: {e}")
+                logger.error("⚠️ Failed to initialize Legal Ingestion Worker: %s", e)
 
             # Initialize Practice Status Listener (M4 + M5)
             # Listens on pg_notify 'practice_changed' channel for real-time email dispatch:
@@ -212,7 +212,7 @@ async def lifespan(app: FastAPI):
                 app.state.practice_status_listener = practice_listener
                 logger.info("✅ Practice Status Listener started (M4 + M5 notifications)")
             except Exception as e:
-                logger.error(f"⚠️ Failed to initialize Practice Status Listener: {e}")
+                logger.error("⚠️ Failed to initialize Practice Status Listener: %s", e)
 
             # Initialize EventBus (PG LISTEN/NOTIFY + in-process pub/sub)
             # Extends PracticeStatusListener pattern to client_changed, compliance_alert
@@ -237,12 +237,12 @@ async def lifespan(app: FastAPI):
                     register_crm_hgt_handlers(event_bus)
                 except Exception as crm_exc:
                     logger.warning(
-                        f"⚠️ crm_hgt_handlers registration failed (non-fatal): {crm_exc}"
+                        "⚠️ crm_hgt_handlers registration failed (non-fatal): %s", crm_exc
                     )
                 app.state.event_bus = event_bus
                 logger.info("✅ EventBus started (client_changed, compliance_alert)")
             except Exception as e:
-                logger.error(f"⚠️ Failed to initialize EventBus: {e}")
+                logger.error("⚠️ Failed to initialize EventBus: %s", e)
 
             # Initialize WebhookProcessor (P0-6 zero-crash audit 2026-04-29)
             # Drains the inbound_webhooks table populated by ack-first
@@ -283,7 +283,7 @@ async def lifespan(app: FastAPI):
                     "✅ WebhookProcessor started (whatsapp+telegram+instagram+twitter)"
                 )
             except Exception as e:
-                logger.error(f"⚠️ Failed to initialize WebhookProcessor: {e}")
+                logger.error("⚠️ Failed to initialize WebhookProcessor: %s", e)
 
     # Schedule background initialization
     init_task = asyncio.create_task(_background_init())
@@ -316,7 +316,7 @@ async def lifespan(app: FastAPI):
         await asyncio.to_thread(shutdown_observability)
         logger.info("✅ Langfuse flushed")
     except Exception as e:
-        logger.warning(f"⚠️ Langfuse shutdown skipped: {e}")
+        logger.warning("⚠️ Langfuse shutdown skipped: %s", e)
 
     # Shutdown Workflow Queue Worker
     workflow_worker_task = getattr(app.state, "_workflow_worker_task", None)
@@ -340,7 +340,7 @@ async def lifespan(app: FastAPI):
 
         await close_checkpointer()
     except Exception as e:
-        logger.debug(f"Checkpointer close skipped: {e}")
+        logger.debug("Checkpointer close skipped: %s", e)
 
     # NOTE: WebSocket Redis Listener, Compliance Monitor, and Autonomous Scheduler
     # shutdown removed — _init_background_services() is disabled (omnichannel stabilization).
@@ -451,9 +451,9 @@ async def lifespan(app: FastAPI):
                     await service.close()
                 else:
                     service.close()
-                logger.info(f"✅ Service '{attr_name}' closed successfully")
+                logger.info("✅ Service '%s' closed successfully", attr_name)
             except Exception as e:
-                logger.warning(f"⚠️ Error closing service '{attr_name}': {e}")
+                logger.warning("⚠️ Error closing service '%s': %s", attr_name, e)
 
     # Explicitly close any remaining HTTPX clients in state (backup check)
     for attr_name, attr_val in app.state.__dict__.items():
@@ -465,9 +465,9 @@ async def lifespan(app: FastAPI):
                         await attr_val.close()
                     else:
                         attr_val.close()
-                    logger.info(f"✅ Additional service '{attr_name}' closed")
+                    logger.info("✅ Additional service '%s' closed", attr_name)
                 except Exception as close_err:
-                    logger.debug(f"Could not close '{attr_name}': {close_err}")
+                    logger.debug("Could not close '%s': %s", attr_name, close_err)
 
     # Close channel adapter HTTP clients (security audit 2026-04-03)
     channel_router = getattr(app.state, "channel_router", None)
@@ -476,9 +476,9 @@ async def lifespan(app: FastAPI):
             if hasattr(adapter, "close"):
                 try:
                     await adapter.close()
-                    logger.info(f"✅ Channel adapter '{name}' closed")
+                    logger.info("✅ Channel adapter '%s' closed", name)
                 except Exception as e:
-                    logger.debug(f"Could not close adapter '{name}': {e}")
+                    logger.debug("Could not close adapter '%s': %s", name, e)
 
     # Close persistent Qdrant health check client
     try:
@@ -487,7 +487,7 @@ async def lifespan(app: FastAPI):
         await close_qdrant_health_client()
         logger.info("✅ Qdrant health check client closed")
     except Exception as e:
-        logger.debug(f"Qdrant health client close: {e}")
+        logger.debug("Qdrant health client close: %s", e)
 
     # Close asyncpg database pool (not in services_to_close because it uses .close() differently)
     db_pool = getattr(app.state, "db_pool", None)
@@ -496,7 +496,7 @@ async def lifespan(app: FastAPI):
             await db_pool.close()
             logger.info("✅ Database pool closed")
         except Exception as e:
-            logger.warning(f"⚠️ Error closing database pool: {e}")
+            logger.warning("⚠️ Error closing database pool: %s", e)
 
     # Module-level client cleanups (Addressing global clients in specific services)
     try:
@@ -507,7 +507,7 @@ async def lifespan(app: FastAPI):
     except ImportError:
         pass
     except Exception as e:
-        logger.warning(f"⚠️ Error closing Property Subgraph client: {e}")
+        logger.warning("⚠️ Error closing Property Subgraph client: %s", e)
 
     try:
         from backend.services.misc.autonomous_scheduler import close_scheduler_client
@@ -517,7 +517,7 @@ async def lifespan(app: FastAPI):
     except ImportError:
         pass
     except Exception as e:
-        logger.warning(f"⚠️ Error closing Scheduler client: {e}")
+        logger.warning("⚠️ Error closing Scheduler client: %s", e)
 
     try:
         from backend.services.rag.agentic.tools import close_agentic_tools_client
@@ -527,7 +527,7 @@ async def lifespan(app: FastAPI):
     except ImportError:
         pass
     except Exception as e:
-        logger.warning(f"⚠️ Error closing Agentic Tools client: {e}")
+        logger.warning("⚠️ Error closing Agentic Tools client: %s", e)
 
     # LLM provider HTTP client cleanups (S04 solidification)
     try:
@@ -538,7 +538,7 @@ async def lifespan(app: FastAPI):
     except ImportError:
         pass
     except Exception as e:
-        logger.warning(f"⚠️ Error closing OpenRouter client: {e}")
+        logger.warning("⚠️ Error closing OpenRouter client: %s", e)
 
     try:
         from backend.llm.ollama_client import close_ollama_client
@@ -548,7 +548,7 @@ async def lifespan(app: FastAPI):
     except ImportError:
         pass
     except Exception as e:
-        logger.warning(f"⚠️ Error closing Ollama client: {e}")
+        logger.warning("⚠️ Error closing Ollama client: %s", e)
 
     try:
         from backend.llm.deepseek_client import close_deepseek_client
@@ -558,7 +558,7 @@ async def lifespan(app: FastAPI):
     except ImportError:
         pass
     except Exception as e:
-        logger.warning(f"⚠️ Error closing DeepSeek client: {e}")
+        logger.warning("⚠️ Error closing DeepSeek client: %s", e)
 
     # Close the persistent httpx.AsyncClient used by the email pipeline
     # (Golden Rule #10). Lazy-created on first use by get_email_client().
@@ -570,7 +570,7 @@ async def lifespan(app: FastAPI):
     except ImportError:
         pass
     except Exception as e:
-        logger.warning(f"⚠️ Error closing email http client: {e}")
+        logger.warning("⚠️ Error closing email http client: %s", e)
 
     # P0-5 fase 2 (2026-04-29): close every module-level lazy-singleton
     # AsyncClient introduced by the httpx mass rewrite. Each importer is
@@ -600,11 +600,11 @@ async def lifespan(app: FastAPI):
             if close_fn is None:
                 continue
             await close_fn()
-            logger.info(f"✅ P0-5 client closed: {module_path}.{close_name}")
+            logger.info("✅ P0-5 client closed: %s.%s", module_path, close_name)
         except ImportError:
             pass
         except Exception as e:
-            logger.warning(f"⚠️ P0-5 close error {module_path}.{close_name}: {e}")
+            logger.warning("⚠️ P0-5 close error %s.%s: %s", module_path, close_name, e)
 
     logger.info("✅ ZANTARA shutdown complete")
 

@@ -39,9 +39,9 @@ def get_oracle_client() -> GenAIClient | None:
             _genai_client = get_genai_client()
             if _genai_client.is_available:
                 auth_method = getattr(_genai_client, "_auth_method", "unknown")
-                logger.info(f"✅ Smart Oracle GenAI client initialized (auth: {auth_method})")
+                logger.info("✅ Smart Oracle GenAI client initialized (auth: %s)", auth_method)
         except Exception as e:
-            logger.warning(f"Failed to initialize Smart Oracle GenAI client: {e}")
+            logger.warning("Failed to initialize Smart Oracle GenAI client: %s", e)
     return _genai_client
 
 
@@ -62,7 +62,7 @@ def get_drive_service() -> Any:
         )
         return build("drive", "v3", credentials=creds)
     except Exception as e:
-        logger.error(f"Error initializing Drive credentials: {e}")
+        logger.error("Error initializing Drive credentials: %s", e)
         # For tests where build/service_account are patched, return a MagicMock
         try:
             return build("drive", "v3", credentials=None)
@@ -91,7 +91,7 @@ def download_pdf_from_drive(filename_from_qdrant: Any) -> Any:
         # Cerca file PDF che contengono quella parola chiave nel nome
         query = f"name contains '{clean_name}' and mimeType = 'application/pdf' and trashed = false"
 
-        logger.debug(f"Searching Drive for: {clean_name}")
+        logger.debug("Searching Drive for: %s", clean_name)
 
         results = (
             service.files()
@@ -117,7 +117,7 @@ def download_pdf_from_drive(filename_from_qdrant: Any) -> Any:
             items = results.get("files", [])
 
         if not items:
-            logger.warning(f"No file found on Drive for: {filename_from_qdrant}")
+            logger.warning("No file found on Drive for: %s", filename_from_qdrant)
             return None
 
         # 3. TROVATO! (Anche se il nome non è identico)
@@ -140,7 +140,7 @@ def download_pdf_from_drive(filename_from_qdrant: Any) -> Any:
         return temp_path
 
     except Exception as e:
-        logger.error(f"Drive search error: {e}")
+        logger.error("Drive search error: %s", e)
         return None
 
 
@@ -169,7 +169,7 @@ async def smart_oracle(query, best_filename_from_qdrant) -> str:
             if not client or not client.is_available:
                 return "AI service not available. Please check configuration."
 
-            logger.info(f"Analyzing document: {best_filename_from_qdrant}")
+            logger.info("Analyzing document: %s", best_filename_from_qdrant)
 
             # Upload file to Gemini's temporary cache using new SDK
             # The new SDK uses client.files.upload() via the underlying genai module
@@ -222,7 +222,7 @@ async def smart_oracle(query, best_filename_from_qdrant) -> str:
             return "GenAI SDK not available."
 
         except Exception as ai_error:
-            logger.error(f"AI Processing Error: {ai_error}")
+            logger.error("AI Processing Error: %s", ai_error)
             return "Error processing the document with AI."
     else:
         # Fallback if the file is missing from Drive
@@ -246,7 +246,7 @@ def test_drive_connection() -> bool:
                 logger.debug(f"  - {file['name']} ({file['mimeType']})")
             return True
         except Exception as e:
-            logger.error(f"Drive connection test failed: {e}")
+            logger.error("Drive connection test failed: %s", e)
             return False
     else:
         logger.error("Could not initialize Drive service")

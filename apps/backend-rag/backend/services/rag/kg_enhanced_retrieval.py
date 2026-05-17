@@ -240,7 +240,7 @@ class KGEnhancedRetrieval:
                 if edge_count > 500:
                     max_depth = 2
                     logger.info(
-                        f"KG traversal: seed has {edge_count} edges, downgrading to 2-hop"
+                        "KG traversal: seed has %s edges, downgrading to 2-hop", edge_count
                     )
 
             # Single recursive CTE with directional join

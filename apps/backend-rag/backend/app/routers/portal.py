@@ -99,7 +99,7 @@ async def _log_impersonation(
             details={"path": path},
         )
     except Exception as e:  # never fail the request because audit broke
-        logger.warning(f"impersonation audit log failed: {e}")
+        logger.warning("impersonation audit log failed: %s", e)
 
 
 async def get_current_client(
@@ -434,7 +434,7 @@ async def set_primary_company(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Failed to set primary company: {e}")
+        logger.error("Failed to set primary company: %s", e)
         raise HTTPException(
             status_code=500,
             detail="Failed to update primary company",
@@ -692,7 +692,7 @@ async def mark_message_read(
             "message": "Message marked as read",
         }
     except Exception as e:
-        logger.error(f"Failed to mark message {message_id} as read: {e}")
+        logger.error("Failed to mark message %s as read: %s", message_id, e)
         raise HTTPException(
             status_code=500,
             detail="Failed to update message",
@@ -860,7 +860,7 @@ async def get_required_documents(
         return {"success": True, "data": items}
     except Exception as e:
         logger.error(
-            f"Failed to get portal required documents for client {client_id}: {e}",
+            "Failed to get portal required documents for client %s: %s", client_id, e,
             exc_info=True,
         )
         raise HTTPException(

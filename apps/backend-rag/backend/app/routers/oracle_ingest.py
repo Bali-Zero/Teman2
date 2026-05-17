@@ -171,7 +171,7 @@ async def ingest_documents(
         )
 
     except Exception as e:
-        logger.error(f"Ingest error: {e}", exc_info=True)
+        logger.error("Ingest error: %s", e, exc_info=True)
         execution_time = (time.time() - start_time) * 1000
 
         return IngestResponse(
@@ -203,7 +203,7 @@ async def list_collections(service: SearchService = Depends(get_search_service))
                 count = stats.get("total_documents", 0)
                 collections_info[name] = {"name": name, "document_count": count}
             except Exception as e:
-                logger.error(f"Error getting count for {name}: {e}")
+                logger.error("Error getting count for %s: %s", name, e)
                 collections_info[name] = {"name": name, "document_count": 0, "error": str(e)}
 
         return {
@@ -213,5 +213,5 @@ async def list_collections(service: SearchService = Depends(get_search_service))
         }
 
     except Exception as e:
-        logger.error(f"List collections error: {e}", exc_info=True)
+        logger.error("List collections error: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=str(e)) from e

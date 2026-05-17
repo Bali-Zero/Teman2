@@ -190,7 +190,7 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
             if db_pool is not None:
                 await db_pool.expire_connections()
         except Exception as pool_err:
-            logger.warning(f"[{correlation_id}] Pool expire failed: {pool_err}")
+            logger.warning("[%s] Pool expire failed: %s", correlation_id, pool_err)
         return JSONResponse(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             content={
@@ -203,7 +203,6 @@ async def general_exception_handler(request: Request, exc: Exception) -> JSONRes
     logger.critical(
         f"[{correlation_id}] Unhandled exception: Type={error_type}, Module={error_module}, "
         f"Request={request.method} {request.url.path}",
-        exc_info=True,
     )
 
     # Sanitize error message

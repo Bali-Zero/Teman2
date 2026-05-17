@@ -69,7 +69,7 @@ async def personalize_workflow(
                     has_npwp = any("has npwp" in fact.lower() for fact in profile_facts)
 
                 if has_npwp:
-                    logger.info(f"⏭️ Skipping step '{step_id}' for {user_email} (Already has NPWP)")
+                    logger.info("⏭️ Skipping step '%s' for %s (Already has NPWP)", step_id, user_email)
                     continue
 
             # Rule: Auto-complete 'submit_passport' if passport_number is present
@@ -86,7 +86,7 @@ async def personalize_workflow(
                 age = (datetime.now(tz=timezone.utc).date() - dob).days // 365
                 if age < 55:
                     logger.warning(
-                        f"⚠️ User {user_email} is under 55 ({age}), retirement workflow may be invalid",
+                        "⚠️ User %s is under 55 (%s), retirement workflow may be invalid", user_email, age,
                     )
                     step["blocked_reason"] = "Age requirement (55+) not met"
                     step["status"] = "blocked"
@@ -111,6 +111,6 @@ async def personalize_workflow(
         return personalized_workflow
 
     except Exception as e:
-        logger.error(f"❌ Failed to personalize workflow for {user_email}: {e}")
+        logger.error("❌ Failed to personalize workflow for %s: %s", user_email, e)
         # Return base workflow as safe fallback
         return base_workflow

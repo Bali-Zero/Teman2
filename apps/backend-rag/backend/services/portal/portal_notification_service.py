@@ -113,12 +113,12 @@ class PortalNotificationService:
                     sent_by,
                 )
                 logger.info(
-                    f"Portal notification sent to client {client_id}: {subject}",
+                    "Portal notification sent to client %s: %s", client_id, subject,
                 )
                 return msg_id
         except Exception as e:
             logger.error(
-                f"Failed to insert portal notification for client {client_id}: {e}",
+                "Failed to insert portal notification for client %s: %s", client_id, e,
             )
             # Audit bug #4: previously returned None silently — client lost
             # every status-change notification when insert failed. Page the

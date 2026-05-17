@@ -165,7 +165,7 @@ class InvoiceGenerator:
         explicit "Discount" line per Q2=a; the reason (if any) is shown in
         parentheses next to the line per Q5=c.
         """
-        logger.info(f"Generating invoice for practice {practice_id}")
+        logger.info("Generating invoice for practice %s", practice_id)
 
         buffer = io.BytesIO()
         doc = SimpleDocTemplate(

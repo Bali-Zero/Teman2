@@ -356,7 +356,7 @@ class DocumentUploadService:
             uploaded_by=uploaded_by,
         )
 
-        logger.info(f"Document {filename} uploaded for client {client_id}")
+        logger.info("Document %s uploaded for client %s", filename, client_id)
         return {
             "success": True,
             "file_id": upload_result["file_id"],

@@ -44,7 +44,7 @@ class DatabaseManager:
             )
             logger.info("✅ Database engine initialized with connection pool")
         except Exception as e:
-            logger.warning(f"⚠️ Failed to initialize database engine: {e}")
+            logger.warning("⚠️ Failed to initialize database engine: %s", e)
             # Don't raise - allow graceful degradation
             # raise
 
@@ -57,7 +57,7 @@ class DatabaseManager:
 
             for member in TEAM_MEMBERS:
                 if member.get("email", "").lower() == user_email.lower():
-                    logger.info(f"✅ Loaded user profile for {user_email} from team_members.py")
+                    logger.info("✅ Loaded user profile for %s from team_members.py", user_email)
                     return {
                         "id": member.get("id", ""),
                         "email": member.get("email", user_email),
@@ -77,7 +77,7 @@ class DatabaseManager:
         except ImportError:
             logger.warning("team_members.py not found, falling back to DB")
         except Exception as e:
-            logger.warning(f"Error loading team_members: {e}")
+            logger.warning("Error loading team_members: %s", e)
 
         # 2. Fallback to PostgreSQL users table
         try:
@@ -96,17 +96,17 @@ class DatabaseManager:
                     # Parse meta_json if it's a string
                     if isinstance(user_profile.get("meta_json"), str):
                         user_profile["meta_json"] = json.loads(user_profile["meta_json"])
-                    logger.info(f"✅ Loaded user profile for {user_email} from PostgreSQL")
+                    logger.info("✅ Loaded user profile for %s from PostgreSQL", user_email)
                     return user_profile
 
-                logger.warning(f"⚠️ User profile not found for {user_email}")
+                logger.warning("⚠️ User profile not found for %s", user_email)
                 return None
 
         except SQLAlchemyError as e:
-            logger.error(f"❌ DB Error retrieving user profile for {user_email}: {e}")
+            logger.error("❌ DB Error retrieving user profile for %s: %s", user_email, e)
             raise  # Let retry logic handle it
         except Exception as e:
-            logger.error(f"❌ Error retrieving user profile for {user_email}: {e}")
+            logger.error("❌ Error retrieving user profile for %s: %s", user_email, e)
             return None
 
     @db_retry(max_retries=3, delay=0.5)
@@ -148,10 +148,10 @@ class DatabaseManager:
                 conn.execute(query, params)
 
         except SQLAlchemyError as e:
-            logger.error(f"❌ DB Error storing query analytics: {e}")
+            logger.error("❌ DB Error storing query analytics: %s", e)
             raise
         except Exception as e:
-            logger.error(f"❌ Error storing query analytics: {e}")
+            logger.error("❌ Error storing query analytics: %s", e)
 
     @db_retry(max_retries=3, delay=0.5)
     async def store_feedback(self, feedback_data: dict[str, Any]) -> None:
@@ -190,10 +190,10 @@ class DatabaseManager:
                 conn.execute(query, params)
 
         except SQLAlchemyError as e:
-            logger.error(f"❌ DB Error storing feedback: {e}")
+            logger.error("❌ DB Error storing feedback: %s", e)
             raise
         except Exception as e:
-            logger.error(f"❌ Error storing feedback: {e}")
+            logger.error("❌ Error storing feedback: %s", e)
 
 
 # Lazy initialization of database manager singleton
@@ -220,7 +220,7 @@ def get_db_manager() -> DatabaseManager:
                 database_url = "postgresql://user:pass@localhost/db"
             _db_manager_instance = DatabaseManager(database_url)
         except Exception as e:
-            logger.warning(f"⚠️ Failed to initialize database manager: {e}")
+            logger.warning("⚠️ Failed to initialize database manager: %s", e)
 
             # Create a dummy instance that will fail gracefully when used
             # This allows imports to succeed even if DB is not available

@@ -148,7 +148,7 @@ async def get_nusantara_health(request: Request) -> NusantaraHealth:
         )
 
     except Exception as e:
-        logger.error(f"Failed to get Nusantara health: {e}")
+        logger.error("Failed to get Nusantara health: %s", e)
         return NusantaraHealth(
             timestamp=datetime.now(timezone.utc).isoformat(),
             overall_score=50.0,

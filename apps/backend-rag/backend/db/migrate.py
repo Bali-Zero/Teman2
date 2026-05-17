@@ -180,7 +180,7 @@ Examples:
     try:
         manager = MigrationManager()
     except MigrationError as e:
-        logger.error(f"❌ Failed to initialize migration manager: {e}")
+        logger.error("❌ Failed to initialize migration manager: %s", e)
         sys.exit(1)
 
     # Execute command with connection pooling
@@ -205,7 +205,7 @@ Examples:
         logger.info("\n⚠️  Interrupted by user")
         sys.exit(130)
     except Exception as e:
-        logger.error(f"❌ Error: {e}", exc_info=True)
+        logger.error("❌ Error: %s", e, exc_info=True)
         sys.exit(1)
 
 

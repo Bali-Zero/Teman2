@@ -211,7 +211,7 @@ async def get_user_allowed_folders(
                     # Check for wildcard - user sees EVERYTHING
                     if "*" in folders:
                         has_wildcard = True
-                        logger.info(f"[TEAM_DRIVE] Wildcard access for {user_email}")
+                        logger.info("[TEAM_DRIVE] Wildcard access for %s", user_email)
                         break
                     allowed.update(folders)
 
@@ -235,7 +235,7 @@ async def get_user_allowed_folders(
             return list(allowed), False
 
     except Exception as e:
-        logger.error(f"[TEAM_DRIVE] Error getting user folders: {e}")
+        logger.error("[TEAM_DRIVE] Error getting user folders: %s", e)
         # On error, return only shared folders
         return SHARED_FOLDERS.copy(), False
 
@@ -302,15 +302,14 @@ async def drive_status(
         result = await drive.list_files(page_size=1)
         files_accessible = len(result.get("files", [])) > 0
     except Exception as e:
-        logger.warning(f"[TEAM_DRIVE] Generic list_files failed, trying BZ root folder: {e}")
+        logger.warning("[TEAM_DRIVE] Generic list_files failed, trying BZ root folder: %s", e)
         try:
             result = await drive.list_files(folder_id=BZ_ROOT_FOLDER_ID, page_size=1)
             files_accessible = len(result.get("files", [])) > 0
-            logger.info(f"[TEAM_DRIVE] BZ root folder accessible: {files_accessible}")
+            logger.info("[TEAM_DRIVE] BZ root folder accessible: %s", files_accessible)
         except Exception as e2:
             logger.error(
-                f"[TEAM_DRIVE] BZ root folder also failed: {e2}. "
-                "Returning connected=true anyway (SA is configured).",
+                "[TEAM_DRIVE] BZ root folder also failed: %s. Returning connected=true anyway (SA is configured).", e2,
             )
             files_accessible = False
 
@@ -370,7 +369,7 @@ async def list_files(
                     if folder_path:
                         context_folder = folder_path[-1]["name"] if folder_path else None
                 except Exception as e:
-                    logger.warning(f"[TEAM_DRIVE] Could not get folder path: {e}")
+                    logger.warning("[TEAM_DRIVE] Could not get folder path: %s", e)
 
             allowed_folders, _ = await get_user_allowed_folders(user_email, pool, context_folder)
 
@@ -396,9 +395,9 @@ async def list_files(
     except Exception as e:
         error_msg = str(e).lower()
         if "not found" in error_msg or "404" in error_msg:
-            logger.warning(f"[TEAM_DRIVE] Resource not found: {e}")
+            logger.warning("[TEAM_DRIVE] Resource not found: %s", e)
             raise HTTPException(status_code=404, detail="Folder not found") from e
-        logger.error(f"[TEAM_DRIVE] Error listing files: {e}")
+        logger.error("[TEAM_DRIVE] Error listing files: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -416,7 +415,7 @@ async def get_file(
         return FileItem(**file)
 
     except Exception as e:
-        logger.error(f"[TEAM_DRIVE] Error getting file {file_id}: {e}")
+        logger.error("[TEAM_DRIVE] Error getting file %s: %s", file_id, e)
         raise HTTPException(status_code=404, detail="File not found") from e
 
 
@@ -438,7 +437,7 @@ async def download_file(
         content, filename, mime_type = await drive.download_file(user_email, file_id)
 
         # Log download for audit
-        logger.info(f"[TEAM_DRIVE] {user_email} downloaded: {filename}")
+        logger.info("[TEAM_DRIVE] %s downloaded: %s", user_email, filename)
 
         return Response(
             content=content,
@@ -450,7 +449,7 @@ async def download_file(
         )
 
     except Exception as e:
-        logger.error(f"[TEAM_DRIVE] Error downloading file {file_id}: {e}")
+        logger.error("[TEAM_DRIVE] Error downloading file %s: %s", file_id, e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -468,7 +467,7 @@ async def get_folder_path(
         return [BreadcrumbItem(**item) for item in path]
 
     except Exception as e:
-        logger.error(f"[TEAM_DRIVE] Error getting folder path: {e}")
+        logger.error("[TEAM_DRIVE] Error getting folder path: %s", e)
         return []
 
 
@@ -501,7 +500,7 @@ async def search_files(
         }
 
     except Exception as e:
-        logger.error(f"[TEAM_DRIVE] Error searching: {e}")
+        logger.error("[TEAM_DRIVE] Error searching: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -533,7 +532,7 @@ async def check_write_permission(
             if folder_matches_allowed(item["name"], allowed_folders):
                 return True
     except Exception as e:
-        logger.error(f"[TEAM_DRIVE] Error checking write permission: {e}")
+        logger.error("[TEAM_DRIVE] Error checking write permission: %s", e)
 
     return False
 
@@ -576,7 +575,7 @@ async def upload_file(
         )
 
     except Exception as e:
-        logger.error(f"[TEAM_DRIVE] Error uploading file: {e}")
+        logger.error("[TEAM_DRIVE] Error uploading file: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -610,7 +609,7 @@ async def create_folder(
         )
 
     except Exception as e:
-        logger.error(f"[TEAM_DRIVE] Error creating folder: {e}")
+        logger.error("[TEAM_DRIVE] Error creating folder: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -655,7 +654,7 @@ async def create_doc(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"[TEAM_DRIVE] Error creating doc: {e}")
+        logger.error("[TEAM_DRIVE] Error creating doc: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -685,7 +684,7 @@ async def rename_file(
         )
 
     except Exception as e:
-        logger.error(f"[TEAM_DRIVE] Error renaming file: {e}")
+        logger.error("[TEAM_DRIVE] Error renaming file: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -708,13 +707,13 @@ async def delete_file(
         )
 
         action = "eliminato definitivamente" if permanent else "spostato nel cestino"
-        logger.info(f"[TEAM_DRIVE] {user_email} deleted {file_id} (permanent={permanent})")
+        logger.info("[TEAM_DRIVE] %s deleted %s (permanent=%s)", user_email, file_id, permanent)
         await invalidate_cache("zantara:team_drive:*")
 
         return {"success": True, "message": f"File {action}"}
 
     except Exception as e:
-        logger.error(f"[TEAM_DRIVE] Error deleting file: {e}")
+        logger.error("[TEAM_DRIVE] Error deleting file: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -750,7 +749,7 @@ async def move_file(
         return OperationResponse(success=True, file=FileItem(**result), message="File spostato")
 
     except Exception as e:
-        logger.error(f"[TEAM_DRIVE] Error moving file: {e}")
+        logger.error("[TEAM_DRIVE] Error moving file: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -781,13 +780,13 @@ async def copy_file(
             parent_folder_id=request.parent_id,
         )
 
-        logger.info(f"[TEAM_DRIVE] {user_email} copied {file_id}")
+        logger.info("[TEAM_DRIVE] %s copied %s", user_email, file_id)
         await invalidate_cache("zantara:team_drive:*")
 
         return OperationResponse(success=True, file=FileItem(**result), message="File copiato")
 
     except Exception as e:
-        logger.error(f"[TEAM_DRIVE] Error copying file: {e}")
+        logger.error("[TEAM_DRIVE] Error copying file: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -864,7 +863,7 @@ async def list_permissions(
         return [PermissionItem(**p) for p in permissions]
 
     except Exception as e:
-        logger.error(f"[TEAM_DRIVE] Error listing permissions: {e}")
+        logger.error("[TEAM_DRIVE] Error listing permissions: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -896,7 +895,7 @@ async def add_permission(
         return PermissionItem(**permission)
 
     except Exception as e:
-        logger.error(f"[TEAM_DRIVE] Error adding permission: {e}")
+        logger.error("[TEAM_DRIVE] Error adding permission: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -928,7 +927,7 @@ async def update_permission(
         return PermissionItem(**permission)
 
     except Exception as e:
-        logger.error(f"[TEAM_DRIVE] Error updating permission: {e}")
+        logger.error("[TEAM_DRIVE] Error updating permission: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -950,11 +949,11 @@ async def remove_permission(
             permission_id=permission_id,
         )
 
-        logger.info(f"[TEAM_DRIVE] {user_email} removed permission {permission_id} from {file_id}")
+        logger.info("[TEAM_DRIVE] %s removed permission %s from %s", user_email, permission_id, file_id)
         await invalidate_cache("zantara:team_drive:*")
 
         return {"success": True, "message": "Permesso rimosso"}
 
     except Exception as e:
-        logger.error(f"[TEAM_DRIVE] Error removing permission: {e}")
+        logger.error("[TEAM_DRIVE] Error removing permission: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e

@@ -96,13 +96,13 @@ Be precise. Only extract clear entities."""
                 return json.loads(analysis_text[json_start:json_end])
             return []
         except asyncio.TimeoutError:
-            logger.error(f"Timeout extracting entities after {timeout}s")
+            logger.error("Timeout extracting entities after %ss", timeout)
             return []
         except json.JSONDecodeError as e:
-            logger.error(f"Error parsing entities JSON: {e}", exc_info=True)
+            logger.error("Error parsing entities JSON: %s", e, exc_info=True)
             return []
         except Exception as e:
-            logger.error(f"Error extracting entities: {e}", exc_info=True)
+            logger.error("Error extracting entities: %s", e, exc_info=True)
             return []
 
 
@@ -176,11 +176,11 @@ Only include clear, meaningful relationships."""
                 return json.loads(analysis_text[json_start:json_end])
             return []
         except asyncio.TimeoutError:
-            logger.error(f"Timeout extracting relationships after {timeout}s")
+            logger.error("Timeout extracting relationships after %ss", timeout)
             return []
         except json.JSONDecodeError as e:
-            logger.error(f"Error parsing relationships JSON: {e}", exc_info=True)
+            logger.error("Error parsing relationships JSON: %s", e, exc_info=True)
             return []
         except Exception as e:
-            logger.error(f"Error extracting relationships: {e}", exc_info=True)
+            logger.error("Error extracting relationships: %s", e, exc_info=True)
             return []

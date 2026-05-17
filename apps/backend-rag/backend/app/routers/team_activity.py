@@ -152,7 +152,7 @@ async def clock_in(request: ClockInRequest) -> ClockResponse:
         )
         return ClockResponse(**result)
     except Exception as e:
-        logger.error(f"❌ Clock-in failed: {e}")
+        logger.error("❌ Clock-in failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -176,7 +176,7 @@ async def clock_out(request: ClockOutRequest) -> ClockResponse:
         )
         return ClockResponse(**result)
     except Exception as e:
-        logger.error(f"❌ Clock-out failed: {e}")
+        logger.error("❌ Clock-out failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -200,7 +200,7 @@ async def get_my_status(user_id: str = Query(..., description="User ID")) -> Use
         status = await service.get_my_status(user_id)
         return UserStatusResponse(**status)
     except Exception as e:
-        logger.error(f"❌ Get status failed: {e}")
+        logger.error("❌ Get status failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -226,7 +226,7 @@ async def get_team_status(_admin: dict = Depends(get_admin_user)) -> list[Any]:
         statuses = await service.get_team_online_status()
         return [TeamMemberStatus(**s) for s in statuses]
     except Exception as e:
-        logger.error(f"❌ Get team status failed: {e}")
+        logger.error("❌ Get team status failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -256,7 +256,7 @@ async def get_daily_hours(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid date format: {e}") from e
     except Exception as e:
-        logger.error(f"❌ Get daily hours failed: {e}")
+        logger.error("❌ Get daily hours failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -286,7 +286,7 @@ async def get_weekly_summary(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid date format: {e}") from e
     except Exception as e:
-        logger.error(f"❌ Get weekly summary failed: {e}")
+        logger.error("❌ Get weekly summary failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -316,7 +316,7 @@ async def get_monthly_summary(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid date format: {e}") from e
     except Exception as e:
-        logger.error(f"❌ Get monthly summary failed: {e}")
+        logger.error("❌ Get monthly summary failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -357,7 +357,7 @@ async def export_timesheet(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=f"Invalid date format: {e}") from e
     except Exception as e:
-        logger.error(f"❌ Export timesheet failed: {e}")
+        logger.error("❌ Export timesheet failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 

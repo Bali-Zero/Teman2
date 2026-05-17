@@ -59,7 +59,7 @@ class DriveFolderService:
                 parent_folder_id=folder_id,
             )
 
-            logger.info(f"Created Drive folder for client {client_name}: {folder_id}")
+            logger.info("Created Drive folder for client %s: %s", client_name, folder_id)
 
             return {
                 "success": True,
@@ -70,7 +70,7 @@ class DriveFolderService:
             }
 
         except Exception as e:
-            logger.error(f"Failed to create Drive folder for client {client_name}: {e}")
+            logger.error("Failed to create Drive folder for client %s: %s", client_name, e)
             return {
                 "success": False,
                 "error": str(e),
@@ -104,7 +104,7 @@ class DriveFolderService:
                 folder_id=client_folder_id,
             )
 
-            logger.info(f"Uploaded {filename} to client folder {client_folder_id}")
+            logger.info("Uploaded %s to client folder %s", filename, client_folder_id)
 
             return {
                 "success": True,
@@ -113,7 +113,7 @@ class DriveFolderService:
             }
 
         except Exception as e:
-            logger.error(f"Failed to upload document {filename}: {e}")
+            logger.error("Failed to upload document %s: %s", filename, e)
             return {
                 "success": False,
                 "error": str(e),
@@ -146,7 +146,7 @@ class DriveFolderService:
                 folder_id=final_folder_id,
             )
 
-            logger.info(f"Uploaded final document {filename}")
+            logger.info("Uploaded final document %s", filename)
 
             return {
                 "success": True,
@@ -155,7 +155,7 @@ class DriveFolderService:
             }
 
         except Exception as e:
-            logger.error(f"Failed to upload final document {filename}: {e}")
+            logger.error("Failed to upload final document %s: %s", filename, e)
             return {
                 "success": False,
                 "error": str(e),

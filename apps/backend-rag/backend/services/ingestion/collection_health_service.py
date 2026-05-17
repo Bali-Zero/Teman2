@@ -130,7 +130,7 @@ class CollectionHealthService:
         """
         canonical_name = canonicalize_collection_name(collection_name)
         if canonical_name not in self.metrics:
-            logger.warning(f"Unknown collection: {collection_name}")
+            logger.warning("Unknown collection: %s", collection_name)
             return
 
         metrics = self.metrics[canonical_name]
@@ -165,7 +165,7 @@ class CollectionHealthService:
             collection_name = metric.get("collection_name")
             canonical_name = canonicalize_collection_name(collection_name or "")
             if not collection_name or canonical_name not in self.metrics:
-                logger.warning(f"Unknown collection in batch: {collection_name}")
+                logger.warning("Unknown collection in batch: %s", collection_name)
                 continue
 
             metrics = self.metrics[canonical_name]
@@ -207,7 +207,7 @@ class CollectionHealthService:
             return StalenessSeverity.VERY_STALE
 
         except Exception as e:
-            logger.error(f"Error calculating staleness: {e}")
+            logger.error("Error calculating staleness: %s", e)
             return StalenessSeverity.VERY_STALE
 
     def calculate_health_status(

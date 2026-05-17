@@ -77,7 +77,7 @@ class VisionRAGService:
                 if self._genai_client.is_available:
                     logger.debug("✅ VisionRAGService GenAI client loaded")
             except Exception as e:
-                logger.warning(f"Failed to initialize VisionRAGService: {e}")
+                logger.warning("Failed to initialize VisionRAGService: %s", e)
         return self._genai_client
 
     @property
@@ -177,7 +177,7 @@ Output JSON:
                 raw_response = await self._vision_via_gemini(prompt, image_base64)
 
             if not raw_response:
-                logger.warning(f"Visual analysis failed for {element_id}: no provider available")
+                logger.warning("Visual analysis failed for %s: no provider available", element_id)
                 return None
 
             clean_json = raw_response.replace("```json", "").replace("```", "").strip()
@@ -195,7 +195,7 @@ Output JSON:
             )
 
         except Exception as e:
-            logger.warning(f"Visual analysis failed for {element_id}: {e}")
+            logger.warning("Visual analysis failed for %s: %s", element_id, e)
             return None
 
     async def _vision_via_ollama(self, prompt: str, image_base64: str) -> str | None:
@@ -222,11 +222,11 @@ Output JSON:
             response.raise_for_status()
             content = response.json().get("message", {}).get("content", "").strip()
             if content:
-                logger.info(f"👁️ VisionRAG: Ollama ({vision_model}) responded")
+                logger.info("👁️ VisionRAG: Ollama (%s) responded", vision_model)
                 return content
             return None
         except Exception as e:
-            logger.debug(f"VisionRAG Ollama fallback: {e}")
+            logger.debug("VisionRAG Ollama fallback: %s", e)
             return None
 
     async def _vision_via_gemini(self, prompt: str, image_base64: str) -> str | None:
@@ -248,7 +248,7 @@ Output JSON:
             )
             return result.get("text") if result else None
         except Exception as e:
-            logger.warning(f"VisionRAG Gemini error: {e}")
+            logger.warning("VisionRAG Gemini error: %s", e)
             return None
 
     async def _extract_tables(self, page, page_num: int) -> list[VisualElement]:

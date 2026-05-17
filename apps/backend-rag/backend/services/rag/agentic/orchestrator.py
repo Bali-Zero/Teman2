@@ -129,7 +129,7 @@ class AgenticRAGOrchestrator:
             - Converts tools to Gemini function declarations for native calling
         """
         init_start = time.perf_counter()
-        logger.debug(f"AgenticRAGOrchestrator.__init__ started. Model: {model_name}")
+        logger.debug("AgenticRAGOrchestrator.__init__ started. Model: %s", model_name)
         self.tools = {tool.name: tool for tool in tools}  # Changed to dict for direct access
         self._initialized = False  # Track async initialization state
         self.db_pool = db_pool
@@ -217,10 +217,10 @@ class AgenticRAGOrchestrator:
                     "✅ KG LangGraph Orchestrator initialized (Phase 3 - ENABLE_KG_LANGGRAPH=true)",
                 )
             except ImportError as e:
-                logger.warning(f"⚠️ KG LangGraph Orchestrator not available: {e}")
+                logger.warning("⚠️ KG LangGraph Orchestrator not available: %s", e)
             except Exception as e:
                 logger.error(
-                    f"❌ Failed to initialize KG LangGraph Orchestrator: {e}", exc_info=True,
+                    "❌ Failed to initialize KG LangGraph Orchestrator: %s", e, exc_info=True,
                 )
         else:
             if not db_pool:
@@ -316,7 +316,7 @@ class AgenticRAGOrchestrator:
                 results["memory"] = f"ok ({elapsed:.0f}ms)"
             except Exception as e:
                 results["memory"] = f"failed: {e}"
-                logger.warning(f"⚠️ MemoryOrchestrator eager init failed: {e}")
+                logger.warning("⚠️ MemoryOrchestrator eager init failed: %s", e)
 
         async def _init_kg_langgraph() -> None:
             if self.kg_langgraph_orchestrator and hasattr(
@@ -329,7 +329,7 @@ class AgenticRAGOrchestrator:
                     results["kg_langgraph"] = f"ok ({elapsed:.0f}ms)"
                 except Exception as e:
                     results["kg_langgraph"] = f"failed: {e}"
-                    logger.warning(f"⚠️ KG LangGraph eager init failed: {e}")
+                    logger.warning("⚠️ KG LangGraph eager init failed: %s", e)
 
         # Run independent async initializations in parallel
         await asyncio.gather(_init_memory(), _init_kg_langgraph(), return_exceptions=True)
@@ -400,9 +400,9 @@ class AgenticRAGOrchestrator:
                         session_id=session_id,
                         metrics_collector=metrics_collector,
                     )
-                    logger.debug(f"🧠 [Sync] Dispatched memory save task for {user_id}")
+                    logger.debug("🧠 [Sync] Dispatched memory save task for %s", user_id)
                 except Exception as mem_err:
-                    logger.warning(f"⚠️ [Sync] Failed to dispatch memory save: {mem_err}")
+                    logger.warning("⚠️ [Sync] Failed to dispatch memory save: %s", mem_err)
 
             return result
 

@@ -780,7 +780,7 @@ class EnhancedCRMService:
                 metadata=metadata,
             )
 
-            logger.info(f"Updated client {client_id}")
+            logger.info("Updated client %s", client_id)
             return result
 
         except ResourceNotFoundError:
@@ -940,7 +940,7 @@ class EnhancedCRMService:
                 metadata=metadata,
             )
 
-            logger.info(f"Practice {practice_id} status: {old_status} -> {new_status}")
+            logger.info("Practice %s status: %s -> %s", practice_id, old_status, new_status)
 
             # HR Bonus hook: auto-create bonus entry when practice completed
             if new_status == "completed" and old_status != "completed":
@@ -1017,7 +1017,7 @@ class EnhancedCRMService:
                     practice_id,
                 )
                 if not pt:
-                    logger.debug(f"HR bonus skip: practice {practice_id} has no practice_type")
+                    logger.debug("HR bonus skip: practice %s has no practice_type", practice_id)
                     return
 
                 practice_type_code = pt["code"]
@@ -1034,7 +1034,7 @@ class EnhancedCRMService:
                 )
                 if not rate:
                     logger.debug(
-                        f"HR bonus skip: no active rate for practice_type={practice_type_code}",
+                        "HR bonus skip: no active rate for practice_type=%s", practice_type_code,
                     )
                     return
 
@@ -1048,7 +1048,7 @@ class EnhancedCRMService:
                 )
                 if not emp:
                     logger.debug(
-                        f"HR bonus skip: no HR employee for email={assigned_to}",
+                        "HR bonus skip: no HR employee for email=%s", assigned_to,
                     )
                     return
 
@@ -1061,7 +1061,7 @@ class EnhancedCRMService:
                     emp["id"],
                 )
                 if existing:
-                    logger.debug(f"HR bonus skip: duplicate for practice={practice_id}")
+                    logger.debug("HR bonus skip: duplicate for practice=%s", practice_id)
                     return
 
                 await conn.execute(
@@ -1084,11 +1084,11 @@ class EnhancedCRMService:
                 )
 
         except (asyncpg.PostgresError, OSError) as e:
-            logger.warning(f"HR bonus hook failed for practice {practice_id} (DB): {e}")
+            logger.warning("HR bonus hook failed for practice %s (DB): %s", practice_id, e)
         except (KeyError, TypeError) as e:
-            logger.warning(f"HR bonus hook failed for practice {practice_id} (data): {e}")
+            logger.warning("HR bonus hook failed for practice %s (data): %s", practice_id, e)
         except Exception as e:
-            logger.exception(f"HR bonus hook failed for practice {practice_id}: {e}")
+            logger.exception("HR bonus hook failed for practice %s: %s", practice_id, e)
 
     # ==================== UTILITY METHODS ====================
 

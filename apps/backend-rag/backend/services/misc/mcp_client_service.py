@@ -35,9 +35,9 @@ class MCPClientService:
         for name, config in servers.items():
             try:
                 await self._connect_server(name, config)
-                logger.info(f"✅ MCP Server '{name}' connected")
+                logger.info("✅ MCP Server '%s' connected", name)
             except Exception as e:
-                logger.warning(f"⚠️ MCP Server '{name}' failed: {e}")
+                logger.warning("⚠️ MCP Server '%s' failed: %s", name, e)
 
         self._initialized = True
         logger.info(f"🔌 MCPClientService initialized with {len(self.available_tools)} tools")
@@ -67,7 +67,7 @@ class MCPClientService:
                         "description": tool.description,
                         "schema": tool.inputSchema,
                     }
-                    logger.debug(f"  📦 Tool registered: {tool_name}")
+                    logger.debug("  📦 Tool registered: %s", tool_name)
 
     def get_tools_for_gemini(self) -> list[dict]:
         """
@@ -105,7 +105,7 @@ class MCPClientService:
         server_name = tool_info["server"]
         original_name = tool_info["original_name"]
 
-        logger.info(f"🔧 Executing MCP tool: {tool_name} -> {server_name}/{original_name}")
+        logger.info("🔧 Executing MCP tool: %s -> %s/%s", tool_name, server_name, original_name)
 
         try:
             # Riconnetti al server per eseguire
@@ -146,7 +146,7 @@ class MCPClientService:
                     }
 
         except Exception as e:
-            logger.error(f"❌ MCP tool execution failed: {e}")
+            logger.error("❌ MCP tool execution failed: %s", e)
             return {"success": False, "error": str(e)}
 
     def is_mcp_tool(self, tool_name: str) -> bool:

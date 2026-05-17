@@ -80,7 +80,7 @@ async def channel_health(
             for row in rows:
                 dlq_summary[row["status"]] = row["cnt"]
         except Exception as e:
-            logger.debug(f"DLQ query failed (table may not exist yet): {e}")
+            logger.debug("DLQ query failed (table may not exist yet): %s", e)
 
     # Overall status
     statuses = [ch["status"] for ch in channels_health.values()]
@@ -261,7 +261,7 @@ async def unified_conversations(
         }
 
     except Exception as e:
-        logger.error(f"Unified conversations query failed: {e}")
+        logger.error("Unified conversations query failed: %s", e)
         return {"conversations": [], "total": 0, "error": str(e)}
 
 
@@ -308,7 +308,7 @@ async def dlq_messages(
         return {"messages": messages, "count": len(messages)}
 
     except Exception as e:
-        logger.debug(f"DLQ query failed: {e}")
+        logger.debug("DLQ query failed: %s", e)
         return {"messages": [], "error": str(e)}
 
 
@@ -341,7 +341,7 @@ async def dlq_retry_message(
             raise HTTPException(status_code=404, detail="Message not found")
         return {"status": "already_delivered", "id": message_id}
 
-    logger.info(f"DLQ: manual retry queued for message {message_id}")
+    logger.info("DLQ: manual retry queued for message %s", message_id)
     return {"status": "queued_for_retry", "id": message_id}
 
 
@@ -375,5 +375,5 @@ async def dlq_purge(
         cutoff,
     )
     deleted = int(result.split()[-1]) if result else 0
-    logger.info(f"DLQ: purged {deleted} exhausted messages older than {older_than_days} days")
+    logger.info("DLQ: purged %s exhausted messages older than %s days", deleted, older_than_days)
     return {"purged": deleted, "older_than_days": older_than_days}

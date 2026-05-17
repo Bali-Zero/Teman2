@@ -89,7 +89,7 @@ async def _get_email_stats(db_pool: asyncpg.Pool, user_id: str) -> dict:
             "unread_count": unread_count,
         }
     except Exception as e:
-        logger.warning(f"Failed to get email stats for user {user_id}: {e}")
+        logger.warning("Failed to get email stats for user %s: %s", user_id, e)
         return {"connected": False, "unread_count": 0}
 
 
@@ -128,7 +128,7 @@ async def _get_critical_deadlines(db_pool: asyncpg.Pool, user_id: str, is_admin:
 
             return result["count"] if result else 0
     except Exception as e:
-        logger.warning(f"Failed to get critical deadlines for user {user_id}: {e}")
+        logger.warning("Failed to get critical deadlines for user %s: %s", user_id, e)
         return 0
 
 
@@ -163,7 +163,7 @@ async def _get_revenue_stats(db_pool: asyncpg.Pool) -> dict:
                 "outstanding_revenue": 0,
             }
     except Exception as e:
-        logger.warning(f"Failed to get revenue stats: {e}")
+        logger.warning("Failed to get revenue stats: %s", e)
         return {
             "total_revenue": 0,
             "paid_revenue": 0,
@@ -210,7 +210,7 @@ async def _calculate_revenue_growth(db_pool: asyncpg.Pool) -> float:
             growth = ((current_revenue - previous_revenue) / previous_revenue) * 100
             return round(growth, 1)
     except Exception as e:
-        logger.warning(f"Failed to calculate revenue growth: {e}")
+        logger.warning("Failed to calculate revenue growth: %s", e)
         return 0.0
 
 
@@ -235,7 +235,7 @@ async def get_dashboard_summary(
             try:
                 return await asyncio.wait_for(coro, timeout=TASK_TIMEOUT)
             except asyncio.TimeoutError:
-                logger.warning(f"Dashboard task timed out after {TASK_TIMEOUT}s")
+                logger.warning("Dashboard task timed out after %ss", TASK_TIMEOUT)
                 return fallback
 
         # Parallel fetch all data with per-task timeouts
@@ -416,7 +416,7 @@ async def get_dashboard_summary(
         return response
 
     except Exception as e:
-        logger.error(f"Failed to get dashboard summary for user {user_id}: {e}")
+        logger.error("Failed to get dashboard summary for user %s: %s", user_id, e)
         # Return degraded response
         return {
             "user": {
@@ -465,7 +465,7 @@ async def get_neural_pulse(
             memory_stats = await memory_service.get_stats()
             memory_facts = memory_stats.get("total_facts", 0)
         except Exception as e:
-            logger.warning(f"Failed to get memory stats (table may not exist): {e}")
+            logger.warning("Failed to get memory stats (table may not exist): %s", e)
 
         # 2. Get knowledge docs count (from Qdrant)
         knowledge_docs = 0
@@ -478,7 +478,7 @@ async def get_neural_pulse(
             knowledge_docs = qdrant_stats.get("total_documents", 0)
             await qdrant.close()
         except Exception as e:
-            logger.warning(f"Failed to get Qdrant stats for pulse: {e}")
+            logger.warning("Failed to get Qdrant stats for pulse: %s", e)
 
         # 3. Get last activity
         last_activity = "Initializing neural link..."
@@ -500,7 +500,7 @@ async def get_neural_pulse(
                         last_activity = f"Last CRM: {last_int[:30]}..."
 
         except Exception as e:
-            logger.warning(f"Failed to get last activity for pulse: {e}")
+            logger.warning("Failed to get last activity for pulse: %s", e)
 
         latency_ms = int((time.time() - start_time) * 1000)
 
@@ -518,7 +518,7 @@ async def get_neural_pulse(
         return result
 
     except Exception as e:
-        logger.error(f"Failed to generate neural pulse: {e}")
+        logger.error("Failed to generate neural pulse: %s", e)
         return {
             "status": "degraded",
             "memory_facts": 0,
@@ -675,7 +675,7 @@ async def get_role_metrics(
         return {"role": role, "metrics": metrics, "alerts": []}
 
     except Exception as e:
-        logger.warning(f"role-metrics fallback for role={role}: {e}")
+        logger.warning("role-metrics fallback for role=%s: %s", role, e)
         # Return safe defaults per role so frontend never breaks
         defaults: dict[str, Any] = {
             "zero": {

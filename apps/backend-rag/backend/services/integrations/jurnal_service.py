@@ -65,7 +65,7 @@ class JurnalService:
 
         Returns dict with 'entries' list and 'pagination' info.
         """
-        logger.info(f"Fetching Jurnal entries: {start_date} to {end_date}, page={page}")
+        logger.info("Fetching Jurnal entries: %s to %s, page=%s", start_date, end_date, page)
 
         params: dict[str, Any] = {
             "start_date": start_date.isoformat(),

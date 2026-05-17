@@ -62,7 +62,7 @@ class IngestionService:
             Dictionary with ingestion results
         """
         try:
-            logger.info(f"Starting ingestion for: {file_path}")
+            logger.info("Starting ingestion for: %s", file_path)
 
             # AUTO-ROUTING: Check if this is a legal document
             if doc_type == "legal" or self._is_legal_document(file_path):
@@ -87,11 +87,11 @@ class IngestionService:
             )
             extracted_wilayah = wilayah or doc_info.get("wilayah") or doc_info.get("region")
 
-            logger.info(f"Book: {book_title} by {book_author}")
+            logger.info("Book: %s by %s", book_title, book_author)
             if extracted_status_vigensi:
-                logger.info(f"Legal status: {extracted_status_vigensi}")
+                logger.info("Legal status: %s", extracted_status_vigensi)
             if extracted_wilayah:
-                logger.info(f"Region: {extracted_wilayah}")
+                logger.info("Region: %s", extracted_wilayah)
 
             # Step 2: Parse document
             text = auto_detect_and_parse(file_path)
@@ -157,7 +157,7 @@ class IngestionService:
                 chunks=chunk_texts, embeddings=embeddings, metadatas=metadatas,
             )
 
-            logger.info(f"✅ Successfully ingested: {book_title}")
+            logger.info("✅ Successfully ingested: %s", book_title)
 
             return {
                 "success": True,
@@ -170,7 +170,7 @@ class IngestionService:
             }
 
         except Exception as e:
-            logger.error(f"❌ Error ingesting {file_path}: {e}")
+            logger.error("❌ Error ingesting %s: %s", file_path, e)
             return {
                 "success": False,
                 "book_title": title or Path(file_path).stem,
@@ -203,5 +203,5 @@ class IngestionService:
             return extractor.is_legal_document(sample)
 
         except Exception as e:
-            logger.warning(f"Error detecting legal document: {e}")
+            logger.warning("Error detecting legal document: %s", e)
             return False

@@ -100,7 +100,7 @@ class CulturalRAGService:
             return cultural_insights
 
         except Exception as e:
-            logger.error(f"❌ Failed to get cultural context: {e}")
+            logger.error("❌ Failed to get cultural context: %s", e)
             return []
 
     def build_cultural_prompt_injection(self, cultural_chunks: list[dict[str, Any]]) -> str:
@@ -147,7 +147,7 @@ class CulturalRAGService:
             return cultural_context
 
         except Exception as e:
-            logger.error(f"❌ Failed to build cultural injection: {e}")
+            logger.error("❌ Failed to build cultural injection: %s", e)
             return ""
 
     async def get_cultural_topics_coverage(self) -> dict[str, int]:
@@ -176,7 +176,7 @@ class CulturalRAGService:
             return dict.fromkeys(expected_topics, 1)
 
         except Exception as e:
-            logger.error(f"❌ Failed to get cultural topics coverage: {e}")
+            logger.error("❌ Failed to get cultural topics coverage: %s", e)
             return {}
 
 
@@ -238,7 +238,7 @@ async def test_cultural_rag() -> None:  # pragma: no cover
     logger.info(f"{'=' * 60}")
     coverage = await cultural_rag.get_cultural_topics_coverage()
     for topic, count in coverage.items():
-        logger.info(f"   {topic}: {count} insight(s)")
+        logger.info("   %s: %s insight(s)", topic, count)
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -181,11 +181,11 @@ async def get_retrieval_quality(
         Comprehensive metrics including scores, latency, cache rates, and alerts
     """
     try:
-        logger.info(f"Retrieving quality metrics for time_range={time_range}")
+        logger.info("Retrieving quality metrics for time_range=%s", time_range)
         return await monitor.get_dashboard_data(time_range)
 
     except Exception as e:
-        logger.error(f"Failed to retrieve quality metrics: {e}")
+        logger.error("Failed to retrieve quality metrics: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve metrics: {str(e)}",
@@ -217,7 +217,7 @@ async def get_scores_trend(
         Daily aggregated scores including average, p95, min, max
     """
     try:
-        logger.info(f"Retrieving score trends for days={days}")
+        logger.info("Retrieving score trends for days=%s", days)
         trend = await monitor.get_scores_trend(days)
         return {
             "days": days,
@@ -225,7 +225,7 @@ async def get_scores_trend(
         }
 
     except Exception as e:
-        logger.error(f"Failed to retrieve score trends: {e}")
+        logger.error("Failed to retrieve score trends: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve score trends: {str(e)}",
@@ -257,11 +257,11 @@ async def get_abstain_statistics(
         Abstain statistics including rate by reason and daily breakdown
     """
     try:
-        logger.info(f"Retrieving abstain statistics for days={days}")
+        logger.info("Retrieving abstain statistics for days=%s", days)
         return await monitor.get_abstain_statistics(days)
 
     except Exception as e:
-        logger.error(f"Failed to retrieve abstain statistics: {e}")
+        logger.error("Failed to retrieve abstain statistics: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve abstain statistics: {str(e)}",
@@ -293,11 +293,11 @@ async def get_latency_percentiles(
         Latency percentiles (p50, p75, p90, p95, p99, p99.9) plus min/max/avg
     """
     try:
-        logger.info(f"Retrieving latency percentiles for days={days}")
+        logger.info("Retrieving latency percentiles for days=%s", days)
         return await monitor.get_latency_percentiles(days)
 
     except Exception as e:
-        logger.error(f"Failed to retrieve latency statistics: {e}")
+        logger.error("Failed to retrieve latency statistics: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to retrieve latency statistics: {str(e)}",
@@ -355,7 +355,7 @@ async def set_alert_thresholds(
         }
 
     except Exception as e:
-        logger.error(f"Failed to set alert thresholds: {e}")
+        logger.error("Failed to set alert thresholds: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to set alert thresholds: {str(e)}",
@@ -393,7 +393,7 @@ async def get_alert_thresholds(
         }
 
     except Exception as e:
-        logger.error(f"Failed to get alert thresholds: {e}")
+        logger.error("Failed to get alert thresholds: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to get alert thresholds: {str(e)}",
@@ -423,7 +423,7 @@ async def health_check(
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     except Exception as e:
-        logger.error(f"Health check failed: {e}")
+        logger.error("Health check failed: %s", e)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"Monitoring service unhealthy: {str(e)}",

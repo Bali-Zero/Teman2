@@ -64,10 +64,10 @@ class ResponseHandler:
                 response, query_type, apply_santai=apply_santai, add_contact=add_contact,
             )
 
-            logger.info(f"✨ [ResponseHandler] Sanitized response (type: {query_type})")
+            logger.info("✨ [ResponseHandler] Sanitized response (type: %s)", query_type)
 
             return sanitized
 
         except Exception as e:
-            logger.error(f"✨ [ResponseHandler] Error: {e}")
+            logger.error("✨ [ResponseHandler] Error: %s", e)
             return response  # Return original if sanitization fails

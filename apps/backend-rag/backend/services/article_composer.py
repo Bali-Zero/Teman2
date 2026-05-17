@@ -74,7 +74,7 @@ def log_error_with_context(error: Exception, context: dict[str, Any]) -> None:
     import logging
 
     logger = logging.getLogger(__name__)
-    logger.error(f"Error: {error}, Context: {context}")
+    logger.error("Error: %s, Context: %s", error, context)
 
 
 __all__ = [

@@ -47,4 +47,4 @@ class OrchestratorReporter:
                 timeout=5.0,
             )
         except Exception as exc:  # noqa: BLE001 — never crash on reporting
-            logger.debug(f"Failed to report to orchestrator: {exc}")
+            logger.debug("Failed to report to orchestrator: %s", exc)

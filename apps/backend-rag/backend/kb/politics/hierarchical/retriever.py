@@ -186,7 +186,7 @@ class HierarchicalRetriever:
             resp.raise_for_status()
             data = resp.json()
         except httpx.HTTPError as e:
-            logger.warning(f"Hybrid search failed, falling back to dense: {e}")
+            logger.warning("Hybrid search failed, falling back to dense: %s", e)
             return self._search_children_dense(dense_vec, limit, filter_record_type)
 
         return self._parse_search_results(data)
@@ -215,7 +215,7 @@ class HierarchicalRetriever:
             resp.raise_for_status()
             data = resp.json()
         except httpx.HTTPError as e:
-            logger.error(f"Qdrant child search failed: {e}")
+            logger.error("Qdrant child search failed: %s", e)
             return []
 
         return self._parse_search_results(data)
@@ -260,7 +260,7 @@ class HierarchicalRetriever:
             resp.raise_for_status()
             data = resp.json()
         except httpx.HTTPError as e:
-            logger.error(f"Qdrant parent fetch failed: {e}")
+            logger.error("Qdrant parent fetch failed: %s", e)
             return {}
 
         parents: dict[str, dict[str, Any]] = {}

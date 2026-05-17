@@ -262,7 +262,7 @@ class PostgreSQLDebugger:
                     pool_active=pool_active,
                 )
             except Exception as e:
-                logger.error(f"Pool connection test failed: {e}", exc_info=True)
+                logger.error("Pool connection test failed: %s", e, exc_info=True)
                 return ConnectionInfo(connected=False, error=str(e))
 
         # Direct connection test
@@ -281,7 +281,7 @@ class PostgreSQLDebugger:
             finally:
                 await conn.close()
         except Exception as e:
-            logger.error(f"Direct connection test failed: {e}", exc_info=True)
+            logger.error("Direct connection test failed: %s", e, exc_info=True)
             return ConnectionInfo(connected=False, error=str(e))
 
     def validate_query(self, query: str) -> tuple[bool, str | None]:
@@ -382,10 +382,10 @@ class PostgreSQLDebugger:
                 "query": normalized_query,
             }
         except asyncpg.PostgresError as e:
-            logger.error(f"Query execution failed: {e}", exc_info=True)
+            logger.error("Query execution failed: %s", e, exc_info=True)
             raise
         except Exception as e:
-            logger.error(f"Unexpected error during query execution: {e}", exc_info=True)
+            logger.error("Unexpected error during query execution: %s", e, exc_info=True)
             raise
 
     async def get_tables(self, schema: str = "public") -> list[dict[str, Any]]:

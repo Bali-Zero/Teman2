@@ -47,7 +47,7 @@ class IntelCoverHandler:
                 }
                 logger.info(f"Loaded {len(self._notification_map)} notification mappings")
         except Exception as e:
-            logger.warning(f"Failed to load notification map: {e}")
+            logger.warning("Failed to load notification map: %s", e)
             self._notification_map = {}
 
     def _save_map(self) -> None:
@@ -58,7 +58,7 @@ class IntelCoverHandler:
                 json.dumps(self._notification_map, indent=2, ensure_ascii=False),
             )
         except Exception as e:
-            logger.warning(f"Failed to save notification map: {e}")
+            logger.warning("Failed to save notification map: %s", e)
 
     def register_notification(
         self,
@@ -78,7 +78,7 @@ class IntelCoverHandler:
             "registered_at": datetime.now(timezone.utc).isoformat(),
         }
         self._save_map()
-        logger.info(f"Registered notification mapping: msg_id={telegram_message_id} → {item_id}")
+        logger.info("Registered notification mapping: msg_id=%s → %s", telegram_message_id, item_id)
 
     async def handle_photo_message(self, message: dict[str, Any]) -> dict[str, Any] | None:
         """
@@ -125,11 +125,11 @@ class IntelCoverHandler:
             # Notify owner (Italian)
             await self._notify_owner(title)
 
-            logger.info(f"Cover image uploaded for {item_id} by Damar")
+            logger.info("Cover image uploaded for %s by Damar", item_id)
             return {"matched": True, "item_id": item_id, "success": True}
 
         except Exception as e:
-            logger.error(f"Cover upload failed for {item_id}: {e}", exc_info=True)
+            logger.error("Cover upload failed for %s: %s", item_id, e, exc_info=True)
             await self._send_message(
                 chat_id,
                 f"❌ Gagal mengunggah gambar untuk: {title}\nError: {e!s:.100}",
@@ -220,9 +220,9 @@ class IntelCoverHandler:
                 item_data["cover_uploaded_by"] = "damar"
                 item_data["cover_uploaded_at"] = datetime.now(timezone.utc).isoformat()
                 item_file.write_text(json.dumps(item_data, indent=2, ensure_ascii=False))
-                logger.info(f"Updated staging item {item_id} with cover image")
+                logger.info("Updated staging item %s with cover image", item_id)
             except Exception as e:
-                logger.warning(f"Could not update staging JSON for {item_id}: {e}")
+                logger.warning("Could not update staging JSON for %s: %s", item_id, e)
 
     async def _send_message(
         self,
@@ -238,7 +238,7 @@ class IntelCoverHandler:
                 parse_mode=parse_mode,
             )
         except Exception as e:
-            logger.error(f"Failed to send message to {chat_id}: {e}")
+            logger.error("Failed to send message to %s: %s", chat_id, e)
 
     async def _send_help_message(self, chat_id: int) -> None:
         """Send help message when photo cannot be matched to an article."""
@@ -282,7 +282,7 @@ class IntelCoverHandler:
                 parse_mode="HTML",
             )
         except Exception as e:
-            logger.warning(f"Failed to notify owner about cover upload: {e}")
+            logger.warning("Failed to notify owner about cover upload: %s", e)
 
 
 # Singleton instance
