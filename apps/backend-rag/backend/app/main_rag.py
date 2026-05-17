@@ -25,6 +25,7 @@ logger = logging.getLogger("zantara.backend")
 
 def create_rag_app() -> FastAPI:
     from fastapi import FastAPI, HTTPException
+    from fastapi.responses import ORJSONResponse
     from starlette.exceptions import HTTPException as StarletteHTTPException
 
     from backend.app.core.config import settings
@@ -47,6 +48,7 @@ def create_rag_app() -> FastAPI:
         lifespan=lifespan_full,
         docs_url="/docs" if getattr(settings, "ENVIRONMENT", "production") != "production" else None,
         redoc_url=None,
+        default_response_class=ORJSONResponse,  # 3-10× faster JSON serialization (audit modernization 2026-05-18)
     )
 
     rag.add_exception_handler(HTTPException, http_exception_handler)

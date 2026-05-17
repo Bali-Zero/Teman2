@@ -17,6 +17,7 @@ import time
 from contextlib import asynccontextmanager, suppress
 
 from fastapi import FastAPI, HTTPException
+from fastapi.responses import ORJSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from backend.app.core.config import settings
@@ -629,6 +630,7 @@ def create_app() -> FastAPI:
         openapi_url=f"{settings.API_V1_STR}/openapi.json",
         debug=settings.log_level == "DEBUG",  # Environment-based debug mode
         lifespan=lifespan,  # Modern lifespan API (replaces @app.on_event)
+        default_response_class=ORJSONResponse,  # 3-10× faster JSON serialization (audit modernization 2026-05-18)
     )
 
     # Register global exception handlers (MUST be before middleware to catch all exceptions)
