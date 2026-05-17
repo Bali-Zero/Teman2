@@ -21,6 +21,12 @@ except ImportError:
     settings = None
 
 try:
+    from backend.core.collection_registry import canonicalize_collection_name
+except ImportError:
+    def canonicalize_collection_name(collection_name: str) -> str:
+        return collection_name
+
+try:
     from backend.core.exceptions import (
         QdrantConnectionError,
         QdrantServerError,
@@ -342,7 +348,10 @@ class QdrantClient:
         return headers
 
     def _convert_filter_to_qdrant_format(
-        self, filter_dict: dict[str, Any],
+        self,
+        filter_dict: dict[str, Any] | None,
+        *,
+        include_flat_payload: bool = False,
     ) -> dict[str, Any] | None:
         """
         Convert simplified filter format to Qdrant filter format.
@@ -361,8 +370,25 @@ class QdrantClient:
         if not filter_dict:
             return None
 
-        must_conditions = []
-        must_not_conditions = []
+        must_conditions: list[dict[str, Any]] = []
+        must_not_conditions: list[dict[str, Any]] = []
+
+        def _match_condition(key: str, match: dict[str, Any]) -> dict[str, Any]:
+            nested = {"key": f"metadata.{key}", "match": match}
+            if not include_flat_payload:
+                return nested
+            return {
+                "should": [
+                    nested,
+                    {"key": key, "match": match},
+                ]
+            }
+
+        def _must_not_conditions(key: str, match: dict[str, Any]) -> list[dict[str, Any]]:
+            conditions = [{"key": f"metadata.{key}", "match": match}]
+            if include_flat_payload:
+                conditions.append({"key": key, "match": match})
+            return conditions
 
         for key, value in filter_dict.items():
             if isinstance(value, dict):
@@ -372,22 +398,22 @@ class QdrantClient:
                     match_values = value["$in"]
                     if match_values:
                         must_conditions.append(
-                            {"key": f"metadata.{key}", "match": {"any": match_values}},
+                            _match_condition(key, {"any": match_values}),
                         )
                 elif "$ne" in value:
                     # Must NOT match this value
-                    must_not_conditions.append(
-                        {"key": f"metadata.{key}", "match": {"value": value["$ne"]}},
+                    must_not_conditions.extend(
+                        _must_not_conditions(key, {"value": value["$ne"]}),
                     )
                 elif "$nin" in value:
                     # Must NOT match any of these values
                     for excluded_value in value["$nin"]:
-                        must_not_conditions.append(
-                            {"key": f"metadata.{key}", "match": {"value": excluded_value}},
+                        must_not_conditions.extend(
+                            _must_not_conditions(key, {"value": excluded_value}),
                         )
             else:
                 # Direct value match
-                must_conditions.append({"key": f"metadata.{key}", "match": {"value": value}})
+                must_conditions.append(_match_condition(key, {"value": value}))
 
         result = {}
         if must_conditions:
@@ -396,6 +422,10 @@ class QdrantClient:
             result["must_not"] = must_not_conditions
 
         return result if result else None
+
+    def _include_flat_payload_filters(self) -> bool:
+        """Return True for collections that may contain top-level metadata fields."""
+        return canonicalize_collection_name(self.collection_name) == "legal_unified"
 
     async def search(
         self,
@@ -438,7 +468,10 @@ class QdrantClient:
 
             # Add filter if provided (Qdrant filter format)
             if filter:
-                qdrant_filter = self._convert_filter_to_qdrant_format(filter)
+                qdrant_filter = self._convert_filter_to_qdrant_format(
+                    filter,
+                    include_flat_payload=self._include_flat_payload_filters(),
+                )
                 if qdrant_filter:
                     payload["filter"] = qdrant_filter
 
@@ -979,7 +1012,10 @@ class QdrantClient:
 
             # Add filter if provided
             if metadata_filter:
-                qdrant_filter = self._convert_filter_to_qdrant_format(metadata_filter)
+                qdrant_filter = self._convert_filter_to_qdrant_format(
+                    metadata_filter,
+                    include_flat_payload=self._include_flat_payload_filters(),
+                )
                 if qdrant_filter:
                     payload["filter"] = qdrant_filter
 
@@ -1107,7 +1143,10 @@ class QdrantClient:
 
             # Add filter if provided
             if filter:
-                qdrant_filter = self._convert_filter_to_qdrant_format(filter)
+                qdrant_filter = self._convert_filter_to_qdrant_format(
+                    filter,
+                    include_flat_payload=self._include_flat_payload_filters(),
+                )
                 if qdrant_filter:
                     payload["filter"] = qdrant_filter
 
