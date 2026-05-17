@@ -1301,11 +1301,19 @@ async def get_client_ai_summary(
 
                     summary_payload = _json.loads(summary_payload)
 
+                # CodeQL log-injection: cast to int defangs any non-numeric
+                # injection vector even though FastAPI already validates the
+                # path param as int (defense in depth).
+                safe_client_id = int(client_id)
+                safe_schema = str(row["ai_summary_schema_version"] or "").replace(
+                    "\n", " ",
+                ).replace("\r", " ")[:64]
+                safe_fp = (row["ai_summary_file_hash"] or "")[:12]
                 logger.info(
                     "ai_summary served client_id=%d schema=%s fp=%s elapsed_ms=%d",
-                    client_id,
-                    row["ai_summary_schema_version"],
-                    (row["ai_summary_file_hash"] or "")[:12],
+                    safe_client_id,
+                    safe_schema,
+                    safe_fp,
                     int((time.time() - start_time) * 1000),
                 )
                 return AiSummaryResponse(
@@ -1340,7 +1348,10 @@ async def get_client_ai_summary(
     except HTTPException:
         raise
     except Exception as e:
-        logger.exception("ai_summary fetch failed for client %d", client_id)
+        # CodeQL log-injection: cast to int defangs any non-numeric path.
+        logger.exception(
+            "ai_summary fetch failed for client %d", int(client_id),
+        )
         raise handle_database_error(e) from e
 
 
