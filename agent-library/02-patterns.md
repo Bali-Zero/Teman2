@@ -1,171 +1,220 @@
-# Agent Library — Patterns (hand-written 2026-05-17)
+# Agent Library — Patterns (hand-written 2026-05-17, revised post 3-LLM panel)
 
 <!-- DO NOT auto-regenerate — this file is curated by hand. -->
 <!-- Companion to 01-inventory.md (auto-gen) and 03-lessons.md (hand-written). -->
+<!-- Revised 2026-05-17 after 3-LLM panel review (Gemini + DeepSeek + Codex) -->
+<!-- caught: pattern selection overfit to WR2/LLM-quality, missed infra primitives. -->
 
-9 recurring patterns extracted from the 16 Claude subagents + 35 agentic
-crons + cicatrix-scars. Each entry: when to use, anti-pattern, concrete
-example with `file:line`, trade-off, correlated scar.
+9 recurring patterns extracted from 16 Claude subagents + 35 agentic crons +
+106 infra crons + cicatrix-scars. Each entry: nome, quando-usarlo,
+anti-pattern, esempio concreto `file:line`, trade-off, scar correlato.
+
+**Pattern = reusable design primitive** (trigger, invariant, implementation
+shape). Lesson = incident evidence showing why the pattern exists.
+Lessons live in `03-lessons.md`.
 
 ## Index
 
-| #   | Pattern                                     | Category          |
-| --- | ------------------------------------------- | ----------------- |
-| 1   | Cascade fallback multi-LLM                  | resilience        |
-| 2   | Bipolar verifier (LLM + NB)                 | ground-truth      |
-| 3   | 3-LLM panel review parallelo                | quality-gate      |
-| 4   | Devils-advocate red-team pre-publish        | quality-gate      |
-| 5   | Imagegen no-silent-reuse (sha256)           | integrity         |
-| 6   | Voyager skill library + Reflexion synthesis | learning          |
-| 7   | Wave-orchestrator parallel agents           | orchestration     |
-| 8   | Verify-not-trust durante orchestration      | orchestration     |
-| 9   | Local-pre-filter (qwen2.5vl) → cloud        | cost-optimization |
+| #   | Pattern                                            | Category      |
+| --- | -------------------------------------------------- | ------------- |
+| 1   | Single-flight / lease / idempotency guard          | concurrency   |
+| 2   | Durable queue / outbox / DLQ / replay contract     | reliability   |
+| 3   | Heartbeat / liveness / watchdog contract           | observability |
+| 4   | Provider cascade + circuit breaker + degraded-mode | resilience    |
+| 5   | Empirical post-action verification                 | integrity     |
+| 6   | Ground-truth verifier with freshness check (NB)    | ground-truth  |
+| 7   | Bounded adversarial review gate                    | quality-gate  |
+| 8   | Parallel wave orchestration with capacity caps     | orchestration |
+| 9   | Artifact provenance / hash anchoring               | integrity     |
 
 ---
 
-## Pattern 1: Cascade fallback multi-LLM
+## Pattern 1: Single-flight / lease / idempotency guard
 
-**Quando usarlo**: cron job autonomo che deve completare nonostante quota-exhaust del Tier-1 LLM (Claude OAuth MAX rolling 5h). Pattern di base per ogni agentic cron a Pro.
+**Quando usarlo**: cron loop o orchestrator che pesca task da queue condivisa. Senza claim atomico, due worker possono processare la stessa unità.
 
-**Anti-pattern**: single-LLM hard dependency in cron path — quota cap blocca cascata downstream con failure silenzioso ("ALL TIERS FAILED — manual investigation needed").
+**Anti-pattern**: `SELECT pending → process → UPDATE done` senza lock — race window 50ms-5s, basta perché 2 worker overlapping facciano doppio side-effect (doppio email, doppia Telegram alert, doppio invoice).
 
-**Esempio concreto**: `~/scripts/regulatory-watcher-run.sh:33` (4 tier in cascata)
+**Esempio concreto**: `apps/backend-rag/backend/services/canva_renderer_v2/_pg.py:48-68` (lease CAS pattern)
+
+```python
+async def acquire_lease_and_fetch(
+    conn: asyncpg.Connection, *, draft_id: UUID | str, lease_owner: str,
+):
+    """CAS lease + return row payload, or None if another process won."""
+    # UPDATE ... SET lease_owner = $1 WHERE id = $draft_id AND lease_owner IS NULL
+    # RETURNING ...
+    # If RETURNING is empty → another worker already won the lease
+```
+
+CAS atomico in SQL: UPDATE...WHERE lease_owner IS NULL RETURNING. Worker che perde la race riceve None e skippa. Watchdog separato (`scripts/wr2_canva_lease_watchdog.py:28`) resetta lease orfani >15min con `reset_stale_leases()`.
+
+**Trade-off**: 1 extra round-trip DB per claim + complessità watchdog vs zero-duplicate guarantee. Costo accettabile su side-effect non-idempotenti (email, payment, mutation esterna). Skip su task puro read-only.
+
+**Scar correlato**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons_orchestrator_issue_race.md` (orchestrator + sub-session 5-30s race window → duplicate GitHub issue).
+
+---
+
+## Pattern 2: Durable queue / outbox / DLQ / replay contract
+
+**Quando usarlo**: ogni side-effect cross-process che deve sopravvivere a crash, restart, deploy. Producer scrive a outbox in stessa tx del side-effect; consumer separato drena outbox; failures vanno a DLQ con retry policy.
+
+**Anti-pattern**: producer fires-and-forgets (HTTP POST, pg_notify, Redis publish) senza outbox — listener crash window = eventi persi for-ever. Cf. cicatrix `EventBus is PG LISTEN/NOTIFY but Symbiosis docs say Redis Streams`.
+
+**Esempio concreto**: `~/Desktop/nuzantara/scripts/intel-lake-outbox-drain/intel-lake-outbox-drain.py` (outbox drain pattern)
+
+```python
+# Producer (in transaction):
+INSERT INTO events_outbox (channel, payload) VALUES (...)
+pg_notify('channel', payload || {_outbox_id})
+# COMMIT atomico
+
+# Consumer (separato, ogni 60s):
+# SELECT pending FROM events_outbox WHERE consumed_at IS NULL
+# → dispatch → mark consumed
+```
+
+Companion: `scripts/outbox_prune.py` (daily, retention 30d), `~/.claude/agents/.../dlq-autopilot` (`launch_dlq_autopilot.sh`, every 30min — autonomous DLQ replay). Inventory mostra anche `intel_dedup_gateway.py` (atomicamente check+claim per cross-stream dedup).
+
+**Trade-off**: 1 extra INSERT per event + 1 cron drainer + 1 DLQ + 1 pruner vs eventi persi su listener-disconnect (max_age_minutes=60 per `PG_CHANNEL_MAP` per Symbiosis Law 4). Costo accettabile su event critical (regulatory deltas, intel signals, CRM mutations).
+
+**Scar correlato**: `.claude/rules/cicatrix-scars.md` (EventBus PG LISTEN/NOTIFY entry — Phase 1 PR #342 shipped outbox.publish/acknowledge/replay).
+
+---
+
+## Pattern 3: Heartbeat / liveness / watchdog contract
+
+**Quando usarlo**: ogni long-running daemon (supervisor, listener, sync). Distinguere 4 stati: alive (recent heartbeat), stuck (no heartbeat N min), stale (heartbeat ma metrics ferme), silently-degraded (heartbeat + metrics ma output wrong).
+
+**Anti-pattern**: monitor solo `process running` (PID exist) — non distingue stuck-loop da working. Heartbeat senza watchdog = log nessuno guarda.
+
+**Esempio concreto**: `~/Desktop/nuzantara/scripts/wr2_supervisor.py:455-482` (`_write_heartbeat` con dedicated conn)
+
+```python
+async def _write_heartbeat(conn_hb: asyncpg.Connection, note: str) -> None:
+    """Insert one row into wr2_supervisor_heartbeat AND write Innervation
+    Genoma file heartbeat for the sentinel-aggregator."""
+    _write_organism_heartbeat("wr2.supervisor", "ok", note)
+    try:
+        await conn_hb.execute(
+            "INSERT INTO wr2_supervisor_heartbeat (note) VALUES ($1)",
+            (note or "")[:200],
+        )
+    except asyncpg.UndefinedTableError:
+        # Migration not yet applied → degrade silently
+```
+
+Due canali ridondanti (DB row + file) — se uno fail, l'altro tiene. Watchdog separato: `pg-organism-bridge-watchdog.sh` (every 5min), `wr2_canva_lease_watchdog.py` (every 10min), `fly-restart-loop-detector.sh` (every 15min).
+
+**Trade-off**: 1 INSERT/scrittura per intervallo HEARTBEAT_INTERVAL_SEC + 1 cron watchdog vs silent-stuck daemon discovered hours later. Cap pratico: heartbeat ogni 30-60s per daemon critical, ogni 5-15min per batch jobs.
+
+**Scar correlato**: `.claude/rules/cicatrix-scars.md` (Backend prod down — drive_poll_service flood non-rilevato per 18min causa `Application startup complete` never logged — login healthcheck probe + `_lifespan_stuck_check` shipped post-incident).
+
+---
+
+## Pattern 4: Provider cascade + circuit breaker + degraded-mode boundary
+
+**Quando usarlo**: cron job autonomo che dipende da provider esterno (LLM quota, API, external DB). Cascade fallback OK, ma serve breaker state + cooldown + semantic-validation per non mascherare bad output as success.
+
+**Anti-pattern**: cascade puro stdout-grep senza breaker state — Tier-1 sempre tentato anche dopo 10 fail consecutivi (waste latency). Senza degraded-mode boundary, Tier-4 (Ollama local) output può finire in cliente come fosse Tier-1 quality.
+
+**Esempio concreto**: `~/scripts/regulatory-watcher-run.sh:33` (4-tier cascade — incompleto: manca breaker state)
 
 ```bash
+# Cascade tier 1 → 2 → 3 → 4
 if [ $EXIT -eq 0 ] && ! grep -qE "out of extra usage|usage limit|quota exceeded|rate.limit" "$TMPOUT"; then
     SUCCESS=1
     USED_LLM="claude-sonnet-4-6"
 fi
 ```
 
-Lo wrapper greppa stdout per pattern di quota-exhaust dopo ogni tier (Claude → Gemini 3.1 Pro → Codex GPT-5.5 → Ollama qwen3.5:9b) e fall-through al tier successivo. Tier 4 (Ollama) è always-on, $0, lower quality acceptable. Vedi anche `~/.claude/CLAUDE.md` §"Multi-LLM cascade for autonomous agents".
+L'esempio attuale è cascade puro. Pattern completo richiederebbe: (a) state file con `{tier1: {failures: N, cooldown_until: ts}}` per skip-fast quando tier già exhausted; (b) `degraded_mode` flag che, se Tier-4 (Ollama) consegna, marca output `status=draft-only-not-client-safe`; (c) semantic gate (es. JSON valid + new_today_count > 0 plausibile). Cf. CLAUDE.md §"Multi-LLM cascade for autonomous agents".
 
-**Trade-off**: wrapper complexity (~20 LOC per tier + regex su stdout) vs zero-stall garantito anche durante wave parallelizzazione concurrente (cicatrix Wave 2 Pro 2026-04-29: 3 agent paralleli hit Codex+Gemini+NLM exhaust simultaneamente, solo DeepSeek/Ollama consegnò). Empirical signal di "quota wave-level": ≥2 cloud LLM falliscono in 5min.
+**Trade-off**: state file + breaker logic (~50 LOC) + degraded boundary check vs masked-failure cost (Tier-4 output → cliente con tonalità sbagliata). Beneficio: zero-stall + zero-silent-quality-regression.
 
-**Scar correlato**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons.md:286` (Wave 2 Pro 2026-04-29 — brainstorm capacity exhaustion pattern wave-level).
+**Scar correlato**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons.md:286` (Wave 2 Pro 2026-04-29 — 3 cloud LLM exhaust simultanei, solo Ollama consegnò; 1/4 OK come threshold ma serve degraded-mode marking).
 
 ---
 
-## Pattern 2: Bipolar verifier (LLM main + NotebookLM ground-truth)
+## Pattern 5: Empirical post-action verification
 
-**Quando usarlo**: domain-critical query (regulatory, KBLI, visa, tax, property) dove single-LLM hallucination su normativa Indonesia = costo catastrofico per cliente Bali Zero. Use quando il dominio ha NB-INTEL specifico curato.
+**Quando usarlo**: dopo ogni side-effect non-locale (Write, Bash mutation, deploy, enqueue, publish, migration apply, PR create, source sync). Lo status code è il livello più alto di indirezione — sotto vivono i fail silenziosi.
 
-**Anti-pattern**: 4-LLM council su ogni query (overhead + latency 30s+); single-LLM trust senza ground-truth (Claude su regolamenti Indonesia produce false positive frequenti, cf. CLAUDE.md "Federation Orchestrator" trigger "KBLI, visa, normativa → Gemini search"); querying NB sbagliato per il dominio.
+**Anti-pattern**: trust del solo exit code 0 / HTTP 200 / "success" log line. Pattern di fail silenzioso: file scompaiono (sibling cleanup), processo "completa" con exit=0 (launchd masking), metric=0 con log success ("Applied: 26 migrations" stale count). Cf. memory `lessons_hallucinating_tool_output_is_diabolical.md` regola #3 ("dopo Write ri-verifica con ls -la SUBITO").
 
-**Esempio concreto**: `~/.claude/agents/wr2-brief-interpreter.md:41-44`
+**Esempio concreto**: `~/scripts/regulatory-watcher-run.sh:87-89` (empirical disk-state check post-LLM)
+
+```bash
+# Empirical disk-state verification (lesson 2026-05-13 anti-hallucination):
+# Claude/Gemini may narrate "JSON emitted" without actually writing the file.
+if [ ! -f "$DELTA_JSON" ]; then
+    echo "[$(date)] WARNING: $USED_LLM reported success but $DELTA_JSON does NOT exist on disk — possible hallucinated tool output, skipping eventbus publish" >> "$LOG"
+fi
+```
+
+Pattern generalizzato: post-deploy `curl health endpoint`; post-migration `SELECT version FROM schema_migrations`; post-PR `gh pr view --json state`; post-Write `ls -la $file`. Verify-not-trust è la versione orchestration di questo pattern.
+
+**Trade-off**: 1 extra Read/curl/SELECT per side-effect (~10-100ms) vs catastrophic decision su world-state fittizio. Hard rule: sempre verify side-effect critical.
+
+**Scar correlato**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons_hallucinating_tool_output_is_diabolical.md` (5 regole anti-hallucination, hard rule globale CLAUDE.md).
+
+---
+
+## Pattern 6: Ground-truth verifier with freshness check (NotebookLM)
+
+**Quando usarlo**: domain-critical query (regulatory, KBLI, visa, tax, property) dove single-LLM hallucination su normativa Indonesia = costo catastrofico. NB-INTEL specifico per il dominio funge da ground-truth.
+
+**Anti-pattern**: NB query senza freshness check (sources NB possono essere stale — Permenkumham 22/2023 superato da emendamento 2026); NB sbagliato per dominio (visa→NB-1, tax→NB-4, property→NB-5 — querying wrong NB ritorna NOT_FOUND fingendo che la regulation non esista); council 4-LLM su ogni query (overhead 30s+).
+
+**Esempio concreto**: `~/.claude/agents/wr2-brief-interpreter.md:33-44`
 
 ```yaml
+### Step 2 — RAG against NotebookLM
+
+NB routing:
 - `visa` → NB-1 (Bali Zero legal/immigration)
 - `tax` → NB-4 (Bali Zero tax)
 - `property` → NB-5 (Bali Zero property)
 - `regulatory` → NB-1 + cross-check against NB-INTEL family
 ```
 
-Il brief-interpreter routea domanda → NB dominio-specifico, estrae citation verbatim (`PP 18/2021`, `KEP-71/PJ/2026`) + concrete numbers, e li impone come "load-bearing contract" ai downstream agent (storyboarder, layout-composer).
+Estrae citation verbatim (`PP 18/2021`, `KEP-71/PJ/2026`) + concrete numbers + freshness signal (data ultima ingest source NB). Freshness check NON è ancora implementato in wr2-brief-interpreter — è gap noto, da aggiungere.
 
-**Trade-off**: NB query 3-8s extra vs single-LLM <1s. Costo accettabile su critical-path (legal/tax/visa client output); non usare su low-stakes Q&A interno. NB sources count vincolata: 60 notebook attivi, 2970 sources (cf. memory `reference_notebooklm_arsenal_full.md`).
+**Trade-off**: NB query 3-8s vs single-LLM <1s + freshness re-verify. NB sources count vincolata (60 notebook, 2970 sources — memory `reference_notebooklm_arsenal_full.md`). Skip su low-stakes Q&A interno.
 
-**Scar correlato**: preventivo, nessuno (rule documentata CLAUDE.md §"External LLM arsenal" + §"Federation Orchestrator" da prima di incidenti).
-
----
-
-## Pattern 3: 3-LLM panel review parallelo (pre-approval)
-
-**Quando usarlo**: prima di chiedere user approval su spec/design non triviale (≥3 file diversi, feature critical-path, qualsiasi cosa che mergia a main). Hard rule introdotta 2026-05-13.
-
-**Anti-pattern**: review sequenziale (slow + biases later LLM by earlier output); single-reviewer (mono-bias provider-correlato); skipping perché "il design sembra ovvio" — l'ovvio è dove i killer flaw si nascondono.
-
-**Esempio concreto**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/feedback_always_review_spec_with_4_llm.md`
-
-```
-2026-05-13 case — WR2 orchestrator FileTokenStorage v1 design, I (Claude)
-drafted a shared-cache approach [...] All 3 sibling LLMs independently
-identified the SAME killer flaw I had missed: tokens OAuth are bound to
-client_id at registration time.
-```
-
-Fan-out parallelo (background bash): Gemini 3.1 Pro free OAuth + GPT-5.5 codex `--full-auto` + DeepSeek V4 Pro API ($0.01). Sintesi convergence/divergence: 3/3 converge → CRITICAL revise; 2/3 → SIGNIFICANT flag; 1/3 → flag but trust majority. NB-1 4° panelista quando UUID known.
-
-**Trade-off**: $0.01/section + ~2min wall vs ship-broken-design 2-3h debug + rollback. Skip esplicito su user override "skip panel" o "I trust your judgment".
-
-**Scar correlato**: preventivo (rule proattiva 2026-05-13 — FileTokenStorage v1 sarebbe stato shipped broken senza il panel).
+**Scar correlato**: preventivo (cf. CLAUDE.md §"Federation Orchestrator" "KBLI, visa, normativa → Gemini search; Grounding → NotebookLM oracolo").
 
 ---
 
-## Pattern 4: Devils-advocate red-team pre-publish
+## Pattern 7: Bounded adversarial review gate
 
-**Quando usarlo**: dossier finiti, research capture, quote client, alto-stakes output prima di consegnare/pubblicare. Mandatory gate per deep-researcher, client-case-quote-generator, wr2-strategos.
+**Quando usarlo**: pre-publish gate su output high-stakes (dossier, research, quote, strategy, spec critical-path). Fan-out parallel a 2-4 reviewer adversarial con cap iterazioni.
 
-**Anti-pattern**: usarlo su iterazione N>3 (loop infinito di refinement editorial — caught empirically PPh21 Q3 2026 file: P1 BLOCK → P3 NEEDS_FIX risolto critical+high, P4-P7 medium-only nitpicks); usarlo come revisor di stile (è breaker logico, non editor); skip cap perché "verdict says PASS" feels natural.
+**Anti-pattern**: single-reviewer (mono-bias provider-correlato); loop infinito di refinement (devils-advocate caught empirically PPh21 Q3 2026: P4-P7 sono medium-only nitpicks editorial); review sequenziale (slow + biases later LLM by earlier output); skipping "il design sembra ovvio" — l'ovvio è dove i killer flaw si nascondono.
 
-**Esempio concreto**: `~/.claude/agents/devils-advocate.md:3`
+**Esempio concreto**: 2 invocations distinte ma stesso pattern.
+
+Pre-spec-approval: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/feedback_always_review_spec_with_4_llm.md`
 
 ```
-System prompt: "find the legal flaw, the tax miscalculation, the missing
-regulation, the hallucinated KBLI code, the contradiction between sentence A
-and sentence B."
+Fan out to 3 sibling LLMs in PARALLEL: Gemini + GPT-5.5 codex + DeepSeek V4 Pro
+(+ NB-1 4° panelist se UUID known). Sintesi convergence/divergence:
+3/3 converge → CRITICAL revise; 2/3 → SIGNIFICANT flag; 1/3 → trust majority.
 ```
 
-DeepSeek V4 Pro reasoning chain è empiricamente migliore di Claude/Gemini su "show me where this argument breaks" per contradiction numerici/legali. $0.01/query.
+Pre-publish artifact: `~/.claude/agents/devils-advocate.md` ("find the legal flaw, the tax miscalculation, the missing regulation, the hallucinated KBLI code"). Cap 3 iter da `lessons_devils_advocate_loop_pattern.md`.
 
-**Trade-off**: 1 LLM call DeepSeek ($0.01-0.05) per fixare un'allucinazione legal-grade che costerebbe ore di debug client-side. Cap 3 iter hard: se P3 verdict ha 0 critical + 0 high, treat as functional PASS, log medium/low in frontmatter, NON loop further. Loop 7-pass cost 30min + $0.30 vs 3-pass 12min + $0.15 con same outcome (cf. memory `lessons_devils_advocate_loop_pattern.md`).
+**Trade-off**: $0.01-0.05/section + 2-5min wall vs ship-broken-design 2-3h debug + rollback + client-facing damage. Skip esplicito su user override "skip panel".
 
-**Scar correlato**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons_devils_advocate_loop_pattern.md` (cap 3 iter, empirical PPh21 2026-05-10).
+**Scar correlato**: preventivo (rule 2026-05-13 — FileTokenStorage v1 sarebbe stato shipped broken senza il panel; questo stesso PR catched 4 CRITICAL via 3-LLM panel pre-merge).
 
 ---
 
-## Pattern 5: Imagegen no-silent-reuse (sha256 anchor check)
+## Pattern 8: Parallel wave orchestration with capacity caps
 
-**Quando usarlo**: pipeline carosello/template che riusa asset hero da run precedenti. Mandatory per ogni WR2 carousel run.
+**Quando usarlo**: ≥2 task indipendenti senza shared state né dipendenze sequenziali. Orchestrator dispatcha N agent paralleli (cf. `superpowers:dispatching-parallel-agents`). Topology centralized (orchestrator-led) preferita: error amplification 4.4× vs independent (no-coord) 17.2× (Kim et al. 2025 arxiv 2512.08296).
 
-**Anti-pattern**: trust dell'`image_source` field nel `slides.json` senza verifica sha256 sul file effettivo. Sprint S11 docet: 12 caroselli con stesso "paper on dark desk" hero template silently reused — disastro reputazionale visivo.
-
-**Esempio concreto**: `~/.claude/agents/wr2-design-architect.md:77` (Contract C)
-
-```
-Silent reuse of placeholders from a prior carousel directory (e.g.,
-`cp ../test-1/placeholder-*.jpg .`) is forbidden. Each reuse decision must
-be logged in `slides.json` as `image_source: "anchor:<file>"` or
-`image_source: "imagegen:<codex_session>"`.
-```
-
-Verifica via `_audit-checklist.sh` mode `MODE=hero-sha`: compute anchor sha + every hero sha, asserts per slide_spec.image_source declaration (cf. line 41).
-
-**Trade-off**: 1 Read + sha256 hash per hero (~50ms × N slide) vs disastro reputazionale 12-caroselli-identici. Costo accettabile sempre — il check è cheap, il fail è expensive.
-
-**Scar correlato**: S11 hero monotone-template trap (preventivo dopo S11, documentato in agent description di `wr2-image-prompt-author`: "Avoids the monotone-template trap from S11 (12 carouseli all 'paper documents on dark desk')").
-
----
-
-## Pattern 6: Voyager skill library + Reflexion weekly synthesis
-
-**Quando usarlo**: orchestrator agent (wr2-design-architect) che deve evolversi nel tempo accumulando lezioni operative. Voyager = skill accumulate dopo episodi success; Reflexion = weekly sintesi delle failure/override per aggiornare prompt e curriculum.
-
-**Anti-pattern**: skill library senza pruning (drift week-su-week 5-10%); Reflexion daily invece di weekly (rumore vs segnale); curriculum statico (niente exploration su topic-type sotto-rappresentati).
-
-**Esempio concreto**: `~/.claude/agents/wr2-design-architect.md:376-380`
-
-```
-- Weekly cron (com.balizero.wr2.reflexion.weekly.plist, Sunday 02:30 WITA)
-  runs Reflexion synthesis [...] read last 7 days of episodes +
-  designer-override diffs (final published vs your draft), generate ≤10
-  verbal lessons.
-- Voyager curriculum: weekly inspect last 30 carousels. If a topic-type is
-  underrepresented (e.g., "0 tax carousels in last 14 days"), generate 1
-  exploratory variant for next production cycle and tag exploration:true.
-```
-
-**Trade-off**: rumore drift week-su-week vs zero-evoluzione. Cap esplicito: weekly synthesis (NOT daily), max ≤10 lessons/settimana, exploration mandatory su underrepresented topic. Pattern academico Voyager (Wang et al. 2023) + Reflexion (Shinn et al. 2023) adattati per dominio editoriale.
-
-**Scar correlato**: preventivo, nessuno (pattern academico adattato).
-
----
-
-## Pattern 7: Wave-orchestrator parallel agents on independent tasks
-
-**Quando usarlo**: ≥2 task indipendenti senza shared state né dipendenze sequenziali. Singolo orchestrator dispatcha N agent paralleli (cf. `superpowers:dispatching-parallel-agents`).
-
-**Anti-pattern**: >4 sessioni parallele se ≥1 tocca prod esterna (LLM provider capacity exhaustion wave-level); brainstorm cap >3 scambi (gonfiamento scope, FASE 2 wave 2026-05-07 docet); scope esterno-irreversibile in wave parallela (prod deploy concorrente).
+**Anti-pattern**: >4 sessioni parallele se ≥1 tocca prod esterna (LLM provider capacity exhaustion wave-level); brainstorm cap >3 scambi (gonfiamento scope FASE 2 wave 2026-05-07); scope esterno-irreversibile in wave parallela (prod deploy concorrente); independent topology (peer-to-peer no coordination → 17.2× error).
 
 **Esempio concreto**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons_wave_pacing_design_rigor.md`
 
@@ -177,64 +226,29 @@ Codex sandbox, smoke runtime deps al design time, max 4 sessioni parallele
 se 1 tocca prod esterna.
 ```
 
-**Trade-off**: wall-clock ~N× faster vs coordination overhead + capacity-exhaustion risk wave-level. Sweet spot 2-4 agent. Pattern multi-agent topology Kim 2025: star (orchestrator + N workers) per task indipendenti, chain per pipeline sequenziale, broadcast per fan-out.
+**Trade-off**: wall-clock ~N× faster vs coordination overhead + capacity-exhaustion risk wave-level. Sweet spot 2-4 agent. Cap explicit always.
 
-**Scar correlato**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons.md:286` (Wave 2 Pro 2026-04-29 — brainstorm capacity exhaustion wave-level: Codex+Gemini+NLM simultanei).
-
----
-
-## Pattern 8: Verify-not-trust durante orchestration
-
-**Quando usarlo**: orchestrator che dispatcha sub-agent paralleli. Quando un agent ha 20-30min di silenzio sostanziale, investiga disk state (gh pr list, git log, /tmp/\*) SENZA inviare wake-up message (evita context disruption del sub-agent in tool calls lunghe).
-
-**Anti-pattern**: ping ogni 10min (overhead + context disruption); trust dello status "in progress" sopra 30min senza verify; assumere completion da idle notification (è normal lifecycle, NON completion signal); citare output tool ricordato dal context buffer senza re-eseguire in this turn (hard rule "Errare è umano, allucinare è diabolico").
-
-**Esempio concreto**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons_hallucinating_tool_output_is_diabolical.md`
-
-```
-5 regole operative:
-1. Mai citare l'output di un tool senza averlo eseguito in questo turn.
-   Il context buffer NON è autoritativo.
-2. Verifica con un secondo tool call indipendente prima di citare risultati
-   critici.
-3. Dopo Write, ri-verifica con `ls -la` SUBITO (Write può tornare success
-   ma file rimosso da sibling process, visto live 2026-05-13).
-4. Quando ho dubbio "ho letto questo o me lo sto inventando?" — fare il
-   tool call adesso.
-5. Quando operatore chiede "è finito?" / "non è vero?" — è quasi sempre
-   segnale di mio skipped verification; trattare come trigger di
-   re-verification disk-state, NON come richiesta di conferma.
-```
-
-Caso live 2026-04-29: agent-X aveva 30+min silence post-merge. Investigation su disco (`gh pr list`, `git log`, `/tmp/kakuro-SX-brainstorms/`) ha scoperto PR #342 già merged da 50min, 3 commit pushati, synthesis completo — wake-up message sarebbe stato context-disruptive.
-
-**Trade-off**: extra tool call cost (1-3 Bash/Read) vs catastrophic decision su world-state fittizio. Hard rule: sempre verify. Soglia pratica 20-30min silence → disk-state investigate senza ping.
-
-**Scar correlato**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons.md:286` (Wave 2 Pro 2026-04-29) + `lessons_hallucinating_tool_output_is_diabolical.md` (2026-05-13).
+**Scar correlato**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons.md:286` (Wave 2 Pro 2026-04-29 — Codex+Gemini+NLM simultaneous exhaust).
 
 ---
 
-## Pattern 9: Local-pre-filter (Ollama qwen2.5vl) → cloud LLM
+## Pattern 9: Artifact provenance / hash anchoring
 
-**Quando usarlo**: ingestion batch (screenshot IG, OCR documenti, large corpus) dove 70-90% del materiale è triage-out. Local vision/text model classifica low-cost → solo materiale rilevante sale a cloud LLM per analisi quality-grade.
+**Quando usarlo**: pipeline che riusa asset (immagini, embedding, document fragment) da run precedenti. Ogni reuse decision deve essere loggata con source + hash, mai silenziosa.
 
-**Anti-pattern**: tutto-cloud (cost waste su material triage-out, Sonnet quota burn); local-only su task qualitative (qwen2.5vl 7B Q4 non riesce su brand-grade synthesis o legal-grade reasoning); skipping pre-filter quando triage-rate è basso (<50% — overhead non amortizza).
+**Anti-pattern**: trust del filename/metadata senza hash check (filename uguale, contenuto diverso); silent reuse (`cp ../prev/asset .` senza log); placeholder reuse mascherato come "fresh asset". Sprint S11 docet: 12 caroselli con stesso hero "paper on dark desk".
 
-**Esempio concreto**: `~/.claude/agents/competitor-monitor.md:58-67`
+**Esempio concreto**: `~/.claude/agents/wr2-design-architect.md:77` (Contract C — sha256 anchor check)
 
 ```
-### Step 3 — Instagram pre-filter via local qwen2.5vl:7b
-
-Pre-filter via local Ollama vision model (qwen2.5vl:7b, already pinned warm):
-
-ollama run qwen2.5vl:7b "Look at this Instagram post screenshot. Classify:
-is this (a) educational/informational content, (b) promotional/CTA,
-(c) lifestyle/aesthetic, (d) news/regulatory, (e) other? Respond with one
-letter and one sentence rationale."
+Silent reuse of placeholders from a prior carousel directory (e.g.,
+`cp ../test-1/placeholder-*.jpg .`) is forbidden. Each reuse decision must
+be logged in `slides.json` as `image_source: "anchor:<file>"` or
+`image_source: "imagegen:<codex_session>"`.
 ```
 
-Solo screenshot classified (a) o (d) salgono a Sonnet per detailed analysis. Cost guardrail al §147: "Sonnet 4.6 OAuth + qwen2.5vl local (free). Total ~$0/run on Anthropic."
+Verifica: `_audit-checklist.sh` mode `MODE=hero-sha` (line 41) — compute anchor sha + every hero sha, asserts per slide_spec.image_source declaration. Pattern generalizzabile oltre image: embedding checksum, document fragment hash, generated code hash.
 
-**Trade-off**: local 30-120s/batch + $0 vs cloud 5-10s + N × $0.01. Sweet spot quando batch ≥10 item e triage-rate ≥70%. Graceful degradation: qwen2.5vl unavailable → skip pre-filter, send all to Sonnet (line 160).
+**Trade-off**: 1 sha256 hash + log line per asset (~50ms × N) vs silent-reuse disaster (12 identical carousels, reputational damage). Costo accettabile sempre — check è cheap, fail è expensive.
 
-**Scar correlato**: preventivo, nessuno (cost-discipline rule introdotta proattivamente).
+**Scar correlato**: S11 hero monotone-template trap (preventivo dopo S11, documentato in agent description di `wr2-image-prompt-author`: "Avoids the monotone-template trap from S11").

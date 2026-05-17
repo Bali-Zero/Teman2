@@ -1,12 +1,18 @@
-# Agent Library — Lessons (hand-written 2026-05-17)
+# Agent Library — Lessons (hand-written 2026-05-17, revised post 3-LLM panel)
 
 <!-- DO NOT auto-regenerate — this file is curated by hand. -->
 <!-- Curated index: each entry links to primary source (memory file or cicatrix). -->
 <!-- 20 entries in 3 categories + 5 meta-patterns. -->
+<!-- Revised 2026-05-17: pattern correlato cross-refs aligned to 02-patterns.md v2. -->
 
 20 lezioni operative trasversali, curate da memory files + cicatrix-scars.
 Ogni entry: sintesi (2 righe), quando applica (1 riga), link a fonte
-primaria, pattern correlato.
+primaria, **pattern correlato** (cross-ref a `02-patterns.md`).
+
+**Lesson = incident evidence** showing why a pattern exists.
+**Pattern = reusable design primitive** with trigger, invariant, implementation shape.
+La cross-reference fra le 20 lessons e i 9 pattern è many-to-one (più lessons
+sostengono lo stesso pattern, es. #1+#2 → P5 verify; #4 → P7 review gate).
 
 Le 5 meta-pattern in coda sono **sintesi cross-source** (non in nessun
 single file).
@@ -59,28 +65,28 @@ single file).
 **Sintesi**: orchestrator che dispatcha sub-agent deve verify disk state (gh/git/fs) prima di trust completion. Idle notification non = completion signal. Soglia pratica: 20-30min silence → disk investigate.
 **Quando applica**: silenzio sostanziale ≥20-30min da un sub-agent in pipeline.
 **Fonte primaria**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons.md:286` (Wave 2 Pro 2026-04-29 entry)
-**Pattern correlato**: `02-patterns.md#8`
+**Pattern correlato**: `02-patterns.md#5` (empirical post-action verification)
 
 ### 2. Errare è umano, allucinare è diabolico
 
 **Sintesi**: mai fabbricare output di tool calls. Context buffer NON è autoritativo. Re-Read in this turn ogni citation critica. 5 regole operative + post-Write `ls -la` mandatory.
 **Quando applica**: qualsiasi citation di file content, output Bash, ls/Read result, decisione downstream.
 **Fonte primaria**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons_hallucinating_tool_output_is_diabolical.md`
-**Pattern correlato**: `02-patterns.md#8`
+**Pattern correlato**: `02-patterns.md#5` (empirical post-action verification)
 
 ### 3. Wave pacing: cap 4 parallele, brainstorm 3 scambi
 
 **Sintesi**: wave 6-sessioni 2026-05-07: FASE 2 gonfiata per brainstorm no-cap + design review missing + scope esterno-irreversibile in parallel. Cap 4 sessioni se ≥1 tocca prod esterna, brainstorm max 3 scambi.
 **Quando applica**: prima di spawnare ≥3 agent paralleli; durante design phase.
 **Fonte primaria**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons_wave_pacing_design_rigor.md`
-**Pattern correlato**: `02-patterns.md#7`
+**Pattern correlato**: `02-patterns.md#8` (parallel wave + capacity caps)
 
 ### 4. Devils-advocate cap 3 iter
 
 **Sintesi**: red-team loop senza cap → infinite refinement editorial (P1 BLOCK → P3 risolto → P4-P7 medium-only nitpicks). Cap 3 iterazioni hardcoded. 7-pass = 30min + $0.30 vs 3-pass 12min + $0.15 con same outcome.
 **Quando applica**: red-team gate pre-publish su dossier/research/quote/strategy.
 **Fonte primaria**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons_devils_advocate_loop_pattern.md`
-**Pattern correlato**: `02-patterns.md#4`
+**Pattern correlato**: `02-patterns.md#7` (bounded adversarial review gate)
 
 ### 5. Close-out numbers unverified
 
@@ -94,7 +100,7 @@ single file).
 **Sintesi**: quando Codex+Gemini+NLM falliscono simultaneamente (pattern wave-level: ≥2 cloud LLM exhaust in 5min), 1/4 con DeepSeek/Ollama solido è preferibile a "wait for capacity". Stallo > singolo-LLM-bias.
 **Quando applica**: brainstorm cross-LLM con 2/4 threshold target durante wave parallel.
 **Fonte primaria**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons.md:286` (Wave 2 Pro 2026-04-29)
-**Pattern correlato**: `02-patterns.md#1` (cascade fallback)
+**Pattern correlato**: `02-patterns.md#4` (provider cascade + circuit breaker)
 
 ---
 
@@ -172,7 +178,7 @@ single file).
 **Sintesi**: fan-out parallel Gemini + GPT-5.5 codex + DeepSeek V4 Pro (+ NB-1 se UUID noto). Cost $0.01/section, ~2min wall. Caught killer OAuth flaw in FileTokenStorage v1 (3/3 LLM convergence). Hard rule 2026-05-13.
 **Quando applica**: ogni spec ≥3 file diversi o feature critical-path o qualsiasi cosa che mergia a main.
 **Fonte primaria**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/feedback_always_review_spec_with_4_llm.md`
-**Pattern correlato**: `02-patterns.md#3`
+**Pattern correlato**: `02-patterns.md#7` (bounded adversarial review gate)
 
 ### 17. Backend RAG venv symlink trap
 
@@ -193,14 +199,14 @@ single file).
 **Sintesi**: Kim et al. arxiv 2512.08296 (Google DeepMind+MIT, Dec 2025). 5 topology controlled study, 180 configs. SAS=1× baseline, **Centralized (orchestrator-led)=4.4×**, **Independent (parallel no-coord)=17.2×** error amplification. Centralized preferito per task indipendenti parallelizzabili.
 **Quando applica**: design wave/cron multi-LLM cross-tool; scelta topology fra single-agent vs orchestrator-led vs peer-to-peer.
 **Fonte primaria**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons_multi_agent_topology_kim_2025.md`
-**Pattern correlato**: `02-patterns.md#7`
+**Pattern correlato**: `02-patterns.md#8` (parallel wave + capacity caps)
 
 ### 20. Orchestrator issue race
 
 **Sintesi**: orchestrator main + sub-session creano contemporaneamente issue/PR per stesso task → race window 5-30s genera duplicati. 2026-05-07: #491 (orchestrator) + #490 (sub-session) titoli identici, label diversi. Pre-search obbligatorio.
 **Quando applica**: prima di `gh issue create` / `gh pr create` da orchestrator quando wave ≥4 sessioni attive.
 **Fonte primaria**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/lessons_orchestrator_issue_race.md`
-**Pattern correlato**: nessuno (concurrency primitive).
+**Pattern correlato**: `02-patterns.md#1` (single-flight / lease / idempotency guard — questa lesson è l'evidence empirica del pattern).
 
 ---
 
