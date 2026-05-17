@@ -232,6 +232,74 @@ def test_auto_approve_policy_allows_factual_structural_snapshot() -> None:
     assert decision.blocked_reasons == []
 
 
+def test_auto_approve_policy_allows_guarded_consultant_narrative_snapshot() -> None:
+    snapshot = _snapshot_response(
+        facts=[
+            TaxCompanyPilotWorkspaceAiFact(
+                category="identity",
+                label="Foundation narrative",
+                detail=(
+                    "PT Bimala Investments Bali began as a PMA company in Badung with "
+                    "foundational capital of Rp 25,000,000,000 and a real estate, "
+                    "hospitality, commerce, and digital trade scope."
+                ),
+                source_file_ids=["akta", "nib"],
+                confidence="confirmed",
+            ),
+            TaxCompanyPilotWorkspaceAiFact(
+                category="person",
+                label="Leadership and residency",
+                detail=(
+                    "Gianluca Morelli is the Director with 60 percent ownership, "
+                    "Giulia Del Giudice is the Commissioner with 40 percent ownership, "
+                    "and both investor ITAS records support the long-term Bali presence."
+                ),
+                source_file_ids=["profile", "itas-gianluca", "itas-giulia"],
+                confidence="confirmed",
+            ),
+            TaxCompanyPilotWorkspaceAiFact(
+                category="compliance",
+                label="Tax posture",
+                detail=(
+                    "The tax story moves from a 2024 setup year filed as Nihil into "
+                    "active 2025-2026 reporting, with PPh 21, PPh 23, and PKP readiness "
+                    "as consultant watchpoints rather than client-facing conclusions."
+                ),
+                source_file_ids=["spt-2024", "rekap-2026"],
+                confidence="high",
+            ),
+            TaxCompanyPilotWorkspaceAiFact(
+                category="gap",
+                label="Document review gaps",
+                detail=(
+                    "Document review gaps to keep visible: LKPM or capital reporting, "
+                    "updated property due diligence files, and role evidence for each "
+                    "investment or visa decision."
+                ),
+                source_file_ids=["travel", "profile"],
+                confidence="medium",
+            ),
+            TaxCompanyPilotWorkspaceAiFact(
+                category="next_action",
+                label="Consultant prompts",
+                detail=(
+                    "Consultant prompts: align investor visa roles with the company "
+                    "structure, review LKPM capital reporting, and prepare the monthly "
+                    "tax workflow before the story becomes client-facing."
+                ),
+                source_file_ids=["profile", "rekap-2026"],
+                confidence="medium",
+            ),
+        ]
+    )
+
+    decision = evaluate_workspace_ai_auto_approve_snapshot(snapshot)
+
+    assert decision.eligible is True
+    assert decision.reason == "consultant_narrative_snapshot"
+    assert decision.blocked_reasons == []
+
+
 @pytest.mark.parametrize(
     ("fact", "expected_reason"),
     [
@@ -243,7 +311,7 @@ def test_auto_approve_policy_allows_factual_structural_snapshot() -> None:
                 source_file_ids=["drive-file-1"],
                 confidence="confirmed",
             ),
-            "blocked_category:compliance",
+            "unsafe_advice_claim",
         ),
         (
             TaxCompanyPilotWorkspaceAiFact(
@@ -274,6 +342,53 @@ def test_auto_approve_policy_blocks_risky_or_weak_snapshots(
     snapshot = _snapshot_response(
         facts=[fact],
         source_file_ids=[] if expected_reason == "missing_explicit_evidence" else None,
+    )
+
+    decision = evaluate_workspace_ai_auto_approve_snapshot(snapshot)
+
+    assert decision.eligible is False
+    assert expected_reason in decision.blocked_reasons
+
+
+@pytest.mark.parametrize(
+    ("detail", "expected_reason"),
+    [
+        (
+            "DJP/Coretax is accessed via ptbimalainvetmentbali.tax@gmail.com with EFIN 7473573914.",
+            "credential_or_portal_secret",
+        ),
+        (
+            "The company stands as proof of legal and regulatory excellence with no compliance risk.",
+            "absolute_compliance_claim",
+        ),
+        (
+            "PPh Final for February is Rp 213,954 and PPh Final for March is Rp 200,553.",
+            "sensitive_financial_amount",
+        ),
+        (
+            "Sources: Akta Pendirian.pdf, NPWP.pdf, transaction_history_permata_paging-2.pdf.",
+            "backstage_source_reference",
+        ),
+        (
+            "Client should file an amended tax return next month.",
+            "unsafe_advice_claim",
+        ),
+    ],
+)
+def test_auto_approve_policy_blocks_sensitive_consultant_narrative_details(
+    detail: str,
+    expected_reason: str,
+) -> None:
+    snapshot = _snapshot_response(
+        facts=[
+            TaxCompanyPilotWorkspaceAiFact(
+                category="compliance",
+                label="Sensitive detail",
+                detail=detail,
+                source_file_ids=["drive-file-1"],
+                confidence="confirmed",
+            )
+        ]
     )
 
     decision = evaluate_workspace_ai_auto_approve_snapshot(snapshot)

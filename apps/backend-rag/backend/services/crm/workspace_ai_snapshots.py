@@ -21,10 +21,12 @@ from backend.services.crm.tax_company_pilot import (
 
 logger = logging.getLogger(__name__)
 
-AUTO_APPROVE_POLICY_VERSION = "workspace-ai-v1-factual-structural"
+AUTO_APPROVE_POLICY_VERSION = "workspace-ai-v2-consultant-narrative"
 _AUTO_APPROVE_SYSTEM_ACTOR = f"system:auto-approve:{AUTO_APPROVE_POLICY_VERSION}"
-_AUTO_APPROVE_FACT_CATEGORIES = frozenset({"identity", "person", "gap"})
-_AUTO_APPROVE_BLOCKED_CATEGORIES = frozenset({"compliance", "next_action"})
+_AUTO_APPROVE_FACT_CATEGORIES = frozenset(
+    {"identity", "person", "compliance", "gap", "next_action"}
+)
+_CONSULTANT_NARRATIVE_CATEGORIES = frozenset({"compliance", "next_action"})
 _RAW_DRIVE_REFERENCE_MARKERS = (
     "drive.google.com",
     "docs.google.com",
@@ -39,12 +41,43 @@ _DOCUMENT_GAP_PATTERN = re.compile(
     r"\b(document|record|file|npwp|nib|akta|profile|folder)\b",
     re.IGNORECASE,
 )
-_INTERPRETIVE_OR_SENSITIVE_PATTERN = re.compile(
+_CREDENTIAL_OR_PORTAL_SECRET_PATTERN = re.compile(
     r"\b("
-    r"advice|advise|recommend|recommendation|should|must|legal opinion|"
-    r"liable|liability|penalty|sanction|strategy|suspicion|suspected|fraud|"
-    r"tax return|tax payable|vat|pph|profit|revenue|income|price|pricing|"
-    r"fee|invoice|paid|unpaid|debt|balance"
+    r"efin|password|passcode|otp|credential|credentials|username|login|"
+    r"tax portal|djp/coretax|coretax access|portal access|accessed via|"
+    r"npwp ending|individual accounts|personal tax oversight"
+    r")\b|[\w.+-]+@(?:gmail|yahoo|hotmail|outlook)\.[\w.-]+",
+    re.IGNORECASE,
+)
+_BACKSTAGE_SOURCE_REFERENCE_PATTERN = re.compile(
+    r"\b(sources?|source files?)\s*:|"
+    r"\b(file_id|folder_id|transaction_history)\b|"
+    r"\.(?:pdf|jpe?g|png|xlsx?|csv)\b",
+    re.IGNORECASE,
+)
+_ABSOLUTE_COMPLIANCE_PATTERN = re.compile(
+    r"\b("
+    r"fully compliant|compliant with all|legal and regulatory excellence|"
+    r"no compliance risk|no legal risk|no risk|guaranteed|legally safe|"
+    r"cleared by (?:the )?tax office|free of liabilities"
+    r")\b",
+    re.IGNORECASE,
+)
+_SENSITIVE_FINANCIAL_AMOUNT_PATTERN = re.compile(
+    r"\b(?:pph|ppn|vat|tax|pajak|omzet|withholding|salary|salaries|"
+    r"revenue|income|profit|loss|debt|balance|invoice|fee|royalty)"
+    r"\b.{0,80}\b(?:rp|idr)\s*\d|"
+    r"\b(?:rp|idr)\s*\d.{0,80}\b(?:pph|ppn|vat|tax|pajak|omzet|"
+    r"withholding|salary|salaries|revenue|income|profit|loss|debt|"
+    r"balance|invoice|fee|royalty)\b",
+    re.IGNORECASE | re.DOTALL,
+)
+_UNSAFE_ADVICE_PATTERN = re.compile(
+    r"\b(?:client|company|director|commissioner|shareholder|they|you)\s+"
+    r"(?:should|must|need to|required to|has to)\b|"
+    r"\b("
+    r"amended tax return|legal opinion|liable|liability|penalty|sanction|"
+    r"suspicion|suspected|fraud"
     r")\b",
     re.IGNORECASE,
 )
@@ -191,9 +224,7 @@ def evaluate_workspace_ai_auto_approve_snapshot(
     for fact in snapshot.facts:
         category = str(fact.category)
         text = _normalise_fact_text(fact)
-        if category in _AUTO_APPROVE_BLOCKED_CATEGORIES:
-            blocked_reasons.append(f"blocked_category:{category}")
-        elif category not in _AUTO_APPROVE_FACT_CATEGORIES:
+        if category not in _AUTO_APPROVE_FACT_CATEGORIES:
             blocked_reasons.append(f"unknown_category:{category}")
         elif category == "gap" and not _is_document_gap_fact(text):
             blocked_reasons.append("gap_not_document_inventory")
@@ -202,17 +233,34 @@ def evaluate_workspace_ai_auto_approve_snapshot(
             blocked_reasons.append("missing_explicit_evidence")
         if _contains_raw_drive_reference(text):
             blocked_reasons.append("raw_drive_reference")
-        if _contains_interpretive_or_sensitive_claim(text):
-            blocked_reasons.append("interpretive_or_sensitive_claim")
+        if _contains_credential_or_portal_secret(text):
+            blocked_reasons.append("credential_or_portal_secret")
+        if _contains_backstage_source_reference(text):
+            blocked_reasons.append("backstage_source_reference")
+        if _contains_absolute_compliance_claim(text):
+            blocked_reasons.append("absolute_compliance_claim")
+        if _contains_sensitive_financial_amount(text):
+            blocked_reasons.append("sensitive_financial_amount")
+        if _contains_unsafe_advice_claim(text):
+            blocked_reasons.append("unsafe_advice_claim")
 
     unique_blocked_reasons = list(dict.fromkeys(blocked_reasons))
     eligible = len(unique_blocked_reasons) == 0
+    has_consultant_narrative = any(
+        str(fact.category) in _CONSULTANT_NARRATIVE_CATEGORIES for fact in snapshot.facts
+    )
     return WorkspaceAiAutoApproveDecision(
         snapshot_id=snapshot.id,
         company_id=snapshot.company_id,
         company_name=snapshot.company_name,
         eligible=eligible,
-        reason="factual_structural_snapshot" if eligible else "policy_blocked",
+        reason=(
+            "consultant_narrative_snapshot"
+            if eligible and has_consultant_narrative
+            else "factual_structural_snapshot"
+            if eligible
+            else "policy_blocked"
+        ),
         blocked_reasons=unique_blocked_reasons,
         fact_count=len(snapshot.facts),
     )
@@ -340,8 +388,24 @@ def _contains_raw_drive_reference(text: str) -> bool:
     return any(marker in lower_text for marker in _RAW_DRIVE_REFERENCE_MARKERS)
 
 
-def _contains_interpretive_or_sensitive_claim(text: str) -> bool:
-    return bool(_INTERPRETIVE_OR_SENSITIVE_PATTERN.search(text))
+def _contains_credential_or_portal_secret(text: str) -> bool:
+    return bool(_CREDENTIAL_OR_PORTAL_SECRET_PATTERN.search(text))
+
+
+def _contains_backstage_source_reference(text: str) -> bool:
+    return bool(_BACKSTAGE_SOURCE_REFERENCE_PATTERN.search(text))
+
+
+def _contains_absolute_compliance_claim(text: str) -> bool:
+    return bool(_ABSOLUTE_COMPLIANCE_PATTERN.search(text))
+
+
+def _contains_sensitive_financial_amount(text: str) -> bool:
+    return bool(_SENSITIVE_FINANCIAL_AMOUNT_PATTERN.search(text))
+
+
+def _contains_unsafe_advice_claim(text: str) -> bool:
+    return bool(_UNSAFE_ADVICE_PATTERN.search(text))
 
 
 _LATEST_BY_COMPANY_SQL = """
