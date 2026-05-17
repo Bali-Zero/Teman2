@@ -446,6 +446,21 @@ def test_known_kbli_codes_structure():
         assert "risk_category" in data
 
 
+def test_known_kbli_56301_uses_canonical_pma_status():
+    from backend.app.routers.kbli_notebook_chat import KNOWN_KBLI_CODES
+
+    assert KNOWN_KBLI_CODES["56301"]["title"] == "AKTIVITAS BAR"
+    assert KNOWN_KBLI_CODES["56301"]["pma_status"] == "TERBUKA"
+
+
+def test_master_prompt_does_not_override_56301_as_closed_to_pma():
+    from backend.app.routers.kbli_notebook_chat import KBLI_MASTER_PROMPT
+
+    prompt = KBLI_MASTER_PROMPT.format(lang="English")
+    assert "KBLI 56301, PMA TERTUTUP" not in prompt
+    assert "foreigners CANNOT own a bar" not in prompt
+
+
 def test_non_business_keywords_list():
     from backend.app.routers.kbli_notebook_chat import NON_BUSINESS_KEYWORDS
 
