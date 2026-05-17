@@ -104,7 +104,7 @@ def test_resolve_notebook_returns_none_when_stale_and_gated(tmp_path, monkeypatc
     state = tmp_path / "state.json"
     old = (datetime.now(tz=timezone.utc) - timedelta(hours=48)).isoformat()
     _write_state(state, {
-        # Use the actual NB-2 UUID from registry
+        # NB-2 UUID on zero@balizero.com (migration 2026-05-18)
         "271c7159-0c32-49a1-bda8-803c8e0993a6": {
             "last": {"started_at": old, "status": "ok", "uuid": "x"},
         }
@@ -123,6 +123,7 @@ def test_resolve_notebook_returns_nb_when_fresh_and_gated(tmp_path, monkeypatch)
     state = tmp_path / "state.json"
     now = datetime.now(tz=timezone.utc).isoformat()
     _write_state(state, {
+        # NB-2 UUID on zero@balizero.com (migration 2026-05-18)
         "271c7159-0c32-49a1-bda8-803c8e0993a6": {
             "last": {"started_at": now, "status": "ok", "uuid": "fresh"},
         }
