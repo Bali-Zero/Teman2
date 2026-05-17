@@ -62,16 +62,14 @@
         letter-spacing: 0.04em;
       }
       .logo-mark {
-        width: 36px;
-        height: 36px;
-        background: #000;
+        width: 44px;
+        height: 44px;
+        background: transparent;
         border-radius: 50%;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: var(--status-red);
-        font-weight: 800;
-        font-size: 18px;
+        background-image: url("assets/balizero_logo_circle.png");
+        background-size: contain;
+        background-repeat: no-repeat;
+        background-position: center;
       }
       .topbar-stats {
         display: flex;
@@ -281,7 +279,7 @@
   <body>
     <div class="topbar">
       <div class="brand">
-        <div class="logo-mark">3</div>
+        <div class="logo-mark" aria-label="Bali Zero"></div>
         <span>ZANTARA</span>
         <span
           style="color: var(--text-muted); font-weight: 400; font-size: 13px"

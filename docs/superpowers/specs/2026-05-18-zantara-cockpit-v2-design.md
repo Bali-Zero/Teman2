@@ -26,6 +26,33 @@ Riusati dalla v1 (cherry-picked in v2 branch): migrations 182+183, lib helpers (
 - `mockups/v2/html-home-v2-lighter.html` — Home v2 con palette lighter (`#3A3E4A` page + `#494E5D` card), APPROVED by Antonello 2026-05-18
 - `mockups/v2/html-wr2-command-lighter.html` — `/cockpit/wr2` command page completo
 - `mockups/v2/png-3-home-lighter-final.png` — Codex imagegen reference
+- `mockups/v2/assets/balizero_logo_circle.png` — **Official Bali Zero logo** (940×940 RGBA, provided by Antonello 2026-05-18 from `~/Desktop/balizero_logo_circle.png`). Use everywhere — NEVER recreate via CSS div.
+
+## Logo asset (official)
+
+**Source**: `~/Desktop/balizero_logo_circle.png` (Antonello provided 2026-05-18)
+**Format**: PNG, 940×940, 8-bit RGBA, non-interlaced
+**Composition**: Black circular background, red stylized "3" + white "ALI ZERO" wordmark + Om symbol bottom-right
+**Brand cortex match**: cf. `~/.claude/skills/bali-zero-brand/tokens.json:115-120` (verbatim spec)
+
+**Deployment paths** (both copies committed):
+
+- `mockups/v2/assets/balizero_logo_circle.png` — for design review HTML
+- `apps/admin-dashboard-local/public/balizero_logo_circle.png` — for Next.js public route `/balizero_logo_circle.png`
+
+**Component usage** in `<BrandTopbar />`:
+
+```tsx
+<img
+  src="/balizero_logo_circle.png"
+  alt="Bali Zero"
+  width={44}
+  height={44}
+  style={{ borderRadius: "50%" }}
+/>
+```
+
+**Sizing rule**: 36-48px in topbar contexts. Never stretch non-uniform. Never recolor. Never recreate via CSS (no div with text "3").
 
 ---
 
