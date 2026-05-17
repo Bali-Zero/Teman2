@@ -8,7 +8,7 @@ import json
 import os
 import subprocess
 import sys
-from typing import Dict, Any
+from typing import Any
 import logging
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -97,7 +97,7 @@ RULES:
 """
 
 
-def _normalize_live_news_fields(enriched: Dict[str, Any]) -> Dict[str, Any]:
+def _normalize_live_news_fields(enriched: dict[str, Any]) -> dict[str, Any]:
     """Clamp live_news_score, recompute liveness_tier from score, sanitize reasons.
 
     Defensive normalization — the prompt instructs Claude to derive the tier
@@ -141,7 +141,7 @@ def _normalize_live_news_fields(enriched: Dict[str, Any]) -> Dict[str, Any]:
     return enriched
 
 
-def enrich_article_claude_cli(article: Dict[str, Any]) -> Dict[str, Any]:
+def enrich_article_claude_cli(article: dict[str, Any]) -> dict[str, Any]:
     """
     Enrich article using Claude Code CLI (subprocess call).
     Uses Claude Max subscription quota.
@@ -265,7 +265,7 @@ def enrich_article_claude_cli(article: Dict[str, Any]) -> Dict[str, Any]:
         }
 
 
-def batch_enrich_articles(articles: list[Dict[str, Any]], max_articles: int = None) -> list[Dict[str, Any]]:
+def batch_enrich_articles(articles: list[dict[str, Any]], max_articles: int = None) -> list[dict[str, Any]]:
     """
     Batch enrich multiple articles.
     

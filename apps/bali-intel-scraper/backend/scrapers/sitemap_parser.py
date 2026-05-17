@@ -11,13 +11,14 @@ Supports:
 import gzip
 from dataclasses import dataclass
 from datetime import datetime
-from typing import AsyncGenerator, List, Optional, Set
+from collections.abc import AsyncGenerator
 from urllib.parse import urlparse
 from xml.etree import ElementTree as ET
 
 import aiohttp
 from backend.core.logger import get_logger, LogAction
 from backend.core.rate_limiter import limit_scrape_request
+import contextlib
 
 logger = get_logger(__name__, component="sitemap_parser")
 
@@ -27,9 +28,9 @@ class SitemapEntry:
     """Single sitemap entry."""
 
     url: str
-    lastmod: Optional[datetime] = None
-    changefreq: Optional[str] = None
-    priority: Optional[float] = None
+    lastmod: datetime | None = None
+    changefreq: str | None = None
+    priority: float | None = None
 
 
 @dataclass
@@ -37,9 +38,9 @@ class Sitemap:
     """Parsed sitemap."""
 
     url: str
-    entries: List[SitemapEntry]
+    entries: list[SitemapEntry]
     is_index: bool = False
-    sitemaps: List[str] = None  # For index sitemaps
+    sitemaps: list[str] = None  # For index sitemaps
 
     def __post_init__(self):
         if self.sitemaps is None:
@@ -56,34 +57,33 @@ class SitemapParser:
         "video": "http://www.google.com/schemas/sitemap-video/1.1",
     }
 
-    async def fetch_sitemap(self, url: str) -> Optional[str]:
+    async def fetch_sitemap(self, url: str) -> str | None:
         """Fetch sitemap content."""
         try:
             parsed = urlparse(url)
             await limit_scrape_request(parsed.netloc)
 
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    url, timeout=aiohttp.ClientTimeout(total=30)
-                ) as response:
-                    if response.status != 200:
-                        logger.warning(
-                            f"Sitemap fetch failed: HTTP {response.status}",
-                            action=LogAction.ERROR,
-                            metadata={"url": url[:100]},
-                        )
-                        return None
+            async with aiohttp.ClientSession() as session, session.get(
+                url, timeout=aiohttp.ClientTimeout(total=30)
+            ) as response:
+                if response.status != 200:
+                    logger.warning(
+                        f"Sitemap fetch failed: HTTP {response.status}",
+                        action=LogAction.ERROR,
+                        metadata={"url": url[:100]},
+                    )
+                    return None
 
-                    content = await response.read()
+                content = await response.read()
 
-                    # Handle gzip
-                    if (
-                        url.endswith(".gz")
-                        or response.headers.get("content-encoding") == "gzip"
-                    ):
-                        content = gzip.decompress(content)
+                # Handle gzip
+                if (
+                    url.endswith(".gz")
+                    or response.headers.get("content-encoding") == "gzip"
+                ):
+                    content = gzip.decompress(content)
 
-                    return content.decode("utf-8")
+                return content.decode("utf-8")
 
         except Exception as e:
             logger.error(
@@ -148,7 +148,7 @@ class SitemapParser:
 
     def _parse_url_entry(
         self, url_elem: ET.Element, use_namespace: bool
-    ) -> Optional[SitemapEntry]:
+    ) -> SitemapEntry | None:
         """Parse single URL entry."""
         ns = "sm:" if use_namespace else ""
 
@@ -164,12 +164,10 @@ class SitemapParser:
             f"{ns}lastmod", self.NAMESPACES if use_namespace else {}
         )
         if lastmod_elem is not None and lastmod_elem.text:
-            try:
+            with contextlib.suppress(ValueError):
                 lastmod = datetime.fromisoformat(
                     lastmod_elem.text.replace("Z", "+00:00")
                 )
-            except ValueError:
-                pass
 
         # Parse changefreq
         changefreq = None
@@ -185,17 +183,15 @@ class SitemapParser:
             f"{ns}priority", self.NAMESPACES if use_namespace else {}
         )
         if pri_elem is not None and pri_elem.text:
-            try:
+            with contextlib.suppress(ValueError):
                 priority = float(pri_elem.text)
-            except ValueError:
-                pass
 
         return SitemapEntry(
             url=url, lastmod=lastmod, changefreq=changefreq, priority=priority
         )
 
     async def discover_urls(
-        self, sitemap_url: str, since: Optional[datetime] = None, max_urls: int = 10000
+        self, sitemap_url: str, since: datetime | None = None, max_urls: int = 10000
     ) -> AsyncGenerator[SitemapEntry, None]:
         """
         Discover URLs from sitemap and sub-sitemaps.
@@ -207,7 +203,7 @@ class SitemapParser:
         """
         urls_found = 0
         sitemaps_to_process = [sitemap_url]
-        processed_sitemaps: Set[str] = set()
+        processed_sitemaps: set[str] = set()
 
         while sitemaps_to_process and urls_found < max_urls:
             current_url = sitemaps_to_process.pop(0)
@@ -252,7 +248,7 @@ class SitemapParser:
             metadata={"sitemap": sitemap_url[:100]},
         )
 
-    async def get_sitemap_from_robots(self, base_url: str) -> List[str]:
+    async def get_sitemap_from_robots(self, base_url: str) -> list[str]:
         """Find sitemap URLs from robots.txt."""
         from backend.scrapers.robots_checker import robots_checker
 
@@ -264,8 +260,8 @@ sitemap_parser = SitemapParser()
 
 
 async def discover_urls(
-    sitemap_url: str, since: Optional[datetime] = None, max_urls: int = 10000
-) -> List[SitemapEntry]:
+    sitemap_url: str, since: datetime | None = None, max_urls: int = 10000
+) -> list[SitemapEntry]:
     """Quick function to discover URLs from sitemap."""
     urls = []
     async for entry in sitemap_parser.discover_urls(sitemap_url, since, max_urls):

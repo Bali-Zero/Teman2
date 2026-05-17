@@ -5,7 +5,6 @@ Generates concise summaries of articles using AI and extractive methods.
 """
 
 from dataclasses import dataclass
-from typing import List
 import re
 
 from backend.services.ai_engine import ai_engine, AIProvider
@@ -139,7 +138,7 @@ Summary:"""
             summary_length=0,
         )
 
-    def _split_sentences(self, text: str) -> List[str]:
+    def _split_sentences(self, text: str) -> list[str]:
         """Split text into sentences."""
         # Simple sentence splitting
         sentences = re.split(r"(?<=[.!?])\s+", text)

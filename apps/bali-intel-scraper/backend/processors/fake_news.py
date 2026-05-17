@@ -10,7 +10,6 @@ Basic credibility assessment based on:
 import re
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional
 
 from backend.core.logger import get_logger, LogAction
 
@@ -33,8 +32,8 @@ class CredibilityResult:
     rating: CredibilityRating
     score: float  # 0-100
     confidence: float
-    factors: List[str]
-    warnings: List[str]
+    factors: list[str]
+    warnings: list[str]
 
 
 class FakeNewsDetector:
@@ -101,8 +100,8 @@ class FakeNewsDetector:
         self,
         title: str,
         content: str,
-        source_url: Optional[str] = None,
-        author: Optional[str] = None,
+        source_url: str | None = None,
+        author: str | None = None,
     ) -> CredibilityResult:
         """
         Assess credibility of article.
@@ -188,7 +187,7 @@ class FakeNewsDetector:
             warnings=warnings,
         )
 
-    def _assess_source(self, url: Optional[str]) -> float:
+    def _assess_source(self, url: str | None) -> float:
         """Assess source reliability."""
         if not url:
             return 0
@@ -264,7 +263,7 @@ class FakeNewsDetector:
             return CredibilityRating.VERY_LOW
 
     def _calculate_confidence(
-        self, title: str, content: str, source: Optional[str]
+        self, title: str, content: str, source: str | None
     ) -> float:
         """Calculate confidence in assessment."""
         confidence = 0.5
@@ -289,9 +288,7 @@ class FakeNewsDetector:
             return True
         if result.score < 30:
             return True
-        if len(result.warnings) >= 3:
-            return True
-        return False
+        return len(result.warnings) >= 3
 
 
 detector = FakeNewsDetector()
@@ -300,8 +297,8 @@ detector = FakeNewsDetector()
 def assess_credibility(
     title: str,
     content: str,
-    source_url: Optional[str] = None,
-    author: Optional[str] = None,
+    source_url: str | None = None,
+    author: str | None = None,
 ) -> CredibilityResult:
     """Quick function to assess credibility."""
     return detector.assess(title, content, source_url, author)

@@ -51,21 +51,20 @@ async def publish_article(article_file: Path, main_news_position: int = None):
     # Send to backend
     headers = {"X-API-Key": API_KEY, "Content-Type": "application/json"}
 
-    async with aiohttp.ClientSession() as session:
-        async with session.post(
-            f"{BACKEND_URL}/api/intel/scraper/submit",
-            json=payload,
-            headers=headers,
-            timeout=aiohttp.ClientTimeout(total=30),
-        ) as resp:
-            if resp.status in [200, 201]:
-                result = await resp.json()
-                logger.success(f"✅ Published: {article['title'][:50]}")
-                return result
-            else:
-                error = await resp.text()
-                logger.error(f"❌ Failed ({resp.status}): {error}")
-                return None
+    async with aiohttp.ClientSession() as session, session.post(
+        f"{BACKEND_URL}/api/intel/scraper/submit",
+        json=payload,
+        headers=headers,
+        timeout=aiohttp.ClientTimeout(total=30),
+    ) as resp:
+        if resp.status in [200, 201]:
+            result = await resp.json()
+            logger.success(f"✅ Published: {article['title'][:50]}")
+            return result
+        else:
+            error = await resp.text()
+            logger.error(f"❌ Failed ({resp.status}): {error}")
+            return None
 
 
 async def main():

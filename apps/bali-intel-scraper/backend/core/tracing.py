@@ -6,7 +6,7 @@ Integrates with OpenTelemetry for request tracing.
 
 import functools
 from contextlib import contextmanager
-from typing import Any, Dict, Optional
+from typing import Any
 
 from backend.core.logger import get_logger
 
@@ -21,7 +21,7 @@ class Tracer:
         self._spans: list = []
 
     @contextmanager
-    def span(self, name: str, attributes: Optional[Dict[str, Any]] = None):
+    def span(self, name: str, attributes: dict[str, Any] | None = None):
         """Create a new trace span."""
         import time
 
@@ -53,7 +53,7 @@ class Tracer:
                 },
             )
 
-    def trace(self, name: Optional[str] = None):
+    def trace(self, name: str | None = None):
         """Decorator for tracing functions."""
 
         def decorator(func):
@@ -89,7 +89,7 @@ class Tracer:
 tracer = Tracer()
 
 
-def trace_function(name: Optional[str] = None):
+def trace_function(name: str | None = None):
     """Decorator for tracing."""
     return tracer.trace(name)
 

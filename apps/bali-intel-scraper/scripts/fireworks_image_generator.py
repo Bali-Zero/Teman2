@@ -13,7 +13,6 @@ import urllib.request
 import urllib.error
 import urllib.parse
 from pathlib import Path
-from typing import Optional
 
 FIREWORKS_API_KEY = os.environ.get("FIREWORKS_API_KEY", "")
 FIREWORKS_URL = "https://api.fireworks.ai/inference/v1/workflows/accounts/fireworks/models/flux-1-dev-fp8/text_to_image"

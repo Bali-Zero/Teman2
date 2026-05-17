@@ -20,7 +20,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 import yaml
 
@@ -69,7 +69,7 @@ class QualityGateConfig:
     # e.g. "visa" → ["KITAS", "KITAP", "B211", "C31"]
 
     @classmethod
-    def load(cls, path: Optional[Path] = None) -> "QualityGateConfig":
+    def load(cls, path: Path | None = None) -> QualityGateConfig:
         """Load config from YAML. Falls back to defaults if file missing."""
         p = path or CONFIG_PATH
         if not p.exists():
@@ -212,8 +212,8 @@ def score_relevance(
 def score_urgency(
     title: str,
     content: str,
-    published_at: Optional[datetime],
-    scraped_at: Optional[datetime],
+    published_at: datetime | None,
+    scraped_at: datetime | None,
     config: QualityGateConfig,
 ) -> tuple[float, dict[str, Any]]:
     """Score urgency based on time freshness + urgency keyword signals.
@@ -263,7 +263,7 @@ def score_reliability(
     source_name: str,
     source_url: str,
     tier: str,
-    svs_score: Optional[float],
+    svs_score: float | None,
     config: QualityGateConfig,
 ) -> tuple[float, dict[str, Any]]:
     """Score reliability from source reputation + existing SVS.
@@ -327,7 +327,7 @@ def score_business_impact(
     content: str,
     category: str,
     config: QualityGateConfig,
-    client_distribution: Optional[dict[str, float]] = None,
+    client_distribution: dict[str, float] | None = None,
 ) -> tuple[float, dict[str, Any]]:
     """Score how many Bali Zero clients are impacted.
 
@@ -392,7 +392,7 @@ def score_business_impact(
 class QualityGate:
     """Main quality gate: runs all 4 dimensions, computes composite, returns decision."""
 
-    def __init__(self, config: Optional[QualityGateConfig] = None) -> None:
+    def __init__(self, config: QualityGateConfig | None = None) -> None:
         self.config = config or QualityGateConfig.load()
 
     def evaluate(
@@ -404,10 +404,10 @@ class QualityGate:
         source_name: str = "",
         source_url: str = "",
         tier: str = "T3",
-        svs_score: Optional[float] = None,
-        published_at: Optional[datetime] = None,
-        scraped_at: Optional[datetime] = None,
-        client_distribution: Optional[dict[str, float]] = None,
+        svs_score: float | None = None,
+        published_at: datetime | None = None,
+        scraped_at: datetime | None = None,
+        client_distribution: dict[str, float] | None = None,
     ) -> QualityGateResult:
         """Evaluate an article through the 4-dimension quality gate.
 
@@ -460,7 +460,7 @@ class QualityGate:
 
 def evaluate_batch(
     articles: list[dict[str, Any]],
-    config: Optional[QualityGateConfig] = None,
+    config: QualityGateConfig | None = None,
 ) -> list[tuple[dict[str, Any], QualityGateResult]]:
     """Evaluate a batch of article dicts through the quality gate.
 
@@ -500,7 +500,7 @@ def evaluate_batch(
     return results
 
 
-def _parse_datetime(value: Any) -> Optional[datetime]:
+def _parse_datetime(value: Any) -> datetime | None:
     """Parse datetime from string or return as-is if already datetime."""
     if value is None:
         return None

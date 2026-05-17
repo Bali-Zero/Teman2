@@ -11,7 +11,7 @@ Provides:
 import asyncio
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Any
+from typing import Any
 
 from backend.core.logger import get_logger, LogAction
 from backend.core.cache import cache, CacheStrategy
@@ -35,10 +35,10 @@ class AIRequest:
     content: str
     task_type: str
     provider: AIProvider = AIProvider.OPENAI
-    model: Optional[str] = None
+    model: str | None = None
     max_tokens: int = 4000
     temperature: float = 0.1
-    metadata: Dict[str, Any] = None
+    metadata: dict[str, Any] = None
 
     def __post_init__(self):
         if self.metadata is None:
@@ -50,7 +50,7 @@ class AIResponse:
     """AI processing response."""
 
     content: str
-    usage: Dict[str, int]
+    usage: dict[str, int]
     model: str
     finish_reason: str
     latency_ms: float
@@ -70,10 +70,10 @@ class AIBatchProcessor:
         self.max_wait_time = max_wait_time
         self.provider = provider
 
-        self._batch: List[AIRequest] = []
-        self._pending: Dict[str, asyncio.Future] = {}
+        self._batch: list[AIRequest] = []
+        self._pending: dict[str, asyncio.Future] = {}
         self._lock = asyncio.Lock()
-        self._flush_task: Optional[asyncio.Task] = None
+        self._flush_task: asyncio.Task | None = None
 
     async def add_request(self, request: AIRequest) -> AIResponse:
         """Add request to batch and wait for result."""
@@ -133,7 +133,7 @@ class AIBatchProcessor:
                 if not future.done():
                     future.set_exception(e)
 
-    async def _process_batch(self, requests: List[AIRequest]) -> List[AIResponse]:
+    async def _process_batch(self, requests: list[AIRequest]) -> list[AIResponse]:
         """Process batch of requests."""
         # For now, process sequentially
         # In production, this could use batch APIs
@@ -236,7 +236,7 @@ class AIEngine:
     """Main AI processing engine."""
 
     def __init__(self):
-        self._batch_processors: Dict[AIProvider, AIBatchProcessor] = {}
+        self._batch_processors: dict[AIProvider, AIBatchProcessor] = {}
 
     def _get_processor(self, provider: AIProvider) -> AIBatchProcessor:
         """Get or create batch processor for provider."""
@@ -315,10 +315,10 @@ class AIEngine:
 
     async def process_batch(
         self,
-        items: List[Dict[str, Any]],
+        items: list[dict[str, Any]],
         task_type: str = "analyze",
         provider: AIProvider = AIProvider.OPENAI,
-    ) -> List[AIResponse]:
+    ) -> list[AIResponse]:
         """Process multiple items in batch."""
         tasks = [
             self.process(
@@ -336,7 +336,7 @@ class AIEngine:
         content_hash = hashlib.sha256(content[:1000].encode()).hexdigest()[:16]
         return f"ai:{provider.value}:{task_type}:{content_hash}"
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Check AI engine health."""
         return {
             "status": "healthy",

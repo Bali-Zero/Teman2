@@ -5,7 +5,6 @@ Defines WebSocket endpoints for real-time communication.
 """
 
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query
-from typing import List, Optional
 
 from .manager import get_websocket_manager
 from .handlers import handle_client_connect, handle_client_disconnect, handle_message
@@ -17,7 +16,7 @@ router = APIRouter(prefix="/ws", tags=["websocket"])
 async def websocket_endpoint(
     websocket: WebSocket,
     client_id: str = Query(..., description="Unique client identifier"),
-    rooms: Optional[List[str]] = Query(None, description="Rooms to subscribe to"),
+    rooms: list[str] | None = Query(None, description="Rooms to subscribe to"),
 ):
     """
     Main WebSocket endpoint for real-time updates.

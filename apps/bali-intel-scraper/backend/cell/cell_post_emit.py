@@ -34,6 +34,7 @@ Reference:
 """
 from __future__ import annotations
 
+import contextlib
 import logging
 from collections import defaultdict
 from typing import Any
@@ -88,10 +89,8 @@ async def _build_hgt_bridge() -> Any:
             exc,
         )
         if client is not None:
-            try:
+            async with contextlib.suppress(Exception):
                 await client.aclose()
-            except Exception:  # noqa: BLE001
-                pass
         return None
 
 

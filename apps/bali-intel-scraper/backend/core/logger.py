@@ -12,7 +12,7 @@ import uuid
 from contextvars import ContextVar
 from datetime import datetime, timezone
 from enum import Enum
-from typing import Any, Dict, Optional
+from typing import Any
 
 from config.settings import settings
 
@@ -20,7 +20,7 @@ from config.settings import settings
 # Context variables for request tracking
 request_id_ctx: ContextVar[str] = ContextVar("request_id", default="")
 component_ctx: ContextVar[str] = ContextVar("component", default="unknown")
-user_id_ctx: ContextVar[Optional[str]] = ContextVar("user_id", default=None)
+user_id_ctx: ContextVar[str | None] = ContextVar("user_id", default=None)
 
 
 class LogAction(str, Enum):
@@ -50,7 +50,7 @@ class StructuredLogFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         """Format log record as JSON."""
-        log_data: Dict[str, Any] = {
+        log_data: dict[str, Any] = {
             "timestamp": datetime.now(timezone.utc).isoformat(),
             "level": record.levelname,
             "message": record.getMessage(),
@@ -89,7 +89,7 @@ class StructuredLogFormatter(logging.Formatter):
 class StructuredLogger:
     """Structured logger with contextual information."""
 
-    def __init__(self, name: str, component: Optional[str] = None):
+    def __init__(self, name: str, component: str | None = None):
         self.logger = logging.getLogger(name)
         self.component = component or name
 
@@ -127,8 +127,8 @@ class StructuredLogger:
         self,
         level: int,
         message: str,
-        action: Optional[LogAction] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        action: LogAction | None = None,
+        metadata: dict[str, Any] | None = None,
         **kwargs,
     ) -> None:
         """Internal log method with structured data."""
@@ -144,8 +144,8 @@ class StructuredLogger:
     def debug(
         self,
         message: str,
-        action: Optional[LogAction] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        action: LogAction | None = None,
+        metadata: dict[str, Any] | None = None,
         **kwargs,
     ) -> None:
         """Log debug message."""
@@ -154,8 +154,8 @@ class StructuredLogger:
     def info(
         self,
         message: str,
-        action: Optional[LogAction] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        action: LogAction | None = None,
+        metadata: dict[str, Any] | None = None,
         **kwargs,
     ) -> None:
         """Log info message."""
@@ -164,8 +164,8 @@ class StructuredLogger:
     def warning(
         self,
         message: str,
-        action: Optional[LogAction] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        action: LogAction | None = None,
+        metadata: dict[str, Any] | None = None,
         **kwargs,
     ) -> None:
         """Log warning message."""
@@ -174,8 +174,8 @@ class StructuredLogger:
     def error(
         self,
         message: str,
-        action: Optional[LogAction] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        action: LogAction | None = None,
+        metadata: dict[str, Any] | None = None,
         exc_info: bool = False,
         **kwargs,
     ) -> None:
@@ -192,8 +192,8 @@ class StructuredLogger:
     def critical(
         self,
         message: str,
-        action: Optional[LogAction] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        action: LogAction | None = None,
+        metadata: dict[str, Any] | None = None,
         **kwargs,
     ) -> None:
         """Log critical message."""
@@ -202,8 +202,8 @@ class StructuredLogger:
     def exception(
         self,
         message: str,
-        action: Optional[LogAction] = None,
-        metadata: Optional[Dict[str, Any]] = None,
+        action: LogAction | None = None,
+        metadata: dict[str, Any] | None = None,
         **kwargs,
     ) -> None:
         """Log exception with traceback."""
@@ -211,10 +211,10 @@ class StructuredLogger:
 
 
 # Module-level logger factory
-_loggers: Dict[str, StructuredLogger] = {}
+_loggers: dict[str, StructuredLogger] = {}
 
 
-def get_logger(name: str, component: Optional[str] = None) -> StructuredLogger:
+def get_logger(name: str, component: str | None = None) -> StructuredLogger:
     """Get or create a structured logger."""
     key = f"{name}:{component}"
     if key not in _loggers:
@@ -237,7 +237,7 @@ def set_component(component: str) -> None:
     component_ctx.set(component)
 
 
-def set_user_id(user_id: Optional[str]) -> None:
+def set_user_id(user_id: str | None) -> None:
     """Set the current user ID in context."""
     user_id_ctx.set(user_id)
 
@@ -247,9 +247,9 @@ class log_context:
 
     def __init__(
         self,
-        component: Optional[str] = None,
-        request_id: Optional[str] = None,
-        user_id: Optional[str] = None,
+        component: str | None = None,
+        request_id: str | None = None,
+        user_id: str | None = None,
     ):
         self.component = component
         self.request_id = request_id

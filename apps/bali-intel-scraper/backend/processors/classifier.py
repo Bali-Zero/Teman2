@@ -9,7 +9,6 @@ Classifies articles into categories like:
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List
 import json
 
 from backend.services.ai_engine import ai_engine, AIProvider
@@ -45,8 +44,8 @@ class ClassificationResult:
 
     primary_category: NewsCategory
     confidence: float
-    all_scores: Dict[str, float]
-    keywords: List[str]
+    all_scores: dict[str, float]
+    keywords: list[str]
 
 
 class TopicClassifier:
@@ -290,7 +289,7 @@ Content: {content[:2000]}"""
             keywords=keywords,
         )
 
-    def classify_geography(self, text: str) -> Dict[str, float]:
+    def classify_geography(self, text: str) -> dict[str, float]:
         """Classify geographic relevance."""
         text_lower = text.lower()
 
@@ -307,7 +306,7 @@ Content: {content[:2000]}"""
             "is_indonesia_news": indonesia_score > 0,
         }
 
-    async def classify_full(self, title: str, content: str) -> Dict:
+    async def classify_full(self, title: str, content: str) -> dict:
         """Full classification with all metadata."""
         topic_result = await self.classify(title, content)
         geo_result = self.classify_geography(title + " " + content)

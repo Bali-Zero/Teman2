@@ -10,7 +10,8 @@ Provides rate limiting for:
 import asyncio
 import time
 from dataclasses import dataclass
-from typing import Dict, Optional, Callable, Any
+from typing import Any
+from collections.abc import Callable
 from functools import wraps
 
 from backend.core.logger import get_logger, LogAction
@@ -52,7 +53,7 @@ class TokenBucket:
             metadata={"rate": rate, "capacity": capacity},
         )
 
-    async def acquire(self, tokens: int = 1, timeout: Optional[float] = None) -> bool:
+    async def acquire(self, tokens: int = 1, timeout: float | None = None) -> bool:
         """
         Acquire tokens from the bucket.
 
@@ -104,7 +105,7 @@ class TokenBucket:
                 return True
             return False
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get bucket statistics."""
         return {
             "name": self.name,
@@ -128,7 +129,7 @@ class SlidingWindowRateLimiter:
         self._requests: list = []
         self._lock = asyncio.Lock()
 
-    async def acquire(self, timeout: Optional[float] = None) -> bool:
+    async def acquire(self, timeout: float | None = None) -> bool:
         """Acquire permission to make a request."""
         start_time = time.time()
 
@@ -150,7 +151,7 @@ class SlidingWindowRateLimiter:
 
             await asyncio.sleep(0.1)
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get limiter statistics."""
         now = time.time()
         cutoff = now - self.window_size
@@ -169,8 +170,8 @@ class RateLimiterRegistry:
     """Registry for managing multiple rate limiters."""
 
     def __init__(self):
-        self._buckets: Dict[str, TokenBucket] = {}
-        self._windows: Dict[str, SlidingWindowRateLimiter] = {}
+        self._buckets: dict[str, TokenBucket] = {}
+        self._windows: dict[str, SlidingWindowRateLimiter] = {}
 
     def create_bucket(
         self, name: str, rate: float = 1.0, capacity: int = 5
@@ -190,15 +191,15 @@ class RateLimiterRegistry:
             )
         return self._windows[name]
 
-    def get_bucket(self, name: str) -> Optional[TokenBucket]:
+    def get_bucket(self, name: str) -> TokenBucket | None:
         """Get a token bucket by name."""
         return self._buckets.get(name)
 
-    def get_window(self, name: str) -> Optional[SlidingWindowRateLimiter]:
+    def get_window(self, name: str) -> SlidingWindowRateLimiter | None:
         """Get a sliding window limiter by name."""
         return self._windows.get(name)
 
-    def get_all_stats(self) -> Dict[str, Dict[str, Any]]:
+    def get_all_stats(self) -> dict[str, dict[str, Any]]:
         """Get stats for all rate limiters."""
         return {
             "buckets": {
@@ -231,7 +232,7 @@ def get_registry() -> RateLimiterRegistry:
 
 
 def rate_limit(
-    name: str, rate: float = 1.0, capacity: int = 5, timeout: Optional[float] = None
+    name: str, rate: float = 1.0, capacity: int = 5, timeout: float | None = None
 ):
     """Decorator for rate limiting function calls."""
 

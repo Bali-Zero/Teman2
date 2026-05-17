@@ -7,7 +7,6 @@ Extracts relevant keywords and key phrases from content.
 import re
 from collections import Counter
 from dataclasses import dataclass
-from typing import List
 import json
 
 from backend.services.ai_engine import ai_engine, AIProvider
@@ -164,7 +163,7 @@ class KeywordExtractor:
 
     async def extract(
         self, text: str, max_keywords: int = 10, max_phrases: int = 5
-    ) -> List[Keyword]:
+    ) -> list[Keyword]:
         """Extract keywords from text."""
         keywords = []
 
@@ -199,7 +198,7 @@ class KeywordExtractor:
 
         return unique[: max_keywords + max_phrases]
 
-    def _extract_words(self, text: str, max_keywords: int) -> List[Keyword]:
+    def _extract_words(self, text: str, max_keywords: int) -> list[Keyword]:
         """Extract single-word keywords."""
         # Clean and tokenize
         words = re.findall(r"\b[a-zA-Z]{3,}\b", text.lower())
@@ -223,7 +222,7 @@ class KeywordExtractor:
 
         return keywords[:max_keywords]
 
-    def _extract_phrases(self, text: str, max_phrases: int) -> List[Keyword]:
+    def _extract_phrases(self, text: str, max_phrases: int) -> list[Keyword]:
         """Extract multi-word phrases."""
         # Extract noun phrases (simplified)
         # Look for capitalized word sequences
@@ -251,7 +250,7 @@ class KeywordExtractor:
 
         return keywords[:max_phrases]
 
-    async def _extract_with_ai(self, text: str) -> List[Keyword]:
+    async def _extract_with_ai(self, text: str) -> list[Keyword]:
         """Extract keywords using AI."""
         prompt = f"""Extract the 5 most important keywords or key phrases from this text. Return JSON array:
 ["keyword1", "keyword2", "keyword3", "keyword4", "keyword5"]
@@ -285,7 +284,7 @@ Text: {text[:2000]}"""
         except json.JSONDecodeError:
             return []
 
-    def get_key_topics(self, text: str, num_topics: int = 3) -> List[str]:
+    def get_key_topics(self, text: str, num_topics: int = 3) -> list[str]:
         """Get main topics from text."""
         import asyncio
 
@@ -297,7 +296,7 @@ Text: {text[:2000]}"""
 extractor = KeywordExtractor()
 
 
-async def extract_keywords(text: str, max_keywords: int = 10) -> List[Keyword]:
+async def extract_keywords(text: str, max_keywords: int = 10) -> list[Keyword]:
     """Quick function to extract keywords."""
     return await extractor.extract(text, max_keywords)
 

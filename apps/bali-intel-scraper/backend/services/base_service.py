@@ -12,7 +12,8 @@ import time
 from abc import ABC
 from enum import Enum
 from functools import wraps
-from typing import Any, Callable, Dict, Generic, Optional, TypeVar, cast
+from typing import Any, Generic, TypeVar, cast
+from collections.abc import Callable
 
 from backend.core.logger import get_logger, LogAction, log_context
 from backend.core.metrics import MetricsCollector
@@ -28,7 +29,7 @@ class ServiceError(Exception):
         message: str,
         error_code: str,
         status_code: int = 500,
-        details: Optional[Dict[str, Any]] = None,
+        details: dict[str, Any] | None = None,
         retryable: bool = False,
     ):
         super().__init__(message)
@@ -42,7 +43,7 @@ class ServiceError(Exception):
 class ValidationError(ServiceError):
     """Validation error - client sent invalid data."""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(
             message=message,
             error_code="VALIDATION_ERROR",
@@ -68,7 +69,7 @@ class NotFoundError(ServiceError):
 class ConflictError(ServiceError):
     """Resource conflict error."""
 
-    def __init__(self, message: str, details: Optional[Dict[str, Any]] = None):
+    def __init__(self, message: str, details: dict[str, Any] | None = None):
         super().__init__(
             message=message,
             error_code="CONFLICT",
@@ -82,7 +83,7 @@ class ExternalServiceError(ServiceError):
     """External service call failed."""
 
     def __init__(
-        self, message: str, service_name: str, details: Optional[Dict[str, Any]] = None
+        self, message: str, service_name: str, details: dict[str, Any] | None = None
     ):
         super().__init__(
             message=message,
@@ -96,7 +97,7 @@ class ExternalServiceError(ServiceError):
 class RateLimitError(ServiceError):
     """Rate limit exceeded."""
 
-    def __init__(self, retry_after: Optional[int] = None):
+    def __init__(self, retry_after: int | None = None):
         super().__init__(
             message="Rate limit exceeded",
             error_code="RATE_LIMIT_EXCEEDED",
@@ -125,7 +126,7 @@ def classify_error(error: Exception) -> ErrorCategory:
         return ErrorCategory.VALIDATION
     elif isinstance(error, NotFoundError):
         return ErrorCategory.NOT_FOUND
-    elif isinstance(error, ExternalServiceError) or isinstance(error, RateLimitError):
+    elif isinstance(error, (ExternalServiceError, RateLimitError)):
         return ErrorCategory.EXTERNAL
     elif "database" in str(error).lower() or "connection" in str(error).lower():
         return ErrorCategory.DATABASE
@@ -367,7 +368,7 @@ class BaseService(ABC, Generic[T]):
         """Override this method for custom shutdown."""
         pass
 
-    def _validate_input(self, data: Dict[str, Any], required_fields: list) -> None:
+    def _validate_input(self, data: dict[str, Any], required_fields: list) -> None:
         """Validate that required fields are present."""
         missing = [f for f in required_fields if f not in data or data[f] is None]
         if missing:
@@ -376,7 +377,7 @@ class BaseService(ABC, Generic[T]):
                 details={"missing_fields": missing},
             )
 
-    def health_check(self) -> Dict[str, Any]:
+    def health_check(self) -> dict[str, Any]:
         """Return service health status."""
         return {
             "service": self._service_name,

@@ -8,7 +8,8 @@ for PostgreSQL database operations.
 import asyncio
 import os
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator, Optional, List, Any, Dict
+from typing import Any
+from collections.abc import AsyncGenerator
 
 import asyncpg
 from asyncpg import Pool, Connection
@@ -40,7 +41,7 @@ class DatabaseManager:
         if self._initialized:
             return
 
-        self._pool: Optional[Pool] = None
+        self._pool: Pool | None = None
         self._config = settings.database
         self._initialized = True
         self._closing = False
@@ -143,7 +144,7 @@ class DatabaseManager:
 
     @asynccontextmanager
     async def acquire(
-        self, timeout: Optional[float] = None
+        self, timeout: float | None = None
     ) -> AsyncGenerator[Connection, None]:
         """Acquire a connection from the pool with retry logic."""
         if self._pool is None:
@@ -191,38 +192,37 @@ class DatabaseManager:
         deferrable: bool = False,
     ) -> AsyncGenerator[Connection, None]:
         """Execute operations within a transaction."""
-        async with self.acquire() as conn:
-            async with conn.transaction(
-                isolation=isolation, readonly=readonly, deferrable=deferrable
-            ):
-                yield conn
+        async with self.acquire() as conn, conn.transaction(
+            isolation=isolation, readonly=readonly, deferrable=deferrable
+        ):
+            yield conn
 
-    async def execute(self, query: str, *args, timeout: Optional[float] = None) -> str:
+    async def execute(self, query: str, *args, timeout: float | None = None) -> str:
         """Execute a query and return the status."""
         async with self.acquire() as conn:
             return await conn.execute(query, *args, timeout=timeout)
 
     async def fetch(
-        self, query: str, *args, timeout: Optional[float] = None
-    ) -> List[asyncpg.Record]:
+        self, query: str, *args, timeout: float | None = None
+    ) -> list[asyncpg.Record]:
         """Fetch multiple rows."""
         async with self.acquire() as conn:
             return await conn.fetch(query, *args, timeout=timeout)
 
     async def fetchrow(
-        self, query: str, *args, timeout: Optional[float] = None
-    ) -> Optional[asyncpg.Record]:
+        self, query: str, *args, timeout: float | None = None
+    ) -> asyncpg.Record | None:
         """Fetch a single row."""
         async with self.acquire() as conn:
             return await conn.fetchrow(query, *args, timeout=timeout)
 
-    async def fetchval(self, query: str, *args, timeout: Optional[float] = None) -> Any:
+    async def fetchval(self, query: str, *args, timeout: float | None = None) -> Any:
         """Fetch a single value."""
         async with self.acquire() as conn:
             return await conn.fetchval(query, *args, timeout=timeout)
 
     async def executemany(
-        self, query: str, args: List[tuple], timeout: Optional[float] = None
+        self, query: str, args: list[tuple], timeout: float | None = None
     ) -> None:
         """Execute a query multiple times with different arguments."""
         async with self.acquire() as conn:
@@ -238,7 +238,7 @@ class DatabaseManager:
         """Get number of free connections in pool."""
         return self._pool.get_idle_size() if self._pool else 0
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Perform a health check on the database."""
         try:
             start_time = asyncio.get_event_loop().time()
@@ -276,7 +276,7 @@ async def close_db() -> None:
     await db.close()
 
 
-async def health_check() -> Dict[str, Any]:
+async def health_check() -> dict[str, Any]:
     """Check database health."""
     return await db.health_check()
 

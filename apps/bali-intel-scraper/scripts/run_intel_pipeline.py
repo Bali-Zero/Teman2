@@ -23,8 +23,8 @@ import os
 import sys
 from pathlib import Path
 from datetime import datetime
-from typing import List, Dict, Optional
 import subprocess
+import contextlib
 
 # Auto-load .env if present (no dependency on python-dotenv)
 _env_file = Path(__file__).parent.parent / '.env'
@@ -60,7 +60,7 @@ PIPELINE_STEPS = [
 ]
 
 class IntelPipeline:
-    def __init__(self, config: Dict):
+    def __init__(self, config: dict):
         self.config = config
         self.script_dir = Path(__file__).parent
         self.project_root = self.script_dir.parent
@@ -99,7 +99,7 @@ class IntelPipeline:
             json.dump(self.state, f, indent=2)
         self.log(f'State saved: {self.state_file.name}')
 
-    def update_step_status(self, step: str, status: str, data: Dict = None):
+    def update_step_status(self, step: str, status: str, data: dict = None):
         """Update step status in state"""
         self.state['steps'][step] = {
             'status': status,
@@ -474,18 +474,14 @@ class IntelPipeline:
                         # Find last complete object
                         last_brace = truncated.rfind('}')
                         if last_brace > 0:
-                            try:
+                            with contextlib.suppress(json.JSONDecodeError):
                                 results = json.loads(truncated[:last_brace + 1] + ']')
-                            except json.JSONDecodeError:
-                                pass
 
                 # If we couldn't parse array, try individual objects via regex
                 if not results:
                     for m in re.finditer(r'\{[^}]+\}', output):
-                        try:
+                        with contextlib.suppress(json.JSONDecodeError):
                             results.append(json.loads(m.group()))
-                        except json.JSONDecodeError:
-                            pass
 
                 # Map results back to articles
                 result_by_id = {}
@@ -564,7 +560,7 @@ class IntelPipeline:
         })
         return True
 
-    def _qwen_filter_fallback(self, articles: List[Dict]) -> bool:
+    def _qwen_filter_fallback(self, articles: list[dict]) -> bool:
         """Fallback when Ollama is unavailable: pass all with default scores."""
         for a in articles:
             # Ensure quality_score is always set (downstream steps depend on it)
@@ -1051,7 +1047,7 @@ class IntelPipeline:
     # Article selection for enrichment
     # ------------------------------------------------------------------
 
-    def _select_top_articles(self, articles: List[Dict], max_count: int) -> List[Dict]:
+    def _select_top_articles(self, articles: list[dict], max_count: int) -> list[dict]:
         """Select top articles for enrichment using tier + score + category diversity.
 
         Priority: T1 first, then T2 by score, then T3.
@@ -1068,7 +1064,7 @@ class IntelPipeline:
         )
 
         # Ensure category diversity: pick best from each category first
-        selected: list[Dict] = []
+        selected: list[dict] = []
         selected_ids: set[str] = set()
         categories_seen: set[str] = set()
 
@@ -1149,7 +1145,7 @@ class IntelPipeline:
             self.update_step_status('3_enrichment', 'failed', {'error': str(e)})
             return False
 
-    def _generate_intel_digest(self, enriched: List[Dict], unenriched: List[Dict]) -> Optional[Dict]:
+    def _generate_intel_digest(self, enriched: list[dict], unenriched: list[dict]) -> dict | None:
         """Generate a recap article summarizing ALL scraped topics.
 
         This gives visibility to unenriched/scartati articles so the user
@@ -1904,7 +1900,7 @@ IMPORTANT:
         self.update_step_status('7_publishing', 'completed')
         return True
 
-    def _fetch_intel_radar_findings(self, limit: int = 50) -> tuple[List[Dict], int]:
+    def _fetch_intel_radar_findings(self, limit: int = 50) -> tuple[list[dict], int]:
         """Fetch unprocessed-by-scraper findings from intel_radar_findings table.
 
         Atomically picks up to ``limit`` rows where ``processed=true`` AND
@@ -1950,7 +1946,7 @@ IMPORTANT:
 
         import asyncio
 
-        async def _fetch_and_mark() -> tuple[List[Dict], int]:
+        async def _fetch_and_mark() -> tuple[list[dict], int]:
             conn = await asyncpg.connect(dsn, timeout=10)
             try:
                 async with conn.transaction():
@@ -2003,7 +1999,7 @@ IMPORTANT:
             self.log(f'intel_radar_findings fetch failed: {e}', 'WARN')
             return [], 0
 
-    def _mock_scraped_articles(self) -> List[Dict]:
+    def _mock_scraped_articles(self) -> list[dict]:
         """Mock data for testing pipeline"""
         return [
             {

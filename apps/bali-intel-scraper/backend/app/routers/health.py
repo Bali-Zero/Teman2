@@ -9,7 +9,7 @@ Provides:
 """
 
 import time
-from typing import Dict, Any, List
+from typing import Any
 
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel
@@ -31,7 +31,7 @@ class HealthStatus(BaseModel):
     timestamp: str
     version: str = "1.0.0"
     uptime_seconds: float
-    checks: Dict[str, Any] = {}
+    checks: dict[str, Any] = {}
 
 
 class ComponentHealth(BaseModel):
@@ -39,20 +39,20 @@ class ComponentHealth(BaseModel):
 
     status: str
     response_time_ms: float
-    details: Dict[str, Any] = {}
+    details: dict[str, Any] = {}
 
 
 # Track application start time
 _start_time = time.time()
 
 
-async def get_basic_health() -> Dict[str, Any]:
+async def get_basic_health() -> dict[str, Any]:
     """Basic health check - lightweight."""
     return {"status": "healthy", "uptime_seconds": round(time.time() - _start_time, 2)}
 
 
 @router.get("/live", status_code=status.HTTP_200_OK)
-async def liveness_probe() -> Dict[str, str]:
+async def liveness_probe() -> dict[str, str]:
     """
     Kubernetes liveness probe.
 
@@ -63,7 +63,7 @@ async def liveness_probe() -> Dict[str, str]:
 
 
 @router.get("/ready", status_code=status.HTTP_200_OK)
-async def readiness_probe() -> Dict[str, Any]:
+async def readiness_probe() -> dict[str, Any]:
     """
     Kubernetes readiness probe.
 
@@ -111,7 +111,7 @@ async def deep_health_check() -> HealthStatus:
     Returns detailed health information about all system components.
     """
     start_time = time.time()
-    checks: Dict[str, Any] = {}
+    checks: dict[str, Any] = {}
     all_healthy = True
 
     # Database check
@@ -239,7 +239,7 @@ async def deep_health_check() -> HealthStatus:
 
 
 @router.get("/stats")
-async def get_stats() -> Dict[str, Any]:
+async def get_stats() -> dict[str, Any]:
     """Get runtime statistics."""
     from backend.core.task_queue import task_queue
     from backend.core.circuit_breaker import get_registry as get_cb_registry
@@ -254,7 +254,7 @@ async def get_stats() -> Dict[str, Any]:
 
 
 @router.post("/reset")
-async def reset_system() -> Dict[str, str]:
+async def reset_system() -> dict[str, str]:
     """
     Reset all circuit breakers and rate limiters.
     Admin use only.
@@ -287,7 +287,7 @@ class HealthTrackingMiddleware:
         self.app = app
         self.request_count = 0
         self.error_count = 0
-        self.request_times: List[float] = []
+        self.request_times: list[float] = []
 
     async def __call__(self, scope, receive, send):
         if scope["type"] != "http":
@@ -317,7 +317,7 @@ class HealthTrackingMiddleware:
             if len(self.request_times) > 1000:
                 self.request_times = self.request_times[-1000:]
 
-    def get_metrics(self) -> Dict[str, Any]:
+    def get_metrics(self) -> dict[str, Any]:
         """Get request metrics."""
         if not self.request_times:
             return {

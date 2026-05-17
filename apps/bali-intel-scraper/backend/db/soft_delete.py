@@ -5,7 +5,6 @@ Allows records to be marked as deleted without removing them.
 """
 
 from datetime import datetime
-from typing import Optional
 
 from backend.db.connection import db
 from backend.core.logger import get_logger, LogAction
@@ -19,7 +18,7 @@ class SoftDeleteMixin:
     _table_name: str = ""
 
     async def soft_delete(
-        self, record_id: str, deleted_by: Optional[str] = None
+        self, record_id: str, deleted_by: str | None = None
     ) -> bool:
         """Soft delete a record."""
         try:
@@ -115,7 +114,7 @@ class SoftDeleteManager:
     """Manage soft delete for any table."""
 
     async def soft_delete(
-        self, table_name: str, record_id: str, deleted_by: Optional[str] = None
+        self, table_name: str, record_id: str, deleted_by: str | None = None
     ) -> bool:
         """Soft delete a record from any table."""
         try:

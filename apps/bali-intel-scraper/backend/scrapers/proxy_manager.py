@@ -8,13 +8,13 @@ import asyncio
 import random
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional, Set
 from urllib.parse import urlparse
 from datetime import datetime
 
 import aiohttp
 
 from backend.core.logger import get_logger, LogAction
+import contextlib
 
 logger = get_logger(__name__, component="proxy_manager")
 
@@ -33,16 +33,16 @@ class Proxy:
     """Proxy configuration and status."""
 
     url: str
-    username: Optional[str] = None
-    password: Optional[str] = None
-    country: Optional[str] = None
+    username: str | None = None
+    password: str | None = None
+    country: str | None = None
     status: ProxyStatus = ProxyStatus.HEALTHY
     fail_count: int = 0
     success_count: int = 0
-    last_used: Optional[datetime] = None
-    last_checked: Optional[datetime] = None
+    last_used: datetime | None = None
+    last_checked: datetime | None = None
     response_time_ms: float = 0.0
-    banned_hosts: Set[str] = None
+    banned_hosts: set[str] = None
 
     def __post_init__(self):
         if self.banned_hosts is None:
@@ -61,7 +61,7 @@ class Proxy:
             return 0.0
         return self.fail_count / total
 
-    def to_playwright_format(self) -> Dict[str, str]:
+    def to_playwright_format(self) -> dict[str, str]:
         """Convert to Playwright proxy format."""
         parsed = urlparse(self.url)
         proxy_dict = {"server": f"{parsed.scheme}://{parsed.hostname}:{parsed.port}"}
@@ -96,17 +96,17 @@ class ProxyManager:
         self.health_check_interval = health_check_interval
         self.cooldown_period = cooldown_period
 
-        self._proxies: List[Proxy] = []
-        self._proxy_index: Dict[str, Proxy] = {}
+        self._proxies: list[Proxy] = []
+        self._proxy_index: dict[str, Proxy] = {}
         self._lock = asyncio.Lock()
-        self._health_check_task: Optional[asyncio.Task] = None
+        self._health_check_task: asyncio.Task | None = None
 
     def add_proxy(
         self,
         url: str,
-        username: Optional[str] = None,
-        password: Optional[str] = None,
-        country: Optional[str] = None,
+        username: str | None = None,
+        password: str | None = None,
+        country: str | None = None,
     ) -> Proxy:
         """Add a proxy to the pool."""
         proxy = Proxy(url=url, username=username, password=password, country=country)
@@ -138,10 +138,10 @@ class ProxyManager:
 
     async def get_proxy(
         self,
-        target_host: Optional[str] = None,
-        country: Optional[str] = None,
+        target_host: str | None = None,
+        country: str | None = None,
         strategy: str = "round_robin",
-    ) -> Optional[Proxy]:
+    ) -> Proxy | None:
         """Get a proxy using specified strategy."""
         async with self._lock:
             available = [
@@ -208,7 +208,7 @@ class ProxyManager:
                     proxy.status = ProxyStatus.HEALTHY
 
     async def report_failure(
-        self, proxy_url: str, error: Optional[str] = None, host: Optional[str] = None
+        self, proxy_url: str, error: str | None = None, host: str | None = None
     ) -> None:
         """Report failed proxy usage."""
         async with self._lock:
@@ -252,10 +252,8 @@ class ProxyManager:
         """Stop health check task."""
         if self._health_check_task:
             self._health_check_task.cancel()
-            try:
+            with contextlib.suppress(asyncio.CancelledError):
                 await self._health_check_task
-            except asyncio.CancelledError:
-                pass
             self._health_check_task = None
 
     async def _health_check_loop(self) -> None:
@@ -296,23 +294,22 @@ class ProxyManager:
         try:
             start = asyncio.get_event_loop().time()
 
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    test_url,
-                    proxy=proxy.to_aiohttp_format(),
-                    timeout=aiohttp.ClientTimeout(total=30),
-                ) as response:
-                    await response.text()
+            async with aiohttp.ClientSession() as session, session.get(
+                test_url,
+                proxy=proxy.to_aiohttp_format(),
+                timeout=aiohttp.ClientTimeout(total=30),
+            ) as response:
+                await response.text()
 
-                    response_time = (asyncio.get_event_loop().time() - start) * 1000
+                response_time = (asyncio.get_event_loop().time() - start) * 1000
 
-                    # Mark as healthy
-                    proxy.status = ProxyStatus.HEALTHY
-                    proxy.response_time_ms = response_time
+                # Mark as healthy
+                proxy.status = ProxyStatus.HEALTHY
+                proxy.response_time_ms = response_time
 
-                    # Reset fail count on successful check
-                    if proxy.fail_count > 0:
-                        proxy.fail_count = max(0, proxy.fail_count - 1)
+                # Reset fail count on successful check
+                if proxy.fail_count > 0:
+                    proxy.fail_count = max(0, proxy.fail_count - 1)
 
         except Exception as e:
             logger.warning(
@@ -327,7 +324,7 @@ class ProxyManager:
             else:
                 proxy.status = ProxyStatus.DEGRADED
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """Get proxy pool statistics."""
         status_counts = {}
         for proxy in self._proxies:

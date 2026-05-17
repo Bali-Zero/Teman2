@@ -8,7 +8,6 @@ Implements time-based partitioning for tables with high volume:
 """
 
 from datetime import datetime, timedelta
-from typing import List
 
 from backend.db.connection import db
 from backend.core.logger import get_logger, LogAction
@@ -155,7 +154,7 @@ class TablePartitioner:
 
         return dropped
 
-    async def get_partition_stats(self, table_name: str) -> List[dict]:
+    async def get_partition_stats(self, table_name: str) -> list[dict]:
         """Get statistics for table partitions."""
         stats_sql = f"""
         SELECT 

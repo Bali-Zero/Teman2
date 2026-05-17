@@ -10,7 +10,6 @@ Scores articles based on:
 
 import re
 from dataclasses import dataclass
-from typing import List
 
 from backend.core.logger import get_logger
 
@@ -27,7 +26,7 @@ class QualityScore:
     credibility: float
     uniqueness: float
     is_spam: bool
-    issues: List[str]
+    issues: list[str]
 
 
 class QualityScorer:
@@ -257,9 +256,7 @@ class QualityScorer:
         """Determine if content should be filtered."""
         if score.is_spam:
             return True
-        if score.overall < min_quality:
-            return True
-        return False
+        return score.overall < min_quality
 
 
 scorer = QualityScorer()

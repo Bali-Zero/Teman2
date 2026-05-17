@@ -6,7 +6,6 @@ Analyzes text sentiment using AI and traditional NLP methods.
 
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict
 import json
 
 from backend.services.ai_engine import ai_engine, AIProvider
@@ -34,8 +33,8 @@ class SentimentResult:
     score: float  # -1.0 to 1.0
     label: SentimentLabel
     confidence: float
-    aspects: Dict[str, float]  # Aspect-based sentiment
-    emotions: Dict[str, float]  # Emotion detection
+    aspects: dict[str, float]  # Aspect-based sentiment
+    emotions: dict[str, float]  # Emotion detection
 
 
 class SentimentAnalyzer:
@@ -214,7 +213,7 @@ Text: {text[:2000]}"""
         else:
             return SentimentLabel.VERY_POSITIVE
 
-    async def analyze_article(self, title: str, content: str) -> Dict:
+    async def analyze_article(self, title: str, content: str) -> dict:
         """Analyze sentiment of full article."""
         title_sentiment = await self.analyze(title)
         content_sentiment = await self.analyze(content[:5000])
