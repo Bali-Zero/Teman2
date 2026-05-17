@@ -71,6 +71,7 @@ async def lifespan_light(app: FastAPI):
 
 def create_api_app() -> FastAPI:
     from fastapi import HTTPException
+    from fastapi.responses import ORJSONResponse
     from starlette.exceptions import HTTPException as StarletteHTTPException
 
     from backend.app.core.config import settings
@@ -92,6 +93,7 @@ def create_api_app() -> FastAPI:
         lifespan=lifespan_light,
         docs_url="/docs" if getattr(settings, "ENVIRONMENT", "production") != "production" else None,
         redoc_url=None,
+        default_response_class=ORJSONResponse,  # 3-10× faster JSON serialization (audit modernization 2026-05-18)
     )
 
     api.add_exception_handler(HTTPException, http_exception_handler)
