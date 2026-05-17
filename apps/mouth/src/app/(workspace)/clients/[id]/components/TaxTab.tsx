@@ -19,6 +19,7 @@ import { fileToBase64 } from "@/lib/utils";
 import type { Client, ClientCompanyLink } from "@/lib/api/crm/crm.types";
 import { lkpmApi } from "@/lib/api/workspace/lkpm.api";
 import type { LKPMBatchItem, LKPMReceipt } from "@/lib/api/portal/portal.types";
+import { AiSummaryCard } from "./AiSummaryCard";
 
 // ============================================
 // TAX CONSULTANT DROPDOWN (Bali Zero tax team)
@@ -958,6 +959,8 @@ export function TaxTab({
 
   return (
     <div className="space-y-6">
+      {/* AI Summary (CRM-Guardian L1 cross-folder, tax slice) */}
+      <AiSummaryCard clientId={clientId} section="tax" />
       {/* Header with year selector */}
       <div className="flex items-center justify-between">
         <div>

@@ -18,6 +18,7 @@ import { api } from "@/lib/api";
 import type { ClientProfile } from "@/lib/api/crm/crm.types";
 import { STATUS_COLORS, ALERT_COLORS } from "./constants";
 import { formatCurrency } from "./utils";
+import { AiSummaryCard } from "./AiSummaryCard";
 
 const PRIORITY_BADGES: Record<string, { label: string; className: string }> = {
   urgent: { label: "🔥 urgent", className: "bg-red-500/15 text-red-400" },
@@ -108,6 +109,8 @@ export function ProcessTab({
 
   return (
     <div className="space-y-4">
+      {/* AI Summary (CRM-Guardian L1 cross-folder, red flags + signals) */}
+      <AiSummaryCard clientId={clientId} section="process" />
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-[var(--bz-text-1)]">
           All Process

@@ -25,6 +25,7 @@ import type {
   PassportOcrResult,
   TaxCompanyPilotKey,
   TaxCompanyPilotMap,
+  AiSummaryResponse,
 } from "./crm.types";
 import type {
   RequiredDocument,
@@ -464,6 +465,27 @@ export class CrmApi {
   async getClientSummary(clientId: number): Promise<ClientSummary> {
     return this.client.request<ClientSummary>(
       `/api/crm/clients/${clientId}/summary`,
+      undefined,
+      10000,
+    );
+  }
+
+  /**
+   * Get AI-generated L1 cross-folder summary for a client.
+   *
+   * Produced by the CRM-Guardian gemini CLI worker:
+   *   scripts/crm_guardian_gemini_cli_worker.py
+   *
+   * Returns one of three states (per response.status):
+   *   - 'available'     → summary populated, render full L1ClientSummary
+   *   - 'not_generated' → worker never ran on this client; show CTA
+   *   - 'pending'       → queue row in 'pending' or 'running' state
+   *
+   * 404 if client missing or RBAC denies.
+   */
+  async getClientAiSummary(clientId: number): Promise<AiSummaryResponse> {
+    return this.client.request<AiSummaryResponse>(
+      `/api/crm/clients/${clientId}/ai-summary`,
       undefined,
       10000,
     );
