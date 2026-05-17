@@ -25,6 +25,7 @@ from qdrant_client.http import exceptions as qdrant_exceptions
 from backend.app.core.config import settings
 from backend.app.models import TierLevel
 from backend.core.cache import cached
+from backend.core.collection_registry import canonicalize_collection_name
 from backend.services.ingestion.collection_manager import CollectionManager
 from backend.services.ingestion.collection_warmup_service import CollectionWarmupService
 from backend.services.misc.cultural_insights_service import CulturalInsightsService
@@ -262,6 +263,14 @@ class SearchService:
             routing_info.setdefault("active_domains", [])
             return routing_info
 
+        def canonicalize_collections(collections: list[str]) -> list[str]:
+            canonical: list[str] = []
+            for collection in collections:
+                resolved = canonicalize_collection_name(collection)
+                if resolved and resolved not in canonical:
+                    canonical.append(resolved)
+            return canonical
+
         if collection_override:
             return legacy_route()
 
@@ -277,21 +286,26 @@ class SearchService:
                     decision.surface,
                 )
                 return legacy_route()
-            collections = decision.collections if enable_fallbacks else [decision.primary_collection]
+            primary_collection = canonicalize_collection_name(decision.primary_collection)
+            collections = canonicalize_collections(
+                decision.collections if enable_fallbacks else [decision.primary_collection]
+            )
+            if not primary_collection or not collections:
+                return legacy_route()
             logger.info(
                 "SurfaceRouter selected collection=%s surface=%s domain=%s confidence=%.2f layer=%s",
-                decision.primary_collection,
+                primary_collection,
                 decision.surface,
                 decision.domain,
                 decision.confidence,
                 decision.layer_used,
             )
             return {
-                "collection_name": decision.primary_collection,
+                "collection_name": primary_collection,
                 "collections": collections,
                 "confidence": decision.confidence,
                 "is_pricing": decision.domain == "pricing",
-                "is_multi_domain": len(decision.collections) > 1,
+                "is_multi_domain": len(collections) > 1,
                 "active_domains": [decision.domain],
                 "surface": decision.surface,
                 "surface_layer": decision.layer_used,
