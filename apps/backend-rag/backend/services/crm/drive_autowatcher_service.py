@@ -205,23 +205,32 @@ def _facts_from_evidence(
     missing = _missing_groups(groups, evidence.kg_edge_count)
 
     identity_detail = (
-        f"{evidence.company_name} has {len(evidence.documents)} indexed source "
-        f"document{'s' if len(evidence.documents) != 1 else ''} in the CRM workspace."
+        f"{evidence.company_name} is an operational dossier with {len(evidence.documents)} "
+        f"indexed source document{'s' if len(evidence.documents) != 1 else ''} across "
+        f"{_coverage_sentence(groups)}."
     )
     person_detail = (
-        f"Start from {people}; then open {evidence.company_name} through the confirmed CRM relationship."
+        f"Start from {people}; then read {evidence.company_name} through the confirmed "
+        "CRM relationship, connecting roles, residency, and tax ownership before any "
+        "client-facing use."
     )
     compliance_detail = (
-        f"Evidence currently covers {_coverage_sentence(groups)}. "
-        f"Tax owner: {evidence.tax_owner}."
+        f"The tax posture is visible at evidence level: {_coverage_sentence(groups)}. "
+        f"Tax owner: {evidence.tax_owner}. Treat this as an internal consultant reading, "
+        "not a compliance certification."
     )
     gap_detail = (
-        "Missing or weak evidence: " + ", ".join(missing) + "."
+        "Document review gaps to keep visible: " + ", ".join(missing) + "."
         if missing
-        else "Company, tax, person, and relationship evidence are all present for team review."
+        else (
+            "Document review gaps: no company, tax, person, or relationship document "
+            "gaps are visible in the indexed evidence."
+        )
     )
     next_action_detail = (
-        "Review this draft, confirm the roles and source documents, then approve it for the Business Story."
+        "Consultant prompts: review LKPM or capital reporting, investor visa role "
+        "alignment, property or operating permits, and the monthly tax workflow before "
+        "the story becomes client-facing."
     )
 
     return [
@@ -229,7 +238,9 @@ def _facts_from_evidence(
             category="identity",
             label="Company evidence",
             detail=_clean_detail(identity_detail),
-            source_file_ids=_source_ids_for_groups(evidence.documents, ("company", "tax", "person")),
+            source_file_ids=_source_ids_for_groups(
+                evidence.documents, ("company", "tax", "person")
+            ),
             confidence=_confidence_for(evidence.documents, evidence.kg_edge_count),
         ),
         TaxCompanyPilotWorkspaceAiFact(
@@ -383,11 +394,7 @@ def _source_ids_for_groups(
     documents: list[DriveEvidenceDocument],
     groups: tuple[str, ...],
 ) -> list[str]:
-    return [
-        document.file_id
-        for document in documents
-        if _document_group(document) in groups
-    ][:12]
+    return [document.file_id for document in documents if _document_group(document) in groups][:12]
 
 
 def _ordered_file_ids(documents: list[DriveEvidenceDocument]) -> list[str]:
@@ -437,7 +444,11 @@ def _human_join(items: list[str], *, fallback: str) -> str:
 
 def _clean_detail(value: str) -> str:
     no_urls = re.sub(r"https?://\S+", "[internal source]", value)
-    return no_urls.replace("Drive", "source").replace("OCR", "document reading").replace("KG", "relationship")
+    return (
+        no_urls.replace("Drive", "source")
+        .replace("OCR", "document reading")
+        .replace("KG", "relationship")
+    )
 
 
 def _append_unique(items: list[str], value: str) -> None:

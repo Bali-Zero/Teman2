@@ -85,7 +85,7 @@ async def auto_approve_workspace_ai_snapshot_drafts(
     pool: asyncpg.Pool = Depends(get_database_pool),
     _current_user: dict = Depends(require_team_member),
 ) -> WorkspaceAiAutoApproveResult:
-    """Dry-run or apply policy auto-approval for safe Workspace AI drafts."""
+    """Dry-run or apply policy auto-approval for reviewed Workspace AI stories."""
     return await auto_approve_workspace_ai_snapshots(
         pool,
         limit=payload.limit,
@@ -93,7 +93,9 @@ async def auto_approve_workspace_ai_snapshot_drafts(
     )
 
 
-@router.post("/workspace-ai-snapshots/{snapshot_id}/approve", response_model=WorkspaceAiSnapshotResponse)
+@router.post(
+    "/workspace-ai-snapshots/{snapshot_id}/approve", response_model=WorkspaceAiSnapshotResponse
+)
 async def approve_workspace_ai_snapshot_draft(
     snapshot_id: str,
     pool: asyncpg.Pool = Depends(get_database_pool),
