@@ -375,3 +375,81 @@ class TestDisabledMode:
     def test_enabled_mode_flag(self):
         r = SurfaceRouter(enabled=True)
         assert r.enabled is True
+
+
+# ---------------------------------------------------------------------------
+# 11. KG surface (R5 Phase 4 — Neo4j Knowledge Graph as 8th surface)
+# ---------------------------------------------------------------------------
+
+class TestKGSurface:
+    """KG surface routes entity/relationship queries to KGOrchestrator (Neo4j).
+
+    KG surface is flagged is_kg_surface=True so callers skip Qdrant collections.
+    No primary_collection is required (primary_collection = "" sentinel).
+    """
+
+    QUERIES = [
+        # Entity resolution
+        "chi è il direttore di PT XYZ Bali?",
+        "who is the owner of this company in Indonesia?",
+        "siapa direktur utama perusahaan ini?",
+        # Relationship traversal
+        "qual è la relazione tra permesso di lavoro e KITAS?",
+        "what is the relationship between KBLI and business license?",
+        "hubungan antara NIB dan SIUP di Indonesia",
+        # Structure / hierarchy
+        "struttura societaria PT PMA Bali",
+        "organigramma aziendale per PMA",
+        "company ownership structure Indonesia",
+        # Graph-specific patterns
+        "chi conosce questo cliente?",
+        "collegato a quale pratica?",
+        "linked to which visa application?",
+        "graph traversal company directors",
+        "entity relationship company founder",
+    ]
+
+    def test_all_kg_queries_route_to_kg_surface(self, router):
+        for q in self.QUERIES:
+            decision = _route(router, q)
+            assert decision.surface == Surface.KG, (
+                f"Query '{q[:60]}' routed to {decision.surface}, expected kg"
+            )
+
+    def test_kg_is_kg_surface_flag(self, router):
+        d = _route(router, "chi è il direttore di questa azienda?")
+        assert d.is_kg_surface is True
+
+    def test_kg_not_local_only(self, router):
+        d = _route(router, "struttura societaria PT PMA")
+        assert d.is_local_only is False
+
+    def test_kg_primary_collection_empty(self, router):
+        d = _route(router, "entity relationship company founder")
+        assert d.primary_collection == ""
+
+    def test_kg_collections_empty(self, router):
+        d = _route(router, "organigramma aziendale")
+        assert d.collections == []
+
+    def test_kg_layer_is_keyword(self, router):
+        d = _route(router, "chi conosce questo cliente?")
+        assert d.layer_used == 1
+
+    def test_kg_confidence_above_threshold(self, router):
+        d = _route(router, "struttura societaria azienda Indonesia")
+        assert d.confidence >= 0.80
+
+    def test_kg_surface_constant_exists(self):
+        assert hasattr(Surface, "KG")
+        assert Surface.KG == "kg"
+
+    def test_kg_decision_has_domain(self, router):
+        d = _route(router, "relationship between KBLI and business permit")
+        assert d.domain == "kg"
+
+    def test_kg_latency_keyword_path(self, router):
+        start = time.perf_counter()
+        _route(router, "entity relationship company directors Indonesia")
+        elapsed_ms = (time.perf_counter() - start) * 1000
+        assert elapsed_ms < 200, f"KG keyword path too slow: {elapsed_ms:.1f}ms"
