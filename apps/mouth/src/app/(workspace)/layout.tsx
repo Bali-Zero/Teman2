@@ -10,6 +10,7 @@ import { api } from "@/lib/api";
 import { logger } from "@/lib/logger";
 import { ErrorBoundary } from "@/components/optimization";
 import { CellWidget } from "@/components/cell/CellWidget";
+import { ZantaraWidget } from "@/components/workspace/ZantaraWidget";
 import { WorkspaceAssistant } from "@/components/workspace/WorkspaceAssistant";
 import { KitaCommandPalette } from "@/components/workspace/KitaCommandPalette";
 import { I18nProvider } from "@/i18n";
@@ -36,6 +37,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
   const mobileSidebarRef = useRef<HTMLDivElement | null>(null);
   const mobileMenuToggleRef = useRef<HTMLButtonElement | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isZantaraOpen, setIsZantaraOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [user, setUser] = useState({
     name: "",
@@ -163,6 +165,18 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
 
   // isOnline status is now managed server-side (PANOPTICON)
 
+  // Cmd+J shortcut — toggle Zantara widget
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "j") {
+        e.preventDefault();
+        setIsZantaraOpen((p) => !p);
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, []);
+
   // Handle logout
   const handleLogout = async () => {
     try {
@@ -251,86 +265,93 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
 
   return (
     <I18nProvider>
-    <ToastProvider>
-      <a href="#main-content" className="bz-skip-link">
-        Skip to main content
-      </a>
-      <div className="min-h-screen bg-transparent">
-        {/* Desktop Sidebar — labelled landmark so AT can list it */}
-        <div className="hidden md:block">
-          <AppSidebar
-            user={user}
-            unreadWhatsApp={0}
-            onLogout={handleLogout}
-            ariaLabel="Primary"
-          />
-        </div>
-
-        {/* Mobile Sidebar Overlay (dialog) */}
-        {isMobileMenuOpen && (
-          <>
-            <div
-              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden transition-all duration-300"
-              onClick={() => setIsMobileMenuOpen(false)}
-              aria-hidden="true"
+      <ToastProvider>
+        <a href="#main-content" className="bz-skip-link">
+          Skip to main content
+        </a>
+        <div className="min-h-screen bg-transparent">
+          {/* Desktop Sidebar — labelled landmark so AT can list it */}
+          <div className="hidden md:block">
+            <AppSidebar
+              user={user}
+              unreadWhatsApp={0}
+              onLogout={handleLogout}
+              ariaLabel="Primary"
+              onZantaraToggle={() => setIsZantaraOpen((p) => !p)}
+              isZantaraOpen={isZantaraOpen}
             />
-            <div
-              ref={mobileSidebarRef}
-              role="dialog"
-              aria-modal="true"
-              aria-label="Workspace navigation"
-              className="fixed inset-y-0 left-0 z-50 md:hidden"
-            >
-              <AppSidebar
-                user={user}
-                unreadWhatsApp={0}
-                onLogout={handleLogout}
-                ariaLabel="Primary (mobile)"
+          </div>
+
+          {/* Mobile Sidebar Overlay (dialog) */}
+          {isMobileMenuOpen && (
+            <>
+              <div
+                className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 md:hidden transition-all duration-300"
+                onClick={() => setIsMobileMenuOpen(false)}
+                aria-hidden="true"
               />
-            </div>
-          </>
-        )}
+              <div
+                ref={mobileSidebarRef}
+                role="dialog"
+                aria-modal="true"
+                aria-label="Workspace navigation"
+                className="fixed inset-y-0 left-0 z-50 md:hidden"
+              >
+                <AppSidebar
+                  user={user}
+                  unreadWhatsApp={0}
+                  onLogout={handleLogout}
+                  ariaLabel="Primary (mobile)"
+                  onZantaraToggle={() => setIsZantaraOpen((p) => !p)}
+                  isZantaraOpen={isZantaraOpen}
+                />
+              </div>
+            </>
+          )}
 
-        {/* Main Content */}
-        <div className="md:ml-[216px] min-h-screen flex flex-col transition-all duration-300">
-          {/* Header */}
-          <Header
-            userName={user.name}
-            onMobileMenuToggle={handleMobileMenuToggle}
-            isMobileMenuOpen={isMobileMenuOpen}
-            whatsappUnread={0}
-            mobileMenuToggleRef={mobileMenuToggleRef}
-          />
+          {/* Main Content */}
+          <div className="md:ml-[216px] min-h-screen flex flex-col transition-all duration-300">
+            {/* Header */}
+            <Header
+              userName={user.name}
+              onMobileMenuToggle={handleMobileMenuToggle}
+              isMobileMenuOpen={isMobileMenuOpen}
+              whatsappUnread={0}
+              mobileMenuToggleRef={mobileMenuToggleRef}
+            />
 
-          {/* Page Content — single labelled <main> landmark */}
-          <main
-            id="main-content"
-            aria-labelledby="bz-page-title"
-            tabIndex={-1}
-            className="flex-1 p-4 md:p-6 lg:p-8"
-          >
-            {/* Visually-hidden h1 ensures every workspace route satisfies
+            {/* Page Content — single labelled <main> landmark */}
+            <main
+              id="main-content"
+              aria-labelledby="bz-page-title"
+              tabIndex={-1}
+              className="flex-1 p-4 md:p-6 lg:p-8"
+            >
+              {/* Visually-hidden h1 ensures every workspace route satisfies
                 page-has-heading-one, even when the in-page header uses a
                 small visual title or the page itself has no h1. */}
-            <h1 id="bz-page-title" className="sr-only">
-              {pageTitle}
-            </h1>
-            <ErrorBoundary
-              fallback={
-                <div className="p-8 text-center text-white">
-                  Something went wrong. Please refresh the page.
-                </div>
-              }
-            >
-              {children}
-            </ErrorBoundary>
-          </main>
+              <h1 id="bz-page-title" className="sr-only">
+                {pageTitle}
+              </h1>
+              <ErrorBoundary
+                fallback={
+                  <div className="p-8 text-center text-white">
+                    Something went wrong. Please refresh the page.
+                  </div>
+                }
+              >
+                {children}
+              </ErrorBoundary>
+            </main>
+          </div>
         </div>
-      </div>
-      {!isTerminalPage && <CellWidget />}
-      {!isTerminalPage && <WorkspaceAssistant />}
-      <KitaCommandPalette />
-    </ToastProvider>
+        {!isTerminalPage && <CellWidget />}
+        <ZantaraWidget
+          open={isZantaraOpen}
+          onClose={() => setIsZantaraOpen(false)}
+        />
+        <KitaCommandPalette />
+      </ToastProvider>
     </I18nProvider>
   );
 }

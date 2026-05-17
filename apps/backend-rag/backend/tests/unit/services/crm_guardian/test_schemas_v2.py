@@ -27,8 +27,9 @@ from backend.services.crm_guardian.schemas import (
 
 
 class TestSchemaVersion:
-    def test_schema_version_is_v2(self) -> None:
-        assert SCHEMA_VERSION == "v2.0"
+    def test_schema_version_is_v3(self) -> None:
+        """Phase 1.5 (2026-05-18) bumped to v3.0 — same shape, content-grounded prompt."""
+        assert SCHEMA_VERSION == "v3.0"
 
     def test_l1_client_summary_default_schema_version(self) -> None:
         summary = L1ClientSummary(
@@ -38,8 +39,8 @@ class TestSchemaVersion:
             source_file_count=0,
             source_file_fingerprint="deadbeef",
         )
-        assert summary.schema_version == "v2.0"
-        assert summary.prompt_version == "L1_extraction_v2"
+        assert summary.schema_version == "v3.0"
+        assert summary.prompt_version == "L1_extraction_v3"
 
 
 class TestTaxRecord:
@@ -170,8 +171,8 @@ class TestL1ClientSummaryV2:
         as_dict = summary.model_dump(mode="json")
         restored = L1ClientSummary.model_validate(as_dict)
 
-        assert restored.schema_version == "v2.0"
-        assert restored.prompt_version == "L1_extraction_v2"
+        assert restored.schema_version == "v3.0"
+        assert restored.prompt_version == "L1_extraction_v3"
         assert restored.company.legal_name == "PT Sample Bali"
         assert len(restored.company.tax_records) == 1
         assert len(restored.company.lkpm_history) == 1

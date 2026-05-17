@@ -1,9 +1,19 @@
 """L1 semantic summary schemas for CRM-Guardian.
 
-Schema v2.0 (2026-05-16) — produced by Gemini 3 Pro via Panel Side on
-drive.google.com, parsed and validated at worker boundary before writing
-to clients.ai_summary (JSONB). Pydantic guarantees downstream consumers
-(AI Profile Card, alerts, NB-CRM brief generator) can trust the shape.
+Schema v3.0 (2026-05-18) — same shape as v2.0, bumped because the Phase
+1.5 worker feeds Gemini OCR-extracted document content (not just filename
+metadata) and the prompt enforces an identity guardrail. The downstream
+JSON contract is byte-identical to v2; the version bump is a quality
+marker — anything tagged v3 was produced with content grounding, anything
+v2 with metadata-only inference.
+
+v3.0 changes vs v2.0 (Phase 1.5 OCR layer, 2026-05-18):
+  - prompt_version default bumped to L1_extraction_v3
+  - prompt now requires content-over-filename rule, date-provenance rule,
+    identity guardrail (CRM full_name MUST mirror), and recalibrated
+    confidence thresholds (≥0.6 only when compliance fields populated
+    from snippets)
+  - No field added or removed; v2 readers can still parse v3 payloads
 
 v2.0 changes vs v1.0 (Phase 1 cross-folder activation, 2026-05-16):
   - Company.tax_records: list[TaxRecord] — SPT history cross-folder
@@ -12,7 +22,6 @@ v2.0 changes vs v1.0 (Phase 1 cross-folder activation, 2026-05-16):
     contributed to this summary (cliente root + linked companies via
     client_company_links table)
   - Removed narrative_id (Bahasa Indonesia narrative) — English-only output
-  - prompt_version default bumped to L1_extraction_v2
 
 Bumping schema_version: any change to field names/types that is NOT
 backward-compatible requires a new migration to add the new version to
@@ -26,7 +35,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-SCHEMA_VERSION = "v2.0"
+SCHEMA_VERSION = "v3.0"
 
 
 class Identity(BaseModel):
@@ -236,7 +245,7 @@ class L1ClientSummary(BaseModel):
     source_file_fingerprint: str = Field(
         description="SHA256 of sorted (file_id, modifiedTime) — matches ai_summary_file_hash.",
     )
-    prompt_version: str = "L1_extraction_v2"
+    prompt_version: str = "L1_extraction_v3"
 
     # Core semantic layers (all optional — nullable Gemini extraction)
     identity: Identity = Field(default_factory=Identity)
