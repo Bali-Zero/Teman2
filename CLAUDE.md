@@ -60,7 +60,7 @@ ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null 
 | `organism` | See `docs/superpowers/specs/2026-04-22-autonomic-organism-design.md` for full design. |
 | `osint-nexus-ui` |  |
 | `team-agent` |  |
-| `wa-mirror` | **Status**: scaffolding 2026-05-13 (LEVA WA-Mirror, transparent multi-account) |
+| `wa-mirror` | **Status**: capture bridge scaffold + read-only CRM API v1 (2026-05-17) |
 | `web` | Vercel subdomain satellite app. AI chat interface (rewrites / to /chat). |
 | `zantara-media` | Mata Garuda Layer 4.5 — Asset indexer + multi-channel curator. |
 <!-- DOCSYNC:LIVING_ORGANS_END -->
@@ -70,7 +70,7 @@ See [`INDEX.md`](INDEX.md) for the full atlas including packages, tessuti dati, 
 ### Tech Stack
 
 <!-- DOCSYNC:BACKEND_STATS_START -->
-- **Backend:** Python 3.11+, FastAPI, 265 routers, 564 services, 949 test files
+- **Backend:** Python 3.11+, FastAPI, 267 routers, 563 services, 945 test files
 <!-- DOCSYNC:BACKEND_STATS_END -->
 - **Frontend:** Next.js, TypeScript, Tailwind CSS
 - **Databases:** PostgreSQL (relational), Qdrant (vector), Redis (cache)

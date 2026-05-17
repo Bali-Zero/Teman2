@@ -4,7 +4,7 @@
 **Purpose:** Technical reference for AI assistants. For behavioral rules, see `CLAUDE.md`. For the founding principles of the organism, see `SYMBIOSIS.md` (monorepo root).
 
 <!-- DOCSYNC:QUICK_NUMBERS_START -->
-`265 routers · 564 services · 949 tests · 12 Qdrant collections · 104,154 vectors · 108,068 KG nodes`
+`267 routers · 563 services · 945 tests · 12 Qdrant collections · 104,154 vectors · 108,068 KG nodes`
 <!-- DOCSYNC:QUICK_NUMBERS_END -->
 
 > **Role split:** `CLAUDE.md` = how to act (rules, delegation, language, deploy QA). This file = how to build (architecture, code patterns, debugging, workflows).
