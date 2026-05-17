@@ -50,6 +50,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import hashlib
+import io
 import json
 import logging
 import re
@@ -69,11 +70,25 @@ from backend.services.crm_guardian.schemas import (  # noqa: E402
     L1ClientSummary,
     SCHEMA_VERSION,
 )
+from backend.services.crm_guardian.ocr import (  # noqa: E402
+    ExtractionResult,
+    OcrHealth,
+    PRIORITY_DOC_TYPES,
+    check_health as ocr_check_health,
+    extract_file_content,
+    get_cached_content,
+    upsert_cache_row,
+)
 
 LOG = logging.getLogger("crm_guardian.cli_worker")
 
-DEFAULT_PROMPT_FILE = BACKEND_RAG / "backend/services/crm_guardian/prompts/L1_extraction_v2.md"
-PROMPT_VERSION_V2 = "L1_extraction_v2"
+# Phase 1.5 prompt is the new default (Phase 1 v2 is metadata-only; v3 adds
+# the OCR-content blocks + identity-guardrail). The legacy v2 file is kept
+# on disk for rollback drills.
+DEFAULT_PROMPT_FILE = BACKEND_RAG / "backend/services/crm_guardian/prompts/L1_extraction_v3.md"
+LEGACY_PROMPT_FILE = BACKEND_RAG / "backend/services/crm_guardian/prompts/L1_extraction_v2.md"
+PROMPT_VERSION_V2 = "L1_extraction_v2"  # legacy, kept for old queue rows
+PROMPT_VERSION_V3 = "L1_extraction_v3"
 
 RAW_DUMP_DIR = Path.home() / ".crm_guardian" / "raw_dumps_cli"
 RAW_DUMP_DIR.mkdir(parents=True, exist_ok=True)
@@ -81,6 +96,11 @@ RAW_DUMP_DIR.mkdir(parents=True, exist_ok=True)
 GEMINI_CLI = "/opt/homebrew/bin/gemini"
 GEMINI_TIMEOUT_SECONDS = 240  # match Web App worker
 GEMINI_DEFAULT_MODEL: str | None = None  # let CLI pick its default (Gemini 2.5 Pro free OAuth)
+
+# Phase 1.5 OCR budget per client. Tesseract is fast but akta scans can spike
+# latency; we cap how many priority files we OCR in a single client run.
+# Excess files fall through as metadata-only (extractor='skipped').
+OCR_MAX_FILES_PER_CLIENT = 30
 
 
 # ---------------------------------------------------------------------------
@@ -299,6 +319,200 @@ def compute_cross_folder_fingerprint(files: list[dict[str, Any]]) -> str:
 
 
 # ---------------------------------------------------------------------------
+# Phase 1.5 — OCR enrichment helpers
+# ---------------------------------------------------------------------------
+
+# Filename token → doc_type. Aligned with L1 schema enum + ocr.PRIORITY_DOC_TYPES.
+# Order matters: more specific tokens FIRST so "Bukti Potong PPh21" doesn't
+# match "pph" before "bukti_potong".
+_DOC_TYPE_PATTERNS: list[tuple[str, str]] = [
+    ("bukti potong", "bukti_potong"),
+    ("bukti_potong", "bukti_potong"),
+    ("evisa", "evisa"),
+    ("e-visa", "evisa"),
+    ("e visa", "evisa"),
+    ("kitap", "kitap"),
+    ("kitas", "kitas"),
+    ("passport", "passport"),
+    ("paspor", "passport"),
+    ("akta pendirian", "akta"),
+    ("akta perubahan", "akta"),
+    ("akta", "akta"),
+    ("sk kemenkumham", "sk"),
+    ("sk pendirian", "sk"),
+    ("sk perubahan", "sk"),
+    ("sk ", "sk"),
+    ("npwp", "npwp"),
+    ("nib", "nib"),
+    ("lkpm", "lkpm"),
+    ("spt tahunan", "spt"),
+    ("spt masa", "spt"),
+    ("spt ppn", "spt"),
+    ("spt pph", "spt"),
+    ("spt ", "spt"),
+    ("visa", "visa"),
+]
+
+
+def infer_doc_type_from_filename(filename: str | None) -> str | None:
+    """Best-effort doc_type from filename tokens.
+
+    Returns None when no pattern matches; ocr.extract_file_content() will
+    treat None as non-priority and skip the file. Case-insensitive,
+    space-normalised.
+    """
+    if not filename:
+        return None
+    lowered = filename.lower().replace("_", " ").replace("-", " ")
+    for token, doc_type in _DOC_TYPE_PATTERNS:
+        if token in lowered:
+            return doc_type
+    return None
+
+
+def _drive_modified_time_ms(modified_time_iso: str | None) -> int:
+    """Parse Drive RFC3339 modifiedTime → epoch milliseconds. Returns 0 on parse failure."""
+    if not modified_time_iso:
+        return 0
+    try:
+        # Drive returns e.g. "2023-03-24T08:15:00.000Z"
+        dt = datetime.fromisoformat(modified_time_iso.replace("Z", "+00:00"))
+        return int(dt.timestamp() * 1000)
+    except (ValueError, AttributeError):
+        return 0
+
+
+async def download_drive_file_bytes(
+    drive_service, file_id: str, *, max_bytes: int = 20 * 1024 * 1024,
+) -> bytes | None:
+    """Download a Drive file as bytes (max 20MB default).
+
+    Runs in a thread because google-api-python-client is sync. Returns None
+    on any failure (the worker skips OCR for that file, falls back to
+    metadata-only in the inventory). The 20MB cap prevents memory blowups
+    on accidental video/zip uploads inside a CRM folder.
+    """
+    def _sync_download() -> bytes | None:
+        try:
+            from googleapiclient.http import MediaIoBaseDownload
+            request = drive_service.files().get_media(
+                fileId=file_id, supportsAllDrives=True,
+            )
+            buf = io.BytesIO()
+            downloader = MediaIoBaseDownload(buf, request, chunksize=4 * 1024 * 1024)
+            done = False
+            while not done:
+                _, done = downloader.next_chunk()
+                if buf.tell() > max_bytes:
+                    LOG.warning("download_drive_file_bytes %s exceeded %d bytes, aborting",
+                                file_id, max_bytes)
+                    return None
+            return buf.getvalue()
+        except Exception as e:
+            LOG.warning("download_drive_file_bytes %s failed: %s", file_id, e)
+            return None
+
+    return await asyncio.to_thread(_sync_download)
+
+
+async def enrich_files_with_ocr(
+    conn,
+    drive_service,
+    flat_files: list[dict[str, Any]],
+    health: OcrHealth,
+    *,
+    budget: int = OCR_MAX_FILES_PER_CLIENT,
+) -> dict[str, ExtractionResult]:
+    """Extract text content for priority files, using the OCR cache when possible.
+
+    Mutates each file dict with `inferred_doc_type` so build_file_inventory_block
+    can render the type even when the file is non-priority (just for context).
+
+    Returns: file_id → ExtractionResult dict, ONLY for files that went through
+    extraction (cache hit or fresh extraction). Skipped/non-priority files
+    are absent from the result. Worker uses this dict to render
+    <FILE_CONTENT_SNIPPETS> in the prompt.
+
+    Cache-first: every file is first looked up in crm_guardian_file_content_cache
+    by (file_id, modified_time_ms). Cache hit → reconstruct ExtractionResult
+    from the row. Cache miss → download bytes, extract, upsert row.
+
+    Budget cap: at most `budget` fresh extractions per client. Excess priority
+    files fall through to metadata-only. Cache hits do NOT count toward budget.
+    """
+    enriched: dict[str, ExtractionResult] = {}
+    fresh_extractions = 0
+
+    for f in flat_files:
+        doc_type = infer_doc_type_from_filename(f.get("name"))
+        f["inferred_doc_type"] = doc_type
+
+        if doc_type not in PRIORITY_DOC_TYPES:
+            continue
+
+        file_id = f["id"]
+        modtime_ms = _drive_modified_time_ms(f.get("modifiedTime"))
+
+        # Cache lookup
+        cached = await get_cached_content(conn, file_id, modtime_ms)
+        if cached:
+            if cached["text_content"]:
+                enriched[file_id] = ExtractionResult(
+                    text=cached["text_content"],
+                    extractor=cached["extractor"],
+                    confidence=cached["confidence"],
+                    page_count=cached["page_count"],
+                    duration_ms=0,
+                    truncated=False,
+                    notes="cache_hit",
+                )
+            continue
+
+        # Budget guard for FRESH extractions
+        if fresh_extractions >= budget:
+            LOG.info(
+                "ocr budget %d reached for this client, skipping further priority files",
+                budget,
+            )
+            continue
+
+        # Cache miss → fetch bytes + extract
+        file_bytes = await download_drive_file_bytes(drive_service, file_id)
+        if file_bytes is None:
+            continue
+
+        result = await extract_file_content(
+            file_bytes=file_bytes,
+            mime_type=f.get("mimeType", ""),
+            doc_type=doc_type,
+            health=health,
+        )
+        fresh_extractions += 1
+
+        if result.extractor != "skipped" and result.text:
+            enriched[file_id] = result
+
+        # Always upsert: even 'skipped' rows are recorded so we don't retry
+        # them on next bulk pass. Empty text + 'skipped' notes capture why.
+        try:
+            await upsert_cache_row(
+                conn, file_id=file_id, modified_time_ms=modtime_ms, result=result,
+            )
+        except Exception as e:
+            LOG.warning("ocr cache upsert failed for %s: %s", file_id, e)
+
+    if fresh_extractions or enriched:
+        LOG.info(
+            "ocr enrichment: priority_files=%d fresh_ocr=%d cache_hits=%d snippets=%d",
+            sum(1 for f in flat_files if f.get("inferred_doc_type") in PRIORITY_DOC_TYPES),
+            fresh_extractions,
+            len(enriched) - fresh_extractions if len(enriched) >= fresh_extractions else 0,
+            len(enriched),
+        )
+    return enriched
+
+
+# ---------------------------------------------------------------------------
 # Prompt assembly (no Drive @mention — inline metadata table)
 # ---------------------------------------------------------------------------
 
@@ -306,13 +520,22 @@ def build_cross_folder_context_block(
     client_id: int,
     client_root_folder: str,
     linked_companies: list[dict[str, Any]],
+    client_full_name: str | None = None,
 ) -> str:
-    """Render <CROSS_FOLDER_CONTEXT> block per L1_extraction_v2 spec."""
+    """Render <CROSS_FOLDER_CONTEXT> block per L1_extraction_v3 spec.
+
+    Phase 1.5: client_full_name is now load-bearing (prompt Article 1 —
+    identity guardrail) — when supplied, the model MUST mirror it in
+    identity.full_name. Defensive None to keep backward compat with the
+    v2 prompt during the cutover.
+    """
     lines = [
         "<CROSS_FOLDER_CONTEXT>",
         f"client_id: {client_id}",
-        f"client_root_folder: {client_root_folder}",
     ]
+    if client_full_name:
+        lines.append(f"client_full_name: {client_full_name}")
+    lines.append(f"client_root_folder: {client_root_folder}")
     if linked_companies:
         lines.append("linked_company_folders:")
         for c in linked_companies:
@@ -330,29 +553,74 @@ def build_cross_folder_context_block(
 def build_file_inventory_block(
     flat_files: list[dict[str, Any]],
     folder_id_to_name: dict[str, str],
+    ocr_results: dict[str, "ExtractionResult"] | None = None,
 ) -> str:
     """Render <FILE_INVENTORY> block exposing file metadata to Gemini.
 
-    Since `gemini` CLI cannot @mention Drive folders, we list every file's
-    (id, name, mimeType, size, modifiedTime, source_folder_name) so the LLM
-    can reason about identity/visa/company structure from filenames + types.
-    OCR'd text content is NOT inlined here (would explode prompt size for
-    50+ docs); that path remains the existing crm-drive OCR pipeline which
-    writes to client_documents table independently.
+    Each row also tags the inferred doc_type (passport/akta/nib/...) so the
+    model can prioritise the right files when extracting compliance fields.
     """
     lines = ["<FILE_INVENTORY>"]
     lines.append(
-        "# Format: source_folder | file_id | name | mimeType | size_bytes | modifiedTime"
+        "# Format: source_folder | file_id | name | mimeType | size_bytes | modifiedTime | inferred_doc_type"
     )
     for f in flat_files:
         src = folder_id_to_name.get(f.get("source_folder_id", ""), "?")
         size = f.get("size", "")
+        doc_type = f.get("inferred_doc_type") or "-"
         lines.append(
             f"{src} | {f['id']} | {f.get('name', '?')} | "
-            f"{f.get('mimeType', '?')} | {size} | {f.get('modifiedTime', '?')}"
+            f"{f.get('mimeType', '?')} | {size} | {f.get('modifiedTime', '?')} | {doc_type}"
         )
     lines.append(f"# Total files: {len(flat_files)}")
     lines.append("</FILE_INVENTORY>")
+    return "\n".join(lines)
+
+
+def build_file_content_snippets_block(
+    flat_files: list[dict[str, Any]],
+    ocr_results: dict[str, "ExtractionResult"],
+) -> str:
+    """Render <FILE_CONTENT_SNIPPETS> with OCR-extracted text per priority file.
+
+    Phase 1.5: the model gets to see actual document content (passport MRZ,
+    akta capital section, NPWP number, etc.) instead of inferring from
+    filenames. Snippets are truncated at MAX_TEXT_CHARS_PER_FILE in ocr.py
+    so prompt size stays bounded (≈12k chars × up to 30 priority files ≈
+    360k chars at worst-case — well under Gemini 2.5 Pro 1M context).
+    """
+    if not ocr_results:
+        return "<FILE_CONTENT_SNIPPETS>\n# No OCR content extracted (no priority files, or OCR disabled).\n</FILE_CONTENT_SNIPPETS>"
+
+    # Render in the same order as flat_files so the model can cross-reference
+    # the inventory rows above.
+    lines = ["<FILE_CONTENT_SNIPPETS>"]
+    lines.append(
+        "# OCR'd content from priority docs (passport/akta/nib/npwp/visa/lkpm/spt/...)."
+    )
+    lines.append(
+        "# Use THIS for identity / compliance fields. Use filename inventory only as fallback."
+    )
+    rendered = 0
+    for f in flat_files:
+        fid = f["id"]
+        result = ocr_results.get(fid)
+        if result is None or not result.text:
+            continue
+        rendered += 1
+        conf_str = f"{result.confidence:.2f}" if result.confidence is not None else "n/a"
+        lines.append("")
+        lines.append(f"--- file_id: {fid} ---")
+        lines.append(
+            f"# extractor={result.extractor} confidence={conf_str} "
+            f"pages={result.page_count or '?'} truncated={result.truncated}"
+        )
+        lines.append(f"# filename: {f.get('name', '?')}")
+        lines.append(result.text)
+
+    lines.append("")
+    lines.append(f"# Snippets rendered: {rendered}")
+    lines.append("</FILE_CONTENT_SNIPPETS>")
     return "\n".join(lines)
 
 
@@ -360,8 +628,13 @@ def assemble_full_prompt(
     prompt_template: str,
     context_block: str,
     inventory_block: str,
+    content_block: str | None = None,
 ) -> str:
-    """Assemble the final prompt: template + context + inventory."""
+    """Assemble the final prompt: template + context + inventory + content snippets."""
+    if content_block:
+        return (
+            f"{context_block}\n\n{inventory_block}\n\n{content_block}\n\n{prompt_template}"
+        )
     return f"{context_block}\n\n{inventory_block}\n\n{prompt_template}"
 
 
@@ -588,15 +861,35 @@ async def run_one_client(
     queue_id = await queue_mark_running(conn, client_id, run_id)
 
     LOG.info(
-        "[client=%d] files_total=%d cliente_root=%s linked=%d → calling gemini CLI",
+        "[client=%d] files_total=%d cliente_root=%s linked=%d → ocr enrichment",
         client_id, len(flat_files), folder_id, len(linked_companies),
     )
 
+    # Phase 1.5: extract content from priority files (passport/akta/nib/npwp/
+    # visa/lkpm/spt) so Gemini reads document substance, not just filenames.
+    # Cache hits don't count toward budget; fresh OCR capped at
+    # OCR_MAX_FILES_PER_CLIENT to bound latency.
+    ocr_results: dict[str, ExtractionResult] = {}
+    try:
+        ocr_health = await ocr_check_health()
+        ocr_results = await enrich_files_with_ocr(
+            conn, drive_service, flat_files, ocr_health,
+        )
+    except Exception as e:
+        LOG.warning("[client=%d] ocr enrichment failed, falling back metadata-only: %s",
+                    client_id, e)
+
     context_block = build_cross_folder_context_block(
         client_id, folder_id, linked_companies,
+        client_full_name=client.get("full_name"),
     )
-    inventory_block = build_file_inventory_block(flat_files, folder_id_to_name)
-    full_prompt = assemble_full_prompt(prompt_template, context_block, inventory_block)
+    inventory_block = build_file_inventory_block(
+        flat_files, folder_id_to_name, ocr_results,
+    )
+    content_block = build_file_content_snippets_block(flat_files, ocr_results)
+    full_prompt = assemble_full_prompt(
+        prompt_template, context_block, inventory_block, content_block,
+    )
 
     # Save the prompt for audit + debugging on parse failures
     prompt_dump = RAW_DUMP_DIR / f"client_{client_id}_{int(datetime.now().timestamp())}_prompt.txt"
@@ -634,7 +927,7 @@ async def run_one_client(
 
     # Enrich with server-known metadata
     payload.setdefault("schema_version", SCHEMA_VERSION)
-    payload.setdefault("prompt_version", PROMPT_VERSION_V2)
+    payload.setdefault("prompt_version", PROMPT_VERSION_V3)
     payload["client_id"] = client_id
     payload["generated_at"] = datetime.now(timezone.utc).isoformat()
     payload["source_folder_id"] = folder_id
