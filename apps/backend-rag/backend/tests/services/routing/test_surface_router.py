@@ -250,13 +250,14 @@ class TestSkillsSurface:
                 f"Query '{q[:50]}' routed to {decision.surface}, expected qdrant_skills"
             )
 
-    def test_skills_surface_is_local_only(self, router):
+    def test_skills_surface_is_not_local_only(self, router):
+        # R5 AIL #1: skills migrated to Qdrant Cloud (bali_zero_skills_hybrid)
         d = _route(router, "internal ops workflow checklist")
-        assert d.is_local_only is True
+        assert d.is_local_only is False
 
     def test_skills_collection_name(self, router):
         d = _route(router, "skill for handling visa client onboarding")
-        assert d.primary_collection == "bali_zero_skills_local"
+        assert d.primary_collection == "bali_zero_skills_hybrid"
 
 
 # ---------------------------------------------------------------------------

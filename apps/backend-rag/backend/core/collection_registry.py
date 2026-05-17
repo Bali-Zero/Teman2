@@ -13,6 +13,9 @@ CANONICAL_LOGICAL_COLLECTIONS: Final[tuple[str, ...]] = (
     "training_conversations_hybrid",
     "immigration_circulars",
     "balizero_news",
+    # R5 AIL #1 (2026-05-17): Mata-Garuda skills/reflections/insights mirrored
+    # to Qdrant Cloud (613 docs). Replaces local-only bali_zero_skills_local.
+    "bali_zero_skills_hybrid",
     # Sprint 2 Shadow Graphing (2026-04-25): NLM-extracted claims projected
     # offline into Qdrant for sub-second runtime retrieval. Schema is
     # NLMShadowChunk (NOT HierarchicalChunk) — kept fully separate so
@@ -36,6 +39,8 @@ LOGICAL_TO_PHYSICAL_COLLECTIONS: Final[dict[str, str]] = {
     "tax_knowledge": "tax_genius_hybrid",
     "legal_updates": "legal_unified_hybrid_hybrid",
     "legal_intelligence": "legal_unified_hybrid_hybrid",
+    # R5 AIL #1: skills on Qdrant Cloud
+    "bali_zero_skills_hybrid": "bali_zero_skills_hybrid",
     # Sprint 2 Shadow Graphing
     "nlm_shadow_hybrid": "nlm_shadow_hybrid",
 }
@@ -60,6 +65,8 @@ CANONICAL_COLLECTION_ALIASES: Final[dict[str, str]] = {
     "balizero_news": "balizero_news",
     "intel_authoritative_sources": "balizero_news",
     "nlm_shadow_hybrid": "nlm_shadow_hybrid",
+    # R5 AIL #1
+    "bali_zero_skills_hybrid": "bali_zero_skills_hybrid",
 }
 
 

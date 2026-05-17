@@ -5,7 +5,7 @@
   Layer 2: Claude Haiku 4.5 classifier when confidence < HAIKU_THRESHOLD (async, mocked in tests).
 
 Feature flag: SURFACE_ROUTER_ENABLED env var (default "false" — shadow mode).
-Skills surface: local-only (QDRANT_LOCAL_URL), is_local_only=True.
+Skills surface: bali_zero_skills_hybrid on Qdrant Cloud (R5 AIL #1, 2026-05-17).
 
 Ref: docs/superpowers/specs/2026-05-16-r5-phase3-surface-router-design.md
 """
@@ -79,8 +79,8 @@ SURFACE_COLLECTIONS: dict[str, tuple[str, list[str]]] = {
         ["balizero_news", "visa_oracle", "legal_unified_hybrid_hybrid"],
     ),
     Surface.QDRANT_SKILLS: (
-        "bali_zero_skills_local",
-        ["bali_zero_skills_local"],
+        "bali_zero_skills_hybrid",
+        ["bali_zero_skills_hybrid"],
     ),
 }
 
@@ -164,7 +164,7 @@ def _make_decision(
         domain=domain,
         confidence=confidence,
         layer_used=layer_used,
-        is_local_only=(surface == Surface.QDRANT_SKILLS),
+        is_local_only=False,  # R5 AIL #1: skills moved to Qdrant Cloud (bali_zero_skills_hybrid)
         latency_ms=latency_ms,
     )
 
@@ -437,7 +437,7 @@ def _collection_to_domain(collection: str) -> str:
         "training_conversations_hybrid": "company",
         "bali_zero_pricing_hybrid": "pricing",
         "balizero_news": "news",
-        "bali_zero_skills_local": "skills",
+        "bali_zero_skills_hybrid": "skills",
     }
     return mapping.get(collection, "legal")
 
