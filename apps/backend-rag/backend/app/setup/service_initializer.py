@@ -167,6 +167,7 @@ async def _init_search_service(app: FastAPI) -> Any:
         conflict_resolver=conflict_resolver,
         cultural_insights=cultural_insights,
         query_router=query_router,
+        surface_router=surface_router,
     )
 
     # Add cross-encoder reranking methods to SearchService instance
