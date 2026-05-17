@@ -1,7 +1,7 @@
 # Design: ZANTARA COCKPIT v2 — Bali Zero brand + Subsystem command pages
 
 **Date**: 2026-05-18
-**Status**: draft (pending 4-LLM panel review)
+**Status**: v3 — revised after 4-LLM panel BLOCKER verdict (Codex empirical CRITICAL findings, Devils-advocate 15 findings, Gemini + DeepSeek concurring)
 **Codename**: Zantara Cockpit v2 — "warm operator console" + interactive subsystem commands
 **Author**: Claude Opus 4.7 (1M context)
 **Replaces**: `2026-05-17-zantara-cockpit-design.md` (PR #712 CLOSED — pivot post-design-review)
@@ -18,6 +18,180 @@ v2 fa **2 cambi strutturali**:
 2. **Modello interazione**: dalla "lettura statica" alla "**UI che traduce CLI**". Click su WR2 door → `/cockpit/wr2` command page interattiva che fa quello che oggi fai con `python3 wr2_draft_generator.py`, `psql -c "SELECT..."`, `launchctl kickstart`. Stesso per Intel-Lake.
 
 Riusati dalla v1 (cherry-picked in v2 branch): migrations 182+183, lib helpers (allowlist, auth, audit, launchctl, pg), tests TDD. Da riscrivere: CSS, components, page.tsx, API endpoints expanded.
+
+---
+
+## v3 panel-driven fixes (2026-05-18 BLOCKER → addressed inline below)
+
+**4 CRITICAL findings empirically verified**, addressed in v3:
+
+### CRITICAL #1 — NewBriefForm subprocess target wrong (Codex empirical)
+
+**Finding**: `wr2_draft_generator.py` accepts only `--dry-run` and `--draft-id` (verified via `grep "add_argument"`). NO `--topic`. Calling `python3 wr2_draft_generator.py --topic X` would silently fail or error.
+
+**v3 fix**: NewBriefForm endpoint `/api/cockpit/wr2/brief` does **NOT spawn subprocess**. Instead:
+
+```sql
+INSERT INTO war_room_drafts (topic, register, status, created_at)
+VALUES ($1, $2, 'briefed', NOW())
+RETURNING id;
+```
+
+The existing supervisor cron will pick up `status='briefed'` drafts and drive the pipeline (research → concept → drafts → etc.). UI feedback: optimistic insert appears immediately in PipelineKanban column "briefed".
+
+**No subprocess spawn from cockpit in S1-S3** — eliminates entire CRITICAL #2 (sanitization).
+
+### CRITICAL #2 — Subprocess sanitization moot (eliminated by #1 fix)
+
+Since v3 doesn't spawn subprocess for brief creation, the sanitization concern is **eliminated**. The only subprocess calls remaining are `launchctl kickstart <label>` (allowlist-validated) and `gh pr list --json ...` (no user input). Both already safe (argv arrays, no shell).
+
+### CRITICAL #3 — Intent table consumers don't exist (Codex empirical)
+
+**Finding**: `cockpit_intents` has 0 readers in entire codebase. Spec assumed "existing services consume" but `grep -rn "cockpit_intents" scripts/` returns empty.
+
+**v3 fix**: intent consumer extension is **explicit deliverable in S2/S3**, not assumed.
+
+**S2 (Intel-Lake) deliverables expanded**:
+
+- New: `scripts/cockpit_intent_consumer_intel.py` — polls `cockpit_intents WHERE intent_type IN ('intel.skip','intel.rerun','intel.re-fact-check') AND status='pending'`, every 30s
+- For each: apply mutation (intel_items UPDATE for skip; events_outbox INSERT for rerun), mark intent `status='consumed'`, emit `cockpit_pulse` NOTIFY with `{intent_id, intent_type, result}`
+- New plist `com.balizero.cockpit.intent-consumer.intel.30s` (S2 deliverable)
+
+**S3 (WR2) deliverables expanded**:
+
+- Modify existing `wr2_supervisor.py` to: (a) add LISTEN on `cockpit_intents_pending` (new channel), (b) on notify, fetch pending intents of type `wr2.*`, (c) apply with CAS-aware merge (`UPDATE war_room_drafts WHERE id=$1 AND status=$2 AND lease_owner IS NULL`), (d) emit `cockpit_pulse` NOTIFY on success
+- New migration: trigger on `cockpit_intents` INSERT emits NOTIFY `cockpit_intents_pending`
+
+### CRITICAL #4 — SSE channels don't exist (Codex empirical)
+
+**Finding**: spec subscribes SSE to `cockpit_pulse` and `war_room_drafts_update` channels. Neither exists. Real WR2 channel is `wr2_status_change` (mig 138, consumed by wr2_supervisor).
+
+**v3 fix**:
+
+- **`cockpit_pulse`**: NEW channel created in S2 + S3 deliverables (intent consumers emit it after applying mutations, as documented in CRITICAL #3 fix above)
+- **`war_room_drafts_update`**: DROPPED from spec. WR2 PipelineKanban subscribes to **`wr2_status_change`** (existing, already emitted by `wr2_supervisor`) BUT cockpit listener is **read-only fan-out** — does NOT acknowledge events (acknowledgment stays with supervisor). Risk of double-consume: zero, because cockpit only fans-out to browser SSE clients
+- **`intel_lake_event`**: existing (mig 168), already emitted on INSERT. Cockpit Trace subscribes for routing visibility
+
+Updated channel matrix:
+| Channel | Emitter | Cockpit role |
+|---|---|---|
+| `intel_lake_event` | intel_lake mig 168 trigger | Read-only fan-out to Intel-Lake Trace |
+| `wr2_status_change` | wr2_supervisor (mig 138) | Read-only fan-out to WR2 Kanban + Trace |
+| `cockpit_pulse` | NEW intent-consumer scripts S2+S3 | Read-only fan-out to all Trace cards (intent execution feedback) |
+| `cockpit_intents_pending` | NEW trigger S3 on cockpit_intents INSERT | Wakes supervisor to process pending intents |
+
+### HIGH #1 — SSE singleton hot-reload (Devils-advocate F2 + Gemini + DeepSeek + Codex 4/4)
+
+**v3 fix** in `lib/cockpit-sse.ts`:
+
+```ts
+// Singleton pattern survives Next.js hot-reload
+declare global {
+  // eslint-disable-next-line no-var
+  var __cockpitSSE: { client: pg.Client; emitter: EventEmitter } | undefined;
+}
+
+export async function getSSESingleton() {
+  if (globalThis.__cockpitSSE) return globalThis.__cockpitSSE;
+
+  const client = new pg.Client({
+    /* dedicated outside pool */
+  });
+  await client.connect();
+  await client.query("LISTEN intel_lake_event");
+  await client.query("LISTEN wr2_status_change");
+  await client.query("LISTEN cockpit_pulse");
+
+  const emitter = new EventEmitter();
+  emitter.setMaxListeners(50); // cap fan-out
+  client.on("notification", (msg) => emitter.emit(msg.channel, msg.payload));
+
+  globalThis.__cockpitSSE = { client, emitter };
+
+  // Cleanup on hot-reload (Next.js HMR)
+  if (process.env.NODE_ENV === "development") {
+    process.on("beforeExit", async () => {
+      await client.end();
+      globalThis.__cockpitSSE = undefined;
+    });
+  }
+
+  return globalThis.__cockpitSSE;
+}
+
+// Route handler must register cleanup on response close
+export function attachSSEClient(
+  req: NextRequest,
+  send: (data: string) => void,
+  channels: string[],
+) {
+  const { emitter } = globalThis.__cockpitSSE!;
+  const handlers = channels.map((ch) => {
+    const h = (payload: string) => send(`event: ${ch}\ndata: ${payload}\n\n`);
+    emitter.on(ch, h);
+    return { ch, h };
+  });
+
+  req.signal.addEventListener("abort", () => {
+    handlers.forEach(({ ch, h }) => emitter.off(ch, h));
+  });
+}
+```
+
+### HIGH #2 — Effort estimate 50-100% undercount (4/4 panel consensus)
+
+**v3 revised roadmap**:
+
+| Session                                                                               | v2 estimate | v3 honest estimate | Delta    |
+| ------------------------------------------------------------------------------------- | ----------- | ------------------ | -------- |
+| S1 Foundation (shell + theme + home + SSE singleton + 5 API + cherry-pick lib)        | 12-15h      | **20-25h**         | +60%     |
+| S2 Intel-Lake (4 widget + drawer + 4 endpoint + SSE consumer + intent consumer cron)  | 12-15h      | **22-28h**         | +85%     |
+| S3 WR2 (Kanban + 7 endpoint + supervisor patch + intent consumer integration + Trace) | 14-18h      | **26-32h**         | +85%     |
+| S4 EvoSkill MVP                                                                       | 10-12h      | 10-12h             | OK       |
+| S5 Polish                                                                             | 8h          | 10-12h             | +30%     |
+| **TOTAL**                                                                             | 56-68h      | **88-109h**        | **+60%** |
+
+Wall-clock parallel (S2+S3+S4 parallel after S1): ~55-70h.
+
+### HIGH #3 — English-only enforcement on supervisor logs (4/4 panel)
+
+**v3 clarification**: `wr2_supervisor.py` logs are already English (verified empirically: "draft %s: %s → %s", "kickstarted %s", "LISTEN wr2_status_change active"). **No retroactive translation needed** for supervisor.
+
+Scope of English-only **NEW v3 narrowing**: applies to UI strings + new code we generate. Existing log messages in production cron scripts are **out of scope** — pre-existing Italian phrases in legacy logs (if any) are NOT a blocker.
+
+CI lint rule (S5 deliverable): pre-commit hook greps `apps/admin-dashboard-local/{components,app,lib}` for common Italian markers (`(?i)\b(prego|grazie|annulla|elimina|conferma|attesa)\b`) — fail if found. Exempts: comments, test fixtures.
+
+### MEDIUM — Polling + SSE flicker (Devils-advocate F5 + Gemini + DeepSeek + Codex 4/4)
+
+**v3 fix**: SSE primary, polling **only** activates when `EventSource.readyState !== OPEN` for >30s. Hook-level state machine:
+
+```ts
+const [mode, setMode] = useState<"sse" | "polling-fallback">("sse");
+// SSE connected → mode='sse' (no polling)
+// SSE drops + heartbeat timeout 30s → mode='polling-fallback' (poll 10s)
+// SSE reconnects → setMode('sse') + cancel polling
+```
+
+Not "polling OR SSE" anymore — explicit failover state.
+
+### MEDIUM — Logo .gitignore cleanup
+
+**v3 fix**: add to `.gitignore` after `*.PNG` rule:
+
+```
+!apps/admin-dashboard-local/public/balizero_logo_circle.png
+!mockups/v2/assets/balizero_logo_circle.png
+```
+
+Explicit allowlist removes force-add confusion.
+
+### Items NOT requiring spec changes (verified)
+
+- **Migration 184 collision**: verified safe (Codex empirical: main@180, no 181 in flight, 182/183 in branch only)
+- **Index `intel_observations(producer_name, observed_at DESC)`**: EXISTS in mig 168:71 (Devils-advocate F11 was false-positive)
+- **`BrandTopbar` file structure**: noted in v3 component spec section explicitly
+
+---
 
 ---
 
