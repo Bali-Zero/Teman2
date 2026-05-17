@@ -255,11 +255,13 @@ class SearchService:
                 collection_override=collection_override,
                 enable_fallbacks=enable_fallbacks,
             )
-            collection_name = routing_info["collection_name"]
-            routing_info.setdefault("collections", [collection_name])
+            collection_name = canonicalize_collection_name(routing_info["collection_name"])
+            collections = canonicalize_collections(routing_info.get("collections") or [collection_name])
+            routing_info["collection_name"] = collection_name
+            routing_info["collections"] = collections
             routing_info.setdefault("confidence", 0.0)
             routing_info.setdefault("is_pricing", False)
-            routing_info.setdefault("is_multi_domain", len(routing_info["collections"]) > 1)
+            routing_info.setdefault("is_multi_domain", len(collections) > 1)
             routing_info.setdefault("active_domains", [])
             return routing_info
 

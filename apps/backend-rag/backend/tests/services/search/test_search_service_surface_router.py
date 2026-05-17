@@ -90,8 +90,8 @@ async def test_route_search_query_falls_back_for_non_qdrant_surface() -> None:
 
     service.surface_router.adecide.assert_awaited_once()
     service.query_router.route_query.assert_called_once()
-    assert routing_info["collection_name"] == "legal_unified_hybrid_hybrid"
-    assert routing_info["collections"] == ["legal_unified_hybrid_hybrid"]
+    assert routing_info["collection_name"] == "legal_unified"
+    assert routing_info["collections"] == ["legal_unified"]
     assert routing_info["confidence"] == 0.0
 
 
@@ -159,3 +159,30 @@ async def test_route_search_query_uses_legacy_router_when_surface_router_disable
     service.query_router.route_query.assert_called_once()
     assert routing_info["collection_name"] == "visa_oracle"
     assert routing_info["collections"] == ["visa_oracle"]
+
+
+@pytest.mark.asyncio
+async def test_route_search_query_canonicalizes_legacy_router_collections() -> None:
+    """Legacy routing must also return CollectionManager logical keys."""
+    service = SearchService.__new__(SearchService)
+    service.query_router = SimpleNamespace(
+        route_query=MagicMock(
+            return_value={
+                "collection_name": "kbli_2025_final_hybrid",
+                "collections": [
+                    "kbli_2025_final_hybrid",
+                    "legal_unified_hybrid_hybrid",
+                ],
+            },
+        ),
+    )
+    service.surface_router = None
+
+    routing_info = await service._route_search_query(
+        "PT PMA KBLI company setup",
+        collection_override=None,
+        enable_fallbacks=True,
+    )
+
+    assert routing_info["collection_name"] == "kbli_2025_final"
+    assert routing_info["collections"] == ["kbli_2025_final", "legal_unified"]

@@ -41,6 +41,7 @@ from backend.services.rag.agentic.query_helpers import wrap_query_with_language_
 from backend.services.rag.agentic.query_planner import QueryPlanner  # GraphRAG v6.0
 from backend.services.rag.agentic.reasoning import ReasoningEngine
 from backend.services.rag.agentic.schema import CoreResult
+from backend.services.rag.crag_router import CRAGRouter
 from backend.services.rag.grading import (
     AnswerGrader,
     GradingContext,
@@ -732,7 +733,6 @@ class OrchestratorCore:
                 query_plan = self._query_planner.plan(query, user_context)
                 # 1c. [SOTA 2026] CRAG Router — conditional tier activation
                 if _ENABLE_CRAG_ROUTER and query_plan:
-                    from backend.services.rag.crag_router import CRAGRouter
                     _crag_router = CRAGRouter(
                         enable_hyde=_ENABLE_HYDE,
                         enable_nlm_orchestrator=_ENABLE_NLM_ORCHESTRATOR,
@@ -1100,8 +1100,6 @@ class OrchestratorCore:
                 f"complexity={plan.complexity.value}",
             )
             if _ENABLE_CRAG_ROUTER:
-                from backend.services.rag.crag_router import CRAGRouter
-
                 crag_router = CRAGRouter(
                     enable_hyde=_ENABLE_HYDE,
                     enable_nlm_orchestrator=_ENABLE_NLM_ORCHESTRATOR,
