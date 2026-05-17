@@ -12,7 +12,7 @@ def test_minimal_construction():
     c = NLMShadowChunk(
         chunk_id="nlm_shadow_NB-3_20260425_001",
         claim_text="PT PMA minimum capital is IDR 10 billion under PP 28/2025.",
-        nb_id="933509f9-1561-403d-bd44-4a7a67a36df2",
+        nb_id="045f3cdb-ef62-488c-90ba-82594928b671",
         nb_label="company",
         extraction_run_id="run-001",
     )
