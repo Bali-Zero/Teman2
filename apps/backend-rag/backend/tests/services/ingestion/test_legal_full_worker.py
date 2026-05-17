@@ -30,7 +30,7 @@ def test_resolve_nb_target_invalid_override_falls_back():
 
 def test_resolve_nb_notebook_id():
     nb_id = resolve_nb_notebook_id("NB-3")
-    assert nb_id == "933509f9-1561-403d-bd44-4a7a67a36df2"
+    assert nb_id == "045f3cdb-ef62-488c-90ba-82594928b671"
 
 
 def test_resolve_nb_notebook_id_unknown():

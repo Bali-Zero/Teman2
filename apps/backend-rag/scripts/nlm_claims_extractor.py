@@ -8,7 +8,7 @@ Usage:
     cd apps/backend-rag
     source venv/bin/activate
     OPENAI_API_KEY=... PYTHONPATH=. python scripts/nlm_claims_extractor.py \
-        --notebook 933509f9-1561-403d-bd44-4a7a67a36df2 --domain company
+        --notebook 045f3cdb-ef62-488c-90ba-82594928b671 --domain company
 """
 from __future__ import annotations
 
