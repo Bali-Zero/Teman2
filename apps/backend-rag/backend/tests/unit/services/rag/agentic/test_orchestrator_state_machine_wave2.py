@@ -39,7 +39,6 @@ from backend.services.rag.agentic.query_gates import QueryGates
 from backend.services.rag.agentic.schema import CoreResult
 from backend.services.tools.definitions import AgentState, BaseTool
 
-
 # ---------------------------------------------------------------------------
 # Fixtures (adapted from test_orchestrator_coverage.py::orchestrator_setup)
 # ---------------------------------------------------------------------------
@@ -261,6 +260,36 @@ class TestQueryPlannerActive:
             await orch.process_query("What is KITAS?", "user@test.com")
 
             mock_planner.plan.assert_called_once()
+            mock_crag_cls.assert_called_once()
+            mock_router.route.assert_called_once_with(mock_plan)
+
+
+# =============================================================================
+# O2b — QueryPlanner + CRAG shadow mode
+# =============================================================================
+
+
+@pytest.mark.asyncio
+class TestQueryPlannerShadow:
+    """O2b: QueryPlanner shadow mode remains non-routing, but when the CRAG
+    router flag is enabled it should still compute a CRAGDecision for
+    observability before the active planner rollout.
+    """
+
+    async def test_shadow_mode_threads_plan_through_crag_router(self, orch):
+        mock_plan = MagicMock()
+
+        with patch.object(orch.core, "_query_planner") as mock_planner, \
+             patch("backend.services.rag.agentic.orchestrator_core._ENABLE_CRAG_ROUTER", True), \
+             patch("backend.services.rag.crag_router.CRAGRouter") as mock_crag_cls:
+            mock_planner.plan = MagicMock(return_value=mock_plan)
+            mock_router = MagicMock()
+            mock_router.route = MagicMock(return_value=MagicMock())
+            mock_crag_cls.return_value = mock_router
+
+            await orch.core._run_query_planner_shadow("What is KITAS?", {})
+
+            mock_planner.plan.assert_called_once_with("What is KITAS?", {})
             mock_crag_cls.assert_called_once()
             mock_router.route.assert_called_once_with(mock_plan)
 
