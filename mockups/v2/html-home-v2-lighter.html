@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Zantara Cockpit v2 — Home (2 tonalità più chiara)</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        /* v2 PALETTE — +2 tonalità su antracite v1 (#2C2F38) — warm preserved */
+        --bg-page: #3a3e4a; /* +8% L — page background */
+        --bg-card: #494e5d; /* +14% L — tile/card */
+        --bg-card-hover: #5a6072; /* +18% L — hover state */
+        --bg-inset: #2f323d; /* inset/sunken (form inputs, code blocks) */
+        --border: #6a7080; /* subtle dividers */
+        --border-active: #f4c430; /* yellow on focus/active */
+
+        /* Bali Zero tokens PRESERVED (verbatim from brand) */
+        --text-white: #ffffff;
+        --text-muted: #9ca3af;
+        --accent-yellow: #f4c430;
+        --status-red: #c8102e;
+        --status-amber: #d97706;
+
+        --shadow-soft: 0 2px 16px rgba(0, 0, 0, 0.28);
+        --shadow-hover: 0 4px 24px rgba(0, 0, 0, 0.4);
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--bg-page);
+        color: var(--text-white);
+        font-family:
+          "Montserrat",
+          -apple-system,
+          sans-serif;
+        font-size: 14px;
+        line-height: 1.5;
+        min-height: 100vh;
+        padding: 24px;
+        letter-spacing: 0.01em;
+      }
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 16px 24px;
+        margin-bottom: 28px;
+        border-bottom: 1px solid var(--border);
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 800;
+        font-size: 18px;
+        letter-spacing: 0.04em;
+      }
+      .logo-mark {
+        width: 36px;
+        height: 36px;
+        background: #000;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--status-red);
+        font-weight: 800;
+        font-size: 18px;
+      }
+      .topbar-stats {
+        display: flex;
+        gap: 24px;
+        font-size: 13px;
+        color: var(--text-muted);
+      }
+      .topbar-stats strong {
+        color: var(--text-white);
+        font-weight: 600;
+      }
+      .topbar-stats .accent {
+        color: var(--accent-yellow);
+        font-weight: 600;
+      }
+      .dot {
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        margin-right: 4px;
+      }
+      .dot.healthy {
+        background: var(--accent-yellow);
+        box-shadow: 0 0 6px rgba(244, 196, 48, 0.5);
+        animation: breathe 3s infinite;
+      }
+      .dot.amber {
+        background: var(--status-amber);
+      }
+      .dot.red {
+        background: var(--status-red);
+      }
+      @keyframes breathe {
+        0%,
+        100% {
+          opacity: 1;
+          transform: scale(1);
+        }
+        50% {
+          opacity: 0.7;
+          transform: scale(0.9);
+        }
+      }
+
+      .home-tiles {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 24px;
+      }
+      .tile {
+        background: var(--bg-card);
+        border-radius: 14px;
+        padding: 22px 26px;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: var(--shadow-soft);
+        border: 1px solid transparent;
+      }
+      .tile:hover {
+        background: var(--bg-card-hover);
+        border-color: var(--accent-yellow);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-hover);
+      }
+      .tile-label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-muted);
+        margin-bottom: 12px;
+      }
+      .tile-number {
+        font-size: 38px;
+        font-weight: 800;
+        color: var(--accent-yellow);
+        line-height: 1;
+        margin-bottom: 8px;
+        letter-spacing: -0.02em;
+      }
+      .tile-meta {
+        font-size: 12px;
+        color: var(--text-muted);
+      }
+      .tile-meta strong {
+        color: var(--text-white);
+      }
+
+      .door-card {
+        background: var(--bg-card);
+        border-radius: 18px;
+        padding: 32px 36px;
+        cursor: pointer;
+        transition: all 0.25s;
+        box-shadow: var(--shadow-soft);
+        margin-bottom: 20px;
+        border: 1px solid transparent;
+        position: relative;
+        overflow: hidden;
+      }
+      .door-card::after {
+        content: "→";
+        position: absolute;
+        top: 32px;
+        right: 36px;
+        font-size: 28px;
+        color: var(--text-muted);
+        transition: all 0.25s;
+        font-weight: 300;
+      }
+      .door-card:hover {
+        background: var(--bg-card-hover);
+        border-color: var(--accent-yellow);
+        transform: translateY(-3px);
+        box-shadow: var(--shadow-hover);
+      }
+      .door-card:hover::after {
+        color: var(--accent-yellow);
+        transform: translateX(8px);
+      }
+      .door-card h2 {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 10px;
+        letter-spacing: -0.01em;
+      }
+      .door-card .desc {
+        color: var(--text-muted);
+        font-size: 13px;
+        margin-bottom: 22px;
+      }
+      .door-flow {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+        font-size: 13px;
+      }
+      .flow-stage {
+        background: var(--bg-inset);
+        padding: 10px 16px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 500;
+      }
+      .flow-stage strong {
+        color: var(--accent-yellow);
+        font-weight: 800;
+        font-size: 17px;
+      }
+      .flow-arrow {
+        color: var(--text-muted);
+        font-size: 20px;
+      }
+      .flow-stage.published {
+        color: var(--accent-yellow);
+        background: rgba(244, 196, 48, 0.1);
+        border: 1px solid rgba(244, 196, 48, 0.3);
+      }
+
+      .door-card.intel .door-flow {
+        gap: 32px;
+      }
+      .door-card.intel .stat {
+        display: flex;
+        flex-direction: column;
+      }
+      .door-card.intel .stat-num {
+        font-size: 30px;
+        font-weight: 800;
+        color: var(--accent-yellow);
+        letter-spacing: -0.02em;
+      }
+      .door-card.intel .stat-num.warn {
+        color: var(--status-amber);
+      }
+      .door-card.intel .stat-num.danger {
+        color: var(--status-red);
+      }
+      .door-card.intel .stat-label {
+        font-size: 11px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        margin-top: 4px;
+        font-weight: 600;
+      }
+
+      .footer {
+        margin-top: 36px;
+        padding: 14px 24px;
+        font-size: 12px;
+        color: var(--text-muted);
+        display: flex;
+        justify-content: space-between;
+        border-top: 1px solid var(--border);
+      }
+      .footer .accent {
+        color: var(--accent-yellow);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <div class="brand">
+        <div class="logo-mark">3</div>
+        <span>ZANTARA</span>
+        <span
+          style="color: var(--text-muted); font-weight: 400; font-size: 13px"
+          >— Bali Zero command center</span
+        >
+      </div>
+      <div class="topbar-stats">
+        <span
+          ><span class="dot healthy"></span><strong>32</strong>/35 cron</span
+        >
+        <span>PG <strong>connected</strong></span>
+        <span>HMAC <span class="accent">verified</span></span>
+        <span>17:42 WITA</span>
+      </div>
+    </div>
+
+    <!-- Home tiles -->
+    <div class="home-tiles">
+      <div class="tile">
+        <div class="tile-label">Global Pulse</div>
+        <div class="tile-number">
+          32<span style="color: var(--text-muted); font-size: 26px">/35</span>
+        </div>
+        <div class="tile-meta">
+          <span class="dot healthy"></span>healthy organism
+        </div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">Decisions Attesa</div>
+        <div class="tile-number">3</div>
+        <div class="tile-meta">pending review</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">Cosa Ha Imparato</div>
+        <div class="tile-number">4</div>
+        <div class="tile-meta">new patterns this week</div>
+      </div>
+      <div class="tile">
+        <div class="tile-label">Comandi Rapidi</div>
+        <div class="tile-number" style="font-size: 28px; line-height: 1.3">
+          →
+        </div>
+        <div class="tile-meta">spawn · run · silence</div>
+      </div>
+    </div>
+
+    <!-- WR2 door -->
+    <div
+      class="door-card"
+      onclick="alert('Click → /cockpit/wr2 (command page)')"
+    >
+      <h2>WR2 — Editorial Carousels</h2>
+      <div class="desc">
+        News, regulations, visa/tax/property carouseli per Instagram. Pipeline
+        da brief a published.
+      </div>
+      <div class="door-flow">
+        <div class="flow-stage"><strong>4</strong> briefed</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-stage"><strong>2</strong> researched</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-stage"><strong>3</strong> drafts</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-stage" style="border: 1px solid var(--accent-yellow)">
+          <strong>2</strong> rendering
+        </div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-stage"><strong>1</strong> review</div>
+        <span class="flow-arrow">→</span>
+        <div class="flow-stage published"><strong>8</strong> published 7d</div>
+      </div>
+    </div>
+
+    <!-- Intel-Lake door -->
+    <div
+      class="door-card intel"
+      onclick="alert('Click → /cockpit/intel-lake (command page)')"
+    >
+      <h2>Intel-Lake — News & Regulations</h2>
+      <div class="desc">
+        Pipeline OSINT: 609 sources Indonesia → router → NotebookLM intel.
+        Realtime feed regulatory deltas.
+      </div>
+      <div class="door-flow">
+        <div class="stat">
+          <span class="stat-num">847</span
+          ><span class="stat-label">items today</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num">12</span
+          ><span class="stat-label">outbox pending</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num danger">3</span
+          ><span class="stat-label">stuck items</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num">1,247</span
+          ><span class="stat-label">NB pushes 7d</span>
+        </div>
+        <div class="stat">
+          <span class="stat-num warn">28</span
+          ><span class="stat-label">sources stale 48h</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span
+        >Pro · localhost:3100 ·
+        <strong style="color: var(--text-white)">Antonello</strong> · L2
+        autonomous ops</span
+      >
+      <span
+        >Cost month: <span class="accent">$0.42</span> / $1.00 cap · evolver
+        next: 4d 9h</span
+      >
+    </div>
+  </body>
+</html>

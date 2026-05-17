@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Zantara Cockpit v2 — /cockpit/wr2 command page</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --bg-primary: #3a3e4a;
+        --bg-secondary: #2f323d;
+        --bg-tile: #494e5d;
+        --bg-input: #2f323d;
+        --text-white: #ffffff;
+        --text-muted: #9ca3af;
+        --accent-yellow: #f4c430;
+        --status-red: #c8102e;
+        --status-amber: #d97706;
+        --border: #6a7080;
+        --border-active: #f4c430;
+        --shadow-soft: 0 2px 12px rgba(0, 0, 0, 0.3);
+      }
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+      body {
+        background: var(--bg-primary);
+        color: var(--text-white);
+        font-family: "Montserrat", sans-serif;
+        font-size: 14px;
+        line-height: 1.5;
+        min-height: 100vh;
+        padding: 24px;
+      }
+      .breadcrumb {
+        font-size: 13px;
+        color: var(--text-muted);
+        margin-bottom: 24px;
+      }
+      .breadcrumb a {
+        color: var(--text-white);
+        text-decoration: none;
+      }
+      .breadcrumb a:hover {
+        color: var(--accent-yellow);
+      }
+      .page-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        margin-bottom: 24px;
+        padding-bottom: 16px;
+        border-bottom: 1px solid var(--border);
+      }
+      .page-title h1 {
+        font-size: 28px;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+      }
+      .page-title .subtitle {
+        color: var(--text-muted);
+        font-size: 13px;
+        font-weight: 500;
+      }
+      .page-title .subtitle .accent {
+        color: var(--accent-yellow);
+        font-weight: 700;
+      }
+
+      .card {
+        background: var(--bg-tile);
+        border-radius: 12px;
+        padding: 24px;
+        margin-bottom: 20px;
+        box-shadow: var(--shadow-soft);
+        border: 1px solid transparent;
+      }
+      .card h3 {
+        font-size: 13px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        margin-bottom: 16px;
+        color: var(--accent-yellow);
+      }
+
+      /* NEW BRIEF form */
+      .brief-form {
+        display: grid;
+        grid-template-columns: 1fr 200px;
+        gap: 24px;
+        align-items: end;
+      }
+      .form-fields {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+      }
+      .field {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+      .field label {
+        font-size: 11px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+      .field input,
+      .field select {
+        background: var(--bg-input);
+        border: 1px solid var(--border);
+        color: var(--text-white);
+        font-family: inherit;
+        font-size: 14px;
+        padding: 10px 12px;
+        border-radius: 6px;
+        transition: border-color 0.15s;
+      }
+      .field input:focus,
+      .field select:focus {
+        outline: none;
+        border-color: var(--accent-yellow);
+      }
+      .radio-group {
+        display: flex;
+        gap: 16px;
+        padding-top: 4px;
+      }
+      .radio-group label {
+        font-size: 13px;
+        color: var(--text-white);
+        text-transform: none;
+        letter-spacing: 0;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        cursor: pointer;
+      }
+      .radio-group input[type="radio"] {
+        accent-color: var(--accent-yellow);
+      }
+      .btn-primary {
+        background: var(--accent-yellow);
+        color: var(--bg-primary);
+        border: none;
+        font-family: inherit;
+        font-size: 14px;
+        font-weight: 700;
+        padding: 14px 24px;
+        border-radius: 8px;
+        cursor: pointer;
+        letter-spacing: 0.02em;
+        transition: all 0.15s;
+      }
+      .btn-primary:hover {
+        background: #ffd349;
+        transform: translateY(-1px);
+      }
+
+      /* PIPELINE KANBAN */
+      .pipeline {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+      }
+      .pipeline-col {
+        background: var(--bg-secondary);
+        border-radius: 8px;
+        padding: 12px;
+        min-height: 200px;
+      }
+      .pipeline-col-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+      }
+      .pipeline-col-header .name {
+        font-size: 11px;
+        color: var(--text-muted);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        font-weight: 600;
+      }
+      .pipeline-col-header .count {
+        background: var(--accent-yellow);
+        color: var(--bg-primary);
+        font-weight: 700;
+        font-size: 12px;
+        padding: 2px 8px;
+        border-radius: 10px;
+      }
+      .draft-row {
+        background: var(--bg-tile);
+        padding: 10px 12px;
+        border-radius: 6px;
+        margin-bottom: 8px;
+        cursor: pointer;
+        transition: all 0.15s;
+        border: 1px solid transparent;
+      }
+      .draft-row:hover {
+        border-color: var(--accent-yellow);
+        transform: translateX(2px);
+      }
+      .draft-row .title {
+        font-size: 12px;
+        font-weight: 500;
+        margin-bottom: 4px;
+        line-height: 1.3;
+      }
+      .draft-row .meta {
+        font-size: 10px;
+        color: var(--text-muted);
+        display: flex;
+        justify-content: space-between;
+      }
+      .draft-actions {
+        display: none;
+        gap: 4px;
+        margin-top: 8px;
+      }
+      .draft-row:hover .draft-actions {
+        display: flex;
+      }
+      .draft-actions button {
+        background: transparent;
+        border: 1px solid var(--accent-yellow);
+        color: var(--accent-yellow);
+        font-family: inherit;
+        font-size: 10px;
+        padding: 3px 8px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      .draft-actions button.danger {
+        border-color: var(--status-red);
+        color: var(--status-red);
+      }
+      .draft-actions button:hover {
+        background: rgba(244, 196, 48, 0.1);
+      }
+
+      /* Two-column row */
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 20px;
+        margin-bottom: 20px;
+      }
+      .metric-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border);
+        font-size: 13px;
+      }
+      .metric-row:last-child {
+        border: none;
+      }
+      .metric-row .label {
+        color: var(--text-muted);
+      }
+      .metric-row .value {
+        font-weight: 600;
+      }
+      .metric-row .value.accent {
+        color: var(--accent-yellow);
+      }
+      .metric-row .value.amber {
+        color: var(--status-amber);
+      }
+      .metric-row .value.red {
+        color: var(--status-red);
+      }
+
+      .card-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 16px;
+      }
+      .btn-secondary {
+        background: transparent;
+        border: 1px solid var(--accent-yellow);
+        color: var(--accent-yellow);
+        font-family: inherit;
+        font-size: 12px;
+        font-weight: 600;
+        padding: 8px 14px;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.15s;
+      }
+      .btn-secondary:hover {
+        background: rgba(244, 196, 48, 0.1);
+      }
+      .btn-secondary.danger {
+        border-color: var(--status-red);
+        color: var(--status-red);
+      }
+      .btn-secondary.danger:hover {
+        background: rgba(200, 16, 46, 0.1);
+      }
+
+      .insight {
+        font-size: 12px;
+        color: var(--text-muted);
+        line-height: 1.6;
+        padding: 12px;
+        background: rgba(244, 196, 48, 0.06);
+        border-left: 3px solid var(--accent-yellow);
+        border-radius: 4px;
+        margin-top: 12px;
+      }
+      .insight strong {
+        color: var(--text-white);
+      }
+
+      /* TRACE log */
+      .trace {
+        background: #2f323d;
+        border-radius: 8px;
+        padding: 16px;
+        font-family: "IBM Plex Mono", monospace;
+        font-size: 12px;
+        line-height: 1.7;
+        max-height: 220px;
+        overflow-y: auto;
+      }
+      .trace-line {
+        display: flex;
+        gap: 12px;
+      }
+      .trace-time {
+        color: var(--accent-yellow);
+        font-weight: 500;
+        white-space: nowrap;
+      }
+      .trace-source {
+        color: var(--text-muted);
+        font-weight: 500;
+      }
+      .trace-msg {
+        color: var(--text-white);
+      }
+      .trace-line.warn .trace-msg {
+        color: var(--status-amber);
+      }
+      .trace-line.err .trace-msg {
+        color: var(--status-red);
+      }
+      .trace-controls {
+        display: flex;
+        justify-content: space-between;
+        margin-top: 12px;
+        font-size: 11px;
+        color: var(--text-muted);
+      }
+    </style>
+  </head>
+  <body>
+    <div class="breadcrumb">
+      <a href="#">← Zantara Home</a> /
+      <span style="color: var(--text-white)">WR2 — Editorial Carousels</span>
+    </div>
+
+    <div class="page-title">
+      <h1>WR2 Editorial Carousels</h1>
+      <div class="subtitle">
+        Pipeline live · <span class="accent">13 drafts</span> · supervisor
+        <span class="accent">healthy 12s</span>
+      </div>
+    </div>
+
+    <!-- NEW BRIEF -->
+    <div class="card">
+      <h3>+ New Brief</h3>
+      <div class="brief-form">
+        <div class="form-fields">
+          <div class="field">
+            <label>Topic</label>
+            <input
+              type="text"
+              placeholder="e.g. KEP-71/PJ/2026 SPT extension"
+            />
+          </div>
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px">
+            <div class="field">
+              <label>Register</label>
+              <select>
+                <option>news</option>
+                <option>explainer</option>
+                <option>warning</option>
+              </select>
+            </div>
+            <div class="field">
+              <label>Audience</label>
+              <select>
+                <option>founder</option>
+                <option>investor</option>
+                <option>digital-nomad</option>
+                <option>retiree</option>
+                <option>mass-tourist</option>
+              </select>
+            </div>
+          </div>
+          <div class="field">
+            <label>Domain</label>
+            <div class="radio-group">
+              <label><input type="radio" name="dom" checked /> visa</label>
+              <label><input type="radio" name="dom" /> tax</label>
+              <label><input type="radio" name="dom" /> property</label>
+              <label><input type="radio" name="dom" /> regulatory</label>
+              <label><input type="radio" name="dom" /> health</label>
+            </div>
+          </div>
+        </div>
+        <button class="btn-primary">+ Create Brief</button>
+      </div>
+    </div>
+
+    <!-- PIPELINE KANBAN -->
+    <div class="card">
+      <h3>📋 Pipeline Live</h3>
+      <div class="pipeline">
+        <div class="pipeline-col">
+          <div class="pipeline-col-header">
+            <span class="name">briefed</span><span class="count">4</span>
+          </div>
+          <div class="draft-row">
+            <div class="title">Karlsson DD property analysis</div>
+            <div class="meta"><span>visa</span><span>2h</span></div>
+          </div>
+          <div class="draft-row">
+            <div class="title">PT PMA risiko-rendah OSS block</div>
+            <div class="meta"><span>regulatory</span><span>5h</span></div>
+          </div>
+          <div class="draft-row">
+            <div class="title">Dharma Dewata task force</div>
+            <div class="meta"><span>visa</span><span>8h</span></div>
+          </div>
+          <div class="draft-row">
+            <div class="title">Q3 PPh21 deadlines</div>
+            <div class="meta"><span>tax</span><span>12h</span></div>
+          </div>
+        </div>
+        <div class="pipeline-col">
+          <div class="pipeline-col-header">
+            <span class="name">researched</span><span class="count">2</span>
+          </div>
+          <div class="draft-row">
+            <div class="title">Bali tourism Q1 stats 2026</div>
+            <div class="meta"><span>property</span><span>14h</span></div>
+          </div>
+          <div class="draft-row">
+            <div class="title">BVK review post-Batam raid</div>
+            <div class="meta"><span>visa</span><span>1d</span></div>
+          </div>
+        </div>
+        <div class="pipeline-col">
+          <div class="pipeline-col-header">
+            <span class="name">drafts</span><span class="count">3</span>
+          </div>
+          <div class="draft-row">
+            <div class="title">KEP-71 SPT extension</div>
+            <div class="meta"><span>tax</span><span>14m</span></div>
+            <div class="draft-actions">
+              <button>↻ Re-fact-check</button>
+            </div>
+          </div>
+          <div class="draft-row">
+            <div class="title">Influencer crackdown 2026</div>
+            <div class="meta"><span>visa</span><span>32m</span></div>
+          </div>
+          <div class="draft-row">
+            <div class="title">UU 63/2024 entry ban</div>
+            <div class="meta"><span>regulatory</span><span>2h</span></div>
+          </div>
+        </div>
+        <div class="pipeline-col">
+          <div class="pipeline-col-header">
+            <span class="name">rendering</span><span class="count">2</span>
+          </div>
+          <div class="draft-row" style="border-color: var(--accent-yellow)">
+            <div class="title">Permenkumham 22/2023 PT PMA</div>
+            <div class="meta">
+              <span>property</span
+              ><span
+                ><span style="color: var(--accent-yellow)">lease 2m</span></span
+              >
+            </div>
+          </div>
+          <div class="draft-row" style="border-color: var(--accent-yellow)">
+            <div class="title">Second Home Visa $25M cut</div>
+            <div class="meta">
+              <span>visa</span
+              ><span
+                ><span style="color: var(--accent-yellow)">lease 4m</span></span
+              >
+            </div>
+          </div>
+        </div>
+        <div class="pipeline-col">
+          <div class="pipeline-col-header">
+            <span class="name">pending review</span><span class="count">1</span>
+          </div>
+          <div
+            class="draft-row"
+            style="
+              background: rgba(244, 196, 48, 0.08);
+              border-color: var(--accent-yellow);
+            "
+          >
+            <div class="title">Bali tax overstay IDR 1M/day</div>
+            <div class="meta"><span>tax</span><span>1h</span></div>
+            <div class="draft-actions">
+              <button>✓ Approve</button>
+              <button class="danger">✕ Reject</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Two columns -->
+    <div class="two-col">
+      <!-- CANVA STATUS -->
+      <div class="card">
+        <h3>🎨 Canva Status</h3>
+        <div class="metric-row">
+          <span class="label">OAuth token expires</span
+          ><span class="value amber">42h 12m</span>
+        </div>
+        <div class="metric-row">
+          <span class="label">Active leases</span
+          ><span class="value">2 / no stale</span>
+        </div>
+        <div class="metric-row">
+          <span class="label">Rendered queue</span
+          ><span class="value accent">3</span>
+        </div>
+        <div class="metric-row">
+          <span class="label">Rejected 7d</span><span class="value red">1</span>
+        </div>
+        <div class="card-actions">
+          <button class="btn-secondary">↻ Renew OAuth</button>
+          <button class="btn-secondary">⟳ Reconcile</button>
+          <button class="btn-secondary danger">⚠ Stop renderer</button>
+        </div>
+      </div>
+      <!-- IG METRICS + REFLEXION -->
+      <div class="card">
+        <h3>📊 IG Metrics + Reflexion 7d</h3>
+        <div class="metric-row">
+          <span class="label">Engagement delta</span
+          ><span class="value accent">+12.4%</span>
+        </div>
+        <div class="metric-row">
+          <span class="label">Top carousel</span
+          ><span class="value">KEP-71 SPT (87 saves)</span>
+        </div>
+        <div class="metric-row">
+          <span class="label">Avg saves/post</span><span class="value">52</span>
+        </div>
+        <div class="insight">
+          <strong>Reflexion lesson (Sun 02:30):</strong><br />
+          Tax topics showing +20% saves vs visa carousels over last 14 days.
+          Suggestion: increase tax cadence to 2/week.
+        </div>
+      </div>
+    </div>
+
+    <!-- TRACE / TERMINAL -->
+    <div class="card">
+      <h3>📡 Trace · Live Supervisor Events</h3>
+      <div class="trace">
+        <div class="trace-line">
+          <span class="trace-time">17:42:01</span
+          ><span class="trace-source">supervisor</span
+          ><span class="trace-msg"
+            >draft d7a3 → rendering (lease pid 8133)</span
+          >
+        </div>
+        <div class="trace-line">
+          <span class="trace-time">17:41:55</span
+          ><span class="trace-source">measurer</span
+          ><span class="trace-msg">IG post 4218 saves +3 reach +127</span>
+        </div>
+        <div class="trace-line">
+          <span class="trace-time">17:41:20</span
+          ><span class="trace-source">fact-checker</span
+          ><span class="trace-msg"
+            >draft a9f1 validated (12 claims, 0 issues)</span
+          >
+        </div>
+        <div class="trace-line warn">
+          <span class="trace-time">17:40:58</span
+          ><span class="trace-source">canva-renderer</span
+          ><span class="trace-msg"
+            >retry pdf upload (transient 503, attempt 2/3)</span
+          >
+        </div>
+        <div class="trace-line">
+          <span class="trace-time">17:40:55</span
+          ><span class="trace-source">image-generator</span
+          ><span class="trace-msg"
+            >hero slide 3/12 generated (Codex session 019e2bc1)</span
+          >
+        </div>
+        <div class="trace-line">
+          <span class="trace-time">17:40:30</span
+          ><span class="trace-source">draft-generator</span
+          ><span class="trace-msg"
+            >new brief 'Bali tax overstay' → researched in 14.2s</span
+          >
+        </div>
+        <div class="trace-line err">
+          <span class="trace-time">17:39:50</span
+          ><span class="trace-source">supervisor</span
+          ><span class="trace-msg"
+            >heartbeat skip (PG migration not yet applied — non-blocking)</span
+          >
+        </div>
+        <div class="trace-line">
+          <span class="trace-time">17:39:12</span
+          ><span class="trace-source">fact-extractor</span
+          ><span class="trace-msg"
+            >KG proposal: entity 'BLACK TIDE VANGUARD' (low confidence
+            0.42)</span
+          >
+        </div>
+        <div class="trace-line">
+          <span class="trace-time">17:38:45</span
+          ><span class="trace-source">supervisor</span
+          ><span class="trace-msg">heartbeat ok</span>
+        </div>
+      </div>
+      <div class="trace-controls">
+        <span
+          >Showing <strong style="color: var(--text-white)">9</strong> events ·
+          <a href="#" style="color: var(--accent-yellow)"
+            >show 100 more</a
+          ></span
+        >
+        <span
+          >Filter:
+          <select
+            style="
+              background: var(--bg-input);
+              border: 1px solid var(--border);
+              color: var(--text-white);
+              font-family: inherit;
+              padding: 2px 6px;
+              border-radius: 4px;
+            "
+          >
+            <option>all levels</option>
+            <option>warn+</option>
+            <option>error only</option>
+          </select></span
+        >
+      </div>
+    </div>
+  </body>
+</html>
