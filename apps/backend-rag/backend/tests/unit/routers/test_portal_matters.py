@@ -113,6 +113,27 @@ def test_client_safe_intelligence_hides_source_fields_and_backend_jargon() -> No
     assert "Backend" not in serialized
 
 
+def test_client_safe_intelligence_withholds_when_multiple_companies_match() -> None:
+    rows = [
+        {
+            "company_name": "PT One",
+            "approved_at": datetime(2026, 5, 17, tzinfo=timezone.utc),
+            "facts": [{"category": "identity", "detail": "One", "label": "Company"}],
+        },
+        {
+            "company_name": "PT Two",
+            "approved_at": datetime(2026, 5, 17, tzinfo=timezone.utc),
+            "facts": [{"category": "identity", "detail": "Two", "label": "Company"}],
+        },
+    ]
+
+    result = _client_safe_intelligence_from_rows(rows)
+
+    assert result["available"] is False
+    assert result["summary"] is None
+    assert result["facts"] == []
+
+
 @pytest.mark.asyncio
 async def test_list_matters_endpoint_returns_empty_when_table_missing() -> None:
     from fastapi import FastAPI
