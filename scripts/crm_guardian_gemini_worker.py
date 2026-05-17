@@ -63,21 +63,63 @@ RESPONSE_MAX_WAIT_SECONDS = 240
 # ---------------------------------------------------------------------------
 
 def _resolve_db_url() -> str:
-    """Resolve local flyctl-proxy DATABASE_URL (port 15432)."""
+    """Resolve local flyctl-proxy DATABASE_URL (port 15432).
+
+    Preferred env key order in ~/.nuzantara-secrets.env:
+      1. DATABASE_URL_LOCAL  (already points at 127.0.0.1:15432 — flycast
+         proxy hostname rewrite is skipped)
+      2. DATABASE_URL        (production .internal:5432 hostname — rewritten
+         to localhost:15432 for the local flyctl proxy)
+
+    Cicatrix scar 2026-05-14 (cicatrix-scars.md): fly CLI v0.4.49 stopped
+    reading access_token from ~/.fly/config.yml, breaking pg-proxy hostname
+    rewrites. flycast hostname must be aliased to localhost:15432 explicitly.
+    """
     secrets = Path.home() / ".nuzantara-secrets.env"
     if not secrets.exists():
         raise RuntimeError(f"Secrets file not found: {secrets}")
+
+    raw_local: str | None = None
+    raw_remote: str | None = None
     for line in secrets.read_text().splitlines():
-        if line.startswith("DATABASE_URL="):
-            url = line.split("=", 1)[1].strip().strip('"')
-            return re.sub(r"@[^:/]+(\.internal)?:\d+", "@localhost:15432", url)
-    raise RuntimeError("DATABASE_URL not found in secrets")
+        stripped = line.strip()
+        if stripped.startswith("#") or "=" not in stripped:
+            continue
+        key, _, value = stripped.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key == "DATABASE_URL_LOCAL":
+            raw_local = value
+        elif key == "DATABASE_URL":
+            raw_remote = value
+
+    if raw_local:
+        return raw_local  # already 127.0.0.1:15432
+    if raw_remote:
+        return re.sub(r"@[^:/]+(\.internal)?:\d+", "@localhost:15432", raw_remote)
+    raise RuntimeError(
+        "DATABASE_URL_LOCAL or DATABASE_URL not found in ~/.nuzantara-secrets.env",
+    )
 
 
 async def fetch_client(conn, client_id: int) -> dict[str, Any] | None:
+    """Fetch a CRM client row.
+
+    Schema reality (verified 2026-05-17 on Fly Postgres):
+      - clients.full_name (single column, NOT name+surname)
+      - clients.google_drive_folder_id (canonical, 1885/11645 populated)
+      - clients.drive_folder_id (legacy, 0/11645 populated — ignore)
+      - clients.drive_folder_url (companion link, optional)
+
+    Returns the row with key 'folder_id' aliased from google_drive_folder_id
+    so downstream code in run_one_client() keeps using `client["folder_id"]`
+    unchanged.
+    """
     row = await conn.fetchrow(
         """
-        SELECT id, name, surname, email, folder_id, folder_link,
+        SELECT id, full_name, email,
+               google_drive_folder_id AS folder_id,
+               drive_folder_url AS folder_link,
                ai_summary_file_hash, ai_summary_generated_at
         FROM clients WHERE id = $1
         """,
