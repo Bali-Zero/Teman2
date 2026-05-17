@@ -148,7 +148,62 @@ Per `vendor/evoskill/UPSTREAM.md`:
 
 Everything else in `vendor/evoskill/` is byte-identical to upstream v1.1.0.
 
+## Gate 5 — DeepSeek harness stub (added 2026-05-18 panel round 2)
+
+After the 3-LLM panel caught the missing DeepSeek harness (CRITICAL
+convergent finding Gemini + Codex), the new `src/harness/deepseek/`
+stub must (a) import cleanly, (b) accept `set_sdk("deepseek")` without
+ValueError, (c) raise `NotImplementedError` on actual execute_query call.
+
+```bash
+cd vendor/evoskill && uv run python -c "
+from src.harness.deepseek import build_deepseek_options, execute_query, parse_response
+from src.harness import set_sdk, get_sdk, is_deepseek_sdk
+import asyncio
+
+set_sdk('deepseek')
+assert get_sdk() == 'deepseek'
+assert is_deepseek_sdk()
+
+opts = build_deepseek_options(system='test')
+assert opts['sdk'] == 'deepseek'
+
+try:
+    asyncio.run(execute_query(opts, 'q'))
+    raise RuntimeError('FAIL: should have raised NotImplementedError')
+except NotImplementedError as e:
+    print('deepseek stub raises NotImplementedError OK')
+"
+```
+
+**Output (verbatim, 2026-05-18 round 2):**
+
+```
+deepseek stub raises NotImplementedError OK
+```
+
+**Verdict**: PASS — set_sdk("deepseek") accepted, build_deepseek_options returns Phase-0 stub dict, execute_query raises NotImplementedError per Phase 0 contract.
+
+## Files modified vs upstream v1.1.0
+
+Per `vendor/evoskill/UPSTREAM.md`:
+
+- `pyproject.toml` — 2 lines deleted
+- `src/harness/__init__.py` — drop 2 claude/codex imports, ADD 1 deepseek import + 1 is_deepseek_sdk export
+- `src/harness/agent.py` — TYPE_CHECKING block deleted; claude+codex branches replaced with `raise ImportError` in BOTH `_execute_query` AND `run()` (panel round 2 caught the missed 2nd dispatcher); deepseek branch ADDED to both
+- `src/harness/utils.py` — claude+codex branches replaced with `raise ImportError`; deepseek branch ADDED (third dispatcher missed by v5 spec, caught by panel round 2)
+- `src/harness/sdk_config.py` — added `deepseek` to SDKType + \_VALID_SDKS + new `is_deepseek_sdk()` helper
+- `src/cli/shared.py` — `if provider == "anthropic"` 10-line block replaced by `raise ImportError`
+- `src/registry/sdk_utils.py` — TYPE_CHECKING block deleted; `options_to_config` deepseek branch ADDED (panel round 2 CRITICAL: without this metadata round-trip falls back to claude)
+- `src/harness/claude/` — physically deleted; new `__init__.py` 23-line stub
+- `src/harness/codex/` — physically deleted; new `__init__.py` 23-line stub
+- `src/harness/deepseek/` — NEW dir (Phase 0 stub: `__init__.py` + `options.py` + `executor.py` with NotImplementedError raises)
+
+Everything else in `vendor/evoskill/` is byte-identical to upstream v1.1.0.
+
 ## Next step (Phase 1)
 
-LaunchAgent plist + first live run (Sunday after merge) — see Task #5 in
-the implementation task list, and spec §"Phase 1 — First live run".
+LaunchAgent bootstrap + first live run (Sunday after merge) — see spec
+§"Phase 1 — First live run" + `agent-library/proposals/.known-limitations-v1.md`
+for the 11-item Phase 1 checklist (L1-L11) carrying over from v4 Codex
+findings + 2026-05-18 panel round 2 findings.

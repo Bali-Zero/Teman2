@@ -192,6 +192,15 @@ class Agent(Generic[T]):
         if sdk == "goose":
             from .goose import executor as _goose_executor
             return await _goose_executor.execute_query(options, query)
+        if sdk == "deepseek":
+            # Bali Zero Nuzantara vendor addition (Gemini + Codex panel
+            # 2026-05-18 CRITICAL convergent): provider=deepseek is
+            # load-bearing for Phase 1 but the harness was missing.
+            # Phase 0 stub: raises NotImplementedError so the dispatcher
+            # is wired (no Unknown SDK ValueError). Phase 1 wires the
+            # DeepSeek V4 Pro Chat Completions adapter.
+            from .deepseek import executor as _deepseek_executor
+            return await _deepseek_executor.execute_query(options, query)
         else:
             raise ValueError(f"Unknown SDK: {sdk!r}")
 
@@ -243,8 +252,15 @@ class Agent(Generic[T]):
 
         sdk = get_sdk()
         if sdk == "claude":
-            from .claude import executor as _claude_executor
-            fields = _claude_executor.parse_response(messages, self.response_model)
+            # Bali Zero Nuzantara vendor strip (CLAUDE.md hard rule):
+            # second of TWO if-sdk dispatchers in this module — the
+            # original spec missed this one (caught by DeepSeek panel
+            # 2026-05-18 HIGH finding). Mirror of _execute_query stub.
+            raise ImportError(
+                "Claude SDK disabled per Bali Zero Nuzantara CLAUDE.md "
+                "hard rule (no Anthropic API ever). Configure provider="
+                "deepseek in agent-library/config/evolver.toml instead."
+            )
         elif sdk == "opencode":
             from .opencode import executor as _opencode_executor
             fields = _opencode_executor.parse_response(messages, self.response_model, self._get_options)
@@ -252,8 +268,23 @@ class Agent(Generic[T]):
             from .openhands import executor as _openhands_executor
             fields = await _openhands_executor.parse_response(messages,self.response_model,self._get_options,query)
         elif sdk == "codex":
-            from .codex import executor as _codex_executor
-            fields = _codex_executor.parse_response(messages, self.response_model, self._get_options)
+            # Bali Zero Nuzantara vendor strip: second codex dispatcher.
+            # See _execute_query stub for rationale (panel finding 2).
+            raise ImportError(
+                "Codex SDK removed from Bali Zero Nuzantara vendored "
+                "fork (panel finding: ChatGPT Pro rate-limit risk on "
+                "autonomous loops). Configure provider=deepseek instead."
+            )
+        elif sdk == "deepseek":
+            # Bali Zero Nuzantara vendor addition (Gemini + Codex panel
+            # 2026-05-18 CRITICAL convergent): provider=deepseek is
+            # load-bearing for Phase 1 but the harness was missing.
+            # Phase 0 stub: raises NotImplementedError so the dispatcher
+            # is wired (no Unknown SDK ValueError) but actual execution
+            # waits for Phase 1 implementation of the DeepSeek V4 Pro
+            # parse_response.
+            from .deepseek import executor as _deepseek_executor
+            fields = _deepseek_executor.parse_response(messages, self.response_model, self._get_options)
         elif sdk == "goose":
             from .goose import executor as _goose_executor
             fields = _goose_executor.parse_response(messages, self.response_model, self._get_options)
