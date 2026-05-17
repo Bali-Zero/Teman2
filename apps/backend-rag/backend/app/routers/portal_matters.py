@@ -75,7 +75,7 @@ _NEXT_STEP_COPY = {
     "completed": "Completed",
 }
 
-_URL_RE = re.compile(r"https?://\S+", re.IGNORECASE)
+_URL_RE = re.compile(r"(?:https?://|www\.|(?:drive|docs)\.google\.com/)\S+", re.IGNORECASE)
 
 
 def _empty_client_safe_intelligence() -> dict[str, Any]:
@@ -203,6 +203,7 @@ def _parse_facts(value: Any) -> list[dict[str, Any]]:
     try:
         parsed = json.loads(value) if isinstance(value, str) else value
     except (TypeError, ValueError):
+        logger.warning("Skipping malformed approved intelligence facts payload")
         return []
     if not isinstance(parsed, list):
         return []

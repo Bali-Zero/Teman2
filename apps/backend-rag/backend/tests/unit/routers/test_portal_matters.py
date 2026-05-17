@@ -73,7 +73,7 @@ def test_client_safe_intelligence_hides_source_fields_and_backend_jargon() -> No
                     "label": "Drive source",
                     "detail": (
                         "KG/OCR found this in https://drive.google.com/file/d/raw-id/view "
-                        "from source_file_ids and NotebookLM."
+                        "and drive.google.com/file/d/bare-id/view from source_file_ids and NotebookLM."
                     ),
                     "source_file_ids": ["raw-drive-id"],
                     "confidence": "confirmed",
