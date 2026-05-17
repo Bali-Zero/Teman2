@@ -461,6 +461,46 @@ def test_master_prompt_does_not_override_56301_as_closed_to_pma():
     assert "foreigners CANNOT own a bar" not in prompt
 
 
+def test_master_prompt_does_not_flatten_56101_pma_risk_to_medium_low():
+    from backend.app.routers.kbli_notebook_chat import KBLI_MASTER_PROMPT
+
+    prompt = KBLI_MASTER_PROMPT.format(lang="English")
+    assert (
+        "56101 = AKTIVITAS PENYEDIAAN MAKANAN DI BANGUNAN TETAP (RESTORAN) "
+        "— Restaurant services with permanent building. PMA: TERBUKA "
+        "(open to foreigners), Risiko: Menengah Rendah."
+    ) not in prompt
+    assert "PMA/Besar: Menengah Tinggi" in prompt
+
+
+@pytest.mark.asyncio
+async def test_generate_kbli_explanation_adds_large_scale_note_for_56101_pma():
+    from backend.app.routers.kbli_notebook_chat import _generate_kbli_explanation
+
+    _mock_llm_gateway.send_message = AsyncMock(
+        return_value=("KBLI 56101 PMA answer", "gemini-flash", MagicMock(), {})
+    )
+
+    mock_result = MagicMock()
+    mock_result.code = "56101"
+    mock_result.title = "AKTIVITAS PENYEDIAAN MAKANAN DI BANGUNAN TETAP"
+    mock_result.description = "Restaurant activities"
+    mock_result.pma_status = "TERBUKA"
+    mock_result.risk_category = "Menengah Rendah"
+    mock_result.expert_legal = None
+
+    await _generate_kbli_explanation(
+        "Tell me about KBLI 56101 for a foreign-owned restaurant in Bali.",
+        [mock_result],
+    )
+
+    message = _mock_llm_gateway.send_message.call_args.kwargs["message"]
+    assert "PMA/foreign-owned scale note" in message
+    assert "skala usaha Besar" in message
+    assert "Menengah Tinggi" in message
+    assert "Do not describe a PT PMA restaurant as Menengah Rendah" in message
+
+
 def test_non_business_keywords_list():
     from backend.app.routers.kbli_notebook_chat import NON_BUSINESS_KEYWORDS
 
