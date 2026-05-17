@@ -1206,5 +1206,144 @@ async def refresh_crm_metrics(
 
 
 # ================================================
+# AI SUMMARY (Phase 1 cross-folder L1 — CRM-Guardian)
+# ================================================
+
+
+class AiSummaryResponse(BaseModel):
+    """Response model for GET /api/crm/clients/{id}/ai-summary.
+
+    Wraps the JSONB blob from clients.ai_summary with freshness metadata.
+    The summary itself follows L1ClientSummary v2.0 schema (see
+    apps/backend-rag/backend/services/crm_guardian/schemas.py).
+    """
+
+    client_id: int
+    summary: dict[str, Any] | None
+    generated_at: datetime | None
+    schema_version: str | None
+    fingerprint: str | None
+    status: str  # 'available' | 'not_generated' | 'pending'
+
+
+@router.get(
+    "/{client_id}/ai-summary",
+    operation_id="get_crm_client_ai_summary",
+    response_model=AiSummaryResponse,
+)
+async def get_client_ai_summary(
+    client_id: int,
+    current_user: dict = Depends(get_current_user),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+) -> AiSummaryResponse:
+    """Fetch the L1 AI summary for a client (cross-folder Phase 1).
+
+    The summary is produced by the CRM-Guardian gemini CLI worker
+    (scripts/crm_guardian_gemini_cli_worker.py) reading Drive folder of
+    the client + all linked active companies (client_company_links).
+
+    Access control:
+      - Admin (`is_crm_admin`): can read any client's summary
+      - Team member: can read only clients matching their RBAC filter
+        (own assigned_to or null assigned_to)
+      - Non-team: 403
+
+    Returns 404 if client doesn't exist (or RBAC denies visibility);
+    200 with `status='not_generated'` and null fields if the worker hasn't
+    yet processed this client; 200 with `status='available'` and the JSONB
+    payload otherwise; 200 with `status='pending'` if a queue row is
+    waiting/running.
+    """
+    start_time = time.time()
+
+    # RBAC: enforce per-user filter unless admin
+    assigned_filter: str | None = None
+    if not is_crm_admin(current_user):
+        assigned_filter = get_crm_user_filter(current_user)
+
+    try:
+        async with db_pool.acquire() as conn:
+            # Verify access (raises 404 if RBAC blocks or client missing)
+            if assigned_filter is not None:
+                row = await conn.fetchrow(
+                    """
+                    SELECT id, ai_summary, ai_summary_generated_at,
+                           ai_summary_schema_version, ai_summary_file_hash
+                    FROM clients
+                    WHERE id = $1
+                      AND (assigned_to = $2 OR assigned_to IS NULL)
+                    """,
+                    client_id, assigned_filter,
+                )
+            else:
+                row = await conn.fetchrow(
+                    """
+                    SELECT id, ai_summary, ai_summary_generated_at,
+                           ai_summary_schema_version, ai_summary_file_hash
+                    FROM clients WHERE id = $1
+                    """,
+                    client_id,
+                )
+            if row is None:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Client {client_id} not found or not accessible",
+                )
+
+            # Resolve summary status
+            if row["ai_summary"] is not None:
+                # asyncpg returns JSONB as a Python dict already, but the
+                # column may have been written as a raw json text on older
+                # rows — guard against str.
+                summary_payload = row["ai_summary"]
+                if isinstance(summary_payload, str):
+                    import json as _json
+
+                    summary_payload = _json.loads(summary_payload)
+
+                logger.info(
+                    "ai_summary served client_id=%d schema=%s fp=%s elapsed_ms=%d",
+                    client_id,
+                    row["ai_summary_schema_version"],
+                    (row["ai_summary_file_hash"] or "")[:12],
+                    int((time.time() - start_time) * 1000),
+                )
+                return AiSummaryResponse(
+                    client_id=client_id,
+                    summary=summary_payload,
+                    generated_at=row["ai_summary_generated_at"],
+                    schema_version=row["ai_summary_schema_version"],
+                    fingerprint=row["ai_summary_file_hash"],
+                    status="available",
+                )
+
+            # No summary yet — check if queued
+            queue_row = await conn.fetchrow(
+                """
+                SELECT status FROM crm_guardian_summary_queue
+                WHERE client_id = $1 AND status IN ('pending', 'running')
+                LIMIT 1
+                """,
+                client_id,
+            )
+            queue_status = queue_row["status"] if queue_row else None
+
+            return AiSummaryResponse(
+                client_id=client_id,
+                summary=None,
+                generated_at=None,
+                schema_version=None,
+                fingerprint=None,
+                status="pending" if queue_status else "not_generated",
+            )
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.exception("ai_summary fetch failed for client %d", client_id)
+        raise handle_database_error(e) from e
+
+
+# ================================================
 
 # OCR, METRICS, DOCUMENT ENDPOINTS → crm_clients_documents.py

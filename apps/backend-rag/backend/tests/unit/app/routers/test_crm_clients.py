@@ -750,3 +750,159 @@ class TestExtractPassportPreviewMode:
             client_id=99,
         )
         assert req.client_id == 99
+
+
+class TestGetClientAiSummary:
+    """Tests for GET /api/crm/clients/{client_id}/ai-summary (Phase 1)."""
+
+    def test_summary_available(self, client, mock_db_pool):
+        """When ai_summary JSONB is populated, endpoint returns 'available'
+        with the full payload + freshness metadata."""
+        pool, conn = mock_db_pool
+
+        sample_summary = {
+            "schema_version": "v2.0",
+            "prompt_version": "L1_extraction_v2",
+            "client_id": 70,
+            "profile": {"archetype": "individual_investor", "tier": "standard"},
+        }
+        generated_at = datetime.now(tz=timezone.utc)
+
+        async def mock_fetchrow(sql, *args):
+            if "FROM clients" in sql:
+                return {
+                    "id": 70,
+                    "ai_summary": sample_summary,
+                    "ai_summary_generated_at": generated_at,
+                    "ai_summary_schema_version": "v2.0",
+                    "ai_summary_file_hash": "deadbeef" * 8,
+                }
+            return None
+
+        conn.fetchrow = mock_fetchrow
+
+        response = client.get("/api/crm/clients/70/ai-summary")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "available"
+        assert body["client_id"] == 70
+        assert body["summary"]["profile"]["archetype"] == "individual_investor"
+        assert body["schema_version"] == "v2.0"
+        assert body["fingerprint"] == "deadbeef" * 8
+
+    def test_summary_not_generated_yet_no_queue(self, client, mock_db_pool):
+        """When ai_summary is NULL AND no queue row exists, status='not_generated'."""
+        pool, conn = mock_db_pool
+
+        async def mock_fetchrow(sql, *args):
+            if "FROM clients" in sql:
+                return {
+                    "id": 70,
+                    "ai_summary": None,
+                    "ai_summary_generated_at": None,
+                    "ai_summary_schema_version": None,
+                    "ai_summary_file_hash": None,
+                }
+            if "FROM crm_guardian_summary_queue" in sql:
+                return None
+            return None
+
+        conn.fetchrow = mock_fetchrow
+
+        response = client.get("/api/crm/clients/70/ai-summary")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "not_generated"
+        assert body["summary"] is None
+        assert body["generated_at"] is None
+
+    def test_summary_pending_in_queue(self, client, mock_db_pool):
+        """When ai_summary is NULL but a queue row is pending, status='pending'."""
+        pool, conn = mock_db_pool
+
+        async def mock_fetchrow(sql, *args):
+            if "FROM clients" in sql:
+                return {
+                    "id": 70,
+                    "ai_summary": None,
+                    "ai_summary_generated_at": None,
+                    "ai_summary_schema_version": None,
+                    "ai_summary_file_hash": None,
+                }
+            if "FROM crm_guardian_summary_queue" in sql:
+                return {"status": "pending"}
+            return None
+
+        conn.fetchrow = mock_fetchrow
+
+        response = client.get("/api/crm/clients/70/ai-summary")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["status"] == "pending"
+        assert body["summary"] is None
+
+    def test_summary_running_status_counts_as_pending(self, client, mock_db_pool):
+        """'running' is reported as 'pending' to the frontend."""
+        pool, conn = mock_db_pool
+
+        async def mock_fetchrow(sql, *args):
+            if "FROM clients" in sql:
+                return {
+                    "id": 70,
+                    "ai_summary": None,
+                    "ai_summary_generated_at": None,
+                    "ai_summary_schema_version": None,
+                    "ai_summary_file_hash": None,
+                }
+            if "FROM crm_guardian_summary_queue" in sql:
+                return {"status": "running"}
+            return None
+
+        conn.fetchrow = mock_fetchrow
+
+        response = client.get("/api/crm/clients/70/ai-summary")
+        assert response.status_code == 200
+        assert response.json()["status"] == "pending"
+
+    def test_client_not_found_returns_404(self, client, mock_db_pool):
+        pool, conn = mock_db_pool
+
+        async def mock_fetchrow(sql, *args):
+            return None
+
+        conn.fetchrow = mock_fetchrow
+
+        response = client.get("/api/crm/clients/99999/ai-summary")
+        assert response.status_code == 404
+        assert "not found" in response.json()["detail"].lower()
+
+    def test_summary_payload_str_legacy_handled(self, client, mock_db_pool):
+        """Older rows may have ai_summary as raw JSON text (not dict).
+        Endpoint must parse + return as dict to frontend."""
+        pool, conn = mock_db_pool
+
+        import json as _json
+
+        sample_dict = {"schema_version": "v1.0", "profile": {"tier": "VIP"}}
+        sample_text = _json.dumps(sample_dict)
+        generated_at = datetime.now(tz=timezone.utc)
+
+        async def mock_fetchrow(sql, *args):
+            if "FROM clients" in sql:
+                return {
+                    "id": 70,
+                    "ai_summary": sample_text,
+                    "ai_summary_generated_at": generated_at,
+                    "ai_summary_schema_version": "v1.0",
+                    "ai_summary_file_hash": "old_hash",
+                }
+            return None
+
+        conn.fetchrow = mock_fetchrow
+
+        response = client.get("/api/crm/clients/70/ai-summary")
+        assert response.status_code == 200
+        body = response.json()
+        assert isinstance(body["summary"], dict)
+        assert body["summary"]["schema_version"] == "v1.0"
+        assert body["summary"]["profile"]["tier"] == "VIP"
