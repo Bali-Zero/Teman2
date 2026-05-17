@@ -28,7 +28,7 @@ logger = logging.getLogger(__name__)
 
 NLM_NOTEBOOKS: dict[str, dict] = {
     "immigration": {
-        "notebook_id": "cff93ab0-813a-42f2-a8de-36987e724271",  # NB-2b operational
+        "notebook_id": "271c7159-0c32-49a1-bda8-803c8e0993a6",  # NB-2 zero@ (migrated 2026-05-18)
         "primary_notebook_id": None,  # NB-2a not yet created
         "label": "Immigration & Visa",
         "keywords": {
@@ -45,7 +45,7 @@ NLM_NOTEBOOKS: dict[str, dict] = {
         },
     },
     "company": {
-        "notebook_id": "933509f9-1561-403d-bd44-4a7a67a36df2",  # NB-3
+        "notebook_id": "045f3cdb-ef62-488c-90ba-82594928b671",  # NB-3 zero@ (migrated 2026-05-18)
         "primary_notebook_id": None,
         "label": "Company & Licensing",
         "keywords": {
@@ -79,7 +79,7 @@ NLM_NOTEBOOKS: dict[str, dict] = {
         },
     },
     "property": {
-        "notebook_id": "d9438180-5e63-4e2a-a473-6061101f6a8d",  # NB-5
+        "notebook_id": "93314ad3-177e-4d2f-956b-fe4be3e47697",  # NB-5 zero@ (migrated 2026-05-18)
         "primary_notebook_id": None,
         "label": "Property & Zoning",
         "keywords": {
@@ -95,13 +95,13 @@ NLM_NOTEBOOKS: dict[str, dict] = {
         },
     },
     "operations": {
-        "notebook_id": "85207af3-352f-4554-8d2a-18f42cc541ba",  # NB-6
+        "notebook_id": "7fbf37ed-e290-491a-98f5-677d6371ad62",  # NB-6 zero@ (migrated 2026-05-18)
         "primary_notebook_id": None,
         "label": "Operations",
         "keywords": {"sop", "team", "pricing", "crm", "workflow", "competitor"},
     },
     "editorial": {
-        "notebook_id": "f51ab8a0-50d0-49f1-a64f-ebc131fed7b8",  # NB-7
+        "notebook_id": "42687fcb-87fc-40b1-8af8-8a2ff91f9c4c",  # NB-7 zero@ (migrated 2026-05-18)
         "primary_notebook_id": None,
         "label": "Editorial & Market",
         "keywords": {
@@ -116,7 +116,7 @@ NLM_NOTEBOOKS: dict[str, dict] = {
         },
     },
     "lifestyle": {
-        "notebook_id": "4fd8cd0f-93f1-4e43-9c9e-86c0d581852c",  # NB-8
+        "notebook_id": "aa9ac5d7-5090-46c7-9d09-89cec4ba13de",  # NB-8 zero@ (migrated 2026-05-18)
         "primary_notebook_id": None,
         "label": "Expat Life",
         "keywords": {
