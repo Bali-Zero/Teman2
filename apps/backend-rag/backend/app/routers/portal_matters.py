@@ -149,7 +149,7 @@ def _sanitize_client_text(value: Any) -> str:
     text = _URL_RE.sub("", text)
     replacements = (
         (r"\bGoogle Drive\b", "document record"),
-        (r"\bDrive\b", "document record"),
+        (r"\bDrive source\b", "document record"),
         (r"\bsource_file_ids?\b", "document references"),
         (r"\bsource folder\b", "document record"),
         (r"\bsource documents\b", "documents"),
@@ -158,7 +158,9 @@ def _sanitize_client_text(value: Any) -> str:
         (r"\bOCR\b", "document review"),
         (r"\bNotebookLM\b", "team review"),
         (r"\bGemini\b", "team review"),
-        (r"\bbackend\b", "team"),
+        (r"\bbackend task\b", "team task"),
+        (r"\bbackend note\b", "team note"),
+        (r"\bbackend source\b", "team source"),
     )
     for pattern, replacement in replacements:
         text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
@@ -171,7 +173,21 @@ def _sanitize_client_text(value: Any) -> str:
 def _sanitize_client_label(value: Any) -> str:
     """Sanitize short labels without rewriting ordinary client-facing words."""
     text = _URL_RE.sub("", str(value or "").strip())
-    text = re.sub(r"\bsource_file_ids?\b", "document references", text, flags=re.IGNORECASE)
+    replacements = (
+        (r"\bGoogle Drive\b", "Document record"),
+        (r"\bDrive source\b", "Document record"),
+        (r"\bsource_file_ids?\b", "document references"),
+        (r"\bsource\b", "document"),
+        (r"\bKG\b", "Relationship map"),
+        (r"\bOCR\b", "Document review"),
+        (r"\bNotebookLM\b", "Team review"),
+        (r"\bGemini\b", "Team review"),
+        (r"\bbackend task\b", "Team task"),
+        (r"\bbackend note\b", "Team note"),
+        (r"\bbackend source\b", "Team source"),
+    )
+    for pattern, replacement in replacements:
+        text = re.sub(pattern, replacement, text, flags=re.IGNORECASE)
     text = re.sub(r"\s+", " ", text)
     return text.strip(" -")
 
@@ -321,21 +337,31 @@ async def get_matter_detail(
             try:
                 rows = await conn.fetch(
                     """
-                    SELECT DISTINCT ON (snap.company_id)
-                           c.company_name,
+                    WITH active_company_scope AS (
+                        SELECT DISTINCT ccl.company_id
+                        FROM client_company_links ccl
+                        WHERE ccl.client_id = $1
+                          AND ccl.status = 'active'
+                          AND ccl.end_date IS NULL
+                    ),
+                    eligible_company AS (
+                        SELECT company_id
+                        FROM active_company_scope
+                        GROUP BY company_id
+                        HAVING (SELECT COUNT(*) FROM active_company_scope) = 1
+                    )
+                    SELECT c.company_name,
                            snap.facts,
                            snap.approved_at,
                            snap.created_at
-                    FROM crm_workspace_ai_snapshots snap
+                    FROM eligible_company ec
+                    JOIN crm_workspace_ai_snapshots snap ON snap.company_id = ec.company_id
                     JOIN companies c ON c.id = snap.company_id
-                    JOIN client_company_links ccl ON ccl.company_id = snap.company_id
-                    WHERE ccl.client_id = $1
-                      AND snap.client_id = $1
+                    WHERE snap.client_id = $1
                       AND snap.status = 'approved'
-                    ORDER BY snap.company_id,
-                             snap.approved_at DESC NULLS LAST,
+                    ORDER BY snap.approved_at DESC NULLS LAST,
                              snap.created_at DESC NULLS LAST
-                    LIMIT 3
+                    LIMIT 1
                     """,
                     client_id,
                 )

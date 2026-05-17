@@ -10,6 +10,8 @@ import pytest
 
 from backend.app.routers.portal_matters import (
     _client_safe_intelligence_from_rows,
+    _sanitize_client_label,
+    _sanitize_client_text,
     _shape_matter,
     _shape_matter_detail,
 )
@@ -100,6 +102,7 @@ def test_client_safe_intelligence_hides_source_fields_and_backend_jargon() -> No
     assert result["available"] is True
     assert result["company_name"] == "PT Safe Client Story"
     assert result["summary"]
+    assert result["facts"][0]["label"] == "Document record"
     assert result["missing_items"] == [
         "Review the document on the document record before client approval."
     ]
@@ -107,10 +110,18 @@ def test_client_safe_intelligence_hides_source_fields_and_backend_jargon() -> No
     assert "drive.google.com" not in serialized
     assert "source_file_ids" not in serialized
     assert "raw-drive-id" not in serialized
+    assert "Drive source" not in serialized
     assert "KG" not in serialized
     assert "OCR" not in serialized
     assert "NotebookLM" not in serialized
     assert "Backend" not in serialized
+
+
+def test_client_safe_sanitizers_preserve_ordinary_words() -> None:
+    assert _sanitize_client_text("Please bring your drive license copy.") == (
+        "Please bring your drive license copy."
+    )
+    assert _sanitize_client_label("Backend office status") == "Backend office status"
 
 
 def test_client_safe_intelligence_preserves_plain_company_name_and_confidence() -> None:
@@ -261,6 +272,11 @@ async def test_get_matter_detail_returns_client_safe_approved_intelligence() -> 
     assert "source_file_ids" not in json.dumps(payload)
     fetch_sql = mock_conn.fetch.await_args.args[0]
     assert "snap.client_id = $1" in fetch_sql
+    assert "active_company_scope" in fetch_sql
+    assert "ccl.status = 'active'" in fetch_sql
+    assert "ccl.end_date IS NULL" in fetch_sql
+    assert "HAVING (SELECT COUNT(*) FROM active_company_scope) = 1" in fetch_sql
+    assert "LIMIT 1" in fetch_sql
 
 
 @pytest.mark.asyncio

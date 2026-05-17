@@ -251,7 +251,7 @@ class TestQueryPlannerActive:
         with patch.object(orch.core, "_query_planner") as mock_planner, \
              patch("backend.services.rag.agentic.orchestrator_core._USE_QUERY_PLANNER", True), \
              patch("backend.services.rag.agentic.orchestrator_core._ENABLE_CRAG_ROUTER", True), \
-             patch("backend.services.rag.crag_router.CRAGRouter") as mock_crag_cls:
+             patch("backend.services.rag.agentic.orchestrator_core.CRAGRouter") as mock_crag_cls:
             mock_planner.plan = MagicMock(return_value=mock_plan)
             mock_router = MagicMock()
             mock_router.route = MagicMock()
@@ -281,7 +281,7 @@ class TestQueryPlannerShadow:
 
         with patch.object(orch.core, "_query_planner") as mock_planner, \
              patch("backend.services.rag.agentic.orchestrator_core._ENABLE_CRAG_ROUTER", True), \
-             patch("backend.services.rag.crag_router.CRAGRouter") as mock_crag_cls:
+             patch("backend.services.rag.agentic.orchestrator_core.CRAGRouter") as mock_crag_cls:
             mock_planner.plan = MagicMock(return_value=mock_plan)
             mock_router = MagicMock()
             mock_router.route = MagicMock(return_value=MagicMock())
