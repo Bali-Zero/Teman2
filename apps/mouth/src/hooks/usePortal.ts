@@ -18,6 +18,7 @@ import type {
   PortalMessage,
   SendMessageRequest,
   PortalPreferences,
+  PortalMatterDetail,
 } from "@/lib/api/portal/portal.types";
 
 // ============================================================================
@@ -48,6 +49,18 @@ export function usePortalMatters() {
   return useQuery({
     queryKey: ["portal", "matters"],
     queryFn: async () => api.portal.listMatters(),
+    staleTime: 60 * 1000,
+  });
+}
+
+export function usePortalMatter(matterId: number | null) {
+  return useQuery({
+    queryKey: ["portal", "matters", matterId],
+    queryFn: async (): Promise<PortalMatterDetail> => {
+      if (!matterId) throw new Error("Matter ID required");
+      return api.portal.getMatterDetail(matterId);
+    },
+    enabled: !!matterId,
     staleTime: 60 * 1000,
   });
 }

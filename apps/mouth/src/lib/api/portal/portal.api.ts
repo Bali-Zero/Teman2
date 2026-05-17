@@ -29,6 +29,7 @@ import type {
   NotificationsResponse,
   DashboardSummary,
   PortalMatter,
+  PortalMatterDetail,
 } from "./portal.types";
 import type { TimelineResponse } from "../types/timeline.types";
 
@@ -58,6 +59,14 @@ export class PortalApi {
       "/api/portal/matters",
       { method: "GET" },
     );
+  }
+
+  async getMatterDetail(matterId: number): Promise<PortalMatterDetail> {
+    const response = await this.client.request<{ matter: PortalMatterDetail }>(
+      `/api/portal/matters/${matterId}`,
+      { method: "GET" },
+    );
+    return response.matter;
   }
 
   async getTimeline(limit: number = 50): Promise<TimelineResponse> {
