@@ -200,3 +200,42 @@ class TestL1ClientSummaryV2:
                 source_file_fingerprint="x",
                 extraction_confidence=-0.1,
             )
+
+class TestShareholderRoleNormalizer:
+    """Phase 1.5 hotfix 2026-05-18: Indonesian role names from akta OCR
+    should normalize to the English enum before validation."""
+
+    def test_indonesian_direktur_normalized(self) -> None:
+        from backend.services.crm_guardian.schemas import Shareholder
+        s = Shareholder(name="Gergely Gal", role="DIREKTUR", percentage=100.0)
+        assert s.role == "Director"
+
+    def test_indonesian_komisaris_lowercase_normalized(self) -> None:
+        from backend.services.crm_guardian.schemas import Shareholder
+        s = Shareholder(name="Test", role="Komisaris")
+        assert s.role == "Commissioner"
+
+    def test_indonesian_pemegang_saham_normalized(self) -> None:
+        from backend.services.crm_guardian.schemas import Shareholder
+        s = Shareholder(name="Test", role="PEMEGANG SAHAM")
+        assert s.role == "Shareholder"
+
+    def test_indonesian_pendiri_normalized(self) -> None:
+        from backend.services.crm_guardian.schemas import Shareholder
+        s = Shareholder(name="Test", role="PENDIRI")
+        assert s.role == "Founder"
+
+    def test_english_canonical_passthrough(self) -> None:
+        from backend.services.crm_guardian.schemas import Shareholder
+        s = Shareholder(name="Test", role="Director")
+        assert s.role == "Director"
+
+    def test_unknown_role_still_rejected(self) -> None:
+        from backend.services.crm_guardian.schemas import Shareholder
+        with pytest.raises(ValidationError):
+            Shareholder(name="Test", role="INVENTED_ROLE")
+
+    def test_none_role_preserved(self) -> None:
+        from backend.services.crm_guardian.schemas import Shareholder
+        s = Shareholder(name="Test", role=None)
+        assert s.role is None
