@@ -4,14 +4,16 @@ Specialized ingestion pipeline for Indonesian legal documents
 """
 
 import logging
+import os
 import time
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from backend.app.metrics import metrics_collector
 from backend.app.models import TierLevel
 from backend.core.bm25_vectorizer import BM25Vectorizer
-from backend.core.collection_registry import resolve_collection_name
+from backend.core.collection_registry import canonicalize_collection_name, resolve_collection_name
 from backend.core.embeddings import create_embeddings_generator
 from backend.core.legal import (
     HierarchicalIndexer,
@@ -26,6 +28,138 @@ from backend.services.ingestion.ingestion_logger import IngestionStage, ingestio
 from backend.utils.tier_classifier import TierClassifier
 
 logger = logging.getLogger(__name__)
+
+LEGAL_CANONICAL_COLLECTION = "legal_unified"
+LEGAL_ENV_OVERRIDE_FLAG = "LEGAL_INGEST_ALLOW_QDRANT_ENV_OVERRIDE"
+
+
+class LegalIngestIntegrityError(RuntimeError):
+    """Raised when legal/regulatory ingestion would write to an unsafe target."""
+
+
+@dataclass(frozen=True)
+class LegalIngestPreflight:
+    """Pure preflight inputs for legal/regulatory ingestion integrity checks."""
+
+    configured_qdrant_url: str
+    process_qdrant_url: str | None
+    env_file_qdrant_url: str | None
+    requested_collection: str
+    resolved_collection: str
+    allow_process_env_override: bool
+    environment: str
+
+
+def _normalize_optional_url(value: str | None) -> str | None:
+    """Normalize URL strings only for source-conflict comparisons."""
+    if value is None:
+        return None
+    stripped = value.strip().rstrip("/")
+    return stripped or None
+
+
+def _env_flag_enabled(value: str | None) -> bool:
+    """Return True for explicit opt-in env flags."""
+    return value is not None and value.strip().lower() in {"1", "true", "yes", "on"}
+
+
+def read_qdrant_url_from_env_file(env_file_path: Path) -> str | None:
+    """Read QDRANT_URL from a dotenv-style file without mutating process env."""
+    if not env_file_path.exists():
+        return None
+
+    for raw_line in env_file_path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, raw_value = line.split("=", 1)
+        if key.strip() != "QDRANT_URL":
+            continue
+        value = raw_value.strip().strip('"').strip("'")
+        return value or None
+    return None
+
+
+def build_legal_ingest_preflight(
+    *,
+    configured_qdrant_url: str,
+    requested_collection: str,
+    resolved_collection: str,
+    env_file_path: Path | None = None,
+    environ: dict[str, str] | None = None,
+) -> LegalIngestPreflight:
+    """Build legal ingest preflight inputs from explicit runtime sources."""
+    env = environ if environ is not None else os.environ
+    backend_rag_root = Path(__file__).resolve().parents[3]
+    qdrant_env_file = env_file_path or backend_rag_root / ".env"
+
+    return LegalIngestPreflight(
+        configured_qdrant_url=configured_qdrant_url,
+        process_qdrant_url=env.get("QDRANT_URL"),
+        env_file_qdrant_url=read_qdrant_url_from_env_file(qdrant_env_file),
+        requested_collection=requested_collection,
+        resolved_collection=resolved_collection,
+        allow_process_env_override=_env_flag_enabled(env.get(LEGAL_ENV_OVERRIDE_FLAG)),
+        environment=env.get("ENVIRONMENT", "development"),
+    )
+
+
+def validate_legal_ingest_preflight(preflight: LegalIngestPreflight) -> None:
+    """Validate legal ingest env source and target collection before writing."""
+    process_url = _normalize_optional_url(preflight.process_qdrant_url)
+    env_file_url = _normalize_optional_url(preflight.env_file_qdrant_url)
+    configured_url = _normalize_optional_url(preflight.configured_qdrant_url)
+    environment = preflight.environment.strip().lower()
+
+    if not configured_url:
+        raise LegalIngestIntegrityError("QDRANT_URL is empty for legal ingestion")
+
+    if (
+        environment != "production"
+        and process_url
+        and env_file_url
+        and process_url != env_file_url
+        and not preflight.allow_process_env_override
+    ):
+        raise LegalIngestIntegrityError(
+            "QDRANT_URL source conflict: process environment overrides a different .env "
+            f"value for legal ingestion. Set {LEGAL_ENV_OVERRIDE_FLAG}=1 for an "
+            "intentional local/canary override."
+        )
+
+    canonical_target = canonicalize_collection_name(preflight.resolved_collection)
+    if canonical_target != LEGAL_CANONICAL_COLLECTION:
+        raise LegalIngestIntegrityError(
+            "Legal ingestion target collection must resolve to "
+            f"{LEGAL_CANONICAL_COLLECTION!r}; requested={preflight.requested_collection!r} "
+            f"resolved={preflight.resolved_collection!r}"
+        )
+
+
+def _coerce_positive_int(value: Any, field_name: str) -> int:
+    """Coerce a result counter to int for explicit integrity checks."""
+    try:
+        return int(value)
+    except (TypeError, ValueError) as exc:
+        raise LegalIngestIntegrityError(f"Legal ingestion result has invalid {field_name}") from exc
+
+
+def validate_legal_ingest_result(result: dict[str, Any]) -> None:
+    """Ensure legal ingestion did not silently succeed with no indexed data."""
+    if not result.get("success"):
+        error = result.get("error") or result.get("message") or "unknown error"
+        raise LegalIngestIntegrityError(f"Legal ingestion failed: {error}")
+
+    chunks_created = _coerce_positive_int(result.get("chunks_created"), "chunks_created")
+    if chunks_created <= 0:
+        raise LegalIngestIntegrityError("Legal ingestion produced zero chunks")
+
+    chunks_upserted = _coerce_positive_int(
+        result.get("chunks_upserted", chunks_created),
+        "chunks_upserted",
+    )
+    if chunks_upserted <= 0:
+        raise LegalIngestIntegrityError("Legal ingestion produced zero upserts")
 
 
 class LegalIngestionService:
@@ -49,6 +183,13 @@ class LegalIngestionService:
         self.embedder = create_embeddings_generator()
         resolved_collection_name = resolve_collection_name(collection_name)
         self.vector_db = QdrantClient(collection_name=resolved_collection_name)
+        validate_legal_ingest_preflight(
+            build_legal_ingest_preflight(
+                configured_qdrant_url=self.vector_db.qdrant_url,
+                requested_collection=collection_name,
+                resolved_collection=resolved_collection_name,
+            )
+        )
         self.classifier = TierClassifier()
 
         # Initialize Hierarchical Indexer
@@ -110,6 +251,13 @@ class LegalIngestionService:
             # Override collection if specified
             target_collection = resolve_collection_name(
                 collection_name or self.vector_db.collection_name
+            )
+            validate_legal_ingest_preflight(
+                build_legal_ingest_preflight(
+                    configured_qdrant_url=self.vector_db.qdrant_url,
+                    requested_collection=collection_name or self.vector_db.collection_name,
+                    resolved_collection=target_collection,
+                )
             )
             if collection_name:
                 self.vector_db = QdrantClient(collection_name=target_collection)
@@ -496,6 +644,22 @@ Return ONLY valid JSON, no markdown."""
             indexing_result = await self.indexer.index_legal_document(
                 document_text=cleaned_text, document_id=doc_id, metadata=base_metadata
             )
+            chunks_indexed = _coerce_positive_int(
+                indexing_result.get("chunks_indexed"),
+                "chunks_indexed",
+            )
+            chunks_upserted = _coerce_positive_int(
+                indexing_result.get("chunks_upserted", chunks_indexed),
+                "chunks_upserted",
+            )
+            if chunks_indexed <= 0:
+                raise LegalIngestIntegrityError(
+                    f"Legal ingestion produced zero chunks for {doc_id}"
+                )
+            if chunks_upserted <= 0:
+                raise LegalIngestIntegrityError(
+                    f"Legal ingestion produced zero upserts for {doc_id}"
+                )
             indexing_duration = time.time() - indexing_start
 
             # Record chunking and embedding metrics
@@ -513,7 +677,7 @@ Return ONLY valid JSON, no markdown."""
                 file_type=file_type,
                 collection=target_collection,
                 status="success",
-                chunks_created=indexing_result["chunks_indexed"],
+                chunks_created=chunks_indexed,
             )
 
             metrics_collector.record_document_processing_duration(
@@ -525,7 +689,8 @@ Return ONLY valid JSON, no markdown."""
                 extra={
                     "document_id": document_id,
                     "stage": "completion",
-                    "chunks_created": indexing_result["chunks_indexed"],
+                    "chunks_created": chunks_indexed,
+                    "chunks_upserted": chunks_upserted,
                     "parent_documents": indexing_result["parent_documents"],
                     "total_bab": indexing_result.get("total_bab", 0),
                     "total_pasal": indexing_result.get("total_pasal", 0),
@@ -534,7 +699,7 @@ Return ONLY valid JSON, no markdown."""
 
             # STAGE 7: Knowledge Graph Extraction (Permanent)
             kg_extraction_result = {}
-            if self.kg_enabled and indexing_result["chunks_indexed"] > 0:
+            if self.kg_enabled and chunks_indexed > 0:
                 kg_start = time.time()
                 try:
                     kg_extractor = await self._get_kg_extractor()
@@ -615,7 +780,7 @@ Return ONLY valid JSON, no markdown."""
             ingestion_logger.ingestion_completed(
                 document_id=document_id,
                 file_path=file_path,
-                chunks_created=indexing_result["chunks_indexed"],
+                chunks_created=chunks_indexed,
                 collection_name=target_collection,
                 tier=tier.value,
                 total_duration_ms=total_duration * 1000,
@@ -629,7 +794,8 @@ Return ONLY valid JSON, no markdown."""
                 "book_title": document_title,
                 "book_author": "Pemerintah Indonesia",
                 "tier": tier.value,
-                "chunks_created": indexing_result["chunks_indexed"],
+                "chunks_created": chunks_indexed,
+                "chunks_upserted": chunks_upserted,
                 "legal_metadata": metadata,
                 "structure": {
                     "bab_count": indexing_result["total_bab"],
