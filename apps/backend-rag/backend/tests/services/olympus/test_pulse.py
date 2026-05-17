@@ -1,8 +1,9 @@
 """Tests for Olympus v2 Pulse — outcome values match DB CHECK constraint."""
-import pytest
-from backend.services.olympus.models import PulseAction
-from backend.services.olympus.pulse import Pulse
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
+from backend.services.olympus.pulse import Pulse
 
 VALID_OUTCOMES = {"success", "failure", "skipped", "proposed"}
 
@@ -17,7 +18,8 @@ class TestPulseOutcomes:
 
     def test_all_outcomes_in_valid_set(self):
         """Every outcome literal in pulse.py must match the DB CHECK constraint."""
-        import inspect, re
+        import inspect
+        import re
         source = inspect.getsource(Pulse)
         outcomes = re.findall(r'outcome="(\w+)"', source)
         for o in outcomes:

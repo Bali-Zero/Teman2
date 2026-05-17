@@ -30,10 +30,9 @@ import os
 import sys
 import tempfile
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 from urllib.parse import urlparse
 
 import httpx
@@ -451,7 +450,9 @@ def _add_to_nlm_nb6(row: RegulationRow, drive_file_id: str) -> bool:
     Uses the NLM bridge if available, falls back silently.
     """
     try:
-        from apps.evaluator.nlm_deep_research.nlm_bridge import NLMBridge  # type: ignore
+        from apps.evaluator.nlm_deep_research.nlm_bridge import (
+            NLMBridge,  # type: ignore
+        )
 
         bridge = NLMBridge()
         # Use the Drive file URL as source if we have a file ID
@@ -486,7 +487,7 @@ def _add_to_nlm_nb6(row: RegulationRow, drive_file_id: str) -> bool:
 # ─── Main ingestion loop ──────────────────────────────────────────────────────
 
 
-def run(dry_run: bool = False, row_filter: Optional[int] = None) -> None:
+def run(dry_run: bool = False, row_filter: int | None = None) -> None:
     """
     Main entry point.
 

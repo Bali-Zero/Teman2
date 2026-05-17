@@ -12,7 +12,6 @@ import base64
 import io
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 import qrcode
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -210,7 +209,6 @@ def render_markdown(data: dict, out_path: Path) -> None:
 def main() -> int:
     import argparse
     import json
-    import sys
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(

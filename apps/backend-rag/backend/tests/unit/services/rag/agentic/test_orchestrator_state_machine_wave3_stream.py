@@ -17,13 +17,11 @@ events into a list.
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from backend.services.tools.definitions import AgentState, ToolCall
-
 
 # ---------------------------------------------------------------------------
 # Autouse tracing + metrics patches (shared pattern with wave1/wave2)
@@ -451,7 +449,7 @@ class TestStreamCRMEarlyExit:
             "backend.services.rag.agentic.reasoning.is_critical_domain",
             return_value=False,
         ):
-            events = await _run_stream(engine, gateway, state)
+            await _run_stream(engine, gateway, state)
 
         # Two iterations happened (no early-exit from CRM branch)
         assert calls["i"] == 2

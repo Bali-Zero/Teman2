@@ -1,35 +1,30 @@
 """Tests for nb_monitor.alerts (pure logic, no I/O)."""
 from __future__ import annotations
 
-from dataclasses import replace
-
-import pytest
-
 from mata_garuda.scripts.nb_monitor.alerts import (
+    COOLDOWNS,
     AlertCondition,
     AlertContext,
-    AlertDecision,
-    evaluate_alerts,
     can_send,
-    COOLDOWNS,
+    evaluate_alerts,
 )
 from mata_garuda.scripts.nb_monitor.tier import Tier
 
 
 def _ctx(**over) -> AlertContext:
-    base = dict(
-        uuid="u1",
-        name="NB-X",
-        tier_now=Tier.ALIVE,
-        tier_lastweek=Tier.ALIVE,
-        read_freq_7d_now=20,
-        read_freq_7d_lastweek=50,
-        age_days=30,
-        skill_derivation_count=None,
-        in_top5_alive_lastweek=True,
-        consecutive_dying_days=0,
-        rf7_30d_window_max=15,
-    )
+    base = {
+        "uuid": "u1",
+        "name": "NB-X",
+        "tier_now": Tier.ALIVE,
+        "tier_lastweek": Tier.ALIVE,
+        "read_freq_7d_now": 20,
+        "read_freq_7d_lastweek": 50,
+        "age_days": 30,
+        "skill_derivation_count": None,
+        "in_top5_alive_lastweek": True,
+        "consecutive_dying_days": 0,
+        "rf7_30d_window_max": 15,
+    }
     base.update(over)
     return AlertContext(**base)
 

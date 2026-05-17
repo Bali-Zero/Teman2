@@ -4,11 +4,9 @@ Uses a fake async Redis client that implements xadd/xreadgroup/xack/xgroup_creat
 in-memory. This tests the logic without requiring a real Redis connection.
 For integration tests with real Redis, see test_integration.py.
 """
-import asyncio
-import pytest
 from collections import defaultdict
-from typing import Any
 
+import pytest
 from cell_core.genome import Genome
 
 

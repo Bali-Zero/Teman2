@@ -10,11 +10,9 @@ Run: PYTHONPATH=. pytest apps/evaluator/nlm_deep_research/tests/test_heartbeat_m
 from __future__ import annotations
 
 import json
-import os
-import tempfile
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 from pathlib import Path
-from unittest.mock import MagicMock, patch, mock_open
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -35,7 +33,6 @@ from apps.evaluator.nlm_deep_research.heartbeat_monitor import (
     send_alert,
     send_daily_digest,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -5,9 +5,9 @@ Tests ProcessAutomationService, CompletedProcessService,
 WaitingDocumentsService and shared helpers.
 """
 
-import pytest
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 
 def _make_pool(conn=None):

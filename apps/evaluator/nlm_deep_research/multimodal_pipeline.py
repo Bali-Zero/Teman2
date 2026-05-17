@@ -31,10 +31,10 @@ import subprocess
 import sys
 import time
 import urllib.request
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -148,9 +148,9 @@ class ArtifactRecord:
     notebook_key: str
     artifact_type: str
     generated_at: str  # ISO UTC
-    downloaded_at: Optional[str] = None
-    output_path: Optional[str] = None
-    artifact_id: Optional[str] = None
+    downloaded_at: str | None = None
+    output_path: str | None = None
+    artifact_id: str | None = None
 
 
 @dataclass
@@ -160,7 +160,7 @@ class RunResult:
     artifact_type: str
     status: str          # "ok" | "skipped" | "error" | "dry_run"
     message: str = ""
-    output_path: Optional[str] = None
+    output_path: str | None = None
     latency_s: float = 0.0
 
 
@@ -193,7 +193,7 @@ def _get_last_generated(
     state: dict[str, Any],
     notebook_key: str,
     artifact_type: str,
-) -> Optional[datetime]:
+) -> datetime | None:
     """Return UTC datetime of last successful generation, or None."""
     record = state.get(_state_key(notebook_key, artifact_type))
     if not record:
@@ -211,7 +211,7 @@ def _record_success(
     state: dict[str, Any],
     notebook_key: str,
     artifact_type: str,
-    output_path: Optional[str] = None,
+    output_path: str | None = None,
 ) -> None:
     """Record a successful generation in state."""
     key = _state_key(notebook_key, artifact_type)
@@ -227,7 +227,7 @@ def _record_success(
 # Schedule helpers
 # ---------------------------------------------------------------------------
 
-def get_todays_tasks(now: Optional[datetime] = None) -> list[tuple[str, str]]:
+def get_todays_tasks(now: datetime | None = None) -> list[tuple[str, str]]:
     """Return list of (notebook_key, artifact_type) tasks scheduled for today."""
     if now is None:
         now = datetime.now(WITA)
@@ -462,7 +462,7 @@ def generate_artifact(
 # ---------------------------------------------------------------------------
 
 def run_pipeline(
-    tasks: Optional[list[tuple[str, str]]] = None,
+    tasks: list[tuple[str, str]] | None = None,
     force: bool = False,
     dry_run: bool = False,
 ) -> list[RunResult]:
@@ -598,7 +598,7 @@ def _build_parser() -> argparse.ArgumentParser:
     return p
 
 
-def main(argv: Optional[list[str]] = None) -> int:
+def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
@@ -612,7 +612,7 @@ def main(argv: Optional[list[str]] = None) -> int:
         return 0
 
     # Build task list
-    tasks: Optional[list[tuple[str, str]]] = None
+    tasks: list[tuple[str, str]] | None = None
 
     if args.tasks:
         tasks = []

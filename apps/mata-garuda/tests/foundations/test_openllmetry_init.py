@@ -1,6 +1,6 @@
 import os
-import pytest
 from unittest.mock import patch
+
 from mata_garuda.foundations.openllmetry_init import (
     init_openllmetry,
     is_openllmetry_enabled,

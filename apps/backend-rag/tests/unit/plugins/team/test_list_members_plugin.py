@@ -4,8 +4,6 @@ Tests for TeamMembersListPlugin.
 
 from unittest.mock import MagicMock
 
-import pytest
-
 
 def test_execute_with_empty_string_department():
     """Plugin should handle empty string department by treating as None."""

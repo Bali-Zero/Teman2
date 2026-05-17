@@ -1,8 +1,9 @@
 """Tests for Olympus v2 RulesEngine."""
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
 from backend.services.olympus.rules_engine import RulesEngine
-from backend.services.olympus.models import OlympusRule
 
 
 def _make_pool(conn):

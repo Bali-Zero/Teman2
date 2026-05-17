@@ -4,7 +4,6 @@ The heavy end-to-end planner behavior now lives in test_visa_planner.py.
 This file preserves only the _identify_visa_type regression tests.
 """
 
-import pytest
 
 from nuzantara_graph.subgraphs.visa.specs import VISA_SPECS, _identify_visa_type
 from nuzantara_schemas.domain.visa import VisaType

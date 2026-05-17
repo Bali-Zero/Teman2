@@ -1,8 +1,7 @@
 """Tests for mata_garuda.cell.thinker — passthrough decision gate."""
 import pytest
-
-from cell_core.types import HomeostaticState, Proposal, SensorReading
 from cell_core.protocols import Thinker
+from cell_core.types import HomeostaticState, SensorReading
 
 
 class TestPassthroughThinker:

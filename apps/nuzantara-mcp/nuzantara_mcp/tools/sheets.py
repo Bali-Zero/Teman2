@@ -1,6 +1,5 @@
 """Google Sheets Tools - Read/write spreadsheet data."""
 
-from typing import Optional
 
 
 def register(mcp, _call, _call_safe):

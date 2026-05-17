@@ -3,8 +3,6 @@ Source whitelist: gov.id + known aggregators.
 """
 from __future__ import annotations
 
-import pytest
-
 from backend.services.intel.intel_source_whitelist import (
     INTEL_SOURCE_WHITELIST,
     is_whitelisted,

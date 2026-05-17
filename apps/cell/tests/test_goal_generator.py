@@ -4,17 +4,13 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from cell.cortex.goal_generator import (
-    DEFAULT_MAX_ACTIVE,
-    DEDUP_SIMILARITY_THRESHOLD,
+    _SOURCE_PRIORITY,
     Goal,
     GoalGenerator,
-    _SOURCE_PRIORITY,
     _jaccard,
     _trigrams,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -1,8 +1,6 @@
 import sys
 from pathlib import Path
 
-import pytest
-
 # Add scripts dir to import path
 # parents[6] = repo root (worktree root), scripts/ lives there
 # depth: test_file → scripts/ → unit/ → tests/ → backend/ → backend-rag/ → apps/ → repo-root
@@ -10,10 +8,10 @@ _SCRIPTS_DIR = Path(__file__).resolve().parents[6] / "scripts"
 sys.path.insert(0, str(_SCRIPTS_DIR))
 
 from check_llm_cost_tracking import (  # noqa: E402
-    is_paid_client,
-    tracks_cost,
-    scan_files,
     WHITELIST_SUBSTRINGS,
+    is_paid_client,
+    scan_files,
+    tracks_cost,
 )
 
 

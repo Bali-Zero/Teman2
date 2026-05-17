@@ -2,7 +2,6 @@
 Tests for ReAct loop execution and citation handling in reasoning engine.
 """
 
-import pytest
 
 from backend.services.rag.agentic.reasoning_utils import calculate_evidence_score
 

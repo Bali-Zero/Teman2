@@ -8,42 +8,41 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-
 from mata_garuda.domains.setup_team.feeders.nb_intel_immigration import (
-    IMMIGRATION_REGEX,
     KANIM_BALI_LAYERS,
     KEMENKUM_BERITA_URL,
-    LIFESTYLE_BLOCKLIST,
-    TRUSTED_TIER1_HOSTS as IMMIGRATION_TRUSTED_TIER1_HOSTS,
     _fetch_url_links,
     _matches_immigration_regex,
     fetch_recent_immigration,
+)
+from mata_garuda.domains.setup_team.feeders.nb_intel_immigration import (
+    TRUSTED_TIER1_HOSTS as IMMIGRATION_TRUSTED_TIER1_HOSTS,
 )
 from mata_garuda.domains.setup_team.feeders.nb_intel_regulation import (
     BPK_SEARCH_URL,
     JDIHN_SEARCH_URL,
     PERATURAN_GO_ID_URL,
-    REGULATION_REGEX,
     SETKAB_PRESS_URL,
-    TRUSTED_TIER1_HOSTS as REGULATION_TRUSTED_TIER1_HOSTS,
     _classify_tier,
     _fetch_jdihn,
     _matches_regulation_regex,
     fetch_recent_regulations,
 )
+from mata_garuda.domains.setup_team.feeders.nb_intel_regulation import (
+    TRUSTED_TIER1_HOSTS as REGULATION_TRUSTED_TIER1_HOSTS,
+)
 from mata_garuda.domains.setup_team.feeders.nb_intel_regulation_bali import (
     BALI_PORTAL_IDS,
-    CATEGORY_REGEXES,
-    TRUSTED_TIER1_HOSTS as BALI_TRUSTED_TIER1_HOSTS,
     _classify_categories,
     fetch_recent_regulation_bali,
 )
-from mata_garuda.foundations.gov_apis_health import PortalHealth
+from mata_garuda.domains.setup_team.feeders.nb_intel_regulation_bali import (
+    TRUSTED_TIER1_HOSTS as BALI_TRUSTED_TIER1_HOSTS,
+)
 from mata_garuda.foundations.pasal_id_client import (
     LawSearchResult,
     PasalIdAuthError,
 )
-
 
 # ---------------- T1.5: endpoint URL regression-guards ---------------- #
 #
@@ -561,8 +560,9 @@ async def test_fetch_recent_regulation_bali_skips_dead_portals():
     )
 
     # Patch the http.AsyncClient used by probe_portal so it shares our mock.
-    import mata_garuda.foundations.gov_apis_health as gah
     from unittest.mock import patch
+
+    import mata_garuda.foundations.gov_apis_health as gah
 
     with patch.object(gah, "httpx") as mock_httpx:
         mock_cm = AsyncMock()

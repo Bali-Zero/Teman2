@@ -11,8 +11,6 @@ import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-import pytest
-
 from cell.sensors.oauth_health_sensor import OAuthHealthSensor
 
 

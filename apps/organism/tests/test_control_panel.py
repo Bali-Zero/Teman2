@@ -1,8 +1,7 @@
 import pytest
 from fastapi.testclient import TestClient
-from pathlib import Path
-from organism.control_panel import create_app
 from organism.blackout import BlackoutManager
+from organism.control_panel import create_app
 
 
 def test_health_endpoint_returns_ok(tmp_path):
@@ -84,8 +83,8 @@ def test_health_reflects_pause_state(tmp_path, monkeypatch):
 
 def test_blackout_manager_expires():
     """Flag auto-expires when expiry time passes."""
-    import time
     import tempfile
+    import time
     from pathlib import Path as _P
     with tempfile.TemporaryDirectory() as td:
         bm = BlackoutManager(flag_path=_P(td) / "pause.flag")

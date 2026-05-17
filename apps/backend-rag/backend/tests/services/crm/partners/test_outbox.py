@@ -14,14 +14,14 @@ from __future__ import annotations
 
 import uuid
 from decimal import Decimal
-from unittest.mock import AsyncMock, patch
+from unittest.mock import patch
 
 import pytest
 
 import backend.services.crm.partners.emails as emails_mod
 from backend.services.crm.partners.emails import (
-    enqueue_welcome,
     enqueue_commission_earned,
+    enqueue_welcome,
     flush_outbox,
 )
 

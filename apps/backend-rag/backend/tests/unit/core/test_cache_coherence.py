@@ -13,7 +13,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Semantic Cache L1+L2 Tests
 # ---------------------------------------------------------------------------
@@ -83,7 +82,6 @@ class TestSemanticCacheL2:
         from backend.services.caching.semantic_cache import (
             _L1_CACHE,
             _query_hash,
-            _redis_key,
             get_cached_response_async,
         )
 
@@ -192,6 +190,8 @@ class TestSemanticCacheL2:
         """invalidate_cache alias still works."""
         from backend.services.caching.semantic_cache import (
             invalidate_cache as sc_invalidate,
+        )
+        from backend.services.caching.semantic_cache import (
             invalidate_semantic_cache,
         )
 
@@ -328,7 +328,6 @@ class TestRateLimiterFallback:
 
     def test_in_memory_rate_limiting(self) -> None:
         """In-memory sliding window works correctly."""
-        from backend.middleware.rate_limiter import _rate_limit_storage
 
         with patch("backend.core.redis_manager.RedisManager.get_instance") as mock_mgr:
             instance = MagicMock()

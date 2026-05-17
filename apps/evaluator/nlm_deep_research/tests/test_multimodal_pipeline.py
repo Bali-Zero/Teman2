@@ -6,31 +6,25 @@ All nlm CLI calls are mocked — no real NLM network access.
 from __future__ import annotations
 
 import json
-import tempfile
 from datetime import datetime, timedelta, timezone
-from pathlib import Path
-from unittest.mock import patch, MagicMock
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from apps.evaluator.nlm_deep_research.multimodal_pipeline import (
     ARTIFACT_META,
+    MIN_REGEN_INTERVAL,
     NOTEBOOKS,
     WEEKLY_SCHEDULE,
-    MIN_REGEN_INTERVAL,
     RunResult,
-    _load_state,
-    _save_state,
-    _state_key,
     _get_last_generated,
+    _load_state,
     _record_success,
+    _state_key,
     generate_artifact,
     get_status,
     get_todays_tasks,
     run_pipeline,
     should_generate,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -465,7 +459,9 @@ class TestNlmCreateCommands:
             return m
 
         with patch("subprocess.run", side_effect=fake_run):
-            from apps.evaluator.nlm_deep_research.multimodal_pipeline import _run_nlm_create
+            from apps.evaluator.nlm_deep_research.multimodal_pipeline import (
+                _run_nlm_create,
+            )
             _run_nlm_create(artifact_type, notebook_id)
 
         return captured[0] if captured else []
@@ -488,7 +484,9 @@ class TestNlmCreateCommands:
 
     def test_dry_run_does_not_call_subprocess(self):
         with patch("subprocess.run") as mock_run:
-            from apps.evaluator.nlm_deep_research.multimodal_pipeline import _run_nlm_create
+            from apps.evaluator.nlm_deep_research.multimodal_pipeline import (
+                _run_nlm_create,
+            )
             ok, msg = _run_nlm_create("audio", "some-id", dry_run=True)
         mock_run.assert_not_called()
         assert ok is True

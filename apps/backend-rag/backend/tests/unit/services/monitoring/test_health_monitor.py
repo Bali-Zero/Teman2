@@ -4,10 +4,8 @@ Covers: initialization, service checks (qdrant, postgresql, ai_router),
 resource monitoring, alert logic, status reporting, module-level helpers.
 """
 
-import asyncio
 import os
-import time
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest

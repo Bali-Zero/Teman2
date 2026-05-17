@@ -3,15 +3,13 @@ Core Guardian - Phase 2 & 3: DECIDE & ACT
 The routing orchestrator that prepares the task and invokes Claude Opus 4.6 via OpenClaw CLI.
 """
 
+import asyncio
 import json
 import logging
-import subprocess
-import sys
-from pathlib import Path
-from datetime import datetime
-import asyncio
 import re
-import shlex
+import subprocess
+from datetime import datetime
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 logging.basicConfig(level=logging.INFO, format="[Core Guardian - AGENT] %(levelname)s: %(message)s")

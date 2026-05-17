@@ -5,10 +5,9 @@ Covers: VectorSearchTool, CalculatorTool, PricingTool, TeamKnowledgeTool,
 """
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Common patches
@@ -32,8 +31,8 @@ def _patch_tracing():
 class TestModuleHelpers:
 
     def test_get_client_creates_new_client(self):
-        from backend.services.rag.agentic.tools import _get_client
         import backend.services.rag.agentic.tools as tools_mod
+        from backend.services.rag.agentic.tools import _get_client
         old = tools_mod._client
         tools_mod._client = None
         try:
@@ -42,7 +41,6 @@ class TestModuleHelpers:
             assert not client.is_closed
         finally:
             if tools_mod._client and not tools_mod._client.is_closed:
-                import asyncio
                 # Don't close in test, just reset
                 pass
             tools_mod._client = old
@@ -418,7 +416,7 @@ class TestTeamKnowledgeTool:
         from backend.services.rag.agentic.tools import TeamKnowledgeTool
         tool = TeamKnowledgeTool(db_pool=None)
         with patch("pathlib.Path.exists", return_value=False):
-            path = tool._get_data_file_path()
+            tool._get_data_file_path()
         # May return None or a path depending on which paths exist
         # The important thing is it doesn't raise
 

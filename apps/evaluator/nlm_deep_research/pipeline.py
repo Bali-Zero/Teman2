@@ -9,13 +9,11 @@ This is the main entry point. Run via:
 
 import json
 import logging
-import os
 import time
 import uuid
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from enum import Enum
 from pathlib import Path
-from typing import Optional
 
 from .circuit_breaker import CircuitBreakerRegistry
 from .claim_extractor import (
@@ -25,23 +23,22 @@ from .claim_extractor import (
     load_claims_count,
 )
 from .handoff import generate_handoff, save_handoff, validate_handoff_schema
-from .invariants import check_all_invariants, InvariantSeverity
+from .invariants import InvariantSeverity, check_all_invariants
 from .query_decomposer import QueryDecomposer
 from .registry import SourceRegistry
-from .source_snapshot import take_snapshot
 from .source_management import (
-    compute_svs,
-    compute_nhs,
-    classify_nhs,
-    Source,
-    SourceDates,
-    SourceScores,
-    SourceFlags,
-    SourceDedup,
-    SourceType,
     LifecycleStage,
     NotebookHealthInput,
+    Source,
+    SourceDates,
+    SourceDedup,
+    SourceFlags,
+    SourceScores,
+    SourceType,
+    compute_nhs,
+    compute_svs,
 )
+from .source_snapshot import take_snapshot
 
 logger = logging.getLogger(__name__)
 
@@ -124,7 +121,7 @@ class NLMPipeline:
         self.claims_file = Path(claims_file)
         self.registry = SourceRegistry(registry_file)
         # CB loaded from state file in load_state(), not independently
-        self.circuit_breakers: Optional[CircuitBreakerRegistry] = None
+        self.circuit_breakers: CircuitBreakerRegistry | None = None
         self.dry_run = dry_run
         self.force = force
 
@@ -364,7 +361,7 @@ class NLMPipeline:
         self,
         level: str,
         cluster: str,
-        conversation_id: Optional[str] = None,
+        conversation_id: str | None = None,
     ) -> dict:
         """Execute a single NLM query.
 
@@ -589,7 +586,6 @@ def _now_wita() -> datetime:
 
 def _dict_to_source(source_id: str, d: dict) -> Source:
     """Convert a registry dict entry to a Source dataclass."""
-    from datetime import datetime as dt
 
     dates_raw = d.get("dates", {})
     dates = SourceDates(
@@ -652,7 +648,7 @@ def _dict_to_source(source_id: str, d: dict) -> Source:
     )
 
 
-def _parse_date(val) -> Optional[datetime]:
+def _parse_date(val) -> datetime | None:
     """Parse a date string to datetime, or return None."""
     if not val:
         return None
@@ -687,7 +683,10 @@ def main():
     nlm_query_fn = None
     if not args.dry_run:
         try:
-            from apps.evaluator.nlm_deep_research.nlm_bridge import nlm_query, check_nlm_available
+            from apps.evaluator.nlm_deep_research.nlm_bridge import (
+                check_nlm_available,
+                nlm_query,
+            )
             if check_nlm_available():
                 nlm_query_fn = nlm_query
             else:

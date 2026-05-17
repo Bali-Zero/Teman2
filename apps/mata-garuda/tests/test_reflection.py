@@ -1,5 +1,4 @@
 """Tests for reflection engine — JSON-based, not regex."""
-import pytest
 
 
 class TestReflectionPrompt:

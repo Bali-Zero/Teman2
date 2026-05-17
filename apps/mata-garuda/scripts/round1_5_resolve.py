@@ -28,8 +28,6 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Any
-
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 WORKTREE = REPO_ROOT  # this script lives inside the worktree
@@ -317,7 +315,7 @@ def update_decision_doc(results: dict) -> None:
         replacement = f"**Zero decision ({TODAY}):** {outcome}"
         text = text[:deco_idx] + replacement + text[deco_idx + len(deco_marker):]
     DECISION_DOC.write_text(text)
-    print(f"  decision doc updated")
+    print("  decision doc updated")
 
 
 # -----------------------------------------------------------------------------
@@ -361,7 +359,7 @@ def main() -> int:
                 delete_done.append(uuid)
                 decision_lines[uuid] = f"DELETE — renamed {DELETE_PREFIX}"
             else:
-                decision_lines[uuid] = f"DELETE — already prefixed or not live"
+                decision_lines[uuid] = "DELETE — already prefixed or not live"
         elif action == "STUB_CHECK":
             r = do_stub_check(uuid, target)
             if r.get("live"):
@@ -388,7 +386,7 @@ def main() -> int:
     update_decision_doc(decision_lines)
 
     print()
-    print(f"=== R1.5 done ===")
+    print("=== R1.5 done ===")
     print(f"  merge_done: {len(merge_done)}")
     print(f"  delete_done: {len(delete_done)}")
     print(f"  manifest cleaned up: {len(cleanup_uuids)}")

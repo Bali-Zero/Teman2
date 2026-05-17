@@ -5,13 +5,11 @@ All external calls (nlm CLI, Ollama) are mocked.
 
 from __future__ import annotations
 
-import asyncio
 from unittest.mock import patch
 
 import pytest
 
 from apps.evaluator.nlm_deep_research.cross_notebook_correlator import (
-    DOMAIN_REGISTRY,
     MAX_NOTEBOOKS_PER_QUERY,
     MIN_DOMAINS_FOR_CROSS,
     CorrelationEntry,
@@ -23,10 +21,8 @@ from apps.evaluator.nlm_deep_research.cross_notebook_correlator import (
     _extract_claims,
     build_correlation_matrix,
     detect_domains,
-    get_correlator,
     is_multi_domain,
 )
-
 
 # ---------------------------------------------------------------------------
 # detect_domains
@@ -427,8 +423,9 @@ class TestCrossNotebookResultProperties:
 # (loaded via sys.path since apps/backend-rag has a hyphen in the directory name)
 # ---------------------------------------------------------------------------
 
-import sys as _sys
 import os as _os
+import sys as _sys
+
 _backend_rag_path = _os.path.join(_os.path.dirname(__file__), "..", "..", "..", "backend-rag")
 if _backend_rag_path not in _sys.path:
     _sys.path.insert(0, _backend_rag_path)

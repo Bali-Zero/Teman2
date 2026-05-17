@@ -1,15 +1,14 @@
 """Tigris S3 client: put_object with retry + delete + URL build."""
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
 
 from backend.services.canva_renderer_v2._tigris import (
+    TigrisError,
     build_public_url,
     delete_pdf,
     delete_pdf_by_key,
     upload_pdf,
-    TigrisError,
 )
 
 

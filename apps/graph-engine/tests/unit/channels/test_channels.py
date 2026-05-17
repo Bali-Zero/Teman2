@@ -1,14 +1,12 @@
 """Tests for channel adapters — formatting and parsing."""
 
-import pytest
 
 from nuzantara_graph.channels import (
-    WebChannelAdapter,
     TelegramChannelAdapter,
+    WebChannelAdapter,
     WhatsAppChannelAdapter,
     get_channel_adapter,
 )
-from nuzantara_graph.channels.base import ChannelAdapter
 from nuzantara_schemas.state import ChannelType, GraphState
 
 

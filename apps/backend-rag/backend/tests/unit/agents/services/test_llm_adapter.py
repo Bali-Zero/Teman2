@@ -18,11 +18,9 @@ Covers:
 - get_llm_adapter / close_llm_adapter singletons
 """
 
-import asyncio
 import logging
 import time
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest

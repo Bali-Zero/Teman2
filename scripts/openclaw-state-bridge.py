@@ -5,7 +5,6 @@ Reads ~/.openclaw/cron/jobs.json and writes .last.json for every job.
 Run every 5 minutes via cron (same frequency as sentinel).
 """
 import json
-import os
 import pathlib
 import time
 

@@ -17,17 +17,14 @@ Responsabilità:
 import json
 import logging
 import subprocess
-import sys
 from collections import Counter
 from datetime import datetime, timezone
-from pathlib import Path
 
 # Import shared utilities from watchdog
 from watchdog import (
     AGENT_DIR,
     BACKEND_DIR,
     BASELINE_FILE,
-    LOCK_FILE,
     RUFF_RULES,
     VENV_PYTHON,
     acquire_lock,

@@ -11,7 +11,6 @@ from backend.services.knowledge_graph.advanced_quality import (
     normalize_entity_name,
 )
 
-
 # ── normalize_entity_name ────────────────────────────────────────────────────
 
 
@@ -348,7 +347,7 @@ class TestEnhanceKgQuality:
 
     @pytest.mark.asyncio
     async def test_dry_run(self, monkeypatch):
-        from unittest.mock import AsyncMock, MagicMock
+        from unittest.mock import AsyncMock
 
         from backend.services.knowledge_graph.advanced_quality import enhance_kg_quality
 

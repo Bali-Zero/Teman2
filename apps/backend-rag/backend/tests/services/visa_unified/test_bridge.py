@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timedelta, timezone
-from unittest.mock import AsyncMock
 
 import pytest
 
@@ -13,7 +12,6 @@ from backend.services.visa_unified.bridge import (
     augment_chat_system_prompt,
     get_funnel_context,
 )
-
 
 # --- Fake asyncpg.Pool that returns canned rows ---------------------------
 
@@ -148,17 +146,17 @@ async def test_get_funnel_context_flags_referral_mode_when_visa_is_null():
 # --- augment_chat_system_prompt -------------------------------------------
 
 def _ctx(**overrides) -> FunnelContext:
-    defaults = dict(
-        check_hash="abc1234567890000",
-        nationality="USA",
-        purpose="work_remote",
-        duration_months=12,
-        budget_band="50m_500m",
-        recommended_visa="E33G",
-        estimated_cost_idr=13_000_000,
-        alternatives=["E23-FREELANCE", "C1"],
-        referral_mode=False,
-    )
+    defaults = {
+        "check_hash": "abc1234567890000",
+        "nationality": "USA",
+        "purpose": "work_remote",
+        "duration_months": 12,
+        "budget_band": "50m_500m",
+        "recommended_visa": "E33G",
+        "estimated_cost_idr": 13_000_000,
+        "alternatives": ["E23-FREELANCE", "C1"],
+        "referral_mode": False,
+    }
     defaults.update(overrides)
     return FunnelContext(**defaults)
 

@@ -9,17 +9,15 @@ from unittest.mock import AsyncMock, MagicMock, patch
 import pytest
 
 from backend.services.compliance.lkpm_deadline_notifier import (
-    KILLSWITCH_KEY,
+    _ROW_COLORS,
     LKPM_DASHBOARD_URL,
     LKPMDeadlineNotifier,
     _compute_days_until_deadline,
     _first_name_from_email,
     _format_deadline,
     _row_color,
-    _ROW_COLORS,
     run_lkpm_deadline_notifier_task,
 )
-
 
 # ---------------------------------------------------------------------------
 # Pure helper tests
@@ -187,7 +185,7 @@ def _make_db_pool(
     })])
     # Make rows iterable as dicts
     if pending_rows:
-        conn.fetch.return_value = [MagicMock(**{k: v for k, v in row.items()}) for row in pending_rows]
+        conn.fetch.return_value = [MagicMock(**dict(row.items())) for row in pending_rows]
         # Simpler: just return the rows directly via side_effect
         async def _fetch_side_effect(query, *args):
             return pending_rows

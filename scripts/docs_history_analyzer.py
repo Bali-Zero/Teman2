@@ -25,10 +25,9 @@ import json
 import subprocess
 import sys
 import time
-from collections import defaultdict
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List
 
 
 @dataclass
@@ -38,7 +37,7 @@ class DocEvent:
     ts: int          # unix epoch
     path: str
     change: str      # A / M / D / R (added / modified / deleted / renamed)
-    renamed_from: Optional[str] = None
+    renamed_from: str | None = None
 
 
 @dataclass

@@ -18,7 +18,6 @@ Test Coverage:
 Total: 35 tests (exceeds 20-test Production-Ready Standard)
 """
 
-import json
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -162,8 +161,9 @@ def test_state_workflow_synthesis(sample_state):
 async def test_understand_query_node_success(sample_state, mock_llm):
     """Test understand_query_node extracts intent and entities."""
     # Mock LLM response with Pydantic schema
-    from backend.services.rag.kg_graph_nodes import QueryIntentSchema
     from unittest.mock import AsyncMock, MagicMock
+
+    from backend.services.rag.kg_graph_nodes import QueryIntentSchema
     mock_response = QueryIntentSchema(
         intent="company_setup",
         domain="company",
@@ -211,6 +211,7 @@ async def test_understand_query_node_validation_error(sample_state, mock_llm):
     and must use the keyword-based domain detector as fallback.
     """
     from unittest.mock import AsyncMock, MagicMock
+
     from pydantic import ValidationError
 
     from backend.services.rag.kg_graph_nodes import QueryIntentSchema

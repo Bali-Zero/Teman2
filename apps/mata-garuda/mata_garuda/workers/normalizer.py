@@ -8,7 +8,6 @@ Layer 2 Kognitif — first worker in the pipeline.
 """
 from __future__ import annotations
 
-import json
 import logging
 from datetime import datetime
 
@@ -16,7 +15,6 @@ from mata_garuda.config import STREAM_ENRICHED, STREAM_RAW
 from mata_garuda.runtime.knowledge import KnowledgeBase
 from mata_garuda.workers.base_worker import (
     content_hash,
-    redis_cmd,
     stream_ack,
     stream_publish,
     stream_read_new,

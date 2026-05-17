@@ -1,12 +1,10 @@
 """Tests for cell_core.genome — DNA recording."""
-import pytest
 import sqlite3
-import tempfile
-import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 
+import pytest
 from cell_core.genome import Genome
 
 

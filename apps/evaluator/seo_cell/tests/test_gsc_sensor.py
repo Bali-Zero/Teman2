@@ -1,11 +1,11 @@
 """GSCSensor tests — all network paths mocked. No live calls."""
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
-
 from cell_core.types import SensorReading
+
 from apps.evaluator.seo_cell.sensors.gsc_sensor import GSCSensor, _GSCError
 
 

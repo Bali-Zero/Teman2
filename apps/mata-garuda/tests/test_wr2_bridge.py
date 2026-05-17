@@ -1,10 +1,7 @@
 """Tests for Layer 5 WR2 Bridge Publisher (Wave 2 of W4)."""
 from __future__ import annotations
 
-import json
 from pathlib import Path
-
-import pytest
 
 
 def _fake_cursor_storage(initial: str = ""):

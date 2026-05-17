@@ -8,7 +8,6 @@ from __future__ import annotations
 import logging
 import re
 import subprocess
-from datetime import datetime
 
 from mata_garuda.registry import register_tool
 

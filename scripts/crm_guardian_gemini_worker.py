@@ -27,7 +27,6 @@ import asyncio
 import hashlib
 import json
 import logging
-import os
 import re
 import sys
 import uuid
@@ -39,7 +38,10 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_RAG = REPO_ROOT / "apps" / "backend-rag"
 sys.path.insert(0, str(BACKEND_RAG))
 
-from backend.services.crm_guardian.schemas import L1ClientSummary, SCHEMA_VERSION  # noqa: E402
+from backend.services.crm_guardian.schemas import (  # noqa: E402
+    SCHEMA_VERSION,
+    L1ClientSummary,
+)
 
 LOG = logging.getLogger("crm_guardian.worker")
 
@@ -868,8 +870,8 @@ async def main() -> int:
     prompt_template = args.prompt_file.read_text()
 
     import asyncpg
-    from playwright.async_api import async_playwright
     from backend.services.crm_guardian.base import build_drive_service
+    from playwright.async_api import async_playwright
 
     db_url = _resolve_db_url()
     conn = await asyncpg.connect(db_url)

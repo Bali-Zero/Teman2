@@ -2,7 +2,6 @@
 Tests for HybridBrain tools - vector search document ID inclusion.
 """
 
-import pytest
 
 
 class TestHybridBrainTools:

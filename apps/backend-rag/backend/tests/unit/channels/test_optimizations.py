@@ -8,7 +8,6 @@ import asyncio
 import json
 import os
 import time
-from datetime import datetime, timedelta, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -27,7 +26,6 @@ from backend.channels.optimizations import (
     RateLimitConfig,
     initialize_optimizations,
 )
-
 
 # --------------------------------------------------------------------------- #
 # RateLimitConfig
@@ -564,9 +562,9 @@ class TestInitializeOptimizations:
 class TestGetRedisClient:
     def test_returns_none_on_exception(self) -> None:
         """Test that _get_redis_client returns None when RedisManager is unavailable."""
-        from backend.channels.optimizations import _get_redis_client
-
         import sys
+
+        from backend.channels.optimizations import _get_redis_client
         mock_redis_module = MagicMock()
         mock_redis_module.RedisManager.get_instance.return_value.get_async_client.side_effect = Exception("fail")
 
@@ -577,9 +575,9 @@ class TestGetRedisClient:
 
     def test_returns_client_on_success(self) -> None:
         """Test that _get_redis_client returns client when RedisManager works."""
-        from backend.channels.optimizations import _get_redis_client
-
         import sys
+
+        from backend.channels.optimizations import _get_redis_client
         mock_client = MagicMock()
         mock_redis_module = MagicMock()
         mock_redis_module.RedisManager.get_instance.return_value.get_async_client.return_value = mock_client

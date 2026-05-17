@@ -3,7 +3,6 @@ Tests for IdentityService - authentication and user management.
 Covers: password hashing, verification, JWT creation, permissions, DB auth flow.
 """
 
-import asyncio
 from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -60,7 +59,7 @@ def test_init_warns_on_default_secret():
     with patch("backend.app.modules.identity.service.settings", mock_s), \
          patch("backend.app.modules.identity.service.logger") as mock_logger:
         from backend.app.modules.identity.service import IdentityService
-        svc = IdentityService()
+        IdentityService()
         mock_logger.warning.assert_called_once()
         assert "JWT" in mock_logger.warning.call_args[0][0]
 

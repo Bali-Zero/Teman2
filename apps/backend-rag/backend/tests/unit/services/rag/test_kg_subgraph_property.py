@@ -11,7 +11,6 @@ Covers: _get_client, close_property_subgraph_client,
         synthesize_property_workflow_node, legacy wrappers.
 """
 
-import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -34,7 +33,6 @@ from backend.services.rag.kg_subgraph_property import (
     synthesize_property_workflow,
     synthesize_property_workflow_node,
 )
-
 
 # ============================================================================
 # Fixtures

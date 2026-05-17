@@ -7,8 +7,6 @@ from contextlib import redirect_stdout
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 
 class TestHealthTools:
     def test_streams_snapshot_handles_redis_down(self):

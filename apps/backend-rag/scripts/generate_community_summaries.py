@@ -30,6 +30,7 @@ from typing import Any
 import asyncpg
 import httpx
 
+
 def _require_env(name: str) -> str:
     import os as _os
     val = _os.environ.get(name)

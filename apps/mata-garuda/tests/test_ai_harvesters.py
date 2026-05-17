@@ -1,6 +1,5 @@
 """Tests for AI-Intel-Sentinel harvester agents and tools."""
-import pytest
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 
 class TestArXivTools:
@@ -92,8 +91,9 @@ class TestFeedTools:
 class TestGitHubTools:
     @patch("mata_garuda.tools.github_tools.subprocess.run")
     def test_fetch_trending_success(self, mock_run):
-        from mata_garuda.tools.github_tools import fetch_github_trending
         import json
+
+        from mata_garuda.tools.github_tools import fetch_github_trending
 
         mock_run.return_value = MagicMock(
             returncode=0,

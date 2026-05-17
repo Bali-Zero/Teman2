@@ -5,9 +5,12 @@ from datetime import datetime, timedelta, timezone
 from typing import Any
 
 import pytest
-
 from cell_core.types import (
-    CellConfig, Episode, HomeostaticState, LearnedRule, Proposal, SensorReading,
+    CellConfig,
+    Episode,
+    LearnedRule,
+    Proposal,
+    SensorReading,
 )
 
 

@@ -1,10 +1,8 @@
 """Tests for Core Guardian V4 Rollback Engine."""
-import json
 import sys
-import tempfile
 import unittest
 from pathlib import Path
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 

@@ -10,7 +10,7 @@ Tests use mocked asyncpg connection (AsyncMock) — same pattern as
 from __future__ import annotations
 
 import json
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock
 
 import pytest
 
@@ -23,7 +23,6 @@ from backend.services.events.outbox import (
     replay_unconsumed,
     validate_channel,
 )
-
 
 # ── validate_channel ───────────────────────────────────────────────────
 

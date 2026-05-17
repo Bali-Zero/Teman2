@@ -1,6 +1,5 @@
 """Tests for reasoning exact coverage - warning policy error paths."""
 
-import pytest
 
 from backend.services.rag.agentic.reasoning_utils import calculate_evidence_score
 

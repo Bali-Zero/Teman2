@@ -13,16 +13,14 @@ from __future__ import annotations
 
 import json
 import os
-import shutil
 import subprocess
 import sys
+from collections.abc import Iterator
 from pathlib import Path
-from typing import Iterator
 
 import pytest
 
 from apps.evaluator.causal_regression._types import (
-    CausalDiff,
     CommitSnapshot,
     QueryResult,
     RetrievedChunk,
@@ -41,7 +39,6 @@ from apps.evaluator.causal_regression.replay_engine import (
     reconstruct_kb,
     run_eval_set,
 )
-
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
 FIXTURES = Path(__file__).parent / "fixtures" / "causal"

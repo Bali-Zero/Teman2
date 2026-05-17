@@ -2,13 +2,8 @@
 
 from __future__ import annotations
 
-import time
-
-import pytest
-
 from backend.services.naga.state.budget_tracker import BudgetTracker
 from backend.services.naga.state.url_history import URLHistory
-
 
 # ---------------------------------------------------------------------------
 # BudgetTracker

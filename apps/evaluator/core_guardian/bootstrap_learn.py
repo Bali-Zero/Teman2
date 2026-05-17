@@ -27,7 +27,7 @@ import os
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import timezone
 from pathlib import Path
 
 logging.basicConfig(

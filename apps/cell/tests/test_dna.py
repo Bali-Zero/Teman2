@@ -1,7 +1,7 @@
 """Tests for DNA integrity and loading."""
 import hashlib
 
-from cell.core.dna import DNALoader, DNAIntegrityError
+from cell.core.dna import DNALoader
 
 
 def test_dna_loads_successfully():

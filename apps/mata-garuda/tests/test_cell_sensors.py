@@ -1,10 +1,8 @@
 """Tests for mata_garuda.cell.sensors — cell-core Sensor protocol implementations."""
 import json
-import pytest
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
-from cell_core.types import SensorReading
+import pytest
 from cell_core.protocols import Sensor
 
 

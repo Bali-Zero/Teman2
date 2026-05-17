@@ -39,7 +39,6 @@ import logging
 import os
 import sys
 from decimal import Decimal
-from uuid import uuid4
 
 import asyncpg
 

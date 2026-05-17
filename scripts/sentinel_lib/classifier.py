@@ -1,9 +1,7 @@
 """Failure classifier: deterministic rules first, Claude CLI fallback."""
-import re
-import os
 import json
+import re
 import subprocess
-from typing import Optional
 
 TRANSIENT_PATTERNS = [
     r"HTTP 5\d\d",

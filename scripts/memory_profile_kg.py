@@ -71,8 +71,10 @@ def main() -> None:
 
     # Step 1: Import core modules
     try:
+        from backend.services.rag.kg_graph_nodes import (
+            understand_query_node,  # noqa: F401
+        )
         from backend.services.rag.kg_graph_state import KGAgentState  # noqa: F401
-        from backend.services.rag.kg_graph_nodes import understand_query_node  # noqa: F401
     except Exception as e:
         print(f"  ⚠️ KG imports failed: {e}")
     profile_step("+ KG state/nodes imports", baseline)
@@ -87,8 +89,6 @@ def main() -> None:
     # Step 3: Compile subgraphs (no LLM, no DB)
     try:
         from backend.services.rag.kg_subgraph_company import CompanyState
-        from backend.services.rag.kg_subgraph_visa import VisaState
-        from backend.services.rag.kg_subgraph_tax import TaxState
         from langgraph.graph import END, StateGraph
 
         # Build a minimal subgraph to measure compilation cost

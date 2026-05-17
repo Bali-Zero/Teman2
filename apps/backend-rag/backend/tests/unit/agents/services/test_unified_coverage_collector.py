@@ -2,8 +2,7 @@
 
 import json
 import subprocess
-from pathlib import Path
-from unittest.mock import MagicMock, mock_open, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -218,7 +217,7 @@ end_of_record
 
         # _parse_lcov may fail with weird content but shouldn't crash
         # If it does parse, that's fine too
-        result = collector.collect_frontend_coverage(component_path, "test")
+        collector.collect_frontend_coverage(component_path, "test")
         # Just verify no exception propagates
 
 

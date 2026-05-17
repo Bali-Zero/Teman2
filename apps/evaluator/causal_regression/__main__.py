@@ -23,7 +23,6 @@ from .regression_report import (
     build_json,
     write_html,
     write_json,
-    write_report,
 )
 from .replay_engine import load_eval_set, run_eval_set
 

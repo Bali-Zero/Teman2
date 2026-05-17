@@ -18,10 +18,9 @@ import glob
 import json
 import logging
 import os
-import time
-from http.server import HTTPServer, BaseHTTPRequestHandler
 from collections import defaultdict
 from datetime import datetime
+from http.server import BaseHTTPRequestHandler, HTTPServer
 from typing import Any
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

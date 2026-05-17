@@ -14,7 +14,6 @@ import os
 import re
 import sqlite3
 import sys
-import time
 import urllib.parse
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -77,7 +76,7 @@ class KGQueryHandler(BaseHTTPRequestHandler):
 
     # ── handlers ──────────────────────────────────────────────────
     @property
-    def _kg_server(self) -> "KGServer":
+    def _kg_server(self) -> KGServer:
         """Typed view of `self.server`. Avoids `# type: ignore` per handler."""
         return cast("KGServer", self.server)
 

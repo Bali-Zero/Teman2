@@ -75,9 +75,10 @@ def _check_static() -> dict[str, bool]:
 
 def _check_runtime() -> bool:
     """Attempt a real structured-output call. Returns True on success."""
-    from backend.llm.claude_oauth_langchain import build_claude_oauth_chat_model
     from langchain_core.messages import HumanMessage, SystemMessage
     from pydantic import BaseModel, Field
+
+    from backend.llm.claude_oauth_langchain import build_claude_oauth_chat_model
 
     # Local copy of QueryIntentSchema to avoid importing the rag package
     # (which triggers Settings() validation requiring secrets in env).

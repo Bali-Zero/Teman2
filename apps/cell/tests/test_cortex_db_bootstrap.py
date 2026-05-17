@@ -1,8 +1,7 @@
 """Tests for cortex tables bootstrap — idempotent, all 7 tables created."""
-import pytest
 from unittest.mock import AsyncMock
 
-from cell.core.db import create_cortex_tables
+import pytest
 
 
 @pytest.fixture

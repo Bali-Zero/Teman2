@@ -9,9 +9,10 @@ Usage:
 """
 
 import asyncio
-import asyncpg
 import sys
 from datetime import date
+
+import asyncpg
 
 # ── Attendance data from spreadsheet (Marzo 2026) ─────────────────────
 # Format: (employee_email_fragment, sick_dates, leave_dates)
@@ -198,7 +199,7 @@ async def main():
     print(f"  Inserted: {total_inserted}")
     print(f"  Skipped (duplicates): {total_skipped}")
     if errors:
-        print(f"  ERRORS:")
+        print("  ERRORS:")
         for e in errors:
             print(f"    ⚠ {e}")
 

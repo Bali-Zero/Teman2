@@ -5,10 +5,8 @@ Validates that schema_validator correctly enforces ontology constraints
 and quarantines invalid edges.
 """
 
-import pytest
 
 from backend.services.knowledge_graph.schema_validator import (
-    QuarantinedEdge,
     SchemaValidator,
     ValidationResult,
     validate_edge,

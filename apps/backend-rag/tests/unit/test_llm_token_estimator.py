@@ -2,9 +2,8 @@
 Unit tests for TokenEstimator - Word-based token approximation.
 """
 
-import pytest
 
-from backend.llm.token_estimator import TokenEstimator, _TOKEN_WORD_RATIO
+from backend.llm.token_estimator import _TOKEN_WORD_RATIO, TokenEstimator
 
 
 class TestTokenEstimator:

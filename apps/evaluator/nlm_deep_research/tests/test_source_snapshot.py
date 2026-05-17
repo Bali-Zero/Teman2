@@ -5,15 +5,13 @@ All subprocess calls are mocked — no real nlm CLI is needed.
 
 import json
 import os
-import tempfile
 import time
 from pathlib import Path
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
 from apps.evaluator.nlm_deep_research.source_snapshot import (
-    SNAPSHOTS_DIR,
     _parse_source_list,
     cleanup_old_snapshots,
     diff_snapshots,
@@ -21,7 +19,6 @@ from apps.evaluator.nlm_deep_research.source_snapshot import (
     rollback_to_snapshot,
     take_snapshot,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

@@ -7,19 +7,14 @@ Uses pytest-asyncio (asyncio_mode = "auto" set in pyproject.toml).
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
-
-import pytest
+from unittest.mock import MagicMock
 
 from zantara_media.indexer.drive_client import (
     GARUDA_SUBFOLDER_IDS,
     Change,
     DriveClient,
-    DriveFile,
     _parse_change,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures / helpers

@@ -9,9 +9,9 @@ import json
 import os
 import sys
 import time
-import urllib.request
 import urllib.error
 import urllib.parse
+import urllib.request
 from pathlib import Path
 
 FIREWORKS_API_KEY = os.environ.get("FIREWORKS_API_KEY", "")
@@ -139,7 +139,7 @@ def main():
 
     use_fireworks = bool(FIREWORKS_API_KEY)
     if use_fireworks:
-        print(f"Fireworks.ai available — using Flux.1 Dev (~$0.014/img)", file=sys.stderr)
+        print("Fireworks.ai available — using Flux.1 Dev (~$0.014/img)", file=sys.stderr)
     else:
         print("FIREWORKS_API_KEY not set — using Pollinations.ai fallback", file=sys.stderr)
 

@@ -12,7 +12,6 @@ CRIT-7: _WITHHOLDING_RATES dict removed. Rates now resolved from system_settings
 at accrual time via _get_withholding_rate() / _system_setting_decimal().
 conftest _SCHEMA_SQL seeds the 3 new keys (pph21=2.5, pph23=2.0, surcharge=20).
 """
-from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
 import pytest

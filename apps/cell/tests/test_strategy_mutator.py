@@ -1,11 +1,10 @@
 """Tests for cortex StrategyMutator — safety chain, sandbox, commit, rollback."""
 
 import json
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import httpx
 import pytest
-
 from cell.cortex.strategy_mutator import (
     MAX_MUTATIONS_PER_DAY,
     ROLLBACK_FITNESS_MARGIN,
@@ -14,7 +13,6 @@ from cell.cortex.strategy_mutator import (
     SandboxResult,
     StrategyMutator,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -55,15 +53,15 @@ def mock_episodic() -> MagicMock:
 
 def _make_proposal(**overrides) -> MutationProposal:
     """Create a MutationProposal with sensible defaults."""
-    defaults = dict(
-        parent_skill_id=None,
-        proposed_name="health_restart_combo",
-        proposed_trigger_nl="when health check fails repeatedly",
-        proposed_action_sequence=["check_health", "alert_human"],
-        proposed_rationale_nl="combine health check with human alert for faster response",
-        motivation="critic detected repeated health failures",
-        source="critic_failure",
-    )
+    defaults = {
+        "parent_skill_id": None,
+        "proposed_name": "health_restart_combo",
+        "proposed_trigger_nl": "when health check fails repeatedly",
+        "proposed_action_sequence": ["check_health", "alert_human"],
+        "proposed_rationale_nl": "combine health check with human alert for faster response",
+        "motivation": "critic detected repeated health failures",
+        "source": "critic_failure",
+    }
     defaults.update(overrides)
     return MutationProposal(**defaults)
 

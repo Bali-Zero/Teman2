@@ -2,7 +2,6 @@
 Tests for agentic RAG orchestrator - out of domain detection.
 """
 
-import pytest
 
 
 def test_is_out_of_domain_realtime_info():

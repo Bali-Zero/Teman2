@@ -8,7 +8,7 @@ import json
 import os
 import subprocess
 import time
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -18,9 +18,9 @@ os.environ.setdefault("OPENAI_API_KEY", "test_key")
 os.environ.setdefault("GOOGLE_API_KEY", "test_key")
 
 from backend.services.oracle.cross_notebook_correlator import (
+    CorrelationEntry,
     CrossNotebookCorrelator,
     CrossNotebookResult,
-    CorrelationEntry,
     NotebookResponse,
     _call_ollama_synthesis,
     _classify_relationship,
@@ -33,7 +33,6 @@ from backend.services.oracle.cross_notebook_correlator import (
     get_correlator,
     is_multi_domain,
 )
-
 
 # --------------------------------------------------------------------------- #
 # Domain detection

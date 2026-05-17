@@ -20,7 +20,6 @@ import fcntl
 import json
 import logging
 import os
-import re
 import subprocess
 import sys
 import tempfile
@@ -274,8 +273,8 @@ def send_telegram_alert(message: str) -> bool:
         _log_unsent_alert(message)
         return False
 
-    import urllib.request
     import urllib.error
+    import urllib.request
 
     # Prova Markdown, fallback a plain text
     for parse_mode in ("Markdown", None):
@@ -574,7 +573,6 @@ def _watchdog_core() -> None:
             _sys.path.insert(0, str(_checks_dir.parent.parent.parent))
         from apps.evaluator.core_guardian.checks.cache_invalidation_audit import (
             run_audit as _cache_audit,
-            format_report as _cache_format,
         )
         _cache_findings = _cache_audit(PROJECT_ROOT)
         _baseline_cache = baseline.get("cache_audit_count")
@@ -718,15 +716,15 @@ def _watchdog_core() -> None:
 
     # 12. Unified Risk Scoring (V4)
     try:
-        from apps.evaluator.core_guardian.risk_scorer import (
-            compute_risk_score,
-            get_threshold_action,
-            write_deploy_block,
-            clear_deploy_block,
-        )
         from apps.evaluator.core_guardian.decision_logger import (
             log_decision_sync,
             log_risk_score_sync,
+        )
+        from apps.evaluator.core_guardian.risk_scorer import (
+            clear_deploy_block,
+            compute_risk_score,
+            get_threshold_action,
+            write_deploy_block,
         )
 
         _audit_counts = {

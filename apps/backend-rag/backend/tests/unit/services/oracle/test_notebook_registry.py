@@ -1,13 +1,12 @@
 """Tests for NLM Notebook Registry — keyword-based domain resolver."""
 
-import os
 from pathlib import Path
 from unittest.mock import patch
 
 from backend.services.oracle import nlm_notebook_registry as registry
 from backend.services.oracle.nlm_notebook_registry import (
-    NLM_NOTEBOOKS,
     _MISSING_STATE_PATH,
+    NLM_NOTEBOOKS,
     _default_freshness_state_path,
     _resolve_state_path,
     resolve_notebook,

@@ -1,8 +1,6 @@
 """Tests for the live audit pipeline — drift detection + T2.a/b/c failure tolerance."""
 from __future__ import annotations
 
-import io
-import json
 import sys
 from pathlib import Path
 from unittest.mock import MagicMock, patch

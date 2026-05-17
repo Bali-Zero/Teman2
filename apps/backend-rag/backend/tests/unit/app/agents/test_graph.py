@@ -9,7 +9,7 @@ Covers: set_search_service, set_llm_gateway, set_db_pool,
 """
 
 from datetime import datetime, timezone
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -29,7 +29,6 @@ from backend.app.agents.graph import (
     should_reflect_or_end,
     transform_query_node,
 )
-
 
 # ============================================================================
 # Fixtures
@@ -363,7 +362,7 @@ class TestCheckHallucination:
 class TestTransformQuery:
     @pytest.mark.asyncio
     async def test_with_docs(self, base_state):
-        original_question = base_state["question"]
+        base_state["question"]
         base_state["filtered_documents"] = ["KITAS information about permits"]
         base_state["reflection_retries"] = 0
         result = await transform_query_node(base_state)

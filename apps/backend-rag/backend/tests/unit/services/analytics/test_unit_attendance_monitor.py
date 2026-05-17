@@ -11,18 +11,18 @@ Coverage focus:
 
 from __future__ import annotations
 
-from datetime import date, datetime, timedelta
+from datetime import datetime
 from unittest.mock import AsyncMock, MagicMock
 from zoneinfo import ZoneInfo
 
 import pytest
 
 from backend.services.analytics.attendance_monitor import (
-    AttendanceMonitor,
     LATE_GRACE_HOUR,
     LATE_GRACE_MINUTE,
     LATE_INCIDENT_HOUR,
     LATE_INCIDENT_MINUTE,
+    AttendanceMonitor,
     resolve_responsible_manager,
 )
 

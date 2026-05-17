@@ -25,7 +25,6 @@ import jinja2
 
 from backend.services.compliance.alert_dedup import build_dedup_key, should_promote
 from backend.services.compliance.alert_repository import AlertRepository, AlertRow
-from backend.services.compliance.exceptions import AlertGenerationError
 from backend.services.compliance.predictive_engine import ComplianceForecast
 from backend.services.compliance.severity_calculator import AlertSeverity
 from backend.services.compliance.templates_i18n import render_template
@@ -85,7 +84,7 @@ class AlertsEngine:
     @classmethod
     def with_connection(
         cls, conn: asyncpg.Connection, *, pricing: Any, dispatcher: Any,
-    ) -> "AlertsEngine":
+    ) -> AlertsEngine:
         inst = cls.__new__(cls)
         inst._pool = None  # type: ignore[assignment]
         inst._conn = conn
@@ -169,16 +168,16 @@ class AlertsEngine:
         )
 
         # Render messages in all three langs (column-per-lang snapshot).
-        render_kwargs: dict[str, Any] = dict(
-            days_until=fc.days_until_expiry,
-            visa_type=fc.current_visa_type or "",
-            period=reporting_period or "",
-            title=category.replace("_", " ").title(),
-            license_type=fc.document_type,
-            permit_type=fc.document_type,
-            doc_type=fc.document_type,
-            topic=category,
-        )
+        render_kwargs: dict[str, Any] = {
+            "days_until": fc.days_until_expiry,
+            "visa_type": fc.current_visa_type or "",
+            "period": reporting_period or "",
+            "title": category.replace("_", " ").title(),
+            "license_type": fc.document_type,
+            "permit_type": fc.document_type,
+            "doc_type": fc.document_type,
+            "topic": category,
+        }
         try:
             message_it = render_template(category, "body", "it", **render_kwargs)
             message_en = render_template(category, "body", "en", **render_kwargs)

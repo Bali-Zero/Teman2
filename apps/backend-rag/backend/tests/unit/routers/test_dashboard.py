@@ -19,11 +19,9 @@ Plus scoring engine & helper functions:
 - _gistaru_rdtr_direct_query
 """
 
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Helper: _zone_matches_prefix
@@ -676,7 +674,11 @@ class TestModuleConstants:
         assert "RTH-1" in NON_BUILDABLE_ZONES
 
     def test_pydantic_models(self) -> None:
-        from backend.app.routers.dashboard import AnalyzeInvestmentRequest, LogLookupRequest, ValidatePropertyRequest
+        from backend.app.routers.dashboard import (
+            AnalyzeInvestmentRequest,
+            LogLookupRequest,
+            ValidatePropertyRequest,
+        )
 
         vp = ValidatePropertyRequest(kbli_code="55111")
         assert vp.is_pma is True

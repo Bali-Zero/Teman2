@@ -11,11 +11,10 @@ Reads from: ~/logs/cron/*.jsonl (cron-wrapper.sh structured output)
 """
 
 import json
-import os
 import sys
 import time
 import urllib.request
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 WITA = timezone(timedelta(hours=8))

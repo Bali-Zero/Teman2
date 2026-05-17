@@ -1,11 +1,9 @@
-import pytest
 from unittest.mock import AsyncMock
 
+import pytest
 from organism.schemas import ActionDecision, Event, Severity
 from organism.supervisor.consiglio_gate import (
     ConsiglioGate,
-    IRREVERSIBLE_ACTUATORS,
-    REQUIRED_AGREE_VOTES,
 )
 
 
@@ -177,8 +175,8 @@ async def test_approve_runner_returns_none_defers():
 @pytest.mark.asyncio
 async def test_approve_params_with_datetime_serializes_cleanly():
     """Regression for I1: proposed.params with datetime must serialize via mode='json'."""
-    from datetime import datetime, timezone
     import json
+    from datetime import datetime, timezone
     runner = _mock_runner([
         {"agree": False, "rationale": "x", "llm": "m"} for _ in range(4)
     ])

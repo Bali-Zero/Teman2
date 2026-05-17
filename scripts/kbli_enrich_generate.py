@@ -7,7 +7,6 @@ LOW tier: Qwen3.5:9b (whatItMeans only) + deterministic (3 structured)
 import json
 import re
 import urllib.request
-from pathlib import Path
 
 OLLAMA_URL = "http://localhost:11434"
 DEEPSEEK_MODEL = "deepseek-r1:32b"
@@ -129,7 +128,7 @@ def generate_high_tier(codes: list[dict], nlm_contexts: dict[str, str], batch_si
                         "baliContext": item.get("baliContext", ""),
                         "zantaraOpener": item.get("zantaraOpener", ""),
                     }
-            print(f" ✓")
+            print(" ✓")
         except Exception as e:
             print(f" ✗ {e}")
 
@@ -163,7 +162,7 @@ def generate_medium_tier(codes: list[dict], batch_size: int = 5) -> dict[str, di
                         "baliContext": item.get("baliContext", ""),
                         "zantaraOpener": item.get("zantaraOpener", ""),
                     }
-            print(f" ✓")
+            print(" ✓")
         except Exception as e:
             print(f" ✗ {e}")
 
@@ -191,7 +190,7 @@ def generate_low_tier(codes: list[dict], batch_size: int = 10) -> dict[str, dict
                 code_key = item.get("code")
                 if code_key:
                     results[code_key] = {"whatItMeans": item.get("whatItMeans", "")}
-            print(f" ✓")
+            print(" ✓")
         except Exception as e:
             print(f" ✗ {e}")
 

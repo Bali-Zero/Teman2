@@ -17,19 +17,15 @@ so Sprint 4 can wire it into the actor without reinventing the API.
 """
 from __future__ import annotations
 
-import pytest
-
 from cell_core.types import Phase, Proposal
 
 from apps.evaluator.seo_cell.phase import SEOPhase
 from apps.evaluator.seo_cell.tier_gating_policy import (
     TIERS,
-    RoutingDecision,
     RoutingTarget,
     TierGatingPolicy,
     infer_tier,
 )
-
 
 # ─── fixtures / helpers ─────────────────────────────────────────────────
 

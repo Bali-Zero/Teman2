@@ -297,11 +297,11 @@ class LkpmReadyPack:
 
     def __init__(
         self,
-        db_pool: "asyncpg.Pool | None" = None,
+        db_pool: asyncpg.Pool | None = None,
         *,
-        drive: "Any | None" = None,
-        brevo: "Any | None" = None,
-        connection: "asyncpg.Connection | None" = None,
+        drive: Any | None = None,
+        brevo: Any | None = None,
+        connection: asyncpg.Connection | None = None,
     ) -> None:
         self._pool = db_pool
         self._conn = connection
@@ -311,16 +311,16 @@ class LkpmReadyPack:
     @classmethod
     def with_connection(
         cls,
-        conn: "asyncpg.Connection",
+        conn: asyncpg.Connection,
         *,
-        drive: "Any | None" = None,
-        brevo: "Any | None" = None,
-    ) -> "LkpmReadyPack":
+        drive: Any | None = None,
+        brevo: Any | None = None,
+    ) -> LkpmReadyPack:
         """Factory for when a caller already holds a connection (e.g. inside a transaction)."""
         instance = cls(db_pool=None, drive=drive, brevo=brevo, connection=conn)
         return instance
 
-    async def _acquire(self) -> "asyncpg.Connection":
+    async def _acquire(self) -> asyncpg.Connection:
         """Return the shared connection or acquire one from the pool."""
         if self._conn is not None:
             return self._conn
@@ -357,8 +357,6 @@ class LkpmReadyPack:
             LkpmValidationError: if the report is incomplete.
         """
         import hashlib
-
-        import asyncpg
 
         from backend.services.compliance.exceptions import LkpmValidationError
         from backend.services.compliance.lkpm_validator import LKPMValidator
@@ -450,11 +448,12 @@ class LkpmReadyPack:
                 await self._pool.release(conn)
 
         # ── Step 3: Build PDF + XLSX ───────────────────────────────────
+        from datetime import datetime, timezone
+
         from backend.services.compliance.lkpm_pdf_builder import (
             LkpmPackData,
             LkpmPdfBuilder,
         )
-        from datetime import datetime, timezone
 
         pack_data = LkpmPackData(
             client_name=client_name,
@@ -555,7 +554,7 @@ class LkpmReadyPack:
     # ── Private helpers ────────────────────────────────────────────────────
 
     @staticmethod
-    def _build_xlsx(data: "Any") -> bytes:
+    def _build_xlsx(data: Any) -> bytes:
         """Build an XLSX file in memory from LkpmPackData."""
         import io as _io
 

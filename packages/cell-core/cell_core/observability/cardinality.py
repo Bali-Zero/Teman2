@@ -9,9 +9,8 @@ single metric exceeds MAX_SERIES. Call periodically (e.g., every 100 pulses).
 from __future__ import annotations
 
 import logging
-from typing import Any
 
-from cell_core.observability._prom_compat import CollectorRegistry, HAS_PROM
+from cell_core.observability._prom_compat import HAS_PROM, CollectorRegistry
 
 logger = logging.getLogger("cell_core.observability")
 

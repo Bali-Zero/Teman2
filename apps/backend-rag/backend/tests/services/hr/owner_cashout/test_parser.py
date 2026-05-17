@@ -3,7 +3,6 @@ import json
 from pathlib import Path
 
 from backend.services.hr.owner_cashout.parser import (
-    CashoutRow,
     parse_bs_tab,
     parse_bz_tab,
     parse_idr,

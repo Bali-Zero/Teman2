@@ -10,7 +10,6 @@ Covers: sanitize_filename, ZohoEmailService (list_folders, list_emails, get_emai
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
-import httpx
 import pytest
 
 # Patch heavy imports before importing the module

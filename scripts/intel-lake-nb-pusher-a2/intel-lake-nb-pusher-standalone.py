@@ -47,11 +47,10 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 import time
 from pathlib import Path
 from typing import Any
-from uuid import UUID, uuid4
+from uuid import uuid4
 
 import asyncpg
 
@@ -152,7 +151,7 @@ def _nlm_push_url(notebook_id: str, url: str, title: str | None = None) -> tuple
     cmd = [
         "/usr/bin/env",
         "timeout",
-        f"--kill-after=5",
+        "--kill-after=5",
         str(NLM_TIMEOUT_SECONDS),
         str(NLM_CLI),
         "source",
@@ -183,7 +182,7 @@ def _nlm_push_text(notebook_id: str, title: str, body: str) -> tuple[bool, str, 
         cmd = [
             "/usr/bin/env",
             "timeout",
-            f"--kill-after=5",
+            "--kill-after=5",
             str(NLM_TIMEOUT_SECONDS),
             str(NLM_CLI),
             "source",

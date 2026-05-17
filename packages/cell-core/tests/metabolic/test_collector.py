@@ -4,16 +4,11 @@ import os
 import sqlite3
 import time
 
-import pytest
-
-from cell_core.metabolic.collector import MetabolicCollector, _extract_episodes, _parse_timestamp
-from cell_core.metabolic.definitions import (
-    METRIC_AUTONOMY_INDEX,
-    METRIC_ESCALATION_FREQ,
-    METRIC_ONTOLOGY_DENSITY,
-    METRIC_TTR,
+from cell_core.metabolic.collector import (
+    MetabolicCollector,
+    _extract_episodes,
+    _parse_timestamp,
 )
-
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -42,7 +37,7 @@ def _create_mos_db(path: str, session_count: int) -> None:
             branch TEXT
         )
     """)
-    from datetime import datetime, timezone, timedelta
+    from datetime import datetime, timedelta, timezone
     now = datetime.now(timezone.utc)
     for i in range(session_count):
         ts = (now - timedelta(minutes=i * 5)).isoformat()

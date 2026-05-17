@@ -12,8 +12,6 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-import pytest
-
 # Add the crm-cell package to sys.path so imports resolve when run from
 # repo root (no editable install yet).
 _PACKAGE_PATH = Path(__file__).resolve().parents[1]
@@ -28,7 +26,6 @@ from crm_cell import (  # noqa: E402
     FailureKind,
     WelcomeRunResult,
 )
-
 
 # ---------------------------------------------------------------------------
 # Identity

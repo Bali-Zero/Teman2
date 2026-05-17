@@ -2,7 +2,6 @@
 Tests for CitationService - citation formatting, extraction, validation.
 """
 
-from unittest.mock import MagicMock
 
 import pytest
 
