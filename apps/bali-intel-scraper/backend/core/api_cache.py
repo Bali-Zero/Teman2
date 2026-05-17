@@ -10,7 +10,8 @@ Provides automatic caching for API endpoints with:
 
 import time
 from functools import wraps
-from typing import Any, Callable, Dict, Optional
+from typing import Any
+from collections.abc import Callable
 
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -33,8 +34,8 @@ class APICacheMiddleware(BaseHTTPMiddleware):
         self,
         app,
         ttl: int = 300,
-        exclude_paths: Optional[list] = None,
-        include_paths: Optional[list] = None,
+        exclude_paths: list | None = None,
+        include_paths: list | None = None,
     ):
         super().__init__(app)
         self.ttl = ttl
@@ -56,12 +57,7 @@ class APICacheMiddleware(BaseHTTPMiddleware):
             return False
 
         # Check included paths (if specified)
-        if self.include_paths and not any(
-            path.startswith(inc) for inc in self.include_paths
-        ):
-            return False
-
-        return True
+        return not (self.include_paths and not any(path.startswith(inc) for inc in self.include_paths))
 
     def _build_cache_key(self, request: Request) -> str:
         """Build cache key from request."""
@@ -161,9 +157,9 @@ class APICacheMiddleware(BaseHTTPMiddleware):
 
 
 def cached(
-    ttl: Optional[int] = None,
-    key_func: Optional[Callable] = None,
-    invalidate_on: Optional[list[str]] = None,
+    ttl: int | None = None,
+    key_func: Callable | None = None,
+    invalidate_on: list[str] | None = None,
 ):
     """
     Decorator for caching endpoint responses.
@@ -277,7 +273,7 @@ class CacheStats:
     def uptime(self) -> float:
         return time.time() - self.start_time
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             "hits": self.hits,
             "misses": self.misses,
@@ -291,7 +287,7 @@ class CacheStats:
 cache_stats = CacheStats()
 
 
-async def get_cache_stats() -> Dict[str, Any]:
+async def get_cache_stats() -> dict[str, Any]:
     """Get current cache statistics."""
     stats = cache_stats.to_dict()
 

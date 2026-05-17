@@ -9,7 +9,8 @@ import random
 from dataclasses import dataclass
 from enum import Enum
 from functools import wraps
-from typing import Any, Callable, Optional, Type, Tuple
+from typing import Any
+from collections.abc import Callable
 
 from backend.core.logger import get_logger, LogAction
 
@@ -33,15 +34,15 @@ class RetryConfig:
     base_delay: float = 1.0
     max_delay: float = 60.0
     strategy: RetryStrategy = RetryStrategy.EXPONENTIAL_JITTER
-    retryable_exceptions: Tuple[Type[Exception], ...] = (Exception,)
-    on_retry: Optional[Callable] = None
-    on_failure: Optional[Callable] = None
+    retryable_exceptions: tuple[type[Exception], ...] = (Exception,)
+    on_retry: Callable | None = None
+    on_failure: Callable | None = None
 
 
 class RetryHandler:
     """Handles retry logic with configurable strategies."""
 
-    def __init__(self, config: Optional[RetryConfig] = None):
+    def __init__(self, config: RetryConfig | None = None):
         self.config = config or RetryConfig()
 
     def calculate_delay(self, attempt: int) -> float:
@@ -133,7 +134,7 @@ def with_retry(
     base_delay: float = 1.0,
     max_delay: float = 60.0,
     strategy: RetryStrategy = RetryStrategy.EXPONENTIAL_JITTER,
-    retryable_exceptions: Tuple[Type[Exception], ...] = (Exception,),
+    retryable_exceptions: tuple[type[Exception], ...] = (Exception,),
 ):
     """Decorator for adding retry logic to functions."""
 
@@ -177,8 +178,8 @@ class CircuitBreakerAwareRetry:
 
     def __init__(
         self,
-        config: Optional[RetryConfig] = None,
-        circuit_breaker_name: Optional[str] = None,
+        config: RetryConfig | None = None,
+        circuit_breaker_name: str | None = None,
     ):
         self.config = config or RetryConfig()
         self.circuit_breaker_name = circuit_breaker_name

@@ -9,7 +9,6 @@ import os
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import List, Optional, Set
 
 
 class Environment(str, Enum):
@@ -89,7 +88,7 @@ class RedisConfig:
     host: str = "localhost"
     port: int = 6379
     db: int = 0
-    password: Optional[str] = None
+    password: str | None = None
     socket_timeout: int = 5
     socket_connect_timeout: int = 5
 
@@ -143,7 +142,7 @@ class ScrapingConfig:
 
     # Proxy settings
     proxy_rotation_enabled: bool = False
-    proxy_list: List[str] = field(default_factory=list)
+    proxy_list: list[str] = field(default_factory=list)
 
     # User agent rotation
     ua_rotation_enabled: bool = True
@@ -177,18 +176,18 @@ class AIConfig:
     """AI/NLP service configuration."""
 
     # OpenAI
-    openai_api_key: Optional[str] = None
+    openai_api_key: str | None = None
     openai_model: str = "gpt-4"
     openai_timeout: int = 60
     openai_max_retries: int = 3
 
     # Anthropic
-    anthropic_api_key: Optional[str] = None
+    anthropic_api_key: str | None = None
     anthropic_model: str = "claude-3-opus-20240229"
     anthropic_timeout: int = 60
 
     # Local models
-    local_model_path: Optional[str] = None
+    local_model_path: str | None = None
     use_local_models: bool = False
 
     # Processing
@@ -224,7 +223,7 @@ class MonitoringConfig:
     # Logging
     log_level: LogLevel = LogLevel.INFO
     log_format: str = "json"
-    log_file: Optional[str] = None
+    log_file: str | None = None
 
     # Metrics
     metrics_enabled: bool = True
@@ -232,14 +231,14 @@ class MonitoringConfig:
 
     # Tracing
     tracing_enabled: bool = False
-    jaeger_endpoint: Optional[str] = None
+    jaeger_endpoint: str | None = None
 
     # Alerting
-    alert_webhook_url: Optional[str] = None
-    alert_email: Optional[str] = None
+    alert_webhook_url: str | None = None
+    alert_email: str | None = None
 
     # Sentry
-    sentry_dsn: Optional[str] = None
+    sentry_dsn: str | None = None
     sentry_environment: str = "development"
 
     @classmethod
@@ -266,8 +265,8 @@ class SecurityConfig:
 
     # API
     api_key_header: str = "X-API-Key"
-    allowed_hosts: Set[str] = field(default_factory=lambda: {"localhost", "127.0.0.1"})
-    cors_origins: List[str] = field(default_factory=lambda: ["http://localhost:3000"])
+    allowed_hosts: set[str] = field(default_factory=lambda: {"localhost", "127.0.0.1"})
+    cors_origins: list[str] = field(default_factory=lambda: ["http://localhost:3000"])
 
     # Rate limiting
     rate_limit_requests: int = 100

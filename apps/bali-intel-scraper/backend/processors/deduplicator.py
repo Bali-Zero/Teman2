@@ -8,7 +8,7 @@ fingerprinting techniques.
 import hashlib
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Dict, List, Optional, Any
+from typing import Any
 from urllib.parse import urldefrag, urlparse
 
 import simhash
@@ -28,7 +28,7 @@ class ContentFingerprint:
     content_hash: str
     simhash: int
     title_hash: str
-    canonical_url: Optional[str] = None
+    canonical_url: str | None = None
     created_at: datetime = None
 
     def __post_init__(self):
@@ -163,7 +163,7 @@ class Deduplicator:
 
     async def is_duplicate_content(
         self, content: str, check_simhash: bool = True
-    ) -> tuple[bool, Optional[float]]:
+    ) -> tuple[bool, float | None]:
         """
         Check if content is a duplicate.
 
@@ -203,7 +203,7 @@ class Deduplicator:
         simhash_value = self.content_hasher.simhash_content(content)
         title_hash = hashlib.sha256(title.lower().encode()).hexdigest()[:16]
 
-        fingerprint = ContentFingerlogger.info(
+        fingerprint = ContentFingerprint(
             url_hash=url_hash,
             content_hash=content_hash,
             simhash=simhash_value,
@@ -246,7 +246,7 @@ class Deduplicator:
 
     async def check_and_add(
         self, url: str, content: str, title: str = ""
-    ) -> tuple[bool, Optional[ContentFingerprint], Optional[float]]:
+    ) -> tuple[bool, ContentFingerprint | None, float | None]:
         """
         Check if duplicate and add if not.
 
@@ -281,7 +281,7 @@ class Deduplicator:
 
         return False, fingerprint, None
 
-    async def _find_similar_simhashes(self, simhash_value: int) -> List[Dict]:
+    async def _find_similar_simhashes(self, simhash_value: int) -> list[dict]:
         """Find similar simhashes in cache."""
         # Get recent simhashes
         # Note: In production, this would use a proper simhash index
@@ -305,7 +305,7 @@ class Deduplicator:
 
         return similar
 
-    async def get_stats(self) -> Dict[str, Any]:
+    async def get_stats(self) -> dict[str, Any]:
         """Get deduplication statistics."""
         # Count cached items
         url_keys = await cache.keys("dedup:url:*")
@@ -330,7 +330,7 @@ class Deduplicator:
 deduplicator = Deduplicator()
 
 
-async def is_duplicate(url: str, content: str) -> tuple[bool, Optional[float]]:
+async def is_duplicate(url: str, content: str) -> tuple[bool, float | None]:
     """Quick check if content is duplicate."""
     is_dup, _, similarity = await deduplicator.check_and_add(url, content)
     return is_dup, similarity

@@ -11,7 +11,8 @@ Provides:
 import hashlib
 import json
 from functools import wraps
-from typing import Any, Callable, Optional
+from typing import Any
+from collections.abc import Callable
 
 from backend.core.cache import cache, CacheKeyBuilder
 from backend.core.logger import get_logger, LogAction
@@ -46,7 +47,7 @@ class QueryCache:
         query: str,
         params: tuple = (),
         table: str = "default",
-    ) -> Optional[Any]:
+    ) -> Any | None:
         """
         Get cached query result.
 

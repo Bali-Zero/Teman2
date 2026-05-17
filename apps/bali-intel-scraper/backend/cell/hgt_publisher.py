@@ -118,7 +118,7 @@ class IntelScraperHGTBridge:
         redis_client: _RedisLike | None,
         cell_name: str = "intel-scraper-cell",
         maxlen: int = 1000,
-    ) -> "IntelScraperHGTBridge":
+    ) -> IntelScraperHGTBridge:
         """Build a bridge from a redis client (or ``None`` for a no-op).
 
         When ``redis_client`` is None, :class:`HGTPublisher` returns

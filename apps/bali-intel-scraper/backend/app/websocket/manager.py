@@ -5,7 +5,6 @@ Manages client connections and message broadcasting.
 """
 
 import time
-from typing import Dict, List, Set
 from fastapi import WebSocket
 from backend.core.logger import get_logger, LogAction
 
@@ -25,20 +24,20 @@ class WebSocketManager:
 
     def __init__(self):
         # Active connections: client_id -> WebSocket
-        self.active_connections: Dict[str, WebSocket] = {}
+        self.active_connections: dict[str, WebSocket] = {}
 
         # Room subscriptions: room_name -> set of client_ids
-        self.rooms: Dict[str, Set[str]] = {
+        self.rooms: dict[str, set[str]] = {
             "articles": set(),
             "notifications": set(),
             "system": set(),
         }
 
         # Client metadata: client_id -> metadata dict
-        self.client_metadata: Dict[str, dict] = {}
+        self.client_metadata: dict[str, dict] = {}
 
     async def connect(
-        self, websocket: WebSocket, client_id: str, rooms: List[str] = None
+        self, websocket: WebSocket, client_id: str, rooms: list[str] = None
     ) -> None:
         """
         Accept a new WebSocket connection.
@@ -128,7 +127,7 @@ class WebSocketManager:
             return False
 
     async def broadcast(
-        self, message: dict, room: str = None, exclude: List[str] = None
+        self, message: dict, room: str = None, exclude: list[str] = None
     ) -> int:
         """
         Broadcast a message to all clients or a specific room.
@@ -152,9 +151,8 @@ class WebSocketManager:
 
         # Send to each client
         for client_id in target_clients:
-            if client_id not in exclude:
-                if await self.send_message(client_id, message):
-                    sent_count += 1
+            if client_id not in exclude and await self.send_message(client_id, message):
+                sent_count += 1
 
         return sent_count
 

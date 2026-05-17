@@ -11,10 +11,12 @@ Provides background task processing for:
 import asyncio
 import uuid
 from abc import ABC, abstractmethod
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from enum import Enum
-from typing import Any, Callable, Dict, List, Optional, Type
+from functools import wraps
+from typing import Any
 
 from backend.core.logger import get_logger, LogAction
 
@@ -52,11 +54,11 @@ class Task:
     status: TaskStatus
     priority: TaskPriority
     created_at: datetime
-    scheduled_for: Optional[datetime] = None
-    started_at: Optional[datetime] = None
-    completed_at: Optional[datetime] = None
+    scheduled_for: datetime | None = None
+    started_at: datetime | None = None
+    completed_at: datetime | None = None
     result: Any = None
-    error: Optional[str] = None
+    error: str | None = None
     retry_count: int = 0
     max_retries: int = 3
 
@@ -87,15 +89,15 @@ class InMemoryTaskQueue:
 
     def __init__(self, max_workers: int = 4):
         self.max_workers = max_workers
-        self._tasks: Dict[str, Task] = {}
-        self._handlers: Dict[str, Type[TaskHandler]] = {}
+        self._tasks: dict[str, Task] = {}
+        self._handlers: dict[str, type[TaskHandler]] = {}
         self._queue: asyncio.PriorityQueue = asyncio.PriorityQueue()
-        self._workers: List[asyncio.Task] = []
+        self._workers: list[asyncio.Task] = []
         self._running = False
         self._semaphore = asyncio.Semaphore(max_workers)
         self._lock = asyncio.Lock()
 
-    def register_handler(self, name: str, handler_class: Type[TaskHandler]) -> None:
+    def register_handler(self, name: str, handler_class: type[TaskHandler]) -> None:
         """Register a task handler."""
         self._handlers[name] = handler_class
         logger.info(f"Registered handler for task '{name}'", action=LogAction.UPDATE)
@@ -137,7 +139,7 @@ class InMemoryTaskQueue:
         name: str,
         *args,
         priority: TaskPriority = TaskPriority.NORMAL,
-        delay: Optional[timedelta] = None,
+        delay: timedelta | None = None,
         max_retries: int = 3,
         **kwargs,
     ) -> str:
@@ -178,7 +180,7 @@ class InMemoryTaskQueue:
 
         return task_id
 
-    async def get_task(self, task_id: str) -> Optional[Task]:
+    async def get_task(self, task_id: str) -> Task | None:
         """Get task by ID."""
         return self._tasks.get(task_id)
 
@@ -306,7 +308,7 @@ class InMemoryTaskQueue:
             return (task.completed_at - task.started_at).total_seconds() * 1000
         return 0
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get queue statistics."""
         statuses = {}
         for task in self._tasks.values():
@@ -329,7 +331,7 @@ class TaskDecorator:
 
     def __call__(
         self,
-        name: Optional[str] = None,
+        name: str | None = None,
         priority: TaskPriority = TaskPriority.NORMAL,
         max_retries: int = 3,
     ):
@@ -390,7 +392,7 @@ class ScrapeTaskHandler(TaskHandler):
     def __init__(self):
         super().__init__(max_retries=3, retry_delay=10.0)
 
-    async def execute(self, url: str, **options) -> Dict[str, Any]:
+    async def execute(self, url: str, **options) -> dict[str, Any]:
         """Execute scrape task."""
         from backend.scrapers.engine import ScrapingEngine
 
@@ -404,7 +406,7 @@ class AITaskHandler(TaskHandler):
     def __init__(self):
         super().__init__(max_retries=2, retry_delay=5.0)
 
-    async def execute(self, content: str, task_type: str = "analyze") -> Dict[str, Any]:
+    async def execute(self, content: str, task_type: str = "analyze") -> dict[str, Any]:
         """Execute AI task."""
         from backend.services.ai_engine import AIEngine
 
@@ -415,7 +417,7 @@ class AITaskHandler(TaskHandler):
 class CleanupTaskHandler(TaskHandler):
     """Handler for cleanup tasks."""
 
-    async def execute(self, **options) -> Dict[str, Any]:
+    async def execute(self, **options) -> dict[str, Any]:
         """Execute cleanup task."""
         from backend.db.cleanup import cleanup_old_data
 

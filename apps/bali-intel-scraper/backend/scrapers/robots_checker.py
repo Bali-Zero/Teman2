@@ -9,7 +9,6 @@ Respects robots.txt rules including:
 
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
 import aiohttp
@@ -28,8 +27,8 @@ class RobotsRules:
 
     url: str
     allowed: bool
-    crawl_delay: Optional[float] = None
-    sitemaps: List[str] = None
+    crawl_delay: float | None = None
+    sitemaps: list[str] = None
     fetched_at: datetime = None
 
     def __post_init__(self):
@@ -45,8 +44,8 @@ class RobotsChecker:
     def __init__(self, user_agent: str = "BaliIntelBot/1.0", cache_ttl_hours: int = 24):
         self.user_agent = user_agent
         self.cache_ttl = cache_ttl_hours * 3600
-        self._rules_cache: Dict[str, RobotsRules] = {}
-        self._crawl_delays: Dict[str, float] = {}
+        self._rules_cache: dict[str, RobotsRules] = {}
+        self._crawl_delays: dict[str, float] = {}
 
     def _get_robots_url(self, url: str) -> str:
         """Get robots.txt URL from page URL."""
@@ -57,26 +56,25 @@ class RobotsChecker:
         """Generate cache key for robots.txt."""
         return f"robots:{robots_url}"
 
-    async def fetch_robots_txt(self, robots_url: str) -> Optional[str]:
+    async def fetch_robots_txt(self, robots_url: str) -> str | None:
         """Fetch robots.txt content."""
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    robots_url,
-                    timeout=aiohttp.ClientTimeout(total=10),
-                    headers={"User-Agent": self.user_agent},
-                ) as response:
-                    if response.status == 200:
-                        return await response.text()
-                    elif response.status == 404:
-                        # No robots.txt means allow all
-                        return ""
-                    else:
-                        logger.warning(
-                            f"Unexpected status {response.status} for {robots_url}",
-                            action=LogAction.ERROR,
-                        )
-                        return None
+            async with aiohttp.ClientSession() as session, session.get(
+                robots_url,
+                timeout=aiohttp.ClientTimeout(total=10),
+                headers={"User-Agent": self.user_agent},
+            ) as response:
+                if response.status == 200:
+                    return await response.text()
+                elif response.status == 404:
+                    # No robots.txt means allow all
+                    return ""
+                else:
+                    logger.warning(
+                        f"Unexpected status {response.status} for {robots_url}",
+                        action=LogAction.ERROR,
+                    )
+                    return None
 
         except Exception as e:
             logger.warning(f"Failed to fetch {robots_url}: {e}", action=LogAction.ERROR)
@@ -194,12 +192,12 @@ class RobotsChecker:
 
         return True
 
-    async def get_sitemaps(self, url: str) -> List[str]:
+    async def get_sitemaps(self, url: str) -> list[str]:
         """Get sitemap URLs from robots.txt."""
         rules = await self.get_rules(url)
         return rules.sitemaps
 
-    async def get_crawl_delay(self, url: str) -> Optional[float]:
+    async def get_crawl_delay(self, url: str) -> float | None:
         """Get crawl delay for URL."""
         rules = await self.get_rules(url)
         return rules.crawl_delay
@@ -210,7 +208,7 @@ class RobotsChecker:
         # For now, use same as can_fetch
         return await self.can_fetch(url)
 
-    async def get_stats(self) -> Dict:
+    async def get_stats(self) -> dict:
         """Get checker statistics."""
         return {
             "cached_rules": len(self._rules_cache),

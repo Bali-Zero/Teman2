@@ -17,7 +17,6 @@ import os
 import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Dict, List, Optional
 from urllib.parse import urlparse
 
 SCRIPT_DIR = Path(__file__).parent
@@ -38,7 +37,7 @@ def _extract_domain(url: str) -> str:
 class ExaScraper:
     """Exa semantic search client for the intel pipeline."""
 
-    def __init__(self, categories: Optional[List[str]] = None):
+    def __init__(self, categories: list[str] | None = None):
         self.api_key = os.environ.get("EXA_API_KEY", "")
         if not self.api_key:
             raise ValueError("EXA_API_KEY environment variable not set")
@@ -52,13 +51,13 @@ class ExaScraper:
                 q for q in self.queries if q["category"] in categories
             ]
 
-        self.stats: Dict[str, int] = {
+        self.stats: dict[str, int] = {
             "queries_run": 0,
             "articles_found": 0,
             "errors": 0,
         }
 
-    def _load_config(self) -> Dict:
+    def _load_config(self) -> dict:
         """Load query configuration from exa_queries.json."""
         with open(CONFIG_FILE) as f:
             return json.load(f)
@@ -69,7 +68,7 @@ class ExaScraper:
         print(f"[{timestamp}] [Exa] [{level}] {message}")
         sys.stdout.flush()
 
-    def search_all(self) -> List[Dict]:
+    def search_all(self) -> list[dict]:
         """Run all configured queries and return deduplicated articles.
 
         Best practices applied (per Exa docs, March 2026):
@@ -105,7 +104,7 @@ class ExaScraper:
             datetime.now(timezone.utc) - timedelta(hours=max_age_hours)
         ).strftime("%Y-%m-%dT%H:%M:%SZ")
 
-        all_articles: List[Dict] = []
+        all_articles: list[dict] = []
         seen_urls: set[str] = set()
 
         self.log(f"Running {len(self.queries)} queries (type={search_type}, max_age={max_age_hours}h, loc={user_location})")
@@ -119,7 +118,7 @@ class ExaScraper:
                 self.log(f"  Searching: {qname} (cat={exa_category}, n={num_results})")
 
                 # Build highlights params with optional per-query focus
-                highlights_params: Dict = {
+                highlights_params: dict = {
                     "num_sentences": hl_num_sentences,
                     "highlights_per_url": hl_per_url,
                 }
@@ -127,7 +126,7 @@ class ExaScraper:
                     highlights_params["query"] = query_config["highlights_query"]
 
                 # Build search kwargs
-                search_kwargs: Dict = {
+                search_kwargs: dict = {
                     "category": exa_category,
                     "type": search_type,
                     "num_results": num_results,

@@ -9,7 +9,7 @@ Provides:
 """
 
 import time
-from typing import Optional, Callable
+from collections.abc import Callable
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.types import ASGIApp
@@ -35,9 +35,9 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self,
         app: ASGIApp,
         requests_per_minute: int = 100,
-        burst_size: Optional[int] = None,
-        excluded_paths: Optional[list] = None,
-        whitelisted_ips: Optional[list] = None,
+        burst_size: int | None = None,
+        excluded_paths: list | None = None,
+        whitelisted_ips: list | None = None,
     ):
         super().__init__(app)
         self.requests_per_minute = requests_per_minute

@@ -19,7 +19,6 @@ import shutil
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 from playwright.async_api import async_playwright, Page, BrowserContext
 
@@ -309,7 +308,7 @@ async def _wait_for_response_complete(page: Page, timeout: int = IMAGE_GEN_TIMEO
     return False
 
 
-async def _find_generated_image(page: Page) -> Optional[str]:
+async def _find_generated_image(page: Page) -> str | None:
     """Find the Gemini-generated image in the response DOM.
 
     Uses precise selectors verified against live DOM.
@@ -404,7 +403,7 @@ async def generate_image_for_article(
     context: BrowserContext,
     article: dict,
     attempt: int = 0,
-) -> Optional[Path]:
+) -> Path | None:
     """Generate a cover image for a single article via Gemini web UI.
 
     Returns the saved image path or None on failure.

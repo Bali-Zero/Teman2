@@ -9,7 +9,6 @@ NORDVPN_SOCKS_PASS to route through NordVPN SOCKS5 proxy automatically.
 
 import os
 from datetime import datetime, timezone
-from typing import List, Dict
 
 import httpx
 
@@ -29,7 +28,7 @@ def fetch_subreddit(
     sort: str = 'new',
     min_score: int = 5,
     min_text_length: int = 50,
-) -> List[Dict]:
+) -> list[dict]:
     """Fetch posts from a subreddit.
 
     Uses PRAW if credentials are set, otherwise falls back to JSON API.
@@ -50,7 +49,7 @@ def _fetch_via_json(
     sort: str,
     min_score: int,
     min_text_length: int,
-) -> List[Dict]:
+) -> list[dict]:
     """Fetch via Reddit JSON API — no auth, works without API keys."""
     url = f'https://www.reddit.com/r/{subreddit_name}/{sort}.json'
     params = {'limit': str(limit * 3), 'raw_json': '1'}
@@ -106,7 +105,7 @@ def _fetch_via_praw(
     min_text_length: int,
     client_id: str,
     client_secret: str,
-) -> List[Dict]:
+) -> list[dict]:
     """Fetch via PRAW (authenticated, higher rate limits)."""
     import praw
 

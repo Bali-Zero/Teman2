@@ -23,7 +23,6 @@ import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, List
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +30,7 @@ logger = logging.getLogger(__name__)
 NLM_CLI = "nlm"
 
 # Mapping: scraper category → NotebookLM notebook UUID
-CATEGORY_NB_MAP: Dict[str, str] = {
+CATEGORY_NB_MAP: dict[str, str] = {
     "immigration": "cff93ab0-813a-42f2-a8de-36987e724271",       # NB-2
     "business": "933509f9-1561-403d-bd44-4a7a67a36df2",           # NB-3
     "tax": "d4b2eedb-9863-4a1a-81ff-a11b0b45d853",               # NB-4
@@ -70,7 +69,7 @@ def _safe_cli_str(s: str) -> str:
     return t
 
 
-def _nlm_cmd(args: List[str], timeout: int = QUERY_TIMEOUT) -> dict:
+def _nlm_cmd(args: list[str], timeout: int = QUERY_TIMEOUT) -> dict:
     """Run an nlm CLI command and parse JSON output."""
     cmd = [NLM_CLI] + args
     try:
@@ -308,7 +307,7 @@ def _save_pending_sources(temp_nb_id: str, category: str, title: str) -> None:
         logger.warning("Could not save pending source to %s: %s", PENDING_DIR, e)
 
 
-def select_dossiers_for_nlm(articles: List[Dict]) -> List[Dict]:
+def select_dossiers_for_nlm(articles: list[dict]) -> list[dict]:
     """Select top regulatory dossiers eligible for NLM legal context."""
     eligible = [
         a for a in articles
@@ -330,7 +329,7 @@ def select_dossiers_for_nlm(articles: List[Dict]) -> List[Dict]:
     return selected
 
 
-def enrich_with_nlm_context(article: Dict) -> Dict:
+def enrich_with_nlm_context(article: dict) -> dict:
     """Add NLM legal context to a single article.
 
     Phase A: Query NB core (read-only)
@@ -374,7 +373,7 @@ def enrich_with_nlm_context(article: Dict) -> Dict:
     return article
 
 
-def run_nlm_legal_context(articles: List[Dict], log_fn=None) -> List[Dict]:
+def run_nlm_legal_context(articles: list[dict], log_fn=None) -> list[dict]:
     """Main entry point for Step 2.9.
 
     Selects eligible dossiers, enriches with NLM context, returns all articles.

@@ -29,13 +29,12 @@ import hashlib
 from datetime import datetime, timezone
 from pathlib import Path
 from dataclasses import dataclass, asdict
-from typing import Optional
 import aiohttp
 from loguru import logger
 
 # Import the new preview generator
 try:
-    from preview_generator import (
+    from preview_generator import (  # noqa: F401
         BaliZeroPreviewGenerator,
         PreviewArticle,
         generate_article_id,
@@ -67,10 +66,10 @@ class PendingArticle:
     image_url: str
     created_at: str
     relevance_score: int = 0
-    published_at: Optional[str] = None
+    published_at: str | None = None
     status: str = "pending"  # pending, approved, rejected
-    approved_at: Optional[str] = None
-    telegram_message_id: Optional[int] = None
+    approved_at: str | None = None
+    telegram_message_id: int | None = None
 
 
 class TelegramApproval:
@@ -83,8 +82,8 @@ class TelegramApproval:
 
     def __init__(
         self,
-        bot_token: Optional[str] = None,
-        chat_ids: Optional[list[str]] = None,
+        bot_token: str | None = None,
+        chat_ids: list[str] | None = None,
         preview_base_url: str = "https://nuzantara-rag.fly.dev/preview",
     ):
         self.bot_token = bot_token or os.environ.get("TELEGRAM_BOT_TOKEN")
@@ -509,7 +508,7 @@ class TelegramApproval:
         article_id: str,
         html_content: str,
         backend_url: str = "https://nuzantara-rag.fly.dev",
-    ) -> Optional[str]:
+    ) -> str | None:
         """
         Upload HTML preview to backend server.
 
@@ -527,19 +526,18 @@ class TelegramApproval:
                 "html_content": html_content,
             }
 
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    upload_url, json=payload, timeout=aiohttp.ClientTimeout(total=30)
-                ) as resp:
-                    if resp.status == 201:
-                        result = await resp.json()
-                        preview_url = result.get("preview_url")
-                        logger.success(f"Preview uploaded to backend: {preview_url}")
-                        return preview_url
-                    else:
-                        error = await resp.text()
-                        logger.error(f"Failed to upload preview to backend: {error}")
-                        return None
+            async with aiohttp.ClientSession() as session, session.post(
+                upload_url, json=payload, timeout=aiohttp.ClientTimeout(total=30)
+            ) as resp:
+                if resp.status == 201:
+                    result = await resp.json()
+                    preview_url = result.get("preview_url")
+                    logger.success(f"Preview uploaded to backend: {preview_url}")
+                    return preview_url
+                else:
+                    error = await resp.text()
+                    logger.error(f"Failed to upload preview to backend: {error}")
+                    return None
         except Exception as e:
             logger.error(f"Error uploading preview to backend: {e}")
             return None
@@ -563,7 +561,7 @@ class TelegramApproval:
 
     async def send_telegram_notification(
         self, article: PendingArticle
-    ) -> Optional[int]:
+    ) -> int | None:
         """
         Send article notification to Telegram with approve/reject buttons.
 
@@ -922,7 +920,7 @@ _Article ID: `{article.article_id}`_"""
 
         return pending
 
-    def get_pending_article(self, article_id: str) -> Optional[PendingArticle]:
+    def get_pending_article(self, article_id: str) -> PendingArticle | None:
         """Get a pending article by ID"""
         pending_path = self.pending_dir / f"{article_id}.json"
         if pending_path.exists():

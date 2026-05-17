@@ -8,7 +8,8 @@ temporarily, allowing them time to recover.
 import asyncio
 import time
 from enum import Enum
-from typing import Callable, Dict, Optional, Any
+from typing import Any
+from collections.abc import Callable
 from functools import wraps
 
 from backend.core.logger import get_logger, LogAction
@@ -47,7 +48,7 @@ class CircuitBreaker:
         self._failure_count = 0
         self._success_count = 0
         self._half_open_calls = 0
-        self._last_failure_time: Optional[float] = None
+        self._last_failure_time: float | None = None
         self._lock = asyncio.Lock()
 
         logger.info(
@@ -103,8 +104,7 @@ class CircuitBreaker:
 
     async def _update_state(self) -> None:
         """Update circuit state based on time and failures."""
-        if self._state == CircuitState.OPEN:
-            if self._last_failure_time is not None:
+        if self._state == CircuitState.OPEN and self._last_failure_time is not None:
                 elapsed = time.time() - self._last_failure_time
                 if elapsed >= self.recovery_timeout:
                     self._state = CircuitState.HALF_OPEN
@@ -156,7 +156,7 @@ class CircuitBreaker:
                     metadata={"failure_count": self._failure_count},
                 )
 
-    def get_stats(self) -> Dict[str, Any]:
+    def get_stats(self) -> dict[str, Any]:
         """Get circuit breaker statistics."""
         return {
             "name": self.name,
@@ -185,7 +185,7 @@ class CircuitBreakerRegistry:
     """Registry for managing multiple circuit breakers."""
 
     def __init__(self):
-        self._breakers: Dict[str, CircuitBreaker] = {}
+        self._breakers: dict[str, CircuitBreaker] = {}
 
     def register(
         self,
@@ -207,11 +207,11 @@ class CircuitBreakerRegistry:
         self._breakers[name] = breaker
         return breaker
 
-    def get(self, name: str) -> Optional[CircuitBreaker]:
+    def get(self, name: str) -> CircuitBreaker | None:
         """Get a circuit breaker by name."""
         return self._breakers.get(name)
 
-    def get_all_stats(self) -> Dict[str, Dict[str, Any]]:
+    def get_all_stats(self) -> dict[str, dict[str, Any]]:
         """Get stats for all circuit breakers."""
         return {name: breaker.get_stats() for name, breaker in self._breakers.items()}
 
