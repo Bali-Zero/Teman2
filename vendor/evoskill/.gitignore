@@ -1,0 +1,38 @@
+# Python-generated files
+__pycache__/
+*.py[oc]
+build/
+dist/
+wheels/
+*.egg-info
+treasury_bulletins_parsed/
+*.skill
+*.log
+# Claude Code config (ignore all except skills folder)
+.claude/*
+!.claude/program.yaml
+!.claude/skills/
+results/
+DABstep-data/
+.evoskill/
+
+# Auto-generated configs (contain local paths)
+opencode.json
+config.json
+
+# Virtual environments
+.venv
+.env
+.DS_Store
+.dataset/
+
+.agents/
+
+# Cache
+.cache/
+*.txt
+!**/prompt.txt
+output.txt
+scratch/
+
+CLAUDE.md
