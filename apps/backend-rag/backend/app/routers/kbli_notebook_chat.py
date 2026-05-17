@@ -291,8 +291,8 @@ async def _generate_kbli_explanation_gemini(
 
 
 @cached(
-    ttl=43200, prefix="kbli_explain_v25",
-)  # Cache explanations for 12 hours (v25: 96100 risk scale-dependent: Rendah Mikro-Menengah / Tinggi Besar; all sector 96 PMA=TERBUKA)
+    ttl=43200, prefix="kbli_explain_v26",
+)  # Cache explanations for 12 hours (v26: 56301 PMA status corrected to TERBUKA)
 async def _generate_kbli_explanation(
     query: str, results: list[KBLISearchResult], parent_docs: dict[str, str] = None,
 ) -> str:
