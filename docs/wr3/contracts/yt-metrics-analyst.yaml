@@ -1,0 +1,66 @@
+# WR3 Agent I/O Contract — wr3-yt-metrics-analyst
+# Schema: docs/wr3/contracts/_schema.yaml v1.0.0
+# Description: Weekly Mon 06:00 WITA. Correlates engagement with episode attributes. Proposes amendments.
+
+name: wr3-yt-metrics-analyst
+contract_version: 1.0.0
+model: sonnet
+lifecycle_tier: scheduled
+cost_class: text_planning
+
+cost:
+  ceiling_usd: 0.15
+  ceiling_unit: "$0.15 cash per weekly run"
+  hard_halt_on_exceed: false
+
+allowed_tools:
+  - Read
+  - Write
+  - Bash
+  - Glob
+  - Grep
+
+inputs:
+  - name: yt_analytics
+    kind: in_memory_obj
+    source: "YouTube Analytics API (gcloud auth)"
+    required: true
+    schema_ref: "free-form"
+  - name: ig_tt_scrape
+    kind: in_memory_obj
+    source: "IG/TikTok engagement scrape (Playwright)"
+    required: true
+    schema_ref: "free-form"
+  - name: episode_manifests
+    kind: file
+    source: "apps/war-room/output/episode/<recent-30-90-days>/episode_manifest.json"
+    required: true
+    schema_ref: "free-form"
+
+outputs:
+  - name: proposed_amendments
+    kind: file
+    sink: "~/.claude/skills/bali-zero-brand/wr3/_proposed-amendments/<date>-yt-insights.md"
+    schema_ref: "free-form"
+
+emits: []
+
+consumes: []
+
+failure_modes:
+  - code: degrade_loud
+    action: "YT Analytics API down → IG/TT only (manifest flagged 'partial_metrics')"
+    telegram_p0_on: false
+  - code: hard_fail
+    action: "ALL 3 sources down → defer 24h"
+    telegram_p0_on: false
+
+law_compliance:
+  law_1_cli_only: "Gemini 3.1 Pro free OAuth via gemini CLI (1M context for full corpus)"
+  law_2_osint_blindato: "Reads public metrics only (no NB)"
+  law_3_event_driven: "Cron Mon 06:00 WITA AFTER Reflexion (Sun 02:30) — same review week"
+  law_4_graceful_degradation: "Partial metrics degrade-loud, never silent"
+  law_5_zero_authority: "Amendments require Antonello review before applied"
+  law_6_local_sovereignty: "Local scrape Pro/Mini"
+  law_7_numbers_first: "Every amendment cites engagement metric (views, retention, CTR)"
+  law_8_past_present_future: "30-90 day correlation window"

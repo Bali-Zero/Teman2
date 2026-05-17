@@ -1,0 +1,79 @@
+# WR3 Agent I/O Contract — wr3-post-assembler
+# Schema: docs/wr3/contracts/_schema.yaml v1.0.0
+# Description: Python-first ffmpeg pipeline + Sonnet diagnostic. Builds episode_manifest.json (18 fields).
+
+name: wr3-post-assembler
+contract_version: 1.0.0
+model: sonnet
+lifecycle_tier: core
+cost_class: text_planning
+
+cost:
+  ceiling_usd: 0.1
+  ceiling_unit: "$0.10 cash (diagnostic only)"
+  hard_halt_on_exceed: false
+
+allowed_tools:
+  - Read
+  - Write
+  - Bash
+  - Glob
+
+inputs:
+  - name: clips
+    kind: file
+    source: "apps/war-room/output/episode/<slug>/clips/"
+    required: true
+    schema_ref: "free-form"
+  - name: audio
+    kind: file
+    source: "apps/war-room/output/episode/<slug>/audio/"
+    required: true
+    schema_ref: "free-form"
+  - name: license_report
+    kind: file
+    source: "apps/war-room/output/episode/<slug>/license-report.json"
+    required: true
+    schema_ref: "free-form"
+  - name: assembly_ready
+    kind: channel_payload
+    source: "wr3_episode_assembly_ready"
+    required: true
+    schema_ref: "free-form"
+
+outputs:
+  - name: master
+    kind: file
+    sink: "apps/war-room/output/episode/<slug>/master.mp4"
+    schema_ref: "free-form"
+  - name: variants
+    kind: file
+    sink: "apps/war-room/output/episode/<slug>/variants/{tiktok,ig-reels,yt-shorts,fb}.mp4"
+    schema_ref: "free-form"
+  - name: manifest
+    kind: file
+    sink: "apps/war-room/output/episode/<slug>/episode_manifest.json"
+    schema_ref: "episode_manifest.schema.json"
+
+emits: []
+
+consumes:
+  - wr3_episode_assembly_ready
+
+failure_modes:
+  - code: degrade_loud
+    action: "Variant ffmpeg failure → DEGRADE (deliver master + 3/4 variants, manifest flags missing variant)"
+    telegram_p0_on: false
+  - code: hard_fail
+    action: "Master assembly failure → HARD-FAIL (no coherent artifact to critic) + Telegram P0"
+    telegram_p0_on: true
+
+law_compliance:
+  law_1_cli_only: "ffmpeg subprocess only; Sonnet for diagnostic via Claude Agent SDK"
+  law_2_osint_blindato: "No NB access. Manifest includes claim_ids verbatim from brief.json"
+  law_3_event_driven: "Consumes assembly_ready (clip-renderer + audio-asset-producer joined ready)"
+  law_4_graceful_degradation: "Variant failure degrades, master failure halts"
+  law_5_zero_authority: "Manifest is the immutable artifact Antonello reviews pre-publish"
+  law_6_local_sovereignty: "ffmpeg evermeet static /tmp/ffmpeg-full/ffmpeg local"
+  law_7_numbers_first: "Manifest 18 mandatory fields (claim_ids, asset_hashes, contract_versions, costs)"
+  law_8_past_present_future: "Manifest sha256 anchors enable past episode comparison"

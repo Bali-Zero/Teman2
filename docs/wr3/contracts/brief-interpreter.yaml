@@ -1,0 +1,70 @@
+# WR3 Agent I/O Contract — wr3-brief-interpreter
+# Schema: docs/wr3/contracts/_schema.yaml v1.0.0
+# Description: SOLE source of NB queries. Returns structured brief + claim_ids. Filters NB source_ids OUT of brief.json.
+
+name: wr3-brief-interpreter
+contract_version: 1.0.0
+model: sonnet
+lifecycle_tier: core
+cost_class: text_planning
+
+cost:
+  ceiling_usd: 0.15
+  ceiling_unit: "$0.15 cash"
+  hard_halt_on_exceed: false
+
+allowed_tools:
+  - Read
+  - Glob
+  - Grep
+  - Bash
+  - WebFetch
+
+inputs:
+  - name: dispatch_payload
+    kind: channel_payload
+    source: "wr3_episode_brief_requested"
+    required: true
+    schema_ref: "free-form"
+  - name: nb_authority
+    kind: in_memory_obj
+    source: "NotebookLM MCP (mcp__notebooklm-mcp__notebook_query)"
+    required: true
+    schema_ref: "free-form"
+
+outputs:
+  - name: brief
+    kind: file
+    sink: "apps/war-room/output/episode/<slug>/brief.json"
+    schema_ref: "brief.schema.json"
+  - name: nb_sources_private
+    kind: file
+    sink: "apps/war-room/output/episode/<slug>/nb_source_ids.private.json (NEVER pushed downstream — Law 2)"
+    schema_ref: "free-form"
+  - name: claim_ids
+    kind: file
+    sink: "apps/war-room/output/episode/<slug>/claim_ids.json"
+    schema_ref: "free-form"
+
+emits: []
+
+consumes:
+  - wr3_episode_brief_requested
+
+failure_modes:
+  - code: retry_with_cascade
+    action: "On Claude OAuth limit → cascade Sonnet → Gemini 3.1 Pro free OAuth (NB unchanged)"
+    telegram_p0_on: false
+  - code: hard_fail
+    action: "NB MCP all 5 NB-INTEL down → Telegram P0 + episode HALTED (cannot ground without authority)"
+    telegram_p0_on: true
+
+law_compliance:
+  law_1_cli_only: "NB queries via mcp__notebooklm-mcp__* (CLI/MCP subprocess), LLM via Claude Agent SDK"
+  law_2_osint_blindato: "SOLE source of NB queries. NEVER returns source_ids in brief.json. nb_source_ids.private.json stays Pro-side only"
+  law_3_event_driven: "Consumes from outbox, no event emit (handler returns synchronously)"
+  law_4_graceful_degradation: "Quota exhaust → cascade to free Gemini, NB exhaust → hard halt (no silent degrade)"
+  law_5_zero_authority: "Brief MUST be reviewable by Antonello/Damar pre-script-editor"
+  law_6_local_sovereignty: "NotebookLM via Google free OAuth (sanctioned), no paid API"
+  law_7_numbers_first: "Every numeric in brief.json has claim_id pointing to NB source verbatim"
+  law_8_past_present_future: "Loads brief-interpreter skill cortex (NB routing map, claim templates)"

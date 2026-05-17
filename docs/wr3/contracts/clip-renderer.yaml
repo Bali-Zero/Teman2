@@ -1,0 +1,65 @@
+# WR3 Agent I/O Contract — wr3-clip-renderer
+# Schema: docs/wr3/contracts/_schema.yaml v1.0.0
+# Description: Veo 3.1 Fast Tier_ONE jobs via wr3_flowkit_client.py + Identity Gate (ArcFace + VLM).
+
+name: wr3-clip-renderer
+contract_version: 1.0.0
+model: sonnet
+lifecycle_tier: core
+cost_class: render
+
+cost:
+  ceiling_usd: null
+  ceiling_unit: "200 cr Flow Pro (~$0.50 cash equivalent)"
+  hard_halt_on_exceed: false
+
+allowed_tools:
+  - Read
+  - Write
+  - Bash
+  - Glob
+
+inputs:
+  - name: shot_pack
+    kind: file
+    source: "apps/war-room/output/episode/<slug>/shot-pack.json"
+    required: true
+    schema_ref: "free-form"
+  - name: gate_verdict
+    kind: channel_payload
+    source: "wr3_episode_gate_passed"
+    required: true
+    schema_ref: "free-form"
+
+outputs:
+  - name: clips
+    kind: file
+    sink: "apps/war-room/output/episode/<slug>/clips/<n>.mp4"
+    schema_ref: "free-form"
+  - name: identity_report
+    kind: file
+    sink: "apps/war-room/output/episode/<slug>/identity-report.json"
+    schema_ref: "free-form"
+
+emits: []
+
+consumes:
+  - wr3_episode_gate_passed
+
+failure_modes:
+  - code: retry_with_cascade
+    action: "Veo timeout 300s OR ArcFace <0.55 → 2 retries with strengthened prompt; on 3rd fail → wr3-b-roll-curator fallback dispatch"
+    telegram_p0_on: false
+  - code: hard_fail
+    action: "Flow API down >5min → Telegram P0 + episode parked"
+    telegram_p0_on: true
+
+law_compliance:
+  law_1_cli_only: "Flow API via wr3_flowkit_client.py subprocess wrapper"
+  law_2_osint_blindato: "No NB access"
+  law_3_event_driven: "Consumes gate_passed, emits NOTHING (synchronous render then handoff)"
+  law_4_graceful_degradation: "b-roll fallback is degrade-loud (license-clean alternative shot)"
+  law_5_zero_authority: "Each clip retry visible in telemetry"
+  law_6_local_sovereignty: "Flow API is cloud touchpoint, all orchestration local"
+  law_7_numbers_first: "200 cr Flow Pro ceiling enforced via pre-render-gatekeeper upstream"
+  law_8_past_present_future: "ArcFace identity gate + VLM holistic check (Haiku VLM pre-pass)"
