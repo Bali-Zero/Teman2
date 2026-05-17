@@ -1,9 +1,49 @@
 # CRM-Guardian Activation Phase 1 — Cross-folder L1 Summary
 
-**Date**: 2026-05-16
+**Date**: 2026-05-16 → 2026-05-18
 **Owner**: Antonello (Zero)
-**Status**: APPROVED — ready to execute
-**Branch**: `feat/crm-guardian-phase1-activation` (TBD)
+**Status**: ✅ **PHASE 1 COMPLETE 2026-05-18** — pilot 5 VIP validated (5/5 dry_run SUCCESS, confidence mean 0.66, 3/5 tier VIP), LaunchAgent operativo every 15min in dry_run mode
+**Branch**: `feat/crm-guardian-phase1-activation` (PR #694, MERGEABLE)
+
+## Day-by-day shipped log
+
+| Day         | Output                                                                                                                                                                             | Commit          |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------- |
+| Day 1       | Plan + schema L1 v2 + prompt v2 + migration 180                                                                                                                                    | (rebased)       |
+| Day 2       | Worker cross-folder extension (Playwright variant)                                                                                                                                 | (rebased)       |
+| Day 3       | Pivot to gemini CLI worker (Google anti-bot blocks Chrome-for-Testing) + smoke validated client 70                                                                                 | (rebased)       |
+| Day 3-4     | `summary_queue.py` cascading enqueue helpers (22/22 tests)                                                                                                                         | (rebased)       |
+| Day 4       | Endpoint `GET /api/crm/clients/{id}/ai-summary` with RBAC (6/6 tests)                                                                                                              | b929755d5       |
+| Day 5-6     | `AiSummaryCard` in 8 mouth tabs + types in `crm.types.ts`                                                                                                                          | 818e020e7       |
+| Day 5 pilot | 5 VIP enqueued (70, 266, 278, 283, 350), 5/5 dry_run SUCCESS                                                                                                                       | (queue ids 1-5) |
+| Day 7       | LaunchAgent `com.balizero.crm-guardian-cli-worker` every 15min, `--dry-run` flag still on, wrapper at `~/scripts/crm-guardian-cli-worker.sh`, plist 0444 read-only (cicatrix P0-3) | this commit     |
+
+## Pilot 5 VIP results (2026-05-18, dry_run, gemini CLI free OAuth)
+
+| client_id | Name                   | linked co | files | archetype           | tier     | confidence | duration |
+| --------- | ---------------------- | --------: | ----: | ------------------- | -------- | ---------: | -------: |
+| 70        | Oleksandr Ozolin       |         1 |    37 | individual_investor | standard |        0.4 |      66s |
+| 266       | Romain Pascal Baillieu |         2 |    80 | individual_investor | VIP      |        0.6 |      83s |
+| 278       | Declan & Shannon       |         1 |   115 | pt_pma_owner        | standard |       0.75 |      76s |
+| 283       | Roman Pukhov           |         2 |   197 | pt_pma_owner        | VIP      |        0.8 |      63s |
+| 350       | Armando Puddu          |         6 |   683 | individual_investor | VIP      |       0.75 |     127s |
+
+Confidence mean 0.66 (above the 0.6 manual-review threshold on 4/5).
+4/5 clients ≥0.6 → would auto-publish in non-dry-run mode.
+3/5 tier=VIP correctly classified.
+
+Cost: €0 (gemini CLI free OAuth Workspace AI add-on). Audit events written
+to `crm_guardian_events` with `dry_run=true`. `clients.ai_summary` NOT
+updated (protection by dry_run flag in migration 180).
+
+## Next action: flip dry_run=false after 24h LaunchAgent stability
+
+After 24h of `crm-guardian-cli-worker` running every 15min without errors
+in `~/logs/crm-guardian-cli-worker.log` AND no `dry_run=true` errors in
+`crm_guardian_events`, remove `--dry-run` from `WORKER_FLAGS` in
+`~/scripts/crm-guardian-cli-worker.sh` to switch worker from audit-only to
+production writes. The 5 pilot VIPs will be regenerated automatically on
+next on-change Drive event (or on manual enqueue with `force=True`).
 
 ---
 
