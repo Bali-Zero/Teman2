@@ -14,6 +14,7 @@ import type {
   PortalProfile,
   InviteValidationResponse,
   CompleteRegistrationRequest,
+  PortalMatterDetail,
 } from "./portal.types";
 
 // ============================================================================
@@ -195,6 +196,47 @@ describe("PortalApi", () => {
       mockRequest.mockRejectedValue(new Error("API Error"));
 
       await expect(portalApi.getDashboard()).rejects.toThrow("API Error");
+    });
+  });
+
+  describe("getMatterDetail", () => {
+    it("should fetch a matter detail with approved intelligence", async () => {
+      const mockMatter: PortalMatterDetail = {
+        id: 9,
+        title: "Company Setup",
+        type: "company",
+        progress: 60,
+        pending_docs: ["Company registry"],
+        next_deadline: null,
+        next_step: "Review filing date",
+        status_label: "In progress",
+        description: "We are working on this now.",
+        approved_intelligence: {
+          available: true,
+          status: "approved",
+          company_name: "PT Safe Client Story",
+          summary: "The company profile is approved for client review.",
+          last_reviewed_at: "2026-05-17T00:00:00+00:00",
+          facts: [
+            {
+              category: "identity",
+              label: "Company status",
+              detail: "The company profile is approved for client review.",
+              confidence: "confirmed",
+            },
+          ],
+          missing_items: [],
+          next_steps: ["Confirm the next filing date."],
+        },
+      };
+      mockRequest.mockResolvedValue({ matter: mockMatter });
+
+      const result = await portalApi.getMatterDetail(9);
+
+      expect(mockRequest).toHaveBeenCalledWith("/api/portal/matters/9", {
+        method: "GET",
+      });
+      expect(result).toEqual(mockMatter);
     });
   });
 

@@ -107,6 +107,7 @@ def include_routers(api: FastAPI) -> None:
         portal_billing,
         portal_drive,
         portal_invite,
+        portal_matters,
         portal_notifications,
         portal_process_timeline,
         portal_taxes,
@@ -223,6 +224,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(portal_billing.router)
     api.include_router(portal_drive.router)
     api.include_router(portal_invite.router)
+    api.include_router(portal_matters.router)
     api.include_router(portal_notifications.router)
     api.include_router(portal_process_timeline.router)
     api.include_router(portal_taxes.router)
@@ -469,6 +471,7 @@ def include_light_routers(api: FastAPI) -> None:
         portal_billing,
         portal_drive,
         portal_invite,
+        portal_matters,
         portal_notifications,
         portal_process_timeline,
         portal_taxes,
@@ -568,6 +571,7 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(portal_billing.router)
     api.include_router(portal_drive.router)
     api.include_router(portal_invite.router)
+    api.include_router(portal_matters.router)
     api.include_router(portal_notifications.router)
     api.include_router(portal_process_timeline.router)
     api.include_router(portal_taxes.router)

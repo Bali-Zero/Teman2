@@ -387,6 +387,48 @@ class SurfaceRouter:
         q = query.lower()
         return "news" in active_domains and any(kw in q for kw in _NEWS_TERMS)
 
+    def _has_tax_context(self, query: str) -> bool:
+        q = query.lower()
+        return any(
+            kw in q
+            for kw in (
+                "tax ",
+                " tax",
+                "pajak",
+                "withholding",
+                "income tax",
+                "corporate tax",
+            )
+        )
+
+    def _fast_precheck(self, query: str, started_at: float) -> SurfaceDecision | None:
+        """Apply deterministic high-confidence routing before layer 1."""
+        # R5 Phase 4: KG surface — entity/relationship queries checked before Qdrant routing.
+        if self._is_kg_query(query):
+            elapsed = (time.perf_counter() - started_at) * 1000
+            return _make_kg_decision(elapsed)
+
+        if self._is_skills_query(query):
+            elapsed = (time.perf_counter() - started_at) * 1000
+            return _make_decision(Surface.QDRANT_SKILLS, "skills", 0.90, 1, elapsed)
+
+        # Tax intercepts first: PPh/PPN/BPHTB/NPWP not in QueryRouter's TAX_KEYWORDS.
+        # Must come BEFORE pricing check so "tax rate" / "income tax" don't mis-fire pricing.
+        if self._is_tax_intercept(query):
+            elapsed = (time.perf_counter() - started_at) * 1000
+            return _make_decision(Surface.QDRANT_TAX, "tax", 0.85, 1, elapsed)
+
+        if self._is_pricing_query(query) and not self._has_tax_context(query):
+            elapsed = (time.perf_counter() - started_at) * 1000
+            return _make_decision(Surface.QDRANT_PRICING, "pricing", 0.95, 1, elapsed)
+
+        # KITAS/KITAP acronyms — intercept after pricing (e.g. "KITAS cost" → pricing wins)
+        if self._is_visa_acronym_query(query):
+            elapsed = (time.perf_counter() - started_at) * 1000
+            return _make_decision(Surface.QDRANT_VISA, "visa", 0.88, 1, elapsed)
+
+        return None
+
     def decide(self, query: str) -> SurfaceDecision:
         """Route a query synchronously (keyword path only).
 
@@ -394,36 +436,9 @@ class SurfaceRouter:
         """
         t0 = time.perf_counter()
 
-        # R5 Phase 4: KG surface — entity/relationship queries (checked first)
-        if self._is_kg_query(query):
-            elapsed = (time.perf_counter() - t0) * 1000
-            return _make_kg_decision(elapsed)
-
-        # Fast pre-checks (ordered by specificity — pricing first to catch "KITAS renewal cost")
-        if self._is_skills_query(query):
-            elapsed = (time.perf_counter() - t0) * 1000
-            return _make_decision(Surface.QDRANT_SKILLS, "skills", 0.90, 1, elapsed)
-
-        # Tax intercepts first: PPh/PPN/BPHTB/NPWP not in QueryRouter's TAX_KEYWORDS.
-        # Must come BEFORE pricing check so "tax rate" / "income tax" don't mis-fire pricing.
-        if self._is_tax_intercept(query):
-            elapsed = (time.perf_counter() - t0) * 1000
-            return _make_decision(Surface.QDRANT_TAX, "tax", 0.85, 1, elapsed)
-
-        if self._is_pricing_query(query):
-            # Suppress pricing if query has "tax" context to avoid "tax rate" → pricing.
-            q_lower = query.lower()
-            has_tax_context = any(
-                kw in q_lower for kw in ("tax ", " tax", "pajak", "withholding", "income tax", "corporate tax")
-            )
-            if not has_tax_context:
-                elapsed = (time.perf_counter() - t0) * 1000
-                return _make_decision(Surface.QDRANT_PRICING, "pricing", 0.95, 1, elapsed)
-
-        # KITAS/KITAP acronyms — intercept after pricing (e.g. "KITAS cost" → pricing wins)
-        if self._is_visa_acronym_query(query):
-            elapsed = (time.perf_counter() - t0) * 1000
-            return _make_decision(Surface.QDRANT_VISA, "visa", 0.88, 1, elapsed)
+        precheck = self._fast_precheck(query, t0)
+        if precheck is not None:
+            return precheck
 
         surface, confidence, domain = self._layer1(query)
         elapsed = (time.perf_counter() - t0) * 1000
@@ -443,19 +458,9 @@ class SurfaceRouter:
         """Route a query with optional Haiku enrichment for ambiguous cases."""
         t0 = time.perf_counter()
 
-        # R5 Phase 4: KG surface — entity/relationship queries (no Haiku needed)
-        if self._is_kg_query(query):
-            elapsed = (time.perf_counter() - t0) * 1000
-            return _make_kg_decision(elapsed)
-
-        # Fast pre-checks (no Haiku needed)
-        if self._is_skills_query(query):
-            elapsed = (time.perf_counter() - t0) * 1000
-            return _make_decision(Surface.QDRANT_SKILLS, "skills", 0.90, 1, elapsed)
-
-        if self._is_pricing_query(query):
-            elapsed = (time.perf_counter() - t0) * 1000
-            return _make_decision(Surface.QDRANT_PRICING, "pricing", 0.95, 1, elapsed)
+        precheck = self._fast_precheck(query, t0)
+        if precheck is not None:
+            return precheck
 
         # Layer 1
         surface, confidence, domain = self._layer1(query)
