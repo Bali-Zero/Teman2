@@ -23,7 +23,7 @@ logger = logging.getLogger("cell.effectors.nlm")
 REPORTS_DIR = Path(__file__).parent.parent.parent / "data" / "reports"
 NLM_NOTEBOOK_ID = os.environ.get(
     "NLM_AI_RESEARCH_NOTEBOOK",
-    "dc5d01cd-e99f-4c8f-aae4-75060b43d0de",
+    "d48c4933-4d93-4d1e-8753-23b88145ba78",
 )
 
 # Domain → NB-INTEL UUID routing, mirrors apps/mata-garuda/workers/nlm_feeder.py
@@ -31,22 +31,22 @@ NLM_NOTEBOOK_ID = os.environ.get(
 # `domain` field in enriched items (Mata Garuda scorer convention).
 NB_INTEL_ROUTING: dict[str, str] = {
     "immigration_visa": os.environ.get(
-        "NLM_IMMIGRATION_NOTEBOOK", "1ed02e54-542f-426a-94f8-53c5ffde4b7d"
+        "NLM_IMMIGRATION_NOTEBOOK", "78573978-4564-4bdc-b082-fbd625c2d33d"
     ),
     "tax_fiscal": os.environ.get(
-        "NLM_TAX_NOTEBOOK", "7fb12c9c-4e12-4a8d-9bd1-c5b857bf310f"
+        "NLM_TAX_NOTEBOOK", "78b45ad8-ddce-4bd8-bdf0-3b45800897da"
     ),
     "investment_licensing": os.environ.get(
-        "NLM_REGULATION_NOTEBOOK", "a17f134e-b9ab-42d9-bfc2-5bbc45165c76"
+        "NLM_REGULATION_NOTEBOOK", "80821295-703f-40ab-a32a-f0307e43ae2a"
     ),
     "labor_manpower": os.environ.get(
-        "NLM_REGULATION_NOTEBOOK", "a17f134e-b9ab-42d9-bfc2-5bbc45165c76"
+        "NLM_REGULATION_NOTEBOOK", "80821295-703f-40ab-a32a-f0307e43ae2a"
     ),
     "political_risk": os.environ.get(
-        "NLM_PRESS_NOTEBOOK", "9d262101-abeb-4e15-af9c-c38e028c62fe"
+        "NLM_PRESS_NOTEBOOK", "caec5b82-287c-464f-844f-02e2c8f04c21"
     ),
     "provincial_bali": os.environ.get(
-        "NLM_PRESS_NOTEBOOK", "9d262101-abeb-4e15-af9c-c38e028c62fe"
+        "NLM_PRESS_NOTEBOOK", "caec5b82-287c-464f-844f-02e2c8f04c21"
     ),
     "ai_research": NLM_NOTEBOOK_ID,
 }

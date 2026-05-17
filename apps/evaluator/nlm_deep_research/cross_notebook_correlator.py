@@ -57,13 +57,13 @@ OLLAMA_TIMEOUT = 60
 # Domain keyword registry (mirrors nlm_notebook_registry.py)
 DOMAIN_REGISTRY: dict[str, dict[str, Any]] = {
     "immigration": {
-        "notebook_id": "cff93ab0-813a-42f2-a8de-36987e724271",
+        "notebook_id": "271c7159-0c32-49a1-bda8-803c8e0993a6",
         "label": "Immigration & Visa",
         "keywords": {"visa", "kitas", "kitap", "tka", "immigration", "imigrasi",
                      "work permit", "stay permit", "foreigner", "expat"},
     },
     "company": {
-        "notebook_id": "933509f9-1561-403d-bd44-4a7a67a36df2",
+        "notebook_id": "045f3cdb-ef62-488c-90ba-82594928b671",
         "label": "Company & Licensing",
         "keywords": {"company", "kbli", "pma", "oss", "licensing", "nib",
                      "investment", "business", "pt ", "perseroan"},
@@ -75,25 +75,25 @@ DOMAIN_REGISTRY: dict[str, dict[str, Any]] = {
                      "coretax", "bpjs", "fiscal", "pajak"},
     },
     "property": {
-        "notebook_id": "d9438180-5e63-4e2a-a473-6061101f6a8d",
+        "notebook_id": "93314ad3-177e-4d2f-956b-fe4be3e47697",
         "label": "Property & Zoning",
         "keywords": {"property", "zoning", "land", "hgb", "hak pakai",
                      "building", "villa", "real estate", "leasehold"},
     },
     "operations": {
-        "notebook_id": "85207af3-352f-4554-8d2a-18f42cc541ba",
+        "notebook_id": "7fbf37ed-e290-491a-98f5-677d6371ad62",
         "label": "Operations",
         "keywords": {"sop", "team", "pricing", "crm", "workflow",
                      "competitor", "bpjs", "umr", "salary"},
     },
     "editorial": {
-        "notebook_id": "f51ab8a0-50d0-49f1-a64f-ebc131fed7b8",
+        "notebook_id": "42687fcb-87fc-40b1-8af8-8a2ff91f9c4c",
         "label": "Editorial & Market",
         "keywords": {"seo", "content", "market", "intel", "trends",
                      "news", "article", "editorial"},
     },
     "lifestyle": {
-        "notebook_id": "4fd8cd0f-93f1-4e43-9c9e-86c0d581852c",
+        "notebook_id": "aa9ac5d7-5090-46c7-9d09-89cec4ba13de",
         "label": "Expat Life",
         "keywords": {"lifestyle", "expat", "healthcare", "cost of living",
                      "culture", "digital nomad", "education", "school"},

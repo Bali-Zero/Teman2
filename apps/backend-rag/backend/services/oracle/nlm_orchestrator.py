@@ -26,13 +26,13 @@ logger = logging.getLogger(__name__)
 # was the historical fallback when NB-5 did not yet exist in production.
 # The extended map below corrects this; enable via NLM_EXTENDED_ROUTING.
 _BASE_DOMAIN_NOTEBOOK_MAP: dict[str, list[str]] = {
-    "visa": ["cff93ab0-813a-42f2-a8de-36987e724271"],          # NB-2
-    "immigration": ["cff93ab0-813a-42f2-a8de-36987e724271"],    # NB-2
+    "visa": ["271c7159-0c32-49a1-bda8-803c8e0993a6"],          # NB-2
+    "immigration": ["271c7159-0c32-49a1-bda8-803c8e0993a6"],    # NB-2
     "tax": ["d4b2eedb-9863-4a1a-81ff-a11b0b45d853"],           # NB-4
-    "legal": ["933509f9-1561-403d-bd44-4a7a67a36df2"],          # NB-3
-    "company": ["933509f9-1561-403d-bd44-4a7a67a36df2"],        # NB-3
-    "kbli": ["cff93ab0-813a-42f2-a8de-36987e724271"],           # NB-2
-    "property": ["933509f9-1561-403d-bd44-4a7a67a36df2"],       # NB-3 (historical fallback)
+    "legal": ["045f3cdb-ef62-488c-90ba-82594928b671"],          # NB-3
+    "company": ["045f3cdb-ef62-488c-90ba-82594928b671"],        # NB-3
+    "kbli": ["271c7159-0c32-49a1-bda8-803c8e0993a6"],           # NB-2
+    "property": ["045f3cdb-ef62-488c-90ba-82594928b671"],       # NB-3 (historical fallback)
 }
 
 # Extended map — adds NB-5..8 and NB-10 so RAG can reach every notebook the
@@ -42,26 +42,26 @@ _BASE_DOMAIN_NOTEBOOK_MAP: dict[str, list[str]] = {
 # `nlm_notebook_registry.NLM_NOTEBOOKS` (the authoritative registry).
 #
 # Sources:
-#   - NB-5 (property)    d9438180-5e63-4e2a-a473-6061101f6a8d
-#   - NB-6 (operations)  85207af3-352f-4554-8d2a-18f42cc541ba
-#   - NB-7 (editorial)   f51ab8a0-50d0-49f1-a64f-ebc131fed7b8
-#   - NB-8 (lifestyle)   4fd8cd0f-93f1-4e43-9c9e-86c0d581852c
-#   - NB-10 (team)       f0307c2c-9220-4160-93c8-f4a6ef4a3b65
+#   - NB-5 (property)    93314ad3-177e-4d2f-956b-fe4be3e47697
+#   - NB-6 (operations)  7fbf37ed-e290-491a-98f5-677d6371ad62
+#   - NB-7 (editorial)   42687fcb-87fc-40b1-8af8-8a2ff91f9c4c
+#   - NB-8 (lifestyle)   aa9ac5d7-5090-46c7-9d09-89cec4ba13de
+#   - NB-10 (team)       b319f1b3-74a1-415f-b8c0-c0626b008f29
 _EXTENDED_DOMAIN_NOTEBOOK_MAP: dict[str, list[str]] = {
     **_BASE_DOMAIN_NOTEBOOK_MAP,
-    "property": ["d9438180-5e63-4e2a-a473-6061101f6a8d"],       # NB-5 (corrected)
-    "real_estate": ["d9438180-5e63-4e2a-a473-6061101f6a8d"],    # NB-5
-    "zoning": ["d9438180-5e63-4e2a-a473-6061101f6a8d"],         # NB-5
-    "operations": ["85207af3-352f-4554-8d2a-18f42cc541ba"],     # NB-6
-    "compliance": ["85207af3-352f-4554-8d2a-18f42cc541ba"],     # NB-6
-    "editorial": ["f51ab8a0-50d0-49f1-a64f-ebc131fed7b8"],      # NB-7
-    "content": ["f51ab8a0-50d0-49f1-a64f-ebc131fed7b8"],        # NB-7
-    "lifestyle": ["4fd8cd0f-93f1-4e43-9c9e-86c0d581852c"],      # NB-8
-    "expat": ["4fd8cd0f-93f1-4e43-9c9e-86c0d581852c"],          # NB-8
-    "healthcare": ["4fd8cd0f-93f1-4e43-9c9e-86c0d581852c"],     # NB-8
-    "team": ["f0307c2c-9220-4160-93c8-f4a6ef4a3b65"],           # NB-10
-    "hr": ["f0307c2c-9220-4160-93c8-f4a6ef4a3b65"],             # NB-10
-    "payroll": ["f0307c2c-9220-4160-93c8-f4a6ef4a3b65"],        # NB-10
+    "property": ["93314ad3-177e-4d2f-956b-fe4be3e47697"],       # NB-5 (corrected)
+    "real_estate": ["93314ad3-177e-4d2f-956b-fe4be3e47697"],    # NB-5
+    "zoning": ["93314ad3-177e-4d2f-956b-fe4be3e47697"],         # NB-5
+    "operations": ["7fbf37ed-e290-491a-98f5-677d6371ad62"],     # NB-6
+    "compliance": ["7fbf37ed-e290-491a-98f5-677d6371ad62"],     # NB-6
+    "editorial": ["42687fcb-87fc-40b1-8af8-8a2ff91f9c4c"],      # NB-7
+    "content": ["42687fcb-87fc-40b1-8af8-8a2ff91f9c4c"],        # NB-7
+    "lifestyle": ["aa9ac5d7-5090-46c7-9d09-89cec4ba13de"],      # NB-8
+    "expat": ["aa9ac5d7-5090-46c7-9d09-89cec4ba13de"],          # NB-8
+    "healthcare": ["aa9ac5d7-5090-46c7-9d09-89cec4ba13de"],     # NB-8
+    "team": ["b319f1b3-74a1-415f-b8c0-c0626b008f29"],           # NB-10
+    "hr": ["b319f1b3-74a1-415f-b8c0-c0626b008f29"],             # NB-10
+    "payroll": ["b319f1b3-74a1-415f-b8c0-c0626b008f29"],        # NB-10
 }
 
 
@@ -90,30 +90,30 @@ DOMAIN_NOTEBOOK_MAP_V2: dict[str, list[str]] = _active_domain_map()
 # Cross-domain queries fan out to multiple notebooks
 CROSS_DOMAIN_NOTEBOOKS: dict[str, list[str]] = {
     "visa+tax": [
-        "cff93ab0-813a-42f2-a8de-36987e724271",  # NB-2
+        "271c7159-0c32-49a1-bda8-803c8e0993a6",  # NB-2
         "d4b2eedb-9863-4a1a-81ff-a11b0b45d853",  # NB-4
     ],
     "company+visa": [
-        "933509f9-1561-403d-bd44-4a7a67a36df2",  # NB-3
-        "cff93ab0-813a-42f2-a8de-36987e724271",  # NB-2
+        "045f3cdb-ef62-488c-90ba-82594928b671",  # NB-3
+        "271c7159-0c32-49a1-bda8-803c8e0993a6",  # NB-2
     ],
     # Extended cross-domain patterns only kick in when NLM_EXTENDED_ROUTING=1
     # (guarded inside _resolve_notebooks). Declared here so the shapes are
     # visible in one place.
     "property+tax": [
-        "d9438180-5e63-4e2a-a473-6061101f6a8d",  # NB-5
+        "93314ad3-177e-4d2f-956b-fe4be3e47697",  # NB-5
         "d4b2eedb-9863-4a1a-81ff-a11b0b45d853",  # NB-4
     ],
     "property+company": [
-        "d9438180-5e63-4e2a-a473-6061101f6a8d",  # NB-5
-        "933509f9-1561-403d-bd44-4a7a67a36df2",  # NB-3
+        "93314ad3-177e-4d2f-956b-fe4be3e47697",  # NB-5
+        "045f3cdb-ef62-488c-90ba-82594928b671",  # NB-3
     ],
     "team+tax": [
-        "f0307c2c-9220-4160-93c8-f4a6ef4a3b65",  # NB-10
+        "b319f1b3-74a1-415f-b8c0-c0626b008f29",  # NB-10
         "d4b2eedb-9863-4a1a-81ff-a11b0b45d853",  # NB-4
     ],
     "operations+compliance": [
-        "85207af3-352f-4554-8d2a-18f42cc541ba",  # NB-6
+        "7fbf37ed-e290-491a-98f5-677d6371ad62",  # NB-6
     ],
 }
 
