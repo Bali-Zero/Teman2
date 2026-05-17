@@ -21,11 +21,13 @@ interface DraftRow {
 export async function GET() {
   try {
     const db = await getPool();
+    // Schema note: the column is `tone_register` (per migrations_v2), alias
+    // to `register` in the API contract for the UI table.
     const { rows } = await db.query<DraftRow>(
       `SELECT id::text,
               topic,
               status,
-              register,
+              tone_register AS register,
               updated_at::text,
               lease_owner
          FROM war_room_drafts

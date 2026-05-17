@@ -15,6 +15,19 @@ import { NextRequest, NextResponse } from "next/server";
 
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
 
+function isLoopbackHost(value: string | null | undefined): boolean {
+  if (!value) return true; // header absent — treat as local
+  // x-forwarded-for can be a comma-separated chain; only the first hop matters.
+  for (const hop of value.split(",")) {
+    const stripped = hop.trim().split(":")[0].trim().toLowerCase();
+    if (!stripped) continue;
+    if (!LOOPBACK_HOSTS.has(stripped) && stripped !== "::ffff:127.0.0.1") {
+      return false;
+    }
+  }
+  return true;
+}
+
 function isLoopback(req: NextRequest): boolean {
   // Prefer the Host header for the literal authority the client used.
   const host = req.headers.get("host") ?? "";
@@ -25,9 +38,11 @@ function isLoopback(req: NextRequest): boolean {
   ) {
     return false;
   }
-  // Block forwarded traffic (reverse proxies, tunnels). Localhost-only.
-  if (req.headers.get("x-forwarded-host")) return false;
-  if (req.headers.get("x-forwarded-for")) return false;
+  // Forwarded headers may be injected by Next.js Turbopack itself for
+  // internal routing — only refuse when the forwarded value names a
+  // non-loopback origin.
+  if (!isLoopbackHost(req.headers.get("x-forwarded-host"))) return false;
+  if (!isLoopbackHost(req.headers.get("x-forwarded-for"))) return false;
   return true;
 }
 
