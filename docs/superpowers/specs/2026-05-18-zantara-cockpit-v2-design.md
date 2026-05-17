@@ -91,6 +91,52 @@ Riusati dalla v1 (cherry-picked in v2 branch): migrations 182+183, lib helpers (
 
 ---
 
+## Language rule (locked, Antonello 2026-05-18)
+
+**All UI text is ENGLISH.** This OVERRIDES the default CLAUDE.md §Language Protocol "Italian with owner" for this app specifically.
+
+**Rationale**: international scope, future team access, dashboard-product feel.
+
+**Translation table** (current mockups → final implementation):
+
+| Italian (mockup)                                             | English (implementation)            |
+| ------------------------------------------------------------ | ----------------------------------- |
+| `Decisions Attesa`                                           | `Pending Decisions`                 |
+| `Cosa Ha Imparato`                                           | `What It Learned`                   |
+| `Comandi Rapidi`                                             | `Quick Commands`                    |
+| `Pipeline Live`                                              | `Live Pipeline`                     |
+| `Pipeline Live · Live Supervisor Events`                     | `Live Pipeline · Supervisor Events` |
+| `Trace · Live Supervisor Events`                             | `Trace · Live Events`               |
+| `Canva Status`                                               | (same — English already)            |
+| `IG Metrics + Reflexion 7d`                                  | (same)                              |
+| `New Brief`                                                  | (same)                              |
+| `Renew OAuth` / `Reconcile` / `Stop renderer`                | (same)                              |
+| `Force router run` / `Force push` / `Skip` / `Re-fact-check` | (same)                              |
+| `Editorial Carousels`                                        | (same)                              |
+| `News & Regulations`                                         | (same)                              |
+
+**Conversation with Antonello stays Italian** — only the UI strings in the app are English.
+
+**Scope** of this rule:
+
+- HomeTile labels
+- DoorCard titles + descriptions
+- WR2 command page: form labels, Kanban column headers, card titles, action buttons, trace log messages (where we generate them)
+- Intel-Lake command page: same
+- PinGate prompt + button labels
+- API error responses (`{"error": "invalid_pin"}` — English keys already)
+- Footer text
+- Page titles (`<title>`)
+- Breadcrumbs
+
+**NOT in scope** (these stay Italian where applicable):
+
+- Commit messages / PR descriptions (per CLAUDE.md "English for commits/PRs/code/docs" — already English)
+- Internal Python/TS comments (case-by-case, prefer English for consistency)
+- Conversation/sessione Antonello-Claude (Italian per default rule)
+
+---
+
 ## Information architecture (3 routes)
 
 ### `/cockpit` — Home
