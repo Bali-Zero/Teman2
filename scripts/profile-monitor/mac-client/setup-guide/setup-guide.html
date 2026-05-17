@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<title>Bali Zero — Setup Guide Mac & Mobile</title>
+<link rel="stylesheet" href="_template.css">
+</head>
+<body>
+
+<!-- ============== COVER ============== -->
+<section class="cover">
+  <div class="cover-header">
+    <div class="cover-logo bz-logo-image"></div>
+    <div class="cover-header-text">
+      <div class="cover-eyebrow">BALI ZERO <span class="sep">·</span> SETUP GUIDE</div>
+      <div class="cover-tagline">Powered by humans, fueled by a thinking engine.</div>
+    </div>
+  </div>
+
+  <div class="cover-title-block">
+    <h1 class="cover-title">SETUP MAC<br>&amp; MOBILE</h1>
+    <div class="cover-subtitle">Procedura step-by-step — Lunedì 19 Mei 2026</div>
+    <div class="cover-rule"></div>
+    <p class="cover-description">
+      Guida operativa unica per Zero. Setup completo dispositivi aziendali<br>
+      per ogni dipendente Bali Zero: smartphone (SIM + WhatsApp Business)<br>
+      + Mac (profilo balizero + Handbook immutable + daemon monitor).
+    </p>
+    <div class="cover-chips">
+      <span class="cover-chip">8 Dipendenti</span>
+      <span class="cover-chip">~25 min/persona</span>
+      <span class="cover-chip">Solo Zero</span>
+    </div>
+  </div>
+
+  <div class="cover-footer">
+    <div>
+      <div class="cover-footer-left">balizero.com <span class="sep" style="margin: 0 6px; color: #6b7280;">·</span> Kuta / Canggu / Denpasar</div>
+      <div class="cover-footer-disclaimer">Documento per uso personale Zero. Non delegabile ad Adit/Vino (richiede accesso a password root, secrets, e setup tecnico cross-device). Cartella di lavoro: ~/Desktop/balizero-mac-setup/</div>
+    </div>
+    <div class="cover-footer-right">Penggunaan internal · Owner setup</div>
+  </div>
+</section>
+
+<!-- ============== HAL. 01 — PREP & OVERVIEW ============== -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-logo bz-logo-image"></div>
+    <div class="page-header-titles">
+      <div class="page-header-brand">BALI ZERO</div>
+      <div class="page-header-doc">Setup Guide — Preparazione</div>
+    </div>
+    <div class="page-header-num">hal. 01</div>
+  </div>
+
+  <div class="eyebrow">CAPITOLO 0 — PREPARAZIONE PRE-SETUP</div>
+  <h1 class="section-title">Prima di chiamare il primo dipendente</h1>
+  <p class="lead">
+    Setup completo per ogni dipendente richiede ~25 minuti (15-20 mobile + 5 Mac).
+    Per 8 persone = ~3-4 ore totali. Pianifica una mezza giornata dedicata,
+    non interrotta da firme contratti o altre attività.
+  </p>
+
+  <div class="callout warning">
+    <div class="callout-title">PREREQUISITI ASSOLUTI</div>
+    <p class="callout-body">
+      Senza questi 5 punti, NON iniziare il setup. Verificali stanotte o sabato.
+    </p>
+  </div>
+
+  <h3>Checklist pre-setup</h3>
+  <ul>
+    <li>☐ <strong>Pro acceso</strong> con Tailscale connesso (verifica con <code>tailscale status | head -3</code>)</li>
+    <li>☐ <strong>profile-monitor wrapper attivo</strong> (<code>curl -s http://100.107.22.111:9099/health</code> → status: ok)</li>
+    <li>☐ <strong>8 SIM Telkomsel</strong> sul tavolo, ognuna etichettata con nome dipendente (vedi <code>~/Desktop/nuzantara/research/hr/sim-registry.md</code>)</li>
+    <li>☐ <strong>Cartella <code>~/Desktop/balizero-mac-setup/</code></strong> presente sul Pro (sorgente AirDrop)</li>
+    <li>☐ <strong>wa-mirror</strong> running e pronto a generare QR (<code>cd ~/Desktop/nuzantara/apps/wa-mirror && npm install</code> se mai eseguito)</li>
+  </ul>
+
+  <h3>Materiali fisici da avere sul tavolo</h3>
+  <table>
+    <thead><tr><th style="width: 35%">Item</th><th>Note</th></tr></thead>
+    <tbody>
+      <tr><td>Pro acceso, schermo grande</td><td>Per terminale wa-mirror + Finder AirDrop</td></tr>
+      <tr><td>Cavo USB-C universale</td><td>Backup connettività se AirDrop fallisce</td></tr>
+      <tr><td>SIM ejector tool</td><td>Vassoio SIM iPhone/Android</td></tr>
+      <tr><td>Pennetta + post-it</td><td>Per appuntare password che dipendenti scelgono</td></tr>
+      <tr><td>Tazza di caffè</td><td>~3-4 ore di setup ininterrotto</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Ordine consigliato dipendenti</h3>
+  <ol>
+    <li><strong>Adit</strong> (Direktur) — primo, poi lui aiuta logistica per i successivi</li>
+    <li><strong>Vino</strong> — secondo, assiste Adit per gli altri</li>
+    <li><strong>Damar, Krisna, Asya, Sahira</strong> — in qualsiasi ordine</li>
+    <li><strong>Surya, Ari</strong> — ultimi (PT Bali Nol Impresariat, Direttore Zainal separato)</li>
+  </ol>
+
+  <div class="page-footer">
+    <div>balizero.com <span style="margin: 0 4mm;">·</span> Penggunaan internal</div>
+    <div class="page-footer-right">Powered by humans, fueled by a thinking engine.</div>
+  </div>
+</section>
+
+<!-- ============== HAL. 02 — MOBILE STEP 1-3 ============== -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-logo bz-logo-image"></div>
+    <div class="page-header-titles">
+      <div class="page-header-brand">BALI ZERO</div>
+      <div class="page-header-doc">Setup Guide — Mobile Step 1-3</div>
+    </div>
+    <div class="page-header-num">hal. 02</div>
+  </div>
+
+  <div class="eyebrow">PARTE A — SMARTPHONE · STEP 1-3 di 6</div>
+  <h1 class="section-title">Setup smartphone aziendale</h1>
+  <p class="lead">
+    Lo smartphone è il punto più sensibile: dati clienti via WhatsApp Business.
+    Procedura manuale, ~15-20 min per dipendente. Non automatizzabile (richiede tap fisici sul device).
+  </p>
+
+  <div class="chapter">
+    <div class="chapter-num">01</div>
+    <div class="chapter-title-wrap">
+      <h2 class="chapter-title">Step 1 — Inserimento SIM Telkomsel (2 min)</h2>
+    </div>
+  </div>
+
+  <ol>
+    <li>Chiedi al dipendente di mostrarti il vassoio SIM del telefono.</li>
+    <li>Verifica se ha SIM personale: dual-SIM (iPhone XS+, Android moderni) o single-SIM.
+      <ul>
+        <li><strong>Dual-SIM</strong>: inserisci Bali Zero nello slot 2, lascia personale slot 1.</li>
+        <li><strong>Single-SIM</strong>: chiedi al dipendente di scegliere. Spiega che la SIM personale resta sua, solo non inserita durante orario lavoro.</li>
+      </ul>
+    </li>
+    <li>Inserisci la SIM allocata. Consulta <code>sim-registry.md</code> per il numero corretto:</li>
+  </ol>
+
+  <table>
+    <thead><tr><th style="width: 22%">Dipendente</th><th>Numero SIM</th></tr></thead>
+    <tbody>
+      <tr><td>Surya</td><td>+62 813 3946 856</td></tr>
+      <tr><td>Vino</td><td>+62 821 3454 727</td></tr>
+      <tr><td>Damar</td><td>+62 821 3454 726</td></tr>
+      <tr><td>Krisna</td><td>+62 823 2635 7501</td></tr>
+      <tr><td>Adit</td><td>+62 821 3454 725</td></tr>
+      <tr><td>Ari</td><td>+62 821 3454 721</td></tr>
+      <tr><td>Asya</td><td>+62 881 0384 67246</td></tr>
+      <tr><td>Sahira</td><td>+62 821 3454 723</td></tr>
+    </tbody>
+  </table>
+
+  <div class="chapter">
+    <div class="chapter-num">02</div>
+    <div class="chapter-title-wrap">
+      <h2 class="chapter-title">Step 2 — Backup + logout WhatsApp personale (3-5 min)</h2>
+    </div>
+  </div>
+
+  <p>Solo se il dipendente ha WhatsApp personale attivo E vuole sostituirlo (NON dual-app):</p>
+  <ol>
+    <li>Apri WhatsApp personale del dipendente.</li>
+    <li><strong>Settings → Chats → Chat Backup → Back Up Now</strong> (su account Google/iCloud personale).</li>
+    <li>Aspetta completamento backup (2-3 min se &gt;1 GB chat).</li>
+    <li><strong>Settings → Account → Log out</strong> (preserva account, da reinstallare poi).</li>
+  </ol>
+
+  <div class="callout">
+    <div class="callout-title">ALTERNATIVA PIÙ PULITA</div>
+    <p class="callout-body">
+      Il dipendente installa WhatsApp Business AFFIANCO a WhatsApp personale (2 app separate).
+      Vantaggio: niente logout, separazione fisica per app. Svantaggio: rischio di confusione
+      "uso questa per lavoro, quella per vita privata". Decidi caso per caso.
+    </p>
+  </div>
+
+  <div class="chapter">
+    <div class="chapter-num">03</div>
+    <div class="chapter-title-wrap">
+      <h2 class="chapter-title">Step 3 — Install WhatsApp Business + registrazione (5 min)</h2>
+    </div>
+  </div>
+
+  <ol>
+    <li>App Store (iPhone) o Play Store (Android) → cerca <strong>WhatsApp Business</strong> (icona verde con valigetta, NON WhatsApp normale).</li>
+    <li>Install → Open.</li>
+    <li>Country: <strong>Indonesia (+62)</strong>.</li>
+    <li>Numero: SIM aziendale appena inserita.</li>
+    <li>Verifica SMS (arriva sul numero appena inserito, ~30 sec).</li>
+    <li><strong>NON ripristinare backup</strong> (account è nuovo).</li>
+    <li>Permission contatti: <strong>NO</strong> (dipendente non deve accedere a contatti via WA Business app).</li>
+    <li>Notifiche: <strong>SÌ</strong>.</li>
+  </ol>
+
+  <div class="page-footer">
+    <div>balizero.com <span style="margin: 0 4mm;">·</span> Penggunaan internal</div>
+    <div class="page-footer-right">Powered by humans, fueled by a thinking engine.</div>
+  </div>
+</section>
+
+<!-- ============== HAL. 03 — MOBILE STEP 4-6 ============== -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-logo bz-logo-image"></div>
+    <div class="page-header-titles">
+      <div class="page-header-brand">BALI ZERO</div>
+      <div class="page-header-doc">Setup Guide — Mobile Step 4-6</div>
+    </div>
+    <div class="page-header-num">hal. 03</div>
+  </div>
+
+  <div class="eyebrow">PARTE A — SMARTPHONE · STEP 4-6 di 6</div>
+  <h1 class="section-title">Configurazione + collegamento wa-mirror</h1>
+
+  <div class="chapter">
+    <div class="chapter-num">04</div>
+    <div class="chapter-title-wrap">
+      <h2 class="chapter-title">Step 4 — Configurazione profilo Business (3 min)</h2>
+    </div>
+  </div>
+
+  <p>Nella WhatsApp Business appena installata, <strong>Business Settings → Profile</strong>:</p>
+  <table>
+    <thead><tr><th style="width: 28%">Campo</th><th>Valore</th></tr></thead>
+    <tbody>
+      <tr><td>Business Name</td><td><code>[Nome] — Bali Zero</code> (es. <code>Surya — Bali Zero</code>)</td></tr>
+      <tr><td>Category</td><td>Professional Services</td></tr>
+      <tr><td>Description</td><td>Bali Zero — Indonesian business services. Immigration · Tax · Company Setup · Property.</td></tr>
+      <tr><td>Email</td><td>Email aziendale dipendente (es. <code>surya@balizero.com</code>)</td></tr>
+      <tr><td>Website</td><td>https://balizero.com</td></tr>
+      <tr><td>Business Hours</td><td>Mon-Fri 09:00-18:00 WITA. Sat-Sun: Closed</td></tr>
+      <tr><td>Profile Photo</td><td>Foto professionale del dipendente. <strong>Mai foto personali</strong> (festa, fidanzato, amici).</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout">
+    <div class="callout-title">FOTO PROFILO — REGOLA</div>
+    <p class="callout-body">
+      Se il dipendente non ha foto professionale, scattagliela sul momento: sfondo neutro (parete bianca),
+      sorriso naturale, vestiti business casual. In emergenza, foto KTP/passaporto se decente.
+      Niente filter Instagram, niente selfie da spiaggia.
+    </p>
+  </div>
+
+  <div class="chapter">
+    <div class="chapter-num">05</div>
+    <div class="chapter-title-wrap">
+      <h2 class="chapter-title">Step 5 — Collegamento wa-mirror via QR (2-3 min)</h2>
+    </div>
+  </div>
+
+  <ol>
+    <li>Sul Pro (tuo), apri Terminal e avvia wa-mirror per il numero del dipendente:
+      <div class="mono">cd ~/Desktop/nuzantara/apps/wa-mirror
+npm start -- --employee=surya</div>
+      Cambia <code>--employee=&lt;nome&gt;</code> per ogni dipendente.
+    </li>
+    <li>Aspetta che il QR code appaia nel terminale del Pro (~10 sec).</li>
+    <li>Sul telefono dipendente, WhatsApp Business → <strong>Settings → Linked Devices → Link a Device</strong>.</li>
+    <li>Scansiona il QR code dal terminale del Pro con la fotocamera del telefono.</li>
+    <li>Aspetta conferma "Linked" (5-10 sec).</li>
+    <li>Verifica server-side: sul Pro, controlla che il numero sia comparso in DB:
+      <div class="mono">psql "$(grep DATABASE_URL_LOCAL ~/.nuzantara-secrets.env | cut -d= -f2-)" \
+  -c "SELECT counterpart_phone, MAX(created_at) FROM whatsapp_message_context GROUP BY counterpart_phone;"</div>
+    </li>
+  </ol>
+
+  <div class="chapter">
+    <div class="chapter-num">06</div>
+    <div class="chapter-title-wrap">
+      <h2 class="chapter-title">Step 6 — Test end-to-end (2 min)</h2>
+    </div>
+  </div>
+
+  <ol>
+    <li>Da un altro telefono (es. tuo personale), manda un messaggio test al numero aziendale appena attivato:
+      <br><code>"Test setup Bali Zero — [nome] — [timestamp]"</code></li>
+    <li>Verifica che arrivi sulla WhatsApp Business del dipendente.</li>
+    <li>Il dipendente risponde con un altro messaggio.</li>
+    <li>Sul Pro, conferma che ENTRAMBI i messaggi siano stati catturati da wa-mirror nel DB.</li>
+    <li>Aggiorna <code>sim-registry.md</code> colonna <code>MDM enrolled</code> → <code>WA-Business linked YYYY-MM-DD</code>.</li>
+    <li>✅ Smartphone completato. Passa al setup Mac.</li>
+  </ol>
+
+  <div class="page-footer">
+    <div>balizero.com <span style="margin: 0 4mm;">·</span> Penggunaan internal</div>
+    <div class="page-footer-right">Powered by humans, fueled by a thinking engine.</div>
+  </div>
+</section>
+
+<!-- ============== HAL. 04 — MAC SETUP PRE-PROFILO ============== -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-logo bz-logo-image"></div>
+    <div class="page-header-titles">
+      <div class="page-header-brand">BALI ZERO</div>
+      <div class="page-header-doc">Setup Guide — Mac creazione profilo</div>
+    </div>
+    <div class="page-header-num">hal. 04</div>
+  </div>
+
+  <div class="eyebrow">PARTE B — MAC · CREAZIONE PROFILO BALIZERO</div>
+  <h1 class="section-title">Mac setup — preparazione</h1>
+  <p class="lead">
+    Setup Mac richiede ~5 minuti se il dipendente porta il laptop. Se non lo porta:
+    rimanda al primo giorno utile entro venerdì 23 maggio 2026.
+  </p>
+
+  <div class="chapter">
+    <div class="chapter-num">07</div>
+    <div class="chapter-title-wrap">
+      <h2 class="chapter-title">Step 7 — Crea profilo macOS "balizero" (3 min)</h2>
+    </div>
+  </div>
+
+  <p>Sul Mac del dipendente, loggato col suo profilo personale:</p>
+  <ol>
+    <li>Apri <strong>System Settings → Users &amp; Groups</strong>.</li>
+    <li>Click <strong>"Add Account..."</strong> (potrebbe chiedere password admin → quella del dipendente).</li>
+    <li>Compila:
+      <ul>
+        <li>New Account: <strong>Standard</strong> (non Administrator!)</li>
+        <li>Full Name: <code>Bali Zero Work</code></li>
+        <li>Account Name: <code>balizero</code> (esatto, lowercase)</li>
+        <li>Password: <strong>chiedi al dipendente di sceglierla</strong>. Lui deve ricordarla — non è tua responsabilità. Sui post-it appunta hint (non password) per backup.</li>
+      </ul>
+    </li>
+    <li>Click <strong>"Create User"</strong>.</li>
+    <li>Logout dal profilo personale del dipendente (Apple menu → Log Out).</li>
+    <li>Login al profilo <strong>balizero</strong> con la password appena scelta.</li>
+  </ol>
+
+  <div class="callout warning">
+    <div class="callout-title">SE IL MAC NON HA SPAZIO PER NUOVO PROFILO</div>
+    <p class="callout-body">
+      Verifica disco: <code>df -h /</code>. Servono ≥10 GB liberi per profilo + Handbook + cache app.
+      Se &lt;10 GB: chiedi al dipendente di fare pulizia (Downloads, Trash, Photo Library duplicates)
+      PRIMA di proseguire. Setup forzato su disco pieno = problemi performance.
+    </p>
+  </div>
+
+  <div class="chapter">
+    <div class="chapter-num">08</div>
+    <div class="chapter-title-wrap">
+      <h2 class="chapter-title">Step 8 — Install Tailscale + join tailnet (3 min)</h2>
+    </div>
+  </div>
+
+  <ol>
+    <li>Loggato come profilo balizero, apri Safari/Chrome → <code>https://tailscale.com/download/mac</code></li>
+    <li>Click "Download Tailscale for macOS" → installer .pkg → doppio click → segui wizard.</li>
+    <li>Tailscale apre il browser con login. Scegli <strong>Sign in with Google</strong>.</li>
+    <li>Login con account Google Workspace Bali Zero: <code>zero@balizero.com</code>
+      (richiede invite preventivo nel tailnet — fallo prima da Tailscale admin console).</li>
+    <li>Conferma che Mac appaia nella menubar con icona Tailscale + status "Connected".</li>
+    <li>Verifica connettività al Pro:
+      <div class="mono">curl -s http://100.107.22.111:9099/health</div>
+      Risposta attesa: <code>{"status": "ok", "service": "profile-monitor"}</code>
+    </li>
+  </ol>
+
+  <div class="page-footer">
+    <div>balizero.com <span style="margin: 0 4mm;">·</span> Penggunaan internal</div>
+    <div class="page-footer-right">Powered by humans, fueled by a thinking engine.</div>
+  </div>
+</section>
+
+<!-- ============== HAL. 05 — MAC SETUP-BALIZERO.SH ============== -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-logo bz-logo-image"></div>
+    <div class="page-header-titles">
+      <div class="page-header-brand">BALI ZERO</div>
+      <div class="page-header-doc">Setup Guide — Esecuzione script</div>
+    </div>
+    <div class="page-header-num">hal. 05</div>
+  </div>
+
+  <div class="eyebrow">PARTE B — MAC · ESECUZIONE SCRIPT UNIFICATO</div>
+  <h1 class="section-title">setup-balizero.sh — 5 step in uno</h1>
+  <p class="lead">
+    Dopo creazione profilo + Tailscale, lo script <code>setup-balizero.sh</code> esegue
+    in sequenza: verifica profilo + verifica Tailscale + installa daemon + installa Handbook immutable + test.
+  </p>
+
+  <div class="chapter">
+    <div class="chapter-num">09</div>
+    <div class="chapter-title-wrap">
+      <h2 class="chapter-title">Step 9 — AirDrop della cartella balizero-mac-setup (2 min)</h2>
+    </div>
+  </div>
+
+  <ol>
+    <li>Sul Pro (tuo): Finder → vai a <code>~/Desktop/balizero-mac-setup/</code></li>
+    <li>Seleziona la cartella → click destro → <strong>Share → AirDrop</strong></li>
+    <li>Seleziona il Mac del dipendente dalla lista AirDrop (richiede Bluetooth+WiFi attivi su entrambi).</li>
+    <li>Sul Mac dipendente: accetta AirDrop. Cartella arriva in <code>~/Downloads/balizero-mac-setup/</code></li>
+  </ol>
+
+  <div class="callout">
+    <div class="callout-title">FALLBACK SE AIRDROP NON FUNZIONA</div>
+    <p class="callout-body">
+      Opzione 1: USB drive con la cartella copiata sopra.<br>
+      Opzione 2: <code>scp -r ~/Desktop/balizero-mac-setup balizero@&lt;mac-dipendente&gt;.local:~/Downloads/</code><br>
+      Opzione 3: <code>git clone https://github.com/Balizero1987/Teman2.git temp &amp;&amp; cp -r temp/scripts/profile-monitor/mac-client ~/Downloads/balizero-mac-setup</code>
+    </p>
+  </div>
+
+  <div class="chapter">
+    <div class="chapter-num">10</div>
+    <div class="chapter-title-wrap">
+      <h2 class="chapter-title">Step 10 — Esegui setup-balizero.sh (3 min)</h2>
+    </div>
+  </div>
+
+  <p>Sul Mac dipendente, profilo balizero, apri Terminal:</p>
+
+  <div class="mono">cd ~/Downloads/balizero-mac-setup
+bash setup-balizero.sh &lt;nome_dipendente&gt;</div>
+
+  <p>Esempi:</p>
+  <ul>
+    <li>Surya → <code>bash setup-balizero.sh surya</code></li>
+    <li>Vino → <code>bash setup-balizero.sh vino</code></li>
+    <li>Adit → <code>bash setup-balizero.sh adit</code></li>
+  </ul>
+
+  <p>Lo script esegue automaticamente:</p>
+  <table>
+    <thead><tr><th style="width: 8%">Step</th><th>Operazione</th></tr></thead>
+    <tbody>
+      <tr><td>0/4</td><td>Verifica profilo macOS = balizero</td></tr>
+      <tr><td>1/4</td><td>Verifica Tailscale + ping Pro wrapper :9099</td></tr>
+      <tr><td>2/4</td><td>Installa daemon <code>profile-monitor</code> come LaunchAgent KeepAlive</td></tr>
+      <tr><td>3/4</td><td>Installa Employee Handbook PDF sul Desktop con <code>chflags uchg</code> (immutable: non eliminabile, non rinominabile, non spostabile)</td></tr>
+      <tr><td>4/4</td><td>Stampa summary + test end-to-end instructions</td></tr>
+    </tbody>
+  </table>
+
+  <div class="callout warning">
+    <div class="callout-title">SE SETUP FALLISCE</div>
+    <p class="callout-body">
+      Lo script si interrompe con messaggio chiaro a ogni step. Errori più comuni:<br>
+      <strong>"Profilo non balizero"</strong> → sei loggato sul profilo sbagliato (Step 7 mancato).<br>
+      <strong>"Wrapper Pro non raggiungibile"</strong> → Tailscale non connesso (Step 8 mancato).<br>
+      <strong>"Daemon non avviato"</strong> → controlla <code>~/Library/Logs/balizero-profile-monitor.error.log</code>.
+    </p>
+  </div>
+
+  <div class="page-footer">
+    <div>balizero.com <span style="margin: 0 4mm;">·</span> Penggunaan internal</div>
+    <div class="page-footer-right">Powered by humans, fueled by a thinking engine.</div>
+  </div>
+</section>
+
+<!-- ============== HAL. 06 — VERIFICA & POST-SETUP ============== -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-logo bz-logo-image"></div>
+    <div class="page-header-titles">
+      <div class="page-header-brand">BALI ZERO</div>
+      <div class="page-header-doc">Setup Guide — Verifica finale</div>
+    </div>
+    <div class="page-header-num">hal. 06</div>
+  </div>
+
+  <div class="eyebrow">PARTE C — VERIFICA + REPORT</div>
+  <h1 class="section-title">Test end-to-end + closing dipendente</h1>
+
+  <div class="chapter">
+    <div class="chapter-num">11</div>
+    <div class="chapter-title-wrap">
+      <h2 class="chapter-title">Step 11 — Test alert profile-monitor (2 min)</h2>
+    </div>
+  </div>
+
+  <ol>
+    <li>Sul Mac dipendente, profilo balizero attivo.</li>
+    <li>Apple menu → <strong>Log Out 'balizero'...</strong> → conferma.</li>
+    <li>Sul tuo telefono/Pro, controlla Telegram: alert deve arrivare entro 10 secondi.</li>
+    <li>Alert atteso (esempio):
+      <div class="mono">⚠️ Check-out profilo Bali Zero
+SURYA ha lasciato il profilo balizero alle HH:MM WITA
+Login CRM mattutino: HH:MM
+Fine prevista lavoro: HH:MM
+...</div>
+    </li>
+    <li>Login di nuovo a balizero → verifica evento CHECKIN registrato:
+      <div class="mono">tail -5 ~/Library/Logs/balizero-profile-events.log</div>
+    </li>
+  </ol>
+
+  <div class="chapter">
+    <div class="chapter-num">12</div>
+    <div class="chapter-title-wrap">
+      <h2 class="chapter-title">Step 12 — Mostra Handbook al dipendente (3 min)</h2>
+    </div>
+  </div>
+
+  <ol>
+    <li>Sul Desktop del profilo balizero, c'è ora <code>employee-handbook-v1-ID.pdf</code>.</li>
+    <li>Doppio click → si apre in Preview macOS.</li>
+    <li>Mostra al dipendente i 10 Bab principali:
+      <ul>
+        <li>Bab 1 — Identitas (chi siamo, 5 nilai inti)</li>
+        <li>Bab 3 — Jam kerja fleksibel + cuti</li>
+        <li>Bab 4 — Gaji tanggal 1, BPJS, THR</li>
+        <li>Bab 6 — Anti-suap MUTLAK</li>
+        <li>Bab 8 — Whistleblowing 3 jalur</li>
+        <li>Bab 9 — Off-boarding 30 giorni preavviso</li>
+      </ul>
+    </li>
+    <li>Spiega: file è permanente sul Desktop, non si può eliminare/spostare. Lettura whenever.</li>
+    <li>Sottolinea: <strong>"Apabila ada pertanyaan, baca dulu Handbook, kemudian tanya"</strong>.</li>
+  </ol>
+
+  <div class="chapter">
+    <div class="chapter-num">13</div>
+    <div class="chapter-title-wrap">
+      <h2 class="chapter-title">Step 13 — Report ad Adit (1 min)</h2>
+    </div>
+  </div>
+
+  <p>Dopo setup completo di ogni dipendente, manda WhatsApp ad Adit (per tracking centralizzato):</p>
+  <div class="mono">[Nome] setup completo:
+✅ SIM Telkomsel attiva (+62 XXX)
+✅ WhatsApp Business linked wa-mirror
+✅ Profilo balizero su Mac creato
+✅ Daemon profile-monitor attivo
+✅ Handbook immutable sul Desktop
+Mac model: [iPhone/MacBook XX]</div>
+
+  <p>Adit aggiorna il foglio Google Sheet "Onboarding Tracker 19 Mei 2026" che lo verifica end-of-day.</p>
+
+  <div class="callout">
+    <div class="callout-title">SUMMARY GIORNATA</div>
+    <p class="callout-body">
+      Per 8 dipendenti × ~25 min = ~3h 20min setup tecnico. Aggiungi 30 min buffer per
+      troubleshooting / pause / aggiornamenti CRM. Totale realistico: 4 ore.
+      Inizia alle 13:00 dopo le firme PKWTT, fine entro 17:00. Pausa caffè ogni 2 dipendenti.
+    </p>
+  </div>
+
+  <div class="page-footer">
+    <div>balizero.com <span style="margin: 0 4mm;">·</span> Penggunaan internal</div>
+    <div class="page-footer-right">Powered by humans, fueled by a thinking engine.</div>
+  </div>
+</section>
+
+<!-- ============== HAL. 07 — TROUBLESHOOTING ============== -->
+<section class="page">
+  <div class="page-header">
+    <div class="page-header-logo bz-logo-image"></div>
+    <div class="page-header-titles">
+      <div class="page-header-brand">BALI ZERO</div>
+      <div class="page-header-doc">Setup Guide — Troubleshooting</div>
+    </div>
+    <div class="page-header-num">hal. 07</div>
+  </div>
+
+  <div class="eyebrow">PARTE D — TROUBLESHOOTING</div>
+  <h1 class="section-title">Problemi comuni e soluzioni</h1>
+  <p class="lead">
+    Problemi raccolti dai test pre-deploy. Se ne incontri uno nuovo, aggiungilo a questa pagina
+    per il prossimo onboarding.
+  </p>
+
+  <h3>Smartphone</h3>
+  <table>
+    <thead><tr><th style="width: 35%">Problema</th><th>Soluzione</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>SMS verifica WhatsApp Business non arriva</td>
+        <td>Aspetta 2 min. Se non arriva → "Resend". Terzo tentativo → "Call me" (chiamata vocale Telkomsel). Se persiste: SIM non attivata, chiama 188.</td>
+      </tr>
+      <tr>
+        <td>QR wa-mirror scaduto</td>
+        <td>I QR WhatsApp scadono dopo 20 sec. Ripeti <code>npm start</code> per nuovo QR.</td>
+      </tr>
+      <tr>
+        <td>"Number already in use on another account"</td>
+        <td>SIM usata in passato. Force logout previous: WhatsApp Business → "Log out other devices?" → SÌ.</td>
+      </tr>
+      <tr>
+        <td>Telefono non riconosce SIM Telkomsel</td>
+        <td>Spegni, rimuovi SIM, pulisci contatti dorati con panno asciutto, reinserisci, accendi. APN: "internet".</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <h3>Mac</h3>
+  <table>
+    <thead><tr><th style="width: 35%">Problema</th><th>Soluzione</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Tailscale chiede MFA per zero@balizero.com</td>
+        <td>Usa l'autenticatore sul tuo telefono. Account già whitelisted in admin console.</td>
+      </tr>
+      <tr>
+        <td>setup-balizero.sh: "Profilo non balizero"</td>
+        <td>Sei loggato sul profilo personale del dipendente. Logout (Apple menu) e relogin a "balizero".</td>
+      </tr>
+      <tr>
+        <td>setup-balizero.sh: "Wrapper Pro non raggiungibile"</td>
+        <td>(a) Tailscale non connesso sul Mac → verifica menubar. (b) Pro spento. (c) Wrapper crashato → sul Pro: <code>launchctl kickstart -k gui/$(id -u)/com.balizero.profile-monitor-wrapper</code></td>
+      </tr>
+      <tr>
+        <td>Daemon non avvia (LastExitStatus != 0)</td>
+        <td>Controlla <code>~/Library/Logs/balizero-profile-monitor.error.log</code>. Tipicamente: binary non eseguibile (<code>chmod +x</code>) o plist malformato.</td>
+      </tr>
+      <tr>
+        <td>Handbook ancora eliminabile dopo install</td>
+        <td>Lo script ha bisogno di permessi user-level. Esegui manualmente: <code>chflags uchg ~/Desktop/employee-handbook-v1-ID.pdf</code></td>
+      </tr>
+      <tr>
+        <td>Mac dipendente è M1 ma binary è compilato per ARM64?</td>
+        <td>Verifica: <code>file ~/Downloads/balizero-mac-setup/profile-monitor</code> → atteso "Mach-O 64-bit executable arm64". Se Intel: ricompila su Mac dipendente con <code>swiftc -O profile-monitor.swift -o profile-monitor</code>.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout warning">
+    <div class="callout-title">ESCALATION FINALE</div>
+    <p class="callout-body">
+      Se un problema non è in questa lista e impedisce di completare il setup del dipendente:
+      <strong>NON forzare</strong>. Sposta il dipendente in fondo alla lista del giorno,
+      vai avanti con il successivo. A fine giornata, tenta troubleshooting in calma o
+      rimanda al martedì. Setup non riuscito non blocca la firma PKWTT — sono indipendenti.
+    </p>
+  </div>
+
+  <div class="page-footer">
+    <div>balizero.com <span style="margin: 0 4mm;">·</span> Penggunaan internal</div>
+    <div class="page-footer-right">Powered by humans, fueled by a thinking engine.</div>
+  </div>
+</section>
+
+</body>
+</html>
