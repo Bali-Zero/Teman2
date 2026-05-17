@@ -11,7 +11,7 @@ import time
 from typing import Any
 
 from backend.app.core.config import settings
-from backend.core.collection_registry import resolve_collection_name
+from backend.core.collection_registry import SKILLS_MIRROR_COLLECTION, resolve_collection_name
 from backend.core.qdrant_db import QdrantClient
 
 logger = logging.getLogger(__name__)
@@ -94,6 +94,12 @@ class CollectionManager:
                 "doc_count": 175,
                 "alias": resolve_collection_name("balizero_news"),
                 "description": "Intel articles: immigration, tax, bali news, business regulations",
+            },
+            SKILLS_MIRROR_COLLECTION: {
+                "priority": "high",
+                "doc_count": 613,
+                "alias": resolve_collection_name(SKILLS_MIRROR_COLLECTION),
+                "description": "Mirrored local agent skills, reflections, and insights for SurfaceRouter ops queries",
             },
             "zantara_books": {
                 "priority": "medium",
