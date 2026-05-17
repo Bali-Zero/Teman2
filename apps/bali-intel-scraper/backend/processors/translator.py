@@ -5,7 +5,6 @@ Translates non-English articles to English for processing.
 """
 
 from dataclasses import dataclass
-from typing import Optional
 from langdetect import detect, LangDetectException
 
 from backend.services.ai_engine import ai_engine, AIProvider
@@ -58,7 +57,7 @@ class Translator:
             return "unknown", 0.0
 
     async def translate(
-        self, text: str, source_lang: Optional[str] = None
+        self, text: str, source_lang: str | None = None
     ) -> TranslationResult:
         """
         Translate text to English.
@@ -156,7 +155,7 @@ translator = Translator()
 
 
 async def translate_text(
-    text: str, source_lang: Optional[str] = None
+    text: str, source_lang: str | None = None
 ) -> TranslationResult:
     """Quick function to translate text."""
     return await translator.translate(text, source_lang)

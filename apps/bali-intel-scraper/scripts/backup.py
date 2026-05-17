@@ -10,7 +10,6 @@ import os
 import shutil
 from datetime import datetime, timedelta
 from pathlib import Path
-from typing import List, Optional
 
 from backend.core.logger import get_logger, LogAction
 from config.settings import settings
@@ -34,7 +33,7 @@ class DatabaseBackup:
         # Ensure backup directory exists
         self.backup_dir.mkdir(parents=True, exist_ok=True)
 
-    async def create_backup(self, backup_name: Optional[str] = None) -> Path:
+    async def create_backup(self, backup_name: str | None = None) -> Path:
         """Create a database backup."""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         backup_name = backup_name or f"backup_{timestamp}"
@@ -99,9 +98,8 @@ class DatabaseBackup:
         """Compress backup file."""
         compressed_path = backup_path.with_suffix(".sql.gz")
 
-        with open(backup_path, "rb") as f_in:
-            with gzip.open(compressed_path, "wb") as f_out:
-                shutil.copyfileobj(f_in, f_out)
+        with open(backup_path, "rb") as f_in, gzip.open(compressed_path, "wb") as f_out:
+            shutil.copyfileobj(f_in, f_out)
 
         # Remove uncompressed file
         backup_path.unlink()
@@ -116,9 +114,8 @@ class DatabaseBackup:
         if backup_path.suffix == ".gz":
             decompressed_path = backup_path.with_suffix("")
 
-            with gzip.open(backup_path, "rb") as f_in:
-                with open(decompressed_path, "wb") as f_out:
-                    shutil.copyfileobj(f_in, f_out)
+            with gzip.open(backup_path, "rb") as f_in, open(decompressed_path, "wb") as f_out:
+                shutil.copyfileobj(f_in, f_out)
 
             backup_path = decompressed_path
 
@@ -185,7 +182,7 @@ class DatabaseBackup:
 
         return removed
 
-    def list_backups(self) -> List[dict]:
+    def list_backups(self) -> list[dict]:
         """List available backups."""
         backups = []
 

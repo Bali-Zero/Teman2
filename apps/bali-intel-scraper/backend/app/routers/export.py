@@ -8,7 +8,6 @@ import csv
 import io
 import json
 from datetime import datetime
-from typing import Optional
 
 from fastapi import APIRouter, HTTPException, Query
 from fastapi.responses import StreamingResponse
@@ -27,10 +26,10 @@ class Exporter:
     async def export_articles(
         self,
         format: str = "json",
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-        category: Optional[str] = None,
-        source_id: Optional[str] = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
+        category: str | None = None,
+        source_id: str | None = None,
     ) -> StreamingResponse:
         """Export articles to specified format."""
         # Build query
@@ -168,10 +167,10 @@ exporter = Exporter()
 @router.get("/articles")
 async def export_articles(
     format: str = Query("json", regex="^(json|csv|rss)$"),
-    start_date: Optional[datetime] = None,
-    end_date: Optional[datetime] = None,
-    category: Optional[str] = None,
-    source_id: Optional[str] = None,
+    start_date: datetime | None = None,
+    end_date: datetime | None = None,
+    category: str | None = None,
+    source_id: str | None = None,
 ):
     """Export articles in specified format."""
     return await exporter.export_articles(

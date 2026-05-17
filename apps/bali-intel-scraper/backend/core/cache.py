@@ -14,7 +14,7 @@ import json
 import pickle
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any, Dict, Generic, Optional, TypeVar, List
+from typing import Any, Generic, TypeVar
 from functools import wraps
 
 import redis.asyncio as redis
@@ -79,7 +79,7 @@ class CacheKeyBuilder:
         return key
 
     @staticmethod
-    def for_url(url: str, suffix: Optional[str] = None) -> str:
+    def for_url(url: str, suffix: str | None = None) -> str:
         """Build cache key for URL."""
         url_hash = hashlib.md5(url.encode()).hexdigest()
         parts = ["url", url_hash]
@@ -100,13 +100,13 @@ class CacheKeyBuilder:
 class CacheManager(Generic[T]):
     """Manages caching operations."""
 
-    def __init__(self, config: Optional[CacheConfig] = None):
+    def __init__(self, config: CacheConfig | None = None):
         self.config = config or CacheConfig()
-        self._redis: Optional[Redis] = None
+        self._redis: Redis | None = None
         self._lock = asyncio.Lock()
 
     @property
-    def redis(self) -> Optional[Redis]:
+    def redis(self) -> Redis | None:
         """Access to raw Redis client for advanced operations."""
         return self._redis
 
@@ -176,7 +176,7 @@ class CacheManager(Generic[T]):
         else:
             return pickle.loads(data)
 
-    async def get(self, key: str) -> Optional[Any]:
+    async def get(self, key: str) -> Any | None:
         """Get value from cache."""
         if self._redis is None:
             await self.initialize()
@@ -200,8 +200,8 @@ class CacheManager(Generic[T]):
         self,
         key: str,
         value: Any,
-        ttl: Optional[int] = None,
-        strategy: Optional[CacheStrategy] = None,
+        ttl: int | None = None,
+        strategy: CacheStrategy | None = None,
     ) -> bool:
         """Set value in cache."""
         if self._redis is None:
@@ -281,8 +281,8 @@ class CacheManager(Generic[T]):
         self,
         key: str,
         factory: callable,
-        ttl: Optional[int] = None,
-        strategy: Optional[CacheStrategy] = None,
+        ttl: int | None = None,
+        strategy: CacheStrategy | None = None,
     ) -> Any:
         """Get value from cache or set it using factory."""
         value = await self.get(key)
@@ -323,7 +323,7 @@ class CacheManager(Generic[T]):
             )
             return False
 
-    async def keys(self, pattern: str) -> List[str]:
+    async def keys(self, pattern: str) -> list[str]:
         """Get keys matching pattern."""
         if self._redis is None:
             return []
@@ -357,7 +357,7 @@ class CacheManager(Generic[T]):
 
         return count
 
-    async def health_check(self) -> Dict[str, Any]:
+    async def health_check(self) -> dict[str, Any]:
         """Check cache health."""
         try:
             if self._redis is None:
@@ -391,10 +391,10 @@ async def close_cache() -> None:
 
 
 def cached(
-    ttl: Optional[int] = None,
-    strategy: Optional[CacheStrategy] = None,
-    key_builder: Optional[callable] = None,
-    skip_args: Optional[List[int]] = None,
+    ttl: int | None = None,
+    strategy: CacheStrategy | None = None,
+    key_builder: callable | None = None,
+    skip_args: list[int] | None = None,
 ):
     """Decorator for caching function results."""
 

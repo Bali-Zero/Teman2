@@ -4,7 +4,7 @@ WebSocket message handlers.
 Handles different types of WebSocket messages and events.
 """
 
-from typing import Dict, Any
+from typing import Any
 from fastapi import WebSocket
 from backend.core.logger import get_logger, LogAction
 from .manager import get_websocket_manager
@@ -52,7 +52,7 @@ async def handle_client_disconnect(client_id: str) -> None:
     await manager.disconnect(client_id)
 
 
-async def handle_message(client_id: str, message: Dict[str, Any]) -> None:
+async def handle_message(client_id: str, message: dict[str, Any]) -> None:
     """
     Handle incoming WebSocket message from client.
 
@@ -76,7 +76,7 @@ async def handle_message(client_id: str, message: Dict[str, Any]) -> None:
         await handle_unknown_message(client_id, message)
 
 
-async def handle_subscribe(client_id: str, data: Dict[str, Any]) -> None:
+async def handle_subscribe(client_id: str, data: dict[str, Any]) -> None:
     """
     Handle room subscription request.
 
@@ -103,7 +103,7 @@ async def handle_subscribe(client_id: str, data: Dict[str, Any]) -> None:
     )
 
 
-async def handle_unsubscribe(client_id: str, data: Dict[str, Any]) -> None:
+async def handle_unsubscribe(client_id: str, data: dict[str, Any]) -> None:
     """
     Handle room unsubscription request.
 
@@ -123,7 +123,7 @@ async def handle_unsubscribe(client_id: str, data: Dict[str, Any]) -> None:
     )
 
 
-async def handle_ping(client_id: str, data: Dict[str, Any]) -> None:
+async def handle_ping(client_id: str, data: dict[str, Any]) -> None:
     """
     Handle ping message (keep-alive).
 
@@ -137,7 +137,7 @@ async def handle_ping(client_id: str, data: Dict[str, Any]) -> None:
     )
 
 
-async def handle_get_stats(client_id: str, data: Dict[str, Any]) -> None:
+async def handle_get_stats(client_id: str, data: dict[str, Any]) -> None:
     """
     Handle stats request.
 
@@ -151,7 +151,7 @@ async def handle_get_stats(client_id: str, data: Dict[str, Any]) -> None:
     await manager.send_message(client_id, {"type": "stats", "data": stats})
 
 
-async def handle_unknown_message(client_id: str, message: Dict[str, Any]) -> None:
+async def handle_unknown_message(client_id: str, message: dict[str, Any]) -> None:
     """
     Handle unknown message type.
 
@@ -174,7 +174,7 @@ async def handle_unknown_message(client_id: str, message: Dict[str, Any]) -> Non
 
 
 async def handle_article_update(
-    article_id: str, action: str, article_data: Dict[str, Any] = None
+    article_id: str, action: str, article_data: dict[str, Any] = None
 ) -> int:
     """
     Broadcast article update to all subscribers.
@@ -192,7 +192,7 @@ async def handle_article_update(
 
 
 async def handle_notification(
-    title: str, message: str, level: str = "info", data: Dict[str, Any] = None
+    title: str, message: str, level: str = "info", data: dict[str, Any] = None
 ) -> int:
     """
     Broadcast notification to all clients.

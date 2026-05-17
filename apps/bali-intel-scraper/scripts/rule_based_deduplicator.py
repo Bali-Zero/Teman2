@@ -6,8 +6,7 @@ Zero cost, instant, deterministic duplicate detection
 import json
 import hashlib
 from pathlib import Path
-from datetime import datetime, timedelta
-from typing import Dict, List, Set, Tuple
+from datetime import datetime
 
 
 class RuleBasedDeduplicator:
@@ -38,7 +37,7 @@ class RuleBasedDeduplicator:
             'bali', 'jakarta', 'passport', 'residence', 'stay'
         }
 
-    def load_registry(self) -> Dict:
+    def load_registry(self) -> dict:
         """Load published articles registry"""
         if not self.registry_path.exists():
             return {
@@ -86,7 +85,7 @@ class RuleBasedDeduplicator:
         text = ' '.join(words)
         return hashlib.md5(text.encode()).hexdigest()
 
-    def extract_keywords(self, title: str) -> Set[str]:
+    def extract_keywords(self, title: str) -> set[str]:
         """
         Extract key terms from title (NER-like, no ML)
         
@@ -102,7 +101,7 @@ class RuleBasedDeduplicator:
 
         return keywords | numbers
 
-    def calculate_keyword_overlap(self, keywords1: Set[str], keywords2: Set[str]) -> float:
+    def calculate_keyword_overlap(self, keywords1: set[str], keywords2: set[str]) -> float:
         """
         Calculate Jaccard similarity between keyword sets
         
@@ -117,7 +116,7 @@ class RuleBasedDeduplicator:
 
         return intersection / union if union > 0 else 0.0
 
-    def is_duplicate(self, article: Dict) -> Tuple[bool, str, float]:
+    def is_duplicate(self, article: dict) -> tuple[bool, str, float]:
         """
         Check if article is duplicate
         
@@ -169,7 +168,7 @@ class RuleBasedDeduplicator:
         # Not a duplicate
         return False, "Unique article", 0.0
 
-    def add_published_article(self, article: Dict):
+    def add_published_article(self, article: dict):
         """
         Add article to registry after publishing
         
@@ -206,7 +205,7 @@ class RuleBasedDeduplicator:
         # Save
         self.save_registry()
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """Get registry statistics"""
         return {
             "total_urls": len(self.registry['urls']),

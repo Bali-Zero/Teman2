@@ -6,7 +6,6 @@ Tracks all changes to sensitive data.
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict, Optional
 from uuid import uuid4
 
 from backend.db.connection import db
@@ -31,11 +30,11 @@ class AuditLogger:
         action: AuditAction,
         table_name: str,
         record_id: str,
-        user_id: Optional[str] = None,
-        old_data: Optional[Dict] = None,
-        new_data: Optional[Dict] = None,
-        ip_address: Optional[str] = None,
-        user_agent: Optional[str] = None,
+        user_id: str | None = None,
+        old_data: dict | None = None,
+        new_data: dict | None = None,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
     ) -> None:
         """Log an audit event."""
         try:
@@ -84,11 +83,11 @@ class AuditLogger:
 
     async def search(
         self,
-        user_id: Optional[str] = None,
-        action: Optional[AuditAction] = None,
-        table_name: Optional[str] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
+        user_id: str | None = None,
+        action: AuditAction | None = None,
+        table_name: str | None = None,
+        start_date: datetime | None = None,
+        end_date: datetime | None = None,
         limit: int = 100,
     ) -> list:
         """Search audit logs."""

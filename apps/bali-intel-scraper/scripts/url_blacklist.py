@@ -10,7 +10,7 @@ conservative — only block pages that are demonstrably non-news indexes/guides.
 from __future__ import annotations
 
 import re
-from typing import Iterable
+from collections.abc import Iterable
 
 # Exact regex patterns matched against the full URL (case-insensitive).
 # Keep this list small and well-justified. Every entry should have a comment

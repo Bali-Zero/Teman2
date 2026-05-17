@@ -12,8 +12,7 @@ import sys
 import asyncio
 import hashlib
 from pathlib import Path
-from datetime import datetime, timedelta, timezone
-from typing import List, Dict, Optional
+from datetime import datetime
 from urllib.parse import urlparse
 from dateutil import parser as date_parser
 
@@ -76,7 +75,7 @@ MAX_AGE_DAYS = 7
 
 
 class UnifiedScraper:
-    def __init__(self, categories: List[str] = None, limit_per_source: int = 5):
+    def __init__(self, categories: list[str] = None, limit_per_source: int = 5):
         self.categories = categories or ['immigration', 'tax', 'legal']
         self.limit_per_source = limit_per_source
         self.stats = {
@@ -96,7 +95,7 @@ class UnifiedScraper:
     async def close(self):
         await self.client.aclose()
 
-    def load_sources(self) -> List[Dict]:
+    def load_sources(self) -> list[dict]:
         with open(SOURCES_FILE) as f:
             data = json.load(f)
         sources = []
@@ -122,7 +121,7 @@ class UnifiedScraper:
             pass
         return True
 
-    async def _fetch_rss(self, url: str) -> Optional[str]:
+    async def _fetch_rss(self, url: str) -> str | None:
         try:
             resp = await self.client.get(url)
             if resp.status_code == 200:
@@ -131,7 +130,7 @@ class UnifiedScraper:
             pass
         return None
 
-    async def extract_articles_from_source(self, source: Dict) -> List[Dict]:
+    async def extract_articles_from_source(self, source: dict) -> list[dict]:
         url = source.get('url')
         if not url:
             return []
@@ -202,7 +201,7 @@ class UnifiedScraper:
 
         return articles
 
-    def _extract_from_feed_entry(self, entry, source: Dict) -> Optional[Dict]:
+    def _extract_from_feed_entry(self, entry, source: dict) -> dict | None:
         try:
             return {
                 'title': entry.get('title', ''),
@@ -277,7 +276,7 @@ class UnifiedScraper:
             logger.warning(f'  Listing error: {e}')
         return articles
 
-    def score_article(self, article: Dict) -> Optional[int]:
+    def score_article(self, article: dict) -> int | None:
         title   = (article.get('title', '') or '').lower()
         summary = (article.get('summary', '') or article.get('text', '') or '').lower()
         source  = (article.get('source_name', '') or '').lower()
@@ -308,11 +307,11 @@ class UnifiedScraper:
 
         return max(0, min(100, score))
 
-    def generate_article_id(self, article: Dict) -> str:
+    def generate_article_id(self, article: dict) -> str:
         content = f"{article.get('url', '')}{article.get('title', '')}"
         return hashlib.md5(content.encode()).hexdigest()[:16]
 
-    async def scrape_all(self) -> List[Dict]:
+    async def scrape_all(self) -> list[dict]:
         logger.info('='*60)
         logger.info('UNIFIED SCRAPER STARTED (ASYNC)')
         logger.info('='*60)
@@ -343,7 +342,7 @@ class UnifiedScraper:
 
         return all_articles
 
-    def save_results(self, articles: List[Dict]):
+    def save_results(self, articles: list[dict]):
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         output_file = OUTPUT_DIR / f'{timestamp}_articles.json'
         output = {
@@ -369,7 +368,7 @@ class UnifiedScraper:
    Errors:            {self.stats['errors']}
 """)
 
-    def _extract_telegram(self, source: Dict) -> List[Dict]:
+    def _extract_telegram(self, source: dict) -> list[dict]:
         try:
             from social_scrapers.telegram_scraper import fetch_telegram_channel_sync
             channel = source['url'].split('t.me/')[-1]
@@ -396,7 +395,7 @@ class UnifiedScraper:
             logger.warning(f'  ⚠️ Telegram error: {e}')
             return []
 
-    def _extract_reddit(self, source: Dict) -> List[Dict]:
+    def _extract_reddit(self, source: dict) -> list[dict]:
         try:
             from social_scrapers.reddit_scraper import fetch_subreddit
             subreddit = source['url'].split('/r/')[-1].strip('/')
@@ -422,7 +421,7 @@ class UnifiedScraper:
             logger.warning(f'  ⚠️ Reddit error: {e}')
             return []
 
-    def _extract_kaskus(self, source: Dict) -> List[Dict]:
+    def _extract_kaskus(self, source: dict) -> list[dict]:
         try:
             from social_scrapers.kaskus_scraper import fetch_kaskus_threads
             threads = fetch_kaskus_threads(source['url'], limit=self.limit_per_source)

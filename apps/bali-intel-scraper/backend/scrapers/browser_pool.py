@@ -6,10 +6,10 @@ browser startup overhead.
 """
 
 import asyncio
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from dataclasses import dataclass
 from enum import Enum
-from typing import AsyncGenerator, Dict, Optional, Set
+from collections.abc import AsyncGenerator
 from urllib.parse import urlparse
 
 from playwright.async_api import BrowserContext, Page
@@ -37,7 +37,7 @@ class PooledContext:
     created_at: float
     use_count: int = 0
     status: PoolItemStatus = PoolItemStatus.AVAILABLE
-    last_host: Optional[str] = None
+    last_host: str | None = None
 
 
 @dataclass
@@ -66,12 +66,12 @@ class BrowserPool:
         self.max_age_seconds = max_age_seconds
         self.max_uses = max_uses
 
-        self._contexts: Dict[str, PooledContext] = {}
-        self._pages: Dict[str, PooledPage] = {}
-        self._context_pages: Dict[str, Set[str]] = {}
+        self._contexts: dict[str, PooledContext] = {}
+        self._pages: dict[str, PooledPage] = {}
+        self._context_pages: dict[str, set[str]] = {}
 
         self._lock = asyncio.Lock()
-        self._cleanup_task: Optional[asyncio.Task] = None
+        self._cleanup_task: asyncio.Task | None = None
         self._counter = 0
 
     async def initialize(self) -> None:
@@ -92,26 +92,20 @@ class BrowserPool:
         """Close the pool and all resources."""
         if self._cleanup_task:
             self._cleanup_task.cancel()
-            try:
+            with suppress(asyncio.CancelledError):
                 await self._cleanup_task
-            except asyncio.CancelledError:
-                pass
 
         async with self._lock:
             # Close all pages
             for _, pooled_page in list(self._pages.items()):
-                try:
+                with suppress(Exception):
                     await pooled_page.page.close()
-                except Exception:
-                    pass
             self._pages.clear()
 
             # Close all contexts
             for _, pooled_context in list(self._contexts.items()):
-                try:
+                with suppress(Exception):
                     await pooled_context.context.close()
-                except Exception:
-                    pass
             self._contexts.clear()
             self._context_pages.clear()
 
@@ -131,7 +125,7 @@ class BrowserPool:
 
         return context_id
 
-    async def _get_or_create_context(self, host: Optional[str] = None) -> str:
+    async def _get_or_create_context(self, host: str | None = None) -> str:
         """Get existing context or create new one."""
         async with self._lock:
             # Try to find available context
@@ -177,7 +171,7 @@ class BrowserPool:
 
     @asynccontextmanager
     async def acquire_page(
-        self, url: Optional[str] = None, timeout: float = 30.0
+        self, url: str | None = None, timeout: float = 30.0
     ) -> AsyncGenerator[Page, None]:
         """
         Acquire a page from the pool.
@@ -262,10 +256,8 @@ class BrowserPool:
                         age > self.max_age_seconds
                         or pooled_page.use_count > self.max_uses
                     ):
-                        try:
+                        with suppress(Exception):
                             await pooled_page.page.close()
-                        except Exception:
-                            pass
 
                         pages_to_remove.append(page_id)
 
@@ -286,10 +278,8 @@ class BrowserPool:
                         age > self.max_age_seconds
                         or pooled_context.use_count > self.max_uses
                     ):
-                        try:
+                        with suppress(Exception):
                             await pooled_context.context.close()
-                        except Exception:
-                            pass
 
                         contexts_to_remove.append(context_id)
 
@@ -303,7 +293,7 @@ class BrowserPool:
                     action=LogAction.DELETE,
                 )
 
-    def get_stats(self) -> Dict:
+    def get_stats(self) -> dict:
         """Get pool statistics."""
         return {
             "contexts": {

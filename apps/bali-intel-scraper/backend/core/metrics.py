@@ -6,7 +6,7 @@ Tracks key performance indicators for monitoring.
 
 import time
 from contextlib import contextmanager
-from typing import Dict, Any, Optional
+from typing import Any
 
 from backend.core.logger import get_logger
 
@@ -18,24 +18,24 @@ class MetricsCollector:
 
     def __init__(self, prefix: str = "bali_intel"):
         self.prefix = prefix
-        self._counters: Dict[str, int] = {}
-        self._gauges: Dict[str, float] = {}
-        self._histograms: Dict[str, list] = {}
-        self._timers: Dict[str, list] = {}
+        self._counters: dict[str, int] = {}
+        self._gauges: dict[str, float] = {}
+        self._histograms: dict[str, list] = {}
+        self._timers: dict[str, list] = {}
 
     def increment(
-        self, name: str, value: int = 1, tags: Optional[Dict[str, str]] = None
+        self, name: str, value: int = 1, tags: dict[str, str] | None = None
     ):
         """Increment a counter metric."""
         full_name = self._format_name(name, tags)
         self._counters[full_name] = self._counters.get(full_name, 0) + value
 
-    def gauge(self, name: str, value: float, tags: Optional[Dict[str, str]] = None):
+    def gauge(self, name: str, value: float, tags: dict[str, str] | None = None):
         """Set a gauge metric."""
         full_name = self._format_name(name, tags)
         self._gauges[full_name] = value
 
-    def timing(self, name: str, seconds: float, tags: Optional[Dict[str, str]] = None):
+    def timing(self, name: str, seconds: float, tags: dict[str, str] | None = None):
         """Record a timing metric."""
         full_name = self._format_name(name, tags)
         if full_name not in self._timers:
@@ -46,14 +46,14 @@ class MetricsCollector:
         if len(self._timers[full_name]) > 1000:
             self._timers[full_name] = self._timers[full_name][-1000:]
 
-    def histogram(self, name: str, value: float, tags: Optional[Dict[str, str]] = None):
+    def histogram(self, name: str, value: float, tags: dict[str, str] | None = None):
         """Record a histogram metric."""
         full_name = self._format_name(name, tags)
         if full_name not in self._histograms:
             self._histograms[full_name] = []
         self._histograms[full_name].append(value)
 
-    def _format_name(self, name: str, tags: Optional[Dict[str, str]]) -> str:
+    def _format_name(self, name: str, tags: dict[str, str] | None) -> str:
         """Format metric name with tags."""
         full_name = f"{self.prefix}_{name}"
         if tags:
@@ -61,7 +61,7 @@ class MetricsCollector:
             full_name = f"{full_name}{{{tag_str}}}"
         return full_name
 
-    def get_all_metrics(self) -> Dict[str, Any]:
+    def get_all_metrics(self) -> dict[str, Any]:
         """Get all current metrics."""
         return {
             "counters": self._counters.copy(),
@@ -78,7 +78,7 @@ class MetricsCollector:
         }
 
     @contextmanager
-    def timer(self, name: str, tags: Optional[Dict[str, str]] = None):
+    def timer(self, name: str, tags: dict[str, str] | None = None):
         """Context manager for timing operations."""
         start = time.time()
         try:
@@ -92,7 +92,7 @@ class MetricsCollector:
 metrics = MetricsCollector()
 
 
-def get_metrics() -> Dict[str, Any]:
+def get_metrics() -> dict[str, Any]:
     """Get all metrics."""
     return metrics.get_all_metrics()
 

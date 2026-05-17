@@ -4,7 +4,6 @@ Pydantic schemas for data validation.
 
 from datetime import datetime
 from enum import Enum
-from typing import Optional
 from uuid import UUID
 
 from pydantic import BaseModel, Field, HttpUrl
@@ -34,11 +33,11 @@ class BaseSchema(BaseModel):
 class ArticleBase(BaseSchema):
     title: str = Field(..., min_length=1, max_length=500)
     url: HttpUrl
-    content: Optional[str] = None
-    summary: Optional[str] = None
-    author: Optional[str] = None
-    published_at: Optional[datetime] = None
-    category: Optional[NewsCategory] = None
+    content: str | None = None
+    summary: str | None = None
+    author: str | None = None
+    published_at: datetime | None = None
+    category: NewsCategory | None = None
 
 
 class ArticleCreate(ArticleBase):
@@ -50,7 +49,7 @@ class ArticleResponse(ArticleBase):
     source_id: UUID
     status: ArticleStatus
     created_at: datetime
-    sentiment_score: Optional[float] = None
+    sentiment_score: float | None = None
 
 
 class SourceBase(BaseSchema):
@@ -62,7 +61,7 @@ class SourceBase(BaseSchema):
 class SourceResponse(SourceBase):
     id: UUID
     created_at: datetime
-    last_crawled_at: Optional[datetime] = None
+    last_crawled_at: datetime | None = None
 
 
 class ScrapeRequest(BaseSchema):
@@ -73,8 +72,8 @@ class ScrapeRequest(BaseSchema):
 class ScrapeResponse(BaseSchema):
     success: bool
     url: str
-    title: Optional[str] = None
-    error: Optional[str] = None
+    title: str | None = None
+    error: str | None = None
 
 
 class HealthCheck(BaseSchema):
