@@ -91,3 +91,40 @@ async def test_route_search_query_falls_back_for_non_qdrant_surface() -> None:
     assert routing_info["collection_name"] == "legal_unified_hybrid_hybrid"
     assert routing_info["collections"] == ["legal_unified_hybrid_hybrid"]
     assert routing_info["confidence"] == 0.0
+
+
+@pytest.mark.asyncio
+async def test_route_search_query_canonicalizes_surface_collections() -> None:
+    """SurfaceRouter physical collection names must map to CollectionManager keys."""
+    service = SearchService.__new__(SearchService)
+    service.query_router = SimpleNamespace(route_query=MagicMock())
+    service.surface_router = SimpleNamespace(
+        adecide=AsyncMock(
+            return_value=SimpleNamespace(
+                surface="qdrant_company",
+                primary_collection="kbli_2025_final_hybrid",
+                collections=[
+                    "kbli_2025_final_hybrid",
+                    "training_conversations_hybrid",
+                    "legal_unified_hybrid_hybrid",
+                ],
+                domain="company",
+                confidence=0.78,
+                layer_used=1,
+            ),
+        ),
+    )
+
+    routing_info = await service._route_search_query(
+        "PT PMA KBLI retail company setup",
+        collection_override=None,
+        enable_fallbacks=True,
+    )
+
+    service.query_router.route_query.assert_not_called()
+    assert routing_info["collection_name"] == "kbli_2025_final"
+    assert routing_info["collections"] == [
+        "kbli_2025_final",
+        "training_conversations_hybrid",
+        "legal_unified",
+    ]
