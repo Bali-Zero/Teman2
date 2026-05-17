@@ -54,3 +54,40 @@ async def test_prepare_search_context_uses_surface_router_when_available() -> No
     service.query_router.route_query.assert_not_called()
     service.collection_manager.get_collection.assert_called_once_with("bali_zero_skills_hybrid")
     assert collection_name == "bali_zero_skills_hybrid"
+
+
+@pytest.mark.asyncio
+async def test_route_search_query_falls_back_for_non_qdrant_surface() -> None:
+    """Non-Qdrant SurfaceRouter decisions must not create empty collection searches."""
+    service = SearchService.__new__(SearchService)
+    service.query_router = SimpleNamespace(
+        route_query=MagicMock(
+            return_value={
+                "collection_name": "legal_unified_hybrid_hybrid",
+            },
+        ),
+    )
+    service.surface_router = SimpleNamespace(
+        adecide=AsyncMock(
+            return_value=SimpleNamespace(
+                surface="kg_agentic",
+                primary_collection="",
+                collections=[],
+                domain="kg",
+                confidence=0.82,
+                layer_used=2,
+            ),
+        ),
+    )
+
+    routing_info = await service._route_search_query(
+        "show company relationship graph",
+        collection_override=None,
+        enable_fallbacks=True,
+    )
+
+    service.surface_router.adecide.assert_awaited_once()
+    service.query_router.route_query.assert_called_once()
+    assert routing_info["collection_name"] == "legal_unified_hybrid_hybrid"
+    assert routing_info["collections"] == ["legal_unified_hybrid_hybrid"]
+    assert routing_info["confidence"] == 0.0
