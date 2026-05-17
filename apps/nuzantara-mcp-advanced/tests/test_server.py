@@ -138,13 +138,15 @@ async def test_run_backend_tests() -> None:
     mock_result.stdout = "3 passed in 1.0s"
     mock_result.stderr = ""
 
-    with patch.object(srv, "subprocess") as mock_subprocess:
-        mock_subprocess.run.return_value = mock_result
+    with patch.object(srv, "_backend_python", return_value="/venv/bin/python"), \
+         patch.object(srv, "_run_command", new_callable=AsyncMock) as mock_run:
+        mock_run.return_value = mock_result
         fn = srv.run_backend_tests.fn if hasattr(srv.run_backend_tests, 'fn') else srv.run_backend_tests
         result = await fn(test_path="backend/tests/", verbose=True)
 
     assert result["success"] is True
     assert "3 passed" in result["stdout"]
+    mock_run.assert_awaited_once()
 
 
 @pytest.mark.asyncio
