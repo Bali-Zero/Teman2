@@ -1087,7 +1087,7 @@ class OrchestratorCore:
             if _ENABLE_CRAG_ROUTER:
                 crag_router = CRAGRouter(
                     enable_hyde=_ENABLE_HYDE,
-                    enable_nlm_orchestrator=_ENABLE_NLM_ORCHESTRATOR,
+                    enable_nlm_orchestrator=False,  # R5 Phase 6: NLM decommissioned
                     enable_deep_research=_ENABLE_DEEP_RESEARCH,
                 )
                 decision = crag_router.route(plan)
