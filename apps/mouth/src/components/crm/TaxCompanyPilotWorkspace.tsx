@@ -19,6 +19,7 @@ import type {
   TaxCompanyPilotMap,
   TaxCompanyPilotNextAction,
   TaxCompanyPilotPersonDossier,
+  WorkspaceAiSnapshotReviewItem,
 } from "@/lib/api/crm/crm.types";
 
 const severityClass: Record<TaxCompanyPilotGap["severity"], string> = {
@@ -455,10 +456,95 @@ function CompanyPilotPanel({ map }: { map: TaxCompanyPilotMap }) {
   );
 }
 
+function WorkspaceAiReviewPanel({
+  snapshots,
+  loading = false,
+  approvingSnapshotId = null,
+  onApproveSnapshot,
+}: {
+  snapshots: WorkspaceAiSnapshotReviewItem[];
+  loading?: boolean;
+  approvingSnapshotId?: string | null;
+  onApproveSnapshot?: (snapshotId: string) => void;
+}) {
+  if (!loading && snapshots.length === 0) return null;
+
+  const draftCount = snapshots.filter(
+    (snapshot) => snapshot.status === "draft",
+  ).length;
+
+  return (
+    <section className="mb-5 border-b border-slate-200 pb-5">
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-sm font-semibold text-slate-950">
+          <Sparkles size={16} />
+          Workspace AI review
+        </div>
+        <span className="rounded bg-white px-2.5 py-1 text-xs font-medium text-slate-600 ring-1 ring-slate-200">
+          {loading
+            ? "Checking drafts"
+            : `${draftCount} draft${draftCount === 1 ? "" : "s"}`}
+        </span>
+      </div>
+      {snapshots.length > 0 && (
+        <div className="grid gap-3 lg:grid-cols-2">
+          {snapshots.slice(0, 6).map((snapshot) => {
+            const firstFact = snapshot.facts[0];
+            const isApproving = approvingSnapshotId === snapshot.id;
+            return (
+              <article
+                key={snapshot.id}
+                className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-semibold text-slate-950">
+                      {snapshot.company_name}
+                    </p>
+                    <p className="mt-1 text-xs uppercase text-slate-500">
+                      {snapshot.provider} · {snapshot.status}
+                    </p>
+                  </div>
+                  {snapshot.status === "draft" && (
+                    <button
+                      type="button"
+                      aria-label={`Approve Workspace AI draft for ${snapshot.company_name}`}
+                      disabled={!onApproveSnapshot || isApproving}
+                      onClick={() => onApproveSnapshot?.(snapshot.id)}
+                      className="inline-flex items-center gap-1.5 rounded-md bg-emerald-700 px-2.5 py-1.5 text-xs font-semibold text-white hover:bg-emerald-800 disabled:cursor-not-allowed disabled:bg-slate-300"
+                    >
+                      <ShieldCheck size={13} />
+                      {isApproving ? "Approving" : "Approve"}
+                    </button>
+                  )}
+                </div>
+                {firstFact && (
+                  <div className="mt-3 border-l-2 border-emerald-600 bg-emerald-50 px-3 py-2 text-sm text-emerald-950">
+                    <p className="font-medium">{firstFact.label}</p>
+                    <p className="mt-1 leading-5">{firstFact.detail}</p>
+                  </div>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function TaxCompanyPilotWorkspace({
   maps,
+  reviewSnapshots = [],
+  reviewLoading = false,
+  approvingSnapshotId = null,
+  onApproveSnapshot,
 }: {
   maps: TaxCompanyPilotMap[];
+  reviewSnapshots?: WorkspaceAiSnapshotReviewItem[];
+  reviewLoading?: boolean;
+  approvingSnapshotId?: string | null;
+  onApproveSnapshot?: (snapshotId: string) => void;
 }) {
   const totalPeople = maps.reduce((sum, map) => sum + map.persons.length, 0);
   const totalDocuments = maps.reduce(
@@ -517,6 +603,12 @@ export function TaxCompanyPilotWorkspace({
           </div>
         </div>
       </header>
+      <WorkspaceAiReviewPanel
+        snapshots={reviewSnapshots}
+        loading={reviewLoading}
+        approvingSnapshotId={approvingSnapshotId}
+        onApproveSnapshot={onApproveSnapshot}
+      />
       <div className="grid gap-4 xl:grid-cols-2">
         {maps.map((map, index) => (
           <CompanyPilotPanel
