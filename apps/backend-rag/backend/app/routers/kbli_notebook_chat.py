@@ -101,7 +101,7 @@ KBLI_MASTER_PROMPT = (
     "'graphic design/desain grafis/logo design/branding' = aktivitas desain grafis/komunikasi visual (KBLI 74192), "
     "'interior design/desain interior' = aktivitas desain interior (KBLI 74191), "
     "'fashion design/desain mode/desain tekstil' = aktivitas desain tekstil mode dan garmen (KBLI 74113), "
-    "'bar/wine bar/cocktail bar/beach club' = aktivitas bar (KBLI 56301, PMA TERTUTUP — foreigners CANNOT own a bar), "
+    "'bar/wine bar/cocktail bar/beach club' = aktivitas bar (KBLI 56301, PMA TERBUKA — alcohol service still requires SKPL/PB-UMKU and local licensing), "
     "'salon/hair salon/barbershop/pangkas rambut/hair studio' = aktivitas penataan dan pangkas rambut (KBLI 96210), "
     "'beauty salon/nail studio/nail art/eyelash extension/brow studio/wax studio/make-up artist/MUA/perawatan kecantikan' = aktivitas perawatan kecantikan (KBLI 96220), "
     "'spa/day spa/wellness/spa harian/sauna/steam bath/pemandian uap/solarium' = aktivitas SPA harian sauna dan pemandian uap (KBLI 96230), "
@@ -423,8 +423,8 @@ KNOWN_KBLI_CODES: dict[str, dict] = {
     "56301": {
         "title": "AKTIVITAS BAR",
         "description": "Bar activities serving alcoholic and non-alcoholic beverages for on-premises consumption. Includes cocktail bars, wine bars, and other licensed drinking establishments.",
-        "pma_status": "TERTUTUP",
-        "risk_category": "Verify at OSS",
+        "pma_status": "TERBUKA",
+        "risk_category": "Menengah Tinggi",
     },
     "47690": {
         "title": "PERDAGANGAN ECERAN KHUSUS BARANG KESENIAN DAN REKREASI YTDL",
