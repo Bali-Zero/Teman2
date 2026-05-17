@@ -1099,6 +1099,29 @@ class OrchestratorCore:
                 f"collections={plan.collections}, kg={plan.kg_strategy.value}, "
                 f"complexity={plan.complexity.value}",
             )
+            if _ENABLE_CRAG_ROUTER:
+                from backend.services.rag.crag_router import CRAGRouter
+
+                crag_router = CRAGRouter(
+                    enable_hyde=_ENABLE_HYDE,
+                    enable_nlm_orchestrator=_ENABLE_NLM_ORCHESTRATOR,
+                    enable_deep_research=_ENABLE_DEEP_RESEARCH,
+                )
+                decision = crag_router.route(plan)
+                logger.info(
+                    "📋 [CRAG SHADOW] Decision: qdrant=%s kg=%s hyde=%s "
+                    "reranker=%s nlm=%s/%s deep_research=%s skip_rag=%s "
+                    "collections=%s",
+                    decision.use_qdrant,
+                    decision.use_kg,
+                    decision.use_hyde,
+                    decision.use_reranker,
+                    decision.use_nlm_verify,
+                    decision.use_nlm_orchestrator,
+                    decision.use_deep_research,
+                    decision.skip_rag,
+                    decision.collections,
+                )
         except Exception as e:
             logger.debug(f"⚠️ [GraphRAG v6 SHADOW] Planner error: {e}")
 
