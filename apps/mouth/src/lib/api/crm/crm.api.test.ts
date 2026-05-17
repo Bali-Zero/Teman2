@@ -207,6 +207,45 @@ describe("CrmApi", () => {
       );
       expect(result).toEqual(mockApproved);
     });
+
+    it("should run workspace AI auto-approve policy", async () => {
+      const mockResult = {
+        policy_version: "workspace-ai-v1-factual-structural",
+        dry_run: true,
+        evaluated: 2,
+        eligible_count: 1,
+        blocked_count: 1,
+        approved_count: 0,
+        decisions: [
+          {
+            snapshot_id: "snapshot-safe",
+            company_id: 7,
+            company_name: "OCEAN CLOTHES AND SHOES PT",
+            policy_version: "workspace-ai-v1-factual-structural",
+            eligible: true,
+            approved: false,
+            reason: "factual_structural_snapshot",
+            blocked_reasons: [],
+            fact_count: 1,
+          },
+        ],
+      };
+      mockClient.request.mockResolvedValue(mockResult);
+
+      const result = await crmApi.autoApproveWorkspaceAiSnapshots({
+        dryRun: true,
+        limit: 25,
+      });
+
+      expect(mockClient.request).toHaveBeenCalledWith(
+        "/api/crm/intelligence/workspace-ai-snapshots/auto-approve",
+        {
+          method: "POST",
+          body: JSON.stringify({ dry_run: true, limit: 25 }),
+        },
+      );
+      expect(result).toEqual(mockResult);
+    });
   });
 
   describe("markInteractionRead", () => {
