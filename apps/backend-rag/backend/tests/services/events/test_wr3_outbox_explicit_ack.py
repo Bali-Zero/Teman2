@@ -48,6 +48,7 @@ def supervisor_module():
         return importlib.import_module("scripts.wr3_supervisor")
     except ModuleNotFoundError as exc:
         pytest.skip(f"scripts.wr3_supervisor not yet authored: {exc}")
+        return None
 
 
 # ── publish helper contract ────────────────────────────────────────────
