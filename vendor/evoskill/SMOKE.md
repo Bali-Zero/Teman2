@@ -161,7 +161,7 @@ upstream surfaces. This gate verifies all 5 are now wired.
 
 Per `vendor/evoskill/UPSTREAM.md`:
 
-- `pyproject.toml` — 2 lines deleted (`claude-agent-sdk` + `openai-codex-sdk`)
+- `pyproject.toml` — 3 lines deleted (`claude-agent-sdk` + `openai-codex-sdk` + `openhands-tools` — the last one added 2026-05-18 panel round 3 Codex BLOCKING #1 because it pulled `browser-use → anthropic` transitively)
 - `src/harness/__init__.py` — drop 2 claude/codex imports, add deepseek import + is_deepseek_sdk export
 - `src/harness/agent.py` — TYPE_CHECKING deleted; claude+codex raise in BOTH `_execute_query` AND `run()`; deepseek branches ADDED to both
 - `src/harness/utils.py` — claude+codex branches raise; deepseek branch ADDED (third dispatcher)

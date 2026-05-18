@@ -57,9 +57,15 @@ def _is_under(path: Path, parent: Path) -> bool:
 
 
 def _collect_api_keys() -> dict[str, str]:
-    """Collect LLM API keys from environment."""
+    """Collect LLM API keys from environment.
+
+    Bali Zero Nuzantara vendor strip (panel round 4 Codex BLOCKING #1):
+    ANTHROPIC_API_KEY removed from the list — forwarding the key into a
+    Daytona sandbox is a banned auth-path surface per CLAUDE.md hard
+    rule, even if Phase 0 does not invoke the Daytona remote backend.
+    """
     keys = [
-        "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENROUTER_API_KEY",
+        "OPENAI_API_KEY", "OPENROUTER_API_KEY",
         "LLM_API_KEY", "GOOGLE_API_KEY", "GEMINI_API_KEY",
         "GROQ_API_KEY", "MISTRAL_API_KEY", "TOGETHER_API_KEY",
         "DEEPSEEK_API_KEY", "XAI_API_KEY",
@@ -203,17 +209,30 @@ class DaytonaBackend(RemoteBackend):
         )
 
         # Preflight checks
+        #
+        # Bali Zero Nuzantara vendor strip (panel round 4 Codex BLOCKING #1):
+        # the upstream preflight checked ANTHROPIC_API_KEY presence and
+        # raised "not set" for Claude harness. Both behaviors are banned
+        # by CLAUDE.md hard rule — checking ANTHROPIC_API_KEY at all
+        # exposes the banned auth path. Replaced with a deepseek preflight
+        # for the same fail-fast pattern when the actual sanctioned
+        # provider is missing.
         preflight = sandbox.process.exec(
             "echo '=== evoskill ===' && which evoskill && "
-            "echo '=== ANTHROPIC_API_KEY ===' && "
-            "([ -n \"$ANTHROPIC_API_KEY\" ] && echo 'set' || echo 'NOT SET') && "
+            "echo '=== DEEPSEEK_API_KEY ===' && "
+            "([ -n \"$DEEPSEEK_API_KEY\" ] && echo 'set' || echo 'NOT SET') && "
             "echo '=== python ===' && python --version && "
             "echo '=== git ===' && git --version",
         )
-        if "NOT SET" in preflight.result and cfg.harness.name == "claude":
+        if "NOT SET" in preflight.result and cfg.harness.name == "deepseek":
             raise RuntimeError(
-                f"Preflight failed: ANTHROPIC_API_KEY not set in sandbox.\n"
+                f"Preflight failed: DEEPSEEK_API_KEY not set in sandbox.\n"
                 f"Full diagnostics:\n{preflight.result}"
+            )
+        if cfg.harness.name == "claude":
+            raise ImportError(
+                "Claude harness banned per Bali Zero Nuzantara CLAUDE.md "
+                "hard rule. Configure harness=deepseek instead."
             )
 
         # Build run script with path overrides
