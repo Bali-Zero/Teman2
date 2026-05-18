@@ -102,6 +102,49 @@ except ImportError as e:
 
 Expected: both checks pass.
 
+## Gate 4c (Phase 1 Task #22) — DeepSeek branch in call_llm + infer_provider
+
+Verifies the `deepseek` branch added to `cli/shared.py` routes correctly,
+the `infer_provider("deepseek-v4-pro")` no longer falls through to the
+anthropic fallback, and `make_scorer` default model is `deepseek-v4-pro`.
+
+```bash
+cd /Users/nuzantara/Desktop/nuzantara-wt-evoskill-phase1 && \
+  python3 -m pytest scripts/test_call_llm_deepseek.py -v --tb=short | tail -25
+```
+
+Expected: `14 passed in <2s`. Tests cover:
+
+- `infer_provider("deepseek-v4-pro") == "deepseek"` (no fallback to
+  anthropic — was the L9 silent-trap bug)
+- `_normalize_provider_model("deepseek", "deepseek/v4-pro") == "v4-pro"`
+- `call_llm("deepseek", ...)` constructs
+  `openai.AsyncOpenAI(base_url="https://api.deepseek.com/v1", api_key=...)`
+  and forwards model + max_tokens + messages
+- `DEEPSEEK_API_KEY` unset → `RuntimeError("API key not configured")`
+- `make_scorer({type:"llm"})` default model is now `deepseek-v4-pro`
+- No regression: `call_llm("anthropic", ...)` still raises ImportError
+  with "BANNED"/"CLAUDE.md hard rule" message
+- No regression: `infer_provider` claude/gpt/gemini/anthropic-prefix
+  routes preserved
+- `infer_provider(scorer.model)` from the actual evolver.toml matches
+  `scorer.provider` (belt-and-suspenders cross-check)
+
+Quick CLI smoke (requires real `DEEPSEEK_API_KEY` in env — skip if not
+available, the unit tests above are sufficient):
+
+```bash
+DEEPSEEK_API_KEY="sk-..." cd vendor/evoskill && uv run python -c "
+import asyncio
+from src.cli.shared import call_llm
+result = asyncio.run(call_llm('deepseek', 'deepseek-v4-pro', 'Reply with the single digit 7.'))
+print(f'live call OK: {result!r}')
+"
+```
+
+Expected (if key set): `live call OK: '7'` or similar single-digit
+response. If key unset: `RuntimeError: deepseek API key not configured`.
+
 ## Gate 5 — No `anthropic` PyPI package in vendor venv (no transitive)
 
 Panel round 3 Codex BLOCKING #1: previous `uv sync` resolved

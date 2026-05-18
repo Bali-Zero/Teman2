@@ -49,12 +49,27 @@ def infer_provider(model: str) -> str:
         return "openai"
     if normalized.startswith("google/"):
         return "google"
+    # Bali Zero Nuzantara Phase 1 Task #22 (L9 fix from .known-limitations-v1):
+    # explicit deepseek prefix support MUST come before the model.startswith
+    # fallback chain — without it, "deepseek-v4-pro" falls into the last
+    # `return "anthropic"` branch (because none of the startswith() guards
+    # match), and the subsequent call_llm("anthropic", ...) raises
+    # ImportError per CLAUDE.md hard rule. Bug surface: any `cfg.scorer`
+    # that omits explicit `provider=` config falls back to infer_provider
+    # on the model name. With this fix, deepseek-v4-pro routes correctly.
+    if normalized.startswith("deepseek/"):
+        return "deepseek"
+    if model.startswith("deepseek"):
+        return "deepseek"
     if model.startswith("claude"):
         return "anthropic"
     if model.startswith(("gpt-", "o1", "o3", "o4")):
         return "openai"
     if model.startswith("gemini"):
         return "google"
+    # Phase 1: keep upstream fallback to "anthropic" so the loud raise in
+    # call_llm catches genuinely-unknown model names rather than silently
+    # routing them to DeepSeek. Explicit deepseek prefix above is required.
     return "anthropic"
 
 
@@ -70,6 +85,12 @@ def _normalize_provider_model(provider: str, model: str) -> str:
         return normalized[len("openai/") :]
     if provider == "google" and normalized.startswith("google/"):
         return normalized[len("google/") :]
+    # Bali Zero Nuzantara Phase 1 Task #22 — DeepSeek API is
+    # OpenAI-compatible (base_url=https://api.deepseek.com/v1); strip
+    # the `deepseek/` prefix if a user wrote `deepseek/deepseek-v4-pro`
+    # by analogy with the other providers.
+    if provider == "deepseek" and normalized.startswith("deepseek/"):
+        return normalized[len("deepseek/") :]
 
     return normalized
 
@@ -149,6 +170,37 @@ async def call_llm(provider: str, model: str, prompt: str) -> str:
         )
         return response.choices[0].message.content
 
+    # Bali Zero Nuzantara Phase 1 Task #22:
+    # DeepSeek V4 Pro is OpenAI-API-compatible (per DeepSeek docs:
+    # "uses an API format compatible with OpenAI/Anthropic"). Reuses the
+    # existing openai package — no new dependency — by pointing
+    # `base_url` at https://api.deepseek.com/v1. Same Chat-Completions
+    # shape, same response.choices[0].message.content extraction.
+    #
+    # `max_tokens=16` matches the upstream pattern for other providers
+    # (this `call_llm` is the cheap-path for short responses like
+    # scorer rubric "0.0"/"1.0" and infer-provider probes). The real
+    # heavyweight DeepSeek call (executor.py — Task #23) uses a
+    # separate code path with full token budget.
+    if provider == "deepseek":
+        try:
+            import openai
+        except ImportError as exc:
+            raise RuntimeError(
+                "openai package not installed. Run: uv add openai"
+            ) from exc
+
+        client = openai.AsyncOpenAI(
+            base_url="https://api.deepseek.com/v1",
+            api_key=api_key,
+        )
+        response = await client.chat.completions.create(
+            model=normalized_model,
+            max_tokens=16,
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return response.choices[0].message.content
+
     if provider == "google":
         try:
             from google import genai
@@ -184,7 +236,13 @@ def make_scorer(cfg: ProjectConfig):
 
     if cfg.scorer.type == "llm":
         rubric = cfg.scorer.rubric or "Award 1.0 if correct, 0.0 if wrong."
-        model = cfg.scorer.model or "claude-sonnet-4-6"
+        # Bali Zero Nuzantara Phase 1 Task #22 (L9 fix from
+        # .known-limitations-v1): upstream default was
+        # "claude-sonnet-4-6" which routes to provider="anthropic" and
+        # then hits the hard-rule ImportError in call_llm. Switch
+        # default to "deepseek-v4-pro" so an unconfigured scorer
+        # works out of the box on this fork.
+        model = cfg.scorer.model or "deepseek-v4-pro"
         provider = cfg.scorer.provider or infer_provider(model)
 
         async def llm_score(question: str, predicted: str, ground_truth: str) -> float:

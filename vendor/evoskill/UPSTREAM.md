@@ -151,6 +151,44 @@ actual `call_llm("anthropic", ...)` call now raises rather than silently
 attempting to import the SDK. Failing-loud preferred over failing-quiet
 per CLAUDE.md anti-hallucination rule.
 
+**Phase 1 Task #22 additions (2026-05-18, commit follows):**
+
+- `infer_provider` line 41-58: added two branches mapping `deepseek/*`
+  and `deepseek*` model names to `provider="deepseek"`. Placed BEFORE
+  the `model.startswith("claude")` rule, so `deepseek-v4-pro` cannot
+  silently fall through to the upstream `return "anthropic"` final
+  branch (which would then trigger the hard-rule `ImportError`). The
+  fallback for genuinely-unknown model names remains `"anthropic"` —
+  this is intentional, so unknown models get the loud hard-rule raise
+  rather than silently routing to DeepSeek (which would 401).
+
+- `_normalize_provider_model` line 61-74: added a strip for
+  `deepseek/` prefix when `provider=deepseek`, by analogy with the
+  existing strips for openrouter/anthropic/openai/google.
+
+- `call_llm` line 77-164: NEW branch `if provider == "deepseek":`
+  placed AFTER the openrouter branch (which it mirrors). Reuses the
+  `openai` Python package as the HTTP client — DeepSeek API is
+  OpenAI-API-compatible (`base_url=https://api.deepseek.com/v1`,
+  same Chat Completions schema, same `response.choices[0].message
+.content` shape). No new dependency required; no httpx fork. The
+  `max_tokens=16` cap matches the upstream pattern for short
+  cheap-path calls (scorer "0.0"/"1.0", probes). Heavyweight
+  DeepSeek calls (token budget for proposer/skill-builder) go
+  through `src/harness/deepseek/executor.py` (Task #23).
+
+- `make_scorer` line 187 (L9 fix from `.known-limitations-v1`):
+  default LLM scorer model changed from `"claude-sonnet-4-6"`
+  (upstream, would hit the hard-rule raise) to `"deepseek-v4-pro"`.
+  An unconfigured `[scorer]` section now works out of the box.
+
+Test coverage: `scripts/test_call_llm_deepseek.py` — 14 unit tests
+covering `infer_provider` (no regression on claude/gpt/gemini/anthropic-
+prefix/openrouter-prefix), `_normalize_provider_model` strips, the
+new `call_llm` deepseek branch (base_url + api_key plumbing + 401
+on missing key), the anthropic-guard regression, and the
+`make_scorer` default model change. All 14 pass in <2s.
+
 ### 5. `src/registry/sdk_utils.py`
 
 **Lines 11-14** — TYPE_CHECKING block deleted (same pattern as agent.py):
