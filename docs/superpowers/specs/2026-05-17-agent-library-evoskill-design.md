@@ -385,17 +385,82 @@ Budget: $<n> / $1.00 cap
 
 ## Verification & rollout
 
-### Phase 0 — Smoke (this PR)
+> **NB rollout realignment 2026-05-18** (after panel rounds 1-3 on the
+> original PR #721 closed and the narrowed successor PR #736): Phase 0
+> is now scope-reduced to TRUE skeleton (vendor strip + AST gate +
+> DeepSeek SDK wiring only). The original Phase 0 list below promised
+> "write config" and "dry-run on dummy task" which the panel found
+> INSUFFICIENT without the actual `_redact_pii.py` redactor + a
+> CORRECT `evolver.toml` schema. Those items are deferred to Phase 1
+> wiring (separate PR).
 
-- Vendor evoskill, strip Anthropic, write config
-- Run `uv run evoskill --help` → no anthropic import error
-- Run dry-run on dummy task → produces SKILL.md + helper
+### Phase 0 — Vendor skeleton (this PR — PR #736)
 
-### Phase 1 — First live run (Sunday after merge)
+**In-scope:**
 
-- Manual trigger first run via `launchctl start ...`
-- Observe Telegram alert + PR draft
-- Antonello reviews proposal quality
+- Vendor evoskill v1.1.0 byte-identical (SHA `5ae91616`) into `vendor/evoskill/`
+- Physically remove `claude-agent-sdk` + `anthropic` (transitively via
+  `openhands-tools` → `browser-use`) + `openai-codex-sdk` from
+  `pyproject.toml`. AST gate: 0 imports anywhere in `src/`. Vendor venv
+  dependency tree gate: 0 `anthropic` package installed.
+- Write stub `vendor/evoskill/src/harness/{claude,codex}/__init__.py`
+  raising `ImportError` on import.
+- Add `vendor/evoskill/src/harness/deepseek/` Phase-0 stub harness
+  raising `NotImplementedError` on `execute_query`, wired into all 5
+  upstream dispatch surfaces (`harness/__init__.py`, `harness/agent.py`
+  both `_execute_query` AND `run()`, `harness/utils.py:build_options`,
+  `harness/sdk_config.py`, `registry/sdk_utils.py:options_to_config`).
+- Patch `cli/shared.py:call_llm` so the `if provider == "anthropic":
+raise ImportError(...)` happens BEFORE `ensure_provider_api_key(...)`
+  to fail loud without exposing the banned auth path.
+- Patch `harness/provider_auth.py:ensure_provider_api_key` to hard-deny
+  anthropic provider with `ImportError` (defense in depth).
+- Smoke: `uv run evoskill --help` returns OK without `anthropic`
+  ImportError.
+
+**EXPLICITLY OUT of Phase 0 (deferred to Phase 1 PR):**
+
+- `agent-library/config/{evolver.toml,evidence-rules.yaml,redaction-rules.yaml}`
+  (panel round 2 Codex found `evolver.toml` schema mismatch vs upstream
+  `load_config()` which requires `[harness][evolution][dataset][scorer]`
+  sections, NOT `[provider][loop][budget]` from this spec's earlier
+  drafts — Phase 1 must write the config with the correct schema)
+- `scripts/_redact_pii.py` + `_evidence_lint.py` + `_entailment_check.py`
+- `scripts/agent-library-evolver-run.sh` + `propose-pr.sh` wrappers
+- `~/Library/LaunchAgents/com.balizero.agent-library-evolver.weekly.plist`
+- `cli/shared.py:call_llm` adding `provider == "deepseek"` branch
+- `BUDGET_USD` mid-run enforcement (panel round 2 Gemini caught: the
+  upstream `evoskill run` is a single blocking command, so bash can NOT
+  iterate mid-run; Phase 1 decides patch upstream OR accept post-run
+  enforcement only)
+- Dry-run on a dummy task producing `SKILL.md` (requires the redactor
+  - the wrapper to be implemented first)
+
+### Phase 1 — Wiring + first live run (separate PR after this lands)
+
+**In-scope:**
+
+- Write `scripts/_redact_pii.py` Python redactor (2-pass logic: pass 1
+  applies team_emails + antonello_personal_email + osint_internal_block
+  with explicit closing-tag pattern; pass 2 applies generic email
+  pattern AFTER the team_emails substitution has tokenised them; pass 3
+  applies NPWP context-aware substitution on captured groups).
+- Write `agent-library/config/evolver.toml` with CORRECT EvoSkill
+  schema: `[harness]`, `[evolution]`, `[dataset]`, `[scorer]` sections
+  (NOT the earlier `[provider][loop][budget]` which is incompatible).
+- Patch `vendor/evoskill/src/cli/shared.py:call_llm` to add
+  `provider == "deepseek"` branch (HTTP POST to
+  `api.deepseek.com/v1/chat/completions`).
+- Patch `vendor/evoskill/src/cli/shared.py:infer_provider` to map
+  `deepseek-v4-pro` → `"deepseek"` (currently falls back to `"anthropic"`).
+- Implement real `vendor/evoskill/src/harness/deepseek/executor.py`
+  (Phase 0 ships only `NotImplementedError` stub).
+- Write `scripts/agent-library-evolver-run.sh` wrapper invoking
+  `uv run evoskill run --config` with telemetry + Telegram alert.
+- Write `~/Library/LaunchAgents/...` plist bootstrapping the wrapper
+  Sunday 03:00 WITA.
+- Manual trigger first run via `launchctl start ...`, observe Telegram
+  alert + PR draft, Antonello reviews proposal quality.
 
 ### Phase 2 — 4 weekly runs auto
 

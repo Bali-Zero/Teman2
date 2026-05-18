@@ -68,7 +68,57 @@ except ImportError as e:
 Expected: both stubs raise `ImportError` at first import (loud, NOT
 silent `ModuleNotFoundError` that downstream code could except-swallow).
 
-## Gate 4 — DeepSeek harness stub: set_sdk accepted + execute raises
+## Gate 4b — call_llm("anthropic") raises ImportError BEFORE auth lookup
+
+Panel round 3 Codex BLOCKING #2: the upstream `call_llm()` called
+`ensure_provider_api_key("anthropic")` BEFORE the `if provider ==
+"anthropic": raise` branch, so first failure was `RuntimeError: Set
+ANTHROPIC_API_KEY` — a misleading message suggesting setting the key
+is the fix. Fix moves the raise FIRST.
+
+```bash
+cd vendor/evoskill && uv run python -c "
+import asyncio, os
+from src.cli.shared import call_llm
+os.environ.pop('ANTHROPIC_API_KEY', None)
+try:
+    asyncio.run(call_llm('anthropic', 'claude-sonnet-4-6', 'test'))
+    raise RuntimeError('FAIL: should have raised')
+except ImportError as e:
+    assert 'Set ANTHROPIC_API_KEY' not in str(e), 'still suggests setting the key'
+    assert 'CLAUDE.md hard rule' in str(e)
+    print('call_llm anthropic raise BEFORE auth: OK')
+
+# Defense in depth: even direct call to ensure_provider_api_key must hard-deny
+from src.harness.provider_auth import ensure_provider_api_key
+try:
+    ensure_provider_api_key('anthropic')
+    raise RuntimeError('FAIL: should have raised')
+except ImportError as e:
+    assert 'BANNED' in str(e) or 'CLAUDE.md hard rule' in str(e)
+    print('provider_auth.ensure_provider_api_key hard-denies anthropic: OK')
+"
+```
+
+Expected: both checks pass.
+
+## Gate 5 — No `anthropic` PyPI package in vendor venv (no transitive)
+
+Panel round 3 Codex BLOCKING #1: previous `uv sync` resolved
+`anthropic 0.94.0` transitively via `openhands-tools` →
+`browser-use` → `anthropic`. AST scan was clean but the dependency tree
+still pulled the banned package, violating "no anthropic anywhere"
+CLAUDE.md posture. Fix: remove `openhands-tools` from `pyproject.toml`
+(harness/openhands/ stays for opt-in, falls back to ImportError at
+runtime if anyone invokes OpenHands SDK in Phase 1).
+
+```bash
+cd vendor/evoskill && uv pip list 2>/dev/null | grep -iE "^anthropic|^claude-agent-sdk|^browser-use" | wc -l
+```
+
+Expected: `0` (no anthropic / claude-agent-sdk / browser-use installed).
+
+## Gate 6 — DeepSeek harness stub: set_sdk accepted + execute raises
 
 ```bash
 cd vendor/evoskill && uv run python -c "
