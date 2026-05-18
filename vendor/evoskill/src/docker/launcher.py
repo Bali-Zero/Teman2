@@ -15,8 +15,13 @@ COMPOSE_FILE = "docker-compose.yml"
 
 # API key env vars to forward from host into the container.
 # Only the name is written to docker-compose.yml (not the value).
+#
+# Bali Zero Nuzantara vendor strip (panel round 4 Codex BLOCKING #1):
+# ANTHROPIC_API_KEY removed — even forwarding the env var name into a
+# container is a banned auth-path surface per CLAUDE.md hard rule.
+# OPENAI_API_KEY/OPENROUTER_API_KEY/etc kept (not banned).
 _API_KEY_VARS = [
-    "ANTHROPIC_API_KEY", "OPENAI_API_KEY", "OPENROUTER_API_KEY",
+    "OPENAI_API_KEY", "OPENROUTER_API_KEY",
     "LLM_API_KEY", "GOOGLE_API_KEY", "GEMINI_API_KEY",
     "GROQ_API_KEY", "MISTRAL_API_KEY", "TOGETHER_API_KEY",
     "DEEPSEEK_API_KEY", "XAI_API_KEY",
