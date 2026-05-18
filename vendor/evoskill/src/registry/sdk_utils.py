@@ -184,6 +184,20 @@ def options_to_config(
             })
             output_format = {"schema": options.get("output_schema", {})}
 
+        elif sdk == "deepseek":
+            # Bali Zero Nuzantara vendor addition (Gemini panel 2026-05-18
+            # CRITICAL): without this branch, evolver.toml provider=deepseek
+            # would have its metadata fall through to the bare "claude"
+            # default at the bottom of this function, hitting the
+            # ImportError stub on the next config_to_options() reload.
+            base_metadata.update({
+                "sdk": "deepseek",
+                "model": options.get("model", "deepseek-v4-pro"),
+                "reasoning_effort": options.get("reasoning_effort", "high"),
+                "project_root": options.get("project_root"),
+            })
+            output_format = {"schema": options.get("schema", {})}
+
         return ProgramConfig(
             name=name,
             parent=parent,
