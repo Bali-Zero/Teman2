@@ -1,0 +1,66 @@
+# WR3 Agent I/O Contract — wr3-editorial-bench
+# Schema: docs/wr3/contracts/_schema.yaml v1.0.0
+# Description: Monthly 1st Mon 07:00 WITA. SOTA bench 12 ref brands + 3 competitors. Multi-LLM cascade.
+
+name: wr3-editorial-bench
+contract_version: 1.0.0
+model: opus
+lifecycle_tier: scheduled
+cost_class: reasoning
+
+cost:
+  ceiling_usd: 0.5
+  ceiling_unit: "$0.50 cash per monthly run (synthesis)"
+  hard_halt_on_exceed: false
+
+allowed_tools:
+  - Read
+  - Write
+  - Bash
+  - WebFetch
+  - WebSearch
+
+inputs:
+  - name: reference_brands
+    kind: in_memory_obj
+    source: "12 brands (NYT/Bloomberg/Reuters/Wired/Pudding/RoW/ProPublica/Vox/Quartz/Drift/Vice/AJE)"
+    required: true
+    schema_ref: "free-form"
+  - name: competitors
+    kind: in_memory_obj
+    source: "3 BZ competitors (Lets Move Indonesia, Emerhub, Flado)"
+    required: true
+    schema_ref: "free-form"
+  - name: trend_reports
+    kind: in_memory_obj
+    source: "Later.com, Hootsuite"
+    required: true
+    schema_ref: "free-form"
+
+outputs:
+  - name: external_bench
+    kind: file
+    sink: "~/.claude/skills/bali-zero-brand/_external-bench-video-YYYY-MM.md"
+    schema_ref: "free-form"
+
+emits: []
+
+consumes: []
+
+failure_modes:
+  - code: degrade_loud
+    action: "Some sources blocked → synthesize with available + flag missing"
+    telegram_p0_on: false
+  - code: hard_fail
+    action: "Gemini + Opus + DeepSeek all quota exhausted → defer 24h"
+    telegram_p0_on: false
+
+law_compliance:
+  law_1_cli_only: "Multi-LLM cascade: Gemini CLI long-context + Opus synthesis + DeepSeek pattern"
+  law_2_osint_blindato: "Public sources only"
+  law_3_event_driven: "Cron monthly, not channel"
+  law_4_graceful_degradation: "Partial bench degrades"
+  law_5_zero_authority: "Bench read by yt-metrics-analyst (weekly) + critic (every run)"
+  law_6_local_sovereignty: "Local synthesis Pro"
+  law_7_numbers_first: "Citations include engagement metrics + brand attribution"
+  law_8_past_present_future: "Monthly cadence (SOTA evolves slowly in video editorial)"

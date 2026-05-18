@@ -1,0 +1,60 @@
+# WR3 Agent I/O Contract — wr3-b-roll-curator
+# Schema: docs/wr3/contracts/_schema.yaml v1.0.0
+# Description: Fallback when Veo fails specific shot. Searches local b-roll pool. License verification: 1.0.
+
+name: wr3-b-roll-curator
+contract_version: 1.0.0
+model: sonnet
+lifecycle_tier: fallback
+cost_class: text_planning
+
+cost:
+  ceiling_usd: 0.15
+  ceiling_unit: "$0.15 cash per fallback invoke"
+  hard_halt_on_exceed: false
+
+allowed_tools:
+  - Read
+  - Bash
+  - WebFetch
+
+inputs:
+  - name: failed_shot_brief
+    kind: in_memory_obj
+    source: "wr3-clip-renderer fallback dispatch (shot brief: camera/mood/duration)"
+    required: true
+    schema_ref: "free-form"
+  - name: b_roll_pool
+    kind: file
+    source: "~/Desktop/nuzantara/research/marketing/b-roll-pool/"
+    required: true
+    schema_ref: "free-form"
+
+outputs:
+  - name: selected_b_roll
+    kind: file
+    sink: "apps/war-room/output/episode/<slug>/clips/<n>-broll.mp4"
+    schema_ref: "free-form"
+  - name: license_attestation
+    kind: file
+    sink: "apps/war-room/output/episode/<slug>/license-attestation-<n>.json"
+    schema_ref: "free-form"
+
+emits: []
+
+consumes: []
+
+failure_modes:
+  - code: hard_fail
+    action: "Pool empty for shot brief → episode flags 'b_roll_unavailable' + Telegram P0 (Antonello may approve cinematic gap)"
+    telegram_p0_on: true
+
+law_compliance:
+  law_1_cli_only: "Sonnet via Claude Agent SDK"
+  law_2_osint_blindato: "Local pool only"
+  law_3_event_driven: "On-demand fallback invoke (not channel-consumed)"
+  law_4_graceful_degradation: "Fallback path — death by unused ≥10 eligible opportunities"
+  law_5_zero_authority: "License attestation reviewable"
+  law_6_local_sovereignty: "Local pool, license-clean alternatives only"
+  law_7_numbers_first: "License verification 1.0 (zero unverified push)"
+  law_8_past_present_future: "Pool grows from past episode discards + curated catch (license-clean)"

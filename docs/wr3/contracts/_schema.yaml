@@ -1,0 +1,160 @@
+# WR3 Contract Meta-Schema v1.0.0
+# All wr3-*.yaml contracts MUST conform to this schema.
+# Enforced by: scripts/lint/wr3_lint_contract_schema.py (S7.6)
+#
+# Authoritative schema reference for WR3 supervisor (scripts/wr3_supervisor.py).
+
+$schema: "https://json-schema.org/draft/2020-12/schema"
+$id: "wr3-contract-meta-schema-v1.0.0"
+title: "WR3 Agent I/O Contract"
+type: object
+required:
+  - name
+  - contract_version
+  - model
+  - lifecycle_tier
+  - cost_class
+  - cost
+  - allowed_tools
+  - inputs
+  - outputs
+  - emits
+  - consumes
+  - failure_modes
+  - law_compliance
+
+properties:
+  name:
+    type: string
+    pattern: "^wr3-[a-z-]+$"
+    description: "Agent slug matching ~/.claude/agents/wr3-<name>.md filename"
+
+  contract_version:
+    type: string
+    pattern: "^1\\.[0-9]+\\.[0-9]+$"
+    description: "Semantic version. Major bump = breaking change (handler must re-implement)."
+
+  model:
+    type: string
+    enum: [opus, sonnet, haiku]
+    description: "Claude model tier. Cascade fallback may downgrade at runtime."
+
+  lifecycle_tier:
+    type: string
+    enum: [core, scheduled, fallback]
+    description: |
+      core      = in episode hot path, runs every episode
+      scheduled = cron-driven (weekly/monthly), not hot path
+      fallback  = invoked only on retry/degradation, dies if unused ≥10 eligible opportunities
+
+  cost_class:
+    type: string
+    enum: [text_planning, reasoning, render, audio_gen]
+    description: "Determines cascade strategy on BudgetExceededError"
+
+  cost:
+    type: object
+    required: [ceiling_usd, ceiling_unit, hard_halt_on_exceed]
+    properties:
+      ceiling_usd:
+        oneOf:
+          - { type: number, minimum: 0 }
+          - { type: "null" }
+      ceiling_unit:
+        type: string
+        description: "Human-readable unit (e.g. '$0.50 cash', '200 cr Flow Pro')"
+      hard_halt_on_exceed:
+        type: boolean
+        description: "If true, BudgetExceeded → Telegram P0 + episode HALT (no cascade)"
+
+  allowed_tools:
+    type: array
+    items: { type: string }
+    description: "Whitelist for Claude Agent SDK ClaudeAgentOptions.allowed_tools (least-privilege)"
+
+  inputs:
+    type: array
+    items:
+      type: object
+      required: [name, kind, source]
+      properties:
+        name: { type: string }
+        kind:
+          type: string
+          enum: [file, channel_payload, db_row, env_var, in_memory_obj]
+        source:
+          {
+            type: string,
+            description: "File path glob OR PG channel name OR env var name",
+          }
+        required: { type: boolean, default: true }
+        schema_ref:
+          { type: string, description: "JSON schema ref or 'free-form'" }
+
+  outputs:
+    type: array
+    items:
+      type: object
+      required: [name, kind, sink]
+      properties:
+        name: { type: string }
+        kind:
+          type: string
+          enum: [file, channel_emit, db_insert, telegram_message, drive_staged]
+        sink: { type: string }
+        schema_ref: { type: string }
+
+  emits:
+    type: array
+    items:
+      type: string
+      pattern: "^wr3_episode_[a-z_]+$"
+    description: "PG NOTIFY channels this agent emits (publish_wr3_event() helper)"
+
+  consumes:
+    type: array
+    items:
+      type: string
+      pattern: "^wr3_episode_[a-z_]+$"
+    description: "PG NOTIFY channels this agent listens (via wr3_supervisor route_event)"
+
+  failure_modes:
+    type: array
+    items:
+      type: object
+      required: [code, action]
+      properties:
+        code:
+          type: string
+          enum:
+            [hard_fail, degrade_loud, degrade_silent_BANNED, retry_with_cascade]
+        action: { type: string }
+        telegram_p0_on: { type: boolean, default: false }
+
+  law_compliance:
+    type: object
+    required:
+      [
+        law_1_cli_only,
+        law_2_osint_blindato,
+        law_3_event_driven,
+        law_4_graceful_degradation,
+        law_5_zero_authority,
+        law_6_local_sovereignty,
+        law_7_numbers_first,
+        law_8_past_present_future,
+      ]
+    properties:
+      law_1_cli_only: { type: string }
+      law_2_osint_blindato: { type: string }
+      law_3_event_driven: { type: string }
+      law_4_graceful_degradation: { type: string }
+      law_5_zero_authority: { type: string }
+      law_6_local_sovereignty: { type: string }
+      law_7_numbers_first: { type: string }
+      law_8_past_present_future: { type: string }
+
+# Cross-Symbiosis precedence (Law 2 > Law 5 > Law 7 > Law 4):
+# - Law 2 (OSINT) > Law 5 (Zero authority): if NB source_ids leak, episode HALTS even if Zero approved publish
+# - Law 5 (Zero authority) > Law 7 (Numeri): if Zero overrides cost ceiling, manual budget extension allowed via Telegram approval
+# - Law 7 (Numeri) > Law 4 (Graceful degradation): cost ceiling halts BEFORE degradation strategies engage

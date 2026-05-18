@@ -1,0 +1,71 @@
+# WR3 Agent I/O Contract — wr3-pre-render-gatekeeper
+# Schema: docs/wr3/contracts/_schema.yaml v1.0.0
+# Description: Cliche scan + cost circuit breaker + safety pre-check. INDEPENDENT reviewer (anti-self-approval).
+
+name: wr3-pre-render-gatekeeper
+contract_version: 1.0.0
+model: sonnet
+lifecycle_tier: core
+cost_class: text_planning
+
+cost:
+  ceiling_usd: 0.1
+  ceiling_unit: "$0.10 cash"
+  hard_halt_on_exceed: true
+
+allowed_tools:
+  - Read
+  - Write
+  - Glob
+  - Grep
+  - Bash
+
+inputs:
+  - name: shot_pack
+    kind: file
+    source: "apps/war-room/output/episode/<slug>/shot-pack.json"
+    required: true
+    schema_ref: "free-form"
+  - name: flow_credit_balance
+    kind: env_var
+    source: "FLOW_PRO_CREDIT_BALANCE_PATH (cached file)"
+    required: true
+    schema_ref: "free-form"
+  - name: cliche_library
+    kind: file
+    source: "~/.claude/skills/bali-zero-brand/wr3/shot-director/cliche-library.md"
+    required: true
+    schema_ref: "free-form"
+
+outputs:
+  - name: gate_verdict
+    kind: file
+    sink: "apps/war-room/output/episode/<slug>/gate-verdict.json"
+    schema_ref: "gate-verdict.schema.json"
+  - name: gate_passed_event
+    kind: channel_emit
+    sink: "wr3_episode_gate_passed"
+    schema_ref: "free-form"
+
+emits:
+  - wr3_episode_gate_passed
+
+consumes: []
+
+failure_modes:
+  - code: hard_fail
+    action: "Cost ceiling Flow Pro <200 cr remaining → HARD HALT + Telegram P0 (no Veo spend authorization)"
+    telegram_p0_on: true
+  - code: retry_with_cascade
+    action: "Single shot cliche flag → REROLL specific shot only (other shots pass through)"
+    telegram_p0_on: false
+
+law_compliance:
+  law_1_cli_only: "Sonnet via Claude Agent SDK"
+  law_2_osint_blindato: "No NB access"
+  law_3_event_driven: "Emits wr3_episode_gate_passed only on PASS"
+  law_4_graceful_degradation: "REROLL is degrade-loud (visible to orchestrator), not silent"
+  law_5_zero_authority: "Gate enforcement is non-negotiable, hard halt if budget unavailable"
+  law_6_local_sovereignty: "Local execution"
+  law_7_numbers_first: "Cost circuit breaker hard halt — trumps Law 4 graceful degradation per precedence"
+  law_8_past_present_future: "Loads cliche-library (250+ banned patterns from past WR3 critic FAILs)"

@@ -1,0 +1,45 @@
+# WR3 Channel Router — PG channel name → handler agent
+# Consumed by: scripts/wr3_supervisor.py route_event()
+# Schema: docs/wr3/contracts/_schema.yaml v1.0.0
+#
+# 6 PG channels declared in migration 182_wr3_eventbus_channels.sql.
+# Each channel maps to EXACTLY ONE consumer agent (no fanout at router level —
+# fanout happens INSIDE the design-architect agent via Claude Agent SDK
+# parallel query() calls).
+
+router_version: 1.0.0
+
+channels:
+  wr3_episode_brief_requested:
+    handler: wr3-design-architect
+    hot_path: true
+    description: "Orchestrator entry — new topic enters the room"
+
+  wr3_episode_pre_render_ready:
+    handler: wr3-design-architect # Fans out to script-editor + audio-asset-producer + shot-director in parallel
+    hot_path: true
+    description: "Brief sanitized, script frozen, parallel dispatch trigger"
+
+  wr3_episode_gate_passed:
+    handler: wr3-clip-renderer
+    hot_path: true
+    description: "pre_render_gatekeeper PASS, Veo spend authorized"
+
+  wr3_episode_assembly_ready:
+    handler: wr3-post-assembler
+    hot_path: true
+    description: "Clips + audio both ready, assembly begins"
+
+  wr3_episode_critic_verdict:
+    handler: wr3-design-architect # Orchestrator routes retry lanes OR proceeds to staged
+    hot_path: true
+    description: "Critic returns PASS/FAIL per lane"
+
+  wr3_episode_staged:
+    handler: wr3-design-architect # Triggers Drive staging + Telegram P0
+    hot_path: false # End of pipeline, no time pressure
+    description: "Drive staged, awaiting Antonello manual publish"
+
+# HOT_PATH_CHANNELS (for explicit ack policy):
+# - hot_path: true → telegram P0 on handler crash (do NOT ack, retry on reconnect)
+# - hot_path: false → log and ack (no P0)

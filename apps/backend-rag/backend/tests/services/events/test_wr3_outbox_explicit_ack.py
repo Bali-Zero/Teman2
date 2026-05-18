@@ -8,7 +8,7 @@ so that a handler exception leaves the outbox row unconsumed and the
 event replays on next listener reconnect.
 
 This test pins the contract at the supervisor layer (not the migration
-layer — migration 182 only adds the publish helper; the ack semantics
+layer — migration 183 only adds the publish helper; the ack semantics
 live in scripts/wr3_supervisor.py).
 
 Pattern mirrors test_outbox.py / test_outbox_callsite_integration.py with
@@ -44,6 +44,7 @@ def supervisor_module():
         return importlib.import_module("scripts.wr3_supervisor")
     except ModuleNotFoundError as exc:
         pytest.skip(f"scripts.wr3_supervisor not yet authored: {exc}")
+        return None
 
 
 # ── publish helper contract ────────────────────────────────────────────

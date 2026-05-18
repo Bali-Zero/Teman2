@@ -1,0 +1,62 @@
+# WR3 Agent I/O Contract — wr3-shot-director
+# Schema: docs/wr3/contracts/_schema.yaml v1.0.0
+# Description: Drafts shot-list + Veo 3.1 prompt pack. Does NOT approve own prompts.
+
+name: wr3-shot-director
+contract_version: 1.0.0
+model: opus
+lifecycle_tier: core
+cost_class: reasoning
+
+cost:
+  ceiling_usd: 0.5
+  ceiling_unit: "$0.50 cash"
+  hard_halt_on_exceed: false
+
+allowed_tools:
+  - Read
+  - Write
+  - Bash
+  - Glob
+  - Grep
+  - Skill
+
+inputs:
+  - name: brief
+    kind: file
+    source: "apps/war-room/output/episode/<slug>/brief.json"
+    required: true
+    schema_ref: "free-form"
+  - name: script
+    kind: file
+    source: "apps/war-room/output/episode/<slug>/script.json"
+    required: true
+    schema_ref: "free-form"
+
+outputs:
+  - name: shot_pack
+    kind: file
+    sink: "apps/war-room/output/episode/<slug>/shot-pack.json"
+    schema_ref: "shot-pack.schema.json"
+
+emits: []
+
+consumes: []
+
+failure_modes:
+  - code: retry_with_cascade
+    action: "wr3-pre-render-gatekeeper REROLL → re-prompt specific shots with strengthened anti-cliche"
+    telegram_p0_on: false
+  - code: hard_fail
+    action: "REROLL 3x same shot → Telegram P0 + b-roll-curator fallback dispatch"
+    telegram_p0_on: true
+
+law_compliance:
+  law_1_cli_only: "Opus via Claude Agent SDK"
+  law_2_osint_blindato: "Reads brief.json sanitized only"
+  law_3_event_driven: "Synchronous post-script"
+  law_4_graceful_degradation: "Cliche detection → REROLL, not silent submit"
+  law_5_zero_authority: "Does NOT approve own prompts (gatekeeper is independent reviewer)"
+  law_6_local_sovereignty: "Local execution, Veo prompts queued for clip-renderer (cloud touchpoint there)"
+  law_7_numbers_first: "max_budget_usd=0.50 (largest hallucination surface, justifies Opus)"
+  law_8_past_present_future: "Loads shot-director skill cortex + cliche-library"

@@ -1,0 +1,64 @@
+# WR3 Agent I/O Contract — wr3-reflexion-synth
+# Schema: docs/wr3/contracts/_schema.yaml v1.0.0
+# Description: Weekly Sun 02:30 WITA. Synthesizes ≤10 lessons/week + skill drafts. NOT orchestrator hot-path.
+
+name: wr3-reflexion-synth
+contract_version: 1.0.0
+model: sonnet
+lifecycle_tier: scheduled
+cost_class: text_planning
+
+cost:
+  ceiling_usd: 0.15
+  ceiling_unit: "$0.15 cash per weekly run"
+  hard_halt_on_exceed: false
+
+allowed_tools:
+  - Read
+  - Write
+  - Bash
+  - Glob
+
+inputs:
+  - name: recent_episodes
+    kind: file
+    source: "apps/war-room/output/episode/<last-7-days>/*"
+    required: true
+    schema_ref: "free-form"
+  - name: override_diffs
+    kind: file
+    source: "apps/war-room/output/queue/wr3-human-review-queue.json"
+    required: true
+    schema_ref: "free-form"
+
+outputs:
+  - name: agent_lessons
+    kind: file
+    sink: "~/.claude/skills/bali-zero-brand/wr3/<agent>/lessons.md"
+    schema_ref: "free-form"
+  - name: skill_drafts
+    kind: file
+    sink: "~/.claude/skills/bali-zero-brand/wr3/_proposed/<date>-<slug>.md"
+    schema_ref: "free-form"
+
+emits: []
+
+consumes: []
+
+failure_modes:
+  - code: degrade_loud
+    action: "Sonnet quota exhaust → cascade to Gemini 3.1 Pro free (1M context fits full corpus)"
+    telegram_p0_on: false
+  - code: hard_fail
+    action: "BOTH Sonnet + Gemini quota exhausted → defer 24h + Telegram alert"
+    telegram_p0_on: false
+
+law_compliance:
+  law_1_cli_only: "Sonnet/Gemini via Agent SDK / gemini CLI subprocess"
+  law_2_osint_blindato: "Reads episode artifacts only (no NB)"
+  law_3_event_driven: "Cron Sun 02:30 WITA — standalone, not orchestrator hot-path"
+  law_4_graceful_degradation: "Cascade Sonnet→Gemini→defer (never silent fail)"
+  law_5_zero_authority: "Skill drafts in _proposed/ require Antonello manual graduation"
+  law_6_local_sovereignty: "Local execution"
+  law_7_numbers_first: "Max 10 lessons/week/agent (skill growth bound)"
+  law_8_past_present_future: "Voyager curriculum — past episodes → future skills"
