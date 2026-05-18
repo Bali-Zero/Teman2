@@ -1,0 +1,69 @@
+# WR3 Agent I/O Contract — wr3-audio-asset-producer
+# Schema: docs/wr3/contracts/_schema.yaml v1.0.0
+# Description: Local Chatterbox VO + music bed + license attribution. ZERO cloud TTS (Cartesia BANNED Law 6).
+
+name: wr3-audio-asset-producer
+contract_version: 1.0.0
+model: sonnet
+lifecycle_tier: core
+cost_class: audio_gen
+
+cost:
+  ceiling_usd: 0.05
+  ceiling_unit: "$0.05 cash (Sonnet planning) + 0 (Chatterbox local)"
+  hard_halt_on_exceed: false
+
+allowed_tools:
+  - Read
+  - Write
+  - Bash
+  - Glob
+
+inputs:
+  - name: script
+    kind: file
+    source: "apps/war-room/output/episode/<slug>/script.json"
+    required: true
+    schema_ref: "free-form"
+  - name: pre_render_ready
+    kind: channel_payload
+    source: "wr3_episode_pre_render_ready"
+    required: true
+    schema_ref: "free-form"
+
+outputs:
+  - name: voiceover
+    kind: file
+    sink: "apps/war-room/output/episode/<slug>/audio/vo.wav"
+    schema_ref: "free-form"
+  - name: music_bed
+    kind: file
+    sink: "apps/war-room/output/episode/<slug>/audio/music.wav"
+    schema_ref: "free-form"
+  - name: license_report
+    kind: file
+    sink: "apps/war-room/output/episode/<slug>/license-report.json"
+    schema_ref: "free-form"
+
+emits: []
+
+consumes:
+  - wr3_episode_pre_render_ready
+
+failure_modes:
+  - code: degrade_loud
+    action: "Chatterbox crash → no-VO + music + subtitles only (manifest flags 'vo_degraded: true')"
+    telegram_p0_on: false
+  - code: hard_fail
+    action: "Music pool empty AND license attribution incomplete → Telegram P0"
+    telegram_p0_on: true
+
+law_compliance:
+  law_1_cli_only: "Chatterbox via Python subprocess (no SDK)"
+  law_2_osint_blindato: "No NB access"
+  law_3_event_driven: "Consumes pre_render_ready in parallel with shot-director"
+  law_4_graceful_degradation: "VO failure → degrade-loud (subtitles only, never silent)"
+  law_5_zero_authority: "Antonello per-episode exception path via Telegram P0 if Cartesia needed (NORMALLY BANNED)"
+  law_6_local_sovereignty: "Chatterbox Pro M4 local Emma seed=42 cfg_weight=0.30. Cartesia BANNED Law 6 sovranità."
+  law_7_numbers_first: "LUFS normalized to -14 ±1"
+  law_8_past_present_future: "Loads voice cortex (Emma seed pinned)"

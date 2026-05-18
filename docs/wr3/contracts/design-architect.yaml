@@ -1,0 +1,63 @@
+# WR3 Agent I/O Contract — wr3-design-architect
+# Schema: docs/wr3/contracts/_schema.yaml v1.0.0
+# Description: Orchestrator-only — fans out to 8 specialist subagents, enforces 3 contracts, runs critic gate.
+
+name: wr3-design-architect
+contract_version: 1.0.0
+model: opus
+lifecycle_tier: core
+cost_class: reasoning
+
+cost:
+  ceiling_usd: 0.5
+  ceiling_unit: "$0.50 cash"
+  hard_halt_on_exceed: true
+
+allowed_tools:
+  - Read
+  - Write
+  - Edit
+  - Glob
+  - Grep
+  - Bash
+  - Skill
+  - Agent
+  - WebFetch
+
+inputs:
+  - name: dispatch_payload
+    kind: channel_payload
+    source: "wr3_episode_brief_requested"
+    required: true
+    schema_ref: "topic+audience+mode"
+
+outputs:
+  - name: fanout_dispatch
+    kind: channel_emit
+    sink: "wr3_episode_pre_render_ready"
+    schema_ref: "free-form"
+  - name: supervisor_log
+    kind: file
+    sink: "~/.cell-observatory/wr3/design-architect.jsonl"
+    schema_ref: "free-form"
+
+emits:
+  - wr3_episode_pre_render_ready
+
+consumes:
+  - wr3_episode_brief_requested
+
+failure_modes:
+  - code: hard_fail
+    action: "Telegram P0 + episode HALTED + manifest 'orchestrator_aborted'"
+    telegram_p0_on: true
+
+law_compliance:
+  law_1_cli_only: "Dispatch via Claude Agent SDK query() (subprocess wrapper Law 1 compliant)"
+  law_2_osint_blindato: "Never reads NB directly — defers to wr3-brief-interpreter"
+  law_3_event_driven: "Emits via publish_wr3_event() helper (INSERT outbox + pg_notify same TX)"
+  law_4_graceful_degradation: "Orchestrator failure → HARD HALT (cannot degrade silently)"
+  law_5_zero_authority: "Lists 7 mandatory human-in-loop points before publish"
+  law_6_local_sovereignty: "All orchestration on local Pro/Mini (no cloud queue)"
+  law_7_numbers_first: "max_budget_usd=0.50 enforced via ClaudeAgentOptions"
+  law_8_past_present_future: "Loads brand cortex skill (palette/voice/taboo verbatim)"
