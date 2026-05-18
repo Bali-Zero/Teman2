@@ -182,7 +182,7 @@ def log_database_operation(
     if duration_ms is not None:
         extra["duration_ms"] = duration_ms
 
-    logger.debug("%s %s", operation, table, extra=extra)
+    logger.debug(f"{operation} {table}", extra=extra)
 
 
 @contextmanager
