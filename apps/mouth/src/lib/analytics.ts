@@ -453,14 +453,14 @@ export function trackPropertyChatQuestion(articleSlug: string): void {
   });
 }
 
-/** Track property WA CTA click (placeholder for property_chat_question) */
+/** Track property WhatsApp CTA click */
 export function trackPropertyWACTA(): void {
-  sendGA4Event("property_chat_question", {
+  sendGA4Event("property_whatsapp_cta", {
     event_category: "Property",
     cta_type: "whatsapp",
   });
-  trackEvent("property_chat_question", { cta_type: "whatsapp" });
-  void trackFunnelEvent("property_chat_question", {
+  trackEvent("property_whatsapp_cta", { cta_type: "whatsapp" });
+  void trackFunnelEvent("property_whatsapp_cta", {
     sessionId: getOrCreateSessionId(),
     payload: { cta_type: "whatsapp" },
   });
