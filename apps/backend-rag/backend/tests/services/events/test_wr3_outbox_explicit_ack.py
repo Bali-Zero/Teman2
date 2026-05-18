@@ -1,6 +1,6 @@
 """WR3 supervisor explicit-ack contract test.
 
-Migration 182 closes EventBus Phase 3 pending (cicatrix-scars.md): the
+Migration 183 closes EventBus Phase 3 pending (cicatrix-scars.md): the
 universal `replay_unconsumed()` in services/events/outbox.py auto-acks on
 dispatch return, which is unsafe for a video pipeline where ffmpeg can
 crash mid-render. WR3 supervisor must implement EXPLICIT per-handler ack

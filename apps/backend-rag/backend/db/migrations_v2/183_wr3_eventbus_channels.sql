@@ -1,4 +1,4 @@
--- 182_wr3_eventbus_channels.sql
+-- 183_wr3_eventbus_channels.sql
 --
 -- WR3 Video Production Room eventbus channels.
 --
