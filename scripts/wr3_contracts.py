@@ -151,6 +151,35 @@ def _parse_agent(name: str, data: dict[str, Any]) -> AgentContract:
     )
 
 
+def _validate_against_schema(data: dict, schema: dict, source: str) -> None:
+    """Validate per-agent YAML against _schema.yaml. Fail fast at load time.
+
+    Codex+Gemini+DeepSeek 3/3 panel review 2026-05-18 flagged: schema is
+    declarative-only — load_contracts() never invoked jsonschema.validate().
+    A typo in a contract YAML would have surfaced as KeyError at first
+    dispatch, not at supervisor startup.
+
+    jsonschema is optional dependency — if not installed, we skip
+    validation but log a warning so the gap is visible.
+    """
+    try:
+        import jsonschema  # type: ignore
+    except ImportError:
+        print(
+            f"[wr3-contracts] WARNING: jsonschema not installed — skipping schema validation of {source}. "
+            "Install with: pip install jsonschema",
+            file=__import__("sys").stderr,
+        )
+        return
+
+    try:
+        jsonschema.validate(instance=data, schema=schema)
+    except jsonschema.ValidationError as e:
+        raise ValueError(
+            f"Contract schema validation FAILED for {source}: {e.message} at path {list(e.absolute_path)}"
+        ) from e
+
+
 def load_contracts(contracts_dir: Path = CONTRACTS_DIR) -> WR3Contracts:
     if not contracts_dir.exists():
         raise FileNotFoundError(f"Contracts dir not found: {contracts_dir}")
@@ -162,14 +191,19 @@ def load_contracts(contracts_dir: Path = CONTRACTS_DIR) -> WR3Contracts:
     if not router_path.exists():
         raise FileNotFoundError(f"_router.yaml missing: {router_path}")
 
-    schema = yaml.safe_load(schema_path.read_text())
+    schema_doc = yaml.safe_load(schema_path.read_text())
     router = yaml.safe_load(router_path.read_text())
+
+    # Extract the actual JSON Schema body (everything after the $schema header)
+    json_schema = {k: v for k, v in schema_doc.items() if not k.startswith("$schema")}
 
     agents: dict[str, AgentContract] = {}
     for p in sorted(contracts_dir.glob("*.yaml")):
         if p.name.startswith("_"):
             continue
         data = yaml.safe_load(p.read_text())
+        # Fail-fast validation per contract (Codex+Gemini review fix 2026-05-18)
+        _validate_against_schema(data, json_schema, p.name)
         agents[data["name"]] = _parse_agent(p.stem, data)
 
     routes: dict[str, ChannelRoute] = {}
@@ -182,7 +216,7 @@ def load_contracts(contracts_dir: Path = CONTRACTS_DIR) -> WR3Contracts:
         )
 
     return WR3Contracts(
-        schema_version=schema.get("$id", "unknown"),
+        schema_version=schema_doc.get("$id", "unknown"),
         router_version=router.get("router_version", "unknown"),
         agents=agents,
         routes=routes,

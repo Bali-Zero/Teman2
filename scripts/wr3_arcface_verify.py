@@ -5,7 +5,8 @@ Verifies that every clip in clips/ contains the Zantara anchor face with
 cosine similarity ≥0.6 vs the anchor embedding. Single-clip ArcFace <0.55
 HARD-FAIL (Symbiosis Law 7 Numeri prima — strict numeric threshold).
 
-Dependencies (lazy import — stub returns simulated PASS if unavailable):
+Dependencies (HARD: missing insightface raises ArcFaceError — NO silent
+graceful degrade to mock, that would be a production identity-gate bypass):
   - insightface (pip install insightface onnxruntime)
   - opencv-python (cv2)
 
@@ -13,8 +14,10 @@ Reference anchor:
   ~/Desktop/nuzantara/research/marketing/zantara-visual-dataset/v1/ingredients/
   zantara-anchor-A007.embedding.npy  (pre-computed)
 
-Mock mode: if WR3_ARCFACE_MOCK=true OR insightface unavailable, returns
-deterministic PASS for smoke testing.
+Mock mode: if WR3_ARCFACE_MOCK=true returns deterministic PASS — INTENDED
+ONLY for smoke testing. Guarded by WR3_PRODUCTION env var: if PRODUCTION
+is true, the mock flag is IGNORED and real verification is forced. Codex
++ Gemini + DeepSeek 3/3 review 2026-05-18 caught the launchd leak risk.
 """
 from __future__ import annotations
 
@@ -30,7 +33,15 @@ ANCHOR_EMBEDDING_PATH = Path(os.environ.get(
 MIN_COSINE = float(os.environ.get("WR3_ARCFACE_MIN_COSINE", "0.6"))
 HARD_FAIL_COSINE = float(os.environ.get("WR3_ARCFACE_HARD_FAIL", "0.55"))
 SAMPLE_FRAMES_PER_CLIP = int(os.environ.get("WR3_ARCFACE_SAMPLES", "5"))
-MOCK_MODE = os.environ.get("WR3_ARCFACE_MOCK", "false").lower() == "true"
+
+# CRITICAL — Codex+Gemini+DeepSeek 3/3 panel review 2026-05-18:
+# WR3_ARCFACE_MOCK env var leaking into launchd/production would silently
+# bypass the identity gate. Guard: WR3_PRODUCTION=true forces real verify
+# regardless of WR3_ARCFACE_MOCK value. Treat env var ordering as
+# Production > Mock (production overrides mock requests).
+_RAW_MOCK = os.environ.get("WR3_ARCFACE_MOCK", "false").lower() == "true"
+_PRODUCTION = os.environ.get("WR3_PRODUCTION", "false").lower() == "true"
+MOCK_MODE = _RAW_MOCK and not _PRODUCTION
 
 
 class ArcFaceError(Exception):
@@ -136,9 +147,14 @@ def _real_verify(clips: list[Path]) -> IdentityReport:
 
     per_clip: list[ClipIdentity] = []
     overall_sum = 0.0
-    overall_min = 1.0
+    # Start overall_min at 0.0 NOT 1.0 — Codex review 2026-05-18 caught:
+    # if every clip is zero-frame/unreadable (face detection skipped), we
+    # would have hard_fail=False + overall_min=1.0 = silent PASS. With 0.0
+    # start, an episode with zero detected faces hard-fails the threshold.
+    overall_min = 0.0 if clips else 1.0
     hard_fail = False
     passed_count = 0
+    clips_with_zero_samples = 0
 
     for clip_path in clips:
         cap = cv2.VideoCapture(str(clip_path))
@@ -164,13 +180,22 @@ def _real_verify(clips: list[Path]) -> IdentityReport:
         cap.release()
 
         if not cosines:
+            # Zero samples = zero faces detected. Treat as identity hard-fail.
+            # Codex review: previously avg=0.0 + mn=0.0 left hard_fail=False
+            # because the for-loop never wrote a low value to overall_min.
             avg = 0.0
             mn = 0.0
+            clips_with_zero_samples += 1
+            hard_fail = True  # zero-detection IS a hard fail
         else:
             avg = sum(cosines) / len(cosines)
             mn = min(cosines)
 
-        clip_passed = avg >= MIN_COSINE and mn >= HARD_FAIL_COSINE
+        clip_passed = (
+            avg >= MIN_COSINE
+            and mn >= HARD_FAIL_COSINE
+            and len(cosines) > 0  # explicit: zero samples never passes
+        )
         if mn < HARD_FAIL_COSINE:
             hard_fail = True
 
@@ -203,12 +228,23 @@ def verify_clips_dir(clips_dir: Path, episode_dir: Path) -> IdentityReport:
     """Verify all clips and write identity-report.json.
 
     Raises IdentityHardFailError if any clip cosine_min < HARD_FAIL_COSINE.
+
+    SECURITY: WR3_PRODUCTION=true forces real verify even if WR3_ARCFACE_MOCK
+    is set — Codex+Gemini+DeepSeek panel review 2026-05-18 caught launchd
+    env-var leak risk. MOCK_MODE is computed at module load with this guard.
     """
     clips = sorted(clips_dir.glob("*.mp4"))
     if not clips:
         raise ArcFaceError(f"No clips found in {clips_dir}")
 
     if MOCK_MODE:
+        # Audit log line — operator should see this in launchd logs and
+        # immediately escalate if MOCK_MODE fires in production
+        print(
+            "[wr3-arcface] WARNING: MOCK_MODE active — identity gate bypassed. "
+            "Set WR3_PRODUCTION=true to disable.",
+            flush=True,
+        )
         report = _mock_verify(clips)
     else:
         try:

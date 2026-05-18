@@ -127,7 +127,10 @@ async def assemble_master(
     if subtitles_ass and subtitles_ass.exists():
         filter_parts.append(f"[0:v]ass={subtitles_ass.as_posix()}[v]")
     else:
-        filter_parts.append("[0:v]copy[v]")
+        # `copy` is a codec, not a filter — `null` is the no-op filter.
+        # Codex review 2026-05-18 caught this; verified empirically against
+        # ffmpeg 7.0 filter index. Filed under cicatrix WR3 review pass.
+        filter_parts.append("[0:v]null[v]")
 
     # Audio mix
     if vo_path and vo_path.exists() and music_path and music_path.exists():
@@ -147,6 +150,14 @@ async def assemble_master(
         *map_args,
         "-c:v", "libx264", "-preset", "medium", "-crf", "20",
         "-c:a", "aac", "-b:a", "192k",
+        # `-bitexact` strips encoder string + creation timestamps from MP4
+        # mvhd atom + ISMV markers. Without this, ffmpeg embeds wallclock
+        # `creation_time` per stream → sha256(master.mp4) differs on every
+        # re-render even with identical inputs. Required for Law 8 manifest
+        # dedup. Codex+Gemini+DeepSeek 3/3 review 2026-05-18.
+        "-fflags", "+bitexact",
+        "-flags:v", "+bitexact",
+        "-flags:a", "+bitexact",
         "-movflags", "+faststart",
         str(master_path),
     ]

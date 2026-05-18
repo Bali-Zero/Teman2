@@ -100,13 +100,41 @@ async def _dispatch_claude_sdk(
     started = asyncio.get_event_loop().time()
     output_parts: list[str] = []
 
+    # Try to import SDK-specific budget exception type. Codex+Gemini+DeepSeek
+    # 3/3 review 2026-05-18 flagged string-match heuristic as brittle Law 7
+    # bypass. Order of preference:
+    #   1. SDK-exported BudgetExceededError class (exact instanceof match)
+    #   2. SDK error_type attribute (when SDK upgrades schema)
+    #   3. String heuristic (legacy fallback)
+    sdk_budget_class = None
+    try:  # pragma: no cover — depends on SDK version
+        from claude_agent_sdk import BudgetExceededError as _SdkBudgetExceeded  # type: ignore
+        sdk_budget_class = _SdkBudgetExceeded
+    except ImportError:
+        pass
+
     try:
         async for message in query(prompt=prompt, options=options):
             if hasattr(message, "result"):
                 output_parts.append(str(message.result))
     except Exception as e:  # pragma: no cover — SDK-specific exception type varies
+        # Layer 1: instance check (preferred when SDK exports the class)
+        if sdk_budget_class is not None and isinstance(e, sdk_budget_class):
+            raise BudgetExceededError(f"{contract.name}: {e}") from e
+        # Layer 2: SDK error_type attribute (if SDK ever standardizes one)
+        error_type = getattr(e, "error_type", None) or getattr(e, "code", None)
+        if error_type and str(error_type).lower() in {
+            "budget_exceeded", "max_budget_exceeded", "spend_limit_reached",
+        }:
+            raise BudgetExceededError(f"{contract.name}: {e}") from e
+        # Layer 3: string heuristic ONLY as a final fallback. Expanded to
+        # cover known phrasings; still imperfect but documented.
         text = str(e).lower()
-        if "budget" in text or "ceiling" in text or "max_budget" in text:
+        budget_signals = (
+            "budget", "max_budget", "ceiling", "spend_limit",
+            "spending limit", "out of credit", "insufficient funds",
+        )
+        if any(sig in text for sig in budget_signals):
             raise BudgetExceededError(f"{contract.name}: {e}") from e
         raise
 
