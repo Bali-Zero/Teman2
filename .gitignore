@@ -413,7 +413,17 @@ apps/backend-rag/backend/app/routers/*.before-claude
 harvested_zones/
 main.py
 !apps/cell/cell/main.py
+!vendor/evoskill/src/cli/main.py
 master_building_codes_complete.json
+
+# EvoSkill runtime outputs (Phase 1 evolver loop generates these)
+agent-library/.evoskill/frontier/
+agent-library/.evoskill/reports/
+agent-library/.evoskill/logs/
+agent-library/.evoskill/skills/
+agent-library/.evoskill/prompts/
+agent-library/.evoskill/state.json
+
 service_roi_calculator.py
 service_zone_finder.py
 

@@ -1,0 +1,102 @@
+# Agent Library Evolver — EvoSkill project configuration.
+#
+# Schema MUST match upstream `src/cli/config.py` dataclasses:
+# [harness] [evolution] [dataset] [scorer] (NOT v5-spec-draft
+# [provider] [loop] [budget] — those would be silently ignored by
+# tomllib + dataclass(**raw.get('section', {})) construction).
+#
+# IMPORTANT: `harness.model` MUST be set explicitly. The upstream
+# `HarnessName = Literal["claude", "opencode", "codex", "goose",
+# "openhands"]` does NOT include "deepseek" (Phase 0 added the
+# dispatcher and `SDKType` Literal but intentionally left
+# `model_aliases.HarnessName` upstream-clean to keep diff small).
+# If `model` is omitted, `normalize_harness_model("deepseek", None)`
+# falls into `default_model_for_harness("deepseek")` which raises
+# `KeyError` because `_DEFAULT_MODELS` has no `"deepseek"` entry.
+# Always pass `model = "deepseek-v4-pro"` here.
+
+execution = "local"
+
+[harness]
+# Agent runtime — Phase 0 added "deepseek" to SDKType but NOT to
+# upstream HarnessName Literal. Runtime tolerates this because Python
+# doesn't enforce Literal at runtime; type-checkers would warn but we
+# don't run mypy on vendor/evoskill.
+name = "deepseek"
+
+# Model identifier passed to DeepSeek V4 Pro API. Sanctioned by
+# CLAUDE.md Multi-LLM cascade (deepseek-v4-pro is current, NOT
+# deepseek-reasoner / deepseek-chat which were deprecated 2026-07-24).
+model = "deepseek-v4-pro"
+
+# Read-scope directory the harness can pull context from.
+data_dirs = [
+    "/Users/nuzantara/Desktop/nuzantara-wt-evoskill-phase1/agent-library",
+]
+
+# Max time per agent attempt (seconds). Phase 1 first-run is small,
+# 1200s is upstream default and safe.
+timeout_seconds = 1200
+
+# Retry budget per agent attempt before EvoSkill gives up on the
+# example. DeepSeek executor (Task #23) implements its own
+# 30s/60s/120s retry pattern internally; this is the outer ring.
+max_retries = 3
+
+[evolution]
+# Phase 1 evolves skill prompts (in agent-library/), NOT the base
+# task prompt.
+mode = "skill_only"
+
+# Max improvement iterations. Resume v5 locked "max_iterations=10"
+# but upstream dataclass field is just `iterations`.
+iterations = 10
+
+# How many top programs to keep in the frontier. Resume v5 locked
+# "frontier_k=3" but upstream dataclass field is `frontier_size`.
+frontier_size = 3
+
+# Parallel eval workers. Phase 1 first-run is small — keep low to
+# avoid quota-storm on DeepSeek API.
+concurrency = 2
+
+# Early-stop signal: stop after N iterations with no improvement.
+no_improvement_limit = 3
+
+# How many failing examples to sample when proposing the next
+# iteration's improvements. Default upstream.
+failure_samples = 3
+
+[dataset]
+# Phase 1 seed dataset — 5 synthetic scar→pattern mappings derived
+# from agent-library/02-patterns.md. Sufficient for smoke; produces
+# zero or near-zero proposals on first --dry-run because evidence
+# linter (Task #25) + entailment check rejects unsupported claims.
+path = "/Users/nuzantara/Desktop/nuzantara-wt-evoskill-phase1/agent-library/.evoskill/data/seed-patterns.csv"
+
+# CSV column names (must match seed-patterns.csv header).
+question_column = "question"
+ground_truth_column = "ground_truth"
+category_column = "category"
+
+# 60/40 train/val split. With only 5 examples, this gives 3 train +
+# 2 val per category — minimum viable for evoskill loop.
+train_ratio = 0.6
+val_ratio = 0.4
+
+[scorer]
+# LLM judge — DeepSeek V4 Pro compares predicted pattern name to
+# ground truth (case-insensitive substring match would suffice but
+# `llm` type lets the judge handle near-matches like "Pattern 1"
+# vs "Pattern 1: Single-flight..." gracefully).
+type = "llm"
+
+# Judge model + provider — same as harness for consistency. Routed
+# via `cli/shared.py:call_llm` after Task #22 patch adds the
+# `deepseek` branch.
+model = "deepseek-v4-pro"
+provider = "deepseek"
+
+# Brief judge rubric. Embedded directly in the scorer prompt; keep
+# short to minimize judge token cost.
+rubric = "Compare predicted pattern name to ground_truth. Output 1.0 if they reference the same Pattern N from agent-library/02-patterns.md (verbatim or near-verbatim, ignoring trailing description). Output 0.0 otherwise. No partial credit."
