@@ -32,7 +32,6 @@ import {
 } from "lucide-react";
 import {
   navigation,
-  portalNavigation,
   NavSection,
   NavItem,
 } from "@/types/navigation";
