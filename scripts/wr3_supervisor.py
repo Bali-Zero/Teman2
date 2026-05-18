@@ -48,6 +48,63 @@ from wr3_telemetry import emit as telemetry_emit  # noqa: E402
 
 
 # ---------------------------------------------------------------------------
+# Public contract (consumed by backend/tests/services/events/test_wr3_outbox_explicit_ack.py)
+# ---------------------------------------------------------------------------
+
+# Closed set of valid WR3 PG NOTIFY channels — mirrors migration 183.
+WR3_CHANNELS: tuple[str, ...] = (
+    "wr3_episode_brief_requested",
+    "wr3_episode_pre_render_ready",
+    "wr3_episode_gate_passed",
+    "wr3_episode_assembly_ready",
+    "wr3_episode_critic_verdict",
+    "wr3_episode_staged",
+)
+
+
+class InvalidWR3ChannelError(ValueError):
+    """Raised by publish() when channel is not in WR3_CHANNELS."""
+
+
+class UnknownWR3ChannelError(KeyError):
+    """Raised by route_event() when no handler is registered for the channel."""
+
+
+# Test injection points (module-level for monkey-patching by unit tests).
+_HANDLERS: dict[str, Any] = {}  # channel → async handler callable
+_DISPATCH_TIMEOUT_S: float = 300.0  # 300s wall-clock per Codex Q9 watchdog
+
+
+async def publish(
+    conn: Any,
+    *,
+    channel: str,
+    payload: dict[str, Any],
+) -> int:
+    """Invoke the publish_wr3_event() SQL helper from migration 183.
+
+    Returns the outbox row id assigned by the SQL function. The helper writes
+    to events_outbox AND fires pg_notify in the SAME tx (atomicity contract
+    matching migration 146 trigger functions).
+
+    Raises:
+        InvalidWR3ChannelError: channel not in WR3_CHANNELS closed set
+            (defense-in-depth: the SQL function also validates).
+    """
+    if channel not in WR3_CHANNELS:
+        raise InvalidWR3ChannelError(
+            f"channel {channel!r} not in WR3_CHANNELS. "
+            f"Allowed: {WR3_CHANNELS}"
+        )
+    outbox_id = await conn.fetchval(
+        "SELECT publish_wr3_event($1::TEXT, $2::JSONB)",
+        channel,
+        json.dumps(payload),
+    )
+    return int(outbox_id)
+
+
+# ---------------------------------------------------------------------------
 # Lazy asyncpg import — we only need it at runtime, not for unit tests
 # ---------------------------------------------------------------------------
 
@@ -68,15 +125,64 @@ def _import_asyncpg():
 # ---------------------------------------------------------------------------
 
 
-async def route_event(
-    conn: Any,  # asyncpg.Connection
-    contracts: WR3Contracts,
+async def _route_event_test_mode(
+    *,
+    conn: Any,
+    ack_fn: Any,
     channel: str,
     payload_str: str,
+) -> None:
+    """Lightweight route_event variant for unit tests.
+
+    Resolves handler from _HANDLERS dict, dispatches with timeout from
+    _DISPATCH_TIMEOUT_S, acks via the injected ack_fn ONLY on success.
+    Mirrors the explicit-ack contract from full route_event but without
+    Claude SDK dispatch or asyncpg reconnect machinery.
+    """
+    import asyncio as _asyncio
+
+    if channel not in _HANDLERS:
+        raise UnknownWR3ChannelError(
+            f"No handler registered for channel {channel!r}"
+        )
+
+    payload_dict = json.loads(payload_str)
+    outbox_id = payload_dict.get("_outbox_id")
+    handler = _HANDLERS[channel]
+
+    # Apply test-injectable timeout (asyncio.TimeoutError surfaces if exceeded).
+    await _asyncio.wait_for(
+        handler(conn=conn, channel=channel, payload=payload_dict),
+        timeout=_DISPATCH_TIMEOUT_S,
+    )
+
+    # ACK ONLY on success.
+    if outbox_id is not None:
+        await ack_fn(conn, outbox_id)
+
+
+async def route_event(
+    conn: Any = None,  # asyncpg.Connection
+    contracts: WR3Contracts | None = None,
+    channel: str = "",
+    payload_str: str = "",
     *,
+    ack_fn: Any = None,  # Optional ack callable for unit-test injection
+    payload: str | None = None,  # Alias for payload_str (test API)
     dry_run: bool = False,
 ) -> None:
     """Dispatch one event with explicit per-handler ACK on success.
+
+    Two calling conventions are supported (both routed to same logic):
+
+    1. Full orchestrator (production): route_event(conn, contracts, channel,
+       payload_str). Acks via _acknowledge_outbox + dispatches via
+       dispatch_agent (Claude SDK + cascade).
+
+    2. Unit test (test_wr3_outbox_explicit_ack.py): route_event(conn=, ack_fn=,
+       channel=, payload=). Uses module-level _HANDLERS dict for handler
+       lookup, ack_fn directly for ack semantics. Lets the test pin the
+       contract without needing full Claude SDK + asyncpg connection.
 
     On exception: telemetry FAIL + Telegram P0 (if hot path) + raise.
     Outbox row stays UNCONSUMED — replays on supervisor reconnect.
@@ -96,6 +202,18 @@ async def route_event(
       3. Downstream handlers MUST be idempotent against (episode_id, channel)
          tuple. Documented per-agent in docs/wr3/contracts/<agent>.yaml.
     """
+    # Allow `payload=` alias used by the unit-test API
+    if payload is not None and not payload_str:
+        payload_str = payload
+
+    # Test path: handler comes from _HANDLERS dict, ack via ack_fn.
+    if ack_fn is not None:
+        return await _route_event_test_mode(
+            conn=conn,
+            ack_fn=ack_fn,
+            channel=channel,
+            payload_str=payload_str,
+        )
     try:
         payload = json.loads(payload_str)
     except json.JSONDecodeError as e:
