@@ -167,6 +167,67 @@ Each dir was then recreated with a single `__init__.py` stub that raises
 import ...` calls fail LOUDLY at import time rather than silently with
 `ModuleNotFoundError` that downstream code could `try/except` swallow.
 
+### 7. `src/harness/deepseek/` — physical addition (panel 2026-05-18)
+
+NEW directory. The 2026-05-18 3-LLM panel review (Gemini + Codex)
+caught a CRITICAL convergent finding: `evolver.toml` selects
+`provider=deepseek` but upstream has NO DeepSeek dispatcher in any of:
+
+- `cli/shared.py:call_llm` (only handles anthropic/openai/openrouter/google)
+- `harness/agent.py:_execute_query` AND `run()` (only handles
+  claude/opencode/openhands/codex/goose)
+- `harness/utils.py:build_options` (same upstream set as agent.py)
+- `harness/__init__.py` (top-level imports)
+- `harness/sdk_config.py` (`_VALID_SDKS` tuple)
+- `registry/sdk_utils.py:options_to_config` (metadata round-trip)
+
+First Phase 1 `set_sdk("deepseek")` call would hit
+`ValueError("Unknown SDK: 'deepseek'")` or silently fall back to claude
+metadata (then hit the stub raise on reload).
+
+**Files added in this directory:**
+
+- `src/harness/deepseek/__init__.py` — exports `build_deepseek_options`,
+  `execute_query`, `parse_response` for symmetry with goose/openhands.
+- `src/harness/deepseek/options.py` — `build_deepseek_options(...)`
+  returns a Phase-0-stub dict with `{"sdk": "deepseek", "model":
+"deepseek-v4-pro", "reasoning_effort": "high", "phase_0_stub": True}`.
+- `src/harness/deepseek/executor.py` — `execute_query()` and
+  `parse_response()` BOTH raise `NotImplementedError` with a clear
+  "wire in Phase 1" message. The Phase 1 implementation will POST to
+  `https://api.deepseek.com/v1/chat/completions` with usage-based
+  `BUDGET_USD` enforcement.
+
+**Files updated to wire the new harness:**
+
+- `src/harness/__init__.py` — added top-level `from .deepseek.options
+import build_deepseek_options` + added to `__all__`. Added
+  `is_deepseek_sdk` import + export.
+- `src/harness/sdk_config.py` — added `"deepseek"` to `SDKType`
+  Literal + `_VALID_SDKS` tuple + new `is_deepseek_sdk()` helper.
+- `src/harness/agent.py` — added `sdk == "deepseek"` branch in BOTH
+  `_execute_query()` (line ~195) AND `run()` (line ~277). Same pattern
+  as goose: lazy import + delegate to deepseek executor. This was
+  MISSING from the v5 spec — `run()` had a second dispatcher mirroring
+  `_execute_query` that the spec did not enumerate (DeepSeek panel
+  finding 2026-05-18 HIGH).
+- `src/harness/utils.py:build_options` — added `sdk == "deepseek"`
+  branch lazy-importing `build_deepseek_options`. Also patched
+  `claude` and `codex` branches to raise `ImportError` instead of
+  importing the now-deleted modules (third dispatcher missed by v5
+  spec — caught by panel review).
+- `src/registry/sdk_utils.py:options_to_config` — added `elif sdk ==
+"deepseek":` branch that stores `{"sdk": "deepseek", "model": ...,
+"reasoning_effort": ..., "project_root": ...}` to `base_metadata`.
+  Without this, the metadata would fall through to the bare `claude`
+  default at the bottom of the function, hitting the stub raise on
+  next reload (Gemini panel finding 2026-05-18 CRITICAL).
+
+`registry/sdk_utils.py:config_to_options` (the reverse function) does
+NOT need a deepseek branch — it forwards `model` directly to
+`build_options` which now routes via the new `sdk == "deepseek"`
+branch above. Verified by inspection.
+
 ## Verification post-edit (CI gates)
 
 These checks MUST pass before any commit on this fork:
