@@ -257,11 +257,7 @@ export default function WorkspaceLayout({ children }: WorkspaceLayoutProps) {
           className="min-h-screen"
           style={{ background: "var(--bz-base, #0f1419)" }}
         >
-feat/wr3-room-genesis
-          {/* Desktop Sidebar */}
-
           {/* Desktop Sidebar — labelled landmark so AT can list it */}
-main
           <div className="hidden md:block">
             <AppSidebar
               user={user}

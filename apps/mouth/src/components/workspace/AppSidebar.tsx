@@ -32,10 +32,7 @@ import {
 } from "lucide-react";
 import {
   navigation,
-feat/wr3-room-genesis
-
   portalNavigation,
-main
   NavSection,
   NavItem,
 } from "@/types/navigation";
