@@ -241,6 +241,36 @@ NOT need a deepseek branch — it forwards `model` directly to
 `build_options` which now routes via the new `sdk == "deepseek"`
 branch above. Verified by inspection.
 
+### 8. `src/cli/main.py` — restored verbatim (Phase 1 regression-fix 2026-05-18)
+
+Phase 0 vendoring (commit `5ec833b6a`) silently lost
+`src/cli/main.py`. The file is the Click entry-point for the
+`evoskill` console_script declared in `pyproject.toml`:
+
+```toml
+[project.scripts]
+evoskill = "src.cli.main:cli"
+```
+
+Without it, `evoskill --help` raises
+`ModuleNotFoundError: No module named 'src.cli.main'` on a fresh
+`uv sync`. Caught during Phase 1 Task #21 evolver.toml smoke
+(2026-05-18) — Phase 0 panel rounds R3-R4 did not exercise the
+console-script path, only the internal API.
+
+**Fix**: re-added `src/cli/main.py` verbatim from upstream
+`sentient-agi/EvoSkill@v1.1.0` source. File contains only a
+LazyGroup Click definition over the 8 command modules in
+`src/cli/commands/` (init/run/eval/skills/diff/logs/reset/remote).
+Zero Anthropic / claude-agent-sdk references — restoring verbatim
+is safe and clean.
+
+The post-edit AST scan still passes (this file imports only
+`importlib` and `click`).
+
+Future upstream refresh policy: include `src/cli/main.py` in any
+re-vendor — it is not in any prior diff list.
+
 ## Verification post-edit (CI gates)
 
 These checks MUST pass before any commit on this fork:

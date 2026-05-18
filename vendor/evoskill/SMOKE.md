@@ -146,6 +146,63 @@ Expected: `deepseek stub raises NotImplementedError OK`. Round-2 panel
 was load-bearing for Phase 1 but the SDK dispatcher was missing in 5
 upstream surfaces. This gate verifies all 5 are now wired.
 
+## Gate 7 (Phase 1 Task #21) — load real agent-library evolver config
+
+Verifies the Phase 1 `agent-library/.evoskill/config.toml` is
+schema-correct (matches upstream `load_config()` dataclass shape), the
+seed dataset CSV is parsable, `task.md` is split into description +
+constraints, and the `cli/main.py` Click entry-point loads.
+
+```bash
+cd vendor/evoskill && uv run evoskill --help | head -3
+```
+
+Expected: 3 lines starting with `Usage: evoskill [OPTIONS] COMMAND...`.
+This sub-gate exercises the upstream `src/cli/main.py` re-add (UPSTREAM.md
+§8 — Phase 0 dropped it; Phase 1 restored verbatim).
+
+```bash
+cd vendor/evoskill && uv run python3 -c "
+import sys
+sys.path.insert(0, '.')
+from pathlib import Path
+from src.cli.config import load_config
+import pandas as pd
+
+cfg_path = Path('/Users/nuzantara/Desktop/nuzantara-wt-evoskill-phase1/agent-library/.evoskill/config.toml')
+cfg = load_config(config_path=cfg_path)
+
+assert cfg.harness.name == 'deepseek', f'harness.name={cfg.harness.name}'
+assert cfg.harness.model == 'deepseek-v4-pro', f'harness.model={cfg.harness.model}'
+assert cfg.evolution.mode == 'skill_only'
+assert cfg.evolution.iterations == 10
+assert cfg.evolution.frontier_size == 3
+assert cfg.dataset.question_column == 'question'
+assert cfg.dataset.ground_truth_column == 'ground_truth'
+assert cfg.scorer.type == 'llm'
+assert cfg.scorer.provider == 'deepseek'
+assert cfg.execution == 'local'
+
+df = pd.read_csv(cfg.dataset_path)
+assert len(df) == 5, f'expected 5 seed rows, got {len(df)}'
+assert list(df.columns) == ['question', 'ground_truth', 'category']
+
+assert 'Agent Library Evolver' in cfg.task_description
+assert 'must be one of the 9 pattern names' in cfg.task_constraints.lower()
+
+print('Gate 7 PASS — Phase 1 evolver.toml schema + dataset + task.md valid')
+"
+```
+
+Expected: `Gate 7 PASS — Phase 1 evolver.toml schema + dataset + task.md valid`.
+
+Note: `harness.model = "deepseek-v4-pro"` MUST be set explicitly in the
+TOML. Upstream `model_aliases.HarnessName` Literal does NOT include
+`"deepseek"`; if `model` is omitted, `normalize_harness_model("deepseek",
+None)` falls through to `default_model_for_harness("deepseek")` which
+raises `KeyError` because `_DEFAULT_MODELS` lacks the key. Documented
+inline in `agent-library/.evoskill/config.toml` header.
+
 ## Known limitations (intentional — Phase 1 scope)
 
 | Limitation                                                                                 | Why deferred                                                                                                                                                                                                                                       | Phase that addresses it |
