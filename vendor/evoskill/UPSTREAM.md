@@ -304,9 +304,13 @@ and update the "Provenance" table with the new SHA + date.
 
 ## Optional dependencies left untouched
 
-- `opencode-ai`, `openhands-sdk`, `openhands-tools`, `goose` — not banned;
-  Bali Zero may opt-in later. Their executors remain functional in
-  upstream form.
+- `opencode-ai`, `openhands-sdk`, `goose` — not banned; Bali Zero may
+  opt-in later. Their executors remain functional in upstream form.
+- `openhands-tools` — **REMOVED 2026-05-18 panel round 3 Codex BLOCKING
+  #1**. Pulled `browser-use → anthropic` transitively, violating
+  CLAUDE.md hard rule. The `src/harness/openhands/` glue is kept, but
+  invoking it will raise `ImportError` at runtime because
+  `openhands.tools` import fails. See §1 above.
 - `eval` extra (dspy, datasets, torch) — out of scope for v1, never installed.
 - `notebooks` extra (jupyter stack) — out of scope, never installed.
 
