@@ -71,7 +71,7 @@ def log_endpoint_call(
     if user_email:
         extra["user_email"] = user_email
 
-    logger.info("%s %s", method, endpoint, extra=extra)
+    logger.info(f"{method} {endpoint}", extra=extra)
 
 
 def log_success(
