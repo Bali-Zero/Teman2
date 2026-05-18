@@ -37,16 +37,8 @@ export const navigation: NavSection[] = [
   {
     // Block 1: Core
     items: [
-      { title: "Inbox", href: "/inbox", icon: "Inbox" },
       { title: "Dashboard", href: "/dashboard", icon: "Home" },
-      { title: "Zantara Terminal", href: "/terminal", icon: "Terminal" },
       { title: "Intelligence Center", href: "/intelligence", icon: "Activity" },
-      {
-        title: "Zantara Public",
-        href: "https://zantara.balizero.com",
-        icon: "MessageSquare",
-        external: true,
-      },
     ],
   },
   {
@@ -55,8 +47,13 @@ export const navigation: NavSection[] = [
     items: [
       { title: "Clients", href: "/clients", icon: "Users" },
       { title: "Process", href: "/process", icon: "FolderKanban" },
-      { title: "Partners", href: "/partners", icon: "Handshake" },
       { title: "HR / Payroll", href: "/hr", icon: "Banknote" },
+    ],
+  },
+  {
+    title: "Kita-Space",
+    // Block 3: Collaborative
+    items: [
       { title: "LKPM", href: "/lkpm", icon: "ClipboardCheck" },
       {
         title: "Documents",
@@ -64,12 +61,7 @@ export const navigation: NavSection[] = [
         icon: "FolderOpen",
         external: true,
       },
-    ],
-  },
-  {
-    title: "Kita-Space",
-    // Block 3: Collaborative
-    items: [
+      { title: "Partners", href: "/partners", icon: "Handshake" },
       {
         title: "Email",
         href: "https://mail.balizero.com",
@@ -128,13 +120,11 @@ export const portalNavigation: NavSection[] = [
 
 // Route titles for breadcrumbs and page titles
 export const routeTitles: Record<string, string> = {
-  "/inbox": "Inbox",
   "/dashboard": "Dashboard",
   "/intelligence": "Intelligence Center",
   "/intelligence/visa-oracle": "Visa Oracle",
   "/intelligence/news-room": "News Room",
   "/intelligence/system-pulse": "System Pulse",
-  "/terminal": "Zantara Terminal",
   "/chat": "Zantara AI",
   "/whatsapp": "WhatsApp",
   "/clients": "Clients",

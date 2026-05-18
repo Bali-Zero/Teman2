@@ -256,20 +256,20 @@
   --accent: var(--kbli-accent);
   --accent-hover: var(--kbli-accent-hover);
 
-  /* Warm Depth tokens (Legacy) */
-  --bz-base: #1d273b;
-  --bz-elevated: #243047;
-  --bz-surface: #2a3655;
-  --bz-card: #2a3655;
-  --bz-card-hover: #2f3d5e;
+  /* GARUDA — Proposal 3 (2026-05-18) */
+  --bz-base: #0f1419;
+  --bz-elevated: #1b222b;
+  --bz-surface: #28313d;
+  --bz-card: #2e3847;
+  --bz-card-hover: #35414f;
   --bz-accent: #d4845a;
   --bz-accent-hover: #bf7350;
   --bz-accent-warm: #c9a96e;
   --bz-accent-cool: #5e7fb5;
 
   /* God Tier Anthracite Tokens */
-  --anthracite-base: #1d273b;
-  --anthracite-elevated: #243047;
+  --anthracite-base: #0f1419;
+  --anthracite-elevated: #1b222b;
 
   /* Cinematic Border Tokens */
   --glass-highlight: rgba(255, 255, 255, 0.12);
@@ -290,17 +290,18 @@
   --neon-cyan: #06b6d4;
   --bz-copper: #d4845a;
 
-  /* Sidebar */
-  --sidebar-active-bg: rgba(212, 132, 90, 0.08);
-  --sidebar-active-border: rgba(212, 132, 90, 0.3);
+  /* Sidebar — GARUDA pill active */
+  --sidebar-active-bg: #d4845a;
+  --sidebar-active-border: transparent;
+  --sidebar-pill-radius: 12px;
 
   --bz-text-1: #edeae4;
-  --bz-text-2: #8c8884;
-  --bz-text-3: #575350;
-  --bz-border: rgba(255, 255, 255, 0.055);
+  --bz-text-2: #8a8f9a;
+  --bz-text-3: #545c6a;
+  --bz-border: rgba(255, 255, 255, 0.05);
   --bz-border-hover: rgba(255, 255, 255, 0.1);
   --bz-border-accent: rgba(201, 169, 110, 0.18);
-  --bz-green: #4db87a;
+  --bz-green: #3ecf8e;
   --bz-red: #d95f5a;
   --bz-amber: #d4923a;
   --success: #4db87a;
@@ -371,32 +372,52 @@ body {
   }
 }
 
-/* Subtle ambient gradients — God Tier Anthracite */
+/* Subtle ambient gradients — GARUDA */
 body::before {
   content: "";
   position: fixed;
   inset: -25vh -25vw;
   background:
     radial-gradient(
-      circle at 15% 30%,
-      rgba(59, 130, 246, 0.04) 0%,
-      transparent 40%
+      ellipse 60% 40% at 50% 0%,
+      rgba(212, 132, 90, 0.035) 0%,
+      transparent 55%
     ),
-    /* Blue */
     radial-gradient(
-        circle at 85% 70%,
-        rgba(139, 92, 246, 0.03) 0%,
-        transparent 50%
-      ),
-    /* Purple */
+      circle at 10% 60%,
+      rgba(30, 58, 90, 0.06) 0%,
+      transparent 45%
+    ),
     radial-gradient(
-        circle at 50% 10%,
-        rgba(212, 132, 90, 0.02) 0%,
-        transparent 40%
-      ); /* Copper top */
+      circle at 90% 40%,
+      rgba(15, 35, 60, 0.05) 0%,
+      transparent 40%
+    );
   pointer-events: none;
   z-index: 0;
   mix-blend-mode: color-dodge;
+}
+
+/* GARUDA KPI animations */
+@keyframes kpi-impact {
+  0% {
+    transform: scale(1);
+  }
+  40% {
+    transform: scale(1.14);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+.kpi-impact {
+  animation: kpi-impact 320ms cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+.garuda-kpi-bar {
+  height: 3px;
+  background: var(--bz-accent);
+  border-radius: 0 0 2px 2px;
+  transition: width 600ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Noise texture overlay */
@@ -575,7 +596,11 @@ main,
   }
 
   .glass-panel-deep {
-    @apply bg-black/40 backdrop-blur-xl border border-white/5 shadow-[0_8px_32px_rgba(0,0,0,0.4)];
+    background: var(--bz-elevated, #1b222b);
+    backdrop-filter: blur(20px) saturate(1.2);
+    -webkit-backdrop-filter: blur(20px) saturate(1.2);
+    border-right: 1px solid var(--bz-border, rgba(255, 255, 255, 0.05));
+    box-shadow: 4px 0 24px rgba(0, 0, 0, 0.35);
   }
 
   .glass-card-warm {
