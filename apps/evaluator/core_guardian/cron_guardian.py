@@ -28,13 +28,11 @@ import json
 import logging
 import sys
 from datetime import datetime, timezone
-from pathlib import Path
 
-from scout import scout_run, run_ruff_json, analyze_violations, SAFE_RULES
-from surgeon import surgeon_run, DETERMINISTIC_FIXERS, load_state, check_circuit_breaker
+from scout import run_ruff_json
+from surgeon import DETERMINISTIC_FIXERS, check_circuit_breaker, load_state, surgeon_run
 from watchdog import (
     AGENT_DIR,
-    BACKEND_DIR,
     BASELINE_FILE,
     safe_load_json,
     send_telegram_alert,

@@ -45,7 +45,7 @@ class GoogleColabAdapter:
                 logger.info("✅ Google Colab package trovato")
                 return True
         except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
-            logger.debug(f"Colab pip check failed (non-critical): {e}")
+            logger.debug("Colab pip check failed (non-critical): %s", e)
 
         # Colab è principalmente web-based
         # Per ora, consideralo disponibile se l'utente può accedere via browser

@@ -46,7 +46,7 @@ class DriveEvidenceDocument:
 
 @dataclass(frozen=True)
 class CompanyDriveEvidence:
-    """Person-first evidence bundle for one linked company."""
+    """Evidence bundle for one company, optionally anchored to active people."""
 
     company_id: int
     company_name: str
@@ -200,28 +200,43 @@ def build_workspace_ai_snapshot_payload(
 def _facts_from_evidence(
     evidence: CompanyDriveEvidence,
 ) -> list[TaxCompanyPilotWorkspaceAiFact]:
-    people = _human_join(evidence.people, fallback="the linked person")
     groups = _document_group_counts(evidence.documents)
     missing = _missing_groups(groups, evidence.kg_edge_count)
 
     identity_detail = (
-        f"{evidence.company_name} has {len(evidence.documents)} indexed source "
-        f"document{'s' if len(evidence.documents) != 1 else ''} in the CRM workspace."
+        f"{evidence.company_name} is an operational dossier with {len(evidence.documents)} "
+        f"indexed source document{'s' if len(evidence.documents) != 1 else ''} across "
+        f"{_coverage_sentence(groups)}."
     )
-    person_detail = (
-        f"Start from {people}; then open {evidence.company_name} through the confirmed CRM relationship."
-    )
+    if evidence.people:
+        people = _human_join(evidence.people, fallback="the linked person")
+        person_detail = (
+            f"Start from {people}; then read {evidence.company_name} through the confirmed "
+            "CRM relationship, connecting roles, residency, and tax ownership before any "
+            "client-facing use."
+        )
+    else:
+        person_detail = (
+            f"Read {evidence.company_name} as a company-level dossier. Link active "
+            "individual profiles before person-first publication."
+        )
     compliance_detail = (
-        f"Evidence currently covers {_coverage_sentence(groups)}. "
-        f"Tax owner: {evidence.tax_owner}."
+        f"The tax posture is visible at evidence level: {_coverage_sentence(groups)}. "
+        f"Tax owner: {evidence.tax_owner}. Treat this as an internal consultant reading, "
+        "not a compliance certification."
     )
     gap_detail = (
-        "Missing or weak evidence: " + ", ".join(missing) + "."
+        "Document review gaps to keep visible: " + ", ".join(missing) + "."
         if missing
-        else "Company, tax, person, and relationship evidence are all present for team review."
+        else (
+            "Document review gaps: no company, tax, person, or relationship document "
+            "gaps are visible in the indexed evidence."
+        )
     )
     next_action_detail = (
-        "Review this draft, confirm the roles and source documents, then approve it for the Business Story."
+        "Consultant prompts: review LKPM or capital reporting, investor visa role "
+        "alignment, property or operating permits, and the monthly tax workflow before "
+        "the story becomes client-facing."
     )
 
     return [
@@ -229,7 +244,9 @@ def _facts_from_evidence(
             category="identity",
             label="Company evidence",
             detail=_clean_detail(identity_detail),
-            source_file_ids=_source_ids_for_groups(evidence.documents, ("company", "tax", "person")),
+            source_file_ids=_source_ids_for_groups(
+                evidence.documents, ("company", "tax", "person")
+            ),
             confidence=_confidence_for(evidence.documents, evidence.kg_edge_count),
         ),
         TaxCompanyPilotWorkspaceAiFact(
@@ -280,8 +297,10 @@ def _evidence_from_rows(rows: list[Any]) -> list[CompanyDriveEvidence]:
                 "kg_edge_count": 0,
             },
         )
-        bucket["client_ids"].add(int(data["client_id"]))
-        _append_unique(bucket["people"], str(data["client_name"]))
+        if data.get("client_id") is not None:
+            bucket["client_ids"].add(int(data["client_id"]))
+        if data.get("client_name"):
+            _append_unique(bucket["people"], str(data["client_name"]))
         if data.get("tax_owner"):
             _append_unique(bucket["tax_owners"], str(data["tax_owner"]))
         if data.get("file_id"):
@@ -383,11 +402,7 @@ def _source_ids_for_groups(
     documents: list[DriveEvidenceDocument],
     groups: tuple[str, ...],
 ) -> list[str]:
-    return [
-        document.file_id
-        for document in documents
-        if _document_group(document) in groups
-    ][:12]
+    return [document.file_id for document in documents if _document_group(document) in groups][:12]
 
 
 def _ordered_file_ids(documents: list[DriveEvidenceDocument]) -> list[str]:
@@ -437,7 +452,11 @@ def _human_join(items: list[str], *, fallback: str) -> str:
 
 def _clean_detail(value: str) -> str:
     no_urls = re.sub(r"https?://\S+", "[internal source]", value)
-    return no_urls.replace("Drive", "source").replace("OCR", "document reading").replace("KG", "relationship")
+    return (
+        no_urls.replace("Drive", "source")
+        .replace("OCR", "document reading")
+        .replace("KG", "relationship")
+    )
 
 
 def _append_unique(items: list[str], value: str) -> None:
@@ -460,6 +479,23 @@ WITH linked_people AS (
     JOIN clients cl ON cl.id = ccl.client_id
     WHERE cl.deleted_at IS NULL
       AND ($1::int IS NULL OR cl.id = $1::int)
+),
+company_document_scope AS (
+    SELECT
+        co.id AS company_id,
+        co.company_name
+    FROM companies co
+    JOIN company_documents cd ON cd.company_id = co.id
+    WHERE $1::int IS NULL
+      AND cd.google_drive_file_id IS NOT NULL
+      AND cd.google_drive_file_id <> ''
+      AND COALESCE(cd.status, 'active') <> 'deleted'
+      AND COALESCE(co.status, 'active') <> 'deleted'
+      AND NOT EXISTS (
+          SELECT 1
+          FROM linked_people lp
+          WHERE lp.company_id = co.id
+      )
 ),
 company_scope AS (
     SELECT
@@ -488,6 +524,13 @@ company_scope AS (
         WHERE cd.google_drive_file_id IS NOT NULL
           AND cd.google_drive_file_id <> ''
           AND COALESCE(cd.status, 'active') <> 'deleted'
+
+        UNION
+
+        SELECT
+            cds.company_id,
+            cds.company_name
+        FROM company_document_scope cds
     ) base
     LEFT JOIN crm_workspace_ai_snapshots snap
         ON snap.company_id = base.company_id
@@ -546,6 +589,36 @@ evidence_rows AS (
     WHERE cd.google_drive_file_id IS NOT NULL
       AND cd.google_drive_file_id <> ''
       AND COALESCE(cd.status, 'active') <> 'deleted'
+
+    UNION ALL
+
+    SELECT
+        scope.company_id,
+        scope.company_name,
+        NULL::int AS client_id,
+        NULL::text AS client_name,
+        ''::text AS tax_owner,
+        cd.google_drive_file_id AS file_id,
+        cd.file_name,
+        cd.document_type,
+        COALESCE(cd.document_subtype, 'company') AS document_category,
+        NULL::text AS ocr_status,
+        kg.entity_id IS NOT NULL AS has_kg_node,
+        kg.entity_id AS kg_entity_id
+    FROM company_scope scope
+    JOIN company_documents cd ON cd.company_id = scope.company_id
+    LEFT JOIN crm_kg_nodes kg
+        ON kg.file_id = cd.google_drive_file_id
+        AND kg.entity_type = 'crm_document'
+        AND kg.deleted_at IS NULL
+    WHERE cd.google_drive_file_id IS NOT NULL
+      AND cd.google_drive_file_id <> ''
+      AND COALESCE(cd.status, 'active') <> 'deleted'
+      AND NOT EXISTS (
+          SELECT 1
+          FROM linked_people lp
+          WHERE lp.company_id = scope.company_id
+      )
 ),
 kg_counts AS (
     SELECT

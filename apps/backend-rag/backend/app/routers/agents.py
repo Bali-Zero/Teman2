@@ -152,7 +152,7 @@ async def create_client_journey(
             "message": f"Journey created with {len(journey.steps)} steps",
         }
     except Exception as e:
-        logger.error(f"Journey creation failed: {e}")
+        logger.error("Journey creation failed: %s", e)
         raise HTTPException(status_code=400, detail=str(e)) from None
 
 
@@ -410,7 +410,7 @@ async def extract_knowledge_graph(
             "extraction_method": "LLM" if knowledge_graph.llm_gateway else "Regex",
         }
     except Exception as e:
-        logger.error(f"Knowledge graph extraction failed: {e}")
+        logger.error("Knowledge graph extraction failed: %s", e)
         # Fallback response
         return {
             "success": True,
@@ -463,7 +463,7 @@ async def export_knowledge_graph(
             "stats": knowledge_graph.get_graph_stats(),
         }
     except Exception as e:
-        logger.error(f"Export failed: {e}")
+        logger.error("Export failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -590,7 +590,7 @@ async def cross_oracle_synthesis(
             "cached": result.cached,
         }
     except Exception as e:
-        logger.error(f"Cross-Oracle synthesis failed: {e}")
+        logger.error("Cross-Oracle synthesis failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from None
 
 
@@ -733,7 +733,7 @@ async def run_autonomous_research(
             ],
         }
     except Exception as e:
-        logger.error(f"Autonomous research failed: {e}")
+        logger.error("Autonomous research failed: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from None
 
 

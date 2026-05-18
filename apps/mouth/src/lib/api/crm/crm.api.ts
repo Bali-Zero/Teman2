@@ -26,6 +26,7 @@ import type {
   TaxCompanyPilotKey,
   TaxCompanyPilotMap,
   AiSummaryResponse,
+  WorkspaceAiAutoApproveResult,
   WorkspaceAiSnapshotReviewItem,
   WorkspaceAiSnapshotReviewStatus,
 } from "./crm.types";
@@ -250,6 +251,22 @@ export class CrmApi {
     return this.client.request<WorkspaceAiSnapshotReviewItem>(
       `/api/crm/intelligence/workspace-ai-snapshots/${encodeURIComponent(snapshotId)}/approve`,
       { method: "POST" },
+    );
+  }
+
+  async autoApproveWorkspaceAiSnapshots({
+    dryRun = true,
+    limit = 25,
+  }: {
+    dryRun?: boolean;
+    limit?: number;
+  } = {}): Promise<WorkspaceAiAutoApproveResult> {
+    return this.client.request<WorkspaceAiAutoApproveResult>(
+      "/api/crm/intelligence/workspace-ai-snapshots/auto-approve",
+      {
+        method: "POST",
+        body: JSON.stringify({ dry_run: dryRun, limit }),
+      },
     );
   }
 

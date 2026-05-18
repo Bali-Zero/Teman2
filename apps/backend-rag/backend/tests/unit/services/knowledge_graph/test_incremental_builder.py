@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Any
-from unittest.mock import AsyncMock, MagicMock, patch, PropertyMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -11,7 +10,6 @@ from backend.services.knowledge_graph.incremental_builder import (
     KGIncrementalBuilder,
     run_knowledge_graph_incremental_build,
 )
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

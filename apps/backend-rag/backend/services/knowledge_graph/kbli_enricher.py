@@ -28,7 +28,7 @@ class KBLIEnricher:
 
     async def get_codes_to_process(self, section_prefix: str) -> list[dict]:
         """Fetch KBLI codes starting with prefix that haven't been enriched."""
-        logger.info(f"🔍 Searching for KBLI codes starting with {section_prefix}...")
+        logger.info("🔍 Searching for KBLI codes starting with %s...", section_prefix)
 
         # Search filter: code starts with prefix AND discursive_content is null/empty
         # Note: We assume 'discursive_content' or similar field indicates enrichment
@@ -105,16 +105,16 @@ class KBLIEnricher:
                     )
 
                     logger.info(
-                        f"[KBLI:{code}] - [STEP:FUSION] - [STATUS:OK] - Successfully enriched",
+                        "[KBLI:%s] - [STEP:FUSION] - [STATUS:OK] - Successfully enriched", code,
                     )
                     return True
 
                 except Exception as e:
                     attempt += 1
-                    logger.error(f"[KBLI:{code}] - [STATUS:RETRY] - Error: {e}")
+                    logger.error("[KBLI:%s] - [STATUS:RETRY] - Error: %s", code, e)
                     await asyncio.sleep(1 * attempt)  # Exponential backoff
 
-        logger.error(f"[KBLI:{code}] - [STATUS:FAIL] - Max retries reached")
+        logger.error("[KBLI:%s] - [STATUS:FAIL] - Max retries reached", code)
         return False
 
     async def run_batch(self, section_prefix: str, research_data: dict | None = None) -> None:

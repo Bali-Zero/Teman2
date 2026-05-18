@@ -5,11 +5,12 @@ External calls (Ollama/httpx) are mocked so no real network access is needed.
 
 from __future__ import annotations
 
-import pytest
-import pytest_asyncio  # noqa: F401 — ensures async support is registered
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from zantara_media.security.dlp import DLPResult, dlp_check
+import pytest
+import pytest_asyncio  # noqa: F401 — ensures async support is registered
+
+from zantara_media.security.dlp import dlp_check
 
 # ---------------------------------------------------------------------------
 # Fixtures / samples

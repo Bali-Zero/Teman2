@@ -15,11 +15,9 @@ Performs:
 Idempotent: if token file already exists and is valid, prints status
 and exits. To force re-bootstrap: delete WR2_CANVA_TOKEN_FILE first.
 """
-import asyncio
 import http.server
 import json
 import logging
-import os
 import socket
 import socketserver
 import sys
@@ -34,7 +32,8 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "apps" / "backend-rag"))
 
 from backend.services.canva_renderer_v2._token_storage import (  # noqa: E402
-    OrchestratorTokenStorage, TokenStorageError, sign_payload,
+    OrchestratorTokenStorage,
+    TokenStorageError,
 )
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -124,7 +123,9 @@ def main() -> int:
     client_id = client_info["client_id"]
     logger.info("client_id assigned: %s", client_id)
 
-    import base64, hashlib, secrets
+    import base64
+    import hashlib
+    import secrets
     code_verifier = secrets.token_urlsafe(96)[:128]
     code_challenge = base64.urlsafe_b64encode(
         hashlib.sha256(code_verifier.encode()).digest()

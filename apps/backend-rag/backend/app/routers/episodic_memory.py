@@ -97,7 +97,7 @@ async def add_event(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error adding episodic event: {e}")
+        logger.error("Error adding episodic event: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -137,7 +137,7 @@ async def extract_and_save_event(
         await invalidate_cache("zantara:episodic_memory:*")
         return {"success": True, "message": "Event extracted and saved", "data": result}
     except Exception as e:
-        logger.error(f"Error extracting episodic event: {e}")
+        logger.error("Error extracting episodic event: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -175,7 +175,7 @@ async def get_timeline(
 
         return {"success": True, "events": events, "count": len(events)}
     except Exception as e:
-        logger.error(f"Error getting timeline: {e}")
+        logger.error("Error getting timeline: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -201,7 +201,7 @@ async def get_context_summary(
 
         return {"success": True, "summary": summary, "has_events": bool(summary)}
     except Exception as e:
-        logger.error(f"Error getting context summary: {e}")
+        logger.error("Error getting context summary: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -222,7 +222,7 @@ async def get_stats(
 
         return {"success": True, "data": stats}
     except Exception as e:
-        logger.error(f"Error getting stats: {e}")
+        logger.error("Error getting stats: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -253,5 +253,5 @@ async def delete_event(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error deleting event: {e}")
+        logger.error("Error deleting event: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e

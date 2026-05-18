@@ -6,7 +6,6 @@ Covers: _get_client, close_scheduler_client, _get_redis, _acquire_task_lock,
 """
 
 import asyncio
-from datetime import datetime, timezone
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -20,7 +19,6 @@ from backend.services.misc.autonomous_scheduler import (
     close_scheduler_client,
     get_autonomous_scheduler,
 )
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Fixtures
@@ -77,7 +75,7 @@ class TestGetClient:
         assert c1 is c2
 
     def test_recreates_if_closed(self) -> None:
-        c1 = _get_client()
+        _get_client()
         import backend.services.misc.autonomous_scheduler as mod
 
         # Simulate closure by patching is_closed

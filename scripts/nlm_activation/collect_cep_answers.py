@@ -32,7 +32,6 @@ import time
 import urllib.error
 import urllib.request
 from pathlib import Path
-from typing import Any
 
 logger = logging.getLogger("collect_cep_answers")
 

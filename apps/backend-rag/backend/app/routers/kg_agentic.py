@@ -212,7 +212,7 @@ async def kg_query(
             return response
 
         except Exception as e:
-            logger.error(f"❌ KG Query failed: {e}", exc_info=True)
+            logger.error("❌ KG Query failed: %s", e, exc_info=True)
             raise HTTPException(
                 status_code=500,
                 detail=f"KG query processing failed: {str(e)}",
@@ -248,7 +248,7 @@ async def list_golden_routes(
         ]
 
     except Exception as e:
-        logger.error(f"❌ Failed to list golden routes: {e}", exc_info=True)
+        logger.error("❌ Failed to list golden routes: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to list golden routes: {str(e)}",
@@ -323,7 +323,7 @@ async def kg_stats(
         return KGStatsResponse(**stats_data)
 
     except Exception as e:
-        logger.error(f"❌ Failed to get KG stats: {e}", exc_info=True)
+        logger.error("❌ Failed to get KG stats: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to get KG stats: {str(e)}",
@@ -416,7 +416,7 @@ async def find_kg_path(
         }
 
     except Exception as e:
-        logger.error(f"❌ Failed to find KG path: {e}", exc_info=True)
+        logger.error("❌ Failed to find KG path: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to find path: {str(e)}",
@@ -447,7 +447,7 @@ async def kg_visualize(
         return {"mermaid": mermaid}
 
     except Exception as e:
-        logger.error(f"❌ Failed to visualize KG: {e}", exc_info=True)
+        logger.error("❌ Failed to visualize KG: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
             detail=f"Failed to visualize KG: {str(e)}",

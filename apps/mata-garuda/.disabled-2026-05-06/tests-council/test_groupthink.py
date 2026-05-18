@@ -8,8 +8,6 @@ DO NOT DELETE OR WEAKEN THESE TESTS.
 """
 from __future__ import annotations
 
-import pytest
-
 from mata_garuda.council.consensus import (
     GROUPTHINK_CONSENSUS_THRESHOLD,
     GROUPTHINK_TIME_THRESHOLD_S,

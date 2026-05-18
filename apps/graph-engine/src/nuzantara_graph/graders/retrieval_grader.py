@@ -9,11 +9,10 @@ from __future__ import annotations
 from typing import Any
 
 import structlog
+from nuzantara_schemas.state import GraphState
 
 from nuzantara_graph.graders.base import BaseGrader
 from nuzantara_graph.services import Services
-from nuzantara_schemas.grading import GradeResult
-from nuzantara_schemas.state import GraphState
 
 logger = structlog.get_logger()
 

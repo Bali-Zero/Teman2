@@ -8,8 +8,6 @@ import importlib.util
 import sys
 from pathlib import Path
 
-import pytest
-
 
 def _load_extractor():
     """Load scripts/nlm_shadow_extractor.py as a module."""

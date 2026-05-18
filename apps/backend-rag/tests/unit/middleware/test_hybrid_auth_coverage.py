@@ -2,10 +2,9 @@
 Tests for HybridAuthMiddleware - API key and cookie auth paths.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
-from starlette.testclient import TestClient
 
 
 @pytest.fixture

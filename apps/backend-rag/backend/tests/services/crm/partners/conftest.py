@@ -18,9 +18,10 @@ import os
 import sys
 import types as _types
 import uuid
+from collections.abc import Callable, Coroutine
 from datetime import datetime, timezone
 from decimal import Decimal
-from typing import Any, Callable, Coroutine
+from typing import Any
 
 
 class _StrWithId(str):
@@ -56,7 +57,6 @@ class _IntWithId(int):
 
 import asyncpg
 import pytest_asyncio
-
 
 _SHIELDED: list[str] = []  # track what WE injected so we can clean up
 
@@ -628,7 +628,7 @@ def commission_factory(
                 int(practice_client_id), int(prac_id),
             )
 
-        from datetime import datetime, timedelta, timezone
+        from datetime import datetime, timezone
         now = datetime.now(timezone.utc)
         paid_at = now if status == "paid" else None
 

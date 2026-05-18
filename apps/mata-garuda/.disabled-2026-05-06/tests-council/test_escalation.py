@@ -5,8 +5,6 @@ Tests when decisions require Zero's approval.
 """
 from __future__ import annotations
 
-import pytest
-
 from mata_garuda.council.models import ConsensusResult, Topic
 from mata_garuda.council.orchestrator import CouncilOrchestrator
 

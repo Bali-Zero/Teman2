@@ -1,8 +1,6 @@
 """Tests for cell_core.lifecycle — maturation phases and confidence gates."""
 from datetime import datetime, timedelta, timezone
 
-import pytest
-
 
 class TestMaturation:
     def _make(self, age_days: int):

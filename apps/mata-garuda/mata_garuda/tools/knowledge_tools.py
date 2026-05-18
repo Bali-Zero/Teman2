@@ -6,7 +6,6 @@ Agents can search, store, and retrieve skills from the unified SQLite KB.
 from __future__ import annotations
 
 from mata_garuda.registry import register_tool
-from mata_garuda.runtime.knowledge import KnowledgeBase
 
 
 @register_tool(name="kb_search")

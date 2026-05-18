@@ -228,9 +228,7 @@ describe("TaxCompanyPilotWorkspace", () => {
     expect(screen.getByText("DEA")).toBeInTheDocument();
     expect(screen.getByText("Dewa Ayu")).toBeInTheDocument();
     expect(screen.getAllByText("Natan Kleimonov").length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Giulia Del Giudice").length).toBeGreaterThan(
-      0,
-    );
+    expect(screen.getAllByText("Giulia Del Giudice").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Giorgia Emidio").length).toBeGreaterThan(0);
     expect(
       screen.getAllByText("Confirm the company role from registry documents."),
@@ -285,6 +283,8 @@ describe("TaxCompanyPilotWorkspace", () => {
 
   it("renders Workspace AI draft review queue with approve action", () => {
     const onApproveSnapshot = vi.fn();
+    const onAutoApproveDryRun = vi.fn();
+    const onAutoApproveApply = vi.fn();
 
     render(
       <TaxCompanyPilotWorkspace
@@ -313,12 +313,24 @@ describe("TaxCompanyPilotWorkspace", () => {
             created_at: "2026-05-12T15:45:00+00:00",
           },
         ]}
+        autoApproveResult={{
+          policy_version: "workspace-ai-v2-consultant-narrative",
+          dry_run: true,
+          evaluated: 1,
+          eligible_count: 1,
+          blocked_count: 0,
+          approved_count: 0,
+          decisions: [],
+        }}
         onApproveSnapshot={onApproveSnapshot}
+        onAutoApproveDryRun={onAutoApproveDryRun}
+        onAutoApproveApply={onAutoApproveApply}
       />,
     );
 
     expect(screen.getByText("Workspace AI review")).toBeInTheDocument();
     expect(screen.getByText("1 draft")).toBeInTheDocument();
+    expect(screen.getByText("1 ready · 0 held")).toBeInTheDocument();
     expect(
       screen.getByText("Company source documents are indexed for review."),
     ).toBeInTheDocument();
@@ -330,5 +342,11 @@ describe("TaxCompanyPilotWorkspace", () => {
     );
 
     expect(onApproveSnapshot).toHaveBeenCalledWith("snapshot-draft");
+
+    fireEvent.click(screen.getByRole("button", { name: "Check stories" }));
+    fireEvent.click(screen.getByRole("button", { name: "Approve stories" }));
+
+    expect(onAutoApproveDryRun).toHaveBeenCalledOnce();
+    expect(onAutoApproveApply).toHaveBeenCalledOnce();
   });
 });

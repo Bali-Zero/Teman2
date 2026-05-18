@@ -32,7 +32,6 @@ Usage:
   python surgeon.py "Fix DTZ005" "backend/app/routers/foo.py" DTZ005 --dry-run
 """
 
-import fcntl
 import json
 import logging
 import os
@@ -49,9 +48,7 @@ from watchdog import (
     AGENT_DIR,
     BACKEND_DIR,
     BASELINE_FILE,
-    LOCK_FILE,
     PROJECT_ROOT,
-    RUFF_RULES,
     VENV_PYTHON,
     acquire_lock,
     atomic_write_json,
@@ -242,9 +239,9 @@ def validate_input(task_description: str, target_file: str, ruff_code: str) -> s
     # No injection chars
     safe_pattern = re.compile(r"^[a-zA-Z0-9_./\- ():,]+$")
     if not safe_pattern.match(task_description):
-        return f"Invalid task_description: contains unsafe characters"
+        return "Invalid task_description: contains unsafe characters"
     if not safe_pattern.match(target_file):
-        return f"Invalid target_file: contains unsafe characters"
+        return "Invalid target_file: contains unsafe characters"
     if ruff_code not in (SAFE_RUFF_CODES | UNSAFE_RUFF_CODES):
         return f"Unknown ruff_code: {ruff_code}"
     return None
@@ -1121,7 +1118,7 @@ def _surgeon_core(
                     run_id, "surgeon", f"fix_{ruff_code}",
                     f"Fixed {ruff_code} in {target_file}",
                     "info", "auto_fix",
-                    rationale=f"Deterministic fix, all gates passed",
+                    rationale="Deterministic fix, all gates passed",
                     metadata={"branch": branch_name, "cost_usd": cost_usd},
                 )
             except Exception:

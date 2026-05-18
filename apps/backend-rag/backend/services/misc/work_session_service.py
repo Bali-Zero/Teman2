@@ -42,7 +42,7 @@ class WorkSessionService:
             self.data_dir.mkdir(parents=True, exist_ok=True)
             logger.info(f"📁 Work sessions log: {self.log_file}")
         except Exception as e:
-            logger.warning(f"⚠️ Could not create data directory: {e}")
+            logger.warning("⚠️ Could not create data directory: %s", e)
 
     def _write_to_log(self, event_type: str, data: dict) -> None:
         """
@@ -56,7 +56,7 @@ class WorkSessionService:
                 f.write(json.dumps(event) + "\n")
 
         except Exception as e:
-            logger.warning(f"⚠️ Failed to write to log file: {e}")
+            logger.warning("⚠️ Failed to write to log file: %s", e)
 
     async def connect(self) -> None:
         """Initialize connection pool"""
@@ -92,7 +92,7 @@ class WorkSessionService:
             )
 
             if existing:
-                logger.info(f"⏰ {user_name} already has active session")
+                logger.info("⏰ %s already has active session", user_name)
                 return {
                     "status": "already_active",
                     "session_id": existing["id"],
@@ -146,7 +146,7 @@ Session ID: {session["id"]}
             }
 
         except Exception as e:
-            logger.error(f"❌ Failed to start session: {e}")
+            logger.error("❌ Failed to start session: %s", e)
             return {"error": str(e)}
 
     async def update_activity(self, user_id: str) -> None:
@@ -166,7 +166,7 @@ Session ID: {session["id"]}
                 user_id,
             )
         except Exception as e:
-            logger.error(f"Failed to update activity: {e}")
+            logger.error("Failed to update activity: %s", e)
 
     async def increment_conversations(self, user_id: str) -> None:
         """Increment conversation counter for active session"""
@@ -185,7 +185,7 @@ Session ID: {session["id"]}
                 user_id,
             )
         except Exception as e:
-            logger.error(f"Failed to increment conversations: {e}")
+            logger.error("Failed to increment conversations: %s", e)
 
     async def end_session(self, user_id: str, notes: str | None = None) -> dict:
         """
@@ -279,7 +279,7 @@ Session ID: {session["id"]}
             }
 
         except Exception as e:
-            logger.error(f"❌ Failed to end session: {e}")
+            logger.error("❌ Failed to end session: %s", e)
             return {"error": str(e)}
 
     async def get_today_sessions(self) -> list[dict]:
@@ -444,7 +444,7 @@ Session ID: {session["id"]}
                 total_conversations,
             )
         except Exception as e:
-            logger.error(f"Failed to save daily report: {e}")
+            logger.error("Failed to save daily report: %s", e)
 
         return report
 
@@ -496,15 +496,15 @@ View full dashboard: /admin/zero/dashboard
         For now just logs - you can add actual email sending here
         """
         logger.info(
-            f"""
+            """
 ════════════════════════════════════════════════
 📧 NOTIFICATION TO ZERO
 ════════════════════════════════════════════════
-Subject: {subject}
+Subject: %s
 
-{message}
+%s
 ════════════════════════════════════════════════
-        """,
+        """, subject, message,
         )
 
         # Email sending can be implemented using NotificationHub service

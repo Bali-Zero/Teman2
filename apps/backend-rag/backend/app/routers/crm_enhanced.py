@@ -120,7 +120,7 @@ async def _gemini_ocr(image_data: bytes, mime_type: str, prompt: str) -> str:
                     return content
                 logger.warning("Ollama vision returned empty, falling back to Gemini")
     except Exception as _e:
-        logger.warning(f"Ollama vision error: {_e}, falling back to Gemini")
+        logger.warning("Ollama vision error: %s, falling back to Gemini", _e)
 
     # --- Attempt 2: Gemini CLI (free via Ultra subscription) ---
     gemini_path = shutil.which("gemini")
@@ -185,9 +185,9 @@ async def _gemini_ocr(image_data: bytes, mime_type: str, prompt: str) -> str:
 
                 os.unlink(tmp_path)
             except Exception as e:
-                logger.debug(f"Could not remove temp file {tmp_path}: {e}")
+                logger.debug("Could not remove temp file %s: %s", tmp_path, e)
         except Exception as e:
-            logger.warning(f"Gemini CLI error: {e}, falling back to API")
+            logger.warning("Gemini CLI error: %s, falling back to API", e)
 
     # --- Attempt 2: Gemini API (paid, fast) ---
     from backend.llm.genai_client import GENAI_AVAILABLE, get_genai_client
@@ -305,7 +305,7 @@ async def _auto_ocr_passport(db_pool: Any, client_id: int, file_id: str) -> dict
                     params.append(expiry)
                     param_idx += 1
                 except ValueError as e:
-                    logger.debug(f"Skipping invalid date format: {e}")
+                    logger.debug("Skipping invalid date format: %s", e)
 
             if extracted.get("gender"):
                 update_parts.append(f"gender = ${param_idx}")
@@ -319,7 +319,7 @@ async def _auto_ocr_passport(db_pool: Any, client_id: int, file_id: str) -> dict
                     params.append(dob)
                     param_idx += 1
                 except ValueError as e:
-                    logger.debug(f"Skipping invalid date format: {e}")
+                    logger.debug("Skipping invalid date format: %s", e)
 
             if extracted.get("birthplace"):
                 update_parts.append(f"birthplace = ${param_idx}")
@@ -344,7 +344,7 @@ async def _auto_ocr_passport(db_pool: Any, client_id: int, file_id: str) -> dict
         return {"success": True, "extracted": extracted}
 
     except Exception as e:
-        logger.error(f"Auto OCR failed for client {client_id}: {e}")
+        logger.error("Auto OCR failed for client %s: %s", client_id, e)
         return {"success": False, "error": str(e)}
 
 
@@ -365,7 +365,7 @@ async def _auto_ocr_visa(db_pool: Any, client_id: int, file_id: str, doc_id: int
 
         extracted = extract_json_from_llm_response(response_text)
         if not extracted:
-            logger.error(f"Auto OCR visa JSON parsing failed for client {client_id}")
+            logger.error("Auto OCR visa JSON parsing failed for client %s", client_id)
             return {"success": False, "error": "Could not parse OCR response"}
 
         # Normalize date
@@ -401,7 +401,7 @@ async def _auto_ocr_visa(db_pool: Any, client_id: int, file_id: str, doc_id: int
                     params.append(expiry)
                     param_idx += 1
                 except ValueError as e:
-                    logger.debug(f"Skipping invalid date format: {e}")
+                    logger.debug("Skipping invalid date format: %s", e)
 
             if extracted.get("issue_date"):
                 try:
@@ -410,7 +410,7 @@ async def _auto_ocr_visa(db_pool: Any, client_id: int, file_id: str, doc_id: int
                     params.append(issue)
                     param_idx += 1
                 except ValueError as e:
-                    logger.debug(f"Skipping invalid date format: {e}")
+                    logger.debug("Skipping invalid date format: %s", e)
 
             if doc_id:
                 params.append(doc_id)
@@ -458,7 +458,7 @@ async def _auto_ocr_visa(db_pool: Any, client_id: int, file_id: str, doc_id: int
                     *sync_params,
                 )
                 logger.info(
-                    f"Synced visa OCR to client {client_id}: type={visa_type}, expiry={expiry_date_parsed}, sponsor={sponsor}"
+                    "Synced visa OCR to client %s: type=%s, expiry=%s, sponsor=%s", client_id, visa_type, expiry_date_parsed, sponsor
                 )
 
         logger.info(
@@ -467,7 +467,7 @@ async def _auto_ocr_visa(db_pool: Any, client_id: int, file_id: str, doc_id: int
         return {"success": True, "extracted": extracted}
 
     except Exception as e:
-        logger.error(f"Auto OCR visa failed for client {client_id}: {e}")
+        logger.error("Auto OCR visa failed for client %s: %s", client_id, e)
         return {"success": False, "error": str(e)}
 
 
@@ -488,7 +488,7 @@ async def _auto_ocr_nib(db_pool: Any, client_id: int, file_id: str, doc_id: int 
 
         extracted = extract_json_from_llm_response(response_text)
         if not extracted:
-            logger.error(f"Auto OCR NIB JSON parsing failed for client {client_id}")
+            logger.error("Auto OCR NIB JSON parsing failed for client %s", client_id)
             return {"success": False, "error": "Could not parse OCR response"}
 
         ocr_data = {
@@ -544,7 +544,7 @@ async def _auto_ocr_nib(db_pool: Any, client_id: int, file_id: str, doc_id: int 
         return {"success": True, "extracted": extracted}
 
     except Exception as e:
-        logger.error(f"Auto OCR NIB failed for client {client_id}: {e}")
+        logger.error("Auto OCR NIB failed for client %s: %s", client_id, e)
         return {"success": False, "error": str(e)}
 
 
@@ -565,7 +565,7 @@ async def _auto_ocr_npwp(db_pool: Any, client_id: int, file_id: str, doc_id: int
 
         extracted = extract_json_from_llm_response(response_text)
         if not extracted:
-            logger.error(f"Auto OCR NPWP JSON parsing failed for client {client_id}")
+            logger.error("Auto OCR NPWP JSON parsing failed for client %s", client_id)
             return {"success": False, "error": "Could not parse OCR response"}
 
         ocr_data = {
@@ -625,7 +625,7 @@ async def _auto_ocr_npwp(db_pool: Any, client_id: int, file_id: str, doc_id: int
         return {"success": True, "extracted": extracted}
 
     except Exception as e:
-        logger.error(f"Auto OCR NPWP failed for client {client_id}: {e}")
+        logger.error("Auto OCR NPWP failed for client %s: %s", client_id, e)
         return {"success": False, "error": str(e)}
 
 
@@ -658,7 +658,7 @@ async def _auto_ocr_company_profile(db_pool: Any, client_id: int, file_id: str, 
 
         extracted = extract_json_from_llm_response(response_text)
         if not extracted:
-            logger.error(f"Auto OCR company profile JSON parsing failed for client {client_id}")
+            logger.error("Auto OCR company profile JSON parsing failed for client %s", client_id)
             return {"success": False, "error": "Could not parse OCR response"}
 
         # Build custom_fields update
@@ -745,7 +745,7 @@ async def _auto_ocr_company_profile(db_pool: Any, client_id: int, file_id: str, 
         return {"success": True, "extracted": extracted}
 
     except Exception as e:
-        logger.error(f"Auto OCR company profile failed for client {client_id}: {e}")
+        logger.error("Auto OCR company profile failed for client %s: %s", client_id, e)
         return {"success": False, "error": str(e)}
 
 
@@ -821,7 +821,7 @@ async def _auto_classify_content(file_id: str) -> dict[str, Any]:
         }
 
     except Exception as e:
-        logger.error(f"Content classifier failed for file {file_id}: {e}")
+        logger.error("Content classifier failed for file %s: %s", file_id, e)
         return {"error": str(e)}
 
 

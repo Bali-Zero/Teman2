@@ -35,6 +35,7 @@ if str(BACKEND_ROOT) not in sys.path:
 
 import re  # noqa: E402
 
+
 def _require_env(name: str) -> str:
     import os as _os
     val = _os.environ.get(name)
@@ -191,7 +192,7 @@ def _match_variants(mention_text: str) -> list[str]:
     """
     base = mention_text.strip()
     out = [base]
-    low = base.lower()
+    base.lower()
     upper = base.upper()
     # Collapse whitespace runs
     collapsed = re.sub(r"\s+", " ", base)

@@ -5,7 +5,7 @@ Validates that KG version tracking correctly invalidates stale
 subgraph cache entries after KG mutations.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 

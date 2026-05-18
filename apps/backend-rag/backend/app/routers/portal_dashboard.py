@@ -46,7 +46,7 @@ async def _fetch_open_actions(conn: asyncpg.Connection, client_id: int) -> list[
             client_id,
         )
     except Exception as e:
-        logger.warning(f"open_actions fetch failed: {e}")
+        logger.warning("open_actions fetch failed: %s", e)
         return []
     return [
         {
@@ -93,7 +93,7 @@ async def _fetch_deadlines(conn: asyncpg.Connection, client_id: int) -> list[dic
                     }
                 )
     except Exception as e:
-        logger.warning(f"client expiry fetch failed: {e}")
+        logger.warning("client expiry fetch failed: %s", e)
 
     # Practice-level expiry (next 30 days)
     try:
@@ -122,7 +122,7 @@ async def _fetch_deadlines(conn: asyncpg.Connection, client_id: int) -> list[dic
                 }
             )
     except Exception as e:
-        logger.warning(f"practice expiry fetch failed: {e}")
+        logger.warning("practice expiry fetch failed: %s", e)
 
     deadlines.sort(key=lambda d: d["due_date"] or "9999")
     return deadlines[:10]
@@ -141,7 +141,7 @@ async def _fetch_unread_count(conn: asyncpg.Connection, client_id: int) -> int:
         )
         return int(n or 0)
     except Exception as e:
-        logger.warning(f"unread count fetch failed: {e}")
+        logger.warning("unread count fetch failed: %s", e)
         return 0
 
 

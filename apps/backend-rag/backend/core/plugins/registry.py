@@ -136,9 +136,9 @@ class PluginRegistry:
                 plugin = self._plugins[name]
                 try:
                     await plugin.on_unload()
-                    logger.info(f"Unloaded plugin: {name}")
+                    logger.info("Unloaded plugin: %s", name)
                 except Exception as e:
-                    logger.error(f"Error unloading plugin {name}: {e}")
+                    logger.error("Error unloading plugin %s: %s", name, e)
 
                 del self._plugins[name]
                 del self._metadata[name]
@@ -146,7 +146,7 @@ class PluginRegistry:
                 # Remove aliases
                 self._aliases = {k: v for k, v in self._aliases.items() if v != name}
 
-                logger.info(f"Unregistered plugin: {name}")
+                logger.info("Unregistered plugin: %s", name)
 
     def get(self, name: str) -> Plugin | None:
         """
@@ -246,7 +246,7 @@ class PluginRegistry:
                 raise ValueError(error_msg)
             return {"discovered": 0, "errors": [error_msg]}
 
-        logger.info(f"Discovering plugins in {plugins_dir}")
+        logger.info("Discovering plugins in %s", plugins_dir)
         discovered_count = 0
         errors = []
 
@@ -295,11 +295,11 @@ class PluginRegistry:
                         # prefix validated at line 241-248, only .py files from plugins_dir
                         # nosemgrep: non-literal-import
                         module = importlib.import_module(full_module_path)
-                        logger.debug(f"Successfully imported plugin from: {full_module_path}")
+                        logger.debug("Successfully imported plugin from: %s", full_module_path)
                         break
                     except (ImportError, ModuleNotFoundError) as e:
                         last_error = e
-                        logger.debug(f"Failed to import {full_module_path}: {e}")
+                        logger.debug("Failed to import %s: %s", full_module_path, e)
                         continue
 
                 if module is None:
@@ -316,7 +316,7 @@ class PluginRegistry:
                         try:
                             await self.register(obj)
                             discovered_count += 1
-                            logger.debug(f"Registered plugin: {name} from {plugin_file}")
+                            logger.debug("Registered plugin: %s from %s", name, plugin_file)
                         except Exception as e:
                             error_msg = f"Failed to register plugin {name} from {plugin_file}: {e}"
                             logger.error(error_msg, exc_info=True)
@@ -331,11 +331,11 @@ class PluginRegistry:
                 if strict:
                     raise
 
-        logger.info(f"Discovered {discovered_count} plugins")
+        logger.info("Discovered %s plugins", discovered_count)
         if errors:
             logger.warning(f"Encountered {len(errors)} errors during plugin discovery")
             for error in errors[:5]:  # Log first 5 errors
-                logger.warning(f"  - {error}")
+                logger.warning("  - %s", error)
             if len(errors) > 5:
                 logger.warning(f"  ... and {len(errors) - 5} more errors")
 
@@ -416,7 +416,7 @@ class PluginRegistry:
                     tool_def = plugin.to_anthropic_tool_definition()
                     tools.append(tool_def)
                 except Exception as e:
-                    logger.error(f"Failed to generate tool definition: {e}")
+                    logger.error("Failed to generate tool definition: %s", e)
         return tools
 
     async def reload_plugin(self, name: str):
@@ -438,7 +438,7 @@ class PluginRegistry:
         await self.unregister(name)
         await self.register(plugin_class, config)
 
-        logger.info(f"Reloaded plugin: {name}")
+        logger.info("Reloaded plugin: %s", name)
 
 
 # Global registry instance

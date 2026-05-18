@@ -128,15 +128,15 @@ async def identify_company_type_node(
                         company_type = "pt_pma"
                         is_foreign = True  # PT PMA implies foreign investor
                         logger.info(
-                            f"✅ [Company Subgraph] KBLI {kbli_codes} requires PT PMA (from KG)",
+                            "✅ [Company Subgraph] KBLI %s requires PT PMA (from KG)", kbli_codes,
                         )
             except Exception as e:
-                logger.warning(f"⚠️ [Company Subgraph] KG lookup failed: {e}")
+                logger.warning("⚠️ [Company Subgraph] KG lookup failed: %s", e)
 
     state["company_type"] = company_type
     state["is_foreign_investor"] = is_foreign
 
-    logger.info(f"✅ [Company Subgraph] Identified type: {company_type}, foreign: {is_foreign}")
+    logger.info("✅ [Company Subgraph] Identified type: %s, foreign: %s", company_type, is_foreign)
 
     return state
 

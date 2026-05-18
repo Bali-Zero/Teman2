@@ -105,7 +105,7 @@ async def require_admin(
             return email
 
     except Exception as e:
-        logger.error(f"Error checking admin role: {e}")
+        logger.error("Error checking admin role: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 
@@ -234,7 +234,7 @@ async def list_all_mappings(
             }
 
     except Exception as e:
-        logger.error(f"Error listing mappings: {e}")
+        logger.error("Error listing mappings: %s", e)
         raise HTTPException(status_code=500, detail="Internal server error") from e
 
 

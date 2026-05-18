@@ -123,7 +123,7 @@ class OllamaProvider(LLMProvider):
         except httpx.TimeoutException:
             raise RuntimeError("Ollama request timeout")
         except Exception as e:
-            logger.error(f"Ollama generation error: {e}")
+            logger.error("Ollama generation error: %s", e)
             raise RuntimeError(f"Ollama generation failed: {e}")
 
     async def generate_stream(
@@ -184,7 +184,7 @@ class OllamaProvider(LLMProvider):
                         continue
 
         except Exception as e:
-            logger.error(f"Ollama streaming error: {e}")
+            logger.error("Ollama streaming error: %s", e)
             raise RuntimeError(f"Ollama streaming failed: {e}")
 
     async def stream(

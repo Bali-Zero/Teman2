@@ -1,13 +1,7 @@
 """Tests for Layer 5 Public Channel Publisher (Wave 1 of W4)."""
 from __future__ import annotations
 
-import json
-import os
 from pathlib import Path
-from unittest.mock import patch
-
-import pytest
-
 
 # ──────────────────────────────────────────────────────────────────
 # tg_public_tools

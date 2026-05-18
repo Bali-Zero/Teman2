@@ -315,7 +315,7 @@ def regenerate_failed(
                     "baliContext": item.get("baliContext", ""),
                     "zantaraOpener": item.get("zantaraOpener", ""),
                 }
-                logger.info(f"    -> Regenerated OK")
+                logger.info("    -> Regenerated OK")
         except Exception as e:
             logger.error(f"    -> Regen failed: {e}")
 
@@ -400,7 +400,7 @@ def main() -> None:
         "zantaraOpener": sum(r.get("zantaraOpener_score", 0) for r in factual_results) / max(len(factual_results), 1),
     }
 
-    logger.info(f"  RESULTS:")
+    logger.info("  RESULTS:")
     logger.info(f"    Passed:         {len(passed)}/{len(factual_results)} ({len(passed)/max(len(factual_results),1)*100:.0f}%)")
     logger.info(f"    Failed:         {len(failed)}")
     logger.info(f"    Hallucinations: {len(hallucinations)}")
@@ -467,7 +467,7 @@ def _save_report(
         "structural": {
             "pass": len(silver_entries) - len(structural_issues),
             "fail": len(structural_issues),
-            "issues": {k: v for k, v in list(structural_issues.items())[:50]},
+            "issues": dict(list(structural_issues.items())[:50]),
         },
         "factual": {
             "sample_size": len(factual_results),

@@ -196,7 +196,7 @@ class DynamicPricingService:
         """
         self.pricing_stats["total_calculations"] += 1
 
-        logger.info(f"💰 Calculating pricing for scenario: '{scenario}'")
+        logger.info("💰 Calculating pricing for scenario: '%s'", scenario)
 
         # Step 1: Use Cross-Oracle Synthesis to get all relevant info
         synthesis_result = await self.synthesis.synthesize(

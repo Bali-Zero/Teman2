@@ -13,9 +13,7 @@ Riferimento: docs/mata-garuda/40d-AUTOAGENT-PATTERNS.md Pattern 2
 """
 from __future__ import annotations
 
-import json
 import logging
-import os
 import subprocess
 import sys
 from pathlib import Path
@@ -27,7 +25,6 @@ from mata_garuda.security.path_firewall import (
     PathFirewallError,
     validate_agent_creation,
     validate_agent_name,
-    validate_write_path,
 )
 
 logger = logging.getLogger("mata_garuda.tools")

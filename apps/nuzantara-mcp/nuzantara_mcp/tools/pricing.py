@@ -1,6 +1,5 @@
 """Pricing Tools - 3 tools for dynamic pricing and service catalog."""
 
-from typing import Optional
 
 from nuzantara_mcp.auth import require_role
 

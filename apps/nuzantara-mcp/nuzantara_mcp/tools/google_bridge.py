@@ -1,8 +1,6 @@
 import logging
-import json
 import os
-import httpx
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger("nuzantara-mcp.google_bridge")
 
@@ -10,7 +8,7 @@ logger = logging.getLogger("nuzantara-mcp.google_bridge")
 OAUTH_CREDS_PATH = os.path.expanduser("~/.gemini/oauth_creds.json")
 BROWSER_PROFILE_PATH = os.path.expanduser("~/.gemini/antigravity-browser-profile/")
 
-async def upload_to_notebooklm(file_path: str, title: Optional[str] = None) -> dict[str, Any]:
+async def upload_to_notebooklm(file_path: str, title: str | None = None) -> dict[str, Any]:
     """
     Upload a document to Google NotebookLM using the authenticated browser bridge.
     
@@ -67,7 +65,7 @@ def register(mcp, _call=None, _call_safe=None):
     """Register Google Bridge tools (Labs)"""
     # Wrap the top-level function as an MCP tool
     @mcp.tool()
-    async def upload_to_notebooklm_tool(file_path: str, title: Optional[str] = None) -> dict[str, Any]:
+    async def upload_to_notebooklm_tool(file_path: str, title: str | None = None) -> dict[str, Any]:
         """
         Upload a document to Google NotebookLM using the authenticated browser bridge.
         

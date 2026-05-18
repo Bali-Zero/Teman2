@@ -73,7 +73,7 @@ class OrchestratorContextManager:
             except Exception as e:
                 # Fallback graceful: ritorna un contesto base vuoto per non far fallire l'intera RAG query
                 logger.error(
-                    f"Errore critico durante il caricamento del contesto: {e}", exc_info=True,
+                    "Errore critico durante il caricamento del contesto: %s", e, exc_info=True,
                 )
                 set_span_status("ERROR", str(e))
                 return {
@@ -147,7 +147,7 @@ class OrchestratorContextManager:
                 )
                 return optimized
             except Exception as e:
-                logger.warning(f"⚠️ [Context] Summarization failed, using trimmed: {e}")
+                logger.warning("⚠️ [Context] Summarization failed, using trimmed: %s", e)
                 return recent_messages
 
         return trim_result.get("trimmed_messages", history)
@@ -185,5 +185,5 @@ class OrchestratorContextManager:
             # Merge enriched data into existing context, preserving pre-loaded fields
             return {**enriched, **{k: v for k, v in user_context.items() if v is not None}}
         except Exception as e:
-            logger.warning(f"⚠️ [Context] enrich_user_context failed: {e}")
+            logger.warning("⚠️ [Context] enrich_user_context failed: %s", e)
             return user_context

@@ -12,7 +12,7 @@ https://kalenderbali.org/?bulan=6&tanggal=17&tahun=2026 (R6).
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import date, timedelta
+from datetime import date
 
 PAWUKON_CYCLE_DAYS = 210
 

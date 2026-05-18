@@ -2,22 +2,26 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Loader2 } from "lucide-react";
+import { useState } from "react";
 import { TaxCompanyPilotWorkspace } from "@/components/crm/TaxCompanyPilotWorkspace";
 import { api } from "@/lib/api";
 import type {
   TaxCompanyPilotMap,
+  WorkspaceAiAutoApproveResult,
   WorkspaceAiSnapshotReviewItem,
 } from "@/lib/api/crm/crm.types";
 
 export default function TaxCompanyPilotPage() {
   const queryClient = useQueryClient();
+  const [autoApproveResult, setAutoApproveResult] =
+    useState<WorkspaceAiAutoApproveResult | null>(null);
   const { data, isLoading, error } = useQuery<TaxCompanyPilotMap[]>({
     queryKey: ["crm-evidence-dossiers", "ocean", "bimala"],
     queryFn: async () =>
       api.crm.getEvidenceDossiers({
         companies: ["ocean", "bimala"],
         limit: 2,
-    }),
+      }),
     staleTime: 5 * 60_000,
   });
   const reviewQueue = useQuery<WorkspaceAiSnapshotReviewItem[]>({
@@ -38,6 +42,23 @@ export default function TaxCompanyPilotPage() {
           queryKey: ["crm-evidence-dossiers"],
         }),
       ]);
+    },
+  });
+  const autoApproveSnapshots = useMutation({
+    mutationFn: ({ dryRun }: { dryRun: boolean }) =>
+      api.crm.autoApproveWorkspaceAiSnapshots({ dryRun, limit: 25 }),
+    onSuccess: async (result, variables) => {
+      setAutoApproveResult(result);
+      if (!variables.dryRun) {
+        await Promise.all([
+          queryClient.invalidateQueries({
+            queryKey: ["crm-workspace-ai-review"],
+          }),
+          queryClient.invalidateQueries({
+            queryKey: ["crm-evidence-dossiers"],
+          }),
+        ]);
+      }
     },
   });
 
@@ -66,7 +87,11 @@ export default function TaxCompanyPilotPage() {
       reviewSnapshots={reviewQueue.data ?? []}
       reviewLoading={reviewQueue.isLoading}
       approvingSnapshotId={approveSnapshot.variables ?? null}
+      autoApproveResult={autoApproveResult}
+      autoApproving={autoApproveSnapshots.isPending}
       onApproveSnapshot={(snapshotId) => approveSnapshot.mutate(snapshotId)}
+      onAutoApproveDryRun={() => autoApproveSnapshots.mutate({ dryRun: true })}
+      onAutoApproveApply={() => autoApproveSnapshots.mutate({ dryRun: false })}
     />
   );
 }

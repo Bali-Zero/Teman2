@@ -1,8 +1,8 @@
 from __future__ import annotations
-import asyncio
-from datetime import datetime, timezone, timedelta
-from fastapi import FastAPI, Header, HTTPException, Request
-from typing import Optional
+
+from datetime import datetime, timedelta, timezone
+
+from fastapi import FastAPI, Header, HTTPException
 
 from cell_observatory.config import Config
 from cell_observatory.storage import Storage
@@ -15,14 +15,14 @@ async def build_app() -> tuple[FastAPI, Storage]:
 
     app = FastAPI(title="Cell Observatory API", version="0.1.0")
 
-    def _require_auth(x_observatory_key: Optional[str]) -> None:
+    def _require_auth(x_observatory_key: str | None) -> None:
         if not cfg.api_key:
             return
         if x_observatory_key != cfg.api_key:
             raise HTTPException(status_code=401, detail="Unauthorized")
 
     @app.get("/api/observatory/health")
-    async def health(x_observatory_key: Optional[str] = Header(None, alias="X-Observatory-Key")):
+    async def health(x_observatory_key: str | None = Header(None, alias="X-Observatory-Key")):
         _require_auth(x_observatory_key)
         rows = await storage._fetchall("SELECT COUNT(*) AS n FROM pulse_events")
         events_24h = await storage._fetchall(
@@ -37,18 +37,20 @@ async def build_app() -> tuple[FastAPI, Storage]:
 
     @app.get("/api/observatory/pulse")
     async def list_pulses(
-        cell_id: Optional[str] = None,
-        since: Optional[str] = None,
+        cell_id: str | None = None,
+        since: str | None = None,
         limit: int = 100,
-        x_observatory_key: Optional[str] = Header(None, alias="X-Observatory-Key"),
+        x_observatory_key: str | None = Header(None, alias="X-Observatory-Key"),
     ):
         _require_auth(x_observatory_key)
         clauses, params = [], []
         if cell_id:
-            clauses.append("cell_id = ?"); params.append(cell_id)
+            clauses.append("cell_id = ?")
+            params.append(cell_id)
         if since:
             since_ms = int(datetime.fromisoformat(since.replace("Z", "+00:00")).timestamp() * 1000)
-            clauses.append("pulse_timestamp >= ?"); params.append(since_ms)
+            clauses.append("pulse_timestamp >= ?")
+            params.append(since_ms)
         where = ("WHERE " + " AND ".join(clauses)) if clauses else ""
         params.append(min(limit, 1000))
         rows = await storage._fetchall(
@@ -60,19 +62,21 @@ async def build_app() -> tuple[FastAPI, Storage]:
 
     @app.get("/api/observatory/anomalies")
     async def anomalies(
-        since: Optional[str] = None,
-        label: Optional[str] = None,
-        x_observatory_key: Optional[str] = Header(None, alias="X-Observatory-Key"),
+        since: str | None = None,
+        label: str | None = None,
+        x_observatory_key: str | None = Header(None, alias="X-Observatory-Key"),
     ):
         _require_auth(x_observatory_key)
         clauses, params = [], []
         if label:
-            clauses.append("c.label = ?"); params.append(label)
+            clauses.append("c.label = ?")
+            params.append(label)
         else:
             clauses.append("c.label IN ('anomaly', 'critical', 'uncertain')")
         if since:
             since_ms = int(datetime.fromisoformat(since.replace("Z", "+00:00")).timestamp() * 1000)
-            clauses.append("c.classified_at >= ?"); params.append(since_ms)
+            clauses.append("c.classified_at >= ?")
+            params.append(since_ms)
         where = "WHERE " + " AND ".join(clauses)
         rows = await storage._fetchall(
             f"SELECT c.outbox_id, c.label, c.confidence, c.reasoning, c.label_diff, "
@@ -86,8 +90,8 @@ async def build_app() -> tuple[FastAPI, Storage]:
     @app.get("/api/observatory/rollup")
     async def rollup(
         day: str,
-        cell_id: Optional[str] = None,
-        x_observatory_key: Optional[str] = Header(None, alias="X-Observatory-Key"),
+        cell_id: str | None = None,
+        x_observatory_key: str | None = Header(None, alias="X-Observatory-Key"),
     ):
         _require_auth(x_observatory_key)
         if cell_id:
@@ -100,8 +104,8 @@ async def build_app() -> tuple[FastAPI, Storage]:
 
     @app.get("/api/observatory/cost")
     async def cost(
-        since: Optional[str] = None,
-        x_observatory_key: Optional[str] = Header(None, alias="X-Observatory-Key"),
+        since: str | None = None,
+        x_observatory_key: str | None = Header(None, alias="X-Observatory-Key"),
     ):
         _require_auth(x_observatory_key)
         params = []

@@ -97,7 +97,7 @@ class TestMapper:
                     continue  # Skip unreadable files
 
         except Exception as e:
-            logger.warning(f"Error searching test content: {e}")
+            logger.warning("Error searching test content: %s", e)
 
         return test_files
 
@@ -180,7 +180,7 @@ class ChangeImpactAnalyzer:
             return impact
 
         except Exception as e:
-            logger.error(f"Error analyzing changes for {source_file}: {e}")
+            logger.error("Error analyzing changes for %s: %s", source_file, e)
             return {
                 "breaking_changes": [],
                 "additive_changes": [],
@@ -281,7 +281,7 @@ class TestMaintainerAgent:
             "additive_changes": 0,
         }
 
-        logger.info(f"🔧 TestMaintainerAgent initialized for {repo_path}")
+        logger.info("🔧 TestMaintainerAgent initialized for %s", repo_path)
 
     async def scan_and_maintain(self, check_git: bool = True) -> dict[str, Any]:
         """
@@ -314,7 +314,7 @@ class TestMaintainerAgent:
                     result = await self.maintain_file_tests(source_file)
                     results.append(result)
                 except Exception as e:
-                    logger.error(f"❌ Failed to maintain tests for {source_file}: {e}")
+                    logger.error("❌ Failed to maintain tests for %s: %s", source_file, e)
                     results.append(
                         {"source_file": str(source_file), "success": False, "error": str(e)},
                     )
@@ -340,7 +340,7 @@ class TestMaintainerAgent:
 
         except Exception as e:
             error_msg = f"Maintenance scan failed: {e}"
-            logger.error(f"❌ {error_msg}")
+            logger.error("❌ %s", error_msg)
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
                     time.time() - start_time, success=False, error=error_msg,
@@ -358,14 +358,14 @@ class TestMaintainerAgent:
             Maintenance result
         """
         start_time = time.time()
-        logger.info(f"🔄 Maintaining tests for: {source_file}")
+        logger.info("🔄 Maintaining tests for: %s", source_file)
 
         try:
             # Find related test files
             test_files = self.test_mapper.find_tests_for_source(source_file)
 
             if not test_files:
-                logger.debug(f"⏭️ No tests found for {source_file}")
+                logger.debug("⏭️ No tests found for %s", source_file)
                 return {
                     "source_file": str(source_file),
                     "success": True,
@@ -376,7 +376,7 @@ class TestMaintainerAgent:
             impact = await self._analyze_file_changes(source_file)
 
             if not impact["test_update_required"]:
-                logger.debug(f"⏭️ No test updates required for {source_file}")
+                logger.debug("⏭️ No test updates required for %s", source_file)
                 return {
                     "source_file": str(source_file),
                     "success": True,
@@ -391,7 +391,7 @@ class TestMaintainerAgent:
                     result = await self._update_test_file(test_file, source_file, impact)
                     update_results.append(result)
                 except Exception as e:
-                    logger.error(f"❌ Failed to update {test_file}: {e}")
+                    logger.error("❌ Failed to update %s: %s", test_file, e)
                     update_results.append(
                         {"test_file": str(test_file), "success": False, "error": str(e)},
                     )
@@ -422,7 +422,7 @@ class TestMaintainerAgent:
 
         except Exception as e:
             error_msg = f"Error maintaining tests for {source_file}: {e}"
-            logger.error(f"❌ {error_msg}")
+            logger.error("❌ %s", error_msg)
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
                     time.time() - start_time, success=False, error=error_msg,
@@ -452,7 +452,7 @@ class TestMaintainerAgent:
             return []
 
         except Exception as e:
-            logger.error(f"Error getting git changes: {e}")
+            logger.error("Error getting git changes: %s", e)
             return []
 
     def _is_source_file(self, file_path: Path) -> bool:
@@ -493,11 +493,11 @@ class TestMaintainerAgent:
                 source_file, previous_content, current_content,
             )
 
-            logger.debug(f"📊 Impact analysis for {source_file}: {impact}")
+            logger.debug("📊 Impact analysis for %s: %s", source_file, impact)
             return impact
 
         except Exception as e:
-            logger.error(f"Error analyzing changes for {source_file}: {e}")
+            logger.error("Error analyzing changes for %s: %s", source_file, e)
             return {
                 "breaking_changes": [],
                 "additive_changes": [],
@@ -528,7 +528,7 @@ class TestMaintainerAgent:
                 test_result = await self._run_tests(test_file)
 
                 if test_result["success"]:
-                    logger.info(f"✅ Updated and validated tests: {test_file}")
+                    logger.info("✅ Updated and validated tests: %s", test_file)
                     return {
                         "test_file": str(test_file),
                         "success": True,
@@ -536,7 +536,7 @@ class TestMaintainerAgent:
                         "test_result": test_result,
                     }
                 else:
-                    logger.warning(f"⚠️ Updated tests failed: {test_file}")
+                    logger.warning("⚠️ Updated tests failed: %s", test_file)
                     return {
                         "test_file": str(test_file),
                         "success": False,
@@ -544,7 +544,7 @@ class TestMaintainerAgent:
                         "error": test_result.get("error", "Tests failed"),
                     }
             else:
-                logger.warning(f"⚠️ Test update validation failed: {test_file}")
+                logger.warning("⚠️ Test update validation failed: %s", test_file)
                 return {
                     "test_file": str(test_file),
                     "success": False,
@@ -554,7 +554,7 @@ class TestMaintainerAgent:
 
         except Exception as e:
             error_msg = f"Error updating test file {test_file}: {e}"
-            logger.error(f"❌ {error_msg}")
+            logger.error("❌ %s", error_msg)
             return {"test_file": str(test_file), "success": False, "error": error_msg}
 
     async def _generate_test_update(
@@ -633,7 +633,7 @@ Return ONLY the complete updated Python test code. No explanations, no markdown 
                 return current_test_content
 
         except Exception as e:
-            logger.error(f"❌ Test update generation failed: {e}")
+            logger.error("❌ Test update generation failed: %s", e)
             return current_test_content
 
     async def _validate_and_save_test(self, test_file: Path, test_content: str) -> dict[str, Any]:
@@ -649,17 +649,17 @@ Return ONLY the complete updated Python test code. No explanations, no markdown 
 
             # Save updated test
             test_file.write_text(test_content, encoding="utf-8")
-            logger.info(f"💾 Updated test saved to {test_file}")
+            logger.info("💾 Updated test saved to %s", test_file)
 
             return {"valid": True, "test_file": str(test_file), "backup": str(backup_file)}
 
         except SyntaxError as e:
             error_msg = f"Syntax error in updated test: {e}"
-            logger.error(f"❌ {error_msg}")
+            logger.error("❌ %s", error_msg)
             return {"valid": False, "error": error_msg}
         except Exception as e:
             error_msg = f"Error saving updated test: {e}"
-            logger.error(f"❌ {error_msg}")
+            logger.error("❌ %s", error_msg)
             return {"valid": False, "error": error_msg}
 
     async def _run_tests(self, test_file: Path) -> dict[str, Any]:

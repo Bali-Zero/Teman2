@@ -1,10 +1,9 @@
 """Tests for mata_garuda.cell.memory_bridge — adapts KnowledgeBase as cell-core memory."""
 import time
-import pytest
-from pathlib import Path
 
+import pytest
+from cell_core.protocols import EpisodicStore, LTMStore, STMStore
 from cell_core.types import Episode, LearnedRule
-from cell_core.protocols import LTMStore, EpisodicStore, STMStore
 
 
 @pytest.fixture

@@ -97,11 +97,11 @@ class HybridSearchService:
                 self._bm25_enabled = True
                 logger.info("BM25 vectorizer initialized for hybrid search")
             except (ImportError, RuntimeError, FileNotFoundError, ValueError) as e:
-                logger.warning(f"Failed to initialize BM25 vectorizer (import/runtime): {e}")
+                logger.warning("Failed to initialize BM25 vectorizer (import/runtime): %s", e)
                 self._bm25_enabled = False
             except Exception as e:  # noqa: BLE001 — hybrid must degrade to dense-only, never crash init
                 logger.warning(
-                    f"Failed to initialize BM25 vectorizer (unexpected): {e}",
+                    "Failed to initialize BM25 vectorizer (unexpected): %s", e,
                     exc_info=True,
                 )
                 self._bm25_enabled = False
@@ -143,10 +143,10 @@ class HybridSearchService:
             logger.debug(f"Generated BM25 vectors for {len(texts)} texts")
             return sparse_vectors
         except (ValueError, RuntimeError, AttributeError) as e:
-            logger.error(f"Failed to compute BM25 vectors (vectorizer error): {e}")
+            logger.error("Failed to compute BM25 vectors (vectorizer error): %s", e)
             return [{"indices": [], "values": []} for _ in texts]
         except Exception as e:  # noqa: BLE001 — caller expects empty-vector fallback on any failure
-            logger.error(f"Failed to compute BM25 vectors (unexpected): {e}", exc_info=True)
+            logger.error("Failed to compute BM25 vectors (unexpected): %s", e, exc_info=True)
             return [{"indices": [], "values": []} for _ in texts]
 
     def compute_bm25_query_vector(self, query: str) -> dict[str, Any]:
@@ -178,10 +178,10 @@ class HybridSearchService:
             )
             return sparse_vector
         except (ValueError, RuntimeError, AttributeError) as e:
-            logger.error(f"Failed to compute BM25 query vector (vectorizer error): {e}")
+            logger.error("Failed to compute BM25 query vector (vectorizer error): %s", e)
             return {"indices": [], "values": []}
         except Exception as e:  # noqa: BLE001 — caller degrades to dense-only on any failure
-            logger.error(f"Failed to compute BM25 query vector (unexpected): {e}", exc_info=True)
+            logger.error("Failed to compute BM25 query vector (unexpected): %s", e, exc_info=True)
             return {"indices": [], "values": []}
 
     def reciprocal_rank_fusion(
@@ -481,7 +481,7 @@ class HybridSearchService:
                     has_native_hybrid = False
                 except Exception as e:  # noqa: BLE001 — manual fusion fallback must still run on unknown errors
                     logger.warning(
-                        f"Native hybrid search failed (unexpected): {e}, falling back to manual fusion",
+                        "Native hybrid search failed (unexpected): %s, falling back to manual fusion", e,
                         exc_info=True,
                     )
                     has_native_hybrid = False
@@ -531,7 +531,7 @@ class HybridSearchService:
                 "error": str(e),
             }
         except Exception as e:  # noqa: BLE001 — search must never propagate to the caller
-            logger.error(f"Hybrid search failed (unexpected): {e}", exc_info=True)
+            logger.error("Hybrid search failed (unexpected): %s", e, exc_info=True)
             return {
                 "results": [],
                 "query": query,
@@ -601,7 +601,7 @@ class HybridSearchService:
             except (QdrantError, AttributeError, ValueError) as e:
                 logger.warning(f"Sparse search not available ({type(e).__name__}): {e}")
             except Exception as e:  # noqa: BLE001 — dense path continues on any sparse error
-                logger.warning(f"Sparse search not available (unexpected): {e}", exc_info=True)
+                logger.warning("Sparse search not available (unexpected): %s", e, exc_info=True)
 
         # Fuse results
         if sparse_formatted:
@@ -726,7 +726,7 @@ class HybridSearchService:
                 "error": str(e),
             }
         except Exception as e:  # noqa: BLE001 — caller must receive a structured error, never an exception
-            logger.error(f"Dense search failed (unexpected): {e}", exc_info=True)
+            logger.error("Dense search failed (unexpected): %s", e, exc_info=True)
             return {
                 "results": [],
                 "query": query,

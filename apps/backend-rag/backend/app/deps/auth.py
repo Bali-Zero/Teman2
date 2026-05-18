@@ -119,12 +119,12 @@ def get_current_user(
             jti = payload.get("jti")
             if jti:
                 logger.debug(
-                    f"S03-S2: Token jti={jti} — revocation check deferred to middleware"
+                    "S03-S2: Token jti=%s — revocation check deferred to middleware", jti
                 )
 
         return user_ctx
     except JWTError as e:
-        logger.warning(f"JWT validation failed: {e}")
+        logger.warning("JWT validation failed: %s", e)
         raise HTTPException(
             status_code=401,
             detail="Invalid or expired token",
@@ -133,7 +133,7 @@ def get_current_user(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Authentication error: {e}", exc_info=True)
+        logger.error("Authentication error: %s", e, exc_info=True)
         raise HTTPException(status_code=401, detail="Authentication failed") from e
 
 

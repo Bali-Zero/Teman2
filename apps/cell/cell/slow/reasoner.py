@@ -14,7 +14,7 @@ from typing import Any
 
 import httpx
 
-from cell.effectors.allowlist import ActionRegistry, AllowedAction, ActionNotAllowed
+from cell.effectors.allowlist import ActionNotAllowed, ActionRegistry
 from cell.memory.pattern_index import PatternIndex
 
 logger = logging.getLogger("cell.slow")
@@ -300,7 +300,7 @@ What action should I take?"""
                 if health_status == "green":
                     return ReasonerProposal(
                         action="none",
-                        reason=f"Qwen 9B unavailable but health is green — no action needed",
+                        reason="Qwen 9B unavailable but health is green — no action needed",
                         confidence=0.9, tier_used=0, cost_usd=0.0,
                     )
                 return ReasonerProposal(
@@ -324,7 +324,7 @@ What action should I take?"""
             if health_status == "green":
                 return ReasonerProposal(
                     action="none",
-                    reason=f"Both Qwen models unavailable but health is green — no action needed",
+                    reason="Both Qwen models unavailable but health is green — no action needed",
                     confidence=0.9, tier_used=1, cost_usd=0.0,
                 )
             return ReasonerProposal(

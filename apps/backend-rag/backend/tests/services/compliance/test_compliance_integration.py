@@ -15,13 +15,11 @@ from datetime import date, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
-import asyncpg
 
-from backend.services.compliance.alerts_engine import AlertsEngine
 from backend.services.compliance.alert_dispatcher import AlertDispatcher
 from backend.services.compliance.alert_metrics import compute_metrics
+from backend.services.compliance.alerts_engine import AlertsEngine
 from backend.services.compliance.predictive_engine import ComplianceForecast
-
 
 pytestmark = pytest.mark.integration
 

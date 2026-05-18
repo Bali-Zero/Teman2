@@ -43,7 +43,7 @@ class DriveAuthManager:
             return token
 
         # 2. Fallback su Service Account in caso di fallimento OAuth
-        logger.warning(f"OAuth token non disponibile per {user_id}. Fallback su Service Account.")
+        logger.warning("OAuth token non disponibile per %s. Fallback su Service Account.", user_id)
         return await self._get_service_account_token()
 
     async def _get_or_refresh_oauth_token(self, user_id: str) -> str | None:
@@ -78,7 +78,7 @@ class DriveAuthManager:
                 # Se mancano meno di 5 minuti alla scadenza, esegui il refresh
                 if time_to_expiry < 300:
                     logger.info(
-                        f"Token OAuth per {user_id} in scadenza (TTL: {time_to_expiry}s). Inizio refresh.",
+                        "Token OAuth per %s in scadenza (TTL: %ss). Inizio refresh.", user_id, time_to_expiry,
                     )
                     return await self._refresh_oauth_token(user_id, refresh_token)
 
@@ -86,7 +86,7 @@ class DriveAuthManager:
 
         except Exception as e:
             logger.error(
-                f"Errore critico nel recupero token OAuth per {user_id}: {e}", exc_info=True,
+                "Errore critico nel recupero token OAuth per %s: %s", user_id, e, exc_info=True,
             )
             return None
 
@@ -97,7 +97,7 @@ class DriveAuthManager:
         """
         if not refresh_token:
             logger.error(
-                f"Impossibile effettuare il refresh per {user_id}: refresh_token mancante.",
+                "Impossibile effettuare il refresh per %s: refresh_token mancante.", user_id,
             )
             if METRICS_ENABLED:
                 drive_oauth_refresh_total.labels(status="failed").inc()
@@ -146,7 +146,7 @@ class DriveAuthManager:
             if METRICS_ENABLED:
                 drive_oauth_refresh_total.labels(status="success").inc()
 
-            logger.info(f"Refresh del token OAuth per {user_id} completato con successo.")
+            logger.info("Refresh del token OAuth per %s completato con successo.", user_id)
             return new_access_token
 
         except httpx.HTTPStatusError as e:
@@ -159,7 +159,7 @@ class DriveAuthManager:
             return None
         except Exception as e:
             logger.error(
-                f"Errore di sistema imprevisto durante il refresh token per {user_id}: {e}",
+                "Errore di sistema imprevisto durante il refresh token per %s: %s", user_id, e,
                 exc_info=True,
             )
             if METRICS_ENABLED:
@@ -191,11 +191,11 @@ class DriveAuthManager:
 
         except json.JSONDecodeError as e:
             logger.error(
-                f"GOOGLE_SERVICE_ACCOUNT_JSON contiene JSON non valido: {e}", exc_info=True,
+                "GOOGLE_SERVICE_ACCOUNT_JSON contiene JSON non valido: %s", e, exc_info=True,
             )
             return None
         except Exception as e:
-            logger.error(f"Errore caricamento del token Service Account: {e}", exc_info=True)
+            logger.error("Errore caricamento del token Service Account: %s", e, exc_info=True)
             return None
 
     async def get_user_allowed_folders(self, user_email: str) -> tuple[list[str], bool]:
@@ -231,6 +231,6 @@ class DriveAuthManager:
 
         except Exception as e:
             logger.error(
-                f"Fallimento recupero permessi folder per l'utente {user_email}: {e}", exc_info=True,
+                "Fallimento recupero permessi folder per l'utente %s: %s", user_email, e, exc_info=True,
             )
             return ([], False)

@@ -1,12 +1,12 @@
 """RSS Sensor — perceives AI newsletters and blogs."""
 from __future__ import annotations
 
+import subprocess
+
 from cell_core.types import SensorReading
 
 from mata_garuda.config import AI_RSS_FEEDS
-from mata_garuda.tools.feed_tools import fetch_rss_feed, _parse_feed
-
-import subprocess
+from mata_garuda.tools.feed_tools import _parse_feed
 
 
 class RSSSensor:

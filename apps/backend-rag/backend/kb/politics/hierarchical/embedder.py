@@ -66,7 +66,7 @@ class LocalEmbedder:
         except Exception as e:
             logger.warning(f"Failed to load {self._model_name}: {e}")
             if self._model_name != FALLBACK_MODEL:
-                logger.info(f"Falling back to {FALLBACK_MODEL}")
+                logger.info("Falling back to %s", FALLBACK_MODEL)
                 self._model_name = FALLBACK_MODEL
                 self._model = SentenceTransformer(FALLBACK_MODEL)
                 self._dimensions = self._model.get_sentence_embedding_dimension()
@@ -119,7 +119,7 @@ class LocalEmbedder:
 
             if total > self._batch_size:
                 processed = min(i + self._batch_size, total)
-                logger.debug(f"Embedded {processed}/{total} texts")
+                logger.debug("Embedded %s/%s texts", processed, total)
 
         elapsed = time.perf_counter() - start
         logger.info(f"Embedded {total} texts in {elapsed:.2f}s ({total / elapsed:.0f} texts/s)")

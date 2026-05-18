@@ -38,7 +38,7 @@ async def initialize_plugins(app: FastAPI) -> None:
         if str(backend_parent) not in sys.path:
             sys.path.insert(0, str(backend_parent))
 
-        logger.info(f"Discovering plugins in {plugins_dir}...")
+        logger.info("Discovering plugins in %s...", plugins_dir)
         # Use 'plugins' prefix since backend parent is now in path
         await registry.discover_plugins(plugins_dir, package_prefix="plugins")
 
@@ -51,6 +51,6 @@ async def initialize_plugins(app: FastAPI) -> None:
         app.state.plugin_registry = registry
 
     except Exception as e:
-        logger.error(f"Failed to initialize plugin system: {e}", exc_info=True)
+        logger.error("Failed to initialize plugin system: %s", e, exc_info=True)
         # Don't fail startup - plugins are non-critical
         app.state.plugin_registry = None

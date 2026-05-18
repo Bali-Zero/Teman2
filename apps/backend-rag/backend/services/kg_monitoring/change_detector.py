@@ -155,7 +155,7 @@ class ChangeDetector:
         }
 
         logger.info("✅ ChangeDetector initialized")
-        logger.info(f"   Alert on change: {alert_on_change}")
+        logger.info("   Alert on change: %s", alert_on_change)
 
     async def initialize_db(self) -> None:
         """Initialize database tables for change tracking"""

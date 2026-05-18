@@ -69,7 +69,7 @@ async def validate_auth_token(token: str | None) -> dict[str, Any] | None:
         email = payload.get("email")
 
         if user_id and email:
-            logger.info(f"✅ Local JWT validation successful for {email}")
+            logger.info("✅ Local JWT validation successful for %s", email)
             user_ctx: dict[str, Any] = {
                 "id": user_id,
                 "email": email,
@@ -94,9 +94,9 @@ async def validate_auth_token(token: str | None) -> dict[str, Any] | None:
             return user_ctx
 
     except JWTError as e:
-        logger.debug(f"Local JWT validation failed: {e}")
+        logger.debug("Local JWT validation failed: %s", e)
     except Exception as e:
-        logger.warning(f"Unexpected error during local JWT validation: {e}")
+        logger.warning("Unexpected error during local JWT validation: %s", e)
 
     return None
 

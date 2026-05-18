@@ -11,13 +11,12 @@ Targets coverage gaps left by test_client_core_coverage.py:
 """
 
 import asyncio
-import json
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from backend.app.core.exceptions import DatabaseError, ResourceNotFoundError
+from backend.app.core.exceptions import DatabaseError
 
 
 # Patch heavy CRM imports before importing client_core
@@ -29,7 +28,7 @@ def _patch_crm_deps():
         patch("backend.services.crm.client_core.query_cache") as mock_query_cache,
         patch("backend.services.crm.client_core.CRMQueryOptimizer") as mock_optimizer_cls,
         patch("backend.services.crm.client_core.invalidate_client_cache") as mock_invalidate,
-        patch("backend.services.crm.client_core.health_check_crm_tables") as mock_health,
+        patch("backend.services.crm.client_core.health_check_crm_tables"),
     ):
         mock_crm_cache.get = AsyncMock(return_value=None)
         mock_crm_cache.set = AsyncMock()
@@ -58,10 +57,7 @@ from backend.services.crm.client_core import (
     PracticeValidator,
     extract_entities_from_text,
     normalize_phone_e164,
-    sanitize_input,
-    validate_uuid,
 )
-
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # Fixtures

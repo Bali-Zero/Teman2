@@ -222,7 +222,7 @@ async def hybrid_oracle_query(
             document_count=0,
         )
     except Exception as e:
-        logger.error(f"❌ Oracle Router Error: {e}")
+        logger.error("❌ Oracle Router Error: %s", e)
         logger.debug(traceback.format_exc())
         return OracleQueryResponse(
             success=False, query=request.query, error=str(e), execution_time_ms=0, document_count=0,
@@ -238,7 +238,7 @@ async def submit_user_feedback(feedback: FeedbackRequest) -> dict[str, Any]:
         success = await oracle_service.submit_feedback(feedback.dict())
         return {"success": success}
     except Exception as e:
-        logger.error(f"Feedback error: {e}")
+        logger.error("Feedback error: %s", e)
         return {"success": False, "error": str(e)}
 
 

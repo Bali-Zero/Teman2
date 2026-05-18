@@ -6,7 +6,6 @@ Used by the Ollama fallback ReAct loop to execute MCP tools.
 Gemini CLI path does NOT use this — it connects to MCP directly.
 """
 
-import asyncio
 import logging
 import os
 from pathlib import Path

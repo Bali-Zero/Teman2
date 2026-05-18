@@ -5,14 +5,13 @@ Downloads from Drive via SA, sends to Gemini CLI for extraction.
 Runs 5 parallel gemini CLI sessions.
 """
 import asyncio
-import json
-import os
-import sys
 import io
-import time
-import subprocess
-import tempfile
+import json
 import logging
+import os
+import subprocess
+import sys
+import time
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -142,11 +141,17 @@ async def save_to_db(company_id: int, result: dict):
                 continue
             sets, params, idx = [], [], 1
             if shares and (link["shares_count"] is None or link["shares_count"] == 0):
-                sets.append(f"shares_count = ${idx}"); params.append(int(shares)); idx += 1
+                sets.append(f"shares_count = ${idx}")
+                params.append(int(shares))
+                idx += 1
             if nominal and (link["share_nominal_value"] is None or float(link["share_nominal_value"] or 0) == 0):
-                sets.append(f"share_nominal_value = ${idx}"); params.append(float(nominal)); idx += 1
+                sets.append(f"share_nominal_value = ${idx}")
+                params.append(float(nominal))
+                idx += 1
             if pct and (link["ownership_percentage"] is None or float(link["ownership_percentage"] or 0) == 0):
-                sets.append(f"ownership_percentage = ${idx}"); params.append(float(pct)); idx += 1
+                sets.append(f"ownership_percentage = ${idx}")
+                params.append(float(pct))
+                idx += 1
             if sets:
                 params.append(link["id"])
                 await conn.execute(f"UPDATE client_company_links SET {', '.join(sets)} WHERE id = ${idx}", *params)

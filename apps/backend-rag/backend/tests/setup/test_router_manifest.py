@@ -23,7 +23,6 @@ import pytest
 from backend.app.setup.router_manifest import (
     PROCESS_GROUPS,
     ROUTER_MANIFEST,
-    RouterEntry,
     all_router_names,
     routers_for_group,
     validate_manifest,
@@ -61,7 +60,7 @@ class TestManifestIntegrity:
     def test_validate_manifest_no_errors(self) -> None:
         """Manifest validation passes with no errors."""
         errors = validate_manifest()
-        assert not errors, f"Manifest validation errors:\n" + "\n".join(errors)
+        assert not errors, "Manifest validation errors:\n" + "\n".join(errors)
 
     def test_no_duplicate_entries(self) -> None:
         """Each (name, attr) pair appears exactly once."""

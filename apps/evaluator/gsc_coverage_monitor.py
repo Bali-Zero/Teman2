@@ -18,7 +18,7 @@ import argparse
 import json
 import logging
 import time
-from datetime import datetime, timedelta
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -283,7 +283,7 @@ def print_report(
         print("     Possibili cause: sito lento, crawl budget esaurito, thin content.")
 
     if excluded:
-        print(f"\n  ⚠️  EXCLUDED URLs (prime 5):")
+        print("\n  ⚠️  EXCLUDED URLs (prime 5):")
         for r in excluded[:5]:
             print(f"     {r['url']} — {r.get('coverage_state', '')}")
 

@@ -1,6 +1,5 @@
 # apps/cell/tests/test_attention_allocator.py
 """Tests for AttentionAllocator."""
-import pytest
 from cell.metabolism.attention_allocator import AttentionAllocator, AttentionCost
 
 

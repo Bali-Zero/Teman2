@@ -34,12 +34,12 @@ async def initialize_memory_vector_db(qdrant_url: str | None = None) -> QdrantCl
         memory_vector_db = QdrantClient(qdrant_url=target_url, collection_name="zantara_memories")
         stats = await memory_vector_db.get_collection_stats()
         logger.info(
-            "✅ Memory vector DB ready (collection='zantara_memories', url='{}', total={})".format(
-                target_url, stats.get("total_documents", 0),
-            ),
+            "✅ Memory vector DB ready (collection='zantara_memories', url='%s', total=%s)",
+            target_url,
+            stats.get("total_documents", 0),
         )
     except Exception as exc:
-        logger.error(f"Memory vector DB initialization failed: {exc}")
+        logger.error("Memory vector DB initialization failed: %s", exc)
         raise
 
     return memory_vector_db
@@ -119,7 +119,7 @@ async def init_memory_collection(request: InitRequest) -> InitResponse:
             total_memories=stats.get("total_documents", 0),
         )
     except Exception as exc:
-        logger.error(f"Memory vector init failed: {exc}")
+        logger.error("Memory vector init failed: %s", exc)
         raise HTTPException(status_code=500, detail=f"Initialization failed: {str(exc)}") from exc
 
 
@@ -134,7 +134,7 @@ async def generate_embedding(request: EmbedRequest) -> EmbedResponse:
 
         return EmbedResponse(embedding=embedding, dimensions=len(embedding), model=embedder.model)
     except Exception as e:
-        logger.error(f"Embedding generation failed: {e}")
+        logger.error("Embedding generation failed: %s", e)
         raise HTTPException(status_code=500, detail=f"Embedding failed: {str(e)}") from e
 
 
@@ -163,7 +163,7 @@ async def store_memory_vector(request: StoreMemoryRequest) -> dict[str, Any]:
         await invalidate_cache("zantara:memory_vector:*")
         return {"success": True, "memory_id": request.id, "collection": "zantara_memories"}
     except Exception as e:
-        logger.error(f"Memory storage failed: {e}")
+        logger.error("Memory storage failed: %s", e)
         raise HTTPException(status_code=500, detail=f"Storage failed: {str(e)}") from e
 
 
@@ -223,7 +223,7 @@ async def search_memories_semantic(request: SearchMemoryRequest) -> MemorySearch
         )
 
     except Exception as e:
-        logger.error(f"Memory search failed: {e}")
+        logger.error("Memory search failed: %s", e)
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}") from e
 
 
@@ -262,7 +262,7 @@ async def find_similar_memories(request: SimilarMemoryRequest) -> MemorySearchRe
             limit=request.limit + 1,  # +1 because it will include itself
         )
 
-        logger.debug(f"Similar search raw results: {results}")
+        logger.debug("Similar search raw results: %s", results)
 
         # Remove the original memory from results
         filtered_results = {"ids": [], "documents": [], "metadatas": [], "distances": []}
@@ -305,7 +305,7 @@ async def find_similar_memories(request: SimilarMemoryRequest) -> MemorySearchRe
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Similar memory search failed: {e}")
+        logger.error("Similar memory search failed: %s", e)
         raise HTTPException(status_code=500, detail=f"Similar search failed: {str(e)}") from e
 
 
@@ -316,12 +316,12 @@ async def delete_memory_vector(memory_id: str) -> dict[str, Any]:
         db = await get_memory_vector_db()
         await db.delete(ids=[memory_id])
 
-        logger.info(f"✅ Memory deleted: {memory_id}")
+        logger.info("✅ Memory deleted: %s", memory_id)
 
         await invalidate_cache("zantara:memory_vector:*")
         return {"success": True, "deleted_id": memory_id}
     except Exception as e:
-        logger.error(f"Memory deletion failed: {e}")
+        logger.error("Memory deletion failed: %s", e)
         raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}") from e
 
 
@@ -341,7 +341,7 @@ async def get_memory_stats() -> dict[str, Any]:
             "collection_size_mb": stats.get("total_documents", 0) * 0.001,  # Rough estimate
         }
     except Exception as e:
-        logger.error(f"Stats retrieval failed: {e}")
+        logger.error("Stats retrieval failed: %s", e)
         return {"total_memories": 0, "users": 0, "collection_size_mb": 0, "error": str(e)}
 
 

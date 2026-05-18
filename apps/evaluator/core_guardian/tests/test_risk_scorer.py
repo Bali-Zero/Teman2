@@ -7,13 +7,10 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from risk_scorer import (
+    clear_deploy_block,
     compute_risk_score,
     get_threshold_action,
     write_deploy_block,
-    clear_deploy_block,
-    THRESHOLD_AUTO_FIX,
-    THRESHOLD_AUTO_FIX_ALERT,
-    THRESHOLD_BLOCK_DEPLOY,
 )
 
 

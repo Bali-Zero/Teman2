@@ -167,6 +167,7 @@ mcp>=1.25.0  # Upgraded for pydantic 2.12+ compatibility
 # (GHSA-5h2m-4q8j-pqpj), CVE-2025-66416 (GHSA-rcfx-77hg-w2wv), command
 # injection variants, reflected XSS callback page.
 python-json-logger>=2.0.0
+orjson>=3.10.0  # 3-10× faster JSON serialization (FastAPI default response, hot path: pii_scanner, audit_logger, event_bus)
 
 # Security & HTTP
 certifi>=2026.2.25  # Updated 2026-03-14: SSL certificates updated Feb 2026

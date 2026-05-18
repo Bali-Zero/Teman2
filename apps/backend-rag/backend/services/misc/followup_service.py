@@ -102,7 +102,7 @@ class FollowupService:
             )
         except Exception as e:
             logger.warning(
-                f"⚠️ [FollowupService] ZANTARA AI not available: {e}",
+                "⚠️ [FollowupService] ZANTARA AI not available: %s", e,
                 extra={
                     "component": "FollowupService",
                     "action": "init",
@@ -156,7 +156,7 @@ class FollowupService:
                     if items:
                         return items
             except Exception as e:
-                logger.warning(f"FollowupService.generate_followups AI path failed: {e}")
+                logger.warning("FollowupService.generate_followups AI path failed: %s", e)
 
         # Fallback: topic-based suggestions
         # Use provided language or auto-detect from query
@@ -349,7 +349,7 @@ class FollowupService:
 
         try:
             logger.info(
-                f"🤖 [Followups] Generating dynamic follow-ups using ZANTARA AI (language={language})",
+                "🤖 [Followups] Generating dynamic follow-ups using ZANTARA AI (language=%s)", language,
                 extra={
                     "component": "FollowupService",
                     "action": "generate_dynamic_followups_start",
@@ -404,7 +404,7 @@ class FollowupService:
             total_duration = time.time() - start_time
             followup_ai_generation_total.labels(status="error").inc()
             logger.error(
-                f"❌ [Followups] Dynamic generation failed: {e}",
+                "❌ [Followups] Dynamic generation failed: %s", e,
                 extra={
                     "component": "FollowupService",
                     "action": "generate_dynamic_followups_error",
@@ -702,7 +702,7 @@ CRITICAL: All questions MUST be in {language.upper()} language."""
             ).observe(duration)
 
             logger.error(
-                f"❌ [Followups] Failed to generate follow-ups: {e}",
+                "❌ [Followups] Failed to generate follow-ups: %s", e,
                 extra={
                     "component": "FollowupService",
                     "action": "get_followups_error",
@@ -730,7 +730,7 @@ CRITICAL: All questions MUST be in {language.upper()} language."""
                 return fallback_result
             except Exception as fallback_error:
                 logger.error(
-                    f"❌ [Followups] Fallback also failed: {fallback_error}",
+                    "❌ [Followups] Fallback also failed: %s", fallback_error,
                     extra={
                         "component": "FollowupService",
                         "action": "fallback_error",

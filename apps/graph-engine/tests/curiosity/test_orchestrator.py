@@ -4,15 +4,12 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, patch
 
 import pytest
-
 from nuzantara_graph.curiosity.models import (
     GapTopic,
     ResearchEvidence,
     Tier,
 )
 from nuzantara_graph.curiosity.orchestrator import (
-    CRITICAL_DOMAINS,
-    DOMAIN_PRIORITY,
     CuriosityOrchestrator,
 )
 

@@ -5,8 +5,6 @@
 
 from __future__ import annotations
 
-import pytest
-
 from backend.services.rag.agentic.query_plan import (
     KGStrategy,
     QueryComplexity,

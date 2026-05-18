@@ -7,10 +7,9 @@ All LLM calls are mocked (no real subprocess).
 from __future__ import annotations
 
 import asyncio
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
-
 from mata_garuda.council.models import (
     AgentVote,
     ConsensusResult,

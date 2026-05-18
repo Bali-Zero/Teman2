@@ -80,7 +80,7 @@ class TeamMemberSearchPlugin(Plugin):
         try:
             query = input_data.query.lower().strip()
 
-            logger.debug(f"Team search: query={query}")
+            logger.debug("Team search: query=%s", query)
 
             profiles = self.collaborator_service.search_members(query)
 
@@ -117,5 +117,5 @@ class TeamMemberSearchPlugin(Plugin):
             )
 
         except Exception as e:
-            logger.error(f"Team search error: {e}", exc_info=True)
+            logger.error("Team search error: %s", e, exc_info=True)
             return TeamSearchOutput(success=False, error=f"Team search failed: {str(e)}")

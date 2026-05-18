@@ -369,7 +369,7 @@ async def create_client(
                     )
                     if existing_company_id:
                         logger.info(
-                            f"Company dedup: found existing company {existing_company_id} by NIB {nib}"
+                            "Company dedup: found existing company %s by NIB %s", existing_company_id, nib
                         )
 
             if not existing_company_id:
@@ -405,7 +405,7 @@ async def create_client(
                 db_pool=db_pool,
             )
         except Exception as e:
-            logger.error(f"Drive folder creation failed: {e}")
+            logger.error("Drive folder creation failed: %s", e)
 
         # Invalidazione extra cache HTTP (il service invalida la memory cache)
         await invalidate_cache("zantara:crm_clients_stats:*")
@@ -420,7 +420,7 @@ async def create_client(
             background_tasks.add_task(send_client_welcome, new_client["id"], db_pool)
             background_tasks.add_task(schedule_client_welcome_email, new_client["id"], db_pool)
         except Exception as e:
-            logger.error(f"Welcome communication setup failed: {e}")
+            logger.error("Welcome communication setup failed: %s", e)
 
         # Auto-create portal profile (team_members with role='client')
         try:
@@ -434,12 +434,12 @@ async def create_client(
                 full_name=new_client.get("full_name", ""),
             )
         except Exception as e:
-            logger.error(f"Portal profile creation setup failed: {e}")
+            logger.error("Portal profile creation setup failed: %s", e)
 
         return ClientResponse(**new_client)
 
     except ResourceConflictError as e:
-        logger.warning(f"Integrity error creating client: {e}")
+        logger.warning("Integrity error creating client: %s", e)
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
         raise handle_database_error(e) from e
@@ -493,8 +493,7 @@ async def list_clients(
         rbac_filter = get_crm_user_filter(current_user)
 
         logger.info(
-            f"📋 [CRM Clients] User {current_user_email} requesting clients list "
-            f"(assigned_to_filter={assigned_to}, rbac_filter={rbac_filter})",
+            "📋 [CRM Clients] User %s requesting clients list (assigned_to_filter=%s, rbac_filter=%s)", current_user_email, assigned_to, rbac_filter,
         )
 
         async with db_pool.acquire() as conn:
@@ -828,7 +827,7 @@ async def update_client(
                     ),
                 )
             except Exception as e:
-                logger.error(f"Portal notification for profile update failed: {e}")
+                logger.error("Portal notification for profile update failed: %s", e)
 
             log_success(
                 logger,

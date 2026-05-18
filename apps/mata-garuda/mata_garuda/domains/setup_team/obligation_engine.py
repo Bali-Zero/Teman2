@@ -40,12 +40,11 @@ from __future__ import annotations
 import json
 import logging
 import os
-import shlex
 import sqlite3
 import subprocess
+from collections.abc import Callable, Iterable
 from datetime import date
 from pathlib import Path
-from typing import Callable, Iterable, Optional
 
 from mata_garuda.domains.setup_team.types import (
     Obligation,
@@ -199,7 +198,7 @@ def _parse_claude_json(raw: str) -> list[dict]:
     return parsed
 
 
-def _parse_iso_date(value) -> Optional[date]:
+def _parse_iso_date(value) -> date | None:
     """Forgiving ISO date parser."""
     if value is None or value == "":
         return None
@@ -315,7 +314,7 @@ def _persist(
 def extract_obligations(
     regulation: Regulation,
     *,
-    claude_runner: Optional[Callable[[str], str]] = None,
+    claude_runner: Callable[[str], str] | None = None,
     db_path: Path | str | None = None,
     ner_extractor=None,  # foundations.NERExtractor or None
 ) -> list[Obligation]:

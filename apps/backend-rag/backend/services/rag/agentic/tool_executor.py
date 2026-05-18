@@ -90,11 +90,11 @@ def parse_native_function_call(function_call_part: Any) -> ToolCall | None:
             logger.warning("🔧 [Native Function Call] Empty tool name detected (ignoring)")
             return None
 
-        logger.info(f"🔧 [Native Function Call] Detected: {tool_name} with args: {arguments}")
+        logger.info("🔧 [Native Function Call] Detected: %s with args: %s", tool_name, arguments)
         return ToolCall(tool_name=tool_name, arguments=arguments)
 
     except (AttributeError, TypeError, ValueError) as e:
-        logger.warning(f"Failed to parse native function call: {e}", exc_info=True)
+        logger.warning("Failed to parse native function call: %s", e, exc_info=True)
         return None
 
 
@@ -140,7 +140,7 @@ def parse_tool_call_regex(text: str) -> ToolCall | None:
                 else:
                     args = {}
 
-            logger.info(f"🔧 [Regex Fallback] Parsed: {tool_name} with args: {args}")
+            logger.info("🔧 [Regex Fallback] Parsed: %s with args: %s", tool_name, args)
             return ToolCall(tool_name=tool_name, arguments=args)
         except (ValueError, KeyError, AttributeError):
             return None
@@ -348,5 +348,5 @@ async def execute_tool(
     except (ValueError, RuntimeError, KeyError, TypeError, AttributeError) as e:
         duration = time.time() - start_time
         metrics_collector.record_tool_call(tool_name, "error")
-        logger.error(f"Tool execution failed: {e}", exc_info=True)
+        logger.error("Tool execution failed: %s", e, exc_info=True)
         return f"Error executing {tool_name}: {str(e)}", duration

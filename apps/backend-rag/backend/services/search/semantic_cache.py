@@ -90,7 +90,7 @@ class SemanticCache:
             return None
 
         except Exception as e:
-            logger.error(f"[Cache] Error getting cached result: {e}")
+            logger.error("[Cache] Error getting cached result: %s", e)
             return None
 
     async def cache_result(
@@ -138,11 +138,11 @@ class SemanticCache:
             # Enforce max cache size (LRU eviction)
             await self._enforce_cache_size()
 
-            logger.info(f"✅ [Cache] Cached result for query (TTL: {ttl}s)")
+            logger.info("✅ [Cache] Cached result for query (TTL: %ss)", ttl)
             return True
 
         except Exception as e:
-            logger.error(f"[Cache] Error caching result: {e}")
+            logger.error("[Cache] Error caching result: %s", e)
             return False
 
     async def _find_similar_query(self, query_embedding: np.ndarray) -> dict[str, Any] | None:
@@ -197,7 +197,7 @@ class SemanticCache:
             return None
 
         except Exception as e:
-            logger.error(f"[Cache] Error finding similar query: {e}")
+            logger.error("[Cache] Error finding similar query: %s", e)
             return None
 
     @staticmethod
@@ -236,10 +236,10 @@ class SemanticCache:
                     await self.redis.delete(cache_key)
                     await self.redis.zrem(f"{self.cache_prefix}index", key)
 
-                logger.info(f"🗑️ [Cache] Evicted {num_to_remove} oldest entries (LRU)")
+                logger.info("🗑️ [Cache] Evicted %s oldest entries (LRU)", num_to_remove)
 
         except Exception as e:
-            logger.error(f"[Cache] Error enforcing cache size: {e}")
+            logger.error("[Cache] Error enforcing cache size: %s", e)
 
     async def get_cache_stats(self) -> dict[str, Any]:
         """Get cache statistics"""
@@ -253,7 +253,7 @@ class SemanticCache:
                 "default_ttl": self.default_ttl,
             }
         except Exception as e:
-            logger.error(f"[Cache] Error getting stats: {e}")
+            logger.error("[Cache] Error getting stats: %s", e)
             return {}
 
     async def clear_cache(self) -> None:
@@ -270,7 +270,7 @@ class SemanticCache:
             logger.info(f"🗑️ [Cache] Cleared {len(keys)} cached entries")
 
         except Exception as e:
-            logger.error(f"[Cache] Error clearing cache: {e}")
+            logger.error("[Cache] Error clearing cache: %s", e)
 
 
 # Singleton instance

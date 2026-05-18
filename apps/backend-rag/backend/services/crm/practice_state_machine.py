@@ -98,7 +98,7 @@ def validate_transition(
                 f"Only admins can perform this action.",
             )
 
-    logger.debug(f"State transition validated: {from_state} → {to_state}")
+    logger.debug("State transition validated: %s → %s", from_state, to_state)
     return True
 
 

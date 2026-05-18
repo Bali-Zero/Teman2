@@ -80,7 +80,7 @@ class TeamMembersListPlugin(Plugin):
         try:
             department = input_data.department.lower().strip() if input_data.department else None
 
-            logger.debug(f"Team list: department={department}")
+            logger.debug("Team list: department=%s", department)
 
             profiles = self.collaborator_service.list_members(department)
 
@@ -124,5 +124,5 @@ class TeamMembersListPlugin(Plugin):
             )
 
         except Exception as e:
-            logger.error(f"Team list error: {e}", exc_info=True)
+            logger.error("Team list error: %s", e, exc_info=True)
             return TeamListOutput(success=False, error=f"Team list failed: {str(e)}")

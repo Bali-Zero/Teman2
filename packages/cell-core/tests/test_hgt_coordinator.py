@@ -13,13 +13,11 @@ Coverage:
 from __future__ import annotations
 
 import logging
-from datetime import timedelta
 from pathlib import Path
 from typing import Any
 
 import fakeredis.aioredis
 import pytest
-
 from cell_core.hgt_coordinator import HGTCoordinator
 from cell_core.hgt_coordinator.audit_log import (
     fetch_all,
@@ -34,7 +32,6 @@ from cell_core.hgt_coordinator.coordinator import (
     STREAM_SKILLS_CONSUMED,
 )
 from cell_core.hgt_coordinator.proposal import Proposal
-
 
 # === Fixtures ==============================================================
 

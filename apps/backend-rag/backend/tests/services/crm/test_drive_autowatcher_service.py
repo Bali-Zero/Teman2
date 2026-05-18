@@ -36,18 +36,22 @@ async def test_autowatcher_dry_run_previews_story_drafts_without_writes() -> Non
         )
     ]
 
-    with patch(
-        "backend.services.crm.drive_autowatcher_service.run_crm_drive_backfill",
-        new_callable=AsyncMock,
-        return_value={"processed": 1, "ocr_dispatched": 0, "kg_linked": 1},
-    ), patch(
-        "backend.services.crm.drive_autowatcher_service.fetch_drive_evidence_for_story_drafts",
-        new_callable=AsyncMock,
-        return_value=evidence,
-    ), patch(
-        "backend.services.crm.drive_autowatcher_service.create_workspace_ai_snapshot",
-        new_callable=AsyncMock,
-    ) as create_snapshot:
+    with (
+        patch(
+            "backend.services.crm.drive_autowatcher_service.run_crm_drive_backfill",
+            new_callable=AsyncMock,
+            return_value={"processed": 1, "ocr_dispatched": 0, "kg_linked": 1},
+        ),
+        patch(
+            "backend.services.crm.drive_autowatcher_service.fetch_drive_evidence_for_story_drafts",
+            new_callable=AsyncMock,
+            return_value=evidence,
+        ),
+        patch(
+            "backend.services.crm.drive_autowatcher_service.create_workspace_ai_snapshot",
+            new_callable=AsyncMock,
+        ) as create_snapshot,
+    ):
         result = await run_crm_drive_autowatch(
             object(),
             limit=5,
@@ -101,23 +105,28 @@ async def test_autowatcher_creates_only_new_draft_snapshots() -> None:
         )
     ]
 
-    with patch(
-        "backend.services.crm.drive_autowatcher_service.run_crm_drive_backfill",
-        new_callable=AsyncMock,
-        return_value={"processed": 2, "ocr_dispatched": 1, "kg_linked": 2},
-    ), patch(
-        "backend.services.crm.drive_autowatcher_service.fetch_drive_evidence_for_story_drafts",
-        new_callable=AsyncMock,
-        return_value=evidence,
-    ), patch(
-        "backend.services.crm.drive_autowatcher_service.workspace_ai_snapshot_exists",
-        new_callable=AsyncMock,
-        return_value=False,
-    ), patch(
-        "backend.services.crm.drive_autowatcher_service.create_workspace_ai_snapshot",
-        new_callable=AsyncMock,
-        return_value=object(),
-    ) as create_snapshot:
+    with (
+        patch(
+            "backend.services.crm.drive_autowatcher_service.run_crm_drive_backfill",
+            new_callable=AsyncMock,
+            return_value={"processed": 2, "ocr_dispatched": 1, "kg_linked": 2},
+        ),
+        patch(
+            "backend.services.crm.drive_autowatcher_service.fetch_drive_evidence_for_story_drafts",
+            new_callable=AsyncMock,
+            return_value=evidence,
+        ),
+        patch(
+            "backend.services.crm.drive_autowatcher_service.workspace_ai_snapshot_exists",
+            new_callable=AsyncMock,
+            return_value=False,
+        ),
+        patch(
+            "backend.services.crm.drive_autowatcher_service.create_workspace_ai_snapshot",
+            new_callable=AsyncMock,
+            return_value=object(),
+        ) as create_snapshot,
+    ):
         result = await run_crm_drive_autowatch(
             object(),
             limit=5,
@@ -173,22 +182,27 @@ async def test_autowatcher_skips_existing_snapshot_fingerprint() -> None:
         )
     ]
 
-    with patch(
-        "backend.services.crm.drive_autowatcher_service.run_crm_drive_backfill",
-        new_callable=AsyncMock,
-        return_value={"processed": 0},
-    ), patch(
-        "backend.services.crm.drive_autowatcher_service.fetch_drive_evidence_for_story_drafts",
-        new_callable=AsyncMock,
-        return_value=evidence,
-    ), patch(
-        "backend.services.crm.drive_autowatcher_service.workspace_ai_snapshot_exists",
-        new_callable=AsyncMock,
-        return_value=True,
-    ), patch(
-        "backend.services.crm.drive_autowatcher_service.create_workspace_ai_snapshot",
-        new_callable=AsyncMock,
-    ) as create_snapshot:
+    with (
+        patch(
+            "backend.services.crm.drive_autowatcher_service.run_crm_drive_backfill",
+            new_callable=AsyncMock,
+            return_value={"processed": 0},
+        ),
+        patch(
+            "backend.services.crm.drive_autowatcher_service.fetch_drive_evidence_for_story_drafts",
+            new_callable=AsyncMock,
+            return_value=evidence,
+        ),
+        patch(
+            "backend.services.crm.drive_autowatcher_service.workspace_ai_snapshot_exists",
+            new_callable=AsyncMock,
+            return_value=True,
+        ),
+        patch(
+            "backend.services.crm.drive_autowatcher_service.create_workspace_ai_snapshot",
+            new_callable=AsyncMock,
+        ) as create_snapshot,
+    ):
         result = await run_crm_drive_autowatch(
             object(),
             dry_run=False,
@@ -233,7 +247,109 @@ def test_story_draft_payload_uses_human_language_and_no_drive_links() -> None:
     assert "OCR" not in details
     assert "drive.google.com" not in details
     assert "Maria Rossi" in details
-    assert payload.facts[-1].detail.startswith("Review this draft")
+    assert payload.facts[-1].detail.startswith("Consultant prompts:")
+
+
+def test_story_draft_payload_frames_consultant_narrative_and_prompts() -> None:
+    from backend.services.crm.drive_autowatcher_service import (
+        CompanyDriveEvidence,
+        DriveEvidenceDocument,
+        build_workspace_ai_snapshot_payload,
+    )
+
+    payload = build_workspace_ai_snapshot_payload(
+        CompanyDriveEvidence(
+            company_id=11,
+            company_name="PT BIMALA INVESTMENTS BALI",
+            client_ids=[101, 102],
+            people=["Gianluca Morelli", "Giulia Del Giudice"],
+            tax_owner="Dewa Ayu",
+            documents=[
+                DriveEvidenceDocument(
+                    file_id="akta",
+                    file_name="Akta Pendirian.pdf",
+                    document_type="akta",
+                    document_category="company",
+                    ocr_status="completed",
+                    has_kg_node=True,
+                ),
+                DriveEvidenceDocument(
+                    file_id="itas",
+                    file_name="ITAS E28A Investor.pdf",
+                    document_type="itas",
+                    document_category="person",
+                    ocr_status="completed",
+                    has_kg_node=True,
+                ),
+                DriveEvidenceDocument(
+                    file_id="spt",
+                    file_name="SPT 2025.pdf",
+                    document_type="spt",
+                    document_category="tax",
+                    ocr_status="completed",
+                    has_kg_node=True,
+                ),
+            ],
+            kg_edge_count=3,
+        )
+    )
+
+    details_by_category = {fact.category: fact.detail for fact in payload.facts}
+    all_details = " ".join(details_by_category.values())
+    assert "operational dossier" in details_by_category["identity"]
+    assert "Gianluca Morelli and Giulia Del Giudice" in details_by_category["person"]
+    assert "tax posture" in details_by_category["compliance"]
+    assert "Consultant prompts:" in details_by_category["next_action"]
+    assert "investor visa role alignment" in details_by_category["next_action"]
+    assert "LKPM or capital reporting" in details_by_category["next_action"]
+    assert "monthly tax workflow" in details_by_category["next_action"]
+    assert "KG" not in all_details
+    assert "OCR" not in all_details
+    assert "drive.google.com" not in all_details
+
+
+def test_story_draft_payload_handles_company_level_dossier_without_active_people() -> None:
+    from backend.services.crm.drive_autowatcher_service import (
+        CompanyDriveEvidence,
+        DriveEvidenceDocument,
+        build_workspace_ai_snapshot_payload,
+    )
+
+    payload = build_workspace_ai_snapshot_payload(
+        CompanyDriveEvidence(
+            company_id=3317,
+            company_name="PT Bali Budu Group",
+            client_ids=[],
+            people=[],
+            tax_owner="Unassigned",
+            documents=[
+                DriveEvidenceDocument(
+                    file_id="profile",
+                    file_name="Profil Perseroan.pdf",
+                    document_type="company_profile",
+                    document_category="company",
+                    ocr_status="completed",
+                    has_kg_node=True,
+                ),
+                DriveEvidenceDocument(
+                    file_id="lease",
+                    file_name="PERJANJIAN SEWA MENYEWA - PT Bali Budu Group.pdf",
+                    document_type="lease",
+                    document_category="company",
+                    ocr_status="skipped",
+                    has_kg_node=False,
+                ),
+            ],
+            kg_edge_count=0,
+        )
+    )
+
+    details_by_category = {fact.category: fact.detail for fact in payload.facts}
+    assert payload.client_id is None
+    assert "company-level dossier" in details_by_category["person"]
+    assert "active individual profiles" in details_by_category["person"]
+    assert "the linked person" not in details_by_category["person"]
+    assert "confirmed CRM relationship" not in details_by_category["person"]
 
 
 def test_evidence_query_prioritizes_companies_without_autowatcher_drafts() -> None:
@@ -246,6 +362,8 @@ def test_evidence_query_prioritizes_companies_without_autowatcher_drafts() -> No
     assert "ORDER BY has_autowatcher_snapshot ASC" in sql
     assert "company_documents" in sql
     assert "google_drive_file_id" in sql
+    assert "company_document_scope" in sql
+    assert "NULL::int AS client_id" in sql
 
 
 def test_evidence_rows_dedupe_company_documents_across_linked_people() -> None:
@@ -288,3 +406,35 @@ def test_evidence_rows_dedupe_company_documents_across_linked_people() -> None:
     assert evidence[0].client_ids == [146, 176]
     assert evidence[0].people == ["Michele Porinelli", "Francesca rizzo"]
     assert [document.file_id for document in evidence[0].documents] == ["company-drive-file"]
+
+
+def test_evidence_rows_support_company_level_documents_without_active_people() -> None:
+    from backend.services.crm.drive_autowatcher_service import _evidence_from_rows
+
+    evidence = _evidence_from_rows(
+        [
+            {
+                "company_id": 3317,
+                "company_name": "PT Bali Budu Group",
+                "client_id": None,
+                "client_name": None,
+                "tax_owner": None,
+                "file_id": "bali-budu-profile",
+                "file_name": "Profil Perseroan.pdf",
+                "document_type": "company_profile",
+                "document_category": "company",
+                "ocr_status": "completed",
+                "has_kg_node": True,
+                "kg_edge_count": 0,
+            }
+        ]
+    )
+
+    assert len(evidence) == 1
+    assert evidence[0].company_id == 3317
+    assert evidence[0].client_ids == []
+    assert evidence[0].people == []
+    assert evidence[0].tax_owner == "Unassigned"
+    assert [document.file_id for document in evidence[0].documents] == [
+        "bali-budu-profile"
+    ]

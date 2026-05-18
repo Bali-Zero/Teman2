@@ -160,7 +160,7 @@ class LKPMService:
 
         Loads previous quarters to calculate cumulative realization.
         """
-        logger.info(f"Generating LKPM draft: client={client_id}, {quarter} {year}")
+        logger.info("Generating LKPM draft: client=%s, %s %s", client_id, quarter, year)
 
         # Check if draft already exists
         existing = await self._load_draft(client_id, quarter, year)
@@ -186,7 +186,7 @@ class LKPMService:
         # Save draft
         draft_id = await self._save_draft(draft)
         draft.id = draft_id
-        logger.info(f"Draft created: id={draft_id}")
+        logger.info("Draft created: id=%s", draft_id)
         return draft
 
     async def _ensure_client_config(self, client_id: int) -> None:
@@ -231,7 +231,7 @@ class LKPMService:
                 )
             else:
                 logger.warning(
-                    f"No active company found for client {client_id}, cannot auto-create config",
+                    "No active company found for client %s, cannot auto-create config", client_id,
                 )
 
     async def get_history_for_portal_client(self, client_id: int) -> list[LKPMBatchItem]:
@@ -499,7 +499,7 @@ class LKPMService:
                 LKPMStatus.APPROVED.value,
                 draft_id,
             )
-        logger.info(f"Draft {draft_id} approved by client")
+        logger.info("Draft %s approved by client", draft_id)
         return {"success": True, "draft_id": draft_id, "status": "approved"}
 
     async def mark_submitted(self, draft_id: int, submitted_by: str) -> dict[str, Any]:
@@ -519,7 +519,7 @@ class LKPMService:
                 LKPMStatus.SUBMITTED.value,
                 draft_id,
             )
-        logger.info(f"Draft {draft_id} marked as submitted by {submitted_by}")
+        logger.info("Draft %s marked as submitted by %s", draft_id, submitted_by)
         return {"success": True, "draft_id": draft_id, "status": "submitted"}
 
     async def upload_receipt(
@@ -542,7 +542,7 @@ class LKPMService:
                 receipt_file_url,
                 draft_id,
             )
-        logger.info(f"Receipt uploaded for draft {draft_id}: {receipt_number}")
+        logger.info("Receipt uploaded for draft %s: %s", draft_id, receipt_number)
         return {"success": True, "draft_id": draft_id, "receipt_number": receipt_number}
 
     # ------------------------------------------------------------------

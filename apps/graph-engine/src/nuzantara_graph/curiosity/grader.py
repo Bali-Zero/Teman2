@@ -13,7 +13,6 @@ but with curiosity-specific thresholds:
 from __future__ import annotations
 
 import logging
-from typing import Any
 
 from nuzantara_graph.curiosity.models import GradeResult, ResearchEvidence
 

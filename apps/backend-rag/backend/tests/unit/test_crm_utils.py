@@ -1,5 +1,5 @@
-import pytest
-from backend.app.utils.crm_utils import is_crm_admin, can_view_all_clients
+from backend.app.utils.crm_utils import can_view_all_clients, is_crm_admin
+
 
 class TestIsCrmAdmin:
     def test_admin_email_is_admin(self):

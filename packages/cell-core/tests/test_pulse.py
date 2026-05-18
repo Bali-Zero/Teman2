@@ -1,11 +1,15 @@
 """Tests for cell_core.pulse — the lifecycle runner."""
-import pytest
 from datetime import datetime, timedelta, timezone
 
+import pytest
 from cell_core.types import CellConfig, PulseResult, SafetyCheckResult
-
 from conftest import (
-    FakeSensor, FakeThinker, FakeActor, FakeSTM, FakeLTM, FakeEpisodic,
+    FakeActor,
+    FakeEpisodic,
+    FakeLTM,
+    FakeSensor,
+    FakeSTM,
+    FakeThinker,
 )
 
 
@@ -17,10 +21,9 @@ def _make_pulse_loop(
     safety_proceeds=True,
     **kwargs,
 ):
-    from cell_core.pulse import PulseLoop
-    from cell_core.lifecycle import Maturation
-    from cell_core.safety import SafetyGate
     from cell_core.homeostasis import HomeostaticController
+    from cell_core.lifecycle import Maturation
+    from cell_core.pulse import PulseLoop
 
     if config is None:
         config = CellConfig(
@@ -178,9 +181,9 @@ class TestPulseLoopLifecycle:
         async def on_pulse(result):
             results.append(result)
 
-        from cell_core.pulse import PulseLoop
-        from cell_core.lifecycle import Maturation
         from cell_core.homeostasis import HomeostaticController
+        from cell_core.lifecycle import Maturation
+        from cell_core.pulse import PulseLoop
 
         config = CellConfig(
             name="test", dna_path="test.json",

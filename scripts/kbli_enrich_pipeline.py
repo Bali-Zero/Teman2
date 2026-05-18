@@ -14,9 +14,9 @@ Usage:
   python scripts/kbli_enrich_pipeline.py --tier HIGH         # Process only HIGH tier
   python scripts/kbli_enrich_pipeline.py --limit 10          # Process max 10 codes
 """
+import argparse
 import json
 import sys
-import argparse
 import time
 from pathlib import Path
 
@@ -24,14 +24,29 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from scripts.kbli_enrich_db import (
-    get_conn, init_codes, set_triage, set_state, set_nlm_context,
-    set_generated, set_validated, set_failed, get_codes_by_state,
-    get_codes_by_tier, get_stats, get_tier_stats, set_meta, get_meta,
+    get_codes_by_state,
+    get_codes_by_tier,
+    get_conn,
+    get_stats,
+    get_tier_stats,
+    init_codes,
+    set_failed,
+    set_generated,
+    set_meta,
+    set_nlm_context,
+    set_state,
+    set_triage,
+    set_validated,
 )
-from scripts.kbli_enrich_triage import run_triage
+
 from scripts.kbli_enrich_deterministic import build_deterministic_fields
-from scripts.kbli_enrich_generate import generate_high_tier, generate_medium_tier, generate_low_tier
+from scripts.kbli_enrich_generate import (
+    generate_high_tier,
+    generate_low_tier,
+    generate_medium_tier,
+)
 from scripts.kbli_enrich_nlm import query_regulatory_intel
+from scripts.kbli_enrich_triage import run_triage
 from scripts.kbli_enrich_validate import validate_batch
 from scripts.kbli_enrich_write import merge_and_write, test_build
 
@@ -86,7 +101,7 @@ def phase_0_triage(conn, codes: list[dict]) -> None:
 def phase_1_generate(conn, source_lookup: dict, tier_filter: str = None) -> None:
     """Phase 1: Generate content for all tiers."""
     print(f"\n{'='*60}")
-    print(f"PHASE 1 — GENERATE")
+    print("PHASE 1 — GENERATE")
     print(f"{'='*60}")
 
     for tier in (["HIGH", "MEDIUM", "LOW"] if not tier_filter else [tier_filter]):
@@ -157,7 +172,7 @@ def phase_1_generate(conn, source_lookup: dict, tier_filter: str = None) -> None
 def phase_2_validate(conn, source_lookup: dict) -> None:
     """Phase 2: Validate all GENERATED entries."""
     print(f"\n{'='*60}")
-    print(f"PHASE 2 — VALIDATE")
+    print("PHASE 2 — VALIDATE")
     print(f"{'='*60}")
 
     generated = get_codes_by_state(conn, "GENERATED")
@@ -188,7 +203,7 @@ def phase_2_validate(conn, source_lookup: dict) -> None:
 
     print(f"  Passed: {passed}, Failed: {failed}")
     if failed > 0:
-        print(f"  Run with --phase 1 to retry failed codes")
+        print("  Run with --phase 1 to retry failed codes")
 
     set_meta(conn, "phase_2_completed", time.strftime("%Y-%m-%d %H:%M:%S"))
 
@@ -196,7 +211,7 @@ def phase_2_validate(conn, source_lookup: dict) -> None:
 def phase_3_write(conn, dry_run: bool = False) -> None:
     """Phase 3: Write all COMPLETED entries to kbli-gold-all.json."""
     print(f"\n{'='*60}")
-    print(f"PHASE 3 — WRITE")
+    print("PHASE 3 — WRITE")
     print(f"{'='*60}")
 
     completed = get_codes_by_state(conn, "COMPLETED")
@@ -234,7 +249,7 @@ def main():
     if args.limit:
         unenriched = unenriched[:args.limit]
 
-    print(f"KBLI Enrichment Pipeline")
+    print("KBLI Enrichment Pipeline")
     print(f"  Total codes: {len(all_codes)}")
     print(f"  Unenriched: {len(unenriched)}")
     print(f"  Phase: {'ALL' if args.phase is None else args.phase}")
@@ -263,7 +278,7 @@ def main():
 
     # Final stats
     print(f"\n{'='*60}")
-    print(f"PIPELINE COMPLETE")
+    print("PIPELINE COMPLETE")
     print(f"{'='*60}")
     stats = get_stats(conn)
     print(f"  State distribution: {stats}")

@@ -71,9 +71,10 @@ class TestLogEndpointCall:
         log_endpoint_call(logger, "/api/test", "GET")
 
         logger.info.assert_called_once()
-        call_args = logger.info.call_args[0][0]
-        assert "/api/test" in call_args
-        assert "GET" in call_args
+        call_args = logger.info.call_args[0]
+        rendered = call_args[0] % call_args[1:] if len(call_args) > 1 else call_args[0]
+        assert "/api/test" in rendered
+        assert "GET" in rendered
 
     def test_log_endpoint_call_with_user(self):
         """Test endpoint call logging with user email"""

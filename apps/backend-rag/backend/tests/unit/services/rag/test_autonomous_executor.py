@@ -6,24 +6,21 @@ Covers: AutonomousExecutor init, classify_task, generate_steps, create_plan,
         dequeue_next, _make_step, _backoff_delay, persistent & in-memory modes.
 """
 
-import asyncio
 from datetime import UTC, datetime
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from backend.services.rag.autonomous_executor import (
+    TASK_PRIORITY,
+    TASK_TEMPLATES,
     AutonomousExecutor,
     ExecutionPlan,
     ExecutionStatus,
-    ExecutionStep,
     StepSafety,
-    TASK_PRIORITY,
-    TASK_TEMPLATES,
     _backoff_delay,
     _make_step,
 )
-
 
 # ============================================================================
 # Fixtures
@@ -327,7 +324,7 @@ class TestListPlans:
 
     @pytest.mark.asyncio
     async def test_list_by_status(self, executor):
-        plan = await executor.create_plan("NPWP registration", "user@test.com")
+        await executor.create_plan("NPWP registration", "user@test.com")
         plans = await executor.list_plans(status=ExecutionStatus.PENDING)
         assert len(plans) == 1
 

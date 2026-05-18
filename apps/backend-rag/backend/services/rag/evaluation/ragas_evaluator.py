@@ -307,14 +307,14 @@ class RAGASEvaluator:
             return result
 
         except json.JSONDecodeError as e:
-            logger.error(f"Failed to parse LLM evaluation response: {e}")
+            logger.error("Failed to parse LLM evaluation response: %s", e)
             return {
                 "score": 0.5,
                 "reasoning": "Failed to parse evaluation response",
                 "error": str(e),
             }
         except Exception as e:
-            logger.error(f"LLM evaluation failed: {e}")
+            logger.error("LLM evaluation failed: %s", e)
             return {
                 "score": 0.5,
                 "reasoning": f"Evaluation error: {str(e)}",

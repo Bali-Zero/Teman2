@@ -1,8 +1,6 @@
 # tests/test_homeostasis.py
 """Tests for the homeostatic controller — CELL's body regulation."""
-import math
-import pytest
-from cell.fast.homeostatic_controller import HomeostaticState, HomeostaticController
+from cell.fast.homeostatic_controller import HomeostaticController, HomeostaticState
 
 
 class TestHomeostaticState:

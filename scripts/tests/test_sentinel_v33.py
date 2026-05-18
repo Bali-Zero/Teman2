@@ -15,12 +15,10 @@ Run:
     python -m pytest scripts/tests/test_sentinel_v33.py -v
 """
 import json
-import os
 import sys
-import tempfile
 import time
 from pathlib import Path
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -72,14 +70,18 @@ class TestCircuitBreakerTOCTOU:
     """D0.3: _locked() prevents concurrent read-modify-write races."""
 
     def test_record_failure_trips_to_open_after_3(self):
-        from sentinel_lib.circuit_breaker import record_failure, get_state
+        from sentinel_lib.circuit_breaker import record_failure
         job = "test_toctou_job"
         for _ in range(3):
             state = record_failure(job)
         assert state == "OPEN"
 
     def test_record_success_resets_to_closed(self):
-        from sentinel_lib.circuit_breaker import record_failure, record_success, get_state
+        from sentinel_lib.circuit_breaker import (
+            get_state,
+            record_failure,
+            record_success,
+        )
         job = "test_success_reset"
         record_failure(job)
         record_failure(job)
@@ -88,7 +90,7 @@ class TestCircuitBreakerTOCTOU:
         assert get_state(job) == "CLOSED"
 
     def test_record_success_resets_failure_count(self, tmp_agent_dir):
-        from sentinel_lib.circuit_breaker import record_failure, record_success, _load
+        from sentinel_lib.circuit_breaker import _load, record_failure, record_success
         job = "test_failure_count_reset"
         record_failure(job)
         record_failure(job)
@@ -98,8 +100,8 @@ class TestCircuitBreakerTOCTOU:
 
     def test_failure_timestamps_pruned_to_14_days(self, tmp_agent_dir):
         """D1.6: old timestamps are pruned inline."""
-        from sentinel_lib.circuit_breaker import record_failure, _load
         import sentinel_lib.circuit_breaker as cb
+        from sentinel_lib.circuit_breaker import _load, record_failure
 
         job = "test_pruning"
         # Inject a very old timestamp directly
@@ -115,8 +117,8 @@ class TestCircuitBreakerTOCTOU:
         assert len(ts_list) == 1
 
     def test_half_open_after_timeout(self, tmp_agent_dir, monkeypatch):
-        from sentinel_lib.circuit_breaker import record_failure, get_state
         import sentinel_lib.circuit_breaker as cb
+        from sentinel_lib.circuit_breaker import get_state, record_failure
 
         job = "test_halfopen"
         monkeypatch.setattr(cb, "OPEN_TIMEOUT_S", 0)
@@ -143,7 +145,7 @@ class TestPhaseTransitionMatrix:
         return f"test_phase_{int(time.time() * 1000)}"
 
     def test_forward_chain_t0_to_terminal(self):
-        from sentinel_lib.circuit_breaker import set_phase, _load
+        from sentinel_lib.circuit_breaker import _load, set_phase
         job = self._fresh_job()
         for phase in ("T1", "T2", "T3", "T4", "TERMINAL"):
             set_phase(job, phase)
@@ -151,7 +153,7 @@ class TestPhaseTransitionMatrix:
         assert data[job]["phase"] == "TERMINAL"
 
     def test_t0_always_allowed(self):
-        from sentinel_lib.circuit_breaker import set_phase, _load
+        from sentinel_lib.circuit_breaker import _load, set_phase
         job = self._fresh_job()
         set_phase(job, "T1")
         set_phase(job, "T2")
@@ -191,7 +193,7 @@ class TestPhaseTransitionMatrix:
             set_phase(self._fresh_job(), "T99")
 
     def test_record_success_resets_phase_to_t0(self):
-        from sentinel_lib.circuit_breaker import set_phase, record_success, _load
+        from sentinel_lib.circuit_breaker import _load, record_success, set_phase
         job = self._fresh_job()
         set_phase(job, "T1")
         set_phase(job, "T2")
@@ -201,7 +203,7 @@ class TestPhaseTransitionMatrix:
         assert data[job]["state"] == "CLOSED"
 
     def test_phase_updated_at_stamped(self):
-        from sentinel_lib.circuit_breaker import set_phase, _load
+        from sentinel_lib.circuit_breaker import _load, set_phase
         job = self._fresh_job()
         before = time.time()
         set_phase(job, "T1")
@@ -265,8 +267,8 @@ class TestCommandValidation:
         assert "allowed_cmds.txt" in reason
 
     def test_allowed_root_python_ok(self, tmp_path, tmp_agent_dir):
-        from sentinel_lib.repairer import validate_restart_cmd
         import sentinel_lib.repairer as r
+        from sentinel_lib.repairer import validate_restart_cmd
 
         # Create a fake script in the project root
         script = tmp_path / "scripts" / "test_job.py"
@@ -333,7 +335,7 @@ class TestIdempotencyToken:
         assert slot.isdigit()
 
     def test_default_interval_used_when_none(self):
-        from sentinel_lib.repairer import make_idempotency_token, DEFAULT_INTERVAL_S
+        from sentinel_lib.repairer import DEFAULT_INTERVAL_S, make_idempotency_token
         token = make_idempotency_token("myjob")
         expected_slot = int(time.time() // DEFAULT_INTERVAL_S)
         assert token == f"myjob:{expected_slot}"
@@ -357,14 +359,14 @@ class TestEscalationJSONL:
         self.shared = shared
 
     def test_write_and_read_back(self):
-        from sentinel_lib.escalations import write_escalation, read_all_escalations
+        from sentinel_lib.escalations import read_all_escalations, write_escalation
         write_escalation({"job": "my_job", "error": "test error"})
         entries = read_all_escalations()
         assert len(entries) == 1
         assert entries[0]["job"] == "my_job"
 
     def test_auto_fields_added(self):
-        from sentinel_lib.escalations import write_escalation, read_all_escalations
+        from sentinel_lib.escalations import read_all_escalations, write_escalation
         write_escalation({"job": "job_x"})
         entry = read_all_escalations()[0]
         assert "machine" in entry
@@ -373,7 +375,7 @@ class TestEscalationJSONL:
         assert entry["status"] == "pending"
 
     def test_resolved_filtered_by_default(self):
-        from sentinel_lib.escalations import write_escalation, read_all_escalations
+        from sentinel_lib.escalations import read_all_escalations, write_escalation
         write_escalation({"job": "job_a", "status": "resolved"})
         write_escalation({"job": "job_b"})
         active = read_all_escalations(include_resolved=False)
@@ -381,14 +383,18 @@ class TestEscalationJSONL:
         assert active[0]["job"] == "job_b"
 
     def test_include_resolved_returns_all(self):
-        from sentinel_lib.escalations import write_escalation, read_all_escalations
+        from sentinel_lib.escalations import read_all_escalations, write_escalation
         write_escalation({"job": "job_a", "status": "resolved"})
         write_escalation({"job": "job_b"})
         all_entries = read_all_escalations(include_resolved=True)
         assert len(all_entries) == 2
 
     def test_mark_resolved_appends_record(self):
-        from sentinel_lib.escalations import write_escalation, mark_resolved, read_all_escalations
+        from sentinel_lib.escalations import (
+            mark_resolved,
+            read_all_escalations,
+            write_escalation,
+        )
         write_escalation({"job": "job_c"})
         count = mark_resolved("job_c")
         assert count == 1
@@ -397,7 +403,7 @@ class TestEscalationJSONL:
         assert "resolved" in statuses
 
     def test_sorted_newest_first(self):
-        from sentinel_lib.escalations import write_escalation, read_all_escalations
+        from sentinel_lib.escalations import read_all_escalations, write_escalation
         write_escalation({"job": "old_job", "ts": time.time() - 100})
         write_escalation({"job": "new_job", "ts": time.time()})
         entries = read_all_escalations()
@@ -454,20 +460,20 @@ class TestDLQTerminalState:
     """D0.1: TERMINAL entries are never re-processed."""
 
     def test_add_to_dlq(self, tmp_agent_dir):
-        from sentinel_lib.repairer import add_to_dlq, _load_dlq
+        from sentinel_lib.repairer import _load_dlq, add_to_dlq
         add_to_dlq("job_x", "some error", {"type": "TRANSIENT"}, "log", [])
         data = _load_dlq()
         assert any(e["job"] == "job_x" for e in data["queue"])
 
     def test_clear_removes_from_dlq(self, tmp_agent_dir):
-        from sentinel_lib.repairer import add_to_dlq, clear_dlq_entry, _load_dlq
+        from sentinel_lib.repairer import _load_dlq, add_to_dlq, clear_dlq_entry
         add_to_dlq("job_y", "err", {"type": "TRANSIENT"}, "log", [])
         clear_dlq_entry("job_y")
         data = _load_dlq()
         assert not any(e["job"] == "job_y" for e in data["queue"])
 
     def test_add_idempotent(self, tmp_agent_dir):
-        from sentinel_lib.repairer import add_to_dlq, _load_dlq
+        from sentinel_lib.repairer import _load_dlq, add_to_dlq
         add_to_dlq("job_z", "err", {"type": "TRANSIENT"}, "log", [])
         add_to_dlq("job_z", "err2", {"type": "TRANSIENT"}, "log", [])
         data = _load_dlq()
@@ -552,6 +558,7 @@ class TestLLMAdvisoryGuard:
         """process_entry() escalates when flag is absent (simulated via mock)."""
         sys.path.insert(0, str(Path("scripts")))
         import importlib
+
         import scripts.dlq_autopilot as dq
         importlib.reload(dq)
 
@@ -600,6 +607,7 @@ class TestDocGeneratorBlocklist:
     def test_blocklist_rejects_claude_md(self, tmp_path):
         sys.path.insert(0, str(Path("scripts")))
         import importlib
+
         import scripts.generate_automations_reference as gen
         importlib.reload(gen)
 
@@ -608,6 +616,7 @@ class TestDocGeneratorBlocklist:
 
     def test_blocklist_rejects_env_files(self, tmp_path):
         import importlib
+
         import scripts.generate_automations_reference as gen
         importlib.reload(gen)
 
@@ -616,6 +625,7 @@ class TestDocGeneratorBlocklist:
 
     def test_blocklist_rejects_fly_toml(self, tmp_path):
         import importlib
+
         import scripts.generate_automations_reference as gen
         importlib.reload(gen)
 
@@ -624,6 +634,7 @@ class TestDocGeneratorBlocklist:
 
     def test_allowed_output_passes(self, tmp_path):
         import importlib
+
         import scripts.generate_automations_reference as gen
         importlib.reload(gen)
 
@@ -632,6 +643,7 @@ class TestDocGeneratorBlocklist:
 
     def test_format_schedule(self):
         import importlib
+
         import scripts.generate_automations_reference as gen
         importlib.reload(gen)
 

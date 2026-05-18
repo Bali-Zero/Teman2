@@ -343,11 +343,11 @@ class SystemPromptBuilder:
             cached_prompt, cached_time = self._cache[cache_key]
             # Check if cache is still valid (within TTL)
             if time.time() - cached_time < self._cache_ttl:
-                logger.debug(f"Using cached system prompt for {user_id} (cache hit)")
+                logger.debug("Using cached system prompt for %s (cache hit)", user_id)
                 return cached_prompt
             # Cache expired, remove it
             del self._cache[cache_key]
-            logger.debug(f"Cache expired for {user_id}, rebuilding prompt")
+            logger.debug("Cache expired for %s, rebuilding prompt", user_id)
 
         # Build Memory / Identity Block
         memory_parts = []
@@ -469,10 +469,10 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
         # Inject Creator/Team Persona if applicable
         if is_creator:
             final_prompt = CREATOR_PERSONA + "\n\n" + final_prompt
-            logger.info(f"🧬 [PromptBuilder] Activated CREATOR Mode for {user_id}")
+            logger.info("🧬 [PromptBuilder] Activated CREATOR Mode for %s", user_id)
         elif is_team:
             final_prompt = TEAM_PERSONA + "\n\n" + final_prompt
-            logger.info(f"🏢 [PromptBuilder] Activated TEAM Mode for {user_id}")
+            logger.info("🏢 [PromptBuilder] Activated TEAM Mode for %s", user_id)
 
         # Cache for next time
         self._cache[cache_key] = (final_prompt, time.time())
@@ -833,7 +833,7 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
         # Check for injection attempts
         for pattern in injection_patterns:
             if re.search(pattern, query_lower):
-                logger.warning(f"🛡️ [Security] Prompt injection attempt detected: {pattern}")
+                logger.warning("🛡️ [Security] Prompt injection attempt detected: %s", pattern)
                 # Language-aware response
                 if any(w in query_lower for w in ["ignora", "dimentica", "sei ora", "fai finta"]):
                     return (
@@ -854,7 +854,7 @@ DO NOT USE ANY INDONESIAN WORDS OR SLANG.
         # Check for off-topic requests
         for pattern in offtopic_patterns:
             if re.search(pattern, query_lower):
-                logger.info(f"🚫 [Scope] Off-topic request detected: {pattern}")
+                logger.info("🚫 [Scope] Off-topic request detected: %s", pattern)
                 if any(
                     w in query_lower
                     for w in ["dimmi", "raccontami", "scrivi", "canta", "giochiamo"]

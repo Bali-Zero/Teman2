@@ -124,7 +124,7 @@ class PoliticsIngestionService:
                         rid = rec.get("id") or f"record:{p.stem}:{line_idx}"
                         ids.append(f"pol:{rec.get('type', 'record')}:{rid}:{line_idx}")
             except Exception as e:
-                logger.error(f"Failed to read {p}: {e}")
+                logger.error("Failed to read %s: %s", p, e)
 
         if not documents:
             return {"success": False, "documents_added": 0, "message": "No records found"}

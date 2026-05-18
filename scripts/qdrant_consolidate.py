@@ -44,7 +44,6 @@ Reference: docs/GRAPHRAG_EVOLUTION_ARCHITECTURE.md §4
 import argparse
 import asyncio
 import logging
-import sys
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -254,7 +253,6 @@ async def main() -> None:
     if args.remap:
         try:
             import asyncpg
-
             from backend.app.core.config import settings
 
             db_pool = await asyncpg.create_pool(settings.database_url, min_size=1, max_size=2)

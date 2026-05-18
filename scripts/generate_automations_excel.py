@@ -18,17 +18,16 @@ Cron: alongside generate_automations_reference.py (nightly 23:15)
 import json
 import os
 import re
-import subprocess
 import socket
+import subprocess
 import sys
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
 
 try:
     from openpyxl import Workbook
-    from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
     from openpyxl.utils import get_column_letter
 except ImportError:
     print("ERROR: pip install openpyxl")
@@ -201,7 +200,7 @@ def save_catalog(catalog: dict) -> None:
     Path(tmp).replace(CATALOG_PATH)
 
 
-def _find_catalog_entry(name: str, catalog: dict) -> Optional[dict]:
+def _find_catalog_entry(name: str, catalog: dict) -> dict | None:
     """Find an entry in any catalog section by name or basename."""
     for section in ("openclaw_pro", "openclaw_air", "launchagents",
                     "cron_scripts", "nlm_pipelines", "backend_services",
@@ -279,7 +278,7 @@ def _read_script_header(script_path: str) -> str:
         return ""
 
 
-def _llm_describe_script(script_path: str, name: str) -> Optional[str]:
+def _llm_describe_script(script_path: str, name: str) -> str | None:
     """Use claude --print to generate a one-line description of an unknown script."""
     try:
         header = _read_script_header(script_path)

@@ -1,0 +1,94 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "evoskill"
+version = "0.1.0"
+description = "self-improving agent via skills"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    # Bali Zero Nuzantara vendored fork — CLAUDE.md hard rule:
+    # claude-agent-sdk + anthropic Python SDK are PHYSICALLY removed
+    # (NOT env-guarded). openai-codex-sdk removed too: we use DeepSeek V4
+    # Pro API as executor (v2 Codex panel finding #2 — Pro rate-limit risk
+    # on autonomous loops). See vendor/evoskill/UPSTREAM.md for the full
+    # diff list versus upstream tag v1.1.0 (SHA 5ae91616...).
+    #
+    # ALSO REMOVED 2026-05-18 (panel round 3 Codex BLOCKING #1):
+    #   openhands-tools — transitively pulls browser-use which depends on
+    #   the `anthropic` PyPI package. Even though our src/harness/claude/
+    #   AST strip is clean, the vendor venv would still install
+    #   `anthropic 0.94.0` via browser-use, violating CLAUDE.md hard rule
+    #   "no anthropic anywhere in the dependency tree". The harness layer
+    #   src/harness/openhands/executor.py raises ImportError at runtime if
+    #   anyone invokes OpenHands SDK — Phase 0 does not use it.
+    "opencode-ai>=0.1.0a36",
+    "openhands-sdk>=1.16.1",
+    "click>=8.1.8",
+    "httpx>=0.23.0",
+    "pandas>=2.3.3",
+    "pydantic>=2.12.5",
+    "pydantic-settings>=2.12.0",
+    "pyyaml>=6.0",
+    "questionary>=2.1.1",
+    "rich>=14.2.0",
+    "tqdm>=4.60.0",
+    "tomli-w>=1.2.0",
+    "hatchling",
+    "daytona>=0.1.0",
+]
+
+[project.scripts]
+evoskill = "src.cli.main:cli"
+
+[project.optional-dependencies]
+eval = [
+    "dspy>=3.0.4",
+    "datasets>=4.6.0",
+    "torch>=2.9.1",
+    "llm-sandbox[docker]>=0.3.36",
+]
+notebooks = [
+    "ipykernel>=7.1.0",
+    "ipywidgets>=8.1.8",
+    "nbformat>=5.10.4",
+    "notebook>=7.5.3",
+    "plotly>=6.5.2",
+    "seaborn>=0.13.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=9.0.0",
+    "pytest-cov>=7.1.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["src"]
+omit = [
+    "src/cli/*",
+    "src/loop/runner.py",
+    "src/registry/manager.py",
+    "src/evaluation/eval_full.py",
+    "src/evaluation/evaluate.py",
+    "src/evaluation/dabstep_scorer.py",
+    "src/evaluation/sealqa_scorer.py",
+    "src/evaluation/livecodebench/*",
+    "src/api/eval_runner.py",
+    "src/api/evoskill.py",
+    "src/harness/_claude_executor.py",
+    "src/harness/_opencode_executor.py",
+    "src/agent_profiles/*",
+]
+
+[tool.coverage.report]
+fail_under = 80
+show_missing = true

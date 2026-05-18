@@ -63,7 +63,7 @@ async def run_visa_expiry_notifier(request: Request) -> dict[str, Any]:
 
     notifier = VisaExpiryTeamNotifier(db_pool)
     result = await notifier.check_and_notify()
-    logger.info(f"Visa expiry notifier: {result}")
+    logger.info("Visa expiry notifier: %s", result)
     return {"service": "visa_expiry", **result}
 
 
@@ -77,7 +77,7 @@ async def run_unpaid_invoice_notifier(request: Request) -> dict[str, Any]:
 
     notifier = UnpaidInvoiceNotifier(db_pool)
     result = await notifier.check_and_notify()
-    logger.info(f"Unpaid invoice notifier: {result}")
+    logger.info("Unpaid invoice notifier: %s", result)
     return {"service": "unpaid_invoices", **result}
 
 
@@ -91,7 +91,7 @@ async def run_stale_practice_notifier(request: Request) -> dict[str, Any]:
 
     notifier = StalePracticeNotifier(db_pool)
     result = await notifier.check_and_notify()
-    logger.info(f"Stale practice notifier: {result}")
+    logger.info("Stale practice notifier: %s", result)
     return {"service": "stale_practices", **result}
 
 
@@ -105,7 +105,7 @@ async def run_lkpm_deadline_notifier(request: Request) -> dict[str, Any]:
 
     notifier = LKPMDeadlineNotifier(db_pool)
     result = await notifier.check_and_notify()
-    logger.info(f"LKPM deadline notifier: {result}")
+    logger.info("LKPM deadline notifier: %s", result)
     return {"service": "lkpm_deadlines", **result}
 
 
@@ -118,7 +118,7 @@ async def run_welcome_pending(request: Request) -> dict[str, Any]:
     from backend.services.crm.welcome.welcome_email_service import process_pending_welcome_emails
 
     result = await process_pending_welcome_emails(db_pool)
-    logger.info(f"Welcome pending processor: {result}")
+    logger.info("Welcome pending processor: %s", result)
     return {"service": "welcome_pending", **result}
 
 
@@ -131,7 +131,7 @@ async def run_birthday_notifier(request: Request) -> dict[str, Any]:
     from backend.services.crm.birthday_notifier_service import run_birthday_notifier_task
 
     result = await run_birthday_notifier_task(db_pool)
-    logger.info(f"Birthday notifier: {result}")
+    logger.info("Birthday notifier: %s", result)
     return {"service": "birthday", **result}
 
 
@@ -273,7 +273,7 @@ async def run_email_health(request: Request) -> dict[str, Any]:
         try:
             stats[phase_name] = await phase_coro
         except Exception as e:
-            logger.error(f"email-health phase {phase_name} failed: {e}", exc_info=True)
+            logger.error("email-health phase %s failed: %s", phase_name, e, exc_info=True)
             stats[phase_name] = {"error": str(e)}
             errors.append({"phase": phase_name, "error": str(e)})
 
@@ -314,7 +314,7 @@ async def run_all_notifiers(request: Request) -> dict[str, Any]:
             notifier = VisaExpiryTeamNotifier(db_pool)
             results["visa_expiry"] = await notifier.check_and_notify()
     except Exception as e:
-        logger.error(f"Visa expiry notifier failed: {e}", exc_info=True)
+        logger.error("Visa expiry notifier failed: %s", e, exc_info=True)
         results["visa_expiry"] = {"error": str(e)}
         errors.append({"notifier": "visa_expiry", "error": str(e)})
 
@@ -325,7 +325,7 @@ async def run_all_notifiers(request: Request) -> dict[str, Any]:
         notifier = UnpaidInvoiceNotifier(db_pool)
         results["unpaid_invoices"] = await notifier.check_and_notify()
     except Exception as e:
-        logger.error(f"Unpaid invoice notifier failed: {e}", exc_info=True)
+        logger.error("Unpaid invoice notifier failed: %s", e, exc_info=True)
         results["unpaid_invoices"] = {"error": str(e)}
         errors.append({"notifier": "unpaid_invoices", "error": str(e)})
 
@@ -336,7 +336,7 @@ async def run_all_notifiers(request: Request) -> dict[str, Any]:
         notifier = StalePracticeNotifier(db_pool)
         results["stale_practices"] = await notifier.check_and_notify()
     except Exception as e:
-        logger.error(f"Stale practice notifier failed: {e}", exc_info=True)
+        logger.error("Stale practice notifier failed: %s", e, exc_info=True)
         results["stale_practices"] = {"error": str(e)}
         errors.append({"notifier": "stale_practices", "error": str(e)})
 
@@ -347,10 +347,10 @@ async def run_all_notifiers(request: Request) -> dict[str, Any]:
         notifier = LKPMDeadlineNotifier(db_pool)
         results["lkpm_deadlines"] = await notifier.check_and_notify()
     except Exception as e:
-        logger.error(f"LKPM deadline notifier failed: {e}", exc_info=True)
+        logger.error("LKPM deadline notifier failed: %s", e, exc_info=True)
         results["lkpm_deadlines"] = {"error": str(e)}
         errors.append({"notifier": "lkpm_deadlines", "error": str(e)})
 
     status = "partial_failure" if errors else "ok"
-    logger.info(f"All notifiers completed (status={status}): {results}")
+    logger.info("All notifiers completed (status=%s): %s", status, results)
     return {"status": status, "errors": errors, "results": results}

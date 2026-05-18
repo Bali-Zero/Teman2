@@ -21,9 +21,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import re
-import signal
 import subprocess
 import sys
 import time

@@ -84,7 +84,7 @@ class ThinkingIndicatorService:
         try:
             return template.format(**kwargs)
         except KeyError as e:
-            logger.warning(f"Missing template variable {e} for phase {phase}")
+            logger.warning("Missing template variable %s for phase %s", e, phase)
             return template
 
     def create_thinking_event(

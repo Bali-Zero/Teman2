@@ -8,8 +8,6 @@ from __future__ import annotations
 import asyncio
 from unittest.mock import patch
 
-import pytest
-
 from mata_garuda.council.consensus import (
     _score_jaccard,
     _tokenize,

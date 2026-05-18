@@ -12,12 +12,10 @@ from __future__ import annotations
 import json
 from datetime import datetime, timedelta, timezone
 
-import pytest
-
 from backend.scripts.experience_to_skill_aggregator import (
     cluster_trajectories,
-    propose_skills_from_clusters,
     main,
+    propose_skills_from_clusters,
 )
 
 

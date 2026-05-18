@@ -22,7 +22,6 @@ import os
 import socket
 import time
 from pathlib import Path
-from typing import Iterator
 
 _logger = logging.getLogger("sentinel_lib.escalations")
 

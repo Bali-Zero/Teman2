@@ -8,7 +8,6 @@ import sys
 import time
 from contextlib import asynccontextmanager
 from datetime import date, datetime, timezone
-from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -21,7 +20,6 @@ from backend.services.analytics.analytics_aggregator import (
     SystemStats,
     TeamStats,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

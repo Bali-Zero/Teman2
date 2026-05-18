@@ -71,7 +71,7 @@ class WhatsAppTriageService:
 
         # 1. WHITELIST CHECK: Personal contacts always escalate
         if normalized_phone in self.personal_contacts:
-            logger.info(f"Escalating to human: whitelist contact {phone}")
+            logger.info("Escalating to human: whitelist contact %s", phone)
             return TriageDecision.ESCALATE_PERSONAL, "personal_contact"
 
         # 2. EXPLICIT HUMAN REQUEST
@@ -88,7 +88,7 @@ class WhatsAppTriageService:
 
         message_lower = message_text.lower().strip()
         if any(trigger in message_lower for trigger in explicit_triggers):
-            logger.info(f"Escalating to human: explicit request from {phone}")
+            logger.info("Escalating to human: explicit request from %s", phone)
             return TriageDecision.ESCALATE_REQUEST, "explicit_request"
 
         # 3. PERSONAL CONTEXT DETECTION
@@ -130,7 +130,7 @@ class WhatsAppTriageService:
         ]
 
         if any(keyword in message_lower for keyword in personal_keywords):
-            logger.info(f"Escalating to human: personal context detected from {phone}")
+            logger.info("Escalating to human: personal context detected from %s", phone)
             return TriageDecision.ESCALATE_CONTEXT, "personal_context"
 
         # 4. BUSINESS CONTEXT (AI can handle)
@@ -189,7 +189,7 @@ class WhatsAppTriageService:
         ]
 
         if any(keyword in message_lower for keyword in business_keywords):
-            logger.info(f"AI handling business query from {phone}")
+            logger.info("AI handling business query from %s", phone)
             return TriageDecision.BOT_CAN_HANDLE, "business_query"
 
         # 5. GREETING CHECK (first message)
@@ -210,11 +210,11 @@ class WhatsAppTriageService:
         if len(message_text.split()) <= 3 and any(
             greeting in message_lower for greeting in greetings
         ):
-            logger.info(f"Offering choice to {phone}: greeting message")
+            logger.info("Offering choice to %s: greeting message", phone)
             return TriageDecision.OFFER_CHOICE, "greeting_only"
 
         # 6. DEFAULT: Let AI handle everything else (Zero style — always respond)
-        logger.info(f"AI handling general query from {phone}")
+        logger.info("AI handling general query from %s", phone)
         return TriageDecision.BOT_CAN_HANDLE, "general_query"
 
     def get_escalation_message(

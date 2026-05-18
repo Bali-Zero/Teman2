@@ -123,12 +123,12 @@ class PluginExecutor:
         # Get plugin
         plugin = registry.get(plugin_name)
         if not plugin:
-            logger.warning(f"Plugin not found: {plugin_name}")
+            logger.warning("Plugin not found: %s", plugin_name)
             return PluginOutput(success=False, error="Plugin not found")
 
         # Check circuit breaker
         if self._is_circuit_broken(plugin_name):
-            logger.warning(f"Circuit breaker open for {plugin_name}")
+            logger.warning("Circuit breaker open for %s", plugin_name)
             return PluginOutput(
                 success=False,
                 error="Service temporarily unavailable (circuit breaker open)",
@@ -162,7 +162,7 @@ class PluginExecutor:
             cached = await self._get_cached(plugin_name, input_data)
             if cached:
                 self._metrics[plugin_name]["cache_hits"] += 1
-                logger.debug(f"Cache hit for {plugin_name}")
+                logger.debug("Cache hit for %s", plugin_name)
                 return cached
             self._metrics[plugin_name]["cache_misses"] += 1
 
@@ -190,7 +190,7 @@ class PluginExecutor:
                 )
                 if attempt < retry_count:
                     wait_time = 2**attempt
-                    logger.info(f"Retrying {plugin_name} in {wait_time}s...")
+                    logger.info("Retrying %s in %ss...", plugin_name, wait_time)
                     await asyncio.sleep(wait_time)
                 else:
                     return PluginOutput(
@@ -207,7 +207,7 @@ class PluginExecutor:
                 if attempt < retry_count:
                     # Wait before retry with exponential backoff
                     wait_time = 2**attempt
-                    logger.info(f"Retrying {plugin_name} in {wait_time}s...")
+                    logger.info("Retrying %s in %ss...", plugin_name, wait_time)
                     await asyncio.sleep(wait_time)
                 else:
                     # Final failure
@@ -308,12 +308,12 @@ class PluginExecutor:
 
                 # Check limit
                 if current > limit:
-                    logger.warning(f"Rate limit exceeded for {key} (Redis)")
+                    logger.warning("Rate limit exceeded for %s (Redis)", key)
                     return False
 
                 return True
             except Exception as e:
-                logger.warning(f"Redis rate limit check failed, falling back to memory: {e}")
+                logger.warning("Redis rate limit check failed, falling back to memory: %s", e)
                 # Fall through to in-memory rate limiting
 
         # Fallback to in-memory rate limiting
@@ -325,7 +325,7 @@ class PluginExecutor:
 
         # Check limit
         if len(self._rate_limits[key]) >= limit:
-            logger.warning(f"Rate limit exceeded for {key} (memory)")
+            logger.warning("Rate limit exceeded for %s (memory)", key)
             return False
 
         # Record this call
@@ -355,7 +355,7 @@ class PluginExecutor:
                 data = json.loads(cached)
                 return PluginOutput(**data)
         except Exception as e:
-            logger.error(f"Cache retrieval error: {e}")
+            logger.error("Cache retrieval error: %s", e)
 
         return None
 
@@ -377,9 +377,9 @@ class PluginExecutor:
             cache_key = self._generate_cache_key(plugin_name, input_data)
             cache_value = output.json()
             await self.redis.setex(cache_key, 3600, cache_value)  # 1 hour TTL
-            logger.debug(f"Cached result for {plugin_name}")
+            logger.debug("Cached result for %s", plugin_name)
         except Exception as e:
-            logger.error(f"Cache write error: {e}")
+            logger.error("Cache write error: %s", e)
 
     def _generate_cache_key(self, plugin_name: str, input_data: dict[str, Any]) -> str:
         """
@@ -493,9 +493,9 @@ class PluginExecutor:
             if plugin:
                 try:
                     await plugin.on_load()
-                    logger.info(f"Warmed up: {name}")
+                    logger.info("Warmed up: %s", name)
                 except Exception as e:
-                    logger.error(f"Failed to warm up {name}: {e}")
+                    logger.error("Failed to warm up %s: %s", name, e)
 
 
 # Global executor instance

@@ -67,7 +67,7 @@ KBLI_MASTER_PROMPT = (
     "If a user asks what these terms mean, explain them directly using this glossary.\n\n"
     "KNOWN KBLI CODES (use these exact definitions when asked):\n"
     "- 47911 = PERDAGANGAN ECERAN MELALUI MEDIA UNTUK BERBAGAI MACAM BARANG — Retail trade of various consumer goods via internet/digital media platforms. PMA: TERBATAS (restricted).\n"
-    "- 56101 = AKTIVITAS PENYEDIAAN MAKANAN DI BANGUNAN TETAP (RESTORAN) — Restaurant services with permanent building. PMA: TERBUKA (open to foreigners), Risiko: Menengah Rendah.\n"
+    "- 56101 = AKTIVITAS PENYEDIAAN MAKANAN DI BANGUNAN TETAP (RESTORAN) — Restaurant services with permanent building. PMA: TERBUKA (open to foreigners). Risiko is scale-dependent; for PMA/Besar: Menengah Tinggi.\n"
     "- 56210 = AKTIVITAS JASA BOGA UNTUK ACARA TERTENTU (EVENT CATERING) — Event catering/katering. PMA: TERBUKA (open to foreigners), Risiko: Menengah Tinggi.\n"
     "- 56290 = AKTIVITAS JASA BOGA LAINNYA — Other food service activities. PMA: TERBATAS.\n"
     "If a user asks about these codes by number, explain them directly from this list.\n\n"
@@ -101,7 +101,7 @@ KBLI_MASTER_PROMPT = (
     "'graphic design/desain grafis/logo design/branding' = aktivitas desain grafis/komunikasi visual (KBLI 74192), "
     "'interior design/desain interior' = aktivitas desain interior (KBLI 74191), "
     "'fashion design/desain mode/desain tekstil' = aktivitas desain tekstil mode dan garmen (KBLI 74113), "
-    "'bar/wine bar/cocktail bar/beach club' = aktivitas bar (KBLI 56301, PMA TERTUTUP — foreigners CANNOT own a bar), "
+    "'bar/wine bar/cocktail bar/beach club' = aktivitas bar (KBLI 56301, PMA TERBUKA — alcohol service still requires SKPL/PB-UMKU and local licensing), "
     "'salon/hair salon/barbershop/pangkas rambut/hair studio' = aktivitas penataan dan pangkas rambut (KBLI 96210), "
     "'beauty salon/nail studio/nail art/eyelash extension/brow studio/wax studio/make-up artist/MUA/perawatan kecantikan' = aktivitas perawatan kecantikan (KBLI 96220), "
     "'spa/day spa/wellness/spa harian/sauna/steam bath/pemandian uap/solarium' = aktivitas SPA harian sauna dan pemandian uap (KBLI 96230), "
@@ -124,6 +124,39 @@ KBLI_MASTER_PROMPT = (
     "Only mention additional codes if they directly clarify the answer (e.g., comparing restaurant vs catering).\n"
     "Be thorough but conversational — explain everything they need to know without being robotic."
 )
+
+FOREIGN_INVESTMENT_QUERY_MARKERS: tuple[str, ...] = (
+    "pma",
+    "foreign",
+    "foreigner",
+    "foreign-owned",
+    "foreign owned",
+    "foreign investment",
+    "asing",
+    "investor",
+    "100%",
+)
+
+PMA_SCALE_CONTEXT_BY_CODE: dict[str, str] = {
+    "56101": (
+        "The user is asking about a PT PMA or foreign-owned restaurant, so evaluate "
+        "licensing as skala usaha Besar. Canonical KBLI 2025 data for 56101 shows "
+        "Besar risk: Menengah Tinggi; licensing: NIB dan Sertifikat Standar; PB-UMKU "
+        "can include SLHS, SKPL A/B/C when alcohol is sold, and NKV. Do not describe "
+        "a PT PMA restaurant as Menengah Rendah."
+    ),
+}
+
+
+def _is_foreign_investment_query(query: str) -> bool:
+    normalized = query.lower()
+    return any(marker in normalized for marker in FOREIGN_INVESTMENT_QUERY_MARKERS)
+
+
+def _scale_specific_pma_context_note(code: str, query: str) -> str:
+    if not _is_foreign_investment_query(query):
+        return ""
+    return PMA_SCALE_CONTEXT_BY_CODE.get(code, "")
 
 
 _TRANSLATE_SYSTEM = (
@@ -192,11 +225,11 @@ async def _translate_query_for_kbli(query: str) -> str:
 
         # Validate translation is not empty
         if not translated or not translated.strip():
-            logger.warning(f"⚠️ Translation returned empty from {model_used}, using original")
+            logger.warning("⚠️ Translation returned empty from %s, using original", model_used)
             return query
 
         translated = translated.strip().strip('"').strip("'")
-        logger.info(f"🌐 Query translation: '{query}' → '{translated}' (model: {model_used})")
+        logger.info("🌐 Query translation: '%s' → '%s' (model: %s)", query, translated, model_used)
         return translated
     except Exception as e:
         logger.warning(f"Query translation failed ({type(e).__name__}), using original: {e}")
@@ -291,8 +324,8 @@ async def _generate_kbli_explanation_gemini(
 
 
 @cached(
-    ttl=43200, prefix="kbli_explain_v25",
-)  # Cache explanations for 12 hours (v25: 96100 risk scale-dependent: Rendah Mikro-Menengah / Tinggi Besar; all sector 96 PMA=TERBUKA)
+    ttl=43200, prefix="kbli_explain_v27",
+)  # Cache explanations for 12 hours (v27: 56101 PMA/Besar risk corrected to Menengah Tinggi)
 async def _generate_kbli_explanation(
     query: str, results: list[KBLISearchResult], parent_docs: dict[str, str] = None,
 ) -> str:
@@ -316,6 +349,10 @@ async def _generate_kbli_explanation(
         if hasattr(r, "expert_legal") and r.expert_legal:
             ex = r.expert_legal
             expert_info = f"\n  Expert Data (PP 28/2025): Bab {ex.get('bab')}, Pasal {ex.get('pasal')}. PB-UMKU: {', '.join(ex.get('pb_umku', []))}. Note: {ex.get('pma_implications')}"
+
+        scale_note = _scale_specific_pma_context_note(r.code, query)
+        if scale_note:
+            expert_info = f"{expert_info}\n  PMA/foreign-owned scale note: {scale_note}"
 
         # Use full parent document content if available, otherwise fall back to truncated description
         if parent_docs and r.code in parent_docs:
@@ -377,7 +414,7 @@ async def _generate_kbli_explanation(
 
         # CRITICAL: Validate response is not empty
         if not response_text or not response_text.strip():
-            logger.error(f"❌ LLM returned empty response. Model: {model_used}, Usage: {usage}")
+            logger.error("❌ LLM returned empty response. Model: %s, Usage: %s", model_used, usage)
             raise RuntimeError(f"LLM returned empty response from model {model_used}")
 
         logger.info(
@@ -423,8 +460,8 @@ KNOWN_KBLI_CODES: dict[str, dict] = {
     "56301": {
         "title": "AKTIVITAS BAR",
         "description": "Bar activities serving alcoholic and non-alcoholic beverages for on-premises consumption. Includes cocktail bars, wine bars, and other licensed drinking establishments.",
-        "pma_status": "TERTUTUP",
-        "risk_category": "Verify at OSS",
+        "pma_status": "TERBUKA",
+        "risk_category": "Menengah Tinggi",
     },
     "47690": {
         "title": "PERDAGANGAN ECERAN KHUSUS BARANG KESENIAN DAN REKREASI YTDL",
@@ -574,7 +611,7 @@ def _is_multi_domain_query(query: str) -> bool:
 
     if is_multi_domain:
         logger.info(
-            f"🌐 Multi-domain query detected: business={has_business}, visa={has_visa}, legal={has_legal}",
+            "🌐 Multi-domain query detected: business=%s, visa=%s, legal=%s", has_business, has_visa, has_legal,
         )
 
     return is_multi_domain
@@ -603,9 +640,9 @@ async def _fetch_parent_documents_from_kbli_table(codes: list[str], pool) -> dic
                     f"✅ Fetched {len(rows)} parent documents from kbli_documents (avg {sum(len(d) for d in parent_docs.values()) // len(parent_docs)} chars)",
                 )
             else:
-                logger.warning(f"⚠️ No parent documents found in kbli_documents for codes: {codes}")
+                logger.warning("⚠️ No parent documents found in kbli_documents for codes: %s", codes)
     except Exception as e:
-        logger.error(f"❌ Failed to fetch parent documents: {e}")
+        logger.error("❌ Failed to fetch parent documents: %s", e)
 
     return parent_docs
 
@@ -691,15 +728,15 @@ async def chat_kbli(
                                 pma_status=props.get("pma_status", "Verify at OSS"),
                                 risk_category=props.get("kategori_risiko", "Verify at OSS"),
                             )
-                            logger.info(f"⚠️ Direct lookup fallback to kg_nodes: {code}")
+                            logger.info("⚠️ Direct lookup fallback to kg_nodes: %s", code)
                             break
                 except Exception as lookup_err:
-                    logger.warning(f"Direct lookup failed for {code}: {lookup_err}")
+                    logger.warning("Direct lookup failed for %s: %s", code, lookup_err)
 
         # P0 FIX: If KBLI code in query but not found in PostgreSQL, try Qdrant payload filter
         if codes_from_query and not direct_kbli_match:
             code = codes_from_query[0]
-            logger.info(f"🔢 Code {code} not in kg_nodes, trying Qdrant payload filter lookup")
+            logger.info("🔢 Code %s not in kg_nodes, trying Qdrant payload filter lookup", code)
             qdrant_payload = await _get_kbli_payload_from_qdrant(code)
             if qdrant_payload:
                 direct_kbli_match = KBLISearchResult(
@@ -974,7 +1011,7 @@ async def chat_kbli(
 
             logger.info(f"✅ Found {len(results)} KBLI results from Qdrant")
         except Exception as q_err:
-            logger.warning(f"⚠️ Qdrant search failed, falling back to PostgreSQL: {q_err}")
+            logger.warning("⚠️ Qdrant search failed, falling back to PostgreSQL: %s", q_err)
             # Fallback to Postgres search by name/code
             try:
                 db_pool = await get_optional_database_pool(http_request)
@@ -1005,7 +1042,7 @@ async def chat_kbli(
                             f"✅ Found {len(results)} KBLI results from PostgreSQL fallback",
                         )
             except Exception as db_err:
-                logger.error(f"❌ PostgreSQL fallback failed: {db_err}")
+                logger.error("❌ PostgreSQL fallback failed: %s", db_err)
 
         # Detect KBLI codes from results
         codes_from_results = [r.code for r in results if r.code != "N/A"]
@@ -1063,7 +1100,7 @@ async def chat_kbli(
                         or ["Explore more KBLI codes", "Contact Bali Zero team"],
                     )
             except Exception as kg_err:
-                logger.error(f"❌ KG Orchestrator failed, falling back to KBLI-only: {kg_err}")
+                logger.error("❌ KG Orchestrator failed, falling back to KBLI-only: %s", kg_err)
                 # Fall through to standard KBLI processing
 
         # Check for non-business queries (KITAS/visa/immigration OR recommendations)
@@ -1183,7 +1220,7 @@ async def chat_kbli(
                     ]
                 )
             ) or query_lower.strip() == term:
-                logger.info(f"📚 Glossary shortcut triggered for term: {term}")
+                logger.info("📚 Glossary shortcut triggered for term: %s", term)
                 return KBLINotebookChatResponse(
                     answer=glossary_answer,
                     detected_kbli=[],
@@ -1206,7 +1243,7 @@ async def chat_kbli(
 
         if not has_direct_match and not filtered_results and results:
             logger.warning(
-                f"⚠️ All results below threshold {MIN_RELEVANCE_SCORE}. Triggering ABSTAIN.",
+                "⚠️ All results below threshold %s. Triggering ABSTAIN.", MIN_RELEVANCE_SCORE,
             )
             query_lang = _detect_language(kbli_request.query)
             if query_lang == "Indonesian":

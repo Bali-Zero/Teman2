@@ -5,11 +5,9 @@ import os
 import time
 from pathlib import Path
 
-import pytest
-
 from mata_garuda.scripts.nb_monitor.collectors.feeder_log import (
-    parse_feeder_log,
     compute_global_push_success_rate,
+    parse_feeder_log,
 )
 
 FIXTURES = Path(__file__).parent / "fixtures"

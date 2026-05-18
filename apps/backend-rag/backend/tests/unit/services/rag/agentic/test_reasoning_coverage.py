@@ -5,14 +5,11 @@ Covers: _validate_context_quality, ReasoningEngine (localized stubs,
         ReAct loop execution).
 """
 
-import asyncio
-import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
 from backend.services.tools.definitions import AgentState, AgentStep, ToolCall
-
 
 # ---------------------------------------------------------------------------
 # Module-level helpers
@@ -437,7 +434,6 @@ class TestReactLoop:
     async def test_llm_error_breaks_loop(self, engine):
         """When LLM raises ResourceExhausted, loop breaks gracefully."""
         from google.api_core.exceptions import ResourceExhausted
-        from backend.services.llm_clients.pricing import TokenUsage
 
         state = AgentState(query="test", max_steps=3, current_step=0)
         mock_gateway = MagicMock()

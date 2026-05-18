@@ -73,4 +73,4 @@ async def emit_llm_metric(
     try:
         await redis.xadd(_STREAM_KEY, fields, maxlen=_STREAM_MAXLEN, approximate=True)
     except Exception as e:
-        logger.debug(f"LLM metrics emit failed (non-critical): {e}")
+        logger.debug("LLM metrics emit failed (non-critical): %s", e)

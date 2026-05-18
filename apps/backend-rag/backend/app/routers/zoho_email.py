@@ -221,7 +221,7 @@ async def oauth_callback(
 
     # Handle OAuth errors
     if error:
-        logger.warning(f"Zoho OAuth error: {error}")
+        logger.warning("Zoho OAuth error: %s", error)
         return RedirectResponse(url=f"{frontend_url}/email?error=oauth_denied")
 
     # Validate required parameters
@@ -238,18 +238,18 @@ async def oauth_callback(
             raise ValueError("Invalid state format")
 
         user_id = parts[0]  # Keep as string (VARCHAR)
-        logger.info(f"Extracted user_id: {user_id}")
+        logger.info("Extracted user_id: %s", user_id)
 
         # Exchange code for tokens
         oauth_service = _get_oauth_service(db_pool)
-        logger.info(f"Calling exchange_code for user {user_id}")
+        logger.info("Calling exchange_code for user %s", user_id)
         await oauth_service.exchange_code(code, user_id)
 
-        logger.info(f"Zoho OAuth successful for user {user_id}")
+        logger.info("Zoho OAuth successful for user %s", user_id)
         return RedirectResponse(url=f"{frontend_url}/email?connected=true")
 
     except ValueError as e:
-        logger.error(f"OAuth callback ValueError: {e}", exc_info=True)
+        logger.error("OAuth callback ValueError: %s", e, exc_info=True)
         return RedirectResponse(url=f"{frontend_url}/email?error=invalid_state")
     except Exception as e:
         logger.error(f"OAuth callback exception: {type(e).__name__}: {e}", exc_info=True)
@@ -280,7 +280,7 @@ async def get_connection_status(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to get connection status: {e}")
+        logger.error("Failed to get connection status: %s", e)
         return ConnectionStatusResponse(
             connected=False, email=None, account_id=None, expires_at=None,
         )
@@ -304,7 +304,7 @@ async def disconnect_account(
         await invalidate_cache("zantara:zoho_email:*")
         return {"success": True, "message": "Zoho account disconnected"}
     except Exception as e:
-        logger.error(f"Failed to disconnect: {e}")
+        logger.error("Failed to disconnect: %s", e)
         raise HTTPException(status_code=500, detail="Failed to disconnect account") from e
 
 
@@ -331,7 +331,7 @@ async def list_folders(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Failed to list folders: {e}")
+        logger.error("Failed to list folders: %s", e)
         raise HTTPException(status_code=500, detail="Failed to fetch folders") from e
 
 
@@ -370,7 +370,7 @@ async def list_emails(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Failed to list emails: {e}")
+        logger.error("Failed to list emails: %s", e)
         raise HTTPException(status_code=500, detail="Failed to fetch emails") from e
 
 
@@ -394,7 +394,7 @@ async def get_email(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Failed to get email: {e}")
+        logger.error("Failed to get email: %s", e)
         raise HTTPException(status_code=500, detail="Failed to fetch email") from e
 
 
@@ -430,7 +430,7 @@ async def send_email(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Failed to send email: {e}")
+        logger.error("Failed to send email: %s", e)
         raise HTTPException(status_code=500, detail="Failed to send email") from e
 
 
@@ -453,7 +453,7 @@ async def search_emails(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Failed to search emails: {e}")
+        logger.error("Failed to search emails: %s", e)
         raise HTTPException(status_code=500, detail="Failed to search emails") from e
 
 
@@ -486,7 +486,7 @@ async def reply_email(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Failed to reply to email: {e}")
+        logger.error("Failed to reply to email: %s", e)
         raise HTTPException(status_code=500, detail="Failed to reply to email") from e
 
 
@@ -517,7 +517,7 @@ async def forward_email(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Failed to forward email: {e}")
+        logger.error("Failed to forward email: %s", e)
         raise HTTPException(status_code=500, detail="Failed to forward email") from e
 
 
@@ -546,7 +546,7 @@ async def mark_emails_read(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Failed to mark emails: {e}")
+        logger.error("Failed to mark emails: %s", e)
         raise HTTPException(status_code=500, detail="Failed to update emails") from e
 
 
@@ -574,7 +574,7 @@ async def toggle_flag(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Failed to toggle flag: {e}")
+        logger.error("Failed to toggle flag: %s", e)
         raise HTTPException(status_code=500, detail="Failed to update email") from e
 
 
@@ -602,7 +602,7 @@ async def delete_emails(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Failed to delete emails: {e}")
+        logger.error("Failed to delete emails: %s", e)
         raise HTTPException(status_code=500, detail="Failed to delete emails") from e
 
 
@@ -630,7 +630,7 @@ async def delete_emails_post(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Failed to delete emails: {e}")
+        logger.error("Failed to delete emails: %s", e)
         raise HTTPException(status_code=500, detail="Failed to delete emails") from e
 
 
@@ -679,7 +679,7 @@ async def save_draft(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Failed to save draft: {e}")
+        logger.error("Failed to save draft: %s", e)
         raise HTTPException(status_code=500, detail="Failed to save draft") from e
 
 
@@ -715,7 +715,7 @@ async def upload_attachment(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Failed to upload attachment: {e}")
+        logger.error("Failed to upload attachment: %s", e)
         raise HTTPException(status_code=500, detail="Failed to upload attachment") from e
 
 
@@ -749,7 +749,7 @@ async def download_attachment(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"Failed to download attachment: {e}")
+        logger.error("Failed to download attachment: %s", e)
         raise HTTPException(status_code=500, detail="Failed to download attachment") from e
 
 
@@ -777,7 +777,7 @@ async def get_unread_count(
         # Not connected - return 0
         return {"unread_count": 0}
     except Exception as e:
-        logger.warning(f"Failed to get unread count: {e}")
+        logger.warning("Failed to get unread count: %s", e)
         return {"unread_count": 0}
 
 

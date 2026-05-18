@@ -5,13 +5,11 @@ Tests use mocked Redis (CacheService) and PostgreSQL (asyncpg.Pool) to verify
 the load → cache → save pipeline without external dependencies.
 """
 
-import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-from backend.conversation.engine import ConversationEngine, _MAX_HISTORY_ENTRIES, _SESSION_CONTEXT_TTL
-
+from backend.conversation.engine import _SESSION_CONTEXT_TTL, ConversationEngine
 
 # ── Helpers ──────────────────────────────────────────────────────
 

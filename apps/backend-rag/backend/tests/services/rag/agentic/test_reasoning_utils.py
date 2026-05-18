@@ -23,7 +23,6 @@ Specifically covers:
 from __future__ import annotations
 
 import types
-from unittest.mock import patch
 
 import pytest
 
@@ -38,7 +37,6 @@ from backend.services.rag.agentic.reasoning_utils import (
     is_critical_domain,
     is_valid_tool_call,
 )
-
 
 # ---------------------------------------------------------------------------
 # Helpers

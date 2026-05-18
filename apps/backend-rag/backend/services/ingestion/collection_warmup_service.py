@@ -86,12 +86,12 @@ class CollectionWarmupService:
         Example:
             >>> success = await warmup_service.warmup_collection("visa_oracle")
             >>> if success:
-            ...     print("visa_oracle ready for fast queries")
+            ...     logger.info("visa_oracle ready for fast queries")
         """
         try:
             vector_db = self.collection_manager.get_collection(collection_name)
             if not vector_db:
-                logger.warning(f"   ⚠️ [Warmup] Collection not found: {collection_name}")
+                logger.warning("   ⚠️ [Warmup] Collection not found: %s", collection_name)
                 return False
 
             # Perform lightweight search to load indexes (async)
@@ -102,11 +102,11 @@ class CollectionWarmupService:
                 limit=1,  # Minimal results, just loading indexes
             )
 
-            logger.info(f"   ✅ [Warmup] {collection_name} warmed up")
+            logger.info("   ✅ [Warmup] %s warmed up", collection_name)
             return True
 
         except (qdrant_exceptions.UnexpectedResponse, httpx.HTTPError, ValueError) as e:
-            logger.warning(f"   ⚠️ [Warmup] Failed to warm up {collection_name}: {e}")
+            logger.warning("   ⚠️ [Warmup] Failed to warm up %s: %s", collection_name, e)
             return False
 
     async def warmup_all_collections(self) -> dict[str, Any]:
@@ -209,7 +209,7 @@ class CollectionWarmupService:
             ValueError,
         ) as e:
             elapsed = time.time() - start_time
-            logger.error(f"❌ [Warmup] Qdrant warmup failed: {e}", exc_info=True)
+            logger.error("❌ [Warmup] Qdrant warmup failed: %s", e, exc_info=True)
 
             return {
                 "success": False,

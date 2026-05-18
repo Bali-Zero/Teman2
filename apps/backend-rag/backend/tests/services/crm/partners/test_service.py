@@ -1,13 +1,13 @@
 # tests/services/crm/partners/test_service.py
-import pytest
-from decimal import Decimal
-from fastapi import HTTPException
-
 import uuid
 from uuid import uuid4
+
+import pytest
+from fastapi import HTTPException
+
 from backend.services.crm.partners.service import (
-    PartnersService,
     ConflictError,
+    PartnersService,
     verify_partner_access,
 )
 

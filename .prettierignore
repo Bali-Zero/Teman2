@@ -15,6 +15,17 @@ venv/
 # MCP server installations (third-party code)
 .mcp-servers/
 
+# Vendored upstream code (byte-identical to upstream — see vendor/*/UPSTREAM.md)
+# Our additions (UPSTREAM.md per vendor dir) ARE prettier-formatted.
+vendor/evoskill/.claude/
+vendor/evoskill/docs/
+vendor/evoskill/examples/
+vendor/evoskill/notebooks/
+vendor/evoskill/scripts/
+vendor/evoskill/README.md
+vendor/evoskill/Dockerfile
+vendor/evoskill/uv.lock
+
 # Logs
 *.log
 

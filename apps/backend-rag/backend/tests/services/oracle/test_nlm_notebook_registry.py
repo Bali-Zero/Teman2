@@ -8,13 +8,9 @@ This file covers everything else.
 from __future__ import annotations
 
 import re
-import uuid
 from pathlib import Path
 
-import pytest
-
 from backend.services.oracle import nlm_notebook_registry as reg
-
 
 # ── NLM_NOTEBOOKS data integrity ────────────────────────────────────────────
 

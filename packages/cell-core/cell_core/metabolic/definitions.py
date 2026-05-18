@@ -6,7 +6,6 @@
 """
 from __future__ import annotations
 
-import json
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 
@@ -139,7 +138,7 @@ class MetabolicSnapshot:
         """
         trends = trends or {}
         lines = [
-            f"=== METABOLIC REPORT ===",
+            "=== METABOLIC REPORT ===",
             f"Date: {self.calculated_at[:10]}",
             "",
         ]

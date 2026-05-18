@@ -10,15 +10,13 @@ from __future__ import annotations
 from datetime import date, timedelta
 from uuid import uuid4
 
-import pytest
 import asyncpg
+import pytest
 
 from backend.services.compliance.alert_metrics import (
-    CategoryMetrics,
     compute_metrics,
     compute_metrics_all,
 )
-
 
 pytestmark = pytest.mark.integration
 

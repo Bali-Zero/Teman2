@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 """Apply Session 13 gold content — 6 Wholesale Food/Grocery KBLI codes"""
-import re
 
 with open('lib/kbli-gold-content.ts') as f:
     content = f.read()

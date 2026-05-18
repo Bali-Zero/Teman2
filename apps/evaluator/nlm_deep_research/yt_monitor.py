@@ -14,15 +14,13 @@ Cron (OpenClaw): every 6h, offset from T4 monitor
 
 from __future__ import annotations
 
-import json
 import hashlib
+import json
 import logging
 import subprocess
-import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -51,7 +49,7 @@ class YTVideo:
     video_id: str
     url: str
     title: str
-    published_at: Optional[datetime] = None
+    published_at: datetime | None = None
     channel_name: str = ""
     tier: str = "YT-T0"
     target_notebooks: list[str] = field(default_factory=list)

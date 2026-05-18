@@ -147,7 +147,7 @@ class MetricsTracker:
             )
             return self.pool
         except Exception as e:
-            logger.error(f"Failed to create database pool: {e}")
+            logger.error("Failed to create database pool: %s", e)
             return None
 
     async def initialize(self) -> bool:
@@ -225,7 +225,7 @@ class MetricsTracker:
                 return True
 
         except Exception as e:
-            logger.error(f"Failed to initialize metrics tables: {e}")
+            logger.error("Failed to initialize metrics tables: %s", e)
             return False
 
     async def record_metric(
@@ -266,7 +266,7 @@ class MetricsTracker:
         """
         pool = await self._get_pool()
         if pool is None:
-            logger.debug(f"Metric not persisted (no DB): {experiment}/{variant}/{metric}={value}")
+            logger.debug("Metric not persisted (no DB): %s/%s/%s=%s", experiment, variant, metric, value)
             return False
 
         if not self._initialized:
@@ -320,7 +320,7 @@ class MetricsTracker:
                 return True
 
         except Exception as e:
-            logger.error(f"Failed to record metric: {e}")
+            logger.error("Failed to record metric: %s", e)
             return False
 
     async def record_query_metrics(
@@ -363,7 +363,7 @@ class MetricsTracker:
         """
         pool = await self._get_pool()
         if pool is None:
-            logger.debug(f"Metrics not persisted (no DB): {experiment}/{variant}")
+            logger.debug("Metrics not persisted (no DB): %s/%s", experiment, variant)
             return False
 
         if not self._initialized:
@@ -415,7 +415,7 @@ class MetricsTracker:
                 return True
 
         except Exception as e:
-            logger.error(f"Failed to record query metrics: {e}")
+            logger.error("Failed to record query metrics: %s", e)
             return False
 
     async def get_experiment_aggregates(
@@ -553,7 +553,7 @@ class MetricsTracker:
                 return results
 
         except Exception as e:
-            logger.error(f"Failed to get experiment aggregates: {e}")
+            logger.error("Failed to get experiment aggregates: %s", e)
             return {}
 
     async def get_metrics_by_query(
@@ -608,7 +608,7 @@ class MetricsTracker:
                 ]
 
         except Exception as e:
-            logger.error(f"Failed to get metrics by query: {e}")
+            logger.error("Failed to get metrics by query: %s", e)
             return []
 
     async def get_user_exposure(
@@ -668,7 +668,7 @@ class MetricsTracker:
                 return [dict(row) for row in rows]
 
         except Exception as e:
-            logger.error(f"Failed to get user exposure: {e}")
+            logger.error("Failed to get user exposure: %s", e)
             return []
 
     async def export_experiment_data(
@@ -729,7 +729,7 @@ class MetricsTracker:
                 ]
 
         except Exception as e:
-            logger.error(f"Failed to export experiment data: {e}")
+            logger.error("Failed to export experiment data: %s", e)
             return []
 
     async def get_active_experiments(
@@ -773,7 +773,7 @@ class MetricsTracker:
                 return [dict(row) for row in rows]
 
         except Exception as e:
-            logger.error(f"Failed to get active experiments: {e}")
+            logger.error("Failed to get active experiments: %s", e)
             return []
 
     async def cleanup_old_metrics(self, days: int = 90) -> int:
@@ -805,9 +805,9 @@ class MetricsTracker:
                 # Parse result (e.g., "DELETE 150")
                 deleted = int(result.split()[1]) if len(result.split()) > 1 else 0
 
-                logger.info(f"Cleaned up {deleted} old metrics (older than {days} days)")
+                logger.info("Cleaned up %s old metrics (older than %s days)", deleted, days)
                 return deleted
 
         except Exception as e:
-            logger.error(f"Failed to cleanup old metrics: {e}")
+            logger.error("Failed to cleanup old metrics: %s", e)
             return 0

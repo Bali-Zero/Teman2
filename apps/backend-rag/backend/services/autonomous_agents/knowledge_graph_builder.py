@@ -345,7 +345,7 @@ class KnowledgeGraphBuilder:
             logger.warning("SearchService not available")
             return 0
 
-        logger.info(f"🔨 Building knowledge graph from: {collection_name}")
+        logger.info("🔨 Building knowledge graph from: %s", collection_name)
         try:
             results = await self.search.search(
                 query="business setup visa tax legal",
@@ -354,7 +354,7 @@ class KnowledgeGraphBuilder:
                 collection_override=collection_name,
             )
         except Exception as e:
-            logger.error(f"Error querying {collection_name}: {e}")
+            logger.error("Error querying %s: %s", collection_name, e)
             return 0
 
         documents = results.get("results", [])
@@ -444,7 +444,7 @@ class KnowledgeGraphBuilder:
                 f"🔄 Refreshed graph from DB: {len(self.entities)} nodes, {len(self.relationships)} edges",
             )
         except Exception as e:
-            logger.error(f"Failed to refresh from DB: {e}")
+            logger.error("Failed to refresh from DB: %s", e)
 
     async def extract_via_llm(
         self, text: str, source_collection: str = None, chunk_id: str = None,
@@ -563,7 +563,7 @@ class KnowledgeGraphBuilder:
             }
 
         except Exception as e:
-            logger.error(f"Semantic extraction failed: {e}")
+            logger.error("Semantic extraction failed: %s", e)
             return {"entities": [], "relationships": []}
 
     async def export_graph(self, format: str = "json") -> str:
@@ -768,7 +768,7 @@ class KnowledgeGraphBuilder:
                 }
 
         except Exception as e:
-            logger.error(f"Error querying KG from DB: {e}")
+            logger.error("Error querying KG from DB: %s", e)
             return self._query_graph_from_memory(entity_name_lower, max_depth)
 
     def _query_graph_from_memory(self, entity_name_lower: str, max_depth: int) -> dict:

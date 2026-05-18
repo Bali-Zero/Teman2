@@ -259,7 +259,7 @@ Use null for unclear fields. Return ONLY JSON."""
             else:
                 logger.warning(f"Ollama OCR failed: HTTP {ollama_response.status_code}, falling back to Gemini")
         except Exception as e:
-            logger.warning(f"Ollama unreachable ({e}), falling back to Gemini Vision")
+            logger.warning("Ollama unreachable (%s), falling back to Gemini Vision", e)
 
         # Fallback: Gemini API Vision
         if not ollama_ok:
@@ -463,10 +463,10 @@ Use null for unclear fields. Return ONLY JSON."""
     except HTTPException:
         raise
     except json.JSONDecodeError as e:
-        logger.warning(f"Enhanced OCR JSON parse error: {e}")
+        logger.warning("Enhanced OCR JSON parse error: %s", e)
         return PassportPreviewResponse(success=False, message="Failed to parse OCR response")
     except Exception as e:
-        logger.error(f"Enhanced passport OCR failed: {e}")
+        logger.error("Enhanced passport OCR failed: %s", e)
         return PassportPreviewResponse(success=False, message=str(e))
 
 
@@ -546,7 +546,7 @@ async def delete_client_document(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Document deletion failed: {e}", exc_info=True)
+        logger.error("Document deletion failed: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}") from e
 
 
@@ -678,7 +678,7 @@ Rules:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"NPWP extraction failed: {e}", exc_info=True)
+        logger.error("NPWP extraction failed: %s", e, exc_info=True)
         return NpwpExtractResponse(success=False, message=f"Extraction failed: {str(e)}")
 
 
@@ -810,7 +810,7 @@ Rules:
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"NIB extraction failed: {e}", exc_info=True)
+        logger.error("NIB extraction failed: %s", e, exc_info=True)
         return NibExtractResponse(success=False, message=f"Extraction failed: {str(e)}")
 
 
@@ -865,5 +865,5 @@ async def get_client_required_documents(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to get client required documents: {e}", exc_info=True)
+        logger.error("Failed to get client required documents: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Failed to get documents: {str(e)}") from e

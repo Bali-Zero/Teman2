@@ -210,7 +210,7 @@ class OrchestratorStreamingCore:
                         crm_precall_context = f"\n\n[CRM DATABASE RESULTS — USE THESE NUMBERS IN YOUR ANSWER]\n{crm_result}\n"
                         logger.info(f"🚀 [CRM Pre-call] Injected {len(crm_result)} bytes of CRM data into context")
                 except Exception as e:
-                    logger.warning(f"[CRM Pre-call] Failed: {e}")
+                    logger.warning("[CRM Pre-call] Failed: %s", e)
 
         # 3. Prepare ReAct execution (common logic)
         # If CRM pre-call returned data, mark as trusted (skip evidence check)
@@ -242,7 +242,7 @@ class OrchestratorStreamingCore:
         )
 
         # 5. Execute ReAct loop streaming
-        logger.info(f"🧠 [Stream] Processing query with ReAct loop for user {user_id}")
+        logger.info("🧠 [Stream] Processing query with ReAct loop for user %s", user_id)
 
         add_span_event(
             "react.stream.start",
@@ -356,11 +356,11 @@ class OrchestratorStreamingCore:
                     )
             except Exception as analytics_err:
                 logger.warning(
-                    f"Failed to log streaming query analytics (non-critical): {analytics_err}",
+                    "Failed to log streaming query analytics (non-critical): %s", analytics_err,
                 )
 
         except Exception as e:
-            logger.error(f"❌ [Stream] ReAct loop failed: {e}", exc_info=True)
+            logger.error("❌ [Stream] ReAct loop failed: %s", e, exc_info=True)
             yield self.streaming_manager.create_error_event(
                 error_type="react_loop_error",
                 message=str(e),

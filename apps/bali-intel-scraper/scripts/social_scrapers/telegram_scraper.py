@@ -6,6 +6,7 @@ Fallback: uses Telethon if TELEGRAM_API_ID/TELEGRAM_API_HASH are set (more messa
 
 import os
 from datetime import datetime
+from typing import Dict, List
 
 import httpx
 from bs4 import BeautifulSoup

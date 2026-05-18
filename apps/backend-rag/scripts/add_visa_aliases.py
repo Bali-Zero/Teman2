@@ -28,10 +28,9 @@ load_dotenv(override=True)
 
 import os
 
+import openai
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct, SparseVector
-
-import openai
 
 from backend.core.bm25_vectorizer import BM25Vectorizer
 

@@ -1,14 +1,13 @@
 """Tests for low-confidence emitter (writes rag.low_confidence to bridge_outbox)."""
 from __future__ import annotations
 
-import time
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
 from backend.services.bridge.low_confidence_emitter import (
-    LOW_CONFIDENCE_THRESHOLD,
     LOW_CONFIDENCE_DEDUP_S,
+    LOW_CONFIDENCE_THRESHOLD,
     _low_confidence_dedup,
     maybe_emit_low_confidence,
 )

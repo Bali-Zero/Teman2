@@ -1,7 +1,6 @@
 # apps/cell/tests/test_maturation.py
 """Tests for Maturation lifecycle phases."""
-import pytest
-from cell.lifecycle.maturation import Maturation, LifecyclePhase
+from cell.lifecycle.maturation import LifecyclePhase, Maturation
 
 
 class TestMaturationPhases:

@@ -75,7 +75,7 @@ async def get_prefs(
                 user_id,
             )
         except Exception as e:
-            logger.warning(f"prefs fetch failed: {e}")
+            logger.warning("prefs fetch failed: %s", e)
             return _default_prefs()
     if not row:
         return _default_prefs()
@@ -121,7 +121,7 @@ async def put_prefs(
                 payload.wa_phone,
             )
         except Exception as e:
-            logger.error(f"prefs upsert failed: {e}")
+            logger.error("prefs upsert failed: %s", e)
             raise HTTPException(
                 status_code=503,
                 detail="notification_prefs unavailable — run migration 110",

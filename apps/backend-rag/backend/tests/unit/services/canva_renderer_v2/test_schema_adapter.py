@@ -2,8 +2,6 @@
 import json
 from pathlib import Path
 
-import pytest
-
 from backend.services.canva_renderer_v2._schema_adapter import (
     adapt_legacy_schema,
     is_legacy_schema,

@@ -762,7 +762,7 @@ async def delete_interaction(
                 interaction_id,
             )
 
-            logger.info(f"Interaction {interaction_id} deleted by {user_email}")
+            logger.info("Interaction %s deleted by %s", interaction_id, user_email)
 
             await invalidate_cache("zantara:crm_interactions_stats:*")
             return {

@@ -5,11 +5,9 @@ import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-
 from nuzantara_graph.curiosity.dispatchers.complex import ComplexDispatcher
 from nuzantara_graph.curiosity.dispatchers.medium import MediumDispatcher
 from nuzantara_graph.curiosity.dispatchers.simple import SimpleDispatcher
-from nuzantara_graph.curiosity.models import ResearchEvidence
 
 
 class TestSimpleDispatcher:

@@ -47,6 +47,7 @@ if str(BACKEND_ROOT) not in sys.path:
 
 from qdrant_client import AsyncQdrantClient  # noqa: E402
 
+
 def _require_env(name: str) -> str:
     import os as _os
     val = _os.environ.get(name)

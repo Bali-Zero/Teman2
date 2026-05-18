@@ -13,9 +13,7 @@ Sprint 2: synchronous, no Lamarckian (Sprint 3).
 """
 from __future__ import annotations
 
-import json
 import logging
-from typing import Optional
 
 from mata_garuda.runtime.cli_runtime import CLIRuntime, parse_tool_calls
 from mata_garuda.types import Agent, Response, Result
@@ -102,7 +100,7 @@ def _execute_tool(
 def run_agent_loop(
     agent: Agent,
     query: str,
-    context_variables: Optional[dict] = None,
+    context_variables: dict | None = None,
     max_turns: int = MAX_TURNS,
 ) -> Response:
     """

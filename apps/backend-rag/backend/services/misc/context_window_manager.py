@@ -43,10 +43,10 @@ class ContextWindowManager:
 
             self.zantara_client = ZantaraAIClient()
         except Exception as e:
-            logger.warning(f"⚠️ ZANTARA AI not available for summarization: {e}")
+            logger.warning("⚠️ ZANTARA AI not available for summarization: %s", e)
             self.zantara_client = None
         logger.info(
-            f"✅ ContextWindowManager initialized (max: {max_messages}, threshold: {summary_threshold})",
+            "✅ ContextWindowManager initialized (max: %s, threshold: %s)", max_messages, summary_threshold,
         )
 
     def trim_conversation_history(
@@ -79,7 +79,7 @@ class ContextWindowManager:
 
         # CASE 1: Short conversation - keep everything
         if total_messages <= self.max_messages:
-            logger.info(f"📊 [Context] Conversation short ({total_messages} msgs) - keeping all")
+            logger.info("📊 [Context] Conversation short (%s msgs) - keeping all", total_messages)
             return {
                 "trimmed_messages": conversation_history,
                 "needs_summarization": False,
@@ -90,7 +90,7 @@ class ContextWindowManager:
         # CASE 2: Medium conversation - approaching limit
         if total_messages <= self.summary_threshold:
             logger.info(
-                f"📊 [Context] Conversation medium ({total_messages} msgs) - approaching limit",
+                "📊 [Context] Conversation medium (%s msgs) - approaching limit", total_messages,
             )
             # Keep recent messages, but warn
             recent_messages = conversation_history[-self.max_messages :]
@@ -103,7 +103,7 @@ class ContextWindowManager:
 
         # CASE 3: Long conversation - needs summarization
         logger.info(
-            f"📊 [Context] Conversation long ({total_messages} msgs) - triggering summarization",
+            "📊 [Context] Conversation long (%s msgs) - triggering summarization", total_messages,
         )
 
         # Keep last max_messages in full
@@ -275,7 +275,7 @@ Update the summary to include both the previous context and new messages."""
             return result
 
         except Exception as e:
-            logger.error(f"❌ [Summary] Generation failed: {e}")
+            logger.error("❌ [Summary] Generation failed: %s", e)
             return (
                 existing_summary
                 or "Previous conversation context (summary generation unavailable)."

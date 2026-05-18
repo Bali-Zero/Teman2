@@ -183,7 +183,7 @@ class PortalService(
             result = VirusScanner.scan(b"test", "test.pdf")
             checks["virus_scanner"] = result.get("clean") is not None
         except Exception as e:
-            logger.debug(f"Virus scanner check failed (non-critical): {e}")
+            logger.debug("Virus scanner check failed (non-critical): %s", e)
 
         # Check Drive configuration
         try:
@@ -196,7 +196,7 @@ class PortalService(
                 token = await drive_service.get_valid_token("SYSTEM")
                 checks["drive_token"] = token is not None
         except Exception as e:
-            logger.debug(f"Drive config check failed (non-critical): {e}")
+            logger.debug("Drive config check failed (non-critical): %s", e)
 
         # Check OCR availability
         checks["ocr_available"] = PDF_VISION_AVAILABLE or PYMUPDF_AVAILABLE
@@ -207,7 +207,7 @@ class PortalService(
                 await conn.fetchval("SELECT 1")
                 checks["database"] = True
         except Exception as e:
-            logger.debug(f"Database health check failed: {e}")
+            logger.debug("Database health check failed: %s", e)
 
         all_healthy = all(checks.values())
 

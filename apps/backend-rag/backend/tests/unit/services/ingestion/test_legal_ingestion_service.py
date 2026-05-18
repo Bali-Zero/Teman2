@@ -4,6 +4,8 @@ Covers: init, ingest_legal_document (success, error, OCR fallback, pricing skip)
 _ensure_drive_folder_exists, _get_kg_extractor, detect_legal_document.
 """
 
+from __future__ import annotations
+
 import os
 from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -19,7 +21,7 @@ os.environ.setdefault("OPENAI_API_KEY", "test_key")
 os.environ.setdefault("GOOGLE_API_KEY", "test_key")
 
 
-def _build_service() -> "LegalIngestionService":
+def _build_service() -> LegalIngestionService:
     """Build LegalIngestionService with all heavy dependencies mocked."""
     with patch("backend.services.ingestion.legal_ingestion_service.LegalCleaner") as mc, \
          patch("backend.services.ingestion.legal_ingestion_service.LegalMetadataExtractor") as mme, \
@@ -48,7 +50,7 @@ def _build_service() -> "LegalIngestionService":
 
 
 @pytest.fixture
-def service() -> "LegalIngestionService":
+def service():
     return _build_service()
 
 

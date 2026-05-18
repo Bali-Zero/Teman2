@@ -163,7 +163,7 @@ Sources:
                         date = date[:10]  # Take YYYY-MM-DD part
                     parts.append(date)
                 except Exception as e:
-                    logger.debug(f"Citation date format skipped: {e}")
+                    logger.debug("Citation date format skipped: %s", e)
 
             line = " - ".join(parts)
             lines.append(line)
@@ -252,7 +252,7 @@ Sources:
         }
 
         if invalid_citations:
-            logger.warning(f"⚠️ [Citations] Invalid citations found: {invalid_citations}")
+            logger.warning("⚠️ [Citations] Invalid citations found: %s", invalid_citations)
         else:
             logger.info(
                 f"✅ [Citations] Valid - {len(found_citations)} citations, "

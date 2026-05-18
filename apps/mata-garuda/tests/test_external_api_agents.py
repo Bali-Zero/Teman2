@@ -9,13 +9,10 @@ from __future__ import annotations
 from pathlib import Path
 from unittest.mock import patch
 
-import pytest
-
 from mata_garuda.agents.exa_search_agent import run_exa_batch
 from mata_garuda.agents.reddit_listener_agent import run_reddit_listen
 from mata_garuda.agents.tavily_research_agent import run_tavily_batch
 from mata_garuda.tools import reddit_tools as rt
-
 
 # ── Exa ────────────────────────────────────────────────────────────────
 

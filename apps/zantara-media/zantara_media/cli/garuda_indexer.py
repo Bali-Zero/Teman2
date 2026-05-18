@@ -8,8 +8,8 @@ import asyncio
 import logging
 import os
 import sys
-from pathlib import Path
 from datetime import UTC
+from pathlib import Path
 
 
 # Load .env from apps/backend-rag/.env (sibling app)
@@ -45,8 +45,8 @@ def setup_logging(verbose: bool = False) -> None:
 
 
 async def async_main(worker_name: str, dry_run: bool) -> int:
-    from zantara_media.indexer.orchestrator import run_indexer
     from zantara_media.alerts import send_critical_alert
+    from zantara_media.indexer.orchestrator import run_indexer
 
     logger = logging.getLogger("garuda-indexer")
     logger.info("Starting GARUDA indexer (worker=%s, dry_run=%s)", worker_name, dry_run)
@@ -74,7 +74,7 @@ async def async_main(worker_name: str, dry_run: bool) -> int:
                 "SELECT expires_at FROM google_drive_tokens ORDER BY created_at DESC LIMIT 1"
             )
             if row and row["expires_at"]:
-                from datetime import datetime, timezone
+                from datetime import datetime
                 days_left = (row["expires_at"] - datetime.now(tz=UTC)).days
                 if days_left < 7:
                     await send_critical_alert(

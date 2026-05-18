@@ -842,7 +842,7 @@ class MetricsCollector:
             self.last_redis_check = latency
             return latency
         except Exception as e:
-            logger.warning(f"Failed to measure Redis latency: {e}")
+            logger.warning("Failed to measure Redis latency: %s", e)
             return -1
 
     async def measure_sse_latency(self) -> float:
@@ -867,7 +867,7 @@ class MetricsCollector:
             cpu_percent = psutil.cpu_percent(interval=0.1)
             cpu_usage.set(cpu_percent)
         except Exception as e:
-            logger.debug(f"Metrics counter update failed: {e}")
+            logger.debug("Metrics counter update failed: %s", e)
 
         # Memory usage
         try:
@@ -875,7 +875,7 @@ class MetricsCollector:
             memory_mb = memory.used / 1024 / 1024
             memory_usage.set(memory_mb)
         except Exception as e:
-            logger.debug(f"Metrics counter update failed: {e}")
+            logger.debug("Metrics counter update failed: %s", e)
 
     def record_request(self, method: str, endpoint: str, status: int, duration: float) -> Any:
         """Record HTTP request metrics"""

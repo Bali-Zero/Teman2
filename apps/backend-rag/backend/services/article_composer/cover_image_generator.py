@@ -111,7 +111,7 @@ def build_prompt(title: str, category: str, summary: str | None) -> str:
         logger.info(f"[CoverImage] bz_image_style prompt generated ({len(prompt)} chars)")
         return prompt
     except Exception as exc:
-        logger.info(f"[CoverImage] bz_image_style unavailable ({exc}), using fallback prompt")
+        logger.info("[CoverImage] bz_image_style unavailable (%s), using fallback prompt", exc)
         return _build_prompt_fallback(title, category, summary)
 
 
@@ -178,7 +178,7 @@ class CoverImageGenerator:
                 logger.info(f"[CoverImage] Set image for {article_id}: {image_url[:80]}")
             return result["url"] if result else None
         except Exception as exc:
-            logger.warning(f"[CoverImage] Failed for article {article_id}: {exc}")
+            logger.warning("[CoverImage] Failed for article %s: %s", article_id, exc)
             return None
 
     async def generate_bytes(
@@ -268,9 +268,9 @@ class CoverImageGenerator:
                 return img_bytes
             logger.warning(f"[CoverImage] Fireworks response too small: {len(img_bytes)} bytes")
         except httpx.HTTPError as exc:
-            logger.debug(f"[CoverImage] Fireworks HTTP error: {exc}")
+            logger.debug("[CoverImage] Fireworks HTTP error: %s", exc)
         except Exception as exc:
-            logger.warning(f"[CoverImage] Fireworks unexpected error: {exc}", exc_info=True)
+            logger.warning("[CoverImage] Fireworks unexpected error: %s", exc, exc_info=True)
         return None
 
     async def _pollinations(self, prompt: str) -> bytes | None:
@@ -292,10 +292,10 @@ class CoverImageGenerator:
                     logger.info(f"[CoverImage] Pollinations [{model}]: {len(resp.content)} bytes")
                     return resp.content
             except httpx.HTTPError as exc:
-                logger.debug(f"[CoverImage] Pollinations [{model}] HTTP error: {exc}")
+                logger.debug("[CoverImage] Pollinations [%s] HTTP error: %s", model, exc)
             except Exception as exc:
                 logger.warning(
-                    f"[CoverImage] Pollinations [{model}] unexpected error: {exc}",
+                    "[CoverImage] Pollinations [%s] unexpected error: %s", model, exc,
                     exc_info=True,
                 )
         return None

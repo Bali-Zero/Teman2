@@ -468,6 +468,27 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)research/marketing/zantara-visual-dataset/.*/metadata/.*\.json$"),
         "zantara-visual-dataset metadata: SHA-256 file checksums for image assets, not secrets",
     ),
+    # vendor/<pkg>/tests/: vendored third-party test files contain fake
+    # API keys and dummy credentials in mock setups. Vendor source is
+    # byte-identical to upstream (see vendor/*/UPSTREAM.md), reviewed at
+    # vendoring time. Never executed in production.
+    (
+        re.compile(r"(^|/)vendor/[^/]+/tests/.*\.py$"),
+        "vendor third-party tests: mock credentials in upstream test suites, not secrets",
+    ),
+    # vendor/<pkg>/examples/<*>/README.md: usage examples with fake API
+    # keys for documentation purposes. Same vendor-byte-identical caveat.
+    (
+        re.compile(r"(^|/)vendor/[^/]+/examples/.*\.(md|py|sh|yaml|yml|json)$"),
+        "vendor third-party examples: documentation placeholders, not secrets",
+    ),
+    # vendor/<pkg>/notebooks/*.ipynb: Jupyter notebooks contain base64-
+    # encoded PNG cell outputs (matplotlib plots, screenshots) that
+    # trigger "Base64 High Entropy String" detector. Never API keys.
+    (
+        re.compile(r"(^|/)vendor/[^/]+/notebooks/.*\.ipynb$"),
+        "vendor third-party notebooks: base64 PNG cell outputs from matplotlib, not secrets",
+    ),
 ]
 
 # Hard blocks — if the path matches any of these, NEVER auto-approve even if

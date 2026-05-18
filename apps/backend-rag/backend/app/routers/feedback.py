@@ -57,7 +57,7 @@ async def submit_feedback(
                     try:
                         user_id = UUID(user_id_str) if isinstance(user_id_str, str) else user_id_str
                     except (ValueError, TypeError):
-                        logger.warning(f"Invalid user_id format: {user_id_str}")
+                        logger.warning("Invalid user_id format: %s", user_id_str)
 
         # Validate feedback_type if provided
         if request.feedback_type and request.feedback_type not in ["positive", "negative", "issue"]:
@@ -145,10 +145,10 @@ async def submit_feedback(
     except HTTPException:
         raise
     except asyncpg.PostgresError as e:
-        logger.error(f"Database error saving feedback: {e}", exc_info=True)
+        logger.error("Database error saving feedback: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Database error: {str(e)}") from e
     except Exception as e:
-        logger.error(f"Unexpected error saving feedback: {e}", exc_info=True)
+        logger.error("Unexpected error saving feedback: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}") from e
 
 
@@ -202,7 +202,7 @@ async def get_conversation_rating(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error retrieving rating: {e}", exc_info=True)
+        logger.error("Error retrieving rating: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}") from e
 
 
@@ -266,5 +266,5 @@ async def get_feedback_stats(
             )
 
     except Exception as e:
-        logger.error(f"Error retrieving feedback stats: {e}", exc_info=True)
+        logger.error("Error retrieving feedback stats: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}") from e

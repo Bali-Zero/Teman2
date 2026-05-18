@@ -115,7 +115,7 @@ def _get_redis_client() -> Any:
         else:
             logger.info("Semantic cache L2: no Redis available, L1-only mode")
     except Exception as e:
-        logger.warning(f"Semantic cache L2 Redis init failed: {e}")
+        logger.warning("Semantic cache L2 Redis init failed: %s", e)
 
     return _redis_client
 
@@ -203,7 +203,7 @@ async def get_cached_response_async(query: str) -> dict[str, Any] | None:
                     logger.info(f"Cache HIT (L2 Redis): {query[:50]}...")
                     return response
         except Exception as e:
-            logger.warning(f"Semantic cache L2 get failed: {e}")
+            logger.warning("Semantic cache L2 get failed: %s", e)
 
     return None
 
@@ -290,7 +290,7 @@ async def cache_response_async(
                 f"domain={resolved_domain} ttl={resolved_ttl}s",
             )
         except Exception as e:
-            logger.warning(f"Semantic cache L2 set failed: {e}")
+            logger.warning("Semantic cache L2 set failed: %s", e)
 
 
 def invalidate_semantic_cache(pattern: str | None = None) -> int:
@@ -307,7 +307,7 @@ def invalidate_semantic_cache(pattern: str | None = None) -> int:
     if pattern is None:
         count = len(_L1_CACHE)
         _L1_CACHE.clear()
-        logger.info(f"Semantic cache CLEAR (L1): {count} entries")
+        logger.info("Semantic cache CLEAR (L1): %s entries", count)
         return count
 
     # Pattern match
@@ -345,9 +345,9 @@ async def invalidate_semantic_cache_async(pattern: str | None = None) -> int:
             keys = await redis.keys(redis_pattern)
             if keys:
                 l2_count = await redis.delete(*keys)
-            logger.info(f"Semantic cache CLEAR (L2 Redis): {l2_count} entries")
+            logger.info("Semantic cache CLEAR (L2 Redis): %s entries", l2_count)
         except Exception as e:
-            logger.warning(f"Semantic cache L2 invalidation failed: {e}")
+            logger.warning("Semantic cache L2 invalidation failed: %s", e)
 
     return l1_count + l2_count
 
@@ -372,7 +372,7 @@ async def invalidate_by_domain(domain: str) -> int:
         del _L1_CACHE[k]
     l1_count = len(to_delete_l1)
     if l1_count:
-        logger.info(f"Semantic cache INVALIDATE (L1) domain={domain}: {l1_count} entries")
+        logger.info("Semantic cache INVALIDATE (L1) domain=%s: %s entries", domain, l1_count)
 
     # L2: scan the domain-tagged prefix and delete.
     l2_count = 0
@@ -384,10 +384,10 @@ async def invalidate_by_domain(domain: str) -> int:
             if keys:
                 l2_count = await redis.delete(*keys)
             logger.info(
-                f"Semantic cache INVALIDATE (L2 Redis) domain={domain}: {l2_count} entries",
+                "Semantic cache INVALIDATE (L2 Redis) domain=%s: %s entries", domain, l2_count,
             )
         except Exception as e:
-            logger.warning(f"Semantic cache L2 domain-invalidate failed: {e}")
+            logger.warning("Semantic cache L2 domain-invalidate failed: %s", e)
 
     return l1_count + l2_count
 

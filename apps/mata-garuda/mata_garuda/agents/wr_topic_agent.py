@@ -17,7 +17,6 @@ import json
 import logging
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
 
 from mata_garuda.agents.daily_briefing_agent import _send_telegram, _xrevrange
 from mata_garuda.config import RELEVANCE_WEIGHTS, STREAM_ENRICHED

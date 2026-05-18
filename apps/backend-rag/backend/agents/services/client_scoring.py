@@ -70,19 +70,19 @@ class ClientScoringService:
                 )
 
                 if not row:
-                    logger.debug(f"No data found for client_id: {client_id}")
+                    logger.debug("No data found for client_id: %s", client_id)
                     return None
 
                 return self._calculate_scores_from_row(row, client_id)
 
         except asyncpg.PostgresError as e:
             logger.error(
-                f"Database error calculating score for client {client_id}: {e}", exc_info=True,
+                "Database error calculating score for client %s: %s", client_id, e, exc_info=True,
             )
             return None
         except Exception as e:
             logger.error(
-                f"Unexpected error calculating score for client {client_id}: {e}", exc_info=True,
+                "Unexpected error calculating score for client %s: %s", client_id, e, exc_info=True,
             )
             return None
 
@@ -136,10 +136,10 @@ class ClientScoringService:
                 return results
 
         except asyncpg.PostgresError as e:
-            logger.error(f"Database error in batch score calculation: {e}", exc_info=True)
+            logger.error("Database error in batch score calculation: %s", e, exc_info=True)
             return {}
         except Exception as e:
-            logger.error(f"Unexpected error in batch score calculation: {e}", exc_info=True)
+            logger.error("Unexpected error in batch score calculation: %s", e, exc_info=True)
             return {}
 
     def _calculate_scores_from_row(self, row: asyncpg.Record, client_id: str) -> dict[str, Any]:

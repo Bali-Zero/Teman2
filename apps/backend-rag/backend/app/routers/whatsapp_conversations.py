@@ -102,7 +102,7 @@ async def get_whatsapp_conversations(
                             m = msgs[-1]
                             last_msg_text = m.get("content", "")[:100]
                     except Exception as e:
-                        logger.error(f"Failed to parse WhatsApp messages JSON: {e}")
+                        logger.error("Failed to parse WhatsApp messages JSON: %s", e)
                         pass
 
                 # Extract name from metadata if possible
@@ -117,7 +117,7 @@ async def get_whatsapp_conversations(
                         )
                         client_name = meta.get("sender_name") or meta.get("client_name") or phone
                     except Exception as e:
-                        logger.error(f"Failed to parse WhatsApp metadata: {e}")
+                        logger.error("Failed to parse WhatsApp metadata: %s", e)
                         pass
 
                 conversations.append(
@@ -136,7 +136,7 @@ async def get_whatsapp_conversations(
 
             return conversations
     except Exception as e:
-        logger.error(f"FAIL: {e}")
+        logger.error("FAIL: %s", e)
         return []  # Fallback to empty list instead of 500
 
 
@@ -170,7 +170,7 @@ async def get_whatsapp_messages(
                 try:
                     messages = json.loads(messages_raw)
                 except Exception as e:
-                    logger.error(f"Failed to parse WhatsApp messages string: {e}")
+                    logger.error("Failed to parse WhatsApp messages string: %s", e)
                     messages = []
             else:
                 messages = messages_raw or []
@@ -180,7 +180,7 @@ async def get_whatsapp_messages(
                 try:
                     messages = json.loads(messages[0])
                 except Exception as e:
-                    logger.error(f"Failed to parse nested WhatsApp messages: {e}")
+                    logger.error("Failed to parse nested WhatsApp messages: %s", e)
                     pass
 
             result = []
@@ -200,7 +200,7 @@ async def get_whatsapp_messages(
                 )
             return result
     except Exception as e:
-        logger.error(f"Failed to get WhatsApp messages: {e}")
+        logger.error("Failed to get WhatsApp messages: %s", e)
         return []
 
 
@@ -247,8 +247,8 @@ async def send_whatsapp_message(
         logger.info(f"Outbound WA sent to {phone} by {current_user.get('email', 'unknown')}")
         return {"success": True, "data": result}
     except ValueError as e:
-        logger.error(f"WhatsApp send failed: {e}")
+        logger.error("WhatsApp send failed: %s", e)
         raise HTTPException(status_code=502, detail=str(e)) from e
     except Exception as e:
-        logger.error(f"WhatsApp send error: {e}", exc_info=True)
+        logger.error("WhatsApp send error: %s", e, exc_info=True)
         raise HTTPException(status_code=500, detail="Failed to send WhatsApp message") from e

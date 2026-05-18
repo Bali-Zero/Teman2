@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from typing import Any, Literal
 
 import asyncpg
@@ -19,6 +20,67 @@ from backend.services.crm.tax_company_pilot import (
 )
 
 logger = logging.getLogger(__name__)
+
+AUTO_APPROVE_POLICY_VERSION = "workspace-ai-v2-consultant-narrative"
+_AUTO_APPROVE_SYSTEM_ACTOR = f"system:auto-approve:{AUTO_APPROVE_POLICY_VERSION}"
+_AUTO_APPROVE_FACT_CATEGORIES = frozenset(
+    {"identity", "person", "compliance", "gap", "next_action"}
+)
+_CONSULTANT_NARRATIVE_CATEGORIES = frozenset({"compliance", "next_action"})
+_RAW_DRIVE_REFERENCE_MARKERS = (
+    "drive.google.com",
+    "docs.google.com",
+    "/file/d/",
+    "/folders/",
+    "open?id=",
+)
+_DOCUMENT_GAP_PATTERN = re.compile(
+    r"\b(document|record|file|npwp|nib|akta|profile|folder)\b.*"
+    r"\b(missing|required|needed|absent|not found|not indexed|gap)\b|"
+    r"\b(missing|required|needed|absent|not found|not indexed|gap)\b.*"
+    r"\b(document|record|file|npwp|nib|akta|profile|folder)\b",
+    re.IGNORECASE,
+)
+_CREDENTIAL_OR_PORTAL_SECRET_PATTERN = re.compile(
+    r"\b("
+    r"efin|password|passcode|otp|credential|credentials|username|login|"
+    r"tax portal|djp/coretax|coretax access|portal access|accessed via|"
+    r"npwp ending|individual accounts|personal tax oversight"
+    r")\b|[\w.+-]+@(?:gmail|yahoo|hotmail|outlook)\.[\w.-]+",
+    re.IGNORECASE,
+)
+_BACKSTAGE_SOURCE_REFERENCE_PATTERN = re.compile(
+    r"\b(sources?|source files?)\s*:|"
+    r"\b(file_id|folder_id|transaction_history)\b|"
+    r"\.(?:pdf|jpe?g|png|xlsx?|csv)\b",
+    re.IGNORECASE,
+)
+_ABSOLUTE_COMPLIANCE_PATTERN = re.compile(
+    r"\b("
+    r"fully compliant|compliant with all|legal and regulatory excellence|"
+    r"no compliance risk|no legal risk|no risk|guaranteed|legally safe|"
+    r"cleared by (?:the )?tax office|free of liabilities"
+    r")\b",
+    re.IGNORECASE,
+)
+_SENSITIVE_FINANCIAL_AMOUNT_PATTERN = re.compile(
+    r"\b(?:pph|ppn|vat|tax|pajak|omzet|withholding|salary|salaries|"
+    r"revenue|income|profit|loss|debt|balance|invoice|fee|royalty)"
+    r"\b.{0,80}\b(?:rp|idr)\s*\d|"
+    r"\b(?:rp|idr)\s*\d.{0,80}\b(?:pph|ppn|vat|tax|pajak|omzet|"
+    r"withholding|salary|salaries|revenue|income|profit|loss|debt|"
+    r"balance|invoice|fee|royalty)\b",
+    re.IGNORECASE | re.DOTALL,
+)
+_UNSAFE_ADVICE_PATTERN = re.compile(
+    r"\b(?:client|company|director|commissioner|shareholder|they|you)\s+"
+    r"(?:should|must|need to|required to|has to)\b|"
+    r"\b("
+    r"amended tax return|legal opinion|liable|liability|penalty|sanction|"
+    r"suspicion|suspected|fraud"
+    r")\b",
+    re.IGNORECASE,
+)
 
 
 class WorkspaceAiSnapshotCreate(BaseModel):
@@ -39,6 +101,28 @@ class WorkspaceAiSnapshotResponse(WorkspaceAiSnapshotCreate):
     approved_by: str | None = None
     approved_at: str | None = None
     created_at: str
+
+
+class WorkspaceAiAutoApproveDecision(BaseModel):
+    snapshot_id: str
+    company_id: int | None = None
+    company_name: str
+    policy_version: str = AUTO_APPROVE_POLICY_VERSION
+    eligible: bool
+    approved: bool = False
+    reason: str
+    blocked_reasons: list[str] = Field(default_factory=list)
+    fact_count: int
+
+
+class WorkspaceAiAutoApproveResult(BaseModel):
+    policy_version: str = AUTO_APPROVE_POLICY_VERSION
+    dry_run: bool
+    evaluated: int
+    eligible_count: int
+    blocked_count: int
+    approved_count: int
+    decisions: list[WorkspaceAiAutoApproveDecision]
 
 
 async def fetch_latest_workspace_ai_snapshots(
@@ -122,6 +206,126 @@ async def approve_workspace_ai_snapshot(
     return _response_from_row(row)
 
 
+def evaluate_workspace_ai_auto_approve_snapshot(
+    snapshot: WorkspaceAiSnapshotResponse,
+) -> WorkspaceAiAutoApproveDecision:
+    """Decide whether a draft snapshot is safe for policy auto-approval.
+
+    The policy is intentionally type/evidence based. Model confidence is not a
+    gate because factual CRM inventory should pass even when the model labels it
+    low confidence, while recommendations must remain human-reviewed.
+    """
+    blocked_reasons: list[str] = []
+    if snapshot.status != "draft":
+        blocked_reasons.append(f"status_not_draft:{snapshot.status}")
+    if not snapshot.facts:
+        blocked_reasons.append("missing_facts")
+
+    for fact in snapshot.facts:
+        category = str(fact.category)
+        text = _normalise_fact_text(fact)
+        if category not in _AUTO_APPROVE_FACT_CATEGORIES:
+            blocked_reasons.append(f"unknown_category:{category}")
+        elif category == "gap" and not _is_document_gap_fact(text):
+            blocked_reasons.append("gap_not_document_inventory")
+
+        if not (fact.source_file_ids or snapshot.source_file_ids):
+            blocked_reasons.append("missing_explicit_evidence")
+        if _contains_raw_drive_reference(text):
+            blocked_reasons.append("raw_drive_reference")
+        if _contains_credential_or_portal_secret(text):
+            blocked_reasons.append("credential_or_portal_secret")
+        if _contains_backstage_source_reference(text):
+            blocked_reasons.append("backstage_source_reference")
+        if _contains_absolute_compliance_claim(text):
+            blocked_reasons.append("absolute_compliance_claim")
+        if _contains_sensitive_financial_amount(text):
+            blocked_reasons.append("sensitive_financial_amount")
+        if _contains_unsafe_advice_claim(text):
+            blocked_reasons.append("unsafe_advice_claim")
+
+    unique_blocked_reasons = list(dict.fromkeys(blocked_reasons))
+    eligible = len(unique_blocked_reasons) == 0
+    has_consultant_narrative = any(
+        str(fact.category) in _CONSULTANT_NARRATIVE_CATEGORIES for fact in snapshot.facts
+    )
+    return WorkspaceAiAutoApproveDecision(
+        snapshot_id=snapshot.id,
+        company_id=snapshot.company_id,
+        company_name=snapshot.company_name,
+        eligible=eligible,
+        reason=(
+            "consultant_narrative_snapshot"
+            if eligible and has_consultant_narrative
+            else "factual_structural_snapshot"
+            if eligible
+            else "policy_blocked"
+        ),
+        blocked_reasons=unique_blocked_reasons,
+        fact_count=len(snapshot.facts),
+    )
+
+
+async def auto_approve_workspace_ai_snapshots(
+    pool: asyncpg.Pool,
+    *,
+    limit: int = 25,
+    dry_run: bool = True,
+    approved_by: str | None = None,
+) -> WorkspaceAiAutoApproveResult:
+    """Evaluate draft snapshots and optionally approve policy-safe rows."""
+    snapshots = await fetch_workspace_ai_review_queue(
+        pool,
+        status="draft",
+        limit=limit,
+    )
+    actor = approved_by or _AUTO_APPROVE_SYSTEM_ACTOR
+    decisions: list[WorkspaceAiAutoApproveDecision] = []
+    approved_count = 0
+
+    for snapshot in snapshots:
+        decision = evaluate_workspace_ai_auto_approve_snapshot(snapshot)
+        if decision.eligible and not dry_run:
+            try:
+                await approve_workspace_ai_snapshot(
+                    pool,
+                    snapshot_id=snapshot.id,
+                    approved_by=actor,
+                )
+            except LookupError:
+                logger.warning(
+                    "Workspace AI snapshot auto-approval skipped because row is no longer draft",
+                    extra={
+                        "snapshot_id": snapshot.id,
+                        "policy_version": AUTO_APPROVE_POLICY_VERSION,
+                    },
+                )
+                decision = decision.model_copy(
+                    update={
+                        "eligible": False,
+                        "reason": "approval_failed",
+                        "blocked_reasons": [
+                            *decision.blocked_reasons,
+                            "approval_failed:not_draft",
+                        ],
+                    }
+                )
+            else:
+                approved_count += 1
+                decision = decision.model_copy(update={"approved": True})
+        decisions.append(decision)
+
+    eligible_count = sum(1 for decision in decisions if decision.eligible)
+    return WorkspaceAiAutoApproveResult(
+        dry_run=dry_run,
+        evaluated=len(decisions),
+        eligible_count=eligible_count,
+        blocked_count=len(decisions) - eligible_count,
+        approved_count=approved_count,
+        decisions=decisions,
+    )
+
+
 def _response_from_row(row: Any) -> WorkspaceAiSnapshotResponse:
     approved_at = row["approved_at"]
     return WorkspaceAiSnapshotResponse(
@@ -163,6 +367,45 @@ def _facts_from_db_value(value: Any) -> list[TaxCompanyPilotWorkspaceAiFact]:
         return []
     parsed = json.loads(value) if isinstance(value, str) else value
     return [TaxCompanyPilotWorkspaceAiFact.model_validate(fact) for fact in parsed]
+
+
+def _normalise_fact_text(fact: TaxCompanyPilotWorkspaceAiFact) -> str:
+    return " ".join(
+        [
+            fact.category,
+            fact.label,
+            fact.detail,
+        ]
+    ).strip()
+
+
+def _is_document_gap_fact(text: str) -> bool:
+    return bool(_DOCUMENT_GAP_PATTERN.search(text))
+
+
+def _contains_raw_drive_reference(text: str) -> bool:
+    lower_text = text.lower()
+    return any(marker in lower_text for marker in _RAW_DRIVE_REFERENCE_MARKERS)
+
+
+def _contains_credential_or_portal_secret(text: str) -> bool:
+    return bool(_CREDENTIAL_OR_PORTAL_SECRET_PATTERN.search(text))
+
+
+def _contains_backstage_source_reference(text: str) -> bool:
+    return bool(_BACKSTAGE_SOURCE_REFERENCE_PATTERN.search(text))
+
+
+def _contains_absolute_compliance_claim(text: str) -> bool:
+    return bool(_ABSOLUTE_COMPLIANCE_PATTERN.search(text))
+
+
+def _contains_sensitive_financial_amount(text: str) -> bool:
+    return bool(_SENSITIVE_FINANCIAL_AMOUNT_PATTERN.search(text))
+
+
+def _contains_unsafe_advice_claim(text: str) -> bool:
+    return bool(_UNSAFE_ADVICE_PATTERN.search(text))
 
 
 _LATEST_BY_COMPANY_SQL = """

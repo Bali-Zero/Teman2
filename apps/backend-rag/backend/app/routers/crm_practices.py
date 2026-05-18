@@ -161,7 +161,7 @@ async def _create_hr_bonus_on_completed(
                 practice_id,
             )
     except Exception as e:
-        logger.warning(f"HR bonus hook failed for practice {practice_id}: {e}")
+        logger.warning("HR bonus hook failed for practice %s: %s", practice_id, e)
 
 
 async def _notify_hr_bonus_pending(
@@ -552,7 +552,7 @@ async def create_practice(
             except Exception as e:
                 # Undefined table (timeline_events missing) is safe to ignore during rollout.
                 if getattr(e, "sqlstate", None) != "42P01":
-                    logger.warning(f"Could not create timeline event for practice create: {e}")
+                    logger.warning("Could not create timeline event for practice create: %s", e)
 
             # Update client's last_interaction_date
             await conn.execute(
@@ -602,7 +602,7 @@ async def create_practice(
                     db_pool,
                 )
             except Exception as e:
-                logger.error(f"Practice kickoff communication setup failed: {e}")
+                logger.error("Practice kickoff communication setup failed: %s", e)
 
             return PracticeResponse(**new_practice)
 
@@ -756,7 +756,7 @@ async def list_practices(
                     query_parts.append(f" AND p.assigned_to = ${param_index}")
                     params.append(practices_filter)
                     param_index += 1
-                    logger.info(f"RBAC: Filtering practices for {practices_filter} (p.assigned_to)")
+                    logger.info("RBAC: Filtering practices for %s (p.assigned_to)", practices_filter)
 
             # Month filter
             month_range = _parse_month_param(month)
@@ -1008,7 +1008,7 @@ async def get_practice(
                 row = await conn.fetchrow(base_query, practice_id, practices_filter)
                 if not row:
                     logger.info(
-                        f"RBAC: Practice {practice_id} not visible to {practices_filter}"
+                        "RBAC: Practice %s not visible to %s", practice_id, practices_filter
                     )
             else:
                 row = await conn.fetchrow(base_query, practice_id)
@@ -1347,7 +1347,7 @@ async def update_practice(
                         except Exception as e:
                             if getattr(e, "sqlstate", None) != "42P01":
                                 logger.warning(
-                                    f"Could not create timeline event for status change: {e}",
+                                    "Could not create timeline event for status change: %s", e,
                                 )
 
             # Notify client via portal about status change
@@ -1379,7 +1379,7 @@ async def update_practice(
                         ),
                     )
                 except Exception as e:
-                    logger.error(f"Portal notification for practice status failed: {e}")
+                    logger.error("Portal notification for practice status failed: %s", e)
 
             # Log activity
             changed_fields = list(updates.dict(exclude_unset=True).keys())
@@ -1433,7 +1433,7 @@ async def update_practice(
                         triggered_by=user_email,
                     ),
                 )
-                logger.info(f"🚀 Waiting documents automation triggered for practice {practice_id}")
+                logger.info("🚀 Waiting documents automation triggered for practice %s", practice_id)
 
             # 🚀 Invoice Automation: Trigger when status changes to 'sending_invoice'
             if updates.status == "sending_invoice" and old_status != "sending_invoice":
@@ -1445,7 +1445,7 @@ async def update_practice(
                         triggered_by=user_email,
                     ),
                 )
-                logger.info(f"🚀 Invoice automation triggered for practice {practice_id}")
+                logger.info("🚀 Invoice automation triggered for practice %s", practice_id)
 
             # NOTE: on_process automation handled by PracticeStatusListener (M5)
             # via PG NOTIFY trigger — no need to duplicate here.
@@ -1462,7 +1462,7 @@ async def update_practice(
                     ),
                 )
                 logger.info(
-                    f"🚀 Process completion automation triggered for practice {practice_id}",
+                    "🚀 Process completion automation triggered for practice %s", practice_id,
                 )
 
                 # 🎯 HR Bonus Auto-Creation: create bonus ledger entry for assigned team member
@@ -1825,7 +1825,7 @@ async def regenerate_invoice(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to regenerate invoice for practice {practice_id}: {e}", exc_info=True)
+        logger.error("Failed to regenerate invoice for practice %s: %s", practice_id, e, exc_info=True)
         raise handle_database_error(e)
 
 
@@ -1912,7 +1912,7 @@ async def get_required_documents(
                 for row in rows
             ]
     except Exception as e:
-        logger.error(f"Failed to get required documents: {e}", exc_info=True)
+        logger.error("Failed to get required documents: %s", e, exc_info=True)
         raise handle_database_error(e)
 
 
@@ -1994,7 +1994,7 @@ async def add_required_document(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to add required document: {e}", exc_info=True)
+        logger.error("Failed to add required document: %s", e, exc_info=True)
         raise handle_database_error(e)
 
 
@@ -2018,7 +2018,7 @@ async def delete_required_document(
                 raise HTTPException(status_code=404, detail="Document not found")
 
             logger.info(
-                f"Deleted required document {doc_id} from practice {practice_id}",
+                "Deleted required document %s from practice %s", doc_id, practice_id,
                 extra={
                     "practice_id": practice_id,
                     "doc_id": doc_id,
@@ -2031,7 +2031,7 @@ async def delete_required_document(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to delete required document: {e}", exc_info=True)
+        logger.error("Failed to delete required document: %s", e, exc_info=True)
         raise handle_database_error(e)
 
 
@@ -2080,7 +2080,7 @@ async def update_required_document(
                 raise HTTPException(status_code=404, detail="Document not found")
 
             logger.info(
-                f"Updated required document {doc_id} for practice {practice_id}",
+                "Updated required document %s for practice %s", doc_id, practice_id,
                 extra={
                     "practice_id": practice_id,
                     "doc_id": doc_id,
@@ -2109,7 +2109,7 @@ async def update_required_document(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to update required document: {e}", exc_info=True)
+        logger.error("Failed to update required document: %s", e, exc_info=True)
         raise handle_database_error(e)
 
 
@@ -2184,7 +2184,7 @@ async def upload_client_document(
             )
 
             logger.info(
-                f"Client uploaded document for practice {practice_id}",
+                "Client uploaded document for practice %s", practice_id,
                 extra={
                     "practice_id": practice_id,
                     "required_doc_id": request.required_doc_id,
@@ -2203,5 +2203,5 @@ async def upload_client_document(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to upload client document: {e}", exc_info=True)
+        logger.error("Failed to upload client document: %s", e, exc_info=True)
         raise handle_database_error(e)

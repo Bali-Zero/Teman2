@@ -68,7 +68,7 @@ class PDFVisionService:
                 if self._genai_client.is_available:
                     logger.debug("✅ PDFVisionService GenAI client loaded")
             except Exception as e:
-                logger.warning(f"Failed to initialize PDFVisionService GenAI client: {e}")
+                logger.warning("Failed to initialize PDFVisionService GenAI client: %s", e)
         return self._genai_client
 
     @property
@@ -110,7 +110,7 @@ class PDFVisionService:
             result = await self._analyze_via_ollama(prompt, image_base64)
             if result:
                 logger.info(
-                    f"👁️ Vision analysis complete via Ollama for {local_path} p.{page_number}",
+                    "👁️ Vision analysis complete via Ollama for %s p.%s", local_path, page_number,
                 )
                 if is_drive_file and os.path.exists(local_path):
                     os.remove(local_path)
@@ -120,13 +120,12 @@ class PDFVisionService:
             # ⚠️ UU PDP COMPLIANCE: This sends document images to Google servers (cross-border transfer)
             # Art. 56 requires safeguards for cross-border data transfer
             logger.warning(
-                f"⚠️ [CROSS-BORDER] Ollama local OCR failed, falling back to Gemini API "
-                f"for {local_path} p.{page_number}. Document image will be sent to Google servers."
+                "⚠️ [CROSS-BORDER] Ollama local OCR failed, falling back to Gemini API for %s p.%s. Document image will be sent to Google servers.", local_path, page_number
             )
             result = await self._analyze_via_gemini(prompt, image_base64)
             if result:
                 logger.info(
-                    f"👁️ Vision analysis complete via Gemini (CROSS-BORDER) for {local_path} p.{page_number}",
+                    "👁️ Vision analysis complete via Gemini (CROSS-BORDER) for %s p.%s", local_path, page_number,
                 )
                 if is_drive_file and os.path.exists(local_path):
                     os.remove(local_path)
@@ -135,7 +134,7 @@ class PDFVisionService:
             return "Vision service not available (both Ollama and Gemini failed)."
 
         except Exception as e:
-            logger.error(f"❌ Vision analysis failed: {e}")
+            logger.error("❌ Vision analysis failed: %s", e)
             return f"Error analyzing page: {str(e)}"
 
     async def _analyze_via_ollama(self, prompt: str, image_base64: str) -> str | None:
@@ -181,7 +180,7 @@ class PDFVisionService:
             logger.warning("Ollama vision timeout (120s)")
             return None
         except Exception as e:
-            logger.warning(f"Ollama vision error: {e}")
+            logger.warning("Ollama vision error: %s", e)
             return None
 
     async def _analyze_via_gemini(self, prompt: str, image_base64: str) -> str | None:
@@ -205,7 +204,7 @@ class PDFVisionService:
             return result.get("text") if result else None
 
         except Exception as e:
-            logger.warning(f"Gemini vision error: {e}")
+            logger.warning("Gemini vision error: %s", e)
             return None
 
     def _render_page_to_image(self, pdf_path: str, page_number: int) -> Image.Image:
@@ -262,7 +261,7 @@ class PDFVisionService:
             doc.close()
             return text
         except Exception as e:
-            logger.error(f"PDF extraction failed: {e}")
+            logger.error("PDF extraction failed: %s", e)
             return f"Error extracting PDF: {str(e)}"
 
     async def analyze_vision(self, pdf_data: bytes) -> dict[str, Any]:

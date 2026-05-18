@@ -42,7 +42,7 @@ async def get_telegram_conversations(
                     if msgs and isinstance(msgs, list):
                         last_msg_text = msgs[-1].get("content", "")[:100]
                 except Exception as e:
-                    logger.error(f"Failed to parse Telegram messages: {e}")
+                    logger.error("Failed to parse Telegram messages: %s", e)
                     pass
 
                 metadata_raw = row["metadata"]
@@ -53,7 +53,7 @@ async def get_telegram_conversations(
                     )
                     client_name = meta.get("sender_name") or meta.get("client_name") or client_name
                 except Exception as e:
-                    logger.error(f"Failed to parse Telegram metadata: {e}")
+                    logger.error("Failed to parse Telegram metadata: %s", e)
                     pass
 
                 conversations.append(
@@ -68,7 +68,7 @@ async def get_telegram_conversations(
                 )
             return conversations
     except Exception as e:
-        logger.error(f"TG FAIL: {e}")
+        logger.error("TG FAIL: %s", e)
         return []
 
 
@@ -102,5 +102,5 @@ async def get_telegram_messages(
                 )
             return result
     except Exception as e:
-        logger.error(f"Failed to get Telegram messages: {e}")
+        logger.error("Failed to get Telegram messages: %s", e)
         return []

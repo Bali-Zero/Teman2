@@ -10,11 +10,9 @@ import json
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from mata_garuda.council.agents import (
     ClaudeAdapter,
     DeepSeekAdapter,
-    GeminiAdapter,
     OllamaAdapter,
     _parse_vote_json,
     get_default_agents,

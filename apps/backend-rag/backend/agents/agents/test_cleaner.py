@@ -66,7 +66,7 @@ class TestAnalyzer:
             return analysis
 
         except Exception as e:
-            logger.error(f"Error analyzing test file {test_file}: {e}")
+            logger.error("Error analyzing test file %s: %s", test_file, e)
             return {"file": str(test_file), "error": str(e), "quality_issues": ["parse_error"]}
 
     def _extract_imports(self, tree: ast.AST) -> list[str]:
@@ -267,7 +267,7 @@ class DuplicateDetector:
                 groups[signature].append(test_file)
 
             except Exception as e:
-                logger.warning(f"Error processing {test_file}: {e}")
+                logger.warning("Error processing %s: %s", test_file, e)
                 continue
 
         return dict(groups)
@@ -317,7 +317,7 @@ class DuplicateDetector:
                         )
 
                 except Exception as e:
-                    logger.warning(f"Error comparing {file1} and {file2}: {e}")
+                    logger.warning("Error comparing %s and %s: %s", file1, file2, e)
                     continue
 
         return duplicates
@@ -358,7 +358,7 @@ Consider: test purpose, assertions, structure, and functionality.
                 return 0.0
 
         except Exception as e:
-            logger.error(f"Error in semantic comparison: {e}")
+            logger.error("Error in semantic comparison: %s", e)
             return 0.0
 
 
@@ -379,7 +379,7 @@ class OrphanDetector:
                     orphans.append(orphan_info)
 
             except Exception as e:
-                logger.warning(f"Error checking {test_file}: {e}")
+                logger.warning("Error checking %s: %s", test_file, e)
                 continue
 
         return orphans
@@ -518,7 +518,7 @@ class TestCleanerAgent:
             "space_freed": 0,
         }
 
-        logger.info(f"🧹 TestCleanerAgent initialized for {repo_path}")
+        logger.info("🧹 TestCleanerAgent initialized for %s", repo_path)
 
     async def scan_and_clean(self, aggressive: bool = False) -> dict[str, Any]:
         """
@@ -601,7 +601,7 @@ class TestCleanerAgent:
 
         except Exception as e:
             error_msg = f"Cleanup scan failed: {e}"
-            logger.error(f"❌ {error_msg}")
+            logger.error("❌ %s", error_msg)
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
                     time.time() - start_time, success=False, error=error_msg,
@@ -737,7 +737,7 @@ class TestCleanerAgent:
             self.stats["files_archived"] += 1
             self.stats["space_freed"] += file_path.stat().st_size
 
-            logger.info(f"🗑️ Archived: {file_path} -> {archive_path}")
+            logger.info("🗑️ Archived: %s -> %s", file_path, archive_path)
 
             return {
                 "file": str(file_path),
@@ -749,7 +749,7 @@ class TestCleanerAgent:
 
         except Exception as e:
             error_msg = f"Error archiving {file_path}: {e}"
-            logger.error(f"❌ {error_msg}")
+            logger.error("❌ %s", error_msg)
             return {"file": str(file_path), "success": False, "error": error_msg}
 
     def generate_report(self, results: dict[str, Any]) -> str:

@@ -131,7 +131,7 @@ class AlertService:
             self._log_alert(title, message, level, metadata)
             results["logging"] = True
         except Exception as e:
-            logger.error(f"Failed to log alert: {e}")
+            logger.error("Failed to log alert: %s", e)
 
         # Rate limiting: deduplicate same alert within cooldown window
         rate_key = f"{title}:{metadata.get('path', '') if metadata else ''}"
@@ -162,7 +162,7 @@ class AlertService:
                 await self._send_telegram_alert(title, message, level, metadata)
                 results["telegram"] = True
             except Exception as e:
-                logger.error(f"Failed to send Telegram alert: {e}")
+                logger.error("Failed to send Telegram alert: %s", e)
 
         # Send to Slack if enabled
         if self.enable_slack:
@@ -170,7 +170,7 @@ class AlertService:
                 await self._send_slack_alert(title, message, level, metadata)
                 results["slack"] = True
             except Exception as e:
-                logger.error(f"Failed to send Slack alert: {e}")
+                logger.error("Failed to send Slack alert: %s", e)
 
         # Send to Discord if enabled
         if self.enable_discord:
@@ -178,7 +178,7 @@ class AlertService:
                 await self._send_discord_alert(title, message, level, metadata)
                 results["discord"] = True
             except Exception as e:
-                logger.error(f"Failed to send Discord alert: {e}")
+                logger.error("Failed to send Discord alert: %s", e)
 
         return results
 
@@ -467,7 +467,7 @@ class AlertService:
             try:
                 await self.send_hourly_digest()
             except Exception as e:
-                logger.error(f"[digest] Errore nel digest loop: {e}")
+                logger.error("[digest] Errore nel digest loop: %s", e)
 
     def start_digest_loop(self) -> None:
         """Avvia il background task digest (chiamare all'avvio dell'app)."""

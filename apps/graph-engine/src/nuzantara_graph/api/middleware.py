@@ -7,7 +7,7 @@ import uuid
 from collections import defaultdict
 
 import structlog
-from fastapi import Depends, HTTPException, Request
+from fastapi import HTTPException, Request
 from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint
 from starlette.responses import Response
 

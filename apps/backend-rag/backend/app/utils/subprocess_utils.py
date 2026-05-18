@@ -50,7 +50,7 @@ def secure_subprocess_run(
         dangerous_chars = [";", "&&", "||", "|", "`", "$", "(", ")"]
         for char in dangerous_chars:
             if char in command:
-                logger.warning(f"Dangerous character '{char}' detected in shell command")
+                logger.warning("Dangerous character '%s' detected in shell command", char)
                 raise ValueError(f"Dangerous shell character detected: {char}")
 
     logger.debug(f"Executing command: {command if isinstance(command, str) else ' '.join(command)}")
@@ -67,7 +67,7 @@ def secure_subprocess_run(
             **kwargs,
         )
     except subprocess.TimeoutExpired:
-        logger.error(f"Command timed out after {timeout}s: {command}")
+        logger.error("Command timed out after %ss: %s", timeout, command)
         raise
     except subprocess.CalledProcessError as e:
         logger.error(f"Command failed with exit code {e.returncode}: {e.stderr[:500]}")
@@ -120,4 +120,4 @@ def validate_working_directory(cwd: str | None) -> None:
         if resolved.startswith(path):
             raise ValueError(f"Working directory not allowed: {cwd}")
 
-    logger.debug(f"Working directory validated: {resolved}")
+    logger.debug("Working directory validated: %s", resolved)

@@ -408,7 +408,7 @@ Keep the response comprehensive but concise (max 800 words).
             return synthesis_text
 
         except Exception as e:
-            logger.error(f"❌ Synthesis error: {e}")
+            logger.error("❌ Synthesis error: %s", e)
             # Fallback: simple concatenation
             return self._simple_synthesis(query, oracle_results)
 
@@ -489,7 +489,7 @@ Keep the response comprehensive but concise (max 800 words).
         """
         self.synthesis_stats["total_syntheses"] += 1
 
-        logger.info(f"🎯 Starting cross-Oracle synthesis for: '{query}'")
+        logger.info("🎯 Starting cross-Oracle synthesis for: '%s'", query)
 
         # Step 1: Check cache (if enabled)
         if use_cache and self.golden_answers:

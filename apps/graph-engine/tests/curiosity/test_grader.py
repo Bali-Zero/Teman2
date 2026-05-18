@@ -1,12 +1,10 @@
 """Tests for CuriosityGrader — evidence validation for KG proposals."""
 from __future__ import annotations
 
-import pytest
-
 from nuzantara_graph.curiosity.grader import (
-    CuriosityGrader,
     MORE_RESEARCH_THRESHOLD,
     PROPOSE_THRESHOLD,
+    CuriosityGrader,
 )
 from nuzantara_graph.curiosity.models import ResearchEvidence
 

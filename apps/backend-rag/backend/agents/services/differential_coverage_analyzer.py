@@ -94,7 +94,7 @@ class DifferentialCoverageAnalyzer:
         with open(baseline_file, "w") as f:
             json.dump(baseline_data, f, indent=2)
 
-        logger.info(f"💾 Baseline saved: {baseline_file}")
+        logger.info("💾 Baseline saved: %s", baseline_file)
         return baseline_file
 
     def load_baseline(self, baseline_name: str = "latest") -> dict[str, Any] | None:
@@ -102,7 +102,7 @@ class DifferentialCoverageAnalyzer:
         baseline_file = self.baseline_dir / f"{baseline_name}.json"
 
         if not baseline_file.exists():
-            logger.warning(f"⚠️ Baseline not found: {baseline_file}")
+            logger.warning("⚠️ Baseline not found: %s", baseline_file)
             return None
 
         with open(baseline_file) as f:
@@ -172,7 +172,7 @@ class DifferentialCoverageAnalyzer:
 
             else:
                 # New component
-                logger.info(f"   🆕 New component: {comp_name}")
+                logger.info("   🆕 New component: %s", comp_name)
                 comp_delta = CoverageDelta(
                     component_name=comp_name,
                     component_type=current_comp.component_type,
@@ -232,9 +232,9 @@ class DifferentialCoverageAnalyzer:
                     json.dump(baseline_data, f, indent=2)
                 return baseline_data
             else:
-                logger.warning(f"⚠️ Could not load baseline from git commit {commit_hash}")
+                logger.warning("⚠️ Could not load baseline from git commit %s", commit_hash)
                 return None
 
         except Exception as e:
-            logger.error(f"❌ Error loading baseline from git: {e}")
+            logger.error("❌ Error loading baseline from git: %s", e)
             return None

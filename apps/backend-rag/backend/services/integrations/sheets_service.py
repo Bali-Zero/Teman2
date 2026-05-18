@@ -53,7 +53,7 @@ class SheetsService:
             if parsed.get("type") == "service_account":
                 creds_json = env_creds
         except json.JSONDecodeError as e:
-            logger.debug(f"SA creds not raw JSON, trying base64: {e}")
+            logger.debug("SA creds not raw JSON, trying base64: %s", e)
 
         # Try base64
         if not creds_json:
@@ -63,7 +63,7 @@ class SheetsService:
                 if parsed.get("type") == "service_account":
                     creds_json = decoded
             except Exception as e:
-                logger.debug(f"SA creds base64 decode failed: {e}")
+                logger.debug("SA creds base64 decode failed: %s", e)
 
         if creds_json:
             with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as temp_file:

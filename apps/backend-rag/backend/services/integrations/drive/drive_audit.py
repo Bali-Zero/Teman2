@@ -42,9 +42,9 @@ class DriveAuditLogger:
         }
 
         if status == "success":
-            logger.info(f"Drive Operation Success: {log_data}")
+            logger.info("Drive Operation Success: %s", log_data)
         else:
-            logger.error(f"Drive Operation Failed: {log_data}")
+            logger.error("Drive Operation Failed: %s", log_data)
 
     def log_error(
         self, user_email: str, operation: str, error_type: str, error_msg: str, details: dict = None,

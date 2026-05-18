@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -16,7 +15,6 @@ from backend.services.rag.multi_hop import (
     _classify_domain,
     _get_collections_for_domain,
 )
-
 
 # ---------------------------------------------------------------------------
 # SubQuery / MultiHopPlan dataclasses

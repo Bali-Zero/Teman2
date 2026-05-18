@@ -10,10 +10,8 @@ or unknown role → "unknown" → only tools explicitly tagged as public pass.
 """
 
 import os
-from unittest.mock import patch
 
 import pytest
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -22,6 +20,7 @@ import pytest
 def _import_auth():
     """Re-import auth so ROLES_YAML_PATH overrides take effect."""
     import importlib
+
     from nuzantara_mcp import auth  # type: ignore[import-not-found]
     importlib.reload(auth)
     return auth

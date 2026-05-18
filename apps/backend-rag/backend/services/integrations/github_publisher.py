@@ -156,7 +156,7 @@ class GitHubPublisher:
         url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/contents/{path}"
         params = {"ref": branch}
 
-        logger.debug(f"Checking file exists: {path} (branch: {branch})")
+        logger.debug("Checking file exists: %s (branch: %s)", path, branch)
 
         client = self._get_client()
         response = await client.get(
@@ -167,7 +167,7 @@ class GitHubPublisher:
         )
 
         exists = response.status_code == 200
-        logger.debug(f"File exists check: {path} → {exists}")
+        logger.debug("File exists check: %s → %s", path, exists)
         return exists
 
     async def get_file_sha(self, path: str, branch: str = "main") -> str | None:
@@ -188,7 +188,7 @@ class GitHubPublisher:
         url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/contents/{path}"
         params = {"ref": branch}
 
-        logger.debug(f"Getting file SHA: {path}")
+        logger.debug("Getting file SHA: %s", path)
 
         client = self._get_client()
         response = await client.get(
@@ -203,7 +203,7 @@ class GitHubPublisher:
             logger.debug(f"File SHA found: {path} → {sha[:7] if sha else 'N/A'}")
             return sha
 
-        logger.debug(f"File not found (no SHA): {path}")
+        logger.debug("File not found (no SHA): %s", path)
         return None
 
     async def upload_file(
@@ -266,7 +266,7 @@ class GitHubPublisher:
         if response.status_code not in (200, 201):
             error_detail = response.json().get("message", response.text)
             logger.error(
-                f"GitHub API error uploading {path}: {error_detail}",
+                "GitHub API error uploading %s: %s", path, error_detail,
                 extra={
                     "path": path,
                     "status_code": response.status_code,
@@ -344,7 +344,7 @@ class GitHubPublisher:
 
         client = self._get_client()
         # Step 1: Get the current commit SHA of the branch
-        logger.debug(f"Step 1/6: Getting branch ref for '{branch}'")
+        logger.debug("Step 1/6: Getting branch ref for '%s'", branch)
         ref_url = f"{self.BASE_URL}/repos/{self.owner}/{self.repo}/git/refs/heads/{branch}"
         ref_response = await client.get(
             ref_url,

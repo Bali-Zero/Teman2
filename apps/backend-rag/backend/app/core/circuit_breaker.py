@@ -164,7 +164,7 @@ class CircuitBreaker:
                 try:
                     return await fallback()
                 except Exception as e:
-                    logger.error(f"Fallback also failed: {e}")
+                    logger.error("Fallback also failed: %s", e)
                     raise
             else:
                 raise RuntimeError(f"Circuit breaker '{self.name}' is OPEN. Service unavailable.")

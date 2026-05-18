@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import json
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, mock_open, patch
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from fastapi import HTTPException
@@ -366,7 +365,7 @@ class TestGetCriticalItems:
     async def test_critical_items_returns_structure(self, _patch_imports):
         with patch(
             "backend.app.routers.intel_analytics.QdrantClient"
-        ) as mock_qd_cls, patch(
+        ), patch(
             "backend.app.routers.intel_analytics.httpx.AsyncClient"
         ) as mock_http:
             mock_resp = AsyncMock()

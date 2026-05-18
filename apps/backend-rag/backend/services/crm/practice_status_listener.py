@@ -92,7 +92,7 @@ class PracticeStatusListener:
                 logger.debug("practice_status_listener retry loop cancelled — exiting cleanly")
                 break
             except Exception as exc:
-                logger.error(f"PracticeStatusListener error, reconnecting in {_RECONNECT_DELAY_S}s: {exc}", exc_info=True)
+                logger.error("PracticeStatusListener error, reconnecting in %ss: %s", _RECONNECT_DELAY_S, exc, exc_info=True)
                 await self._close_conn()
                 if self._running:
                     await asyncio.sleep(_RECONNECT_DELAY_S)
@@ -156,9 +156,7 @@ class PracticeStatusListener:
         new_payment: str | None = data.get("new_payment")
 
         logger.info(
-            f"practice_changed: practice={practice_id} "
-            f"status={old_status}→{new_status} "
-            f"payment={old_payment}→{new_payment}",
+            "practice_changed: practice=%s status=%s→%s payment=%s→%s", practice_id, old_status, new_status, old_payment, new_payment,
         )
 
         # ── M4: payment_status → 'paid' ───────────────────────────────────
@@ -186,10 +184,10 @@ class PracticeStatusListener:
         try:
             await self._send_payment_emails(practice_id, triggered_by=assigned_to)
         except (httpx.HTTPError, asyncpg.PostgresError, ValueError) as exc:
-            logger.error(f"M4 payment email failed for practice {practice_id}: {exc}", exc_info=True)
+            logger.error("M4 payment email failed for practice %s: %s", practice_id, exc, exc_info=True)
         except Exception as exc:  # noqa: BLE001 — EventBus callback must never crash listener loop
             logger.error(
-                f"M4 payment email unexpected error for practice {practice_id}: {exc}",
+                "M4 payment email unexpected error for practice %s: %s", practice_id, exc,
                 exc_info=True,
             )
 
@@ -197,7 +195,7 @@ class PracticeStatusListener:
         """Fetch practice + client data, send payment confirmation emails."""
         practice_data = await self._process_svc._fetch_practice_data(practice_id)
         if not practice_data:
-            logger.error(f"M4: practice {practice_id} not found", exc_info=True)
+            logger.error("M4: practice %s not found", practice_id)
             return
 
         client_data = await self._process_svc._fetch_client_data(practice_data["client_id"])
@@ -238,12 +236,12 @@ Zantara — Bali Zero Team
                     cc=team_member_email if team_member_email and team_member_email != client_email else None,
                     include_logo=True,
                 )
-                logger.info(f"M4: payment confirmation sent to client {client_email}")
+                logger.info("M4: payment confirmation sent to client %s", client_email)
             except httpx.HTTPError as exc:
-                logger.error(f"M4: failed to email client {client_email}: {exc}", exc_info=True)
+                logger.error("M4: failed to email client %s: %s", client_email, exc, exc_info=True)
             except Exception as exc:  # noqa: BLE001 — must continue to the team email below
                 logger.error(
-                    f"M4: unexpected error emailing client {client_email}: {exc}",
+                    "M4: unexpected error emailing client %s: %s", client_email, exc,
                     exc_info=True,
                 )
 
@@ -284,12 +282,12 @@ Zantara — Bali Zero Team
                     cc="asya@balizero.com",
                     prebuilt_html=True,
                 )
-                logger.info(f"M4: team notification sent to {team_member_email} (CC: asya)")
+                logger.info("M4: team notification sent to %s (CC: asya)", team_member_email)
             except httpx.HTTPError as exc:
-                logger.error(f"M4: failed to email team member {team_member_email}: {exc}", exc_info=True)
+                logger.error("M4: failed to email team member %s: %s", team_member_email, exc, exc_info=True)
             except Exception as exc:  # noqa: BLE001 — notification failure never blocks the listener
                 logger.error(
-                    f"M4: unexpected error emailing team member {team_member_email}: {exc}",
+                    "M4: unexpected error emailing team member %s: %s", team_member_email, exc,
                     exc_info=True,
                 )
 
@@ -317,14 +315,12 @@ Zantara — Bali Zero Team
                 await self._send_milestone_email(practice_id, new_status, assigned_to)
         except (httpx.HTTPError, asyncpg.PostgresError, ValueError) as exc:
             logger.error(
-                f"M5: status milestone handler failed for practice {practice_id} "
-                f"new_status={new_status}: {exc}",
+                "M5: status milestone handler failed for practice %s new_status=%s: %s", practice_id, new_status, exc,
                 exc_info=True,
             )
         except Exception as exc:  # noqa: BLE001 — EventBus callback must never crash listener loop
             logger.error(
-                f"M5: status milestone handler unexpected error for practice {practice_id} "
-                f"new_status={new_status}: {exc}",
+                "M5: status milestone handler unexpected error for practice %s new_status=%s: %s", practice_id, new_status, exc,
                 exc_info=True,
             )
 
@@ -353,12 +349,12 @@ Zantara — Bali Zero Team
                 cc=team_member_email if team_member_email and team_member_email != client_email else None,
                 include_logo=True,
             )
-            logger.info(f"M5: milestone '{status}' email sent to {client_email} (practice {practice_id})")
+            logger.info("M5: milestone '%s' email sent to %s (practice %s)", status, client_email, practice_id)
         except httpx.HTTPError as exc:
-            logger.error(f"M5: milestone email failed for {client_email}: {exc}", exc_info=True)
+            logger.error("M5: milestone email failed for %s: %s", client_email, exc, exc_info=True)
         except Exception as exc:  # noqa: BLE001 — milestone notification failure never propagates
             logger.error(
-                f"M5: milestone email unexpected error for {client_email}: {exc}",
+                "M5: milestone email unexpected error for %s: %s", client_email, exc,
                 exc_info=True,
             )
 

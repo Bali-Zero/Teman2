@@ -10,16 +10,11 @@ Tests:
 """
 from __future__ import annotations
 
-import json
-import os
 from pathlib import Path
 
 import pytest
-
 from mata_garuda.runtime.case_status import case_not_resolved, case_resolved
 from mata_garuda.runtime.fitness import (
-    DEGRADATION_THRESHOLD,
-    _fitness_path,
     check_and_auto_revert,
     get_fitness_summary,
     get_mutation_version,
@@ -38,7 +33,6 @@ from mata_garuda.runtime.genome import (
     revert_last_mutation,
 )
 from mata_garuda.runtime.lamarckian import _parse_case_status
-
 
 # ─── Fixtures ──────────────────────────────────────────────────────────
 

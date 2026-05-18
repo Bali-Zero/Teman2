@@ -12,7 +12,6 @@ This tool is for POC: fetch → parse → publish to Redis Stream.
 """
 from __future__ import annotations
 
-import json
 import logging
 import re
 import subprocess
@@ -97,7 +96,7 @@ def scrape_regulations(
 
     if html.startswith("[ERROR]"):
         # Try fallback
-        logger.warning(f"[scraper] Primary URL failed, trying fallback")
+        logger.warning("[scraper] Primary URL failed, trying fallback")
         html = _curl_fetch(FALLBACK_URL)
         if html.startswith("[ERROR]"):
             return f"[ERROR] Both primary and fallback URLs failed: {html}"

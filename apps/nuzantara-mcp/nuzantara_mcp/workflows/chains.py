@@ -11,13 +11,13 @@ reports with data-driven insights instead of raw numbers only.
 
 import asyncio
 import hashlib
+import json as _json_mod
 import logging
 import os
-import subprocess
 import time
-import json as _json_mod
+from collections.abc import Callable
 from datetime import datetime, timezone
-from typing import Any, Callable, Optional
+from typing import Any
 
 logger = logging.getLogger("nuzantara-mcp.chains")
 
@@ -302,7 +302,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
         email: str,
         nationality: str,
         business_description: str,
-        phone: Optional[str] = None,
+        phone: str | None = None,
     ) -> dict:
         """
         AUTOPILOT: Complete new client onboarding in one shot.
@@ -688,7 +688,7 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
 
     @mcp.tool()
     async def chain_intel_pipeline(
-        sources: Optional[list[str]] = None,
+        sources: list[str] | None = None,
     ) -> dict:
         """
         AUTOPILOT: Run the full intelligence pipeline.
@@ -742,7 +742,8 @@ def register(mcp, _call: Callable, _call_safe: Callable, long_timeout: int):
                     import os as _os
                     _gemini_key = _os.environ.get("GOOGLE_API_KEY") or _os.environ.get("GOOGLEAISTUDIO_API_KEY", "")
                     if _gemini_key:
-                        import urllib.request as _ur, json as _json2
+                        import json as _json2
+                        import urllib.request as _ur
                         _prompt = (
                             f"Is this news article significant for foreign investors or expats in Bali, Indonesia?\n"
                             f"Title: {title}\n\n"

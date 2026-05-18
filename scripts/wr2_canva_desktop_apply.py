@@ -42,7 +42,6 @@ import logging
 import os
 import subprocess
 import sys
-import tempfile
 import time
 from pathlib import Path
 from uuid import UUID
@@ -51,7 +50,6 @@ _REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(_REPO_ROOT / "apps" / "backend-rag"))
 
 import asyncpg  # noqa: E402
-
 from backend.services.canva_renderer import build_canva_pending  # noqa: E402
 
 logger = logging.getLogger("wr2.canva_desktop_apply")

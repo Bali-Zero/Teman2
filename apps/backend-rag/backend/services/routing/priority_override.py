@@ -171,7 +171,7 @@ class PriorityOverrideService:
         )
         if backend_services_score > 0:
             logger.info(
-                f"🧭 Route: zantara_books (BACKEND SERVICES QUERY: score={backend_services_score})",
+                "🧭 Route: zantara_books (BACKEND SERVICES QUERY: score=%s)", backend_services_score,
             )
             return "zantara_books"
 

@@ -26,7 +26,6 @@ import sys
 import time
 import traceback
 from dataclasses import asdict, dataclass
-from typing import Any
 
 import httpx
 import psutil
@@ -132,7 +131,7 @@ class BackendSelfHealingAgent:
             ),
         )
 
-        logger.info(f"Initializing agent for service: {service_name}")
+        logger.info("Initializing agent for service: %s", service_name)
 
     @property
     def http_client(self) -> httpx.AsyncClient:
@@ -183,7 +182,7 @@ class BackendSelfHealingAgent:
                 uptime=time.time() - self.start_time,
             )
         except Exception as exc:  # noqa: BLE001
-            logger.error(f"Health check projection failed: {exc}")
+            logger.error("Health check projection failed: %s", exc)
             return None
 
     async def detect_issues(self) -> list[dict]:
@@ -271,7 +270,7 @@ class BackendSelfHealingAgent:
             except asyncio.CancelledError:
                 break
             except Exception as exc:  # noqa: BLE001
-                logger.error(f"Error in monitoring loop: {exc}")
+                logger.error("Error in monitoring loop: %s", exc)
                 logger.error(traceback.format_exc())
                 await asyncio.sleep(5)
 
@@ -287,7 +286,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         logger.info("Agent stopped by user")
     except Exception as exc:  # noqa: BLE001
-        logger.error(f"Agent crashed: {exc}")
+        logger.error("Agent crashed: %s", exc)
         logger.error(traceback.format_exc())
         sys.exit(1)
 

@@ -1,6 +1,5 @@
 """Tests for Surgeon merge-bot path."""
 import json
-import subprocess
 import sys
 import tempfile
 import unittest

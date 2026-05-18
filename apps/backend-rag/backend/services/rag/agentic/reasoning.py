@@ -15,11 +15,10 @@ Key features:
 - Integration with response verification pipeline
 """
 
+import asyncio
 import logging
 import time
 from typing import Any
-
-import asyncio
 
 from google.api_core.exceptions import ResourceExhausted, ServiceUnavailable
 
@@ -56,8 +55,6 @@ from backend.services.rag.agentic._reasoning_loop_helpers import (
 )
 from backend.services.rag.agentic._reasoning_policy import (
     apply_shared_trusted_flippers,
-    detect_llm_has_tools,
-    detect_pricing_data_in_answer,
     should_apply_low_evidence_policy,
 )
 from backend.services.rag.agentic._reasoning_stubs import get_localized_stub
@@ -288,7 +285,7 @@ class ReasoningEngine:
                         )
 
                     except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
-                        logger.error(f"Error during chat interaction: {e}", exc_info=True)
+                        logger.error("Error during chat interaction: %s", e, exc_info=True)
                         set_span_status("error", str(e))
                         break
 
@@ -769,7 +766,7 @@ Make it feel natural and helpful, not forced.
                 if is_critical:
                     domain_type = get_critical_domain_type(query)
                     logger.warning(
-                        f"🛡️ [Uncertainty] No context gathered for critical domain, triggering ABSTAIN (Domain: {domain_type})",
+                        "🛡️ [Uncertainty] No context gathered for critical domain, triggering ABSTAIN (Domain: %s)", domain_type,
                     )
                     emit_strict_abstain_metrics(intent_type, domain_type)
                     state.final_answer = self._get_localized_stub("abstain", language)
@@ -897,7 +894,7 @@ Do not invent information. If the context is insufficient, admit it.
                     set_span_status("ok")
 
                 except (ValueError, RuntimeError, KeyError) as e:
-                    logger.error(f"❌ [Pipeline] Processing failed: {e}", exc_info=True)
+                    logger.error("❌ [Pipeline] Processing failed: %s", e, exc_info=True)
                     set_span_status("error", str(e))
                     # Fallback to basic post-processing
                     state.final_answer = post_process_response(state.final_answer, query)
@@ -963,7 +960,7 @@ Do not invent information. If the context is insufficient, admit it.
                 )
 
             except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
-                logger.error(f"Error during chat interaction: {e}", exc_info=True)
+                logger.error("Error during chat interaction: %s", e, exc_info=True)
                 yield {"type": "error", "data": {"message": str(e)}}
                 break
 
@@ -1324,7 +1321,7 @@ Make it feel natural and helpful, not forced.
                 if is_critical:
                     domain_type = get_critical_domain_type(query)
                     logger.warning(
-                        f"🛡️ [Uncertainty Stream] No context gathered for critical domain, triggering ABSTAIN (Domain: {domain_type})",
+                        "🛡️ [Uncertainty Stream] No context gathered for critical domain, triggering ABSTAIN (Domain: %s)", domain_type,
                     )
                     emit_strict_abstain_metrics(intent_type, domain_type)
                     state.final_answer = self._get_localized_stub("abstain", language)
@@ -1389,7 +1386,7 @@ Make it feel natural and helpful, not forced.
                 if "citations" in processed:
                     state.sources = processed["citations"]
             except (ValueError, RuntimeError, KeyError) as e:
-                logger.error(f"❌ [Pipeline Stream] Processing failed: {e}")
+                logger.error("❌ [Pipeline Stream] Processing failed: %s", e)
                 state.final_answer = post_process_response(state.final_answer, query)
 
         # Stream final answer token by token

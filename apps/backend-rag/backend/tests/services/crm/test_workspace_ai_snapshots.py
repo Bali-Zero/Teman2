@@ -10,9 +10,13 @@ import pytest
 
 from backend.services.crm.tax_company_pilot import TaxCompanyPilotWorkspaceAiFact
 from backend.services.crm.workspace_ai_snapshots import (
+    AUTO_APPROVE_POLICY_VERSION,
     WorkspaceAiSnapshotCreate,
+    WorkspaceAiSnapshotResponse,
     approve_workspace_ai_snapshot,
+    auto_approve_workspace_ai_snapshots,
     create_workspace_ai_snapshot,
+    evaluate_workspace_ai_auto_approve_snapshot,
     fetch_workspace_ai_review_queue,
 )
 
@@ -29,23 +33,26 @@ class _FakeAcquire:
 
 
 class _FakePool:
-    def __init__(self) -> None:
-        self.conn = _FakeConn()
+    def __init__(self, *, review_rows: list[dict[str, Any]] | None = None) -> None:
+        self.conn = _FakeConn(review_rows=review_rows)
 
     def acquire(self) -> _FakeAcquire:
         return _FakeAcquire(self.conn)
 
 
 class _FakeConn:
-    def __init__(self) -> None:
+    def __init__(self, *, review_rows: list[dict[str, Any]] | None = None) -> None:
         self.args: tuple[Any, ...] | None = None
         self.fetch_args: tuple[Any, ...] | None = None
         self.approve_args: tuple[Any, ...] | None = None
+        self.approved_ids: list[str] = []
+        self._review_rows = review_rows
 
     async def fetchrow(self, _query: str, *args: Any) -> dict[str, Any]:
         self.args = args
-        if args and str(args[0]) == "snapshot-approve":
+        if "UPDATE crm_workspace_ai_snapshots" in _query:
             self.approve_args = args
+            self.approved_ids.append(str(args[0]))
             return _snapshot_row(
                 snapshot_id=args[0],
                 status="approved",
@@ -74,6 +81,8 @@ class _FakeConn:
 
     async def fetch(self, _query: str, *args: Any) -> list[dict[str, Any]]:
         self.fetch_args = args
+        if self._review_rows is not None:
+            return self._review_rows
         return [_snapshot_row(snapshot_id="snapshot-draft", status=args[0])]
 
 
@@ -83,7 +92,10 @@ def _snapshot_row(
     status: str,
     approved_by: str | None = None,
     approved_at: datetime | None = None,
+    facts: list[dict[str, Any]] | None = None,
+    source_file_ids: list[str] | None = None,
 ) -> dict[str, Any]:
+    safe_source_file_ids = source_file_ids or ["drive-file-1"]
     return {
         "id": snapshot_id,
         "company_id": 7,
@@ -92,14 +104,15 @@ def _snapshot_row(
         "provider": "gemini",
         "notebook_id": None,
         "note_id": "crm-drive-autowatcher:v1:7:test",
-        "source_file_ids": ["drive-file-1"],
+        "source_file_ids": safe_source_file_ids,
         "facts": json.dumps(
-            [
+            facts
+            or [
                 {
                     "category": "identity",
                     "label": "Company evidence",
                     "detail": "Company source documents are indexed for review.",
-                    "source_file_ids": ["drive-file-1"],
+                    "source_file_ids": safe_source_file_ids,
                     "confidence": "medium",
                 }
             ]
@@ -175,3 +188,293 @@ async def test_approve_workspace_ai_snapshot_marks_draft_approved() -> None:
     assert result.approved_by == "team@balizero.com"
     assert result.approved_at == "2026-05-13T00:00:00+00:00"
     assert pool.conn.approve_args == ("snapshot-approve", "team@balizero.com")
+
+
+def _snapshot_response(
+    *,
+    facts: list[TaxCompanyPilotWorkspaceAiFact],
+    snapshot_id: str = "snapshot-policy",
+    source_file_ids: list[str] | None = None,
+) -> WorkspaceAiSnapshotResponse:
+    return WorkspaceAiSnapshotResponse(
+        id=snapshot_id,
+        company_id=7,
+        client_id=3,
+        company_name="OCEAN CLOTHES AND SHOES PT",
+        provider="gemini",
+        note_id="crm-drive-autowatcher:v1:7:test",
+        source_file_ids=["drive-file-1"] if source_file_ids is None else source_file_ids,
+        facts=facts,
+        status="draft",
+        created_by="crm-drive-autowatcher",
+        created_at="2026-05-12T00:00:00+00:00",
+    )
+
+
+def test_auto_approve_policy_allows_factual_structural_snapshot() -> None:
+    snapshot = _snapshot_response(
+        facts=[
+            TaxCompanyPilotWorkspaceAiFact(
+                category="identity",
+                label="Company document inventory",
+                detail="NPWP company document is present in indexed source evidence.",
+                source_file_ids=["drive-file-1"],
+                confidence="low",
+            )
+        ]
+    )
+
+    decision = evaluate_workspace_ai_auto_approve_snapshot(snapshot)
+
+    assert decision.eligible is True
+    assert decision.policy_version == AUTO_APPROVE_POLICY_VERSION
+    assert decision.reason == "factual_structural_snapshot"
+    assert decision.blocked_reasons == []
+
+
+def test_auto_approve_policy_allows_guarded_consultant_narrative_snapshot() -> None:
+    snapshot = _snapshot_response(
+        facts=[
+            TaxCompanyPilotWorkspaceAiFact(
+                category="identity",
+                label="Foundation narrative",
+                detail=(
+                    "PT Bimala Investments Bali began as a PMA company in Badung with "
+                    "foundational capital of Rp 25,000,000,000 and a real estate, "
+                    "hospitality, commerce, and digital trade scope."
+                ),
+                source_file_ids=["akta", "nib"],
+                confidence="confirmed",
+            ),
+            TaxCompanyPilotWorkspaceAiFact(
+                category="person",
+                label="Leadership and residency",
+                detail=(
+                    "Gianluca Morelli is the Director with 60 percent ownership, "
+                    "Giulia Del Giudice is the Commissioner with 40 percent ownership, "
+                    "and both investor ITAS records support the long-term Bali presence."
+                ),
+                source_file_ids=["profile", "itas-gianluca", "itas-giulia"],
+                confidence="confirmed",
+            ),
+            TaxCompanyPilotWorkspaceAiFact(
+                category="compliance",
+                label="Tax posture",
+                detail=(
+                    "The tax story moves from a 2024 setup year filed as Nihil into "
+                    "active 2025-2026 reporting, with PPh 21, PPh 23, and PKP readiness "
+                    "as consultant watchpoints rather than client-facing conclusions."
+                ),
+                source_file_ids=["spt-2024", "rekap-2026"],
+                confidence="high",
+            ),
+            TaxCompanyPilotWorkspaceAiFact(
+                category="gap",
+                label="Document review gaps",
+                detail=(
+                    "Document review gaps to keep visible: LKPM or capital reporting, "
+                    "updated property due diligence files, and role evidence for each "
+                    "investment or visa decision."
+                ),
+                source_file_ids=["travel", "profile"],
+                confidence="medium",
+            ),
+            TaxCompanyPilotWorkspaceAiFact(
+                category="next_action",
+                label="Consultant prompts",
+                detail=(
+                    "Consultant prompts: align investor visa roles with the company "
+                    "structure, review LKPM capital reporting, and prepare the monthly "
+                    "tax workflow before the story becomes client-facing."
+                ),
+                source_file_ids=["profile", "rekap-2026"],
+                confidence="medium",
+            ),
+        ]
+    )
+
+    decision = evaluate_workspace_ai_auto_approve_snapshot(snapshot)
+
+    assert decision.eligible is True
+    assert decision.reason == "consultant_narrative_snapshot"
+    assert decision.blocked_reasons == []
+
+
+@pytest.mark.parametrize(
+    ("fact", "expected_reason"),
+    [
+        (
+            TaxCompanyPilotWorkspaceAiFact(
+                category="compliance",
+                label="Tax recommendation",
+                detail="Client should file an amended tax return next month.",
+                source_file_ids=["drive-file-1"],
+                confidence="confirmed",
+            ),
+            "unsafe_advice_claim",
+        ),
+        (
+            TaxCompanyPilotWorkspaceAiFact(
+                category="identity",
+                label="Raw Drive source",
+                detail="Evidence is visible at https://drive.google.com/file/d/raw-id/view.",
+                source_file_ids=["drive-file-1"],
+                confidence="confirmed",
+            ),
+            "raw_drive_reference",
+        ),
+        (
+            TaxCompanyPilotWorkspaceAiFact(
+                category="identity",
+                label="Company profile",
+                detail="Profile document is indexed.",
+                source_file_ids=[],
+                confidence="confirmed",
+            ),
+            "missing_explicit_evidence",
+        ),
+    ],
+)
+def test_auto_approve_policy_blocks_risky_or_weak_snapshots(
+    fact: TaxCompanyPilotWorkspaceAiFact,
+    expected_reason: str,
+) -> None:
+    snapshot = _snapshot_response(
+        facts=[fact],
+        source_file_ids=[] if expected_reason == "missing_explicit_evidence" else None,
+    )
+
+    decision = evaluate_workspace_ai_auto_approve_snapshot(snapshot)
+
+    assert decision.eligible is False
+    assert expected_reason in decision.blocked_reasons
+
+
+@pytest.mark.parametrize(
+    ("detail", "expected_reason"),
+    [
+        (
+            "DJP/Coretax is accessed via ptbimalainvetmentbali.tax@gmail.com with EFIN 7473573914.",
+            "credential_or_portal_secret",
+        ),
+        (
+            "The company stands as proof of legal and regulatory excellence with no compliance risk.",
+            "absolute_compliance_claim",
+        ),
+        (
+            "PPh Final for February is Rp 213,954 and PPh Final for March is Rp 200,553.",
+            "sensitive_financial_amount",
+        ),
+        (
+            "Sources: Akta Pendirian.pdf, NPWP.pdf, transaction_history_permata_paging-2.pdf.",
+            "backstage_source_reference",
+        ),
+        (
+            "Client should file an amended tax return next month.",
+            "unsafe_advice_claim",
+        ),
+    ],
+)
+def test_auto_approve_policy_blocks_sensitive_consultant_narrative_details(
+    detail: str,
+    expected_reason: str,
+) -> None:
+    snapshot = _snapshot_response(
+        facts=[
+            TaxCompanyPilotWorkspaceAiFact(
+                category="compliance",
+                label="Sensitive detail",
+                detail=detail,
+                source_file_ids=["drive-file-1"],
+                confidence="confirmed",
+            )
+        ]
+    )
+
+    decision = evaluate_workspace_ai_auto_approve_snapshot(snapshot)
+
+    assert decision.eligible is False
+    assert expected_reason in decision.blocked_reasons
+
+
+@pytest.mark.asyncio
+async def test_auto_approve_workspace_ai_snapshots_dry_run_does_not_update() -> None:
+    pool = _FakePool(
+        review_rows=[
+            _snapshot_row(
+                snapshot_id="safe-snapshot",
+                status="draft",
+                facts=[
+                    {
+                        "category": "identity",
+                        "label": "Company document inventory",
+                        "detail": "NPWP company document is present in indexed source evidence.",
+                        "source_file_ids": ["drive-file-1"],
+                        "confidence": "low",
+                    }
+                ],
+            ),
+            _snapshot_row(
+                snapshot_id="blocked-snapshot",
+                status="draft",
+                facts=[
+                    {
+                        "category": "next_action",
+                        "label": "Tax next action",
+                        "detail": "Client should submit a tax correction.",
+                        "source_file_ids": ["drive-file-2"],
+                        "confidence": "confirmed",
+                    }
+                ],
+                source_file_ids=["drive-file-2"],
+            ),
+        ]
+    )
+
+    result = await auto_approve_workspace_ai_snapshots(
+        pool,  # type: ignore[arg-type]
+        limit=10,
+        dry_run=True,
+    )
+
+    assert result.dry_run is True
+    assert result.evaluated == 2
+    assert result.eligible_count == 1
+    assert result.blocked_count == 1
+    assert result.approved_count == 0
+    assert pool.conn.approved_ids == []
+
+
+@pytest.mark.asyncio
+async def test_auto_approve_workspace_ai_snapshots_apply_reuses_approve_path() -> None:
+    pool = _FakePool(
+        review_rows=[
+            _snapshot_row(
+                snapshot_id="safe-snapshot",
+                status="draft",
+                facts=[
+                    {
+                        "category": "identity",
+                        "label": "Company document inventory",
+                        "detail": "NPWP company document is present in indexed source evidence.",
+                        "source_file_ids": ["drive-file-1"],
+                        "confidence": "low",
+                    }
+                ],
+            )
+        ]
+    )
+
+    result = await auto_approve_workspace_ai_snapshots(
+        pool,  # type: ignore[arg-type]
+        limit=10,
+        dry_run=False,
+    )
+
+    expected_actor = f"system:auto-approve:{AUTO_APPROVE_POLICY_VERSION}"
+    assert result.dry_run is False
+    assert result.evaluated == 1
+    assert result.approved_count == 1
+    assert result.decisions[0].approved is True
+    assert pool.conn.approved_ids == ["safe-snapshot"]
+    assert pool.conn.approve_args == ("safe-snapshot", expected_actor)

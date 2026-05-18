@@ -112,14 +112,14 @@ class WhatsAppService:
                 error_data = result.get("error", {})
                 error_msg = error_data.get("message", "Unknown error")
                 error_code = error_data.get("code", response.status_code)
-                logger.error(f"WhatsApp API error [{error_code}]: {error_msg}")
+                logger.error("WhatsApp API error [%s]: %s", error_code, error_msg)
                 raise ValueError(f"WhatsApp API error [{error_code}]: {error_msg}")
 
-            logger.info(f"Message sent to {phone}")
+            logger.info("Message sent to %s", phone)
             return result
 
         except httpx.HTTPError as e:
-            logger.error(f"Failed to send WhatsApp message: {e}")
+            logger.error("Failed to send WhatsApp message: %s", e)
             raise
 
     async def send_typing_action(
@@ -140,7 +140,7 @@ class WhatsAppService:
         """
         # WhatsApp Cloud API doesn't support typing indicator
         # This is a placeholder for consistency with other messaging services
-        logger.debug(f"Typing action not supported for WhatsApp, skipping for {phone}")
+        logger.debug("Typing action not supported for WhatsApp, skipping for %s", phone)
         return True
 
     async def mark_message_read(
@@ -179,7 +179,7 @@ class WhatsAppService:
             return response.status_code == 200
 
         except Exception as e:
-            logger.warning(f"Failed to mark message as read: {e}")
+            logger.warning("Failed to mark message as read: %s", e)
             return False
 
     def format_message(self, text: str) -> str:

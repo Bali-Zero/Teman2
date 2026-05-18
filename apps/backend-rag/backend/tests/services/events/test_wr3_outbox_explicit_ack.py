@@ -1,6 +1,10 @@
 """WR3 supervisor explicit-ack contract test.
 
+ feat/wr3-room-genesis
 Migration 182 closes EventBus Phase 3 pending (cicatrix-scars.md): the
+
+Migration 183 closes EventBus Phase 3 pending (cicatrix-scars.md): the
+ main
 universal `replay_unconsumed()` in services/events/outbox.py auto-acks on
 dispatch return, which is unsafe for a video pipeline where ffmpeg can
 crash mid-render. WR3 supervisor must implement EXPLICIT per-handler ack
@@ -13,7 +17,7 @@ live in scripts/wr3_supervisor.py).
 
 Pattern mirrors test_outbox.py / test_outbox_callsite_integration.py with
 AsyncMock connections — no real PG needed at unit test scope.
-"""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock
@@ -38,7 +42,7 @@ WR3_CHANNELS = (
 
 @pytest.fixture
 def supervisor_module():
-    """Load the WR3 supervisor module, skip if not yet authored."""
+   Load the WR3 supervisor module, skip if not yet authored."""
     try:
         import importlib
         return importlib.import_module("scripts.wr3_supervisor")
@@ -51,7 +55,7 @@ def supervisor_module():
 
 @pytest.mark.asyncio
 async def test_publish_calls_db_function_with_validated_channel(supervisor_module):
-    """supervisor.publish() invokes publish_wr3_event() SQL helper."""
+    supervisor.publish() invokes publish_wr3_event() SQL helper."""
     conn = AsyncMock()
     conn.fetchval.return_value = 42  # outbox_id
 
@@ -87,7 +91,7 @@ async def test_publish_rejects_unknown_channel(supervisor_module):
 
 @pytest.mark.asyncio
 async def test_route_event_acks_on_handler_success(supervisor_module):
-    """When the handler returns without raising, supervisor MUST ack the
+    When the handler returns without raising, supervisor MUST ack the
     outbox row so the event is not replayed on reconnect."""
     conn = AsyncMock()
     ack = AsyncMock()
@@ -115,14 +119,14 @@ async def test_route_event_acks_on_handler_success(supervisor_module):
 
 @pytest.mark.asyncio
 async def test_route_event_does_not_ack_on_handler_exception(supervisor_module):
-    """CRITICAL: when the handler raises, supervisor MUST NOT ack the
+    CRITICAL: when the handler raises, supervisor MUST NOT ack the
     outbox row. The event must remain pending so replay_unconsumed() picks
     it up on reconnect.
 
     This is the explicit-ack contract that distinguishes WR3 supervisor
     from the universal replay_unconsumed() helper (which auto-acks on
     dispatch return — cicatrix-resolved limitation).
-    """
+    
     conn = AsyncMock()
     ack = AsyncMock()
 
@@ -160,7 +164,7 @@ async def test_route_event_does_not_ack_on_handler_timeout(supervisor_module):
     """
     import asyncio
 
-    conn = AsyncMock()
+   conn = AsyncMock()
     ack = AsyncMock()
 
     async def hanging_handler(*args, **kwargs):

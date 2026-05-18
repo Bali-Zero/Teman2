@@ -40,7 +40,7 @@ class ZantaraTools:
             Tool execution result
         """
         try:
-            logger.info(f"🔧 Executing ZantaraTool: {tool_name}")
+            logger.info("🔧 Executing ZantaraTool: %s", tool_name)
 
             if tool_name == "get_pricing":
                 return await self._get_pricing(tool_input)
@@ -51,7 +51,7 @@ class ZantaraTools:
             return {"success": False, "error": f"Unknown tool: {tool_name}"}
 
         except Exception as e:
-            logger.error(f"❌ Error executing {tool_name}: {e}")
+            logger.error("❌ Error executing %s: %s", tool_name, e)
             return {"success": False, "error": str(e)}
 
     async def _get_pricing(self, params: dict[str, Any]) -> dict[str, Any]:
@@ -68,7 +68,7 @@ class ZantaraTools:
             service_type = params.get("service_type", "all")
             query = params.get("query")
 
-            logger.info(f"💰 get_pricing: service_type={service_type}, query={query}")
+            logger.info("💰 get_pricing: service_type=%s, query=%s", service_type, query)
 
             # If query provided, search specifically
             if query:
@@ -90,7 +90,7 @@ class ZantaraTools:
             return {"success": True, "data": result}
 
         except Exception as e:
-            logger.error(f"❌ get_pricing error: {e}")
+            logger.error("❌ get_pricing error: %s", e)
             return {"success": False, "error": f"Pricing lookup failed: {str(e)}"}
 
     async def _search_team_member(self, params: dict[str, Any]) -> dict[str, Any]:
@@ -105,7 +105,7 @@ class ZantaraTools:
         if not query:
             return {"success": False, "error": "Please provide a name to search for"}
 
-        logger.info(f"👥 search_team_member: query={query}")
+        logger.info("👥 search_team_member: query=%s", query)
 
         profiles = self.collaborator_service.search_members(query)
 
@@ -145,7 +145,7 @@ class ZantaraTools:
             params.get("department", "").lower().strip() if params.get("department") else None
         )
 
-        logger.info(f"👥 get_team_members_list: department={department}")
+        logger.info("👥 get_team_members_list: department=%s", department)
 
         profiles = self.collaborator_service.list_members(department)
 

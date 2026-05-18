@@ -15,10 +15,8 @@ import os
 import re
 import subprocess
 import sys
-import tempfile
 import time
 from pathlib import Path
-from typing import Optional
 
 logging.basicConfig(
     level=logging.INFO,
@@ -43,6 +41,7 @@ NUZANTARA_ROOT = HOME / "Desktop" / "nuzantara"
 
 # D2.3: Per-machine escalation JSONL — import lazily to avoid circular issues
 import sys as _sys
+
 _sys.path.insert(0, str(NUZANTARA_ROOT / "scripts"))
 try:
     from sentinel_lib.escalations import write_escalation as _write_escalation
@@ -75,7 +74,7 @@ CLASSIFIER_FAILURE_SUBTYPES = {"no_api_key", "llm_failed", "no_error_text", "unc
 
 # ── Lock helpers ───────────────────────────────────────────────────────────────
 
-def acquire_lock() -> Optional[int]:
+def acquire_lock() -> int | None:
     """Acquire lock file. Returns fd or None if already locked.
 
     Stale lock detection: if the flock is blocked AND the lock file is older
@@ -139,7 +138,8 @@ def load_registry() -> dict:
 # ── Telegram ──────────────────────────────────────────────────────────────────
 
 def send_telegram(message: str) -> None:
-    import urllib.request, urllib.parse
+    import urllib.parse
+    import urllib.request
     token = os.getenv("TELEGRAM_BOT_TOKEN", "")
     chat_id = os.getenv("TELEGRAM_ADMIN_CHAT_ID", "1125336968")
     if not token:
@@ -186,7 +186,7 @@ def _load_token_chain() -> list[tuple[str, str]]:
 
 # ── Claude CLI reasoning ───────────────────────────────────────────────────────
 
-def claude_reason(entry: dict) -> Optional[dict]:
+def claude_reason(entry: dict) -> dict | None:
     """
     Ask Claude CLI to reason about a DLQ entry.
     Returns {fix_type, fix_instruction, confidence, needs_code_change} or None.
@@ -375,8 +375,8 @@ def verify_fix(test_cmd: str) -> tuple[bool, str]:
 
 def escalate_to_claude_code(
     entry: dict,
-    reasoning: Optional[dict],
-    aider_failure: Optional[str] = None,
+    reasoning: dict | None,
+    aider_failure: str | None = None,
 ) -> None:
     """Write a claude_tasks JSON file and send Telegram alert."""
     job = entry["job"]

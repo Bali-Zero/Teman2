@@ -103,7 +103,7 @@ def log_success_simple(message: str, **kwargs: Any) -> None:
     Simplified success logger that uses the module-level logger.
     Useful for services that import this module.
     """
-    logger.info(f"✅ {message}", extra={"context": kwargs} if kwargs else None)
+    logger.info("✅ %s", message, extra={"context": kwargs} if kwargs else None)
 
 
 def log_error(
@@ -245,20 +245,20 @@ def log_function_call(logger: logging.Logger) -> Callable[[T], T]:
         async def async_wrapper(*args: Any, **kwargs: Any) -> Any:
             start_time = time.perf_counter()
             func_name = func.__name__
-            logger.debug(f"Calling {func_name}", extra={"context": {"args_count": len(args)}})
+            logger.debug("Calling %s", func_name, extra={"context": {"args_count": len(args)}})
 
             try:
                 result = await func(*args, **kwargs)
                 duration_ms = (time.perf_counter() - start_time) * 1000
                 logger.debug(
-                    f"{func_name} completed",
+                    "%s completed", func_name,
                     extra={"duration_ms": duration_ms, "context": {"success": True}},
                 )
                 return result
             except Exception as e:
                 duration_ms = (time.perf_counter() - start_time) * 1000
                 logger.error(
-                    f"{func_name} failed",
+                    "%s failed", func_name,
                     exc_info=True,
                     extra={
                         "duration_ms": duration_ms,
@@ -271,20 +271,20 @@ def log_function_call(logger: logging.Logger) -> Callable[[T], T]:
         def sync_wrapper(*args: Any, **kwargs: Any) -> Any:
             start_time = time.perf_counter()
             func_name = func.__name__
-            logger.debug(f"Calling {func_name}", extra={"context": {"args_count": len(args)}})
+            logger.debug("Calling %s", func_name, extra={"context": {"args_count": len(args)}})
 
             try:
                 result = func(*args, **kwargs)
                 duration_ms = (time.perf_counter() - start_time) * 1000
                 logger.debug(
-                    f"{func_name} completed",
+                    "%s completed", func_name,
                     extra={"duration_ms": duration_ms, "context": {"success": True}},
                 )
                 return result
             except Exception as e:
                 duration_ms = (time.perf_counter() - start_time) * 1000
                 logger.error(
-                    f"{func_name} failed",
+                    "%s failed", func_name,
                     exc_info=True,
                     extra={
                         "duration_ms": duration_ms,

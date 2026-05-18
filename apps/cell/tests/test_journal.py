@@ -1,10 +1,9 @@
 # apps/cell/tests/test_journal.py
 """Tests for Journal daily narrative."""
-import json
-import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
 from datetime import date
+from unittest.mock import AsyncMock, MagicMock, patch
 
+import pytest
 from cell.identity.journal import Journal, JournalEntry
 
 

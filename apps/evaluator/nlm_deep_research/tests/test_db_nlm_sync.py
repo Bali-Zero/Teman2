@@ -9,11 +9,8 @@ Run: PYTHONPATH=. pytest apps/evaluator/nlm_deep_research/tests/test_db_nlm_sync
 from __future__ import annotations
 
 import hashlib
-import json
 import os
-import tempfile
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
@@ -36,7 +33,6 @@ from apps.evaluator.nlm_deep_research.db_nlm_templates import (
     render_tax_compliance,
     render_team_activity,
 )
-
 
 # ---------------------------------------------------------------------------
 # State Tests

@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from mata_garuda.scripts.nb_monitor.telegram_send import send_telegram
 
 

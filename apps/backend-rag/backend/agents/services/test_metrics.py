@@ -158,7 +158,7 @@ class TestMetricsCollector:
         """Register a new agent for metrics tracking"""
         if agent_name not in self.agents:
             self.agents[agent_name] = AgentMetrics(agent_name=agent_name)
-            logger.info(f"📝 Registered agent: {agent_name}")
+            logger.info("📝 Registered agent: %s", agent_name)
         return self.agents[agent_name]
 
     def record_test_generation(
@@ -320,7 +320,7 @@ class TestMetricsCollector:
         with open(filepath, "w") as f:
             json.dump(snapshot, f, indent=2, default=str)
 
-        logger.info(f"💾 Metrics snapshot saved: {filepath}")
+        logger.info("💾 Metrics snapshot saved: %s", filepath)
         return filepath
 
     def generate_report(self, format: str = "html") -> str:

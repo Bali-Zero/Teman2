@@ -109,7 +109,7 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
                                 user_agent=request.headers.get("user-agent"),
                             )
                         except Exception as e:
-                            logger.error(f"Failed to send latency alert: {e}")
+                            logger.error("Failed to send latency alert: %s", e)
 
             # Add request ID to response headers
             response.headers["X-Request-ID"] = request_id
@@ -118,7 +118,7 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
 
         except Exception as exc:
             # Handle unhandled exceptions
-            logger.error(f"Unhandled exception in request {request_id}: {exc}")
+            logger.error("Unhandled exception in request %s: %s", request_id, exc)
 
             # Calculate duration
             duration_ms = (time.time() - start_time) * 1000
@@ -136,7 +136,7 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
                         user_agent=request.headers.get("user-agent"),
                     )
                 except Exception as alert_exc:
-                    logger.error(f"Failed to send alert for exception: {alert_exc}")
+                    logger.error("Failed to send alert for exception: %s", alert_exc)
 
             # Return error response
             return JSONResponse(
@@ -168,7 +168,7 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
         is_suppressed = any(path.startswith(p) for p in _suppressed_patterns.get(status_code, ()))
 
         if is_suppressed:
-            logger.debug(f"[{request_id}] {method} {path} → {status_code} (suppressed)")
+            logger.debug("[%s] %s %s → %s (suppressed)", request_id, method, path, status_code)
             return
 
         # Log error
@@ -214,7 +214,7 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
                         user_agent=user_agent,
                     )
                 except Exception as exc:
-                    logger.error(f"Failed to send error alert: {exc}")
+                    logger.error("Failed to send error alert: %s", exc)
 
 
 def create_error_monitoring_middleware(alert_service: Any = None) -> Any:

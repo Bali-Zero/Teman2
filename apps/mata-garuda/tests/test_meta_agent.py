@@ -13,19 +13,17 @@ Tests:
 from __future__ import annotations
 
 import os
-from pathlib import Path
-
-import pytest
 
 # Ensure agents are loaded
 import mata_garuda.agents  # noqa: F401
+import pytest
 from mata_garuda.registry import registry
 from mata_garuda.security.path_firewall import (
+    AGENTS_DIR,
     PathFirewallError,
     validate_agent_creation,
     validate_agent_name,
     validate_write_path,
-    AGENTS_DIR,
 )
 from mata_garuda.tools.meta_tools import (
     create_agent,
@@ -34,7 +32,6 @@ from mata_garuda.tools.meta_tools import (
     list_agents,
 )
 from mata_garuda.types import Agent
-
 
 # ─── Path Firewall Tests ───────────────────────────────────────────────
 

@@ -3,7 +3,6 @@ import json
 import sys
 import tempfile
 import unittest
-from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -16,7 +15,6 @@ from learn import (
     _save_proposals,
     run_learning_cycle_sync,
 )
-
 
 # --- Test Data Generators ---
 

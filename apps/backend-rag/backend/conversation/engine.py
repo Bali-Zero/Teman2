@@ -8,7 +8,6 @@ Author: Claude Sonnet
 Date: 2026-02-10
 """
 
-import json
 import logging
 import time
 from collections.abc import AsyncIterator
@@ -115,7 +114,7 @@ class ConversationEngine:
                 query_text = context_prefix + message.text
 
                 logger.info(
-                    f"🤖 Agent Mesh context injected for {agent_name} ({agent_role})",
+                    "🤖 Agent Mesh context injected for %s (%s)", agent_name, agent_role,
                 )
 
             # 3. Stream through orchestrator
@@ -217,7 +216,7 @@ class ConversationEngine:
 
         # Unknown event type - skip
         else:
-            logger.debug(f"Skipping unknown event type: {event_type}")
+            logger.debug("Skipping unknown event type: %s", event_type)
             return None
 
     async def _load_context(self, session_id: str) -> dict[str, Any]:
@@ -248,10 +247,10 @@ class ConversationEngine:
             cache = get_cache_service()
             cached = await cache.get(cache_key)
             if cached and isinstance(cached, dict):
-                logger.debug(f"Session context cache hit for {session_id}")
+                logger.debug("Session context cache hit for %s", session_id)
                 return cached
         except Exception as e:
-            logger.debug(f"Redis context load skipped: {e}")
+            logger.debug("Redis context load skipped: %s", e)
 
         # Strategy 2: PostgreSQL conversation_messages table
         db_pool = getattr(self, "_db_pool", None)
@@ -288,7 +287,7 @@ class ConversationEngine:
                     )
                     return context
             except Exception as e:
-                logger.debug(f"DB context load failed (non-fatal): {e}")
+                logger.debug("DB context load failed (non-fatal): %s", e)
 
         return empty_context
 
@@ -327,7 +326,7 @@ class ConversationEngine:
                 ),
             }]
         except Exception as e:
-            logger.debug(f"Cross-channel context load failed (non-fatal): {e}")
+            logger.debug("Cross-channel context load failed (non-fatal): %s", e)
             return []
 
     async def _save_context(self, session_id: str, context: dict[str, Any]) -> None:
@@ -351,6 +350,6 @@ class ConversationEngine:
 
             cache = get_cache_service()
             await cache.set(cache_key, context, ttl=_SESSION_CONTEXT_TTL)
-            logger.debug(f"Saved session context to cache for {session_id}")
+            logger.debug("Saved session context to cache for %s", session_id)
         except Exception as e:
-            logger.debug(f"Failed to cache session context (non-fatal): {e}")
+            logger.debug("Failed to cache session context (non-fatal): %s", e)

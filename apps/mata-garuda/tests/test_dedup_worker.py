@@ -1,7 +1,7 @@
 """Tests for mata_garuda.workers.dedup_worker — URL canonicalisation + dedup flow."""
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from mata_garuda.workers import dedup_worker
 

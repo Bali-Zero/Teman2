@@ -74,7 +74,7 @@ class MessagingIdentityService:
                 return None
 
         except asyncpg.PostgresError as e:
-            logger.error(f"Database error getting user by phone {normalized_phone}: {e}")
+            logger.error("Database error getting user by phone %s: %s", normalized_phone, e)
             return None
 
     async def get_user_by_telegram(self, chat_id: int) -> dict[str, Any] | None:
@@ -105,7 +105,7 @@ class MessagingIdentityService:
                 return None
 
         except asyncpg.PostgresError as e:
-            logger.error(f"Database error getting user by telegram {chat_id}: {e}")
+            logger.error("Database error getting user by telegram %s: %s", chat_id, e)
             return None
 
     async def create_mapping(
@@ -132,7 +132,7 @@ class MessagingIdentityService:
             True if created successfully, False otherwise
         """
         if channel not in ("whatsapp", "telegram"):
-            logger.error(f"Invalid channel: {channel}")
+            logger.error("Invalid channel: %s", channel)
             return False
 
         if channel == "whatsapp" and not phone:
@@ -180,7 +180,7 @@ class MessagingIdentityService:
             logger.warning(f"Mapping already exists for {channel} ({phone or telegram_chat_id})")
             return False
         except asyncpg.PostgresError as e:
-            logger.error(f"Database error creating mapping: {e}")
+            logger.error("Database error creating mapping: %s", e)
             return False
 
     async def update_last_message(
@@ -224,7 +224,7 @@ class MessagingIdentityService:
                 return True
 
         except asyncpg.PostgresError as e:
-            logger.error(f"Error updating last_message timestamp: {e}")
+            logger.error("Error updating last_message timestamp: %s", e)
             return False
 
     async def get_mappings_for_user(self, user_id: str) -> list[dict[str, Any]]:
@@ -253,7 +253,7 @@ class MessagingIdentityService:
                 return [dict(row) for row in rows]
 
         except asyncpg.PostgresError as e:
-            logger.error(f"Error getting mappings for user {user_id}: {e}")
+            logger.error("Error getting mappings for user %s: %s", user_id, e)
             return []
 
     async def deactivate_mapping(
@@ -298,7 +298,7 @@ class MessagingIdentityService:
                 return True
 
         except asyncpg.PostgresError as e:
-            logger.error(f"Error deactivating mapping: {e}")
+            logger.error("Error deactivating mapping: %s", e)
             return False
 
 

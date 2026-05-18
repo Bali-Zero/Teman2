@@ -102,7 +102,7 @@ class WebChannelAdapter(BaseChannel):
             )
 
         except Exception as e:
-            logger.error(f"Failed to parse web request: {e}", exc_info=True)
+            logger.error("Failed to parse web request: %s", e, exc_info=True)
             raise
 
     async def send_response(self, channel_id: str, response: ChannelResponse) -> None:
@@ -137,7 +137,7 @@ class WebChannelAdapter(BaseChannel):
             channel_id: Session/correlation ID
             status: Status type ("processing", "thinking", etc.)
         """
-        logger.debug(f"📍 Web status update: {status} (channel: {channel_id})")
+        logger.debug("📍 Web status update: %s (channel: %s)", status, channel_id)
 
         # In stream_response(), we yield status events directly
         # This method is for non-streaming scenarios (rarely used)
@@ -183,10 +183,10 @@ class WebChannelAdapter(BaseChannel):
                 },
             )
 
-            logger.info(f"✅ Completed web stream for channel {channel_id}")
+            logger.info("✅ Completed web stream for channel %s", channel_id)
 
         except Exception as e:
-            logger.error(f"Error streaming to web: {e}", exc_info=True)
+            logger.error("Error streaming to web: %s", e, exc_info=True)
 
             # Send error event
             error_event = {

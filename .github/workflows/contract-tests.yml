@@ -1,0 +1,171 @@
+name: Contract Tests (Schemathesis)
+
+# Property-based contract testing of the FastAPI /openapi.json spec.
+# Catches the bug class from PR #422 → #423 → #424 (3 hotfix chain 2026-05-02):
+# unit tests green, production 404 because router not included or middleware
+# blocks. Schemathesis fuzzes every endpoint defined in /openapi.json with
+# Hypothesis-generated payloads and reports schema/contract violations.
+#
+# Mode: ASGI-direct (--app=backend.app.main:app). No HTTP server, no
+# external services. The app boots in degraded mode (PG/Redis/Qdrant
+# unreachable → app.state.startup_failed=True per P0-1), but the
+# /openapi.json schema is fully populated at import time, which is what
+# Schemathesis needs.
+#
+# Status: NON-BLOCKING (continue-on-error: true). Promotion criteria to
+# required check is documented in apps/backend-rag/docs/contract-testing.md.
+# See finding #3 of the audit modernization 2026-05-18.
+
+on:
+  pull_request:
+    paths:
+      - "apps/backend-rag/**"
+      - ".github/workflows/contract-tests.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: contract-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  contract-tests:
+    name: Schemathesis on /openapi.json
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    timeout-minutes: 20
+
+    env:
+      # ----- Minimal env to allow the FastAPI app to import in degraded mode -----
+      # All external services point at unreachable/sqlite stubs. The startup
+      # path is designed to degrade (P0-1, no RuntimeError raise) so the app
+      # mounts routers and exposes /openapi.json even when nothing is wired.
+      DATABASE_URL: "sqlite:///:memory:"
+      ASYNC_DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+      REDIS_URL: "redis://127.0.0.1:6379/0"
+      QDRANT_URL: "http://127.0.0.1:6333"
+      QDRANT_API_KEY: "test-not-real"
+      OPENAI_API_KEY: "sk-test-not-real-do-not-use"
+      JWT_SECRET: "test-jwt-secret-for-contract-tests-only-not-prod"
+      JWT_SECRET_KEY: "test-jwt-secret-key-for-contract-tests-min-32-chars"
+      API_KEYS: "test-contract-api-key-1,test-contract-api-key-2"
+      # Skip side-effects on import
+      SKIP_SENTRY_INIT: "1"
+      SENTRY_TRACES_SAMPLE_RATE: "0.0"
+      # Langfuse dormant (no keys = no-op)
+      LANGFUSE_ENABLED: "false"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: |
+            apps/backend-rag/requirements.txt
+            apps/backend-rag/requirements-test.txt
+
+      - name: Install backend dependencies
+        working-directory: apps/backend-rag
+        run: |
+          python -m pip install --upgrade pip
+          # Install runtime deps (best-effort: some heavy ML deps may be skipped
+          # locally; the app import only needs FastAPI + Pydantic + a handful
+          # of stdlib-adjacent libs to expose /openapi.json).
+          pip install -r requirements.txt
+          # cell-core is declared as -e ../../packages/cell-core
+          # (already in requirements.txt). No extra install needed.
+
+      - name: Install Schemathesis
+        run: |
+          # Pin range: 3.36+ has ASGI loader fixes; <4.0 to avoid breaking-change
+          # surprises before we promote to blocking.
+          pip install 'schemathesis>=3.36.0,<4.0' 'hypothesis>=6.100,<7.0'
+
+      - name: Smoke-import FastAPI app
+        working-directory: apps/backend-rag
+        env:
+          PYTHONPATH: "."
+        run: |
+          # Sanity check: the app must be importable even with all external
+          # services unreachable. If this fails, Schemathesis would fail with
+          # an opaque module-load error.
+          python -c "from backend.app.main import app; print(f'✅ App imported. Routes: {len(app.routes)}')"
+
+      - name: Dump OpenAPI schema for artifact
+        working-directory: apps/backend-rag
+        env:
+          PYTHONPATH: "."
+        run: |
+          python -c "
+          import json
+          from backend.app.main import app
+          schema = app.openapi()
+          with open('openapi-snapshot.json', 'w') as f:
+              json.dump(schema, f, indent=2, sort_keys=True)
+          paths = len(schema.get('paths', {}))
+          ops = sum(len(v) for v in schema.get('paths', {}).values())
+          print(f'✅ OpenAPI schema: {paths} paths, {ops} operations')
+          "
+
+      - name: Run Schemathesis (ASGI direct mode)
+        working-directory: apps/backend-rag
+        env:
+          PYTHONPATH: "."
+        run: |
+          mkdir -p schemathesis-report
+          # ASGI loader: no HTTP, no live server. Schemathesis introspects the
+          # FastAPI app object directly and fuzzes routes with Hypothesis
+          # payloads. Stateful=off because OpenAPI links are not yet wired
+          # across routers (re-enable once we have at least one chain defined).
+          # Auth: a dummy Bearer placates middleware that routes by header
+          # presence (the JWT itself will not validate — that surfaces as 401,
+          # which is a valid contract response and won't fail Schemathesis
+          # unless the OpenAPI spec doesn't declare it).
+          schemathesis run \
+            --app=backend.app.main:app \
+            --checks=all \
+            --hypothesis-max-examples=10 \
+            --hypothesis-deadline=10000 \
+            --request-timeout=30000 \
+            --workers=2 \
+            --validate-schema=true \
+            --stateful=none \
+            --hypothesis-suppress-health-check=filter_too_much,data_too_large,too_slow \
+            -H "Authorization: Bearer ci-contract-test-dummy-token" \
+            --show-errors-tracebacks \
+            --junit-xml=schemathesis-report/junit.xml \
+            / 2>&1 | tee schemathesis-report/run.log
+          # Note: positional URI argument "/" is required even in --app mode
+          # (Schemathesis API quirk). The actual base URL is derived from the
+          # ASGI app.
+
+      - name: Upload Schemathesis report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: schemathesis-report-${{ github.event.pull_request.number || github.run_id }}
+          path: |
+            apps/backend-rag/schemathesis-report/
+            apps/backend-rag/openapi-snapshot.json
+          retention-days: 14
+
+      - name: Summary
+        if: always()
+        run: |
+          {
+            echo "## Contract Tests (Schemathesis)"
+            echo ""
+            echo "Mode: **non-blocking** — see \`apps/backend-rag/docs/contract-testing.md\` for promotion criteria."
+            echo ""
+            if [ -f apps/backend-rag/schemathesis-report/run.log ]; then
+              echo "### Run summary"
+              echo '```'
+              tail -40 apps/backend-rag/schemathesis-report/run.log || true
+              echo '```'
+            fi
+            echo ""
+            echo "Full report uploaded as artifact: \`schemathesis-report-${{ github.event.pull_request.number || github.run_id }}\`."
+          } >> "$GITHUB_STEP_SUMMARY"

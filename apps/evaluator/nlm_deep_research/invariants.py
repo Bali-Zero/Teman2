@@ -11,10 +11,9 @@ All checks use Python stdlib only (no external deps).
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
-from datetime import datetime, timezone, timedelta
+from dataclasses import dataclass
+from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -76,8 +75,8 @@ class InvariantResult:
     passed: bool
     severity: InvariantSeverity
     message: str
-    current_value: Optional[float] = None
-    threshold: Optional[float] = None
+    current_value: float | None = None
+    threshold: float | None = None
 
 
 # ---------------------------------------------------------------------------

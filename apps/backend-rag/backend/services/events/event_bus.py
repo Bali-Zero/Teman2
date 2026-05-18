@@ -36,6 +36,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 import asyncpg
+import orjson
 
 logger = logging.getLogger(__name__)
 
@@ -234,12 +235,12 @@ class EventBus:
                 err_msg = f"{handler.__qualname__}: timed out after {_HANDLER_TIMEOUT_S}s"
                 errors.append(err_msg)
                 self._error_counts[event_type] += 1
-                logger.error(f"EventBus handler timeout on '{event_type}': {err_msg}")
+                logger.error("EventBus handler timeout on '%s': %s", event_type, err_msg)
             except Exception as e:
                 err_msg = f"{handler.__qualname__}: {e}"
                 errors.append(err_msg)
                 self._error_counts[event_type] += 1
-                logger.error(f"EventBus handler error on '{event_type}': {err_msg}")
+                logger.error("EventBus handler error on '%s': %s", event_type, err_msg)
 
         duration_ms = (time.monotonic() - t0) * 1000
 
@@ -286,7 +287,8 @@ class EventBus:
         # Lightweight size warning preserved from phase 1 — outbox.publish
         # re-serialises with _outbox_id injected, so we flag the raw size
         # before it grows further.
-        payload_str = json.dumps(payload, default=str)
+        # orjson 3-10× faster; .decode() because downstream loggers expect str
+        payload_str = orjson.dumps(payload, default=str).decode()
         if len(payload_str) > 7500:
             logger.warning(
                 f"EventBus: PG payload for '{channel}' is {len(payload_str)} bytes "
@@ -338,8 +340,7 @@ class EventBus:
                 break
             except Exception as exc:
                 logger.error(
-                    f"EventBus PG listener error, reconnecting in "
-                    f"{_RECONNECT_DELAY_S}s: {exc}"
+                    "EventBus PG listener error, reconnecting in %ss: %s", _RECONNECT_DELAY_S, exc
                 )
                 await self._close_conn()
                 if self._running:
@@ -413,7 +414,8 @@ class EventBus:
                         payload: dict[str, Any], _ch: str = pg_channel
                     ) -> None:
                         await self._handle_pg_event(
-                            _ch, json.dumps(payload, default=str)
+                            # orjson 3-10× faster; .decode() because _handle_pg_event expects str
+                            _ch, orjson.dumps(payload, default=str).decode()
                         )
 
                     try:
@@ -480,7 +482,7 @@ class EventBus:
 
         event_type = PG_CHANNEL_MAP.get(channel)
         if not event_type:
-            logger.warning(f"EventBus: unmapped PG channel '{channel}'")
+            logger.warning("EventBus: unmapped PG channel '%s'", channel)
             return
 
         # Enrich payload with metadata

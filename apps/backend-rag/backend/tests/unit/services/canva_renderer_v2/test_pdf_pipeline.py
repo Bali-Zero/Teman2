@@ -1,11 +1,9 @@
 """PDF pipeline: invoke wr2_canva_pdf_render.py via subprocess, return path or None."""
-import json
-from pathlib import Path
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
-from backend.services.canva_renderer_v2._pdf_pipeline import render_pdf, PdfRenderError
+from backend.services.canva_renderer_v2._pdf_pipeline import PdfRenderError, render_pdf
 
 
 def test_render_pdf_success(tmp_path):

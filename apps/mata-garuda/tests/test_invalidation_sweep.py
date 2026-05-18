@@ -10,8 +10,6 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-import pytest
-
 # Make the script importable as a module
 _SCRIPT_PATH = Path(__file__).resolve().parents[3] / "scripts"
 sys.path.insert(0, str(_SCRIPT_PATH))

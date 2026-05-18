@@ -17,17 +17,31 @@ import subprocess
 import sys
 import time
 from pathlib import Path
-from typing import Optional
 
 # Add sentinel_lib to path
 sys.path.insert(0, str(Path(__file__).parent))
+from sentinel_lib.alerter import (
+    check_escalation_cooldown,
+    mark_escalation_sent,
+    send_alert,
+)
+from sentinel_lib.circuit_breaker import (
+    get_state,
+    record_failure,
+    record_success,
+    set_phase,
+)
 from sentinel_lib.classifier import classify, classify_with_llm
-from sentinel_lib.circuit_breaker import get_state, record_success, record_failure, set_phase
-from sentinel_lib.alerter import send_alert, send_daily_report, check_escalation_cooldown, mark_escalation_sent
 from sentinel_lib.repairer import (
-    retry_job, dispatch_aider_fix, verify_fix, add_to_dlq, clear_dlq_entry,
-    trigger_openclaw_job, is_openclaw_running, restart_openclaw,
+    add_to_dlq,
+    clear_dlq_entry,
+    dispatch_aider_fix,
+    is_openclaw_running,
+    restart_openclaw,
+    retry_job,
+    trigger_openclaw_job,
     validate_restart_cmd,
+    verify_fix,
 )
 
 logging.basicConfig(
@@ -61,7 +75,7 @@ def _force_halfopen_stale_circuits() -> None:
     Called inside run_sentinel() only — single writer, no race condition with DLQ autopilot.
     Imports _atomic_save from circuit_breaker to use the safe write path (Task 1).
     """
-    from sentinel_lib.circuit_breaker import _load, _atomic_save
+    from sentinel_lib.circuit_breaker import _atomic_save, _load
     data = _load()
     forced = []
     for job, cb in data.items():
@@ -199,7 +213,7 @@ def _collect_openclaw_states(registry: dict) -> dict:
     return states
 
 
-def collect_state_files(registry: Optional[dict] = None) -> dict:
+def collect_state_files(registry: dict | None = None) -> dict:
     """Read local + Pro state files + OpenClaw bridge. Returns {job_id: state_dict}.
 
     Read precedence (lowest to highest — later writes override earlier):
@@ -759,7 +773,8 @@ def run_sentinel() -> None:
 
     # Purge circuit_breakers.json entries for jobs not in registry (prevents phantom CBs)
     try:
-        from sentinel_lib.circuit_breaker import _load as _cb_load, _atomic_save as _cb_save
+        from sentinel_lib.circuit_breaker import _atomic_save as _cb_save
+        from sentinel_lib.circuit_breaker import _load as _cb_load
         cb_data = _cb_load()
         phantoms = [k for k in list(cb_data.keys()) if k not in registry]
         if phantoms:

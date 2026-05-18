@@ -13,7 +13,6 @@ from __future__ import annotations
 import os
 
 import asyncpg
-import pytest
 import pytest_asyncio
 
 _DEFAULT_DB_URL = os.environ.get(

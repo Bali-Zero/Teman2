@@ -11,7 +11,6 @@ from __future__ import annotations
 
 import json
 import logging
-from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 from typing import Any
 
@@ -19,7 +18,6 @@ import asyncpg
 
 from nuzantara_graph.curiosity.models import (
     KGProposal,
-    ProposalStatus,
     ProposalType,
 )
 

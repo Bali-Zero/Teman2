@@ -1,11 +1,10 @@
 """Tests for the reason node."""
 
 import pytest
-
+from helpers.mocks import make_mock_services
 from nuzantara_graph.nodes.reason import make_reason_node
 from nuzantara_schemas.grading import GradeDecision, GradeResult
-from nuzantara_schemas.state import GraphState, ReasoningStep, RetrievedDocument
-from helpers.mocks import make_mock_services
+from nuzantara_schemas.state import GraphState, RetrievedDocument
 
 
 class TestReasonNode:

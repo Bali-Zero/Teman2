@@ -100,7 +100,7 @@ async def get_dashboard_stats(request: Request) -> dict[str, str | dict[str, str
         import logging
 
         logger = logging.getLogger(__name__)
-        logger.error(f"Failed to get dashboard stats: {e}", exc_info=True)
+        logger.error("Failed to get dashboard stats: %s", e, exc_info=True)
         # Return error state instead of mock data
         return {
             "active_agents": "0",

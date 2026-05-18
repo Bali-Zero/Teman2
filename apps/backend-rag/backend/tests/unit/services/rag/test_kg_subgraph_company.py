@@ -9,7 +9,7 @@ Covers all 4 node functions:
 Plus: build_company_subgraph construction.
 """
 
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
@@ -20,7 +20,6 @@ from backend.services.rag.kg_subgraph_company import (
     identify_company_type_node,
     synthesize_company_workflow_node,
 )
-
 
 # ============================================================
 # FIXTURES
@@ -189,7 +188,7 @@ class TestCheckPMAEligibility:
     @pytest.mark.asyncio
     async def test_skips_non_foreign(self, mock_db_pool):
         state = _base_state(is_foreign_investor=False)
-        result = await check_pma_eligibility_node(state, mock_db_pool)
+        await check_pma_eligibility_node(state, mock_db_pool)
         # Should return state unchanged (no DB call)
         mock_db_pool.acquire.assert_not_called()
 

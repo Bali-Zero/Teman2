@@ -71,7 +71,7 @@ class HierarchicalIndexer:
                     settings.database_url, min_size=1, max_size=5,
                 )
             except Exception as e:
-                logger.warning(f"⚠️ Failed to create DB pool (non-blocking): {e}")
+                logger.warning("⚠️ Failed to create DB pool (non-blocking): %s", e)
                 return None
         return self.db_pool
 
@@ -155,7 +155,7 @@ class HierarchicalIndexer:
 
         # 5. Fallback for unstructured text (if no chunks created from structure)
         if not chunks_to_index and self.chunker:
-            logger.info(f"No structure found for {document_id}. Using fallback chunking.")
+            logger.info("No structure found for %s. Using fallback chunking.", document_id)
             flat_chunks = await self.chunker.chunk(document_text, metadata)
 
             for i, fc in enumerate(flat_chunks):
@@ -409,7 +409,7 @@ class HierarchicalIndexer:
                         # Fall back to basic INSERT without quality columns
                         if "does not exist" in str(e):
                             logger.warning(
-                                f"Quality columns not yet migrated, using basic INSERT: {e}",
+                                "Quality columns not yet migrated, using basic INSERT: %s", e,
                             )
                             await conn.execute(
                                 """
@@ -437,7 +437,7 @@ class HierarchicalIndexer:
                         else:
                             raise
         except Exception as e:
-            logger.warning(f"⚠️ Failed to save parent documents to PostgreSQL (non-blocking): {e}")
+            logger.warning("⚠️ Failed to save parent documents to PostgreSQL (non-blocking): %s", e)
             # Non rilanciare l'eccezione - l'ingestione deve continuare
         else:
             logger.info(f"✅ Upserted {len(parent_docs)} parent documents to PostgreSQL")

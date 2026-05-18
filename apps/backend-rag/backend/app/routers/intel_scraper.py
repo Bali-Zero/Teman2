@@ -434,7 +434,7 @@ async def submit_from_scraper(
                     logger.warning("Drive service not configured, skipping image upload")
             except Exception as e:
                 logger.warning(
-                    f"Failed to upload cover image to Drive: {e}",
+                    "Failed to upload cover image to Drive: %s", e,
                     extra={"item_id": item_id},
                 )
 
@@ -472,7 +472,7 @@ async def submit_from_scraper(
         }
 
     except Exception as e:
-        logger.exception(f"Failed to submit article from scraper: {e}")
+        logger.exception("Failed to submit article from scraper: %s", e)
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
@@ -501,7 +501,7 @@ async def ingest_intel_to_qdrant(item_id: str, intel_type: str) -> bool:
         collection_name = INTEL_COLLECTIONS.get(intel_type)
         if not collection_name:
             logger.error(
-                f"No Qdrant collection mapped for intel_type={intel_type}",
+                "No Qdrant collection mapped for intel_type=%s", intel_type,
                 extra={"item_id": item_id, "intel_type": intel_type},
             )
             return False
@@ -550,7 +550,7 @@ async def ingest_intel_to_qdrant(item_id: str, intel_type: str) -> bool:
 
     except Exception as e:
         logger.error(
-            f"Qdrant ingestion failed: {e}",
+            "Qdrant ingestion failed: %s", e,
             exc_info=True,
             extra={"item_id": item_id, "intel_type": intel_type},
         )
@@ -640,7 +640,7 @@ async def publish_staging_item(
             )
         except Exception as e:
             logger.error(
-                f"⚠️ Failed to register in anti-duplicate system: {e}",
+                "⚠️ Failed to register in anti-duplicate system: %s", e,
                 exc_info=True,
                 extra={"type": type, "item_id": item_id},
             )
@@ -714,7 +714,7 @@ async def publish_staging_item(
                         )
                 except Exception as e:
                     logger.warning(
-                        f"Failed to download cover image from Drive: {e}",
+                        "Failed to download cover image from Drive: %s", e,
                         extra={
                             "type": type,
                             "item_id": item_id,
@@ -747,7 +747,7 @@ async def publish_staging_item(
                         )
                 except Exception as e:
                     logger.warning(
-                        f"Failed to read cover image from filesystem: {e}",
+                        "Failed to read cover image from filesystem: %s", e,
                         extra={
                             "type": type,
                             "item_id": item_id,
@@ -828,7 +828,7 @@ async def publish_staging_item(
                             )
                     except Exception as e:
                         logger.warning(
-                            f"Cover image generation via Fireworks failed (non-blocking): {e}",
+                            "Cover image generation via Fireworks failed (non-blocking): %s", e,
                             extra={"type": type, "item_id": item_id},
                         )
                 else:
@@ -894,7 +894,7 @@ async def publish_staging_item(
                         )
                     except Exception as layout_err:
                         logger.warning(
-                            f"⚠️ Failed to update homepage layout: {layout_err}",
+                            "⚠️ Failed to update homepage layout: %s", layout_err,
                             extra={"position": publish_position},
                         )
             else:
@@ -907,12 +907,12 @@ async def publish_staging_item(
 
         except ImportError as e:
             logger.warning(
-                f"⚠️ Article composer not available - skipping GitHub publish: {e}",
+                "⚠️ Article composer not available - skipping GitHub publish: %s", e,
                 extra={"type": type, "item_id": item_id},
             )
         except Exception as e:
             logger.error(
-                f"⚠️ Failed to publish to GitHub/Vercel: {e}",
+                "⚠️ Failed to publish to GitHub/Vercel: %s", e,
                 exc_info=True,
                 extra={"type": type, "item_id": item_id, "title": title},
             )
@@ -980,7 +980,7 @@ async def publish_staging_item(
                 )
         except Exception as e:
             logger.warning(
-                f"Failed to write to news_items (non-blocking): {e}",
+                "Failed to write to news_items (non-blocking): %s", e,
                 extra={"type": type, "item_id": item_id},
             )
 
@@ -1004,7 +1004,7 @@ async def publish_staging_item(
                 extra={"slug": article_slug, "category": category},
             )
         except Exception as e:
-            logger.warning(f"Failed to enqueue post-processing (non-blocking): {e}")
+            logger.warning("Failed to enqueue post-processing (non-blocking): %s", e)
 
         # Step 5: Update staging file with publish timestamp and persist to disk
         data["published_at"] = datetime.now(timezone.utc).isoformat()
@@ -1021,9 +1021,9 @@ async def publish_staging_item(
             staging_file = staging_dir / f"{item_id}.json"
             if staging_file.exists():
                 staging_file.write_text(json.dumps(data, indent=2, default=str))
-                logger.info(f"✅ Staging file updated with published status: {item_id}")
+                logger.info("✅ Staging file updated with published status: %s", item_id)
         except Exception as e:
-            logger.warning(f"Failed to update staging file (non-blocking): {e}")
+            logger.warning("Failed to update staging file (non-blocking): %s", e)
 
         logger.info(
             "✅ Publish completed successfully",
@@ -1053,7 +1053,7 @@ async def publish_staging_item(
         raise
     except Exception as e:
         logger.error(
-            f"Publish failed: {e}", exc_info=True, extra={"type": type, "item_id": item_id},
+            "Publish failed: %s", e, exc_info=True, extra={"type": type, "item_id": item_id},
         )
         raise HTTPException(status_code=500, detail=str(e)) from e
 

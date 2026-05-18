@@ -797,7 +797,7 @@ async def sync_company_drive_folder(
         )
         service = build("drive", "v3", credentials=creds)
     except Exception as e:
-        logger.error(f"[sync-drive] Failed to build Drive service: {e}")
+        logger.error("[sync-drive] Failed to build Drive service: %s", e)
         raise HTTPException(status_code=503, detail=f"Drive auth error: {e}")
 
     def _list_files_recursive(fid: str, depth: int = 0) -> list[dict]:
@@ -829,7 +829,7 @@ async def sync_company_drive_folder(
     try:
         files = _list_files_recursive(folder_id)
     except Exception as e:
-        logger.error(f"[sync-drive] Drive list error for folder {folder_id}: {e}")
+        logger.error("[sync-drive] Drive list error for folder %s: %s", folder_id, e)
         raise HTTPException(status_code=503, detail=f"Drive list error: {e}")
 
     added: list[dict] = []
@@ -872,7 +872,7 @@ async def sync_company_drive_folder(
                 company_id, doc_type, filename, file_id, web_url,
             )
             added.append({"id": doc_id, "file_name": filename, "document_type": doc_type})
-            logger.info(f"[sync-drive] Added doc {filename} ({doc_type}) → company {company_id}")
+            logger.info("[sync-drive] Added doc %s (%s) → company %s", filename, doc_type, company_id)
 
             # Queue for OCR if applicable
             if doc_type in ("npwp", "nib", "company_profile") and primary_client_id:
@@ -895,11 +895,11 @@ async def sync_company_drive_folder(
                             doc_id=None,  # company_documents id, not documents id
                             document_type=dtype,
                         )
-                        logger.info(f"[sync-drive] OCR dispatched for {fname} ({dtype})")
+                        logger.info("[sync-drive] OCR dispatched for %s (%s)", fname, dtype)
                     except Exception as e:
-                        logger.warning(f"[sync-drive] OCR failed for {fname}: {e}")
+                        logger.warning("[sync-drive] OCR failed for %s: %s", fname, e)
             except Exception as e:
-                logger.error(f"[sync-drive] OCR background task error: {e}")
+                logger.error("[sync-drive] OCR background task error: %s", e)
 
         spawn(_run_ocr_tasks(), name="company_router_ocr_tasks")
         logger.info(f"[sync-drive] Queued {len(ocr_tasks)} OCR tasks in background")

@@ -74,7 +74,7 @@ class KGIncrementalBuilder:
                 logger.warning("⚠️ google-genai SDK not available")
                 return None
             except Exception as e:
-                logger.error(f"❌ Failed to initialize Gemini client: {e}")
+                logger.error("❌ Failed to initialize Gemini client: %s", e)
                 return None
 
         return self._gemini_client
@@ -106,7 +106,7 @@ class KGIncrementalBuilder:
                 logger.info(f"Found {len(chunk_ids):,} already processed chunks")
                 return chunk_ids
         except Exception as e:
-            logger.error(f"Error fetching processed chunks: {e}")
+            logger.error("Error fetching processed chunks: %s", e)
             return set()
 
     async def run_incremental_extraction(
@@ -165,10 +165,10 @@ class KGIncrementalBuilder:
 
             from kg_incremental_extraction import KGIncrementalExtractor
 
-            logger.info(f"✅ KGIncrementalExtractor loaded from {scripts_path}")
+            logger.info("✅ KGIncrementalExtractor loaded from %s", scripts_path)
         except ImportError as e:
-            logger.error(f"❌ Failed to import KGIncrementalExtractor: {e}")
-            logger.error(f"   Scripts path resolved: {scripts_path}")
+            logger.error("❌ Failed to import KGIncrementalExtractor: %s", e)
+            logger.error("   Scripts path resolved: %s", scripts_path)
             return {"status": "error", "error": str(e)}
 
         # Get Gemini client
@@ -196,7 +196,7 @@ class KGIncrementalBuilder:
                 gemini_client=gemini_client,
             )
         except Exception as e:
-            logger.error(f"❌ Failed to initialize KGIncrementalExtractor: {e}")
+            logger.error("❌ Failed to initialize KGIncrementalExtractor: %s", e)
             return {"status": "error", "error": str(e)}
 
         # Process each collection with retry
@@ -221,8 +221,7 @@ class KGIncrementalBuilder:
                 break
 
             logger.info(
-                f"🕸️ Processing collection: {collection} "
-                f"(remaining daily quota: {max_chunks_remaining} chunks)",
+                "🕸️ Processing collection: %s (remaining daily quota: %s chunks)", collection, max_chunks_remaining,
             )
 
             for attempt in range(max_retries):
@@ -253,19 +252,19 @@ class KGIncrementalBuilder:
 
                 except Exception as e:
                     error_msg = f"{collection} (attempt {attempt + 1}/{max_retries}): {e}"
-                    logger.error(f"❌ Error processing {error_msg}")
+                    logger.error("❌ Error processing %s", error_msg)
 
                     if attempt == max_retries - 1:
                         # Last attempt failed
                         total_stats["collections_failed"] += 1
                         total_stats["errors"].append(error_msg)
                         logger.error(
-                            f"❌ Failed to process {collection} after {max_retries} attempts",
+                            "❌ Failed to process %s after %s attempts", collection, max_retries,
                         )
                     else:
                         # Retry with exponential backoff
                         wait_time = 2**attempt
-                        logger.info(f"⏳ Retrying {collection} in {wait_time}s...")
+                        logger.info("⏳ Retrying %s in %ss...", collection, wait_time)
                         await asyncio.sleep(wait_time)
 
         logger.info(

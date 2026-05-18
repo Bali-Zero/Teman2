@@ -1,6 +1,5 @@
 """Tests for reasoning engine 90% coverage - warning policy."""
 
-import pytest
 
 from backend.services.rag.agentic.reasoning_utils import calculate_evidence_score
 

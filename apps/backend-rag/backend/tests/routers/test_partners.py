@@ -13,7 +13,6 @@ Fixture layout:
 """
 from __future__ import annotations
 
-import dataclasses
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
@@ -41,21 +40,21 @@ _PROCESS_ID = uuid.UUID("ffffffff-0000-0000-0000-000000000001")
 
 def _make_partner(**overrides: Any) -> Partner:
     """Return a Partner dataclass instance for router tests."""
-    defaults: dict[str, Any] = dict(
-        id=_PARTNER_ID,
-        full_name="Test Partner",
-        email="partner@test.invalid",
-        entity_type="individual",
-        tax_withholding_category="tbd",
-        default_commission_type="percentage",
-        default_commission_value=Decimal("10.0"),
-        onboarding_status="pending_approval",
-        payment_currency="IDR",
-        preferred_language="id",
-        created_at=_NOW,
-        updated_at=_NOW,
-        assigned_to=_USER_ID,
-    )
+    defaults: dict[str, Any] = {
+        "id": _PARTNER_ID,
+        "full_name": "Test Partner",
+        "email": "partner@test.invalid",
+        "entity_type": "individual",
+        "tax_withholding_category": "tbd",
+        "default_commission_type": "percentage",
+        "default_commission_value": Decimal("10.0"),
+        "onboarding_status": "pending_approval",
+        "payment_currency": "IDR",
+        "preferred_language": "id",
+        "created_at": _NOW,
+        "updated_at": _NOW,
+        "assigned_to": _USER_ID,
+    }
     defaults.update(overrides)
     return Partner(**defaults)
 

@@ -375,7 +375,7 @@ class LegalIngestionService:
                 drive_web_link = drive_file.get("webViewLink")
 
                 logger.info(
-                    f"[STAGE 1.5] Uploaded to Drive: {drive_file_id}",
+                    "[STAGE 1.5] Uploaded to Drive: %s", drive_file_id,
                     extra={
                         "document_id": document_id,
                         "stage": "drive_upload",
@@ -388,7 +388,7 @@ class LegalIngestionService:
             except Exception as e:
                 # Non bloccare ingestione se Drive fallisce
                 logger.warning(
-                    f"[STAGE 1.5] Google Drive upload failed (non-blocking): {e}",
+                    "[STAGE 1.5] Google Drive upload failed (non-blocking): %s", e,
                     extra={
                         "document_id": document_id,
                         "stage": "drive_upload",
@@ -435,7 +435,7 @@ class LegalIngestionService:
                 pricing_removed = len(lines) - len(filtered_lines)
                 cleaned_text = separator.join(filtered_lines)
                 logger.info(
-                    f"[STAGE 2] Removed {pricing_removed} segments containing pricing info",
+                    "[STAGE 2] Removed %s segments containing pricing info", pricing_removed,
                     extra={
                         "document_id": document_id,
                         "stage": "cleaning",
@@ -540,7 +540,7 @@ Return ONLY valid JSON, no markdown."""
                             metadata.update({k: v for k, v in ai_metadata.items() if v})
                 except Exception as e:
                     logger.warning(
-                        f"[STAGE 3] Google AI Studio fallback failed: {e}",
+                        "[STAGE 3] Google AI Studio fallback failed: %s", e,
                         extra={
                             "document_id": document_id,
                             "stage": "metadata_extraction",
@@ -685,7 +685,7 @@ Return ONLY valid JSON, no markdown."""
             )
 
             logger.info(
-                f"[STAGE 6] Successfully ingested legal document: {document_title}",
+                "[STAGE 6] Successfully ingested legal document: %s", document_title,
                 extra={
                     "document_id": document_id,
                     "stage": "completion",
@@ -763,7 +763,7 @@ Return ONLY valid JSON, no markdown."""
                     error_msg = str(e)
                     kg_duration = time.time() - kg_start
                     logger.warning(
-                        f"[STAGE 7] KG extraction failed (non-blocking): {error_msg}",
+                        "[STAGE 7] KG extraction failed (non-blocking): %s", error_msg,
                         extra={
                             "document_id": document_id,
                             "stage": "kg_extraction",
@@ -858,7 +858,7 @@ Return ONLY valid JSON, no markdown."""
                 user_id=user_id,
             )
 
-            logger.error(f"❌ Error ingesting legal document {file_path}: {e}", exc_info=True)
+            logger.error("❌ Error ingesting legal document %s: %s", file_path, e, exc_info=True)
             return {
                 "success": False,
                 "book_title": title or Path(file_path).stem,
@@ -910,7 +910,7 @@ Return ONLY valid JSON, no markdown."""
 
                 if matching_folder:
                     current_parent_id = matching_folder["id"]
-                    logger.debug(f"Found existing Drive folder: {folder_name}")
+                    logger.debug("Found existing Drive folder: %s", folder_name)
                 else:
                     # Crea cartella
                     folder = await drive_service.create_folder(
@@ -918,11 +918,11 @@ Return ONLY valid JSON, no markdown."""
                         parent_folder_id=current_parent_id,
                     )
                     current_parent_id = folder["id"]
-                    logger.info(f"Created Drive folder: {folder_name} ({current_parent_id})")
+                    logger.info("Created Drive folder: %s (%s)", folder_name, current_parent_id)
             except Exception as e:
                 # Se list_files fallisce, prova a creare direttamente
                 logger.warning(
-                    f"Error listing files in {current_parent_id}: {e}. Attempting to create folder..."
+                    "Error listing files in %s: %s. Attempting to create folder...", current_parent_id, e
                 )
                 try:
                     folder = await drive_service.create_folder(
@@ -930,9 +930,9 @@ Return ONLY valid JSON, no markdown."""
                         parent_folder_id=current_parent_id,
                     )
                     current_parent_id = folder["id"]
-                    logger.info(f"Created Drive folder: {folder_name} ({current_parent_id})")
+                    logger.info("Created Drive folder: %s (%s)", folder_name, current_parent_id)
                 except Exception as create_error:
-                    logger.error(f"Failed to create folder {folder_name}: {create_error}")
+                    logger.error("Failed to create folder %s: %s", folder_name, create_error)
                     raise
 
         return current_parent_id
@@ -993,7 +993,7 @@ Return ONLY valid JSON, no markdown."""
                         provider = "openai"
                         logger.info("OpenAI client initialized for KG extraction")
                 except Exception as e:
-                    logger.warning(f"Could not initialize OpenAI for KG extraction: {e}")
+                    logger.warning("Could not initialize OpenAI for KG extraction: %s", e)
 
                 try:
                     if openai_client is None:
@@ -1021,7 +1021,7 @@ Return ONLY valid JSON, no markdown."""
                         gemini = client
                         logger.info("Gemini client initialized for KG extraction")
                 except Exception as e:
-                    logger.warning(f"Could not initialize Gemini for KG extraction: {e}")
+                    logger.warning("Could not initialize Gemini for KG extraction: %s", e)
 
                 # Create DB pool (with error handling)
                 db_pool = None
@@ -1032,7 +1032,7 @@ Return ONLY valid JSON, no markdown."""
                         )
                     except Exception as db_error:
                         logger.warning(
-                            f"Could not create database pool for KG extraction: {db_error}"
+                            "Could not create database pool for KG extraction: %s", db_error
                         )
                         # Return None to skip KG extraction
                         return None
@@ -1052,7 +1052,7 @@ Return ONLY valid JSON, no markdown."""
                 )
                 logger.info("KG extractor initialized")
             except Exception as e:
-                logger.warning(f"Failed to initialize KG extractor: {e}")
+                logger.warning("Failed to initialize KG extractor: %s", e)
                 return None
 
         return self.kg_extractor

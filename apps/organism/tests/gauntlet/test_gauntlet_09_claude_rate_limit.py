@@ -1,10 +1,11 @@
 """Scenario 9: Claude CLI rate limit hit. ClaudeBrain defers to human
 instead of crashing. This is tested in test_claude_brain.py — we
 reproduce the boundary here at gauntlet granularity."""
+from unittest.mock import patch
+
 import pytest
-from unittest.mock import AsyncMock, patch
-from organism.supervisor.claude_brain import ClaudeBrain, RATE_LIMIT_PER_MINUTE
 from organism.schemas import Event, Severity
+from organism.supervisor.claude_brain import RATE_LIMIT_PER_MINUTE, ClaudeBrain
 
 
 @pytest.mark.gauntlet

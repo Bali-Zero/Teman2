@@ -14,26 +14,22 @@ Usage:
   python scripts/generate_gold_content_gemini.py --skip-existing --range-start 600 --range-end 1247
 """
 
-import json
-import sys
-import re
 import argparse
+import json
 import subprocess
+import sys
 from pathlib import Path
 
 # Reuse all helpers from the main script
 sys.path.insert(0, str(Path(__file__).parent))
 from generate_gold_content import (
-    load_kbli,
-    load_existing_codes,
-    build_what_you_need,
-    build_what_changed,
-    build_youll_also_need,
-    format_ts_entry,
-    append_to_gold_ts,
     SYSTEM_PROMPT,
-    FEW_SHOT,
-    GOLD_TS,
+    append_to_gold_ts,
+    build_what_changed,
+    build_what_you_need,
+    build_youll_also_need,
+    load_existing_codes,
+    load_kbli,
 )
 
 

@@ -590,7 +590,7 @@ async def check_existing_memories(
             )
 
     except Exception as e:
-        logger.warning(f"Error checking existing memories: {e}")
+        logger.warning("Error checking existing memories: %s", e)
         # Non-fatal: proceed with empty existing_memories
 
     return state
@@ -716,14 +716,14 @@ async def store_collective_memory(
             if content and user_id:
                 # Save as fact
                 await memory_service.add_fact(user_id, content, fact_type="collective_memory")
-                logger.info(f"💾 Stored collective memory fact for {user_id}: {content}")
+                logger.info("💾 Stored collective memory fact for %s: %s", user_id, content)
 
                 # Also update summary if needed (simplified logic)
                 # In a real scenario, we'd append to summary or re-summarize
                 # await memory_service.update_summary(user_id, content)
 
         except Exception as e:
-            logger.error(f"❌ Failed to store collective memory: {e}")
+            logger.error("❌ Failed to store collective memory: %s", e)
             # Add error to state for tracking
             if "errors" not in state:
                 state["errors"] = []

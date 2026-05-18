@@ -37,7 +37,7 @@ class AuditService:
             )
             logger.info("✅ AuditService connected to database")
         except Exception as e:
-            logger.error(f"❌ AuditService connection failed: {e}")
+            logger.error("❌ AuditService connection failed: %s", e)
             self.enabled = False
 
     async def close(self) -> None:
@@ -70,7 +70,7 @@ class AuditService:
             metadata: Additional context
         """
         if not self.enabled or not self.pool:
-            logger.warning(f"⚠️ Audit log skipped (DB unavailable): {action} for {email}")
+            logger.warning("⚠️ Audit log skipped (DB unavailable): %s for %s", action, email)
             return
 
         try:
@@ -90,10 +90,10 @@ class AuditService:
                     failure_reason,
                     json.dumps(metadata) if metadata else None,
                 )
-                logger.debug(f"📝 Auth audit logged: {action} for {email} (Success: {success})")
+                logger.debug("📝 Auth audit logged: %s for %s (Success: %s)", action, email, success)
 
         except Exception as e:
-            logger.error(f"❌ Failed to log auth event: {e}")
+            logger.error("❌ Failed to log auth event: %s", e)
 
     async def log_system_event(
         self,
@@ -136,10 +136,10 @@ class AuditService:
                     ip_address,
                     user_agent,
                 )
-                logger.debug(f"📝 System audit logged: {event_type} - {action}")
+                logger.debug("📝 System audit logged: %s - %s", event_type, action)
 
         except Exception as e:
-            logger.error(f"❌ Failed to log system event: {e}")
+            logger.error("❌ Failed to log system event: %s", e)
 
 
 # Global instance

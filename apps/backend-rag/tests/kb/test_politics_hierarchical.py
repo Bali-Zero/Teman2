@@ -10,7 +10,7 @@ import json
 import tempfile
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -20,13 +20,11 @@ from backend.kb.politics.hierarchical.chunker import (
     _detect_language,
     _deterministic_id,
 )
-from backend.kb.politics.hierarchical.extractor import ClaimExtractor
 from backend.kb.politics.hierarchical.eval import (
-    EvalQuery,
     _ndcg_at_k,
     _recall_at_k,
 )
-
+from backend.kb.politics.hierarchical.extractor import ClaimExtractor
 
 # ─── Fixtures ───────────────────────────────────────────────────────────────
 
