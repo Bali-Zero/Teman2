@@ -157,7 +157,15 @@ async def fetch_client(conn, client_id: int) -> dict[str, Any] | None:
 
 
 async def fetch_linked_companies(conn, client_id: int) -> list[dict[str, Any]]:
-    """Active company links for this client with their Drive folder ID."""
+    """Active company links for this client with their Drive folder ID(s).
+
+    Phase 1.5 (2026-05-18): also returns `tax_dept_folder_id` (migration 182,
+    populated by scripts/crm_guardian_tax_dept_apply.py). The tax-dept folder
+    is the Bali Zero shared 'Members/<TeamMember>/<COMPANY>/' Drive area
+    that holds SPT/PPN/PPh/LKPM filings outside the cliente canonical folder.
+    Worker treats it as a 3rd source in aggregate_cross_folder_files when
+    populated (NULL on most companies = same behavior as before).
+    """
     rows = await conn.fetch(
         """
         SELECT
@@ -165,12 +173,13 @@ async def fetch_linked_companies(conn, client_id: int) -> list[dict[str, Any]]:
             ccl.role,
             ccl.is_primary,
             c.company_name,
-            c.google_drive_folder_id
+            c.google_drive_folder_id,
+            c.tax_dept_folder_id
         FROM client_company_links ccl
         JOIN companies c ON c.id = ccl.company_id
         WHERE ccl.client_id = $1
           AND ccl.status = 'active'
-          AND c.google_drive_folder_id IS NOT NULL
+          AND (c.google_drive_folder_id IS NOT NULL OR c.tax_dept_folder_id IS NOT NULL)
         ORDER BY ccl.is_primary DESC, ccl.id ASC
         """,
         client_id,
@@ -290,20 +299,43 @@ async def aggregate_cross_folder_files(
 
     for company in linked_companies:
         cf_id = company.get("google_drive_folder_id")
-        if not cf_id:
-            continue
-        try:
-            cf_files = await list_drive_files(drive_service, cf_id)
-            for f in cf_files:
-                f["source_folder_id"] = cf_id
-            flat_files.extend(cf_files)
-            folder_id_to_name[cf_id] = company.get("company_name") or cf_id
-        except Exception as e:
-            LOG.warning(
-                "company folder %s (%s) aggregation failed: %s",
-                cf_id, company.get("company_name"), e,
-            )
-            continue
+        if cf_id:
+            try:
+                cf_files = await list_drive_files(drive_service, cf_id)
+                for f in cf_files:
+                    f["source_folder_id"] = cf_id
+                flat_files.extend(cf_files)
+                folder_id_to_name[cf_id] = company.get("company_name") or cf_id
+            except Exception as e:
+                LOG.warning(
+                    "company folder %s (%s) aggregation failed: %s",
+                    cf_id, company.get("company_name"), e,
+                )
+
+        # Phase 1.6 (2026-05-18): third source — tax department shared folder
+        # (Members/<TeamMember>/<COMPANY>/) populated via migration 182 +
+        # scripts/crm_guardian_tax_dept_apply.py. Holds SPT/PPN/PPh/LKPM that
+        # don't live in the cliente canonical folder nor the company corporate
+        # folder.
+        tax_id = company.get("tax_dept_folder_id")
+        if tax_id:
+            try:
+                tax_files = await list_drive_files(drive_service, tax_id)
+                for f in tax_files:
+                    f["source_folder_id"] = tax_id
+                flat_files.extend(tax_files)
+                folder_id_to_name[tax_id] = (
+                    f"{company.get('company_name') or 'unknown'} (Tax Dept)"
+                )
+                LOG.info(
+                    "tax-dept folder for company %s: +%d files",
+                    company.get("company_name"), len(tax_files),
+                )
+            except Exception as e:
+                LOG.warning(
+                    "tax-dept folder %s (%s) aggregation failed: %s",
+                    tax_id, company.get("company_name"), e,
+                )
 
     return flat_files, folder_id_to_name
 
