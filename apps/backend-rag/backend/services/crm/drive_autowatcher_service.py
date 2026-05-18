@@ -46,7 +46,7 @@ class DriveEvidenceDocument:
 
 @dataclass(frozen=True)
 class CompanyDriveEvidence:
-    """Person-first evidence bundle for one linked company."""
+    """Evidence bundle for one company, optionally anchored to active people."""
 
     company_id: int
     company_name: str
@@ -200,7 +200,6 @@ def build_workspace_ai_snapshot_payload(
 def _facts_from_evidence(
     evidence: CompanyDriveEvidence,
 ) -> list[TaxCompanyPilotWorkspaceAiFact]:
-    people = _human_join(evidence.people, fallback="the linked person")
     groups = _document_group_counts(evidence.documents)
     missing = _missing_groups(groups, evidence.kg_edge_count)
 
@@ -209,11 +208,18 @@ def _facts_from_evidence(
         f"indexed source document{'s' if len(evidence.documents) != 1 else ''} across "
         f"{_coverage_sentence(groups)}."
     )
-    person_detail = (
-        f"Start from {people}; then read {evidence.company_name} through the confirmed "
-        "CRM relationship, connecting roles, residency, and tax ownership before any "
-        "client-facing use."
-    )
+    if evidence.people:
+        people = _human_join(evidence.people, fallback="the linked person")
+        person_detail = (
+            f"Start from {people}; then read {evidence.company_name} through the confirmed "
+            "CRM relationship, connecting roles, residency, and tax ownership before any "
+            "client-facing use."
+        )
+    else:
+        person_detail = (
+            f"Read {evidence.company_name} as a company-level dossier. Link active "
+            "individual profiles before person-first publication."
+        )
     compliance_detail = (
         f"The tax posture is visible at evidence level: {_coverage_sentence(groups)}. "
         f"Tax owner: {evidence.tax_owner}. Treat this as an internal consultant reading, "
@@ -291,8 +297,10 @@ def _evidence_from_rows(rows: list[Any]) -> list[CompanyDriveEvidence]:
                 "kg_edge_count": 0,
             },
         )
-        bucket["client_ids"].add(int(data["client_id"]))
-        _append_unique(bucket["people"], str(data["client_name"]))
+        if data.get("client_id") is not None:
+            bucket["client_ids"].add(int(data["client_id"]))
+        if data.get("client_name"):
+            _append_unique(bucket["people"], str(data["client_name"]))
         if data.get("tax_owner"):
             _append_unique(bucket["tax_owners"], str(data["tax_owner"]))
         if data.get("file_id"):
@@ -472,6 +480,23 @@ WITH linked_people AS (
     WHERE cl.deleted_at IS NULL
       AND ($1::int IS NULL OR cl.id = $1::int)
 ),
+company_document_scope AS (
+    SELECT
+        co.id AS company_id,
+        co.company_name
+    FROM companies co
+    JOIN company_documents cd ON cd.company_id = co.id
+    WHERE $1::int IS NULL
+      AND cd.google_drive_file_id IS NOT NULL
+      AND cd.google_drive_file_id <> ''
+      AND COALESCE(cd.status, 'active') <> 'deleted'
+      AND COALESCE(co.status, 'active') <> 'deleted'
+      AND NOT EXISTS (
+          SELECT 1
+          FROM linked_people lp
+          WHERE lp.company_id = co.id
+      )
+),
 company_scope AS (
     SELECT
         base.company_id,
@@ -499,6 +524,13 @@ company_scope AS (
         WHERE cd.google_drive_file_id IS NOT NULL
           AND cd.google_drive_file_id <> ''
           AND COALESCE(cd.status, 'active') <> 'deleted'
+
+        UNION
+
+        SELECT
+            cds.company_id,
+            cds.company_name
+        FROM company_document_scope cds
     ) base
     LEFT JOIN crm_workspace_ai_snapshots snap
         ON snap.company_id = base.company_id
@@ -557,6 +589,36 @@ evidence_rows AS (
     WHERE cd.google_drive_file_id IS NOT NULL
       AND cd.google_drive_file_id <> ''
       AND COALESCE(cd.status, 'active') <> 'deleted'
+
+    UNION ALL
+
+    SELECT
+        scope.company_id,
+        scope.company_name,
+        NULL::int AS client_id,
+        NULL::text AS client_name,
+        ''::text AS tax_owner,
+        cd.google_drive_file_id AS file_id,
+        cd.file_name,
+        cd.document_type,
+        COALESCE(cd.document_subtype, 'company') AS document_category,
+        NULL::text AS ocr_status,
+        kg.entity_id IS NOT NULL AS has_kg_node,
+        kg.entity_id AS kg_entity_id
+    FROM company_scope scope
+    JOIN company_documents cd ON cd.company_id = scope.company_id
+    LEFT JOIN crm_kg_nodes kg
+        ON kg.file_id = cd.google_drive_file_id
+        AND kg.entity_type = 'crm_document'
+        AND kg.deleted_at IS NULL
+    WHERE cd.google_drive_file_id IS NOT NULL
+      AND cd.google_drive_file_id <> ''
+      AND COALESCE(cd.status, 'active') <> 'deleted'
+      AND NOT EXISTS (
+          SELECT 1
+          FROM linked_people lp
+          WHERE lp.company_id = scope.company_id
+      )
 ),
 kg_counts AS (
     SELECT
