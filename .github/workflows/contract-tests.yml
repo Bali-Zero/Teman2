@@ -46,6 +46,8 @@ jobs:
       QDRANT_API_KEY: "test-not-real"
       OPENAI_API_KEY: "sk-test-not-real-do-not-use"
       JWT_SECRET: "test-jwt-secret-for-contract-tests-only-not-prod"
+      JWT_SECRET_KEY: "test-jwt-secret-key-for-contract-tests-min-32-chars"
+      API_KEYS: "test-contract-api-key-1,test-contract-api-key-2"
       # Skip side-effects on import
       SKIP_SENTRY_INIT: "1"
       SENTRY_TRACES_SAMPLE_RATE: "0.0"
