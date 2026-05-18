@@ -28,6 +28,7 @@
 ```diff
 -    "openai-codex-sdk>=0.1.11",
 -    "claude-agent-sdk>=0.1.16",
+-    "openhands-tools>=1.16.1",
 ```
 
 **Rationale:**
@@ -40,6 +41,18 @@
   trigger Cloudflare protections + 500-msg/3h quota cap, which would lock
   Antonello's daily Pro access. v2 Codex panel finding #2 HIGH. We use
   DeepSeek V4 Pro API (~$0.10-0.30/run) as cheap insurance instead.
+- `openhands-tools` — pulls `browser-use>=0.8.0` which pulls
+  `anthropic 0.94.0`. Even though our AST strip of `claude-agent-sdk`
+  was clean, the vendor venv still resolved `anthropic` via this
+  transitive chain — caught by panel round 3 Codex BLOCKING #1 with
+  empirical `uv pip show anthropic` returning `Required-by: browser-use`.
+  Violates "no anthropic anywhere in the dependency tree" hard-rule
+  posture. We keep `openhands-sdk` (no anthropic transitive) and the
+  `src/harness/openhands/` glue, but the `openhands.tools` import at
+  `src/harness/openhands/executor.py:62` will raise `ImportError` at
+  runtime if anyone calls the OpenHands executor — Phase 0 does not.
+  Future Phase 1 can re-introduce `openhands-tools` only if a
+  no-`anthropic` fork is available.
 
 ### 2. `src/harness/__init__.py`
 

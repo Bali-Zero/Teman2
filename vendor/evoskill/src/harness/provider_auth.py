@@ -39,6 +39,19 @@ def resolve_provider_api_key(provider: str | None) -> tuple[str | None, str | No
 def ensure_provider_api_key(provider: str | None) -> str:
     """Validate that the selected provider has a configured API key."""
     normalized = normalize_provider(provider)
+
+    # Bali Zero Nuzantara vendor strip (panel round 3 Codex BLOCKING #2):
+    # hard-deny anthropic auth path BEFORE looking up the env name.
+    # Defense in depth: even if a caller skipped the call_llm guard,
+    # this function refuses to expose ANTHROPIC_API_KEY semantics.
+    if normalized == "anthropic":
+        raise ImportError(
+            "Anthropic provider disabled per Bali Zero Nuzantara CLAUDE.md "
+            "hard rule. ANTHROPIC_API_KEY is BANNED — DO NOT set it. "
+            "Use provider=deepseek (DeepSeek V4 Pro API) or provider=google "
+            "(Gemini 3.1 Pro free OAuth) instead."
+        )
+
     env_names = PROVIDER_ENV_KEYS.get(normalized)
     if not env_names:
         raise ValueError(f"Unknown provider: {provider}")
