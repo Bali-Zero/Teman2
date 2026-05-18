@@ -151,6 +151,35 @@ class Shareholder(BaseModel):
             raise ValueError(f"percentage must be in [0,100], got {v}")
         return v
 
+    # Phase 1.5 hotfix 2026-05-18 (queue id 47, client 484 Gergely Gal): OCR
+    # extracts akta in Bahasa Indonesia, so Gemini occasionally emits raw
+    # Indonesian role names ("DIREKTUR", "KOMISARIS", "PEMEGANG SAHAM",
+    # "PENDIRI") that fail the English enum. Normalize before enum validation
+    # rather than asking the LLM to retry — the rest of the extraction is
+    # correct, only the role label is i18n.
+    @field_validator("role", mode="before")
+    @classmethod
+    def _normalize_role(cls, v: str | None) -> str | None:
+        if v is None or not isinstance(v, str):
+            return v
+        stripped = v.strip().rstrip(".").upper()
+        ID_TO_EN = {
+            "DIREKTUR": "Director",
+            "DIREKTUR UTAMA": "Director",
+            "DIR": "Director",
+            "KOMISARIS": "Commissioner",
+            "KOMISARIS UTAMA": "Commissioner",
+            "KOM": "Commissioner",
+            "PEMEGANG SAHAM": "Shareholder",
+            "PEMEGANGSAHAM": "Shareholder",
+            "PENDIRI": "Founder",
+            "FOUNDER": "Founder",
+            "DIRECTOR": "Director",
+            "COMMISSIONER": "Commissioner",
+            "SHAREHOLDER": "Shareholder",
+        }
+        return ID_TO_EN.get(stripped, v)  # pass-through unknowns → enum will raise
+
 
 class PropertyAsset(BaseModel):
     """Real estate / villa / lease — Bali-specific."""
