@@ -70,17 +70,14 @@ def build_options(
     sdk = get_sdk()
     
     if sdk == "claude":
-        from .claude.options import build_claudecode_options
-        return build_claudecode_options(
-            system=system,
-            schema=schema,
-            tools=tools,
-            project_root=project_root,
-            model=model,
-            data_dirs=data_dirs,
-            setting_sources=setting_sources,
-            permission_mode=permission_mode,
-            max_buffer_size=max_buffer_size,
+        # Bali Zero Nuzantara vendor strip (panel 2026-05-18 HIGH):
+        # build_options was a THIRD dispatcher missed in the v5 spec.
+        # Importing .claude.options would hit the stub raise — better to
+        # raise here with the same explicit message as agent.py.
+        raise ImportError(
+            "Claude SDK disabled per Bali Zero Nuzantara CLAUDE.md "
+            "hard rule (no Anthropic API ever). Configure provider="
+            "deepseek in agent-library/config/evolver.toml instead."
         )
     
     if sdk == "opencode":
@@ -106,16 +103,14 @@ def build_options(
         )
      
     if sdk == "codex":
-        from .codex.options import build_codex_options
-        return build_codex_options(
-            system=system,
-            schema=schema,
-            tools=tools,
-            project_root=project_root,
-            model=model,
-            data_dirs=data_dirs,
+        # Bali Zero Nuzantara vendor strip (panel 2026-05-18 HIGH):
+        # codex options builder removed for same rationale as agent.py.
+        raise ImportError(
+            "Codex SDK removed from Bali Zero Nuzantara vendored "
+            "fork (panel finding: ChatGPT Pro rate-limit risk on "
+            "autonomous loops). Configure provider=deepseek instead."
         )
-    
+
     if sdk == "goose":
         from .goose.options import build_goose_options
         return build_goose_options(
@@ -126,5 +121,17 @@ def build_options(
             model=model,
             data_dirs=data_dirs,
         )
-    
+
+    if sdk == "deepseek":
+        # Bali Zero Nuzantara vendor addition (panel 2026-05-18 CRITICAL).
+        from .deepseek.options import build_deepseek_options
+        return build_deepseek_options(
+            system=system,
+            schema=schema,
+            tools=tools,
+            project_root=project_root,
+            model=model,
+            data_dirs=data_dirs,
+        )
+
     raise ValueError(f"Unknown SDK: {sdk!r}")

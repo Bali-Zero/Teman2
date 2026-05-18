@@ -1,13 +1,21 @@
-"""SDK configuration and selection logic."""
+"""SDK configuration and selection logic.
+
+Bali Zero Nuzantara vendor addition (Gemini + Codex panel 2026-05-18
+CRITICAL convergent): added "deepseek" to SDKType + _VALID_SDKS so
+evolver.toml provider=deepseek is dispatchable. See harness/deepseek/
+(Phase 0 stub) and vendor/evoskill/UPSTREAM.md §5.
+"""
 
 from typing import Literal
 
-SDKType = Literal["claude", "opencode", "codex", "goose", "openhands"]
+SDKType = Literal["claude", "opencode", "codex", "goose", "openhands", "deepseek"]
 
-# Global SDK selection (can be overridden via CLI arguments)
+# Global SDK selection (can be overridden via CLI arguments).
+# Default remains "claude" for upstream compatibility — Bali Zero
+# evolver.toml explicitly sets "deepseek" before any .run() call.
 _current_sdk: SDKType = "claude"
 
-_VALID_SDKS = ("claude", "opencode", "codex", "goose", "openhands")
+_VALID_SDKS = ("claude", "opencode", "codex", "goose", "openhands", "deepseek")
 
 
 def set_sdk(sdk: SDKType) -> None:
@@ -48,3 +56,12 @@ def is_codex_sdk() -> bool:
 def is_goose_sdk() -> bool:
     """Check if goose is the current SDK."""
     return _current_sdk == "goose"
+
+
+def is_deepseek_sdk() -> bool:
+    """Check if DeepSeek V4 Pro is the current SDK.
+
+    Bali Zero Nuzantara vendor addition (panel 2026-05-18). Returns True
+    when evolver.toml provider=deepseek has been applied via set_sdk.
+    """
+    return _current_sdk == "deepseek"
