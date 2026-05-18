@@ -80,8 +80,14 @@ async def call_llm(provider: str, model: str, prompt: str) -> str:
 
     provider = provider.strip().lower()
     normalized_model = _normalize_provider_model(provider, model)
-    api_key = ensure_provider_api_key(provider)
 
+    # Bali Zero Nuzantara vendor strip (panel round 3 Codex BLOCKING #2):
+    # the anthropic raise MUST happen BEFORE ensure_provider_api_key().
+    # The upstream flow asked for ANTHROPIC_API_KEY first, which would
+    # produce a misleading error message ("Set ANTHROPIC_API_KEY")
+    # suggesting that setting the key is the fix — when actually
+    # anthropic is disabled entirely by CLAUDE.md hard rule. Fail loud
+    # FIRST, before exposing the banned auth path.
     if provider == "anthropic":
         # Bali Zero Nuzantara vendor strip (CLAUDE.md hard rule):
         # the original `import anthropic` + AsyncAnthropic block was
@@ -98,6 +104,8 @@ async def call_llm(provider: str, model: str, prompt: str) -> str:
             "which is banned. Switch to provider=deepseek (DeepSeek V4 Pro "
             "API) or provider=google (Gemini 3.1 Pro free OAuth)."
         )
+
+    api_key = ensure_provider_api_key(provider)
 
     if provider == "openai":
         try:

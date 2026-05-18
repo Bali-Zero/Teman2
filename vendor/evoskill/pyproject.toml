@@ -15,9 +15,17 @@ dependencies = [
     # Pro API as executor (v2 Codex panel finding #2 — Pro rate-limit risk
     # on autonomous loops). See vendor/evoskill/UPSTREAM.md for the full
     # diff list versus upstream tag v1.1.0 (SHA 5ae91616...).
+    #
+    # ALSO REMOVED 2026-05-18 (panel round 3 Codex BLOCKING #1):
+    #   openhands-tools — transitively pulls browser-use which depends on
+    #   the `anthropic` PyPI package. Even though our src/harness/claude/
+    #   AST strip is clean, the vendor venv would still install
+    #   `anthropic 0.94.0` via browser-use, violating CLAUDE.md hard rule
+    #   "no anthropic anywhere in the dependency tree". The harness layer
+    #   src/harness/openhands/executor.py raises ImportError at runtime if
+    #   anyone invokes OpenHands SDK — Phase 0 does not use it.
     "opencode-ai>=0.1.0a36",
     "openhands-sdk>=1.16.1",
-    "openhands-tools>=1.16.1",
     "click>=8.1.8",
     "httpx>=0.23.0",
     "pandas>=2.3.3",
