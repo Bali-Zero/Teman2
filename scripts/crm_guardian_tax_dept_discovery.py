@@ -50,7 +50,7 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
 )
 
-TAX_DEPT_ROOT = "1QkFxr9rwtyIxIf7XaVNi6ehmxIMrWO2S"
+TAX_DEPT_ROOT = "1QkFxr9rwtyIxIf7XaVNi6ehmxIMrWO2S"  # pragma: allowlist secret  # noqa: E501 — Google Drive folder ID, not a credential
 SHORTCUT_MIME = "application/vnd.google-apps.shortcut"
 FOLDER_MIME = "application/vnd.google-apps.folder"
 
