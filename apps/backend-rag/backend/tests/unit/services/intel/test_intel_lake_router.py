@@ -10,9 +10,11 @@ import pytest
 from backend.services.intel.intel_lake_router import (
     NB_INTEL_AI_RESEARCH,
     NB_INTEL_IMMIGRATION,
+    NB_INTEL_PRESS,
     NB_INTEL_REGULATION,
     NB_INTEL_TAX,
     IntelLakeRouter,
+    _press_content_gate,
 )
 
 
@@ -166,12 +168,124 @@ class TestRulesOrdering:
 
 class TestRegexAnchoring:
     def test_partial_match_in_middle_rejected(self) -> None:
+        # Press subdomain prefixes are tolerated only for exact approved roots
+        # such as ``money.kompas.com``. A lookalike hostname must not match
+        # merely because it contains ``kompas`` in the middle.
         d = _make_router()._classify("fake.kompas.somewhere")
         assert d["status"] == "needs_review"
 
     def test_imigrasi_in_middle_rejected(self) -> None:
+        # Government domains remain strict; generic subdomain tolerance is only
+        # for vetted press roots.
         d = _make_router()._classify("malicious.imigrasi.go.id")
         assert d["status"] == "needs_review"
+
+
+# ─── PR-B1a: subdomain prefix tolerance ─────────────────────────────────────
+
+
+class TestSubdomainPrefixTolerance:
+    """PR-B1a 2026-05-20 — root cause of 79/88 items in needs_review.
+
+    The old regex ``^kompas`` did not match real-world subdomains like
+    ``money.kompas.com`` or ``en.tempo.co``. Verified empirically Phase A.6.
+    """
+
+    def test_www_prefix(self) -> None:
+        d = _make_router()._classify("www.antaranews.com")
+        # Generic news → press_general → blog (no regulatory keyword)
+        assert d["status"] == "blog"
+
+    def test_en_subdomain_tempo(self) -> None:
+        d = _make_router()._classify("en.tempo.co")
+        assert d["status"] == "blog"
+
+    def test_money_subdomain_kompas(self) -> None:
+        d = _make_router()._classify("money.kompas.com")
+        assert d["status"] == "blog"
+
+    def test_sumsel_subdomain_antaranews(self) -> None:
+        d = _make_router()._classify("sumsel.antaranews.com")
+        assert d["status"] == "blog"
+
+
+class TestNewPressDomains:
+    """PR-B1a 2026-05-20 — expanded news domain set."""
+
+    def test_indonesiaexpat(self) -> None:
+        d = _make_router()._classify("indonesiaexpat.id")
+        assert d["status"] == "blog"
+
+    def test_letsmoveindonesia(self) -> None:
+        d = _make_router()._classify("www.letsmoveindonesia.com")
+        assert d["status"] == "blog"
+
+    def test_expat_com(self) -> None:
+        d = _make_router()._classify("www.expat.com")
+        assert d["status"] == "blog"
+
+    def test_livenworkindonesia(self) -> None:
+        d = _make_router()._classify("livenworkindonesia.com")
+        assert d["status"] == "blog"
+
+
+class TestPressContentGate:
+    """PR-B1a 2026-05-20 — 2-stage routing for press_general rule.
+
+    Stage 1: domain eligibility (matches press_general regex).
+    Stage 2: title/url contains regulatory keyword → upgrade to nb-intel/press.
+    Empty stage-2 input → fallback to blog (legacy behavior).
+    """
+
+    def test_gate_blocks_when_no_content(self) -> None:
+        assert _press_content_gate(None, None) is False
+        assert _press_content_gate("", "") is False
+
+    def test_gate_matches_visa_keyword(self) -> None:
+        assert _press_content_gate("New visa rules for foreigners", None) is True
+
+    def test_gate_matches_kitas_keyword(self) -> None:
+        assert _press_content_gate(None, "https://x.com/kitas-news") is True
+
+    def test_gate_matches_pajak_keyword(self) -> None:
+        assert _press_content_gate("Aturan pajak baru 2026", None) is True
+
+    def test_gate_matches_oss_keyword(self) -> None:
+        assert _press_content_gate("OSS BKPM streamlines KBLI", None) is True
+
+    def test_gate_blocks_sports_content(self) -> None:
+        assert _press_content_gate("Liga 1 hasil pertandingan", None) is False
+
+    def test_gate_blocks_entertainment(self) -> None:
+        assert _press_content_gate("Selebriti memilih liburan ke Bali", None) is False
+
+    def test_gate_blocks_tax_substring_false_positive(self) -> None:
+        assert _press_content_gate("Best taxi apps for Bali airport", None) is False
+
+    def test_classify_with_regulatory_keyword_upgrades_to_nbintel(self) -> None:
+        d = _make_router()._classify(
+            "money.kompas.com",
+            title="New PMK rules on PPh imported services",
+            canonical_url="https://money.kompas.com/2026/pajak",
+        )
+        assert d["status"] == "nb-intel"
+        assert NB_INTEL_PRESS in d["targets"]["nb_uuids"]
+        assert "regulatory" in d["rule"]
+
+    def test_classify_without_keyword_stays_blog(self) -> None:
+        d = _make_router()._classify(
+            "en.tempo.co",
+            title="Indonesian musician wins international award",
+            canonical_url="https://en.tempo.co/entertainment",
+        )
+        assert d["status"] == "blog"
+        assert d["targets"] == {}
+
+    def test_classify_without_content_defaults_to_blog(self) -> None:
+        """Legacy compat: no title/url means content gate returns False,
+        which means press_general → blog (existing behavior preserved)."""
+        d = _make_router()._classify("kompas.com")
+        assert d["status"] == "blog"
 
 
 class TestRulesNoOverlap:
