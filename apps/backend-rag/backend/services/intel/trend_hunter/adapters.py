@@ -309,6 +309,10 @@ async def gather_sources(
 ) -> list[SourceAdapterResult]:
     """Run all adapters concurrently; return per-adapter results.
 
-    Adapter failures isolated (Law 4 Graceful degradation).
+    Adapter failures isolated (Law 4 Graceful degradation): each ``adapter.run()``
+    catches its own exceptions and returns a ``SourceAdapterResult`` with ``error``,
+    so TaskGroup never sees a raised exception here.
     """
-    return await asyncio.gather(*[a.run() for a in adapters])
+    async with asyncio.TaskGroup() as tg:
+        tasks = [tg.create_task(a.run()) for a in adapters]
+    return [t.result() for t in tasks]

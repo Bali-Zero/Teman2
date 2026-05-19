@@ -313,10 +313,13 @@ class CrossOracleSynthesisService:
         """
         logger.info(f"🔄 Querying {len(oracle_queries)} Oracles in parallel...")
 
-        # Query all in parallel
-        tasks = [self.query_oracle(oq, user_level) for oq in oracle_queries]
-
-        oracle_results = await asyncio.gather(*tasks)
+        # Query all in parallel (structured concurrency, Python 3.11+)
+        async with asyncio.TaskGroup() as tg:
+            tasks = [
+                tg.create_task(self.query_oracle(oq, user_level))
+                for oq in oracle_queries
+            ]
+        oracle_results = [t.result() for t in tasks]
 
         # Convert to dict
         results_dict = {result["collection"]: result for result in oracle_results}

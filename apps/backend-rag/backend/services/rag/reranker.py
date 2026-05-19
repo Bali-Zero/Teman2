@@ -411,13 +411,13 @@ class CrossEncoderReranker:
                 f"Queries count ({len(queries)}) must match documents list count ({len(documents_list)})",
             )
 
-        # Run all reranks concurrently
-        tasks = [
-            self.rerank(query, docs, top_k)
-            for query, docs in zip(queries, documents_list, strict=False)
-        ]
-
-        return await asyncio.gather(*tasks)
+        # Run all reranks concurrently (structured concurrency, Python 3.11+)
+        async with asyncio.TaskGroup() as tg:
+            tasks = [
+                tg.create_task(self.rerank(query, docs, top_k))
+                for query, docs in zip(queries, documents_list, strict=False)
+            ]
+        return [t.result() for t in tasks]
 
 
 def get_reranker(
