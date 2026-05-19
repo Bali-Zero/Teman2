@@ -1,4 +1,9 @@
+# syntax=docker/dockerfile:1.7
 # Multi-stage build for Bali Intel Scraper
+#
+# BuildKit cache mount (added 2026-05-18): pip cache at /root/.cache/pip
+# persists across builds. `--no-cache-dir` removed (counterproductive with
+# cache mounts — it tells pip not to write to the cache we now persist).
 
 # Stage 1: Builder
 FROM python:3.11-slim as builder
@@ -17,8 +22,9 @@ ENV PATH="/opt/venv/bin:$PATH"
 
 # Install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
+    pip install --upgrade pip && \
+    pip install -r requirements.txt
 
 # Download NLTK data
 RUN python -c "import nltk; nltk.download('punkt'); nltk.download('stopwords')"

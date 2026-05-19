@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1.7
 
 # ============================================
 # Stage 1: Dependencies
@@ -13,7 +13,12 @@ RUN apk add --no-cache libc6-compat
 COPY package.json ./
 
 # Install dependencies (using npm install for monorepo compatibility)
-RUN npm install --legacy-peer-deps --ignore-scripts
+# BuildKit cache mount (added 2026-05-18): persists npm cache (/root/.npm)
+# across builds. --prefer-offline tells npm to use cached tarballs first
+# (synergy with the cache mount). Keep --legacy-peer-deps + --ignore-scripts
+# (existing monorepo compat behavior, unchanged).
+RUN --mount=type=cache,target=/root/.npm,sharing=locked \
+    npm install --legacy-peer-deps --ignore-scripts --prefer-offline
 
 # ============================================
 # Stage 2: Builder
