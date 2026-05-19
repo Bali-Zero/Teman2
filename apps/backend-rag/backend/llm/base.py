@@ -8,17 +8,16 @@ All LLM providers (Gemini, OpenRouter, DeepSeek, Vertex) implement this interfac
 from abc import ABC, abstractmethod
 from collections.abc import AsyncIterator
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class LLMMessage(BaseModel):
     """Standard message format for LLM conversations."""
 
+    model_config = ConfigDict(frozen=True)
+
     role: str  # "user" | "assistant" | "system"
     content: str
-
-    class Config:
-        frozen = True
 
 
 class LLMResponse(BaseModel):

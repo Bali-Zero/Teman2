@@ -8,7 +8,7 @@ import os
 from typing import Any
 
 from pydantic import Field, field_validator
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -914,13 +914,14 @@ class Settings(BaseSettings):
             return self.intel_pending_path
         return "/tmp/pending_intel"
 
-    class Config:
-        # Load .env file for local development, but allow env vars to override
-        # In production (Fly.io), use environment variables/secrets only
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = False
-        extra = "ignore"  # Ignore extra fields
+    # Load .env file for local development, but allow env vars to override
+    # In production (Fly.io), use environment variables/secrets only
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        extra="ignore",  # Ignore extra fields
+    )
 
 
 # Global settings instance
