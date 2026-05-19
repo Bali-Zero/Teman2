@@ -15,12 +15,12 @@ storage layer.
 
 ## Sandbox tenants
 
-| Layer            | Tenant identifier                      | Notes                                                                                             |
-| ---------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| NotebookLM       | NB-PROBE-SANDBOX-2026-05               | UUID `7e6ae978-136c-4c96-bed5-9fab6f39176f` (created via `mcp__notebooklm-mcp__notebook_create`). |
-| PG `intel_items` | `producer_name LIKE 'probe-sandbox-%'` | Migration 187 adds `is_probe_sandbox BOOLEAN` + CHECK constraint hard barrier.                    |
-| Canva            | Folder `wr2-probe-sandbox` (TBD)       | Separate from production folder `FAHEwkTYduI`. `canva-apply --target-folder` flag.                |
-| Telegram         | `TELEGRAM_PROBE_CHAT_ID` (TBD)         | Probe failures route here — never owner chat (`TELEGRAM_OWNER_CHAT_ID=1125336968`).               |
+| Layer            | Tenant identifier                      | Notes                                                                                                                                                                                                                                                                                                                                                                            |
+| ---------------- | -------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| NotebookLM       | NB-PROBE-SANDBOX-2026-05               | UUID `1e33e107-4064-48cd-b09d-f7f0a52b31ea` (re-created 2026-05-20 Phase F.4 via `nlm notebook create --profile zero`). The original `7e6ae978-...` was on the default nlm profile (`antonellosiano@gmail.com`); the pusher cron hardcodes `--profile zero` (`zero@balizero.com`), so the NB was invisible to the pusher and writes failed with `Could not add url/file source`. |
+| PG `intel_items` | `producer_name LIKE 'probe-sandbox-%'` | Migration 187 adds `is_probe_sandbox BOOLEAN` + CHECK constraint hard barrier.                                                                                                                                                                                                                                                                                                   |
+| Canva            | Folder `wr2-probe-sandbox` (TBD)       | Separate from production folder `FAHEwkTYduI`. `canva-apply --target-folder` flag.                                                                                                                                                                                                                                                                                               |
+| Telegram         | `TELEGRAM_PROBE_CHAT_ID` (TBD)         | Probe failures route here — never owner chat (`TELEGRAM_OWNER_CHAT_ID=1125336968`).                                                                                                                                                                                                                                                                                              |
 
 ## Cleanup invariants
 
@@ -39,14 +39,14 @@ WHERE topic LIKE '[PROBE-SANDBOX-%' AND created_at < now() - interval '24h';
 ```
 
 NotebookLM sandbox NB can be deleted wholesale via
-`mcp__notebooklm-mcp__notebook_delete(notebook_id='7e6ae978-...')` if state
+`mcp__notebooklm-mcp__notebook_delete(notebook_id='1e33e107-...')` if state
 drifts. Canva sandbox folder: trash all designs in folder via Canva UI.
 
 ## Verification (read-only)
 
 ```bash
 # NB sandbox exists + 0 sources (fresh)
-mcp__notebooklm-mcp__notebook_describe(notebook_id='7e6ae978-136c-4c96-bed5-9fab6f39176f')
+mcp__notebooklm-mcp__notebook_describe(notebook_id='1e33e107-4064-48cd-b09d-f7f0a52b31ea')
 # Expected: source_count=0
 ```
 

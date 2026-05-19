@@ -10,7 +10,7 @@
         <key>HOME</key>
         <string>/Users/nuzantara</string>
         <key>PATH</key>
-        <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <string>/opt/homebrew/opt/postgresql@17/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
     </dict>
 
     <key>ProgramArguments</key>
