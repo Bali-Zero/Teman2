@@ -23,10 +23,12 @@ from backend.prompts.business_rules_i18n import all_languages_for
 from backend.prompts.zantara_core import (
     CITATION_RULES,  # already multilingual at the source level
     CLOSING_PHRASES,  # already lang-aware (delegates to model)
+    CREATOR_PERSONA,  # noqa: F401 - re-exported for v2/v3 compatibility
     KNOWLEDGE_GOVERNANCE,  # XML structural, no IT-only phrases
     LANGUAGE_PROTOCOL,  # the protocol itself; reused verbatim
     SYSTEM_INSTRUCTIONS,  # XML structural, no IT-only phrases
-    )
+    TEAM_PERSONA,  # noqa: F401 - re-exported for v2/v3 compatibility
+)
 
 
 # Helper: render a {lang: phrase} dict as a 3-line model instruction so the
