@@ -91,16 +91,49 @@ _PRESS_GENERAL_DOMAINS = (
 # route to nb-intel/press (NB-INTEL-Press notebook). Otherwise route to blog.
 _PRESS_REGULATORY_KEYWORDS = (
     # Immigration
-    "visa", "kitas", "kitap", "imigrasi", "voa", "golden visa",
-    "c1 ", "c2 ", "d2 ", "d12", "e23", "e28",
+    "visa",
+    "kitas",
+    "kitap",
+    "imigrasi",
+    "voa",
+    "golden visa",
+    "c1 ",
+    "c2 ",
+    "d2 ",
+    "d12",
+    "e23",
+    "e28",
     # Tax
-    "pajak", "tax", "pph", "ppn", "spt", "vat", "pmk", "coretax", "npwp",
+    "pajak",
+    "tax",
+    "pph",
+    "ppn",
+    "spt",
+    "vat",
+    "pmk",
+    "coretax",
+    "npwp",
     # Regulation
-    "kbli", "pt pma", "oss", "bkpm", "ruu", "peraturan", "perpres",
-    "permenkumham", "permenkeu", "permenaker", "permenkes",
-    "pp nomor", "uu nomor", "regulasi",
+    "kbli",
+    "pt pma",
+    "oss",
+    "bkpm",
+    "ruu",
+    "peraturan",
+    "perpres",
+    "permenkumham",
+    "permenkeu",
+    "permenaker",
+    "permenkes",
+    "pp nomor",
+    "uu nomor",
+    "regulasi",
     # Compliance / financial
-    "lkpm", "investasi", "investment", "compliance", "regulatory",
+    "lkpm",
+    "investasi",
+    "investment",
+    "compliance",
+    "regulatory",
 )
 
 
@@ -250,8 +283,7 @@ class IntelLakeRouter:
             try:
                 async with self._pool.acquire() as conn:
                     row = await conn.fetchrow(
-                        "SELECT title, canonical_url FROM intel_items "
-                        "WHERE id = $1::uuid",
+                        "SELECT title, canonical_url FROM intel_items WHERE id = $1::uuid",
                         item_id,
                     )
                     if row is not None:
@@ -432,6 +464,7 @@ dry_run=False))"
         "skipped": 0,
     }
     router = IntelLakeRouter(db_pool)
+    last_seen_id: str | None = None
     while True:
         async with db_pool.acquire() as conn:
             rows = await conn.fetch(
@@ -439,13 +472,17 @@ dry_run=False))"
                 SELECT id, source_domain, title, canonical_url
                   FROM intel_items
                  WHERE routing_status = 'needs_review'
+                   AND ($2::uuid IS NULL OR id > $2::uuid)
+                 ORDER BY id
                  LIMIT $1
                 """,
                 batch_size,
+                last_seen_id,
             )
         if not rows:
             break
         counts["selected"] += len(rows)
+        last_seen_id = str(rows[-1]["id"])
         for row in rows:
             decision = router._classify(
                 (row["source_domain"] or "").strip().lower(),
@@ -453,10 +490,10 @@ dry_run=False))"
                 row["canonical_url"],
             )
             new_status = decision["status"]
+            counts[new_status] = counts.get(new_status, 0) + 1
             if new_status == "needs_review":
                 counts["skipped"] += 1
                 continue
-            counts[new_status] = counts.get(new_status, 0) + 1
             counts["reclassified"] += 1
             if dry_run:
                 continue

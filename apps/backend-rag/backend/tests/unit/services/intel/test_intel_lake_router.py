@@ -15,6 +15,7 @@ from backend.services.intel.intel_lake_router import (
     NB_INTEL_TAX,
     IntelLakeRouter,
     _press_content_gate,
+    backfill_needs_review,
 )
 
 
@@ -42,6 +43,53 @@ class _CapturingPool:
 
     def __init__(self) -> None:
         self.conn = _CapturingConn()
+
+    @asynccontextmanager
+    async def acquire(self) -> Any:
+        yield self.conn
+
+
+class _PaginatedBackfillConn:
+    """Fake connection that fails if dry-run pagination re-reads a full batch."""
+
+    def __init__(self) -> None:
+        self.fetch_calls: list[tuple[str, tuple[Any, ...]]] = []
+        self.execute_calls: list[tuple[Any, ...]] = []
+        self._row_1 = {
+            "id": "11111111-1111-1111-1111-111111111111",
+            "source_domain": "money.kompas.com",
+            "title": "New visa rules for investors",
+            "canonical_url": "https://money.kompas.com/visa",
+        }
+        self._row_2 = {
+            "id": "22222222-2222-2222-2222-222222222222",
+            "source_domain": "unknown.example",
+            "title": "Unknown source",
+            "canonical_url": "https://unknown.example/story",
+        }
+
+    async def fetch(self, query: str, *args: Any) -> list[dict[str, Any]]:
+        self.fetch_calls.append((query, args))
+        if len(args) < 2:
+            if len(self.fetch_calls) > 1:
+                raise AssertionError("backfill_needs_review re-read the first dry-run batch")
+            return [self._row_1]
+        last_id = args[1]
+        if last_id is None:
+            return [self._row_1]
+        if str(last_id) == self._row_1["id"]:
+            return [self._row_2]
+        return []
+
+    async def execute(self, query: str, *args: Any) -> None:
+        self.execute_calls.append((query, *args))
+
+
+class _PaginatedBackfillPool:
+    """Fake asyncpg pool for backfill pagination tests."""
+
+    def __init__(self) -> None:
+        self.conn = _PaginatedBackfillConn()
 
     @asynccontextmanager
     async def acquire(self) -> Any:
@@ -367,3 +415,19 @@ class TestRoutingTargetsBindType:
         bound_status = self._update_call(pool)[2]
         assert bound_status == "blog"
         assert isinstance(bound_status, str)
+
+
+class TestBackfillNeedsReview:
+    @pytest.mark.asyncio
+    async def test_dry_run_paginates_full_batches_without_repeating_rows(self) -> None:
+        pool = _PaginatedBackfillPool()
+
+        counts = await backfill_needs_review(pool, batch_size=1, dry_run=True)  # type: ignore[arg-type]
+
+        assert counts["selected"] == 2
+        assert counts["reclassified"] == 1
+        assert counts["nb-intel"] == 1
+        assert counts["needs_review"] == 1
+        assert counts["skipped"] == 1
+        assert pool.conn.execute_calls == []
+        assert len(pool.conn.fetch_calls) == 3

@@ -292,12 +292,12 @@ jobs:
         # breaks CI until a developer manually runs the script.
         run: python3 scripts/detect_secrets_auto_triage.py --apply
 
-      - name: Audit baseline (emit report)
-        # --fail-on-unaudited is not a valid detect-secrets 1.5.0 flag — the
-        # previous invocation was crashing on unknown argument (exit 2), which
-        # masqueraded as an "audit failure". We now just emit the report and
-        # let the gate be driven by the scan step instead.
-        run: detect-secrets audit .secrets.baseline --report
+      - name: Baseline triage summary
+        # `detect-secrets audit --report` prints a very large per-secret report
+        # after the scan mutates the baseline, and can leave CI stuck streaming
+        # non-gating output. Emit a bounded summary instead; the next step is
+        # still the blocking gate for unaudited findings.
+        run: python3 scripts/detect_secrets_auto_triage.py --report
 
       - name: Check for unaudited findings
         # If any finding has no is_secret decision, fail. This reproduces the
