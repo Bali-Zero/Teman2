@@ -6,6 +6,15 @@
 
 ---
 
+## Operational Discipline
+
+If you are an AI developer making repository changes, follow
+`docs/operations/AI_DEV_DISCIPLINE.md`. Before claiming completion, run
+`./scripts/ai_dev_closeout.sh --strict` from a clean working tree and report the
+result. `main` is an integration target, not a scratchpad.
+
+---
+
 ## Identity
 
 **Nuzantara** (brand: Bali Zero, AI persona: Zantara) — Production AI-powered business

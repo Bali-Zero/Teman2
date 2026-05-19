@@ -52,7 +52,8 @@ Claude falls back to conservative mode and pings the user to re-certify.
 1. One-line result message to the user (what changed, where, link if applicable).
 2. If the action wrote to prod state (deploy, DB, external API): verify live, report evidence.
 3. If a new pattern/decision emerged: `mem save decision|discovery|fact ...`.
-4. Never narrate intent without doing. No "I was about to...". Act, then summarize.
+4. Before saying the repo work is finished, run `./scripts/ai_dev_closeout.sh --strict`.
+5. Never narrate intent without doing. No "I was about to...". Act, then summarize.
 
 ---
 
@@ -118,16 +119,16 @@ these rules. They are **part of the autonomy contract**: violating them
 counts as "modifying shared state without confirmation" and is out of
 scope for L2.
 
-| Rule                                                                                                  | Why                                                                                                                  |
-| ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| **No `SQLModel.metadata.create_all()` in prod or CI paths.** Test scratch fixtures only.              | CI bootstraps schema differently from prod — `apps/backend-rag/scripts/ci_bootstrap_schema.py` exists as a workaround, not as a path forward. |
-| **All schema changes are SQL files in `apps/backend-rag/backend/db/migrations_v2/NNN_name.sql`.**     | Single source of truth. Forward DDL above the `-- === ROLLBACK ===` marker, rollback DDL below.                      |
-| **No new `apps/backend-rag/backend/migrations/apply_migration_NNN.py` without explicit human approval.** | Python migrations run *post-deploy* in `fly-deploy.yml` and can leave the new image live but degraded. Convert to SQL or surface to Antonello. |
-| **Do not rename or delete files in `migrations_v2/` once they have been applied to prod.**            | The runner tracks `migration_number` — renaming creates orphans; deleting silently corrupts state.                   |
-| **`PYTHONPATH=. python -m backend.db.migrate apply-all --dry-run` must pass before merge.**           | Catches syntax errors and ordering issues before they reach the deploy job.                                          |
+| Rule                                                                                                     | Why                                                                                                                                            |
+| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **No `SQLModel.metadata.create_all()` in prod or CI paths.** Test scratch fixtures only.                 | CI bootstraps schema differently from prod — `apps/backend-rag/scripts/ci_bootstrap_schema.py` exists as a workaround, not as a path forward.  |
+| **All schema changes are SQL files in `apps/backend-rag/backend/db/migrations_v2/NNN_name.sql`.**        | Single source of truth. Forward DDL above the `-- === ROLLBACK ===` marker, rollback DDL below.                                                |
+| **No new `apps/backend-rag/backend/migrations/apply_migration_NNN.py` without explicit human approval.** | Python migrations run _post-deploy_ in `fly-deploy.yml` and can leave the new image live but degraded. Convert to SQL or surface to Antonello. |
+| **Do not rename or delete files in `migrations_v2/` once they have been applied to prod.**               | The runner tracks `migration_number` — renaming creates orphans; deleting silently corrupts state.                                             |
+| **`PYTHONPATH=. python -m backend.db.migrate apply-all --dry-run` must pass before merge.**              | Catches syntax errors and ordering issues before they reach the deploy job.                                                                    |
 
-**Recovery:** if a migration fails *before* deploy, stop and fix the SQL
-file. If a migration fails *after* deploy (Python apply_migration_NNN
+**Recovery:** if a migration fails _before_ deploy, stop and fix the SQL
+file. If a migration fails _after_ deploy (Python apply_migration_NNN
 post-deploy job), roll back the app via `fly releases` and open an
 incident — never apply a fix manually via `fly ssh` console without a
 follow-up migration.

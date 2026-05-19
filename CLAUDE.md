@@ -106,6 +106,22 @@ PYTHONPATH=. pytest backend/tests/services/rag/test_confidence.py -q --tb=no 2>/
 - Use `Edit`, `Write`, `Bash` without asking permission
 - **NEVER** ask "should I write this?" — just do it
 
+### AI Developer Discipline — applies to every AI dev
+
+Claude Code, Codex, Gemini CLI, DeepSeek, Aider, overnight runners,
+LaunchAgents, and wrappers all share the same close-out contract:
+`docs/operations/AI_DEV_DISCIPLINE.md`.
+
+- Keep `main` as the integration target, not a scratchpad.
+- Before saying work is finished, run `./scripts/ai_dev_closeout.sh --strict`.
+- Strict close-out must have a clean working tree; valid work belongs on a
+  branch/PR, local-only artifacts must be ignored or moved out of the repo.
+- Never clean by reflex with `git reset --hard`, `git checkout -- .`,
+  `git clean -fd`, or `rm -rf <repo-path>` unless the user explicitly named the
+  target and asked for that destructive operation.
+- AI-authored PRs must fill the AI Developer Close-Out section in the PR
+  template.
+
 ### Autonomous Operations — read `AUTONOMOUS_OPS.md` at project root
 
 The user has pre-authorized a specific scope of autonomous action (commits,

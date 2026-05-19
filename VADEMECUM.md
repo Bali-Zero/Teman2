@@ -15,6 +15,10 @@ Se un punto non si applica, scrivi _perché_ — non ignorarlo.
 **Regola d'oro:** se al punto 3 di qualsiasi sezione non sai rispondere,
 fermati e rileggilo. Non andare avanti.
 
+**Close-out universale:** ogni AI developer deve chiudere il lavoro seguendo
+`docs/operations/AI_DEV_DISCIPLINE.md` e, prima di dichiarare finito, deve
+eseguire `./scripts/ai_dev_closeout.sh --strict` da un working tree pulito.
+
 ---
 
 ## 1. Nuova automazione / script standalone

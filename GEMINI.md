@@ -29,6 +29,19 @@
 - `git push --force` su main: **PROIBITO ASSOLUTO**
 - `--no-verify`: solo se il hook è rotto, mai per bypassare test che falliscono
 
+### Disciplina comune per AI developer
+
+Ogni AI developer che tocca questo repo segue
+`docs/operations/AI_DEV_DISCIPLINE.md`: Claude Code, Codex, Gemini CLI,
+DeepSeek, Aider, runner notturni, LaunchAgents e wrapper.
+
+- `main` è target di integrazione, non scratchpad.
+- Prima di dichiarare finito: `./scripts/ai_dev_closeout.sh --strict`.
+- In strict mode il working tree deve essere clean; lavoro valido va su branch/PR.
+- Non pulire mai per riflesso con `git reset --hard`, `git checkout -- .`,
+  `git clean -fd` o `rm -rf <repo-path>` senza richiesta esplicita dell'utente.
+- Le PR scritte da AI compilano la sezione AI Developer Close-Out del template.
+
 ### Cosa NON fare MAI
 
 - Rimuovere import `Any` da `typing` senza verificare ogni singolo uso nel file

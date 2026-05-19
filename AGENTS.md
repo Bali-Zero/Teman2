@@ -98,6 +98,22 @@ Both machines work on `main` branch only. Sync is **automatic** via husky post-c
 - Production deployments (use risk/reversibility judgment)
 - Destructive operations (rm, git reset --hard, etc.)
 
+### AI Developer Discipline
+
+Every AI developer that touches this repo must follow
+`docs/operations/AI_DEV_DISCIPLINE.md`: Claude Code, Codex, Gemini CLI,
+DeepSeek, Aider, overnight runners, LaunchAgents, and wrappers.
+
+- Keep `main` as the integration target, not a scratchpad.
+- Before saying work is finished, run `./scripts/ai_dev_closeout.sh --strict`.
+- Strict close-out must have a clean working tree; valid work belongs on a
+  branch/PR, local-only artifacts must be ignored or moved out of the repo.
+- Never clean by reflex with `git reset --hard`, `git checkout -- .`,
+  `git clean -fd`, or `rm -rf <repo-path>` unless the user explicitly named the
+  target and asked for that destructive operation.
+- AI-authored PRs must fill the AI Developer Close-Out section in the PR
+  template.
+
 ## 4. Golden Rules (ENFORCE STRICTLY)
 
 1. **Virtualenv Mandatory** - Never use system Python. Always activate venv first.
