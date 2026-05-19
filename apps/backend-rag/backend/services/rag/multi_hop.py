@@ -45,25 +45,76 @@ _CONJUNCTION_RE = re.compile("|".join(_CONJUNCTION_PATTERNS), re.IGNORECASE)
 
 # Domain keyword sets (shared with query_planner.py)
 _DOMAIN_KEYWORDS: dict[str, frozenset[str]] = {
-    "visa": frozenset({
-        "kitas", "kitap", "vitas", "visa", "work permit", "rptka", "imta",
-        "immigration", "imigrasi", "izin tinggal", "stay permit", "tka",
-    }),
-    "tax": frozenset({
-        "tax", "pph", "ppn", "npwp", "pajak", "tasse", "fiscal", "vat",
-        "spt", "withholding", "pbb",
-    }),
-    "property": frozenset({
-        "property", "villa", "hak pakai", "hgb", "hak milik", "rental",
-        "real estate", "land", "tanah", "zoning", "bphtb",
-    }),
-    "company": frozenset({
-        "pt pma", "pt lokal", "cv", "company", "azienda", "firma",
-        "nib", "oss", "izin usaha", "business", "restaurant", "restoran",
-    }),
-    "kbli": frozenset({
-        "kbli", "business classification", "kode usaha", "klasifikasi",
-    }),
+    "visa": frozenset(
+        {
+            "kitas",
+            "kitap",
+            "vitas",
+            "visa",
+            "work permit",
+            "rptka",
+            "imta",
+            "immigration",
+            "imigrasi",
+            "izin tinggal",
+            "stay permit",
+            "tka",
+        }
+    ),
+    "tax": frozenset(
+        {
+            "tax",
+            "pph",
+            "ppn",
+            "npwp",
+            "pajak",
+            "tasse",
+            "fiscal",
+            "vat",
+            "spt",
+            "withholding",
+            "pbb",
+        }
+    ),
+    "property": frozenset(
+        {
+            "property",
+            "villa",
+            "hak pakai",
+            "hgb",
+            "hak milik",
+            "rental",
+            "real estate",
+            "land",
+            "tanah",
+            "zoning",
+            "bphtb",
+        }
+    ),
+    "company": frozenset(
+        {
+            "pt pma",
+            "pt lokal",
+            "cv",
+            "company",
+            "azienda",
+            "firma",
+            "nib",
+            "oss",
+            "izin usaha",
+            "business",
+            "restaurant",
+            "restoran",
+        }
+    ),
+    "kbli": frozenset(
+        {
+            "kbli",
+            "business classification",
+            "kode usaha",
+            "klasifikasi",
+        }
+    ),
 }
 
 
@@ -201,11 +252,13 @@ class MultiHopEngine:
         sub_queries: list[SubQuery] = []
         for frag in fragments:
             domain = _classify_domain(frag)
-            sub_queries.append(SubQuery(
-                text=frag,
-                domain=domain,
-                collections=_get_collections_for_domain(domain),
-            ))
+            sub_queries.append(
+                SubQuery(
+                    text=frag,
+                    domain=domain,
+                    collections=_get_collections_for_domain(domain),
+                )
+            )
 
         # Deduplicate: merge fragments with same domain
         merged: dict[str, SubQuery] = {}
@@ -254,10 +307,7 @@ class MultiHopEngine:
             )
 
         # Execute hops in parallel
-        tasks = [
-            self._execute_single_hop(sq, kg_retrieval, db_pool)
-            for sq in plan.sub_queries
-        ]
+        tasks = [self._execute_single_hop(sq, kg_retrieval, db_pool) for sq in plan.sub_queries]
         hop_results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Filter out exceptions
@@ -281,9 +331,7 @@ class MultiHopEngine:
                     entity_details[eid] = ent
 
         bridge_entities = [
-            entity_details[eid]
-            for eid, count in entity_counts.items()
-            if count >= 2
+            entity_details[eid] for eid, count in entity_counts.items() if count >= 2
         ]
 
         total_ents = sum(len(h.kg_entities) for h in valid_results)

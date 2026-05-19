@@ -42,7 +42,11 @@ class ResponseHandler:
         return classify_query_for_rag(message)
 
     def sanitize_response(
-        self, response: str, query_type: str, apply_santai: bool = True, add_contact: bool = True,
+        self,
+        response: str,
+        query_type: str,
+        apply_santai: bool = True,
+        add_contact: bool = True,
     ) -> str:
         """
         Sanitize and enforce quality standards on response
@@ -61,7 +65,10 @@ class ResponseHandler:
 
         try:
             sanitized = process_zantara_response(
-                response, query_type, apply_santai=apply_santai, add_contact=add_contact,
+                response,
+                query_type,
+                apply_santai=apply_santai,
+                add_contact=add_contact,
             )
 
             logger.info("✨ [ResponseHandler] Sanitized response (type: %s)", query_type)

@@ -19,7 +19,6 @@ DEFAULT_BLOCK_SECONDS = 300
 
 
 class BruteForceDetector:
-
     def __init__(
         self,
         redis_client: Any | None = None,
@@ -64,7 +63,9 @@ class BruteForceDetector:
                     self._block_seconds,
                     f"brute_force:{count}_attempts",
                 )
-                logger.warning("S03: Brute force block ip=%s email=%s attempts=%s", ip, email, count)
+                logger.warning(
+                    "S03: Brute force block ip=%s email=%s attempts=%s", ip, email, count
+                )
         except (RedisError, OSError) as e:
             logger.warning("S03: Brute force record failed: %s", e)
         except Exception:

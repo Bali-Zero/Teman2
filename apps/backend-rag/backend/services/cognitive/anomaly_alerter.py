@@ -70,43 +70,57 @@ class AnomalyAlerter:
     ) -> AnomalyAlertSendResult:
         if payload.get("event_type") != "alert_INSERT":
             return AnomalyAlertSendResult(
-                alert_id=None, severity=None, sent=False,
-                skipped=True, skip_reason="not_alert_insert",
+                alert_id=None,
+                severity=None,
+                sent=False,
+                skipped=True,
+                skip_reason="not_alert_insert",
             )
 
         alert_id_raw = payload.get("alert_id")
         if not alert_id_raw:
             return AnomalyAlertSendResult(
-                alert_id=None, severity=None, sent=False,
-                skipped=True, skip_reason="missing_alert_id",
+                alert_id=None,
+                severity=None,
+                sent=False,
+                skipped=True,
+                skip_reason="missing_alert_id",
             )
         try:
             alert_id = UUID(str(alert_id_raw))
         except (TypeError, ValueError):
             return AnomalyAlertSendResult(
-                alert_id=None, severity=None, sent=False,
-                skipped=True, skip_reason="bad_alert_id",
+                alert_id=None,
+                severity=None,
+                sent=False,
+                skipped=True,
+                skip_reason="bad_alert_id",
             )
 
         alert = await self._load_alert(alert_id)
         if alert is None:
             return AnomalyAlertSendResult(
-                alert_id=alert_id, severity=None, sent=False,
-                skipped=True, skip_reason="alert_not_found",
+                alert_id=alert_id,
+                severity=None,
+                sent=False,
+                skipped=True,
+                skip_reason="alert_not_found",
             )
         return await self._dispatch(alert)
 
     # ── Manual drive (used by tests / backfill) ────────────────
 
     async def send_for_alert(
-        self, alert: ComplianceAlert,
+        self,
+        alert: ComplianceAlert,
     ) -> AnomalyAlertSendResult:
         return await self._dispatch(alert)
 
     # ── Internals ──────────────────────────────────────────────
 
     async def _load_alert(
-        self, alert_id: UUID,
+        self,
+        alert_id: UUID,
     ) -> ComplianceAlert | None:
         rows = await self.repo.fetch_safe(
             """
@@ -121,7 +135,8 @@ class AnomalyAlerter:
         return _row_to_alert(rows[0])
 
     async def _dispatch(
-        self, alert: ComplianceAlert,
+        self,
+        alert: ComplianceAlert,
     ) -> AnomalyAlertSendResult:
         if alert.notified_zero:
             return AnomalyAlertSendResult(
@@ -158,7 +173,9 @@ class AnomalyAlerter:
         except Exception as exc:  # noqa: BLE001
             # Telegram already sent. Log, but don't flip the flag.
             self.logger.warning(
-                "mark_alert_notified failed alert=%s: %s", alert.id, exc,
+                "mark_alert_notified failed alert=%s: %s",
+                alert.id,
+                exc,
             )
             return AnomalyAlertSendResult(
                 alert_id=alert.id,
@@ -178,9 +195,7 @@ class AnomalyAlerter:
 
 def _render(alert: ComplianceAlert) -> str:
     icon = ALERT_ICONS.get(alert.severity, "·")
-    detected = alert.detected_at.astimezone(timezone.utc).strftime(
-        "%Y-%m-%d %H:%M"
-    )
+    detected = alert.detected_at.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M")
     lines = [
         f"{icon} <b>Anomalia compliance — {alert.severity.value}</b>",
         f"<i>Tipo:</i> {_escape_html(alert.contradiction_type)}",
@@ -190,9 +205,7 @@ def _render(alert: ComplianceAlert) -> str:
     ]
     if alert.suggested_action:
         lines.append("")
-        lines.append(
-            f"<i>Azione suggerita:</i> {_escape_html(alert.suggested_action[:400])}"
-        )
+        lines.append(f"<i>Azione suggerita:</i> {_escape_html(alert.suggested_action[:400])}")
     if alert.affected_client_query:
         lines.append(
             f"<i>Segmento impattato:</i> {_escape_html(alert.affected_client_query[:200])}"
@@ -203,12 +216,7 @@ def _render(alert: ComplianceAlert) -> str:
 def _escape_html(value: str) -> str:
     if value is None:
         return ""
-    return (
-        str(value)
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+    return str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 def _severity_rank(s: AlertSeverity) -> int:

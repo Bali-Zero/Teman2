@@ -13,6 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel, Field
 
 from backend.app.dependencies import get_current_user
+
 OptionalUser = dict | None  # User dict from get_current_user, or None if unauthenticated
 from backend.services.pricing.pricing_service import get_pricing_service
 
@@ -50,7 +51,9 @@ async def search_pricing(
 
 
 class ScenarioPricingRequest(BaseModel):
-    scenario: str = Field(..., description="Business scenario, e.g. 'PT PMA restaurant Seminyak 2 directors'")
+    scenario: str = Field(
+        ..., description="Business scenario, e.g. 'PT PMA restaurant Seminyak 2 directors'"
+    )
     user_level: int = Field(3, ge=1, le=5, description="User access level")
 
 

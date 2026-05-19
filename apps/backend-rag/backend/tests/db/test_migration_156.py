@@ -25,6 +25,7 @@ Mirrors test_migration_154/155 contract-test pattern (text-based; live
 Postgres behavior verified separately at /tmp/sprint5-brainstorm/test_mig156.py
 which is run on Pro against the local Fly proxy).
 """
+
 from pathlib import Path
 
 MIGRATION_FILE = (
@@ -58,7 +59,10 @@ def test_migration_drops_old_signature_for_idempotency():
     """R4 fix: CREATE OR REPLACE doesn't replace functions with different
     parameter lists. We need to DROP the old 5-arg signature explicitly."""
     sql = _forward(MIGRATION_FILE.read_text())
-    assert "DROP FUNCTION IF EXISTS mata_garuda.tag_intel_finding(BIGINT, TEXT, TEXT, TEXT, BOOLEAN)" in sql
+    assert (
+        "DROP FUNCTION IF EXISTS mata_garuda.tag_intel_finding(BIGINT, TEXT, TEXT, TEXT, BOOLEAN)"
+        in sql
+    )
 
 
 def test_migration_creates_function_with_uuid_signature():
@@ -230,4 +234,7 @@ def test_migration_tlp_amber():
 def test_rollback_drops_function():
     sql = MIGRATION_FILE.read_text()
     rollback = sql.split("-- === ROLLBACK ===")[1]
-    assert "DROP FUNCTION IF EXISTS mata_garuda.tag_intel_finding(UUID, TEXT, TEXT, TEXT, BOOLEAN, SMALLINT)" in rollback
+    assert (
+        "DROP FUNCTION IF EXISTS mata_garuda.tag_intel_finding(UUID, TEXT, TEXT, TEXT, BOOLEAN, SMALLINT)"
+        in rollback
+    )

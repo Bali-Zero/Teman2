@@ -328,17 +328,20 @@ class TestDeduplication:
 
     def test_is_duplicate_first_call(self) -> None:
         from backend.services.events.handlers import _is_duplicate, _recent_events
+
         _recent_events.clear()
         assert _is_duplicate("test:key:1") is False
 
     def test_is_duplicate_second_call(self) -> None:
         from backend.services.events.handlers import _is_duplicate, _recent_events
+
         _recent_events.clear()
         _is_duplicate("test:key:2")
         assert _is_duplicate("test:key:2") is True
 
     def test_different_keys_not_duplicate(self) -> None:
         from backend.services.events.handlers import _is_duplicate, _recent_events
+
         _recent_events.clear()
         _is_duplicate("test:key:a")
         assert _is_duplicate("test:key:b") is False
@@ -353,6 +356,7 @@ class TestChainContext:
             _store_context,
             get_chain_context,
         )
+
         _chain_context.clear()
 
         _store_context("client.changed", 42, {"email": "x@y.com"})
@@ -368,6 +372,7 @@ class TestChainContext:
             _chain_context,
             _store_context,
         )
+
         _chain_context.clear()
 
         # Fill beyond max
@@ -381,6 +386,7 @@ class TestChainContext:
             _chain_context,
             get_chain_context,
         )
+
         _chain_context.clear()
         _chain_context["test:1"] = {"data": True}
 
@@ -399,6 +405,7 @@ class TestHandlerRegistration:
         mock_pool = MagicMock()
 
         from backend.services.events.handlers import _recent_events, register_handlers
+
         _recent_events.clear()
 
         register_handlers(bus, mock_pool)
@@ -499,20 +506,29 @@ class TestHandlerRegistration:
         mock_pool = MagicMock()
 
         from backend.services.events.handlers import _recent_events, register_handlers
+
         _recent_events.clear()
 
         register_handlers(bus, mock_pool)
 
         # Mock the background task functions
-        with patch("backend.services.events.handlers._create_drive_folder", new_callable=AsyncMock), \
-             patch("backend.services.events.handlers._log_interaction", new_callable=AsyncMock), \
-             patch("backend.services.events.handlers.invalidate_cache", create=True, new_callable=AsyncMock):
-
-            trace = await bus.emit("client.changed", {
-                "client_id": 99,
-                "email": "new@client.com",
-                "operation": "INSERT",
-            })
+        with (
+            patch("backend.services.events.handlers._create_drive_folder", new_callable=AsyncMock),
+            patch("backend.services.events.handlers._log_interaction", new_callable=AsyncMock),
+            patch(
+                "backend.services.events.handlers.invalidate_cache",
+                create=True,
+                new_callable=AsyncMock,
+            ),
+        ):
+            trace = await bus.emit(
+                "client.changed",
+                {
+                    "client_id": 99,
+                    "email": "new@client.com",
+                    "operation": "INSERT",
+                },
+            )
 
             # Allow background tasks to start
             await asyncio.sleep(0.05)
@@ -527,19 +543,31 @@ class TestHandlerRegistration:
         mock_pool = MagicMock()
 
         from backend.services.events.handlers import _recent_events, register_handlers
+
         _recent_events.clear()
 
         register_handlers(bus, mock_pool)
 
-        with patch("backend.services.events.handlers._check_client_expiry_on_completion", new_callable=AsyncMock), \
-             patch("backend.services.events.handlers.invalidate_cache", create=True, new_callable=AsyncMock):
-
-            trace = await bus.emit("practice.status_changed", {
-                "practice_id": 55,
-                "client_id": 10,
-                "old_status": "approved",
-                "new_status": "completed",
-            })
+        with (
+            patch(
+                "backend.services.events.handlers._check_client_expiry_on_completion",
+                new_callable=AsyncMock,
+            ),
+            patch(
+                "backend.services.events.handlers.invalidate_cache",
+                create=True,
+                new_callable=AsyncMock,
+            ),
+        ):
+            trace = await bus.emit(
+                "practice.status_changed",
+                {
+                    "practice_id": 55,
+                    "client_id": 10,
+                    "old_status": "approved",
+                    "new_status": "completed",
+                },
+            )
 
             await asyncio.sleep(0.05)
 
@@ -556,20 +584,25 @@ class TestHandlerRegistration:
         mock_pool = MagicMock()
 
         from backend.services.events.handlers import _recent_events, register_handlers
+
         _recent_events.clear()
 
         register_handlers(bus, mock_pool)
 
-        with patch("backend.services.events.handlers._send_admin_telegram", new_callable=AsyncMock), \
-             patch("backend.services.events.handlers._log_interaction", new_callable=AsyncMock):
-
-            await bus.emit("compliance.alert", {
-                "alert_id": "a1",
-                "client_id": 5,
-                "severity": "critical",
-                "alert_type": "kitas_expiry",
-                "message": "KITAS expires in 7 days",
-            })
+        with (
+            patch("backend.services.events.handlers._send_admin_telegram", new_callable=AsyncMock),
+            patch("backend.services.events.handlers._log_interaction", new_callable=AsyncMock),
+        ):
+            await bus.emit(
+                "compliance.alert",
+                {
+                    "alert_id": "a1",
+                    "client_id": 5,
+                    "severity": "critical",
+                    "alert_type": "kitas_expiry",
+                    "message": "KITAS expires in 7 days",
+                },
+            )
 
             await asyncio.sleep(0.05)
             # Telegram task was created (verify no errors in trace)

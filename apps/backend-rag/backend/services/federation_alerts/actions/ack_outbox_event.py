@@ -10,6 +10,7 @@ Idempotency: events_outbox.id is UNIQUE; the SQL has a guard
 
 dry_run=True → returns whether the row would be acked, without writing.
 """
+
 from __future__ import annotations
 
 import logging
@@ -91,9 +92,11 @@ async def ack_outbox_event_action(
                 "age_seconds": (
                     None
                     if row["created_at"] is None
-                    else (row["created_at"].timestamp() if hasattr(
-                        row["created_at"], "timestamp"
-                    ) else None)
+                    else (
+                        row["created_at"].timestamp()
+                        if hasattr(row["created_at"], "timestamp")
+                        else None
+                    )
                 ),
             },
         )

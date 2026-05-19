@@ -151,7 +151,13 @@ class TestCalculateInvestmentScore:
     def test_hard_block_kkop_low_tb(self) -> None:
         from backend.app.routers.dashboard import calculate_investment_score
 
-        zone = {"code": "R-3", "overlays": {"KKOP_1": True}, "source": "batara_live", "klb": "1.0", "tb": "3.5 m"}
+        zone = {
+            "code": "R-3",
+            "overlays": {"KKOP_1": True},
+            "source": "batara_live",
+            "klb": "1.0",
+            "tb": "3.5 m",
+        }
         result = calculate_investment_score(zone, "APPROVED", "55111", None, None)
         assert result["verdict"] == "RED"
 
@@ -185,7 +191,13 @@ class TestCalculateInvestmentScore:
     def test_overlay_penalties(self) -> None:
         from backend.app.routers.dashboard import calculate_investment_score
 
-        zone = {"code": "W-2", "overlays": {"KKOP_1": True, "KRB_03": True}, "source": "batara_live", "klb": "2.0", "tb": "15 m"}
+        zone = {
+            "code": "W-2",
+            "overlays": {"KKOP_1": True, "KRB_03": True},
+            "source": "batara_live",
+            "klb": "2.0",
+            "tb": "15 m",
+        }
         roi = {"golden_strategy": {"roi": 15, "bey": 3}}
         geo = {"flood_risk": "safe", "densita_1km": 50, "walk_score": 80}
         result = calculate_investment_score(zone, "APPROVED", "55111", roi, geo)
@@ -211,7 +223,9 @@ class TestCalculateInvestmentScore:
         from backend.app.routers.dashboard import calculate_investment_score
 
         zone = {"code": "K-1", "overlays": {}, "source": "batara_live", "klb": "2.0"}
-        result = calculate_investment_score(zone, "APPROVED", "62011", None, None, oss_risk="Tinggi")
+        result = calculate_investment_score(
+            zone, "APPROVED", "62011", None, None, oss_risk="Tinggi"
+        )
         reg = result["breakdown"]["regulatory"]
         assert reg["score"] <= 7
 
@@ -219,7 +233,9 @@ class TestCalculateInvestmentScore:
         from backend.app.routers.dashboard import calculate_investment_score
 
         zone = {"code": "K-1", "overlays": {}, "source": "batara_live", "klb": "2.0"}
-        result = calculate_investment_score(zone, "APPROVED", "62011", None, None, oss_risk="Menengah Tinggi")
+        result = calculate_investment_score(
+            zone, "APPROVED", "62011", None, None, oss_risk="Menengah Tinggi"
+        )
         reg = result["breakdown"]["regulatory"]
         assert reg["score"] <= 8
 
@@ -337,7 +353,10 @@ class TestGistaruZoneLookup:
 
         zone_data = {"code": "K-1", "name": "Komersial", "source": "gistaru_rdtr"}
 
-        with patch("backend.app.routers.dashboard._gistaru_rdtr_lookup", new=AsyncMock(return_value=zone_data)):
+        with patch(
+            "backend.app.routers.dashboard._gistaru_rdtr_lookup",
+            new=AsyncMock(return_value=zone_data),
+        ):
             req = GistaruLookupRequest(lat=-8.65, lon=115.2)
             result = await gistaru_zone_lookup(req)
         assert result["found"] is True
@@ -347,7 +366,9 @@ class TestGistaruZoneLookup:
     async def test_not_found(self) -> None:
         from backend.app.routers.dashboard import GistaruLookupRequest, gistaru_zone_lookup
 
-        with patch("backend.app.routers.dashboard._gistaru_rdtr_lookup", new=AsyncMock(return_value=None)):
+        with patch(
+            "backend.app.routers.dashboard._gistaru_rdtr_lookup", new=AsyncMock(return_value=None)
+        ):
             req = GistaruLookupRequest(lat=-8.65, lon=115.2)
             result = await gistaru_zone_lookup(req)
         assert result["found"] is False
@@ -364,9 +385,18 @@ class TestClientsGeo:
         from backend.app.routers.dashboard import get_clients_geo
 
         conn = AsyncMock()
-        conn.fetch = AsyncMock(return_value=[
-            {"id": 1, "full_name": "Client A", "email": "a@b.com", "phone": "123", "status": "active", "address": "Bali"},
-        ])
+        conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "id": 1,
+                    "full_name": "Client A",
+                    "email": "a@b.com",
+                    "phone": "123",
+                    "status": "active",
+                    "address": "Bali",
+                },
+            ]
+        )
         pool = MagicMock()
         acm = MagicMock()
         acm.__aenter__ = AsyncMock(return_value=conn)
@@ -557,10 +587,24 @@ class TestAnalyzeInvestment:
         batara_response.json.return_value = {
             "data": {
                 "territorials": {
-                    "geom": [{
-                        "zone": {"code": "K-1", "name": "Komersial", "zone_intensity_requirements": [{"maximum_kdb": "60", "maximum_klb": "2.0", "mininum_kdh": "30", "old_building_height": "15m", "old_minimum_gsb": "5m"}]},
-                        "location": {"name": "Kuta"},
-                    }],
+                    "geom": [
+                        {
+                            "zone": {
+                                "code": "K-1",
+                                "name": "Komersial",
+                                "zone_intensity_requirements": [
+                                    {
+                                        "maximum_kdb": "60",
+                                        "maximum_klb": "2.0",
+                                        "mininum_kdh": "30",
+                                        "old_building_height": "15m",
+                                        "old_minimum_gsb": "5m",
+                                    }
+                                ],
+                            },
+                            "location": {"name": "Kuta"},
+                        }
+                    ],
                 },
             },
         }
@@ -591,7 +635,10 @@ class TestAnalyzeInvestment:
 
         with (
             patch("backend.app.routers.dashboard.httpx.AsyncClient", return_value=mock_client),
-            patch("backend.app.routers.dashboard._gistaru_rdtr_lookup", new=AsyncMock(return_value=gistaru_zone)),
+            patch(
+                "backend.app.routers.dashboard._gistaru_rdtr_lookup",
+                new=AsyncMock(return_value=gistaru_zone),
+            ),
         ):
             req = AnalyzeInvestmentRequest(lat=-8.65, lon=115.2)
             result = await analyze_investment(req)
@@ -608,11 +655,19 @@ class TestAnalyzeInvestment:
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
         mock_eye = MagicMock()
-        mock_eye.get_decision.return_value = {"audit": {"state": "APPROVED", "reason_code": "OK", "oss_risk": "Rendah"}, "pma_logic": {"max_foreign_ownership": 100}, "kbli_2025": "55203", "title": "Hotel"}
+        mock_eye.get_decision.return_value = {
+            "audit": {"state": "APPROVED", "reason_code": "OK", "oss_risk": "Rendah"},
+            "pma_logic": {"max_foreign_ownership": 100},
+            "kbli_2025": "55203",
+            "title": "Hotel",
+        }
 
         with (
             patch("backend.app.routers.dashboard.httpx.AsyncClient", return_value=mock_client),
-            patch("backend.app.routers.dashboard._gistaru_rdtr_lookup", new=AsyncMock(return_value=None)),
+            patch(
+                "backend.app.routers.dashboard._gistaru_rdtr_lookup",
+                new=AsyncMock(return_value=None),
+            ),
             patch("backend.app.routers.dashboard._get_kbli_eye", return_value=mock_eye),
         ):
             req = AnalyzeInvestmentRequest(lat=-8.65, lon=115.2, kbli_code="55203")
@@ -632,10 +687,14 @@ class TestAnalyzeInvestment:
 
         with (
             patch("backend.app.routers.dashboard.httpx.AsyncClient", return_value=mock_client),
-            patch("backend.app.routers.dashboard._gistaru_rdtr_lookup", new=AsyncMock(return_value=None)),
+            patch(
+                "backend.app.routers.dashboard._gistaru_rdtr_lookup",
+                new=AsyncMock(return_value=None),
+            ),
         ):
             req = AnalyzeInvestmentRequest(
-                lat=-8.65, lon=115.2,
+                lat=-8.65,
+                lon=115.2,
                 geo_data={"flood_risk": "safe", "densita_1km": 50, "walk_score": 70},
             )
             result = await analyze_investment(req)
@@ -653,7 +712,10 @@ class TestAnalyzeInvestment:
 
         with (
             patch("backend.app.routers.dashboard.httpx.AsyncClient", return_value=mock_client),
-            patch("backend.app.routers.dashboard._gistaru_rdtr_lookup", new=AsyncMock(return_value=None)),
+            patch(
+                "backend.app.routers.dashboard._gistaru_rdtr_lookup",
+                new=AsyncMock(return_value=None),
+            ),
         ):
             req = AnalyzeInvestmentRequest(lat=-8.65, lon=115.2)
             result = await analyze_investment(req)

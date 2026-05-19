@@ -5,7 +5,6 @@ Tests message parsing, response formatting, and edge cases
 for WhatsApp Business API webhooks.
 """
 
-
 import pytest
 
 from backend.channels.base import ChannelMessage
@@ -58,9 +57,7 @@ async def test_receive_message_text(whatsapp_adapter):
                                     "text": {"body": "How much does a KITAS cost?"},
                                 }
                             ],
-                            "contacts": [
-                                {"profile": {"name": "John Doe"}}
-                            ],
+                            "contacts": [{"profile": {"name": "John Doe"}}],
                         }
                     }
                 ]
@@ -85,17 +82,7 @@ async def test_receive_message_no_messages(whatsapp_adapter):
     webhook = {
         "object": "whatsapp_business_account",
         "entry": [
-            {
-                "changes": [
-                    {
-                        "value": {
-                            "statuses": [
-                                {"id": "wamid.abc", "status": "delivered"}
-                            ]
-                        }
-                    }
-                ]
-            }
+            {"changes": [{"value": {"statuses": [{"id": "wamid.abc", "status": "delivered"}]}}]}
         ],
     }
 

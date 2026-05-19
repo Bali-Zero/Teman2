@@ -42,9 +42,7 @@ class TestGetFallbackCollections:
         assert len(result) == 4  # primary + 3 fallbacks
 
     def test_max_fallbacks_parameter(self, manager):
-        result = manager.get_fallback_collections(
-            "visa_oracle", confidence=0.0, max_fallbacks=1
-        )
+        result = manager.get_fallback_collections("visa_oracle", confidence=0.0, max_fallbacks=1)
         # Low confidence but max_fallbacks=1 means min(1, 3) = 1 fallback
         assert len(result) == 2  # primary + 1
 

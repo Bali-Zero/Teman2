@@ -104,7 +104,10 @@ class GeminiJakselService:
         return self._openrouter_client
 
     def _convert_to_openai_messages(
-        self, message: str, history: list[dict] | None, context: str,
+        self,
+        message: str,
+        history: list[dict] | None,
+        context: str,
     ) -> list[dict]:
         """Convert Gemini-style inputs to OpenAI message format for OpenRouter"""
         messages = []
@@ -136,7 +139,10 @@ class GeminiJakselService:
         return messages
 
     async def _fallback_to_openrouter(
-        self, message: str, history: list[dict] | None, context: str,
+        self,
+        message: str,
+        history: list[dict] | None,
+        context: str,
     ) -> str:
         """Fallback to OpenRouter when Gemini fails"""
         client = self._get_openrouter_client()
@@ -162,7 +168,10 @@ class GeminiJakselService:
             raise
 
     async def _fallback_to_openrouter_stream(
-        self, message: str, history: list[dict] | None, context: str,
+        self,
+        message: str,
+        history: list[dict] | None,
+        context: str,
     ) -> AsyncGenerator[str, None]:
         """Streaming fallback to OpenRouter"""
         client = self._get_openrouter_client()
@@ -188,7 +197,10 @@ class GeminiJakselService:
             raise
 
     async def generate_response_stream(
-        self, message: str, history: list[dict] | None = None, context: str = "",
+        self,
+        message: str,
+        history: list[dict] | None = None,
+        context: str = "",
     ) -> AsyncGenerator[str, None]:
         """
         Generate streaming response in Jaksel style with automatic fallback.
@@ -222,7 +234,9 @@ class GeminiJakselService:
                             )
 
                     if context and context.strip():
-                        final_message = f"CONTEXT (Use this data):\n{context}\n\nUSER QUERY:\n{message}"
+                        final_message = (
+                            f"CONTEXT (Use this data):\n{context}\n\nUSER QUERY:\n{message}"
+                        )
                     else:
                         final_message = message
 
@@ -266,7 +280,10 @@ class GeminiJakselService:
             yield chunk
 
     async def generate_response(
-        self, message: str, history: list[dict] | None = None, context: str = "",
+        self,
+        message: str,
+        history: list[dict] | None = None,
+        context: str = "",
     ) -> str:
         """
         Generate full response (non-streaming) with automatic fallback.
@@ -302,7 +319,10 @@ class GeminiService:
         self._service = GeminiJakselService()
 
     async def generate_response(
-        self, prompt: str, context: list[str] | None = None, **kwargs,
+        self,
+        prompt: str,
+        context: list[str] | None = None,
+        **kwargs,
     ) -> str:
         """
         Generate response from Gemini.

@@ -23,6 +23,7 @@ Pre-flight note (2026-04-20, outcome c — updated CATA-1):
       status TEXT, payment_status TEXT,
       total_invoiced_idr NUMERIC(16,2), completed_at TIMESTAMPTZ, client_id.
 """
+
 from __future__ import annotations
 
 import logging
@@ -96,7 +97,9 @@ class CommissionEngine:
         if proc["status"] != "completed" or proc["payment_status"] != "paid":
             logger.debug(
                 "accrue_from_practice: practice %s not eligible (status=%s, payment_status=%s)",
-                practice_id, proc["status"], proc["payment_status"],
+                practice_id,
+                proc["status"],
+                proc["payment_status"],
             )
             return None
 
@@ -111,16 +114,15 @@ class CommissionEngine:
             logger.warning(
                 "accrue_from_practice: partner_id mismatch "
                 "(referral.partner_id=%s, caller said %s) — skipping",
-                referral.partner_id, partner_id,
+                referral.partner_id,
+                partner_id,
             )
             return None
 
         # Step 3: resolve partner for snapshot values.
         partner = await self.repo.get_partner(referral.partner_id)
         if partner is None:
-            logger.warning(
-                "accrue_from_practice: partner %s not found", referral.partner_id
-            )
+            logger.warning("accrue_from_practice: partner %s not found", referral.partner_id)
             return None
 
         # Step 4: compute amounts (all Decimal, no float).
@@ -174,14 +176,15 @@ class CommissionEngine:
                 idempotency_key=key,
             )
         except asyncpg.UniqueViolationError:
-            logger.info(
-                "accrue_from_practice: idempotency hit for key=%s — no-op", key
-            )
+            logger.info("accrue_from_practice: idempotency hit for key=%s — no-op", key)
             return None
 
         logger.info(
             "Accrued commission %s for partner %s (gross=%s, net=%s IDR)",
-            cid, partner.id, gross, net,
+            cid,
+            partner.id,
+            gross,
+            net,
         )
         return cid
 
@@ -217,8 +220,7 @@ class CommissionEngine:
             raise ValueError(f"Commission not found: {commission_id}")
         if c.status != "accrued":
             raise ValueError(
-                f"cannot approve commission with status {c.status!r} "
-                f"(must be 'accrued')"
+                f"cannot approve commission with status {c.status!r} (must be 'accrued')"
             )
         now = datetime.now(timezone.utc)
         if c.eligible_for_approval_at > now:
@@ -227,9 +229,7 @@ class CommissionEngine:
                 f"(eligible at {c.eligible_for_approval_at.isoformat()})"
             )
         if c.withholding_category == "tbd":
-            raise ValueError(
-                "withholding category is tbd — set pph21|pph23|exempt first"
-            )
+            raise ValueError("withholding category is tbd — set pph21|pph23|exempt first")
 
         # CRIT-1: Wrap the offset + approve transition in a single transaction.
         # The previous implementation did two sequential UPDATEs without a
@@ -253,7 +253,10 @@ class CommissionEngine:
                     logger.info(
                         "approve: clawback %s (magnitude %s) exceeds accrual %s net %s "
                         "— no offset this round",
-                        oldest.id, offset_amount, c.id, c.net_amount_idr,
+                        oldest.id,
+                        offset_amount,
+                        c.id,
+                        c.net_amount_idr,
                     )
                 else:
                     # ONE LEGAL LEDGER MUTATION (spec §Q9, plan Step 5.2):
@@ -269,18 +272,19 @@ class CommissionEngine:
                     await self.repo.update_commission_status(oldest.id, "offset_applied")
                     offset_applied_id = oldest.id
                     logger.info(
-                        "approve: offset clawback %s against accrual %s "
-                        "(net reduced %s → %s IDR)",
-                        oldest.id, c.id, c.net_amount_idr, new_net,
+                        "approve: offset clawback %s against accrual %s (net reduced %s → %s IDR)",
+                        oldest.id,
+                        c.id,
+                        c.net_amount_idr,
+                        new_net,
                     )
 
-            await self.repo.update_commission_status(
-                commission_id, "approved", approved_by=actor
-            )
+            await self.repo.update_commission_status(commission_id, "approved", approved_by=actor)
             if offset_applied_id:
                 logger.info(
                     "approve: commission %s approved with clawback %s offset",
-                    commission_id, offset_applied_id,
+                    commission_id,
+                    offset_applied_id,
                 )
             else:
                 logger.info("approve: commission %s approved (no clawback offset)", commission_id)
@@ -348,8 +352,7 @@ class CommissionEngine:
             raise ValueError(f"Commission not found: {original_commission_id}")
         if orig.status not in ("approved", "paid"):
             raise ValueError(
-                f"Clawback only valid for approved|paid commissions, "
-                f"got status {orig.status!r}"
+                f"Clawback only valid for approved|paid commissions, got status {orig.status!r}"
             )
 
         # magnitude is the positive IDR amount to claw back
@@ -359,9 +362,7 @@ class CommissionEngine:
 
         # Auto-writeoff: if the magnitude is below the threshold (and threshold > 0),
         # insert directly as 'waived' instead of 'clawback_pending'.
-        threshold = await self._system_setting_int(
-            "partner_clawback_auto_writeoff_idr", 0
-        )
+        threshold = await self._system_setting_int("partner_clawback_auto_writeoff_idr", 0)
         auto_waive = threshold > 0 and abs(int(magnitude)) < threshold
 
         status = "waived" if auto_waive else "clawback_pending"
@@ -392,13 +393,16 @@ class CommissionEngine:
         if auto_waive:
             logger.info(
                 "clawback %s auto-waived (magnitude %s IDR < threshold %s IDR)",
-                cid, magnitude, threshold,
+                cid,
+                magnitude,
+                threshold,
             )
         else:
             logger.info(
-                "clawback %s created (clawback_pending, magnitude %s IDR) "
-                "against original %s",
-                cid, magnitude, original_commission_id,
+                "clawback %s created (clawback_pending, magnitude %s IDR) against original %s",
+                cid,
+                magnitude,
+                original_commission_id,
             )
         return cid
 
@@ -413,9 +417,7 @@ class CommissionEngine:
         reason: str,
     ) -> None:
         """Manually waive a 'clawback_pending' commission (operator decision)."""
-        await self.repo.update_commission_status(
-            clawback_id, "waived", waiver_reason=reason
-        )
+        await self.repo.update_commission_status(clawback_id, "waived", waiver_reason=reason)
 
     # ── Helpers ─────────────────────────────────────────────────────────────
 
@@ -425,9 +427,7 @@ class CommissionEngine:
         Returns `default` if the key is absent or the value cannot be
         coerced to int (e.g. empty string, garbage data).
         """
-        row = await self.conn.fetchrow(
-            "SELECT value FROM system_settings WHERE key = $1", key
-        )
+        row = await self.conn.fetchrow("SELECT value FROM system_settings WHERE key = $1", key)
         try:
             return int(row["value"]) if row else default
         except (ValueError, TypeError):
@@ -439,15 +439,14 @@ class CommissionEngine:
         Returns `default` if the key is absent or the value cannot be
         coerced to Decimal (e.g. empty string, garbage data).
         """
-        row = await self.conn.fetchrow(
-            "SELECT value FROM system_settings WHERE key = $1", key
-        )
+        row = await self.conn.fetchrow("SELECT value FROM system_settings WHERE key = $1", key)
         try:
             return Decimal(row["value"]) if row else default
         except (ValueError, TypeError):
             logger.warning(
                 "system_settings key %r has unparseable value — using default %s",
-                key, default,
+                key,
+                default,
             )
             return default
 

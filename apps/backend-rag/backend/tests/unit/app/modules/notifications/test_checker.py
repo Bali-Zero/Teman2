@@ -75,7 +75,9 @@ class TestPassportAlerts:
         assert alert is None
 
     def test_passport_boundary_exactly_9_months(
-        self, checker: ExpiryChecker, base_client: ClientInfo,
+        self,
+        checker: ExpiryChecker,
+        base_client: ClientInfo,
     ):
         """Exactly 9 months: should be CRITICAL (boundary)."""
         client = base_client.model_copy()
@@ -85,6 +87,7 @@ class TestPassportAlerts:
         target_year = today.year + (target_month - 1) // 12
         target_month = (target_month - 1) % 12 + 1
         import calendar
+
         last_day = calendar.monthrange(target_year, target_month)[1]
         target_day = min(today.day, last_day)
         client.passport_expiry = today.replace(year=target_year, month=target_month, day=target_day)
@@ -95,7 +98,9 @@ class TestPassportAlerts:
         assert alert.alert_type == AlertType.PASSPORT_CRITICAL
 
     def test_passport_boundary_exactly_13_months(
-        self, checker: ExpiryChecker, base_client: ClientInfo,
+        self,
+        checker: ExpiryChecker,
+        base_client: ClientInfo,
     ):
         """Exactly 13 months: should be WARNING (boundary)."""
         client = base_client.model_copy()
@@ -104,6 +109,7 @@ class TestPassportAlerts:
         target_year = today.year + (target_month - 1) // 12
         target_month = (target_month - 1) % 12 + 1
         import calendar
+
         last_day = calendar.monthrange(target_year, target_month)[1]
         target_day = min(today.day, last_day)
         client.passport_expiry = today.replace(year=target_year, month=target_month, day=target_day)
@@ -246,6 +252,7 @@ class TestBirthdayAlerts:
         today = datetime.now(tz=timezone.utc)
         next_month = today.month % 12 + 1
         import calendar
+
         last_day = calendar.monthrange(today.year - 30, next_month)[1]
         next_day = min(today.day, last_day)
         client.date_of_birth = today.replace(year=today.year - 30, month=next_month, day=next_day)

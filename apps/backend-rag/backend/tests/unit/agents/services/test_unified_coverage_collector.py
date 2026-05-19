@@ -107,7 +107,9 @@ class TestCollectBackendCoverage:
         component_path = tmp_path / "backend_timeout"
         component_path.mkdir()
 
-        with patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="pytest", timeout=30)):
+        with patch(
+            "subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="pytest", timeout=30)
+        ):
             result = collector.collect_backend_coverage(component_path, "test")
             assert result is None
 
@@ -121,7 +123,9 @@ class TestCollectBackendCoverage:
         }
         (component_path / "coverage.json").write_text(json.dumps(coverage_data))
 
-        with patch("subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="pytest", timeout=30)):
+        with patch(
+            "subprocess.run", side_effect=subprocess.TimeoutExpired(cmd="pytest", timeout=30)
+        ):
             result = collector.collect_backend_coverage(component_path, "test")
             assert result is not None
             assert result.coverage_percent == 50.0

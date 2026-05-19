@@ -67,6 +67,7 @@ _POINT_NAMESPACE = uuid.UUID("6ba7b810-9dad-11d1-80b4-00c04fd430c8")
 # Data model
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class KnowledgeRow:
     row_id: int
@@ -86,6 +87,7 @@ def _row_point_id(row_id: int) -> str:
 # SQLite reader
 # ---------------------------------------------------------------------------
 
+
 def load_rows(sqlite_path: Path) -> list[KnowledgeRow]:
     if not sqlite_path.exists():
         raise FileNotFoundError(f"SQLite not found: {sqlite_path}")
@@ -98,8 +100,13 @@ def load_rows(sqlite_path: Path) -> list[KnowledgeRow]:
         )
         return [
             KnowledgeRow(
-                row_id=r[0], agent=r[1], type=r[2], content=r[3],
-                source=r[4], confidence=float(r[5] or 0.5), created_at=r[6] or "",
+                row_id=r[0],
+                agent=r[1],
+                type=r[2],
+                content=r[3],
+                source=r[4],
+                confidence=float(r[5] or 0.5),
+                created_at=r[6] or "",
             )
             for r in cur.fetchall()
         ]
@@ -110,6 +117,7 @@ def load_rows(sqlite_path: Path) -> list[KnowledgeRow]:
 # ---------------------------------------------------------------------------
 # Embedding (OpenAI REST — no SDK, no paid Anthropic key)
 # ---------------------------------------------------------------------------
+
 
 async def embed_batch(texts: list[str], client: httpx.AsyncClient) -> list[list[float]]:
     resp = await client.post(
@@ -126,6 +134,7 @@ async def embed_batch(texts: list[str], client: httpx.AsyncClient) -> list[list[
 # ---------------------------------------------------------------------------
 # Qdrant Cloud helpers
 # ---------------------------------------------------------------------------
+
 
 def _qdrant_headers() -> dict[str, str]:
     h = {"Content-Type": "application/json"}
@@ -150,9 +159,7 @@ async def create_collection(client: httpx.AsyncClient) -> None:
             "distance": DISTANCE,
             "on_disk": False,
         },
-        "sparse_vectors": {
-            "text-sparse": {"index": {"on_disk": False}}
-        },
+        "sparse_vectors": {"text-sparse": {"index": {"on_disk": False}}},
     }
     r = await client.put(
         f"{QDRANT_URL}/collections/{COLLECTION_NAME}",
@@ -209,6 +216,7 @@ async def get_point_count(client: httpx.AsyncClient) -> int:
 # Main migration
 # ---------------------------------------------------------------------------
 
+
 async def run_migration(dry_run: bool, sqlite_path: Path) -> None:
     logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
 
@@ -221,7 +229,8 @@ async def run_migration(dry_run: bool, sqlite_path: Path) -> None:
 
     logger.info("Loading rows from %s", sqlite_path)
     rows = load_rows(sqlite_path)
-    logger.info("Loaded %d rows (skill=%d, reflection=%d, insight=%d)",
+    logger.info(
+        "Loaded %d rows (skill=%d, reflection=%d, insight=%d)",
         len(rows),
         sum(1 for r in rows if r.type == "skill"),
         sum(1 for r in rows if r.type == "reflection"),
@@ -229,7 +238,9 @@ async def run_migration(dry_run: bool, sqlite_path: Path) -> None:
     )
 
     if dry_run:
-        logger.info("[DRY RUN] Would upsert %d points to %s/%s", len(rows), QDRANT_URL[:40], COLLECTION_NAME)
+        logger.info(
+            "[DRY RUN] Would upsert %d points to %s/%s", len(rows), QDRANT_URL[:40], COLLECTION_NAME
+        )
         return
 
     async with httpx.AsyncClient() as client:
@@ -239,14 +250,17 @@ async def run_migration(dry_run: bool, sqlite_path: Path) -> None:
             await create_collection(client)
         else:
             existing_count = await get_point_count(client)
-            logger.info("Collection already exists with %d points — upserting (idempotent)", existing_count)
+            logger.info(
+                "Collection already exists with %d points — upserting (idempotent)", existing_count
+            )
 
         # Embed in batches
         all_vectors: list[list[float]] = []
         for i in range(0, len(rows), EMBED_BATCH_SIZE):
-            batch = rows[i:i + EMBED_BATCH_SIZE]
+            batch = rows[i : i + EMBED_BATCH_SIZE]
             texts = [r.content for r in batch]
-            logger.info("Embedding batch %d/%d (%d texts) ...",
+            logger.info(
+                "Embedding batch %d/%d (%d texts) ...",
                 i // EMBED_BATCH_SIZE + 1,
                 (len(rows) - 1) // EMBED_BATCH_SIZE + 1,
                 len(texts),
@@ -256,9 +270,10 @@ async def run_migration(dry_run: bool, sqlite_path: Path) -> None:
 
         # Upsert in batches
         for i in range(0, len(rows), UPSERT_BATCH_SIZE):
-            batch_rows = rows[i:i + UPSERT_BATCH_SIZE]
-            batch_vecs = all_vectors[i:i + UPSERT_BATCH_SIZE]
-            logger.info("Upserting batch %d/%d (%d points) ...",
+            batch_rows = rows[i : i + UPSERT_BATCH_SIZE]
+            batch_vecs = all_vectors[i : i + UPSERT_BATCH_SIZE]
+            logger.info(
+                "Upserting batch %d/%d (%d points) ...",
                 i // UPSERT_BATCH_SIZE + 1,
                 (len(rows) - 1) // UPSERT_BATCH_SIZE + 1,
                 len(batch_rows),
@@ -266,8 +281,12 @@ async def run_migration(dry_run: bool, sqlite_path: Path) -> None:
             await upsert_points(client, batch_rows, batch_vecs)
 
         final_count = await get_point_count(client)
-        logger.info("Done. Collection %s now has %d points (expected %d)",
-            COLLECTION_NAME, final_count, len(rows))
+        logger.info(
+            "Done. Collection %s now has %d points (expected %d)",
+            COLLECTION_NAME,
+            final_count,
+            len(rows),
+        )
 
         if final_count < len(rows):
             logger.error("Point count mismatch! Expected %d, got %d", len(rows), final_count)
@@ -285,10 +304,12 @@ def main() -> None:
         parser.print_help()
         sys.exit(1)
 
-    asyncio.run(run_migration(
-        dry_run=args.dry_run,
-        sqlite_path=Path(args.sqlite_path),
-    ))
+    asyncio.run(
+        run_migration(
+            dry_run=args.dry_run,
+            sqlite_path=Path(args.sqlite_path),
+        )
+    )
 
 
 if __name__ == "__main__":

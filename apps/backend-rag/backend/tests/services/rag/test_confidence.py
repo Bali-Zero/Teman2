@@ -350,7 +350,9 @@ class TestSerialization:
     def test_asdict(self):
         """ConfidenceBreakdown should be serializable via asdict."""
         breakdown = ConfidenceBreakdown(
-            overall=0.75, warning_level="medium", warning_message="test",
+            overall=0.75,
+            warning_level="medium",
+            warning_message="test",
         )
         d = asdict(breakdown)
         assert isinstance(d, dict)

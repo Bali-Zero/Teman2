@@ -22,7 +22,8 @@ from backend.services.common.cache import cache_invalidating
 
 # Internal email API — uses Brevo, from=zantara@balizero.com
 _EMAIL_API_URL = os.getenv(
-    "INTERNAL_EMAIL_API_URL", "https://nuzantara-rag.fly.dev/api/notifications/send-email",
+    "INTERNAL_EMAIL_API_URL",
+    "https://nuzantara-rag.fly.dev/api/notifications/send-email",
 )
 _EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", os.environ.get("NUZANTARA_API_KEY", ""))
 
@@ -32,6 +33,7 @@ logger = get_logger(__name__)
 # ─────────────────────────────────────────────────────────────────────────────
 # Shared helpers (deduplicated from all three services)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 async def _fetch_practice_data(db_pool: asyncpg.Pool, practice_id: int) -> dict | None:
     """Fetch practice data (with practice_type join) from database."""
@@ -52,7 +54,10 @@ async def _fetch_practice_data(db_pool: asyncpg.Pool, practice_id: int) -> dict 
 
 
 async def _fetch_client_data(
-    db_pool: asyncpg.Pool, client_id: int, *, include_drive: bool = False,
+    db_pool: asyncpg.Pool,
+    client_id: int,
+    *,
+    include_drive: bool = False,
 ) -> dict | None:
     """Fetch client data from database.
 
@@ -75,7 +80,10 @@ async def _fetch_client_data(
 
 
 async def _fetch_practice_with_client(
-    db_pool: asyncpg.Pool, practice_id: int, *, include_drive: bool = False,
+    db_pool: asyncpg.Pool,
+    practice_id: int,
+    *,
+    include_drive: bool = False,
 ) -> tuple[dict | None, dict | None]:
     """Fetch practice + client in a single connection (eliminates N+1).
 
@@ -113,8 +121,15 @@ async def _fetch_practice_with_client(
 
     # Split into practice_data and client_data
     client_keys = {
-        "client_db_id", "full_name", "email", "phone", "address", "nationality",
-        "drive_folder_id", "drive_folder_url", "drive_documents_folder_id",
+        "client_db_id",
+        "full_name",
+        "email",
+        "phone",
+        "address",
+        "nationality",
+        "drive_folder_id",
+        "drive_folder_url",
+        "drive_documents_folder_id",
         "drive_final_folder_id",
     }
     client_data: dict[str, Any] = {}
@@ -157,7 +172,9 @@ async def _send_with_brevo_fallback(
         logger.warning("Brevo failed for %s, trying Zoho: %s", to_email, brevo_error)
     except Exception as brevo_error:  # noqa: BLE001 — defensive fallback before Zoho retry
         logger.warning(
-            "Brevo failed for %s (unexpected error), trying Zoho: %s", to_email, brevo_error,
+            "Brevo failed for %s (unexpected error), trying Zoho: %s",
+            to_email,
+            brevo_error,
             exc_info=True,
         )
 
@@ -196,19 +213,23 @@ async def _log_activity(
 # ProcessAutomationService (from process_automation_service.py)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class ProcessAutomationService:
     """Handles automated notifications for practice status changes."""
 
     def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.db_pool = db_pool
         from backend.services.integrations.zoho_email_service import ZohoEmailService
+
         self.zoho_email_service = ZohoEmailService(db_pool)
 
-    @cache_invalidating([
-        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
-        "zantara:crm_practices:*",
-        "zantara:crm_activity:*",
-    ])
+    @cache_invalidating(
+        [
+            lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
+            "zantara:crm_practices:*",
+            "zantara:crm_activity:*",
+        ]
+    )
     async def trigger_on_process_start(
         self,
         practice_id: int,
@@ -235,7 +256,8 @@ class ProcessAutomationService:
 
         try:
             practice_data, client_data = await _fetch_practice_with_client(
-                self.db_pool, practice_id,
+                self.db_pool,
+                practice_id,
             )
             if not practice_data:
                 logger.error("Practice %s not found", practice_id)
@@ -263,10 +285,13 @@ class ProcessAutomationService:
                     results["client_notified"] = True
                     logger.info(f"Process start email sent to client {client_data['email']}")
                 except (httpx.HTTPError, ValueError) as e:
-                    logger.error("Failed to send process start email to client: %s", e, exc_info=True)
+                    logger.error(
+                        "Failed to send process start email to client: %s", e, exc_info=True
+                    )
                 except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
                     logger.error(
-                        "Unexpected error sending process start email to client: %s", e,
+                        "Unexpected error sending process start email to client: %s",
+                        e,
                         exc_info=True,
                     )
             else:
@@ -281,13 +306,15 @@ class ProcessAutomationService:
                     )
                     results["team_leader_notified"] = True
                     logger.info(
-                        "Process start notification sent to team leader %s", team_leader_email,
+                        "Process start notification sent to team leader %s",
+                        team_leader_email,
                     )
                 except (httpx.HTTPError, ValueError) as e:
                     logger.error("Failed to send notification to team leader: %s", e, exc_info=True)
                 except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
                     logger.error(
-                        "Unexpected error notifying team leader: %s", e,
+                        "Unexpected error notifying team leader: %s",
+                        e,
                         exc_info=True,
                     )
 
@@ -304,7 +331,9 @@ class ProcessAutomationService:
 
         except Exception as error:
             logger.error(
-                "Process start automation failed for practice %s: %s", practice_id, error,
+                "Process start automation failed for practice %s: %s",
+                practice_id,
+                error,
                 exc_info=True,
             )
             return {"success": False, "error": str(error)}
@@ -418,21 +447,32 @@ P.S. The client is excited to get started—let's make it a great experience! �
         return await _fetch_client_data(self.db_pool, client_id)
 
     async def _send_with_brevo_fallback(
-        self, to_email: str, subject: str, body: str,
+        self,
+        to_email: str,
+        subject: str,
+        body: str,
     ) -> None:
         await _send_with_brevo_fallback(self.zoho_email_service, to_email, subject, body)
 
     async def _log_activity(
-        self, practice_id: int, triggered_by: str, description: str,
+        self,
+        practice_id: int,
+        triggered_by: str,
+        description: str,
     ) -> None:
         await _log_activity(
-            self.db_pool, practice_id, triggered_by, "process_started", description,
+            self.db_pool,
+            practice_id,
+            triggered_by,
+            "process_started",
+            description,
         )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # CompletedProcessService (from completed_process_service.py)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class CompletedProcessService:
     """Handles automation when process is completed."""
@@ -441,14 +481,17 @@ class CompletedProcessService:
         self.db_pool = db_pool
         from backend.services.integrations.drive_folder_service import DriveFolderService
         from backend.services.integrations.zoho_email_service import ZohoEmailService
+
         self.zoho_email_service = ZohoEmailService(db_pool)
         self.drive_service = DriveFolderService()
 
-    @cache_invalidating([
-        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
-        "zantara:crm_practices:*",
-        "zantara:crm_documents:*",
-    ])
+    @cache_invalidating(
+        [
+            lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
+            "zantara:crm_practices:*",
+            "zantara:crm_documents:*",
+        ]
+    )
     async def trigger_on_completed(
         self,
         practice_id: int,
@@ -470,7 +513,9 @@ class CompletedProcessService:
 
         try:
             practice_data, client_data = await _fetch_practice_with_client(
-                self.db_pool, practice_id, include_drive=True,
+                self.db_pool,
+                practice_id,
+                include_drive=True,
             )
             if not practice_data:
                 return {"success": False, "error": "Practice not found"}
@@ -498,7 +543,8 @@ class CompletedProcessService:
                     logger.error("Failed to send completion email to client: %s", e, exc_info=True)
                 except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
                     logger.error(
-                        "Unexpected error sending completion email to client: %s", e,
+                        "Unexpected error sending completion email to client: %s",
+                        e,
                         exc_info=True,
                     )
 
@@ -516,7 +562,8 @@ class CompletedProcessService:
                     logger.error("Failed to notify team leader: %s", e, exc_info=True)
                 except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
                     logger.error(
-                        "Unexpected error notifying team leader about completion: %s", e,
+                        "Unexpected error notifying team leader about completion: %s",
+                        e,
                         exc_info=True,
                     )
 
@@ -537,7 +584,9 @@ class CompletedProcessService:
 
         except Exception as error:
             logger.error(
-                "Process completion automation failed for practice %s: %s", practice_id, error,
+                "Process completion automation failed for practice %s: %s",
+                practice_id,
+                error,
                 exc_info=True,
             )
             return {"success": False, "error": str(error)}
@@ -704,18 +753,22 @@ Zantara CRM System
 # WaitingDocumentsService (from waiting_documents_service.py)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class WaitingDocumentsService:
     """Handles automated notifications when practice moves to 'waiting_documents'."""
 
     def __init__(self, db_pool: asyncpg.Pool) -> None:
         self.db_pool = db_pool
         from backend.services.integrations.zoho_email_service import ZohoEmailService
+
         self.zoho_email_service = ZohoEmailService(db_pool)
 
-    @cache_invalidating([
-        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
-        "zantara:crm_practices:*",
-    ])
+    @cache_invalidating(
+        [
+            lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
+            "zantara:crm_practices:*",
+        ]
+    )
     async def trigger_on_waiting_documents(
         self,
         practice_id: int,
@@ -739,7 +792,8 @@ class WaitingDocumentsService:
 
         try:
             practice_data, client_data = await _fetch_practice_with_client(
-                self.db_pool, practice_id,
+                self.db_pool,
+                practice_id,
             )
             if not practice_data:
                 return {"success": False, "error": "Practice not found"}
@@ -762,13 +816,15 @@ class WaitingDocumentsService:
                     )
                     results["team_leader_notified"] = True
                     logger.info(
-                        "Waiting docs notification sent to team leader %s", team_leader_email,
+                        "Waiting docs notification sent to team leader %s",
+                        team_leader_email,
                     )
                 except (httpx.HTTPError, ValueError) as e:
                     logger.error("Failed to notify team leader: %s", e, exc_info=True)
                 except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
                     logger.error(
-                        "Unexpected error notifying team leader (waiting docs): %s", e,
+                        "Unexpected error notifying team leader (waiting docs): %s",
+                        e,
                         exc_info=True,
                     )
             else:
@@ -787,7 +843,8 @@ class WaitingDocumentsService:
                     logger.error("Failed to send document request to client: %s", e, exc_info=True)
                 except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
                     logger.error(
-                        "Unexpected error sending document request to client: %s", e,
+                        "Unexpected error sending document request to client: %s",
+                        e,
                         exc_info=True,
                     )
             else:
@@ -806,7 +863,9 @@ class WaitingDocumentsService:
 
         except Exception as error:
             logger.error(
-                "Waiting documents automation failed for practice %s: %s", practice_id, error,
+                "Waiting documents automation failed for practice %s: %s",
+                practice_id,
+                error,
                 exc_info=True,
             )
             return {"success": False, "error": str(error)}

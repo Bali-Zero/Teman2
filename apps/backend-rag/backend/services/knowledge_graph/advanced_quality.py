@@ -609,7 +609,8 @@ async def enhance_kg_quality(
             )
 
             total_nodes = await conn.fetchval(
-                "SELECT COUNT(*) FROM kg_nodes WHERE source_collection = $1", collection,
+                "SELECT COUNT(*) FROM kg_nodes WHERE source_collection = $1",
+                collection,
             )
 
             logger.info(f"Final orphan rate: {final_orphans * 100 / total_nodes:.1f}%")

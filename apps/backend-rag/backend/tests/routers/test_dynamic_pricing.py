@@ -92,7 +92,10 @@ class TestScenarioPricing:
         service = MagicMock()
         service.calculate_pricing = AsyncMock(return_value=result)
 
-        with patch("backend.services.pricing.dynamic_pricing_service.DynamicPricingService", return_value=service):
+        with patch(
+            "backend.services.pricing.dynamic_pricing_service.DynamicPricingService",
+            return_value=service,
+        ):
             response = client.post(
                 "/api/pricing/scenario",
                 json={"scenario": "PT PMA restaurant", "user_level": 3},
@@ -112,4 +115,3 @@ class TestScenarioPricing:
         )
 
         assert response.status_code == 503
-

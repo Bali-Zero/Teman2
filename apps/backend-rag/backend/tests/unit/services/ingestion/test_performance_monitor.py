@@ -19,6 +19,7 @@ from backend.services.ingestion.performance_monitor import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def monitor() -> PerformanceMonitor:
     """Fresh PerformanceMonitor with empty state."""
@@ -44,6 +45,7 @@ def _make_metric(
 # ---------------------------------------------------------------------------
 # Dataclass / Enum tests
 # ---------------------------------------------------------------------------
+
 
 class TestDataclasses:
     def test_alert_severity_values(self) -> None:
@@ -85,6 +87,7 @@ class TestDataclasses:
 # PerformanceMonitor.__init__ and thresholds
 # ---------------------------------------------------------------------------
 
+
 class TestInit:
     def test_initial_state(self, monitor: PerformanceMonitor) -> None:
         assert monitor.metrics_history == []
@@ -107,6 +110,7 @@ class TestInit:
 # _get_avg_metric
 # ---------------------------------------------------------------------------
 
+
 class TestGetAvgMetric:
     def test_avg_with_values(self, monitor: PerformanceMonitor) -> None:
         metrics = [
@@ -127,6 +131,7 @@ class TestGetAvgMetric:
 # ---------------------------------------------------------------------------
 # _collect_metrics
 # ---------------------------------------------------------------------------
+
 
 class TestCollectMetrics:
     @pytest.mark.asyncio
@@ -153,6 +158,7 @@ class TestCollectMetrics:
 # ---------------------------------------------------------------------------
 # _analyze_performance
 # ---------------------------------------------------------------------------
+
 
 class TestAnalyzePerformance:
     @pytest.mark.asyncio
@@ -194,11 +200,14 @@ class TestAnalyzePerformance:
 # _check_alerts
 # ---------------------------------------------------------------------------
 
+
 class TestCheckAlerts:
     @pytest.mark.asyncio
     @patch("backend.services.ingestion.performance_monitor.ingestion_logger")
     async def test_critical_alert_created(
-        self, mock_logger: MagicMock, monitor: PerformanceMonitor,
+        self,
+        mock_logger: MagicMock,
+        monitor: PerformanceMonitor,
     ) -> None:
         now = datetime.now(tz=timezone.utc)
         # Value exceeds critical threshold (15.0)
@@ -218,7 +227,9 @@ class TestCheckAlerts:
     @pytest.mark.asyncio
     @patch("backend.services.ingestion.performance_monitor.ingestion_logger")
     async def test_warning_alert_created(
-        self, mock_logger: MagicMock, monitor: PerformanceMonitor,
+        self,
+        mock_logger: MagicMock,
+        monitor: PerformanceMonitor,
     ) -> None:
         now = datetime.now(tz=timezone.utc)
         # Value exceeds warning (5.0) but not critical (15.0)
@@ -268,11 +279,14 @@ class TestCheckAlerts:
 # _create_alert
 # ---------------------------------------------------------------------------
 
+
 class TestCreateAlert:
     @pytest.mark.asyncio
     @patch("backend.services.ingestion.performance_monitor.ingestion_logger")
     async def test_create_alert_stores_and_logs(
-        self, mock_logger: MagicMock, monitor: PerformanceMonitor,
+        self,
+        mock_logger: MagicMock,
+        monitor: PerformanceMonitor,
     ) -> None:
         await monitor._create_alert("parsing_duration", 20.0, 15.0, AlertSeverity.CRITICAL)
         assert len(monitor.active_alerts) == 1
@@ -285,7 +299,9 @@ class TestCreateAlert:
     @pytest.mark.asyncio
     @patch("backend.services.ingestion.performance_monitor.ingestion_logger")
     async def test_duplicate_alert_id_skipped(
-        self, mock_logger: MagicMock, monitor: PerformanceMonitor,
+        self,
+        mock_logger: MagicMock,
+        monitor: PerformanceMonitor,
     ) -> None:
         # Create alert with known timestamp
         await monitor._create_alert("parsing_duration", 20.0, 15.0, AlertSeverity.CRITICAL)
@@ -298,6 +314,7 @@ class TestCreateAlert:
 # ---------------------------------------------------------------------------
 # _create_anomaly_alert
 # ---------------------------------------------------------------------------
+
 
 class TestCreateAnomalyAlert:
     @pytest.mark.asyncio
@@ -314,11 +331,14 @@ class TestCreateAnomalyAlert:
 # _generate_recommendations / _log_recommendations
 # ---------------------------------------------------------------------------
 
+
 class TestGenerateRecommendations:
     @pytest.mark.asyncio
     @patch("backend.services.ingestion.performance_monitor.ingestion_logger")
     async def test_generates_when_rule_matches(
-        self, mock_logger: MagicMock, monitor: PerformanceMonitor,
+        self,
+        mock_logger: MagicMock,
+        monitor: PerformanceMonitor,
     ) -> None:
         now = datetime.now(tz=timezone.utc)
         # Add metrics that trigger "High Parsing Time" rule (avg > 5.0)
@@ -337,7 +357,9 @@ class TestGenerateRecommendations:
     @pytest.mark.asyncio
     @patch("backend.services.ingestion.performance_monitor.ingestion_logger")
     async def test_no_recommendations_when_healthy(
-        self, mock_logger: MagicMock, monitor: PerformanceMonitor,
+        self,
+        mock_logger: MagicMock,
+        monitor: PerformanceMonitor,
     ) -> None:
         now = datetime.now(tz=timezone.utc)
         for _ in range(5):
@@ -356,6 +378,7 @@ class TestGenerateRecommendations:
 # ---------------------------------------------------------------------------
 # get_performance_summary
 # ---------------------------------------------------------------------------
+
 
 class TestGetPerformanceSummary:
     def test_no_data(self, monitor: PerformanceMonitor) -> None:
@@ -424,6 +447,7 @@ class TestGetPerformanceSummary:
 # ---------------------------------------------------------------------------
 # get_active_alerts / resolve_alert
 # ---------------------------------------------------------------------------
+
 
 class TestAlertManagement:
     def test_get_active_alerts_empty(self, monitor: PerformanceMonitor) -> None:

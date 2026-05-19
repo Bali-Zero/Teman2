@@ -108,9 +108,11 @@ class TestLegalAgentAnalyze:
 
         mock_kg = MagicMock()
         mock_kg.extract_entities_from_query = MagicMock(return_value=[("KITAS", "kitas")])
-        mock_kg.find_kg_entities = AsyncMock(return_value=[
-            {"name": "KITAS", "entity_type": "kitas"},
-        ])
+        mock_kg.find_kg_entities = AsyncMock(
+            return_value=[
+                {"name": "KITAS", "entity_type": "kitas"},
+            ]
+        )
 
         agent = LegalAgent(llm=mock_llm, kg_retrieval=mock_kg)
         state: MultiAgentState = {
@@ -271,7 +273,8 @@ class TestMultiAgentCoordinator:
             coordinator = MultiAgentCoordinator()
             # Force _ensure_initialized to fail
             with patch.object(
-                coordinator, "_ensure_initialized",
+                coordinator,
+                "_ensure_initialized",
                 side_effect=Exception("No LLM"),
             ):
                 result = await coordinator.process("test query")

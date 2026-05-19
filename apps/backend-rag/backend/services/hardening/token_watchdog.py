@@ -81,9 +81,7 @@ class TokenWatchdog:
                 continue
             # attach days_remaining from the provided expires_at
             if report.expires_at is not None:
-                report.days_remaining = (
-                    (report.expires_at - now).total_seconds() / 86400.0
-                )
+                report.days_remaining = (report.expires_at - now).total_seconds() / 86400.0
             result.reports.append(report)
 
             if self._should_alert(report, now=now):
@@ -103,7 +101,10 @@ class TokenWatchdog:
         return remaining <= self.warn_threshold
 
     async def _send_alert(
-        self, report: TokenExpiryReport, *, now: datetime,
+        self,
+        report: TokenExpiryReport,
+        *,
+        now: datetime,
     ) -> bool:
         assert report.expires_at is not None
         remaining = report.expires_at - now
@@ -129,12 +130,7 @@ class TokenWatchdog:
 def _escape_html(value: str) -> str:
     if value is None:
         return ""
-    return (
-        str(value)
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+    return str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 # ── Example probes (injectable) ───────────────────────────────────

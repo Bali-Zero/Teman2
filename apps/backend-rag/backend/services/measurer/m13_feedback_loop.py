@@ -52,9 +52,7 @@ class M13FeedbackLoop:
         """
         async with self.db_pool.acquire() as conn:
             for name, value in metrics.items():
-                await conn.execute(
-                    sql, post_id, horizon.value, name, float(value), source
-                )
+                await conn.execute(sql, post_id, horizon.value, name, float(value), source)
         logger.debug(
             "collected %d metrics for post %s @ %s",
             len(metrics),
@@ -106,9 +104,7 @@ class M13FeedbackLoop:
     def is_pillar_threshold_breach(self, *, delta: float) -> bool:
         return delta <= self.PILLAR_BREACH_THRESHOLD
 
-    def _smooth_weight(
-        self, *, old: float, desired: float, cap: float | None = None
-    ) -> float:
+    def _smooth_weight(self, *, old: float, desired: float, cap: float | None = None) -> float:
         if cap is None:
             cap = self.WEIGHT_SMOOTHING_CAP
         return old + (desired - old) * cap

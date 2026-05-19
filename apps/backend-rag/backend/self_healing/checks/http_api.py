@@ -30,7 +30,9 @@ async def close_http_api_check_client() -> None:
 class HTTPAPICheck:
     name = "api"
 
-    def __init__(self, url: str, client: httpx.AsyncClient | None = None, timeout: float = 5.0) -> None:
+    def __init__(
+        self, url: str, client: httpx.AsyncClient | None = None, timeout: float = 5.0
+    ) -> None:
         self.url = url
         self.client = client
         self.timeout = timeout

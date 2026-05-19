@@ -183,7 +183,8 @@ class AgenticRAGOrchestrator:
         # Initialize Reasoning Engine (manages ReAct loop)
         logger.debug("AgenticRAGOrchestrator: Initializing ReasoningEngine...")
         self.reasoning_engine = ReasoningEngine(
-            tool_map=self.tools, response_pipeline=self.response_pipeline,
+            tool_map=self.tools,
+            response_pipeline=self.response_pipeline,
         )
         logger.debug("AgenticRAGOrchestrator: ReasoningEngine initialized")
 
@@ -220,7 +221,9 @@ class AgenticRAGOrchestrator:
                 logger.warning("⚠️ KG LangGraph Orchestrator not available: %s", e)
             except Exception as e:
                 logger.error(
-                    "❌ Failed to initialize KG LangGraph Orchestrator: %s", e, exc_info=True,
+                    "❌ Failed to initialize KG LangGraph Orchestrator: %s",
+                    e,
+                    exc_info=True,
                 )
         else:
             if not db_pool:

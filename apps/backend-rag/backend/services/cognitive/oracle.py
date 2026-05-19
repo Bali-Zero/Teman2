@@ -40,7 +40,7 @@ logger = logging.getLogger(__name__)
 
 
 MAX_MOVES = 3
-MIN_PROPONENT_VOTES = 1   # minimum voices that back a move for it to survive
+MIN_PROPONENT_VOTES = 1  # minimum voices that back a move for it to survive
 DEFAULT_ROUND_TIMEOUT = 150
 DEFAULT_JUDGE_TIMEOUT = 180
 
@@ -190,7 +190,8 @@ class OracleCouncil:
         """
         proposals = await self._round_propose(context=context)
         final_moves = await self._round_judge(
-            proposals=proposals, context=context,
+            proposals=proposals,
+            context=context,
         )
         return proposals, final_moves
 
@@ -211,7 +212,8 @@ class OracleCouncil:
                 max_moves=self.max_moves,
             )
             parsed, result = await runner.run_json(
-                prompt, timeout=self.round_timeout,
+                prompt,
+                timeout=self.round_timeout,
             )
             if not result.ok or parsed is None:
                 return OracleProposal(
@@ -263,7 +265,8 @@ class OracleCouncil:
             max_moves=self.max_moves,
         )
         parsed, result = await self.judge.run_json(
-            prompt, timeout=self.judge_timeout,
+            prompt,
+            timeout=self.judge_timeout,
         )
         if not result.ok or parsed is None:
             # Fallback: pick moves that appear in ≥2 voices verbatim-ish,
@@ -329,9 +332,7 @@ class OracleOrchestrator:
                 inserted = await self.cognitive_repo.insert_ultra_move(move)
                 result.inserted.append(inserted)
             except Exception as exc:  # noqa: BLE001
-                result.errors.append(
-                    f"insert {move.thesis[:50]}: {type(exc).__name__}: {exc}"
-                )
+                result.errors.append(f"insert {move.thesis[:50]}: {type(exc).__name__}: {exc}")
 
         return result
 
@@ -363,7 +364,8 @@ def _coerce_move(raw: Any) -> UltraMoveCreate | None:
             estimated_cost=_trim(raw.get("estimated_cost"), 400),
             estimated_value=_trim(raw.get("estimated_value"), 400),
             recommended_tone_register=_trim(
-                raw.get("recommended_tone_register"), 50,
+                raw.get("recommended_tone_register"),
+                50,
             ),
             source_inputs=source_inputs,
         )
@@ -394,7 +396,8 @@ def _fallback_merge(
     """
     merged: list[UltraMoveCreate] = []
     max_moves_per_proposer = max(
-        (len(p.moves) for p in proposals), default=0,
+        (len(p.moves) for p in proposals),
+        default=0,
     )
     for idx in range(max_moves_per_proposer):
         for proposal in proposals:

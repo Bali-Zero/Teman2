@@ -139,12 +139,11 @@ class LiteratureAgent:
         if result.returncode != 0:
             logger.warning(
                 "gemini rc=%s stderr=%s for %s",
-                result.returncode, result.stderr[-200:], topic.slug,
+                result.returncode,
+                result.stderr[-200:],
+                topic.slug,
             )
-            return (
-                f"## {topic.slug}\n\n_Research failed: "
-                f"gemini exited {result.returncode}._\n"
-            )
+            return f"## {topic.slug}\n\n_Research failed: gemini exited {result.returncode}._\n"
 
         return result.stdout or f"## {topic.slug}\n\n_No output from gemini._\n"
 

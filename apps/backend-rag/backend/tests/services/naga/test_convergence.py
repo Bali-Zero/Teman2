@@ -17,6 +17,7 @@ from backend.services.naga.quality.convergence import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def three_questions() -> list[str]:
     """Three sample sub-questions for a typical research session."""
@@ -30,6 +31,7 @@ def three_questions() -> list[str]:
 # ---------------------------------------------------------------------------
 # ConvergenceResult dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestConvergenceResult:
     """Verify ConvergenceResult is frozen and stores all fields."""
@@ -74,6 +76,7 @@ class TestConvergenceResult:
 # ---------------------------------------------------------------------------
 # High coverage + low novelty -> CONVERGED
 # ---------------------------------------------------------------------------
+
 
 class TestConverged:
     """When coverage is high and novelty is low, the loop should stop."""
@@ -136,6 +139,7 @@ class TestConverged:
 # Low coverage + budget remaining -> ITERATE with gaps
 # ---------------------------------------------------------------------------
 
+
 class TestIterate:
     """When coverage is low and budget remains, the loop must continue."""
 
@@ -181,6 +185,7 @@ class TestIterate:
 # Budget exhausted -> TIMEOUT
 # ---------------------------------------------------------------------------
 
+
 class TestTimeout:
     """When budget_can_search is False the loop must stop immediately."""
 
@@ -214,6 +219,7 @@ class TestTimeout:
 # No claims yet -> novelty = 1.0, ITERATE
 # ---------------------------------------------------------------------------
 
+
 class TestNoClaims:
     """When the loop starts and no claims exist, novelty should be 1.0."""
 
@@ -234,6 +240,7 @@ class TestNoClaims:
 # ---------------------------------------------------------------------------
 # Edge: empty sub_questions -> CONVERGED (nothing to cover)
 # ---------------------------------------------------------------------------
+
 
 class TestEdgeCases:
     """Edge cases that arise from degenerate inputs."""

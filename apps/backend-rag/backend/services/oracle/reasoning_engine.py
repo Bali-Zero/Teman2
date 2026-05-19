@@ -134,7 +134,10 @@ class ReasoningEngineService:
 
             # Build context
             context_string = self.build_context(
-                documents, user_memory_facts, conversation_history, use_full_docs,
+                documents,
+                user_memory_facts,
+                conversation_history,
+                use_full_docs,
             )
 
             # Build system prompt
@@ -157,7 +160,8 @@ IMPORTANT: If the user mentioned their name, city, budget, or other personal det
 
             # Generate response
             response = model.generate_content(
-                contents=[system_prompt, user_message], generation_config=generation_config,
+                contents=[system_prompt, user_message],
+                generation_config=generation_config,
             )
 
             raw_answer = response.text

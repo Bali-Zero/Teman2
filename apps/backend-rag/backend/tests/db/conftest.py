@@ -21,6 +21,7 @@ or to an equivalent staging DB.  All migrations being tested carry
 IF NOT EXISTS guards, so running them against either the dev DB or the
 production-schema DB is safe and idempotent.
 """
+
 from __future__ import annotations
 
 import os

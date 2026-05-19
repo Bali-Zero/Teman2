@@ -74,7 +74,9 @@ class TestCalculateDomainScores:
         assert scores["books"] > 0
 
     def test_circular_keywords(self, matcher):
-        scores = matcher.calculate_domain_scores("alih status kesamaan sponsor surat edaran kemnaker")
+        scores = matcher.calculate_domain_scores(
+            "alih status kesamaan sponsor surat edaran kemnaker"
+        )
         assert scores["circular"] > 0
 
 

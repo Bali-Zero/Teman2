@@ -77,26 +77,30 @@ class TestSafeStop:
 
 class TestCreateApp:
     def test_creates_fastapi_instance(self):
-        with patch.dict(sys.modules, _patches), \
-             patch("backend.app.setup.app_factory.settings", _mock_settings), \
-             patch("backend.app.setup.app_factory.register_middleware"), \
-             patch("backend.app.setup.app_factory.setup_observability"), \
-             patch("backend.app.setup.app_factory.http_exception_handler"), \
-             patch("backend.app.setup.app_factory.starlette_http_exception_handler"), \
-             patch("backend.app.setup.app_factory.general_exception_handler"):
+        with (
+            patch.dict(sys.modules, _patches),
+            patch("backend.app.setup.app_factory.settings", _mock_settings),
+            patch("backend.app.setup.app_factory.register_middleware"),
+            patch("backend.app.setup.app_factory.setup_observability"),
+            patch("backend.app.setup.app_factory.http_exception_handler"),
+            patch("backend.app.setup.app_factory.starlette_http_exception_handler"),
+            patch("backend.app.setup.app_factory.general_exception_handler"),
+        ):
             from backend.app.setup.app_factory import create_app
 
             app = create_app()
             assert app.title == "Test Nuzantara"
 
     def test_app_has_exception_handlers(self):
-        with patch.dict(sys.modules, _patches), \
-             patch("backend.app.setup.app_factory.settings", _mock_settings), \
-             patch("backend.app.setup.app_factory.register_middleware"), \
-             patch("backend.app.setup.app_factory.setup_observability"), \
-             patch("backend.app.setup.app_factory.http_exception_handler"), \
-             patch("backend.app.setup.app_factory.starlette_http_exception_handler"), \
-             patch("backend.app.setup.app_factory.general_exception_handler"):
+        with (
+            patch.dict(sys.modules, _patches),
+            patch("backend.app.setup.app_factory.settings", _mock_settings),
+            patch("backend.app.setup.app_factory.register_middleware"),
+            patch("backend.app.setup.app_factory.setup_observability"),
+            patch("backend.app.setup.app_factory.http_exception_handler"),
+            patch("backend.app.setup.app_factory.starlette_http_exception_handler"),
+            patch("backend.app.setup.app_factory.general_exception_handler"),
+        ):
             from backend.app.setup.app_factory import create_app
 
             app = create_app()

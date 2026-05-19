@@ -14,6 +14,7 @@ Safety bounds:
 Idempotent: orchestrator skips if manifest.json already exists for the date,
 unless force=True.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -58,18 +59,20 @@ MAX_TIMEOUT_SEC = 7200
 MAX_TOPIC_BYTES = 4 * 1024
 
 
-_STRIPPED_ENV_KEYS: frozenset[str] = frozenset({
-    # Golden Rule #13 — Anthropic OAuth-only.
-    "ANTHROPIC_API_KEY",
-    "AWS_BEDROCK_ANTHROPIC_KEY",
-    "VERTEX_AI_ANTHROPIC_KEY",
-    # The visual orchestrator launches Codex (gpt-image-2 OAuth) in a loop.
-    # Strip OPENAI/GEMINI/GOOGLE provider keys so the embedding-only key
-    # held by backend-rag parent never leaks into a non-embedding path.
-    "OPENAI_API_KEY",
-    "GEMINI_API_KEY",
-    "GOOGLE_API_KEY",
-})
+_STRIPPED_ENV_KEYS: frozenset[str] = frozenset(
+    {
+        # Golden Rule #13 — Anthropic OAuth-only.
+        "ANTHROPIC_API_KEY",
+        "AWS_BEDROCK_ANTHROPIC_KEY",
+        "VERTEX_AI_ANTHROPIC_KEY",
+        # The visual orchestrator launches Codex (gpt-image-2 OAuth) in a loop.
+        # Strip OPENAI/GEMINI/GOOGLE provider keys so the embedding-only key
+        # held by backend-rag parent never leaks into a non-embedding path.
+        "OPENAI_API_KEY",
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+    }
+)
 
 
 def _safe_env() -> dict[str, str]:
@@ -206,6 +209,7 @@ async def codex_visual_dispatch_action(
     # Read manifest summary
     try:
         import json as _json
+
         manifest = _json.loads(manifest_path.read_text(encoding="utf-8"))
         success_count = manifest.get("assets_success", 0)
         total = manifest.get("assets_total", 0)

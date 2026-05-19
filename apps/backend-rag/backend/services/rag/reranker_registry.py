@@ -77,10 +77,7 @@ class BGEReranker:
         import asyncio
 
         def _score() -> list[dict[str, Any]]:
-            pairs = [
-                (query, doc.get("content", doc.get("text", "")))
-                for doc in documents
-            ]
+            pairs = [(query, doc.get("content", doc.get("text", ""))) for doc in documents]
             scores = model.predict(pairs)
             for doc, score in zip(documents, scores):
                 doc["rerank_score"] = float(score)
@@ -105,14 +102,14 @@ class RerankerRegistry:
     @staticmethod
     def _get_ms_marco_class() -> type:
         from backend.services.rag.reranker import CrossEncoderReranker
+
         return CrossEncoderReranker
 
     def get(self, model_name: str) -> RerankerProtocol:
         """Get or create a reranker instance by model name."""
         if model_name not in self._registry:
             raise KeyError(
-                f"Unknown reranker model '{model_name}'. "
-                f"Available: {list(self._registry.keys())}"
+                f"Unknown reranker model '{model_name}'. Available: {list(self._registry.keys())}"
             )
 
         if model_name not in self._instances:

@@ -39,6 +39,7 @@ def monitor(mock_alert_service: MagicMock) -> HealthMonitor:
 # Initialization
 # --------------------------------------------------------------------------- #
 
+
 class TestInit:
     def test_defaults(self, monitor: HealthMonitor) -> None:
         assert monitor.check_interval == 5
@@ -52,8 +53,9 @@ class TestInit:
         router = MagicMock()
         tools = MagicMock()
         app = MagicMock()
-        monitor.set_services(memory_service=mem, intelligent_router=router,
-                             tool_executor=tools, app_state=app)
+        monitor.set_services(
+            memory_service=mem, intelligent_router=router, tool_executor=tools, app_state=app
+        )
         assert monitor.memory_service is mem
         assert monitor.intelligent_router is router
         assert monitor.tool_executor is tools
@@ -63,6 +65,7 @@ class TestInit:
 # --------------------------------------------------------------------------- #
 # HTTP client management
 # --------------------------------------------------------------------------- #
+
 
 class TestClientManagement:
     def test_get_client_creates_once(self, monitor: HealthMonitor) -> None:
@@ -110,6 +113,7 @@ class TestClientManagement:
 # Cold start tracking
 # --------------------------------------------------------------------------- #
 
+
 class TestColdStart:
     def test_record_first_request(self, monitor: HealthMonitor) -> None:
         assert monitor._first_request_seen is False
@@ -128,6 +132,7 @@ class TestColdStart:
 # --------------------------------------------------------------------------- #
 # Start / Stop
 # --------------------------------------------------------------------------- #
+
 
 class TestStartStop:
     @pytest.mark.asyncio
@@ -159,6 +164,7 @@ class TestStartStop:
 # --------------------------------------------------------------------------- #
 # Qdrant health check
 # --------------------------------------------------------------------------- #
+
 
 class TestCheckQdrant:
     @pytest.mark.asyncio
@@ -217,6 +223,7 @@ class TestCheckQdrant:
 # --------------------------------------------------------------------------- #
 # PostgreSQL health check
 # --------------------------------------------------------------------------- #
+
 
 class TestCheckPostgresql:
     @pytest.mark.asyncio
@@ -284,8 +291,11 @@ class TestCheckPostgresql:
         mock_settings.database_url = "postgresql://fake"
 
         with patch("backend.app.core.config.settings", mock_settings):
-            with patch("asyncpg.connect", new_callable=AsyncMock,
-                       side_effect=Exception("Connection refused")):
+            with patch(
+                "asyncpg.connect",
+                new_callable=AsyncMock,
+                side_effect=Exception("Connection refused"),
+            ):
                 result = await monitor._check_postgresql(None)
                 assert result is False
 
@@ -293,6 +303,7 @@ class TestCheckPostgresql:
 # --------------------------------------------------------------------------- #
 # AI Router health check
 # --------------------------------------------------------------------------- #
+
 
 class TestCheckAIRouter:
     @pytest.mark.asyncio
@@ -334,7 +345,9 @@ class TestCheckAIRouter:
     @pytest.mark.asyncio
     async def test_router_exception(self, monitor: HealthMonitor) -> None:
         router = MagicMock()
-        type(router).orchestrator = property(lambda self: (_ for _ in ()).throw(RuntimeError("boom")))
+        type(router).orchestrator = property(
+            lambda self: (_ for _ in ()).throw(RuntimeError("boom"))
+        )
         result = await monitor._check_ai_router(router)
         assert result is False
 
@@ -343,10 +356,13 @@ class TestCheckAIRouter:
 # Alert sending
 # --------------------------------------------------------------------------- #
 
+
 class TestAlerts:
     @pytest.mark.asyncio
     async def test_send_downtime_alert(
-        self, monitor: HealthMonitor, mock_alert_service: MagicMock,
+        self,
+        monitor: HealthMonitor,
+        mock_alert_service: MagicMock,
     ) -> None:
         await monitor._send_downtime_alert("qdrant")
         mock_alert_service.send_alert.assert_awaited_once()
@@ -355,7 +371,9 @@ class TestAlerts:
 
     @pytest.mark.asyncio
     async def test_send_downtime_alert_cooldown(
-        self, monitor: HealthMonitor, mock_alert_service: MagicMock,
+        self,
+        monitor: HealthMonitor,
+        mock_alert_service: MagicMock,
     ) -> None:
         monitor.last_alert_time["down_qdrant"] = datetime.now(tz=timezone.utc)
         await monitor._send_downtime_alert("qdrant")
@@ -363,7 +381,9 @@ class TestAlerts:
 
     @pytest.mark.asyncio
     async def test_send_recovery_alert(
-        self, monitor: HealthMonitor, mock_alert_service: MagicMock,
+        self,
+        monitor: HealthMonitor,
+        mock_alert_service: MagicMock,
     ) -> None:
         await monitor._send_recovery_alert("postgresql")
         mock_alert_service.send_alert.assert_awaited_once()
@@ -372,14 +392,18 @@ class TestAlerts:
 
     @pytest.mark.asyncio
     async def test_send_resource_alert_throttled(
-        self, monitor: HealthMonitor, mock_alert_service: MagicMock,
+        self,
+        monitor: HealthMonitor,
+        mock_alert_service: MagicMock,
     ) -> None:
         await monitor._send_resource_alert_throttled("memory", 95.0, 80.0, unit="%")
         mock_alert_service.send_resource_alert.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_send_resource_alert_throttled_cooldown(
-        self, monitor: HealthMonitor, mock_alert_service: MagicMock,
+        self,
+        monitor: HealthMonitor,
+        mock_alert_service: MagicMock,
     ) -> None:
         monitor._resource_alert_cooldown["memory"] = datetime.now(tz=timezone.utc)
         await monitor._send_resource_alert_throttled("memory", 95.0, 80.0)
@@ -390,59 +414,79 @@ class TestAlerts:
 # _check_health (integration of individual checks)
 # --------------------------------------------------------------------------- #
 
+
 class TestCheckHealth:
     @pytest.mark.asyncio
     async def test_check_health_all_healthy(
-        self, monitor: HealthMonitor, mock_alert_service: MagicMock,
+        self,
+        monitor: HealthMonitor,
+        mock_alert_service: MagicMock,
     ) -> None:
         monitor.tool_executor = MagicMock()
-        with patch.object(monitor, "_check_qdrant", new_callable=AsyncMock, return_value=True), \
-             patch.object(monitor, "_check_postgresql", new_callable=AsyncMock, return_value=True), \
-             patch.object(monitor, "_check_ai_router", new_callable=AsyncMock, return_value=True), \
-             patch("backend.app.dependencies.get_search_service", return_value=MagicMock()):
+        with (
+            patch.object(monitor, "_check_qdrant", new_callable=AsyncMock, return_value=True),
+            patch.object(monitor, "_check_postgresql", new_callable=AsyncMock, return_value=True),
+            patch.object(monitor, "_check_ai_router", new_callable=AsyncMock, return_value=True),
+            patch("backend.app.dependencies.get_search_service", return_value=MagicMock()),
+        ):
             await monitor._check_health()
             mock_alert_service.send_alert.assert_not_awaited()
             assert monitor.last_status["qdrant"] is True
 
     @pytest.mark.asyncio
     async def test_check_health_sends_downtime(
-        self, monitor: HealthMonitor, mock_alert_service: MagicMock,
+        self,
+        monitor: HealthMonitor,
+        mock_alert_service: MagicMock,
     ) -> None:
         monitor.last_status = {"qdrant": True, "postgresql": True, "ai_router": True, "tools": True}
         monitor.tool_executor = MagicMock()
-        with patch.object(monitor, "_check_qdrant", new_callable=AsyncMock, return_value=False), \
-             patch.object(monitor, "_check_postgresql", new_callable=AsyncMock, return_value=True), \
-             patch.object(monitor, "_check_ai_router", new_callable=AsyncMock, return_value=True), \
-             patch("backend.app.dependencies.get_search_service", return_value=MagicMock()):
+        with (
+            patch.object(monitor, "_check_qdrant", new_callable=AsyncMock, return_value=False),
+            patch.object(monitor, "_check_postgresql", new_callable=AsyncMock, return_value=True),
+            patch.object(monitor, "_check_ai_router", new_callable=AsyncMock, return_value=True),
+            patch("backend.app.dependencies.get_search_service", return_value=MagicMock()),
+        ):
             await monitor._check_health()
             mock_alert_service.send_alert.assert_awaited_once()
             assert "Down" in mock_alert_service.send_alert.call_args[1]["title"]
 
     @pytest.mark.asyncio
     async def test_check_health_sends_recovery(
-        self, monitor: HealthMonitor, mock_alert_service: MagicMock,
+        self,
+        monitor: HealthMonitor,
+        mock_alert_service: MagicMock,
     ) -> None:
-        monitor.last_status = {"qdrant": False, "postgresql": True, "ai_router": True, "tools": True}
+        monitor.last_status = {
+            "qdrant": False,
+            "postgresql": True,
+            "ai_router": True,
+            "tools": True,
+        }
         monitor.tool_executor = MagicMock()
-        with patch.object(monitor, "_check_qdrant", new_callable=AsyncMock, return_value=True), \
-             patch.object(monitor, "_check_postgresql", new_callable=AsyncMock, return_value=True), \
-             patch.object(monitor, "_check_ai_router", new_callable=AsyncMock, return_value=True), \
-             patch("backend.app.dependencies.get_search_service", return_value=MagicMock()):
+        with (
+            patch.object(monitor, "_check_qdrant", new_callable=AsyncMock, return_value=True),
+            patch.object(monitor, "_check_postgresql", new_callable=AsyncMock, return_value=True),
+            patch.object(monitor, "_check_ai_router", new_callable=AsyncMock, return_value=True),
+            patch("backend.app.dependencies.get_search_service", return_value=MagicMock()),
+        ):
             await monitor._check_health()
             mock_alert_service.send_alert.assert_awaited_once()
             assert "Recovered" in mock_alert_service.send_alert.call_args[1]["title"]
 
     @pytest.mark.asyncio
     async def test_check_health_search_service_exception(
-        self, monitor: HealthMonitor,
+        self,
+        monitor: HealthMonitor,
     ) -> None:
         """get_search_service raising should not crash _check_health."""
         monitor.tool_executor = MagicMock()
-        with patch.object(monitor, "_check_qdrant", new_callable=AsyncMock, return_value=True), \
-             patch.object(monitor, "_check_postgresql", new_callable=AsyncMock, return_value=True), \
-             patch.object(monitor, "_check_ai_router", new_callable=AsyncMock, return_value=True), \
-             patch("backend.app.dependencies.get_search_service",
-                   side_effect=Exception("not init")):
+        with (
+            patch.object(monitor, "_check_qdrant", new_callable=AsyncMock, return_value=True),
+            patch.object(monitor, "_check_postgresql", new_callable=AsyncMock, return_value=True),
+            patch.object(monitor, "_check_ai_router", new_callable=AsyncMock, return_value=True),
+            patch("backend.app.dependencies.get_search_service", side_effect=Exception("not init")),
+        ):
             await monitor._check_health()  # Should not raise
 
 
@@ -450,10 +494,13 @@ class TestCheckHealth:
 # Resource monitoring
 # --------------------------------------------------------------------------- #
 
+
 class TestCheckResources:
     @pytest.mark.asyncio
     async def test_check_resources_normal(
-        self, monitor: HealthMonitor, mock_alert_service: MagicMock,
+        self,
+        monitor: HealthMonitor,
+        mock_alert_service: MagicMock,
     ) -> None:
         mock_process = MagicMock()
         mock_mem_info = MagicMock()
@@ -465,17 +512,21 @@ class TestCheckResources:
         mock_settings.memory_alert_threshold_percent = 80
         mock_settings.cpu_alert_threshold_percent = 90
 
-        with patch("psutil.Process", return_value=mock_process), \
-             patch("backend.app.core.config.settings", mock_settings), \
-             patch.object(monitor, "_check_db_pool_saturation", new_callable=AsyncMock), \
-             patch.object(monitor, "_check_pg_health", new_callable=AsyncMock), \
-             patch.object(monitor, "_update_resource_metrics"):
+        with (
+            patch("psutil.Process", return_value=mock_process),
+            patch("backend.app.core.config.settings", mock_settings),
+            patch.object(monitor, "_check_db_pool_saturation", new_callable=AsyncMock),
+            patch.object(monitor, "_check_pg_health", new_callable=AsyncMock),
+            patch.object(monitor, "_update_resource_metrics"),
+        ):
             await monitor._check_resources()
             mock_alert_service.send_resource_alert.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_check_resources_memory_alert(
-        self, monitor: HealthMonitor, mock_alert_service: MagicMock,
+        self,
+        monitor: HealthMonitor,
+        mock_alert_service: MagicMock,
     ) -> None:
         mock_process = MagicMock()
         mock_mem_info = MagicMock()
@@ -487,18 +538,22 @@ class TestCheckResources:
         mock_settings.memory_alert_threshold_percent = 80
         mock_settings.cpu_alert_threshold_percent = 90
 
-        with patch("psutil.Process", return_value=mock_process), \
-             patch("backend.app.core.config.settings", mock_settings), \
-             patch.object(monitor, "_check_db_pool_saturation", new_callable=AsyncMock), \
-             patch.object(monitor, "_check_pg_health", new_callable=AsyncMock), \
-             patch.object(monitor, "_update_resource_metrics"):
+        with (
+            patch("psutil.Process", return_value=mock_process),
+            patch("backend.app.core.config.settings", mock_settings),
+            patch.object(monitor, "_check_db_pool_saturation", new_callable=AsyncMock),
+            patch.object(monitor, "_check_pg_health", new_callable=AsyncMock),
+            patch.object(monitor, "_update_resource_metrics"),
+        ):
             await monitor._check_resources()
             mock_alert_service.send_resource_alert.assert_awaited()
 
     @pytest.mark.asyncio
     async def test_check_resources_exception_noncritical(self, monitor: HealthMonitor) -> None:
-        with patch("psutil.Process", side_effect=Exception("no proc")), \
-             patch("backend.app.core.config.settings", MagicMock()):
+        with (
+            patch("psutil.Process", side_effect=Exception("no proc")),
+            patch("backend.app.core.config.settings", MagicMock()),
+        ):
             # Should not raise
             await monitor._check_resources()
 
@@ -506,6 +561,7 @@ class TestCheckResources:
 # --------------------------------------------------------------------------- #
 # DB pool saturation
 # --------------------------------------------------------------------------- #
+
 
 class TestDBPoolSaturation:
     @pytest.mark.asyncio
@@ -515,7 +571,9 @@ class TestDBPoolSaturation:
 
     @pytest.mark.asyncio
     async def test_pool_below_threshold(
-        self, monitor: HealthMonitor, mock_alert_service: MagicMock,
+        self,
+        monitor: HealthMonitor,
+        mock_alert_service: MagicMock,
     ) -> None:
         mock_pool = MagicMock()
         mock_pool.get_size.return_value = 5
@@ -528,7 +586,9 @@ class TestDBPoolSaturation:
 
     @pytest.mark.asyncio
     async def test_pool_above_threshold(
-        self, monitor: HealthMonitor, mock_alert_service: MagicMock,
+        self,
+        monitor: HealthMonitor,
+        mock_alert_service: MagicMock,
     ) -> None:
         mock_pool = MagicMock()
         mock_pool.get_size.return_value = 18
@@ -544,6 +604,7 @@ class TestDBPoolSaturation:
 # PG health (dead tuples + WAL)
 # --------------------------------------------------------------------------- #
 
+
 class TestPGHealth:
     @pytest.mark.asyncio
     async def test_no_app_state(self, monitor: HealthMonitor) -> None:
@@ -558,7 +619,9 @@ class TestPGHealth:
 
     @pytest.mark.asyncio
     async def test_dead_tuples_above_10k(
-        self, monitor: HealthMonitor, mock_alert_service: MagicMock,
+        self,
+        monitor: HealthMonitor,
+        mock_alert_service: MagicMock,
     ) -> None:
         mock_conn = AsyncMock()
         # First fetchval = dead tuples, second = WAL
@@ -577,7 +640,9 @@ class TestPGHealth:
 
     @pytest.mark.asyncio
     async def test_dead_tuples_warning_level(
-        self, monitor: HealthMonitor, mock_alert_service: MagicMock,
+        self,
+        monitor: HealthMonitor,
+        mock_alert_service: MagicMock,
     ) -> None:
         mock_conn = AsyncMock()
         mock_conn.fetchval = AsyncMock(side_effect=[7000, 50 * 1024 * 1024])
@@ -609,7 +674,9 @@ class TestPGHealth:
 
     @pytest.mark.asyncio
     async def test_wal_high(
-        self, monitor: HealthMonitor, mock_alert_service: MagicMock,
+        self,
+        monitor: HealthMonitor,
+        mock_alert_service: MagicMock,
     ) -> None:
         mock_conn = AsyncMock()
         mock_conn.fetchval = AsyncMock(side_effect=[100, 600 * 1024 * 1024])  # 600MB WAL
@@ -629,12 +696,15 @@ class TestPGHealth:
 # Metrics update
 # --------------------------------------------------------------------------- #
 
+
 class TestUpdateResourceMetrics:
     def test_metrics_update_success(self, monitor: HealthMonitor) -> None:
         mock_memory = MagicMock()
         mock_cpu = MagicMock()
-        with patch("backend.app.metrics.memory_usage", mock_memory), \
-             patch("backend.app.metrics.cpu_usage", mock_cpu):
+        with (
+            patch("backend.app.metrics.memory_usage", mock_memory),
+            patch("backend.app.metrics.cpu_usage", mock_cpu),
+        ):
             monitor._update_resource_metrics(500.0, 12.2, 5.0)
             mock_memory.set.assert_called_once_with(500.0)
             mock_cpu.set.assert_called_once_with(5.0)
@@ -648,6 +718,7 @@ class TestUpdateResourceMetrics:
 # --------------------------------------------------------------------------- #
 # Restart tracking
 # --------------------------------------------------------------------------- #
+
 
 class TestRestartCount:
     def test_read_restart_count_success(self) -> None:
@@ -666,6 +737,7 @@ class TestRestartCount:
 # --------------------------------------------------------------------------- #
 # get_status
 # --------------------------------------------------------------------------- #
+
 
 class TestGetStatus:
     def test_basic_status(self, monitor: HealthMonitor) -> None:
@@ -707,6 +779,7 @@ class TestGetStatus:
 # --------------------------------------------------------------------------- #
 # Module-level functions
 # --------------------------------------------------------------------------- #
+
 
 class TestModuleFunctions:
     def test_init_and_get_health_monitor(self, mock_alert_service: MagicMock) -> None:

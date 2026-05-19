@@ -133,19 +133,19 @@ class TestDownloadPdf:
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client.get = AsyncMock(return_value=mock_response)
 
-        with patch(
-            "backend.services.ingestion.legal_full_ingestion_worker.httpx.AsyncClient",
-            return_value=mock_client,
-        ), patch("pathlib.Path.write_bytes"), patch(
-            "tempfile.mkdtemp", return_value="/tmp/test_dl"
+        with (
+            patch(
+                "backend.services.ingestion.legal_full_ingestion_worker.httpx.AsyncClient",
+                return_value=mock_client,
+            ),
+            patch("pathlib.Path.write_bytes"),
+            patch("tempfile.mkdtemp", return_value="/tmp/test_dl"),
         ):
             from backend.services.ingestion.legal_full_ingestion_worker import (
                 _download_pdf,
             )
 
-            result = await _download_pdf(
-                "https://example.com/doc.pdf", "PP", "123", "2024"
-            )
+            result = await _download_pdf("https://example.com/doc.pdf", "PP", "123", "2024")
 
         assert isinstance(result, Path)
         assert "PP_123_2024.pdf" in str(result)
@@ -164,10 +164,13 @@ class TestDownloadPdf:
         mock_client.__aexit__ = AsyncMock(return_value=False)
         mock_client.get = AsyncMock(return_value=mock_response)
 
-        with patch(
-            "backend.services.ingestion.legal_full_ingestion_worker.httpx.AsyncClient",
-            return_value=mock_client,
-        ), patch("tempfile.mkdtemp", return_value="/tmp/err"):
+        with (
+            patch(
+                "backend.services.ingestion.legal_full_ingestion_worker.httpx.AsyncClient",
+                return_value=mock_client,
+            ),
+            patch("tempfile.mkdtemp", return_value="/tmp/err"),
+        ):
             from backend.services.ingestion.legal_full_ingestion_worker import (
                 _download_pdf,
             )
@@ -223,15 +226,17 @@ class TestBuildDriveService:
             "token_uri": "https://oauth2.googleapis.com/token",
         }
 
-        with patch.dict(
-            "os.environ",
-            {"GOOGLE_SERVICE_ACCOUNT_JSON": json.dumps(creds)},
-            clear=False,
-        ), patch(
-            "google.oauth2.service_account.Credentials.from_service_account_info"
-        ) as mock_creds, patch(
-            "googleapiclient.discovery.build"
-        ) as mock_build:
+        with (
+            patch.dict(
+                "os.environ",
+                {"GOOGLE_SERVICE_ACCOUNT_JSON": json.dumps(creds)},
+                clear=False,
+            ),
+            patch(
+                "google.oauth2.service_account.Credentials.from_service_account_info"
+            ) as mock_creds,
+            patch("googleapiclient.discovery.build") as mock_build,
+        ):
             mock_creds.return_value = MagicMock()
             mock_build.return_value = MagicMock()
 
@@ -295,9 +300,7 @@ class TestDriveGetOrCreateFolder:
 
     def test_creates_folder_when_missing(self):
         mock_service = MagicMock()
-        mock_service.files.return_value.list.return_value.execute.return_value = {
-            "files": []
-        }
+        mock_service.files.return_value.list.return_value.execute.return_value = {"files": []}
         mock_service.files.return_value.create.return_value.execute.return_value = {
             "id": "new-folder"
         }
@@ -331,9 +334,7 @@ class TestDriveFindFile:
 
     def test_file_not_found(self):
         mock_service = MagicMock()
-        mock_service.files.return_value.list.return_value.execute.return_value = {
-            "files": []
-        }
+        mock_service.files.return_value.list.return_value.execute.return_value = {"files": []}
 
         from backend.services.ingestion.legal_full_ingestion_worker import (
             _drive_find_file,
@@ -367,9 +368,7 @@ class TestProcessOneJob:
         await _process_one_job(pool, mock_app_state)
 
     @pytest.mark.asyncio
-    async def test_pending_job_no_source_url_fails(
-        self, mock_db_pool, mock_app_state
-    ):
+    async def test_pending_job_no_source_url_fails(self, mock_db_pool, mock_app_state):
         pool, conn = mock_db_pool
 
         job = {
@@ -438,11 +437,12 @@ class TestRunWorker:
                 raise RuntimeError("db error")
             raise asyncio.CancelledError()
 
-        with patch(
-            "backend.services.ingestion.legal_full_ingestion_worker._process_one_job",
-            side_effect=mock_process,
-        ), patch(
-            "backend.services.ingestion.legal_full_ingestion_worker.WORKER_INTERVAL", 0
+        with (
+            patch(
+                "backend.services.ingestion.legal_full_ingestion_worker._process_one_job",
+                side_effect=mock_process,
+            ),
+            patch("backend.services.ingestion.legal_full_ingestion_worker.WORKER_INTERVAL", 0),
         ):
             from backend.services.ingestion.legal_full_ingestion_worker import (
                 run_worker,

@@ -1,4 +1,5 @@
 """Tests for team_members router."""
+
 from __future__ import annotations
 
 import inspect
@@ -64,7 +65,12 @@ def test_list_team_members_returns_members(test_app):
     # Simulate two asyncpg Record-like dicts returned by conn.fetch
     fake_rows = [
         {"email": "damar@balizero.com", "full_name": "Damar", "role": "agent", "avatar_url": None},
-        {"email": "asya@balizero.com", "full_name": "Asya", "role": "manager", "avatar_url": "https://example.com/asya.png"},
+        {
+            "email": "asya@balizero.com",
+            "full_name": "Asya",
+            "role": "manager",
+            "avatar_url": "https://example.com/asya.png",
+        },
     ]
     conn.fetch = AsyncMock(return_value=fake_rows)
 

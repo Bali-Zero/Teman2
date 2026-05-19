@@ -21,6 +21,7 @@ from backend.services.routing.surface_router import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture()
 def router() -> SurfaceRouter:
     return SurfaceRouter()
@@ -35,6 +36,7 @@ def router_enabled() -> SurfaceRouter:
 # Helper
 # ---------------------------------------------------------------------------
 
+
 def _route(router: SurfaceRouter, query: str) -> SurfaceDecision:
     """Sync wrapper — SurfaceRouter.decide() is sync (no I/O on keyword path)."""
     return router.decide(query)
@@ -43,6 +45,7 @@ def _route(router: SurfaceRouter, query: str) -> SurfaceDecision:
 # ---------------------------------------------------------------------------
 # 1. Visa surface (10 queries)
 # ---------------------------------------------------------------------------
+
 
 class TestVisaSurface:
     QUERIES_STRICT = [
@@ -94,6 +97,7 @@ class TestVisaSurface:
 # ---------------------------------------------------------------------------
 # 2. Tax surface (8 queries)
 # ---------------------------------------------------------------------------
+
 
 class TestTaxSurface:
     # "Quanto costa" has pricing signal — accepted ambiguity; excluded from strict test
@@ -150,6 +154,7 @@ class TestTaxSurface:
 # 3. Company / KBLI surface (8 queries)
 # ---------------------------------------------------------------------------
 
+
 class TestCompanySurface:
     QUERIES = [
         "KBLI code for restaurant business in Bali",
@@ -178,6 +183,7 @@ class TestCompanySurface:
 # 4. Property surface (6 queries)
 # ---------------------------------------------------------------------------
 
+
 class TestPropertySurface:
     QUERIES = [
         "Can a foreigner own freehold land in Bali?",
@@ -199,6 +205,7 @@ class TestPropertySurface:
 # ---------------------------------------------------------------------------
 # 5. Pricing surface (5 queries)
 # ---------------------------------------------------------------------------
+
 
 class TestPricingSurface:
     QUERIES = [
@@ -225,6 +232,7 @@ class TestPricingSurface:
 # 6. News / Intel surface (5 queries)
 # ---------------------------------------------------------------------------
 
+
 class TestNewsSurface:
     QUERIES = [
         "latest immigration news Indonesia 2026",
@@ -245,6 +253,7 @@ class TestNewsSurface:
 # ---------------------------------------------------------------------------
 # 7. Skills / Ops surface (4 queries)
 # ---------------------------------------------------------------------------
+
 
 class TestSkillsSurface:
     QUERIES = [
@@ -274,6 +283,7 @@ class TestSkillsSurface:
 # ---------------------------------------------------------------------------
 # 8. Ambiguous / multi-domain queries (4 queries — Haiku path mocked)
 # ---------------------------------------------------------------------------
+
 
 class TestAmbiguousQueries:
     """For ambiguous queries (confidence < 0.60), Haiku is called.
@@ -344,6 +354,7 @@ class TestAmbiguousQueries:
 # 9. SurfaceDecision dataclass
 # ---------------------------------------------------------------------------
 
+
 class TestSurfaceDecision:
     def test_dataclass_fields(self, router):
         d = _route(router, "KITAS visa renewal")
@@ -373,6 +384,7 @@ class TestSurfaceDecision:
 # 10. Disabled mode (shadow / default)
 # ---------------------------------------------------------------------------
 
+
 class TestDisabledMode:
     def test_disabled_mode_still_returns_decision(self, router):
         """In shadow mode (enabled=False), decide() still returns SurfaceDecision."""
@@ -391,6 +403,7 @@ class TestDisabledMode:
 # ---------------------------------------------------------------------------
 # 11. KG surface (R5 Phase 4 — Neo4j Knowledge Graph as 8th surface)
 # ---------------------------------------------------------------------------
+
 
 class TestKGSurface:
     """KG surface routes entity/relationship queries to KGOrchestrator (Neo4j).

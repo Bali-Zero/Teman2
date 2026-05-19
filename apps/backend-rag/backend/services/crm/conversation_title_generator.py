@@ -4,6 +4,7 @@ Note: generate_conversation_title is re-implemented here as a local wrapper
 so that tests can patch _generate_via_ollama / _generate_via_gemini in this
 module's namespace (original names used by the test suite).
 """
+
 from __future__ import annotations
 
 import logging
@@ -23,7 +24,9 @@ logger = logging.getLogger(__name__)
 
 
 async def generate_conversation_title(
-    conversation_id: str, first_user_message: str, max_length: int = 50,
+    conversation_id: str,
+    first_user_message: str,
+    max_length: int = 50,
 ) -> str | None:
     """Wrapper that delegates to module-local aliases so tests can patch them."""
     if not first_user_message or len(first_user_message.strip()) < 10:

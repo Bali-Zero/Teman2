@@ -260,9 +260,7 @@ class NagaOrchestrator:
 
             # 4b. Merge responses, dedup URLs
             merged = AgentResponse.merge(agent_responses)
-            new_urls = url_history.add_many(
-                [r.url for r in merged.results if r.url]
-            )
+            new_urls = url_history.add_many([r.url for r in merged.results if r.url])
             new_results = [r for r in merged.results if r.url in new_urls]
             all_results.extend(new_results)
 
@@ -287,7 +285,7 @@ class NagaOrchestrator:
 
                 # Gemini bulk read
                 if scored and tier_budget.max_gemini_sources > 0:
-                    sources_for_gemini = scored[:tier_budget.max_gemini_sources]
+                    sources_for_gemini = scored[: tier_budget.max_gemini_sources]
                     sources_content = [
                         {
                             "id": f"s{i}",
@@ -338,9 +336,11 @@ class NagaOrchestrator:
             for sq in sub_questions:
                 # Count claims whose text overlaps with the sub-question
                 claims_per_q[sq] = sum(
-                    1 for c in all_claims
-                    if any(word.lower() in c.claim_text.lower()
-                           for word in sq.split() if len(word) > 3)
+                    1
+                    for c in all_claims
+                    if any(
+                        word.lower() in c.claim_text.lower() for word in sq.split() if len(word) > 3
+                    )
                 )
 
             conv = check_convergence(
@@ -382,9 +382,7 @@ class NagaOrchestrator:
 
         # ---- 6. Build and return final state dict ---------------------
         avg_conf = (
-            sum(c.confidence_score for c in all_claims) / len(all_claims)
-            if all_claims
-            else 0.0
+            sum(c.confidence_score for c in all_claims) / len(all_claims) if all_claims else 0.0
         )
 
         search_results_summary = [
@@ -465,27 +463,17 @@ class NagaOrchestrator:
         responses: list[AgentResponse] = []
 
         if domain in ("general", "hybrid"):
-            responses.append(
-                await _safe_search(exa_agent, query, sub_question)
-            )
-            responses.append(
-                await _safe_search(brave_agent, query, sub_question)
-            )
+            responses.append(await _safe_search(exa_agent, query, sub_question))
+            responses.append(await _safe_search(brave_agent, query, sub_question))
 
         if domain in ("indonesia", "hybrid"):
-            responses.append(
-                await _safe_search(domain_agent, query, sub_question)
-            )
+            responses.append(await _safe_search(domain_agent, query, sub_question))
 
         # Fallback: if no domain matched, use Exa + Brave as default
         if not responses:
             logger.warning("No agents matched domain=%r, falling back to general", domain)
-            responses.append(
-                await _safe_search(exa_agent, query, sub_question)
-            )
-            responses.append(
-                await _safe_search(brave_agent, query, sub_question)
-            )
+            responses.append(await _safe_search(exa_agent, query, sub_question))
+            responses.append(await _safe_search(brave_agent, query, sub_question))
 
         return responses
 

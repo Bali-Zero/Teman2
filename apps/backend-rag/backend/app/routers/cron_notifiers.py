@@ -56,7 +56,9 @@ async def run_visa_expiry_notifier(request: Request) -> dict[str, Any]:
             "SELECT value FROM system_settings WHERE key = 'visa_expiry_notifier_enabled'"
         )
     if approved != "true":
-        logger.warning("Visa expiry notifier BLOCKED — awaiting owner approval (set visa_expiry_notifier_enabled=true)")
+        logger.warning(
+            "Visa expiry notifier BLOCKED — awaiting owner approval (set visa_expiry_notifier_enabled=true)"
+        )
         return {"service": "visa_expiry", "status": "blocked", "reason": "awaiting_owner_approval"}
 
     from backend.services.compliance.visa_expiry_team_notifier import VisaExpiryTeamNotifier

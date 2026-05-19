@@ -67,7 +67,9 @@ def _make_agent_response(
     )
 
 
-def _make_claim(claim_id: str = "NB2-test0001", text: str = "KITAS requires passport") -> ClaimRecord:
+def _make_claim(
+    claim_id: str = "NB2-test0001", text: str = "KITAS requires passport"
+) -> ClaimRecord:
     return ClaimRecord(
         claim_id=claim_id,
         claim_text=text,
@@ -94,27 +96,13 @@ async def test_orchestrator_flash() -> None:
     fake_response = _make_agent_response(n_results=2)
 
     with (
-        patch(
-            "backend.services.naga.orchestrator.ExaSearchAgent"
-        ) as MockExa,
-        patch(
-            "backend.services.naga.orchestrator.BraveSearchAgent"
-        ) as MockBrave,
-        patch(
-            "backend.services.naga.orchestrator.IndonesiaDomainAgent"
-        ) as MockDomain,
-        patch(
-            "backend.services.naga.orchestrator.crag_evaluate"
-        ) as mock_crag,
-        patch(
-            "backend.services.naga.orchestrator.check_convergence"
-        ) as mock_conv,
-        patch(
-            "backend.services.naga.orchestrator.generate_report"
-        ) as mock_report,
-        patch(
-            "backend.services.naga.orchestrator.extract_claims_from_response"
-        ) as mock_claims,
+        patch("backend.services.naga.orchestrator.ExaSearchAgent") as MockExa,
+        patch("backend.services.naga.orchestrator.BraveSearchAgent") as MockBrave,
+        patch("backend.services.naga.orchestrator.IndonesiaDomainAgent") as MockDomain,
+        patch("backend.services.naga.orchestrator.crag_evaluate") as mock_crag,
+        patch("backend.services.naga.orchestrator.check_convergence") as mock_conv,
+        patch("backend.services.naga.orchestrator.generate_report") as mock_report,
+        patch("backend.services.naga.orchestrator.extract_claims_from_response") as mock_claims,
     ):
         # Configure mocks
         MockExa.return_value.search = AsyncMock(return_value=fake_response)
@@ -186,7 +174,9 @@ async def test_orchestrator_deep() -> None:
         # Gemini bulk read returns evidence
         evidence = {
             "sub_q_1": {
-                "facts": [{"text": "KITAS requires passport", "source_ids": ["s0"], "confidence": 0.9}],
+                "facts": [
+                    {"text": "KITAS requires passport", "source_ids": ["s0"], "confidence": 0.9}
+                ],
                 "contradictions": [],
                 "gaps": [],
                 "data_points": [],
@@ -194,7 +184,10 @@ async def test_orchestrator_deep() -> None:
         }
         mock_gemini.return_value = (evidence, "/tmp/naga/test/evidence.json")
 
-        mock_claims.return_value = [_make_claim(), _make_claim(claim_id="NB2-test0002", text="Visa fee Rp 2M")]
+        mock_claims.return_value = [
+            _make_claim(),
+            _make_claim(claim_id="NB2-test0002", text="Visa fee Rp 2M"),
+        ]
 
         # First call: ITERATE, second: CONVERGED
         mock_conv.side_effect = [

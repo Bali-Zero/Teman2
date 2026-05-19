@@ -47,11 +47,26 @@ class TestSubmitFromScraper:
     @pytest.mark.integration
     def test_submit_job_success(self, client: TestClient) -> None:
         with (
-            patch("backend.app.utils.internal_api_auth.api_key_auth.validate_api_key", return_value={"role": "internal"}),
-            patch.object(intel_scraper_module.classification_service, "classify_intel_type", return_value="news"),
-            patch.object(intel_scraper_module.staging_service, "generate_item_id", return_value="news_123"),
-            patch.object(intel_scraper_module.staging_service, "check_duplicate", return_value=None),
-            patch.object(intel_scraper_module.staging_service, "save_staging_item", return_value=Path("/tmp/news_123.json")),
+            patch(
+                "backend.app.utils.internal_api_auth.api_key_auth.validate_api_key",
+                return_value={"role": "internal"},
+            ),
+            patch.object(
+                intel_scraper_module.classification_service,
+                "classify_intel_type",
+                return_value="news",
+            ),
+            patch.object(
+                intel_scraper_module.staging_service, "generate_item_id", return_value="news_123"
+            ),
+            patch.object(
+                intel_scraper_module.staging_service, "check_duplicate", return_value=None
+            ),
+            patch.object(
+                intel_scraper_module.staging_service,
+                "save_staging_item",
+                return_value=Path("/tmp/news_123.json"),
+            ),
             patch.object(intel_scraper_module.staging_service, "update_staging_queue_metrics"),
         ):
             response = client.post(
@@ -74,10 +89,23 @@ class TestSubmitFromScraper:
     @pytest.mark.integration
     def test_submit_job_returns_duplicate_result(self, client: TestClient) -> None:
         with (
-            patch("backend.app.utils.internal_api_auth.api_key_auth.validate_api_key", return_value={"role": "internal"}),
-            patch.object(intel_scraper_module.classification_service, "classify_intel_type", return_value="news"),
-            patch.object(intel_scraper_module.staging_service, "generate_item_id", return_value="news_123"),
-            patch.object(intel_scraper_module.staging_service, "check_duplicate", return_value={"item_id": "existing_1"}),
+            patch(
+                "backend.app.utils.internal_api_auth.api_key_auth.validate_api_key",
+                return_value={"role": "internal"},
+            ),
+            patch.object(
+                intel_scraper_module.classification_service,
+                "classify_intel_type",
+                return_value="news",
+            ),
+            patch.object(
+                intel_scraper_module.staging_service, "generate_item_id", return_value="news_123"
+            ),
+            patch.object(
+                intel_scraper_module.staging_service,
+                "check_duplicate",
+                return_value={"item_id": "existing_1"},
+            ),
         ):
             response = client.post(
                 "/api/intel/scraper/submit",
@@ -87,4 +115,3 @@ class TestSubmitFromScraper:
 
         assert response.status_code == 200
         assert response.json()["duplicate"] is True
-

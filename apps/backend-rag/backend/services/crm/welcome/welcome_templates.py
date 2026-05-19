@@ -125,7 +125,7 @@ WELCOME_EMAIL_WHO_WE_ARE: dict[str, str] = {
         "Our team combines experienced advisors with an AI system that keeps track of "
         "deadlines, documents, and regulations — so nothing falls through the cracks.\n\n"
         "Want to know more before your first call? Browse our services, pricing, and guides at "
-        "<a href=\"https://www.balizero.com\" style=\"color:#d4845a;\">www.balizero.com</a>."
+        '<a href="https://www.balizero.com" style="color:#d4845a;">www.balizero.com</a>.'
     ),
     "it": (
         "Bali Zero è uno studio di consulenza legale e aziendale con sede a Kerobokan, Bali. "
@@ -134,7 +134,7 @@ WELCOME_EMAIL_WHO_WE_ARE: dict[str, str] = {
         "Il nostro team unisce consulenti esperti a un sistema AI che tiene traccia di "
         "scadenze, documenti e normative — così nulla va perso.\n\n"
         "Vuoi saperne di più prima della prima chiamata? Esplora servizi, prezzi e guide su "
-        "<a href=\"https://www.balizero.com\" style=\"color:#d4845a;\">www.balizero.com</a>."
+        '<a href="https://www.balizero.com" style="color:#d4845a;">www.balizero.com</a>.'
     ),
     "ru": (
         "Bali Zero — юридическая и бизнес-консалтинговая компания, базирующаяся в Керобокан, Бали. "
@@ -143,7 +143,7 @@ WELCOME_EMAIL_WHO_WE_ARE: dict[str, str] = {
         "Наша команда объединяет опытных консультантов с AI-системой, которая отслеживает "
         "сроки, документы и нормативные акты — чтобы ничего не упустить.\n\n"
         "Хотите узнать больше перед первым звонком? Ознакомьтесь с услугами, ценами и гайдами на "
-        "<a href=\"https://www.balizero.com\" style=\"color:#d4845a;\">www.balizero.com</a>."
+        '<a href="https://www.balizero.com" style="color:#d4845a;">www.balizero.com</a>.'
     ),
     "uk": (
         "Bali Zero — юридична та бізнес-консалтингова компанія, що базується в Керобокан, Балі. "
@@ -152,7 +152,7 @@ WELCOME_EMAIL_WHO_WE_ARE: dict[str, str] = {
         "Наша команда поєднує досвідчених консультантів з AI-системою, яка відстежує "
         "дедлайни, документи та нормативи — щоб нічого не загубилось.\n\n"
         "Хочете дізнатися більше перед першим дзвінком? Перегляньте послуги, ціни та гайди на "
-        "<a href=\"https://www.balizero.com\" style=\"color:#d4845a;\">www.balizero.com</a>."
+        '<a href="https://www.balizero.com" style="color:#d4845a;">www.balizero.com</a>.'
     ),
     "id": (
         "Bali Zero adalah firma layanan hukum dan bisnis yang berbasis di Kerobokan, Bali. "
@@ -161,7 +161,7 @@ WELCOME_EMAIL_WHO_WE_ARE: dict[str, str] = {
         "Tim kami menggabungkan konsultan berpengalaman dengan sistem AI yang melacak "
         "tenggat waktu, dokumen, dan peraturan — agar tidak ada yang terlewat.\n\n"
         "Ingin tahu lebih banyak sebelum panggilan pertama? Jelajahi layanan, harga, dan panduan di "
-        "<a href=\"https://www.balizero.com\" style=\"color:#d4845a;\">www.balizero.com</a>."
+        '<a href="https://www.balizero.com" style="color:#d4845a;">www.balizero.com</a>.'
     ),
 }
 

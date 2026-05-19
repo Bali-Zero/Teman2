@@ -49,21 +49,21 @@ DESCRIPTION = (
 # (email, full_name, allocated_days)
 # Veronika gets the manager exception of 18 days.
 TAX_TEAM_FIX: list[tuple[str, str, int]] = [
-    ("tax@balizero.com",          "Veronika", 18),
-    ("angel.tax@balizero.com",    "Angel",    12),
-    ("kadek.tax@balizero.com",    "Kadek",    12),
-    ("dewaayu.tax@balizero.com",  "Dewa Ayu", 12),
-    ("faysha.tax@balizero.com",   "Faisha",   12),
+    ("tax@balizero.com", "Veronika", 18),
+    ("angel.tax@balizero.com", "Angel", 12),
+    ("kadek.tax@balizero.com", "Kadek", 12),
+    ("dewaayu.tax@balizero.com", "Dewa Ayu", 12),
+    ("faysha.tax@balizero.com", "Faisha", 12),
 ]
 
 RECEPTION_FIX: list[tuple[str, str, int]] = [
-    ("rina@balizero.com",         "Rina",     12),
+    ("rina@balizero.com", "Rina", 12),
 ]
 
 # Offboarded — must have zero references in any dependent table.
 OFFBOARDED_EMAILS: list[str] = [
-    "amanda@balizero.com",   # terminated
-    "nina@balizero.com",     # offboarded
+    "amanda@balizero.com",  # terminated
+    "nina@balizero.com",  # offboarded
 ]
 
 
@@ -73,7 +73,8 @@ async def up(conn: asyncpg.Connection) -> None:
     #    cascade-destroy work history.
     for email in OFFBOARDED_EMAILS:
         tm_id = await conn.fetchval(
-            "SELECT id FROM team_members WHERE email = $1", email,
+            "SELECT id FROM team_members WHERE email = $1",
+            email,
         )
         if tm_id is None:
             logger.info("Migration 080: %s already absent — skipping delete", email)
@@ -105,7 +106,8 @@ async def up(conn: asyncpg.Connection) -> None:
         # Safe to delete. Cascading FKs (email_activity_log, zoho_email_*)
         # are intentional cleanups; SET NULL FKs (hr_*) preserve audit trail.
         deleted = await conn.execute(
-            "DELETE FROM team_members WHERE id = $1", tm_id,
+            "DELETE FROM team_members WHERE id = $1",
+            tm_id,
         )
         logger.info("Migration 080: deleted offboarded team_member %s (%s)", email, deleted)
 
@@ -113,7 +115,8 @@ async def up(conn: asyncpg.Connection) -> None:
     #    TAX_TEAM_FIX already have one from earlier seeds.
     for email, full_name, _ in RECEPTION_FIX:
         tm = await conn.fetchrow(
-            "SELECT id FROM team_members WHERE email = $1", email,
+            "SELECT id FROM team_members WHERE email = $1",
+            email,
         )
         if not tm:
             logger.warning("Migration 080: team_member not found for %s — skipping", email)
@@ -140,7 +143,8 @@ async def up(conn: asyncpg.Connection) -> None:
     targets = TAX_TEAM_FIX + RECEPTION_FIX
     for email, full_name, days in targets:
         tm = await conn.fetchrow(
-            "SELECT id FROM team_members WHERE email = $1", email,
+            "SELECT id FROM team_members WHERE email = $1",
+            email,
         )
         if not tm:
             logger.warning(
@@ -175,7 +179,9 @@ async def up(conn: asyncpg.Connection) -> None:
         )
         logger.info(
             "Migration 080: %s (%s) → %d days for 2026",
-            full_name, email, days,
+            full_name,
+            email,
+            days,
         )
 
     logger.info(
@@ -195,7 +201,8 @@ async def down(conn: asyncpg.Connection) -> None:
     if annual_type_id:
         for email, _, _ in TAX_TEAM_FIX + RECEPTION_FIX:
             tm = await conn.fetchrow(
-                "SELECT id FROM team_members WHERE email = $1", email,
+                "SELECT id FROM team_members WHERE email = $1",
+                email,
             )
             if not tm:
                 continue
@@ -219,7 +226,8 @@ async def down(conn: asyncpg.Connection) -> None:
     # Drop only the hr_employees row this migration created (Rina).
     for email, _, _ in RECEPTION_FIX:
         tm = await conn.fetchrow(
-            "SELECT id FROM team_members WHERE email = $1", email,
+            "SELECT id FROM team_members WHERE email = $1",
+            email,
         )
         if not tm:
             continue

@@ -38,7 +38,12 @@ class GoogleCloudShellAdapter:
                 version = result.stdout.decode().strip().split("\n")[0]
                 logger.info("✅ Google Cloud SDK trovato: %s", version)
                 return True
-        except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
+        except (
+            FileNotFoundError,
+            subprocess.TimeoutExpired,
+            subprocess.SubprocessError,
+            OSError,
+        ) as e:
             logger.debug("Google Cloud SDK not available: %s", e)
 
         logger.info("ℹ️ Google Cloud Shell Editor è web-based. Accedi via Google Cloud Console.")

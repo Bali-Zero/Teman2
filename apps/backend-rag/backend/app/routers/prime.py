@@ -848,26 +848,35 @@ async def get_zoning(
             return {
                 "status": "outside_coverage",
                 "message": "Coordinates outside mapped Badung RDTR coverage.",
-                "lat": lat, "lng": lng,
+                "lat": lat,
+                "lng": lng,
             }
 
         zone_type: str = row["zoning_type"]
         zone_code = zone_type.split(":")[0].strip()
         zone_name = zone_type.split(":", 1)[1].strip() if ":" in zone_type else zone_type
         label_info = _ZONE_LABELS.get(
-            zone_code, {"label_en": zone_name, "desc_en": "Contact local authorities for details"},
+            zone_code,
+            {"label_en": zone_name, "desc_en": "Contact local authorities for details"},
         )
         building_codes = _calculate_building_yield(zone_code)
 
         return {
-            "status": "found", "lat": lat, "lng": lng,
-            "district": row["district_name"], "subdistrict": row["subdistrict_name"],
-            "zone_code": zone_code, "zone_name": zone_name,
+            "status": "found",
+            "lat": lat,
+            "lng": lng,
+            "district": row["district_name"],
+            "subdistrict": row["subdistrict_name"],
+            "zone_code": zone_code,
+            "zone_name": zone_name,
             "zone_label_en": label_info["label_en"],
             "zone_description_en": label_info["desc_en"],
-            "zone_color_hex": None, "zone_type": zone_type,
+            "zone_color_hex": None,
+            "zone_type": zone_type,
             "is_restricted": zone_code in _RESTRICTED_ZONES,
-            "businesses": [], "business_count": 0, "overlays": {},
+            "businesses": [],
+            "business_count": 0,
+            "overlays": {},
             "building_codes": building_codes,
             "avg_price_per_are": float(row["avg_price_per_are"] or 0),
             "risk_score": float(row["risk_score"] or 0),
@@ -935,14 +944,17 @@ _ZONE_COLORS_MAP: dict[str, str] = {
     "IK-1": "#507DD2",
 }
 
+
 def _truncate_geojson_coords(geom: dict, precision: int = 6) -> None:
     """Truncate GeoJSON coordinate arrays in-place to reduce payload size."""
+
     def _trunc(coords: Any) -> Any:
         if isinstance(coords, list):
             if coords and isinstance(coords[0], (int, float)):
                 return [round(c, precision) for c in coords]
             return [_trunc(c) for c in coords]
         return coords
+
     if "coordinates" in geom:
         geom["coordinates"] = _trunc(geom["coordinates"])
 

@@ -357,11 +357,14 @@ class TestRateLimitCompliance:
         async def fake_sleep(seconds):
             sleeps.append(seconds)
 
-        with patch.object(
-            scraper,
-            "_fetch_with_playwright",
-            AsyncMock(return_value=fake_response),
-        ), patch("asyncio.sleep", fake_sleep):
+        with (
+            patch.object(
+                scraper,
+                "_fetch_with_playwright",
+                AsyncMock(return_value=fake_response),
+            ),
+            patch("asyncio.sleep", fake_sleep),
+        ):
             result = await scraper._fetch_with_retry(
                 mock_client,
                 "https://example.go.id",

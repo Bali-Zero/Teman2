@@ -48,7 +48,8 @@ class PerformanceLogger:
             )
         else:
             getattr(self.logger, self.level)(
-                f"✅ {self.operation} completed in {duration:.2f}s", extra={"duration": duration},
+                f"✅ {self.operation} completed in {duration:.2f}s",
+                extra={"duration": duration},
             )
 
 

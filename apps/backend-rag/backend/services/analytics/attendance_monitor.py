@@ -357,8 +357,7 @@ class AttendanceMonitor:
         pid = os.getpid()
         iteration = 0
         logger.info(
-            "AttendanceMonitor._escalation_loop: STARTED pid=%d loop_id=%d "
-            "interval=%ds",
+            "AttendanceMonitor._escalation_loop: STARTED pid=%d loop_id=%d interval=%ds",
             pid,
             loop_id,
             ESCALATION_SCAN_INTERVAL_SECONDS,
@@ -380,8 +379,7 @@ class AttendanceMonitor:
 
                 counters = await self.run_escalation_scan()
                 logger.info(
-                    "AttendanceMonitor._escalation_loop: heartbeat "
-                    "iter=%d pid=%d counters=%s",
+                    "AttendanceMonitor._escalation_loop: heartbeat iter=%d pid=%d counters=%s",
                     iteration,
                     pid,
                     counters,
@@ -444,7 +442,8 @@ class AttendanceMonitor:
                 await asyncio.sleep(sleep_seconds)
             except asyncio.CancelledError:
                 logger.info(
-                    "AttendanceMonitor._daily_digest_loop: cancelled pid=%d", pid,
+                    "AttendanceMonitor._daily_digest_loop: cancelled pid=%d",
+                    pid,
                 )
                 break
             try:
@@ -1148,8 +1147,7 @@ class AttendanceMonitor:
                 )
             except Exception as exc:
                 logger.exception(
-                    "run_escalation_scan: reminder email FAILED for "
-                    "incident_id=%s email=%s — %s",
+                    "run_escalation_scan: reminder email FAILED for incident_id=%s email=%s — %s",
                     inc["id"],
                     inc["email"],
                     exc,
@@ -1174,8 +1172,7 @@ class AttendanceMonitor:
                 )
             except Exception as exc:
                 logger.exception(
-                    "run_escalation_scan: ultimatum email FAILED for "
-                    "incident_id=%s email=%s — %s",
+                    "run_escalation_scan: ultimatum email FAILED for incident_id=%s email=%s — %s",
                     inc["id"],
                     inc["email"],
                     exc,
@@ -1188,24 +1185,17 @@ class AttendanceMonitor:
                     f"🚨 ULTIMATUM inviato — {inc['email']}\n"
                     f"Ritardo del {inc['late_date'].strftime('%d/%m/%Y')}, "
                     f"nessuna risposta in 48h lavorative.\n"
-                    f"CC: zero@"
-                    + (
-                        f" + {inc['manager_email']}"
-                        if inc["manager_email"]
-                        else ""
-                    ),
+                    f"CC: zero@" + (f" + {inc['manager_email']}" if inc["manager_email"] else ""),
                 )
             except httpx.HTTPError as exc:
                 logger.warning(
-                    "run_escalation_scan: telegram ping FAILED (HTTP) for "
-                    "incident_id=%s — %s",
+                    "run_escalation_scan: telegram ping FAILED (HTTP) for incident_id=%s — %s",
                     inc["id"],
                     exc,
                 )
             except Exception as exc:
                 logger.exception(
-                    "run_escalation_scan: telegram ping FAILED for "
-                    "incident_id=%s — %s",
+                    "run_escalation_scan: telegram ping FAILED for incident_id=%s — %s",
                     inc["id"],
                     exc,
                 )
@@ -1246,7 +1236,10 @@ class AttendanceMonitor:
         while cursor < end_bali:
             # End of the current calendar day in Bali time.
             day_end = (cursor + timedelta(days=1)).replace(
-                hour=0, minute=0, second=0, microsecond=0,
+                hour=0,
+                minute=0,
+                second=0,
+                microsecond=0,
             )
             slice_end = min(day_end, end_bali)
             if cursor.weekday() < 5:  # Mon–Fri only
@@ -1528,8 +1521,7 @@ class AttendanceMonitor:
             for r in replies_today:
                 preview = (r["preview"] or "").replace("\n", " ")
                 lines.append(
-                    f"  • {r['email']} ({r['late_date'].strftime('%d/%m')}): "
-                    f"\"{preview}\"",
+                    f'  • {r["email"]} ({r["late_date"].strftime("%d/%m")}): "{preview}"',
                 )
             lines.append("")
 

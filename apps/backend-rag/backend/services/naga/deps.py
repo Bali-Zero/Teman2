@@ -128,12 +128,14 @@ async def _exa_search(**kwargs: Any) -> dict:
             data = resp.json()
             results = []
             for item in data.get("web", {}).get("results", [])[:num_results]:
-                results.append({
-                    "url": item.get("url", ""),
-                    "title": item.get("title", ""),
-                    "text": item.get("description", ""),
-                    "score": 0.7,
-                })
+                results.append(
+                    {
+                        "url": item.get("url", ""),
+                        "title": item.get("title", ""),
+                        "text": item.get("description", ""),
+                        "score": 0.7,
+                    }
+                )
             return {"results": results}
     except Exception as e:
         logger.warning("[naga.deps] web_search failed: %s", e)
@@ -175,7 +177,9 @@ async def _gemini_generate(prompt: str = "", **kwargs: Any) -> dict:  # noqa: AR
     logger.info("[naga.deps] gemini bulk read %d chars via %s", len(prompt), _GEMINI_MODEL)
     try:
         proc = await asyncio.create_subprocess_exec(
-            "gemini", "-m", _GEMINI_MODEL,
+            "gemini",
+            "-m",
+            _GEMINI_MODEL,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
@@ -189,13 +193,25 @@ async def _gemini_generate(prompt: str = "", **kwargs: Any) -> dict:  # noqa: AR
         # Strip Gemini CLI noise
         clean_lines = []
         for line in output.split("\n"):
-            if any(skip in line for skip in [
-                "Scheduling MCP", "Executing MCP", "MCP context",
-                "Policy file error", "Pattern:", "Suggestion:",
-                "Loaded cached", "Registering notification",
-                "Server '", "capabilities", "experimental",
-                "GOOGLE_API_KEY", "GEMINI_API_KEY", "Both ",
-            ]):
+            if any(
+                skip in line
+                for skip in [
+                    "Scheduling MCP",
+                    "Executing MCP",
+                    "MCP context",
+                    "Policy file error",
+                    "Pattern:",
+                    "Suggestion:",
+                    "Loaded cached",
+                    "Registering notification",
+                    "Server '",
+                    "capabilities",
+                    "experimental",
+                    "GOOGLE_API_KEY",
+                    "GEMINI_API_KEY",
+                    "Both ",
+                ]
+            ):
                 continue
             clean_lines.append(line)
         clean = "\n".join(clean_lines).strip()

@@ -210,7 +210,9 @@ class TestArticleComposerIntegration:
 
         # Simulate rate limit error
         mock_claude_call.side_effect = anthropic.RateLimitError(
-            message="Rate limit exceeded", response=MagicMock(), body={},
+            message="Rate limit exceeded",
+            response=MagicMock(),
+            body={},
         )
 
         response = client.post(

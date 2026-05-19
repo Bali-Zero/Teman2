@@ -63,7 +63,8 @@ class ClientService:
             # 4. Mappatura eccezioni ("Silent Swallows" replacement)
             # Trasforma l'errore DB in un'eccezione custom riconosciuta dall'applicativo
             logger.error(
-                "Conflitto di risorse: email o numero di telefono già presenti. Dettagli: %s", e,
+                "Conflitto di risorse: email o numero di telefono già presenti. Dettagli: %s",
+                e,
                 exc_info=True,
             )
             raise ResourceConflictError(
@@ -73,6 +74,8 @@ class ClientService:
         except Exception as e:
             # Propaga altri errori critici mantenendo la traccia nei log
             logger.error(
-                "Errore imprevisto nella logica di business di create_client: %s", e, exc_info=True,
+                "Errore imprevisto nella logica di business di create_client: %s",
+                e,
+                exc_info=True,
             )
             raise

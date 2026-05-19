@@ -93,7 +93,10 @@ class TestRAGMemoryKGIntegration:
 
     @pytest.mark.asyncio
     async def test_rag_query_with_memory_context(
-        self, mock_search_service, mock_db_pool, mock_memory_orchestrator,
+        self,
+        mock_search_service,
+        mock_db_pool,
+        mock_memory_orchestrator,
     ):
         """Test RAG query using Memory context for personalization"""
         query = "Quanto costa E33G per me?"
@@ -101,13 +104,17 @@ class TestRAGMemoryKGIntegration:
 
         # Create orchestrator with memory
         with patch(
-            "backend.services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator,
+            "backend.services.memory.MemoryOrchestrator",
+            return_value=mock_memory_orchestrator,
         ):
             orchestrator = create_agentic_rag(retriever=mock_search_service, db_pool=mock_db_pool)
 
             # Execute query
             result = await orchestrator.process_query(
-                query=query, user_id=user_id, session_id="test-session", conversation_history=[],
+                query=query,
+                user_id=user_id,
+                session_id="test-session",
+                conversation_history=[],
             )
 
             # Verify RAG executed and returned a result
@@ -149,7 +156,10 @@ class TestRAGMemoryKGIntegration:
 
     @pytest.mark.asyncio
     async def test_rag_result_to_episodic_memory(
-        self, mock_search_service, mock_db_pool, mock_episodic_memory,
+        self,
+        mock_search_service,
+        mock_db_pool,
+        mock_episodic_memory,
     ):
         """Test that RAG results create Episodic Memory events"""
         user_id = "marco@example.com"
@@ -179,13 +189,18 @@ class TestRAGMemoryKGIntegration:
 
             # Verify entity linking
             link_result = await mock_episodic_memory.link_entity_to_event(
-                event_id=event["event_id"], entity_name="E33G", entity_type="VISA_TYPE",
+                event_id=event["event_id"],
+                entity_name="E33G",
+                entity_type="VISA_TYPE",
             )
             assert link_result["success"] is True
 
     @pytest.mark.asyncio
     async def test_memory_facts_influence_rag_response(
-        self, mock_search_service, mock_db_pool, mock_memory_orchestrator,
+        self,
+        mock_search_service,
+        mock_db_pool,
+        mock_memory_orchestrator,
     ):
         """Test that Memory facts influence RAG response generation"""
         query = "Qual è il prossimo passo?"
@@ -207,13 +222,17 @@ class TestRAGMemoryKGIntegration:
 
         # Create orchestrator
         with patch(
-            "backend.services.memory.MemoryOrchestrator", return_value=mock_memory_orchestrator,
+            "backend.services.memory.MemoryOrchestrator",
+            return_value=mock_memory_orchestrator,
         ):
             orchestrator = create_agentic_rag(retriever=mock_search_service, db_pool=mock_db_pool)
 
             # Execute query
             result = await orchestrator.process_query(
-                query=query, user_id=user_id, session_id="test-session", conversation_history=[],
+                query=query,
+                user_id=user_id,
+                session_id="test-session",
+                conversation_history=[],
             )
 
             # Verify response considers memory context
@@ -234,7 +253,9 @@ class TestRAGMemoryKGIntegration:
 
         # Execute enhanced search
         result = await mock_search_service.search(
-            query=enhanced_query, collection="visa_oracle", limit=5,
+            query=enhanced_query,
+            collection="visa_oracle",
+            limit=5,
         )
 
         # Verify search was executed with enhanced query
@@ -243,7 +264,9 @@ class TestRAGMemoryKGIntegration:
 
     @pytest.mark.asyncio
     async def test_conversation_save_triggers_kg_and_memory(
-        self, mock_db_pool, mock_episodic_memory,
+        self,
+        mock_db_pool,
+        mock_episodic_memory,
     ):
         """Test that saving conversation triggers both KG extraction and Memory storage"""
         conversation_text = "Marco Verdi ha aperto PT PMA a Bali nel 2024"
@@ -293,7 +316,10 @@ class TestRAGMemoryKGIntegration:
 
     @pytest.mark.asyncio
     async def test_multi_turn_conversation_with_kg_updates(
-        self, mock_search_service, mock_db_pool, mock_memory_orchestrator,
+        self,
+        mock_search_service,
+        mock_db_pool,
+        mock_memory_orchestrator,
     ):
         """Test multi-turn conversation that updates Knowledge Graph incrementally"""
         session_id = "test-session"
@@ -329,12 +355,14 @@ class TestRAGMemoryKGIntegration:
 
             # Turn 1
             result1 = await kg_pipeline.process_document(
-                text=turn1_query, metadata={"turn": 1, "session_id": session_id},
+                text=turn1_query,
+                metadata={"turn": 1, "session_id": session_id},
             )
 
             # Turn 2
             result2 = await kg_pipeline.process_document(
-                text=f"{turn1_query} {turn2_query}", metadata={"turn": 2, "session_id": session_id},
+                text=f"{turn1_query} {turn2_query}",
+                metadata={"turn": 2, "session_id": session_id},
             )
 
             # Verify incremental KG updates

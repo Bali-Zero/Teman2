@@ -28,7 +28,10 @@ def safe_register_counter(name: Any, documentation: Any, labelnames: Any = ()) -
 
 
 def safe_register_histogram(
-    name: Any, documentation: Any, labelnames: Any = (), buckets: Any = Histogram.DEFAULT_BUCKETS,
+    name: Any,
+    documentation: Any,
+    labelnames: Any = (),
+    buckets: Any = Histogram.DEFAULT_BUCKETS,
 ) -> Any:
     try:
         return Histogram(name, documentation, labelnames, buckets=buckets)
@@ -38,7 +41,8 @@ def safe_register_histogram(
 
 # System Metrics
 active_sessions = safe_register_gauge(
-    "zantara_active_sessions_total", "Number of active user sessions",
+    "zantara_active_sessions_total",
+    "Number of active user sessions",
 )
 redis_latency = safe_register_gauge("zantara_redis_latency_ms", "Redis latency in milliseconds")
 sse_latency = safe_register_gauge("zantara_sse_latency_ms", "Average SSE handshake time")
@@ -48,10 +52,14 @@ memory_usage = safe_register_gauge("zantara_memory_usage_mb", "Memory usage in M
 
 # Request Metrics
 http_requests_total = safe_register_counter(
-    "zantara_http_requests_total", "Total HTTP requests", ["method", "endpoint", "status"],
+    "zantara_http_requests_total",
+    "Total HTTP requests",
+    ["method", "endpoint", "status"],
 )
 request_duration = safe_register_histogram(
-    "zantara_request_duration_seconds", "Request duration in seconds", ["method", "endpoint"],
+    "zantara_request_duration_seconds",
+    "Request duration in seconds",
+    ["method", "endpoint"],
 )
 
 # Public Endpoint Access Metrics (Security Audit)
@@ -70,7 +78,8 @@ public_endpoint_access_by_ip = safe_register_counter(
 cache_hits = safe_register_counter("zantara_cache_hits_total", "Total cache hits")
 cache_misses = safe_register_counter("zantara_cache_misses_total", "Total cache misses")
 cache_set_operations = safe_register_counter(
-    "zantara_cache_set_operations_total", "Total cache set operations",
+    "zantara_cache_set_operations_total",
+    "Total cache set operations",
 )
 
 # Cache invalidation discipline (per @cache_invalidating decorator)
@@ -92,25 +101,32 @@ faq_cache_hits_total = safe_register_counter(
     ["domain"],  # tax, visa, kbli, property
 )
 faq_cache_misses_total = safe_register_counter(
-    "zantara_faq_cache_misses_total", "Total FAQ cache misses (question not in cache)",
+    "zantara_faq_cache_misses_total",
+    "Total FAQ cache misses (question not in cache)",
 )
 faq_cache_errors_total = safe_register_counter(
-    "zantara_faq_cache_errors_total", "Total FAQ cache errors (Redis connection failures)",
+    "zantara_faq_cache_errors_total",
+    "Total FAQ cache errors (Redis connection failures)",
 )
 faq_cache_api_cost_saved_usd = safe_register_counter(
-    "zantara_faq_cache_api_cost_saved_usd_total", "Estimated API cost savings from FAQ cache (USD)",
+    "zantara_faq_cache_api_cost_saved_usd_total",
+    "Estimated API cost savings from FAQ cache (USD)",
 )
 
 # AI Metrics
 ai_requests = safe_register_counter("zantara_ai_requests_total", "Total AI requests", ["model"])
 ai_latency = safe_register_histogram("zantara_ai_latency_seconds", "AI response latency", ["model"])
 ai_tokens_used = safe_register_counter(
-    "zantara_ai_tokens_used_total", "Total AI tokens used", ["model"],
+    "zantara_ai_tokens_used_total",
+    "Total AI tokens used",
+    ["model"],
 )
 
 # LLM Token Usage Metrics (Detailed)
 llm_prompt_tokens = safe_register_counter(
-    "zantara_llm_prompt_tokens_total", "Total prompt/input tokens used", ["model", "endpoint"],
+    "zantara_llm_prompt_tokens_total",
+    "Total prompt/input tokens used",
+    ["model", "endpoint"],
 )
 llm_completion_tokens = safe_register_counter(
     "zantara_llm_completion_tokens_total",
@@ -118,7 +134,9 @@ llm_completion_tokens = safe_register_counter(
     ["model", "endpoint"],
 )
 llm_cost_usd = safe_register_counter(
-    "zantara_llm_cost_usd_total", "Total LLM cost in USD", ["model"],
+    "zantara_llm_cost_usd_total",
+    "Total LLM cost in USD",
+    ["model"],
 )
 llm_request_tokens = safe_register_histogram(
     "zantara_llm_request_tokens",
@@ -129,37 +147,49 @@ llm_request_tokens = safe_register_histogram(
 
 # Database Metrics
 db_connections_active = safe_register_gauge(
-    "zantara_db_connections_active", "Active database connections",
+    "zantara_db_connections_active",
+    "Active database connections",
 )
 db_query_duration = safe_register_histogram(
-    "zantara_db_query_duration_seconds", "Database query duration",
+    "zantara_db_query_duration_seconds",
+    "Database query duration",
 )
 db_pool_size = safe_register_gauge(
-    "zantara_db_pool_size", "Database connection pool size", ["service"],
+    "zantara_db_pool_size",
+    "Database connection pool size",
+    ["service"],
 )
 db_pool_idle = safe_register_gauge(
-    "zantara_db_pool_idle", "Database connection pool idle connections", ["service"],
+    "zantara_db_pool_idle",
+    "Database connection pool idle connections",
+    ["service"],
 )
 
 # RAG Pipeline Metrics (Performance Debug Phase 1)
 rag_embedding_duration = safe_register_histogram(
-    "zantara_rag_embedding_duration_seconds", "Embedding generation duration",
+    "zantara_rag_embedding_duration_seconds",
+    "Embedding generation duration",
 )
 rag_vector_search_duration = safe_register_histogram(
-    "zantara_rag_vector_search_duration_seconds", "Vector search duration",
+    "zantara_rag_vector_search_duration_seconds",
+    "Vector search duration",
 )
 rag_reranking_duration = safe_register_histogram(
-    "zantara_rag_reranking_duration_seconds", "Reranking duration",
+    "zantara_rag_reranking_duration_seconds",
+    "Reranking duration",
 )
 rag_pipeline_duration = safe_register_histogram(
-    "zantara_rag_pipeline_duration_seconds", "Total RAG pipeline duration",
+    "zantara_rag_pipeline_duration_seconds",
+    "Total RAG pipeline duration",
 )
 rag_early_exit_total = safe_register_counter(
-    "zantara_rag_early_exit_total", "Total early exits (skipped reranking)",
+    "zantara_rag_early_exit_total",
+    "Total early exits (skipped reranking)",
 )
 rag_cache_hit_rate = safe_register_gauge("zantara_rag_cache_hit_rate", "RAG cache hit rate")
 rag_parallel_searches = safe_register_counter(
-    "zantara_rag_parallel_searches_total", "Parallel collection searches executed",
+    "zantara_rag_parallel_searches_total",
+    "Parallel collection searches executed",
 )
 
 # RAG Query Metrics (Dec 2025 - Dashboard Alignment)
@@ -169,10 +199,14 @@ rag_queries_total = safe_register_counter(
     ["collection", "route_used", "status"],
 )
 rag_tool_calls_total = safe_register_counter(
-    "zantara_rag_tool_calls_total", "Total tool calls in agentic RAG", ["tool_name", "status"],
+    "zantara_rag_tool_calls_total",
+    "Total tool calls in agentic RAG",
+    ["tool_name", "status"],
 )
 rag_fallback_count = safe_register_counter(
-    "zantara_rag_fallback_count_total", "LLM model fallback events", ["from_model", "to_model"],
+    "zantara_rag_fallback_count_total",
+    "LLM model fallback events",
+    ["from_model", "to_model"],
 )
 rag_context_length = safe_register_histogram(
     "zantara_rag_context_length_tokens",
@@ -210,7 +244,9 @@ kg_relationship_density = safe_register_histogram(
 
 # Race Condition Metrics (Dec 2025 - Lock Contention Monitoring)
 memory_lock_timeout_total = safe_register_counter(
-    "zantara_memory_lock_timeout_total", "Number of memory lock timeouts", ["user_id"],
+    "zantara_memory_lock_timeout_total",
+    "Number of memory lock timeouts",
+    ["user_id"],
 )
 memory_lock_contention_seconds = safe_register_histogram(
     "zantara_memory_lock_contention_seconds",
@@ -579,13 +615,19 @@ llm_circuit_breaker_opened_total = safe_register_counter(
     ["model", "error_type"],
 )
 llm_quota_exhausted_total = safe_register_counter(
-    "zantara_llm_quota_exhausted_total", "Number of quota exhausted errors", ["model"],
+    "zantara_llm_quota_exhausted_total",
+    "Number of quota exhausted errors",
+    ["model"],
 )
 llm_service_unavailable_total = safe_register_counter(
-    "zantara_llm_service_unavailable_total", "Number of service unavailable errors", ["model"],
+    "zantara_llm_service_unavailable_total",
+    "Number of service unavailable errors",
+    ["model"],
 )
 llm_model_error_total = safe_register_counter(
-    "zantara_llm_model_error_total", "Number of model errors", ["model", "error_type"],
+    "zantara_llm_model_error_total",
+    "Number of model errors",
+    ["model", "error_type"],
 )
 llm_all_models_failed_total = safe_register_counter(
     "zantara_llm_all_models_failed_total",
@@ -600,7 +642,9 @@ llm_max_depth_reached_total = safe_register_counter(
     "Number of times max fallback depth was reached",
 )
 llm_fallback_depth = safe_register_histogram(
-    "zantara_llm_fallback_depth", "Fallback depth distribution", buckets=[0, 1, 2, 3, 4, 5],
+    "zantara_llm_fallback_depth",
+    "Fallback depth distribution",
+    buckets=[0, 1, 2, 3, 4, 5],
 )
 llm_query_cost_usd = safe_register_histogram(
     "zantara_llm_query_cost_usd",
@@ -631,10 +675,14 @@ database_health_check_failed_total = safe_register_counter(
 )
 
 qdrant_timeout_total = safe_register_counter(
-    "zantara_qdrant_timeout_total", "Number of Qdrant timeout errors", ["error_type"],
+    "zantara_qdrant_timeout_total",
+    "Number of Qdrant timeout errors",
+    ["error_type"],
 )
 qdrant_http_error_total = safe_register_counter(
-    "zantara_qdrant_http_error_total", "Number of Qdrant HTTP errors", ["status_code", "error_type"],
+    "zantara_qdrant_http_error_total",
+    "Number of Qdrant HTTP errors",
+    ["status_code", "error_type"],
 )
 
 reasoning_low_context_quality_total = safe_register_counter(
@@ -670,7 +718,8 @@ drive_oauth_refresh_total = safe_register_counter(
     ["status"],  # success, failed
 )
 drive_oauth_token_expiry_seconds = safe_register_gauge(
-    "zantara_drive_oauth_token_expiry_seconds", "Seconds until OAuth token expires",
+    "zantara_drive_oauth_token_expiry_seconds",
+    "Seconds until OAuth token expires",
 )
 drive_errors_total = safe_register_counter(
     "zantara_drive_errors_total",
@@ -681,10 +730,12 @@ drive_errors_total = safe_register_counter(
     ],  # error_type: auth_failed, quota_exceeded, not_found, permission_denied, network_error
 )
 drive_quota_usage_percent = safe_register_gauge(
-    "zantara_drive_quota_usage_percent", "Google Drive quota usage percentage",
+    "zantara_drive_quota_usage_percent",
+    "Google Drive quota usage percentage",
 )
 drive_active_users = safe_register_gauge(
-    "zantara_drive_active_users", "Number of users who accessed Drive in last hour",
+    "zantara_drive_active_users",
+    "Number of users who accessed Drive in last hour",
 )
 drive_files_accessed_total = safe_register_counter(
     "zantara_drive_files_accessed_total",
@@ -997,7 +1048,9 @@ class MetricsCollector:
         memory_extraction_duration_seconds.observe(duration_seconds)
         for f_type in fact_types:
             memory_facts_extracted_total.labels(
-                fact_type=f_type, source="regex", confidence_level="medium",
+                fact_type=f_type,
+                source="regex",
+                confidence_level="medium",
             ).inc()
 
     def record_kg_metrics(self, entity_count: int, relationship_count: int, method: str) -> Any:
@@ -1082,7 +1135,9 @@ class MetricsCollector:
         safe_email = user_email.split("@")[0] if user_email else "unknown"
 
         drive_operations_total.labels(
-            operation=operation, user_email=safe_email, status=status,
+            operation=operation,
+            user_email=safe_email,
+            status=status,
         ).inc()
 
         if duration_seconds > 0:
@@ -1163,7 +1218,9 @@ class MetricsCollector:
         safe_user_id = user_id[:8] if user_id else "unknown"
 
         email_operations_total.labels(
-            operation=operation, user_id=safe_user_id, status=status,
+            operation=operation,
+            user_id=safe_user_id,
+            status=status,
         ).inc()
 
         if duration_seconds > 0:
@@ -1226,7 +1283,10 @@ class MetricsCollector:
             chunks_created: Number of chunks created from the document
         """
         documents_ingested_total.labels(
-            source=source, file_type=file_type, collection=collection, status=status,
+            source=source,
+            file_type=file_type,
+            collection=collection,
+            status=status,
         ).inc()
 
         if chunks_created > 0:
@@ -1255,7 +1315,10 @@ class MetricsCollector:
         parsing_errors_total.labels(file_type=file_type, error_type=error_type, source=source).inc()
 
     def record_document_processing_duration(
-        self, source: str, collection: str, duration_seconds: float,
+        self,
+        source: str,
+        collection: str,
+        duration_seconds: float,
     ) -> Any:
         """Record total document processing duration.
 
@@ -1269,7 +1332,10 @@ class MetricsCollector:
         )
 
     def record_metadata_extraction_duration(
-        self, document_type: str, source: str, duration_seconds: float,
+        self,
+        document_type: str,
+        source: str,
+        duration_seconds: float,
     ) -> Any:
         """Record metadata extraction duration.
 
@@ -1279,11 +1345,15 @@ class MetricsCollector:
             duration_seconds: Time taken to extract metadata
         """
         metadata_extraction_duration_seconds.labels(
-            document_type=document_type, source=source,
+            document_type=document_type,
+            source=source,
         ).observe(duration_seconds)
 
     def record_chunking_duration(
-        self, file_type: str, chunk_strategy: str, duration_seconds: float,
+        self,
+        file_type: str,
+        chunk_strategy: str,
+        duration_seconds: float,
     ) -> Any:
         """Record chunking duration.
 
@@ -1293,11 +1363,15 @@ class MetricsCollector:
             duration_seconds: Time taken to chunk the document
         """
         chunking_duration_seconds.labels(
-            file_type=file_type, chunk_strategy=chunk_strategy,
+            file_type=file_type,
+            chunk_strategy=chunk_strategy,
         ).observe(duration_seconds)
 
     def record_embedding_generation_duration(
-        self, model: str, batch_size: int, duration_seconds: float,
+        self,
+        model: str,
+        batch_size: int,
+        duration_seconds: float,
     ) -> Any:
         """Record embedding generation duration.
 
@@ -1307,11 +1381,15 @@ class MetricsCollector:
             duration_seconds: Time taken to generate embeddings
         """
         embedding_generation_duration_seconds.labels(
-            model=model, batch_size=str(batch_size),
+            model=model,
+            batch_size=str(batch_size),
         ).observe(duration_seconds)
 
     def record_vector_storage_duration(
-        self, collection: str, operation: str, duration_seconds: float,
+        self,
+        collection: str,
+        operation: str,
+        duration_seconds: float,
     ) -> Any:
         """Record vector storage duration.
 
@@ -1325,7 +1403,10 @@ class MetricsCollector:
         )
 
     def update_ingestion_failure_rate(
-        self, source: str, file_type: str, failure_rate: float,
+        self,
+        source: str,
+        file_type: str,
+        failure_rate: float,
     ) -> Any:
         """Update the ingestion failure rate gauge.
 
@@ -1337,7 +1418,11 @@ class MetricsCollector:
         ingestion_failure_rate.labels(source=source, file_type=file_type).set(failure_rate)
 
     def record_scraper_data_normalized(
-        self, scraper_type: str, source: str, status: str, duration_seconds: float = 0,
+        self,
+        scraper_type: str,
+        source: str,
+        status: str,
+        duration_seconds: float = 0,
     ) -> Any:
         """Record scraper data normalization.
 
@@ -1348,14 +1433,17 @@ class MetricsCollector:
             duration_seconds: Time taken for normalization
         """
         scraper_data_normalized_total.labels(
-            scraper_type=scraper_type, source=source, status=status,
+            scraper_type=scraper_type,
+            source=source,
+            status=status,
         ).inc()
 
         if duration_seconds > 0:
             # Determine data complexity based on duration (simple heuristic)
             complexity = "simple" if duration_seconds < 0.1 else "complex"
             scraper_normalization_duration_seconds.labels(
-                scraper_type=scraper_type, data_complexity=complexity,
+                scraper_type=scraper_type,
+                data_complexity=complexity,
             ).observe(duration_seconds)
 
     def record_scraper_normalization_error(self, scraper_type: str, error_type: str) -> Any:
@@ -1366,7 +1454,8 @@ class MetricsCollector:
             error_type: Type of error encountered
         """
         scraper_normalization_errors_total.labels(
-            scraper_type=scraper_type, error_type=error_type,
+            scraper_type=scraper_type,
+            error_type=error_type,
         ).inc()
 
     # Webhook Metrics Methods
@@ -1390,7 +1479,10 @@ class MetricsCollector:
         qdrant_collection_points_count.labels(collection=collection).set(count)
 
     def record_qdrant_search_latency(
-        self, collection: str, search_type: str, duration_seconds: float,
+        self,
+        collection: str,
+        search_type: str,
+        duration_seconds: float,
     ) -> Any:
         """Record Qdrant search latency.
 
@@ -1400,12 +1492,17 @@ class MetricsCollector:
             duration_seconds: Search duration
         """
         qdrant_search_latency_seconds.labels(
-            collection=collection, search_type=search_type,
+            collection=collection,
+            search_type=search_type,
         ).observe(duration_seconds)
 
     # LLM Detailed Token Methods
     def record_llm_tokens(
-        self, model: str, provider: str, input_tokens: int, output_tokens: int,
+        self,
+        model: str,
+        provider: str,
+        input_tokens: int,
+        output_tokens: int,
     ) -> Any:
         """Record LLM token usage with provider detail.
 
@@ -1417,11 +1514,15 @@ class MetricsCollector:
         """
         if input_tokens > 0:
             llm_tokens_total.labels(
-                model=model, provider=provider, type="input",
+                model=model,
+                provider=provider,
+                type="input",
             ).inc(input_tokens)
         if output_tokens > 0:
             llm_tokens_total.labels(
-                model=model, provider=provider, type="output",
+                model=model,
+                provider=provider,
+                type="output",
             ).inc(output_tokens)
 
     # Database Active Connections

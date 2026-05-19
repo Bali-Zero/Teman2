@@ -13,6 +13,7 @@ DOWNGRADE — admin must edit system_settings to upgrade past the env cap.
 This pattern (B10) prevents deploys from accidentally promoting
 production while a Pro/Air machine has its env stuck on dry_action.
 """
+
 from __future__ import annotations
 
 import os
@@ -48,15 +49,10 @@ class FADConfig:
             database_url=os.environ.get("DATABASE_URL", ""),
             telegram_bot_token=os.environ.get("TELEGRAM_BOT_TOKEN") or None,
             telegram_chat_id=os.environ.get("TELEGRAM_OWNER_CHAT_ID") or None,
-            daemon_owner=os.environ.get("FEDERATION_ALERT_DAEMON_OWNER")
-            or _default_owner(),
-            lease_ttl_sec=int(
-                os.environ.get("FEDERATION_ALERT_LEASE_TTL_SEC", "300")
-            ),
+            daemon_owner=os.environ.get("FEDERATION_ALERT_DAEMON_OWNER") or _default_owner(),
+            lease_ttl_sec=int(os.environ.get("FEDERATION_ALERT_LEASE_TTL_SEC", "300")),
             deliberation_timeout_sec=int(
-                os.environ.get(
-                    "FEDERATION_ALERT_DELIBERATION_TIMEOUT_SEC", "180"
-                )
+                os.environ.get("FEDERATION_ALERT_DELIBERATION_TIMEOUT_SEC", "180")
             ),
             env_mode=os.environ.get("FEDERATION_ALERT_MODE") or None,
             audit_log_dir=os.environ.get(
@@ -72,6 +68,4 @@ class FADConfig:
         it can't reach Telegram. DATABASE_URL is mandatory.
         """
         if not self.database_url:
-            raise RuntimeError(
-                "DATABASE_URL not set; daemon cannot LISTEN federation_alert"
-            )
+            raise RuntimeError("DATABASE_URL not set; daemon cannot LISTEN federation_alert")

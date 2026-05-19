@@ -612,7 +612,8 @@ class QueryRouter:
         elif primary_domain == "team":
             collection = "bali_zero_pricing_hybrid"
             logger.warning(
-                "⚠️ Route: %s (team query fallback - no dedicated live collection)", collection,
+                "⚠️ Route: %s (team query fallback - no dedicated live collection)",
+                collection,
             )
         else:  # books
             # Fallback for books if collection missing
@@ -709,7 +710,10 @@ class QueryRouter:
         return self.confidence_calculator.calculate_confidence(query, domain_scores)
 
     def get_fallback_collections(
-        self, primary_collection: CollectionName, confidence: float, max_fallbacks: int = 3,
+        self,
+        primary_collection: CollectionName,
+        confidence: float,
+        max_fallbacks: int = 3,
     ) -> list[CollectionName]:
         """
         Get list of collections to try based on confidence (Phase 3).
@@ -725,11 +729,15 @@ class QueryRouter:
             List of collections to query in order (primary first)
         """
         return self.fallback_manager.get_fallback_collections(
-            primary_collection, confidence, max_fallbacks,
+            primary_collection,
+            confidence,
+            max_fallbacks,
         )
 
     def route_with_confidence(
-        self, query: str, return_fallbacks: bool = True,
+        self,
+        query: str,
+        return_fallbacks: bool = True,
     ) -> tuple[CollectionName, float, list[CollectionName]]:
         """
         Route query with confidence scoring and fallback suggestions (Phase 3).

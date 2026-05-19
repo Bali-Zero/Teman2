@@ -115,9 +115,17 @@ class TestLoginEndpoint:
         redis_manager.get_async_client.return_value = AsyncMock()
 
         with (
-            patch("backend.services.monitoring.audit_service.get_audit_service", return_value=audit_service),
-            patch("backend.services.security.brute_force.BruteForceDetector", return_value=brute_force_detector),
-            patch("backend.core.redis_manager.RedisManager.get_instance", return_value=redis_manager),
+            patch(
+                "backend.services.monitoring.audit_service.get_audit_service",
+                return_value=audit_service,
+            ),
+            patch(
+                "backend.services.security.brute_force.BruteForceDetector",
+                return_value=brute_force_detector,
+            ),
+            patch(
+                "backend.core.redis_manager.RedisManager.get_instance", return_value=redis_manager
+            ),
             patch("backend.app.routers.auth.verify_password", return_value=True),
         ):
             response = client.post(
@@ -157,9 +165,17 @@ class TestLoginEndpoint:
         redis_manager.get_async_client.return_value = AsyncMock()
 
         with (
-            patch("backend.services.monitoring.audit_service.get_audit_service", return_value=audit_service),
-            patch("backend.services.security.brute_force.BruteForceDetector", return_value=brute_force_detector),
-            patch("backend.core.redis_manager.RedisManager.get_instance", return_value=redis_manager),
+            patch(
+                "backend.services.monitoring.audit_service.get_audit_service",
+                return_value=audit_service,
+            ),
+            patch(
+                "backend.services.security.brute_force.BruteForceDetector",
+                return_value=brute_force_detector,
+            ),
+            patch(
+                "backend.core.redis_manager.RedisManager.get_instance", return_value=redis_manager
+            ),
             patch("backend.app.routers.auth.verify_password", return_value=False),
         ):
             response = client.post(
@@ -229,11 +245,10 @@ class TestSessionEndpoints:
         application = FastAPI()
         application.include_router(auth_module.router)
         application.dependency_overrides[get_database_pool] = lambda: pool
-        application.dependency_overrides[auth_module.get_current_user] = (
-            lambda: (_ for _ in ()).throw(HTTPException(status_code=401, detail="Unauthorized"))
-        )
+        application.dependency_overrides[auth_module.get_current_user] = lambda: (
+            _ for _ in ()
+        ).throw(HTTPException(status_code=401, detail="Unauthorized"))
 
         response = TestClient(application, raise_server_exceptions=False).get("/api/auth/profile")
 
         assert response.status_code == 401
-

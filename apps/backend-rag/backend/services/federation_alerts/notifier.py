@@ -15,6 +15,7 @@ callback. Buttons:
     ❌ Reject    → fad:reject:<proposal_id>:<token8>
     🕒 Defer     → fad:defer:<proposal_id>:<token8>
 """
+
 from __future__ import annotations
 
 import json
@@ -61,15 +62,11 @@ def _format_proposal_message(proposal: Any) -> str:
         f"id: <code>{proposal_id[:8]}</code>",
     ]
     if active is not None or passed is not None:
-        lines.append(
-            f"consiglio: gate6={'✅' if passed else '⚠️'}  active={active}/4"
-        )
+        lines.append(f"consiglio: gate6={'✅' if passed else '⚠️'}  active={active}/4")
     return "\n".join(lines)
 
 
-def _build_inline_keyboard(
-    proposal_id: str, approval_token: str
-) -> dict[str, Any]:
+def _build_inline_keyboard(proposal_id: str, approval_token: str) -> dict[str, Any]:
     """Three-button keyboard: approve / reject / defer."""
     prefix = callback_token_prefix(approval_token, proposal_id)
     return {
@@ -77,21 +74,15 @@ def _build_inline_keyboard(
             [
                 {
                     "text": "✅ Approve",
-                    "callback_data": encode_callback(
-                        "approve", proposal_id, prefix
-                    ),
+                    "callback_data": encode_callback("approve", proposal_id, prefix),
                 },
                 {
                     "text": "❌ Reject",
-                    "callback_data": encode_callback(
-                        "reject", proposal_id, prefix
-                    ),
+                    "callback_data": encode_callback("reject", proposal_id, prefix),
                 },
                 {
                     "text": "🕒 Defer",
-                    "callback_data": encode_callback(
-                        "defer", proposal_id, prefix
-                    ),
+                    "callback_data": encode_callback("defer", proposal_id, prefix),
                 },
             ]
         ]
@@ -114,9 +105,7 @@ def send_proposal_to_telegram(
     runtime — urllib is standard library only.
     """
     if not bot_token or not chat_id:
-        logger.warning(
-            "send_proposal_to_telegram: bot_token or chat_id missing"
-        )
+        logger.warning("send_proposal_to_telegram: bot_token or chat_id missing")
         return None
 
     proposal_id = getattr(proposal, "proposal_id", None)
@@ -145,14 +134,16 @@ def send_proposal_to_telegram(
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         logger.warning(
             "Telegram sendMessage failed for proposal %s: %s",
-            proposal_id, exc,
+            proposal_id,
+            exc,
         )
         return None
 
     if not data.get("ok"):
         logger.warning(
             "Telegram sendMessage non-ok for proposal %s: %s",
-            proposal_id, data,
+            proposal_id,
+            data,
         )
         return None
     msg_id = data.get("result", {}).get("message_id")
@@ -164,7 +155,7 @@ def edit_message_after_decision(
     bot_token: str,
     chat_id: str,
     message_id: int,
-    decision: str,           # "approved" | "rejected" | "deferred" | "expired"
+    decision: str,  # "approved" | "rejected" | "deferred" | "expired"
     by_user: str | None = None,
     timeout_sec: int = 5,
 ) -> bool:
@@ -202,7 +193,8 @@ def edit_message_after_decision(
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         logger.warning(
             "Telegram editMessageReplyMarkup failed (msg=%s): %s",
-            message_id, exc,
+            message_id,
+            exc,
         )
         return False
     return bool(data.get("ok"))

@@ -31,6 +31,7 @@ from backend.channels.optimizations import (
 # RateLimitConfig
 # --------------------------------------------------------------------------- #
 
+
 class TestRateLimitConfig:
     def test_defaults(self) -> None:
         config = RateLimitConfig()
@@ -39,7 +40,9 @@ class TestRateLimitConfig:
         assert config.burst_size == 10
 
     def test_custom_values(self) -> None:
-        config = RateLimitConfig(max_requests_per_minute=30, max_requests_per_hour=500, burst_size=5)
+        config = RateLimitConfig(
+            max_requests_per_minute=30, max_requests_per_hour=500, burst_size=5
+        )
         assert config.max_requests_per_minute == 30
         assert config.burst_size == 5
 
@@ -48,14 +51,17 @@ class TestRateLimitConfig:
 # ChannelRateLimiter
 # --------------------------------------------------------------------------- #
 
+
 class TestChannelRateLimiter:
     @pytest.fixture
     def limiter(self) -> ChannelRateLimiter:
-        return ChannelRateLimiter(RateLimitConfig(
-            max_requests_per_minute=5,
-            max_requests_per_hour=20,
-            burst_size=3,
-        ))
+        return ChannelRateLimiter(
+            RateLimitConfig(
+                max_requests_per_minute=5,
+                max_requests_per_hour=20,
+                burst_size=3,
+            )
+        )
 
     @pytest.mark.asyncio
     async def test_acquire_success_no_redis(self, limiter: ChannelRateLimiter) -> None:
@@ -151,6 +157,7 @@ class TestChannelRateLimiter:
 # MessageDeduplicator
 # --------------------------------------------------------------------------- #
 
+
 class TestMessageDeduplicator:
     @pytest.fixture
     def dedup(self) -> MessageDeduplicator:
@@ -196,6 +203,7 @@ class TestMessageDeduplicator:
 # --------------------------------------------------------------------------- #
 # ChannelMetrics
 # --------------------------------------------------------------------------- #
+
 
 class TestChannelMetrics:
     @pytest.fixture
@@ -254,6 +262,7 @@ class TestChannelMetrics:
 # ConnectionPool
 # --------------------------------------------------------------------------- #
 
+
 class TestConnectionPool:
     @pytest.fixture
     def pool(self) -> ConnectionPool:
@@ -261,8 +270,7 @@ class TestConnectionPool:
 
     @pytest.mark.asyncio
     async def test_get_client_creates(self, pool: ConnectionPool) -> None:
-        with patch("httpx.AsyncClient") as mock_httpx, \
-             patch("httpx.Limits"):
+        with patch("httpx.AsyncClient") as mock_httpx, patch("httpx.Limits"):
             mock_client = MagicMock()
             mock_httpx.return_value = mock_client
 
@@ -272,8 +280,7 @@ class TestConnectionPool:
 
     @pytest.mark.asyncio
     async def test_get_client_reuses(self, pool: ConnectionPool) -> None:
-        with patch("httpx.AsyncClient") as mock_httpx, \
-             patch("httpx.Limits"):
+        with patch("httpx.AsyncClient") as mock_httpx, patch("httpx.Limits"):
             mock_httpx.return_value = MagicMock()
 
             c1 = await pool.get_client("telegram")
@@ -296,6 +303,7 @@ class TestConnectionPool:
 # DeliveryManager
 # --------------------------------------------------------------------------- #
 
+
 class TestDeliveryManager:
     @pytest.fixture
     def dm(self) -> DeliveryManager:
@@ -312,16 +320,21 @@ class TestDeliveryManager:
         with patch("backend.channels.optimizations._get_redis_client", return_value=None):
             # Should not raise, just log error about lost message
             await dm.persist_failed(
-                channel="telegram", channel_id="12345",
-                content="hello", error="timeout",
+                channel="telegram",
+                channel_id="12345",
+                content="hello",
+                error="timeout",
             )
 
     @pytest.mark.asyncio
     async def test_persist_failed_pg_success(self, dm_with_db: DeliveryManager) -> None:
         await dm_with_db.persist_failed(
-            channel="telegram", channel_id="12345",
-            content="hello", error="timeout",
-            sender_id="user1", metadata={"key": "val"},
+            channel="telegram",
+            channel_id="12345",
+            content="hello",
+            error="timeout",
+            sender_id="user1",
+            metadata={"key": "val"},
         )
         dm_with_db._db_pool.execute.assert_awaited_once()
 
@@ -336,8 +349,10 @@ class TestDeliveryManager:
 
         with patch("backend.channels.optimizations._get_redis_client", return_value=mock_redis):
             await dm.persist_failed(
-                channel="telegram", channel_id="12345",
-                content="hello", error="timeout",
+                channel="telegram",
+                channel_id="12345",
+                content="hello",
+                error="timeout",
             )
             mock_redis.lpush.assert_awaited_once()
 
@@ -382,12 +397,18 @@ class TestDeliveryManager:
         mock_pool.execute = AsyncMock()
         dm = DeliveryManager(db_pool=mock_pool)
 
-        record = json.dumps({
-            "channel": "telegram", "channel_id": "123",
-            "sender_id": "", "content": "hi",
-            "metadata": {}, "error_message": "err",
-            "error_type": "fail", "queued_at": time.time(),
-        })
+        record = json.dumps(
+            {
+                "channel": "telegram",
+                "channel_id": "123",
+                "sender_id": "",
+                "content": "hi",
+                "metadata": {},
+                "error_message": "err",
+                "error_type": "fail",
+                "queued_at": time.time(),
+            }
+        )
 
         mock_redis = AsyncMock()
         mock_redis.rpop = AsyncMock(side_effect=[record, None])
@@ -402,12 +423,18 @@ class TestDeliveryManager:
         mock_pool.execute = AsyncMock(side_effect=Exception("PG down"))
         dm = DeliveryManager(db_pool=mock_pool)
 
-        record = json.dumps({
-            "channel": "telegram", "channel_id": "123",
-            "sender_id": "", "content": "hi",
-            "metadata": {}, "error_message": "err",
-            "error_type": "fail", "queued_at": time.time(),
-        })
+        record = json.dumps(
+            {
+                "channel": "telegram",
+                "channel_id": "123",
+                "sender_id": "",
+                "content": "hi",
+                "metadata": {},
+                "error_message": "err",
+                "error_type": "fail",
+                "queued_at": time.time(),
+            }
+        )
 
         mock_redis = AsyncMock()
         mock_redis.rpop = AsyncMock(return_value=record)
@@ -448,10 +475,17 @@ class TestDeliveryManager:
         mock_config_module.settings = mock_settings
 
         import sys
+
         with patch.dict(sys.modules, {"backend.core.config": mock_config_module}):
             await dm._alert_exhausted(
-                {"id": 1, "channel": "tg", "channel_id": "123",
-                 "content": "msg", "attempt_count": 2, "max_attempts": 3},
+                {
+                    "id": 1,
+                    "channel": "tg",
+                    "channel_id": "123",
+                    "content": "msg",
+                    "attempt_count": 2,
+                    "max_attempts": 3,
+                },
                 "error msg",
             )
 
@@ -470,11 +504,18 @@ class TestDeliveryManager:
         mock_client.is_closed = False
 
         import sys
+
         with patch.dict(sys.modules, {"backend.core.config": mock_config_module}):
             dm._alert_client = mock_client
             await dm._alert_exhausted(
-                {"id": 1, "channel": "tg", "channel_id": "123",
-                 "content": "msg", "attempt_count": 2, "max_attempts": 3},
+                {
+                    "id": 1,
+                    "channel": "tg",
+                    "channel_id": "123",
+                    "content": "msg",
+                    "attempt_count": 2,
+                    "max_attempts": 3,
+                },
                 "error msg",
             )
             mock_client.post.assert_awaited_once()
@@ -494,12 +535,19 @@ class TestDeliveryManager:
         mock_client.is_closed = False
 
         import sys
+
         with patch.dict(sys.modules, {"backend.core.config": mock_config_module}):
             dm._alert_client = mock_client
             # Should not raise
             await dm._alert_exhausted(
-                {"id": 1, "channel": "tg", "channel_id": "123",
-                 "content": "msg", "attempt_count": 2, "max_attempts": 3},
+                {
+                    "id": 1,
+                    "channel": "tg",
+                    "channel_id": "123",
+                    "content": "msg",
+                    "attempt_count": 2,
+                    "max_attempts": 3,
+                },
                 "error msg",
             )
 
@@ -534,6 +582,7 @@ class TestDeliveryManager:
 # initialize_optimizations
 # --------------------------------------------------------------------------- #
 
+
 class TestInitializeOptimizations:
     def test_initializes_all_globals(self) -> None:
         import backend.channels.optimizations as opt
@@ -559,14 +608,18 @@ class TestInitializeOptimizations:
 # _get_redis_client
 # --------------------------------------------------------------------------- #
 
+
 class TestGetRedisClient:
     def test_returns_none_on_exception(self) -> None:
         """Test that _get_redis_client returns None when RedisManager is unavailable."""
         import sys
 
         from backend.channels.optimizations import _get_redis_client
+
         mock_redis_module = MagicMock()
-        mock_redis_module.RedisManager.get_instance.return_value.get_async_client.side_effect = Exception("fail")
+        mock_redis_module.RedisManager.get_instance.return_value.get_async_client.side_effect = (
+            Exception("fail")
+        )
 
         with patch.dict(sys.modules, {"backend.core.redis_manager": mock_redis_module}):
             result = _get_redis_client()
@@ -578,9 +631,12 @@ class TestGetRedisClient:
         import sys
 
         from backend.channels.optimizations import _get_redis_client
+
         mock_client = MagicMock()
         mock_redis_module = MagicMock()
-        mock_redis_module.RedisManager.get_instance.return_value.get_async_client.return_value = mock_client
+        mock_redis_module.RedisManager.get_instance.return_value.get_async_client.return_value = (
+            mock_client
+        )
 
         with patch.dict(sys.modules, {"backend.core.redis_manager": mock_redis_module}):
             result = _get_redis_client()

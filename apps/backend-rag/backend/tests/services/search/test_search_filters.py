@@ -2,7 +2,6 @@
 Tests for search_filters.py - Tier-based access control and repealed law exclusion.
 """
 
-
 from backend.services.search.search_filters import build_search_filter
 
 

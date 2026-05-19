@@ -87,5 +87,7 @@ async def download_invoice_pdf(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to download invoice PDF {invoice_id} for client {client['client_id']}: {e}")
+        logger.error(
+            f"Failed to download invoice PDF {invoice_id} for client {client['client_id']}: {e}"
+        )
         raise HTTPException(status_code=500, detail="Failed to download invoice PDF") from e

@@ -1,6 +1,7 @@
 """
 Source whitelist: gov.id + known aggregators.
 """
+
 from __future__ import annotations
 
 from backend.services.intel.intel_source_whitelist import (

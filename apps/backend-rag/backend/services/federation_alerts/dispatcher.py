@@ -11,6 +11,7 @@ Per Golden Rule #13: ANTHROPIC_API_KEY is stripped from the subprocess
 env before invoking ai-dispatch.sh. Defense-in-depth even though the
 shell script does not source it.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -82,16 +83,15 @@ async def dispatch_via_ai_dispatch(
     loop = asyncio.get_event_loop()
     started_at = loop.time()
     try:
-        stdout_bytes, stderr_bytes = await asyncio.wait_for(
-            proc.communicate(), timeout=timeout_sec
-        )
+        stdout_bytes, stderr_bytes = await asyncio.wait_for(proc.communicate(), timeout=timeout_sec)
     except asyncio.TimeoutError:
         proc.kill()
         await proc.wait()
         elapsed = loop.time() - started_at
         logger.warning(
             "ai-dispatch timeout: %s after %.1fs (rc=killed)",
-            command, elapsed,
+            command,
+            elapsed,
         )
         return DispatchResult(
             success=False,
@@ -132,6 +132,7 @@ async def deliberate_with_deadline(
     On timeout, returns {passed: False, errors: {deadline: ...}} so
     callers can quarantine the proposal without blocking forever.
     """
+
     def _run_sync() -> Any:
         kwargs: dict[str, Any] = {}
         if members is not None:
@@ -141,13 +142,9 @@ async def deliberate_with_deadline(
         return consiglio.deliberate(question_prompt, **kwargs)
 
     try:
-        result = await asyncio.wait_for(
-            asyncio.to_thread(_run_sync), timeout=deadline_sec
-        )
+        result = await asyncio.wait_for(asyncio.to_thread(_run_sync), timeout=deadline_sec)
     except asyncio.TimeoutError:
-        logger.warning(
-            "consiglio_deadline_exceeded after %ds", deadline_sec
-        )
+        logger.warning("consiglio_deadline_exceeded after %ds", deadline_sec)
         return {
             "passed": False,
             "active_llms": 0,
@@ -170,10 +167,7 @@ async def deliberate_with_deadline(
     return {
         "passed": active >= 3,  # Gate 6 default ≥3/4
         "active_llms": active,
-        "claims": [
-            {"key": c.key, "value": c.value, "votes": dict(c.votes)}
-            for c in result.claims
-        ],
+        "claims": [{"key": c.key, "value": c.value, "votes": dict(c.votes)} for c in result.claims],
         "meta": dict(result.meta),
         "errors": {},
     }

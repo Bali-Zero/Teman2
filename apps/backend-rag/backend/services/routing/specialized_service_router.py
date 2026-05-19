@@ -180,13 +180,18 @@ class SpecializedServiceRouter:
         if needs_research:
             logger.info("🛣️ [SpecializedServiceRouter] AUTONOMOUS RESEARCH detected")
             logger.info(
-                "   Ambiguous: %s, Long: %s, How-to: %s", has_ambiguous_term, is_long_query, has_how_to,
+                "   Ambiguous: %s, Long: %s, How-to: %s",
+                has_ambiguous_term,
+                is_long_query,
+                has_how_to,
             )
 
         return needs_research
 
     async def route_autonomous_research(
-        self, query: str, user_level: int = 3,
+        self,
+        query: str,
+        user_level: int = 3,
     ) -> dict[str, Any] | None:
         """
         Route to autonomous research service
@@ -204,7 +209,8 @@ class SpecializedServiceRouter:
         try:
             # Perform autonomous research
             research_result = await self.autonomous_research.research(
-                query=query, user_level=user_level,
+                query=query,
+                user_level=user_level,
             )
 
             logger.info(
@@ -264,13 +270,18 @@ class SpecializedServiceRouter:
         if needs_cross_oracle:
             logger.info("🛣️ [SpecializedServiceRouter] CROSS-ORACLE SYNTHESIS detected")
             logger.info(
-                "   Business setup: %s, Comprehensive: %s", has_business_setup_term, wants_comprehensive_plan,
+                "   Business setup: %s, Comprehensive: %s",
+                has_business_setup_term,
+                wants_comprehensive_plan,
             )
 
         return needs_cross_oracle
 
     async def route_cross_oracle(
-        self, query: str, user_level: int = 3, use_cache: bool = True,
+        self,
+        query: str,
+        user_level: int = 3,
+        use_cache: bool = True,
     ) -> dict[str, Any] | None:
         """
         Route to cross-oracle synthesis service
@@ -289,7 +300,9 @@ class SpecializedServiceRouter:
         try:
             # Perform cross-oracle synthesis
             synthesis_result = await self.cross_oracle.synthesize(
-                query=query, user_level=user_level, use_cache=use_cache,
+                query=query,
+                user_level=user_level,
+                use_cache=use_cache,
             )
 
             logger.info(
@@ -365,7 +378,8 @@ class SpecializedServiceRouter:
 
             # Create the journey
             journey = self.client_journey.create_journey(
-                journey_type=journey_type, client_id=user_id,
+                journey_type=journey_type,
+                client_id=user_id,
             )
 
             response_text = (

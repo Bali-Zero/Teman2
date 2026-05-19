@@ -47,9 +47,7 @@ async def apply(conn) -> None:
         )
     """)
     if not col_exists:
-        await conn.execute(
-            "ALTER TABLE bali_zoning_layers ADD COLUMN sea_distance_m FLOAT"
-        )
+        await conn.execute("ALTER TABLE bali_zoning_layers ADD COLUMN sea_distance_m FLOAT")
 
     # 3. Overlays JSONB for future per-zone overlay storage
     ov_exists = await conn.fetchval("""
@@ -59,29 +57,25 @@ async def apply(conn) -> None:
         )
     """)
     if not ov_exists:
-        await conn.execute(
-            "ALTER TABLE bali_zoning_layers ADD COLUMN overlays JSONB DEFAULT '{}'"
-        )
+        await conn.execute("ALTER TABLE bali_zoning_layers ADD COLUMN overlays JSONB DEFAULT '{}'")
 
-    await conn.execute("""
+    await conn.execute(
+        """
         INSERT INTO migration_history (migration_id, description, applied_at)
         VALUES ($1, $2, NOW())
         ON CONFLICT (migration_id) DO NOTHING
-    """, MIGRATION_ID, DESCRIPTION)
+    """,
+        MIGRATION_ID,
+        DESCRIPTION,
+    )
 
     logger.info(f"✅ Migration {MIGRATION_ID} applied successfully")
 
 
 async def rollback(conn) -> None:
     logger.info(f"Rolling back migration {MIGRATION_ID}")
-    await conn.execute(
-        "ALTER TABLE bali_zoning_layers DROP COLUMN IF EXISTS overlays"
-    )
-    await conn.execute(
-        "ALTER TABLE bali_zoning_layers DROP COLUMN IF EXISTS sea_distance_m"
-    )
+    await conn.execute("ALTER TABLE bali_zoning_layers DROP COLUMN IF EXISTS overlays")
+    await conn.execute("ALTER TABLE bali_zoning_layers DROP COLUMN IF EXISTS sea_distance_m")
     await conn.execute("DROP TABLE IF EXISTS bali_coastline CASCADE")
-    await conn.execute(
-        "DELETE FROM migration_history WHERE migration_id = $1", MIGRATION_ID
-    )
+    await conn.execute("DELETE FROM migration_history WHERE migration_id = $1", MIGRATION_ID)
     logger.info(f"✅ Migration {MIGRATION_ID} rolled back")

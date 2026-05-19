@@ -6,7 +6,13 @@ Specialized services extracted from ProactiveComplianceMonitor
 from .alert_generator import AlertGeneratorService, AlertSeverity, ComplianceAlert
 from .compliance_tracker import ComplianceItem, ComplianceTrackerService
 from .notifications import ComplianceNotificationService
-from .predictive_engine import ComplianceForecast, ForecastSummary, PredictiveComplianceEngine, ScanResult, is_engine_enabled
+from .predictive_engine import (
+    ComplianceForecast,
+    ForecastSummary,
+    PredictiveComplianceEngine,
+    ScanResult,
+    is_engine_enabled,
+)
 from .priority_scorer import PriorityResult, calculate_priority, sort_forecasts
 from .renewal_rules import RenewalRule, match_rule, RENEWAL_RULES
 from .revenue_estimator import estimate_renewal_revenue

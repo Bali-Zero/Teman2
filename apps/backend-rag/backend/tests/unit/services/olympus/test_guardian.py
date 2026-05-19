@@ -13,6 +13,7 @@ from backend.services.olympus.models import PulseAction
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 def _make_pool() -> MagicMock:
     """Mock asyncpg.Pool with acquire() context manager."""
     conn = AsyncMock()
@@ -48,12 +49,14 @@ def pool() -> MagicMock:
 @pytest.fixture
 def guardian(pool: MagicMock):
     from backend.services.olympus.guardian import OlympusGuardian
+
     return OlympusGuardian(db_pool=pool, alert_service=MagicMock())
 
 
 # ---------------------------------------------------------------------------
 # __init__
 # ---------------------------------------------------------------------------
+
 
 class TestInit:
     def test_initial_state(self, guardian) -> None:
@@ -67,6 +70,7 @@ class TestInit:
 # ---------------------------------------------------------------------------
 # initialize
 # ---------------------------------------------------------------------------
+
 
 class TestInitialize:
     @pytest.mark.asyncio
@@ -112,6 +116,7 @@ class TestInitialize:
 # run_heartbeat_once
 # ---------------------------------------------------------------------------
 
+
 class TestRunHeartbeatOnce:
     @pytest.mark.asyncio
     async def test_calls_heartbeat_methods(self, guardian) -> None:
@@ -132,6 +137,7 @@ class TestRunHeartbeatOnce:
 # ---------------------------------------------------------------------------
 # run_pulse_once
 # ---------------------------------------------------------------------------
+
 
 class TestRunPulseOnce:
     @pytest.mark.asyncio
@@ -234,6 +240,7 @@ class TestRunPulseOnce:
 # _persist_action
 # ---------------------------------------------------------------------------
 
+
 class TestPersistAction:
     @pytest.mark.asyncio
     async def test_inserts_action(self, guardian, pool) -> None:
@@ -257,6 +264,7 @@ class TestPersistAction:
 # ---------------------------------------------------------------------------
 # _check_v4_readiness
 # ---------------------------------------------------------------------------
+
 
 class TestCheckV4Readiness:
     @pytest.mark.asyncio
@@ -283,6 +291,7 @@ class TestCheckV4Readiness:
 # ---------------------------------------------------------------------------
 # get_health_summary
 # ---------------------------------------------------------------------------
+
 
 class TestGetHealthSummary:
     @pytest.mark.asyncio
@@ -317,6 +326,7 @@ class TestGetHealthSummary:
 # start / stop
 # ---------------------------------------------------------------------------
 
+
 class TestStartStop:
     @pytest.mark.asyncio
     async def test_start_sets_running(self, guardian) -> None:
@@ -339,6 +349,7 @@ class TestStartStop:
 # ---------------------------------------------------------------------------
 # interval helpers
 # ---------------------------------------------------------------------------
+
 
 class TestIntervalHelpers:
     def test_heartbeat_interval_default(self, guardian) -> None:

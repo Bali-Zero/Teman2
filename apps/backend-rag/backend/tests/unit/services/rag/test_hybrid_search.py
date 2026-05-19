@@ -20,17 +20,23 @@ def _make_service(*, bm25_enabled: bool = True):
         {"indices": [1, 2], "values": [0.5, 0.3]},
     ]
     mock_vectorizer.generate_query_sparse_vector.return_value = {
-        "indices": [1, 2], "values": [0.5, 0.3],
+        "indices": [1, 2],
+        "values": [0.5, 0.3],
     }
 
     mock_cm = MagicMock()
     mock_embedder = AsyncMock()
     mock_embedder.generate_query_embedding = AsyncMock(return_value=[0.1] * 1536)
 
-    with patch("backend.services.rag.hybrid_search.settings", mock_settings), \
-         patch("backend.services.rag.hybrid_search.get_bm25_vectorizer", return_value=mock_vectorizer), \
-         patch("backend.services.rag.hybrid_search.CollectionManager", return_value=mock_cm):
+    with (
+        patch("backend.services.rag.hybrid_search.settings", mock_settings),
+        patch(
+            "backend.services.rag.hybrid_search.get_bm25_vectorizer", return_value=mock_vectorizer
+        ),
+        patch("backend.services.rag.hybrid_search.CollectionManager", return_value=mock_cm),
+    ):
         from backend.services.rag.hybrid_search import HybridSearchService
+
         svc = HybridSearchService(
             collection_manager=mock_cm,
             bm25_vectorizer=mock_vectorizer if bm25_enabled else None,
@@ -192,7 +198,10 @@ class TestTrimodalRRF:
         sparse = [{"id": "2", "score": 0.8}]
         graph = [{"id": "1", "score": 1.0}, {"id": "3", "score": 0.7}]
         result = svc.reciprocal_rank_fusion_trimodal(
-            dense, sparse, graph, weights=(0.4, 0.3, 0.3),
+            dense,
+            sparse,
+            graph,
+            weights=(0.4, 0.3, 0.3),
         )
         assert len(result) == 3
         for r in result:
@@ -244,7 +253,9 @@ class TestSearchHybrid:
         svc, cm, embedder = _make_service()
         cm.get_collection.side_effect = Exception("Qdrant down")
 
-        with patch("backend.services.rag.hybrid_search.QdrantClient", side_effect=Exception("fail")):
+        with patch(
+            "backend.services.rag.hybrid_search.QdrantClient", side_effect=Exception("fail")
+        ):
             result = await svc.search_hybrid("test query", "legal_unified_hybrid")
 
         assert result["search_type"] == "error"
@@ -257,11 +268,16 @@ class TestSearchHybrid:
 
         mock_vdb = AsyncMock()
         mock_vdb.search.return_value = {
-            "ids": ["1"], "documents": ["text"], "metadatas": [{}], "scores": [0.9],
+            "ids": ["1"],
+            "documents": ["text"],
+            "metadatas": [{}],
+            "scores": [0.9],
         }
         cm.get_collection.return_value = mock_vdb
 
-        with patch("backend.services.search.search_service._uses_named_vectors", return_value=False):
+        with patch(
+            "backend.services.search.search_service._uses_named_vectors", return_value=False
+        ):
             result = await svc.search_hybrid("test", "collection")
 
         assert result["bm25_enabled"] is False
@@ -278,11 +294,16 @@ class TestSearchDenseOnly:
         svc, cm, embedder = _make_service()
         mock_vdb = AsyncMock()
         mock_vdb.search.return_value = {
-            "ids": ["1"], "documents": ["text"], "metadatas": [{}], "scores": [0.95],
+            "ids": ["1"],
+            "documents": ["text"],
+            "metadatas": [{}],
+            "scores": [0.95],
         }
         cm.get_collection.return_value = mock_vdb
 
-        with patch("backend.services.search.search_service._uses_named_vectors", return_value=False):
+        with patch(
+            "backend.services.search.search_service._uses_named_vectors", return_value=False
+        ):
             result = await svc.search_dense_only("test query", "collection")
 
         assert result["search_type"] == "dense_only"
@@ -310,14 +331,18 @@ class TestSearchDenseOnly:
 class TestCompareSearchMethods:
     async def test_comparison_output(self):
         svc, _, _ = _make_service()
-        svc.search_hybrid = AsyncMock(return_value={
-            "results": [{"id": "1"}, {"id": "2"}],
-            "duration_ms": 50,
-        })
-        svc.search_dense_only = AsyncMock(return_value={
-            "results": [{"id": "1"}, {"id": "3"}],
-            "duration_ms": 30,
-        })
+        svc.search_hybrid = AsyncMock(
+            return_value={
+                "results": [{"id": "1"}, {"id": "2"}],
+                "duration_ms": 50,
+            }
+        )
+        svc.search_dense_only = AsyncMock(
+            return_value={
+                "results": [{"id": "1"}, {"id": "3"}],
+                "duration_ms": 30,
+            }
+        )
 
         result = await svc.compare_search_methods("test", "collection")
         assert result["comparison"]["hybrid_count"] == 2

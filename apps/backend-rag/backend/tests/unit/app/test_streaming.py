@@ -29,6 +29,7 @@ from backend.app.streaming import (
 # Fixtures
 # --------------------------------------------------------------------------- #
 
+
 @pytest.fixture
 def mock_request() -> MagicMock:
     """Mock FastAPI request with full app state."""
@@ -47,9 +48,11 @@ def mock_request() -> MagicMock:
 
 def _make_async_stream(chunks: list[Any]) -> AsyncMock:
     """Create a mock async iterator for stream_chat."""
+
     async def stream_chat(**kwargs: Any) -> Any:
         for chunk in chunks:
             yield chunk
+
     mock_router = MagicMock()
     mock_router.stream_chat = stream_chat
     return mock_router
@@ -58,6 +61,7 @@ def _make_async_stream(chunks: list[Any]) -> AsyncMock:
 # --------------------------------------------------------------------------- #
 # _parse_history
 # --------------------------------------------------------------------------- #
+
 
 class TestParseHistory:
     def test_valid_json_list(self) -> None:
@@ -91,6 +95,7 @@ class TestParseHistory:
 # ChatStreamRequest model
 # --------------------------------------------------------------------------- #
 
+
 class TestChatStreamRequest:
     def test_basic_creation(self) -> None:
         req = ChatStreamRequest(message="test")
@@ -119,6 +124,7 @@ class TestChatStreamRequest:
 # Constants
 # --------------------------------------------------------------------------- #
 
+
 class TestConstants:
     def test_stream_timeout(self) -> None:
         assert STREAM_TIMEOUT_SECONDS == 120
@@ -131,33 +137,50 @@ class TestConstants:
 # bali_zero_chat_stream (GET)
 # --------------------------------------------------------------------------- #
 
+
 class TestBaliZeroChatStream:
     @pytest.mark.asyncio
     async def test_empty_query_raises(self, mock_request: MagicMock) -> None:
         with pytest.raises(HTTPException) as exc:
             await bali_zero_chat_stream(
-                request=mock_request, query="   ", background_tasks=MagicMock(),
+                request=mock_request,
+                query="   ",
+                background_tasks=MagicMock(),
             )
         assert exc.value.status_code == 400
 
     @pytest.mark.asyncio
     async def test_no_auth_raises(self, mock_request: MagicMock) -> None:
         mock_request.state.user = None
-        with patch("backend.app.streaming.get_request_state", return_value=None), \
-             patch("backend.app.streaming.validate_auth_mixed", new_callable=AsyncMock, return_value=None):
+        with (
+            patch("backend.app.streaming.get_request_state", return_value=None),
+            patch(
+                "backend.app.streaming.validate_auth_mixed",
+                new_callable=AsyncMock,
+                return_value=None,
+            ),
+        ):
             with pytest.raises(HTTPException) as exc:
                 await bali_zero_chat_stream(
-                    request=mock_request, query="test", background_tasks=MagicMock(),
+                    request=mock_request,
+                    query="test",
+                    background_tasks=MagicMock(),
                 )
             assert exc.value.status_code == 401
 
     @pytest.mark.asyncio
     async def test_services_not_initialized(self, mock_request: MagicMock) -> None:
-        with patch("backend.app.streaming.get_request_state", return_value={"email": "test@test.com"}), \
-             patch("backend.app.streaming.get_app_state", return_value=False):
+        with (
+            patch(
+                "backend.app.streaming.get_request_state", return_value={"email": "test@test.com"}
+            ),
+            patch("backend.app.streaming.get_app_state", return_value=False),
+        ):
             with pytest.raises(HTTPException) as exc:
                 await bali_zero_chat_stream(
-                    request=mock_request, query="test", background_tasks=MagicMock(),
+                    request=mock_request,
+                    query="test",
+                    background_tasks=MagicMock(),
                 )
             assert exc.value.status_code == 503
 
@@ -170,20 +193,26 @@ class TestBaliZeroChatStream:
                 return True
             return default
 
-        with patch("backend.app.streaming.get_request_state", return_value={"email": "t@t.com"}), \
-             patch("backend.app.streaming.get_app_state", side_effect=get_app_state_side_effect):
+        with (
+            patch("backend.app.streaming.get_request_state", return_value={"email": "t@t.com"}),
+            patch("backend.app.streaming.get_app_state", side_effect=get_app_state_side_effect),
+        ):
             with pytest.raises(HTTPException) as exc:
                 await bali_zero_chat_stream(
-                    request=mock_request, query="test", background_tasks=MagicMock(),
+                    request=mock_request,
+                    query="test",
+                    background_tasks=MagicMock(),
                 )
             assert exc.value.status_code == 503
 
     @pytest.mark.asyncio
     async def test_successful_stream_response(self, mock_request: MagicMock) -> None:
-        mock_router = _make_async_stream([
-            {"type": "token", "data": "Hello"},
-            {"type": "done", "data": ""},
-        ])
+        mock_router = _make_async_stream(
+            [
+                {"type": "token", "data": "Hello"},
+                {"type": "done", "data": ""},
+            ]
+        )
         mock_request.app.state.intelligent_router = mock_router
 
         def get_app_state_side_effect(state: Any, key: str, default: Any = None) -> Any:
@@ -195,14 +224,20 @@ class TestBaliZeroChatStream:
                 return None
             return default
 
-        with patch("backend.app.streaming.get_request_state", return_value={"email": "t@t.com", "role": "member"}), \
-             patch("backend.app.streaming.get_app_state", side_effect=get_app_state_side_effect), \
-             patch("backend.app.streaming.trace_span") as mock_trace:
+        with (
+            patch(
+                "backend.app.streaming.get_request_state",
+                return_value={"email": "t@t.com", "role": "member"},
+            ),
+            patch("backend.app.streaming.get_app_state", side_effect=get_app_state_side_effect),
+            patch("backend.app.streaming.trace_span") as mock_trace,
+        ):
             mock_trace.return_value.__enter__ = MagicMock()
             mock_trace.return_value.__exit__ = MagicMock(return_value=False)
 
             response = await bali_zero_chat_stream(
-                request=mock_request, query="test query",
+                request=mock_request,
+                query="test query",
                 background_tasks=MagicMock(),
             )
 
@@ -220,16 +255,22 @@ class TestBaliZeroChatStream:
                 return True
             return default
 
-        with patch("backend.app.streaming.get_request_state", return_value=None), \
-             patch("backend.app.streaming.validate_auth_mixed", new_callable=AsyncMock,
-                   return_value={"email": "fallback@test.com", "role": "member"}), \
-             patch("backend.app.streaming.get_app_state", side_effect=get_app_state_side_effect), \
-             patch("backend.app.streaming.trace_span") as mock_trace:
+        with (
+            patch("backend.app.streaming.get_request_state", return_value=None),
+            patch(
+                "backend.app.streaming.validate_auth_mixed",
+                new_callable=AsyncMock,
+                return_value={"email": "fallback@test.com", "role": "member"},
+            ),
+            patch("backend.app.streaming.get_app_state", side_effect=get_app_state_side_effect),
+            patch("backend.app.streaming.trace_span") as mock_trace,
+        ):
             mock_trace.return_value.__enter__ = MagicMock()
             mock_trace.return_value.__exit__ = MagicMock(return_value=False)
 
             response = await bali_zero_chat_stream(
-                request=mock_request, query="test",
+                request=mock_request,
+                query="test",
                 background_tasks=MagicMock(),
             )
             assert response is not None
@@ -239,13 +280,16 @@ class TestBaliZeroChatStream:
 # chat_stream_post (POST)
 # --------------------------------------------------------------------------- #
 
+
 class TestChatStreamPost:
     @pytest.mark.asyncio
     async def test_empty_message_raises(self, mock_request: MagicMock) -> None:
         body = ChatStreamRequest(message="   ")
         with pytest.raises(HTTPException) as exc:
             await chat_stream_post(
-                request=mock_request, body=body, background_tasks=MagicMock(),
+                request=mock_request,
+                body=body,
+                background_tasks=MagicMock(),
             )
         assert exc.value.status_code == 400
 
@@ -253,11 +297,14 @@ class TestChatStreamPost:
     async def test_no_auth_raises(self, mock_request: MagicMock) -> None:
         mock_request.state.user = None
         body = ChatStreamRequest(message="hello")
-        with patch("backend.app.streaming.validate_auth_mixed", new_callable=AsyncMock,
-                    return_value=None):
+        with patch(
+            "backend.app.streaming.validate_auth_mixed", new_callable=AsyncMock, return_value=None
+        ):
             with pytest.raises(HTTPException) as exc:
                 await chat_stream_post(
-                    request=mock_request, body=body, background_tasks=MagicMock(),
+                    request=mock_request,
+                    body=body,
+                    background_tasks=MagicMock(),
                 )
             assert exc.value.status_code == 401
 
@@ -269,7 +316,9 @@ class TestChatStreamPost:
         with patch("backend.app.streaming.get_app_state", return_value=False):
             with pytest.raises(HTTPException) as exc:
                 await chat_stream_post(
-                    request=mock_request, body=body, background_tasks=MagicMock(),
+                    request=mock_request,
+                    body=body,
+                    background_tasks=MagicMock(),
                 )
             assert exc.value.status_code == 503
 
@@ -287,16 +336,20 @@ class TestChatStreamPost:
         with patch("backend.app.streaming.get_app_state", side_effect=get_app_state_side_effect):
             with pytest.raises(HTTPException) as exc:
                 await chat_stream_post(
-                    request=mock_request, body=body, background_tasks=MagicMock(),
+                    request=mock_request,
+                    body=body,
+                    background_tasks=MagicMock(),
                 )
             assert exc.value.status_code == 503
 
     @pytest.mark.asyncio
     async def test_successful_post_stream(self, mock_request: MagicMock) -> None:
-        mock_router = _make_async_stream([
-            {"type": "token", "data": "Hi"},
-            {"type": "done", "data": ""},
-        ])
+        mock_router = _make_async_stream(
+            [
+                {"type": "token", "data": "Hi"},
+                {"type": "done", "data": ""},
+            ]
+        )
         mock_request.app.state.intelligent_router = mock_router
         mock_request.state.user = {"email": "t@t.com", "role": "member"}
         mock_request.app.state.conversation_service = AsyncMock()
@@ -316,13 +369,17 @@ class TestChatStreamPost:
                 return None
             return default
 
-        with patch("backend.app.streaming.get_app_state", side_effect=get_app_state_side_effect), \
-             patch("backend.app.streaming.trace_span") as mock_trace:
+        with (
+            patch("backend.app.streaming.get_app_state", side_effect=get_app_state_side_effect),
+            patch("backend.app.streaming.trace_span") as mock_trace,
+        ):
             mock_trace.return_value.__enter__ = MagicMock()
             mock_trace.return_value.__exit__ = MagicMock(return_value=False)
 
             response = await chat_stream_post(
-                request=mock_request, body=body, background_tasks=MagicMock(),
+                request=mock_request,
+                body=body,
+                background_tasks=MagicMock(),
             )
 
             assert response.media_type == "text/event-stream"
@@ -344,13 +401,17 @@ class TestChatStreamPost:
                 return True
             return default
 
-        with patch("backend.app.streaming.get_app_state", side_effect=get_app_state_side_effect), \
-             patch("backend.app.streaming.trace_span") as mock_trace:
+        with (
+            patch("backend.app.streaming.get_app_state", side_effect=get_app_state_side_effect),
+            patch("backend.app.streaming.trace_span") as mock_trace,
+        ):
             mock_trace.return_value.__enter__ = MagicMock()
             mock_trace.return_value.__exit__ = MagicMock(return_value=False)
 
             response = await chat_stream_post(
-                request=mock_request, body=body, background_tasks=MagicMock(),
+                request=mock_request,
+                body=body,
+                background_tasks=MagicMock(),
             )
             assert response is not None
 
@@ -368,13 +429,17 @@ class TestChatStreamPost:
                 return True
             return default
 
-        with patch("backend.app.streaming.get_app_state", side_effect=get_app_state_side_effect), \
-             patch("backend.app.streaming.trace_span") as mock_trace:
+        with (
+            patch("backend.app.streaming.get_app_state", side_effect=get_app_state_side_effect),
+            patch("backend.app.streaming.trace_span") as mock_trace,
+        ):
             mock_trace.return_value.__enter__ = MagicMock()
             mock_trace.return_value.__exit__ = MagicMock(return_value=False)
 
             response = await chat_stream_post(
-                request=mock_request, body=body, background_tasks=MagicMock(),
+                request=mock_request,
+                body=body,
+                background_tasks=MagicMock(),
             )
             assert response is not None
 
@@ -383,15 +448,18 @@ class TestChatStreamPost:
 # Event stream chunk processing
 # --------------------------------------------------------------------------- #
 
+
 class TestEventStreamChunks:
     """Test the internal event_stream generator behavior via collecting chunks."""
 
     @pytest.mark.asyncio
     async def test_string_chunk(self, mock_request: MagicMock) -> None:
-        mock_router = _make_async_stream([
-            "plain text token",
-            {"type": "done", "data": ""},
-        ])
+        mock_router = _make_async_stream(
+            [
+                "plain text token",
+                {"type": "done", "data": ""},
+            ]
+        )
         mock_request.app.state.intelligent_router = mock_router
         mock_request.state.user = {"email": "t@t.com", "role": "member"}
 
@@ -400,8 +468,10 @@ class TestEventStreamChunks:
                 return True
             return default
 
-        with patch("backend.app.streaming.get_app_state", side_effect=get_app_state_side_effect), \
-             patch("backend.app.streaming.trace_span") as mock_trace:
+        with (
+            patch("backend.app.streaming.get_app_state", side_effect=get_app_state_side_effect),
+            patch("backend.app.streaming.trace_span") as mock_trace,
+        ):
             mock_trace.return_value.__enter__ = MagicMock()
             mock_trace.return_value.__exit__ = MagicMock(return_value=False)
 
@@ -414,10 +484,12 @@ class TestEventStreamChunks:
 
     @pytest.mark.asyncio
     async def test_metadata_chunk_legacy(self, mock_request: MagicMock) -> None:
-        mock_router = _make_async_stream([
-            '[METADATA]{"model": "gemini"}',
-            {"type": "done", "data": ""},
-        ])
+        mock_router = _make_async_stream(
+            [
+                '[METADATA]{"model": "gemini"}',
+                {"type": "done", "data": ""},
+            ]
+        )
         mock_request.app.state.intelligent_router = mock_router
         mock_request.state.user = {"email": "t@t.com", "role": "member"}
 
@@ -426,8 +498,10 @@ class TestEventStreamChunks:
                 return True
             return default
 
-        with patch("backend.app.streaming.get_app_state", side_effect=get_app_state_side_effect), \
-             patch("backend.app.streaming.trace_span") as mock_trace:
+        with (
+            patch("backend.app.streaming.get_app_state", side_effect=get_app_state_side_effect),
+            patch("backend.app.streaming.trace_span") as mock_trace,
+        ):
             mock_trace.return_value.__enter__ = MagicMock()
             mock_trace.return_value.__exit__ = MagicMock(return_value=False)
 
@@ -440,15 +514,17 @@ class TestEventStreamChunks:
 
     @pytest.mark.asyncio
     async def test_various_chunk_types_get_endpoint(self, mock_request: MagicMock) -> None:
-        mock_router = _make_async_stream([
-            {"type": "metadata", "data": {"model": "gemini"}},
-            {"type": "token", "data": "Hello"},
-            {"type": "sources", "data": [{"title": "Doc"}]},
-            {"type": "tool_start", "data": {"tool": "search"}},
-            {"type": "tool_end", "data": {"result": "ok"}},
-            {"type": "custom_event", "data": "custom"},
-            {"type": "done", "data": ""},
-        ])
+        mock_router = _make_async_stream(
+            [
+                {"type": "metadata", "data": {"model": "gemini"}},
+                {"type": "token", "data": "Hello"},
+                {"type": "sources", "data": [{"title": "Doc"}]},
+                {"type": "tool_start", "data": {"tool": "search"}},
+                {"type": "tool_end", "data": {"result": "ok"}},
+                {"type": "custom_event", "data": "custom"},
+                {"type": "done", "data": ""},
+            ]
+        )
         mock_request.app.state.intelligent_router = mock_router
 
         def get_app_state_side_effect(state: Any, key: str, default: Any = None) -> Any:
@@ -456,13 +532,20 @@ class TestEventStreamChunks:
                 return True
             return default
 
-        with patch("backend.app.streaming.get_request_state", return_value={"email": "t@t.com", "role": "member"}), \
-             patch("backend.app.streaming.get_app_state", side_effect=get_app_state_side_effect), \
-             patch("backend.app.streaming.trace_span") as mock_trace:
+        with (
+            patch(
+                "backend.app.streaming.get_request_state",
+                return_value={"email": "t@t.com", "role": "member"},
+            ),
+            patch("backend.app.streaming.get_app_state", side_effect=get_app_state_side_effect),
+            patch("backend.app.streaming.trace_span") as mock_trace,
+        ):
             mock_trace.return_value.__enter__ = MagicMock()
             mock_trace.return_value.__exit__ = MagicMock(return_value=False)
 
             response = await bali_zero_chat_stream(
-                request=mock_request, query="test", background_tasks=MagicMock(),
+                request=mock_request,
+                query="test",
+                background_tasks=MagicMock(),
             )
             assert response.media_type == "text/event-stream"

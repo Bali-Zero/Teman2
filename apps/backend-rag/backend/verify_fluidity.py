@@ -82,7 +82,9 @@ async def test_fluid_fallback_implementation():
         logger.info("✅ PASS: Both ABSTAIN (critical) and Tier 1 (non-critical) paths exist")
     else:
         logger.info(
-            "⚠️  WARNING: Missing paths - ABSTAIN: %s, Tier 1: %s", has_abstain_path, has_tier1_path,
+            "⚠️  WARNING: Missing paths - ABSTAIN: %s, Tier 1: %s",
+            has_abstain_path,
+            has_tier1_path,
         )
 
 

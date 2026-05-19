@@ -2,7 +2,6 @@
 Tests for emotion_analyzer.py - Emotional content detection and response instructions.
 """
 
-
 from backend.services.communication.emotion_analyzer import (
     get_emotional_response_instruction,
     has_emotional_content,

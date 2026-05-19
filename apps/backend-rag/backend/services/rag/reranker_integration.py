@@ -344,7 +344,8 @@ def add_cross_encoder_reranking(search_service: Any) -> None:
     # Bind mixin methods to the search_service instance
     search_service._cross_encoder_reranker = None
     search_service._init_cross_encoder_reranker = mixin._init_cross_encoder_reranker.__get__(
-        search_service, type(search_service),
+        search_service,
+        type(search_service),
     )
     search_service.cross_encoder_reranker = property(
         lambda self: self._init_cross_encoder_reranker(),
@@ -354,7 +355,8 @@ def add_cross_encoder_reranking(search_service: Any) -> None:
     )
     search_service.hybrid_search_with_cross_encoder_reranking = (
         mixin.hybrid_search_with_cross_encoder_reranking.__get__(
-            search_service, type(search_service),
+            search_service,
+            type(search_service),
         )
     )
 

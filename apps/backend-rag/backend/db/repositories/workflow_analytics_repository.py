@@ -215,7 +215,9 @@ class WorkflowAnalyticsRepository(BaseRepository):
             return []
 
     async def get_workflow_volume(
-        self, granularity: str = "hour", days: int = 7,
+        self,
+        granularity: str = "hour",
+        days: int = 7,
     ) -> list[dict[str, Any]]:
         """Workflow generation volume over time."""
         if granularity not in ("hour", "day"):

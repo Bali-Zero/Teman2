@@ -23,6 +23,7 @@ Configuration:
 Failure mode contract: returns ``False`` on any non-2xx, missing key, or
 exception. NEVER raises. The caller decides whether to alert.
 """
+
 from __future__ import annotations
 
 import logging

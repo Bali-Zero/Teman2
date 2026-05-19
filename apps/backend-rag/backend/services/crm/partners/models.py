@@ -16,9 +16,13 @@ WithholdingCategory = Literal["pph21", "pph23", "exempt", "tbd"]
 CommissionType = Literal["percentage", "flat"]
 OnboardingStatus = Literal["pending_approval", "active", "inactive"]
 CommissionStatus = Literal[
-    "accrued", "approved", "paid",
-    "clawback_pending", "offset_applied",
-    "waived", "repaid",
+    "accrued",
+    "approved",
+    "paid",
+    "clawback_pending",
+    "offset_applied",
+    "waived",
+    "repaid",
 ]
 CommissionEntryType = Literal["accrual", "clawback", "manual_adjustment"]
 RuleSource = Literal["partner_default", "manual_override"]

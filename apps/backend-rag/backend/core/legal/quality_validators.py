@@ -30,7 +30,6 @@ def calculate_text_fingerprint(text: str) -> str:
     return hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:16]
 
 
-
 def detect_placeholders(text: str) -> bool:
     """
     Detect OCR placeholders indicating incomplete text.

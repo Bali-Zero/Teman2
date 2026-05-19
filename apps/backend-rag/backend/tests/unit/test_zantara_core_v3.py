@@ -12,10 +12,7 @@ class TestSectionPresence:
         assert len(section) > 1000, "WORKED_EXAMPLES should be substantial (>1KB)"
 
     def test_master_template_includes_worked_examples(self) -> None:
-        assert (
-            zantara_core_v3.WORKED_EXAMPLES
-            in zantara_core_v3.ZANTARA_MASTER_TEMPLATE
-        )
+        assert zantara_core_v3.WORKED_EXAMPLES in zantara_core_v3.ZANTARA_MASTER_TEMPLATE
 
     def test_v3_inherits_all_v2_sections(self) -> None:
         master = zantara_core_v3.ZANTARA_MASTER_TEMPLATE
@@ -89,9 +86,7 @@ class TestDomainCoverage:
         section = zantara_core_v3.WORKED_EXAMPLES
         assert "ESCALATION" in section
         for variant in BUSINESS_PHRASES_I18N["connect_with_team"].values():
-            assert variant in section, (
-                f"connect_with_team variant missing: {variant!r}"
-            )
+            assert variant in section, f"connect_with_team variant missing: {variant!r}"
 
     def test_identity_lock_uses_redirect_phrase(self) -> None:
         section = zantara_core_v3.WORKED_EXAMPLES
@@ -117,9 +112,7 @@ class TestPlaceholdersPreservedForFstringSubstitution:
     def test_runtime_placeholders_present(self) -> None:
         master = zantara_core_v3.ZANTARA_MASTER_TEMPLATE
         for placeholder in ("{user_memory}", "{rag_results}", "{query}"):
-            assert placeholder in master, (
-                f"v3 master template lost placeholder {placeholder}"
-            )
+            assert placeholder in master, f"v3 master template lost placeholder {placeholder}"
 
 
 class TestPromptSizeIsReasonable:
@@ -131,8 +124,7 @@ class TestPromptSizeIsReasonable:
     def test_total_prompt_under_50kb(self) -> None:
         size_kb = len(zantara_core_v3.ZANTARA_MASTER_TEMPLATE) / 1024
         assert size_kb < 50, (
-            f"v3 master template is {size_kb:.1f}KB — review WORKED_EXAMPLES "
-            "for verbosity"
+            f"v3 master template is {size_kb:.1f}KB — review WORKED_EXAMPLES for verbosity"
         )
 
     def test_v3_is_larger_than_v2(self) -> None:

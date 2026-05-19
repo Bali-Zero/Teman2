@@ -4,6 +4,7 @@
   Tier 2 citation_check — retry-aware (3× exp backoff) on 5xx/timeout
   Tier 3 kg_crossref — soft signal via kg_auto_expansion
 """
+
 from __future__ import annotations
 
 import asyncio

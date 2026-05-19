@@ -11,6 +11,7 @@ RBAC (CLAUDE.md §10):
 Route ordering: /metrics and /retrain must be declared BEFORE /{alert_id}
 so FastAPI does not bind the literal strings as the alert_id path param.
 """
+
 from __future__ import annotations
 
 import logging
@@ -128,9 +129,7 @@ async def post_retrain(
     """
     _require_admin(user)
     fb = AlertFeedback(db_pool=pool)
-    result: dict[str, Any] = await fb.retrain(
-        category=body.category if body.category else None
-    )
+    result: dict[str, Any] = await fb.retrain(category=body.category if body.category else None)
     if body.dry_run:
         logger.warning(
             "dry_run=true requested but not implemented at service layer; "
@@ -287,9 +286,7 @@ async def get_alert(
         {alert: {...}, outcomes: [...], deliveries: [...]}
     """
     async with pool.acquire() as conn:
-        alert = await conn.fetchrow(
-            "SELECT * FROM compliance_alerts WHERE alert_id = $1", alert_id
-        )
+        alert = await conn.fetchrow("SELECT * FROM compliance_alerts WHERE alert_id = $1", alert_id)
         if alert is None:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="alert not found")
 

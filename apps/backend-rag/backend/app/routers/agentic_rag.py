@@ -117,10 +117,14 @@ def clean_image_generation_response(text: str) -> str:
             and "http" in line
             or line.strip().startswith("[Visualizza")
             or re.search(
-                r"^\s*\d+\.\s*\*{0,2}(Versione|Prima|Seconda|Opzione)", line, re.IGNORECASE,
+                r"^\s*\d+\.\s*\*{0,2}(Versione|Prima|Seconda|Opzione)",
+                line,
+                re.IGNORECASE,
             )
             or re.search(
-                r"^\s*[\*\-]\s*\*{0,2}(Versione|Prima|Seconda|Opzione)", line, re.IGNORECASE,
+                r"^\s*[\*\-]\s*\*{0,2}(Versione|Prima|Seconda|Opzione)",
+                line,
+                re.IGNORECASE,
             )
             or re.search(r"^\s*\*{0,2}Versione\s*\d", line, re.IGNORECASE)
             or re.search(
@@ -333,10 +337,12 @@ async def query_agentic_rag(
     # Get variant configurations
     hybrid_config = ab_manager.get_variant_config("hybrid_vs_dense", ab_variants["hybrid_vs_dense"])
     rerank_config = ab_manager.get_variant_config(
-        "reranking_on_off", ab_variants["reranking_on_off"],
+        "reranking_on_off",
+        ab_variants["reranking_on_off"],
     )
     expansion_config = ab_manager.get_variant_config(
-        "query_expansion", ab_variants["query_expansion"],
+        "query_expansion",
+        ab_variants["query_expansion"],
     )
 
     logger.info(
@@ -470,7 +476,8 @@ async def query_agentic_rag(
         # Temporarily include traceback in response for debugging
         # Generic error message for production
         raise HTTPException(
-            status_code=500, detail="Internal Server Error: The request could not be processed.",
+            status_code=500,
+            detail="Internal Server Error: The request could not be processed.",
         ) from e
 
 
@@ -506,7 +513,8 @@ async def get_conversation_history_for_agentic(
             # If user_id doesn't look like an email, try to get email from team_members
             if "@" not in user_email:
                 logger.debug(
-                    "🔍 user_id '%s' doesn't look like email, trying to find email...", user_id,
+                    "🔍 user_id '%s' doesn't look like email, trying to find email...",
+                    user_id,
                 )
                 email_row = await conn.fetchrow(
                     """
@@ -732,7 +740,8 @@ async def stream_agentic_rag(
             # Check for client disconnect before starting stream
             if await http_request.is_disconnected():
                 logger.warning(
-                    "⚠️ Client disconnected before stream start (correlation_id=%s)", correlation_id,
+                    "⚠️ Client disconnected before stream start (correlation_id=%s)",
+                    correlation_id,
                 )
                 return
 
@@ -1074,7 +1083,8 @@ async def stream_workspace_agent(
     agent_role: AgentRole | None = get_agent_role(user_email)
     if not agent_role:
         logger.warning(
-            "🚫 workspace-stream denied: %s is not a registered team agent", user_email,
+            "🚫 workspace-stream denied: %s is not a registered team agent",
+            user_email,
         )
         raise HTTPException(
             status_code=403,
@@ -1137,10 +1147,7 @@ async def stream_workspace_agent(
             events_yielded += 1
 
             conversation_history: list[dict] = []
-            if (
-                request_body.conversation_history
-                and len(request_body.conversation_history) > 0
-            ):
+            if request_body.conversation_history and len(request_body.conversation_history) > 0:
                 conversation_history = [
                     {"role": msg.role, "content": msg.content}
                     for msg in request_body.conversation_history
@@ -1158,15 +1165,15 @@ async def stream_workspace_agent(
 
             if await http_request.is_disconnected():
                 logger.warning(
-                    "workspace-stream: client disconnected before stream start (correlation_id=%s)", correlation_id,
+                    "workspace-stream: client disconnected before stream start (correlation_id=%s)",
+                    correlation_id,
                 )
                 return
 
             images_for_vision = None
             if request_body.images and request_body.enable_vision:
                 images_for_vision = [
-                    {"base64": img.base64, "name": img.name}
-                    for img in request_body.images
+                    {"base64": img.base64, "name": img.name} for img in request_body.images
                 ]
 
             async for event in orchestrator.stream_query(
@@ -1204,7 +1211,8 @@ async def stream_workspace_agent(
 
                 if await http_request.is_disconnected():
                     logger.info(
-                        "workspace-stream: client disconnected mid-stream (correlation_id=%s)", correlation_id,
+                        "workspace-stream: client disconnected mid-stream (correlation_id=%s)",
+                        correlation_id,
                     )
                     break
 
@@ -1256,7 +1264,8 @@ async def stream_workspace_agent(
                     persisted = conversation_id_persisted is not None
                 except Exception as persist_error:
                     logger.warning(
-                        "workspace-stream: failed to persist conversation: %s", persist_error,
+                        "workspace-stream: failed to persist conversation: %s",
+                        persist_error,
                     )
                     persisted = False
 
@@ -1380,7 +1389,9 @@ async def trigger_proactivity(
         target_user_id = authenticated_user_id
 
     correlation_id = getattr(
-        http_request.state, "correlation_id", None,
+        http_request.state,
+        "correlation_id",
+        None,
     ) or http_request.headers.get("X-Correlation-ID", str(uuid.uuid4()))
 
     logger.info(f"⚡ [Proactive] Trigger received: {request_body.event_type} for {target_user_id}")
@@ -1511,7 +1522,6 @@ async def get_ab_test_dashboard(
     ab_manager = get_ab_test_manager()
 
     return await ab_manager.get_dashboard_data()
-
 
 
 @router.get("/ab-test/experiments")

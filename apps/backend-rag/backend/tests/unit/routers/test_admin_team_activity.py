@@ -55,8 +55,10 @@ def mock_db_pool():
 class TestModels:
     def test_message_item(self):
         m = MessageItem(
-            conversation_id=1, user_id="user@test.com",
-            role="user", content="Hello",
+            conversation_id=1,
+            user_id="user@test.com",
+            role="user",
+            content="Hello",
             message_timestamp=datetime.now(tz=timezone.utc),
             content_length=5,
         )
@@ -64,17 +66,25 @@ class TestModels:
 
     def test_team_member_stats(self):
         s = TeamMemberStats(
-            email="a@t.com", name="Alice", role="agent",
-            department="visa", conversations=10, messages=50,
-            days_worked=20, crm_actions=30,
+            email="a@t.com",
+            name="Alice",
+            role="agent",
+            department="visa",
+            conversations=10,
+            messages=50,
+            days_worked=20,
+            crm_actions=30,
             last_activity=datetime.now(tz=timezone.utc),
         )
         assert s.messages == 50
 
     def test_overview_stats(self):
         o = OverviewStats(
-            total_conversations=100, total_messages=500,
-            total_team_members=5, active_today=3, messages_today=20,
+            total_conversations=100,
+            total_messages=500,
+            total_team_members=5,
+            active_today=3,
+            messages_today=20,
         )
         assert o.active_today == 3
 
@@ -112,12 +122,16 @@ class TestGetOverview:
         conn = mock_db_pool._mock_conn
         # get_overview calls fetchval 5 times: total_convs, total_msgs, kg_nodes, kg_edges, total_team, active_today, msgs_today
         conn.fetchval = AsyncMock(side_effect=[100, 500, 50, 20, 5, 3, 10])
-        conn.fetch = AsyncMock(return_value=[
-            {"user_id": "user@test.com", "msg_count": 42},
-        ])
+        conn.fetch = AsyncMock(
+            return_value=[
+                {"user_id": "user@test.com", "msg_count": 42},
+            ]
+        )
 
         result = await get_overview(
-            start_date=None, _admin={"email": "admin"}, db_pool=mock_db_pool,
+            start_date=None,
+            _admin={"email": "admin"},
+            db_pool=mock_db_pool,
         )
         assert result["success"] is True
         assert result["stats"]["total_conversations"] == 100
@@ -132,7 +146,9 @@ class TestGetOverview:
         conn.fetch = AsyncMock(return_value=[])
 
         result = await get_overview(
-            start_date="2026-01-01", _admin={"email": "admin"}, db_pool=mock_db_pool,
+            start_date="2026-01-01",
+            _admin={"email": "admin"},
+            db_pool=mock_db_pool,
         )
         assert result["success"] is True
 
@@ -153,14 +169,22 @@ class TestGetMessages:
 
         conn = mock_db_pool._mock_conn
         conn.fetchval = AsyncMock(return_value=10)
-        conn.fetch = AsyncMock(return_value=[
-            {"conversation_id": 1, "user_id": "u@t.com", "role": "user", "content": "Hi"},
-        ])
+        conn.fetch = AsyncMock(
+            return_value=[
+                {"conversation_id": 1, "user_id": "u@t.com", "role": "user", "content": "Hi"},
+            ]
+        )
 
         result = await get_messages(
-            user_id=None, role=None, search=None,
-            date_from=None, date_to=None, limit=100, offset=0,
-            _admin={"email": "admin"}, db_pool=mock_db_pool,
+            user_id=None,
+            role=None,
+            search=None,
+            date_from=None,
+            date_to=None,
+            limit=100,
+            offset=0,
+            _admin={"email": "admin"},
+            db_pool=mock_db_pool,
         )
         assert result["success"] is True
         assert result["total"] == 10
@@ -174,10 +198,15 @@ class TestGetMessages:
         conn.fetch = AsyncMock(return_value=[])
 
         result = await get_messages(
-            user_id="u@t.com", role="user", search="visa",
-            date_from="2026-01-01", date_to="2026-04-01",
-            limit=50, offset=0,
-            _admin={"email": "admin"}, db_pool=mock_db_pool,
+            user_id="u@t.com",
+            role="user",
+            search="visa",
+            date_from="2026-01-01",
+            date_to="2026-04-01",
+            limit=50,
+            offset=0,
+            _admin={"email": "admin"},
+            db_pool=mock_db_pool,
         )
         assert result["success"] is True
 
@@ -188,9 +217,15 @@ class TestGetMessages:
         mock_db_pool._mock_conn.fetchval = AsyncMock(side_effect=Exception("fail"))
         with pytest.raises(HTTPException):
             await get_messages(
-                user_id=None, role=None, search=None,
-                date_from=None, date_to=None, limit=100, offset=0,
-                _admin={"email": "admin"}, db_pool=mock_db_pool,
+                user_id=None,
+                role=None,
+                search=None,
+                date_from=None,
+                date_to=None,
+                limit=100,
+                offset=0,
+                _admin={"email": "admin"},
+                db_pool=mock_db_pool,
             )
 
 
@@ -199,11 +234,16 @@ class TestGetTeamStats:
     async def test_with_days(self, mock_db_pool):
         from backend.app.routers.admin_team_activity import get_team_stats
 
-        mock_db_pool._mock_conn.fetch = AsyncMock(return_value=[
-            {"email": "a@t.com", "name": "Alice", "messages": 10},
-        ])
+        mock_db_pool._mock_conn.fetch = AsyncMock(
+            return_value=[
+                {"email": "a@t.com", "name": "Alice", "messages": 10},
+            ]
+        )
         result = await get_team_stats(
-            days=30, start_date=None, _admin={"email": "admin"}, db_pool=mock_db_pool,
+            days=30,
+            start_date=None,
+            _admin={"email": "admin"},
+            db_pool=mock_db_pool,
         )
         assert result["success"] is True
         assert "last 30 days" in result["period"]
@@ -214,8 +254,10 @@ class TestGetTeamStats:
 
         mock_db_pool._mock_conn.fetch = AsyncMock(return_value=[])
         result = await get_team_stats(
-            days=30, start_date="2026-01-01",
-            _admin={"email": "admin"}, db_pool=mock_db_pool,
+            days=30,
+            start_date="2026-01-01",
+            _admin={"email": "admin"},
+            db_pool=mock_db_pool,
         )
         assert result["success"] is True
         assert "from 2026-01-01" in result["period"]
@@ -227,7 +269,10 @@ class TestGetTeamStats:
         mock_db_pool._mock_conn.fetch = AsyncMock(side_effect=Exception("fail"))
         with pytest.raises(HTTPException):
             await get_team_stats(
-                days=30, start_date=None, _admin={"email": "admin"}, db_pool=mock_db_pool,
+                days=30,
+                start_date=None,
+                _admin={"email": "admin"},
+                db_pool=mock_db_pool,
             )
 
 
@@ -241,9 +286,13 @@ class TestGetTimesheet:
         conn.fetch = AsyncMock(return_value=[])
 
         result = await get_timesheet(
-            email=None, date_from=None, date_to=None,
-            limit=100, offset=0,
-            _admin={"email": "admin"}, db_pool=mock_db_pool,
+            email=None,
+            date_from=None,
+            date_to=None,
+            limit=100,
+            offset=0,
+            _admin={"email": "admin"},
+            db_pool=mock_db_pool,
         )
         assert result["success"] is True
         assert result["total"] == 5
@@ -257,9 +306,13 @@ class TestGetTimesheet:
         conn.fetch = AsyncMock(return_value=[])
 
         result = await get_timesheet(
-            email="a@t.com", date_from="2026-04-01", date_to="2026-04-10",
-            limit=50, offset=0,
-            _admin={"email": "admin"}, db_pool=mock_db_pool,
+            email="a@t.com",
+            date_from="2026-04-01",
+            date_to="2026-04-10",
+            limit=50,
+            offset=0,
+            _admin={"email": "admin"},
+            db_pool=mock_db_pool,
         )
         assert result["success"] is True
 
@@ -274,9 +327,13 @@ class TestGetCRMActions:
         conn.fetch = AsyncMock(return_value=[])
 
         result = await get_crm_actions(
-            email=None, action=None, entity_type=None,
-            limit=100, offset=0,
-            _admin={"email": "admin"}, db_pool=mock_db_pool,
+            email=None,
+            action=None,
+            entity_type=None,
+            limit=100,
+            offset=0,
+            _admin={"email": "admin"},
+            db_pool=mock_db_pool,
         )
         assert result["success"] is True
 
@@ -289,9 +346,13 @@ class TestGetCRMActions:
         conn.fetch = AsyncMock(return_value=[])
 
         result = await get_crm_actions(
-            email="a@t.com", action="create", entity_type="client",
-            limit=50, offset=0,
-            _admin={"email": "admin"}, db_pool=mock_db_pool,
+            email="a@t.com",
+            action="create",
+            entity_type="client",
+            limit=50,
+            offset=0,
+            _admin={"email": "admin"},
+            db_pool=mock_db_pool,
         )
         assert result["success"] is True
 
@@ -301,11 +362,20 @@ class TestGetPracticeStats:
     async def test_practice_stats(self, mock_db_pool):
         from backend.app.routers.admin_team_activity import get_practice_stats
 
-        mock_db_pool._mock_conn.fetch = AsyncMock(return_value=[
-            {"email": "a@t.com", "completed": 5, "in_progress": 2, "active": 3, "revenue": 1000000},
-        ])
+        mock_db_pool._mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "email": "a@t.com",
+                    "completed": 5,
+                    "in_progress": 2,
+                    "active": 3,
+                    "revenue": 1000000,
+                },
+            ]
+        )
         result = await get_practice_stats(
-            _admin={"email": "admin"}, db_pool=mock_db_pool,
+            _admin={"email": "admin"},
+            db_pool=mock_db_pool,
         )
         assert result["success"] is True
         assert len(result["practice_stats"]) == 1
@@ -317,7 +387,8 @@ class TestGetPracticeStats:
         mock_db_pool._mock_conn.fetch = AsyncMock(side_effect=Exception("fail"))
         with pytest.raises(HTTPException):
             await get_practice_stats(
-                _admin={"email": "admin"}, db_pool=mock_db_pool,
+                _admin={"email": "admin"},
+                db_pool=mock_db_pool,
             )
 
 
@@ -327,17 +398,25 @@ class TestExportMessages:
         from backend.app.routers.admin_team_activity import export_messages
 
         now = datetime.now(tz=timezone.utc)
-        mock_db_pool._mock_conn.fetch = AsyncMock(return_value=[
-            {
-                "conversation_id": 1, "user_id": "u@t.com",
-                "role": "user", "content": "Hello there",
-                "message_timestamp": now, "conversation_started": now,
-            },
-        ])
+        mock_db_pool._mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "conversation_id": 1,
+                    "user_id": "u@t.com",
+                    "role": "user",
+                    "content": "Hello there",
+                    "message_timestamp": now,
+                    "conversation_started": now,
+                },
+            ]
+        )
 
         response = await export_messages(
-            user_id=None, date_from=None, date_to=None,
-            _admin={"email": "admin"}, db_pool=mock_db_pool,
+            user_id=None,
+            date_from=None,
+            date_to=None,
+            _admin={"email": "admin"},
+            db_pool=mock_db_pool,
         )
         assert response.media_type == "text/csv"
 
@@ -347,8 +426,11 @@ class TestExportMessages:
 
         mock_db_pool._mock_conn.fetch = AsyncMock(return_value=[])
         response = await export_messages(
-            user_id="u@t.com", date_from="2026-01-01", date_to="2026-04-01",
-            _admin={"email": "admin"}, db_pool=mock_db_pool,
+            user_id="u@t.com",
+            date_from="2026-01-01",
+            date_to="2026-04-01",
+            _admin={"email": "admin"},
+            db_pool=mock_db_pool,
         )
         assert response.media_type == "text/csv"
 
@@ -357,17 +439,25 @@ class TestExportMessages:
         from backend.app.routers.admin_team_activity import export_messages
 
         now = datetime.now(tz=timezone.utc)
-        mock_db_pool._mock_conn.fetch = AsyncMock(return_value=[
-            {
-                "conversation_id": 1, "user_id": None,
-                "role": "assistant", "content": None,
-                "message_timestamp": now, "conversation_started": now,
-            },
-        ])
+        mock_db_pool._mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "conversation_id": 1,
+                    "user_id": None,
+                    "role": "assistant",
+                    "content": None,
+                    "message_timestamp": now,
+                    "conversation_started": now,
+                },
+            ]
+        )
 
         response = await export_messages(
-            user_id=None, date_from=None, date_to=None,
-            _admin={"email": "admin"}, db_pool=mock_db_pool,
+            user_id=None,
+            date_from=None,
+            date_to=None,
+            _admin={"email": "admin"},
+            db_pool=mock_db_pool,
         )
         assert response.media_type == "text/csv"
 
@@ -378,8 +468,11 @@ class TestExportMessages:
         mock_db_pool._mock_conn.fetch = AsyncMock(side_effect=Exception("DB error"))
         with pytest.raises(HTTPException):
             await export_messages(
-                user_id=None, date_from=None, date_to=None,
-                _admin={"email": "admin"}, db_pool=mock_db_pool,
+                user_id=None,
+                date_from=None,
+                date_to=None,
+                _admin={"email": "admin"},
+                db_pool=mock_db_pool,
             )
 
 
@@ -395,22 +488,28 @@ class TestGetCrmActivity:
 
         conn = mock_db_pool._mock_conn
         conn.fetchval = AsyncMock(return_value=3)
-        conn.fetch = AsyncMock(return_value=[
-            {
-                "timestamp": "2026-04-10T10:23:11+00:00",
-                "user_email": "rina@balizero.com",
-                "method": "POST",
-                "endpoint": "/api/crm/clients/",
-                "response_status": 201,
-                "response_time_ms": 145,
-                "ip_address": "172.16.0.1",
-            },
-        ])
+        conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "timestamp": "2026-04-10T10:23:11+00:00",
+                    "user_email": "rina@balizero.com",
+                    "method": "POST",
+                    "endpoint": "/api/crm/clients/",
+                    "response_status": 201,
+                    "response_time_ms": 145,
+                    "ip_address": "172.16.0.1",
+                },
+            ]
+        )
 
         result = await get_crm_activity(
-            from_time=None, to_time=None, user=None,
-            method=None, limit=100,
-            _admin={"email": "zero@balizero.com"}, db_pool=mock_db_pool,
+            from_time=None,
+            to_time=None,
+            user=None,
+            method=None,
+            limit=100,
+            _admin={"email": "zero@balizero.com"},
+            db_pool=mock_db_pool,
         )
         assert result["success"] is True
         assert result["total"] == 3
@@ -423,22 +522,28 @@ class TestGetCrmActivity:
 
         conn = mock_db_pool._mock_conn
         conn.fetchval = AsyncMock(return_value=1)
-        conn.fetch = AsyncMock(return_value=[
-            {
-                "timestamp": "2026-04-10T10:30:00+00:00",
-                "user_email": "rina@balizero.com",
-                "method": "GET",
-                "endpoint": "/api/crm/clients/",
-                "response_status": 200,
-                "response_time_ms": 80,
-                "ip_address": "172.16.0.1",
-            },
-        ])
+        conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "timestamp": "2026-04-10T10:30:00+00:00",
+                    "user_email": "rina@balizero.com",
+                    "method": "GET",
+                    "endpoint": "/api/crm/clients/",
+                    "response_status": 200,
+                    "response_time_ms": 80,
+                    "ip_address": "172.16.0.1",
+                },
+            ]
+        )
 
         result = await get_crm_activity(
-            from_time=None, to_time=None, user="rina",
-            method=None, limit=100,
-            _admin={"email": "zero@balizero.com"}, db_pool=mock_db_pool,
+            from_time=None,
+            to_time=None,
+            user="rina",
+            method=None,
+            limit=100,
+            _admin={"email": "zero@balizero.com"},
+            db_pool=mock_db_pool,
         )
         assert result["success"] is True
         # Verify ILIKE pattern was passed to query
@@ -454,9 +559,13 @@ class TestGetCrmActivity:
         conn.fetch = AsyncMock(return_value=[])
 
         result = await get_crm_activity(
-            from_time="10:00", to_time="11:45", user=None,
-            method=None, limit=100,
-            _admin={"email": "zero@balizero.com"}, db_pool=mock_db_pool,
+            from_time="10:00",
+            to_time="11:45",
+            user=None,
+            method=None,
+            limit=100,
+            _admin={"email": "zero@balizero.com"},
+            db_pool=mock_db_pool,
         )
         assert result["success"] is True
         assert result["total"] == 0
@@ -473,9 +582,13 @@ class TestGetCrmActivity:
         conn.fetch = AsyncMock(return_value=[])
 
         result = await get_crm_activity(
-            from_time=None, to_time=None, user=None,
-            method="POST", limit=100,
-            _admin={"email": "zero@balizero.com"}, db_pool=mock_db_pool,
+            from_time=None,
+            to_time=None,
+            user=None,
+            method="POST",
+            limit=100,
+            _admin={"email": "zero@balizero.com"},
+            db_pool=mock_db_pool,
         )
         assert result["success"] is True
         call_args = conn.fetch.call_args
@@ -488,8 +601,12 @@ class TestGetCrmActivity:
         mock_db_pool._mock_conn.fetchval = AsyncMock(side_effect=Exception("DB down"))
         with pytest.raises(HTTPException) as exc_info:
             await get_crm_activity(
-                from_time=None, to_time=None, user=None,
-                method=None, limit=100,
-                _admin={"email": "zero@balizero.com"}, db_pool=mock_db_pool,
+                from_time=None,
+                to_time=None,
+                user=None,
+                method=None,
+                limit=100,
+                _admin={"email": "zero@balizero.com"},
+                db_pool=mock_db_pool,
             )
         assert exc_info.value.status_code == 500

@@ -22,6 +22,7 @@ Layout (when complete):
 
 PR #1 (this) ships only models + repository + EventBus channel registration.
 """
+
 from __future__ import annotations
 
 __all__: list[str] = [

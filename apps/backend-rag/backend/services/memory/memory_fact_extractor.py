@@ -61,7 +61,10 @@ class MemoryFactExtractor:
         ]
 
     def extract_facts_from_conversation(
-        self, user_message: str, ai_response: str, user_id: str,
+        self,
+        user_message: str,
+        ai_response: str,
+        user_id: str,
     ) -> list[dict]:
         """
         Extract key facts from a conversation turn
@@ -124,7 +127,11 @@ class MemoryFactExtractor:
             for match in matches:
                 # Extract context with word boundaries (no truncation)
                 context = self._extract_context_with_word_boundaries(
-                    text, match.start(), match.end(), chars_before=50, chars_after=50,
+                    text,
+                    match.start(),
+                    match.end(),
+                    chars_before=50,
+                    chars_after=50,
                 )
                 context = self._clean_context(context)
 
@@ -143,7 +150,11 @@ class MemoryFactExtractor:
             matches = re.finditer(pattern, text_lower)
             for match in matches:
                 context = self._extract_context_with_word_boundaries(
-                    text, match.start(), match.end(), chars_before=30, chars_after=70,
+                    text,
+                    match.start(),
+                    match.end(),
+                    chars_before=30,
+                    chars_after=70,
                 )
                 context = self._clean_context(context)
 
@@ -162,7 +173,11 @@ class MemoryFactExtractor:
             matches = re.finditer(pattern, text_lower)
             for match in matches:
                 context = self._extract_context_with_word_boundaries(
-                    text, match.start(), match.end(), chars_before=20, chars_after=100,
+                    text,
+                    match.start(),
+                    match.end(),
+                    chars_before=20,
+                    chars_after=100,
                 )
                 context = self._clean_context(context)
 
@@ -182,7 +197,11 @@ class MemoryFactExtractor:
             matches = re.finditer(pattern, text_lower)
             for match in matches:
                 context = self._extract_context_with_word_boundaries(
-                    text, match.start(), match.end(), chars_before=40, chars_after=60,
+                    text,
+                    match.start(),
+                    match.end(),
+                    chars_before=40,
+                    chars_after=60,
                 )
                 context = self._clean_context(context)
 

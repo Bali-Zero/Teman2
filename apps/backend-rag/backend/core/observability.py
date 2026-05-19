@@ -50,9 +50,7 @@ def is_enabled() -> bool:
         return _ENABLED_CACHED
 
     flag = os.getenv("LANGFUSE_ENABLED", "true").strip().lower()
-    has_keys = bool(os.getenv("LANGFUSE_PUBLIC_KEY")) and bool(
-        os.getenv("LANGFUSE_SECRET_KEY")
-    )
+    has_keys = bool(os.getenv("LANGFUSE_PUBLIC_KEY")) and bool(os.getenv("LANGFUSE_SECRET_KEY"))
     _ENABLED_CACHED = flag != "false" and has_keys
     return _ENABLED_CACHED
 
@@ -164,9 +162,7 @@ def _build_trace_config() -> Any:
     """
     from openinference.instrumentation import TraceConfig
 
-    trace_messages = (
-        os.getenv("LANGFUSE_TRACE_LLM_MESSAGES", "false").strip().lower() == "true"
-    )
+    trace_messages = os.getenv("LANGFUSE_TRACE_LLM_MESSAGES", "false").strip().lower() == "true"
     return TraceConfig(
         hide_input_messages=not trace_messages,
         hide_output_messages=not trace_messages,

@@ -51,12 +51,39 @@ Rules:
 - Paraphrasing of source content counts as supported
 """
 
-_COMMON_WORDS = frozenset({
-    "about", "would", "could", "should", "their", "there", "these",
-    "which", "where", "after", "before", "other", "because", "through",
-    "between", "under", "untuk", "dalam", "dengan", "dapat", "harus",
-    "yang", "dari", "this", "that", "have", "will", "from", "also",
-})
+_COMMON_WORDS = frozenset(
+    {
+        "about",
+        "would",
+        "could",
+        "should",
+        "their",
+        "there",
+        "these",
+        "which",
+        "where",
+        "after",
+        "before",
+        "other",
+        "because",
+        "through",
+        "between",
+        "under",
+        "untuk",
+        "dalam",
+        "dengan",
+        "dapat",
+        "harus",
+        "yang",
+        "dari",
+        "this",
+        "that",
+        "have",
+        "will",
+        "from",
+        "also",
+    }
+)
 
 
 class HallucinationGrader(BaseGrader):
@@ -87,10 +114,7 @@ class HallucinationGrader(BaseGrader):
         ]
         all_source_text = " ".join(source_texts)
 
-        answer_terms = {
-            w for w in answer_lower.split()
-            if len(w) > 4 and w not in _COMMON_WORDS
-        }
+        answer_terms = {w for w in answer_lower.split() if len(w) > 4 and w not in _COMMON_WORDS}
 
         if not answer_terms:
             return 0.5, "Could not extract meaningful terms from answer", ""
@@ -101,10 +125,18 @@ class HallucinationGrader(BaseGrader):
         score = min(1.0, grounding_ratio + source_bonus)
 
         if score < self.fail_fast_threshold:
-            return score, f"Answer appears heavily hallucinated (grounding={grounding_ratio:.2f})", ""
+            return (
+                score,
+                f"Answer appears heavily hallucinated (grounding={grounding_ratio:.2f})",
+                "",
+            )
 
         if score < self.pass_threshold:
-            return score, f"Partial grounding (ratio={grounding_ratio:.2f}), some claims unverified", ""
+            return (
+                score,
+                f"Partial grounding (ratio={grounding_ratio:.2f}), some claims unverified",
+                "",
+            )
 
         return score, f"Well-grounded answer (ratio={grounding_ratio:.2f})", ""
 
@@ -126,9 +158,7 @@ async def llm_verify_grounding(
     docs = ctx.retrieved_documents or []
 
     # Truncate sources to avoid token overflow
-    source_snippets = "\n\n---\n\n".join(
-        d.content[:500] for d in docs[:5]
-    )
+    source_snippets = "\n\n---\n\n".join(d.content[:500] for d in docs[:5])
     if not source_snippets:
         return None
 
@@ -186,10 +216,7 @@ async def grade_with_llm_verification(
     heuristic_score = result.score
 
     # Phase 2: LLM verification for borderline scores
-    if (
-        llm_gateway is not None
-        and _LLM_VERIFY_LOW <= heuristic_score <= _LLM_VERIFY_HIGH
-    ):
+    if llm_gateway is not None and _LLM_VERIFY_LOW <= heuristic_score <= _LLM_VERIFY_HIGH:
         logger.debug(
             "hallucination_borderline_llm_check heuristic_score=%.2f",
             heuristic_score,

@@ -8,6 +8,7 @@ running application pool, we monkey-patch get_pool to return a FakePool that
 wraps the test's db_conn fixture — routing all pool.acquire() calls through
 the same connection used by the test.
 """
+
 import contextlib
 from decimal import Decimal
 
@@ -22,6 +23,7 @@ from backend.services.events.event_bus import EventBus
 # ---------------------------------------------------------------------------
 # FakePool helper
 # ---------------------------------------------------------------------------
+
 
 def _make_fake_get_pool(db_conn):
     """Return an async get_pool() replacement that yields db_conn."""

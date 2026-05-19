@@ -13,6 +13,7 @@ proposal (typically on its own schedule, not in response to alerts).
 
 dry_run=True → counts the rows it WOULD delete, without removing.
 """
+
 from __future__ import annotations
 
 import logging
@@ -106,10 +107,7 @@ async def prune_consumed_outbox_action(
     deleted_int = int(deleted or 0)
     return ActionResult(
         success=True,
-        message=(
-            f"pruned {deleted_int} events_outbox rows older than "
-            f"{max_age_days}d"
-        ),
+        message=(f"pruned {deleted_int} events_outbox rows older than {max_age_days}d"),
         side_effects=(f"events_outbox: -{deleted_int} rows",),
         metadata={
             "deleted_count": deleted_int,

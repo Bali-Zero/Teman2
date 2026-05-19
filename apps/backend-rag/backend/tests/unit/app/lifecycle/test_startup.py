@@ -44,7 +44,8 @@ class TestStartupHandlers:
         # Import inside test to use mocked dependencies
         with patch("backend.app.setup.plugin_initializer.initialize_plugins", new=AsyncMock()):
             with patch(
-                "backend.app.setup.service_initializer.initialize_services", new=AsyncMock(),
+                "backend.app.setup.service_initializer.initialize_services",
+                new=AsyncMock(),
             ):
                 # Re-import with mocked deps
                 if "backend.app.lifecycle.startup" in sys.modules:

@@ -31,7 +31,8 @@ class PricingQueryOutput(PluginOutput):
     """Output schema for pricing queries"""
 
     prices: list[dict] | None = Field(
-        None, description="List of pricing items (None if result is dict format - check data field)",
+        None,
+        description="List of pricing items (None if result is dict format - check data field)",
     )
     fallback_contact: dict | None = Field(None, description="Contact info if prices not available")
 

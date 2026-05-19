@@ -68,7 +68,10 @@ class ReRanker:
             await self._client.aclose()
 
     async def rerank(
-        self, query: str, documents: list[dict[str, Any]], top_k: int = 5,
+        self,
+        query: str,
+        documents: list[dict[str, Any]],
+        top_k: int = 5,
     ) -> list[dict[str, Any]]:
         """
         Re-rank a list of documents based on relevance to the query using Ze-Rank 2 API.
@@ -93,7 +96,8 @@ class ReRanker:
             if not self.enabled or not documents:
                 set_span_attribute("skipped", True)
                 set_span_attribute(
-                    "skip_reason", "disabled" if not self.enabled else "no_documents",
+                    "skip_reason",
+                    "disabled" if not self.enabled else "no_documents",
                 )
                 set_span_status("ok")
                 return documents[:top_k]

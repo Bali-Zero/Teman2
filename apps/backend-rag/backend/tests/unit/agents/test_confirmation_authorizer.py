@@ -88,7 +88,8 @@ class TestCheckRequiresConfirmation:
         return ToolAuthorizer()
 
     def test_returns_confirm_for_listed_tool(
-        self, authorizer: ToolAuthorizer,
+        self,
+        authorizer: ToolAuthorizer,
     ) -> None:
         """image_generation is in ROLE_VISA_SPECIALIST.requires_confirmation."""
         result = authorizer._check_requires_confirmation(
@@ -103,7 +104,8 @@ class TestCheckRequiresConfirmation:
         assert "image_generation" in result.reason
 
     def test_returns_confirm_for_executive_consultant_image_generation(
-        self, authorizer: ToolAuthorizer,
+        self,
+        authorizer: ToolAuthorizer,
     ) -> None:
         result = authorizer._check_requires_confirmation(
             user_email="adit@balizero.com",
@@ -115,7 +117,8 @@ class TestCheckRequiresConfirmation:
         assert result.decision == AuthDecision.NEEDS_CONFIRMATION
 
     def test_returns_none_for_unlisted_tool(
-        self, authorizer: ToolAuthorizer,
+        self,
+        authorizer: ToolAuthorizer,
     ) -> None:
         """
         Tools NOT in requires_confirmation return None (preserving the
@@ -132,7 +135,8 @@ class TestCheckRequiresConfirmation:
         assert result is None
 
     def test_returns_none_for_admin_even_on_image_generation(
-        self, authorizer: ToolAuthorizer,
+        self,
+        authorizer: ToolAuthorizer,
     ) -> None:
         """Admins never need confirmation — their requires_confirmation is []."""
         result = authorizer._check_requires_confirmation(
@@ -144,7 +148,8 @@ class TestCheckRequiresConfirmation:
         assert result is None
 
     def test_args_echoed_back_in_authresult(
-        self, authorizer: ToolAuthorizer,
+        self,
+        authorizer: ToolAuthorizer,
     ) -> None:
         """Args pass through unchanged — downstream tool_executor uses them."""
         original = {"prompt": "test", "style": "watercolor"}
@@ -170,7 +175,8 @@ class TestAuthorizeEndToEndConfirmation:
 
     @pytest.mark.asyncio
     async def test_visa_specialist_image_generation_returns_needs_confirmation(
-        self, authorizer: ToolAuthorizer,
+        self,
+        authorizer: ToolAuthorizer,
     ) -> None:
         result = await authorizer.authorize(
             user_email="damar@balizero.com",
@@ -185,7 +191,8 @@ class TestAuthorizeEndToEndConfirmation:
 
     @pytest.mark.asyncio
     async def test_executive_consultant_image_generation_returns_needs_confirmation(
-        self, authorizer: ToolAuthorizer,
+        self,
+        authorizer: ToolAuthorizer,
     ) -> None:
         result = await authorizer.authorize(
             user_email="adit@balizero.com",
@@ -197,7 +204,8 @@ class TestAuthorizeEndToEndConfirmation:
 
     @pytest.mark.asyncio
     async def test_admin_image_generation_is_allowed_without_confirmation(
-        self, authorizer: ToolAuthorizer,
+        self,
+        authorizer: ToolAuthorizer,
     ) -> None:
         """Admins bypass confirmation — they get plain ALLOWED."""
         result = await authorizer.authorize(
@@ -211,7 +219,8 @@ class TestAuthorizeEndToEndConfirmation:
 
     @pytest.mark.asyncio
     async def test_legacy_none_role_image_generation_is_allowed(
-        self, authorizer: ToolAuthorizer,
+        self,
+        authorizer: ToolAuthorizer,
     ) -> None:
         """
         Backward compat: agent_role=None (legacy /stream path) never asks
@@ -228,7 +237,8 @@ class TestAuthorizeEndToEndConfirmation:
 
     @pytest.mark.asyncio
     async def test_visa_specialist_vector_search_still_allowed(
-        self, authorizer: ToolAuthorizer,
+        self,
+        authorizer: ToolAuthorizer,
     ) -> None:
         """Regression: read-only tools are not affected by Phase 3."""
         result = await authorizer.authorize(
@@ -253,11 +263,14 @@ class TestAuditLogConfirmation:
 
     @pytest.mark.asyncio
     async def test_needs_confirmation_logs_decision_line(
-        self, authorizer: ToolAuthorizer, caplog,
+        self,
+        authorizer: ToolAuthorizer,
+        caplog,
     ) -> None:
         """Audit log must carry `decision=needs_confirmation` for grep-ability."""
         with caplog.at_level(
-            "INFO", logger="backend.services.agents.tool_authorizer",
+            "INFO",
+            logger="backend.services.agents.tool_authorizer",
         ):
             await authorizer.authorize(
                 user_email="damar@balizero.com",

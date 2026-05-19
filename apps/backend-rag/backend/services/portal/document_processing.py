@@ -121,7 +121,10 @@ class DocumentOCR:
 
     @classmethod
     async def extract_text(
-        cls, file_content: bytes, file_name: str, mime_type: str | None = None,
+        cls,
+        file_content: bytes,
+        file_name: str,
+        mime_type: str | None = None,
     ) -> dict[str, Any]:
         """
         Extract text from PDF or image using Gemini Vision (same as passport box).
@@ -216,7 +219,9 @@ class DocumentOCR:
 
     @classmethod
     async def _extract_pdf_via_vision(
-        cls, pdf_content: bytes, vision_service: Any,
+        cls,
+        pdf_content: bytes,
+        vision_service: Any,
     ) -> dict[str, Any]:
         """Extract text by rendering PDF pages to images and using Gemini Vision."""
         result = {"text": "", "pages": 0, "success": False, "error": None}

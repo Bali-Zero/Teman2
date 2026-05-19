@@ -19,6 +19,7 @@ Spec: docs/superpowers/specs/2026-04-30-federation-alert-dispatcher.md
        PR #393/#395/#397 (FAD shipping)
        PR (this one) — adds Codex 5.5 capability via existing dispatcher pattern
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -36,24 +37,26 @@ from backend.services.federation_alerts.actions.registry import (
 logger = logging.getLogger(__name__)
 
 DEFAULT_TIMEOUT_SEC = 1800  # 30 min — matches ai-dispatch.sh codex-xhigh
-MAX_TIMEOUT_SEC = 3600       # 60 min — hard ceiling for action_payload override
+MAX_TIMEOUT_SEC = 3600  # 60 min — hard ceiling for action_payload override
 MAX_PROMPT_BYTES = 32 * 1024  # 32 KB prompt cap (Codex CLI handles ~64K but be conservative)
 
 
-_STRIPPED_ENV_KEYS: frozenset[str] = frozenset({
-    # Golden Rule #13 — Anthropic OAuth-only. Never let key into subprocess.
-    "ANTHROPIC_API_KEY",
-    "AWS_BEDROCK_ANTHROPIC_KEY",
-    "VERTEX_AI_ANTHROPIC_KEY",
-    # Codex CLI uses OAuth (Pro $200), not API key. The parent backend-rag
-    # process keeps OPENAI_API_KEY for the frozen embedding model
-    # (text-embedding-3-small), but that key MUST NOT leak into a Codex
-    # subprocess where it would create a non-embedding text/code/image
-    # billing path. Same defense for Gemini paid tiers (we use OAuth).
-    "OPENAI_API_KEY",
-    "GEMINI_API_KEY",
-    "GOOGLE_API_KEY",
-})
+_STRIPPED_ENV_KEYS: frozenset[str] = frozenset(
+    {
+        # Golden Rule #13 — Anthropic OAuth-only. Never let key into subprocess.
+        "ANTHROPIC_API_KEY",
+        "AWS_BEDROCK_ANTHROPIC_KEY",
+        "VERTEX_AI_ANTHROPIC_KEY",
+        # Codex CLI uses OAuth (Pro $200), not API key. The parent backend-rag
+        # process keeps OPENAI_API_KEY for the frozen embedding model
+        # (text-embedding-3-small), but that key MUST NOT leak into a Codex
+        # subprocess where it would create a non-embedding text/code/image
+        # billing path. Same defense for Gemini paid tiers (we use OAuth).
+        "OPENAI_API_KEY",
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+    }
+)
 
 
 def _safe_env() -> dict[str, str]:

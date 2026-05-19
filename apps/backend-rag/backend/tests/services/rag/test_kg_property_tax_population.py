@@ -215,7 +215,8 @@ async def test_tax_has_tax_edges() -> None:
 async def test_cross_domain_edges() -> None:
     """Verify property_type:hgb -> company:pt_pma cross-domain edge exists."""
     cross = [
-        e for e in PROPERTY_EDGES
+        e
+        for e in PROPERTY_EDGES
         if e["source"] == "property_type:hgb" and e["target"] == "company:pt_pma"
     ]
     assert len(cross) == 1
@@ -291,26 +292,28 @@ async def test_property_requirements_from_kg(mock_db: tuple[AsyncMock, AsyncMock
     from backend.services.rag.kg_subgraph_property import get_property_requirements_node
 
     pool, conn = mock_db
-    conn.fetch = AsyncMock(return_value=[
-        {
-            "entity_id": "concept:kitas_or_kitap",
-            "name": "KITAS or KITAP Holder",
-            "properties": {},
-            "relationship_type": "HAS_REQUIREMENT",
-        },
-        {
-            "entity_id": "concept:notary_deed",
-            "name": "Notary Deed Execution",
-            "properties": {},
-            "relationship_type": "HAS_REQUIREMENT",
-        },
-        {
-            "entity_id": "government_fee:bphtb_5pct",
-            "name": "BPHTB Tax (5%)",
-            "properties": {"rate": "5%"},
-            "relationship_type": "HAS_FEE",
-        },
-    ])
+    conn.fetch = AsyncMock(
+        return_value=[
+            {
+                "entity_id": "concept:kitas_or_kitap",
+                "name": "KITAS or KITAP Holder",
+                "properties": {},
+                "relationship_type": "HAS_REQUIREMENT",
+            },
+            {
+                "entity_id": "concept:notary_deed",
+                "name": "Notary Deed Execution",
+                "properties": {},
+                "relationship_type": "HAS_REQUIREMENT",
+            },
+            {
+                "entity_id": "government_fee:bphtb_5pct",
+                "name": "BPHTB Tax (5%)",
+                "properties": {"rate": "5%"},
+                "relationship_type": "HAS_FEE",
+            },
+        ]
+    )
 
     state = {"property_type": "hak_pakai", "query": "buy hak pakai", "user_context": {}}
     result = await get_property_requirements_node(state, pool)
@@ -362,18 +365,20 @@ async def test_tax_obligations_from_kg(mock_db):
     from backend.services.rag.kg_subgraph_tax import get_tax_obligations_node
 
     pool, conn = mock_db
-    conn.fetch = AsyncMock(return_value=[
-        {
-            "entity_id": "tax_type:pph_badan",
-            "name": "PPh Badan (Corporate Income Tax)",
-            "properties": {"rate": 0.22, "description": "Corporate Income Tax"},
-        },
-        {
-            "entity_id": "tax_type:pph_21",
-            "name": "PPh 21 (Employee Withholding)",
-            "properties": {"description": "Withholding tax on employee salaries"},
-        },
-    ])
+    conn.fetch = AsyncMock(
+        return_value=[
+            {
+                "entity_id": "tax_type:pph_badan",
+                "name": "PPh Badan (Corporate Income Tax)",
+                "properties": {"rate": 0.22, "description": "Corporate Income Tax"},
+            },
+            {
+                "entity_id": "tax_type:pph_21",
+                "name": "PPh 21 (Employee Withholding)",
+                "properties": {"description": "Withholding tax on employee salaries"},
+            },
+        ]
+    )
 
     state: dict = {
         "query": "tax obligations for PT PMA",

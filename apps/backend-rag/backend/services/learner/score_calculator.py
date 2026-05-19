@@ -53,12 +53,12 @@ class ScoreInputs:
 
 @dataclass
 class CompositeScore:
-    value: float             # final composite 0..1
-    norm_reach: float        # percentile-normalized reach 0..1
-    engagement_rate: float   # clamped 0..1
-    leads_per_1k: float      # clamped 0..1 (leads / impressions * 1000)
-    save_rate: float         # clamped 0..1
-    complete: bool           # True iff all four terms were derived from real data
+    value: float  # final composite 0..1
+    norm_reach: float  # percentile-normalized reach 0..1
+    engagement_rate: float  # clamped 0..1
+    leads_per_1k: float  # clamped 0..1 (leads / impressions * 1000)
+    save_rate: float  # clamped 0..1
+    complete: bool  # True iff all four terms were derived from real data
     missing_terms: list[str] = field(default_factory=list)
     platform: Platform | None = None
 
@@ -113,11 +113,7 @@ class ScoreCalculator:
             missing.append(METRIC_IMPRESSIONS)
             engagement = 0.0
         else:
-            numer = (
-                (inputs.likes or 0.0)
-                + (inputs.comments or 0.0)
-                + (inputs.shares or 0.0)
-            )
+            numer = (inputs.likes or 0.0) + (inputs.comments or 0.0) + (inputs.shares or 0.0)
             engagement = _clamp_01(numer / float(inputs.impressions))
             if inputs.likes is None:
                 missing.append(METRIC_LIKES)
@@ -127,11 +123,7 @@ class ScoreCalculator:
                 missing.append(METRIC_SHARES)
 
         # 3. leads per 1k impressions
-        if (
-            inputs.impressions is None
-            or inputs.impressions <= 0
-            or inputs.leads_attributed is None
-        ):
+        if inputs.impressions is None or inputs.impressions <= 0 or inputs.leads_attributed is None:
             if inputs.leads_attributed is None:
                 missing.append(METRIC_LEADS_ATTRIBUTED)
             leads_per_1k = 0.0
@@ -141,18 +133,12 @@ class ScoreCalculator:
             )
 
         # 4. save rate
-        if (
-            inputs.impressions is None
-            or inputs.impressions <= 0
-            or inputs.saves is None
-        ):
+        if inputs.impressions is None or inputs.impressions <= 0 or inputs.saves is None:
             if inputs.saves is None:
                 missing.append(METRIC_SAVES)
             save_rate = 0.0
         else:
-            save_rate = _clamp_01(
-                float(inputs.saves) / float(inputs.impressions)
-            )
+            save_rate = _clamp_01(float(inputs.saves) / float(inputs.impressions))
 
         composite = (
             W_REACH * norm_reach

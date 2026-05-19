@@ -190,8 +190,11 @@ class TestFix3GenAIStructuredLogging:
 
         assert result["text"] == "Hello"
         # Find the structured log record
-        llm_records = [r for r in caplog.records if "LLM call" in r.getMessage() or
-                       getattr(r, "provider", None) == "gemini"]
+        llm_records = [
+            r
+            for r in caplog.records
+            if "LLM call" in r.getMessage() or getattr(r, "provider", None) == "gemini"
+        ]
         assert len(llm_records) >= 1
 
     @pytest.mark.asyncio
@@ -395,8 +398,11 @@ class TestR5MetricsEmitter:
         with patch("backend.llm.metrics_emitter._get_redis", return_value=None):
             # Should complete without raising
             await emit_llm_metric(
-                provider="gemini", model="gemini-2.0-flash",
-                latency_ms=250, prompt_tokens=100, completion_tokens=50,
+                provider="gemini",
+                model="gemini-2.0-flash",
+                latency_ms=250,
+                prompt_tokens=100,
+                completion_tokens=50,
             )
 
     @pytest.mark.asyncio
@@ -408,8 +414,11 @@ class TestR5MetricsEmitter:
 
         with patch("backend.llm.metrics_emitter._get_redis", return_value=mock_redis):
             await emit_llm_metric(
-                provider="ollama", model="qwen3.5:9b",
-                latency_ms=420, prompt_tokens=80, completion_tokens=30,
+                provider="ollama",
+                model="qwen3.5:9b",
+                latency_ms=420,
+                prompt_tokens=80,
+                completion_tokens=30,
                 status="ok",
             )
 
@@ -435,7 +444,9 @@ class TestR5MetricsEmitter:
         with patch("backend.llm.metrics_emitter._get_redis", return_value=mock_redis):
             # Must not raise
             await emit_llm_metric(
-                provider="gemini", model="gemini-2.0-flash", latency_ms=100,
+                provider="gemini",
+                model="gemini-2.0-flash",
+                latency_ms=100,
             )
 
     @pytest.mark.asyncio
@@ -447,8 +458,10 @@ class TestR5MetricsEmitter:
 
         with patch("backend.llm.metrics_emitter._get_redis", return_value=mock_redis):
             await emit_llm_metric(
-                provider="gemini", model="gemini-2.0-flash",
-                latency_ms=50, status="error",
+                provider="gemini",
+                model="gemini-2.0-flash",
+                latency_ms=50,
+                status="error",
             )
 
         fields = mock_redis.xadd.call_args[0][1]
@@ -463,8 +476,10 @@ class TestR5MetricsEmitter:
 
         with patch("backend.llm.metrics_emitter._get_redis", return_value=mock_redis):
             await emit_llm_metric(
-                provider="gemini", model="gemini-2.0-flash",
-                latency_ms=100, extra={"chunks": "12"},
+                provider="gemini",
+                model="gemini-2.0-flash",
+                latency_ms=100,
+                extra={"chunks": "12"},
             )
 
         fields = mock_redis.xadd.call_args[0][1]

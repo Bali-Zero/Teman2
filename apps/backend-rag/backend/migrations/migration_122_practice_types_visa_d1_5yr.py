@@ -11,6 +11,7 @@ databases need an explicit insert since 066 only runs at first boot.
 Uses ON CONFLICT(code) DO UPDATE so rerunning is safe and picks up price
 changes if someone pre-seeded the rows manually.
 """
+
 from __future__ import annotations
 
 import logging
@@ -71,9 +72,7 @@ async def apply(conn: Any) -> None:
             svc["base_price"],
             svc["typical_duration_days"],
         )
-    logger.info(
-        "Migration 122: D1 Tourism tiers (1y/2y/5y) inserted into practice_types"
-    )
+    logger.info("Migration 122: D1 Tourism tiers (1y/2y/5y) inserted into practice_types")
 
 
 async def rollback(conn: Any) -> None:

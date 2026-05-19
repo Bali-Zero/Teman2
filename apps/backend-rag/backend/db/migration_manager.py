@@ -106,7 +106,10 @@ class MigrationManager:
         """
         if self.pool is None:
             self.pool = await asyncpg.create_pool(
-                self.database_url, min_size=1, max_size=5, command_timeout=60,
+                self.database_url,
+                min_size=1,
+                max_size=5,
+                command_timeout=60,
             )
             logger.info("Migration manager connection pool created")
 
@@ -296,12 +299,14 @@ class MigrationManager:
                 logger.error(f"Cannot read migration {sql_file.name}: {exc}")
                 continue
 
-            migrations.append({
-                "number": migration_number,
-                "file": sql_file.name,
-                "path": sql_file,
-                "rollback_sql": _extract_rollback_sql(sql_text),
-            })
+            migrations.append(
+                {
+                    "number": migration_number,
+                    "file": sql_file.name,
+                    "path": sql_file,
+                    "rollback_sql": _extract_rollback_sql(sql_text),
+                }
+            )
 
         return migrations
 
@@ -359,7 +364,8 @@ class MigrationManager:
         async with self.pool.acquire() as lock_conn:
             try:
                 locked = await lock_conn.fetchval(
-                    "SELECT pg_try_advisory_lock($1)", self._APPLY_ALL_LOCK_ID,
+                    "SELECT pg_try_advisory_lock($1)",
+                    self._APPLY_ALL_LOCK_ID,
                 )
             except Exception as exc:
                 logger.error("Failed to acquire migration advisory lock: %s", exc)
@@ -378,12 +384,14 @@ class MigrationManager:
                 # session even if the explicit release fails.
                 try:
                     await lock_conn.execute(
-                        "SELECT pg_advisory_unlock($1)", self._APPLY_ALL_LOCK_ID,
+                        "SELECT pg_advisory_unlock($1)",
+                        self._APPLY_ALL_LOCK_ID,
                     )
                 except Exception as exc:
                     logger.warning(
                         "Advisory lock release raised %s — relying on session "
-                        "termination to free the lock", exc,
+                        "termination to free the lock",
+                        exc,
                     )
 
     async def _apply_all_pending_locked(self, dry_run: bool = False) -> dict:

@@ -123,7 +123,7 @@ class TestPageBreakMidChunk:
                     assert word in c["text"]
                 else:
                     assert word not in c["text"], (
-                        f"chunk {idx} leaked page-{j+1} word {word}: {c['text']!r}"
+                        f"chunk {idx} leaked page-{j + 1} word {word}: {c['text']!r}"
                     )
 
 
@@ -218,9 +218,11 @@ class TestBackwardCompat:
         result = extract_text_from_pdf("/fake.pdf", return_page_markers=True)
         assert isinstance(result, tuple) and len(result) == 2
         text, markers = result
-        assert markers == [0, len("Alpha") + len(PDF_PAGE_SEPARATOR),
-                           len("Alpha") + len(PDF_PAGE_SEPARATOR)
-                           + len("Beta") + len(PDF_PAGE_SEPARATOR)]
+        assert markers == [
+            0,
+            len("Alpha") + len(PDF_PAGE_SEPARATOR),
+            len("Alpha") + len(PDF_PAGE_SEPARATOR) + len("Beta") + len(PDF_PAGE_SEPARATOR),
+        ]
         # And markers produced by the parser round-trip through the chunker.
         chunks = _chunker(chunk_size=200).chunk_by_pages(text, markers)
         assert [c["page"] for c in chunks] == [1, 2, 3]
@@ -247,7 +249,7 @@ class TestPerfRegression:
 
         # Allow 3x slack for CI noise; the two should be effectively identical.
         assert fallback < baseline * 3 + 0.01, (
-            f"chunk_by_pages fallback {fallback*1000:.2f}ms "
-            f"vs semantic_chunk {baseline*1000:.2f}ms "
+            f"chunk_by_pages fallback {fallback * 1000:.2f}ms "
+            f"vs semantic_chunk {baseline * 1000:.2f}ms "
             "— fallback is not supposed to add overhead."
         )

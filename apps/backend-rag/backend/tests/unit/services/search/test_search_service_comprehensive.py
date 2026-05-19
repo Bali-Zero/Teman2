@@ -85,7 +85,10 @@ class TestSearchService:
     async def test_search_with_collection(self, search_service):
         """Test search with specific collection"""
         result = await search_service.search(
-            query="test", user_level=1, limit=5, collection_override="visa_oracle",
+            query="test",
+            user_level=1,
+            limit=5,
+            collection_override="visa_oracle",
         )
         assert result is not None
 
@@ -120,7 +123,10 @@ class TestSearchService:
     async def test_search_with_apply_filters(self, search_service):
         """Test search with apply_filters parameter"""
         result = await search_service.search(
-            query="test", user_level=1, limit=5, apply_filters=True,
+            query="test",
+            user_level=1,
+            limit=5,
+            apply_filters=True,
         )
         assert result is not None
 
@@ -130,7 +136,10 @@ class TestSearchService:
         from backend.app.models import TierLevel
 
         result = await search_service.search(
-            query="test", user_level=2, limit=5, tier_filter=[TierLevel.S, TierLevel.A],
+            query="test",
+            user_level=2,
+            limit=5,
+            tier_filter=[TierLevel.S, TierLevel.A],
         )
         assert result is not None
 
@@ -252,7 +261,9 @@ class TestSearchService:
         )
 
         result = await search_service.hybrid_search_with_reranking(
-            query="test", user_level=1, limit=5,
+            query="test",
+            user_level=1,
+            limit=5,
         )
         assert result is not None
 
@@ -274,7 +285,9 @@ class TestSearchService:
         search_service.conflict_resolver.resolve_conflicts = MagicMock(return_value=([], []))
 
         result = await search_service.search_with_conflict_resolution(
-            query="test", user_level=1, limit=5,
+            query="test",
+            user_level=1,
+            limit=5,
         )
         assert result is not None
         assert "conflicts_detected" in result
@@ -327,7 +340,9 @@ class TestSearchService:
         search_service.collection_manager.get_collection.side_effect = get_collection_side_effect
 
         result = await search_service.search_with_conflict_resolution(
-            query="test", user_level=1, limit=5,
+            query="test",
+            user_level=1,
+            limit=5,
         )
         # Conflicts should be detected if we have duplicate titles
         assert result["conflicts_detected"] >= 0  # May be 0 if no actual conflicts detected
@@ -347,7 +362,9 @@ class TestSearchService:
         search_service.conflict_resolver.detect_conflicts = MagicMock(return_value=[])
 
         result = await search_service.search_with_conflict_resolution(
-            query="How much does KITAS cost?", user_level=1, limit=5,
+            query="How much does KITAS cost?",
+            user_level=1,
+            limit=5,
         )
         assert result is not None
 
@@ -367,7 +384,9 @@ class TestSearchService:
 
         # Should fallback to simple search
         result = await search_service.search_with_conflict_resolution(
-            query="test", user_level=1, limit=5,
+            query="test",
+            user_level=1,
+            limit=5,
         )
         assert result is not None
 
@@ -375,7 +394,9 @@ class TestSearchService:
     async def test_search_collection(self, search_service):
         """Test search_collection method"""
         result = await search_service.search_collection(
-            query="test", collection_name="test_collection", limit=5,
+            query="test",
+            collection_name="test_collection",
+            limit=5,
         )
         assert result is not None
 
@@ -397,7 +418,9 @@ class TestSearchService:
             )
 
             result = await search_service.search_collection(
-                query="test", collection_name="new_collection", limit=5,
+                query="test",
+                collection_name="new_collection",
+                limit=5,
             )
             assert result is not None
 
@@ -584,7 +607,8 @@ class TestSearchService:
             mock_settings.bm25_b = 0.75
 
             with patch(
-                "backend.core.bm25_vectorizer.BM25Vectorizer", side_effect=ImportError("No module"),
+                "backend.core.bm25_vectorizer.BM25Vectorizer",
+                side_effect=ImportError("No module"),
             ):
                 # Reset state
                 search_service._bm25_enabled = False
@@ -863,7 +887,9 @@ class TestSearchService:
         search_service._bm25_enabled = True
 
         result = await search_service.hybrid_search_with_reranking(
-            query="test", user_level=1, limit=5,
+            query="test",
+            user_level=1,
+            limit=5,
         )
         assert result["early_exit"] is True
         assert result["reranked"] is False
@@ -898,7 +924,9 @@ class TestSearchService:
         search_service._reranker = mock_reranker
 
         result = await search_service.hybrid_search_with_reranking(
-            query="test", user_level=1, limit=2,
+            query="test",
+            user_level=1,
+            limit=2,
         )
         assert result["reranked"] is True
         # pipeline label comes from settings.reranker_backend (default: "cross-encoder")
@@ -941,7 +969,9 @@ class TestSearchService:
             mock_cache_svc.return_value = mock_cache
 
             result = await search_service.hybrid_search_with_reranking(
-                query="test", user_level=1, limit=2,
+                query="test",
+                user_level=1,
+                limit=2,
             )
         assert result["reranked"] is False
         assert result["early_exit"] is False
@@ -949,6 +979,7 @@ class TestSearchService:
     @pytest.mark.asyncio
     async def test_hybrid_search_error_fallback(self, search_service):
         """Test hybrid_search falls back to regular search on error"""
+
         # _prepare_search_context is async — use AsyncMock so the coroutine raises properly
         async def failing_prepare(*args, **kwargs):
             raise RuntimeError("Prepare failed")
@@ -964,7 +995,9 @@ class TestSearchService:
             with patch.object(search_service, "_prepare_search_context", failing_prepare):
                 # search() is the fallback — must be AsyncMock so it can be awaited
                 with patch.object(
-                    search_service, "search", new_callable=AsyncMock,
+                    search_service,
+                    "search",
+                    new_callable=AsyncMock,
                 ) as mock_search:
                     mock_search.return_value = {"results": [], "query": "test"}
 
@@ -1023,7 +1056,9 @@ class TestSearchService:
         search_service.conflict_resolver.resolve_conflicts = MagicMock(return_value=([], []))
 
         result = await search_service.search_with_conflict_resolution(
-            query="test", user_level=1, limit=5,
+            query="test",
+            user_level=1,
+            limit=5,
         )
         assert result is not None
 
@@ -1049,7 +1084,9 @@ class TestSearchService:
         search_service.conflict_resolver.detect_conflicts = MagicMock(return_value=[])
 
         result = await search_service.search_with_conflict_resolution(
-            query="test", user_level=1, limit=5,
+            query="test",
+            user_level=1,
+            limit=5,
         )
         assert result is not None
 
@@ -1068,7 +1105,10 @@ class TestSearchService:
         search_service.conflict_resolver.detect_conflicts = MagicMock(return_value=[])
 
         result = await search_service.search_with_conflict_resolution(
-            query="test", user_level=1, limit=5, enable_fallbacks=False,
+            query="test",
+            user_level=1,
+            limit=5,
+            enable_fallbacks=False,
         )
         assert result["fallbacks_used"] is False
 
@@ -1086,7 +1126,9 @@ class TestSearchService:
         search_service.conflict_resolver.detect_conflicts = MagicMock(return_value=[])
 
         result = await search_service.search_with_conflict_resolution(
-            query="test", user_level=1, limit=5,
+            query="test",
+            user_level=1,
+            limit=5,
         )
         # Verify the result has the expected structure
         assert "query" in result
@@ -1109,7 +1151,9 @@ class TestSearchService:
         )
 
         result = await search_service.search_with_conflict_resolution(
-            query="test", user_level=1, limit=5,
+            query="test",
+            user_level=1,
+            limit=5,
         )
         # Should fallback to simple search
         assert result is not None
@@ -1128,7 +1172,9 @@ class TestSearchService:
         search_service.collection_manager.get_collection.return_value = mock_client
 
         result = await search_service.search_collection(
-            query="test", collection_name="test_collection", limit=5,
+            query="test",
+            collection_name="test_collection",
+            limit=5,
         )
         assert "error" in result
 
@@ -1187,7 +1233,8 @@ class TestSearchServiceBM25Init:
             patch("backend.services.ingestion.collection_health_service.CollectionHealthService"),
             patch("backend.services.search.search_service.CollectionWarmupService"),
             patch(
-                "backend.core.bm25_vectorizer.BM25Vectorizer", side_effect=ImportError("No module"),
+                "backend.core.bm25_vectorizer.BM25Vectorizer",
+                side_effect=ImportError("No module"),
             ),
         ):
             mock_embedder = MagicMock()

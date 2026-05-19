@@ -345,7 +345,10 @@ Consider: test purpose, assertions, structure, and functionality.
 """
 
             request = LLMRequest(
-                prompt=prompt, max_tokens=50, temperature=0.1, provider=LLMProvider.OLLAMA,
+                prompt=prompt,
+                max_tokens=50,
+                temperature=0.1,
+                provider=LLMProvider.OLLAMA,
             )
 
             response = await self.llm_adapter.generate(request)
@@ -506,7 +509,9 @@ class TestCleanerAgent:
         self.orphan_detector = OrphanDetector(repo_path)
 
         # Archive directory
-        self.archive_dir = tests_dir / ".archive" / datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
+        self.archive_dir = (
+            tests_dir / ".archive" / datetime.now(tz=timezone.utc).strftime("%Y%m%d_%H%M%S")
+        )
 
         # Statistics
         self.stats = {
@@ -560,7 +565,10 @@ class TestCleanerAgent:
 
             # Generate cleanup recommendations
             recommendations = self._generate_recommendations(
-                analyses, orphans, duplicates, useless_tests,
+                analyses,
+                orphans,
+                duplicates,
+                useless_tests,
             )
 
             # Perform cleanup (if not dry run)
@@ -604,12 +612,16 @@ class TestCleanerAgent:
             logger.error("❌ %s", error_msg)
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
-                    time.time() - start_time, success=False, error=error_msg,
+                    time.time() - start_time,
+                    success=False,
+                    error=error_msg,
                 )
             return {"success": False, "error": error_msg}
 
     def _identify_useless_tests(
-        self, analyses: list[dict[str, Any]], aggressive: bool,
+        self,
+        analyses: list[dict[str, Any]],
+        aggressive: bool,
     ) -> list[dict[str, Any]]:
         """Identify useless or low-value tests."""
         useless = []
@@ -829,12 +841,15 @@ async def main():
 
     # Configure logging
     logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s [%(levelname)s] 🧹 TestCleaner: %(message)s",
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] 🧹 TestCleaner: %(message)s",
     )
 
     # Create and run agent
     agent = TestCleanerAgent(
-        repo_path=Path(args.repo), llm_provider=args.provider, dry_run=not args.no_dry_run,
+        repo_path=Path(args.repo),
+        llm_provider=args.provider,
+        dry_run=not args.no_dry_run,
     )
 
     try:

@@ -9,6 +9,7 @@ Sprint 3 W2 review X1 hardening (2026-05-04 multi-LLM): the
 and assert the Python constants match the actual DDL — not just match
 another hardcoded Python set.
 """
+
 from __future__ import annotations
 
 import re
@@ -29,10 +30,7 @@ from backend.services.mata_garuda.cell_adapter import (
 
 # Path to the migration file that owns the schema's CHECK constraints.
 _MIGRATION_154 = (
-    Path(__file__).resolve().parents[3]
-    / "db"
-    / "migrations_v2"
-    / "154_asset_provenance.sql"
+    Path(__file__).resolve().parents[3] / "db" / "migrations_v2" / "154_asset_provenance.sql"
 )
 
 
@@ -51,9 +49,7 @@ def _parse_check_in_clause(sql: str, column: str) -> set[str]:
     )
     m = pattern.search(sql)
     if m is None:
-        raise ValueError(
-            f"could not find `CHECK ({column} IN (...))` in migration 154 SQL"
-        )
+        raise ValueError(f"could not find `CHECK ({column} IN (...))` in migration 154 SQL")
     raw = m.group("values")
     # Extract single-quoted literals
     return set(re.findall(r"'([^']+)'", raw))
@@ -70,9 +66,7 @@ def _parse_check_between(sql: str, column: str) -> tuple[int, int]:
     )
     m = pattern.search(sql)
     if m is None:
-        raise ValueError(
-            f"could not find `CHECK ({column} BETWEEN x AND y)` in migration 154 SQL"
-        )
+        raise ValueError(f"could not find `CHECK ({column} BETWEEN x AND y)` in migration 154 SQL")
     return int(m.group(1)), int(m.group(2))
 
 
@@ -83,10 +77,18 @@ def test_authoritative_set_has_exactly_12_values():
 
 def test_authoritative_set_contains_canonical_values():
     canonical = {
-        "war_room_draft", "war_room_post", "intel_finding",
-        "research_dossier", "cross_dossier_thesis", "weekly_strategic_brief",
-        "ultra_move", "kg_entity", "kg_proposal", "crm_enrichment_lookup",
-        "compliance_alert", "measurer_metric",
+        "war_room_draft",
+        "war_room_post",
+        "intel_finding",
+        "research_dossier",
+        "cross_dossier_thesis",
+        "weekly_strategic_brief",
+        "ultra_move",
+        "kg_entity",
+        "kg_proposal",
+        "crm_enrichment_lookup",
+        "compliance_alert",
+        "measurer_metric",
     }
     assert set(ASSET_KIND_AUTHORITATIVE) == canonical
 
@@ -94,9 +96,17 @@ def test_authoritative_set_contains_canonical_values():
 def test_authoritative_set_excludes_handover_alternates():
     """The handover-side OSINT-generic list must NOT leak in."""
     forbidden = {
-        "news_article", "regulation", "kbli_code", "telegram_post",
-        "kg_node", "kg_edge", "contradiction", "entity_link",
-        "document_hash", "visa_type", "query_result",
+        "news_article",
+        "regulation",
+        "kbli_code",
+        "telegram_post",
+        "kg_node",
+        "kg_edge",
+        "contradiction",
+        "entity_link",
+        "document_hash",
+        "visa_type",
+        "query_result",
     }
     assert set(ASSET_KIND_AUTHORITATIVE).isdisjoint(forbidden)
 
@@ -132,8 +142,7 @@ def test_tlp_values_match_ddl():
     sql = _MIGRATION_154.read_text()
     parsed = _parse_check_in_clause(sql, "tlp")
     assert TLP_VALUES == frozenset(parsed), (
-        f"TLP_VALUES adapter constant {TLP_VALUES!r} "
-        f"diverges from mig 154 CHECK enum {parsed!r}"
+        f"TLP_VALUES adapter constant {TLP_VALUES!r} diverges from mig 154 CHECK enum {parsed!r}"
     )
 
 
@@ -178,7 +187,7 @@ def test_validate_inputs_accepts_canonical_values():
 def test_validate_inputs_rejects_non_canonical_asset_kind():
     with pytest.raises(ValueError, match="canonical 12-value set"):
         _validate_inputs(
-            asset_kind="news_article",   # NOT canonical
+            asset_kind="news_article",  # NOT canonical
             reliability="A",
             credibility=1,
             invalidation_mode="auto",
@@ -190,7 +199,7 @@ def test_validate_inputs_rejects_invalid_reliability():
     with pytest.raises(ValueError, match="reliability"):
         _validate_inputs(
             asset_kind="war_room_post",
-            reliability="Z",    # not A-F
+            reliability="Z",  # not A-F
             credibility=1,
             invalidation_mode="auto",
             tlp="red",
@@ -202,7 +211,7 @@ def test_validate_inputs_rejects_invalid_credibility():
         _validate_inputs(
             asset_kind="war_room_post",
             reliability="A",
-            credibility=0,      # not 1-6
+            credibility=0,  # not 1-6
             invalidation_mode="auto",
             tlp="red",
         )
@@ -213,7 +222,7 @@ def test_validate_inputs_rejects_invalid_credibility_high():
         _validate_inputs(
             asset_kind="war_room_post",
             reliability="A",
-            credibility=7,      # not 1-6
+            credibility=7,  # not 1-6
             invalidation_mode="auto",
             tlp="red",
         )
@@ -225,7 +234,7 @@ def test_validate_inputs_rejects_invalid_invalidation_mode():
             asset_kind="war_room_post",
             reliability="A",
             credibility=1,
-            invalidation_mode="forever",   # not auto/manual/never
+            invalidation_mode="forever",  # not auto/manual/never
             tlp="red",
         )
 
@@ -237,7 +246,7 @@ def test_validate_inputs_rejects_invalid_tlp():
             reliability="A",
             credibility=1,
             invalidation_mode="auto",
-            tlp="purple",      # not in TLP_VALUES
+            tlp="purple",  # not in TLP_VALUES
         )
 
 
@@ -256,33 +265,37 @@ def test_confidence_tier_A2_to_B3_is_HIGH():
     for reliability in ("A", "B"):
         for credibility in (1, 2, 3):
             if (reliability, credibility) == ("A", 1):
-                continue   # A1 is its own tier
-            assert confidence_tier(reliability, credibility) == "HIGH", \
+                continue  # A1 is its own tier
+            assert confidence_tier(reliability, credibility) == "HIGH", (
                 f"{reliability}{credibility} expected HIGH"
+            )
 
 
 def test_confidence_tier_C_D_credibility_1_to_3_is_LOW():
     """Fair-to-unusually reliable sources, credibility 1-3 → LOW."""
     for reliability in ("C", "D"):
         for credibility in (1, 2, 3):
-            assert confidence_tier(reliability, credibility) == "LOW", \
+            assert confidence_tier(reliability, credibility) == "LOW", (
                 f"{reliability}{credibility} expected LOW"
+            )
 
 
 def test_confidence_tier_E_F_always_UNVERIFIED():
     """Unreliable (E) or cannot-judge (F) → UNVERIFIED regardless of credibility."""
     for reliability in ("E", "F"):
         for credibility in (1, 2, 3, 4, 5, 6):
-            assert confidence_tier(reliability, credibility) == "UNVERIFIED", \
+            assert confidence_tier(reliability, credibility) == "UNVERIFIED", (
                 f"{reliability}{credibility} expected UNVERIFIED"
+            )
 
 
 def test_confidence_tier_credibility_4_to_6_always_UNVERIFIED():
     """Credibility 4+ (doubtful, improbable, cannot judge) collapses regardless of source."""
     for reliability in ("A", "B", "C", "D"):
         for credibility in (4, 5, 6):
-            assert confidence_tier(reliability, credibility) == "UNVERIFIED", \
+            assert confidence_tier(reliability, credibility) == "UNVERIFIED", (
                 f"{reliability}{credibility} expected UNVERIFIED"
+            )
 
 
 def test_confidence_tier_explicit_mapping_for_all_36_cells():
@@ -318,6 +331,5 @@ def test_confidence_tier_explicit_mapping_for_all_36_cells():
 
     for (r, c), tier in expected.items():
         assert confidence_tier(r, c) == tier, (
-            f"confidence_tier({r!r}, {c}) returned {confidence_tier(r, c)!r}; "
-            f"expected {tier!r}"
+            f"confidence_tier({r!r}, {c}) returned {confidence_tier(r, c)!r}; expected {tier!r}"
         )

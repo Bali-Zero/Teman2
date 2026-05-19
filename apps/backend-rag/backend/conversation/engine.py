@@ -49,7 +49,9 @@ class ConversationEngine:
         logger.info("✅ ConversationEngine initialized")
 
     async def process_message(
-        self, message: ChannelMessage, channel_config: dict[str, Any],
+        self,
+        message: ChannelMessage,
+        channel_config: dict[str, Any],
     ) -> AsyncIterator[ChannelResponse]:
         """
         Process a message through the RAG pipeline.
@@ -114,7 +116,9 @@ class ConversationEngine:
                 query_text = context_prefix + message.text
 
                 logger.info(
-                    "🤖 Agent Mesh context injected for %s (%s)", agent_name, agent_role,
+                    "🤖 Agent Mesh context injected for %s (%s)",
+                    agent_name,
+                    agent_role,
                 )
 
             # 3. Stream through orchestrator
@@ -169,7 +173,8 @@ class ConversationEngine:
         # Thinking event: LLM reasoning step
         elif event_type == "thinking":
             return ChannelResponse(
-                text="", metadata={"event_type": "thinking", "data": event.get("data")},
+                text="",
+                metadata={"event_type": "thinking", "data": event.get("data")},
             )
 
         # Tool call event: agent executing a tool
@@ -186,7 +191,8 @@ class ConversationEngine:
         # Observation event: tool execution result
         elif event_type == "observation":
             return ChannelResponse(
-                text="", metadata={"event_type": "observation", "data": event.get("data")},
+                text="",
+                metadata={"event_type": "observation", "data": event.get("data")},
             )
 
         # Sources event: citations/references
@@ -318,13 +324,15 @@ class ConversationEngine:
             if not summary:
                 return []
 
-            return [{
-                "role": "system",
-                "content": (
-                    f"[Cross-Channel History] This client has an ongoing conversation "
-                    f"across multiple channels. Recent messages:\n{summary}"
-                ),
-            }]
+            return [
+                {
+                    "role": "system",
+                    "content": (
+                        f"[Cross-Channel History] This client has an ongoing conversation "
+                        f"across multiple channels. Recent messages:\n{summary}"
+                    ),
+                }
+            ]
         except Exception as e:
             logger.debug("Cross-channel context load failed (non-fatal): %s", e)
             return []

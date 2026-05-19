@@ -12,9 +12,7 @@ from typing import Any
 import asyncpg
 
 
-async def get_client_by_id(
-    conn: asyncpg.Connection, client_id: int
-) -> dict[str, Any] | None:
+async def get_client_by_id(conn: asyncpg.Connection, client_id: int) -> dict[str, Any] | None:
     """Fetch a single client by ID (soft-delete aware)."""
     row = await conn.fetchrow(
         "SELECT * FROM clients WHERE id = $1 AND deleted_at IS NULL",
@@ -23,9 +21,7 @@ async def get_client_by_id(
     return dict(row) if row else None
 
 
-async def get_client_assigned_to(
-    conn: asyncpg.Connection, client_id: int
-) -> str | None:
+async def get_client_assigned_to(conn: asyncpg.Connection, client_id: int) -> str | None:
     """Get the assigned_to email for a client. Used 6x across CRM routers."""
     return await conn.fetchval(
         "SELECT assigned_to FROM clients WHERE id = $1 AND deleted_at IS NULL",
@@ -33,9 +29,7 @@ async def get_client_assigned_to(
     )
 
 
-async def get_client_email(
-    conn: asyncpg.Connection, client_id: int
-) -> str | None:
+async def get_client_email(conn: asyncpg.Connection, client_id: int) -> str | None:
     """Get client email. Used 6x across notification/portal services."""
     return await conn.fetchval(
         "SELECT email FROM clients WHERE id = $1 AND deleted_at IS NULL",
@@ -61,9 +55,7 @@ async def verify_client_access(
     return assigned == user_email if assigned else False
 
 
-async def get_client_drive_folder(
-    conn: asyncpg.Connection, client_id: int
-) -> str | None:
+async def get_client_drive_folder(conn: asyncpg.Connection, client_id: int) -> str | None:
     """Get Google Drive folder_id for a client."""
     return await conn.fetchval(
         "SELECT drive_folder_id FROM clients WHERE id = $1 AND deleted_at IS NULL",

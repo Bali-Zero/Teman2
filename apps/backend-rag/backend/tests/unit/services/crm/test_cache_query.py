@@ -103,6 +103,7 @@ class TestCacheCrmResult:
 
         # Import the singleton to clear it first
         from backend.services.crm.cache_query import crm_cache
+
         await crm_cache.clear()
 
         r1 = await expensive_fn(5)
@@ -246,9 +247,11 @@ class TestCRMQueryOptimizer:
         optimizer = CRMQueryOptimizer(db_pool=mock_pool)
 
         with pytest.raises(ValueError, match="not allowed"):
-            await optimizer.batch_update_practices([
-                {"id": 1, "malicious_column": "DROP TABLE"},
-            ])
+            await optimizer.batch_update_practices(
+                [
+                    {"id": 1, "malicious_column": "DROP TABLE"},
+                ]
+            )
 
     @pytest.mark.asyncio
     async def test_get_clients_with_practices_empty(self):
@@ -260,9 +263,11 @@ class TestCRMQueryOptimizer:
     @pytest.mark.asyncio
     async def test_search_clients_optimized(self):
         mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(return_value=[
-            {"full_name": "John", "email": "john@test.com", "total_count": 1},
-        ])
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {"full_name": "John", "email": "john@test.com", "total_count": 1},
+            ]
+        )
 
         mock_pool = _make_pool_with_conn(mock_conn)
         optimizer = CRMQueryOptimizer(db_pool=mock_pool)
@@ -287,10 +292,18 @@ class TestCRMQueryOptimizer:
     @pytest.mark.asyncio
     async def test_get_practice_statistics(self):
         mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(return_value=[
-            {"status": "active", "priority": "high", "count": 5,
-             "total_quoted": 10000, "total_actual": 8000, "total_paid": 6000},
-        ])
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "status": "active",
+                    "priority": "high",
+                    "count": 5,
+                    "total_quoted": 10000,
+                    "total_actual": 8000,
+                    "total_paid": 6000,
+                },
+            ]
+        )
 
         mock_pool = _make_pool_with_conn(mock_conn)
         optimizer = CRMQueryOptimizer(db_pool=mock_pool)
@@ -313,9 +326,11 @@ class TestCRMQueryOptimizer:
     @pytest.mark.asyncio
     async def test_get_overdue_practices(self):
         mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(return_value=[
-            {"id": 1, "client_name": "John", "status": "active"},
-        ])
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {"id": 1, "client_name": "John", "status": "active"},
+            ]
+        )
 
         mock_pool = _make_pool_with_conn(mock_conn)
         optimizer = CRMQueryOptimizer(db_pool=mock_pool)

@@ -338,7 +338,9 @@ async def chat_stream_post(
     ):
         try:
             history_data = await request.app.state.conversation_service.get_history(
-                user_email=user_email, session_id=session_id, limit=20,
+                user_email=user_email,
+                session_id=session_id,
+                limit=20,
             )
             if history_data and history_data.get("messages"):
                 conversation_history_list = history_data["messages"]

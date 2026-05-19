@@ -97,7 +97,8 @@ class MetricsPusher:
                         labels = {"__name__": name, "service": self.service_name}
                         if labels_str:
                             for label in re.findall(
-                                r'([a-zA-Z_][a-zA-Z0-9_]*)="([^"]*)"', labels_str,
+                                r'([a-zA-Z_][a-zA-Z0-9_]*)="([^"]*)"',
+                                labels_str,
                             ):
                                 labels[label[0]] = label[1]
 

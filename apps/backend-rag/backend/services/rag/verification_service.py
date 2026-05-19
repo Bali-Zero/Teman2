@@ -85,7 +85,10 @@ class VerificationService:
         return client.is_available if client else False
 
     async def verify_response(
-        self, query: str, draft_answer: str, context_chunks: list[str],
+        self,
+        query: str,
+        draft_answer: str,
+        context_chunks: list[str],
     ) -> VerificationResult:
         """
         Verify if the draft answer is supported by the context chunks.

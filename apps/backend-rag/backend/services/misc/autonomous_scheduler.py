@@ -162,7 +162,9 @@ class AutonomousScheduler:
             task_func=task_func,
             enabled=enabled,
         )
-        logger.info("📋 Registered task: %s (interval=%ss, enabled=%s)", name, interval_seconds, enabled)
+        logger.info(
+            "📋 Registered task: %s (interval=%ss, enabled=%s)", name, interval_seconds, enabled
+        )
 
     async def _run_task_loop(self, task: ScheduledTask) -> None:
         """Run a single task in a loop"""
@@ -185,7 +187,8 @@ class AutonomousScheduler:
                     # Still wait the full interval before trying again
                     try:
                         await asyncio.wait_for(
-                            self._shutdown_event.wait(), timeout=task.interval_seconds,
+                            self._shutdown_event.wait(),
+                            timeout=task.interval_seconds,
                         )
                         break
                     except asyncio.TimeoutError:
@@ -238,7 +241,8 @@ class AutonomousScheduler:
         for task in self.tasks.values():
             if task.enabled:
                 task._task = asyncio.create_task(
-                    self._run_task_loop(task), name=f"scheduler_{task.name}",
+                    self._run_task_loop(task),
+                    name=f"scheduler_{task.name}",
                 )
                 logger.info(f"   ✅ Started: {task.name}")
             else:
@@ -430,7 +434,8 @@ async def create_and_start_scheduler(
 
                 except Exception as e:
                     logger.error(
-                        "Error in Conversation Trainer prompt generation/PR creation: %s", e,
+                        "Error in Conversation Trainer prompt generation/PR creation: %s",
+                        e,
                         exc_info=True,
                     )
 
@@ -736,7 +741,9 @@ async def create_and_start_scheduler(
                 articles = result.get("report", {}).get("intel", {}).get("articles_composed", 0)
 
                 logger.info(
-                    "🤖 Daily Ops Autopilot completed: %s reminders sent, %s articles composed", reminders, articles,
+                    "🤖 Daily Ops Autopilot completed: %s reminders sent, %s articles composed",
+                    reminders,
+                    articles,
                 )
             except Exception as e:
                 logger.error("❌ Daily Ops Autopilot error: %s", e, exc_info=True)
@@ -782,7 +789,11 @@ async def create_and_start_scheduler(
     # KG INCREMENTAL BUILDER (daily — disabled on Fly.io, run via Air/Pro cron)
     # ENABLE_KG_INCREMENTAL=true to activate. Uses Gemini Free Tier (15 RPM, 1500/day).
     # ═══════════════════════════════════════════════════════════════════════════
-    kg_incremental_enabled = os.getenv("ENABLE_KG_INCREMENTAL", "false").lower() in ("true", "1", "yes")
+    kg_incremental_enabled = os.getenv("ENABLE_KG_INCREMENTAL", "false").lower() in (
+        "true",
+        "1",
+        "yes",
+    )
     if kg_incremental_enabled and db_pool:
         try:
             from backend.services.knowledge_graph.incremental_builder import KGIncrementalBuilder

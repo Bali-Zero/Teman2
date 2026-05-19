@@ -295,7 +295,9 @@ class TestTeamKnowledgeTool:
         tool = TeamKnowledgeTool()
         # Mock the _load_team_data method to return test data
         with patch.object(
-            tool, "_load_team_data", return_value=[{"name": "Test", "email": "test@example.com"}],
+            tool,
+            "_load_team_data",
+            return_value=[{"name": "Test", "email": "test@example.com"}],
         ):
             result = await tool.execute(query_type="list_all")
             assert result is not None

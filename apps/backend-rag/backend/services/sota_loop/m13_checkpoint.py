@@ -3,6 +3,7 @@
 Invoked by `com.balizero.sota.m13-checkpoint.plist` through
 `scripts/wr2-cron-wrapper.sh backend.services.sota_loop.m13_checkpoint`.
 """
+
 from __future__ import annotations
 
 import logging
@@ -11,9 +12,7 @@ import sys
 from datetime import date
 from pathlib import Path
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("sota.m13.checkpoint")
 
 
@@ -37,9 +36,7 @@ def main() -> int:
         return 0
 
     logger.info("Loop day %d — triggering checkpoint", days)
-    report_path = (
-        repo / "research" / "sota-social-2026-v1" / f"checkpoint_day_{days}.md"
-    )
+    report_path = repo / "research" / "sota-social-2026-v1" / f"checkpoint_day_{days}.md"
     report_path.write_text(
         f"# SOTA Checkpoint — Loop Day {days}\n\n"
         f"Date: {date.today().isoformat()}\n\n"
@@ -68,9 +65,7 @@ def main() -> int:
                 f"https://api.telegram.org/bot{token}/sendMessage",
                 urllib.parse.urlencode(
                     {
-                        "chat_id": os.environ.get(
-                            "TELEGRAM_OWNER_CHAT_ID", "1125336968"
-                        ),
+                        "chat_id": os.environ.get("TELEGRAM_OWNER_CHAT_ID", "1125336968"),
                         "text": text,
                     }
                 ).encode(),

@@ -269,10 +269,12 @@ async def test_sweep_incomplete_counted_not_recorded(repo_genome):
 async def test_rejected_by_zero_always_records_scar(repo_genome):
     repo, genome = repo_genome
     row = _post_row()
-    repo.get_draft = AsyncMock(return_value=_draft(
-        status=DraftStatus.REJECTED,
-        rejection_reason=RejectionReason.TONE.value,
-    ))
+    repo.get_draft = AsyncMock(
+        return_value=_draft(
+            status=DraftStatus.REJECTED,
+            rejection_reason=RejectionReason.TONE.value,
+        )
+    )
     await _stub_metric_fetch(
         repo,
         posts=[row],
@@ -294,10 +296,12 @@ async def test_sla_expired_does_not_trigger_zero_scar(repo_genome):
     """Drafts expired via SLA are different from Zero's active rejection."""
     repo, genome = repo_genome
     row = _post_row()
-    repo.get_draft = AsyncMock(return_value=_draft(
-        status=DraftStatus.REJECTED,
-        rejection_reason=RejectionReason.SLA_EXPIRED.value,
-    ))
+    repo.get_draft = AsyncMock(
+        return_value=_draft(
+            status=DraftStatus.REJECTED,
+            rejection_reason=RejectionReason.SLA_EXPIRED.value,
+        )
+    )
     await _stub_metric_fetch(
         repo,
         posts=[row],

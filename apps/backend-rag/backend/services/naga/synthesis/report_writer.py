@@ -56,9 +56,7 @@ def generate_report(
             query, claims, evidence_map, merged_gaps, sources_count, duration_ms
         )
     # default to deep
-    return _deep_report(
-        query, claims, evidence_map, merged_gaps, sources_count, duration_ms
-    )
+    return _deep_report(query, claims, evidence_map, merged_gaps, sources_count, duration_ms)
 
 
 # ---------------------------------------------------------------------------
@@ -75,9 +73,7 @@ def _flash_report(
     timestamp = _now_iso()
     lines: list[str] = [f"**{query}** — {timestamp}", ""]
 
-    trustworthy = [
-        c for c in claims if c.confidence_class in ("VERIFIED", "PROVISIONAL")
-    ]
+    trustworthy = [c for c in claims if c.confidence_class in ("VERIFIED", "PROVISIONAL")]
     low_claims = [c for c in claims if c.confidence_class == "LOW"]
 
     if not claims:
@@ -120,9 +116,7 @@ def _deep_report(
     # Title + metadata
     sections.append(f"# Research Report: {query}")
     sections.append("")
-    sections.append(
-        f"*Generated {_now_iso()} — {sources_count} sources — {duration_ms} ms*"
-    )
+    sections.append(f"*Generated {_now_iso()} — {sources_count} sources — {duration_ms} ms*")
     sections.append("")
 
     # Evidence bar
@@ -132,9 +126,7 @@ def _deep_report(
     # Executive summary
     sections.append("## Executive Summary")
     sections.append("")
-    trustworthy = [
-        c for c in claims if c.confidence_class in ("VERIFIED", "PROVISIONAL")
-    ]
+    trustworthy = [c for c in claims if c.confidence_class in ("VERIFIED", "PROVISIONAL")]
     if not trustworthy:
         sections.append("No verifiable claims were found for this query.")
     else:

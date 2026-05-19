@@ -42,7 +42,10 @@ class User(SQLModel, table=True):
         description="Full name",
     )
     email: str = Field(
-        unique=True, index=True, max_length=255, description="Email address (unique)",
+        unique=True,
+        index=True,
+        max_length=255,
+        description="Email address (unique)",
     )
 
     # Authentication
@@ -56,10 +59,16 @@ class User(SQLModel, table=True):
         sa_column_kwargs={"server_default": "member"},
     )
     department: str | None = Field(default=None, max_length=100, description="Department name")
-    language: str = Field(default="en", max_length=10, description="Preferred language code", sa_column_kwargs={"server_default": "en"})
+    language: str = Field(
+        default="en",
+        max_length=10,
+        description="Preferred language code",
+        sa_column_kwargs={"server_default": "en"},
+    )
     # Status flags
     personalized_response: bool = Field(
-        default=False, description="Enable personalized AI responses",
+        default=False,
+        description="Enable personalized AI responses",
     )
     # Map Python 'is_active' to database 'active' column.
     # Explicit `Boolean` type is required on sa_column — same reason as
@@ -73,12 +82,15 @@ class User(SQLModel, table=True):
 
     # Notes/Metadata for AI understanding
     notes: str | None = Field(
-        default=None, description="Character notes and personality traits for AI",
+        default=None,
+        description="Character notes and personality traits for AI",
     )
 
     # Profile photo
     avatar: str | None = Field(
-        default=None, max_length=255, description="URL path to team member profile photo",
+        default=None,
+        max_length=255,
+        description="URL path to team member profile photo",
     )
 
     # Security tracking
@@ -88,10 +100,12 @@ class User(SQLModel, table=True):
 
     # Timestamps
     created_at: datetime = Field(
-        default_factory=datetime.utcnow, description="Account creation timestamp",
+        default_factory=datetime.utcnow,
+        description="Account creation timestamp",
     )
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow, description="Last update timestamp",
+        default_factory=datetime.utcnow,
+        description="Last update timestamp",
     )
 
     # Relationships
@@ -114,7 +128,9 @@ class UserSession(SQLModel, table=True):
 
     # Foreign key to team_members
     user_id: str = Field(
-        foreign_key="team_members.id", max_length=36, description="User ID reference",
+        foreign_key="team_members.id",
+        max_length=36,
+        description="User ID reference",
     )
 
     # Session metadata
@@ -122,10 +138,12 @@ class UserSession(SQLModel, table=True):
 
     # Timestamps
     created_at: datetime = Field(
-        default_factory=datetime.utcnow, description="Session creation timestamp",
+        default_factory=datetime.utcnow,
+        description="Session creation timestamp",
     )
     last_accessed: datetime = Field(
-        default_factory=datetime.utcnow, description="Last access timestamp",
+        default_factory=datetime.utcnow,
+        description="Last access timestamp",
     )
     expires_at: datetime = Field(description="Session expiration timestamp")
 

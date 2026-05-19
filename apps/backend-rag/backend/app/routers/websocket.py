@@ -31,7 +31,10 @@ class ConnectionManager:
         self.lock = asyncio.Lock()
 
     async def connect(
-        self, websocket: WebSocket, user_id: str, subprotocol: str | None = None,
+        self,
+        websocket: WebSocket,
+        user_id: str,
+        subprotocol: str | None = None,
     ) -> None:
         await websocket.accept(subprotocol=subprotocol)
         async with self.lock:
@@ -84,7 +87,9 @@ async def get_current_user_ws(token: str) -> str | None:
     try:
         # S03: Two-phase JWT expiry enforcement
         payload = jwt.decode(
-            token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm],
+            token,
+            settings.jwt_secret_key,
+            algorithms=[settings.jwt_algorithm],
             options={"verify_exp": getattr(settings, "jwt_enforce_expiry", False)},
         )
         user_id: str = payload.get("sub") or payload.get("userId")
@@ -258,7 +263,8 @@ async def redis_listener() -> Any:
                     if len(parts) > 1:
                         target_user_id = parts[-1]
                         await manager.send_personal_message(
-                            {"type": "notification", "data": data}, target_user_id,
+                            {"type": "notification", "data": data},
+                            target_user_id,
                         )
 
                 elif "AI_RESULTS" in channel:
@@ -266,7 +272,8 @@ async def redis_listener() -> Any:
                     if len(parts) > 1:
                         target_user_id = parts[-1]
                         await manager.send_personal_message(
-                            {"type": "ai-result", "data": data}, target_user_id,
+                            {"type": "ai-result", "data": data},
+                            target_user_id,
                         )
 
                 elif "CHAT_MESSAGES" in channel:
@@ -278,7 +285,8 @@ async def redis_listener() -> Any:
                         target_id = parts[-1]
                         # Try sending to user (if target is user)
                         await manager.send_personal_message(
-                            {"type": "chat-message", "data": data}, target_id,
+                            {"type": "chat-message", "data": data},
+                            target_id,
                         )
                         # Room management logic can be added when needed
 

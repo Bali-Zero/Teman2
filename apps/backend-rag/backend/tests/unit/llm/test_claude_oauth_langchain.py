@@ -12,6 +12,7 @@ JSON-extraction behaviour so a future change to the override keeps:
   fallback in ``understand_query_node``)
 - schema violations raise ``pydantic.ValidationError``
 """
+
 from __future__ import annotations
 
 import json
@@ -87,7 +88,7 @@ async def test_structured_output_unwraps_markdown_fence():
 
     from backend.llm.claude_oauth_langchain import build_claude_oauth_chat_model
 
-    payload = "Sure, here is the JSON:\n```json\n{\"intent\": \"tax\"}\n```\nLet me know."
+    payload = 'Sure, here is the JSON:\n```json\n{"intent": "tax"}\n```\nLet me know.'
     with _make_model_with_response(payload):
         model = build_claude_oauth_chat_model()
         structured = model.with_structured_output(_Sample)
@@ -237,10 +238,7 @@ async def test_structured_output_skips_top_level_array_hallucination():
 
     # LLM emits an array first, then a valid object. Scanner should ignore
     # the array (top-level non-dict) and validate the object instead.
-    payload = (
-        'Examples: [1, 2, 3]\n'
-        'Final answer: {"intent": "visa", "confidence": 0.8}'
-    )
+    payload = 'Examples: [1, 2, 3]\nFinal answer: {"intent": "visa", "confidence": 0.8}'
     with _make_model_with_response(payload):
         model = build_claude_oauth_chat_model()
         structured = model.with_structured_output(_Sample)
@@ -263,7 +261,7 @@ async def test_structured_output_picks_valid_candidate_when_schema_echoed():
 
     payload = (
         '{"$schema": "http://json-schema.org/draft-07/schema#", "type": "object"}\n'
-        'Here is the answer:\n'
+        "Here is the answer:\n"
         '{"intent": "tax", "confidence": 0.7}'
     )
     with _make_model_with_response(payload):

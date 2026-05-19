@@ -84,7 +84,9 @@ html, body {{
 
 # ── IG Carousel (1080x1350, 4:5) — cover slide ────────────────────────
 
-IG_COVER_HTML = _common_head(1080, 1350) + """
+IG_COVER_HTML = (
+    _common_head(1080, 1350)
+    + """
 .container {
   position: relative;
   width: 1080px;
@@ -137,11 +139,14 @@ $patch_css
 </body>
 </html>
 """
+)
 
 
 # ── IG Carousel body slide (1080x1350, 4:5) ────────────────────────────
 
-IG_SLIDE_HTML = _common_head(1080, 1350) + """
+IG_SLIDE_HTML = (
+    _common_head(1080, 1350)
+    + """
 .container {
   position: relative;
   width: 1080px;
@@ -201,11 +206,14 @@ $patch_css
 </body>
 </html>
 """
+)
 
 
 # ── X Thread hero image (1600x900) ────────────────────────────────────
 
-X_THREAD_HTML = _common_head(1600, 900) + """
+X_THREAD_HTML = (
+    _common_head(1600, 900)
+    + """
 .container {
   position: relative;
   width: 1600px;
@@ -259,11 +267,14 @@ $patch_css
 </body>
 </html>
 """
+)
 
 
 # ── LinkedIn post image (1200x628) ────────────────────────────────────
 
-LINKEDIN_HTML = _common_head(1200, 628) + """
+LINKEDIN_HTML = (
+    _common_head(1200, 628)
+    + """
 .container {
   position: relative;
   width: 1200px;
@@ -316,6 +327,7 @@ $patch_css
 </body>
 </html>
 """
+)
 
 
 # ── Newsletter (600x800, email-safe tables + inline-ready classes) ──────

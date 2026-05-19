@@ -62,6 +62,7 @@ Usage
     # Dry-run (no Drive writes, just inventory):
     PYTHONPATH=. python -m backend.services.backup.nlm_drive_backup
 """
+
 from __future__ import annotations
 
 import argparse
@@ -134,8 +135,7 @@ def _load_oauth_credentials() -> dict[str, str]:
     """Load OAuth credentials from TOKEN_PATH. Enforce chmod 0400."""
     if not TOKEN_PATH.exists():
         raise BackupError(
-            f"OAuth token store missing: {TOKEN_PATH}. "
-            "Run drive_folder_setup.py to bootstrap.",
+            f"OAuth token store missing: {TOKEN_PATH}. Run drive_folder_setup.py to bootstrap.",
         )
     mode = stat.S_IMODE(TOKEN_PATH.stat().st_mode)
     if mode != 0o400:
@@ -149,12 +149,14 @@ def _load_oauth_credentials() -> dict[str, str]:
 
 def _mint_access_token(creds: dict[str, str]) -> str:
     """Exchange refresh token for short-lived access token."""
-    data = urllib.parse.urlencode({
-        "client_id": creds["client_id"],
-        "client_secret": creds["client_secret"],
-        "refresh_token": creds["refresh_token"],
-        "grant_type": "refresh_token",
-    }).encode("utf-8")
+    data = urllib.parse.urlencode(
+        {
+            "client_id": creds["client_id"],
+            "client_secret": creds["client_secret"],
+            "refresh_token": creds["refresh_token"],
+            "grant_type": "refresh_token",
+        }
+    ).encode("utf-8")
     req = urllib.request.Request(TOKEN_URL, data=data, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=15) as resp:
@@ -186,18 +188,30 @@ def _retry(fn: Any, *, attempts: int = 4, base: float = 1.0, label: str = "drive
             last_exc = exc
             if exc.code in (429, 500, 502, 503, 504) and i < attempts - 1:
                 retry_after = int(exc.headers.get("Retry-After", "0") or 0) if exc.headers else 0
-                delay = max(retry_after, base * (2 ** i))
-                logger.warning("%s HTTP %d on attempt %d/%d — sleeping %.1fs",
-                               label, exc.code, i + 1, attempts, delay)
+                delay = max(retry_after, base * (2**i))
+                logger.warning(
+                    "%s HTTP %d on attempt %d/%d — sleeping %.1fs",
+                    label,
+                    exc.code,
+                    i + 1,
+                    attempts,
+                    delay,
+                )
                 time.sleep(delay)
                 continue
             raise
         except urllib.error.URLError as exc:
             last_exc = exc
             if i < attempts - 1:
-                delay = base * (2 ** i)
-                logger.warning("%s URLError on attempt %d/%d (%s) — sleeping %.1fs",
-                               label, i + 1, attempts, exc, delay)
+                delay = base * (2**i)
+                logger.warning(
+                    "%s URLError on attempt %d/%d (%s) — sleeping %.1fs",
+                    label,
+                    i + 1,
+                    attempts,
+                    exc,
+                    delay,
+                )
                 time.sleep(delay)
                 continue
             raise
@@ -250,8 +264,7 @@ def _verify_root_folder(token: str, folder_id: str) -> None:
         )
     if meta.get("mimeType") != "application/vnd.google-apps.folder":
         raise BackupError(
-            f"BACKUP_ROOT_FOLDER_ID {folder_id} is not a folder "
-            f"(mime={meta.get('mimeType')!r}).",
+            f"BACKUP_ROOT_FOLDER_ID {folder_id} is not a folder (mime={meta.get('mimeType')!r}).",
         )
 
 
@@ -289,9 +302,7 @@ def _drive_post_json(token: str, path: str, body: dict[str, Any]) -> dict[str, A
     return _retry(_do, label=f"drive_post {path}")
 
 
-def _drive_find_or_create_folder(
-    token: str, parent_id: str, name: str
-) -> str:
+def _drive_find_or_create_folder(token: str, parent_id: str, name: str) -> str:
     """Return folder ID for ``name`` under ``parent_id``; create if missing."""
     if not FOLDER_NAME_RE.match(name):
         raise BackupError(f"Invalid folder name {name!r}")
@@ -318,9 +329,7 @@ def _drive_find_or_create_folder(
     return created["id"]
 
 
-def _drive_upload_json(
-    token: str, parent_id: str, filename: str, payload: dict[str, Any]
-) -> str:
+def _drive_upload_json(token: str, parent_id: str, filename: str, payload: dict[str, Any]) -> str:
     """Multipart upload a JSON document; replace if same name already exists.
 
     Returns the file ID.
@@ -358,6 +367,7 @@ def _drive_upload_json(
 
     # Multipart insert with random boundary to prevent collision with payload bytes.
     import secrets
+
     boundary = f"==NUZANTARA_{secrets.token_hex(16)}=="
     metadata = {
         "name": filename,
@@ -365,12 +375,16 @@ def _drive_upload_json(
         "mimeType": "application/json",
     }
     multipart_body = (
-        f"--{boundary}\r\n"
-        f"Content-Type: application/json; charset=UTF-8\r\n\r\n"
-        f"{json.dumps(metadata)}\r\n"
-        f"--{boundary}\r\n"
-        f"Content-Type: application/json\r\n\r\n"
-    ).encode() + body_bytes + f"\r\n--{boundary}--\r\n".encode()
+        (
+            f"--{boundary}\r\n"
+            f"Content-Type: application/json; charset=UTF-8\r\n\r\n"
+            f"{json.dumps(metadata)}\r\n"
+            f"--{boundary}\r\n"
+            f"Content-Type: application/json\r\n\r\n"
+        ).encode()
+        + body_bytes
+        + f"\r\n--{boundary}--\r\n".encode()
+    )
 
     # Sanity check boundary not present in payload (defense-in-depth)
     if boundary.encode("utf-8") in body_bytes:
@@ -487,21 +501,35 @@ def backup_one_notebook(
     """
     nb_id = nb.get("id") or nb.get("notebook_id") or ""
     if not NB_ID_RE.match(nb_id):
-        return {"nb_id": nb_id, "title": nb.get("title", ""),
-                "source_count": 0, "upload_status": "error",
-                "error": "invalid nb_id format"}
+        return {
+            "nb_id": nb_id,
+            "title": nb.get("title", ""),
+            "source_count": 0,
+            "upload_status": "error",
+            "error": "invalid nb_id format",
+        }
     title = nb.get("title", "")
     try:
         descr = _nlm_describe_notebook(nb_id)
     except BackupError as exc:
-        return {"nb_id": nb_id, "title": title, "source_count": 0,
-                "upload_status": "error", "error": f"describe failed: {exc}"}
+        return {
+            "nb_id": nb_id,
+            "title": title,
+            "source_count": 0,
+            "upload_status": "error",
+            "error": f"describe failed: {exc}",
+        }
 
     try:
         sources = _nlm_list_sources(nb_id)
     except BackupError as exc:
-        return {"nb_id": nb_id, "title": title, "source_count": 0,
-                "upload_status": "error", "error": f"sources list failed: {exc}"}
+        return {
+            "nb_id": nb_id,
+            "title": title,
+            "source_count": 0,
+            "upload_status": "error",
+            "error": f"sources list failed: {exc}",
+        }
 
     source_payloads = []
     for s in sources:
@@ -524,17 +552,33 @@ def backup_one_notebook(
     }
 
     if not apply:
-        return {"nb_id": nb_id, "title": title, "source_count": len(sources),
-                "upload_status": "skipped-dry-run", "error": None}
+        return {
+            "nb_id": nb_id,
+            "title": title,
+            "source_count": len(sources),
+            "upload_status": "skipped-dry-run",
+            "error": None,
+        }
 
     try:
         file_id = _drive_upload_json(token, day_folder_id, f"{nb_id}.json", payload)
     except (urllib.error.HTTPError, urllib.error.URLError, BackupError) as exc:
-        return {"nb_id": nb_id, "title": title, "source_count": len(sources),
-                "upload_status": "error", "error": f"upload failed: {exc}"}
+        return {
+            "nb_id": nb_id,
+            "title": title,
+            "source_count": len(sources),
+            "upload_status": "error",
+            "error": f"upload failed: {exc}",
+        }
 
-    return {"nb_id": nb_id, "title": title, "source_count": len(sources),
-            "upload_status": "applied", "drive_file_id": file_id, "error": None}
+    return {
+        "nb_id": nb_id,
+        "title": title,
+        "source_count": len(sources),
+        "upload_status": "applied",
+        "drive_file_id": file_id,
+        "error": None,
+    }
 
 
 def run_backup(*, apply: bool, max_notebooks: int | None = None) -> dict[str, Any]:
@@ -576,7 +620,9 @@ def run_backup(*, apply: bool, max_notebooks: int | None = None) -> dict[str, An
     day_folder_name = _today_folder_name()
     if apply:
         day_folder_id = _drive_find_or_create_folder(
-            token, BACKUP_ROOT_FOLDER_ID, day_folder_name,
+            token,
+            BACKUP_ROOT_FOLDER_ID,
+            day_folder_name,
         )
         logger.info("Drive day folder %s/ id=%s", day_folder_name, day_folder_id)
     else:
@@ -589,7 +635,9 @@ def run_backup(*, apply: bool, max_notebooks: int | None = None) -> dict[str, An
     results: list[dict[str, Any]] = []
     for i, nb in enumerate(notebooks):
         if time.monotonic() - token_minted_at > TOKEN_REFRESH_AFTER_S:
-            logger.info("Refreshing access token after %ds", int(time.monotonic() - token_minted_at))
+            logger.info(
+                "Refreshing access token after %ds", int(time.monotonic() - token_minted_at)
+            )
             token = _mint_access_token(creds)
             token_minted_at = time.monotonic()
         logger.info("[%d/%d] backing up %s", i + 1, len(notebooks), nb.get("id"))
@@ -609,7 +657,9 @@ def run_backup(*, apply: bool, max_notebooks: int | None = None) -> dict[str, An
     }
     logger.info(
         "Done: applied=%d errors=%d total=%d",
-        summary["applied_count"], summary["error_count"], summary["total_notebooks"],
+        summary["applied_count"],
+        summary["error_count"],
+        summary["total_notebooks"],
     )
     return summary
 
@@ -617,15 +667,19 @@ def run_backup(*, apply: bool, max_notebooks: int | None = None) -> dict[str, An
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument(
-        "--apply", action="store_true",
+        "--apply",
+        action="store_true",
         help="Perform Drive uploads. Without --apply, runs dry (inventory only).",
     )
     parser.add_argument(
-        "--max-notebooks", type=int, default=None,
+        "--max-notebooks",
+        type=int,
+        default=None,
         help="Limit to first N notebooks (testing).",
     )
     parser.add_argument(
-        "--json", action="store_true",
+        "--json",
+        action="store_true",
         help="Emit summary JSON to stdout (for cron consumption).",
     )
     args = parser.parse_args(argv)

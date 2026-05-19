@@ -24,15 +24,18 @@ logger = get_logger(__name__)
 router = APIRouter(prefix="/api/admin", tags=["admin-conversation-cleanup"])
 
 
-def verify_admin_key(x_debug_key: str | None = Header(default=None, alias="x-debug-key", convert_underscores=False)) -> bool:
+def verify_admin_key(
+    x_debug_key: str | None = Header(default=None, alias="x-debug-key", convert_underscores=False),
+) -> bool:
     """Verify ADMIN_API_KEY via X-Debug-Key header."""
     if settings.admin_api_key and x_debug_key == settings.admin_api_key:
         return True
     raise HTTPException(status_code=401, detail="Authentication required")
 
+
 # Default retention windows
-DEFAULT_DELETE_AFTER_DAYS = 90       # Hard delete conversations older than 90 days
-DEFAULT_ANONYMIZE_AFTER_DAYS = 30    # Anonymize conversations older than 30 days
+DEFAULT_DELETE_AFTER_DAYS = 90  # Hard delete conversations older than 90 days
+DEFAULT_ANONYMIZE_AFTER_DAYS = 30  # Anonymize conversations older than 30 days
 
 
 # =============================================================================
@@ -42,6 +45,7 @@ DEFAULT_ANONYMIZE_AFTER_DAYS = 30    # Anonymize conversations older than 30 day
 
 class CleanupResult(BaseModel):
     """Result of a conversation cleanup run."""
+
     deleted_count: int
     anonymized_count: int
     delete_cutoff: datetime
@@ -96,22 +100,30 @@ async def run_conversation_cleanup(
     async with pool.acquire() as conn:
         if dry_run:
             # Count only — no writes
-            deleted_count = await conn.fetchval(
-                "SELECT COUNT(*) FROM conversations WHERE created_at < $1",
-                delete_cutoff,
-            ) or 0
+            deleted_count = (
+                await conn.fetchval(
+                    "SELECT COUNT(*) FROM conversations WHERE created_at < $1",
+                    delete_cutoff,
+                )
+                or 0
+            )
 
-            anonymized_count = await conn.fetchval(
-                """
+            anonymized_count = (
+                await conn.fetchval(
+                    """
                 SELECT COUNT(*) FROM conversations
                 WHERE created_at < $1 AND created_at >= $2
                 """,
-                anonymize_cutoff,
-                delete_cutoff,
-            ) or 0
+                    anonymize_cutoff,
+                    delete_cutoff,
+                )
+                or 0
+            )
 
             logger.info(
-                "[DRY RUN] Would delete %s conversations, anonymize %s conversations", deleted_count, anonymized_count
+                "[DRY RUN] Would delete %s conversations, anonymize %s conversations",
+                deleted_count,
+                anonymized_count,
             )
         else:
             # 1. Hard-delete old conversations

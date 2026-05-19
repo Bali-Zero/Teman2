@@ -106,7 +106,8 @@ def verify_founder_access(current_user: Any = Depends(get_current_user)) -> Any:
     """
     if current_user.get("role") not in ["Founder", "admin"]:
         raise HTTPException(
-            status_code=403, detail="Access denied. This dashboard is for founders only.",
+            status_code=403,
+            detail="Access denied. This dashboard is for founders only.",
         )
     return current_user
 
@@ -171,8 +172,7 @@ async def get_analytics_dashboard(
                 "avg_latency_ms": int(rag_row["avg_latency_ms"] or 0),
                 "total_cost_usd": round(float(rag_row["total_cost_usd"] or 0), 4),
                 "satisfaction_percent": (
-                    round((rag_row["thumbs_up"] or 0) / total_fb * 100, 1)
-                    if total_fb > 0 else None
+                    round((rag_row["thumbs_up"] or 0) / total_fb * 100, 1) if total_fb > 0 else None
                 ),
             }
 
@@ -259,8 +259,7 @@ async def get_analytics_dashboard(
                 cutoff,
             )
             dashboard["query_volume_daily"] = [
-                {"date": r["day"].isoformat(), "queries": r["queries"]}
-                for r in volume_rows
+                {"date": r["day"].isoformat(), "queries": r["queries"]} for r in volume_rows
             ]
 
     except Exception as e:
@@ -305,7 +304,8 @@ async def get_completion_rates(
         return await calculate_completion_rate(db_pool, practice_type, start_date, end_date)
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to calculate completion rates: {str(e)}",
+            status_code=500,
+            detail=f"Failed to calculate completion rates: {str(e)}",
         ) from e
 
 
@@ -327,7 +327,9 @@ async def get_response_times(
     try:
         return await calculate_response_times(db_pool, practice_type, start_date, end_date)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to calculate response times: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Failed to calculate response times: {str(e)}"
+        ) from e
 
 
 @router.get("/sla-compliance")
@@ -348,7 +350,9 @@ async def get_sla_compliance(
     try:
         return await calculate_sla_compliance(db_pool, practice_type, start_date, end_date)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to calculate SLA compliance: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Failed to calculate SLA compliance: {str(e)}"
+        ) from e
 
 
 @router.get("/revenue")
@@ -370,7 +374,8 @@ async def get_revenue_metrics(
         return await calculate_revenue_metrics(db_pool, practice_type, start_date, end_date)
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to calculate revenue metrics: {str(e)}",
+            status_code=500,
+            detail=f"Failed to calculate revenue metrics: {str(e)}",
         ) from e
 
 
@@ -396,4 +401,6 @@ async def get_monthly_report(
     try:
         return await generate_monthly_report(db_pool, year, month)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to generate monthly report: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Failed to generate monthly report: {str(e)}"
+        ) from e

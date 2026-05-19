@@ -15,12 +15,14 @@ from backend.app.core.config import settings
 def response_builder():
     """Import lazily — the endpoint imports settings at module load."""
     from backend.app.routers.visa_check import MatchResponse
+
     return MatchResponse
 
 
 def _decode(token: str) -> dict:
     return jwt.decode(
-        token, settings.jwt_secret_key,
+        token,
+        settings.jwt_secret_key,
         algorithms=[settings.jwt_algorithm],
         options={"verify_exp": False},
     )
@@ -52,6 +54,7 @@ async def test_submit_match_returns_valid_jwt_with_check_hash_claim(monkeypatch)
 
     async def _fake_save_match(self, **kwargs):
         from backend.services.visa_check.repository import VisaMatchResult
+
         return VisaMatchResult(
             hash="abc1234567890000",
             nationality=kwargs["nationality"],
@@ -68,16 +71,21 @@ async def test_submit_match_returns_valid_jwt_with_check_hash_claim(monkeypatch)
         )
 
     monkeypatch.setattr(
-        router_mod, "recommend_visa",
+        router_mod,
+        "recommend_visa",
         lambda **_: _FakeResult(),
     )
     monkeypatch.setattr(
-        router_mod.VisaCheckRepository, "save_match", _fake_save_match,
+        router_mod.VisaCheckRepository,
+        "save_match",
+        _fake_save_match,
     )
 
     payload = router_mod.MatchRequest(
-        nationality="USA", purpose=router_mod.Purpose.OTHER,
-        duration_months=12, budget_band=router_mod.BudgetBand.MID_50_500M,
+        nationality="USA",
+        purpose=router_mod.Purpose.OTHER,
+        duration_months=12,
+        budget_band=router_mod.BudgetBand.MID_50_500M,
     )
     response = await router_mod.submit_match(payload, db_pool=None)
     assert response.session_jwt
@@ -100,12 +108,19 @@ async def test_get_match_also_issues_session_jwt(monkeypatch):
 
     async def _fake_load(self, *args, **kwargs) -> object:
         from backend.services.visa_check.repository import VisaMatchResult
+
         return VisaMatchResult(
-            hash="xyz1234567890000", nationality="USA", purpose="work_remote",
-            duration_months=12, budget_band="50m_500m",
-            recommended_visa=None, recommendation_reason="...",
-            pre_arrival_steps=[], alternatives=[],
-            expected_arrival_date=None, estimated_cost_idr=None,
+            hash="xyz1234567890000",
+            nationality="USA",
+            purpose="work_remote",
+            duration_months=12,
+            budget_band="50m_500m",
+            recommended_visa=None,
+            recommendation_reason="...",
+            pre_arrival_steps=[],
+            alternatives=[],
+            expected_arrival_date=None,
+            estimated_cost_idr=None,
             created_at=datetime.now(timezone.utc),
         )
 
@@ -121,6 +136,7 @@ async def test_get_match_also_issues_session_jwt(monkeypatch):
 
 def test_clock_response_schema_exposes_session_jwt():
     from backend.app.routers.visa_check import ClockResponse
+
     assert "session_jwt" in ClockResponse.model_fields
 
 
@@ -132,6 +148,7 @@ async def test_submit_clock_returns_valid_jwt_with_check_hash_claim(monkeypatch)
         from datetime import datetime, timezone
 
         from backend.services.visa_check.repository import VisaClockResult
+
         return VisaClockResult(
             hash="clock1234567890",
             visa_type=kwargs["visa_type"],
@@ -145,6 +162,7 @@ async def test_submit_clock_returns_valid_jwt_with_check_hash_claim(monkeypatch)
     monkeypatch.setattr(router_mod.VisaCheckRepository, "save_clock", _fake_save_clock)
 
     from datetime import date
+
     payload = router_mod.ClockRequest(
         visa_type=router_mod.VisaType.C1,
         entry_date=date.today(),

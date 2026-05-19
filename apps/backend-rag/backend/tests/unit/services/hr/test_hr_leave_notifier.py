@@ -48,7 +48,8 @@ def sample_review_args() -> dict:
 class TestNotifyLeaveRequestPending:
     @pytest.mark.asyncio
     async def test_happy_path_calls_internal_email_with_correct_recipients(
-        self, sample_pending_args: dict,
+        self,
+        sample_pending_args: dict,
     ) -> None:
         with patch(
             "backend.app.services.hr.hr_leave_notifier.send_internal_email",
@@ -69,7 +70,8 @@ class TestNotifyLeaveRequestPending:
 
     @pytest.mark.asyncio
     async def test_single_day_range_uses_singular_day(
-        self, sample_pending_args: dict,
+        self,
+        sample_pending_args: dict,
     ) -> None:
         sample_pending_args["total_days"] = 1
         sample_pending_args["start_date"] = date(2026, 12, 15)
@@ -89,7 +91,8 @@ class TestNotifyLeaveRequestPending:
 
     @pytest.mark.asyncio
     async def test_reason_none_omits_reason_block(
-        self, sample_pending_args: dict,
+        self,
+        sample_pending_args: dict,
     ) -> None:
         sample_pending_args["reason"] = None
 
@@ -104,7 +107,8 @@ class TestNotifyLeaveRequestPending:
 
     @pytest.mark.asyncio
     async def test_html_injection_in_reason_is_escaped(
-        self, sample_pending_args: dict,
+        self,
+        sample_pending_args: dict,
     ) -> None:
         """Regression: free-text reason must not break HTML structure."""
         sample_pending_args["reason"] = "</p><script>alert(1)</script>"
@@ -121,7 +125,8 @@ class TestNotifyLeaveRequestPending:
 
     @pytest.mark.asyncio
     async def test_asya_as_requester_omits_asya_from_cc(
-        self, sample_pending_args: dict,
+        self,
+        sample_pending_args: dict,
     ) -> None:
         sample_pending_args["requester_email"] = "asya@balizero.com"
         sample_pending_args["requester_name"] = "Asya"
@@ -143,7 +148,8 @@ class TestNotifyLeaveRequestPending:
 class TestNotifyLeaveRequestReviewed:
     @pytest.mark.asyncio
     async def test_approved_happy_path(
-        self, sample_review_args: dict,
+        self,
+        sample_review_args: dict,
     ) -> None:
         with patch(
             "backend.app.services.hr.hr_leave_notifier.send_internal_email",
@@ -169,7 +175,8 @@ class TestNotifyLeaveRequestReviewed:
 
     @pytest.mark.asyncio
     async def test_rejected_with_reason(
-        self, sample_review_args: dict,
+        self,
+        sample_review_args: dict,
     ) -> None:
         sample_review_args["action"] = "rejected"
         sample_review_args["rejection_reason"] = "Insufficient balance"
@@ -188,7 +195,8 @@ class TestNotifyLeaveRequestReviewed:
 
     @pytest.mark.asyncio
     async def test_rejected_without_reason_omits_block(
-        self, sample_review_args: dict,
+        self,
+        sample_review_args: dict,
     ) -> None:
         sample_review_args["action"] = "rejected"
         sample_review_args["rejection_reason"] = None
@@ -204,7 +212,8 @@ class TestNotifyLeaveRequestReviewed:
 
     @pytest.mark.asyncio
     async def test_zero_reviewer_excluded_from_cc(
-        self, sample_review_args: dict,
+        self,
+        sample_review_args: dict,
     ) -> None:
         sample_review_args["reviewer_email"] = "zero@balizero.com"
         sample_review_args["reviewer_name"] = "Zero"
@@ -221,7 +230,8 @@ class TestNotifyLeaveRequestReviewed:
 
     @pytest.mark.asyncio
     async def test_html_injection_in_rejection_reason_is_escaped(
-        self, sample_review_args: dict,
+        self,
+        sample_review_args: dict,
     ) -> None:
         sample_review_args["action"] = "rejected"
         sample_review_args["rejection_reason"] = "</p><script>alert(1)</script>"
@@ -238,7 +248,8 @@ class TestNotifyLeaveRequestReviewed:
 
     @pytest.mark.asyncio
     async def test_asya_as_requester_zero_as_reviewer_no_cc(
-        self, sample_review_args: dict,
+        self,
+        sample_review_args: dict,
     ) -> None:
         sample_review_args["requester_email"] = "asya@balizero.com"
         sample_review_args["requester_name"] = "Asya"

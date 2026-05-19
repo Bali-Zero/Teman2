@@ -531,9 +531,10 @@ def calculate_evidence_score(
         if 0 < top_source_cosine < 0.5 and final_score > 0.15:
             penalized = round(final_score * 0.7, 2)
             logger.info(
-                "evidence_score: semantic-alignment penalty applied "
-                "(top_cosine=%.2f, %.2f → %.2f)",
-                top_source_cosine, final_score, penalized,
+                "evidence_score: semantic-alignment penalty applied (top_cosine=%.2f, %.2f → %.2f)",
+                top_source_cosine,
+                final_score,
+                penalized,
             )
             final_score = penalized
 
@@ -553,10 +554,10 @@ def calculate_evidence_score(
 # is read at process start and merged on top of these defaults.
 
 DOMAIN_ABSTAIN_THRESHOLDS_DEFAULT: dict[str, float] = {
-    "tax":     0.10,   # Indonesian tax docs, lower keyword overlap with IT/EN
-    "visa":    0.12,   # immigration docs are mostly Indonesian/English mix
-    "pricing": 0.15,   # baseline
-    "kbli":    0.20,   # higher bar — business vocabulary creates false positives
+    "tax": 0.10,  # Indonesian tax docs, lower keyword overlap with IT/EN
+    "visa": 0.12,  # immigration docs are mostly Indonesian/English mix
+    "pricing": 0.15,  # baseline
+    "kbli": 0.20,  # higher bar — business vocabulary creates false positives
     "default": 0.15,
 }
 
@@ -573,7 +574,8 @@ def _parse_domain_threshold_overrides(spec: str) -> dict[str, float]:
             out[key.strip().lower()] = float(val)
         except ValueError:
             logger.warning(
-                "DOMAIN_ABSTAIN_THRESHOLDS: skipping malformed entry %r", raw,
+                "DOMAIN_ABSTAIN_THRESHOLDS: skipping malformed entry %r",
+                raw,
             )
     return out
 
@@ -600,26 +602,74 @@ def classify_query_domain(query: str) -> str:
     elsewhere; this is just the routing key for per-domain ABSTAIN tuning.
     """
     q = (query or "").lower()
-    if any(kw in q for kw in (
-        "tax", "tasse", "imposta", "pajak", "ppn", "pph", "npwp", "spt", "pkp",
-        "fiscal", "fiscale", "tarif pajak",
-    )):
+    if any(
+        kw in q
+        for kw in (
+            "tax",
+            "tasse",
+            "imposta",
+            "pajak",
+            "ppn",
+            "pph",
+            "npwp",
+            "spt",
+            "pkp",
+            "fiscal",
+            "fiscale",
+            "tarif pajak",
+        )
+    ):
         return "tax"
-    if any(kw in q for kw in (
-        "visa", "visto", "kitas", "kitap", "imigrasi", "immigration",
-        "stay permit", "permesso di soggiorno", "rptka", "itk", "c1", "c2",
-        "d1", "d2", "e33g", "b211",
-    )):
+    if any(
+        kw in q
+        for kw in (
+            "visa",
+            "visto",
+            "kitas",
+            "kitap",
+            "imigrasi",
+            "immigration",
+            "stay permit",
+            "permesso di soggiorno",
+            "rptka",
+            "itk",
+            "c1",
+            "c2",
+            "d1",
+            "d2",
+            "e33g",
+            "b211",
+        )
+    ):
         return "visa"
-    if any(kw in q for kw in (
-        "kbli", "codice kbli", "kode kbli", "klasifikasi", "classification",
-        "kegiatan usaha", "business activity",
-    )):
+    if any(
+        kw in q
+        for kw in (
+            "kbli",
+            "codice kbli",
+            "kode kbli",
+            "klasifikasi",
+            "classification",
+            "kegiatan usaha",
+            "business activity",
+        )
+    ):
         return "kbli"
-    if any(kw in q for kw in (
-        "quanto costa", "price", "prezzo", "costo", "harga", "berapa biaya",
-        "cost", "pricing", "tariffa", "fee",
-    )):
+    if any(
+        kw in q
+        for kw in (
+            "quanto costa",
+            "price",
+            "prezzo",
+            "costo",
+            "harga",
+            "berapa biaya",
+            "cost",
+            "pricing",
+            "tariffa",
+            "fee",
+        )
+    ):
         return "pricing"
     return "default"
 

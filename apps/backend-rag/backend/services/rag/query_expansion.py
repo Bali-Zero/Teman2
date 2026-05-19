@@ -47,6 +47,7 @@ class TranslationResult(BaseModel):
         ),
     )
 
+
 # Indonesian business terms dictionary for synonym expansion
 INDONESIAN_BUSINESS_TERMS: dict[str, list[str]] = {
     # Company types
@@ -211,7 +212,8 @@ Example output: ["variant 1", "variant 2"]"""
                 logger.warning("Failed to initialize GenAI client (import/runtime): %s", e)
             except Exception as e:  # noqa: BLE001 — expansion must degrade gracefully if LLM absent
                 logger.warning(
-                    "Failed to initialize GenAI client (unexpected): %s", e,
+                    "Failed to initialize GenAI client (unexpected): %s",
+                    e,
                     exc_info=True,
                 )
         return self._genai_client
@@ -285,13 +287,15 @@ Example output: ["variant 1", "variant 2"]"""
 
         except (json.JSONDecodeError, KeyError, ValueError, asyncio.TimeoutError) as e:
             logger.warning(
-                "Query expansion failed (parse/timeout), returning original: %s", e,
+                "Query expansion failed (parse/timeout), returning original: %s",
+                e,
                 extra={"query": query[:50], "error": str(e)},
             )
             return [query]
         except Exception as e:  # noqa: BLE001 — expansion is best-effort; never block the search pipeline
             logger.warning(
-                "Query expansion failed (unexpected), returning original: %s", e,
+                "Query expansion failed (unexpected), returning original: %s",
+                e,
                 extra={"query": query[:50], "error": str(e)},
                 exc_info=True,
             )
@@ -444,7 +448,7 @@ Example output: ["variant 1", "variant 2"]"""
         # Note: no "Return ONLY a JSON object…" instruction here — the schema
         # enforces JSON via google-genai's response_mime_type.
         prompt = (
-            f'Translate this query to {target_langs}.\n'
+            f"Translate this query to {target_langs}.\n"
             f"Keep it concise and natural for search queries.\n\n"
             f'Query: "{query}"\n\n'
             f"Return a JSON object whose `translations` field maps each "

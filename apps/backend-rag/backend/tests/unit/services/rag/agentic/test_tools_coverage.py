@@ -13,12 +13,15 @@ import pytest
 # Common patches
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(autouse=True)
 def _patch_tracing():
     """Disable tracing for all tests."""
-    with patch("backend.services.rag.agentic.tools.trace_span") as ts, \
-         patch("backend.services.rag.agentic.tools.set_span_attribute"), \
-         patch("backend.services.rag.agentic.tools.set_span_status"):
+    with (
+        patch("backend.services.rag.agentic.tools.trace_span") as ts,
+        patch("backend.services.rag.agentic.tools.set_span_attribute"),
+        patch("backend.services.rag.agentic.tools.set_span_status"),
+    ):
         ts.return_value.__enter__ = MagicMock()
         ts.return_value.__exit__ = MagicMock(return_value=False)
         yield
@@ -28,11 +31,12 @@ def _patch_tracing():
 # Module-level helpers
 # ============================================================================
 
-class TestModuleHelpers:
 
+class TestModuleHelpers:
     def test_get_client_creates_new_client(self):
         import backend.services.rag.agentic.tools as tools_mod
         from backend.services.rag.agentic.tools import _get_client
+
         old = tools_mod._client
         tools_mod._client = None
         try:
@@ -47,6 +51,7 @@ class TestModuleHelpers:
 
     def test_get_client_returns_existing(self):
         from backend.services.rag.agentic.tools import _get_client
+
         c1 = _get_client()
         c2 = _get_client()
         assert c1 is c2
@@ -54,6 +59,7 @@ class TestModuleHelpers:
     @pytest.mark.asyncio
     async def test_close_agentic_tools_client(self):
         import backend.services.rag.agentic.tools as tools_mod
+
         mock_client = AsyncMock()
         mock_client.is_closed = False
         tools_mod._client = mock_client
@@ -63,6 +69,7 @@ class TestModuleHelpers:
     @pytest.mark.asyncio
     async def test_close_already_closed_client(self):
         import backend.services.rag.agentic.tools as tools_mod
+
         mock_client = AsyncMock()
         mock_client.is_closed = True
         tools_mod._client = mock_client
@@ -72,6 +79,7 @@ class TestModuleHelpers:
     @pytest.mark.asyncio
     async def test_close_none_client(self):
         import backend.services.rag.agentic.tools as tools_mod
+
         tools_mod._client = None
         await tools_mod.close_agentic_tools_client()  # Should not raise
 
@@ -80,10 +88,11 @@ class TestModuleHelpers:
 # AVAILABLE_COLLECTIONS
 # ============================================================================
 
-class TestAvailableCollections:
 
+class TestAvailableCollections:
     def test_collections_list(self):
         from backend.services.rag.agentic.tools import AVAILABLE_COLLECTIONS
+
         assert "visa_oracle" in AVAILABLE_COLLECTIONS
         assert "legal_unified" in AVAILABLE_COLLECTIONS
         assert "kbli_2025_final" in AVAILABLE_COLLECTIONS
@@ -94,10 +103,11 @@ class TestAvailableCollections:
 # VectorSearchTool
 # ============================================================================
 
-class TestVectorSearchTool:
 
+class TestVectorSearchTool:
     def _make_tool(self, retriever=None, user_level=1):
         from backend.services.rag.agentic.tools import VectorSearchTool
+
         return VectorSearchTool(retriever=retriever or MagicMock(), user_level=user_level)
 
     def test_name(self):
@@ -134,12 +144,22 @@ class TestVectorSearchTool:
     @pytest.mark.asyncio
     async def test_execute_with_results(self):
         mock_retriever = MagicMock()
-        mock_retriever.search_with_reranking = AsyncMock(return_value={
-            "results": [
-                {"text": "Visa B211 is for social visit", "score": 0.85, "metadata": {"title": "Visa Guide"}},
-                {"text": "KITAS is a stay permit", "score": 0.75, "metadata": {"title": "KITAS Info"}},
-            ],
-        })
+        mock_retriever.search_with_reranking = AsyncMock(
+            return_value={
+                "results": [
+                    {
+                        "text": "Visa B211 is for social visit",
+                        "score": 0.85,
+                        "metadata": {"title": "Visa Guide"},
+                    },
+                    {
+                        "text": "KITAS is a stay permit",
+                        "score": 0.75,
+                        "metadata": {"title": "KITAS Info"},
+                    },
+                ],
+            }
+        )
         tool = self._make_tool(retriever=mock_retriever)
 
         with patch("backend.app.core.config.settings") as mock_settings:
@@ -168,6 +188,7 @@ class TestVectorSearchTool:
     async def test_execute_timeout_handling(self):
         """Timeout in search returns empty for that collection."""
         import asyncio
+
         mock_retriever = MagicMock()
         mock_retriever.search_with_reranking = AsyncMock(side_effect=asyncio.TimeoutError)
         tool = self._make_tool(retriever=mock_retriever)
@@ -197,12 +218,14 @@ class TestVectorSearchTool:
     async def test_execute_deduplication(self):
         """Duplicate content is deduplicated by first 100 chars."""
         mock_retriever = MagicMock()
-        mock_retriever.search_with_reranking = AsyncMock(return_value={
-            "results": [
-                {"text": "Same content here", "score": 0.9, "metadata": {}},
-                {"text": "Same content here", "score": 0.8, "metadata": {}},
-            ],
-        })
+        mock_retriever.search_with_reranking = AsyncMock(
+            return_value={
+                "results": [
+                    {"text": "Same content here", "score": 0.9, "metadata": {}},
+                    {"text": "Same content here", "score": 0.8, "metadata": {}},
+                ],
+            }
+        )
         tool = self._make_tool(retriever=mock_retriever)
 
         with patch("backend.app.core.config.settings") as mock_settings:
@@ -216,9 +239,11 @@ class TestVectorSearchTool:
     async def test_execute_hybrid_search_path(self):
         """When enable_hybrid_search=True and retriever has hybrid method."""
         mock_retriever = MagicMock()
-        mock_retriever.hybrid_search_with_reranking = AsyncMock(return_value={
-            "results": [{"text": "hybrid result", "score": 0.9, "metadata": {}}],
-        })
+        mock_retriever.hybrid_search_with_reranking = AsyncMock(
+            return_value={
+                "results": [{"text": "hybrid result", "score": 0.9, "metadata": {}}],
+            }
+        )
         tool = self._make_tool(retriever=mock_retriever)
 
         with patch("backend.app.core.config.settings") as mock_settings:
@@ -248,10 +273,11 @@ class TestVectorSearchTool:
 # CalculatorTool
 # ============================================================================
 
-class TestCalculatorTool:
 
+class TestCalculatorTool:
     def _make_tool(self):
         from backend.services.rag.agentic.tools import CalculatorTool
+
         return CalculatorTool()
 
     def test_name(self):
@@ -290,6 +316,7 @@ class TestCalculatorTool:
     async def test_safe_math_error(self):
         tool = self._make_tool()
         from backend.app.utils.safe_math import SafeMathError
+
         with patch("backend.app.utils.safe_math.safe_evaluate", side_effect=SafeMathError("bad")):
             result = await tool.execute(expression="import os")
         assert "Error" in result
@@ -306,10 +333,11 @@ class TestCalculatorTool:
 # PricingTool
 # ============================================================================
 
-class TestPricingTool:
 
+class TestPricingTool:
     def _make_tool(self, loaded=True):
         from backend.services.rag.agentic.tools import PricingTool
+
         mock_service = MagicMock()
         mock_service.loaded = loaded
         mock_service.search_service.return_value = {"KITAS": "Rp 10.000.000"}
@@ -347,6 +375,7 @@ class TestPricingTool:
     @pytest.mark.asyncio
     async def test_pricing_exception(self):
         from backend.services.rag.agentic.tools import PricingTool
+
         mock_service = MagicMock()
         mock_service.loaded = True
         mock_service.get_pricing.side_effect = RuntimeError("db down")
@@ -359,10 +388,11 @@ class TestPricingTool:
 # TeamKnowledgeTool
 # ============================================================================
 
-class TestTeamKnowledgeTool:
 
+class TestTeamKnowledgeTool:
     def _make_tool(self, team_data=None):
         from backend.services.rag.agentic.tools import TeamKnowledgeTool
+
         tool = TeamKnowledgeTool(db_pool=None)
         tool._team_data = team_data
         return tool
@@ -404,6 +434,7 @@ class TestTeamKnowledgeTool:
     @pytest.mark.asyncio
     async def test_exception_handling(self):
         from backend.services.rag.agentic.tools import TeamKnowledgeTool
+
         tool = TeamKnowledgeTool(db_pool=None)
         tool._team_data = None
         # Make _load_team_data raise
@@ -414,6 +445,7 @@ class TestTeamKnowledgeTool:
 
     def test_get_data_file_path_returns_none_if_not_found(self):
         from backend.services.rag.agentic.tools import TeamKnowledgeTool
+
         tool = TeamKnowledgeTool(db_pool=None)
         with patch("pathlib.Path.exists", return_value=False):
             tool._get_data_file_path()
@@ -422,9 +454,10 @@ class TestTeamKnowledgeTool:
 
     def test_load_team_data_with_no_file(self):
         from backend.services.rag.agentic.tools import TeamKnowledgeTool
+
         tool = TeamKnowledgeTool(db_pool=None)
         tool._data_file = None
-        with patch.object(tool, '_get_data_file_path', return_value=None):
+        with patch.object(tool, "_get_data_file_path", return_value=None):
             result = tool._load_team_data()
         assert result == []
 
@@ -433,10 +466,11 @@ class TestTeamKnowledgeTool:
 # ImageGenerationTool
 # ============================================================================
 
-class TestImageGenerationTool:
 
+class TestImageGenerationTool:
     def _make_tool(self):
         from backend.services.rag.agentic.tools import ImageGenerationTool
+
         return ImageGenerationTool()
 
     def test_name(self):
@@ -479,10 +513,11 @@ class TestImageGenerationTool:
 # WebSearchTool
 # ============================================================================
 
-class TestWebSearchTool:
 
+class TestWebSearchTool:
     def _make_tool(self):
         from backend.services.rag.agentic.tools import WebSearchTool
+
         return WebSearchTool()
 
     def test_name(self):
@@ -493,6 +528,7 @@ class TestWebSearchTool:
 
     def test_web_disclaimer_exists(self):
         from backend.services.rag.agentic.tools import WebSearchTool
+
         assert "not been verified" in WebSearchTool.WEB_DISCLAIMER
 
     def test_get_keys_lazy(self):
@@ -509,23 +545,26 @@ class TestWebSearchTool:
 # VisionTool
 # ============================================================================
 
-class TestVisionTool:
 
+class TestVisionTool:
     def test_name(self):
         with patch("backend.services.rag.agentic.tools.VisionRAGService"):
             from backend.services.rag.agentic.tools import VisionTool
+
             tool = VisionTool()
         assert tool.name == "vision_analysis"
 
     def test_description(self):
         with patch("backend.services.rag.agentic.tools.VisionRAGService"):
             from backend.services.rag.agentic.tools import VisionTool
+
             tool = VisionTool()
         assert "visual" in tool.description.lower()
 
     def test_parameters_schema(self):
         with patch("backend.services.rag.agentic.tools.VisionRAGService"):
             from backend.services.rag.agentic.tools import VisionTool
+
             tool = VisionTool()
         schema = tool.parameters_schema
         assert "file_path" in schema["properties"]

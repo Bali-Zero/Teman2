@@ -23,8 +23,16 @@ _TRANSIENT_KEYWORDS = {"connection", "timeout", "network", "reset", "broken pipe
 
 # Legacy alias — kept for callers that pass custom retryable_errors
 RETRYABLE_ERROR_KEYWORDS = [
-    "connection", "timeout", "network", "api", "rate", "server",
-    "unavailable", "503", "502", "429",
+    "connection",
+    "timeout",
+    "network",
+    "api",
+    "rate",
+    "server",
+    "unavailable",
+    "503",
+    "502",
+    "429",
 ]
 
 # Rate-limit backoff: longer base + bigger cap (Gemini 429 → 60s window)
@@ -47,9 +55,9 @@ def _classify_error(error_msg: str) -> str:
 def _compute_delay(error_class: str, attempt: int, base_delay: float, backoff_factor: int) -> float:
     """Exponential backoff with ±25% jitter. Rate-limit errors get a longer base."""
     if error_class == "rate_limit":
-        raw = min(_RATE_LIMIT_BASE_DELAY * (backoff_factor ** attempt), _RATE_LIMIT_MAX_DELAY)
+        raw = min(_RATE_LIMIT_BASE_DELAY * (backoff_factor**attempt), _RATE_LIMIT_MAX_DELAY)
     else:
-        raw = base_delay * (backoff_factor ** attempt)
+        raw = base_delay * (backoff_factor**attempt)
     jitter = raw * 0.25 * (random.random() * 2 - 1)  # ±25%
     return max(0.1, raw + jitter)
 

@@ -88,7 +88,9 @@ class CrossEncoderReranker:
             enabled: Whether to enable reranking. Defaults to config setting.
         """
         self.model_name = model_name or getattr(
-            settings, "reranker_model", "cross-encoder/ms-marco-MiniLM-L-6-v2",
+            settings,
+            "reranker_model",
+            "cross-encoder/ms-marco-MiniLM-L-6-v2",
         )
         self.max_length = max_length
         self.batch_size = batch_size
@@ -150,7 +152,8 @@ class CrossEncoderReranker:
 
             except ImportError as e:
                 logger.error(
-                    "❌ Failed to import sentence-transformers: %s. Install with: pip install sentence-transformers", e,
+                    "❌ Failed to import sentence-transformers: %s. Install with: pip install sentence-transformers",
+                    e,
                 )
                 self.enabled = False
                 return None
@@ -159,8 +162,6 @@ class CrossEncoderReranker:
                 logger.error(f"❌ Failed to load model {self.model_name}: {e}")
                 self.enabled = False
                 return None
-
-
 
     @property
     def model(self) -> Any:

@@ -48,6 +48,7 @@ async def test_update_job_builds_correct_sql():
     """_update_job generates valid parameterized SQL."""
     conn = AsyncMock()
     from backend.services.ingestion.legal_full_ingestion_worker import _update_job
+
     await _update_job(conn, "test-uuid", status="qdrant_done", qdrant_chunks=42)
     conn.execute.assert_called_once()
     call_args = conn.execute.call_args[0]
@@ -65,7 +66,11 @@ async def test_process_one_job_empty_queue():
     from backend.services.ingestion.legal_full_ingestion_worker import _process_one_job
 
     mock_conn = AsyncMock()
-    mock_conn.transaction = MagicMock(return_value=AsyncMock(__aenter__=AsyncMock(return_value=None), __aexit__=AsyncMock(return_value=False)))
+    mock_conn.transaction = MagicMock(
+        return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=None), __aexit__=AsyncMock(return_value=False)
+        )
+    )
 
     @asynccontextmanager
     async def fake_acquire():

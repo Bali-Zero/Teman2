@@ -14,6 +14,7 @@ Earlier draft assumed total_invoiced_idr + completed_at — those columns
 are referenced by services/crm/partners/commission_engine.py:89 but NOT
 present in prod schema. verify_schema() catches the drift.
 """
+
 import pytest
 
 from scripts.compute_client_segments import (
@@ -86,7 +87,12 @@ class TestComputeLtvUsd:
     def test_idr_practice_converts_to_usd(self):
         # 31M IDR @ 15500 IDR/USD = $2000
         practices = [
-            {"actual_price": 31_000_000, "quoted_price": None, "currency": "IDR", "status": "completed"},
+            {
+                "actual_price": 31_000_000,
+                "quoted_price": None,
+                "currency": "IDR",
+                "status": "completed",
+            },
         ]
         assert compute_ltv_usd(practices) == pytest.approx(2000.0, rel=1e-3)
 
@@ -102,7 +108,12 @@ class TestComputeLtvUsd:
             {"actual_price": 1000, "quoted_price": None, "currency": "USD", "status": "completed"},
             {"actual_price": 5000, "quoted_price": None, "currency": "USD", "status": "on_process"},
             {"actual_price": 2000, "quoted_price": None, "currency": "USD", "status": "cancelled"},
-            {"actual_price": 1500, "quoted_price": None, "currency": "USD", "status": "sending_invoice"},
+            {
+                "actual_price": 1500,
+                "quoted_price": None,
+                "currency": "USD",
+                "status": "sending_invoice",
+            },
         ]
         assert compute_ltv_usd(practices) == 1000.0
 

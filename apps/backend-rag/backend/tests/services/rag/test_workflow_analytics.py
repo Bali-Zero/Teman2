@@ -199,9 +199,7 @@ class TestWorkflowAnalyticsRepository:
         repo = WorkflowAnalyticsRepository(pool)
 
         steps = {"nodes": ["a", "b"], "count": 2}
-        await repo.log_workflow(
-            workflow_id="wf-jsonb-dict", query="q", steps_json=steps
-        )
+        await repo.log_workflow(workflow_id="wf-jsonb-dict", query="q", steps_json=steps)
 
         call = conn.fetchrow.call_args[0]
         assert "INSERT INTO workflow_analytics" in call[0]
@@ -212,9 +210,7 @@ class TestWorkflowAnalyticsRepository:
         assert bound_steps == steps
 
     @pytest.mark.asyncio
-    async def test_log_workflow_empty_list_steps_not_collapsed_to_null(
-        self, mock_db_pool
-    ):
+    async def test_log_workflow_empty_list_steps_not_collapsed_to_null(self, mock_db_pool):
         """F2 regression — `[]` must round-trip as jsonb [], NOT SQL NULL.
 
         The old `if steps_json` guard collapsed empty list/dict to None.
@@ -229,9 +225,7 @@ class TestWorkflowAnalyticsRepository:
         conn.fetchrow = AsyncMock(return_value={"id": 9})
         repo = WorkflowAnalyticsRepository(pool)
 
-        await repo.log_workflow(
-            workflow_id="wf-empty-steps", query="q", steps_json=[]
-        )
+        await repo.log_workflow(workflow_id="wf-empty-steps", query="q", steps_json=[])
 
         bound_steps = conn.fetchrow.call_args[0][7]
         assert bound_steps == [], (

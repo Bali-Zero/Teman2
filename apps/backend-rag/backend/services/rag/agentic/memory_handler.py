@@ -170,7 +170,8 @@ class MemoryHandler:
                 lock_wait_time = time.time() - lock_start_time
                 if lock_wait_time > 0.01 and metrics_collector:  # Only record if waited > 10ms
                     metrics_collector.record_memory_lock_contention(
-                        operation="save_memory", wait_time_seconds=lock_wait_time,
+                        operation="save_memory",
+                        wait_time_seconds=lock_wait_time,
                     )
 
             finally:

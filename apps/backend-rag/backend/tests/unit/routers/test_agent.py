@@ -59,7 +59,10 @@ class TestInvokeAgent:
 
     @patch("backend.app.routers.agent.invoke_rag_workflow", new_callable=AsyncMock)
     def test_invoke_success(
-        self, mock_invoke, client, sample_workflow_result,
+        self,
+        mock_invoke,
+        client,
+        sample_workflow_result,
     ):
         """Happy path: invoke workflow and get answer."""
         mock_invoke.return_value = sample_workflow_result

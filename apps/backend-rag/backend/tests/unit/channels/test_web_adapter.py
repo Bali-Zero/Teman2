@@ -149,7 +149,8 @@ class TestWebFormatter:
 
     def test_format_tool_call_with_args(self) -> None:
         result = WebMessageFormatter.format_tool_call(
-            "search_qdrant", {"query": "visa", "limit": 5},
+            "search_qdrant",
+            {"query": "visa", "limit": 5},
         )
         assert result == "🔧 `search_qdrant(query=visa, limit=5)`"
 
@@ -160,7 +161,8 @@ class TestWebFormatter:
     def test_format_tool_call_limits_args(self) -> None:
         """Only first 2 args should be shown."""
         result = WebMessageFormatter.format_tool_call(
-            "func", {"a": 1, "b": 2, "c": 3, "d": 4},
+            "func",
+            {"a": 1, "b": 2, "c": 3, "d": 4},
         )
         # Should contain exactly 2 arg pairs
         assert "a=1" in result
@@ -196,7 +198,9 @@ class TestWebAdapter:
         assert adapter.max_message_length == 100000
 
     async def test_receive_message_valid(
-        self, adapter: WebChannelAdapter, sample_web_request: dict,
+        self,
+        adapter: WebChannelAdapter,
+        sample_web_request: dict,
     ) -> None:
         msg = await adapter.receive_message(sample_web_request)
         assert msg.user_id == "user@example.com"
@@ -209,7 +213,9 @@ class TestWebAdapter:
         assert msg.media is None
 
     async def test_receive_message_with_images(
-        self, adapter: WebChannelAdapter, web_request_with_images: dict,
+        self,
+        adapter: WebChannelAdapter,
+        web_request_with_images: dict,
     ) -> None:
         msg = await adapter.receive_message(web_request_with_images)
         assert msg.user_id == "vision_user"
@@ -219,7 +225,8 @@ class TestWebAdapter:
         assert msg.metadata["enable_vision"] is True
 
     async def test_receive_message_defaults(
-        self, adapter: WebChannelAdapter,
+        self,
+        adapter: WebChannelAdapter,
     ) -> None:
         msg = await adapter.receive_message({})
         assert msg.user_id == "anonymous"
@@ -228,13 +235,16 @@ class TestWebAdapter:
         assert msg.channel == "web"
 
     async def test_send_response_logs_warning(
-        self, adapter: WebChannelAdapter, simple_response: ChannelResponse,
+        self,
+        adapter: WebChannelAdapter,
+        simple_response: ChannelResponse,
     ) -> None:
         # send_response for web is a no-op (should use stream_response)
         await adapter.send_response("session_123", simple_response)
 
     async def test_send_status_update(
-        self, adapter: WebChannelAdapter,
+        self,
+        adapter: WebChannelAdapter,
     ) -> None:
         # Should not raise
         await adapter.send_status_update("session_123", "processing")
@@ -244,7 +254,7 @@ class TestWebAdapter:
         result = adapter._format_sse_event(event)
         assert result.startswith("data: ")
         assert result.endswith("\n\n")
-        parsed = json.loads(result[len("data: "):].strip())
+        parsed = json.loads(result[len("data: ") :].strip())
         assert parsed["type"] == "token"
         assert parsed["data"] == "Hello"
 
@@ -281,7 +291,9 @@ class TestWebAdapter:
         sources = [{"title": "A"}]
         wf = {"name": "B"}
         resp = ChannelResponse(
-            text="Final answer", sources=sources, workflow=wf,
+            text="Final answer",
+            sources=sources,
+            workflow=wf,
             metadata={"event_type": "answer"},
         )
         event = adapter._channel_response_to_sse(resp)
@@ -320,22 +332,23 @@ class TestWebAdapter:
         assert len(events) == 4
 
         # First event: processing status
-        first = json.loads(events[0][len("data: "):].strip())
+        first = json.loads(events[0][len("data: ") :].strip())
         assert first["type"] == "status"
         assert first["data"]["status"] == "processing"
 
         # Last event: completed status
-        last = json.loads(events[-1][len("data: "):].strip())
+        last = json.loads(events[-1][len("data: ") :].strip())
         assert last["type"] == "status"
         assert last["data"]["status"] == "completed"
 
         # Middle events: tokens
-        tok1 = json.loads(events[1][len("data: "):].strip())
+        tok1 = json.loads(events[1][len("data: ") :].strip())
         assert tok1["type"] == "token"
         assert tok1["data"] == "Hello "
 
     async def test_stream_response_error_yields_error_event(
-        self, adapter: WebChannelAdapter,
+        self,
+        adapter: WebChannelAdapter,
     ) -> None:
         async def failing_stream():
             yield ChannelResponse(text="start", metadata={})
@@ -346,7 +359,7 @@ class TestWebAdapter:
             events.append(sse_str)
 
         # Last event should be error
-        last = json.loads(events[-1][len("data: "):].strip())
+        last = json.loads(events[-1][len("data: ") :].strip())
         assert last["type"] == "error"
         assert "Stream failed" in last["data"]["message"]
         assert last["data"]["fatal"] is True

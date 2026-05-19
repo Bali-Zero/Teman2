@@ -55,7 +55,10 @@ _STATUS_TO_PROGRESS = {
 
 _STATUS_COPY = {
     "inquiry": ("New request", "We are reviewing the request and confirming the first step."),
-    "waiting_documents": ("Waiting for documents", "We are waiting for the documents listed below."),
+    "waiting_documents": (
+        "Waiting for documents",
+        "We are waiting for the documents listed below.",
+    ),
     "in_progress": ("In progress", "We are working on this now."),
     "on_process": ("In progress", "We are working on this now."),
     "sending_invoice": ("Invoice pending", "The invoice is being prepared."),

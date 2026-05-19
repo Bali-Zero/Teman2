@@ -45,10 +45,10 @@ PTKP: dict[str, int] = {
     "TK/1": 58_500_000,
     "TK/2": 63_000_000,
     "TK/3": 67_500_000,
-    "K/0":  58_500_000,
-    "K/1":  63_000_000,
-    "K/2":  67_500_000,
-    "K/3":  72_000_000,
+    "K/0": 58_500_000,
+    "K/1": 63_000_000,
+    "K/2": 67_500_000,
+    "K/3": 72_000_000,
 }
 
 
@@ -56,10 +56,10 @@ PTKP: dict[str, int] = {
 # UU HPP 7/2021 Pasal 17 — used for year-end reconciliation
 
 PPH21_BRACKETS: list[tuple[int, float]] = [
-    (60_000_000,          0.05),
-    (250_000_000,         0.15),
-    (500_000_000,         0.25),
-    (5_000_000_000,       0.30),
+    (60_000_000, 0.05),
+    (250_000_000, 0.15),
+    (500_000_000, 0.25),
+    (5_000_000_000, 0.30),
     (999_999_999_999_999, 0.35),
 ]
 
@@ -123,11 +123,11 @@ BPJS_KES_SALARY_CAP = 12_000_000  # Max salary for contribution calc
 
 # BPJS Ketenagakerjaan
 BPJS_JHT_EMPLOYER_RATE = 0.037  # 3.7%
-BPJS_JHT_EMPLOYEE_RATE = 0.02   # 2%
-BPJS_JKK_RATE = 0.0024           # 0.24% (risk class I — office/consulting)
-BPJS_JKM_RATE = 0.003            # 0.30%
-BPJS_JP_EMPLOYER_RATE = 0.02     # 2%
-BPJS_JP_EMPLOYEE_RATE = 0.01     # 1%
+BPJS_JHT_EMPLOYEE_RATE = 0.02  # 2%
+BPJS_JKK_RATE = 0.0024  # 0.24% (risk class I — office/consulting)
+BPJS_JKM_RATE = 0.003  # 0.30%
+BPJS_JP_EMPLOYER_RATE = 0.02  # 2%
+BPJS_JP_EMPLOYEE_RATE = 0.01  # 1%
 BPJS_JP_SALARY_CAP = 10_042_300  # 2025 cap (updated annually by BPJS TK)
 
 
@@ -205,6 +205,7 @@ def total_employee_deductions(monthly_salary: int, ptkp_status: str = "TK/0") ->
 
 # ─── THR (Tunjangan Hari Raya) ──────────────────────────────────────────
 # Permenaker 6/2016
+
 
 def calculate_thr(
     base_salary: int,

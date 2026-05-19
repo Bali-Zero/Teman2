@@ -29,19 +29,41 @@ logger = get_logger(__name__)
 SYSTEM_SENDER_USER_ID = "7dfe56b2-ff63-4d40-b78b-90c018127a02"
 
 NATIONALITY_LANGUAGE_MAP: dict[str, str] = {
-    "Italian": "it", "Italy": "it", "IT": "it",
-    "American": "en", "USA": "en", "United States": "en",
-    "British": "en", "UK": "en", "United Kingdom": "en",
-    "Australian": "en", "Australia": "en",
-    "Canadian": "en", "Canada": "en",
-    "Irish": "en", "Ireland": "en",
-    "New Zealand": "en", "Kiwi": "en",
-    "Indonesian": "id", "Indonesia": "id", "ID": "id",
-    "Ukrainian": "uk", "Ukraine": "uk", "UA": "uk",
-    "Russian": "ru", "Russia": "ru", "RU": "ru",
-    "German": "en", "Germany": "en", "DE": "en",
-    "French": "en", "France": "en", "FR": "en",
-    "Dutch": "en", "Netherlands": "en", "NL": "en",
+    "Italian": "it",
+    "Italy": "it",
+    "IT": "it",
+    "American": "en",
+    "USA": "en",
+    "United States": "en",
+    "British": "en",
+    "UK": "en",
+    "United Kingdom": "en",
+    "Australian": "en",
+    "Australia": "en",
+    "Canadian": "en",
+    "Canada": "en",
+    "Irish": "en",
+    "Ireland": "en",
+    "New Zealand": "en",
+    "Kiwi": "en",
+    "Indonesian": "id",
+    "Indonesia": "id",
+    "ID": "id",
+    "Ukrainian": "uk",
+    "Ukraine": "uk",
+    "UA": "uk",
+    "Russian": "ru",
+    "Russia": "ru",
+    "RU": "ru",
+    "German": "en",
+    "Germany": "en",
+    "DE": "en",
+    "French": "en",
+    "France": "en",
+    "FR": "en",
+    "Dutch": "en",
+    "Netherlands": "en",
+    "NL": "en",
 }
 
 BIRTHDAY_TEMPLATES: dict[str, dict[str, str]] = {
@@ -118,7 +140,8 @@ class BirthdayNotifierService:
                   AND EXTRACT(MONTH FROM date_of_birth) = $1
                   AND EXTRACT(DAY FROM date_of_birth) = $2
                 """,
-                today.month, today.day,
+                today.month,
+                today.day,
             )
             return [dict(row) for row in rows]
 
@@ -201,12 +224,14 @@ class BirthdayNotifierService:
             except httpx.HTTPError as brevo_err:
                 logger.warning(
                     "Brevo HTTP failed for birthday %s, trying Zoho: %s",
-                    client["email"], brevo_err,
+                    client["email"],
+                    brevo_err,
                 )
             except OSError as brevo_err:
                 logger.warning(
                     "Brevo connection failed for birthday %s, trying Zoho: %s",
-                    client["email"], brevo_err,
+                    client["email"],
+                    brevo_err,
                 )
             if not sent_via_brevo:
                 await self.email_service.send_email(
@@ -221,19 +246,22 @@ class BirthdayNotifierService:
         except (KeyError, ValueError) as e:
             logger.warning(
                 "Template formatting error for birthday email to %s: %s",
-                client.get("email"), e,
+                client.get("email"),
+                e,
             )
             return False
         except httpx.HTTPError as e:
             logger.warning(
                 "HTTP error sending birthday email to %s: %s",
-                client.get("email"), e,
+                client.get("email"),
+                e,
             )
             return False
         except (asyncpg.PostgresError, OSError) as e:
             logger.warning(
                 "DB/connection error sending birthday email to %s: %s",
-                client.get("email"), e,
+                client.get("email"),
+                e,
             )
             return False
         except Exception as e:
@@ -243,7 +271,9 @@ class BirthdayNotifierService:
     async def run_birthday_notifications(self) -> dict[str, Any]:
         stats: dict[str, Any] = {
             "date": datetime.now(timezone.utc).isoformat(),
-            "birthdays_found": 0, "sent": 0, "failed": 0,
+            "birthdays_found": 0,
+            "sent": 0,
+            "failed": 0,
         }
         try:
             clients = await self.get_todays_birthdays()
@@ -263,7 +293,8 @@ class BirthdayNotifierService:
             return stats
         except (asyncpg.PostgresError, OSError) as e:
             logger.warning(
-                "DB/connection error during birthday notification run: %s", e,
+                "DB/connection error during birthday notification run: %s",
+                e,
             )
             stats["error"] = str(e)
             return stats
@@ -318,8 +349,10 @@ class StalePracticeNotifier:
 
     async def check_and_notify(self) -> dict[str, Any]:
         result: dict[str, Any] = {
-            "stale_count": 0, "leaders_notified": 0,
-            "admin_notified": False, "errors": [],
+            "stale_count": 0,
+            "leaders_notified": 0,
+            "admin_notified": False,
+            "errors": [],
         }
         try:
             stale = await self._get_stale_practices()
@@ -337,7 +370,10 @@ class StalePracticeNotifier:
             logger.info("No stale practices found — nothing to notify.")
             return result
 
-        logger.info("Stale practices found", extra={"context": {"count": len(stale), "stale_days": STALE_DAYS}})
+        logger.info(
+            "Stale practices found",
+            extra={"context": {"count": len(stale), "stale_days": STALE_DAYS}},
+        )
 
         try:
             await self._send_zero_summary(stale)
@@ -480,7 +516,9 @@ class StalePracticeNotifier:
             raise_on_failure=True,
         )
 
-        logger.info("Admin summary sent", extra={"context": {"to": ADMIN_EMAIL, "stale_count": len(stale)}})
+        logger.info(
+            "Admin summary sent", extra={"context": {"to": ADMIN_EMAIL, "stale_count": len(stale)}}
+        )
 
     async def _send_team_leader_alert(self, email: str, practices: list[dict[str, Any]]) -> None:
         # Language policy 2026-04-29: messages directed exclusively at team
@@ -538,7 +576,10 @@ class StalePracticeNotifier:
             raise_on_failure=True,
         )
 
-        logger.info("Team-leader alert sent", extra={"context": {"to": email, "practice_count": len(practices)}})
+        logger.info(
+            "Team-leader alert sent",
+            extra={"context": {"to": email, "practice_count": len(practices)}},
+        )
 
 
 async def run_stale_practice_notifier_task(db_pool: asyncpg.Pool) -> dict[str, Any]:

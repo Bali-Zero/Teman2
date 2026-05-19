@@ -23,17 +23,23 @@ os.environ.setdefault("GOOGLE_API_KEY", "test_key")
 
 def _build_service() -> LegalIngestionService:
     """Build LegalIngestionService with all heavy dependencies mocked."""
-    with patch("backend.services.ingestion.legal_ingestion_service.LegalCleaner") as mc, \
-         patch("backend.services.ingestion.legal_ingestion_service.LegalMetadataExtractor") as mme, \
-         patch("backend.services.ingestion.legal_ingestion_service.LegalStructureParser") as msp, \
-         patch("backend.services.ingestion.legal_ingestion_service.LegalChunker") as mch, \
-         patch("backend.services.ingestion.legal_ingestion_service.BM25Vectorizer") as mbm, \
-         patch("backend.services.ingestion.legal_ingestion_service.create_embeddings_generator") as mce, \
-         patch("backend.services.ingestion.legal_ingestion_service.resolve_collection_name", return_value="legal_unified"), \
-         patch("backend.services.ingestion.legal_ingestion_service.QdrantClient") as mqd, \
-         patch("backend.services.ingestion.legal_ingestion_service.TierClassifier") as mtc, \
-         patch("backend.services.ingestion.legal_ingestion_service.HierarchicalIndexer") as mhi:
-
+    with (
+        patch("backend.services.ingestion.legal_ingestion_service.LegalCleaner") as mc,
+        patch("backend.services.ingestion.legal_ingestion_service.LegalMetadataExtractor") as mme,
+        patch("backend.services.ingestion.legal_ingestion_service.LegalStructureParser") as msp,
+        patch("backend.services.ingestion.legal_ingestion_service.LegalChunker") as mch,
+        patch("backend.services.ingestion.legal_ingestion_service.BM25Vectorizer") as mbm,
+        patch(
+            "backend.services.ingestion.legal_ingestion_service.create_embeddings_generator"
+        ) as mce,
+        patch(
+            "backend.services.ingestion.legal_ingestion_service.resolve_collection_name",
+            return_value="legal_unified",
+        ),
+        patch("backend.services.ingestion.legal_ingestion_service.QdrantClient") as mqd,
+        patch("backend.services.ingestion.legal_ingestion_service.TierClassifier") as mtc,
+        patch("backend.services.ingestion.legal_ingestion_service.HierarchicalIndexer") as mhi,
+    ):
         mc.return_value = MagicMock()
         mme.return_value = MagicMock()
         msp.return_value = MagicMock()
@@ -45,6 +51,7 @@ def _build_service() -> LegalIngestionService:
         mhi.return_value = MagicMock()
 
         from backend.services.ingestion.legal_ingestion_service import LegalIngestionService
+
         svc = LegalIngestionService(collection_name="legal_unified")
         return svc
 
@@ -61,18 +68,23 @@ def _common_ingest_patches():
     so its import failure is already handled gracefully. We do not mock it.
     """
     return (
-        patch("backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
-              return_value="raw legal text content here"),
+        patch(
+            "backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+            return_value="raw legal text content here",
+        ),
         patch("backend.services.ingestion.legal_ingestion_service.ingestion_logger"),
         patch("backend.services.ingestion.legal_ingestion_service.metrics_collector"),
-        patch("backend.services.ingestion.legal_ingestion_service.resolve_collection_name",
-              return_value="legal_unified"),
+        patch(
+            "backend.services.ingestion.legal_ingestion_service.resolve_collection_name",
+            return_value="legal_unified",
+        ),
     )
 
 
 # --------------------------------------------------------------------------- #
 # Initialization
 # --------------------------------------------------------------------------- #
+
 
 class TestInit:
     def test_init_creates_components(self, service: MagicMock) -> None:
@@ -92,6 +104,7 @@ class TestInit:
 # detect_legal_document
 # --------------------------------------------------------------------------- #
 
+
 class TestDetectLegalDocument:
     def test_delegates_to_metadata_extractor(self, service: MagicMock) -> None:
         service.metadata_extractor.is_legal_document.return_value = True
@@ -106,6 +119,7 @@ class TestDetectLegalDocument:
 # --------------------------------------------------------------------------- #
 # ingest_legal_document -- success path
 # --------------------------------------------------------------------------- #
+
 
 class TestIngestSuccess:
     @pytest.mark.asyncio
@@ -122,12 +136,14 @@ class TestIngestSuccess:
         }
         service.classifier.classify_book_tier.return_value = MagicMock(value="golden")
         service.classifier.get_min_access_level.return_value = "member"
-        service.indexer.index_legal_document = AsyncMock(return_value={
-            "chunks_indexed": 10,
-            "parent_documents": 3,
-            "total_bab": 2,
-            "total_pasal": 8,
-        })
+        service.indexer.index_legal_document = AsyncMock(
+            return_value={
+                "chunks_indexed": 10,
+                "parent_documents": 3,
+                "total_bab": 2,
+                "total_pasal": 8,
+            }
+        )
 
         p1, p2, p3, p4 = _common_ingest_patches()
         with p1, p2 as mock_logger, p3, p4:
@@ -148,14 +164,24 @@ class TestIngestSuccess:
     async def test_ingestion_with_tier_override(self, service: MagicMock) -> None:
         service.cleaner.clean.return_value = "cleaned content"
         service.metadata_extractor.extract.return_value = {
-            "type": "PP", "type_abbrev": "PP", "number": "1",
-            "year": "2024", "topic": "Test", "status": None, "full_title": "PP 1/2024",
+            "type": "PP",
+            "type_abbrev": "PP",
+            "number": "1",
+            "year": "2024",
+            "topic": "Test",
+            "status": None,
+            "full_title": "PP 1/2024",
         }
         tier_mock = MagicMock(value="silver")
         service.classifier.get_min_access_level.return_value = "guest"
-        service.indexer.index_legal_document = AsyncMock(return_value={
-            "chunks_indexed": 5, "parent_documents": 1, "total_bab": 1, "total_pasal": 3,
-        })
+        service.indexer.index_legal_document = AsyncMock(
+            return_value={
+                "chunks_indexed": 5,
+                "parent_documents": 1,
+                "total_bab": 1,
+                "total_pasal": 3,
+            }
+        )
 
         p1, p2, p3, p4 = _common_ingest_patches()
         with p1, p2 as mock_il, p3, p4:
@@ -174,22 +200,38 @@ class TestIngestSuccess:
     async def test_ingestion_with_wrong_collection_override_fails(self, service: MagicMock) -> None:
         service.cleaner.clean.return_value = "cleaned"
         service.metadata_extractor.extract.return_value = {
-            "type": "PERMEN", "type_abbrev": "PERMEN", "number": "10",
-            "year": "2024", "topic": "Test", "status": None, "full_title": "PERMEN 10/2024",
+            "type": "PERMEN",
+            "type_abbrev": "PERMEN",
+            "number": "10",
+            "year": "2024",
+            "topic": "Test",
+            "status": None,
+            "full_title": "PERMEN 10/2024",
         }
         service.classifier.classify_book_tier.return_value = MagicMock(value="bronze")
         service.classifier.get_min_access_level.return_value = "guest"
-        service.indexer.index_legal_document = AsyncMock(return_value={
-            "chunks_indexed": 3, "parent_documents": 1, "total_bab": 0, "total_pasal": 2,
-        })
+        service.indexer.index_legal_document = AsyncMock(
+            return_value={
+                "chunks_indexed": 3,
+                "parent_documents": 1,
+                "total_bab": 0,
+                "total_pasal": 2,
+            }
+        )
 
-        with patch("backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
-                    return_value="raw text"), \
-             patch("backend.services.ingestion.legal_ingestion_service.ingestion_logger") as mock_il, \
-             patch("backend.services.ingestion.legal_ingestion_service.metrics_collector"), \
-             patch("backend.services.ingestion.legal_ingestion_service.resolve_collection_name",
-                    return_value="custom_collection"), \
-             patch("backend.services.ingestion.legal_ingestion_service.QdrantClient"):
+        with (
+            patch(
+                "backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+                return_value="raw text",
+            ),
+            patch("backend.services.ingestion.legal_ingestion_service.ingestion_logger") as mock_il,
+            patch("backend.services.ingestion.legal_ingestion_service.metrics_collector"),
+            patch(
+                "backend.services.ingestion.legal_ingestion_service.resolve_collection_name",
+                return_value="custom_collection",
+            ),
+            patch("backend.services.ingestion.legal_ingestion_service.QdrantClient"),
+        ):
             mock_il.start_ingestion.return_value = "doc_003"
 
             result = await service.ingest_legal_document(
@@ -205,14 +247,24 @@ class TestIngestSuccess:
         """Test that document_id is auto-generated when not provided."""
         service.cleaner.clean.return_value = "text"
         service.metadata_extractor.extract.return_value = {
-            "type": "UU", "type_abbrev": "UU", "number": "1",
-            "year": "2024", "topic": "Test", "status": None, "full_title": "UU 1/2024",
+            "type": "UU",
+            "type_abbrev": "UU",
+            "number": "1",
+            "year": "2024",
+            "topic": "Test",
+            "status": None,
+            "full_title": "UU 1/2024",
         }
         service.classifier.classify_book_tier.return_value = MagicMock(value="bronze")
         service.classifier.get_min_access_level.return_value = "guest"
-        service.indexer.index_legal_document = AsyncMock(return_value={
-            "chunks_indexed": 1, "parent_documents": 1, "total_bab": 0, "total_pasal": 0,
-        })
+        service.indexer.index_legal_document = AsyncMock(
+            return_value={
+                "chunks_indexed": 1,
+                "parent_documents": 1,
+                "total_bab": 0,
+                "total_pasal": 0,
+            }
+        )
 
         p1, p2, p3, p4 = _common_ingest_patches()
         with p1, p2 as mock_il, p3, p4:
@@ -227,19 +279,30 @@ class TestIngestSuccess:
 # ingest_legal_document -- skip pricing
 # --------------------------------------------------------------------------- #
 
+
 class TestSkipPricing:
     @pytest.mark.asyncio
     async def test_skip_pricing_removes_lines(self, service: MagicMock) -> None:
         service.cleaner.clean.return_value = "Line 1\nBiaya Rp 500.000\nLine 3\nIDR 100\nLine 5"
         service.metadata_extractor.extract.return_value = {
-            "type": "PP", "type_abbrev": "PP", "number": "1",
-            "year": "2024", "topic": "Fees", "status": None, "full_title": "PP 1/2024",
+            "type": "PP",
+            "type_abbrev": "PP",
+            "number": "1",
+            "year": "2024",
+            "topic": "Fees",
+            "status": None,
+            "full_title": "PP 1/2024",
         }
         service.classifier.classify_book_tier.return_value = MagicMock(value="golden")
         service.classifier.get_min_access_level.return_value = "member"
-        service.indexer.index_legal_document = AsyncMock(return_value={
-            "chunks_indexed": 2, "parent_documents": 1, "total_bab": 0, "total_pasal": 1,
-        })
+        service.indexer.index_legal_document = AsyncMock(
+            return_value={
+                "chunks_indexed": 2,
+                "parent_documents": 1,
+                "total_bab": 0,
+                "total_pasal": 1,
+            }
+        )
 
         p1, p2, p3, p4 = _common_ingest_patches()
         with p1, p2 as mock_il, p3, p4:
@@ -258,14 +321,24 @@ class TestSkipPricing:
         long_block = "First sentence. Biaya IDR 500000 second. Third sentence." + "x" * 1000
         service.cleaner.clean.return_value = long_block
         service.metadata_extractor.extract.return_value = {
-            "type": "PP", "type_abbrev": "PP", "number": "2",
-            "year": "2024", "topic": "Fees", "status": None, "full_title": "PP 2/2024",
+            "type": "PP",
+            "type_abbrev": "PP",
+            "number": "2",
+            "year": "2024",
+            "topic": "Fees",
+            "status": None,
+            "full_title": "PP 2/2024",
         }
         service.classifier.classify_book_tier.return_value = MagicMock(value="golden")
         service.classifier.get_min_access_level.return_value = "member"
-        service.indexer.index_legal_document = AsyncMock(return_value={
-            "chunks_indexed": 1, "parent_documents": 1, "total_bab": 0, "total_pasal": 0,
-        })
+        service.indexer.index_legal_document = AsyncMock(
+            return_value={
+                "chunks_indexed": 1,
+                "parent_documents": 1,
+                "total_bab": 0,
+                "total_pasal": 0,
+            }
+        )
 
         p1, p2, p3, p4 = _common_ingest_patches()
         with p1, p2 as mock_il, p3, p4:
@@ -283,6 +356,7 @@ class TestSkipPricing:
 # ingest_legal_document -- metadata fallback
 # --------------------------------------------------------------------------- #
 
+
 class TestMetadataFallback:
     @pytest.mark.asyncio
     async def test_metadata_unknown_with_category(self, service: MagicMock) -> None:
@@ -290,9 +364,14 @@ class TestMetadataFallback:
         service.metadata_extractor.extract.return_value = None
         service.classifier.classify_book_tier.return_value = MagicMock(value="bronze")
         service.classifier.get_min_access_level.return_value = "guest"
-        service.indexer.index_legal_document = AsyncMock(return_value={
-            "chunks_indexed": 1, "parent_documents": 1, "total_bab": 0, "total_pasal": 0,
-        })
+        service.indexer.index_legal_document = AsyncMock(
+            return_value={
+                "chunks_indexed": 1,
+                "parent_documents": 1,
+                "total_bab": 0,
+                "total_pasal": 0,
+            }
+        )
 
         p1, p2, p3, p4 = _common_ingest_patches()
         with p1, p2 as mock_il, p3, p4:
@@ -310,14 +389,22 @@ class TestMetadataFallback:
     async def test_metadata_unknown_type_with_partial_metadata(self, service: MagicMock) -> None:
         service.cleaner.clean.return_value = "cleaned text"
         service.metadata_extractor.extract.return_value = {
-            "type": "UNKNOWN", "type_abbrev": "UNKNOWN",
-            "number": "UNKNOWN", "year": "UNKNOWN", "topic": "UNKNOWN",
+            "type": "UNKNOWN",
+            "type_abbrev": "UNKNOWN",
+            "number": "UNKNOWN",
+            "year": "UNKNOWN",
+            "topic": "UNKNOWN",
         }
         service.classifier.classify_book_tier.return_value = MagicMock(value="bronze")
         service.classifier.get_min_access_level.return_value = "guest"
-        service.indexer.index_legal_document = AsyncMock(return_value={
-            "chunks_indexed": 1, "parent_documents": 1, "total_bab": 0, "total_pasal": 0,
-        })
+        service.indexer.index_legal_document = AsyncMock(
+            return_value={
+                "chunks_indexed": 1,
+                "parent_documents": 1,
+                "total_bab": 0,
+                "total_pasal": 0,
+            }
+        )
 
         p1, p2, p3, p4 = _common_ingest_patches()
         with p1, p2 as mock_il, p3, p4:
@@ -337,15 +424,22 @@ class TestMetadataFallback:
 # ingest_legal_document -- error path
 # --------------------------------------------------------------------------- #
 
+
 class TestIngestError:
     @pytest.mark.asyncio
     async def test_parse_error(self, service: MagicMock) -> None:
-        with patch("backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
-                    side_effect=Exception("File not found")), \
-             patch("backend.services.ingestion.legal_ingestion_service.ingestion_logger") as mock_il, \
-             patch("backend.services.ingestion.legal_ingestion_service.metrics_collector"), \
-             patch("backend.services.ingestion.legal_ingestion_service.resolve_collection_name",
-                    return_value="legal_unified"):
+        with (
+            patch(
+                "backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+                side_effect=Exception("File not found"),
+            ),
+            patch("backend.services.ingestion.legal_ingestion_service.ingestion_logger") as mock_il,
+            patch("backend.services.ingestion.legal_ingestion_service.metrics_collector"),
+            patch(
+                "backend.services.ingestion.legal_ingestion_service.resolve_collection_name",
+                return_value="legal_unified",
+            ),
+        ):
             mock_il.start_ingestion.return_value = "doc_err"
 
             result = await service.ingest_legal_document(
@@ -359,12 +453,18 @@ class TestIngestError:
     @pytest.mark.asyncio
     async def test_error_with_no_document_id(self, service: MagicMock) -> None:
         """Test error path when document_id was not yet generated."""
-        with patch("backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
-                    side_effect=Exception("Corrupt PDF")), \
-             patch("backend.services.ingestion.legal_ingestion_service.ingestion_logger") as mock_il, \
-             patch("backend.services.ingestion.legal_ingestion_service.metrics_collector"), \
-             patch("backend.services.ingestion.legal_ingestion_service.resolve_collection_name",
-                    return_value="legal_unified"):
+        with (
+            patch(
+                "backend.services.ingestion.legal_ingestion_service.auto_detect_and_parse",
+                side_effect=Exception("Corrupt PDF"),
+            ),
+            patch("backend.services.ingestion.legal_ingestion_service.ingestion_logger") as mock_il,
+            patch("backend.services.ingestion.legal_ingestion_service.metrics_collector"),
+            patch(
+                "backend.services.ingestion.legal_ingestion_service.resolve_collection_name",
+                return_value="legal_unified",
+            ),
+        ):
             mock_il.start_ingestion.side_effect = Exception("logger init fail")
 
             result = await service.ingest_legal_document(
@@ -378,15 +478,18 @@ class TestIngestError:
 # _ensure_drive_folder_exists
 # --------------------------------------------------------------------------- #
 
+
 class TestEnsureDriveFolder:
     @pytest.mark.asyncio
     async def test_finds_existing_folder(self, service: MagicMock) -> None:
         mock_drive = AsyncMock()
-        mock_drive.list_files = AsyncMock(return_value={
-            "files": [
-                {"name": "BALI ZERO", "type": "folder", "id": "folder_1"},
-            ],
-        })
+        mock_drive.list_files = AsyncMock(
+            return_value={
+                "files": [
+                    {"name": "BALI ZERO", "type": "folder", "id": "folder_1"},
+                ],
+            }
+        )
 
         mock_settings = MagicMock()
         mock_settings.google_drive_root_folder_id = "root_123"
@@ -471,6 +574,7 @@ class TestEnsureDriveFolder:
 # _get_kg_extractor
 # --------------------------------------------------------------------------- #
 
+
 class TestKGExtractor:
     @pytest.mark.asyncio
     async def test_returns_existing_extractor(self, service: MagicMock) -> None:
@@ -491,10 +595,12 @@ class TestKGExtractor:
         mock_settings = MagicMock()
         mock_settings.database_url = None
 
-        with patch("os.path.exists", return_value=True), \
-             patch("importlib.util.spec_from_file_location") as mock_spec, \
-             patch("importlib.util.module_from_spec") as mock_module, \
-             patch("backend.app.core.config.settings", mock_settings):
+        with (
+            patch("os.path.exists", return_value=True),
+            patch("importlib.util.spec_from_file_location") as mock_spec,
+            patch("importlib.util.module_from_spec") as mock_module,
+            patch("backend.app.core.config.settings", mock_settings),
+        ):
             mock_spec_obj = MagicMock()
             mock_spec.return_value = mock_spec_obj
             mock_mod = MagicMock()

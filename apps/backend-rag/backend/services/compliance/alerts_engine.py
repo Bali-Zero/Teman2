@@ -14,6 +14,7 @@ Uses:
 - PricingTool.get_price (lookup-based, None allowed)
 - AlertDispatcher.dispatch (async, called after insert/promote)
 """
+
 from __future__ import annotations
 
 import logging
@@ -83,7 +84,11 @@ class AlertsEngine:
 
     @classmethod
     def with_connection(
-        cls, conn: asyncpg.Connection, *, pricing: Any, dispatcher: Any,
+        cls,
+        conn: asyncpg.Connection,
+        *,
+        pricing: Any,
+        dispatcher: Any,
     ) -> AlertsEngine:
         inst = cls.__new__(cls)
         inst._pool = None  # type: ignore[assignment]
@@ -115,9 +120,10 @@ class AlertsEngine:
             except asyncpg.PostgresError as exc:
                 logger.error(
                     "DB error generating alert for client %s: %s (skipping this forecast)",
-                    fc.client_id, exc,
+                    fc.client_id,
+                    exc,
                 )
-                continue   # resilience: one bad forecast doesn't kill the batch
+                continue  # resilience: one bad forecast doesn't kill the batch
             if alert is not None:
                 out.append(alert)
         return out
@@ -162,9 +168,7 @@ class AlertsEngine:
         # Build new alert
         alert_id = f"alert_{category}_{fc.client_id}_{uuid.uuid4().hex[:8]}"
         lang: str = (
-            await client_lang_resolver(fc.client_id)
-            if client_lang_resolver is not None
-            else "it"
+            await client_lang_resolver(fc.client_id) if client_lang_resolver is not None else "it"
         )
 
         # Render messages in all three langs (column-per-lang snapshot).
@@ -186,7 +190,9 @@ class AlertsEngine:
         except (jinja2.UndefinedError, KeyError) as exc:
             logger.error(
                 "template render failed for client=%s category=%s: %s",
-                fc.client_id, category, exc,
+                fc.client_id,
+                category,
+                exc,
             )
             return None
 

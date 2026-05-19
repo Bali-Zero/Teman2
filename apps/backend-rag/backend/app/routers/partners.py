@@ -21,6 +21,7 @@ string (team_members.id VARCHAR, email-like). All actor_user params pass
 user["user_id"] directly — no UUID(str(...)) wrapping needed.
 /me endpoints now query team_members.partner_id (not users.partner_id).
 """
+
 from __future__ import annotations
 
 import csv
@@ -50,6 +51,7 @@ router = APIRouter(prefix="/api/partners", tags=["partners"])
 
 
 # ── Pydantic request models ──────────────────────────────────────────────────
+
 
 class PartnerCreate(BaseModel):
     full_name: str
@@ -151,6 +153,7 @@ class WaiveRequest(BaseModel):
 
 # ── Helpers ──────────────────────────────────────────────────────────────────
 
+
 def _is_admin_user(user: dict[str, Any]) -> bool:
     """True if the user has admin-equivalent access.
 
@@ -163,6 +166,7 @@ def _is_admin_user(user: dict[str, Any]) -> bool:
     'founder'} case-insensitive for legacy compatibility).
     """
     from backend.app.core.config import settings
+
     email = (user.get("email") or "").strip().lower()
     if email and email in settings.admin_emails_set:
         return True
@@ -272,19 +276,21 @@ def _partner_to_dict(p: Any) -> dict[str, Any]:
 # Fields that must NOT appear in list-endpoint responses.
 # They contain banking PII / tax identifiers that are only needed in the
 # detail endpoint, which enforces verify_partner_access_with_role.
-_SENSITIVE_PARTNER_FIELDS: frozenset[str] = frozenset({
-    "npwp",
-    "nik",
-    "fiscal_address",
-    "bank_name",
-    "bank_account_holder",
-    "bank_account_number",
-    "ewallet_type",
-    "ewallet_number",
-    "iban",
-    "payment_notes",
-    "payment_currency",
-})
+_SENSITIVE_PARTNER_FIELDS: frozenset[str] = frozenset(
+    {
+        "npwp",
+        "nik",
+        "fiscal_address",
+        "bank_name",
+        "bank_account_holder",
+        "bank_account_number",
+        "ewallet_type",
+        "ewallet_number",
+        "iban",
+        "payment_notes",
+        "payment_currency",
+    }
+)
 
 
 def _partner_to_list_dict(p: Any) -> dict[str, Any]:
@@ -300,6 +306,7 @@ def _partner_to_list_dict(p: Any) -> dict[str, Any]:
 
 
 # ── Partner CRUD ─────────────────────────────────────────────────────────────
+
 
 @router.post("", status_code=status.HTTP_201_CREATED)
 async def create_partner(
@@ -373,7 +380,7 @@ async def list_partners(
         )
         total = len(all_partners)
         offset = (page - 1) * page_size
-        page_rows = all_partners[offset: offset + page_size]
+        page_rows = all_partners[offset : offset + page_size]
         return {
             "partners": [_partner_to_list_dict(p) for p in page_rows],
             "total": total,
@@ -445,7 +452,9 @@ async def me_referrals(
             # referred client. Partner has legitimate interest in conversion but
             # not in the specific class. Map to generic category.
             "service_type": _sterilize_service_type_for_partner(r["service_type"]),
-            "process_status": r["process_status"],  # TODO(CRIT-6 v1.1): consider sterilizing this too
+            "process_status": r[
+                "process_status"
+            ],  # TODO(CRIT-6 v1.1): consider sterilizing this too
             "client_display": _sterilize_client_for_partner(r["client_name"] or ""),
             "referred_at": r["referred_at"].isoformat() if r["referred_at"] else None,
         }
@@ -472,8 +481,7 @@ async def me_commissions(
         svc = PartnersService(conn)
         commissions = await svc.repo.list_commissions_for_partner(row["partner_id"])
         return [
-            dataclasses.asdict(c) if dataclasses.is_dataclass(c) else dict(c)
-            for c in commissions
+            dataclasses.asdict(c) if dataclasses.is_dataclass(c) else dict(c) for c in commissions
         ]
 
 
@@ -507,23 +515,34 @@ async def finance_export(
                   AND pc.created_at <  $2::timestamptz
                 ORDER BY pc.created_at ASC
                 """,
-                from_, to,
+                from_,
+                to,
             )
         buf = io.StringIO()
         writer = csv.writer(buf)
-        writer.writerow([
-            "commission_id", "partner", "npwp", "entity_type", "entry_type",
-            "gross_idr", "withholding_category", "withholding_idr", "net_idr",
-            "status", "paid_at", "paid_via", "payment_reference",
-        ])
+        writer.writerow(
+            [
+                "commission_id",
+                "partner",
+                "npwp",
+                "entity_type",
+                "entry_type",
+                "gross_idr",
+                "withholding_category",
+                "withholding_idr",
+                "net_idr",
+                "status",
+                "paid_at",
+                "paid_via",
+                "payment_reference",
+            ]
+        )
         for r in rows:
             writer.writerow([r[k] for k in r.keys()])
         return Response(
             content=buf.getvalue(),
             media_type="text/csv",
-            headers={
-                "Content-Disposition": f'attachment; filename="partners-{from_}-to-{to}.csv"'
-            },
+            headers={"Content-Disposition": f'attachment; filename="partners-{from_}-to-{to}.csv"'},
         )
     except HTTPException:
         raise
@@ -596,13 +615,10 @@ async def activate_partner(
             svc = PartnersService(conn)
             async with conn.transaction():
                 # CATA-5: actor_user is team_members.id string — no UUID wrapping
-                await svc.activate_partner(
-                    partner_id, actor_user=str(user["user_id"])
-                )
+                await svc.activate_partner(partner_id, actor_user=str(user["user_id"]))
                 from backend.services.crm.partners.emails import enqueue_welcome
-                await enqueue_welcome(
-                    conn, partner_id, actor_user=str(user["user_id"])
-                )
+
+                await enqueue_welcome(conn, partner_id, actor_user=str(user["user_id"]))
             return Response(status_code=204)
     except HTTPException:
         raise
@@ -692,6 +708,7 @@ async def bulk_reassign(
 
 # ── Referrals ────────────────────────────────────────────────────────────────
 
+
 @router.get("/{partner_id}/referrals")
 async def list_referrals(
     partner_id: UUID,
@@ -706,10 +723,7 @@ async def list_referrals(
             svc, str(user["user_id"]), user.get("role"), partner_id
         )
         refs = await svc.repo.list_referrals_for_partner(partner_id)
-        return [
-            dataclasses.asdict(r) if dataclasses.is_dataclass(r) else dict(r)
-            for r in refs
-        ]
+        return [dataclasses.asdict(r) if dataclasses.is_dataclass(r) else dict(r) for r in refs]
 
 
 @router.post("/{partner_id}/referrals", status_code=status.HTTP_201_CREATED)
@@ -779,7 +793,11 @@ async def create_referral(
                 referred_by_user_id=str(user["user_id"]),
                 notes=body.notes,
             )
-            return {"id": str(rid), "partner_id": str(partner_id), "practice_id": str(body.practice_id)}
+            return {
+                "id": str(rid),
+                "partner_id": str(partner_id),
+                "practice_id": str(body.practice_id),
+            }
     except HTTPException:
         raise
     except asyncpg.UniqueViolationError:
@@ -836,6 +854,7 @@ async def delete_referral(
 
 # ── Commissions ───────────────────────────────────────────────────────────────
 
+
 @router.get("/{partner_id}/commissions")
 async def list_commissions(
     partner_id: UUID,
@@ -851,8 +870,7 @@ async def list_commissions(
         )
         commissions = await svc.repo.list_commissions_for_partner(partner_id)
         return [
-            dataclasses.asdict(c) if dataclasses.is_dataclass(c) else dict(c)
-            for c in commissions
+            dataclasses.asdict(c) if dataclasses.is_dataclass(c) else dict(c) for c in commissions
         ]
 
 
@@ -867,7 +885,9 @@ async def list_partner_audit_log(
         async with pool.acquire() as conn:
             svc = PartnersService(conn)
             # CATA-5: actor_user is team_members.id string — no UUID wrapping
-            await verify_partner_access_with_role(svc, str(user["user_id"]), user.get("role"), partner_id)
+            await verify_partner_access_with_role(
+                svc, str(user["user_id"]), user.get("role"), partner_id
+            )
             entries = await svc.list_audit(partner_id)
             return [_partner_to_dict(e) for e in entries]
     except HTTPException:
@@ -933,6 +953,7 @@ async def mark_paid_commission(
                     receipt_file_url=body.receipt_file_url,
                 )
                 from backend.services.crm.partners.emails import enqueue_commission_earned
+
                 await enqueue_commission_earned(
                     conn, commission_id, actor_user=str(user["user_id"])
                 )
@@ -964,6 +985,7 @@ async def flush_email_outbox(
     try:
         async with pool.acquire() as conn:
             from backend.services.crm.partners.emails import flush_outbox
+
             return await flush_outbox(conn, limit=limit)
     except HTTPException:
         raise

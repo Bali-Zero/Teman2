@@ -5,6 +5,7 @@ precision = acted / (acted + dismissed)   (ignore expired — user never saw)
 recall    = acted / (acted + expired)     (expired counts as "missed")
 f1        = 2*p*r / (p+r)
 """
+
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -84,7 +85,9 @@ async def test_precision_all_acted(db_tx: asyncpg.Connection, sample_client: dic
 
 
 @pytest.mark.asyncio
-async def test_mixed_gives_expected_precision(db_tx: asyncpg.Connection, sample_client: dict) -> None:
+async def test_mixed_gives_expected_precision(
+    db_tx: asyncpg.Connection, sample_client: dict
+) -> None:
     """3 acted + 2 dismissed → precision == 0.6."""
     cid = sample_client["id"]
     for _ in range(3):
@@ -110,7 +113,9 @@ async def test_expired_counts_as_missed(db_tx: asyncpg.Connection, sample_client
 
 
 @pytest.mark.asyncio
-async def test_category_filter_isolates_visa(db_tx: asyncpg.Connection, sample_client: dict) -> None:
+async def test_category_filter_isolates_visa(
+    db_tx: asyncpg.Connection, sample_client: dict
+) -> None:
     """Categories are independent — visa and tax don't bleed into each other."""
     cid = sample_client["id"]
     aid1 = await _mk_alert(db_tx, cid, "visa_expiry", "acknowledged")

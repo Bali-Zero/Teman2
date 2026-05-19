@@ -73,12 +73,16 @@ def get_current_user(
         # S03: Two-phase JWT expiry enforcement
         if settings.jwt_enforce_expiry:
             payload = jwt.decode(
-                token, settings.jwt_secret_key, algorithms=["HS256"],
+                token,
+                settings.jwt_secret_key,
+                algorithms=["HS256"],
                 options={"verify_exp": True},
             )
         else:
             payload = jwt.decode(
-                token, settings.jwt_secret_key, algorithms=["HS256"],
+                token,
+                settings.jwt_secret_key,
+                algorithms=["HS256"],
                 options={"verify_exp": False},
             )
 
@@ -104,6 +108,7 @@ def get_current_user(
             exp = payload.get("exp")
             if exp:
                 from datetime import datetime, timezone
+
                 if datetime.fromtimestamp(exp, tz=timezone.utc) < datetime.now(timezone.utc):
                     logger.warning(
                         f"S03_AUDIT: Expired token used by {user_email} "
@@ -118,9 +123,7 @@ def get_current_user(
         if settings.enable_token_revocation:
             jti = payload.get("jti")
             if jti:
-                logger.debug(
-                    "S03-S2: Token jti=%s — revocation check deferred to middleware", jti
-                )
+                logger.debug("S03-S2: Token jti=%s — revocation check deferred to middleware", jti)
 
         return user_ctx
     except JWTError as e:

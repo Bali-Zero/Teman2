@@ -566,7 +566,10 @@ async def test_process_whatsapp_message_escalate_to_human():
     with (
         patch("backend.app.routers.whatsapp_chat.whatsapp_service", mock_wa_service),
         patch("backend.app.routers.whatsapp_chat.whatsapp_triage_service", mock_triage_service),
-        patch("backend.app.routers.whatsapp_chat.get_onboarding_detector", return_value=mock_onboarding),
+        patch(
+            "backend.app.routers.whatsapp_chat.get_onboarding_detector",
+            return_value=mock_onboarding,
+        ),
         patch("backend.app.routers.whatsapp_chat.notify_human_telegram", new=AsyncMock()),
         patch("backend.app.routers.whatsapp_chat._get_db_pool", return_value=None),
         patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
@@ -607,7 +610,10 @@ async def test_process_whatsapp_message_offer_choice():
     with (
         patch("backend.app.routers.whatsapp_chat.whatsapp_service", mock_wa_service),
         patch("backend.app.routers.whatsapp_chat.whatsapp_triage_service", mock_triage_service),
-        patch("backend.app.routers.whatsapp_chat.get_onboarding_detector", return_value=mock_onboarding),
+        patch(
+            "backend.app.routers.whatsapp_chat.get_onboarding_detector",
+            return_value=mock_onboarding,
+        ),
     ):
         await process_whatsapp_message(
             phone="621234567890",
@@ -648,7 +654,10 @@ async def test_process_whatsapp_message_onboarding_triggered():
     with (
         patch("backend.app.routers.whatsapp_chat.whatsapp_service", mock_wa_service),
         patch("backend.app.routers.whatsapp_chat.whatsapp_triage_service", mock_triage_service),
-        patch("backend.app.routers.whatsapp_chat.get_onboarding_detector", return_value=mock_onboarding),
+        patch(
+            "backend.app.routers.whatsapp_chat.get_onboarding_detector",
+            return_value=mock_onboarding,
+        ),
         patch("backend.app.routers.whatsapp_chat.telegram_bot", mock_telegram),
         patch("backend.app.routers.whatsapp_chat.settings") as mock_settings,
     ):

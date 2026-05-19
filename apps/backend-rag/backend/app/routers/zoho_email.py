@@ -282,7 +282,10 @@ async def get_connection_status(
     except Exception as e:
         logger.error("Failed to get connection status: %s", e)
         return ConnectionStatusResponse(
-            connected=False, email=None, account_id=None, expires_at=None,
+            connected=False,
+            email=None,
+            account_id=None,
+            expires_at=None,
         )
 
 

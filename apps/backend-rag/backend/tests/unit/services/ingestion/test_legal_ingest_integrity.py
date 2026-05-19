@@ -100,9 +100,7 @@ def test_validate_legal_ingest_result_rejects_zero_upserts() -> None:
     )
 
     with pytest.raises(LegalIngestIntegrityError, match="zero upserts"):
-        validate_legal_ingest_result(
-            {"success": True, "chunks_created": 3, "chunks_upserted": 0}
-        )
+        validate_legal_ingest_result({"success": True, "chunks_created": 3, "chunks_upserted": 0})
 
 
 @pytest.mark.asyncio
@@ -180,17 +178,17 @@ async def test_worker_fails_job_when_ingest_result_has_zero_chunks() -> None:
     db_pool.acquire.return_value = _Acquire(conn)
 
     service = MagicMock()
-    service.ingest_legal_document = AsyncMock(
-        return_value={"success": True, "chunks_created": 0}
-    )
+    service.ingest_legal_document = AsyncMock(return_value={"success": True, "chunks_created": 0})
 
-    with patch.object(worker, "_claim_job", new=AsyncMock(return_value=job)), \
-         patch.object(worker, "_download_pdf", new=AsyncMock(return_value=MagicMock())), \
-         patch(
-             "backend.services.ingestion.legal_ingestion_service.LegalIngestionService",
-             return_value=service,
-         ), \
-         patch.object(worker, "_build_drive_service") as build_drive:
+    with (
+        patch.object(worker, "_claim_job", new=AsyncMock(return_value=job)),
+        patch.object(worker, "_download_pdf", new=AsyncMock(return_value=MagicMock())),
+        patch(
+            "backend.services.ingestion.legal_ingestion_service.LegalIngestionService",
+            return_value=service,
+        ),
+        patch.object(worker, "_build_drive_service") as build_drive,
+    ):
         await worker._process_one_job(db_pool, MagicMock())
 
     build_drive.assert_not_called()

@@ -164,7 +164,10 @@ async def drive_health(request: Request) -> dict[str, Any]:
         sa_error = str(e)[:200]
 
     # Informational: legacy OAuth SYSTEM token state (no longer load-bearing)
-    oauth_info: dict[str, Any] = {"disabled": True, "note": "OAuth SYSTEM disabled 2026-05-10 — Drive uses Service Account"}
+    oauth_info: dict[str, Any] = {
+        "disabled": True,
+        "note": "OAuth SYSTEM disabled 2026-05-10 — Drive uses Service Account",
+    }
     if pool is not None:
         try:
             async with pool.acquire() as conn:
@@ -221,7 +224,8 @@ async def trigger_drive_poll(request: Request) -> dict[str, Any]:
 
 @router.post("/backfill")
 async def backfill_drive_documents(
-    request: Request, background_tasks: BackgroundTasks,
+    request: Request,
+    background_tasks: BackgroundTasks,
 ) -> dict[str, Any]:
     """One-time backfill: scan all client Drive folders and register schema-compliant files.
 

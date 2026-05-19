@@ -1,6 +1,5 @@
 """Tests for renewal_rules.py — RenewalRule matching logic."""
 
-
 from backend.services.compliance.renewal_rules import (
     RENEWAL_RULES,
     match_rule,
@@ -95,9 +94,7 @@ class TestMatchRule:
 
     def test_all_rules_have_required_docs(self) -> None:
         for rule in RENEWAL_RULES.values():
-            assert len(rule.required_docs) > 0, (
-                f"Rule {rule.rule_id} has empty required_docs"
-            )
+            assert len(rule.required_docs) > 0, f"Rule {rule.rule_id} has empty required_docs"
 
     def test_passport_renewal_has_no_pricing_key(self) -> None:
         rule = RENEWAL_RULES["passport_renewal"]

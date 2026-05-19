@@ -207,9 +207,7 @@ async def apply(conn: Any) -> None:
         "weekly_strategic_briefs",
         "ultra_moves",
     ):
-        await conn.execute(
-            f"DROP TRIGGER IF EXISTS trg_{table}_notify ON {table};"
-        )
+        await conn.execute(f"DROP TRIGGER IF EXISTS trg_{table}_notify ON {table};")
         await conn.execute(
             f"""
             CREATE TRIGGER trg_{table}_notify
@@ -229,9 +227,7 @@ async def rollback(conn: Any) -> None:
         "wr_anomaly_alerts",
         "cross_dossier_theses",
     ):
-        await conn.execute(
-            f"DROP TRIGGER IF EXISTS trg_{table}_notify ON {table};"
-        )
+        await conn.execute(f"DROP TRIGGER IF EXISTS trg_{table}_notify ON {table};")
     await conn.execute("DROP FUNCTION IF EXISTS notify_cognitive_event();")
     await conn.execute("DROP TABLE IF EXISTS ultra_moves;")
     await conn.execute("DROP TABLE IF EXISTS weekly_strategic_briefs;")

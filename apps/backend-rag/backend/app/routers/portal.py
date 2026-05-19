@@ -601,7 +601,9 @@ async def download_document(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Failed to download document {document_id} for client {client['client_id']}: {e}")
+        logger.error(
+            f"Failed to download document {document_id} for client {client['client_id']}: {e}"
+        )
         raise HTTPException(status_code=500, detail="Failed to download document") from e
 
 
@@ -860,7 +862,9 @@ async def get_required_documents(
         return {"success": True, "data": items}
     except Exception as e:
         logger.error(
-            "Failed to get portal required documents for client %s: %s", client_id, e,
+            "Failed to get portal required documents for client %s: %s",
+            client_id,
+            e,
             exc_info=True,
         )
         raise HTTPException(

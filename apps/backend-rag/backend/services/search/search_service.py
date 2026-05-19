@@ -207,7 +207,8 @@ class SearchService:
 
         # Initialize cultural insights service (requires embedder)
         self._cultural_insights = cultural_insights or CulturalInsightsService(
-            collection_manager=self.collection_manager, embedder=self.embedder,
+            collection_manager=self.collection_manager,
+            embedder=self.embedder,
         )
 
         # Initialize collection health monitor
@@ -217,7 +218,8 @@ class SearchService:
 
         # Initialize collection warmup service
         self.warmup_service = CollectionWarmupService(
-            collection_manager=self.collection_manager, embedder=self.embedder,
+            collection_manager=self.collection_manager,
+            embedder=self.embedder,
         )
 
         # Initialize query expander for multilingual support
@@ -249,6 +251,7 @@ class SearchService:
         enable_fallbacks: bool,
     ) -> dict[str, Any]:
         """Route a query through SurfaceRouter when available, with safe fallback."""
+
         def canonicalize_collections(collections: list[str]) -> list[str]:
             canonical: list[str] = []
             for collection in collections:
@@ -264,7 +267,9 @@ class SearchService:
                 enable_fallbacks=enable_fallbacks,
             )
             collection_name = canonicalize_collection_name(routing_info["collection_name"])
-            collections = canonicalize_collections(routing_info.get("collections") or [collection_name])
+            collections = canonicalize_collections(
+                routing_info.get("collections") or [collection_name]
+            )
             routing_info["collection_name"] = collection_name
             routing_info["collections"] = collections
             routing_info.setdefault("confidence", 0.0)
@@ -346,7 +351,8 @@ class SearchService:
 
             except ImportError as e:
                 logger.error(
-                    "❌ BM25Vectorizer import failed: %s", e,
+                    "❌ BM25Vectorizer import failed: %s",
+                    e,
                     extra={
                         "attempt": attempt + 1,
                         "max_attempts": self._max_bm25_init_attempts,
@@ -595,7 +601,11 @@ class SearchService:
                 chroma_filter,
                 tier_values,
             ) = await self._prepare_search_context(
-                search_query, user_level, tier_filter, collection_override, apply_filters,
+                search_query,
+                user_level,
+                tier_filter,
+                collection_override,
+                apply_filters,
             )
             if METRICS_AVAILABLE and embedding_start:
                 rag_embedding_duration.observe(time.time() - embedding_start)
@@ -605,7 +615,10 @@ class SearchService:
                 f"Query: '{query[:50]}...', embedding_dim={len(query_embedding)}, provider={self.embedder.provider}",
             )
             logger.debug(
-                "Parameters: collection_override=%s, user_level=%s, limit=%s", collection_override, user_level, limit,
+                "Parameters: collection_override=%s, user_level=%s, limit=%s",
+                collection_override,
+                user_level,
+                limit,
             )
             logger.debug("Final collection: %s", collection_name)
             if chroma_filter:
@@ -634,7 +647,8 @@ class SearchService:
 
                 except Exception as e:
                     logger.warning(
-                        "⚠️ Hybrid search failed, falling back to dense-only: %s", e,
+                        "⚠️ Hybrid search failed, falling back to dense-only: %s",
+                        e,
                         extra={
                             "query": query[:100],
                             "collection": collection_name,
@@ -667,7 +681,9 @@ class SearchService:
 
             # Format results using helper method
             formatted_results = format_search_results(
-                raw_results, collection_name, primary_collection=None,
+                raw_results,
+                collection_name,
+                primary_collection=None,
             )
 
             # Record query for health monitoring
@@ -842,7 +858,9 @@ class SearchService:
             rag_vector_search_duration.observe(time.time() - search_start)
 
         formatted_results = format_search_results(
-            raw_results, collection_name, primary_collection=None,
+            raw_results,
+            collection_name,
+            primary_collection=None,
         )
         return {
             "query": query,
@@ -852,7 +870,8 @@ class SearchService:
 
     @staticmethod
     def _rrf_fuse_multi(
-        result_sets: list[list[dict[str, Any]]], k: int = 60,
+        result_sets: list[list[dict[str, Any]]],
+        k: int = 60,
     ) -> list[dict[str, Any]]:
         """
         Reciprocal Rank Fusion across multiple result sets.
@@ -905,10 +924,13 @@ class SearchService:
                 from backend.core.reranker import ReRanker
 
                 self._reranker = ReRanker()
-                logger.info(f"🔧 ReRanker (Ze-Rank 2) initialized: enabled={self._reranker.enabled}")
+                logger.info(
+                    f"🔧 ReRanker (Ze-Rank 2) initialized: enabled={self._reranker.enabled}"
+                )
             else:
                 logger.warning(
-                    "⚠️ Unknown reranker_backend '%s', falling back to cross-encoder", backend,
+                    "⚠️ Unknown reranker_backend '%s', falling back to cross-encoder",
+                    backend,
                 )
                 from backend.services.rag.reranker import CrossEncoderReranker
 
@@ -1044,7 +1066,11 @@ class SearchService:
                 chroma_filter,
                 tier_values,
             ) = await self._prepare_search_context(
-                query, user_level, tier_filter, collection_override, apply_filters,
+                query,
+                user_level,
+                tier_filter,
+                collection_override,
+                apply_filters,
             )
             if METRICS_AVAILABLE and embedding_start:
                 rag_embedding_duration.observe(time.time() - embedding_start)
@@ -1084,7 +1110,9 @@ class SearchService:
 
             # Format results
             formatted_results = format_search_results(
-                raw_results, collection_name, primary_collection=None,
+                raw_results,
+                collection_name,
+                primary_collection=None,
             )
 
             # Record query for health monitoring
@@ -1322,7 +1350,8 @@ class SearchService:
 
                 # Build combined filter with default exclusion of repealed laws
                 chroma_filter = build_search_filter(
-                    tier_filter=tier_filter_dict, exclude_repealed=True,
+                    tier_filter=tier_filter_dict,
+                    exclude_repealed=True,
                 )
 
                 # Search this collection (async) - track duration
@@ -1339,7 +1368,9 @@ class SearchService:
 
                 # Format results using helper method
                 formatted_results = format_search_results(
-                    raw_results, collection_name, primary_collection=primary_collection,
+                    raw_results,
+                    collection_name,
+                    primary_collection=primary_collection,
                 )
 
                 return collection_name, formatted_results
@@ -1398,7 +1429,8 @@ class SearchService:
             conflict_reports = []
             if conflicts:
                 resolved_results, conflict_reports = self.conflict_resolver.resolve_conflicts(
-                    results_by_collection, conflicts,
+                    results_by_collection,
+                    conflicts,
                 )
             else:
                 # No conflicts - just merge all results
@@ -1508,17 +1540,22 @@ class SearchService:
                 from backend.core.qdrant_db import QdrantClient
 
                 client = QdrantClient(
-                    qdrant_url=settings.qdrant_url, collection_name=collection_name,
+                    qdrant_url=settings.qdrant_url,
+                    collection_name=collection_name,
                 )
 
             # Search (async)
             raw_results = await client.search(
-                query_embedding=query_embedding, filter=filter, limit=limit,
+                query_embedding=query_embedding,
+                filter=filter,
+                limit=limit,
             )
 
             # Format results using helper method
             formatted_results = format_search_results(
-                raw_results, collection_name, primary_collection=None,
+                raw_results,
+                collection_name,
+                primary_collection=None,
             )
 
             return {"query": query, "results": formatted_results, "collection": collection_name}

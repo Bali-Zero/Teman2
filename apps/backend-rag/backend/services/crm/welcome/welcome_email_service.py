@@ -242,7 +242,11 @@ async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> No
                 ]
                 logger.info("WelcomeEmail: brochure attached from local file")
             except Exception:
-                logger.warning("WelcomeEmail: could not attach brochure for client %d", client_id, exc_info=True)
+                logger.warning(
+                    "WelcomeEmail: could not attach brochure for client %d",
+                    client_id,
+                    exc_info=True,
+                )
         else:
             logger.warning("WelcomeEmail: brochure unavailable for client %d", client_id)
 
@@ -287,7 +291,10 @@ async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> No
                 f"lang={lang} email={email}",
             )
         await record_email_result(
-            db_pool, audit_row_id, status="sent", provider="brevo",
+            db_pool,
+            audit_row_id,
+            status="sent",
+            provider="brevo",
         )
         logger.info("WelcomeEmail: sent to client %d (lang=%s, email=%s)", client_id, lang, email)
     else:
@@ -297,7 +304,10 @@ async def _send_client_welcome_impl(client_id: int, db_pool: asyncpg.Pool) -> No
             send_error,
         )
         await record_email_result(
-            db_pool, audit_row_id, status="failed", provider="brevo",
+            db_pool,
+            audit_row_id,
+            status="failed",
+            provider="brevo",
             error_message=send_error,
         )
         notify_email_failure_critical(
@@ -349,7 +359,7 @@ def _build_html(
         f'<tr><td style="padding:0 40px;{BG}">'
         '<table cellspacing="0" cellpadding="0" border="0" width="100%"><tr>'
         '<td style="height:1px;background-color:#3a4554;font-size:1px;line-height:1px;">&nbsp;</td>'
-        '</tr></table></td></tr>'
+        "</tr></table></td></tr>"
     )
 
     return f"""<!DOCTYPE html>

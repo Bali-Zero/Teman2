@@ -85,7 +85,9 @@ class KnowledgeGraphBuilder:
         await self.schema_service.init_schema()
 
     async def extract_entities_from_text(
-        self, text: str, timeout: float = 30.0,
+        self,
+        text: str,
+        timeout: float = 30.0,
     ) -> list[dict[str, Any]]:
         """
         Extract entities from text using AI.
@@ -100,7 +102,10 @@ class KnowledgeGraphBuilder:
         return await self.entity_extractor.extract_entities(text, timeout)
 
     async def extract_relationships(
-        self, entities: list[dict[str, Any]], text: str, timeout: float = 30.0,
+        self,
+        entities: list[dict[str, Any]],
+        text: str,
+        timeout: float = 30.0,
     ) -> list[dict[str, Any]]:
         """
         Extract relationships between entities.
@@ -137,7 +142,11 @@ class KnowledgeGraphBuilder:
             Entity ID
         """
         return await self.repository.upsert_entity(
-            entity_type, name, canonical_name, metadata, conn,
+            entity_type,
+            name,
+            canonical_name,
+            metadata,
+            conn,
         )
 
     async def upsert_relationship(
@@ -163,7 +172,13 @@ class KnowledgeGraphBuilder:
             conn: Database connection (must be in transaction)
         """
         await self.repository.upsert_relationship(
-            source_id, target_id, rel_type, strength, evidence, source_ref, conn,
+            source_id,
+            target_id,
+            rel_type,
+            strength,
+            evidence,
+            source_ref,
+            conn,
         )
 
     async def process_conversation(self, conversation_id: str) -> None:
@@ -271,11 +286,17 @@ class KnowledgeGraphBuilder:
 
         except asyncpg.PostgresError as e:
             logger.error(
-                "Database error processing conversation %s: %s", conversation_id, e, exc_info=True,
+                "Database error processing conversation %s: %s",
+                conversation_id,
+                e,
+                exc_info=True,
             )
         except Exception as e:
             logger.error(
-                "Unexpected error processing conversation %s: %s", conversation_id, e, exc_info=True,
+                "Unexpected error processing conversation %s: %s",
+                conversation_id,
+                e,
+                exc_info=True,
             )
 
     async def build_graph_from_all_conversations(self, days_back: int = 30) -> None:

@@ -5,6 +5,7 @@ Generates a print-ready PDF (bytes) from LkpmPackData.
 All rendering is synchronous (reportlab is blocking) — call from a thread
 if needed, but for typical pack sizes (<1 MB) it completes in <200 ms.
 """
+
 from __future__ import annotations
 
 import io
@@ -53,9 +54,7 @@ class LkpmPackData:
 
     def __post_init__(self) -> None:
         if self.realization_idr < 0:
-            raise ValueError(
-                f"realization_idr must be non-negative, got {self.realization_idr}"
-            )
+            raise ValueError(f"realization_idr must be non-negative, got {self.realization_idr}")
 
 
 # ── Builder ───────────────────────────────────────────────────────────────
@@ -139,9 +138,7 @@ class LkpmPdfBuilder:
             ],
             [
                 Paragraph("Dibuat:", label_style),
-                Paragraph(
-                    data.generated_at.strftime("%Y-%m-%d %H:%M UTC"), header_style
-                ),
+                Paragraph(data.generated_at.strftime("%Y-%m-%d %H:%M UTC"), header_style),
             ],
         ]
         header_table = Table(

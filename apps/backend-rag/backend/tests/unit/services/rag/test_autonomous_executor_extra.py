@@ -76,8 +76,9 @@ class TestTaskTemplates:
         for _task_type, steps in TASK_TEMPLATES.items():
             for step in steps:
                 if step["safety_level"] in (StepSafety.CRITICAL, StepSafety.IRREVERSIBLE):
-                    assert step["action"] in RETRY_CONFIG, \
+                    assert step["action"] in RETRY_CONFIG, (
                         f"Critical action {step['action']} missing from RETRY_CONFIG"
+                    )
 
 
 # ============================================================================
@@ -93,28 +94,40 @@ class TestLoadPlanPersistent:
 
         plan_row = MagicMock()
         plan_data = {
-            "plan_id": "plan_abc", "user_query": "NPWP registration",
-            "user_email": "u@t.com", "task_type": "npwp_registration",
-            "priority": 3, "current_step": 0,
+            "plan_id": "plan_abc",
+            "user_query": "NPWP registration",
+            "user_email": "u@t.com",
+            "task_type": "npwp_registration",
+            "priority": 3,
+            "current_step": 0,
             "overall_status": "pending",
-            "created_at": now, "completed_at": None,
+            "created_at": now,
+            "completed_at": None,
         }
         plan_row.__getitem__ = lambda s, k: plan_data[k]
 
         step_row = MagicMock()
         step_data = {
-            "step_id": "step_0", "action": "verify_client_data",
-            "description": "Verify", "safety_level": "safe",
-            "status": "pending", "started_at": None, "completed_at": None,
-            "last_error": None, "rollback_action": None,
-            "retry_count": 0, "max_retries": 2,
+            "step_id": "step_0",
+            "action": "verify_client_data",
+            "description": "Verify",
+            "safety_level": "safe",
+            "status": "pending",
+            "started_at": None,
+            "completed_at": None,
+            "last_error": None,
+            "rollback_action": None,
+            "retry_count": 0,
+            "max_retries": 2,
         }
         step_row.__getitem__ = lambda s, k: step_data[k]
 
         approval_row = MagicMock()
         approval_data = {
-            "step_id": "step_0", "approved": True,
-            "approver_email": "admin@t.com", "decided_at": now,
+            "step_id": "step_0",
+            "approved": True,
+            "approver_email": "admin@t.com",
+            "decided_at": now,
         }
         approval_row.__getitem__ = lambda s, k: approval_data[k]
 
@@ -140,21 +153,31 @@ class TestLoadPlanPersistent:
 
         plan_row = MagicMock()
         plan_data = {
-            "plan_id": "plan_done", "user_query": "done",
-            "user_email": "u@t.com", "task_type": "npwp_registration",
-            "priority": 3, "current_step": 4,
+            "plan_id": "plan_done",
+            "user_query": "done",
+            "user_email": "u@t.com",
+            "task_type": "npwp_registration",
+            "priority": 3,
+            "current_step": 4,
             "overall_status": "completed",
-            "created_at": now, "completed_at": now,
+            "created_at": now,
+            "completed_at": now,
         }
         plan_row.__getitem__ = lambda s, k: plan_data[k]
 
         step_row = MagicMock()
         step_data = {
-            "step_id": "step_0", "action": "verify",
-            "description": "d", "safety_level": "safe",
-            "status": "completed", "started_at": now, "completed_at": now,
-            "last_error": None, "rollback_action": None,
-            "retry_count": 0, "max_retries": 1,
+            "step_id": "step_0",
+            "action": "verify",
+            "description": "d",
+            "safety_level": "safe",
+            "status": "completed",
+            "started_at": now,
+            "completed_at": now,
+            "last_error": None,
+            "rollback_action": None,
+            "retry_count": 0,
+            "max_retries": 1,
         }
         step_row.__getitem__ = lambda s, k: step_data[k]
 
@@ -197,7 +220,9 @@ class TestQueryPlansPersistent:
         conn.fetch = AsyncMock(return_value=[])
 
         plans = await persistent_executor._query_plans(
-            "u@t.com", ExecutionStatus.COMPLETED, 5,
+            "u@t.com",
+            ExecutionStatus.COMPLETED,
+            5,
         )
         assert plans == []
 
@@ -234,11 +259,16 @@ class TestWaitForApprovalPersistent:
         row.__getitem__ = lambda s, k: {"approved": True}[k]
         conn.fetchrow = AsyncMock(side_effect=[row, None])  # approval check, then plan load
 
-        persistent_executor.get_plan_status = AsyncMock(return_value={
-            "plan_id": "p1", "human_approvals": [],
-        })
+        persistent_executor.get_plan_status = AsyncMock(
+            return_value={
+                "plan_id": "p1",
+                "human_approvals": [],
+            }
+        )
 
-        with patch("backend.services.rag.autonomous_executor.asyncio.sleep", new_callable=AsyncMock):
+        with patch(
+            "backend.services.rag.autonomous_executor.asyncio.sleep", new_callable=AsyncMock
+        ):
             result = await persistent_executor._wait_for_approval("p1", "step_0", timeout=5)
         assert result is True
 
@@ -249,7 +279,9 @@ class TestWaitForApprovalPersistent:
         row.__getitem__ = lambda s, k: {"approved": False}[k]
         conn.fetchrow = AsyncMock(return_value=row)
 
-        with patch("backend.services.rag.autonomous_executor.asyncio.sleep", new_callable=AsyncMock):
+        with patch(
+            "backend.services.rag.autonomous_executor.asyncio.sleep", new_callable=AsyncMock
+        ):
             result = await persistent_executor._wait_for_approval("p1", "step_0", timeout=5)
         assert result is False
 
@@ -280,7 +312,9 @@ class TestExecutePlanRollback:
 
         executor._execute_step = fail_on_second_step
 
-        with patch("backend.services.rag.autonomous_executor.asyncio.sleep", new_callable=AsyncMock):
+        with patch(
+            "backend.services.rag.autonomous_executor.asyncio.sleep", new_callable=AsyncMock
+        ):
             result = await executor.execute_plan(plan["plan_id"])
 
         assert result["overall_status"] == ExecutionStatus.ROLLED_BACK
@@ -296,7 +330,11 @@ class TestPersistApproval:
     async def test_persist_approval_with_all_fields(self, persistent_executor, mock_db_pool):
         mock_db_pool._mock_conn.execute = AsyncMock()
         await persistent_executor._persist_approval(
-            "plan_1", "step_0", True, "admin@t.com", "Approved because valid",
+            "plan_1",
+            "step_0",
+            True,
+            "admin@t.com",
+            "Approved because valid",
         )
         mock_db_pool._mock_conn.execute.assert_awaited_once()
 
@@ -341,27 +379,43 @@ class TestExecuteStepActions:
     async def test_kitas_actions(self):
         executor = AutonomousExecutor()
         actions = [
-            "check_kitas_eligibility", "prepare_kitas_documents",
-            "submit_to_immigration", "schedule_biometrics", "track_kitas_status",
+            "check_kitas_eligibility",
+            "prepare_kitas_documents",
+            "submit_to_immigration",
+            "schedule_biometrics",
+            "track_kitas_status",
         ]
         for action in actions:
-            step = _make_step({
-                "action": action, "description": "test",
-                "safety_level": StepSafety.SAFE, "rollback_action": "",
-            }, 0)
+            step = _make_step(
+                {
+                    "action": action,
+                    "description": "test",
+                    "safety_level": StepSafety.SAFE,
+                    "rollback_action": "",
+                },
+                0,
+            )
             await executor._execute_step(step, "u@t.com")
 
     @pytest.mark.asyncio
     async def test_pt_pma_actions(self):
         executor = AutonomousExecutor()
         actions = [
-            "verify_shareholders", "check_kbli_codes",
-            "prepare_incorporation_docs", "submit_to_ahu",
-            "register_oss", "obtain_nib",
+            "verify_shareholders",
+            "check_kbli_codes",
+            "prepare_incorporation_docs",
+            "submit_to_ahu",
+            "register_oss",
+            "obtain_nib",
         ]
         for action in actions:
-            step = _make_step({
-                "action": action, "description": "test",
-                "safety_level": StepSafety.SAFE, "rollback_action": "",
-            }, 0)
+            step = _make_step(
+                {
+                    "action": action,
+                    "description": "test",
+                    "safety_level": StepSafety.SAFE,
+                    "rollback_action": "",
+                },
+                0,
+            )
             await executor._execute_step(step, "u@t.com")

@@ -31,9 +31,7 @@ def test_forward_archives_duplicate_tracking_rows_before_delete() -> None:
 
     assert "ADD COLUMN IF NOT EXISTS applied_at" in forward
     assert "ADD COLUMN IF NOT EXISTS applied_by" in forward
-    assert forward.index("ADD COLUMN IF NOT EXISTS applied_by") < forward.index(
-        "rows_to_archive"
-    )
+    assert forward.index("ADD COLUMN IF NOT EXISTS applied_by") < forward.index("rows_to_archive")
     assert "schema_migrations_reconciliation_archive" in forward
     assert "165_schema_migrations_duplicate_number_reconcile" in forward
     assert "rows_to_archive" in forward

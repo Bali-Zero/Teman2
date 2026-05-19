@@ -65,9 +65,7 @@ REGISTER_PROMPTS: dict[RegisterTone, RegisterDefinition] = {
             "neutrale, dati prima delle opinioni, periodi lunghi ma senza enfasi, "
             "citazioni numeriche"
         ),
-        when_to_use=(
-            "contenuti dove il dato fa il lavoro (tassi LKPM, cifre KITAS, % PMA)"
-        ),
+        when_to_use=("contenuti dove il dato fa il lavoro (tassi LKPM, cifre KITAS, % PMA)"),
         platforms=("linkedin", "blog", "newsletter"),
         example_headline="B211A: 60 giorni + 60 + 60. Cosa cambia oltre la terza proroga.",
         example_opening=(
@@ -79,9 +77,7 @@ REGISTER_PROMPTS: dict[RegisterTone, RegisterDefinition] = {
     RegisterTone.IRONICO: RegisterDefinition(
         tone=RegisterTone.IRONICO,
         voice="sottile, punge senza urlare, comic timing alto, detour narrativi",
-        when_to_use=(
-            "situazioni assurde del sistema (Coretax, contraddizioni regolatorie)"
-        ),
+        when_to_use=("situazioni assurde del sistema (Coretax, contraddizioni regolatorie)"),
         platforms=("instagram", "x"),
         example_headline="B211A: come pagare tre volte per restare turista.",
         example_opening=(
@@ -92,45 +88,33 @@ REGISTER_PROMPTS: dict[RegisterTone, RegisterDefinition] = {
     ),
     RegisterTone.MILITANTE: RegisterDefinition(
         tone=RegisterTone.MILITANTE,
-        voice=(
-            'diretta, performativa, breve, "io/voi", chiamate all\'azione'
-        ),
+        voice=('diretta, performativa, breve, "io/voi", chiamate all\'azione'),
         when_to_use=(
             "denuncia di pratiche predatorie (agenti abusivi, truffe), "
             "difesa di diritti di compliance"
         ),
         platforms=("instagram_reel_copy", "x_short", "linkedin_opinion"),
-        example_headline=(
-            "Ti hanno detto che il B211A è 'quasi come un KITAS'. Ti hanno mentito."
-        ),
+        example_headline=("Ti hanno detto che il B211A è 'quasi come un KITAS'. Ti hanno mentito."),
         example_opening=(
             "Ogni anno, 14.000 stranieri scoprono troppo tardi cosa non dice il B211A."
         ),
-        anti_pattern=(
-            '"quello che non ti dicono" (banlist §6), vittimismo, populismo fiscale'
-        ),
+        anti_pattern=('"quello che non ti dicono" (banlist §6), vittimismo, populismo fiscale'),
     ),
     RegisterTone.PEDAGOGICO: RegisterDefinition(
         tone=RegisterTone.PEDAGOGICO,
         voice="paziente, strutturata, una nozione per frase, zero gergo non spiegato",
-        when_to_use=(
-            "contenuti didattici, onboarding, chiarimenti post-legislativi"
-        ),
+        when_to_use=("contenuti didattici, onboarding, chiarimenti post-legislativi"),
         platforms=("blog", "newsletter", "instagram_educational"),
         example_headline=(
             "B211A spiegato semplice: il visto turistico che si allunga fino a 180 giorni."
         ),
-        example_opening=(
-            "Il B211A è un visto di singolo ingresso. Questo significa tre cose."
-        ),
+        example_opening=("Il B211A è un visto di singolo ingresso. Questo significa tre cose."),
         anti_pattern='condiscendenza, "è facile!", emoji didattiche eccessive',
     ),
     RegisterTone.POETICO: RegisterDefinition(
         tone=RegisterTone.POETICO,
         voice="immagini concrete, ritmo, sottrazione; mai astrazioni vaghe",
-        when_to_use=(
-            "pezzi longform atmosferici, aperture newsletter, brani di chiusura anno"
-        ),
+        when_to_use=("pezzi longform atmosferici, aperture newsletter, brani di chiusura anno"),
         platforms=("newsletter", "blog"),
         example_headline="B211A: il visto che dura quanto una stagione secca.",
         example_opening=(
@@ -144,13 +128,10 @@ REGISTER_PROMPTS: dict[RegisterTone, RegisterDefinition] = {
             "precisa, riferimenti normativi esatti (legge, articolo, anno), "
             "termini indonesiani non tradotti, codici KBLI/visa integrali"
         ),
-        when_to_use=(
-            "aggiornamenti Peraturan, articoli deep-dive per professionisti"
-        ),
+        when_to_use=("aggiornamenti Peraturan, articoli deep-dive per professionisti"),
         platforms=("linkedin_long", "blog"),
         example_headline=(
-            "Permenkumham 22/2023 art. 51: le tre condizioni per la quarta "
-            "proroga del B211A."
+            "Permenkumham 22/2023 art. 51: le tre condizioni per la quarta proroga del B211A."
         ),
         example_opening=(
             "Il Permenkumham 22/2023, all'articolo 51 comma 3, introduce "
@@ -299,9 +280,7 @@ def render_round_0_prompt(
     self_reflection: str = "",
 ) -> str:
     persona = PROPONENT_PERSONAS.get(proponent, proponent)
-    registers_block = "\n\n".join(
-        reg.as_prompt_block() for reg in REGISTER_PROMPTS.values()
-    )
+    registers_block = "\n\n".join(reg.as_prompt_block() for reg in REGISTER_PROMPTS.values())
     return _ROUND_0_PROPOSE_TEMPLATE.format(
         persona=persona,
         topic=topic,

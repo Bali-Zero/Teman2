@@ -9,6 +9,7 @@ Three tests:
 _post_email is always mocked so no real HTTP is issued.
 PricingService is mocked in test 2 to avoid file-loading dependencies.
 """
+
 from __future__ import annotations
 
 from decimal import Decimal
@@ -27,22 +28,27 @@ async def test_send_welcome_idempotent(db_conn, partner_factory):
     """Calling send_welcome twice only sends one email."""
     p = await partner_factory()
 
-    with patch(
-        "backend.services.crm.partners.emails._post_email",
-        new=AsyncMock(),
-    ) as mock_post, patch(
-        "backend.services.crm.partners.emails._build_pricing_services",
-        return_value=[{"name": "KITAS E33G", "price_display": "Rp 12.500.000"}],
+    with (
+        patch(
+            "backend.services.crm.partners.emails._post_email",
+            new=AsyncMock(),
+        ) as mock_post,
+        patch(
+            "backend.services.crm.partners.emails._build_pricing_services",
+            return_value=[{"name": "KITAS E33G", "price_display": "Rp 12.500.000"}],
+        ),
     ):
         await send_welcome(db_conn, p.id)
         await send_welcome(db_conn, p.id)  # second call: skipped (idempotent)
 
-    assert mock_post.call_count == 1, "Expected exactly one HTTP call; second send_welcome must be skipped"
-
-    row = await db_conn.fetchrow(
-        "SELECT welcome_email_sent_at FROM partners WHERE id = $1", p.id
+    assert mock_post.call_count == 1, (
+        "Expected exactly one HTTP call; second send_welcome must be skipped"
     )
-    assert row["welcome_email_sent_at"] is not None, "welcome_email_sent_at must be set after first send"
+
+    row = await db_conn.fetchrow("SELECT welcome_email_sent_at FROM partners WHERE id = $1", p.id)
+    assert row["welcome_email_sent_at"] is not None, (
+        "welcome_email_sent_at must be set after first send"
+    )
 
 
 @pytest.mark.asyncio
@@ -50,15 +56,18 @@ async def test_send_welcome_includes_pricing_from_tool(db_conn, partner_factory)
     """Welcome email body must contain pricing reference and commission language."""
     p = await partner_factory(preferred_language="it")
 
-    with patch(
-        "backend.services.crm.partners.emails._post_email",
-        new=AsyncMock(),
-    ) as mock_post, patch(
-        "backend.services.crm.partners.emails._build_pricing_services",
-        return_value=[
-            {"name": "KITAS E33G", "price_display": "Rp 12.500.000"},
-            {"name": "PT PMA", "price_display": "Rp 25.000.000"},
-        ],
+    with (
+        patch(
+            "backend.services.crm.partners.emails._post_email",
+            new=AsyncMock(),
+        ) as mock_post,
+        patch(
+            "backend.services.crm.partners.emails._build_pricing_services",
+            return_value=[
+                {"name": "KITAS E33G", "price_display": "Rp 12.500.000"},
+                {"name": "PT PMA", "price_display": "Rp 25.000.000"},
+            ],
+        ),
     ):
         await send_welcome(db_conn, p.id)
 
@@ -102,9 +111,7 @@ async def test_send_commission_earned_sterilizes_client_name(
     assert "Mario Rossi" not in body, (
         f"UU PDP violation: full client name 'Mario Rossi' found in email body:\n{body}"
     )
-    assert "Mario R." in body, (
-        f"Expected sterilized name 'Mario R.' in email body, got:\n{body}"
-    )
+    assert "Mario R." in body, f"Expected sterilized name 'Mario R.' in email body, got:\n{body}"
 
 
 @pytest.mark.asyncio
@@ -114,11 +121,14 @@ async def test_build_pricing_services_returns_real_data_or_empty():
     the thing we're guarding against is the previous 0-services-always bug.
     """
     from backend.services.crm.partners.emails import _build_pricing_services, get_pricing_service
+
     svc = get_pricing_service()
     services = _build_pricing_services()
     if getattr(svc, "loaded", False):
         # If pricing is loaded in test env, we should get non-zero services
-        assert len(services) > 0, "PricingService loaded but _build_pricing_services returned 0 — traversal bug"
+        assert len(services) > 0, (
+            "PricingService loaded but _build_pricing_services returned 0 — traversal bug"
+        )
         sample = services[0]
         assert "name" in sample
         assert "price_display" in sample

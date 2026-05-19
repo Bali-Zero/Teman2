@@ -23,10 +23,12 @@ logger = logging.getLogger(__name__)
 # Known-None set: VisaTypes for which the pricing JSON has no entry.
 # Bridge returns (None, None) for these and the UI shows
 # "confirm on WhatsApp". These are intentional, not bugs.
-KNOWN_NONE_VISAS: frozenset[VisaType] = frozenset({
-    VisaType.C6,       # Social visit — no standalone C6 row in pricing JSON
-    VisaType.E30A,     # Education — JSON lacks a student visa entry
-})
+KNOWN_NONE_VISAS: frozenset[VisaType] = frozenset(
+    {
+        VisaType.C6,  # Social visit — no standalone C6 row in pricing JSON
+        VisaType.E30A,  # Education — JSON lacks a student visa entry
+    }
+)
 
 
 # Map our VisaType codes to substrings likely to appear in the
@@ -34,31 +36,31 @@ KNOWN_NONE_VISAS: frozenset[VisaType] = frozenset({
 # backend/data/bali_zero_official_prices_2026.json). Offshore
 # variants are preferred (standard fresh-applicant path).
 _SEARCH_HINTS: dict[VisaType, tuple[str, ...]] = {
-    VisaType.C1:             ("C1 Tourism",),
-    VisaType.C2:             ("C2 Business",),
-    VisaType.C6:             ("C6", "Social"),                              # known None
-    VisaType.C7:             ("C7A&B Music/Art", "C7"),                     # best-effort
-    VisaType.C7A:            ("C7A&B Music/Art", "C7A"),
-    VisaType.C7B:            ("C7A&B Music/Art", "C7B"),
-    VisaType.C18:            ("C18 Work Trial",),
-    VisaType.C22A:           ("C22A&B Internship (60 Days)", "C22A&B Internship"),
-    VisaType.D2:             ("D12 Business Investigation (1 Year)", "D2"),  # closest multi-entry row
-    VisaType.D12:            (
+    VisaType.C1: ("C1 Tourism",),
+    VisaType.C2: ("C2 Business",),
+    VisaType.C6: ("C6", "Social"),  # known None
+    VisaType.C7: ("C7A&B Music/Art", "C7"),  # best-effort
+    VisaType.C7A: ("C7A&B Music/Art", "C7A"),
+    VisaType.C7B: ("C7A&B Music/Art", "C7B"),
+    VisaType.C18: ("C18 Work Trial",),
+    VisaType.C22A: ("C22A&B Internship (60 Days)", "C22A&B Internship"),
+    VisaType.D2: ("D12 Business Investigation (1 Year)", "D2"),  # closest multi-entry row
+    VisaType.D12: (
         "D12 Business Investigation (1 Year)",
         "D12 Business Investigation (2 Years)",
     ),
-    VisaType.E23:            ("Working KITAS (Offshore)", "Working KITAS"),
-    VisaType.E23_FREELANCE:  ("Freelance E23 (Offshore)", "Freelance E23"),
-    VisaType.E28A:           ("Investor KITAS 2 Years (Offshore)", "Investor KITAS"),
-    VisaType.E30A:           ("Education", "Student"),                       # known None
-    VisaType.E31:            (
+    VisaType.E23: ("Working KITAS (Offshore)", "Working KITAS"),
+    VisaType.E23_FREELANCE: ("Freelance E23 (Offshore)", "Freelance E23"),
+    VisaType.E28A: ("Investor KITAS 2 Years (Offshore)", "Investor KITAS"),
+    VisaType.E30A: ("Education", "Student"),  # known None
+    VisaType.E31: (
         "Dependent 1 Year (Offshore)",
         "Spouse 1 Year (Offshore)",
         "Family",
     ),
-    VisaType.E33E:           ("Retirement KITAP + MERP", "Retirement"),
-    VisaType.E33F:           ("Retirement (Offshore)", "Retirement"),
-    VisaType.E33G:           ("E33G Remote Worker (Offshore)", "E33G Remote Worker"),
+    VisaType.E33E: ("Retirement KITAP + MERP", "Retirement"),
+    VisaType.E33F: ("Retirement (Offshore)", "Retirement"),
+    VisaType.E33G: ("E33G Remote Worker (Offshore)", "E33G Remote Worker"),
 }
 
 

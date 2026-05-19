@@ -96,7 +96,9 @@ class TestAggregate:
     def test_result_is_sorted_for_deterministic_inserts(self):
         vs = aggregate(
             ["PHONE_ID", "ID_KTP", "EMAIL_ADDRESS"],
-            request_id=None, route="/x", user_hash=None,
+            request_id=None,
+            route="/x",
+            user_hash=None,
         )
         assert [v.pattern_matched for v in vs] == sorted({"PHONE_ID", "ID_KTP", "EMAIL_ADDRESS"})
 
@@ -108,18 +110,22 @@ class TestRecordViolations:
 
     def test_outside_event_loop_is_noop(self):
         # Called synchronously → no running loop → silently skip
-        record_violations([
-            PIIViolation("r1", "/x", "ID_KTP", "high", None, 1),
-        ])
+        record_violations(
+            [
+                PIIViolation("r1", "/x", "ID_KTP", "high", None, 1),
+            ]
+        )
 
     @pytest.mark.asyncio
     async def test_no_app_registered_is_noop(self):
         # Reset module state
         violation_store._app = None
         # Must not raise
-        record_violations([
-            PIIViolation("r1", "/x", "ID_KTP", "high", None, 1),
-        ])
+        record_violations(
+            [
+                PIIViolation("r1", "/x", "ID_KTP", "high", None, 1),
+            ]
+        )
         # Yield so any spawned task (if any) runs
         await asyncio.sleep(0)
 
@@ -142,10 +148,12 @@ class TestRecordViolations:
         app.state.db_pool = pool
         set_app(app)
         try:
-            record_violations([
-                PIIViolation("r1", "/x", "ID_KTP", "high", None, 1),
-                PIIViolation("r1", "/x", "EMAIL_ADDRESS", "medium", None, 1),
-            ])
+            record_violations(
+                [
+                    PIIViolation("r1", "/x", "ID_KTP", "high", None, 1),
+                    PIIViolation("r1", "/x", "EMAIL_ADDRESS", "medium", None, 1),
+                ]
+            )
             # Let the spawned task run
             await asyncio.sleep(0)
             await asyncio.sleep(0)

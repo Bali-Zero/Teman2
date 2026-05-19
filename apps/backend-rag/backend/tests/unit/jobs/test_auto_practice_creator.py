@@ -37,7 +37,8 @@ async def test_get_practice_type_id_found():
 
     assert result == 42
     mock_conn.fetchrow.assert_awaited_once_with(
-        "SELECT id FROM practice_types WHERE code = $1 AND active = true", "KITAS_RENEWAL",
+        "SELECT id FROM practice_types WHERE code = $1 AND active = true",
+        "KITAS_RENEWAL",
     )
 
 
@@ -278,7 +279,8 @@ async def test_run_auto_practice_creator_creates_practices():
 
     with (
         patch(
-            "backend.jobs.auto_practice_creator.check_existing_renewal_practice", return_value=False,
+            "backend.jobs.auto_practice_creator.check_existing_renewal_practice",
+            return_value=False,
         ),
         patch(
             "backend.jobs.auto_practice_creator.create_renewal_practice",
@@ -322,7 +324,8 @@ async def test_run_auto_practice_creator_skips_existing():
     # Mock existing practice found
     with (
         patch(
-            "backend.jobs.auto_practice_creator.check_existing_renewal_practice", return_value=True,
+            "backend.jobs.auto_practice_creator.check_existing_renewal_practice",
+            return_value=True,
         ),
         patch("backend.jobs.auto_practice_creator.create_renewal_practice") as mock_create,
     ):
@@ -363,7 +366,8 @@ async def test_run_auto_practice_creator_handles_errors():
 
     with (
         patch(
-            "backend.jobs.auto_practice_creator.check_existing_renewal_practice", return_value=False,
+            "backend.jobs.auto_practice_creator.check_existing_renewal_practice",
+            return_value=False,
         ),
         patch(
             "backend.jobs.auto_practice_creator.create_renewal_practice",

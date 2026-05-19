@@ -1,4 +1,5 @@
 """Tests for CoverImageGenerator — focus on the persistent client (S09)."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock

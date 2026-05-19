@@ -121,8 +121,11 @@ class TestStatsShape:
         assert "rate_limits_configured" in stats
         assert "metrics" in stats
         for k in (
-            "redis_requests", "redis_errors", "memory_fallback_requests",
-            "recovery_attempts", "recovery_successes",
+            "redis_requests",
+            "redis_errors",
+            "memory_fallback_requests",
+            "recovery_attempts",
+            "recovery_successes",
         ):
             assert k in stats["metrics"]
         assert "last_error" in stats

@@ -42,25 +42,29 @@ class MockRunner(CLIRunner):
         self.call_count += 1
         if self.fail:
             return RunnerResult(
-                runner_name=self.name, prompt_chars=len(prompt),
-                ok=False, error="runner down",
+                runner_name=self.name,
+                prompt_chars=len(prompt),
+                ok=False,
+                error="runner down",
             )
         if idx >= len(self.scripts):
             return RunnerResult(
-                runner_name=self.name, prompt_chars=len(prompt),
-                ok=False, error="exhausted",
+                runner_name=self.name,
+                prompt_chars=len(prompt),
+                ok=False,
+                error="exhausted",
             )
         return RunnerResult(
-            runner_name=self.name, prompt_chars=len(prompt),
-            ok=True, output=self.scripts[idx],
+            runner_name=self.name,
+            prompt_chars=len(prompt),
+            ok=True,
+            output=self.scripts[idx],
         )
 
 
 def _brief_json(**kwargs) -> str:
     base = {
-        "top_themes": [
-            {"name": "Tonal rebalance", "weight": 0.5, "why": "too cinico"}
-        ],
+        "top_themes": [{"name": "Tonal rebalance", "weight": 0.5, "why": "too cinico"}],
         "proposed_actions": [
             {
                 "action": "commissiona 3 articoli pedagogici",
@@ -189,7 +193,9 @@ def repos():
 async def test_context_builder_empty_sources(repos):
     intel, cognitive, war_room = repos
     builder = StrategosContextBuilder(
-        intel_repo=intel, cognitive_repo=cognitive, war_room_repo=war_room,
+        intel_repo=intel,
+        cognitive_repo=cognitive,
+        war_room_repo=war_room,
     )
     ctx = await builder.build(week_of=date(2026, 4, 20))
     assert ctx.dossiers_block == ""
@@ -202,40 +208,46 @@ async def test_context_builder_populates_all_sections(repos):
     now = datetime.now(timezone.utc)
 
     # Dossier rows
-    intel.fetch_safe = AsyncMock(return_value=[
-        {
-            "id": uuid4(),
-            "title": "Permenkumham 22/2023",
-            "topic_category": "visa",
-            "confidence_0_1": 0.85,
-            "summary_short": "art.51 limite estensioni",
-        }
-    ])
+    intel.fetch_safe = AsyncMock(
+        return_value=[
+            {
+                "id": uuid4(),
+                "title": "Permenkumham 22/2023",
+                "topic_category": "visa",
+                "confidence_0_1": 0.85,
+                "summary_short": "art.51 limite estensioni",
+            }
+        ]
+    )
 
     # Theses
-    cognitive.recent_theses = AsyncMock(return_value=[
-        CrossDossierThesis(
-            id=uuid4(),
-            title="Convergence fintech",
-            narrative="long",
-            source_dossier_ids=[uuid4(), uuid4()],
-            confidence=0.8,
-            implication="90d audit",
-            generated_at=now,
-        )
-    ])
+    cognitive.recent_theses = AsyncMock(
+        return_value=[
+            CrossDossierThesis(
+                id=uuid4(),
+                title="Convergence fintech",
+                narrative="long",
+                source_dossier_ids=[uuid4(), uuid4()],
+                confidence=0.8,
+                implication="90d audit",
+                generated_at=now,
+            )
+        ]
+    )
 
     # Alerts
-    cognitive.unresolved_alerts = AsyncMock(return_value=[
-        ComplianceAlert(
-            id=uuid4(),
-            detected_at=now,
-            dossier_a_id=uuid4(),
-            dossier_b_id=uuid4(),
-            contradiction_type="grace_vs_enforcement",
-            severity=AlertSeverity.HIGH,
-        )
-    ])
+    cognitive.unresolved_alerts = AsyncMock(
+        return_value=[
+            ComplianceAlert(
+                id=uuid4(),
+                detected_at=now,
+                dossier_a_id=uuid4(),
+                dossier_b_id=uuid4(),
+                contradiction_type="grace_vs_enforcement",
+                severity=AlertSeverity.HIGH,
+            )
+        ]
+    )
 
     # War room side: multiple fetch_safe calls → use side_effect based on query
     call_count = {"n": 0}
@@ -259,7 +271,9 @@ async def test_context_builder_populates_all_sections(repos):
     war_room.fetch_safe = AsyncMock(side_effect=war_room_fetch)
 
     builder = StrategosContextBuilder(
-        intel_repo=intel, cognitive_repo=cognitive, war_room_repo=war_room,
+        intel_repo=intel,
+        cognitive_repo=cognitive,
+        war_room_repo=war_room,
     )
     ctx = await builder.build(week_of=date(2026, 4, 20))
 
@@ -279,7 +293,9 @@ async def test_context_builder_section_failure_is_isolated(repos):
     war_room.fetch_safe = AsyncMock(return_value=[])
 
     builder = StrategosContextBuilder(
-        intel_repo=intel, cognitive_repo=cognitive, war_room_repo=war_room,
+        intel_repo=intel,
+        cognitive_repo=cognitive,
+        war_room_repo=war_room,
     )
     ctx = await builder.build(week_of=date(2026, 4, 20))
     # dossiers section failed but others worked
@@ -356,7 +372,9 @@ async def test_orchestrator_cli_failure(orchestrator_deps):
 async def test_orchestrator_empty_parsed_brief_rejected(orchestrator_deps):
     intel, cognitive, war_room = orchestrator_deps
     orch = _make_orch(
-        intel, cognitive, war_room,
+        intel,
+        cognitive,
+        war_room,
         scripts=[json.dumps({"top_themes": [], "proposed_actions": []})],
     )
     result = await orch.run_once(week_of=date(2026, 4, 20))
@@ -388,7 +406,8 @@ async def test_orchestrator_tracks_prompt_size(orchestrator_deps):
 
 @pytest.mark.asyncio
 async def test_orchestrator_rerank_disabled_by_default(
-    orchestrator_deps, monkeypatch,
+    orchestrator_deps,
+    monkeypatch,
 ):
     """No env flag = no filter constructed = legacy behavior preserved."""
     monkeypatch.delenv("STRATEGOS_RERANK_ENABLED", raising=False)
@@ -399,7 +418,8 @@ async def test_orchestrator_rerank_disabled_by_default(
 
 @pytest.mark.asyncio
 async def test_orchestrator_rerank_flag_off_ignores_qdrant(
-    orchestrator_deps, monkeypatch,
+    orchestrator_deps,
+    monkeypatch,
 ):
     """STRATEGOS_RERANK_ENABLED=false: filter not built even if deps provided."""
     monkeypatch.setenv("STRATEGOS_RERANK_ENABLED", "false")
@@ -419,7 +439,8 @@ async def test_orchestrator_rerank_flag_off_ignores_qdrant(
 
 @pytest.mark.asyncio
 async def test_orchestrator_rerank_flag_on_builds_filter(
-    orchestrator_deps, monkeypatch,
+    orchestrator_deps,
+    monkeypatch,
 ):
     """STRATEGOS_RERANK_ENABLED=true + all deps → filter attached to builder."""
     monkeypatch.setenv("STRATEGOS_RERANK_ENABLED", "true")
@@ -440,14 +461,13 @@ async def test_orchestrator_rerank_flag_on_builds_filter(
         rerank_collection="research_dossiers_v1",
     )
     assert orch.context_builder.dossier_filter is not None
-    assert (
-        orch.context_builder.dossier_filter.collection == "research_dossiers_v1"
-    )
+    assert orch.context_builder.dossier_filter.collection == "research_dossiers_v1"
 
 
 @pytest.mark.asyncio
 async def test_orchestrator_rerank_flag_on_but_missing_deps_skips_filter(
-    orchestrator_deps, monkeypatch,
+    orchestrator_deps,
+    monkeypatch,
 ):
     """Flag ON but qdrant/embedder not provided → no filter (safe degradation)."""
     monkeypatch.setenv("STRATEGOS_RERANK_ENABLED", "true")

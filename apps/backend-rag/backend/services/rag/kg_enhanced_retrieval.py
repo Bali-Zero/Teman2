@@ -167,7 +167,9 @@ class KGEnhancedRetrieval:
         return unique_entities
 
     async def find_kg_entities(
-        self, mentions: list[tuple[str, str]], limit_per_mention: int = 3,
+        self,
+        mentions: list[tuple[str, str]],
+        limit_per_mention: int = 3,
     ) -> list[dict]:
         """
         Find KG entities matching the extracted mentions.
@@ -209,7 +211,10 @@ class KGEnhancedRetrieval:
         return found_entities
 
     async def get_related_entities(
-        self, entity_ids: list[str], max_depth: int = 2, limit: int = 20,
+        self,
+        entity_ids: list[str],
+        max_depth: int = 2,
+        limit: int = 20,
     ) -> tuple[list[dict], list[dict]]:
         """
         Get entities related to the given entities via KG edges.
@@ -239,9 +244,7 @@ class KGEnhancedRetrieval:
                 )
                 if edge_count > 500:
                     max_depth = 2
-                    logger.info(
-                        "KG traversal: seed has %s edges, downgrading to 2-hop", edge_count
-                    )
+                    logger.info("KG traversal: seed has %s edges, downgrading to 2-hop", edge_count)
 
             # Single recursive CTE with directional join
             edges = await conn.fetch(
@@ -1283,7 +1286,10 @@ class KGEnhancedRetrieval:
         return "\n".join(lines)
 
     async def get_context_for_query(
-        self, query: str, max_depth: int = 2, max_entities: int = 10,
+        self,
+        query: str,
+        max_depth: int = 2,
+        max_entities: int = 10,
     ) -> KGContext:
         """
         Main entry point: Get KG context for a user query.
@@ -1322,7 +1328,9 @@ class KGEnhancedRetrieval:
         if kg_entities:
             entity_ids = [e["entity_id"] for e in kg_entities]
             related_entities, relationships = await self.get_related_entities(
-                entity_ids, max_depth=max_depth, limit=max_entities * 2,
+                entity_ids,
+                max_depth=max_depth,
+                limit=max_entities * 2,
             )
         else:
             related_entities, relationships = [], []
@@ -1335,7 +1343,10 @@ class KGEnhancedRetrieval:
 
         # Step 5: Build summary for LLM (include golden route if found)
         graph_summary = self.build_graph_summary(
-            all_entities, relationships, mentions, golden_route,
+            all_entities,
+            relationships,
+            mentions,
+            golden_route,
         )
 
         # Calculate confidence based on match quality

@@ -81,7 +81,10 @@ class MemoryServicePostgres:
 
         try:
             self.pool = await asyncpg.create_pool(
-                self.database_url, min_size=5, max_size=50, command_timeout=60,
+                self.database_url,
+                min_size=5,
+                max_size=50,
+                command_timeout=60,
             )
             logger.info("✅ PostgreSQL connection pool created")
         except (asyncpg.PostgresError, asyncpg.InterfaceError, ValueError, OSError) as e:
@@ -153,7 +156,9 @@ class MemoryServicePostgres:
                     }
 
                     summary = stats_row["summary"] if stats_row else ""
-                    updated_at = stats_row["updated_at"] if stats_row else datetime.now(tz=timezone.utc)
+                    updated_at = (
+                        stats_row["updated_at"] if stats_row else datetime.now(tz=timezone.utc)
+                    )
 
                     memory = UserMemory(
                         user_id=user_id,

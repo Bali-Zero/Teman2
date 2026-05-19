@@ -97,11 +97,22 @@ def chat_payload(query: str, session_id: str = "test-session-001") -> dict:
 def test_chat_kbli_happy_path_restaurant(client):
     """Should return 200 for a restaurant query."""
     with (
-        patch("backend.app.routers.kbli_notebook_chat._translate_query_for_kbli", new=AsyncMock(return_value="restoran")),
-        patch("backend.app.routers.kbli_notebook_chat._search_kbli_qdrant", new=AsyncMock(return_value=[])),
-        patch("backend.app.routers.kbli_notebook_chat._generate_kbli_explanation", new=AsyncMock(return_value="Restaurant answer")),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._translate_query_for_kbli",
+            new=AsyncMock(return_value="restoran"),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._search_kbli_qdrant",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._generate_kbli_explanation",
+            new=AsyncMock(return_value="Restaurant answer"),
+        ),
     ):
-        response = client.post("/kbli-notebook/chat", json=chat_payload("I want to open a restaurant in Bali"))
+        response = client.post(
+            "/kbli-notebook/chat", json=chat_payload("I want to open a restaurant in Bali")
+        )
     assert response.status_code == 200
     data = response.json()
     assert "answer" in data
@@ -111,9 +122,18 @@ def test_chat_kbli_happy_path_restaurant(client):
 def test_chat_kbli_happy_path_kbli_code(client):
     """Should return 200 for a query containing a KBLI code."""
     with (
-        patch("backend.app.routers.kbli_notebook_chat._translate_query_for_kbli", new=AsyncMock(return_value="56101")),
-        patch("backend.app.routers.kbli_notebook_chat._search_kbli_qdrant", new=AsyncMock(return_value=[])),
-        patch("backend.app.routers.kbli_notebook_chat._generate_kbli_explanation", new=AsyncMock(return_value="KBLI 56101 explanation")),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._translate_query_for_kbli",
+            new=AsyncMock(return_value="56101"),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._search_kbli_qdrant",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._generate_kbli_explanation",
+            new=AsyncMock(return_value="KBLI 56101 explanation"),
+        ),
     ):
         response = client.post("/kbli-notebook/chat", json=chat_payload("What is KBLI 56101?"))
     assert response.status_code == 200
@@ -122,9 +142,18 @@ def test_chat_kbli_happy_path_kbli_code(client):
 def test_chat_kbli_returns_required_fields(client):
     """Response must include answer, detected_kbli, results, sources, suggested_queries."""
     with (
-        patch("backend.app.routers.kbli_notebook_chat._translate_query_for_kbli", new=AsyncMock(return_value="restoran")),
-        patch("backend.app.routers.kbli_notebook_chat._search_kbli_qdrant", new=AsyncMock(return_value=[])),
-        patch("backend.app.routers.kbli_notebook_chat._generate_kbli_explanation", new=AsyncMock(return_value="answer text")),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._translate_query_for_kbli",
+            new=AsyncMock(return_value="restoran"),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._search_kbli_qdrant",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._generate_kbli_explanation",
+            new=AsyncMock(return_value="answer text"),
+        ),
     ):
         response = client.post("/kbli-notebook/chat", json=chat_payload("coffee shop"))
     assert response.status_code == 200
@@ -144,11 +173,17 @@ def test_chat_kbli_deflects_visa_query(client):
         "backend.app.routers.kbli_notebook_chat._translate_query_for_kbli",
         new=AsyncMock(return_value="kitas"),
     ):
-        response = client.post("/kbli-notebook/chat", json=chat_payload("How do I get KITAS in Bali?"))
+        response = client.post(
+            "/kbli-notebook/chat", json=chat_payload("How do I get KITAS in Bali?")
+        )
     assert response.status_code == 200
     data = response.json()
     # Answer should mention KBLI specialization
-    assert "KBLI" in data["answer"] or "imigrasi" in data["answer"].lower() or "immigration" in data["answer"].lower()
+    assert (
+        "KBLI" in data["answer"]
+        or "imigrasi" in data["answer"].lower()
+        or "immigration" in data["answer"].lower()
+    )
     assert data["detected_kbli"] == []
 
 
@@ -199,22 +234,44 @@ def test_chat_kbli_deflects_indonesian_visa_query(client):
 def test_chat_kbli_keyword_injection_laundry(client):
     """Should inject KBLI 96100 for laundry queries."""
     with (
-        patch("backend.app.routers.kbli_notebook_chat._translate_query_for_kbli", new=AsyncMock(return_value="laundry")),
-        patch("backend.app.routers.kbli_notebook_chat._search_kbli_qdrant", new=AsyncMock(return_value=[])),
-        patch("backend.app.routers.kbli_notebook_chat._generate_kbli_explanation", new=AsyncMock(return_value="Laundry answer")),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._translate_query_for_kbli",
+            new=AsyncMock(return_value="laundry"),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._search_kbli_qdrant",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._generate_kbli_explanation",
+            new=AsyncMock(return_value="Laundry answer"),
+        ),
     ):
-        response = client.post("/kbli-notebook/chat", json=chat_payload("I want to open a laundry business"))
+        response = client.post(
+            "/kbli-notebook/chat", json=chat_payload("I want to open a laundry business")
+        )
     assert response.status_code == 200
 
 
 def test_chat_kbli_keyword_injection_beauty_salon(client):
     """Should inject KBLI 96220 for beauty salon queries."""
     with (
-        patch("backend.app.routers.kbli_notebook_chat._translate_query_for_kbli", new=AsyncMock(return_value="beauty salon")),
-        patch("backend.app.routers.kbli_notebook_chat._search_kbli_qdrant", new=AsyncMock(return_value=[])),
-        patch("backend.app.routers.kbli_notebook_chat._generate_kbli_explanation", new=AsyncMock(return_value="Beauty salon answer")),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._translate_query_for_kbli",
+            new=AsyncMock(return_value="beauty salon"),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._search_kbli_qdrant",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._generate_kbli_explanation",
+            new=AsyncMock(return_value="Beauty salon answer"),
+        ),
     ):
-        response = client.post("/kbli-notebook/chat", json=chat_payload("beauty salon nail art in Bali"))
+        response = client.post(
+            "/kbli-notebook/chat", json=chat_payload("beauty salon nail art in Bali")
+        )
     assert response.status_code == 200
 
 
@@ -235,8 +292,14 @@ def test_chat_kbli_multi_domain_kg_orchestrator(client, mock_db_pool):
     mock_orchestrator.process = AsyncMock(return_value=mock_kg_response)
 
     with (
-        patch("backend.app.routers.kbli_notebook_chat._translate_query_for_kbli", new=AsyncMock(return_value="restoran kitas")),
-        patch("backend.app.routers.kbli_notebook_chat._search_kbli_qdrant", new=AsyncMock(return_value=[])),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._translate_query_for_kbli",
+            new=AsyncMock(return_value="restoran kitas"),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._search_kbli_qdrant",
+            new=AsyncMock(return_value=[]),
+        ),
         patch(
             "backend.app.routers.kbli_notebook_chat.KGAgenticOrchestrator",
             return_value=mock_orchestrator,
@@ -254,9 +317,18 @@ def test_chat_kbli_multi_domain_kg_orchestrator(client, mock_db_pool):
 def test_chat_kbli_multi_domain_kg_orchestrator_fails(client, mock_db_pool):
     """Should fall back to KBLI-only when KG orchestrator raises."""
     with (
-        patch("backend.app.routers.kbli_notebook_chat._translate_query_for_kbli", new=AsyncMock(return_value="restoran visa")),
-        patch("backend.app.routers.kbli_notebook_chat._search_kbli_qdrant", new=AsyncMock(return_value=[])),
-        patch("backend.app.routers.kbli_notebook_chat._generate_kbli_explanation", new=AsyncMock(return_value="Fallback answer")),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._translate_query_for_kbli",
+            new=AsyncMock(return_value="restoran visa"),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._search_kbli_qdrant",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._generate_kbli_explanation",
+            new=AsyncMock(return_value="Fallback answer"),
+        ),
         patch(
             "backend.app.routers.kbli_notebook_chat.KGAgenticOrchestrator",
             side_effect=Exception("KG crash"),
@@ -287,9 +359,18 @@ def test_chat_kbli_qdrant_fails_postgres_fallback(client, mock_db_pool):
     mock_db_pool._mock_conn.fetch.return_value = [db_row]
 
     with (
-        patch("backend.app.routers.kbli_notebook_chat._translate_query_for_kbli", new=AsyncMock(return_value="restoran")),
-        patch("backend.app.routers.kbli_notebook_chat._search_kbli_qdrant", new=AsyncMock(side_effect=Exception("Qdrant down"))),
-        patch("backend.app.routers.kbli_notebook_chat._generate_kbli_explanation", new=AsyncMock(return_value="Postgres fallback answer")),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._translate_query_for_kbli",
+            new=AsyncMock(return_value="restoran"),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._search_kbli_qdrant",
+            new=AsyncMock(side_effect=Exception("Qdrant down")),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._generate_kbli_explanation",
+            new=AsyncMock(return_value="Postgres fallback answer"),
+        ),
     ):
         response = client.post("/kbli-notebook/chat", json=chat_payload("restaurant"))
     assert response.status_code == 200
@@ -312,9 +393,18 @@ def test_chat_kbli_qdrant_fails_no_db(client):
 
     tc = TestClient(app2)
     with (
-        patch("backend.app.routers.kbli_notebook_chat._translate_query_for_kbli", new=AsyncMock(return_value="restoran")),
-        patch("backend.app.routers.kbli_notebook_chat._search_kbli_qdrant", new=AsyncMock(side_effect=Exception("Qdrant down"))),
-        patch("backend.app.routers.kbli_notebook_chat._generate_kbli_explanation", new=AsyncMock(return_value="No results answer")),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._translate_query_for_kbli",
+            new=AsyncMock(return_value="restoran"),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._search_kbli_qdrant",
+            new=AsyncMock(side_effect=Exception("Qdrant down")),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._generate_kbli_explanation",
+            new=AsyncMock(return_value="No results answer"),
+        ),
     ):
         response = tc.post("/kbli-notebook/chat", json=chat_payload("restaurant"))
     assert response.status_code == 200
@@ -340,9 +430,18 @@ def test_chat_kbli_direct_lookup_from_kbli_documents(client, mock_db_pool):
     mock_db_pool._mock_conn.fetch.return_value = []
 
     with (
-        patch("backend.app.routers.kbli_notebook_chat._translate_query_for_kbli", new=AsyncMock(return_value="56101")),
-        patch("backend.app.routers.kbli_notebook_chat._search_kbli_qdrant", new=AsyncMock(return_value=[])),
-        patch("backend.app.routers.kbli_notebook_chat._generate_kbli_explanation", new=AsyncMock(return_value="Code 56101 answer")),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._translate_query_for_kbli",
+            new=AsyncMock(return_value="56101"),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._search_kbli_qdrant",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._generate_kbli_explanation",
+            new=AsyncMock(return_value="Code 56101 answer"),
+        ),
     ):
         response = client.post("/kbli-notebook/chat", json=chat_payload("Tell me about KBLI 56101"))
     assert response.status_code == 200
@@ -353,10 +452,22 @@ def test_chat_kbli_direct_lookup_from_known_codes(client, mock_db_pool):
     mock_db_pool._mock_conn.fetchrow.return_value = None
 
     with (
-        patch("backend.app.routers.kbli_notebook_chat._translate_query_for_kbli", new=AsyncMock(return_value="56301")),
-        patch("backend.app.routers.kbli_notebook_chat._search_kbli_qdrant", new=AsyncMock(return_value=[])),
-        patch("backend.app.routers.kbli_notebook_chat._get_kbli_payload_from_qdrant", new=AsyncMock(return_value=None)),
-        patch("backend.app.routers.kbli_notebook_chat._generate_kbli_explanation", new=AsyncMock(return_value="Bar answer")),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._translate_query_for_kbli",
+            new=AsyncMock(return_value="56301"),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._search_kbli_qdrant",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._get_kbli_payload_from_qdrant",
+            new=AsyncMock(return_value=None),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._generate_kbli_explanation",
+            new=AsyncMock(return_value="Bar answer"),
+        ),
     ):
         response = client.post("/kbli-notebook/chat", json=chat_payload("Tell me about KBLI 56301"))
     assert response.status_code == 200
@@ -375,9 +486,18 @@ def test_chat_kbli_llm_unavailable_still_returns(client):
     _mock_llm_gateway._available = False
 
     with (
-        patch("backend.app.routers.kbli_notebook_chat._translate_query_for_kbli", new=AsyncMock(return_value="restoran")),
-        patch("backend.app.routers.kbli_notebook_chat._search_kbli_qdrant", new=AsyncMock(return_value=[])),
-        patch("backend.app.routers.kbli_notebook_chat._generate_kbli_explanation", new=AsyncMock(return_value="Fallback LLM answer")),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._translate_query_for_kbli",
+            new=AsyncMock(return_value="restoran"),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._search_kbli_qdrant",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._generate_kbli_explanation",
+            new=AsyncMock(return_value="Fallback LLM answer"),
+        ),
     ):
         response = client.post("/kbli-notebook/chat", json=chat_payload("restaurant"))
 
@@ -399,9 +519,18 @@ def test_chat_kbli_missing_query(client):
 def test_chat_kbli_empty_query(client):
     """Should handle empty string query gracefully."""
     with (
-        patch("backend.app.routers.kbli_notebook_chat._translate_query_for_kbli", new=AsyncMock(return_value="")),
-        patch("backend.app.routers.kbli_notebook_chat._search_kbli_qdrant", new=AsyncMock(return_value=[])),
-        patch("backend.app.routers.kbli_notebook_chat._generate_kbli_explanation", new=AsyncMock(return_value="No results")),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._translate_query_for_kbli",
+            new=AsyncMock(return_value=""),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._search_kbli_qdrant",
+            new=AsyncMock(return_value=[]),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._generate_kbli_explanation",
+            new=AsyncMock(return_value="No results"),
+        ),
     ):
         response = client.post("/kbli-notebook/chat", json={"query": "", "session_id": "test"})
     # May be 200 or 422 depending on Pydantic model — either is acceptable
@@ -416,8 +545,14 @@ def test_chat_kbli_empty_query(client):
 def test_chat_kbli_glossary_terbatas(client):
     """Should return glossary answer for 'terbatas' definition query."""
     with (
-        patch("backend.app.routers.kbli_notebook_chat._translate_query_for_kbli", new=AsyncMock(return_value="terbatas")),
-        patch("backend.app.routers.kbli_notebook_chat._search_kbli_qdrant", new=AsyncMock(return_value=[])),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._translate_query_for_kbli",
+            new=AsyncMock(return_value="terbatas"),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._search_kbli_qdrant",
+            new=AsyncMock(return_value=[]),
+        ),
     ):
         response = client.post("/kbli-notebook/chat", json=chat_payload("What does TERBATAS mean?"))
     assert response.status_code == 200
@@ -428,8 +563,14 @@ def test_chat_kbli_glossary_terbatas(client):
 def test_chat_kbli_glossary_tertutup(client):
     """Should return glossary answer for 'tertutup' definition query."""
     with (
-        patch("backend.app.routers.kbli_notebook_chat._translate_query_for_kbli", new=AsyncMock(return_value="tertutup")),
-        patch("backend.app.routers.kbli_notebook_chat._search_kbli_qdrant", new=AsyncMock(return_value=[])),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._translate_query_for_kbli",
+            new=AsyncMock(return_value="tertutup"),
+        ),
+        patch(
+            "backend.app.routers.kbli_notebook_chat._search_kbli_qdrant",
+            new=AsyncMock(return_value=[]),
+        ),
     ):
         response = client.post("/kbli-notebook/chat", json=chat_payload("What is TERTUTUP?"))
     assert response.status_code == 200

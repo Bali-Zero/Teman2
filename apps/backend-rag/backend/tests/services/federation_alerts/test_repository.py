@@ -150,9 +150,7 @@ async def test_create_from_alert_serializes_jsonb(repo_and_conn) -> None:
     """JSONB args are passed as JSON text, not Python dicts."""
     repo, conn = repo_and_conn
     conn.fetchrow = AsyncMock(return_value=_proposal_row())
-    await repo.create_from_alert(
-        _basic_alert(requested_action=RequestedAction.CLEANUP_LOG)
-    )
+    await repo.create_from_alert(_basic_alert(requested_action=RequestedAction.CLEANUP_LOG))
     args = conn.fetchrow.call_args.args
     # Last 3 positional args are JSONB payloads serialized via json.dumps
     action_payload, compact_payload, full_payload = args[-3:]
@@ -167,17 +165,15 @@ async def test_create_from_alert_unwraps_enums(repo_and_conn) -> None:
     """Enum values are passed as strings to the SQL driver."""
     repo, conn = repo_and_conn
     conn.fetchrow = AsyncMock(return_value=_proposal_row())
-    await repo.create_from_alert(
-        _basic_alert(requested_action=RequestedAction.QUARANTINE_ALERT)
-    )
+    await repo.create_from_alert(_basic_alert(requested_action=RequestedAction.QUARANTINE_ALERT))
     args = conn.fetchrow.call_args.args
     # args[0] is SQL string. SQL params start at args[1].
     # Param order in INSERT: proposal_id, run_id, idempotency_key,
     # source_outbox_id, source_channel, source_ref,
     # mode, alert_type, severity, risk_level, requested_action, ...
-    assert args[7] == "observe"          # mode
-    assert args[9] == "medium"           # severity
-    assert args[10] == "L2"              # risk_level
+    assert args[7] == "observe"  # mode
+    assert args[9] == "medium"  # severity
+    assert args[10] == "L2"  # risk_level
     assert args[11] == "quarantine_alert"  # requested_action
 
 

@@ -5,6 +5,7 @@ of durable XADD heartbeat consumer. Heartbeat-based watchdog = follow-up PR.
 
 Test: apps/backend-rag/backend/tests/services/events/test_bridge_heartbeat_polling_grandfathered.py
 """
+
 import pytest
 
 

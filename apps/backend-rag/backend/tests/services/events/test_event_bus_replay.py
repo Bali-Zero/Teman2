@@ -7,6 +7,7 @@ contract without exercising real PG infrastructure (asyncpg connection,
 pool, NOTIFY) — the underlying ``replay_unconsumed`` is already covered
 by ``test_outbox.py``.
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -27,9 +28,7 @@ async def test_replay_skipped_when_no_db_pool(caplog):
     bus = _make_bus_with_pool(pool=None)
     with caplog.at_level("INFO"):
         await bus._replay_outbox_on_reconnect()
-    assert any(
-        "outbox replay skipped" in rec.message for rec in caplog.records
-    )
+    assert any("outbox replay skipped" in rec.message for rec in caplog.records)
 
 
 @pytest.mark.asyncio
@@ -58,9 +57,7 @@ async def test_replay_calls_replay_unconsumed_per_channel():
     from backend.services.events.event_bus import PG_CHANNEL_MAP
 
     assert mock_replay.await_count == len(PG_CHANNEL_MAP)
-    called_channels = {
-        call.kwargs["channel"] for call in mock_replay.await_args_list
-    }
+    called_channels = {call.kwargs["channel"] for call in mock_replay.await_args_list}
     assert called_channels == set(PG_CHANNEL_MAP.keys())
 
 

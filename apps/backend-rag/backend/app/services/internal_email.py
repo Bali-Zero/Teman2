@@ -31,6 +31,7 @@ Configuration:
 - ``INTERNAL_EMAIL_API_URL`` env var (default points at the Fly production app)
 - ``NUZANTARA_API_KEY`` env var for the ``X-API-Key`` header
 """
+
 from __future__ import annotations
 
 import logging

@@ -143,7 +143,9 @@ class WebChannelAdapter(BaseChannel):
         # This method is for non-streaming scenarios (rarely used)
 
     async def stream_response(
-        self, channel_id: str, response_stream: AsyncIterator[ChannelResponse],
+        self,
+        channel_id: str,
+        response_stream: AsyncIterator[ChannelResponse],
     ) -> AsyncIterator[str]:
         """
         Stream response to web client using SSE format.

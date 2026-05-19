@@ -46,7 +46,7 @@ logger = logging.getLogger(__name__)
 # Default freshness for newly compiled dossiers (design §15.3: 30d archive).
 DEFAULT_FRESHNESS_DAYS = 30
 DEFAULT_BATCH_SIZE = 20
-DEFAULT_CLUSTER_SIMILARITY = 3   # min shared keywords to group trends
+DEFAULT_CLUSTER_SIMILARITY = 3  # min shared keywords to group trends
 
 MIN_CONFIDENCE = 0.3
 MAX_CONFIDENCE = 0.95
@@ -160,19 +160,19 @@ class DossierCompiler:
                 dossier, consumed_count = compiled
                 summary.dossiers_compiled += 1
                 summary.signals_consumed += consumed_count
-                summary.per_dossier.append({
-                    "dossier_id": str(dossier.id),
-                    "slug": dossier.slug,
-                    "topic_category": dossier.topic_category.value,
-                    "facts": len(dossier.facts),
-                    "citations": len(dossier.citations),
-                    "confidence": dossier.confidence_0_1,
-                })
+                summary.per_dossier.append(
+                    {
+                        "dossier_id": str(dossier.id),
+                        "slug": dossier.slug,
+                        "topic_category": dossier.topic_category.value,
+                        "facts": len(dossier.facts),
+                        "citations": len(dossier.citations),
+                        "confidence": dossier.confidence_0_1,
+                    }
+                )
             except Exception as exc:  # noqa: BLE001
                 summary.dossiers_failed += 1
-                summary.errors.append(
-                    f"cluster {cluster[0].id}: {type(exc).__name__}: {exc}"
-                )
+                summary.errors.append(f"cluster {cluster[0].id}: {type(exc).__name__}: {exc}")
 
         return summary
 
@@ -210,7 +210,9 @@ class DossierCompiler:
             )
         except Exception as exc:  # noqa: BLE001
             self.logger.info(
-                "compiler: parse error anchor=%s err=%s", anchor.id, exc,
+                "compiler: parse error anchor=%s err=%s",
+                anchor.id,
+                exc,
             )
             return None
 
@@ -223,7 +225,9 @@ class DossierCompiler:
                 consumed += 1
             except Exception as exc:  # noqa: BLE001
                 self.logger.warning(
-                    "mark_consumed failed signal=%s: %s", signal.id, exc,
+                    "mark_consumed failed signal=%s: %s",
+                    signal.id,
+                    exc,
                 )
         return dossier, consumed
 
@@ -253,8 +257,7 @@ class DossierCompiler:
             DossierEntity(**_coerce_entity(e)) for e in _as_list(parsed.get("entities_linked"))
         ]
         precedents = [
-            DossierPrecedent(**_coerce_precedent(p))
-            for p in _as_list(parsed.get("precedents"))
+            DossierPrecedent(**_coerce_precedent(p)) for p in _as_list(parsed.get("precedents"))
         ]
 
         return ResearchDossierCreate(
@@ -282,9 +285,8 @@ class DossierCompiler:
 
 def _normalize_words(topic: str) -> set[str]:
     import re
-    return {
-        w for w in re.split(r"[^a-z0-9]+", (topic or "").lower()) if len(w) >= 3
-    }
+
+    return {w for w in re.split(r"[^a-z0-9]+", (topic or "").lower()) if len(w) >= 3}
 
 
 def _cluster_trends(
@@ -446,7 +448,7 @@ def _trim(value: Any, max_chars: int) -> str | None:
 
 def _render_signals(cluster: list[TrendSignal]) -> str:
     lines: list[str] = []
-    for signal in cluster[:8]:   # cap to keep prompt small
+    for signal in cluster[:8]:  # cap to keep prompt small
         lines.append(
             f"- [{signal.source.value}] urgency={signal.urgency_score:.1f} "
             f"rel={signal.bali_zero_relevance or 0:.1f}\n"

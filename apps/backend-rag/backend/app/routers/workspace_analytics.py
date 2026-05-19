@@ -3,6 +3,7 @@
 Aggregates `funnel_sessions` + `funnel_attributions` into a single payload
 consumed by /kita/analytics/funnel.
 """
+
 from __future__ import annotations
 
 import asyncpg

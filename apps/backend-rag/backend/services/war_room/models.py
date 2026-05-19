@@ -148,7 +148,9 @@ class WarRoomMetric(BaseModel):
 
     id: int
     post_id: UUID
-    metric_name: str = Field(description="reach|impressions|saves|shares|clicks|leads_attributed|likes|comments")
+    metric_name: str = Field(
+        description="reach|impressions|saves|shares|clicks|leads_attributed|likes|comments"
+    )
     value: float
     collected_at: datetime
     source: MetricSource

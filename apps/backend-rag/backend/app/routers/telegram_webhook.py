@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 # Agent Mesh — Team Member Lookup
 # ═══════════════════════════════════════════════════════════════════
 
+
 async def _resolve_team_agent(request: Request, chat_id: int | None) -> dict[str, Any] | None:
     """
     Resolve a Telegram chat_id to a team member agent context.
@@ -83,6 +84,7 @@ async def _resolve_team_agent(request: Request, chat_id: int | None) -> dict[str
         logger.warning("Agent mesh lookup failed for chat_id=%s: %s", chat_id, e)
         return None
 
+
 router = APIRouter(prefix="/webhook", tags=["telegram"])
 
 
@@ -117,7 +119,10 @@ async def handle_intel_callback(callback_query: dict[str, Any]) -> bool:
         return False
 
     logger.info(
-        "Intel callback: %s from %s (%s)", action, voter_name, voter_id,
+        "Intel callback: %s from %s (%s)",
+        action,
+        voter_name,
+        voter_id,
         extra={"intel_type": intel_type, "item_id": item_id, "action": action},
     )
 
@@ -127,7 +132,9 @@ async def handle_intel_callback(callback_query: dict[str, Any]) -> bool:
 
     if not status_file.exists():
         await telegram_bot.answer_callback_query(
-            callback_id, text="Item not found or already processed.", show_alert=True,
+            callback_id,
+            text="Item not found or already processed.",
+            show_alert=True,
         )
         return True
 
@@ -140,7 +147,9 @@ async def handle_intel_callback(callback_query: dict[str, Any]) -> bool:
 
     if voter_id in all_voters:
         await telegram_bot.answer_callback_query(
-            callback_id, text="You already voted!", show_alert=True,
+            callback_id,
+            text="You already voted!",
+            show_alert=True,
         )
         return True
 
@@ -161,7 +170,9 @@ async def handle_intel_callback(callback_query: dict[str, Any]) -> bool:
     if approve_count >= required:
         # Quorum reached — publish
         logger.info(
-            "Approval quorum reached (%s/%s)", approve_count, required,
+            "Approval quorum reached (%s/%s)",
+            approve_count,
+            required,
             extra={"intel_type": intel_type, "item_id": item_id},
         )
 
@@ -175,7 +186,8 @@ async def handle_intel_callback(callback_query: dict[str, Any]) -> bool:
             )
         except Exception as e:
             logger.error(
-                "Auto-publish failed after approval: %s", e,
+                "Auto-publish failed after approval: %s",
+                e,
                 exc_info=True,
                 extra={"intel_type": intel_type, "item_id": item_id},
             )
@@ -196,7 +208,9 @@ async def handle_intel_callback(callback_query: dict[str, Any]) -> bool:
     elif reject_count >= required:
         # Rejection quorum reached — archive
         logger.info(
-            "Rejection quorum reached (%s/%s)", reject_count, required,
+            "Rejection quorum reached (%s/%s)",
+            reject_count,
+            required,
             extra={"intel_type": intel_type, "item_id": item_id},
         )
 
@@ -207,7 +221,8 @@ async def handle_intel_callback(callback_query: dict[str, Any]) -> bool:
             staging_service.archive_item(intel_type, item_id, "rejected")
         except Exception as e:
             logger.error(
-                "Archive after rejection failed: %s", e,
+                "Archive after rejection failed: %s",
+                e,
                 exc_info=True,
                 extra={"intel_type": intel_type, "item_id": item_id},
             )
@@ -261,6 +276,7 @@ async def telegram_webhook(
         if db_pool is not None:
             try:
                 from backend.services.channels import inbound_webhook_repo
+
                 await inbound_webhook_repo.persist(
                     db_pool,
                     channel="telegram",
@@ -271,7 +287,8 @@ async def telegram_webhook(
                 logger.warning(
                     "Telegram webhook: persist failed (update_id=%s): %s — "
                     "falling back to synchronous-only path",
-                    update_id, exc,
+                    update_id,
+                    exc,
                 )
 
         # Handle callback_query (inline keyboard button presses) before ChannelRouter
@@ -310,7 +327,8 @@ async def telegram_webhook(
                 except Exception as exc:  # noqa: BLE001 — never block ack
                     logger.warning(
                         "FAD callback handler crashed: %s (data=%s)",
-                        exc, callback_data[:80],
+                        exc,
+                        callback_data[:80],
                     )
 
             # Non-intel callbacks fall through to ChannelRouter
@@ -353,6 +371,7 @@ async def telegram_webhook(
         # Record webhook metric
         try:
             from backend.app.metrics import metrics_collector
+
             metrics_collector.record_webhook_request(channel="telegram", status="success")
         except Exception:
             pass
@@ -366,6 +385,7 @@ async def telegram_webhook(
         # Record error metric
         try:
             from backend.app.metrics import metrics_collector
+
             metrics_collector.record_webhook_request(channel="telegram", status="error")
         except Exception:
             pass

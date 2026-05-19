@@ -109,23 +109,25 @@ class TestPortalEndpoints:
         mock_db_pool,
     ) -> None:
         _pool, conn = mock_db_pool
-        conn.fetchrow = AsyncMock(return_value={
-            "id": 1,
-            "full_name": "Portal Client",
-            "email": "client@example.com",
-            "phone": "+62812",
-            "whatsapp": "+62812",
-            "nationality": "Italian",
-            "passport_number": "P123",
-            "passport_expiry": date(2030, 1, 1),
-            "date_of_birth": date(1990, 1, 1),
-            "gender": "female",
-            "address": "Bali",
-            "created_at": datetime(2024, 1, 1, tzinfo=timezone.utc),
-            "assigned_to": "agent@balizero.com",
-            "assigned_to_name": "Assigned Agent",
-            "assigned_to_avatar": "https://example.com/avatar.png",
-        })
+        conn.fetchrow = AsyncMock(
+            return_value={
+                "id": 1,
+                "full_name": "Portal Client",
+                "email": "client@example.com",
+                "phone": "+62812",
+                "whatsapp": "+62812",
+                "nationality": "Italian",
+                "passport_number": "P123",
+                "passport_expiry": date(2030, 1, 1),
+                "date_of_birth": date(1990, 1, 1),
+                "gender": "female",
+                "address": "Bali",
+                "created_at": datetime(2024, 1, 1, tzinfo=timezone.utc),
+                "assigned_to": "agent@balizero.com",
+                "assigned_to_name": "Assigned Agent",
+                "assigned_to_avatar": "https://example.com/avatar.png",
+            }
+        )
 
         response = client.get("/api/portal/profile")
 
@@ -140,11 +142,13 @@ class TestPortalEndpoints:
         application = FastAPI()
         application.include_router(portal_module.router)
         application.dependency_overrides[get_database_pool] = lambda: pool
-        application.dependency_overrides[portal_module.get_current_client] = (
-            lambda: (_ for _ in ()).throw(HTTPException(status_code=401, detail="Authentication required"))
-        )
+        application.dependency_overrides[portal_module.get_current_client] = lambda: (
+            _ for _ in ()
+        ).throw(HTTPException(status_code=401, detail="Authentication required"))
         application.dependency_overrides[portal_module.get_portal_service] = lambda: MagicMock()
 
-        response = TestClient(application, raise_server_exceptions=False).get("/api/portal/dashboard")
+        response = TestClient(application, raise_server_exceptions=False).get(
+            "/api/portal/dashboard"
+        )
 
         assert response.status_code == 401

@@ -288,7 +288,8 @@ class HealthMonitor:
                     if not getattr(self, "_wal_privilege_warned", False):
                         self._wal_privilege_warned = True
                         logger.info(
-                            "WAL monitoring disabled: pg_ls_waldir() requires pg_monitor role. Run: GRANT pg_monitor TO backend_rag_v2; to enable. Error: %s", wal_err
+                            "WAL monitoring disabled: pg_ls_waldir() requires pg_monitor role. Run: GRANT pg_monitor TO backend_rag_v2; to enable. Error: %s",
+                            wal_err,
                         )
 
                 # Alert thresholds
@@ -352,7 +353,11 @@ class HealthMonitor:
             logger.debug("DB pool check failed: %s", e)
 
     async def _send_resource_alert_throttled(
-        self, resource: str, current: float, threshold: float, unit: str = "%",
+        self,
+        resource: str,
+        current: float,
+        threshold: float,
+        unit: str = "%",
     ) -> None:
         """Send resource alert with cooldown to avoid spam."""
         last = self._resource_alert_cooldown.get(resource)
@@ -368,7 +373,10 @@ class HealthMonitor:
         self._resource_alert_cooldown[resource] = datetime.now(tz=timezone.utc)
 
     def _update_resource_metrics(
-        self, rss_mb: float, mem_percent: float, cpu_percent: float,
+        self,
+        rss_mb: float,
+        mem_percent: float,
+        cpu_percent: float,
     ) -> None:
         """Update Prometheus gauges for resources."""
         try:

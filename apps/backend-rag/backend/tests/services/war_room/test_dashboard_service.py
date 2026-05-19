@@ -60,18 +60,20 @@ async def test_timeline_defaults_14_days_and_clamps(repo_and_service):
 @pytest.mark.asyncio
 async def test_timeline_returns_buckets(repo_and_service):
     _, conn, svc = repo_and_service
-    conn.fetch = AsyncMock(return_value=[
-        {
-            "day": date(2026, 4, 18),
-            "register": "analitico",
-            "post_count": 3,
-        },
-        {
-            "day": date(2026, 4, 18),
-            "register": "ironico",
-            "post_count": 1,
-        },
-    ])
+    conn.fetch = AsyncMock(
+        return_value=[
+            {
+                "day": date(2026, 4, 18),
+                "register": "analitico",
+                "post_count": 3,
+            },
+            {
+                "day": date(2026, 4, 18),
+                "register": "ironico",
+                "post_count": 1,
+            },
+        ]
+    )
     buckets = await svc.timeline(days=14)
     assert len(buckets) == 2
     first = buckets[0].to_dict()
@@ -86,14 +88,16 @@ async def test_timeline_returns_buckets(repo_and_service):
 @pytest.mark.asyncio
 async def test_heatmap_cells(repo_and_service):
     _, conn, svc = repo_and_service
-    conn.fetch = AsyncMock(return_value=[
-        {
-            "register": "analitico",
-            "metric_name": "reach",
-            "avg_value": 1234.5,
-            "sample_count": 8,
-        },
-    ])
+    conn.fetch = AsyncMock(
+        return_value=[
+            {
+                "register": "analitico",
+                "metric_name": "reach",
+                "avg_value": 1234.5,
+                "sample_count": 8,
+            },
+        ]
+    )
     cells = await svc.register_performance_heatmap(days=30)
     assert len(cells) == 1
     d = cells[0].to_dict()
@@ -107,12 +111,14 @@ async def test_heatmap_cells(repo_and_service):
 @pytest.mark.asyncio
 async def test_distribution_no_alert_under_threshold(repo_and_service):
     _, conn, svc = repo_and_service
-    conn.fetch = AsyncMock(return_value=[
-        {"register": "analitico", "post_count": 3},
-        {"register": "tecnico", "post_count": 3},
-        {"register": "ironico", "post_count": 3},
-        {"register": "pedagogico", "post_count": 1},
-    ])
+    conn.fetch = AsyncMock(
+        return_value=[
+            {"register": "analitico", "post_count": 3},
+            {"register": "tecnico", "post_count": 3},
+            {"register": "ironico", "post_count": 3},
+            {"register": "pedagogico", "post_count": 1},
+        ]
+    )
     result = await svc.register_distribution(days=30)
     assert result.total_posts == 10
     assert result.alert is False
@@ -125,10 +131,12 @@ async def test_distribution_no_alert_under_threshold(repo_and_service):
 @pytest.mark.asyncio
 async def test_distribution_alert_when_over_40pct(repo_and_service):
     _, conn, svc = repo_and_service
-    conn.fetch = AsyncMock(return_value=[
-        {"register": "ironico", "post_count": 5},  # 50%
-        {"register": "tecnico", "post_count": 5},
-    ])
+    conn.fetch = AsyncMock(
+        return_value=[
+            {"register": "ironico", "post_count": 5},  # 50%
+            {"register": "tecnico", "post_count": 5},
+        ]
+    )
     result = await svc.register_distribution(days=30)
     assert result.alert is True
     assert result.dominant_register == "ironico"
@@ -151,15 +159,20 @@ async def test_distribution_empty_no_alert_no_dominant(repo_and_service):
 @pytest.mark.asyncio
 async def test_funnel_stages_ordered(repo_and_service):
     _, conn, svc = repo_and_service
-    conn.fetchrow = AsyncMock(side_effect=[
-        {"n": 20},  # drafts
-        {"n": 15},  # approved
-        {"n": 12},  # published
-        {"n": 3},   # leads
-    ])
+    conn.fetchrow = AsyncMock(
+        side_effect=[
+            {"n": 20},  # drafts
+            {"n": 15},  # approved
+            {"n": 12},  # published
+            {"n": 3},  # leads
+        ]
+    )
     stages = await svc.funnel(days=30)
     assert [s.stage for s in stages] == [
-        "drafts", "approved", "published", "leads",
+        "drafts",
+        "approved",
+        "published",
+        "leads",
     ]
     assert [s.count for s in stages] == [20, 15, 12, 3]
 
@@ -178,10 +191,12 @@ async def test_funnel_handles_empty(repo_and_service):
 @pytest.mark.asyncio
 async def test_rejections_sorted_desc(repo_and_service):
     _, conn, svc = repo_and_service
-    conn.fetch = AsyncMock(return_value=[
-        {"reason": "tone", "n": 5},
-        {"reason": "clickbait", "n": 3},
-    ])
+    conn.fetch = AsyncMock(
+        return_value=[
+            {"reason": "tone", "n": 5},
+            {"reason": "clickbait", "n": 3},
+        ]
+    )
     buckets = await svc.rejection_reasons(days=30)
     assert [b.reason for b in buckets] == ["tone", "clickbait"]
     assert [b.count for b in buckets] == [5, 3]
@@ -194,14 +209,16 @@ async def test_rejections_sorted_desc(repo_and_service):
 async def test_cost_per_draft(repo_and_service):
     _, conn, svc = repo_and_service
     did = uuid4()
-    conn.fetch = AsyncMock(return_value=[
-        {
-            "draft_id": did,
-            "topic": "Permenkumham 22/2023",
-            "total_usd": Decimal("0.16"),
-            "by_type": {"imagen_ultra": Decimal("0.06"), "imagen_fast": Decimal("0.10")},
-        },
-    ])
+    conn.fetch = AsyncMock(
+        return_value=[
+            {
+                "draft_id": did,
+                "topic": "Permenkumham 22/2023",
+                "total_usd": Decimal("0.16"),
+                "by_type": {"imagen_ultra": Decimal("0.06"), "imagen_fast": Decimal("0.10")},
+            },
+        ]
+    )
     rows = await svc.cost_per_draft(days=30, limit=10)
     assert len(rows) == 1
     d = rows[0].to_dict()
@@ -215,14 +232,16 @@ async def test_cost_per_draft_handles_jsonb_string(repo_and_service):
     """PG returns jsonb as str when asyncpg doesn't register a codec — tolerate."""
     _, conn, svc = repo_and_service
     did = uuid4()
-    conn.fetch = AsyncMock(return_value=[
-        {
-            "draft_id": did,
-            "topic": "t",
-            "total_usd": Decimal("0.03"),
-            "by_type": '{"fireworks_flux": 0.03}',
-        },
-    ])
+    conn.fetch = AsyncMock(
+        return_value=[
+            {
+                "draft_id": did,
+                "topic": "t",
+                "total_usd": Decimal("0.03"),
+                "by_type": '{"fireworks_flux": 0.03}',
+            },
+        ]
+    )
     rows = await svc.cost_per_draft(days=30)
     assert rows[0].by_type == {"fireworks_flux": 0.03}
 
@@ -230,14 +249,16 @@ async def test_cost_per_draft_handles_jsonb_string(repo_and_service):
 @pytest.mark.asyncio
 async def test_cost_per_draft_empty_by_type(repo_and_service):
     _, conn, svc = repo_and_service
-    conn.fetch = AsyncMock(return_value=[
-        {
-            "draft_id": uuid4(),
-            "topic": "t",
-            "total_usd": Decimal("0.01"),
-            "by_type": None,
-        },
-    ])
+    conn.fetch = AsyncMock(
+        return_value=[
+            {
+                "draft_id": uuid4(),
+                "topic": "t",
+                "total_usd": Decimal("0.01"),
+                "by_type": None,
+            },
+        ]
+    )
     rows = await svc.cost_per_draft(days=30)
     assert rows[0].by_type == {}
 

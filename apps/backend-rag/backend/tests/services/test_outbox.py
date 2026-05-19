@@ -1,4 +1,5 @@
 """Tests for outbox helper (bridge_outbox table operations)."""
+
 from __future__ import annotations
 
 import json
@@ -89,10 +90,17 @@ async def test_fetch_outbox_events_returns_list_of_dicts():
     """fetch_outbox_events() returns list of dicts with id/type/payload/created_at."""
     conn = AsyncMock()
     fake_dt = datetime(2026, 4, 14, 10, 0, 0, tzinfo=timezone.utc)
-    conn.fetch = AsyncMock(return_value=[
-        {"id": 10, "type": "crm.client_created", "payload": {"a": 1}, "created_at": fake_dt},
-        {"id": 11, "type": "rag.low_confidence", "payload": {"q": "foo"}, "created_at": fake_dt},
-    ])
+    conn.fetch = AsyncMock(
+        return_value=[
+            {"id": 10, "type": "crm.client_created", "payload": {"a": 1}, "created_at": fake_dt},
+            {
+                "id": 11,
+                "type": "rag.low_confidence",
+                "payload": {"q": "foo"},
+                "created_at": fake_dt,
+            },
+        ]
+    )
 
     rows = await fetch_outbox_events(conn, after_id=5, limit=10)
 

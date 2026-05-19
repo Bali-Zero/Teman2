@@ -33,9 +33,16 @@ EVIDENCE_CAUTIOUS_HIGH = 0.60
 EVIDENCE_CONFIDENT = 0.70
 
 # Critical domains that warrant NLM verification
-CRITICAL_DOMAINS: frozenset[str] = frozenset({
-    "visa", "tax", "legal", "immigration", "company", "property",
-})
+CRITICAL_DOMAINS: frozenset[str] = frozenset(
+    {
+        "visa",
+        "tax",
+        "legal",
+        "immigration",
+        "company",
+        "property",
+    }
+)
 
 
 @dataclass

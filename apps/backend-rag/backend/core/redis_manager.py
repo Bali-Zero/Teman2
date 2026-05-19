@@ -309,7 +309,9 @@ class RedisManager:
                     self._stats["connections_created"] += 1
                     logger.info("Redis sync client restored — rate limiting is now distributed")
                 except Exception as sync_err:
-                    logger.warning("Redis sync client restore failed (async-only mode): %s", sync_err)
+                    logger.warning(
+                        "Redis sync client restore failed (async-only mode): %s", sync_err
+                    )
                     self._sync_client = None
 
                 self._available = True
@@ -349,7 +351,9 @@ class RedisManager:
             cursor = 0
             while True:
                 cursor, keys = await self._async_client.scan(
-                    cursor=cursor, match=pattern, count=100,
+                    cursor=cursor,
+                    match=pattern,
+                    count=100,
                 )
                 if keys:
                     deleted += await self._async_client.delete(*keys)
@@ -444,6 +448,7 @@ class RedisManager:
             # Update Prometheus gauges
             try:
                 from backend.app.metrics import metrics_collector
+
                 metrics_collector.set_redis_memory_usage(result["used_memory"])
             except Exception:
                 pass

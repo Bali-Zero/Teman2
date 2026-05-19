@@ -81,7 +81,8 @@ def mock_collection_manager():
 def hybrid_service(mock_settings, mock_collection_manager, mock_bm25_vectorizer):
     """Create hybrid search service with mocked dependencies."""
     with patch(
-        "backend.services.rag.hybrid_search.get_bm25_vectorizer", return_value=mock_bm25_vectorizer,
+        "backend.services.rag.hybrid_search.get_bm25_vectorizer",
+        return_value=mock_bm25_vectorizer,
     ):
         service = HybridSearchService(
             collection_manager=mock_collection_manager,
@@ -237,19 +238,25 @@ class TestReciprocalRankFusion:
 
         # Alpha 1.0 - all weight to dense
         result_dense = hybrid_service.reciprocal_rank_fusion(
-            dense_results, sparse_results, alpha=1.0,
+            dense_results,
+            sparse_results,
+            alpha=1.0,
         )
         dense_only_score = round(1.0 / (RRF_K + 1), 6)  # rank 1, rounded to 6 decimals
 
         # Alpha 0.0 - all weight to sparse
         result_sparse = hybrid_service.reciprocal_rank_fusion(
-            dense_results, sparse_results, alpha=0.0,
+            dense_results,
+            sparse_results,
+            alpha=0.0,
         )
         sparse_only_score = round(1.0 / (RRF_K + 1), 6)  # rank 1, rounded to 6 decimals
 
         # Alpha 0.5 - balanced
         result_balanced = hybrid_service.reciprocal_rank_fusion(
-            dense_results, sparse_results, alpha=0.5,
+            dense_results,
+            sparse_results,
+            alpha=0.5,
         )
         balanced_score = round(0.5 * (1.0 / (RRF_K + 1)) + 0.5 * (1.0 / (RRF_K + 1)), 6)
 
@@ -369,7 +376,9 @@ class TestHybridSearchIntegration:
 
     @pytest.mark.asyncio
     async def test_search_hybrid_collection_not_found(
-        self, hybrid_service, mock_collection_manager,
+        self,
+        hybrid_service,
+        mock_collection_manager,
     ):
         """Test hybrid search when collection doesn't exist."""
         mock_collection_manager.get_collection.return_value = None

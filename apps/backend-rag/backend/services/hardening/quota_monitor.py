@@ -38,14 +38,14 @@ DEFAULT_SOFT_CAPS_USD: dict[str, float] = {
     "imagen_other": 5.0,
     "fireworks_flux": 5.0,
     "deepseek_api": 5.0,
-    "claude_cli": 0.0,      # OAuth flat-rate; track for observability only
+    "claude_cli": 0.0,  # OAuth flat-rate; track for observability only
     "gemini_cli": 0.0,
     "ollama_local": 0.0,
     "other": 5.0,
 }
 
 DEFAULT_SPIKE_MULTIPLIER = 3.0
-DEFAULT_SPIKE_MIN_ABS_USD = 0.5       # ignore spikes under $0.50 abs
+DEFAULT_SPIKE_MIN_ABS_USD = 0.5  # ignore spikes under $0.50 abs
 
 
 @dataclass
@@ -156,7 +156,8 @@ class QuotaMonitor:
         return {row["cost_type"]: float(row["total"] or 0) for row in rows}
 
     async def _cost_totals_by_type_on_date(
-        self, day: date,
+        self,
+        day: date,
     ) -> dict[str, float]:
         rows = await self.repo.fetch_safe(
             """
@@ -205,13 +206,11 @@ class QuotaMonitor:
         ]
         if report.over_soft_cap:
             lines.append(
-                f"30d totale: ${report.total_30d_usd:.2f} "
-                f"(soft cap ${report.soft_cap_usd:.2f})"
+                f"30d totale: ${report.total_30d_usd:.2f} (soft cap ${report.soft_cap_usd:.2f})"
             )
         if report.daily_spike:
             lines.append(
-                f"Spike oggi: ${report.today_usd:.3f} "
-                f"vs media 7gg ${report.rolling_avg_7d_usd:.3f}"
+                f"Spike oggi: ${report.today_usd:.3f} vs media 7gg ${report.rolling_avg_7d_usd:.3f}"
             )
         sr = await self.telegram.send_message(
             chat_id=self.owner_chat_id,
@@ -223,9 +222,4 @@ class QuotaMonitor:
 def _escape_html(value: str) -> str:
     if value is None:
         return ""
-    return (
-        str(value)
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+    return str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

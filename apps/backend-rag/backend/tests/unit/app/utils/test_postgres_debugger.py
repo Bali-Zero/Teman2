@@ -174,7 +174,8 @@ class TestPostgreSQLDebuggerExecuteQuery:
         mock_pool = MagicMock()
         mock_pool.acquire = MagicMock(
             return_value=AsyncMock(
-                __aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock(return_value=None),
+                __aenter__=AsyncMock(return_value=mock_conn),
+                __aexit__=AsyncMock(return_value=None),
             ),
         )
 
@@ -205,7 +206,8 @@ class TestPostgreSQLDebuggerExecuteQuery:
         mock_pool = MagicMock()
         mock_pool.acquire = MagicMock(
             return_value=AsyncMock(
-                __aenter__=AsyncMock(return_value=mock_conn), __aexit__=AsyncMock(return_value=None),
+                __aenter__=AsyncMock(return_value=mock_conn),
+                __aexit__=AsyncMock(return_value=None),
             ),
         )
 

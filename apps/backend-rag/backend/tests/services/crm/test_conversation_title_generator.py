@@ -56,9 +56,7 @@ class TestGenerateConversationTitle:
     @patch("backend.services.crm.conversation_title_generator._generate_via_ollama")
     async def test_ollama_success(self, mock_ollama):
         mock_ollama.return_value = "PT PMA Setup Guide"
-        result = await generate_conversation_title(
-            "conv_1", "How do I set up a PT PMA in Bali?"
-        )
+        result = await generate_conversation_title("conv_1", "How do I set up a PT PMA in Bali?")
         assert result == "PT PMA Setup Guide"
         mock_ollama.assert_called_once()
 

@@ -61,11 +61,7 @@ class ConsiglioResult:
         *,
         min_agreement: int = DEFAULT_MIN_AGREEMENT,
     ) -> list[str]:
-        return [
-            c.key
-            for c in self.claims
-            if c.is_disputed(min_agreement=min_agreement)
-        ]
+        return [c.key for c in self.claims if c.is_disputed(min_agreement=min_agreement)]
 
 
 class ConsiglioV1:
@@ -106,7 +102,9 @@ class ConsiglioV1:
         active_llms = [llm for llm, cs in answers.items() if len(cs) > 0]
         logger.info(
             "Consiglio responded: %d/%d LLMs active (%s)",
-            len(active_llms), len(target_llms), ",".join(active_llms),
+            len(active_llms),
+            len(target_llms),
+            ",".join(active_llms),
         )
 
         # Merge: group by key across all responses
@@ -128,9 +126,7 @@ class ConsiglioV1:
                 if canonical_value is None:
                     canonical_value = match.get("value")
                 votes[llm] = self._values_agree(match.get("value"), canonical_value)
-            claims.append(
-                ConsiglioClaim(key=key, value=canonical_value, votes=votes)
-            )
+            claims.append(ConsiglioClaim(key=key, value=canonical_value, votes=votes))
 
         return ConsiglioResult(
             claims=claims,

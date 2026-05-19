@@ -54,7 +54,9 @@ class TestRouterStructure:
 
 class TestHealthEndpoints:
     @pytest.mark.integration
-    def test_basic_health_returns_200_for_light_process(self, app: FastAPI, client: TestClient) -> None:
+    def test_basic_health_returns_200_for_light_process(
+        self, app: FastAPI, client: TestClient
+    ) -> None:
         app.state.process_mode = "light"
         app.state.search_service = None
 
@@ -73,13 +75,20 @@ class TestHealthEndpoints:
     ) -> None:
         app.state.process_mode = "rag"
         app.state.search_service = SimpleNamespace(
-            embedder=SimpleNamespace(provider="openai", model="text-embedding-3-small", dimensions=1536),
+            embedder=SimpleNamespace(
+                provider="openai", model="text-embedding-3-small", dimensions=1536
+            ),
         )
         app.state.db_pool = MagicMock(get_size=lambda: 3, get_idle_size=lambda: 1)
 
         with (
-            patch("backend.app.routers.health.get_qdrant_stats", AsyncMock(return_value={"collections": 2, "total_documents": 42})),
-            patch("backend.app.routers.health._check_resource_thresholds", return_value=(None, None)),
+            patch(
+                "backend.app.routers.health.get_qdrant_stats",
+                AsyncMock(return_value={"collections": 2, "total_documents": 42}),
+            ),
+            patch(
+                "backend.app.routers.health._check_resource_thresholds", return_value=(None, None)
+            ),
         ):
             response = client.get("/health")
 
@@ -103,7 +112,9 @@ class TestHealthEndpoints:
         pool.get_max_size = MagicMock(return_value=10)
         pool.get_size = MagicMock(return_value=2)
 
-        app.state.search_service = SimpleNamespace(embedder=SimpleNamespace(provider="openai", model="text-embedding-3-small"))
+        app.state.search_service = SimpleNamespace(
+            embedder=SimpleNamespace(provider="openai", model="text-embedding-3-small")
+        )
         app.state.ai_client = object()
         app.state.db_pool = pool
         app.state.memory_service = object()
@@ -127,7 +138,10 @@ class TestHealthEndpoints:
 
         with (
             patch("backend.core.cache.get_cache_service", return_value=cache_service),
-            patch("backend.middleware.rate_limiter.get_rate_limit_stats", return_value={"active_buckets": 1}),
+            patch(
+                "backend.middleware.rate_limiter.get_rate_limit_stats",
+                return_value={"active_buckets": 1},
+            ),
         ):
             response = client.get("/health/detailed")
 

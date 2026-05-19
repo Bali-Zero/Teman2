@@ -279,7 +279,8 @@ async def test_hybrid_search():
 
             logger.info(f"   Time: {elapsed * 1000:.0f}ms | Results: {results['total_found']}")
             for i, (doc_id, score) in enumerate(
-                zip(results.get("ids", [])[:3], results.get("scores", [])[:3], strict=False), 1,
+                zip(results.get("ids", [])[:3], results.get("scores", [])[:3], strict=False),
+                1,
             ):
                 logger.info(f"   {i}. [{score:.3f}] {doc_id[:50]}")
 

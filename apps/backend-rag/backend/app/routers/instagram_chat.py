@@ -47,7 +47,9 @@ class InstagramWebhook(BaseModel):
 
 @router.get("/conversations")
 async def get_instagram_conversations(
-    limit: int = 50, offset: int = 0, db: Pool = Depends(get_database),
+    limit: int = 50,
+    offset: int = 0,
+    db: Pool = Depends(get_database),
 ) -> Any:
     try:
         async with db.acquire() as conn:
@@ -104,7 +106,9 @@ async def get_instagram_conversations(
 
 @router.get("/messages/{user_id}")
 async def get_instagram_messages(
-    user_id: str, limit: int = 100, db: Pool = Depends(get_database),
+    user_id: str,
+    limit: int = 100,
+    db: Pool = Depends(get_database),
 ) -> Any:
 
     try:
@@ -220,6 +224,7 @@ async def instagram_webhook(request: Request) -> dict[str, Any]:
     db_pool = None
     try:
         from backend.app.dependencies import get_database
+
         db_pool = get_database(request)
     except Exception:
         pass
@@ -237,6 +242,7 @@ async def instagram_webhook(request: Request) -> dict[str, Any]:
 
             if mid:
                 from backend.services.channels import inbound_webhook_repo
+
                 await inbound_webhook_repo.persist(
                     db_pool,
                     channel="instagram",
@@ -245,8 +251,9 @@ async def instagram_webhook(request: Request) -> dict[str, Any]:
                 )
         except Exception as exc:  # noqa: BLE001 — never block ack
             logger.warning(
-                "IG Webhook: persist failed (mid=%s): %s — "
-                "falling back to synchronous-only path", mid, exc,
+                "IG Webhook: persist failed (mid=%s): %s — falling back to synchronous-only path",
+                mid,
+                exc,
             )
 
     try:
@@ -258,6 +265,7 @@ async def instagram_webhook(request: Request) -> dict[str, Any]:
         # Record webhook metric
         try:
             from backend.app.metrics import metrics_collector
+
             metrics_collector.record_webhook_request(channel="instagram", status="success")
         except Exception:
             pass
@@ -267,6 +275,7 @@ async def instagram_webhook(request: Request) -> dict[str, Any]:
         logger.error("Failed to route IG message: %s", e)
         try:
             from backend.app.metrics import metrics_collector
+
             metrics_collector.record_webhook_request(channel="instagram", status="error")
         except Exception:
             pass

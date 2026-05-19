@@ -153,6 +153,7 @@ async def get_qdrant_stats() -> dict[str, Any]:
                     # Update per-collection Prometheus gauge
                     try:
                         from backend.app.metrics import qdrant_collection_points_count
+
                         qdrant_collection_points_count.labels(collection=coll_name).set(points)
                     except Exception:
                         pass
@@ -213,10 +214,13 @@ def _check_resource_thresholds(process_mode: str | None) -> tuple[str | None, st
 
 
 @router.get(
-    "", response_model=HealthResponse,
+    "",
+    response_model=HealthResponse,
 )  # /health without trailing slash (for Fly.io health checks)
 @router.get(
-    "/", response_model=HealthResponse, include_in_schema=False,
+    "/",
+    response_model=HealthResponse,
+    include_in_schema=False,
 )  # /health/ with trailing slash
 async def health_check(request: Request, response: Response) -> HealthResponse:
     """
@@ -332,6 +336,7 @@ async def health_check(request: Request, response: Response) -> HealthResponse:
                         db_pool_idle,
                         db_pool_size,
                     )
+
                     pool_sz = db_pool.get_size()
                     idle_sz = db_pool.get_idle_size()
                     db_pool_size.labels(service="rag").set(pool_sz)
@@ -572,7 +577,8 @@ async def detailed_health(request: Request) -> dict[str, Any]:
         from backend.app.dependencies import _agentic_rag_orchestrator
 
         if _agentic_rag_orchestrator and hasattr(
-            _agentic_rag_orchestrator, "kg_langgraph_orchestrator",
+            _agentic_rag_orchestrator,
+            "kg_langgraph_orchestrator",
         ):
             kg_orchestrator = _agentic_rag_orchestrator.kg_langgraph_orchestrator
             if kg_orchestrator:

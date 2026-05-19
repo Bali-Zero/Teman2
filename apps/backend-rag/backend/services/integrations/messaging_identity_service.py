@@ -184,7 +184,9 @@ class MessagingIdentityService:
             return False
 
     async def update_last_message(
-        self, phone: str | None = None, telegram_chat_id: int | None = None,
+        self,
+        phone: str | None = None,
+        telegram_chat_id: int | None = None,
     ) -> bool:
         """
         Update last_message_at timestamp for a user.
@@ -257,7 +259,9 @@ class MessagingIdentityService:
             return []
 
     async def deactivate_mapping(
-        self, phone: str | None = None, telegram_chat_id: int | None = None,
+        self,
+        phone: str | None = None,
+        telegram_chat_id: int | None = None,
     ) -> bool:
         """
         Deactivate a mapping (soft delete).

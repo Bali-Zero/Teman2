@@ -226,7 +226,9 @@ async def run_client_value_predictor(background_tasks: BackgroundTasks) -> Agent
 
 
 async def _run_knowledge_graph_builder_task(
-    execution_id: str, days_back: int, init_schema: bool,
+    execution_id: str,
+    days_back: int,
+    init_schema: bool,
 ) -> None:
     """Background task for knowledge graph builder execution"""
     try:
@@ -311,7 +313,10 @@ async def run_knowledge_graph_builder(
 
     # Run agent in background
     background_tasks.add_task(
-        _run_knowledge_graph_builder_task, execution_id, days_back, init_schema,
+        _run_knowledge_graph_builder_task,
+        execution_id,
+        days_back,
+        init_schema,
     )
 
     # Return immediately
@@ -382,7 +387,10 @@ async def extract_kg_sample(
     try:
         # Scroll chunks
         results = qdrant.scroll(
-            collection_name=collection, limit=sample_size, with_payload=True, with_vectors=False,
+            collection_name=collection,
+            limit=sample_size,
+            with_payload=True,
+            with_vectors=False,
         )
         chunks = results[0]
 
@@ -518,7 +526,10 @@ async def persist_kg_sample(
 
     try:
         results = qdrant.scroll(
-            collection_name=collection, limit=sample_size, with_payload=True, with_vectors=False,
+            collection_name=collection,
+            limit=sample_size,
+            with_payload=True,
+            with_vectors=False,
         )
         chunks = results[0]
 
@@ -722,7 +733,9 @@ async def list_executions(limit: int = 20) -> dict[str, Any]:
         List of recent executions
     """
     executions = sorted(
-        agent_executions.items(), key=lambda x: x[1].get("started_at", ""), reverse=True,
+        agent_executions.items(),
+        key=lambda x: x[1].get("started_at", ""),
+        reverse=True,
     )[:limit]
 
     return {

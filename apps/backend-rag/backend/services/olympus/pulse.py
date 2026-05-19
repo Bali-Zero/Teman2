@@ -23,14 +23,30 @@ if TYPE_CHECKING:
 logger = logging.getLogger("olympus.pulse")
 
 _SAFE_VACUUM_TABLES: set[str] = {
-    "api_audit_trail", "auth_audit_log", "kg_edges", "kg_nodes",
-    "company_documents", "memory_facts", "team_timesheet",
-    "whatsapp_message_context", "cell_pulse_log", "user_stats",
-    "clients", "ab_test_metrics", "whatsapp_contacts", "documents",
-    "query_analytics", "activity_log", "workflow_analytics",
-    "cell_episodes", "conversations", "episodic_memories",
-    "olympus_heartbeats", "olympus_actions",
-    "news_items", "conversation_messages",
+    "api_audit_trail",
+    "auth_audit_log",
+    "kg_edges",
+    "kg_nodes",
+    "company_documents",
+    "memory_facts",
+    "team_timesheet",
+    "whatsapp_message_context",
+    "cell_pulse_log",
+    "user_stats",
+    "clients",
+    "ab_test_metrics",
+    "whatsapp_contacts",
+    "documents",
+    "query_analytics",
+    "activity_log",
+    "workflow_analytics",
+    "cell_episodes",
+    "conversations",
+    "episodic_memories",
+    "olympus_heartbeats",
+    "olympus_actions",
+    "news_items",
+    "conversation_messages",
 }
 
 
@@ -57,14 +73,19 @@ class Pulse:
             if dead_pct <= threshold:
                 continue
             if table not in _SAFE_VACUUM_TABLES:
-                actions.append(PulseAction(
-                    action_type="vacuum", target=table,
-                    detail={"dead_pct": dead_pct},
-                    outcome="skipped",
-                    rule_applied="vacuum_dead_pct_threshold",
-                    reflection="Not in safe-list",
-                ))
-                logger.info("Skipped VACUUM on %s (dead_pct=%.1f%%, not in safe-list)", table, dead_pct)
+                actions.append(
+                    PulseAction(
+                        action_type="vacuum",
+                        target=table,
+                        detail={"dead_pct": dead_pct},
+                        outcome="skipped",
+                        rule_applied="vacuum_dead_pct_threshold",
+                        reflection="Not in safe-list",
+                    )
+                )
+                logger.info(
+                    "Skipped VACUUM on %s (dead_pct=%.1f%%, not in safe-list)", table, dead_pct
+                )
                 continue
 
             t0 = time.monotonic()
@@ -72,24 +93,32 @@ class Pulse:
                 async with self._pool.acquire() as conn:
                     await conn.execute(f"VACUUM ANALYZE {table}")  # noqa: S608
                 duration_ms = int((time.monotonic() - t0) * 1000)
-                actions.append(PulseAction(
-                    action_type="vacuum", target=table,
-                    detail={"dead_pct": dead_pct},
-                    outcome="success",
-                    duration_ms=duration_ms,
-                    rule_applied="vacuum_dead_pct_threshold",
-                ))
-                logger.info("VACUUM ANALYZE %s in %dms (dead_pct=%.1f%%)", table, duration_ms, dead_pct)
+                actions.append(
+                    PulseAction(
+                        action_type="vacuum",
+                        target=table,
+                        detail={"dead_pct": dead_pct},
+                        outcome="success",
+                        duration_ms=duration_ms,
+                        rule_applied="vacuum_dead_pct_threshold",
+                    )
+                )
+                logger.info(
+                    "VACUUM ANALYZE %s in %dms (dead_pct=%.1f%%)", table, duration_ms, dead_pct
+                )
             except Exception:
                 duration_ms = int((time.monotonic() - t0) * 1000)
-                actions.append(PulseAction(
-                    action_type="vacuum", target=table,
-                    detail={"dead_pct": dead_pct},
-                    outcome="failure",
-                    duration_ms=duration_ms,
-                    rule_applied="vacuum_dead_pct_threshold",
-                    reflection="VACUUM failed",
-                ))
+                actions.append(
+                    PulseAction(
+                        action_type="vacuum",
+                        target=table,
+                        detail={"dead_pct": dead_pct},
+                        outcome="failure",
+                        duration_ms=duration_ms,
+                        rule_applied="vacuum_dead_pct_threshold",
+                        reflection="VACUUM failed",
+                    )
+                )
                 logger.exception("VACUUM ANALYZE %s failed", table)
         return actions
 
@@ -123,9 +152,13 @@ class Pulse:
 
                     duration_ms = int((time.monotonic() - t0) * 1000)
                     return PulseAction(
-                        action_type="cleanup_audit_trail", target="api_audit_trail",
-                        detail={"retention_days": retention, "method": "detach_drop",
-                                "partitions_dropped": dropped},
+                        action_type="cleanup_audit_trail",
+                        target="api_audit_trail",
+                        detail={
+                            "retention_days": retention,
+                            "method": "detach_drop",
+                            "partitions_dropped": dropped,
+                        },
                         outcome="success",
                         duration_ms=duration_ms,
                         rule_applied="audit_retention_days",
@@ -136,8 +169,13 @@ class Pulse:
                     duration_ms = int((time.monotonic() - t0) * 1000)
                     deleted = int(result.split()[-1]) if result else 0
                     return PulseAction(
-                        action_type="cleanup_audit_trail", target="api_audit_trail",
-                        detail={"retention_days": retention, "rows_deleted": deleted, "method": "delete"},
+                        action_type="cleanup_audit_trail",
+                        target="api_audit_trail",
+                        detail={
+                            "retention_days": retention,
+                            "rows_deleted": deleted,
+                            "method": "delete",
+                        },
                         outcome="success",
                         duration_ms=duration_ms,
                         rule_applied="audit_retention_days",
@@ -146,7 +184,8 @@ class Pulse:
             duration_ms = int((time.monotonic() - t0) * 1000)
             logger.exception("cleanup_audit_trail failed")
             return PulseAction(
-                action_type="cleanup_audit_trail", target="api_audit_trail",
+                action_type="cleanup_audit_trail",
+                target="api_audit_trail",
                 detail={"retention_days": retention},
                 outcome="failure",
                 duration_ms=duration_ms,
@@ -178,19 +217,29 @@ class Pulse:
 
             detail: dict[str, Any] = {
                 "n_dead_tup": row["n_dead_tup"],
-                "suggestion": "ALTER TABLE {t} SET (autovacuum_vacuum_scale_factor = 0.05, autovacuum_analyze_scale_factor = 0.02)".format(t=row["relname"]),
+                "suggestion": "ALTER TABLE {t} SET (autovacuum_vacuum_scale_factor = 0.05, autovacuum_analyze_scale_factor = 0.02)".format(
+                    t=row["relname"]
+                ),
             }
             if suggest_fillfactor:
-                detail["fillfactor_suggestion"] = f"ALTER TABLE {row['relname']} SET (fillfactor = 85)"
+                detail["fillfactor_suggestion"] = (
+                    f"ALTER TABLE {row['relname']} SET (fillfactor = 85)"
+                )
 
-            actions.append(PulseAction(
-                action_type="autovacuum_tuning",
-                target=row["relname"],
-                detail=detail,
-                outcome="proposed",
-                reflection=f"No custom autovacuum, {row['n_dead_tup']} dead tuples",
-            ))
-            logger.info("Proposed autovacuum tuning for %s (%d dead tuples)", row["relname"], row["n_dead_tup"])
+            actions.append(
+                PulseAction(
+                    action_type="autovacuum_tuning",
+                    target=row["relname"],
+                    detail=detail,
+                    outcome="proposed",
+                    reflection=f"No custom autovacuum, {row['n_dead_tup']} dead tuples",
+                )
+            )
+            logger.info(
+                "Proposed autovacuum tuning for %s (%d dead tuples)",
+                row["relname"],
+                row["n_dead_tup"],
+            )
 
         return actions
 
@@ -225,22 +274,33 @@ class Pulse:
                     async with self._pool.acquire() as conn:
                         await conn.execute(f"SELECT setval('{seq}', {max_val})")  # noqa: S608
                     duration_ms = int((time.monotonic() - t0) * 1000)
-                    actions.append(PulseAction(
-                        action_type="repair_sequence", target=seq,
-                        detail={"table": table, "column": column, "old": last_val, "new": max_val},
-                        outcome="success",
-                        duration_ms=duration_ms,
-                    ))
+                    actions.append(
+                        PulseAction(
+                            action_type="repair_sequence",
+                            target=seq,
+                            detail={
+                                "table": table,
+                                "column": column,
+                                "old": last_val,
+                                "new": max_val,
+                            },
+                            outcome="success",
+                            duration_ms=duration_ms,
+                        )
+                    )
                     logger.info("Repaired sequence %s: %d -> %d", seq, last_val, max_val)
                 except Exception:
                     duration_ms = int((time.monotonic() - t0) * 1000)
-                    actions.append(PulseAction(
-                        action_type="repair_sequence", target=seq,
-                        detail={"table": table, "column": column},
-                        outcome="failure",
-                        duration_ms=duration_ms,
-                        reflection="setval failed",
-                    ))
+                    actions.append(
+                        PulseAction(
+                            action_type="repair_sequence",
+                            target=seq,
+                            detail={"table": table, "column": column},
+                            outcome="failure",
+                            duration_ms=duration_ms,
+                            reflection="setval failed",
+                        )
+                    )
                     logger.exception("Failed to repair sequence %s", seq)
         return actions
 
@@ -263,21 +323,27 @@ class Pulse:
                 async with self._pool.acquire() as conn:
                     await conn.execute(f"REINDEX INDEX CONCURRENTLY {idx}")  # noqa: S608
                 duration_ms = int((time.monotonic() - t0) * 1000)
-                actions.append(PulseAction(
-                    action_type="reindex", target=idx,
-                    detail={"table": table},
-                    outcome="success",
-                    duration_ms=duration_ms,
-                ))
+                actions.append(
+                    PulseAction(
+                        action_type="reindex",
+                        target=idx,
+                        detail={"table": table},
+                        outcome="success",
+                        duration_ms=duration_ms,
+                    )
+                )
             except Exception:
                 duration_ms = int((time.monotonic() - t0) * 1000)
-                actions.append(PulseAction(
-                    action_type="reindex", target=idx,
-                    detail={"table": table},
-                    outcome="failure",
-                    duration_ms=duration_ms,
-                    reflection="REINDEX CONCURRENTLY failed",
-                ))
+                actions.append(
+                    PulseAction(
+                        action_type="reindex",
+                        target=idx,
+                        detail={"table": table},
+                        outcome="failure",
+                        duration_ms=duration_ms,
+                        reflection="REINDEX CONCURRENTLY failed",
+                    )
+                )
                 logger.exception("REINDEX CONCURRENTLY %s failed", idx)
         return actions
 
@@ -293,12 +359,15 @@ class Pulse:
                 async with self._pool.acquire() as conn:
                     await conn.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {view}")  # noqa: S608
                 duration_ms = int((time.monotonic() - t0) * 1000)
-                actions.append(PulseAction(
-                    action_type="refresh_matview", target=view,
-                    detail={"concurrent": True},
-                    outcome="success",
-                    duration_ms=duration_ms,
-                ))
+                actions.append(
+                    PulseAction(
+                        action_type="refresh_matview",
+                        target=view,
+                        detail={"concurrent": True},
+                        outcome="success",
+                        duration_ms=duration_ms,
+                    )
+                )
             except Exception:
                 logger.warning("CONCURRENT refresh failed for %s, trying non-concurrent", view)
                 t0 = time.monotonic()
@@ -306,22 +375,28 @@ class Pulse:
                     async with self._pool.acquire() as conn:
                         await conn.execute(f"REFRESH MATERIALIZED VIEW {view}")  # noqa: S608
                     duration_ms = int((time.monotonic() - t0) * 1000)
-                    actions.append(PulseAction(
-                        action_type="refresh_matview", target=view,
-                        detail={"concurrent": False},
-                        outcome="success",
-                        duration_ms=duration_ms,
-                        reflection="Fell back to non-concurrent refresh",
-                    ))
+                    actions.append(
+                        PulseAction(
+                            action_type="refresh_matview",
+                            target=view,
+                            detail={"concurrent": False},
+                            outcome="success",
+                            duration_ms=duration_ms,
+                            reflection="Fell back to non-concurrent refresh",
+                        )
+                    )
                 except Exception:
                     duration_ms = int((time.monotonic() - t0) * 1000)
-                    actions.append(PulseAction(
-                        action_type="refresh_matview", target=view,
-                        detail={"concurrent": False},
-                        outcome="failure",
-                        duration_ms=duration_ms,
-                        reflection="Both concurrent and non-concurrent failed",
-                    ))
+                    actions.append(
+                        PulseAction(
+                            action_type="refresh_matview",
+                            target=view,
+                            detail={"concurrent": False},
+                            outcome="failure",
+                            duration_ms=duration_ms,
+                            reflection="Both concurrent and non-concurrent failed",
+                        )
+                    )
                     logger.exception("Refresh matview %s failed entirely", view)
         return actions
 
@@ -334,7 +409,8 @@ class Pulse:
             duration_ms = int((time.monotonic() - t0) * 1000)
             deleted = int(result.split()[-1]) if result else 0
             return PulseAction(
-                action_type="cleanup_expired_sessions", target="persistent_sessions",
+                action_type="cleanup_expired_sessions",
+                target="persistent_sessions",
                 detail={"rows_deleted": deleted},
                 outcome="success",
                 duration_ms=duration_ms,
@@ -343,7 +419,8 @@ class Pulse:
             duration_ms = int((time.monotonic() - t0) * 1000)
             logger.exception("cleanup_expired_sessions failed")
             return PulseAction(
-                action_type="cleanup_expired_sessions", target="persistent_sessions",
+                action_type="cleanup_expired_sessions",
+                target="persistent_sessions",
                 outcome="failure",
                 duration_ms=duration_ms,
                 reflection="DELETE failed",
@@ -380,8 +457,12 @@ class Pulse:
             duration_ms = int((time.monotonic() - t0) * 1000)
             logger.info("Created partition %s", partition_name)
             return PulseAction(
-                action_type="ensure_partition", target=partition_name,
-                detail={"range_start": start.strftime("%Y-%m-%d"), "range_stop": stop.strftime("%Y-%m-%d")},
+                action_type="ensure_partition",
+                target=partition_name,
+                detail={
+                    "range_start": start.strftime("%Y-%m-%d"),
+                    "range_stop": stop.strftime("%Y-%m-%d"),
+                },
                 outcome="success",
                 duration_ms=duration_ms,
             )
@@ -389,7 +470,8 @@ class Pulse:
             duration_ms = int((time.monotonic() - t0) * 1000)
             logger.exception("Failed to create partition %s", partition_name)
             return PulseAction(
-                action_type="ensure_partition", target=partition_name,
+                action_type="ensure_partition",
+                target=partition_name,
                 outcome="failure",
                 duration_ms=duration_ms,
                 reflection="CREATE TABLE partition failed",

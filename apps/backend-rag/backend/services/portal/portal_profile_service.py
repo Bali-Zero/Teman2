@@ -27,9 +27,11 @@ class PortalProfileService:
     def __init__(self, pool: asyncpg.Pool) -> None:
         self.pool = pool
 
-    @cache_invalidating([
-        lambda self, client_id, *a, **k: f"zantara:portal_profile:{client_id}:*",
-    ])
+    @cache_invalidating(
+        [
+            lambda self, client_id, *a, **k: f"zantara:portal_profile:{client_id}:*",
+        ]
+    )
     async def ensure_portal_profile(
         self,
         client_id: int,
@@ -44,7 +46,8 @@ class PortalProfileService:
         """
         if not email or not email.strip():
             logger.warning(
-                "Skipping portal profile for client %s: no email", client_id,
+                "Skipping portal profile for client %s: no email",
+                client_id,
             )
             return None
 
@@ -73,12 +76,17 @@ class PortalProfileService:
                 )
 
                 logger.info(
-                    "Portal profile ensured for client %s (email=%s, member_id=%s)", client_id, email, member_id,
+                    "Portal profile ensured for client %s (email=%s, member_id=%s)",
+                    client_id,
+                    email,
+                    member_id,
                 )
                 return member_id
 
         except Exception as e:
             logger.error(
-                "Failed to create portal profile for client %s: %s", client_id, e,
+                "Failed to create portal profile for client %s: %s",
+                client_id,
+                e,
             )
             return None

@@ -118,12 +118,15 @@ async def test_publish_happy_path_via_header():
 @pytest.mark.asyncio
 async def test_publish_falls_back_to_body_id_if_no_header():
     client = AsyncMock(spec=httpx.AsyncClient)
-    client.post = AsyncMock(return_value=_resp(
-        headers={},  # no x-restli-id
-        body={"id": "urn:li:ugcPost:777"},
-    ))
+    client.post = AsyncMock(
+        return_value=_resp(
+            headers={},  # no x-restli-id
+            body={"id": "urn:li:ugcPost:777"},
+        )
+    )
     li = LinkedInPublisher(
-        access_token="t", author_urn="urn:li:person:1",
+        access_token="t",
+        author_urn="urn:li:person:1",
         http_client=client,
     )
     result = await li.publish(_draft())
@@ -136,7 +139,8 @@ async def test_publish_missing_urn_fails():
     client = AsyncMock(spec=httpx.AsyncClient)
     client.post = AsyncMock(return_value=_resp(headers={}, body={}))
     li = LinkedInPublisher(
-        access_token="t", author_urn="urn:li:person:1",
+        access_token="t",
+        author_urn="urn:li:person:1",
         http_client=client,
     )
     result = await li.publish(_draft())
@@ -149,7 +153,8 @@ async def test_publish_http_error():
     client = AsyncMock(spec=httpx.AsyncClient)
     client.post = AsyncMock(return_value=_resp(status=401))
     li = LinkedInPublisher(
-        access_token="t", author_urn="urn:li:person:1",
+        access_token="t",
+        author_urn="urn:li:person:1",
         http_client=client,
     )
     result = await li.publish(_draft())
@@ -162,7 +167,8 @@ async def test_publish_exception_wrapped():
     client = AsyncMock(spec=httpx.AsyncClient)
     client.post = AsyncMock(side_effect=httpx.ConnectError("down"))
     li = LinkedInPublisher(
-        access_token="t", author_urn="urn:li:person:1",
+        access_token="t",
+        author_urn="urn:li:person:1",
         http_client=client,
     )
     result = await li.publish(_draft())
@@ -180,7 +186,8 @@ async def test_delete_success():
     resp.status_code = 204
     client.delete = AsyncMock(return_value=resp)
     li = LinkedInPublisher(
-        access_token="t", author_urn="urn:li:person:1",
+        access_token="t",
+        author_urn="urn:li:person:1",
         http_client=client,
     )
     assert await li.delete("urn:li:share:1") is True
@@ -191,7 +198,8 @@ async def test_delete_failure_returns_false():
     client = AsyncMock(spec=httpx.AsyncClient)
     client.delete = AsyncMock(side_effect=httpx.ConnectError("down"))
     li = LinkedInPublisher(
-        access_token="t", author_urn="urn:li:person:1",
+        access_token="t",
+        author_urn="urn:li:person:1",
         http_client=client,
     )
     assert await li.delete("urn:li:share:1") is False

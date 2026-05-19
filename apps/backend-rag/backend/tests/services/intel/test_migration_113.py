@@ -50,8 +50,10 @@ async def test_tables_exist(conn):
     """)
     names = {r["table_name"] for r in rows}
     assert names == {
-        "trend_signals", "research_dossiers",
-        "dossier_reuses", "dossier_refresh_log",
+        "trend_signals",
+        "research_dossiers",
+        "dossier_reuses",
+        "dossier_refresh_log",
     }
 
 
@@ -97,16 +99,22 @@ async def test_dossier_upsert_unique_slug(conn):
     from datetime import datetime, timedelta, timezone
 
     expiry = datetime.now(timezone.utc) + timedelta(days=30)
-    await conn.execute("""
+    await conn.execute(
+        """
         INSERT INTO research_dossiers (slug, title, topic_category, freshness_expiry)
         VALUES ('unique-slug', 'first', 'visa', $1);
-    """, expiry)
+    """,
+        expiry,
+    )
 
     with pytest.raises(asyncpg.UniqueViolationError):  # type: ignore[union-attr]
-        await conn.execute("""
+        await conn.execute(
+            """
             INSERT INTO research_dossiers (slug, title, topic_category, freshness_expiry)
             VALUES ('unique-slug', 'second', 'visa', $1);
-        """, expiry)
+        """,
+            expiry,
+        )
 
 
 @pytest.mark.asyncio

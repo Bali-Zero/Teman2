@@ -1,4 +1,5 @@
 import hmac
+
 """
 API Key Authentication Service
 Provides simple API key validation to bypass database dependency for testing
@@ -95,7 +96,9 @@ class APIKeyAuth:
         }
 
     async def validate_api_key_enhanced(
-        self, api_key: str, conn: Any | None = None,
+        self,
+        api_key: str,
+        conn: Any | None = None,
     ) -> dict[str, Any] | None:
         """
         Enhanced API key validation with DB-backed role resolution (S03).
@@ -119,7 +122,9 @@ class APIKeyAuth:
             if db_role:
                 # Update usage stats
                 if api_key in self.key_stats:
-                    self.key_stats[api_key]["usage_count"] = self.key_stats[api_key].get("usage_count", 0) + 1
+                    self.key_stats[api_key]["usage_count"] = (
+                        self.key_stats[api_key].get("usage_count", 0) + 1
+                    )
                     self.key_stats[api_key]["last_used"] = datetime.now(timezone.utc).isoformat()
 
                 logger.info(f"S03: API key resolved from DB (role={db_role['role']})")
@@ -197,7 +202,9 @@ class APIKeyAuth:
         return True
 
     async def resolve_role_from_db(
-        self, api_key: str, conn: Any,
+        self,
+        api_key: str,
+        conn: Any,
     ) -> dict[str, Any] | None:
         """
         Resolve API key role from database (S03 hardening).
@@ -242,7 +249,11 @@ class APIKeyAuth:
         return None
 
     async def auto_migrate_key(
-        self, api_key: str, legacy_role: str, legacy_permissions: list[str], conn: Any,
+        self,
+        api_key: str,
+        legacy_role: str,
+        legacy_permissions: list[str],
+        conn: Any,
     ) -> None:
         """
         Auto-migrate a legacy key to the database (S03 hardening).
@@ -268,7 +279,9 @@ class APIKeyAuth:
                 VALUES ($1, $2, $3, $4, 'auto_migrated')
                 ON CONFLICT (key_hash) DO NOTHING
                 """,
-                key_hash, key_name, legacy_role,
+                key_hash,
+                key_name,
+                legacy_role,
                 legacy_permissions,
             )
             logger.info(f"S03: Auto-migrated API key {api_key[:8]}... to DB (role={legacy_role})")

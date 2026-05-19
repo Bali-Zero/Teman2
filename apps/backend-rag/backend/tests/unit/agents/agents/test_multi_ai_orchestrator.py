@@ -55,9 +55,24 @@ def test_init_uses_adapter_factory(fake_multi_ai: RecordingMultiAI) -> None:
 @pytest.mark.parametrize(
     ("method_name", "args", "task_type", "prompt_parts"),
     [
-        ("generate_test", ("src/example.py", "def answer() -> int:\n    return 42"), TaskType.TEST_GENERATION, ["Generate comprehensive pytest test", "src/example.py", "99%+ coverage"]),
-        ("refactor_code", ("src/example.py", "x=1", "improve readability"), TaskType.REFACTORING, ["Refactor this code to: improve readability", "src/example.py", "Return ONLY code"]),
-        ("generate_documentation", ("src/example.py", "class Example:\n    pass"), TaskType.DOCUMENTATION, ["Generate comprehensive documentation", "Usage examples", "src/example.py"]),
+        (
+            "generate_test",
+            ("src/example.py", "def answer() -> int:\n    return 42"),
+            TaskType.TEST_GENERATION,
+            ["Generate comprehensive pytest test", "src/example.py", "99%+ coverage"],
+        ),
+        (
+            "refactor_code",
+            ("src/example.py", "x=1", "improve readability"),
+            TaskType.REFACTORING,
+            ["Refactor this code to: improve readability", "src/example.py", "Return ONLY code"],
+        ),
+        (
+            "generate_documentation",
+            ("src/example.py", "class Example:\n    pass"),
+            TaskType.DOCUMENTATION,
+            ["Generate comprehensive documentation", "Usage examples", "src/example.py"],
+        ),
     ],
 )
 async def test_text_methods_build_expected_ai_request(
@@ -85,9 +100,27 @@ async def test_text_methods_build_expected_ai_request(
 @pytest.mark.parametrize(
     ("method_name", "args", "task_type", "response_key", "prompt_parts"),
     [
-        ("analyze_code", ("src/example.py", "def bad(): pass"), TaskType.CODE_ANALYSIS, "analysis", ["Code quality assessment", "Security concerns", "src/example.py"]),
-        ("design_architecture", ("Billing", "needs audit log"), TaskType.ARCHITECTURE, "architecture", ["Design architecture for: Billing", "needs audit log", "Implementation plan"]),
-        ("review_code", ("src/example.py", "def risky(): pass"), TaskType.CODE_REVIEW, "review", ["Perform code review", "Security vulnerabilities", "src/example.py"]),
+        (
+            "analyze_code",
+            ("src/example.py", "def bad(): pass"),
+            TaskType.CODE_ANALYSIS,
+            "analysis",
+            ["Code quality assessment", "Security concerns", "src/example.py"],
+        ),
+        (
+            "design_architecture",
+            ("Billing", "needs audit log"),
+            TaskType.ARCHITECTURE,
+            "architecture",
+            ["Design architecture for: Billing", "needs audit log", "Implementation plan"],
+        ),
+        (
+            "review_code",
+            ("src/example.py", "def risky(): pass"),
+            TaskType.CODE_REVIEW,
+            "review",
+            ["Perform code review", "Security vulnerabilities", "src/example.py"],
+        ),
     ],
 )
 async def test_dict_methods_return_payload_with_tool_used(

@@ -47,7 +47,8 @@ async def send_client_welcome(client_id: int, db_pool: asyncpg.Pool) -> None:
     """
     if not _WHATSAPP_WELCOME_ACTIVE:
         logger.debug(
-            "WelcomeWhatsApp: inactive (template approval pending), skipping client %d", client_id,
+            "WelcomeWhatsApp: inactive (template approval pending), skipping client %d",
+            client_id,
         )
         return
 

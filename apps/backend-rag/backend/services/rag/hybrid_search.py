@@ -81,6 +81,7 @@ class HybridSearchService:
             self._embedder = embedder
         else:
             from backend.core.embeddings import create_embeddings_generator
+
             self._embedder = create_embeddings_generator()
 
         # Initialize collection manager
@@ -101,7 +102,8 @@ class HybridSearchService:
                 self._bm25_enabled = False
             except Exception as e:  # noqa: BLE001 — hybrid must degrade to dense-only, never crash init
                 logger.warning(
-                    "Failed to initialize BM25 vectorizer (unexpected): %s", e,
+                    "Failed to initialize BM25 vectorizer (unexpected): %s",
+                    e,
                     exc_info=True,
                 )
                 self._bm25_enabled = False
@@ -481,7 +483,8 @@ class HybridSearchService:
                     has_native_hybrid = False
                 except Exception as e:  # noqa: BLE001 — manual fusion fallback must still run on unknown errors
                     logger.warning(
-                        "Native hybrid search failed (unexpected): %s, falling back to manual fusion", e,
+                        "Native hybrid search failed (unexpected): %s, falling back to manual fusion",
+                        e,
                         exc_info=True,
                     )
                     has_native_hybrid = False

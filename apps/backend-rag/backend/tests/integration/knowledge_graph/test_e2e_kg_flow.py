@@ -77,7 +77,11 @@ class TestE2EKnowledgeGraphFlow:
 
     @pytest.mark.asyncio
     async def test_complete_kg_extraction_pipeline(
-        self, kg_pipeline, kg_extractor, mock_db_pool, mock_llm_gateway,
+        self,
+        kg_pipeline,
+        kg_extractor,
+        mock_db_pool,
+        mock_llm_gateway,
     ):
         """Test complete pipeline: Document → Entities → Relations → Storage"""
         document_text = """
@@ -142,7 +146,8 @@ class TestE2EKnowledgeGraphFlow:
 
             # Execute pipeline
             result = await kg_pipeline.process_chunk(
-                chunk_id="test-coreference", text=document_text,
+                chunk_id="test-coreference",
+                text=document_text,
             )
 
             # Verify coreference resolution was applied
@@ -166,7 +171,8 @@ class TestE2EKnowledgeGraphFlow:
 
             # Execute pipeline
             result = await kg_pipeline.process_chunk(
-                chunk_id="test-entity-link", text=document_text,
+                chunk_id="test-entity-link",
+                text=document_text,
             )
 
             # Verify entity linking occurred

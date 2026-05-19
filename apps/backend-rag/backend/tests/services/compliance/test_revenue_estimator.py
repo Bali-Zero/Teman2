@@ -105,6 +105,7 @@ class TestEstimateRenewalRevenue:
     def test_depend_price_returns_none(self) -> None:
         # "Revision Company" has "Depend" price
         from backend.services.compliance.renewal_rules import RenewalRule
+
         custom_rule = RenewalRule(
             rule_id="test_rule",
             document_types=("license",),

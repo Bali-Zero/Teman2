@@ -76,11 +76,21 @@ async def test_get_client_documents_success(mock_db_pool, mock_current_user):
     from backend.app.routers.crm_enhanced_documents import get_client_documents
 
     doc_row = MagicMock()
-    doc_row.__iter__ = MagicMock(return_value=iter([
-        ("id", 1), ("document_type", "passport"), ("file_name", "pass.pdf"),
-    ]))
+    doc_row.__iter__ = MagicMock(
+        return_value=iter(
+            [
+                ("id", 1),
+                ("document_type", "passport"),
+                ("file_name", "pass.pdf"),
+            ]
+        )
+    )
     doc_row.keys = MagicMock(return_value=["id", "document_type", "file_name"])
-    doc_row.__getitem__ = lambda self, k: {"id": 1, "document_type": "passport", "file_name": "pass.pdf"}[k]
+    doc_row.__getitem__ = lambda self, k: {
+        "id": 1,
+        "document_type": "passport",
+        "file_name": "pass.pdf",
+    }[k]
 
     # Use a simple dict list since dict(d) is called
     mock_db_pool._mock_conn.fetch.return_value = [
@@ -151,8 +161,13 @@ async def test_create_document_success(mock_db_pool, mock_current_user):
     with (
         patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
         patch("backend.app.routers.crm_enhanced_documents.invalidate_cache", new=AsyncMock()),
-        patch("backend.app.routers.crm_enhanced_documents._dispatch_ocr_by_folder", new=AsyncMock()),
-        patch("backend.services.portal.portal_notification_service.PortalNotificationService", side_effect=Exception("skip")),
+        patch(
+            "backend.app.routers.crm_enhanced_documents._dispatch_ocr_by_folder", new=AsyncMock()
+        ),
+        patch(
+            "backend.services.portal.portal_notification_service.PortalNotificationService",
+            side_effect=Exception("skip"),
+        ),
     ):
         result = await create_document(
             client_id=1,
@@ -190,7 +205,10 @@ async def test_create_document_no_file_id_no_ocr(mock_db_pool, mock_current_user
     with (
         patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
         patch("backend.app.routers.crm_enhanced_documents.invalidate_cache", new=AsyncMock()),
-        patch("backend.services.portal.portal_notification_service.PortalNotificationService", side_effect=Exception("skip")),
+        patch(
+            "backend.services.portal.portal_notification_service.PortalNotificationService",
+            side_effect=Exception("skip"),
+        ),
     ):
         result = await create_document(
             client_id=1,
@@ -239,7 +257,9 @@ async def test_create_documents_bulk_success(mock_db_pool, mock_current_user):
     with (
         patch("backend.app.routers.crm_enhanced_documents.verify_client_access", new=AsyncMock()),
         patch("backend.app.routers.crm_enhanced_documents.invalidate_cache", new=AsyncMock()),
-        patch("backend.app.routers.crm_enhanced_documents._dispatch_ocr_by_folder", new=AsyncMock()),
+        patch(
+            "backend.app.routers.crm_enhanced_documents._dispatch_ocr_by_folder", new=AsyncMock()
+        ),
     ):
         result = await create_documents_bulk(
             client_id=1,
@@ -489,7 +509,13 @@ async def test_get_document_categories_success(mock_db_pool, mock_current_user):
     from backend.app.routers.crm_enhanced_documents import get_document_categories
 
     mock_db_pool._mock_conn.fetch.return_value = [
-        {"code": "passport", "name": "Passport", "category_group": "immigration", "description": "Travel doc", "has_expiry": True},
+        {
+            "code": "passport",
+            "name": "Passport",
+            "category_group": "immigration",
+            "description": "Travel doc",
+            "has_expiry": True,
+        },
     ]
 
     result = await get_document_categories(
@@ -511,8 +537,22 @@ async def test_get_client_ocr_status_success(mock_db_pool, mock_current_user):
     from backend.app.routers.crm_enhanced_documents import get_client_ocr_status
 
     mock_db_pool._mock_conn.fetch.return_value = [
-        {"id": 1, "document_type": "passport", "file_name": "pass.pdf", "ocr_status": "completed", "ocr_completed_at": None, "ocr_extracted_data": None},
-        {"id": 2, "document_type": "npwp", "file_name": "npwp.jpg", "ocr_status": "pending", "ocr_completed_at": None, "ocr_extracted_data": None},
+        {
+            "id": 1,
+            "document_type": "passport",
+            "file_name": "pass.pdf",
+            "ocr_status": "completed",
+            "ocr_completed_at": None,
+            "ocr_extracted_data": None,
+        },
+        {
+            "id": 2,
+            "document_type": "npwp",
+            "file_name": "npwp.jpg",
+            "ocr_status": "pending",
+            "ocr_completed_at": None,
+            "ocr_extracted_data": None,
+        },
     ]
 
     with patch(
@@ -770,6 +810,5 @@ async def test_upload_document_base64_mirrors_company_upload_to_company_document
     assert result["success"] is True
     assert result["company_document_id"] == 301
     assert any(
-        "INSERT INTO company_documents" in call.args[0]
-        for call in conn.fetchval.await_args_list
+        "INSERT INTO company_documents" in call.args[0] for call in conn.fetchval.await_args_list
     )

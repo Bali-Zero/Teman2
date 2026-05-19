@@ -85,7 +85,8 @@ class GoogleServices:
             # Create credentials from dict or fallback to file
             if creds_dict and creds_dict.get("type") == "service_account":
                 credentials = service_account.Credentials.from_service_account_info(
-                    creds_dict, scopes=["https://www.googleapis.com/auth/drive.readonly"],
+                    creds_dict,
+                    scopes=["https://www.googleapis.com/auth/drive.readonly"],
                 )
             elif os.path.exists("google_credentials.json"):
                 logger.info("ℹ️ Using google_credentials.json file for Drive credentials")

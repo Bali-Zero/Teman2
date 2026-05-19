@@ -12,6 +12,7 @@ DB uses real Postgres; test data is committed then cleaned up in teardown
 because the router endpoints use pool.acquire() (a different connection)
 and cannot see uncommitted data from a test transaction.
 """
+
 from __future__ import annotations
 
 import os
@@ -133,9 +134,7 @@ async def _insert_client(pool: asyncpg.Pool, email: str, assigned_to: str | None
 
 async def _delete_client(pool: asyncpg.Pool, client_id: int) -> None:
     async with pool.acquire() as conn:
-        await conn.execute(
-            "DELETE FROM compliance_alerts WHERE client_id = $1", client_id
-        )
+        await conn.execute("DELETE FROM compliance_alerts WHERE client_id = $1", client_id)
         await conn.execute("DELETE FROM clients WHERE id = $1", client_id)
 
 
@@ -161,12 +160,8 @@ async def _insert_alert(pool: asyncpg.Pool, client_id: int, category: str = "vis
 
 async def _delete_alert(pool: asyncpg.Pool, alert_id: str) -> None:
     async with pool.acquire() as conn:
-        await conn.execute(
-            "DELETE FROM alert_outcomes WHERE alert_id = $1", alert_id
-        )
-        await conn.execute(
-            "DELETE FROM compliance_alerts WHERE alert_id = $1", alert_id
-        )
+        await conn.execute("DELETE FROM alert_outcomes WHERE alert_id = $1", alert_id)
+        await conn.execute("DELETE FROM compliance_alerts WHERE alert_id = $1", alert_id)
 
 
 # Admin + team user dicts
@@ -336,9 +331,7 @@ async def test_team_blocked_on_null_assigned_client(db_pool: asyncpg.Pool) -> No
         )
     try:
         app = make_app(_TEAM_USER, db_pool)
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as ac:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
             # GET detail → 403 (NULL assigned_to must be denied)
             r1 = await ac.get(f"/api/compliance/alerts/{alert_id}")
             assert r1.status_code == 403, f"Expected 403 on GET, got {r1.status_code}: {r1.text}"
@@ -348,10 +341,10 @@ async def test_team_blocked_on_null_assigned_client(db_pool: asyncpg.Pool) -> No
                 f"/api/compliance/alerts/{alert_id}/outcome",
                 json={"outcome": "acted"},
             )
-            assert r2.status_code == 403, f"Expected 403 on POST outcome, got {r2.status_code}: {r2.text}"
+            assert r2.status_code == 403, (
+                f"Expected 403 on POST outcome, got {r2.status_code}: {r2.text}"
+            )
     finally:
         async with db_pool.acquire() as conn:
-            await conn.execute(
-                "DELETE FROM compliance_alerts WHERE alert_id = $1", alert_id
-            )
+            await conn.execute("DELETE FROM compliance_alerts WHERE alert_id = $1", alert_id)
             await conn.execute("DELETE FROM clients WHERE id = $1", client_id)

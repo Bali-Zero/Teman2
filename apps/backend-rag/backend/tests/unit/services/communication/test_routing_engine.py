@@ -46,7 +46,9 @@ class TestClassifyIntent:
         assert classify_intent("Questo servizio e' inaccettabile") == MessageIntent.COMPLAINT
 
     def test_complaint_english(self):
-        assert classify_intent("This service is terrible and unacceptable") == MessageIntent.COMPLAINT
+        assert (
+            classify_intent("This service is terrible and unacceptable") == MessageIntent.COMPLAINT
+        )
 
     def test_complaint_indonesian(self):
         assert classify_intent("Saya sangat kecewa dengan pelayanan ini") == MessageIntent.COMPLAINT

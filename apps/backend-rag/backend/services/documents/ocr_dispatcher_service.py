@@ -101,17 +101,20 @@ async def _kg_link_after_ocr(
 
         if result.get("ok"):
             logger.info(
-                "kg_link_document OK for file %s (client %d, type %s): "
-                "nodes=%d edges=%d",
-                file_id, client_id, doc_type,
-                result.get("nodes", 0), result.get("edges", 0),
+                "kg_link_document OK for file %s (client %d, type %s): nodes=%d edges=%d",
+                file_id,
+                client_id,
+                doc_type,
+                result.get("nodes", 0),
+                result.get("edges", 0),
             )
         else:
             # ok=False is logged by document_linker itself; just note here
             # that the dispatcher saw the failure so it shows up in trace.
             logger.warning(
                 "kg_link_document returned ok=False for file %s: %s",
-                file_id, result.get("error"),
+                file_id,
+                result.get("error"),
             )
 
     except Exception as e:  # noqa: BLE001 — broad-except is the contract here
@@ -120,7 +123,10 @@ async def _kg_link_after_ocr(
         # documents table, populated by the handler before this hook fires.
         logger.error(
             "kg_link_document hook crashed for file %s (client %d): %s",
-            file_id, client_id, e, exc_info=True,
+            file_id,
+            client_id,
+            e,
+            exc_info=True,
         )
 
 
@@ -168,9 +174,13 @@ async def dispatch_ocr_by_folder(
         logger.info("OCR dispatch: passport detected for client %s, file %s", client_id, filename)
         ocr_result = await _auto_ocr_passport(db_pool, client_id, file_id)
         await _kg_link_after_ocr(
-            db_pool, file_id=file_id, client_id=client_id,
-            doc_type="passport", handler_result=ocr_result,
-            doc_id=doc_id, filename=filename,
+            db_pool,
+            file_id=file_id,
+            client_id=client_id,
+            doc_type="passport",
+            handler_result=ocr_result,
+            doc_id=doc_id,
+            filename=filename,
         )
         return {
             "dispatched": True,
@@ -181,17 +191,33 @@ async def dispatch_ocr_by_folder(
 
     # Visa / KITAS / KITAP detection
     visa_keywords = [
-        "kitas", "kitap", "visa", "voa", "b211", "c31",
-        "itas", "itap", "telex", "evisa",
+        "kitas",
+        "kitap",
+        "visa",
+        "voa",
+        "b211",
+        "c31",
+        "itas",
+        "itap",
+        "telex",
+        "evisa",
     ]
     if any(kw in fn_lower for kw in visa_keywords):
-        if any(kw in fn_lower for kw in visa_keywords) or "permit" in fn_lower or "stay" in fn_lower:
+        if (
+            any(kw in fn_lower for kw in visa_keywords)
+            or "permit" in fn_lower
+            or "stay" in fn_lower
+        ):
             logger.info("OCR dispatch: visa detected for client %s, file %s", client_id, filename)
             ocr_result = await _auto_ocr_visa(db_pool, client_id, file_id, doc_id)
             await _kg_link_after_ocr(
-                db_pool, file_id=file_id, client_id=client_id,
-                doc_type="visa", handler_result=ocr_result,
-                doc_id=doc_id, filename=filename,
+                db_pool,
+                file_id=file_id,
+                client_id=client_id,
+                doc_type="visa",
+                handler_result=ocr_result,
+                doc_id=doc_id,
+                filename=filename,
             )
             return {
                 "dispatched": True,
@@ -205,9 +231,13 @@ async def dispatch_ocr_by_folder(
         logger.info("OCR dispatch: NIB detected for client %s, file %s", client_id, filename)
         ocr_result = await _auto_ocr_nib(db_pool, client_id, file_id, doc_id)
         await _kg_link_after_ocr(
-            db_pool, file_id=file_id, client_id=client_id,
-            doc_type="nib", handler_result=ocr_result,
-            doc_id=doc_id, filename=filename,
+            db_pool,
+            file_id=file_id,
+            client_id=client_id,
+            doc_type="nib",
+            handler_result=ocr_result,
+            doc_id=doc_id,
+            filename=filename,
         )
         return {
             "dispatched": True,
@@ -221,9 +251,13 @@ async def dispatch_ocr_by_folder(
         logger.info("OCR dispatch: NPWP detected for client %s, file %s", client_id, filename)
         ocr_result = await _auto_ocr_npwp(db_pool, client_id, file_id, doc_id)
         await _kg_link_after_ocr(
-            db_pool, file_id=file_id, client_id=client_id,
-            doc_type="npwp", handler_result=ocr_result,
-            doc_id=doc_id, filename=filename,
+            db_pool,
+            file_id=file_id,
+            client_id=client_id,
+            doc_type="npwp",
+            handler_result=ocr_result,
+            doc_id=doc_id,
+            filename=filename,
         )
         return {
             "dispatched": True,
@@ -234,18 +268,27 @@ async def dispatch_ocr_by_folder(
 
     # Company Profile / Profil Perseroan
     profile_keywords = [
-        "company profile", "profil perseroan", "profil pt",
-        "profil perusahaan", "profile perseroan",
+        "company profile",
+        "profil perseroan",
+        "profil pt",
+        "profil perusahaan",
+        "profile perseroan",
     ]
     if any(kw in fn_lower for kw in profile_keywords) or dtype_lower in (
-        "company profile", "profile perseroan", "company_profile",
+        "company profile",
+        "profile perseroan",
+        "company_profile",
     ):
         logger.info("OCR dispatch: company_profile for client %s", client_id)
         result = await _auto_ocr_company_profile(db_pool, client_id, file_id, doc_id)
         await _kg_link_after_ocr(
-            db_pool, file_id=file_id, client_id=client_id,
-            doc_type="company_profile", handler_result=result,
-            doc_id=doc_id, filename=filename,
+            db_pool,
+            file_id=file_id,
+            client_id=client_id,
+            doc_type="company_profile",
+            handler_result=result,
+            doc_id=doc_id,
+            filename=filename,
         )
         # Existing handler returns its own dict; preserve it as-is for
         # backward compatibility but enrich with tier metadata.
@@ -262,7 +305,9 @@ async def dispatch_ocr_by_folder(
     # Gemini API). The classifier is robust against filename obfuscation
     # ("IMG_2847.pdf", "scan_001.jpeg", clienti che caricano dal cellulare).
     logger.info(
-        "OCR dispatch: filename '%s' did not match Tier 1 keywords — trying content classifier for client %s", filename, client_id,
+        "OCR dispatch: filename '%s' did not match Tier 1 keywords — trying content classifier for client %s",
+        filename,
+        client_id,
     )
     classification = await _auto_classify_content(file_id)
 
@@ -310,7 +355,10 @@ async def dispatch_ocr_by_folder(
             result = await handler_call()
         except Exception as e:
             logger.error(
-                "OCR dispatch: handler %s failed after content classification for file %s: %s", handler_name, filename, e,
+                "OCR dispatch: handler %s failed after content classification for file %s: %s",
+                handler_name,
+                filename,
+                e,
             )
             return {
                 "dispatched": False,
@@ -320,9 +368,13 @@ async def dispatch_ocr_by_folder(
             }
         # Fire KG hook after content-tier dispatch too
         await _kg_link_after_ocr(
-            db_pool, file_id=file_id, client_id=client_id,
-            doc_type=handler_name, handler_result=result,
-            doc_id=doc_id, filename=filename,
+            db_pool,
+            file_id=file_id,
+            client_id=client_id,
+            doc_type=handler_name,
+            handler_result=result,
+            doc_id=doc_id,
+            filename=filename,
         )
         # Normalize handler return shape (some handlers return raw dicts,
         # others return the already-wrapped {dispatched, handler, result}).

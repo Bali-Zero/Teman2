@@ -154,7 +154,7 @@ async def test_spike_without_prior_history_ignored(repo_tg):
         repo,
         totals_30d={"imagen_fast": 2.0},
         today={"imagen_fast": 2.0},
-        prior_7d_rows=[],   # no history
+        prior_7d_rows=[],  # no history
     )
     monitor = _monitor(repo, tg)
     result = await monitor.sweep_once()

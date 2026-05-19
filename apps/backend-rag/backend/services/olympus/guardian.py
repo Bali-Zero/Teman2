@@ -164,9 +164,16 @@ class OlympusGuardian:
         try:
             async with self._pool.acquire() as conn:
                 await conn.execute(
-                    query, action.rhythm, action.action_type, action.target,
-                    json.dumps(action.detail), action.outcome, action.duration_ms,
-                    action.rule_applied, action.reflection, action.executed_at,
+                    query,
+                    action.rhythm,
+                    action.action_type,
+                    action.target,
+                    json.dumps(action.detail),
+                    action.outcome,
+                    action.duration_ms,
+                    action.rule_applied,
+                    action.reflection,
+                    action.executed_at,
                 )
         except Exception:
             logger.exception("Failed to persist action: %s", action.action_type)
@@ -181,7 +188,8 @@ class OlympusGuardian:
             if count and count >= self._V4_INSIGHTS_THRESHOLD:
                 logger.info(
                     "v4 READY: %d insights accumulated (threshold: %d) — Voyager skills activatable",
-                    count, self._V4_INSIGHTS_THRESHOLD,
+                    count,
+                    self._V4_INSIGHTS_THRESHOLD,
                 )
         except Exception:
             pass  # non-critical

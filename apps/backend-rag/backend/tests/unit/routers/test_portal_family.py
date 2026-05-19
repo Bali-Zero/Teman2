@@ -107,9 +107,7 @@ async def test_list_family_splits_adults_and_minors() -> None:
 @pytest.mark.asyncio
 async def test_list_family_graceful_on_missing_table() -> None:
     mock_conn = AsyncMock()
-    mock_conn.fetch.side_effect = Exception(
-        "relation 'client_family_members' does not exist"
-    )
+    mock_conn.fetch.side_effect = Exception("relation 'client_family_members' does not exist")
 
     class _PoolCtx:
         async def __aenter__(self):

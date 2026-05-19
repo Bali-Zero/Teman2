@@ -308,7 +308,9 @@ def test_create_news_with_image_url_skips_enqueue(client, mock_db_pool):
     conn = mock_db_pool._mock_conn
     conn.fetchrow = AsyncMock(return_value={"id": "uuid-2", "slug": "with-image"})
 
-    with patch("backend.app.routers.news._enqueue_post_publish", new_callable=AsyncMock) as mock_enqueue:
+    with patch(
+        "backend.app.routers.news._enqueue_post_publish", new_callable=AsyncMock
+    ) as mock_enqueue:
         response = client.post(
             "/api/news",
             json={

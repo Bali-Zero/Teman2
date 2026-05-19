@@ -195,7 +195,8 @@ _TRANSLATE_SYSTEM = (
 
 
 @cached(
-    ttl=604800, prefix="kbli_translate_v14",
+    ttl=604800,
+    prefix="kbli_translate_v14",
 )  # Cache translations for 7 days (v13: recommendation redirect fix)
 async def _translate_query_for_kbli(query: str) -> str:
     """Translate any-language query to Indonesian KBLI search terms."""
@@ -312,7 +313,9 @@ def _detect_language(query: str) -> str:
 
 
 async def _generate_kbli_explanation_gemini(
-    query: str, results: list[KBLISearchResult], parent_docs: dict[str, str] = None,
+    query: str,
+    results: list[KBLISearchResult],
+    parent_docs: dict[str, str] = None,
 ) -> str:
     """Generate KBLI explanation using Gemini Flash - Fast, Cost-Effective.
 
@@ -324,10 +327,13 @@ async def _generate_kbli_explanation_gemini(
 
 
 @cached(
-    ttl=43200, prefix="kbli_explain_v27",
+    ttl=43200,
+    prefix="kbli_explain_v27",
 )  # Cache explanations for 12 hours (v27: 56101 PMA/Besar risk corrected to Menengah Tinggi)
 async def _generate_kbli_explanation(
-    query: str, results: list[KBLISearchResult], parent_docs: dict[str, str] = None,
+    query: str,
+    results: list[KBLISearchResult],
+    parent_docs: dict[str, str] = None,
 ) -> str:
     """Generate a grounded explanation of KBLI search results using LLM.
 
@@ -611,7 +617,10 @@ def _is_multi_domain_query(query: str) -> bool:
 
     if is_multi_domain:
         logger.info(
-            "🌐 Multi-domain query detected: business=%s, visa=%s, legal=%s", has_business, has_visa, has_legal,
+            "🌐 Multi-domain query detected: business=%s, visa=%s, legal=%s",
+            has_business,
+            has_visa,
+            has_legal,
         )
 
     return is_multi_domain
@@ -630,7 +639,8 @@ async def _fetch_parent_documents_from_kbli_table(codes: list[str], pool) -> dic
     try:
         async with pool.acquire() as conn:
             rows = await conn.fetch(
-                "SELECT kode_kbli, content FROM kbli_documents WHERE kode_kbli = ANY($1)", codes,
+                "SELECT kode_kbli, content FROM kbli_documents WHERE kode_kbli = ANY($1)",
+                codes,
             )
             for row in rows:
                 parent_docs[row["kode_kbli"]] = row["content"]
@@ -742,7 +752,10 @@ async def chat_kbli(
                 direct_kbli_match = KBLISearchResult(
                     code=code,
                     title=_payload_value(
-                        qdrant_payload, "judul", "title_id", default=f"KBLI {code}",
+                        qdrant_payload,
+                        "judul",
+                        "title_id",
+                        default=f"KBLI {code}",
                     ),
                     description=(
                         _payload_value(qdrant_payload, "content", "text", "description", default="")
@@ -751,10 +764,14 @@ async def chat_kbli(
                     + "...",
                     score=1.0,
                     pma_status=_payload_value(
-                        qdrant_payload, "pma_status", default="Verify at OSS",
+                        qdrant_payload,
+                        "pma_status",
+                        default="Verify at OSS",
                     ),
                     risk_category=_payload_value(
-                        qdrant_payload, "kategori_risiko", default="Verify at OSS",
+                        qdrant_payload,
+                        "kategori_risiko",
+                        default="Verify at OSS",
                     ),
                 )
                 logger.info(
@@ -1243,7 +1260,8 @@ async def chat_kbli(
 
         if not has_direct_match and not filtered_results and results:
             logger.warning(
-                "⚠️ All results below threshold %s. Triggering ABSTAIN.", MIN_RELEVANCE_SCORE,
+                "⚠️ All results below threshold %s. Triggering ABSTAIN.",
+                MIN_RELEVANCE_SCORE,
             )
             query_lang = _detect_language(kbli_request.query)
             if query_lang == "Indonesian":

@@ -174,7 +174,7 @@ async def test_get_rag_stats(
     mock_conn.fetchrow.return_value = {
         "total": 250,
         "avg_latency": 320.5,
-        "avg_embedding": 0.045,   # seconds
+        "avg_embedding": 0.045,  # seconds
         "avg_search": 0.12,
         "avg_rerank": 0.08,
         "avg_llm": 0.55,
@@ -393,6 +393,7 @@ async def test_get_qdrant_stats(aggregator: AnalyticsAggregator) -> None:
     if analytics_module is None:
         # Module not imported yet -- create a minimal stub module
         import types
+
         analytics_module = types.ModuleType("backend.app.routers.analytics")
         sys.modules["backend.app.routers.analytics"] = analytics_module
 
@@ -433,6 +434,7 @@ async def test_get_feedback_stats(
     analytics_module = sys.modules.get("backend.app.routers.analytics")
     if analytics_module is None:
         import types
+
         analytics_module = types.ModuleType("backend.app.routers.analytics")
         sys.modules["backend.app.routers.analytics"] = analytics_module
 
@@ -470,7 +472,11 @@ async def test_get_feedback_stats(
         assert result.avg_rating == 4.35
         assert result.total_ratings == 142  # 80+45+15+1+1
         assert result.rating_distribution == {
-            "5": 80, "4": 45, "3": 15, "2": 1, "1": 1,
+            "5": 80,
+            "4": 45,
+            "3": 15,
+            "2": 1,
+            "1": 1,
         }
         assert result.negative_feedback_count == 2
         assert len(result.recent_negative_feedback) == 1
@@ -500,6 +506,7 @@ async def test_get_alert_stats(
     analytics_module = sys.modules.get("backend.app.routers.analytics")
     if analytics_module is None:
         import types
+
         analytics_module = types.ModuleType("backend.app.routers.analytics")
         sys.modules["backend.app.routers.analytics"] = analytics_module
 

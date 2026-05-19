@@ -24,7 +24,9 @@ class MockRunner(CLIRunner):
     call_count: int = 0
 
     async def run(
-        self, prompt: str, timeout: int | None = None,
+        self,
+        prompt: str,
+        timeout: int | None = None,
     ) -> RunnerResult:
         idx = self.call_count
         self.call_count += 1
@@ -97,14 +99,17 @@ def _judge_json(
     rationale: str = "ok",
     suggested: str | None = None,
 ) -> str:
-    return json.dumps({
-        "verdict": verdict,
-        "rationale": rationale,
-        "suggested_prompt_fix": suggested,
-    })
+    return json.dumps(
+        {
+            "verdict": verdict,
+            "rationale": rationale,
+            "suggested_prompt_fix": suggested,
+        }
+    )
 
 
 # ── Happy paths ────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_judge_pass_when_all_green():
@@ -142,6 +147,7 @@ async def test_judge_hard_reject():
 
 
 # ── Fallbacks ─────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_judge_fallback_retry_on_bad_flags_when_runner_fails():

@@ -102,9 +102,7 @@ class InvoiceAutomationService:
                 # the existing visual stays untouched for non-discounted
                 # invoices.
                 discount_value = practice_data.get("discount_amount")
-                discount_amount_float = (
-                    float(discount_value) if discount_value is not None else 0.0
-                )
+                discount_amount_float = float(discount_value) if discount_value is not None else 0.0
                 discount_reason_value = practice_data.get("discount_reason")
                 quoted_price_float = float(practice_data.get("quoted_price", 0))
                 # Defensive clamp matches the generator's logic so the email,
@@ -164,13 +162,15 @@ class InvoiceAutomationService:
                         amount=final_amount_float,
                         triggered_by=triggered_by,
                         team_member_email=(
-                            practice_data.get("assigned_to")
-                            or practice_data.get("created_by")
+                            practice_data.get("assigned_to") or practice_data.get("created_by")
                         ),
                     )
                     email_sent = True
                     await record_email_result(
-                        self.db_pool, audit_row_id, status="sent", provider="brevo",
+                        self.db_pool,
+                        audit_row_id,
+                        status="sent",
+                        provider="brevo",
                     )
                     logger.info(f"Invoice email sent to client {client_data['email']}")
                 except Exception as email_error:
@@ -181,7 +181,10 @@ class InvoiceAutomationService:
                         f"Failed to send invoice email to {client_data['email']}: {err_msg}",
                     )
                     await record_email_result(
-                        self.db_pool, audit_row_id, status="failed", provider="brevo",
+                        self.db_pool,
+                        audit_row_id,
+                        status="failed",
+                        provider="brevo",
                         error_message=err_msg,
                     )
                     notify_email_failure_critical(
@@ -308,7 +311,11 @@ class InvoiceAutomationService:
         )
 
         cc_emails = list(INVOICE_CC_EMAILS)
-        if team_member_email and team_member_email not in cc_emails and team_member_email != client_email:
+        if (
+            team_member_email
+            and team_member_email not in cc_emails
+            and team_member_email != client_email
+        ):
             cc_emails.append(team_member_email)
         if triggered_by and triggered_by not in cc_emails and triggered_by != client_email:
             cc_emails.append(triggered_by)

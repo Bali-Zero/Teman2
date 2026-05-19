@@ -1,4 +1,5 @@
 """Tests for Olympus v2 Pulse — outcome values match DB CHECK constraint."""
+
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -12,6 +13,7 @@ class TestPulseOutcomes:
     def test_no_ok_or_error_in_code(self):
         """BUG-1 fix: pulse must never emit 'ok' or 'error' as outcome."""
         import inspect
+
         source = inspect.getsource(Pulse)
         assert 'outcome="ok"' not in source, "Found 'ok' outcome — must be 'success'"
         assert 'outcome="error"' not in source, "Found 'error' outcome — must be 'failure'"
@@ -20,6 +22,7 @@ class TestPulseOutcomes:
         """Every outcome literal in pulse.py must match the DB CHECK constraint."""
         import inspect
         import re
+
         source = inspect.getsource(Pulse)
         outcomes = re.findall(r'outcome="(\w+)"', source)
         for o in outcomes:
@@ -29,10 +32,12 @@ class TestPulseOutcomes:
 @pytest.fixture
 def mock_rules():
     rules = MagicMock()
-    rules.get_threshold = MagicMock(side_effect=lambda name, default=None: {
-        "vacuum_dead_pct_threshold": 5,
-        "audit_retention_days": 90,
-    }.get(name, default))
+    rules.get_threshold = MagicMock(
+        side_effect=lambda name, default=None: {
+            "vacuum_dead_pct_threshold": 5,
+            "audit_retention_days": 90,
+        }.get(name, default)
+    )
     return rules
 
 
@@ -46,8 +51,13 @@ class TestAutovacuumAdvisor:
         ctx.__aexit__ = AsyncMock(return_value=False)
         pool.acquire.return_value = ctx
         conn.fetch.return_value = [
-            {"relname": "big_table", "reloptions": None,
-             "n_dead_tup": 50000, "n_tup_upd": 10000, "n_tup_ins": 5000},
+            {
+                "relname": "big_table",
+                "reloptions": None,
+                "n_dead_tup": 50000,
+                "n_tup_upd": 10000,
+                "n_tup_ins": 5000,
+            },
         ]
         pulse = Pulse(pool, mock_rules)
         actions = await pulse.autovacuum_advisor()
@@ -64,9 +74,13 @@ class TestAutovacuumAdvisor:
         ctx.__aexit__ = AsyncMock(return_value=False)
         pool.acquire.return_value = ctx
         conn.fetch.return_value = [
-            {"relname": "tuned_table",
-             "reloptions": ["autovacuum_vacuum_scale_factor=0.02"],
-             "n_dead_tup": 50000, "n_tup_upd": 10000, "n_tup_ins": 5000},
+            {
+                "relname": "tuned_table",
+                "reloptions": ["autovacuum_vacuum_scale_factor=0.02"],
+                "n_dead_tup": 50000,
+                "n_tup_upd": 10000,
+                "n_tup_ins": 5000,
+            },
         ]
         pulse = Pulse(pool, mock_rules)
         actions = await pulse.autovacuum_advisor()

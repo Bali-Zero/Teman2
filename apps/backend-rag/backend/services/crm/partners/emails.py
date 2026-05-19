@@ -10,6 +10,7 @@ PII sterilization (UU PDP 27/2022):
 - Client full names are sterilized to "First L." before passing to any template.
 - Sterilization happens in Python, never inside Jinja2 templates.
 """
+
 from __future__ import annotations
 
 import logging
@@ -76,6 +77,7 @@ def _get_api_key() -> str:
 
 
 # ─── Internal helpers ───────────────────────────────────────────────────────
+
 
 async def _post_email(*, to: str, cc: list[str] | None, subject: str, body: str) -> None:
     """
@@ -150,22 +152,29 @@ def _build_pricing_services() -> list[dict[str, str]]:
                 price_str = entry.get("price") or entry.get("final_price") or "On request"
                 if not isinstance(price_str, str):
                     price_str = str(price_str)
-                result.append({
-                    "name": str(service_name),
-                    "price_display": price_str,
-                })
+                result.append(
+                    {
+                        "name": str(service_name),
+                        "price_display": price_str,
+                    }
+                )
         elif isinstance(entries, list):
             # Legacy flat-list shape, keep for safety
             for item in entries:
                 if isinstance(item, dict) and "name" in item:
-                    result.append({
-                        "name": str(item["name"]),
-                        "price_display": str(item.get("price_display") or item.get("price") or "On request"),
-                    })
+                    result.append(
+                        {
+                            "name": str(item["name"]),
+                            "price_display": str(
+                                item.get("price_display") or item.get("price") or "On request"
+                            ),
+                        }
+                    )
     return result
 
 
 # ─── Public API ─────────────────────────────────────────────────────────────
+
 
 async def enqueue_welcome(
     conn: Any,
@@ -179,6 +188,7 @@ async def enqueue_welcome(
     The email payload is frozen at enqueue time and sent later by flush_outbox().
     """
     from backend.services.crm.partners.repository import PartnersRepository
+
     repo = PartnersRepository(conn)
     p = await repo.get_partner(partner_id)
     if p is None:
@@ -230,6 +240,7 @@ async def enqueue_commission_earned(
     The email payload is frozen at enqueue time and sent later by flush_outbox().
     """
     from backend.services.crm.partners.repository import PartnersRepository
+
     repo = PartnersRepository(conn)
     c = await repo.get_commission(commission_id)
     if c is None or c.status != "paid":
@@ -247,9 +258,7 @@ async def enqueue_commission_earned(
 
     p = await repo.get_partner(c.partner_id)
     if p is None:
-        logger.warning(
-            "enqueue_commission_earned: partner %s not found — skip", c.partner_id
-        )
+        logger.warning("enqueue_commission_earned: partner %s not found — skip", c.partner_id)
         return
 
     proc = None
@@ -264,7 +273,11 @@ async def enqueue_commission_earned(
             c.practice_id,
         )
 
-    service_type = (proc["service_type"] if proc and proc["service_type"] else "service") if proc else "service"
+    service_type = (
+        (proc["service_type"] if proc and proc["service_type"] else "service")
+        if proc
+        else "service"
+    )
     raw_client_name = (proc["client_name"] or "") if proc else ""
     client_display = _sterilize(raw_client_name) if raw_client_name else "client"
 
@@ -272,7 +285,8 @@ async def enqueue_commission_earned(
     if c.assigned_to_snapshot is not None:
         row = await conn.fetchrow(
             # CATA-5: assigned_to_snapshot is team_members.id (VARCHAR string ID)
-            "SELECT email FROM team_members WHERE id = $1", c.assigned_to_snapshot
+            "SELECT email FROM team_members WHERE id = $1",
+            c.assigned_to_snapshot,
         )
         if row and row["email"]:
             cc_list.append(row["email"])
@@ -306,7 +320,8 @@ async def enqueue_commission_earned(
     )
     logger.info(
         "enqueue_commission_earned: enqueued for commission %s to %s",
-        commission_id, p.email,
+        commission_id,
+        p.email,
     )
 
 
@@ -318,6 +333,7 @@ async def flush_outbox(conn: Any, limit: int = 50) -> dict:
     v1: synchronous. v2 will replace with an async worker process.
     """
     from backend.services.crm.partners.repository import PartnersRepository
+
     repo = PartnersRepository(conn)
     pending = await repo.list_pending_outbox(limit=limit)
     sent = retried = dlq = 0
@@ -436,7 +452,11 @@ async def send_commission_earned(conn: Any, commission_id: UUID) -> None:
             c.practice_id,
         )
 
-    service_type = (proc["service_type"] if proc and proc["service_type"] else "service") if proc else "service"
+    service_type = (
+        (proc["service_type"] if proc and proc["service_type"] else "service")
+        if proc
+        else "service"
+    )
     raw_client_name = (proc["client_name"] or "") if proc else ""
 
     # UU PDP: sterilize BEFORE template render, never inside template

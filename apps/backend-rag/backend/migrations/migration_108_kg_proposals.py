@@ -19,6 +19,7 @@ Reference: SYMBIOSIS.md Pilastro 6 (Curiosità), Legge 5 (Zero ultima istanza)
 Author: Claude Opus 4.6
 Date: 2026-04-16
 """
+
 from __future__ import annotations
 
 import logging

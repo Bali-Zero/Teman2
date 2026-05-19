@@ -129,7 +129,9 @@ class SMTPProvider(EmailProvider):
                     # Support both "name" (new) and "filename" (legacy)
                     filename = attachment.get("name") or attachment.get("filename", "attachment")
                     content = attachment.get("content")
-                    attachment.get("contentType") or attachment.get("content_type", "application/octet-stream")
+                    attachment.get("contentType") or attachment.get(
+                        "content_type", "application/octet-stream"
+                    )
 
                     if content:
                         # `content` is the base64-encoded payload from the API caller.
@@ -356,7 +358,9 @@ class NotificationService:
             if not client_email:
                 logger.warning(f"No email found for client {alert.client_id}")
                 await self._update_alert_status(
-                    alert, AlertStatus.SUPPRESSED, "No email address found",
+                    alert,
+                    AlertStatus.SUPPRESSED,
+                    "No email address found",
                 )
                 results.append(
                     NotificationResult(

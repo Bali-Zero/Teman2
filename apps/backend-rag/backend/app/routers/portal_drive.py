@@ -67,4 +67,6 @@ async def list_subfolder_files(
     drive_service: ServiceAccountDriveService = Depends(_get_drive_service),
 ) -> dict[str, Any]:
     """Block Drive subfolder navigation from the client portal."""
-    raise HTTPException(status_code=404, detail="Drive navigation is not exposed in the client portal")
+    raise HTTPException(
+        status_code=404, detail="Drive navigation is not exposed in the client portal"
+    )

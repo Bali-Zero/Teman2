@@ -106,7 +106,9 @@ class TestDomainAgentCallsSearchIntel:
         agent = _make_agent(search_intel=mock_intel)
         resp = await agent.search("immigration policy", "latest changes")
 
-        intel_results = [r for r in resp.results if r.source_type == "internal" and "intel" in r.url]
+        intel_results = [
+            r for r in resp.results if r.source_type == "internal" and "intel" in r.url
+        ]
         assert len(intel_results) >= 1
 
 
@@ -320,9 +322,7 @@ class TestDomainAgentHandlesPartialFailure:
     @pytest.mark.asyncio()
     async def test_exa_fails_others_succeed(self) -> None:
         mock_exa = AsyncMock(side_effect=ConnectionError("exa unreachable"))
-        mock_ask = AsyncMock(
-            return_value={"answer": "legal answer", "sources": []}
-        )
+        mock_ask = AsyncMock(return_value={"answer": "legal answer", "sources": []})
         agent = _make_agent(ask_legal=mock_ask, exa_call=mock_exa)
         resp = await agent.search("tax info", "pajak details")
 
@@ -333,9 +333,7 @@ class TestDomainAgentHandlesPartialFailure:
     @pytest.mark.asyncio()
     async def test_notebook_query_fails_others_succeed(self) -> None:
         mock_nlm = AsyncMock(side_effect=TimeoutError("NLM timeout"))
-        mock_ask = AsyncMock(
-            return_value={"answer": "still works", "sources": []}
-        )
+        mock_ask = AsyncMock(return_value={"answer": "still works", "sources": []})
         agent = _make_agent(ask_legal=mock_ask, notebook_query=mock_nlm)
         resp = await agent.search("immigration", "visa overview")
 
@@ -344,9 +342,7 @@ class TestDomainAgentHandlesPartialFailure:
 
     @pytest.mark.asyncio()
     async def test_all_optional_fail_ask_legal_succeeds(self) -> None:
-        mock_ask = AsyncMock(
-            return_value={"answer": "legal only", "sources": []}
-        )
+        mock_ask = AsyncMock(return_value={"answer": "legal only", "sources": []})
         agent = _make_agent(
             ask_legal=mock_ask,
             search_intel=AsyncMock(side_effect=RuntimeError("intel down")),

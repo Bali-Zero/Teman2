@@ -25,9 +25,7 @@ _EXPECTED_DOMAINS = {
     "lifestyle",
 }
 
-_UUID_RE = re.compile(
-    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
-)
+_UUID_RE = re.compile(r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$")
 
 
 def test_registry_has_all_seven_domains() -> None:
@@ -208,7 +206,9 @@ def test_resolve_notebook_uses_primary_id_when_primary_exists_and_law_query(monk
     assert result["notebook_id"] == fake_primary
 
 
-def test_resolve_notebook_uses_operational_id_when_primary_exists_but_not_law_query(monkeypatch) -> None:
+def test_resolve_notebook_uses_operational_id_when_primary_exists_but_not_law_query(
+    monkeypatch,
+) -> None:
     """When primary_notebook_id is set but query has no law keywords → use operational."""
     fake_primary = "aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee"
     patched = dict(reg.NLM_NOTEBOOKS["immigration"])

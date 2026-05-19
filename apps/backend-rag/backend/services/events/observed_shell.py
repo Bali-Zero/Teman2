@@ -104,13 +104,14 @@ class ObservedShellBus:
         try:
             payload_json = json.dumps(payload or {}, default=str)
         except (TypeError, ValueError) as exc:
-            payload_json = json.dumps({"_serialize_error": repr(exc),
-                                       "_repr": repr(payload)[:1000]})
+            payload_json = json.dumps(
+                {"_serialize_error": repr(exc), "_repr": repr(payload)[:1000]}
+            )
 
         record = {
             "automation_name": automation_name,
             "status": status,
-            "payload_json": payload_json,    # already-serialized; safe to round-trip
+            "payload_json": payload_json,  # already-serialized; safe to round-trip
             "trace_id": trace_id,
             "created_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         }

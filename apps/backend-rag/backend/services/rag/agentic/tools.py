@@ -229,7 +229,8 @@ class VectorSearchTool(BaseTool):
 
             # Sort by score and take top results
             all_chunks.sort(
-                key=lambda x: x.get("score", 0) if isinstance(x, dict) else 0, reverse=True,
+                key=lambda x: x.get("score", 0) if isinstance(x, dict) else 0,
+                reverse=True,
             )
             chunks = all_chunks[:top_k]
 
@@ -440,11 +441,13 @@ class PricingTool(BaseTool):
     async def execute(self, service_type: str = "all", query: str = None, **kwargs) -> str:
         try:
             if not self.pricing_service.loaded:
-                return str({
-                    "error": True,
-                    "message": "Pricing service unavailable — prices not loaded",
-                    "action": "Redirect client to support: info@balizero.com",
-                })
+                return str(
+                    {
+                        "error": True,
+                        "message": "Pricing service unavailable — prices not loaded",
+                        "action": "Redirect client to support: info@balizero.com",
+                    }
+                )
             if query:
                 result = self.pricing_service.search_service(query)
             else:
@@ -452,11 +455,13 @@ class PricingTool(BaseTool):
             return str(result)
         except Exception as e:
             logger.error("Pricing lookup failed: %s", e)
-            return str({
-                "error": True,
-                "message": f"Pricing lookup failed: {e}",
-                "action": "DO NOT guess prices — redirect to support",
-            })
+            return str(
+                {
+                    "error": True,
+                    "message": f"Pricing lookup failed: {e}",
+                    "action": "DO NOT guess prices — redirect to support",
+                }
+            )
 
 
 class TeamKnowledgeTool(BaseTool):
@@ -620,7 +625,9 @@ class ImageGenerationTool(BaseTool):
                     "3:4": "width=768&height=1024",
                 }
                 params = aspect_params.get(aspect_ratio, "width=1024&height=1024")
-                image_url = f"https://image.pollinations.ai/prompt/{quote(prompt)}?{params}&nologo=true"
+                image_url = (
+                    f"https://image.pollinations.ai/prompt/{quote(prompt)}?{params}&nologo=true"
+                )
 
                 logger.info(f"[ImageGen] Generating image: {prompt[:50]}...")
                 set_span_attribute("success", True)
@@ -1077,25 +1084,33 @@ class CRMTool(BaseTool):
                             COUNT(*) AS total
                         FROM practices
                     """)
-                    return json.dumps({
-                        "clients": dict(row) if row else {},
-                        "practices": dict(practice_row) if practice_row else {},
-                    }, default=str)
+                    return json.dumps(
+                        {
+                            "clients": dict(row) if row else {},
+                            "practices": dict(practice_row) if practice_row else {},
+                        },
+                        default=str,
+                    )
 
                 elif query_type == "search_clients":
                     if not search_term:
                         return json.dumps({"error": "search_term required"})
-                    rows = await conn.fetch("""
+                    rows = await conn.fetch(
+                        """
                         SELECT id, full_name, email, nationality, status, phone
                         FROM clients
                         WHERE full_name ILIKE $1 OR email ILIKE $1 OR passport_number ILIKE $1
                         ORDER BY updated_at DESC
                         LIMIT $2
-                    """, f"%{search_term}%", limit)
+                    """,
+                        f"%{search_term}%",
+                        limit,
+                    )
                     return json.dumps([dict(r) for r in rows], default=str)
 
                 elif query_type == "expiring_documents":
-                    rows = await conn.fetch("""
+                    rows = await conn.fetch(
+                        """
                         SELECT c.full_name, c.email, c.nationality,
                                p.practice_type_id, p.status, p.notes,
                                p.updated_at
@@ -1108,11 +1123,14 @@ class CRMTool(BaseTool):
                           )
                         ORDER BY p.updated_at DESC
                         LIMIT $1
-                    """, limit)
+                    """,
+                        limit,
+                    )
                     return json.dumps([dict(r) for r in rows], default=str)
 
                 elif query_type == "practice_stats":
-                    rows = await conn.fetch("""
+                    rows = await conn.fetch(
+                        """
                         SELECT
                             COALESCE(pt.name, 'Unknown') AS service_type,
                             COUNT(*) AS count,
@@ -1123,17 +1141,22 @@ class CRMTool(BaseTool):
                         GROUP BY pt.name
                         ORDER BY count DESC
                         LIMIT $1
-                    """, limit)
+                    """,
+                        limit,
+                    )
                     return json.dumps([dict(r) for r in rows], default=str)
 
                 elif query_type == "recent_clients":
-                    rows = await conn.fetch("""
+                    rows = await conn.fetch(
+                        """
                         SELECT id, full_name, email, nationality, status, created_at
                         FROM clients
                         WHERE status = 'active'
                         ORDER BY created_at DESC
                         LIMIT $1
-                    """, limit)
+                    """,
+                        limit,
+                    )
                     return json.dumps([dict(r) for r in rows], default=str)
 
                 else:

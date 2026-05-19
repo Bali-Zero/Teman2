@@ -37,6 +37,7 @@ _W_RELEVANCE = 0.35
 # Internal helpers
 # ------------------------------------------------------------------
 
+
 def _extract_domain(url: str) -> str:
     """Return the bare hostname from *url* (e.g. ``"pajak.go.id"``)."""
     try:
@@ -106,6 +107,7 @@ def _freshness_score(freshness_date: date | None) -> float:
 # Public API
 # ------------------------------------------------------------------
 
+
 def score_source(
     source: SearchResult,
     relevance: float = 0.5,
@@ -129,11 +131,7 @@ def score_source(
     cred = _credibility_score(source.url, source.source_type, weights)
     fresh = _freshness_score(source.freshness_date)
 
-    combined = (
-        cred * _W_CREDIBILITY
-        + fresh * _W_FRESHNESS
-        + relevance * _W_RELEVANCE
-    )
+    combined = cred * _W_CREDIBILITY + fresh * _W_FRESHNESS + relevance * _W_RELEVANCE
     # Clamp to [0, 1] defensively
     return max(0.0, min(1.0, combined))
 
@@ -179,11 +177,9 @@ def score_sources(
         cred = _credibility_score(src.url, src.source_type, weights)
         fresh = _freshness_score(src.freshness_date)
 
-        combined = max(0.0, min(1.0,
-            cred * _W_CREDIBILITY
-            + fresh * _W_FRESHNESS
-            + rel * _W_RELEVANCE
-        ))
+        combined = max(
+            0.0, min(1.0, cred * _W_CREDIBILITY + fresh * _W_FRESHNESS + rel * _W_RELEVANCE)
+        )
 
         if combined < threshold:
             logger.debug(

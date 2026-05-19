@@ -229,7 +229,9 @@ async def _auto_ocr_passport(db_pool: Any, client_id: int, file_id: str) -> dict
     try:
         # Get client name for verification
         async with db_pool.acquire() as conn:
-            client = await conn.fetchrow("SELECT full_name FROM clients WHERE id = $1 AND deleted_at IS NULL", client_id)
+            client = await conn.fetchrow(
+                "SELECT full_name FROM clients WHERE id = $1 AND deleted_at IS NULL", client_id
+            )
             if not client:
                 return {"success": False, "error": "Client not found"}
             existing_name = client["full_name"]
@@ -348,7 +350,9 @@ async def _auto_ocr_passport(db_pool: Any, client_id: int, file_id: str) -> dict
         return {"success": False, "error": str(e)}
 
 
-async def _auto_ocr_visa(db_pool: Any, client_id: int, file_id: str, doc_id: int | None = None) -> dict:
+async def _auto_ocr_visa(
+    db_pool: Any, client_id: int, file_id: str, doc_id: int | None = None
+) -> dict:
     """
     OCR on visa/KITAS/KITAP document → extract visa_type, expiry, number.
     Updates documents.expiry_date and documents.ocr_extracted_data.
@@ -425,7 +429,9 @@ async def _auto_ocr_visa(db_pool: Any, client_id: int, file_id: str, doc_id: int
             expiry_date_parsed = None
             if extracted.get("expiry_date"):
                 try:
-                    expiry_date_parsed = datetime.strptime(extracted["expiry_date"], "%Y-%m-%d").date()
+                    expiry_date_parsed = datetime.strptime(
+                        extracted["expiry_date"], "%Y-%m-%d"
+                    ).date()
                 except ValueError:
                     logger.info(
                         "crm_enhanced.visa_expiry_unparseable",
@@ -458,7 +464,11 @@ async def _auto_ocr_visa(db_pool: Any, client_id: int, file_id: str, doc_id: int
                     *sync_params,
                 )
                 logger.info(
-                    "Synced visa OCR to client %s: type=%s, expiry=%s, sponsor=%s", client_id, visa_type, expiry_date_parsed, sponsor
+                    "Synced visa OCR to client %s: type=%s, expiry=%s, sponsor=%s",
+                    client_id,
+                    visa_type,
+                    expiry_date_parsed,
+                    sponsor,
                 )
 
         logger.info(
@@ -471,7 +481,9 @@ async def _auto_ocr_visa(db_pool: Any, client_id: int, file_id: str, doc_id: int
         return {"success": False, "error": str(e)}
 
 
-async def _auto_ocr_nib(db_pool: Any, client_id: int, file_id: str, doc_id: int | None = None) -> dict:
+async def _auto_ocr_nib(
+    db_pool: Any, client_id: int, file_id: str, doc_id: int | None = None
+) -> dict:
     """
     OCR on NIB (Nomor Induk Berusaha) document → extract NIB number, company_name, KBLI codes.
     Updates companies table if client has a linked company.
@@ -548,7 +560,9 @@ async def _auto_ocr_nib(db_pool: Any, client_id: int, file_id: str, doc_id: int 
         return {"success": False, "error": str(e)}
 
 
-async def _auto_ocr_npwp(db_pool: Any, client_id: int, file_id: str, doc_id: int | None = None) -> dict:
+async def _auto_ocr_npwp(
+    db_pool: Any, client_id: int, file_id: str, doc_id: int | None = None
+) -> dict:
     """
     OCR on NPWP (tax ID) document → extract NPWP number, address, KPP.
     Updates clients or companies table.
@@ -629,7 +643,9 @@ async def _auto_ocr_npwp(db_pool: Any, client_id: int, file_id: str, doc_id: int
         return {"success": False, "error": str(e)}
 
 
-async def _auto_ocr_company_profile(db_pool: Any, client_id: int, file_id: str, doc_id: int | None = None) -> dict:
+async def _auto_ocr_company_profile(
+    db_pool: Any, client_id: int, file_id: str, doc_id: int | None = None
+) -> dict:
     """
     OCR on Profil Perseroan / Company Profile document.
     Extracts: shareholders, capital, akta, SK, notaris, address, KBLI.
@@ -664,16 +680,27 @@ async def _auto_ocr_company_profile(db_pool: Any, client_id: int, file_id: str, 
         # Build custom_fields update
         custom_fields: dict[str, str] = {}
         for key in [
-            "authorized_capital", "paid_up_capital", "shareholders",
-            "akta_no", "akta_date", "sk_no", "sk_date",
-            "notaris", "notaris_kedudukan", "company_status",
-            "jangka_waktu", "kbli_codes", "risk_status",
-            "share_price", "total_shares",
+            "authorized_capital",
+            "paid_up_capital",
+            "shareholders",
+            "akta_no",
+            "akta_date",
+            "sk_no",
+            "sk_date",
+            "notaris",
+            "notaris_kedudukan",
+            "company_status",
+            "jangka_waktu",
+            "kbli_codes",
+            "risk_status",
+            "share_price",
+            "total_shares",
         ]:
             val = extracted.get(key)
             if val is not None:
                 if isinstance(val, (list, dict)):
                     import json as json_module
+
                     custom_fields[key] = json_module.dumps(val)
                 else:
                     custom_fields[key] = str(val)
@@ -705,11 +732,15 @@ async def _auto_ocr_company_profile(db_pool: Any, client_id: int, file_id: str, 
 
             if company_id and custom_fields:
                 import json as json_module
+
                 # Merge custom_fields (preserve existing, add new)
                 existing_cf = await conn.fetchval(
-                    "SELECT custom_fields FROM companies WHERE id = $1", company_id,
+                    "SELECT custom_fields FROM companies WHERE id = $1",
+                    company_id,
                 )
-                merged = json_module.loads(existing_cf) if existing_cf and existing_cf != '{}' else {}
+                merged = (
+                    json_module.loads(existing_cf) if existing_cf and existing_cf != "{}" else {}
+                )
                 merged.update(custom_fields)
 
                 # Also update dedicated columns
@@ -740,7 +771,9 @@ async def _auto_ocr_company_profile(db_pool: Any, client_id: int, file_id: str, 
                     f"UPDATE companies SET {', '.join(update_parts)} WHERE id = ${idx}",
                     *params,
                 )
-                logger.info(f"Auto OCR company profile: updated company {company_id} with {len(custom_fields)} fields")
+                logger.info(
+                    f"Auto OCR company profile: updated company {company_id} with {len(custom_fields)} fields"
+                )
 
         return {"success": True, "extracted": extracted}
 
@@ -1463,7 +1496,6 @@ async def delete_family_member(
 # ============================================
 # DOCUMENTS ENDPOINTS
 # ============================================
-
 
 
 # DOCUMENT/ALERTS ENDPOINTS → crm_enhanced_documents.py, crm_enhanced_alerts.py

@@ -39,6 +39,7 @@ def extract_migration_stem(path: Path) -> str:
 # 1. No bare migration_NNN.py files (duplicates should have a/b/c suffix)
 # ---------------------------------------------------------------------------
 
+
 def test_no_bare_number_duplicates() -> None:
     """After rename, no file should be migration_NNN.py with a sibling migration_NNN_something.py."""
     files = get_all_migration_files()
@@ -56,7 +57,9 @@ def test_no_bare_number_duplicates() -> None:
             # Check if any is bare (no suffix letter after NNN)
             bare = [f for f in group if re.match(rf"^migration_{num}\.py$", f.name)]
             if bare:
-                violations.append(f"Bare file {bare[0].name} has siblings: {[f.name for f in group]}")
+                violations.append(
+                    f"Bare file {bare[0].name} has siblings: {[f.name for f in group]}"
+                )
 
     assert not violations, "Found bare-number files with siblings:\n" + "\n".join(violations)
 
@@ -64,6 +67,7 @@ def test_no_bare_number_duplicates() -> None:
 # ---------------------------------------------------------------------------
 # 2. No sibling duplicates: no two files share exact NNN without a/b/c
 # ---------------------------------------------------------------------------
+
 
 def test_no_duplicate_numbers_without_suffix() -> None:
     """No two files should have same NNN with no suffix distinction."""
@@ -85,6 +89,7 @@ def test_no_duplicate_numbers_without_suffix() -> None:
 # 3. Valid file naming convention
 # ---------------------------------------------------------------------------
 
+
 def test_all_files_follow_naming_convention() -> None:
     """Every migration_*.py must match migration_NNN[a-z?]_description.py or migration_NNN.py (legacy bare allowed if solo)."""
     files = get_all_migration_files()
@@ -98,6 +103,7 @@ def test_all_files_follow_naming_convention() -> None:
 # ---------------------------------------------------------------------------
 # 4. Legacy whitelist covers all pre-cutoff files
 # ---------------------------------------------------------------------------
+
 
 def test_all_current_files_in_whitelist_or_post_cutoff() -> None:
     """Every file in migrations/ should either be in the legacy whitelist OR
@@ -123,6 +129,7 @@ def test_all_current_files_in_whitelist_or_post_cutoff() -> None:
 # 5. Post-cutoff files (> 111) use BaseMigration with rollback_sql
 #    We check via AST — no DB connection needed.
 # ---------------------------------------------------------------------------
+
 
 def _has_rollback_sql_kwarg(source: str) -> bool:
     """Return True if source contains a BaseMigration() call with rollback_sql keyword."""

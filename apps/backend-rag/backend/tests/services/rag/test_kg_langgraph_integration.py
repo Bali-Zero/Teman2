@@ -175,7 +175,8 @@ async def test_extract_returns_workflow_when_langgraph_succeeds():
     )
 
     entities, context_str, workflow = await core.extract_entities_and_kg_context(
-        "test query", user_context={},
+        "test query",
+        user_context={},
     )
 
     assert workflow is not None
@@ -213,7 +214,8 @@ async def test_extract_returns_none_workflow_when_langgraph_fails():
     )
 
     entities, context_str, workflow = await core.extract_entities_and_kg_context(
-        "test query", user_context={},
+        "test query",
+        user_context={},
     )
 
     assert workflow is None
@@ -330,7 +332,9 @@ async def test_prepare_query_context_returns_5_tuple():
     core.kg_langgraph_orchestrator = None
 
     result = await core.prepare_query_context(
-        query="test", user_id="user1", conversation_history=None,
+        query="test",
+        user_id="user1",
+        conversation_history=None,
     )
 
     assert len(result) == 5

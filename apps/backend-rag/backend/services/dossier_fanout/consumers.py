@@ -69,6 +69,7 @@ def _result_from_fn_output(
 
 # ── 1. Zantara chatbot RAG ─────────────────────────────────────
 
+
 class ZantaraRAGConsumer(DossierConsumer):
     """Upsert dossier summary into Qdrant for chatbot retrieval.
 
@@ -77,7 +78,7 @@ class ZantaraRAGConsumer(DossierConsumer):
     """
 
     consumer_type = ConsumerType.CHATBOT
-    require_public_safe = False   # even private dossiers can inform internal replies
+    require_public_safe = False  # even private dossiers can inform internal replies
 
     def __init__(self, rag_upsert_fn: RagUpsertFn) -> None:
         self.rag_upsert_fn = rag_upsert_fn
@@ -88,6 +89,7 @@ class ZantaraRAGConsumer(DossierConsumer):
 
 
 # ── 2. CRM alerting ────────────────────────────────────────────
+
 
 class CRMAlertingConsumer(DossierConsumer):
     """Join dossier entities with client segments, insert CRM alerts.
@@ -108,6 +110,7 @@ class CRMAlertingConsumer(DossierConsumer):
 
 
 # ── 3. NotebookLM feeder ───────────────────────────────────────
+
 
 class NLMFeederConsumer(DossierConsumer):
     """Upload dossier content as a new source into the correct NB-N.
@@ -131,6 +134,7 @@ class NLMFeederConsumer(DossierConsumer):
 
 # ── 4. KG Curiosity Loop ───────────────────────────────────────
 
+
 class CuriosityConsumer(DossierConsumer):
     """Close open curiosity gaps that this dossier covers.
 
@@ -151,6 +155,7 @@ class CuriosityConsumer(DossierConsumer):
 
 
 # ── 5. War Room Director notifier ──────────────────────────────
+
 
 class WarRoomDirectorConsumer(DossierConsumer):
     """Notify the War Room Director that a fresh dossier is available.

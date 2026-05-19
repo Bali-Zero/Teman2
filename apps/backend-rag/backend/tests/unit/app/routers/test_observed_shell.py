@@ -72,9 +72,7 @@ def test_router_mounts_at_documented_path():
 def test_emit_happy_path_returns_202(authed_client):
     """Valid POST → 202 Accepted with EmitResponse body."""
     client, app = authed_client
-    with patch(
-        "backend.app.routers.observed_shell.ObservedShellBus"
-    ) as bus_cls:
+    with patch("backend.app.routers.observed_shell.ObservedShellBus") as bus_cls:
         bus_cls.return_value.emit = AsyncMock()
         r = client.post(
             "/api/observed-shell/emit",
@@ -124,9 +122,7 @@ def test_emit_missing_required_field_returns_422(authed_client):
 def test_emit_payload_optional(authed_client):
     """payload + trace_id are optional; emit() receives None for both."""
     client, _ = authed_client
-    with patch(
-        "backend.app.routers.observed_shell.ObservedShellBus"
-    ) as bus_cls:
+    with patch("backend.app.routers.observed_shell.ObservedShellBus") as bus_cls:
         bus_cls.return_value.emit = AsyncMock()
         r = client.post(
             "/api/observed-shell/emit",
@@ -180,8 +176,7 @@ def test_router_registered_in_both_include_functions():
     include_routers(full)
     full_paths = {r.path for r in full.routes if hasattr(r, "path")}
     assert "/api/observed-shell/emit" in full_paths, (
-        "include_routers() does NOT mount /api/observed-shell/emit — "
-        "Sprint 1.B cicatrix regression"
+        "include_routers() does NOT mount /api/observed-shell/emit — Sprint 1.B cicatrix regression"
     )
 
     light = FastAPI()

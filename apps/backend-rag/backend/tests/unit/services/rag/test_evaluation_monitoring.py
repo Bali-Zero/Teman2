@@ -13,8 +13,8 @@ import pytest
 # safe_register_metric
 # ============================================================================
 
-class TestSafeRegisterMetric:
 
+class TestSafeRegisterMetric:
     def test_register_new_metric(self):
         from prometheus_client import REGISTRY, Gauge
 
@@ -58,8 +58,8 @@ class TestSafeRegisterMetric:
 # QueryMetricsRecord
 # ============================================================================
 
-class TestQueryMetricsRecord:
 
+class TestQueryMetricsRecord:
     def test_create_record(self):
         from backend.services.rag.evaluation.monitoring import QueryMetricsRecord
 
@@ -102,8 +102,8 @@ class TestQueryMetricsRecord:
 # AlertThresholds
 # ============================================================================
 
-class TestAlertThresholds:
 
+class TestAlertThresholds:
     def test_defaults(self):
         from backend.services.rag.evaluation.monitoring import AlertThresholds
 
@@ -142,11 +142,12 @@ class TestAlertThresholds:
 # RetrievalQualityMonitor
 # ============================================================================
 
-class TestRetrievalQualityMonitor:
 
+class TestRetrievalQualityMonitor:
     @pytest.fixture
     def monitor(self):
         from backend.services.rag.evaluation.monitoring import RetrievalQualityMonitor
+
         return RetrievalQualityMonitor()
 
     # --- record_query_metrics ---
@@ -288,17 +289,19 @@ class TestRetrievalQualityMonitor:
 
         now = datetime.now(tz=timezone.utc).replace(tzinfo=None)
         for i in range(5):
-            monitor._query_records.append(QueryMetricsRecord(
-                timestamp=now - timedelta(minutes=i),
-                query_hash=f"h{i}",
-                query_text=f"query {i}",
-                retrieval_score=0.5 + i * 0.1,
-                latency_ms=100.0 + i * 50,
-                search_type="dense",
-                use_reranker=False,
-                cache_hit=i % 2 == 0,
-                result_count=3,
-            ))
+            monitor._query_records.append(
+                QueryMetricsRecord(
+                    timestamp=now - timedelta(minutes=i),
+                    query_hash=f"h{i}",
+                    query_text=f"query {i}",
+                    retrieval_score=0.5 + i * 0.1,
+                    latency_ms=100.0 + i * 50,
+                    search_type="dense",
+                    use_reranker=False,
+                    cache_hit=i % 2 == 0,
+                    result_count=3,
+                )
+            )
 
         data = await monitor.get_dashboard_data("1h")
         assert data["total_queries"] == 5
@@ -311,30 +314,34 @@ class TestRetrievalQualityMonitor:
         from backend.services.rag.evaluation.monitoring import QueryMetricsRecord
 
         now = datetime.now(tz=timezone.utc).replace(tzinfo=None)
-        monitor._query_records.append(QueryMetricsRecord(
-            timestamp=now,
-            query_hash="a1",
-            query_text="abstain",
-            retrieval_score=0.0,
-            latency_ms=0.0,
-            search_type="none",
-            use_reranker=False,
-            cache_hit=False,
-            result_count=0,
-            abstained=True,
-            abstain_reason="low_confidence",
-        ))
-        monitor._query_records.append(QueryMetricsRecord(
-            timestamp=now,
-            query_hash="q1",
-            query_text="normal",
-            retrieval_score=0.8,
-            latency_ms=100.0,
-            search_type="dense",
-            use_reranker=False,
-            cache_hit=False,
-            result_count=3,
-        ))
+        monitor._query_records.append(
+            QueryMetricsRecord(
+                timestamp=now,
+                query_hash="a1",
+                query_text="abstain",
+                retrieval_score=0.0,
+                latency_ms=0.0,
+                search_type="none",
+                use_reranker=False,
+                cache_hit=False,
+                result_count=0,
+                abstained=True,
+                abstain_reason="low_confidence",
+            )
+        )
+        monitor._query_records.append(
+            QueryMetricsRecord(
+                timestamp=now,
+                query_hash="q1",
+                query_text="normal",
+                retrieval_score=0.8,
+                latency_ms=100.0,
+                search_type="dense",
+                use_reranker=False,
+                cache_hit=False,
+                result_count=3,
+            )
+        )
 
         data = await monitor.get_dashboard_data("1h")
         assert data["usage_patterns"]["abstain_rate"] == 50.0
@@ -352,17 +359,19 @@ class TestRetrievalQualityMonitor:
 
         now = datetime.now(tz=timezone.utc).replace(tzinfo=None)
         for i in range(3):
-            monitor._query_records.append(QueryMetricsRecord(
-                timestamp=now - timedelta(days=i),
-                query_hash=f"t{i}",
-                query_text=f"trend {i}",
-                retrieval_score=0.7,
-                latency_ms=100.0,
-                search_type="dense",
-                use_reranker=False,
-                cache_hit=False,
-                result_count=3,
-            ))
+            monitor._query_records.append(
+                QueryMetricsRecord(
+                    timestamp=now - timedelta(days=i),
+                    query_hash=f"t{i}",
+                    query_text=f"trend {i}",
+                    retrieval_score=0.7,
+                    latency_ms=100.0,
+                    search_type="dense",
+                    use_reranker=False,
+                    cache_hit=False,
+                    result_count=3,
+                )
+            )
 
         trend = await monitor.get_scores_trend(days=7)
         assert len(trend) > 0
@@ -381,16 +390,34 @@ class TestRetrievalQualityMonitor:
         from backend.services.rag.evaluation.monitoring import QueryMetricsRecord
 
         now = datetime.now(tz=timezone.utc).replace(tzinfo=None)
-        monitor._query_records.append(QueryMetricsRecord(
-            timestamp=now, query_hash="a", query_text="", retrieval_score=0.0,
-            latency_ms=0.0, search_type="none", use_reranker=False, cache_hit=False,
-            result_count=0, abstained=True, abstain_reason="safety",
-        ))
-        monitor._query_records.append(QueryMetricsRecord(
-            timestamp=now, query_hash="b", query_text="normal", retrieval_score=0.8,
-            latency_ms=100.0, search_type="dense", use_reranker=False, cache_hit=False,
-            result_count=3,
-        ))
+        monitor._query_records.append(
+            QueryMetricsRecord(
+                timestamp=now,
+                query_hash="a",
+                query_text="",
+                retrieval_score=0.0,
+                latency_ms=0.0,
+                search_type="none",
+                use_reranker=False,
+                cache_hit=False,
+                result_count=0,
+                abstained=True,
+                abstain_reason="safety",
+            )
+        )
+        monitor._query_records.append(
+            QueryMetricsRecord(
+                timestamp=now,
+                query_hash="b",
+                query_text="normal",
+                retrieval_score=0.8,
+                latency_ms=100.0,
+                search_type="dense",
+                use_reranker=False,
+                cache_hit=False,
+                result_count=3,
+            )
+        )
 
         stats = await monitor.get_abstain_statistics(days=7)
         assert stats["total_abstains"] == 1
@@ -410,11 +437,19 @@ class TestRetrievalQualityMonitor:
 
         now = datetime.now(tz=timezone.utc).replace(tzinfo=None)
         for ms in [50, 100, 200, 500, 1000]:
-            monitor._query_records.append(QueryMetricsRecord(
-                timestamp=now, query_hash="l", query_text="", retrieval_score=0.5,
-                latency_ms=ms, search_type="dense", use_reranker=False, cache_hit=False,
-                result_count=3,
-            ))
+            monitor._query_records.append(
+                QueryMetricsRecord(
+                    timestamp=now,
+                    query_hash="l",
+                    query_text="",
+                    retrieval_score=0.5,
+                    latency_ms=ms,
+                    search_type="dense",
+                    use_reranker=False,
+                    cache_hit=False,
+                    result_count=3,
+                )
+            )
 
         result = await monitor.get_latency_percentiles(days=7)
         assert result["total_queries"] == 5
@@ -507,15 +542,17 @@ class TestRetrievalQualityMonitor:
 
     def test_no_breaches(self, monitor):
         breaches = monitor._get_threshold_breaches(
-            avg_score=0.8, abstain_rate_val=0.05,
-            avg_latency=100.0, cache_hit_rate_val=0.7,
+            avg_score=0.8,
+            abstain_rate_val=0.05,
+            avg_latency=100.0,
+            cache_hit_rate_val=0.7,
         )
         assert len(breaches) == 0
 
     def test_all_breaches(self, monitor):
         breaches = monitor._get_threshold_breaches(
-            avg_score=0.1,        # Below 0.3
-            abstain_rate_val=0.5, # Above 0.2
+            avg_score=0.1,  # Below 0.3
+            abstain_rate_val=0.5,  # Above 0.2
             avg_latency=10000.0,  # Above 5000
             cache_hit_rate_val=0.1,  # Below 0.5
         )
@@ -528,8 +565,10 @@ class TestRetrievalQualityMonitor:
 
     def test_score_breach_only(self, monitor):
         breaches = monitor._get_threshold_breaches(
-            avg_score=0.1, abstain_rate_val=0.05,
-            avg_latency=100.0, cache_hit_rate_val=0.8,
+            avg_score=0.1,
+            abstain_rate_val=0.05,
+            avg_latency=100.0,
+            cache_hit_rate_val=0.8,
         )
         assert len(breaches) == 1
         assert breaches[0]["metric"] == "retrieval_score"
@@ -537,8 +576,10 @@ class TestRetrievalQualityMonitor:
 
     def test_abstain_breach_is_critical(self, monitor):
         breaches = monitor._get_threshold_breaches(
-            avg_score=0.8, abstain_rate_val=0.5,
-            avg_latency=100.0, cache_hit_rate_val=0.8,
+            avg_score=0.8,
+            abstain_rate_val=0.5,
+            avg_latency=100.0,
+            cache_hit_rate_val=0.8,
         )
         assert len(breaches) == 1
         assert breaches[0]["severity"] == "critical"
@@ -555,16 +596,30 @@ class TestRetrievalQualityMonitor:
         now = datetime.now(tz=timezone.utc).replace(tzinfo=None)
         records = [
             QueryMetricsRecord(
-                timestamp=now, query_hash="a", query_text="",
-                retrieval_score=0.0, latency_ms=0.0, search_type="none",
-                use_reranker=False, cache_hit=False, result_count=0,
-                abstained=True, abstain_reason="safety",
+                timestamp=now,
+                query_hash="a",
+                query_text="",
+                retrieval_score=0.0,
+                latency_ms=0.0,
+                search_type="none",
+                use_reranker=False,
+                cache_hit=False,
+                result_count=0,
+                abstained=True,
+                abstain_reason="safety",
             ),
             QueryMetricsRecord(
-                timestamp=now, query_hash="b", query_text="",
-                retrieval_score=0.0, latency_ms=0.0, search_type="none",
-                use_reranker=False, cache_hit=False, result_count=0,
-                abstained=True, abstain_reason="low_confidence",
+                timestamp=now,
+                query_hash="b",
+                query_text="",
+                retrieval_score=0.0,
+                latency_ms=0.0,
+                search_type="none",
+                use_reranker=False,
+                cache_hit=False,
+                result_count=0,
+                abstained=True,
+                abstain_reason="low_confidence",
             ),
         ]
         result = monitor._get_daily_abstain_breakdown(records, days=1)
@@ -580,10 +635,14 @@ class TestRetrievalQualityMonitor:
 
         record = QueryMetricsRecord(
             timestamp=datetime.now(tz=timezone.utc).replace(tzinfo=None),
-            query_hash="pm", query_text="prometheus test",
-            retrieval_score=0.8, latency_ms=200.0,
-            search_type="hybrid", use_reranker=True,
-            cache_hit=False, result_count=5,
+            query_hash="pm",
+            query_text="prometheus test",
+            retrieval_score=0.8,
+            latency_ms=200.0,
+            search_type="hybrid",
+            use_reranker=True,
+            cache_hit=False,
+            result_count=5,
         )
         monitor._update_prometheus_metrics(record)  # Should not raise
 
@@ -592,10 +651,14 @@ class TestRetrievalQualityMonitor:
 
         record = QueryMetricsRecord(
             timestamp=datetime.now(tz=timezone.utc).replace(tzinfo=None),
-            query_hash="abs", query_text="",
-            retrieval_score=0.0, latency_ms=0.0,
-            search_type="none", use_reranker=False,
-            cache_hit=False, result_count=0,
+            query_hash="abs",
+            query_text="",
+            retrieval_score=0.0,
+            latency_ms=0.0,
+            search_type="none",
+            use_reranker=False,
+            cache_hit=False,
+            result_count=0,
             abstained=True,
         )
         monitor._update_prometheus_metrics(record)  # Abstained → no evidence_score observe
@@ -605,14 +668,16 @@ class TestRetrievalQualityMonitor:
 # Global instance and dependency injection helper
 # ============================================================================
 
-class TestGlobalMonitor:
 
+class TestGlobalMonitor:
     def test_global_instance_exists(self):
         from backend.services.rag.evaluation.monitoring import retrieval_quality_monitor
+
         assert retrieval_quality_monitor is not None
 
     @pytest.mark.asyncio
     async def test_get_retrieval_quality_monitor(self):
         from backend.services.rag.evaluation.monitoring import get_retrieval_quality_monitor
+
         monitor = await get_retrieval_quality_monitor()
         assert monitor is not None

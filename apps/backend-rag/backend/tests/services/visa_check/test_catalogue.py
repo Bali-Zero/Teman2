@@ -34,7 +34,9 @@ def _find_repo_root(start: Path) -> Path:
 
 
 REPO_ROOT = _find_repo_root(Path(__file__).resolve())
-SEED_PATH = REPO_ROOT / "apps/backend-rag/backend/migrations/scripts/seed_visa_types_complete_2026.py"
+SEED_PATH = (
+    REPO_ROOT / "apps/backend-rag/backend/migrations/scripts/seed_visa_types_complete_2026.py"
+)
 
 
 def _load_seed() -> dict[str, dict]:
@@ -51,13 +53,29 @@ class TestEnumStability:
 
     def test_all_18_codes_present(self):
         expected = {
-            "C1", "C2", "C6", "C7", "C7A", "C7B", "C18", "C22A",
-            "D2", "D12",
-            "E23", "E23-FREELANCE", "E28A", "E30A", "E31",
-            "E33E", "E33F", "E33G",
+            "C1",
+            "C2",
+            "C6",
+            "C7",
+            "C7A",
+            "C7B",
+            "C18",
+            "C22A",
+            "D2",
+            "D12",
+            "E23",
+            "E23-FREELANCE",
+            "E28A",
+            "E30A",
+            "E31",
+            "E33E",
+            "E33F",
+            "E33G",
         }
         got = {vt.value for vt in VisaType}
-        assert got == expected, f"VisaType values drift: extra={got-expected} missing={expected-got}"
+        assert got == expected, (
+            f"VisaType values drift: extra={got - expected} missing={expected - got}"
+        )
 
     def test_e23_freelance_has_hyphen_value(self):
         assert VisaType.E23_FREELANCE.value == "E23-FREELANCE"

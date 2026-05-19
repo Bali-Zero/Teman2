@@ -74,7 +74,8 @@ class TestLegalIngestRouter:
         mock_get_service.return_value = mock_service
 
         response = client.post(
-            "/api/legal/ingest", json={"file_path": "/test/document.pdf", "title": "Test Document"},
+            "/api/legal/ingest",
+            json={"file_path": "/test/document.pdf", "title": "Test Document"},
         )
         assert response.status_code == 200
         data = response.json()
@@ -110,7 +111,8 @@ class TestLegalIngestRouter:
         mock_get_service.return_value = mock_service
 
         response = client.post(
-            "/api/legal/ingest", json={"file_path": "/test/document.pdf", "tier": "A"},
+            "/api/legal/ingest",
+            json={"file_path": "/test/document.pdf", "tier": "A"},
         )
         assert response.status_code == 200
 
@@ -120,7 +122,8 @@ class TestLegalIngestRouter:
         mock_path.return_value.exists.return_value = True
 
         response = client.post(
-            "/api/legal/ingest", json={"file_path": "/test/document.pdf", "tier": "INVALID"},
+            "/api/legal/ingest",
+            json={"file_path": "/test/document.pdf", "tier": "INVALID"},
         )
         assert response.status_code == 400
 

@@ -290,7 +290,10 @@ If the page is blank or contains no text, return an empty string."""
             try:
                 logger.info("OCR processing page %s/%s...", page_num, total_pages)
                 page_text = await vision_service.analyze_page(
-                    pdf_path=file_path, page_number=page_num, prompt=ocr_prompt, is_drive_file=False,
+                    pdf_path=file_path,
+                    page_number=page_num,
+                    prompt=ocr_prompt,
+                    is_drive_file=False,
                 )
                 if page_text and page_text.strip():
                     text_parts.append(page_text)
@@ -353,7 +356,8 @@ def extract_text_from_pdf_ocr(file_path: str) -> str:
                     except Exception:
                         # If OCR not available, try alternative extraction
                         logger.warning(
-                            "OCR not available for page %s, trying alternative extraction", page_num,
+                            "OCR not available for page %s, trying alternative extraction",
+                            page_num,
                         )
                         # Convert page to image and use vision model as fallback
                         page.get_pixmap()

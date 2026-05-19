@@ -32,7 +32,8 @@ class TestGetPhrase:
     def test_unknown_language_falls_back_to_english(self) -> None:
         # Russian is not registered — we should still get the English variant.
         assert get_phrase("verify_with_team", "ru") == get_phrase(
-            "verify_with_team", "en",
+            "verify_with_team",
+            "en",
         )
 
     def test_unknown_key_returns_key_for_debug(self) -> None:
@@ -41,7 +42,8 @@ class TestGetPhrase:
 
     def test_default_language_is_english(self) -> None:
         assert get_phrase("verify_with_team") == get_phrase(
-            "verify_with_team", "en",
+            "verify_with_team",
+            "en",
         )
 
 

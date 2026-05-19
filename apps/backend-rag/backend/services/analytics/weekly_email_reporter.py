@@ -48,7 +48,8 @@ class WeeklyEmailReporter:
         self.running = True
         self.task = asyncio.create_task(self._scheduler_loop())
         logger.info(
-            "📧 Weekly email reporter started (sends Sundays at %s:00 Bali time)", CHECK_TIME_HOUR,
+            "📧 Weekly email reporter started (sends Sundays at %s:00 Bali time)",
+            CHECK_TIME_HOUR,
         )
 
     async def stop(self) -> None:
@@ -190,7 +191,10 @@ class WeeklyEmailReporter:
             }
 
     def _build_html_email(
-        self, team_activities: list[dict], summary: dict, week_end: datetime,
+        self,
+        team_activities: list[dict],
+        summary: dict,
+        week_end: datetime,
     ) -> str:
         """Build HTML email content."""
         week_start = week_end - timedelta(days=7)

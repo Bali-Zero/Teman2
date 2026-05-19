@@ -4,6 +4,7 @@ Focus: pure logic that doesn't require live tesseract/Ollama. Integration
 tests for the actual extractor cascade live separately and exercise the
 real subprocess + Ollama paths (run-on-Pro only, gated by env var).
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
@@ -24,12 +25,23 @@ from backend.services.crm_guardian.ocr import (
 # Priority list / constants
 # ---------------------------------------------------------------------------
 
+
 def test_priority_doc_types_include_critical_categories():
     """Identity-bearing + compliance-bearing doc_types must all be in scope."""
     required = {
-        "passport", "evisa", "visa", "kitas", "kitap",  # identity + visa
-        "nib", "npwp", "akta", "sk",                     # corporate
-        "lkpm", "spt", "bukti_potong", "tax_record",     # tax/lkpm
+        "passport",
+        "evisa",
+        "visa",
+        "kitas",
+        "kitap",  # identity + visa
+        "nib",
+        "npwp",
+        "akta",
+        "sk",  # corporate
+        "lkpm",
+        "spt",
+        "bukti_potong",
+        "tax_record",  # tax/lkpm
     }
     assert required.issubset(PRIORITY_DOC_TYPES), (
         f"Missing priority doc_types: {required - PRIORITY_DOC_TYPES}"
@@ -46,6 +58,7 @@ def test_priority_doc_types_excludes_misc():
 # ---------------------------------------------------------------------------
 # _truncate helper
 # ---------------------------------------------------------------------------
+
 
 def test_truncate_short_text_passthrough():
     text = "hello world"
@@ -72,16 +85,23 @@ def test_truncate_custom_limit():
 # ExtractionResult invariants
 # ---------------------------------------------------------------------------
 
+
 def test_extraction_result_content_hash_deterministic():
     r1 = ExtractionResult(
         text="Akta Pendirian PT Bali Zero",
-        extractor="tesseract", confidence=0.85, page_count=3,
-        duration_ms=1234, truncated=False,
+        extractor="tesseract",
+        confidence=0.85,
+        page_count=3,
+        duration_ms=1234,
+        truncated=False,
     )
     r2 = ExtractionResult(
         text="Akta Pendirian PT Bali Zero",
-        extractor="pdfminer", confidence=None, page_count=3,
-        duration_ms=99, truncated=False,
+        extractor="pdfminer",
+        confidence=None,
+        page_count=3,
+        duration_ms=99,
+        truncated=False,
     )
     # Same text → same hash regardless of extractor
     assert r1.content_hash == r2.content_hash
@@ -90,12 +110,20 @@ def test_extraction_result_content_hash_deterministic():
 
 def test_extraction_result_content_hash_differs_on_text_change():
     r1 = ExtractionResult(
-        text="version A", extractor="tesseract",
-        confidence=0.8, page_count=1, duration_ms=10, truncated=False,
+        text="version A",
+        extractor="tesseract",
+        confidence=0.8,
+        page_count=1,
+        duration_ms=10,
+        truncated=False,
     )
     r2 = ExtractionResult(
-        text="version B", extractor="tesseract",
-        confidence=0.8, page_count=1, duration_ms=10, truncated=False,
+        text="version B",
+        extractor="tesseract",
+        confidence=0.8,
+        page_count=1,
+        duration_ms=10,
+        truncated=False,
     )
     assert r1.content_hash != r2.content_hash
 
@@ -104,13 +132,17 @@ def test_extraction_result_content_hash_differs_on_text_change():
 # extract_file_content — gating on doc_type / mime
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_extract_skips_non_priority_doc_type():
     """Files with doc_type='other' must skip OCR even if PDF (saves budget)."""
     health = OcrHealth(
-        tesseract_ok=True, tesseract_version="t",
-        pdfminer_ok=True, pypdfium2_ok=True,
-        ollama_vision_ok=True, ollama_vision_model="qwen2.5vl:7b",
+        tesseract_ok=True,
+        tesseract_version="t",
+        pdfminer_ok=True,
+        pypdfium2_ok=True,
+        ollama_vision_ok=True,
+        ollama_vision_model="qwen2.5vl:7b",
         detail="all-ok",
     )
     result = await extract_file_content(
@@ -127,9 +159,12 @@ async def test_extract_skips_non_priority_doc_type():
 @pytest.mark.asyncio
 async def test_extract_skips_unsupported_mime():
     health = OcrHealth(
-        tesseract_ok=True, tesseract_version="t",
-        pdfminer_ok=True, pypdfium2_ok=True,
-        ollama_vision_ok=False, ollama_vision_model=None,
+        tesseract_ok=True,
+        tesseract_version="t",
+        pdfminer_ok=True,
+        pypdfium2_ok=True,
+        ollama_vision_ok=False,
+        ollama_vision_model=None,
         detail="no-vision-fallback",
     )
     # Word doc — out of scope (the worker can route .docx via Drive export,
@@ -148,9 +183,12 @@ async def test_extract_skips_unsupported_mime():
 async def test_extract_pdfminer_native_text_skips_ocr():
     """When pdfminer recovers ≥200 chars from text layer, OCR cascade skips."""
     health = OcrHealth(
-        tesseract_ok=True, tesseract_version="t",
-        pdfminer_ok=True, pypdfium2_ok=True,
-        ollama_vision_ok=False, ollama_vision_model=None,
+        tesseract_ok=True,
+        tesseract_version="t",
+        pdfminer_ok=True,
+        pypdfium2_ok=True,
+        ollama_vision_ok=False,
+        ollama_vision_model=None,
         detail="no-vision-fallback",
     )
     long_text = "Akta Pendirian " * 30  # >200 chars
@@ -176,21 +214,28 @@ async def test_extract_pdfminer_native_text_skips_ocr():
 async def test_extract_pdfminer_empty_falls_through_to_tesseract():
     """Scanned PDF (no text layer) must trigger tesseract path."""
     health = OcrHealth(
-        tesseract_ok=True, tesseract_version="t",
-        pdfminer_ok=True, pypdfium2_ok=True,
-        ollama_vision_ok=False, ollama_vision_model=None,
+        tesseract_ok=True,
+        tesseract_version="t",
+        pdfminer_ok=True,
+        pypdfium2_ok=True,
+        ollama_vision_ok=False,
+        ollama_vision_model=None,
         detail="no-vision-fallback",
     )
 
-    with patch(
-        "backend.services.crm_guardian.ocr._extract_pdfminer",
-        new=AsyncMock(return_value=("", 2)),
-    ), patch(
-        "backend.services.crm_guardian.ocr._rasterize_pdf_pages",
-        new=AsyncMock(return_value=[b"png1", b"png2"]),
-    ), patch(
-        "backend.services.crm_guardian.ocr._tesseract_ocr_png",
-        new=AsyncMock(return_value=("scanned passport text", 0.78)),
+    with (
+        patch(
+            "backend.services.crm_guardian.ocr._extract_pdfminer",
+            new=AsyncMock(return_value=("", 2)),
+        ),
+        patch(
+            "backend.services.crm_guardian.ocr._rasterize_pdf_pages",
+            new=AsyncMock(return_value=[b"png1", b"png2"]),
+        ),
+        patch(
+            "backend.services.crm_guardian.ocr._tesseract_ocr_png",
+            new=AsyncMock(return_value=("scanned passport text", 0.78)),
+        ),
     ):
         result = await extract_file_content(
             file_bytes=b"%PDF-1.4 scanned",
@@ -211,24 +256,32 @@ async def test_extract_pdfminer_empty_falls_through_to_tesseract():
 async def test_extract_low_tesseract_conf_triggers_vision_fallback():
     """Tesseract conf < 0.40 + Ollama up → qwen2.5vl wins if better."""
     health = OcrHealth(
-        tesseract_ok=True, tesseract_version="t",
-        pdfminer_ok=True, pypdfium2_ok=True,
-        ollama_vision_ok=True, ollama_vision_model="qwen2.5vl:7b",
+        tesseract_ok=True,
+        tesseract_version="t",
+        pdfminer_ok=True,
+        pypdfium2_ok=True,
+        ollama_vision_ok=True,
+        ollama_vision_model="qwen2.5vl:7b",
         detail="all-ok",
     )
 
-    with patch(
-        "backend.services.crm_guardian.ocr._extract_pdfminer",
-        new=AsyncMock(return_value=("", 1)),
-    ), patch(
-        "backend.services.crm_guardian.ocr._rasterize_pdf_pages",
-        new=AsyncMock(return_value=[b"png1"]),
-    ), patch(
-        "backend.services.crm_guardian.ocr._tesseract_ocr_png",
-        new=AsyncMock(return_value=("blurry text", 0.25)),  # under threshold
-    ), patch(
-        "backend.services.crm_guardian.ocr._qwen25vl_extract",
-        new=AsyncMock(return_value=("Crisp passport number A1234567", 0.65)),
+    with (
+        patch(
+            "backend.services.crm_guardian.ocr._extract_pdfminer",
+            new=AsyncMock(return_value=("", 1)),
+        ),
+        patch(
+            "backend.services.crm_guardian.ocr._rasterize_pdf_pages",
+            new=AsyncMock(return_value=[b"png1"]),
+        ),
+        patch(
+            "backend.services.crm_guardian.ocr._tesseract_ocr_png",
+            new=AsyncMock(return_value=("blurry text", 0.25)),  # under threshold
+        ),
+        patch(
+            "backend.services.crm_guardian.ocr._qwen25vl_extract",
+            new=AsyncMock(return_value=("Crisp passport number A1234567", 0.65)),
+        ),
     ):
         result = await extract_file_content(
             file_bytes=b"%PDF-1.4 blurry",
@@ -246,21 +299,28 @@ async def test_extract_low_tesseract_conf_triggers_vision_fallback():
 async def test_extract_low_conf_no_vision_returns_tesseract():
     """If vision unavailable, return the tesseract result even with low conf."""
     health = OcrHealth(
-        tesseract_ok=True, tesseract_version="t",
-        pdfminer_ok=True, pypdfium2_ok=True,
-        ollama_vision_ok=False, ollama_vision_model=None,
+        tesseract_ok=True,
+        tesseract_version="t",
+        pdfminer_ok=True,
+        pypdfium2_ok=True,
+        ollama_vision_ok=False,
+        ollama_vision_model=None,
         detail="no-vision-fallback",
     )
 
-    with patch(
-        "backend.services.crm_guardian.ocr._extract_pdfminer",
-        new=AsyncMock(return_value=("", 1)),
-    ), patch(
-        "backend.services.crm_guardian.ocr._rasterize_pdf_pages",
-        new=AsyncMock(return_value=[b"png1"]),
-    ), patch(
-        "backend.services.crm_guardian.ocr._tesseract_ocr_png",
-        new=AsyncMock(return_value=("weak text", 0.20)),
+    with (
+        patch(
+            "backend.services.crm_guardian.ocr._extract_pdfminer",
+            new=AsyncMock(return_value=("", 1)),
+        ),
+        patch(
+            "backend.services.crm_guardian.ocr._rasterize_pdf_pages",
+            new=AsyncMock(return_value=[b"png1"]),
+        ),
+        patch(
+            "backend.services.crm_guardian.ocr._tesseract_ocr_png",
+            new=AsyncMock(return_value=("weak text", 0.20)),
+        ),
     ):
         result = await extract_file_content(
             file_bytes=b"%PDF",
@@ -278,9 +338,12 @@ async def test_extract_low_conf_no_vision_returns_tesseract():
 async def test_extract_image_path_goes_straight_to_tesseract():
     """JPG passport scan → no pdfminer, direct tesseract on bytes."""
     health = OcrHealth(
-        tesseract_ok=True, tesseract_version="t",
-        pdfminer_ok=True, pypdfium2_ok=True,
-        ollama_vision_ok=False, ollama_vision_model=None,
+        tesseract_ok=True,
+        tesseract_version="t",
+        pdfminer_ok=True,
+        pypdfium2_ok=True,
+        ollama_vision_ok=False,
+        ollama_vision_model=None,
         detail="no-vision-fallback",
     )
 
@@ -304,9 +367,12 @@ async def test_extract_image_path_goes_straight_to_tesseract():
 async def test_extract_no_ocr_stack_returns_skipped_for_scanned_pdf():
     """No tesseract + scanned PDF → can't recover, but pdfminer remnants kept."""
     health = OcrHealth(
-        tesseract_ok=False, tesseract_version=None,
-        pdfminer_ok=True, pypdfium2_ok=False,
-        ollama_vision_ok=False, ollama_vision_model=None,
+        tesseract_ok=False,
+        tesseract_version=None,
+        pdfminer_ok=True,
+        pypdfium2_ok=False,
+        ollama_vision_ok=False,
+        ollama_vision_model=None,
         detail="no-tesseract,no-pypdfium2,no-vision-fallback",
     )
 
@@ -328,6 +394,7 @@ async def test_extract_no_ocr_stack_returns_skipped_for_scanned_pdf():
 # ---------------------------------------------------------------------------
 # Health check
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_check_health_caches_result():

@@ -1,4 +1,5 @@
 """Migration 074: Add content_hash to documents for dedup."""
+
 import logging
 
 import asyncpg

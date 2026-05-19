@@ -8,6 +8,7 @@ Unit tests for LkpmPdfBuilder.
   4. Size stability — same input produces same-order-of-magnitude output.
   5. Negative realization_idr raises ValueError.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -111,9 +112,7 @@ def test_build_size_stability(builder: LkpmPdfBuilder, base_data: LkpmPackData) 
     pdf_a = builder.build(base_data)
     pdf_b = builder.build(base_data)
     ratio = len(pdf_a) / len(pdf_b)
-    assert 0.5 <= ratio <= 2.0, (
-        f"PDF size changed unexpectedly: {len(pdf_a)} vs {len(pdf_b)} bytes"
-    )
+    assert 0.5 <= ratio <= 2.0, f"PDF size changed unexpectedly: {len(pdf_a)} vs {len(pdf_b)} bytes"
 
 
 # ── Test 5: negative realization raises ───────────────────────────────────

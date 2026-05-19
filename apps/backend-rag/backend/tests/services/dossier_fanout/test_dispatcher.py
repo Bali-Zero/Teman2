@@ -100,9 +100,7 @@ async def test_dispatch_routes_only_matching_domains():
     assert nlm.calls == 0
 
     # crm+nlm present in per_consumer as skipped
-    types_skipped = {
-        r.consumer_type for r in result.per_consumer if r.skipped
-    }
+    types_skipped = {r.consumer_type for r in result.per_consumer if r.skipped}
     assert types_skipped == {ConsumerType.CRM, ConsumerType.NLM}
 
 
@@ -157,9 +155,7 @@ async def test_consumer_exception_caught_as_failure():
     assert result.ok_count == 1
     assert result.failure_count == 1
 
-    bad_result = next(
-        r for r in result.per_consumer if r.consumer_type == ConsumerType.WARROOM
-    )
+    bad_result = next(r for r in result.per_consumer if r.consumer_type == ConsumerType.WARROOM)
     assert bad_result.ok is False
     assert "RuntimeError" in (bad_result.error or "")
 
@@ -177,7 +173,9 @@ async def test_parallelism_preserves_per_consumer_order_logically():
         _dossier(domains=["chatbot", "crm", "warroom"]),
     )
     assert [r.consumer_type for r in result.per_consumer] == [
-        ConsumerType.CHATBOT, ConsumerType.CRM, ConsumerType.WARROOM,
+        ConsumerType.CHATBOT,
+        ConsumerType.CRM,
+        ConsumerType.WARROOM,
     ]
 
 
@@ -237,7 +235,9 @@ async def test_record_reuse_disabled_by_flag():
     repo.record_reuse = AsyncMock()
 
     disp = DomainFanoutDispatcher(
-        consumers=[c], repo=repo, record_reuse=False,
+        consumers=[c],
+        repo=repo,
+        record_reuse=False,
     )
     await disp.dispatch(_dossier(domains=["chatbot"]))
     repo.record_reuse.assert_not_called()

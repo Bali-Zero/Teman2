@@ -37,6 +37,7 @@ SAMPLE_PRICES: dict = {
 
 # ── Helpers ────────────────────────────────────────────────────────────────────
 
+
 def _make_mock_pool(
     client_rows: list[dict],
     practice_rows: list[dict],
@@ -46,27 +47,34 @@ def _make_mock_pool(
     """Build a mock asyncpg pool that returns given rows."""
     conn = AsyncMock()
     # fetch calls: first = client_docs, second = practices
-    conn.fetch = AsyncMock(side_effect=[
-        [_dict_to_record(r) for r in client_rows],
-        [_dict_to_record(r) for r in practice_rows],
-    ])
+    conn.fetch = AsyncMock(
+        side_effect=[
+            [_dict_to_record(r) for r in client_rows],
+            [_dict_to_record(r) for r in practice_rows],
+        ]
+    )
     conn.fetchval = AsyncMock(return_value=1 if has_active_renewal else None)
 
     pool = AsyncMock()
-    pool.acquire = MagicMock(return_value=AsyncMock(
-        __aenter__=AsyncMock(return_value=conn),
-        __aexit__=AsyncMock(return_value=None),
-    ))
+    pool.acquire = MagicMock(
+        return_value=AsyncMock(
+            __aenter__=AsyncMock(return_value=conn),
+            __aexit__=AsyncMock(return_value=None),
+        )
+    )
     return pool
 
 
 def _dict_to_record(d: dict):
     """Minimal asyncpg record-like object."""
+
     class FakeRecord(dict):
         def __getitem__(self, key):
             return super().__getitem__(key)
+
         def get(self, key, default=None):
             return super().get(key, default)
+
     return FakeRecord(d)
 
 
@@ -171,11 +179,13 @@ class TestPredictiveEngineBasic:
         passport_expiry = today + timedelta(days=200)  # passport expires before visa
 
         pool = _make_mock_pool(
-            client_rows=[_client_row(
-                document_type="kitas",
-                expiry_date=expiry,
-                passport_expiry=passport_expiry,
-            )],
+            client_rows=[
+                _client_row(
+                    document_type="kitas",
+                    expiry_date=expiry,
+                    passport_expiry=passport_expiry,
+                )
+            ],
             practice_rows=[],
         )
 
@@ -192,11 +202,13 @@ class TestPredictiveEngineBasic:
         passport_expiry = today + timedelta(days=365)  # passport valid longer
 
         pool = _make_mock_pool(
-            client_rows=[_client_row(
-                document_type="kitas",
-                expiry_date=expiry,
-                passport_expiry=passport_expiry,
-            )],
+            client_rows=[
+                _client_row(
+                    document_type="kitas",
+                    expiry_date=expiry,
+                    passport_expiry=passport_expiry,
+                )
+            ],
             practice_rows=[],
         )
 
@@ -287,10 +299,12 @@ class TestIsEngineEnabled:
         conn = AsyncMock()
         conn.fetchval = AsyncMock(return_value="true")
         pool = AsyncMock()
-        pool.acquire = MagicMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=conn),
-            __aexit__=AsyncMock(return_value=None),
-        ))
+        pool.acquire = MagicMock(
+            return_value=AsyncMock(
+                __aenter__=AsyncMock(return_value=conn),
+                __aexit__=AsyncMock(return_value=None),
+            )
+        )
         assert await is_engine_enabled(pool) is True
 
     @pytest.mark.asyncio
@@ -298,10 +312,12 @@ class TestIsEngineEnabled:
         conn = AsyncMock()
         conn.fetchval = AsyncMock(return_value="false")
         pool = AsyncMock()
-        pool.acquire = MagicMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=conn),
-            __aexit__=AsyncMock(return_value=None),
-        ))
+        pool.acquire = MagicMock(
+            return_value=AsyncMock(
+                __aenter__=AsyncMock(return_value=conn),
+                __aexit__=AsyncMock(return_value=None),
+            )
+        )
         assert await is_engine_enabled(pool) is False
 
     @pytest.mark.asyncio
@@ -309,8 +325,10 @@ class TestIsEngineEnabled:
         conn = AsyncMock()
         conn.fetchval = AsyncMock(return_value=None)
         pool = AsyncMock()
-        pool.acquire = MagicMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=conn),
-            __aexit__=AsyncMock(return_value=None),
-        ))
+        pool.acquire = MagicMock(
+            return_value=AsyncMock(
+                __aenter__=AsyncMock(return_value=conn),
+                __aexit__=AsyncMock(return_value=None),
+            )
+        )
         assert await is_engine_enabled(pool) is False

@@ -52,7 +52,8 @@ class LegalIngestRequest(BaseModel):
     title: str | None = Field(None, description="Document title (auto-extracted if not provided)")
     tier: str | None = Field(None, description="Tier override (S, A, B, C, D)")
     collection_name: str | None = Field(
-        None, description="Override collection name (default: legal_unified)",
+        None,
+        description="Override collection name (default: legal_unified)",
     )
 
 
@@ -160,7 +161,8 @@ async def upload_legal_document(
     # Validate file type
     if not file.filename or not file.filename.lower().endswith(".pdf"):
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail="Only PDF files are supported",
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only PDF files are supported",
         )
 
     temp_path = None
@@ -241,7 +243,8 @@ async def ingest_legal_documents_batch(
     for file_path in file_paths:
         try:
             result = await service.ingest_legal_document(
-                file_path=file_path, collection_name=collection_name,
+                file_path=file_path,
+                collection_name=collection_name,
             )
             results.append({"file_path": file_path, **result})
         except Exception as e:

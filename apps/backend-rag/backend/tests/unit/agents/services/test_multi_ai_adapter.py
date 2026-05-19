@@ -211,7 +211,10 @@ class TestCursorAdapter:
         assert result.tool_used == AITool.CURSOR
 
     @pytest.mark.asyncio
-    @patch("backend.agents.services.multi_ai_adapter.subprocess.run", side_effect=Exception("not found"))
+    @patch(
+        "backend.agents.services.multi_ai_adapter.subprocess.run",
+        side_effect=Exception("not found"),
+    )
     async def test_generate_error(self, mock_run: MagicMock) -> None:
         adapter = CursorAdapter()
         with pytest.raises(Exception):
@@ -254,35 +257,46 @@ class TestMultiAIAdapter:
 
     def test_select_ai_uses_routing_map(self) -> None:
         adapter = self._make_adapter()
-        tool, _ = adapter._select_ai(AIRequest(
-            task_type=TaskType.TEST_GENERATION, prompt="test",
-        ))
+        tool, _ = adapter._select_ai(
+            AIRequest(
+                task_type=TaskType.TEST_GENERATION,
+                prompt="test",
+            )
+        )
         assert tool == AITool.QWEN
 
     def test_select_ai_prefers_explicit_tool(self) -> None:
         adapter = self._make_adapter()
-        tool, _ = adapter._select_ai(AIRequest(
-            task_type=TaskType.TEST_GENERATION,
-            prompt="test",
-            preferred_tool=AITool.GEMINI,
-        ))
+        tool, _ = adapter._select_ai(
+            AIRequest(
+                task_type=TaskType.TEST_GENERATION,
+                prompt="test",
+                preferred_tool=AITool.GEMINI,
+            )
+        )
         assert tool == AITool.GEMINI
 
     def test_select_ai_defaults_to_claude(self) -> None:
         adapter = self._make_adapter()
         # Use a task type that maps to CLAUDE
-        tool, _ = adapter._select_ai(AIRequest(
-            task_type=TaskType.ARCHITECTURE, prompt="test",
-        ))
+        tool, _ = adapter._select_ai(
+            AIRequest(
+                task_type=TaskType.ARCHITECTURE,
+                prompt="test",
+            )
+        )
         assert tool == AITool.CLAUDE
 
     def test_select_ai_cursor_not_available_raises(self) -> None:
         adapter = self._make_adapter()
         adapter.cursor = None
         with pytest.raises(ValueError, match="Adapter not found"):
-            adapter._select_ai(AIRequest(
-                task_type=TaskType.CODE_EDITING, prompt="test",
-            ))
+            adapter._select_ai(
+                AIRequest(
+                    task_type=TaskType.CODE_EDITING,
+                    prompt="test",
+                )
+            )
 
     @pytest.mark.asyncio
     async def test_generate_qwen_route(self) -> None:
@@ -293,36 +307,51 @@ class TestMultiAIAdapter:
         mock_llm_resp.response_time = 0.5
         adapter.qwen.generate = AsyncMock(return_value=mock_llm_resp)
 
-        result = await adapter.generate(AIRequest(
-            task_type=TaskType.TEST_GENERATION, prompt="generate tests",
-        ))
+        result = await adapter.generate(
+            AIRequest(
+                task_type=TaskType.TEST_GENERATION,
+                prompt="generate tests",
+            )
+        )
         assert result.tool_used == AITool.QWEN
         assert result.text == "qwen output"
 
     @pytest.mark.asyncio
     async def test_generate_gemini_route(self) -> None:
         adapter = self._make_adapter()
-        adapter.gemini.generate = AsyncMock(return_value=AIResponse(
-            text="gemini output", tool_used=AITool.GEMINI,
-        ))
+        adapter.gemini.generate = AsyncMock(
+            return_value=AIResponse(
+                text="gemini output",
+                tool_used=AITool.GEMINI,
+            )
+        )
 
-        result = await adapter.generate(AIRequest(
-            task_type=TaskType.SIMPLE_TASK,
-            prompt="analyze",
-            preferred_tool=AITool.GEMINI,
-        ))
+        result = await adapter.generate(
+            AIRequest(
+                task_type=TaskType.SIMPLE_TASK,
+                prompt="analyze",
+                preferred_tool=AITool.GEMINI,
+            )
+        )
         assert result.tool_used == AITool.GEMINI
 
     @pytest.mark.asyncio
     async def test_generate_claude_route(self) -> None:
         adapter = self._make_adapter()
-        adapter.claude.generate = AsyncMock(return_value=AIResponse(
-            text="claude output", tool_used=AITool.CLAUDE, tokens_used=100,
-        ))
+        adapter.claude.generate = AsyncMock(
+            return_value=AIResponse(
+                text="claude output",
+                tool_used=AITool.CLAUDE,
+                tokens_used=100,
+            )
+        )
 
-        result = await adapter.generate(AIRequest(
-            task_type=TaskType.CODE_ANALYSIS, prompt="review this",
-        ))
+        result = await adapter.generate(
+            AIRequest(
+                task_type=TaskType.CODE_ANALYSIS,
+                prompt="review this",
+            )
+        )
         assert result.tool_used == AITool.CLAUDE
 
     @pytest.mark.asyncio
@@ -335,11 +364,13 @@ class TestMultiAIAdapter:
         # Re-setup routing map so cursor can be selected
         adapter.routing_map[TaskType.CODE_EDITING] = AITool.CURSOR
 
-        result = await adapter.generate(AIRequest(
-            task_type=TaskType.CODE_EDITING,
-            prompt="edit file",
-            files=["test.py"],
-        ))
+        result = await adapter.generate(
+            AIRequest(
+                task_type=TaskType.CODE_EDITING,
+                prompt="edit file",
+                files=["test.py"],
+            )
+        )
         assert result.tool_used == AITool.CURSOR
         mock_cursor.open_file.assert_called_once_with("test.py")
 
@@ -359,11 +390,13 @@ class TestMultiAIAdapter:
         # Use GEMINI which will fail and fallback to qwen
         adapter.gemini.generate = AsyncMock(side_effect=Exception("fail"))
 
-        result = await adapter.generate(AIRequest(
-            task_type=TaskType.SIMPLE_TASK,
-            prompt="test",
-            preferred_tool=AITool.GEMINI,
-        ))
+        result = await adapter.generate(
+            AIRequest(
+                task_type=TaskType.SIMPLE_TASK,
+                prompt="test",
+                preferred_tool=AITool.GEMINI,
+            )
+        )
         assert result.tool_used == AITool.QWEN
         assert result.metadata.get("fallback") is True
 
@@ -374,9 +407,12 @@ class TestMultiAIAdapter:
         adapter.qwen.generate = AsyncMock(side_effect=Exception("qwen down"))
 
         with pytest.raises(Exception, match="qwen down"):
-            await adapter.generate(AIRequest(
-                task_type=TaskType.TEST_GENERATION, prompt="test",
-            ))
+            await adapter.generate(
+                AIRequest(
+                    task_type=TaskType.TEST_GENERATION,
+                    prompt="test",
+                )
+            )
 
     @pytest.mark.asyncio
     async def test_generate_windsurf_not_available_falls_back(self) -> None:
@@ -395,11 +431,13 @@ class TestMultiAIAdapter:
         # However, _select_ai is called BEFORE the try block in generate(),
         # so it will raise before the fallback. Let's verify that.
         with pytest.raises(ValueError, match="Adapter not found"):
-            await adapter.generate(AIRequest(
-                task_type=TaskType.SIMPLE_TASK,
-                prompt="test",
-                preferred_tool=AITool.WINDSURF,
-            ))
+            await adapter.generate(
+                AIRequest(
+                    task_type=TaskType.SIMPLE_TASK,
+                    prompt="test",
+                    preferred_tool=AITool.WINDSURF,
+                )
+            )
 
     @pytest.mark.asyncio
     async def test_generate_windsurf_with_adapter_and_files(self) -> None:
@@ -409,12 +447,14 @@ class TestMultiAIAdapter:
         mock_windsurf.open_file = MagicMock()
         adapter.windsurf = mock_windsurf
 
-        result = await adapter.generate(AIRequest(
-            task_type=TaskType.CODE_EDITING,
-            prompt="edit",
-            preferred_tool=AITool.WINDSURF,
-            files=["test.py"],
-        ))
+        result = await adapter.generate(
+            AIRequest(
+                task_type=TaskType.CODE_EDITING,
+                prompt="edit",
+                preferred_tool=AITool.WINDSURF,
+                files=["test.py"],
+            )
+        )
         assert result.tool_used == AITool.WINDSURF
         mock_windsurf.open_file.assert_called_once_with("test.py")
 
@@ -469,8 +509,10 @@ class TestSingleton:
     @patch("backend.agents.services.multi_ai_adapter.MultiAIAdapter.__init__", return_value=None)
     def test_singleton_creates_once(self, mock_init: MagicMock) -> None:
         import backend.agents.services.multi_ai_adapter as mod
+
         mod._multi_ai_adapter = None
         from backend.agents.services.multi_ai_adapter import get_multi_ai_adapter
+
         adapter = get_multi_ai_adapter()
         assert adapter is not None
         mock_init.assert_called_once()

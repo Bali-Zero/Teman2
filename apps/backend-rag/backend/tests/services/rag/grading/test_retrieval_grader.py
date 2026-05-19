@@ -11,8 +11,7 @@ from backend.services.rag.grading import (
 def _make_ctx(scores: list[float]) -> GradingContext:
     return GradingContext(
         retrieved_documents=[
-            RetrievedDoc(content=f"doc {i}", score=s)
-            for i, s in enumerate(scores)
+            RetrievedDoc(content=f"doc {i}", score=s) for i, s in enumerate(scores)
         ],
     )
 

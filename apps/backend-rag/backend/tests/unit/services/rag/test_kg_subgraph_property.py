@@ -55,7 +55,8 @@ def mock_db_pool():
 def base_state():
     return PropertyState(
         query="buy villa in Bali",
-        lat=None, lng=None,
+        lat=None,
+        lng=None,
         zoning_info=None,
         workflow_steps=[],
         final_analysis="",
@@ -72,8 +73,10 @@ class TestClientManagement:
     @pytest.mark.asyncio
     async def test_close_property_subgraph_client(self):
         # Should not raise even if no clients exist
-        with patch("backend.services.rag.kg_subgraph_property._client_verified", None), \
-             patch("backend.services.rag.kg_subgraph_property._client_unverified", None):
+        with (
+            patch("backend.services.rag.kg_subgraph_property._client_verified", None),
+            patch("backend.services.rag.kg_subgraph_property._client_unverified", None),
+        ):
             await close_property_subgraph_client()
 
 
@@ -89,14 +92,18 @@ class TestResolvDesaCode:
         mock_resp.status_code = 200
         mock_resp.raise_for_status = MagicMock()
         mock_resp.json.return_value = {
-            "results": [{
-                "address_components": [{"short_name": "5103030005"}],
-            }],
+            "results": [
+                {
+                    "address_components": [{"short_name": "5103030005"}],
+                }
+            ],
         }
         mock_client = MagicMock()
         mock_client.get = AsyncMock(return_value=mock_resp)
 
-        with patch("backend.services.rag.kg_subgraph_property._get_client", return_value=mock_client):
+        with patch(
+            "backend.services.rag.kg_subgraph_property._get_client", return_value=mock_client
+        ):
             result = await _resolve_desa_code_from_latlng(-8.5, 115.2, "fake_key")
         assert result == "5103030005"
 
@@ -109,7 +116,9 @@ class TestResolvDesaCode:
         mock_client = MagicMock()
         mock_client.get = AsyncMock(return_value=mock_resp)
 
-        with patch("backend.services.rag.kg_subgraph_property._get_client", return_value=mock_client):
+        with patch(
+            "backend.services.rag.kg_subgraph_property._get_client", return_value=mock_client
+        ):
             result = await _resolve_desa_code_from_latlng(-8.5, 115.2, "fake_key")
         assert result is None
 
@@ -117,7 +126,9 @@ class TestResolvDesaCode:
     async def test_api_error(self):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(side_effect=Exception("timeout"))
-        with patch("backend.services.rag.kg_subgraph_property._get_client", return_value=mock_client):
+        with patch(
+            "backend.services.rag.kg_subgraph_property._get_client", return_value=mock_client
+        ):
             result = await _resolve_desa_code_from_latlng(-8.5, 115.2, "fake_key")
         assert result is None
 
@@ -133,20 +144,24 @@ class TestFetchBadung:
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
-            "features": [{
-                "geometry": {"type": "Polygon", "coordinates": [[]]},
-                "properties": {
-                    "attribute": {"kabupaten": "Badung", "kecamatan": "Kuta"},
-                    "zone": {"code": "R-1", "name": "Residensial"},
-                },
-            }],
+            "features": [
+                {
+                    "geometry": {"type": "Polygon", "coordinates": [[]]},
+                    "properties": {
+                        "attribute": {"kabupaten": "Badung", "kecamatan": "Kuta"},
+                        "zone": {"code": "R-1", "name": "Residensial"},
+                    },
+                }
+            ],
         }
         mock_client = MagicMock()
         mock_client.get = AsyncMock(return_value=mock_resp)
 
         mock_db_pool._mock_conn.executemany = AsyncMock(return_value="INSERT 0 1")
 
-        with patch("backend.services.rag.kg_subgraph_property._get_client", return_value=mock_client):
+        with patch(
+            "backend.services.rag.kg_subgraph_property._get_client", return_value=mock_client
+        ):
             result = await _fetch_badung_provider("5103030005", mock_db_pool)
         assert result >= 0
 
@@ -157,7 +172,9 @@ class TestFetchBadung:
         mock_client = MagicMock()
         mock_client.get = AsyncMock(return_value=mock_resp)
 
-        with patch("backend.services.rag.kg_subgraph_property._get_client", return_value=mock_client):
+        with patch(
+            "backend.services.rag.kg_subgraph_property._get_client", return_value=mock_client
+        ):
             result = await _fetch_badung_provider("5103030005", mock_db_pool)
         assert result == 0
 
@@ -165,7 +182,9 @@ class TestFetchBadung:
     async def test_exception(self, mock_db_pool):
         mock_client = MagicMock()
         mock_client.get = AsyncMock(side_effect=Exception("network error"))
-        with patch("backend.services.rag.kg_subgraph_property._get_client", return_value=mock_client):
+        with patch(
+            "backend.services.rag.kg_subgraph_property._get_client", return_value=mock_client
+        ):
             result = await _fetch_badung_provider("5103030005", mock_db_pool)
         assert result == 0
 
@@ -174,15 +193,19 @@ class TestFetchBadung:
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
-            "features": [{
-                "geometry": {"type": "Point", "coordinates": [115.2, -8.5]},
-                "properties": {"zone": {"code": "R-1", "name": "Residensial"}},
-            }],
+            "features": [
+                {
+                    "geometry": {"type": "Point", "coordinates": [115.2, -8.5]},
+                    "properties": {"zone": {"code": "R-1", "name": "Residensial"}},
+                }
+            ],
         }
         mock_client = MagicMock()
         mock_client.get = AsyncMock(return_value=mock_resp)
 
-        with patch("backend.services.rag.kg_subgraph_property._get_client", return_value=mock_client):
+        with patch(
+            "backend.services.rag.kg_subgraph_property._get_client", return_value=mock_client
+        ):
             result = await _fetch_badung_provider("5103030005", mock_db_pool)
         assert result == 0
 
@@ -198,16 +221,25 @@ class TestFetchGistaru:
         mock_resp = MagicMock()
         mock_resp.status_code = 200
         mock_resp.json.return_value = {
-            "features": [{
-                "geometry": {"type": "Polygon", "coordinates": [[]]},
-                "properties": {"KODZON": "R-1", "NAMZNP": "Residensial", "WADMKK": "Gianyar", "WADMKC": "Ubud"},
-            }],
+            "features": [
+                {
+                    "geometry": {"type": "Polygon", "coordinates": [[]]},
+                    "properties": {
+                        "KODZON": "R-1",
+                        "NAMZNP": "Residensial",
+                        "WADMKK": "Gianyar",
+                        "WADMKC": "Ubud",
+                    },
+                }
+            ],
         }
         mock_client = MagicMock()
         mock_client.get = AsyncMock(return_value=mock_resp)
         mock_db_pool._mock_conn.executemany = AsyncMock(return_value="INSERT 0 1")
 
-        with patch("backend.services.rag.kg_subgraph_property._get_client", return_value=mock_client):
+        with patch(
+            "backend.services.rag.kg_subgraph_property._get_client", return_value=mock_client
+        ):
             result = await _fetch_gistaru_provider("5104010001", mock_db_pool)
         assert result >= 0
 
@@ -218,7 +250,9 @@ class TestFetchGistaru:
         mock_client = MagicMock()
         mock_client.get = AsyncMock(return_value=mock_resp)
 
-        with patch("backend.services.rag.kg_subgraph_property._get_client", return_value=mock_client):
+        with patch(
+            "backend.services.rag.kg_subgraph_property._get_client", return_value=mock_client
+        ):
             result = await _fetch_gistaru_provider("5104010001", mock_db_pool)
         assert result == 0
 
@@ -301,8 +335,10 @@ class TestGetPropertyZoning:
         base_state["lng"] = 115.2
         config = {"configurable": {"db_pool": mock_db_pool, "google_api_key": "key"}}
 
-        with patch("backend.services.rag.kg_subgraph_property._check_existing_zoning",
-                    AsyncMock(return_value={"zoning_type": "R-1", "district_name": "Badung"})):
+        with patch(
+            "backend.services.rag.kg_subgraph_property._check_existing_zoning",
+            AsyncMock(return_value={"zoning_type": "R-1", "district_name": "Badung"}),
+        ):
             result = await get_property_zoning(base_state, config)
         assert result["zoning_info"]["zoning_type"] == "R-1"
 
@@ -312,8 +348,10 @@ class TestGetPropertyZoning:
         base_state["lng"] = 115.2
         config = {"configurable": {"db_pool": mock_db_pool}}
 
-        with patch("backend.services.rag.kg_subgraph_property._check_existing_zoning",
-                    AsyncMock(return_value=None)):
+        with patch(
+            "backend.services.rag.kg_subgraph_property._check_existing_zoning",
+            AsyncMock(return_value=None),
+        ):
             result = await get_property_zoning(base_state, config)
         assert "error" in result["zoning_info"]
 
@@ -344,8 +382,10 @@ class TestSynthesizePropertyWorkflow:
         base_state["zoning_info"] = {"error": "No data"}
         base_state["workflow_steps"] = ["Step 1", "Step 2"]
 
-        with patch("backend.services.rag.confidence.calculate_subgraph_confidence",
-                    return_value={"final_score": 0.4}):
+        with patch(
+            "backend.services.rag.confidence.calculate_subgraph_confidence",
+            return_value={"final_score": 0.4},
+        ):
             result = await synthesize_property_workflow(base_state, {})
         assert "couldn't retrieve" in result["final_analysis"].lower()
 
@@ -354,8 +394,10 @@ class TestSynthesizePropertyWorkflow:
         base_state["zoning_info"] = {"zoning_type": "R-1", "district_name": "Badung"}
         base_state["workflow_steps"] = ["Req 1", "Req 2"]
 
-        with patch("backend.services.rag.confidence.calculate_subgraph_confidence",
-                    return_value={"final_score": 0.85}):
+        with patch(
+            "backend.services.rag.confidence.calculate_subgraph_confidence",
+            return_value={"final_score": 0.85},
+        ):
             result = await synthesize_property_workflow(base_state, {})
         assert "R-1" in result["final_analysis"]
         assert result["confidence_score"] > 0
@@ -426,10 +468,12 @@ class TestLegacyNodes:
     @pytest.mark.asyncio
     async def test_synthesize_workflow_node(self):
         from backend.services.rag.confidence import ConfidenceBreakdown
+
         state = {"property_type": "hak_pakai", "kg_sources_used": 0}
         breakdown = ConfidenceBreakdown(overall=0.75)
-        with patch("backend.services.rag.confidence.calculate_subgraph_confidence",
-                    return_value=breakdown):
+        with patch(
+            "backend.services.rag.confidence.calculate_subgraph_confidence", return_value=breakdown
+        ):
             result = await synthesize_property_workflow_node(state)
         assert "workflow" in result
         assert result["workflow"]["type"] == "property_acquisition"
@@ -450,16 +494,20 @@ class TestLegacyNodes:
 class TestFetchAndIngestDesa:
     @pytest.mark.asyncio
     async def test_routes_to_badung(self, mock_db_pool):
-        with patch("backend.services.rag.kg_subgraph_property._fetch_badung_provider",
-                    AsyncMock(return_value=5)) as mock_badung:
+        with patch(
+            "backend.services.rag.kg_subgraph_property._fetch_badung_provider",
+            AsyncMock(return_value=5),
+        ) as mock_badung:
             result = await _fetch_and_ingest_desa("5103030005", mock_db_pool)
         mock_badung.assert_awaited_once()
         assert result == 5
 
     @pytest.mark.asyncio
     async def test_routes_to_gistaru(self, mock_db_pool):
-        with patch("backend.services.rag.kg_subgraph_property._fetch_gistaru_provider",
-                    AsyncMock(return_value=3)) as mock_gistaru:
+        with patch(
+            "backend.services.rag.kg_subgraph_property._fetch_gistaru_provider",
+            AsyncMock(return_value=3),
+        ) as mock_gistaru:
             result = await _fetch_and_ingest_desa("5171010001", mock_db_pool)
         mock_gistaru.assert_awaited_once()
         assert result == 3

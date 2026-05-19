@@ -216,9 +216,7 @@ class OllamaVisionClient:
                 matches_brief=bool(parsed.get("matches_brief", False)),
                 has_banned_elements=list(parsed.get("has_banned_elements", []) or []),
                 brand_fit_score_0_10=int(parsed.get("brand_fit_score_0_10", 0)),
-                text_area_available_ratio=float(
-                    parsed.get("text_area_available_ratio", 0) or 0
-                ),
+                text_area_available_ratio=float(parsed.get("text_area_available_ratio", 0) or 0),
                 readability_issues=list(parsed.get("readability_issues", []) or []),
                 raw_response=content,
                 ok=True,

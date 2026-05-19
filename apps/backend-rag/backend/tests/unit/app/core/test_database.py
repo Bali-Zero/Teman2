@@ -48,7 +48,9 @@ class TestGetDbPool:
     async def test_create_pool_params(self):
         """get_db_pool should pass hardening params to asyncpg.create_pool."""
         with (
-            patch("backend.app.core.database.asyncpg.create_pool", new_callable=AsyncMock) as mock_pool,
+            patch(
+                "backend.app.core.database.asyncpg.create_pool", new_callable=AsyncMock
+            ) as mock_pool,
             patch("backend.app.core.database.settings") as mock_settings,
         ):
             mock_settings.database_url = "postgresql://test:test@localhost/testdb"
@@ -69,7 +71,9 @@ class TestGetDbPool:
     async def test_create_pool_has_init_callback(self):
         """get_db_pool should set init callback for JSON codec setup."""
         with (
-            patch("backend.app.core.database.asyncpg.create_pool", new_callable=AsyncMock) as mock_pool,
+            patch(
+                "backend.app.core.database.asyncpg.create_pool", new_callable=AsyncMock
+            ) as mock_pool,
             patch("backend.app.core.database.settings") as mock_settings,
         ):
             mock_settings.database_url = "postgresql://test:test@localhost/testdb"

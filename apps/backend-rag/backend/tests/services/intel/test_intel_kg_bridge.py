@@ -9,6 +9,7 @@ These are integration tests — they require a real DB connection.
 The conftest.py creates kg_proposals table inside the transaction if it
 doesn't exist locally (m108 may not be applied yet on nuzantara_dev).
 """
+
 from __future__ import annotations
 
 import pytest

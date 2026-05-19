@@ -16,6 +16,7 @@ from backend.app.core.exceptions import DatabaseError, ResourceNotFoundError, Va
 # Fixtures — mock DB pool
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def mock_pool():
     """Standard asyncpg pool mock."""
@@ -90,6 +91,7 @@ from backend.services.crm.client_core import (
 # sanitize_input
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_sanitize_input_none():
     assert sanitize_input(None) is None
 
@@ -117,6 +119,7 @@ def test_sanitize_input_removes_control_characters():
 # validate_uuid
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_validate_uuid_valid():
     assert validate_uuid("550e8400-e29b-41d4-a716-446655440000") is True
 
@@ -132,6 +135,7 @@ def test_validate_uuid_uppercase_works():
 # ─────────────────────────────────────────────────────────────────────────────
 # normalize_phone_e164
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def test_normalize_phone_none():
     assert normalize_phone_e164("") is None
@@ -166,6 +170,7 @@ def test_normalize_phone_strips_non_digits():
 # extract_entities_from_text
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_extract_entities_emails():
     text = "Contact me at user@example.com or admin@test.org"
     result = extract_entities_from_text(text)
@@ -195,6 +200,7 @@ def test_extract_entities_empty():
 # ─────────────────────────────────────────────────────────────────────────────
 # ClientValidator
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def test_client_validator_valid():
     v = ClientValidator(full_name="John Doe", email="john@example.com")
@@ -244,6 +250,7 @@ def test_client_validator_defaults():
 # PracticeValidator
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_practice_validator_valid():
     v = PracticeValidator(client_id=1, practice_type_id=2)
     assert v.status == "inquiry"
@@ -281,6 +288,7 @@ def test_practice_validator_negative_client_id():
 # InteractionValidator
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_interaction_validator_valid():
     v = InteractionValidator(interaction_type="chat")
     assert v.interaction_type == "chat"
@@ -309,6 +317,7 @@ def test_interaction_validator_none_sentiment():
 # ─────────────────────────────────────────────────────────────────────────────
 # CRMAuditor
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def auditor(mock_pool):
@@ -491,6 +500,7 @@ def test_auditor_stop_periodic_flush_noop_when_no_task(auditor):
 # EnhancedCRMService — initialize
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def crm_service(mock_pool):
     pool, conn = mock_pool
@@ -524,24 +534,27 @@ async def test_crm_service_initialize_idempotent(crm_service, mock_pool):
 # EnhancedCRMService — create_client
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_create_client_success(crm_service, mock_pool):
     service, _ = crm_service
     pool, conn = mock_pool
     conn.fetchval = AsyncMock(return_value=None)  # No duplicate
-    conn.fetchrow = AsyncMock(return_value={
-        "id": 1,
-        "full_name": "John Doe",
-        "email": "john@example.com",
-        "phone": None,
-        "whatsapp": None,
-        "nationality": None,
-        "passport_number": None,
-        "status": "active",
-        "client_type": "individual",
-        "assigned_to": None,
-        "custom_fields": {},
-    })
+    conn.fetchrow = AsyncMock(
+        return_value={
+            "id": 1,
+            "full_name": "John Doe",
+            "email": "john@example.com",
+            "phone": None,
+            "whatsapp": None,
+            "nationality": None,
+            "passport_number": None,
+            "status": "active",
+            "client_type": "individual",
+            "assigned_to": None,
+            "custom_fields": {},
+        }
+    )
 
     with patch.object(service.auditor, "log_client_created", new_callable=AsyncMock):
         result = await service.create_client({"full_name": "John Doe", "email": "john@example.com"})
@@ -557,10 +570,12 @@ async def test_create_client_duplicate_raises(crm_service, mock_pool):
     conn.fetchval = AsyncMock(return_value=42)  # Duplicate found
 
     with pytest.raises(ValidationError):
-        await service.create_client({
-            "full_name": "John Doe",
-            "email": "john@example.com",
-        })
+        await service.create_client(
+            {
+                "full_name": "John Doe",
+                "email": "john@example.com",
+            }
+        )
 
 
 @pytest.mark.asyncio
@@ -584,6 +599,7 @@ async def test_create_client_invalid_input_raises(crm_service):
 # ─────────────────────────────────────────────────────────────────────────────
 # EnhancedCRMService — update_client
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_update_client_success(crm_service, mock_pool):
@@ -681,6 +697,7 @@ async def test_update_client_no_changes_returns_old(crm_service, mock_pool):
 # EnhancedCRMService — get_client
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_get_client_cache_hit(crm_service, _patch_crm_deps):
     service, _ = crm_service
@@ -729,17 +746,20 @@ async def test_get_client_with_practices(crm_service, _patch_crm_deps):
 # EnhancedCRMService — create_practice
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_create_practice_success(crm_service, mock_pool):
     service, _ = crm_service
     pool, conn = mock_pool
-    conn.fetchrow = AsyncMock(return_value={
-        "id": 10,
-        "client_id": 1,
-        "practice_type_id": 2,
-        "status": "inquiry",
-        "priority": "normal",
-    })
+    conn.fetchrow = AsyncMock(
+        return_value={
+            "id": 10,
+            "client_id": 1,
+            "practice_type_id": 2,
+            "status": "inquiry",
+            "priority": "normal",
+        }
+    )
 
     with patch.object(service.auditor, "log", new_callable=AsyncMock):
         result = await service.create_practice({"client_id": 1, "practice_type_id": 2})
@@ -768,14 +788,18 @@ async def test_create_practice_db_error_raises(crm_service, mock_pool):
 # EnhancedCRMService — update_practice_status
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_update_practice_status_success(crm_service, mock_pool):
     service, _ = crm_service
     pool, conn = mock_pool
     old = {"status": "inquiry", "client_id": 1}
     updated = {
-        "id": 10, "status": "on_process", "client_id": 1,
-        "assigned_to": None, "actual_price": None,
+        "id": 10,
+        "status": "on_process",
+        "client_id": 1,
+        "assigned_to": None,
+        "actual_price": None,
     }
     conn.fetchrow = AsyncMock(side_effect=[old, updated])
 
@@ -814,16 +838,19 @@ async def test_update_practice_status_completed_triggers_hr_bonus(crm_service, m
 # EnhancedCRMService — batch_create_clients
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_batch_create_clients_success(crm_service, _patch_crm_deps):
     service, _ = crm_service
     _patch_crm_deps["optimizer"].batch_insert_clients = AsyncMock(return_value=[1, 2, 3])
 
-    ids = await service.batch_create_clients([
-        {"full_name": "Client One"},
-        {"full_name": "Client Two"},
-        {"full_name": "Client Three"},
-    ])
+    ids = await service.batch_create_clients(
+        [
+            {"full_name": "Client One"},
+            {"full_name": "Client Two"},
+            {"full_name": "Client Three"},
+        ]
+    )
     assert ids == [1, 2, 3]
 
 
@@ -837,6 +864,7 @@ async def test_batch_create_clients_invalid_raises(crm_service):
 # ─────────────────────────────────────────────────────────────────────────────
 # EnhancedCRMService — search_clients
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_search_clients(crm_service, _patch_crm_deps):
@@ -853,6 +881,7 @@ async def test_search_clients(crm_service, _patch_crm_deps):
 # ─────────────────────────────────────────────────────────────────────────────
 # EnhancedCRMService — _find_duplicate_client
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_find_duplicate_by_email(crm_service, mock_pool):
@@ -871,10 +900,12 @@ async def test_find_duplicate_by_phone(crm_service, mock_pool):
     # No email in data → only phone fetchval is called, returns 99
     conn.fetchval = AsyncMock(return_value=99)
 
-    result = await service._find_duplicate_client({
-        "email": None,
-        "phone": "081234567890",
-    })
+    result = await service._find_duplicate_client(
+        {
+            "email": None,
+            "phone": "081234567890",
+        }
+    )
     assert result == 99
 
 
@@ -891,6 +922,7 @@ async def test_find_duplicate_no_match(crm_service, mock_pool):
 # ─────────────────────────────────────────────────────────────────────────────
 # EnhancedCRMService — utility methods
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_get_statistics(crm_service, _patch_crm_deps):
@@ -932,6 +964,7 @@ async def test_close(crm_service):
 # _create_hr_bonus_entry
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_hr_bonus_skips_no_assigned_to(crm_service):
     service, _ = crm_service
@@ -963,9 +996,11 @@ async def test_hr_bonus_failure_does_not_propagate(crm_service, mock_pool):
 # get_enhanced_crm_service singleton
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture(autouse=True)
 def _reset_crm_singleton():
     import backend.services.crm.client_core as mod
+
     mod._enhanced_crm_service = None
     yield
     mod._enhanced_crm_service = None

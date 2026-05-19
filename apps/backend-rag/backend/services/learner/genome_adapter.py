@@ -85,7 +85,8 @@ class GenomeAdapter:
     async def record_skill(self, entry: SkillEntry) -> str:
         if self.genome is None:
             logger.info(
-                "genome unavailable — skipped skill %s", entry.skill_id,
+                "genome unavailable — skipped skill %s",
+                entry.skill_id,
             )
             return "skipped"
         return await asyncio.to_thread(
@@ -105,7 +106,8 @@ class GenomeAdapter:
     async def record_scar(self, entry: ScarEntry) -> str:
         if self.genome is None:
             logger.info(
-                "genome unavailable — skipped scar %s", entry.scar_id,
+                "genome unavailable — skipped scar %s",
+                entry.scar_id,
             )
             return "skipped"
         return await asyncio.to_thread(

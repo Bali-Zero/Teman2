@@ -20,6 +20,7 @@ from backend.core.plugins.registry import PluginRegistry
 # Helpers — concrete plugin implementations for tests
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _make_plugin_class(
     name: str,
     version: str = "1.0.0",
@@ -67,6 +68,7 @@ def _make_plugin_class(
 # Fixtures
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def registry():
     """Fresh PluginRegistry for each test."""
@@ -77,6 +79,7 @@ def registry():
 # __init__
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_registry_init_empty(registry):
     assert len(registry._plugins) == 0
     assert len(registry._metadata) == 0
@@ -86,6 +89,7 @@ def test_registry_init_empty(registry):
 # ─────────────────────────────────────────────────────────────────────────────
 # register
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_register_basic(registry):
@@ -130,6 +134,7 @@ async def test_register_on_load_failure_rolls_back(registry):
     # Patch on_load to raise
     async def _bad_on_load(self):
         raise RuntimeError("load failed")
+
     cls.on_load = _bad_on_load
 
     with pytest.raises(RuntimeError, match="load failed"):
@@ -157,6 +162,7 @@ async def test_register_with_config(registry):
 # register_batch
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_register_batch(registry):
     classes = [
@@ -176,6 +182,7 @@ async def test_register_batch_partial_failure(registry):
 
     async def _bad_on_load(self):
         raise RuntimeError("fail")
+
     bad_cls.on_load = _bad_on_load
 
     plugins = await registry.register_batch([good_cls, bad_cls])
@@ -187,6 +194,7 @@ async def test_register_batch_partial_failure(registry):
 # ─────────────────────────────────────────────────────────────────────────────
 # unregister
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_unregister_removes_plugin(registry):
@@ -216,6 +224,7 @@ async def test_unregister_on_unload_failure_still_removes(registry):
 
     async def _bad_on_unload(self):
         raise RuntimeError("unload error")
+
     cls.on_unload = _bad_on_unload
 
     await registry.register(cls)
@@ -227,6 +236,7 @@ async def test_unregister_on_unload_failure_still_removes(registry):
 # ─────────────────────────────────────────────────────────────────────────────
 # get
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_get_by_name(registry):
@@ -255,6 +265,7 @@ def test_get_nonexistent_returns_none(registry):
 # get_metadata
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_get_metadata_returns_metadata(registry):
     cls = _make_plugin_class("test.meta")
@@ -271,6 +282,7 @@ def test_get_metadata_nonexistent_returns_none(registry):
 # ─────────────────────────────────────────────────────────────────────────────
 # list_plugins
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_list_plugins_all(registry):
@@ -327,6 +339,7 @@ async def test_list_plugins_sorted(registry):
 # search
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_search_by_name(registry):
     await registry.register(_make_plugin_class("gmail.send"))
@@ -363,6 +376,7 @@ async def test_search_no_match_returns_empty(registry):
 # get_statistics
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_get_statistics_empty(registry):
     stats = registry.get_statistics()
@@ -391,6 +405,7 @@ async def test_get_statistics_aliases(registry):
 # get_all_anthropic_tools
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_get_all_anthropic_tools(registry):
     await registry.register(_make_plugin_class("tool.one"))
@@ -415,6 +430,7 @@ async def test_get_all_anthropic_tools_error_skipped(registry):
 # get_haiku_allowed_tools
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_get_haiku_allowed_tools(registry):
     cls_haiku = _make_plugin_class("haiku.tool", allowed_models=["haiku", "gemini-flash"])
@@ -430,6 +446,7 @@ async def test_get_haiku_allowed_tools(registry):
 # ─────────────────────────────────────────────────────────────────────────────
 # reload_plugin
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_reload_plugin(registry):
@@ -449,6 +466,7 @@ async def test_reload_plugin_not_found_raises(registry):
 # ─────────────────────────────────────────────────────────────────────────────
 # discover_plugins
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_discover_plugins_missing_dir_non_strict(registry, tmp_path):

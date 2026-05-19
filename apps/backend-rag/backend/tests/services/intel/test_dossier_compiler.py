@@ -94,18 +94,12 @@ def _compile_json(**overrides: Any) -> str:
         "confidence_0_1": 0.7,
         "domains": ["chatbot", "warroom"],
         "public_safe": True,
-        "facts": [
-            {"claim": "art.51 comma 3 limita 4 estensioni", "confidence": 0.9}
-        ],
-        "numbers": [
-            {"metric": "max_days", "value": 180, "unit": "days"}
-        ],
+        "facts": [{"claim": "art.51 comma 3 limita 4 estensioni", "confidence": 0.9}],
+        "numbers": [{"metric": "max_days", "value": 180, "unit": "days"}],
         "citations": [
             {"norma": "Permenkumham 22/2023", "articolo": "51", "comma": "3", "year": 2023}
         ],
-        "entities_linked": [
-            {"kg_entity_id": "visa:B211A", "type": "Visa", "role": "subject"}
-        ],
+        "entities_linked": [{"kg_entity_id": "visa:B211A", "type": "Visa", "role": "subject"}],
         "summary_short": "B211A ora ha limite di 4 estensioni.",
         "summary_medium": "Permenkumham 22/2023 all'articolo 51 introduce un tetto operativo.",
     }
@@ -183,7 +177,7 @@ def test_cluster_separate_when_no_overlap():
 
 def test_coerce_confidence_clamped():
     assert _coerce_confidence(0.5) == 0.5
-    assert _coerce_confidence(-1) == 0.3   # MIN
+    assert _coerce_confidence(-1) == 0.3  # MIN
     assert _coerce_confidence(2) == 0.95  # MAX
     assert _coerce_confidence("bad") == 0.5
 
@@ -322,9 +316,11 @@ async def test_run_once_mark_consumed_failure_does_not_abort(repo_runner):
 
 @pytest.mark.asyncio
 async def test_run_once_coerces_bad_topic_category(repo_runner):
-    repo_runner.top_unconsumed_trends = AsyncMock(return_value=[
-        _trend("B211A extension rules"),
-    ])
+    repo_runner.top_unconsumed_trends = AsyncMock(
+        return_value=[
+            _trend("B211A extension rules"),
+        ]
+    )
     runner = MockRunner(scripts=[_compile_json(topic_category="BOGUS")])
     compiler = DossierCompiler(repo=repo_runner, runner=runner)
     summary = await compiler.run_once()
@@ -344,4 +340,8 @@ async def test_freshness_default_30_days(repo_runner):
     dc = repo_runner.upsert_dossier.await_args.args[0]
     delta = dc.freshness_expiry - datetime.now(timezone.utc)
     # ~30 days ±1
-    assert timedelta(days=DEFAULT_FRESHNESS_DAYS - 1) < delta < timedelta(days=DEFAULT_FRESHNESS_DAYS + 1)
+    assert (
+        timedelta(days=DEFAULT_FRESHNESS_DAYS - 1)
+        < delta
+        < timedelta(days=DEFAULT_FRESHNESS_DAYS + 1)
+    )

@@ -34,12 +34,14 @@ class KBLIEnricher:
                     async with pool.acquire() as conn:
                         # 1. Fetch current properties to avoid overwriting existing data
                         row = await conn.fetchrow(
-                            "SELECT properties FROM kg_nodes WHERE entity_id = $1", entity_id,
+                            "SELECT properties FROM kg_nodes WHERE entity_id = $1",
+                            entity_id,
                         )
 
                         if not row:
                             logger.warning(
-                                "⚠️ [KBLI:%s] Node not found in Postgres. Creating placeholder node...", code,
+                                "⚠️ [KBLI:%s] Node not found in Postgres. Creating placeholder node...",
+                                code,
                             )
                             # Create node if missing (optional, based on your preference)
                             await conn.execute(
@@ -89,7 +91,10 @@ class KBLIEnricher:
                 except Exception as e:
                     attempt += 1
                     logger.error(
-                        "❌ [KBLI:%s] Postgres update failed (Attempt %s): %s", code, attempt, e,
+                        "❌ [KBLI:%s] Postgres update failed (Attempt %s): %s",
+                        code,
+                        attempt,
+                        e,
                     )
                     await asyncio.sleep(1 * attempt)
 

@@ -1,4 +1,5 @@
 """PG layer: kill switch + lease CAS fetch + persist + cleanup."""
+
 from unittest.mock import AsyncMock
 
 import pytest
@@ -59,8 +60,10 @@ async def test_acquire_lease_loss_returns_none():
 async def test_persist_canva_result_clears_lease():
     conn = AsyncMock()
     await persist_canva_result(
-        conn, draft_id="abc",
-        canva_design_id="DAG1", canva_edit_url="https://canva.com/...",
+        conn,
+        draft_id="abc",
+        canva_design_id="DAG1",
+        canva_edit_url="https://canva.com/...",
         canva_view_url=None,
     )
     sql = conn.execute.call_args[0][0]
@@ -82,7 +85,10 @@ async def test_release_lease_transient_reverts_status():
 async def test_release_lease_permanent_sets_terminal():
     conn = AsyncMock()
     await release_lease_permanent(
-        conn, draft_id="abc", status="canva_import_failed", reason="400 invalid",
+        conn,
+        draft_id="abc",
+        status="canva_import_failed",
+        reason="400 invalid",
     )
     sql = conn.execute.call_args[0][0]
     assert "status = $2" in sql
@@ -101,16 +107,19 @@ async def test_reset_stale_leases_returns_count():
 async def test_inject_hero_paths_writes_slides_json():
     """inject_hero_paths updates slides_json with hero_image_path fields."""
     conn = AsyncMock()
-    slides = {"slides": [
-        {"index": 1, "is_hero_image": True, "hero_image_path": "/tmp/slide1.jpg"},
-        {"index": 2, "is_hero_image": False},
-    ]}
+    slides = {
+        "slides": [
+            {"index": 1, "is_hero_image": True, "hero_image_path": "/tmp/slide1.jpg"},
+            {"index": 2, "is_hero_image": False},
+        ]
+    }
     await inject_hero_paths(conn, draft_id="abc-uuid", slides_json=slides)
     sql, draft_id_arg, slides_json_arg = conn.execute.call_args[0]
     assert "UPDATE war_room_drafts" in sql
     assert "slides_json = $2::jsonb" in sql
     assert draft_id_arg == "abc-uuid"
     import json
+
     parsed = json.loads(slides_json_arg)
     assert parsed["slides"][0]["hero_image_path"] == "/tmp/slide1.jpg"
 

@@ -12,6 +12,7 @@ All DB interaction uses a real asyncpg pool + per-test transaction rolled back.
 Tables needed: clients, lkpm_reports, lkpm_receipts, lkpm_client_config.
 If lkpm_receipts is missing the test creates it inline via conftest.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -133,9 +134,8 @@ async def _insert_incomplete_report(
 @pytest_asyncio.fixture()
 async def db_pool() -> asyncpg.Pool:
     import os
-    url = os.environ.get(
-        "TEST_DATABASE_URL", "postgresql://nuzantara@localhost:5432/nuzantara_dev"
-    )
+
+    url = os.environ.get("TEST_DATABASE_URL", "postgresql://nuzantara@localhost:5432/nuzantara_dev")
     pool = await asyncpg.create_pool(url, min_size=1, max_size=5)
     yield pool
     await pool.close()

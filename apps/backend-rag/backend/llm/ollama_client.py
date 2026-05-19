@@ -26,10 +26,10 @@ from backend.llm.metrics_emitter import emit_llm_metric
 logger = logging.getLogger(__name__)
 
 # Default models by task complexity
-MODEL_FAST = "qwen3.5:9b"   # <0.5s, classification/titles/short tasks
+MODEL_FAST = "qwen3.5:9b"  # <0.5s, classification/titles/short tasks
 MODEL_HEAVY = "deepseek-r1:32b"  # ~30s, reasoning tasks (war-room preprocessor, CELL reasoner)
-MODEL_KG = "gemma4:26b"    # KG extraction — MoE (26B, ~4B active), replaces qwen3.5:27b
-MODEL_JSON = "gemma4:26b"   # Reliable JSON output, scoring — replaces gemma3:12b
+MODEL_KG = "gemma4:26b"  # KG extraction — MoE (26B, ~4B active), replaces qwen3.5:27b
+MODEL_JSON = "gemma4:26b"  # Reliable JSON output, scoring — replaces gemma3:12b
 
 OLLAMA_BASE_URL = settings.ollama_url  # default: http://localhost:11434
 
@@ -111,7 +111,9 @@ async def ollama_generate(
             },
         )
         await emit_llm_metric(
-            provider="ollama", model=model, latency_ms=latency_ms,
+            provider="ollama",
+            model=model,
+            latency_ms=latency_ms,
             prompt_tokens=data.get("prompt_eval_count", 0),
             completion_tokens=data.get("eval_count", 0),
         )
@@ -174,7 +176,9 @@ async def ollama_chat(
             },
         )
         await emit_llm_metric(
-            provider="ollama", model=model, latency_ms=latency_ms,
+            provider="ollama",
+            model=model,
+            latency_ms=latency_ms,
             prompt_tokens=data.get("prompt_eval_count", 0),
             completion_tokens=data.get("eval_count", 0),
         )
@@ -235,7 +239,9 @@ async def ollama_chat_kg(
             },
         )
         await emit_llm_metric(
-            provider="ollama", model=model, latency_ms=latency_ms,
+            provider="ollama",
+            model=model,
+            latency_ms=latency_ms,
             prompt_tokens=data.get("prompt_eval_count", 0),
             completion_tokens=data.get("eval_count", 0),
         )

@@ -200,19 +200,13 @@ class TestExtendedRoutingFlag:
 
     # ── Flag OFF: base map is live (backwards-compatible) ──
 
-    def test_flag_off_property_routes_to_nb3_legacy(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_flag_off_property_routes_to_nb3_legacy(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("NLM_EXTENDED_ROUTING", raising=False)
         orch = self._make_orch()
         nbs = orch._resolve_notebooks("property", is_cross_domain=False)
-        assert nbs == [NB_3_COMPANY], (
-            "Flag off must preserve historical property → NB-3 fallback"
-        )
+        assert nbs == [NB_3_COMPANY], "Flag off must preserve historical property → NB-3 fallback"
 
-    def test_flag_off_new_domains_unknown(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_flag_off_new_domains_unknown(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("NLM_EXTENDED_ROUTING", raising=False)
         orch = self._make_orch()
         for domain in ("operations", "editorial", "lifestyle", "team"):
@@ -231,9 +225,7 @@ class TestExtendedRoutingFlag:
             for rec in caplog.records
         ), "Shadow-mode log must surface the extended choice for property"
 
-    def test_flag_off_existing_domains_unchanged(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_flag_off_existing_domains_unchanged(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """visa/immigration/tax/company/kbli/legal behavior never regresses."""
         monkeypatch.delenv("NLM_EXTENDED_ROUTING", raising=False)
         orch = self._make_orch()
@@ -247,16 +239,12 @@ class TestExtendedRoutingFlag:
 
     # ── Flag ON: extended map is live ──
 
-    def test_flag_on_property_routes_to_nb5(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_flag_on_property_routes_to_nb5(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("NLM_EXTENDED_ROUTING", "1")
         orch = self._make_orch()
         assert orch._resolve_notebooks("property", is_cross_domain=False) == [NB_5_PROPERTY]
 
-    def test_flag_on_exposes_five_new_domains(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_flag_on_exposes_five_new_domains(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("NLM_EXTENDED_ROUTING", "true")
         orch = self._make_orch()
         expected = {
@@ -277,9 +265,7 @@ class TestExtendedRoutingFlag:
             nbs = orch._resolve_notebooks(domain, is_cross_domain=False)
             assert nbs == [uuid], f"{domain} should route to {uuid[:8]}…, got {nbs}"
 
-    def test_flag_on_existing_domains_unchanged(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_flag_on_existing_domains_unchanged(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """Flag on must preserve visa/immigration/tax/kbli."""
         monkeypatch.setenv("NLM_EXTENDED_ROUTING", "yes")
         orch = self._make_orch()
@@ -291,9 +277,7 @@ class TestExtendedRoutingFlag:
         ]
         assert orch._resolve_notebooks("company", is_cross_domain=False) == [NB_3_COMPANY]
 
-    def test_flag_on_cross_domain_extended_pair(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_flag_on_cross_domain_extended_pair(self, monkeypatch: pytest.MonkeyPatch) -> None:
         """property+tax cross pair is only honoured when flag on."""
         monkeypatch.setenv("NLM_EXTENDED_ROUTING", "1")
         orch = self._make_orch()

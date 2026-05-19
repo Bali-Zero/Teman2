@@ -30,8 +30,10 @@ def _draft(topic: str = "t") -> DraftPayload:
         main_caption="Main caption " * 30,
         slides=[
             SlidePayload(
-                slide_number=2, image_url="https://tigris/s1.png",
-                caption="A", final_text="body A " * 40,
+                slide_number=2,
+                image_url="https://tigris/s1.png",
+                caption="A",
+                final_text="body A " * 40,
             ),
         ],
         hashtags=["KBLI"],
@@ -105,11 +107,13 @@ async def test_batch_writes_all_files(repo_env):
         return 0, ""
 
     with patch.object(BlogPublisher, "_git", new=fake_git):
-        result = await batch.publish_batch([
-            _draft("topic A"),
-            _draft("topic B"),
-            _draft("topic C"),
-        ])
+        result = await batch.publish_batch(
+            [
+                _draft("topic A"),
+                _draft("topic B"),
+                _draft("topic C"),
+            ]
+        )
 
     assert result.published_count == 3
     assert result.commit_ok is True
@@ -142,9 +146,7 @@ async def test_hard_cap_enforced_via_repo_count(repo_env, git_mock):
 
     assert result.published_count == 1
     assert len(result.over_cap_skipped) == 2
-    assert all(
-        r.meta.get("over_daily_cap") is True for r in result.over_cap_skipped
-    )
+    assert all(r.meta.get("over_daily_cap") is True for r in result.over_cap_skipped)
 
 
 @pytest.mark.asyncio

@@ -125,7 +125,8 @@ async def run_migration():
     import os
 
     database_url = os.getenv(
-        "DATABASE_URL", "postgresql://balizero:test1234@localhost:5432/balizero",
+        "DATABASE_URL",
+        "postgresql://balizero:test1234@localhost:5432/balizero",
     )
 
     conn = await asyncpg.connect(database_url)

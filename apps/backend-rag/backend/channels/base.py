@@ -123,7 +123,9 @@ class BaseChannel(ABC):
 
     @abstractmethod
     async def stream_response(
-        self, channel_id: str, response_stream: AsyncIterator[ChannelResponse],
+        self,
+        channel_id: str,
+        response_stream: AsyncIterator[ChannelResponse],
     ) -> None:
         """
         Handle streaming responses with platform-specific optimizations.
@@ -180,7 +182,9 @@ class BaseChannel(ABC):
     # ==================== DLQ Integration ====================
 
     async def send_response_safe(
-        self, channel_id: str, response: ChannelResponse,
+        self,
+        channel_id: str,
+        response: ChannelResponse,
     ) -> bool:
         """Send response with DLQ fallback on failure.
 
@@ -199,8 +203,7 @@ class BaseChannel(ABC):
             return True
         except Exception as e:
             logger.error(
-                f"Send failed on {self.channel_name} to {channel_id}, "
-                f"routing to DLQ: {e}",
+                f"Send failed on {self.channel_name} to {channel_id}, routing to DLQ: {e}",
             )
             try:
                 from backend.channels.optimizations import delivery_manager

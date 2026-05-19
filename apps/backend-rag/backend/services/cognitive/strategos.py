@@ -132,7 +132,9 @@ class StrategosContextBuilder:
         """Return last weekly brief narrative; empty string if unavailable."""
         try:
             fetcher = getattr(
-                self.cognitive_repo, "latest_weekly_brief_narrative", None,
+                self.cognitive_repo,
+                "latest_weekly_brief_narrative",
+                None,
             )
             if fetcher is None:
                 return ""
@@ -166,21 +168,20 @@ class StrategosContextBuilder:
                     seed_thesis = ""
                 if not seed_thesis:
                     seed_thesis = (
-                        "Bali Zero weekly strategic priorities — "
-                        "KBLI, visa, tax, property"
+                        "Bali Zero weekly strategic priorities — KBLI, visa, tax, property"
                     )
                 try:
                     rows = await self.dossier_filter.rank(
-                        rows, seed_text=seed_thesis, top_k=len(rows),
+                        rows,
+                        seed_text=seed_thesis,
+                        top_k=len(rows),
                     )
                 except Exception as exc:  # noqa: BLE001
                     logger.warning(
                         "dossier_filter.rank failed, preserving SQL order: %s",
                         exc,
                     )
-            context.dossiers_block = "\n".join(
-                _format_dossier_row(r) for r in rows
-            )
+            context.dossiers_block = "\n".join(_format_dossier_row(r) for r in rows)
         except Exception as exc:  # noqa: BLE001
             logger.debug("dossiers context failed: %s", exc)
 
@@ -190,8 +191,7 @@ class StrategosContextBuilder:
                 days=DEFAULT_THESES_LOOKBACK,
             )
             context.theses_block = "\n".join(
-                f"- conf={t.confidence:.2f} | {t.title[:120]} "
-                f"→ {(t.implication or '')[:120]}"
+                f"- conf={t.confidence:.2f} | {t.title[:120]} → {(t.implication or '')[:120]}"
                 for t in theses[:DEFAULT_TOP_THESES]
             )
         except Exception as exc:  # noqa: BLE001
@@ -225,8 +225,7 @@ class StrategosContextBuilder:
                 DEFAULT_METRICS_LOOKBACK,
             )
             context.metrics_block = "\n".join(
-                f"- {r['register']} · {r['metric_name']} "
-                f"avg={float(r['avg_value']):.2f} n={r['n']}"
+                f"- {r['register']} · {r['metric_name']} avg={float(r['avg_value']):.2f} n={r['n']}"
                 for r in metric_rows
             )
         except Exception as exc:  # noqa: BLE001
@@ -244,9 +243,7 @@ class StrategosContextBuilder:
                 """,
                 DEFAULT_REJECTIONS_LOOKBACK,
             )
-            context.rejections_block = "\n".join(
-                f"- {r['reason']}: {r['n']}" for r in rej_rows
-            )
+            context.rejections_block = "\n".join(f"- {r['reason']}: {r['n']}" for r in rej_rows)
         except Exception as exc:  # noqa: BLE001
             logger.debug("rejections context failed: %s", exc)
 
@@ -377,7 +374,8 @@ class StrategosOrchestrator:
         result.prompt_chars = len(prompt)
 
         parsed, runner_result = await self.runner.run_json(
-            prompt, timeout=self.timeout,
+            prompt,
+            timeout=self.timeout,
         )
         if not runner_result.ok or parsed is None:
             result.errors.append(
@@ -411,9 +409,7 @@ def _format_dossier_row(r: Any) -> str:
     confidence = float(r["confidence_0_1"])
     title = (r["title"] or "")[:120]
     summary = r["summary_short"] or ""
-    line = (
-        f"- id={dossier_id} cat={category} conf={confidence:.2f} | {title}"
-    )
+    line = f"- id={dossier_id} cat={category} conf={confidence:.2f} | {title}"
     if summary:
         line += f" — {summary[:140]}"
     return line

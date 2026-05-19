@@ -231,9 +231,7 @@ class BatchProcessor:
         # same tick.
         if not self.processing:
             async with self._start_lock:
-                if not self.processing and (
-                    self._batch_task is None or self._batch_task.done()
-                ):
+                if not self.processing and (self._batch_task is None or self._batch_task.done()):
                     self._batch_task = asyncio.create_task(
                         self._process_batch(),
                         name="batch-processor-drain",
@@ -324,7 +322,8 @@ class OptimizedSearchService:
         # Run in thread pool for CPU-bound work
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
-            thread_pool, lambda: self.original.embedding_model.encode(text).tolist(),
+            thread_pool,
+            lambda: self.original.embedding_model.encode(text).tolist(),
         )
 
     @async_timed("search")
@@ -349,7 +348,8 @@ class OptimizedSearchService:
         # Run search in thread pool
         loop = asyncio.get_event_loop()
         return await loop.run_in_executor(
-            thread_pool, lambda: self.original.search_with_embedding(embedding, k),
+            thread_pool,
+            lambda: self.original.search_with_embedding(embedding, k),
         )
 
 

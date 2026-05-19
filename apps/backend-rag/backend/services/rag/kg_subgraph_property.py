@@ -259,7 +259,9 @@ async def _execute_batch_insert(rows: list[tuple[Any, ...]], db_pool: asyncpg.Po
 
 
 async def _check_existing_zoning(
-    lat: float, lng: float, db_pool: asyncpg.Pool,
+    lat: float,
+    lng: float,
+    db_pool: asyncpg.Pool,
 ) -> dict[str, Any] | None:
     """
     Step 0: check if we already have zoning polygons for these coordinates
@@ -530,20 +532,25 @@ async def get_property_requirements_node(state: Any, db_pool: Any = None) -> dic
 
                 if rows:
                     for row in rows:
-                        requirements.append({
-                            "type": row["relationship_type"],
-                            "name": row["name"],
-                            "details": row["properties"] or {},
-                        })
+                        requirements.append(
+                            {
+                                "type": row["relationship_type"],
+                                "name": row["name"],
+                                "details": row["properties"] or {},
+                            }
+                        )
                     kg_sources = len(rows)
                     logger.info(
-                        "[Property/legacy] Got %s requirements from KG for %s", kg_sources, prop_type,
+                        "[Property/legacy] Got %s requirements from KG for %s",
+                        kg_sources,
+                        prop_type,
                     )
         except asyncpg.PostgresError as e:
             logger.warning("[Property/legacy] KG query failed (DB), using fallback: %s", e)
         except Exception as e:  # noqa: BLE001 — fallback below runs on any KG failure
             logger.warning(
-                "[Property/legacy] KG query failed unexpectedly, using fallback: %s", e,
+                "[Property/legacy] KG query failed unexpectedly, using fallback: %s",
+                e,
                 exc_info=True,
             )
 

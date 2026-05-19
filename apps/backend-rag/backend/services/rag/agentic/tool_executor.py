@@ -280,8 +280,7 @@ async def execute_tool(
             )
             metrics_collector.record_tool_call(tool_name, "denied")
             return (
-                f"Tool execution denied: confirmation service unavailable "
-                f"for '{tool_name}'",
+                f"Tool execution denied: confirmation service unavailable for '{tool_name}'",
                 time.time() - start_time,
             )
         try:

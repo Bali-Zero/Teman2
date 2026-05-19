@@ -266,7 +266,9 @@ class GitHubPublisher:
         if response.status_code not in (200, 201):
             error_detail = response.json().get("message", response.text)
             logger.error(
-                "GitHub API error uploading %s: %s", path, error_detail,
+                "GitHub API error uploading %s: %s",
+                path,
+                error_detail,
                 extra={
                     "path": path,
                     "status_code": response.status_code,

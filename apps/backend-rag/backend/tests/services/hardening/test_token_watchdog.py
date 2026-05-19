@@ -108,7 +108,9 @@ async def test_probe_returning_no_expiry_does_not_alert(telegram):
 async def test_probe_with_ok_false_does_not_alert(telegram):
     async def probe():
         return TokenExpiryReport(
-            provider="ig", ok=False, error="debug_token down",
+            provider="ig",
+            ok=False,
+            error="debug_token down",
         )
 
     watchdog = TokenWatchdog(

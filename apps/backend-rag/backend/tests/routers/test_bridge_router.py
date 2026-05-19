@@ -1,4 +1,5 @@
 """Tests for /api/bridge/* endpoints."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -78,8 +79,18 @@ def test_get_events_returns_outbox_rows(client, app_with_bridge):
     # Patch fetch_outbox_events to return fake rows
     monkey = pytest.MonkeyPatch()
     fake_rows = [
-        {"id": 10, "type": "crm.client_created", "payload": {"a": 1}, "created_at": "2026-04-14T10:00:00+00:00"},
-        {"id": 11, "type": "rag.low_confidence", "payload": {"q": "x"}, "created_at": "2026-04-14T10:00:01+00:00"},
+        {
+            "id": 10,
+            "type": "crm.client_created",
+            "payload": {"a": 1},
+            "created_at": "2026-04-14T10:00:00+00:00",
+        },
+        {
+            "id": 11,
+            "type": "rag.low_confidence",
+            "payload": {"q": "x"},
+            "created_at": "2026-04-14T10:00:01+00:00",
+        },
     ]
     fake_fetch = AsyncMock(return_value=fake_rows)
     monkey.setattr("backend.app.routers.bridge.fetch_outbox_events", fake_fetch)
@@ -122,7 +133,9 @@ def test_get_events_empty_returns_after_id_as_last_id(client):
 
 
 def test_post_ingest_article_unauthorized(client):
-    r = client.post("/api/bridge/ingest/article", json={"article_id": "x", "title": "t", "body_mdx": "b"})
+    r = client.post(
+        "/api/bridge/ingest/article", json={"article_id": "x", "title": "t", "body_mdx": "b"}
+    )
     assert r.status_code == 401
 
 
@@ -335,12 +348,17 @@ def test_get_skills_empty_stream_returns_empty_events(skills_client, app_with_sk
 def test_get_skills_populated_stream_returns_events(skills_client, app_with_skills):
     """XREAD with entries → events list with decoded fields, last_id = newest."""
     fake_client = app_with_skills.state._fake_redis_client
-    fake_client.xread = AsyncMock(return_value=[
-        (b"cell:skills", [
-            (b"1736500000000-0", {b"skill_id": b"hgt_001", b"procedure": b"test_proc"}),
-            (b"1736500000001-0", {b"skill_id": b"hgt_002", b"procedure": b"test_proc2"}),
-        ]),
-    ])
+    fake_client.xread = AsyncMock(
+        return_value=[
+            (
+                b"cell:skills",
+                [
+                    (b"1736500000000-0", {b"skill_id": b"hgt_001", b"procedure": b"test_proc"}),
+                    (b"1736500000001-0", {b"skill_id": b"hgt_002", b"procedure": b"test_proc2"}),
+                ],
+            ),
+        ]
+    )
 
     r = skills_client.get(
         "/api/bridge/skills?after_id=0-0&count=10",
@@ -359,9 +377,11 @@ def test_get_skills_gap_detection_returns_orphaned_flag(skills_client, app_with_
     """CORR-G4: if after_id < stream lowest, events_orphaned=true."""
     fake_client = app_with_skills.state._fake_redis_client
     # XINFO STREAM returns first-entry with id > after_id
-    fake_client.xinfo_stream = AsyncMock(return_value={
-        b"first-entry": (b"1736600000000-0", {b"skill_id": b"hgt_999"}),
-    })
+    fake_client.xinfo_stream = AsyncMock(
+        return_value={
+            b"first-entry": (b"1736600000000-0", {b"skill_id": b"hgt_999"}),
+        }
+    )
     fake_client.xread = AsyncMock(return_value=None)
 
     r = skills_client.get(

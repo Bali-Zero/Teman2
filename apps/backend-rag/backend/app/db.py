@@ -19,6 +19,7 @@ pool is created so all consumers immediately see it.
 In tests, monkey-patch get_pool directly:
     monkeypatch.setattr("backend.app.db.get_pool", fake_get_pool)
 """
+
 from __future__ import annotations
 
 import logging

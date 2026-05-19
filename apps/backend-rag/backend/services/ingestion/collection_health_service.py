@@ -117,7 +117,11 @@ class CollectionHealthService:
         }
 
     def record_query(
-        self, collection_name: str, had_results: bool, result_count: int = 0, avg_score: float = 0.0,
+        self,
+        collection_name: str,
+        had_results: bool,
+        result_count: int = 0,
+        avg_score: float = 0.0,
     ) -> Any:
         """
         Record a query to a collection for health tracking.
@@ -211,7 +215,11 @@ class CollectionHealthService:
             return StalenessSeverity.VERY_STALE
 
     def calculate_health_status(
-        self, hit_rate: float, avg_confidence: float, staleness: StalenessSeverity, query_count: int,
+        self,
+        hit_rate: float,
+        avg_confidence: float,
+        staleness: StalenessSeverity,
+        query_count: int,
     ) -> HealthStatus:
         """
         Calculate overall health status for a collection.
@@ -388,7 +396,10 @@ class CollectionHealthService:
 
         # Calculate health status
         health_status = self.calculate_health_status(
-            hit_rate, avg_confidence, staleness, query_count,
+            hit_rate,
+            avg_confidence,
+            staleness,
+            query_count,
         )
 
         # Detect issues
@@ -404,7 +415,12 @@ class CollectionHealthService:
 
         # Generate recommendations
         recommendations = self.generate_recommendations(
-            collection_name, health_status, staleness, hit_rate, avg_confidence, query_count,
+            collection_name,
+            health_status,
+            staleness,
+            hit_rate,
+            avg_confidence,
+            query_count,
         )
 
         return CollectionMetrics(
@@ -600,7 +616,9 @@ class CollectionHealthService:
         return "\n".join(lines)
 
     def _generate_markdown_report(
-        self, all_health: dict[str, CollectionMetrics], summary: dict,
+        self,
+        all_health: dict[str, CollectionMetrics],
+        summary: dict,
     ) -> str:
         """Generate markdown health report"""
         # Implementation similar to text but with markdown formatting

@@ -26,7 +26,8 @@ from backend.services.notifications.email_http import get_email_client
 
 # Internal email API — uses Brevo, from=zantara@balizero.com
 _EMAIL_API_URL = os.getenv(
-    "INTERNAL_EMAIL_API_URL", "https://nuzantara-rag.fly.dev/api/notifications/send-email",
+    "INTERNAL_EMAIL_API_URL",
+    "https://nuzantara-rag.fly.dev/api/notifications/send-email",
 )
 _EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", "")
 
@@ -41,11 +42,13 @@ class CompletedProcessService:
         self.zoho_email_service = ZohoEmailService(db_pool)
         self.drive_service = DriveFolderService()
 
-    @cache_invalidating([
-        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
-        "zantara:crm_practices:*",
-        "zantara:crm_documents:*",
-    ])
+    @cache_invalidating(
+        [
+            lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
+            "zantara:crm_practices:*",
+            "zantara:crm_documents:*",
+        ]
+    )
     async def trigger_on_completed(
         self,
         practice_id: int,
@@ -144,7 +147,9 @@ class CompletedProcessService:
 
         except Exception as error:
             logger.error(
-                "Process completion automation failed for practice %s: %s", practice_id, error,
+                "Process completion automation failed for practice %s: %s",
+                practice_id,
+                error,
                 exc_info=True,
             )
             return {"success": False, "error": str(error)}
@@ -195,10 +200,12 @@ class CompletedProcessService:
                         drive_file_url=result["file_url"],
                     )
                 else:
-                    failed.append({
-                        "filename": doc["filename"],
-                        "reason": f"drive_api: {result.get('error', 'unknown')}",
-                    })
+                    failed.append(
+                        {
+                            "filename": doc["filename"],
+                            "reason": f"drive_api: {result.get('error', 'unknown')}",
+                        }
+                    )
                     logger.error(
                         f"Drive upload returned success=False for {doc['filename']}: {result}",
                     )
@@ -275,7 +282,9 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
             email_type="completion_client",
             practice_id=practice_data["id"],
             client_id=practice_data.get("client_id"),
-            cc=team_member_email if team_member_email and team_member_email != client_email else None,
+            cc=team_member_email
+            if team_member_email and team_member_email != client_email
+            else None,
             include_logo=True,
         )
         logger.info("Completion email sent to client %s", client_email)
@@ -299,8 +308,7 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
 
         if failed_count:
             subject = (
-                f"[TEAM] ✅⚠️ Process Completed w/ MISSING docs - "
-                f"{client_name} ({practice_type})"
+                f"[TEAM] ✅⚠️ Process Completed w/ MISSING docs - {client_name} ({practice_type})"
             )
             followup_line = (
                 f"ATTENTION: {failed_count} document(s) failed to upload to Drive. "
@@ -399,7 +407,10 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
             response.raise_for_status()
             logger.info("Email sent to %s via Brevo", to_email)
             await record_email_result(
-                self.db_pool, row_id, status="sent", provider="brevo",
+                self.db_pool,
+                row_id,
+                status="sent",
+                provider="brevo",
             )
             return
         except Exception as brevo_error:
@@ -415,17 +426,25 @@ P.S. Save our contact info for future needs—we're always here to help! 😊
             )
             logger.info("Email sent to %s via Zoho fallback", to_email)
             await record_email_result(
-                self.db_pool, row_id, status="sent", provider="zoho",
+                self.db_pool,
+                row_id,
+                status="sent",
+                provider="zoho",
                 error_message=f"brevo_failed: {brevo_err_msg}",
             )
             return
         except Exception as zoho_error:
             combined_err = f"brevo: {brevo_err_msg} | zoho: {zoho_error}"
             logger.error(
-                "Both Brevo and Zoho failed for %s: %s", to_email, combined_err,
+                "Both Brevo and Zoho failed for %s: %s",
+                to_email,
+                combined_err,
             )
             await record_email_result(
-                self.db_pool, row_id, status="failed", provider="zoho",
+                self.db_pool,
+                row_id,
+                status="failed",
+                provider="zoho",
                 error_message=combined_err,
             )
             notify_email_failure_critical(

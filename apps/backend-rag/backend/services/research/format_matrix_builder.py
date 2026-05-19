@@ -56,17 +56,19 @@ class FormatMatrixBuilder:
         for channel in CHANNELS:
             for obj in OBJECTIVES:
                 for reg in REGISTERS:
-                    cells.append({
-                        "cell_key": f"{channel}:{obj}:{reg}",
-                        "channel": channel,
-                        "objective": obj,
-                        "register": reg,
-                        "recommended_format": None,
-                        "hook_pattern": None,
-                        "cadence_note": None,
-                        "expected_engagement_rate_range": None,
-                        "confidence": None,
-                    })
+                    cells.append(
+                        {
+                            "cell_key": f"{channel}:{obj}:{reg}",
+                            "channel": channel,
+                            "objective": obj,
+                            "register": reg,
+                            "recommended_format": None,
+                            "hook_pattern": None,
+                            "cadence_note": None,
+                            "expected_engagement_rate_range": None,
+                            "confidence": None,
+                        }
+                    )
         return cells
 
     def populate_from_playbook_stub(

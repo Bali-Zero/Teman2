@@ -1,4 +1,5 @@
 """Tests for Olympus v3 InsightsCollector."""
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from backend.services.olympus.insights import InsightsCollector
@@ -39,14 +40,24 @@ class TestQueryIntelligence:
         pool, conn = mock_pool
         conn.fetchval.return_value = 1
         conn.fetch.side_effect = [
-            [{"queryid": 123, "query": "SELECT * FROM clients", "calls": 100,
-              "total_exec_time": 5000.0, "mean_exec_time": 50.0, "rows": 1000}],
+            [
+                {
+                    "queryid": 123,
+                    "query": "SELECT * FROM clients",
+                    "calls": 100,
+                    "total_exec_time": 5000.0,
+                    "mean_exec_time": 50.0,
+                    "rows": 1000,
+                }
+            ],
             [],  # no previous insights
         ]
         collector = InsightsCollector(pool, mock_rules)
         collector._persist_insight = AsyncMock()
         actions = await collector.collect_query_insights()
-        assert any(a.action_type == "query_intelligence" and a.outcome == "success" for a in actions)
+        assert any(
+            a.action_type == "query_intelligence" and a.outcome == "success" for a in actions
+        )
         collector._persist_insight.assert_called()
 
     @pytest.mark.asyncio
@@ -54,8 +65,16 @@ class TestQueryIntelligence:
         pool, conn = mock_pool
         conn.fetchval.return_value = 1
         conn.fetch.side_effect = [
-            [{"queryid": 123, "query": "SELECT * FROM clients", "calls": 100,
-              "total_exec_time": 10000.0, "mean_exec_time": 100.0, "rows": 1000}],
+            [
+                {
+                    "queryid": 123,
+                    "query": "SELECT * FROM clients",
+                    "calls": 100,
+                    "total_exec_time": 10000.0,
+                    "mean_exec_time": 100.0,
+                    "rows": 1000,
+                }
+            ],
             [{"evidence": '{"mean_exec_time": 50.0, "queryid": 123}'}],
         ]
         alert_msgs = []
@@ -72,8 +91,14 @@ class TestBloatIntelligence:
     async def test_detects_unused_indexes(self, mock_pool, mock_rules):
         pool, conn = mock_pool
         conn.fetch.side_effect = [
-            [{"indexrelname": "idx_old_unused", "relname": "clients",
-              "idx_scan": 0, "idx_size": 2000000}],
+            [
+                {
+                    "indexrelname": "idx_old_unused",
+                    "relname": "clients",
+                    "idx_scan": 0,
+                    "idx_size": 2000000,
+                }
+            ],
             [],
         ]
         collector = InsightsCollector(pool, mock_rules)
@@ -86,8 +111,15 @@ class TestBloatIntelligence:
         pool, conn = mock_pool
         conn.fetch.side_effect = [
             [],
-            [{"relname": "big_table", "seq_scan": 1000, "idx_scan": 100,
-              "table_size": 50000000, "idx_ratio": 9.1}],
+            [
+                {
+                    "relname": "big_table",
+                    "seq_scan": 1000,
+                    "idx_scan": 100,
+                    "table_size": 50000000,
+                    "idx_ratio": 9.1,
+                }
+            ],
         ]
         collector = InsightsCollector(pool, mock_rules)
         collector._persist_insight = AsyncMock()

@@ -5,6 +5,7 @@ SQLite store. Graceful degradation: if cell-core is unavailable at import
 time the service reports is_available=False and record/query become no-ops,
 so the rest of the backend keeps running (SYMBIOSIS Legge 4).
 """
+
 from __future__ import annotations
 
 import json
@@ -64,9 +65,7 @@ class ExperienceService:
         action = self._genome.record_trajectory(
             cell=record.cell,
             trajectory_id=record.trajectory_id,
-            outcome=record.outcome
-            if isinstance(record.outcome, str)
-            else record.outcome.value,
+            outcome=record.outcome if isinstance(record.outcome, str) else record.outcome.value,
             procedure=record.procedure,
             tokens=record.tokens,
             duration_ms=record.duration_ms,

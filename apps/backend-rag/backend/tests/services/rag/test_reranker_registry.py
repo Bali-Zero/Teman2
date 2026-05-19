@@ -44,9 +44,7 @@ class TestRerankerRegistry:
     @pytest.mark.asyncio
     async def test_noop_reranker_top_k(self) -> None:
         """NoOpReranker respects top_k."""
-        docs = [
-            {"content": f"doc{i}", "score": 0.5} for i in range(10)
-        ]
+        docs = [{"content": f"doc{i}", "score": 0.5} for i in range(10)]
         reranker = NoOpReranker()
         result = await reranker.rerank("test", docs, top_k=3)
         assert len(result) == 3

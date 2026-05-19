@@ -11,6 +11,7 @@
 Plus 1 registration test asserting HANDLERS dict + register_crm_hgt_handlers
 subscribes to expected event types.
 """
+
 from __future__ import annotations
 
 import sys
@@ -105,9 +106,7 @@ async def test_ingest_event_returns_zcard_result() -> None:
     pcm.__aexit__ = AsyncMock(return_value=None)
     redis.pipeline = MagicMock(return_value=pcm)
 
-    count = await _ingest_event(
-        redis, "test.window", "evt-1", 1000.0, 3600
-    )
+    count = await _ingest_event(redis, "test.window", "evt-1", 1000.0, 3600)
     assert count == 42
 
 
@@ -166,21 +165,15 @@ async def test_practice_bridge_none_graceful_degradation() -> None:
     """Bridge init failed (None) → early return, no exception."""
     with patch.object(mod, "_get_bridge", return_value=None):
         # Should NOT raise
-        await on_practice_status_changed(
-            {"practice_id": 1, "new_status": "on_process"}
-        )
+        await on_practice_status_changed({"practice_id": 1, "new_status": "on_process"})
 
 
 @pytest.mark.asyncio
 async def test_practice_redis_window_error_no_publish(mock_bridge) -> None:
     """Redis pipeline raises → _ingest_event returns 0 → no publish."""
-    mock_bridge._publisher._redis.pipeline = MagicMock(
-        side_effect=RuntimeError("redis down")
-    )
+    mock_bridge._publisher._redis.pipeline = MagicMock(side_effect=RuntimeError("redis down"))
     with patch.object(mod, "_get_bridge", return_value=mock_bridge):
-        await on_practice_status_changed(
-            {"practice_id": 1, "new_status": "on_process"}
-        )
+        await on_practice_status_changed({"practice_id": 1, "new_status": "on_process"})
     mock_bridge.publish.assert_not_called()
 
 
@@ -188,9 +181,7 @@ async def test_practice_redis_window_error_no_publish(mock_bridge) -> None:
 async def test_practice_pattern_canonical_schema(mock_bridge) -> None:
     """Verify all 6 StructuralPattern fields populated correctly."""
     with patch.object(mod, "_get_bridge", return_value=mock_bridge):
-        await on_practice_status_changed(
-            {"practice_id": 99, "new_status": "completed"}
-        )
+        await on_practice_status_changed({"practice_id": 99, "new_status": "completed"})
     pattern = mock_bridge.publish.call_args[0][0]
     assert pattern.pattern_id == "practice_transition_completed"
     assert "completed" in pattern.procedure
@@ -210,9 +201,7 @@ async def test_practice_pattern_canonical_schema(mock_bridge) -> None:
 async def test_lkpm_happy_path_above_threshold_publishes(mock_bridge) -> None:
     """ZCARD returns 25 (≥10 threshold) → bridge.publish called."""
     with patch.object(mod, "_get_bridge", return_value=mock_bridge):
-        await on_lkpm_ingest_completed(
-            {"pt_count": 5, "receipt_count": 12, "event_id": "lkpm-1"}
-        )
+        await on_lkpm_ingest_completed({"pt_count": 5, "receipt_count": 12, "event_id": "lkpm-1"})
     mock_bridge.publish.assert_called_once()
     pattern = mock_bridge.publish.call_args[0][0]
     assert pattern.pattern_id == "lkpm_ingestion_success_rate"
@@ -226,9 +215,7 @@ async def test_lkpm_below_threshold_does_not_publish(mock_bridge) -> None:
         return_value=[None, None, 3, None]
     )
     with patch.object(mod, "_get_bridge", return_value=mock_bridge):
-        await on_lkpm_ingest_completed(
-            {"pt_count": 5, "receipt_count": 12}
-        )
+        await on_lkpm_ingest_completed({"pt_count": 5, "receipt_count": 12})
     mock_bridge.publish.assert_not_called()
 
 

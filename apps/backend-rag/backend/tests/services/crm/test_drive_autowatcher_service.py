@@ -435,6 +435,4 @@ def test_evidence_rows_support_company_level_documents_without_active_people() -
     assert evidence[0].client_ids == []
     assert evidence[0].people == []
     assert evidence[0].tax_owner == "Unassigned"
-    assert [document.file_id for document in evidence[0].documents] == [
-        "bali-budu-profile"
-    ]
+    assert [document.file_id for document in evidence[0].documents] == ["bali-budu-profile"]

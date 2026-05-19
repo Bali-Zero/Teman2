@@ -101,6 +101,7 @@ class _FakeOrchestrator:
 def fake_orchestrator_factory():
     """Return a callable that installs a _FakeOrchestrator on oracle_service
     for the duration of the test and reverts state afterwards."""
+
     def _factory(result: CoreResult) -> _FakeOrchestrator:
         fake = _FakeOrchestrator(result)
 
@@ -112,7 +113,9 @@ def fake_orchestrator_factory():
         # through the real adapter and hits our fake at the orchestrator
         # boundary only.
         orchestrator_patch = patch.object(
-            oracle_service, "_get_orchestrator", side_effect=_return_fake,
+            oracle_service,
+            "_get_orchestrator",
+            side_effect=_return_fake,
         )
         analytics_patch = patch.object(
             oracle_service.analytics,
@@ -139,9 +142,7 @@ def _reset_oracle_service_state():
     original_db_pool = oracle_service._db_pool
     yield
     # Stop any patches installed by the factory.
-    patches = (
-        getattr(oracle_service, "__wave3_patches__", None) or []
-    )
+    patches = getattr(oracle_service, "__wave3_patches__", None) or []
     for p in patches:
         try:
             p.stop()
@@ -270,9 +271,7 @@ async def test_real_service_surfaces_clarification(fake_orchestrator_factory):
     assert r.status_code == 200
     body = r.json()
     assert body["clarification_needed"] is True
-    assert body["clarification_question"] == (
-        "Do you mean a local PT or a foreign-owned PT PMA?"
-    )
+    assert body["clarification_question"] == ("Do you mean a local PT or a foreign-owned PT PMA?")
 
 
 # ---------------------------------------------------------------------------

@@ -19,6 +19,7 @@ never surface — they are swallowed by the destructor.
 Use this instead of ``asyncio.create_task`` for any background/fire-and-forget
 work where you do not need to await the result from the caller.
 """
+
 from __future__ import annotations
 
 import asyncio

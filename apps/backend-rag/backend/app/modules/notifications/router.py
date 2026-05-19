@@ -55,7 +55,7 @@ class EmailAttachment(BaseModel):
     """Email attachment (base64-encoded)."""
 
     name: str
-    content: str                        # base64-encoded
+    content: str  # base64-encoded
     contentType: str = "application/pdf"
 
 
@@ -65,8 +65,8 @@ class SendEmailRequest(BaseModel):
     to: str
     subject: str
     body: str
-    cc: str | None = None               # comma-separated CC addresses
-    bcc: str | None = None              # comma-separated BCC addresses
+    cc: str | None = None  # comma-separated CC addresses
+    bcc: str | None = None  # comma-separated BCC addresses
     attachments: list[EmailAttachment] | None = None
 
     @field_validator("subject", "body")
@@ -332,7 +332,12 @@ async def send_direct_email(
 
     for idx, (name, sender) in enumerate(chain):
         result = await sender(
-            request.to, request.subject, request.body, cc_list, bcc_list, attachments,
+            request.to,
+            request.subject,
+            request.body,
+            cc_list,
+            bcc_list,
+            attachments,
         )
         if result:
             tag = "primary" if idx == 0 else f"fallback={name}"
@@ -343,9 +348,7 @@ async def send_direct_email(
                 success=True,
                 message=f"Email sent to {request.to} via {name}",
             )
-        logger.warning(
-            f"Provider {name} failed for {request.to}, trying next in chain"
-        )
+        logger.warning(f"Provider {name} failed for {request.to}, trying next in chain")
 
     return SendEmailResponse(
         success=False,
@@ -415,7 +418,11 @@ async def _send_via_brevo(
         ]
 
     is_brevo = api_key.startswith("xkeysib-")
-    url = "https://api.brevo.com/v3/smtp/email" if is_brevo else "https://api.sendgrid.com/v3/mail/send"
+    url = (
+        "https://api.brevo.com/v3/smtp/email"
+        if is_brevo
+        else "https://api.sendgrid.com/v3/mail/send"
+    )
     headers = (
         {"api-key": api_key, "Content-Type": "application/json"}
         if is_brevo

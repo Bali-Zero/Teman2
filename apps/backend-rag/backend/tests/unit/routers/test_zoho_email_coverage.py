@@ -60,10 +60,17 @@ def client(app):
 @pytest.fixture
 def mock_oauth_service():
     svc = MagicMock()
-    svc.get_authorization_url = MagicMock(return_value="https://accounts.zoho.com/oauth/v2/auth?...")
+    svc.get_authorization_url = MagicMock(
+        return_value="https://accounts.zoho.com/oauth/v2/auth?..."
+    )
     svc.exchange_code = AsyncMock()
     svc.get_connection_status = AsyncMock(
-        return_value={"connected": True, "email": "test@zoho.com", "account_id": "abc", "expires_at": "2026-12-31"}
+        return_value={
+            "connected": True,
+            "email": "test@zoho.com",
+            "account_id": "abc",
+            "expires_at": "2026-12-31",
+        }
     )
     svc.disconnect = AsyncMock()
     return svc
@@ -73,12 +80,8 @@ def mock_oauth_service():
 def mock_email_service():
     svc = MagicMock()
     svc.list_folders = AsyncMock(return_value=[{"id": "inbox", "name": "Inbox"}])
-    svc.list_emails = AsyncMock(
-        return_value={"emails": [], "total": 0, "has_more": False}
-    )
-    svc.get_email = AsyncMock(
-        return_value={"id": "msg_001", "subject": "Test", "body": "Hello"}
-    )
+    svc.list_emails = AsyncMock(return_value={"emails": [], "total": 0, "has_more": False})
+    svc.get_email = AsyncMock(return_value={"id": "msg_001", "subject": "Test", "body": "Hello"})
     svc.send_email = AsyncMock(return_value={"success": True, "message_id": "msg_123"})
     svc.search_emails = AsyncMock(return_value=[])
     svc.reply_email = AsyncMock(return_value={"success": True})
@@ -126,7 +129,9 @@ def client_no_user_id(app_no_user_id):
 
 
 def test_get_auth_url_happy_path(client, mock_oauth_service):
-    with patch("backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service
+    ):
         response = client.get("/api/integrations/zoho/auth/url")
     assert response.status_code == 200
     data = response.json()
@@ -143,7 +148,9 @@ def test_get_auth_url_no_user_id(client_no_user_id):
 def test_get_auth_url_oauth_error(client, mock_oauth_service):
     """Should return 500 when OAuth service raises ValueError."""
     mock_oauth_service.get_authorization_url.side_effect = ValueError("Missing client_id")
-    with patch("backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service
+    ):
         response = client.get("/api/integrations/zoho/auth/url")
     assert response.status_code == 500
 
@@ -224,7 +231,9 @@ def test_oauth_callback_exchange_fails(client, mock_oauth_service):
 
 
 def test_get_connection_status_connected(client, mock_oauth_service):
-    with patch("backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service
+    ):
         response = client.get("/api/integrations/zoho/status")
     assert response.status_code == 200
     data = response.json()
@@ -241,7 +250,9 @@ def test_get_connection_status_no_user_id(client_no_user_id):
 def test_get_connection_status_exception(client, mock_oauth_service):
     """Should return connected=False on unexpected error."""
     mock_oauth_service.get_connection_status.side_effect = Exception("DB error")
-    with patch("backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service
+    ):
         response = client.get("/api/integrations/zoho/status")
     assert response.status_code == 200
     data = response.json()
@@ -254,7 +265,9 @@ def test_get_connection_status_exception(client, mock_oauth_service):
 
 
 def test_disconnect_account_success(client, mock_oauth_service):
-    with patch("backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service
+    ):
         response = client.delete("/api/integrations/zoho/disconnect")
     assert response.status_code == 200
     data = response.json()
@@ -263,7 +276,9 @@ def test_disconnect_account_success(client, mock_oauth_service):
 
 def test_disconnect_account_failure(client, mock_oauth_service):
     mock_oauth_service.disconnect.side_effect = Exception("Token revocation failed")
-    with patch("backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_oauth_service", return_value=mock_oauth_service
+    ):
         response = client.delete("/api/integrations/zoho/disconnect")
     assert response.status_code == 500
 
@@ -274,7 +289,9 @@ def test_disconnect_account_failure(client, mock_oauth_service):
 
 
 def test_list_folders_success(client, mock_email_service):
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.get("/api/integrations/zoho/folders")
     assert response.status_code == 200
     data = response.json()
@@ -283,14 +300,18 @@ def test_list_folders_success(client, mock_email_service):
 
 def test_list_folders_service_error(client, mock_email_service):
     mock_email_service.list_folders.side_effect = Exception("API error")
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.get("/api/integrations/zoho/folders")
     assert response.status_code == 500
 
 
 def test_list_folders_value_error(client, mock_email_service):
     mock_email_service.list_folders.side_effect = ValueError("Not connected")
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.get("/api/integrations/zoho/folders")
     assert response.status_code == 400
 
@@ -301,13 +322,17 @@ def test_list_folders_value_error(client, mock_email_service):
 
 
 def test_list_emails_success(client, mock_email_service):
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.get("/api/integrations/zoho/emails")
     assert response.status_code == 200
 
 
 def test_list_emails_with_params(client, mock_email_service):
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.get(
             "/api/integrations/zoho/emails?folder_id=sent&limit=20&start=0&is_unread=true"
         )
@@ -316,7 +341,9 @@ def test_list_emails_with_params(client, mock_email_service):
 
 def test_list_emails_error(client, mock_email_service):
     mock_email_service.list_emails.side_effect = Exception("Zoho API down")
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.get("/api/integrations/zoho/emails")
     assert response.status_code == 500
 
@@ -327,7 +354,9 @@ def test_list_emails_error(client, mock_email_service):
 
 
 def test_get_email_success(client, mock_email_service):
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.get("/api/integrations/zoho/emails/msg_001?folder_id=inbox")
     assert response.status_code == 200
     data = response.json()
@@ -336,7 +365,9 @@ def test_get_email_success(client, mock_email_service):
 
 def test_get_email_value_error(client, mock_email_service):
     mock_email_service.get_email.side_effect = ValueError("Not connected to Zoho")
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.get("/api/integrations/zoho/emails/msg_001")
     assert response.status_code == 400
 
@@ -347,7 +378,9 @@ def test_get_email_value_error(client, mock_email_service):
 
 
 def test_send_email_success(client, mock_email_service):
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.post(
             "/api/integrations/zoho/emails",
             json={
@@ -372,7 +405,9 @@ def test_send_email_missing_required(client):
 
 def test_send_email_service_error(client, mock_email_service):
     mock_email_service.send_email.side_effect = Exception("SMTP failed")
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.post(
             "/api/integrations/zoho/emails",
             json={"to": ["r@example.com"], "subject": "Test", "html_content": "<p>Hi</p>"},
@@ -386,7 +421,9 @@ def test_send_email_service_error(client, mock_email_service):
 
 
 def test_reply_email_success(client, mock_email_service):
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.post(
             "/api/integrations/zoho/emails/msg_001/reply",
             json={"content": "My reply", "to": "sender@example.com"},
@@ -396,7 +433,9 @@ def test_reply_email_success(client, mock_email_service):
 
 def test_reply_email_error(client, mock_email_service):
     mock_email_service.reply_email.side_effect = Exception("API error")
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.post(
             "/api/integrations/zoho/emails/msg_001/reply",
             json={"content": "Reply", "to": "s@example.com"},
@@ -410,7 +449,9 @@ def test_reply_email_error(client, mock_email_service):
 
 
 def test_forward_email_success(client, mock_email_service):
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.post(
             "/api/integrations/zoho/emails/msg_001/forward",
             json={"to": ["fwd@example.com"]},
@@ -424,7 +465,9 @@ def test_forward_email_success(client, mock_email_service):
 
 
 def test_mark_emails_read_success(client, mock_email_service):
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.patch(
             "/api/integrations/zoho/emails/mark-read",
             json={"message_ids": ["msg_001", "msg_002"], "is_read": True},
@@ -448,20 +491,20 @@ def test_mark_emails_read_empty_ids(client):
 
 
 def test_toggle_flag_success(client, mock_email_service):
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
-        response = client.patch(
-            "/api/integrations/zoho/emails/msg_001/flag?is_flagged=true"
-        )
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
+        response = client.patch("/api/integrations/zoho/emails/msg_001/flag?is_flagged=true")
     assert response.status_code == 200
     assert response.json()["success"] is True
 
 
 def test_toggle_flag_error(client, mock_email_service):
     mock_email_service.toggle_flag.side_effect = Exception("API error")
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
-        response = client.patch(
-            "/api/integrations/zoho/emails/msg_001/flag?is_flagged=false"
-        )
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
+        response = client.patch("/api/integrations/zoho/emails/msg_001/flag?is_flagged=false")
     assert response.status_code == 500
 
 
@@ -471,7 +514,9 @@ def test_toggle_flag_error(client, mock_email_service):
 
 
 def test_delete_emails_success(client, mock_email_service):
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.request(
             "DELETE",
             "/api/integrations/zoho/emails",
@@ -497,7 +542,9 @@ def test_delete_emails_empty_ids(client):
 
 
 def test_delete_emails_post_variant_success(client, mock_email_service):
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.post(
             "/api/integrations/zoho/emails/delete",
             json={"message_ids": ["msg_001"]},
@@ -512,7 +559,9 @@ def test_delete_emails_post_variant_success(client, mock_email_service):
 
 
 def test_save_draft_success(client, mock_email_service):
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.post(
             "/api/integrations/zoho/drafts",
             json={"subject": "Draft Subject", "html_content": "<p>Draft body</p>"},
@@ -524,7 +573,9 @@ def test_save_draft_success(client, mock_email_service):
 
 def test_save_draft_error(client, mock_email_service):
     mock_email_service.save_draft.side_effect = Exception("Draft save failed")
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.post(
             "/api/integrations/zoho/drafts",
             json={"subject": "Draft", "html_content": "<p>Content</p>"},
@@ -538,7 +589,9 @@ def test_save_draft_error(client, mock_email_service):
 
 
 def test_upload_attachment_success(client, mock_email_service):
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.post(
             "/api/integrations/zoho/attachments",
             files={"file": ("test.txt", BytesIO(b"file content"), "text/plain")},
@@ -550,7 +603,9 @@ def test_upload_attachment_success(client, mock_email_service):
 
 def test_upload_attachment_service_error(client, mock_email_service):
     mock_email_service.upload_attachment.side_effect = Exception("Upload failed")
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.post(
             "/api/integrations/zoho/attachments",
             files={"file": ("test.txt", BytesIO(b"content"), "text/plain")},
@@ -564,20 +619,20 @@ def test_upload_attachment_service_error(client, mock_email_service):
 
 
 def test_download_attachment_success(client, mock_email_service):
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
-        response = client.get(
-            "/api/integrations/zoho/emails/msg_001/attachments/att_001"
-        )
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
+        response = client.get("/api/integrations/zoho/emails/msg_001/attachments/att_001")
     assert response.status_code == 200
     assert response.content == b"binary content"
 
 
 def test_download_attachment_error(client, mock_email_service):
     mock_email_service.get_attachment.side_effect = Exception("Download failed")
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
-        response = client.get(
-            "/api/integrations/zoho/emails/msg_001/attachments/att_001"
-        )
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
+        response = client.get("/api/integrations/zoho/emails/msg_001/attachments/att_001")
     assert response.status_code == 500
 
 
@@ -587,7 +642,9 @@ def test_download_attachment_error(client, mock_email_service):
 
 
 def test_get_unread_count_success(client, mock_email_service):
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.get("/api/integrations/zoho/unread-count")
     assert response.status_code == 200
     assert response.json()["unread_count"] == 5
@@ -596,7 +653,9 @@ def test_get_unread_count_success(client, mock_email_service):
 def test_get_unread_count_not_connected(client, mock_email_service):
     """Should return 0 when not connected (ValueError)."""
     mock_email_service.get_unread_count.side_effect = ValueError("Not connected")
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.get("/api/integrations/zoho/unread-count")
     assert response.status_code == 200
     assert response.json()["unread_count"] == 0
@@ -605,7 +664,9 @@ def test_get_unread_count_not_connected(client, mock_email_service):
 def test_get_unread_count_exception(client, mock_email_service):
     """Should return 0 on generic exception."""
     mock_email_service.get_unread_count.side_effect = Exception("Generic error")
-    with patch("backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service):
+    with patch(
+        "backend.app.routers.zoho_email._get_email_service", return_value=mock_email_service
+    ):
         response = client.get("/api/integrations/zoho/unread-count")
     assert response.status_code == 200
     assert response.json()["unread_count"] == 0

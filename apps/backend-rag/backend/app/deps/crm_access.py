@@ -25,6 +25,7 @@ def _clients_full_view_emails() -> frozenset[str]:
     """Emails with full client list visibility — mirrors practices full view."""
     return _practices_full_view_emails()
 
+
 __all__ = [
     "require_crm_admin",
     "require_super_admin",

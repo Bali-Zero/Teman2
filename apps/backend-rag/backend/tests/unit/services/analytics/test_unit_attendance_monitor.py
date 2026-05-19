@@ -38,30 +38,14 @@ class TestResolveResponsibleManager:
     """Routing rules from Zero, 2026-04-07."""
 
     def test_tax_team_routes_to_veronika(self) -> None:
-        assert (
-            resolve_responsible_manager("kadek.tax@balizero.com")
-            == "veronika@balizero.com"
-        )
-        assert (
-            resolve_responsible_manager("angel.tax@balizero.com")
-            == "veronika@balizero.com"
-        )
-        assert (
-            resolve_responsible_manager("dewaayu.tax@balizero.com")
-            == "veronika@balizero.com"
-        )
-        assert (
-            resolve_responsible_manager("faysha.tax@balizero.com")
-            == "veronika@balizero.com"
-        )
+        assert resolve_responsible_manager("kadek.tax@balizero.com") == "veronika@balizero.com"
+        assert resolve_responsible_manager("angel.tax@balizero.com") == "veronika@balizero.com"
+        assert resolve_responsible_manager("dewaayu.tax@balizero.com") == "veronika@balizero.com"
+        assert resolve_responsible_manager("faysha.tax@balizero.com") == "veronika@balizero.com"
 
     def test_dea_and_rina_route_to_ruslana(self) -> None:
-        assert (
-            resolve_responsible_manager("dea@balizero.com") == "ruslana@balizero.com"
-        )
-        assert (
-            resolve_responsible_manager("rina@balizero.com") == "ruslana@balizero.com"
-        )
+        assert resolve_responsible_manager("dea@balizero.com") == "ruslana@balizero.com"
+        assert resolve_responsible_manager("rina@balizero.com") == "ruslana@balizero.com"
 
     def test_other_emails_have_no_supervisor(self) -> None:
         assert resolve_responsible_manager("adit@balizero.com") is None
@@ -70,13 +54,8 @@ class TestResolveResponsibleManager:
         assert resolve_responsible_manager("damar@balizero.com") is None
 
     def test_routing_is_case_insensitive(self) -> None:
-        assert (
-            resolve_responsible_manager("KADEK.TAX@balizero.com")
-            == "veronika@balizero.com"
-        )
-        assert (
-            resolve_responsible_manager("DEA@balizero.com") == "ruslana@balizero.com"
-        )
+        assert resolve_responsible_manager("KADEK.TAX@balizero.com") == "veronika@balizero.com"
+        assert resolve_responsible_manager("DEA@balizero.com") == "ruslana@balizero.com"
         assert resolve_responsible_manager("  Adit@balizero.com  ") is None
 
     def test_tax_substring_must_be_local_part_suffix(self) -> None:
@@ -194,7 +173,8 @@ class TestCheckLateCheckinStages:
 
     @pytest.mark.asyncio
     async def test_exactly_on_grace_boundary_is_gentle(
-        self, monitor_with_mocks,
+        self,
+        monitor_with_mocks,
     ) -> None:
         monitor, mocks = monitor_with_mocks
         # 09:30:00 sharp — first instant inside the grace window.
@@ -211,7 +191,8 @@ class TestCheckLateCheckinStages:
 
     @pytest.mark.asyncio
     async def test_exactly_on_incident_boundary_is_incident(
-        self, monitor_with_mocks,
+        self,
+        monitor_with_mocks,
     ) -> None:
         monitor, mocks = monitor_with_mocks
         await monitor.check_late_checkin("adit@balizero.com", _bali_at(9, 40))
@@ -220,7 +201,8 @@ class TestCheckLateCheckinStages:
 
     @pytest.mark.asyncio
     async def test_well_after_incident_boundary_is_incident(
-        self, monitor_with_mocks,
+        self,
+        monitor_with_mocks,
     ) -> None:
         monitor, mocks = monitor_with_mocks
         await monitor.check_late_checkin("adit@balizero.com", _bali_at(10, 5))
@@ -229,7 +211,8 @@ class TestCheckLateCheckinStages:
 
     @pytest.mark.asyncio
     async def test_exempt_member_is_skipped_completely(
-        self, monitor_with_mocks,
+        self,
+        monitor_with_mocks,
     ) -> None:
         monitor, mocks = monitor_with_mocks
         # Even at 11:00 a totally exempt user should not trigger anything.

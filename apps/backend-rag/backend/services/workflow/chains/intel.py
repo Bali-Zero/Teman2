@@ -254,7 +254,11 @@ async def _summarize(state: IntelReviewState, _app_state: Any) -> IntelReviewSta
     state["summary"] = summary
 
     logger.info(
-        "intel.review: complete — reviewed=%s significant=%s notified=%s errors=%s", total, significant, notified, errors,
+        "intel.review: complete — reviewed=%s significant=%s notified=%s errors=%s",
+        total,
+        significant,
+        notified,
+        errors,
     )
     return state
 

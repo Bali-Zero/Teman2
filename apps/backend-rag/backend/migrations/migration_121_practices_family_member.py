@@ -14,6 +14,7 @@ ON DELETE SET NULL: removing a family member unlinks the practice but keeps it
 Author: Claude Opus 4.7 (1M context)
 Date: 2026-04-22
 """
+
 from __future__ import annotations
 
 import logging

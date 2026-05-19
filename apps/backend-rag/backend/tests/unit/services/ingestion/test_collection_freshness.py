@@ -34,7 +34,8 @@ class TestCollectionFreshness:
         assert collection_manager._collection_last_updated == {}
 
     def test_get_collection_freshness_returns_all_collections(
-        self, collection_manager: CollectionManager,
+        self,
+        collection_manager: CollectionManager,
     ) -> None:
         """get_collection_freshness includes all defined collections."""
         freshness = collection_manager.get_collection_freshness()
@@ -45,7 +46,8 @@ class TestCollectionFreshness:
             assert freshness[name]["age_seconds"] is None
 
     def test_get_collection_freshness_after_update(
-        self, collection_manager: CollectionManager,
+        self,
+        collection_manager: CollectionManager,
     ) -> None:
         """After setting a timestamp, freshness should reflect it."""
         now = time.time()
@@ -57,7 +59,8 @@ class TestCollectionFreshness:
         assert freshness["visa_oracle"]["age_seconds"] >= 0
 
     def test_get_collection_info_includes_last_updated(
-        self, collection_manager: CollectionManager,
+        self,
+        collection_manager: CollectionManager,
     ) -> None:
         """get_collection_info should include last_updated field."""
         # Before any ingest
@@ -74,7 +77,8 @@ class TestCollectionFreshness:
 
     @pytest.mark.asyncio
     async def test_ingest_with_lock_updates_timestamp(
-        self, collection_manager: CollectionManager,
+        self,
+        collection_manager: CollectionManager,
     ) -> None:
         """Successful ingest should update the last_updated timestamp."""
         # Mock the collection client
@@ -103,7 +107,8 @@ class TestCollectionFreshness:
 
     @pytest.mark.asyncio
     async def test_ingest_with_lock_does_not_update_on_failure(
-        self, collection_manager: CollectionManager,
+        self,
+        collection_manager: CollectionManager,
     ) -> None:
         """Failed ingest should NOT update the timestamp."""
         mock_client = MagicMock()

@@ -251,7 +251,8 @@ def _required_tables_from_env() -> list[str]:
 
 
 async def _check_required_tables(
-    pool: asyncpg.Pool, required: list[str],
+    pool: asyncpg.Pool,
+    required: list[str],
 ) -> list[Finding]:
     if not required:
         return []

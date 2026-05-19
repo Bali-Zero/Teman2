@@ -135,7 +135,9 @@ def parse_gold_content_ts(filepath: Path) -> dict[str, dict]:
         # Extract TKA positions
         tka_positions = []
         for pm in re.finditer(
-            r'titleEn\s*:\s*"([^"]*)".*?titleId\s*:\s*"([^"]*)"', entry_str, re.DOTALL,
+            r'titleEn\s*:\s*"([^"]*)".*?titleId\s*:\s*"([^"]*)"',
+            entry_str,
+            re.DOTALL,
         ):
             tka_positions.append({"en": pm.group(1), "id": pm.group(2)})
         if tka_positions:

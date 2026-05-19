@@ -11,40 +11,49 @@ import pytest
 class TestGetUserId:
     def test_from_sub(self):
         from backend.app.routers.dashboard_summary import _get_user_id
+
         assert _get_user_id({"sub": "user123"}) == "user123"
 
     def test_from_user_id(self):
         from backend.app.routers.dashboard_summary import _get_user_id
+
         assert _get_user_id({"user_id": "user456"}) == "user456"
 
     def test_empty(self):
         from backend.app.routers.dashboard_summary import _get_user_id
+
         assert _get_user_id({}) == ""
 
     def test_sub_takes_precedence(self):
         from backend.app.routers.dashboard_summary import _get_user_id
+
         assert _get_user_id({"sub": "a", "user_id": "b"}) == "a"
 
 
 class TestIsAdmin:
     def test_admin(self):
         from backend.app.routers.dashboard_summary import _is_admin
+
         assert _is_admin({"role": "admin"}) is True
 
     def test_founder(self):
         from backend.app.routers.dashboard_summary import _is_admin
+
         assert _is_admin({"role": "Founder"}) is True
 
     def test_owner(self):
         from backend.app.routers.dashboard_summary import _is_admin
+
         assert _is_admin({"role": "Owner"}) is True
 
     def test_team(self):
         from backend.app.routers.dashboard_summary import _is_admin
+
         assert _is_admin({"role": "team"}) is False
 
     def test_empty_role(self):
         from backend.app.routers.dashboard_summary import _is_admin
+
         assert _is_admin({}) is False
 
 
@@ -159,11 +168,13 @@ class TestGetRevenueStats:
         from backend.app.routers.dashboard_summary import _get_revenue_stats
 
         mock_conn = AsyncMock()
-        mock_conn.fetchrow = AsyncMock(return_value={
-            "total_revenue": 10000,
-            "paid_revenue": 7000,
-            "outstanding_revenue": 3000,
-        })
+        mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "total_revenue": 10000,
+                "paid_revenue": 7000,
+                "outstanding_revenue": 3000,
+            }
+        )
         mock_pool = _make_pool(mock_conn)
 
         result = await _get_revenue_stats(mock_pool)

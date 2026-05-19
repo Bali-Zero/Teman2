@@ -701,7 +701,9 @@ class GoogleDriveService:
                     continue
 
             logger.info(
-                "[GDRIVE] Created client folder structure for %s: %s", client_name, root_folder_id,
+                "[GDRIVE] Created client folder structure for %s: %s",
+                client_name,
+                root_folder_id,
             )
 
             return {
@@ -828,7 +830,8 @@ class GoogleDriveService:
             "limit": limit,
             "offset": 0 if page_token else offset,
             "next_page_token": next_page_token,
-            "has_more": next_page_token is not None or (not page_token and len(files) > offset + limit),
+            "has_more": next_page_token is not None
+            or (not page_token and len(files) > offset + limit),
         }
 
     async def get_folder_structure(
@@ -1044,7 +1047,10 @@ class GoogleDriveService:
         size_bytes = int(file_info.get("size", 0)) if file_info.get("size") else len(file_content)
 
         logger.info(
-            "[GDRIVE] Uploaded file '%s' (%s bytes) to folder %s", file_name, size_bytes, folder_id,
+            "[GDRIVE] Uploaded file '%s' (%s bytes) to folder %s",
+            file_name,
+            size_bytes,
+            folder_id,
         )
 
         return {

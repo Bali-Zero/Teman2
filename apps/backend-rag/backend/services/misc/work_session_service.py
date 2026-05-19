@@ -50,7 +50,11 @@ class WorkSessionService:
         Each line is a JSON object with timestamp
         """
         try:
-            event = {"timestamp": datetime.now(tz=timezone.utc).isoformat(), "event_type": event_type, **data}
+            event = {
+                "timestamp": datetime.now(tz=timezone.utc).isoformat(),
+                "event_type": event_type,
+                **data,
+            }
 
             with open(self.log_file, "a") as f:
                 f.write(json.dumps(event) + "\n")
@@ -504,7 +508,9 @@ Subject: %s
 
 %s
 ════════════════════════════════════════════════
-        """, subject, message,
+        """,
+            subject,
+            message,
         )
 
         # Email sending can be implemented using NotificationHub service

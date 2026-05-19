@@ -99,7 +99,10 @@ class TeamTimesheetService:
                     )
 
     async def clock_in(
-        self, user_id: str, email: str, metadata: dict[str, Any] | None = None,
+        self,
+        user_id: str,
+        email: str,
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Clock in a team member
@@ -137,7 +140,9 @@ class TeamTimesheetService:
                         "clocked_in_at": bali_time.isoformat(),
                     }
                 logger.info(
-                    "🔄 Stale session detected for %s. Last action: %s. Allowing new clock-in.", email, last_action_date,
+                    "🔄 Stale session detected for %s. Last action: %s. Allowing new clock-in.",
+                    email,
+                    last_action_date,
                 )
 
             # Insert clock-in
@@ -176,7 +181,10 @@ class TeamTimesheetService:
             }
 
     async def clock_out(
-        self, user_id: str, email: str, metadata: dict[str, Any] | None = None,
+        self,
+        user_id: str,
+        email: str,
+        metadata: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
         Clock out a team member
@@ -391,7 +399,8 @@ class TeamTimesheetService:
             ]
 
     async def get_monthly_summary(
-        self, month_start: datetime | None = None,
+        self,
+        month_start: datetime | None = None,
     ) -> list[dict[str, Any]]:
         """
         Get monthly work summary (ADMIN ONLY)
@@ -466,7 +475,9 @@ class TeamTimesheetService:
         return "\n".join(csv_lines)
 
     async def _get_user_current_status(
-        self, conn: "asyncpg.Connection", user_id: str,
+        self,
+        conn: "asyncpg.Connection",
+        user_id: str,
     ) -> dict[str, Any] | None:
         """Get user's current online/offline status"""
         row = await conn.fetchrow("SELECT * FROM team_online_status WHERE user_id = $1", user_id)

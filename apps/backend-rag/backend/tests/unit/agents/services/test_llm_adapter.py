@@ -75,8 +75,11 @@ class TestCircuitBreakerState:
 
     def test_reset(self) -> None:
         cb = CircuitBreakerState(
-            state=CircuitState.OPEN, failure_count=5, success_count=2,
-            last_failure_time=100.0, opened_at=90.0,
+            state=CircuitState.OPEN,
+            failure_count=5,
+            success_count=2,
+            last_failure_time=100.0,
+            opened_at=90.0,
         )
         cb.reset()
         assert cb.state == CircuitState.CLOSED
@@ -138,13 +141,17 @@ class TestClassifyError:
         assert self.adapter._classify_error(Exception("model not found")) == ErrorType.PERMANENT
 
     def test_unauthorized_is_permanent(self) -> None:
-        assert self.adapter._classify_error(Exception("authentication failed")) == ErrorType.PERMANENT
+        assert (
+            self.adapter._classify_error(Exception("authentication failed")) == ErrorType.PERMANENT
+        )
 
     def test_invalid_prompt_is_permanent(self) -> None:
         assert self.adapter._classify_error(Exception("invalid prompt")) == ErrorType.PERMANENT
 
     def test_rate_limit_is_rate_limit(self) -> None:
-        assert self.adapter._classify_error(Exception("rate limit exceeded")) == ErrorType.RATE_LIMIT
+        assert (
+            self.adapter._classify_error(Exception("rate limit exceeded")) == ErrorType.RATE_LIMIT
+        )
 
     def test_429_is_rate_limit(self) -> None:
         assert self.adapter._classify_error(Exception("HTTP 429")) == ErrorType.RATE_LIMIT
@@ -158,7 +165,10 @@ class TestClassifyError:
         assert self.adapter._classify_error(err) == ErrorType.TRANSIENT
 
     def test_503_is_transient(self) -> None:
-        assert self.adapter._classify_error(Exception("service unavailable 503")) == ErrorType.TRANSIENT
+        assert (
+            self.adapter._classify_error(Exception("service unavailable 503"))
+            == ErrorType.TRANSIENT
+        )
 
     def test_unknown_error_defaults_to_transient(self) -> None:
         assert self.adapter._classify_error(Exception("something weird")) == ErrorType.TRANSIENT
@@ -177,7 +187,8 @@ class TestCircuitBreaker:
 
     def setup_method(self) -> None:
         self.adapter = LLMAdapter(
-            auto_start_ollama=False, max_retries=1,
+            auto_start_ollama=False,
+            max_retries=1,
             circuit_breaker_failure_threshold=3,
             circuit_breaker_timeout=10.0,
             circuit_breaker_success_threshold=2,
@@ -237,8 +248,10 @@ class TestGenerate:
 
     def setup_method(self) -> None:
         self.adapter = LLMAdapter(
-            auto_start_ollama=False, max_retries=2,
-            retry_backoff_base=0.01, retry_jitter=0.0,
+            auto_start_ollama=False,
+            max_retries=2,
+            retry_backoff_base=0.01,
+            retry_jitter=0.0,
         )
 
     @pytest.mark.asyncio
@@ -266,8 +279,10 @@ class TestGenerate:
         """Successful Ollama call should return response and update metrics."""
         req = LLMRequest(prompt="hello world")
         mock_resp = LLMResponse(
-            text="generated text", tokens_used=10,
-            response_time=0.5, provider=LLMProvider.OLLAMA,
+            text="generated text",
+            tokens_used=10,
+            response_time=0.5,
+            provider=LLMProvider.OLLAMA,
         )
         self.adapter._call_ollama = AsyncMock(return_value=mock_resp)
 
@@ -365,7 +380,8 @@ class TestCache:
 
     def test_cache_eviction(self) -> None:
         adapter = LLMAdapter(
-            auto_start_ollama=False, max_retries=1,
+            auto_start_ollama=False,
+            max_retries=1,
             cache_size=2,
         )
         r1 = LLMResponse(text="a")
@@ -526,6 +542,7 @@ class TestSingleton:
     @pytest.mark.asyncio
     async def test_get_and_close_singleton(self) -> None:
         import backend.agents.services.llm_adapter as mod
+
         mod._llm_adapter = None  # reset
         adapter = get_llm_adapter()
         assert adapter is not None

@@ -14,6 +14,7 @@ import pytest
 def _reset_llm_cache() -> None:
     """Reset cached LLM singleton between tests."""
     import backend.services.rag.kg_langgraph_orchestrator as mod
+
     mod._cached_reasoning_llm = None
 
 
@@ -33,7 +34,9 @@ class TestGetLlmForReasoning:
         from backend.services.rag.kg_langgraph_orchestrator import get_llm_for_reasoning
 
         mock_llm = MagicMock()
-        with patch.dict(os.environ, {"KG_REASONING_PROVIDER": "", "ANTHROPIC_API_KEY": ""}, clear=False):
+        with patch.dict(
+            os.environ, {"KG_REASONING_PROVIDER": "", "ANTHROPIC_API_KEY": ""}, clear=False
+        ):
             with patch(
                 "backend.llm.claude_oauth_langchain.build_claude_oauth_chat_model",
                 return_value=mock_llm,
@@ -111,8 +114,15 @@ class TestNodeWrappers:
         mock_state: dict[str, Any] = {"query": "test"}
         expected_state: dict[str, Any] = {"query": "test", "intent": "company_setup"}
 
-        with patch("backend.services.rag.kg_langgraph_orchestrator.get_llm_for_reasoning", return_value=mock_llm):
-            with patch("backend.services.rag.kg_langgraph_orchestrator.understand_query_node", new_callable=AsyncMock, return_value=expected_state) as mock_node:
+        with patch(
+            "backend.services.rag.kg_langgraph_orchestrator.get_llm_for_reasoning",
+            return_value=mock_llm,
+        ):
+            with patch(
+                "backend.services.rag.kg_langgraph_orchestrator.understand_query_node",
+                new_callable=AsyncMock,
+                return_value=expected_state,
+            ) as mock_node:
                 result = await understand_query_wrapper(mock_state)
                 assert result == expected_state
                 mock_node.assert_called_once_with(mock_state, mock_llm)
@@ -125,7 +135,11 @@ class TestNodeWrappers:
         mock_state: dict[str, Any] = {"query": "test"}
         expected: dict[str, Any] = {"query": "test", "current_entities": ["e1"]}
 
-        with patch("backend.services.rag.kg_langgraph_orchestrator.resolve_entities_node", new_callable=AsyncMock, return_value=expected) as mock_node:
+        with patch(
+            "backend.services.rag.kg_langgraph_orchestrator.resolve_entities_node",
+            new_callable=AsyncMock,
+            return_value=expected,
+        ) as mock_node:
             result = await resolve_entities_wrapper(mock_state, mock_pool)
             assert result == expected
             mock_node.assert_called_once_with(mock_state, mock_pool)
@@ -138,7 +152,11 @@ class TestNodeWrappers:
         mock_state: dict[str, Any] = {"query": "test"}
         expected: dict[str, Any] = {"query": "test", "relationship_chains": []}
 
-        with patch("backend.services.rag.kg_langgraph_orchestrator.traverse_graph_node", new_callable=AsyncMock, return_value=expected) as mock_node:
+        with patch(
+            "backend.services.rag.kg_langgraph_orchestrator.traverse_graph_node",
+            new_callable=AsyncMock,
+            return_value=expected,
+        ) as mock_node:
             result = await traverse_graph_wrapper(mock_state, mock_pool)
             assert result == expected
             mock_node.assert_called_once_with(mock_state, mock_pool, max_depth=3)
@@ -151,8 +169,15 @@ class TestNodeWrappers:
         mock_state: dict[str, Any] = {"query": "test"}
         expected: dict[str, Any] = {"query": "test", "reasoning_steps": ["step1"]}
 
-        with patch("backend.services.rag.kg_langgraph_orchestrator.get_llm_for_reasoning", return_value=mock_llm):
-            with patch("backend.services.rag.kg_langgraph_orchestrator.reason_over_graph_node", new_callable=AsyncMock, return_value=expected) as mock_node:
+        with patch(
+            "backend.services.rag.kg_langgraph_orchestrator.get_llm_for_reasoning",
+            return_value=mock_llm,
+        ):
+            with patch(
+                "backend.services.rag.kg_langgraph_orchestrator.reason_over_graph_node",
+                new_callable=AsyncMock,
+                return_value=expected,
+            ) as mock_node:
                 result = await reason_wrapper(mock_state)
                 assert result == expected
                 mock_node.assert_called_once_with(mock_state, mock_llm)
@@ -165,7 +190,11 @@ class TestNodeWrappers:
         mock_state: dict[str, Any] = {"query": "test"}
         expected: dict[str, Any] = {"query": "test", "workflow": {"name": "test_wf"}}
 
-        with patch("backend.services.rag.kg_langgraph_orchestrator.synthesize_workflow_node", new_callable=AsyncMock, return_value=expected) as mock_node:
+        with patch(
+            "backend.services.rag.kg_langgraph_orchestrator.synthesize_workflow_node",
+            new_callable=AsyncMock,
+            return_value=expected,
+        ) as mock_node:
             result = await synthesize_workflow_wrapper(mock_state, mock_pool)
             assert result == expected
             mock_node.assert_called_once_with(mock_state, mock_pool)
@@ -186,26 +215,31 @@ class TestRouteAfterQueryUnderstanding:
 
     def test_domain_visa(self) -> None:
         from backend.services.rag.kg_langgraph_orchestrator import route_after_query_understanding
+
         state = self._make_state(domain="visa")
         assert route_after_query_understanding(state) == "visa_subgraph"
 
     def test_domain_tax(self) -> None:
         from backend.services.rag.kg_langgraph_orchestrator import route_after_query_understanding
+
         state = self._make_state(domain="tax")
         assert route_after_query_understanding(state) == "tax_subgraph"
 
     def test_domain_property(self) -> None:
         from backend.services.rag.kg_langgraph_orchestrator import route_after_query_understanding
+
         state = self._make_state(domain="property")
         assert route_after_query_understanding(state) == "property_subgraph"
 
     def test_domain_company(self) -> None:
         from backend.services.rag.kg_langgraph_orchestrator import route_after_query_understanding
+
         state = self._make_state(domain="company")
         assert route_after_query_understanding(state) == "company_subgraph"
 
     def test_domain_kbli(self) -> None:
         from backend.services.rag.kg_langgraph_orchestrator import route_after_query_understanding
+
         state = self._make_state(domain="kbli")
         assert route_after_query_understanding(state) == "company_subgraph"
 
@@ -230,6 +264,7 @@ class TestRouteAfterQueryUnderstanding:
             END,
             route_after_query_understanding,
         )
+
         state = self._make_state(intent="company_setup")  # domain="general"
         assert route_after_query_understanding(state) == END
 
@@ -238,6 +273,7 @@ class TestRouteAfterQueryUnderstanding:
             END,
             route_after_query_understanding,
         )
+
         state = self._make_state(intent="visa_application")
         assert route_after_query_understanding(state) == END
 
@@ -246,6 +282,7 @@ class TestRouteAfterQueryUnderstanding:
             END,
             route_after_query_understanding,
         )
+
         state = self._make_state(intent="property_acquisition")
         assert route_after_query_understanding(state) == END
 
@@ -254,6 +291,7 @@ class TestRouteAfterQueryUnderstanding:
             END,
             route_after_query_understanding,
         )
+
         state = self._make_state(intent="tax_compliance")
         assert route_after_query_understanding(state) == END
 
@@ -261,6 +299,7 @@ class TestRouteAfterQueryUnderstanding:
         """PHASE 2: intents in the golden_route_intents allowlist still
         route to use_golden_route, even without a domain hint."""
         from backend.services.rag.kg_langgraph_orchestrator import route_after_query_understanding
+
         state = self._make_state(intent="pt_pma_setup")
         assert route_after_query_understanding(state) == "use_golden_route"
 
@@ -280,6 +319,7 @@ class TestRouteAfterQueryUnderstanding:
             END,
             route_after_query_understanding,
         )
+
         state = self._make_state(query="How to set up PT PMA in Bali")
         assert route_after_query_understanding(state) == END
 
@@ -288,6 +328,7 @@ class TestRouteAfterQueryUnderstanding:
             END,
             route_after_query_understanding,
         )
+
         state = self._make_state(query="I need a kitas for work")
         assert route_after_query_understanding(state) == END
 
@@ -296,6 +337,7 @@ class TestRouteAfterQueryUnderstanding:
             END,
             route_after_query_understanding,
         )
+
         state = self._make_state(query="Buy a villa in Bali")
         assert route_after_query_understanding(state) == END
 
@@ -304,11 +346,13 @@ class TestRouteAfterQueryUnderstanding:
             END,
             route_after_query_understanding,
         )
+
         state = self._make_state(query="How to pay pajak in Indonesia")
         assert route_after_query_understanding(state) == END
 
     def test_complex_query_with_multiple_entities(self) -> None:
         from backend.services.rag.kg_langgraph_orchestrator import route_after_query_understanding
+
         state = self._make_state(
             query="something general",
             extracted_entities=["e1", "e2"],
@@ -317,6 +361,7 @@ class TestRouteAfterQueryUnderstanding:
 
     def test_complex_query_with_and(self) -> None:
         from backend.services.rag.kg_langgraph_orchestrator import route_after_query_understanding
+
         # Use a query that has AND but does NOT match any domain keyword
         state = self._make_state(query="Documents AND permits needed")
         assert route_after_query_understanding(state) == "resolve_entities"
@@ -324,6 +369,7 @@ class TestRouteAfterQueryUnderstanding:
     def test_simple_query_fallback_to_end(self) -> None:
         from backend.services.rag.kg_langgraph_orchestrator import route_after_query_understanding
         from langgraph.graph import END
+
         state = self._make_state(query="hello world")
         assert route_after_query_understanding(state) == END
 
@@ -333,17 +379,20 @@ class TestRouteAfterTraversal:
 
     def test_many_chains(self) -> None:
         from backend.services.rag.kg_langgraph_orchestrator import route_after_traversal
+
         state: dict[str, Any] = {"relationship_chains": [1, 2, 3, 4, 5]}
         assert route_after_traversal(state) == "reason"
 
     def test_few_chains(self) -> None:
         from backend.services.rag.kg_langgraph_orchestrator import route_after_traversal
+
         state: dict[str, Any] = {"relationship_chains": [1, 2]}
         assert route_after_traversal(state) == "reason"
 
     def test_no_chains(self) -> None:
         from backend.services.rag.kg_langgraph_orchestrator import route_after_traversal
         from langgraph.graph import END
+
         state: dict[str, Any] = {"relationship_chains": []}
         assert route_after_traversal(state) == END
 
@@ -428,9 +477,15 @@ class TestUseGoldenRouteNode:
         mock_kg.get_golden_routes = AsyncMock(return_value=[mock_route])
 
         mock_pool = MagicMock()
-        state: dict[str, Any] = {"intent": "pt_pma_setup", "workflow": None, "golden_route_match": None}
+        state: dict[str, Any] = {
+            "intent": "pt_pma_setup",
+            "workflow": None,
+            "golden_route_match": None,
+        }
 
-        with patch("backend.services.rag.kg_enhanced_retrieval.KGEnhancedRetrieval", return_value=mock_kg):
+        with patch(
+            "backend.services.rag.kg_enhanced_retrieval.KGEnhancedRetrieval", return_value=mock_kg
+        ):
             result = await use_golden_route_node(state, mock_pool)
             assert result["workflow"]["type"] == "golden_route"
             assert result["workflow"]["confidence"] == 1.0
@@ -447,9 +502,15 @@ class TestUseGoldenRouteNode:
         mock_kg.get_golden_routes = AsyncMock(return_value=[mock_route])
 
         mock_pool = MagicMock()
-        state: dict[str, Any] = {"intent": "nonexistent_intent", "workflow": None, "golden_route_match": None}
+        state: dict[str, Any] = {
+            "intent": "nonexistent_intent",
+            "workflow": None,
+            "golden_route_match": None,
+        }
 
-        with patch("backend.services.rag.kg_enhanced_retrieval.KGEnhancedRetrieval", return_value=mock_kg):
+        with patch(
+            "backend.services.rag.kg_enhanced_retrieval.KGEnhancedRetrieval", return_value=mock_kg
+        ):
             result = await use_golden_route_node(state, mock_pool)
             assert result["workflow"] is None  # No match found
 

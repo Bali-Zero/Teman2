@@ -152,9 +152,14 @@ def _processing_days(visa_type: VisaType) -> int:
     # Single-entry C-series and short-stay visit visas process in ~10 working days.
     # KITAS / multi-entry / yearly visas process in ~20–30 days.
     if visa_type in {
-        VisaType.C1, VisaType.C2, VisaType.C6,
-        VisaType.C7, VisaType.C7A, VisaType.C7B,
-        VisaType.C18, VisaType.C22A,
+        VisaType.C1,
+        VisaType.C2,
+        VisaType.C6,
+        VisaType.C7,
+        VisaType.C7A,
+        VisaType.C7B,
+        VisaType.C18,
+        VisaType.C22A,
     }:
         return 10
     return 25

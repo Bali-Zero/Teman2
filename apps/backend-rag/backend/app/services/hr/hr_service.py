@@ -44,29 +44,36 @@ class HRService:
     async def get_employee(self, employee_id: int) -> dict[str, Any] | None:
         """Get employee by HR employee ID."""
         async with self.db_pool.acquire() as conn:
-            row = await conn.fetchrow("""
+            row = await conn.fetchrow(
+                """
                 SELECT e.*, tm.full_name, tm.email, tm.role
                 FROM hr_employees e
                 JOIN team_members tm ON tm.id = e.team_member_id
                 WHERE e.id = $1
-            """, employee_id)
+            """,
+                employee_id,
+            )
             return dict(row) if row else None
 
     async def get_employee_by_email(self, email: str) -> dict[str, Any] | None:
         """Get employee by team member email."""
         async with self.db_pool.acquire() as conn:
-            row = await conn.fetchrow("""
+            row = await conn.fetchrow(
+                """
                 SELECT e.*, tm.full_name, tm.email, tm.role
                 FROM hr_employees e
                 JOIN team_members tm ON tm.id = e.team_member_id
                 WHERE tm.email = $1
-            """, email)
+            """,
+                email,
+            )
             return dict(row) if row else None
 
     async def upsert_employee(self, data: dict[str, Any]) -> dict[str, Any]:
         """Create or update HR employee record."""
         async with self.db_pool.acquire() as conn:
-            row = await conn.fetchrow("""
+            row = await conn.fetchrow(
+                """
                 INSERT INTO hr_employees (
                     team_member_id, hire_date, base_salary_idr,
                     bank_name, bank_account, bank_account_holder,
@@ -119,7 +126,8 @@ class HRService:
     async def upsert_bonus_rate(self, data: dict[str, Any]) -> dict[str, Any]:
         """Create or update a bonus rate."""
         async with self.db_pool.acquire() as conn:
-            row = await conn.fetchrow("""
+            row = await conn.fetchrow(
+                """
                 INSERT INTO hr_bonus_rates (
                     practice_type_code, amount_idr, effective_from,
                     effective_to, is_active, notes
@@ -140,7 +148,9 @@ class HRService:
                 data.get("is_active", True),
                 data.get("notes"),
             )
-            logger.info(f"Bonus rate upserted: {data['practice_type_code']} = {data['amount_idr']} IDR")
+            logger.info(
+                f"Bonus rate upserted: {data['practice_type_code']} = {data['amount_idr']} IDR"
+            )
             return dict(row)
 
     # ─── BONUSES ─────────────────────────────────────────────────────
@@ -192,12 +202,16 @@ class HRService:
     async def approve_bonus(self, bonus_id: int, approved_by: str) -> dict[str, Any]:
         """Approve a pending bonus."""
         async with self.db_pool.acquire() as conn:
-            row = await conn.fetchrow("""
+            row = await conn.fetchrow(
+                """
                 UPDATE hr_bonus_ledger
                 SET status = 'approved', approved_by = $2, approved_at = NOW()
                 WHERE id = $1 AND status = 'pending'
                 RETURNING *
-            """, bonus_id, approved_by)
+            """,
+                bonus_id,
+                approved_by,
+            )
             if not row:
                 msg = f"Bonus {bonus_id} not found or not pending"
                 raise ValueError(msg)
@@ -205,11 +219,15 @@ class HRService:
             return dict(row)
 
     async def get_bonus_summary(
-        self, employee_id: int, month: int, year: int,
+        self,
+        employee_id: int,
+        month: int,
+        year: int,
     ) -> dict[str, Any]:
         """Get bonus summary for an employee in a given month."""
         async with self.db_pool.acquire() as conn:
-            row = await conn.fetchrow("""
+            row = await conn.fetchrow(
+                """
                 SELECT
                     COUNT(*) as bonus_count,
                     COALESCE(SUM(amount_idr) FILTER (WHERE status IN ('approved','paid')), 0) as approved_total,
@@ -219,13 +237,20 @@ class HRService:
                 WHERE employee_id = $1
                   AND EXTRACT(MONTH FROM awarded_at) = $2
                   AND EXTRACT(YEAR FROM awarded_at) = $3
-            """, employee_id, month, year)
+            """,
+                employee_id,
+                month,
+                year,
+            )
             return dict(row)
 
     # ─── PAYROLL ─────────────────────────────────────────────────────
 
     async def calculate_payroll(
-        self, month: int, year: int, created_by: str,
+        self,
+        month: int,
+        year: int,
+        created_by: str,
     ) -> dict[str, Any]:
         """
         Calculate payroll for a given month.
@@ -238,7 +263,8 @@ class HRService:
         async with self.db_pool.acquire() as conn:
             async with conn.transaction():
                 # Create or get period
-                period = await conn.fetchrow("""
+                period = await conn.fetchrow(
+                    """
                     INSERT INTO hr_payroll_periods (
                         payroll_month, payroll_year, period_start, period_end,
                         status, created_by
@@ -246,7 +272,13 @@ class HRService:
                     ON CONFLICT (payroll_month, payroll_year) DO UPDATE SET
                         status = 'calculated', updated_at = NOW()
                     RETURNING *
-                """, month, year, period_start, period_end, created_by)
+                """,
+                    month,
+                    year,
+                    period_start,
+                    period_end,
+                    created_by,
+                )
                 period_id = period["id"]
 
                 # Get all active employees
@@ -264,14 +296,19 @@ class HRService:
                     ptkp = emp["ptkp_status"]
 
                     # Sum approved bonuses for this month
-                    bonus_row = await conn.fetchrow("""
+                    bonus_row = await conn.fetchrow(
+                        """
                         SELECT COALESCE(SUM(amount_idr), 0) as total
                         FROM hr_bonus_ledger
                         WHERE employee_id = $1
                           AND status IN ('approved', 'paid')
                           AND EXTRACT(MONTH FROM awarded_at) = $2
                           AND EXTRACT(YEAR FROM awarded_at) = $3
-                    """, emp_id, month, year)
+                    """,
+                        emp_id,
+                        month,
+                        year,
+                    )
                     bonus_total = bonus_row["total"]
 
                     # Calculate BPJS
@@ -288,31 +325,52 @@ class HRService:
                     net = salary + bonus_total - deduction_total
 
                     # Delete existing payslip for recalculation
-                    await conn.execute("""
+                    await conn.execute(
+                        """
                         DELETE FROM hr_deductions WHERE payslip_id IN (
                             SELECT id FROM hr_payslips
                             WHERE employee_id = $1 AND payroll_period_id = $2
                         )
-                    """, emp_id, period_id)
-                    await conn.execute("""
+                    """,
+                        emp_id,
+                        period_id,
+                    )
+                    await conn.execute(
+                        """
                         DELETE FROM hr_payslips
                         WHERE employee_id = $1 AND payroll_period_id = $2
-                    """, emp_id, period_id)
+                    """,
+                        emp_id,
+                        period_id,
+                    )
 
                     # Insert payslip
-                    payslip = await conn.fetchrow("""
+                    payslip = await conn.fetchrow(
+                        """
                         INSERT INTO hr_payslips (
                             payroll_period_id, employee_id, base_salary_idr,
                             bonus_total_idr, deduction_total_idr, net_salary_idr
                         ) VALUES ($1, $2, $3, $4, $5, $6)
                         RETURNING *
-                    """, period_id, emp_id, salary, bonus_total, deduction_total, net)
+                    """,
+                        period_id,
+                        emp_id,
+                        salary,
+                        bonus_total,
+                        deduction_total,
+                        net,
+                    )
                     payslip_id = payslip["id"]
 
                     # Insert deduction items
                     deduction_items = [
                         ("bpjs_kes_employee", "BPJS Kesehatan (1%)", ded_kes, False),
-                        ("bpjs_kes_employer", "BPJS Kesehatan (4%)", bpjs["kesehatan"]["employer"], True),
+                        (
+                            "bpjs_kes_employer",
+                            "BPJS Kesehatan (4%)",
+                            bpjs["kesehatan"]["employer"],
+                            True,
+                        ),
                         ("bpjs_jht_employee", "BPJS JHT (2%)", ded_jht, False),
                         ("bpjs_jht_employer", "BPJS JHT (3.7%)", bpjs["jht"]["employer"], True),
                         ("bpjs_jkk", "BPJS JKK (0.24%)", bpjs["jkk"]["employer"], True),
@@ -323,23 +381,30 @@ class HRService:
                     ]
                     for dtype, label, amount, is_employer in deduction_items:
                         if amount > 0:
-                            await conn.execute("""
+                            await conn.execute(
+                                """
                                 INSERT INTO hr_deductions (
                                     payslip_id, deduction_type, label, amount_idr, is_employer
                                 ) VALUES ($1, $2, $3, $4, $5)
-                            """, payslip_id, dtype, label, amount, is_employer)
+                            """,
+                                payslip_id,
+                                dtype,
+                                label,
+                                amount,
+                                is_employer,
+                            )
 
-                    payslips.append({
-                        "employee_name": emp["full_name"],
-                        "base_salary": salary,
-                        "bonus_total": bonus_total,
-                        "deduction_total": deduction_total,
-                        "net_salary": net,
-                    })
+                    payslips.append(
+                        {
+                            "employee_name": emp["full_name"],
+                            "base_salary": salary,
+                            "bonus_total": bonus_total,
+                            "deduction_total": deduction_total,
+                            "net_salary": net,
+                        }
+                    )
 
-                logger.info(
-                    f"Payroll calculated: {month}/{year}, {len(payslips)} employees"
-                )
+                logger.info(f"Payroll calculated: {month}/{year}, {len(payslips)} employees")
                 return {
                     "period_id": period_id,
                     "month": month,
@@ -397,7 +462,8 @@ class HRService:
     async def get_payslip_detail(self, payslip_id: int) -> dict[str, Any] | None:
         """Get full payslip with deductions."""
         async with self.db_pool.acquire() as conn:
-            payslip = await conn.fetchrow("""
+            payslip = await conn.fetchrow(
+                """
                 SELECT ps.*, tm.full_name, tm.email,
                        pp.payroll_month, pp.payroll_year, pp.status as period_status
                 FROM hr_payslips ps
@@ -405,14 +471,19 @@ class HRService:
                 JOIN team_members tm ON tm.id = e.team_member_id
                 JOIN hr_payroll_periods pp ON pp.id = ps.payroll_period_id
                 WHERE ps.id = $1
-            """, payslip_id)
+            """,
+                payslip_id,
+            )
             if not payslip:
                 return None
 
-            deductions = await conn.fetch("""
+            deductions = await conn.fetch(
+                """
                 SELECT * FROM hr_deductions WHERE payslip_id = $1
                 ORDER BY is_employer, deduction_type
-            """, payslip_id)
+            """,
+                payslip_id,
+            )
 
             result = dict(payslip)
             result["deductions"] = [dict(d) for d in deductions]
@@ -421,12 +492,16 @@ class HRService:
     async def approve_payroll(self, period_id: int, approved_by: str) -> dict[str, Any]:
         """Approve a payroll period (locks it)."""
         async with self.db_pool.acquire() as conn:
-            row = await conn.fetchrow("""
+            row = await conn.fetchrow(
+                """
                 UPDATE hr_payroll_periods
                 SET status = 'approved', approved_by = $2
                 WHERE id = $1 AND status = 'calculated'
                 RETURNING *
-            """, period_id, approved_by)
+            """,
+                period_id,
+                approved_by,
+            )
             if not row:
                 msg = f"Period {period_id} not found or not in 'calculated' status"
                 raise ValueError(msg)
@@ -437,22 +512,28 @@ class HRService:
         """Mark payroll as paid."""
         async with self.db_pool.acquire() as conn:
             async with conn.transaction():
-                row = await conn.fetchrow("""
+                row = await conn.fetchrow(
+                    """
                     UPDATE hr_payroll_periods
                     SET status = 'paid'
                     WHERE id = $1 AND status = 'approved'
                     RETURNING *
-                """, period_id)
+                """,
+                    period_id,
+                )
                 if not row:
                     msg = f"Period {period_id} not found or not approved"
                     raise ValueError(msg)
 
                 # Mark all bonuses in this period as paid
-                await conn.execute("""
+                await conn.execute(
+                    """
                     UPDATE hr_bonus_ledger
                     SET status = 'paid'
                     WHERE payroll_period_id = $1 AND status = 'approved'
-                """, period_id)
+                """,
+                    period_id,
+                )
 
                 logger.info("Payroll period %s marked as paid", period_id)
                 return dict(row)
@@ -465,22 +546,29 @@ class HRService:
             async with conn.transaction():
                 # Validate leave_type_id exists and is active (server-side guard
                 # against clients bypassing the dropdown filter).
-                leave_type = await conn.fetchrow("""
+                leave_type = await conn.fetchrow(
+                    """
                     SELECT id FROM hr_leave_types
                     WHERE id = $1 AND is_active = TRUE
-                """, data["leave_type_id"])
+                """,
+                    data["leave_type_id"],
+                )
                 if not leave_type:
                     msg = f"Leave type {data['leave_type_id']} not found or inactive"
                     raise ValueError(msg)
 
                 # Check balance
-                balance = await conn.fetchrow("""
+                balance = await conn.fetchrow(
+                    """
                     SELECT * FROM hr_leave_balances
                     WHERE employee_id = $1
                       AND leave_type_id = $2
                       AND balance_year = $3
-                """, data["employee_id"], data["leave_type_id"],
-                    data["start_date"].year)
+                """,
+                    data["employee_id"],
+                    data["leave_type_id"],
+                    data["start_date"].year,
+                )
 
                 if balance:
                     available = (
@@ -494,13 +582,18 @@ class HRService:
                         raise ValueError(msg)
 
                     # Reserve pending days
-                    await conn.execute("""
+                    await conn.execute(
+                        """
                         UPDATE hr_leave_balances
                         SET pending_days = pending_days + $1
                         WHERE id = $2
-                    """, data["total_days"], balance["id"])
+                    """,
+                        data["total_days"],
+                        balance["id"],
+                    )
 
-                row = await conn.fetchrow("""
+                row = await conn.fetchrow(
+                    """
                     INSERT INTO hr_leave_requests (
                         employee_id, leave_type_id, start_date, end_date,
                         total_days, reason
@@ -514,69 +607,94 @@ class HRService:
                     data["total_days"],
                     data.get("reason"),
                 )
-                logger.info(f"Leave request created: employee={data['employee_id']}, days={data['total_days']}")
+                logger.info(
+                    f"Leave request created: employee={data['employee_id']}, days={data['total_days']}"
+                )
                 return dict(row)
 
     async def approve_leave(self, request_id: int, reviewed_by: str) -> dict[str, Any]:
         """Approve a leave request."""
         async with self.db_pool.acquire() as conn:
             async with conn.transaction():
-                req = await conn.fetchrow("""
+                req = await conn.fetchrow(
+                    """
                     UPDATE hr_leave_requests
                     SET status = 'approved', reviewed_by = $2, reviewed_at = NOW()
                     WHERE id = $1 AND status = 'pending'
                     RETURNING *
-                """, request_id, reviewed_by)
+                """,
+                    request_id,
+                    reviewed_by,
+                )
                 if not req:
                     msg = f"Leave request {request_id} not found or not pending"
                     raise ValueError(msg)
 
                 # Move from pending to used
-                await conn.execute("""
+                await conn.execute(
+                    """
                     UPDATE hr_leave_balances
                     SET pending_days = pending_days - $1,
                         used_days = used_days + $1
                     WHERE employee_id = $2
                       AND leave_type_id = $3
                       AND balance_year = $4
-                """, req["total_days"], req["employee_id"],
-                    req["leave_type_id"], req["start_date"].year)
+                """,
+                    req["total_days"],
+                    req["employee_id"],
+                    req["leave_type_id"],
+                    req["start_date"].year,
+                )
 
                 logger.info("Leave request %s approved by %s", request_id, reviewed_by)
                 return dict(req)
 
     async def reject_leave(
-        self, request_id: int, reviewed_by: str, reason: str,
+        self,
+        request_id: int,
+        reviewed_by: str,
+        reason: str,
     ) -> dict[str, Any]:
         """Reject a leave request."""
         async with self.db_pool.acquire() as conn:
             async with conn.transaction():
-                req = await conn.fetchrow("""
+                req = await conn.fetchrow(
+                    """
                     UPDATE hr_leave_requests
                     SET status = 'rejected', reviewed_by = $2,
                         reviewed_at = NOW(), rejection_reason = $3
                     WHERE id = $1 AND status = 'pending'
                     RETURNING *
-                """, request_id, reviewed_by, reason)
+                """,
+                    request_id,
+                    reviewed_by,
+                    reason,
+                )
                 if not req:
                     msg = f"Leave request {request_id} not found or not pending"
                     raise ValueError(msg)
 
                 # Release pending days
-                await conn.execute("""
+                await conn.execute(
+                    """
                     UPDATE hr_leave_balances
                     SET pending_days = GREATEST(0, pending_days - $1)
                     WHERE employee_id = $2
                       AND leave_type_id = $3
                       AND balance_year = $4
-                """, req["total_days"], req["employee_id"],
-                    req["leave_type_id"], req["start_date"].year)
+                """,
+                    req["total_days"],
+                    req["employee_id"],
+                    req["leave_type_id"],
+                    req["start_date"].year,
+                )
 
                 logger.info("Leave request %s rejected by %s", request_id, reviewed_by)
                 return dict(req)
 
     async def get_leave_request(
-        self, request_id: int,
+        self,
+        request_id: int,
     ) -> dict[str, Any] | None:
         """Fetch a single leave request with requester email + leave type.
 
@@ -584,7 +702,8 @@ class HRService:
         perform delegated RBAC checks before approve/reject.
         """
         async with self.db_pool.acquire() as conn:
-            row = await conn.fetchrow("""
+            row = await conn.fetchrow(
+                """
                 SELECT lr.*,
                        tm.email AS requester_email,
                        tm.full_name AS requester_name,
@@ -594,7 +713,9 @@ class HRService:
                 JOIN team_members tm ON tm.id = e.team_member_id
                 JOIN hr_leave_types lt ON lt.id = lr.leave_type_id
                 WHERE lr.id = $1
-            """, request_id)
+            """,
+                request_id,
+            )
         return dict(row) if row else None
 
     async def get_leave_type_name(self, type_id: int) -> str:
@@ -606,34 +727,43 @@ class HRService:
         """
         async with self.db_pool.acquire() as conn:
             row = await conn.fetchrow(
-                "SELECT name FROM hr_leave_types WHERE id = $1", type_id,
+                "SELECT name FROM hr_leave_types WHERE id = $1",
+                type_id,
             )
         return row["name"] if row else f"Leave type #{type_id}"
 
     async def get_leave_balance(
-        self, employee_id: int, year: int | None = None,
+        self,
+        employee_id: int,
+        year: int | None = None,
     ) -> list[dict[str, Any]]:
         """Get leave balances for an employee."""
         if year is None:
             year = date.today().year
         async with self.db_pool.acquire() as conn:
-            rows = await conn.fetch("""
+            rows = await conn.fetch(
+                """
                 SELECT lb.*, lt.code, lt.name as leave_type_name, lt.is_paid
                 FROM hr_leave_balances lb
                 JOIN hr_leave_types lt ON lt.id = lb.leave_type_id
                 WHERE lb.employee_id = $1 AND lb.balance_year = $2
                 ORDER BY lt.code
-            """, employee_id, year)
+            """,
+                employee_id,
+                year,
+            )
             return [dict(r) for r in rows]
 
     async def get_team_leave_summary(
-        self, year: int | None = None,
+        self,
+        year: int | None = None,
     ) -> list[dict[str, Any]]:
         """Get leave balance summary for all active employees."""
         if year is None:
             year = date.today().year
         async with self.db_pool.acquire() as conn:
-            rows = await conn.fetch("""
+            rows = await conn.fetch(
+                """
                 SELECT tm.full_name as employee_name, tm.email,
                        he.id as employee_id,
                        lt.code as leave_type, lt.name as leave_type_name,
@@ -647,7 +777,9 @@ class HRService:
                 JOIN hr_leave_types lt ON lt.id = lb.leave_type_id
                 WHERE he.is_active = TRUE AND lb.balance_year = $1
                 ORDER BY tm.full_name, lt.code
-            """, year)
+            """,
+                year,
+            )
             return [dict(r) for r in rows]
 
     async def list_leave_requests(
@@ -698,10 +830,14 @@ class HRService:
             pending_leave = await conn.fetchval(
                 "SELECT COUNT(*) FROM hr_leave_requests WHERE status = 'pending'"
             )
-            current_period = await conn.fetchrow("""
+            current_period = await conn.fetchrow(
+                """
                 SELECT * FROM hr_payroll_periods
                 WHERE payroll_month = $1 AND payroll_year = $2
-            """, today.month, today.year)
+            """,
+                today.month,
+                today.year,
+            )
 
             return {
                 "employee_count": emp_count,
@@ -717,34 +853,46 @@ class HRService:
         today = date.today()
         async with self.db_pool.acquire() as conn:
             # Current month bonuses
-            bonuses = await conn.fetchrow("""
+            bonuses = await conn.fetchrow(
+                """
                 SELECT COUNT(*) as count, COALESCE(SUM(amount_idr), 0) as total
                 FROM hr_bonus_ledger
                 WHERE employee_id = $1
                   AND EXTRACT(MONTH FROM awarded_at) = $2
                   AND EXTRACT(YEAR FROM awarded_at) = $3
-            """, employee_id, today.month, today.year)
+            """,
+                employee_id,
+                today.month,
+                today.year,
+            )
 
             # Latest payslip
-            latest_payslip = await conn.fetchrow("""
+            latest_payslip = await conn.fetchrow(
+                """
                 SELECT ps.*, pp.payroll_month, pp.payroll_year
                 FROM hr_payslips ps
                 JOIN hr_payroll_periods pp ON pp.id = ps.payroll_period_id
                 WHERE ps.employee_id = $1
                 ORDER BY pp.payroll_year DESC, pp.payroll_month DESC
                 LIMIT 1
-            """, employee_id)
+            """,
+                employee_id,
+            )
 
             # Leave balance
             # NOTE: shape must match get_leave_balance() above —
             # both endpoints feed the same LeaveBalance type on the frontend.
-            leave_balance = await conn.fetch("""
+            leave_balance = await conn.fetch(
+                """
                 SELECT lb.*, lt.code, lt.name AS leave_type_name, lt.is_paid
                 FROM hr_leave_balances lb
                 JOIN hr_leave_types lt ON lt.id = lb.leave_type_id
                 WHERE lb.employee_id = $1 AND lb.balance_year = $2
                 ORDER BY lt.code
-            """, employee_id, today.year)
+            """,
+                employee_id,
+                today.year,
+            )
 
             return {
                 "month_bonuses": dict(bonuses),

@@ -136,10 +136,7 @@ class TestExtractCrossReferences:
         assert refs[0]["relationship"] == "IMPLEMENTS"
 
     def test_multiple_references(self):
-        text = (
-            "sebagaimana diatur dalam UU No. 6 Tahun 2023 "
-            "dan mencabut PP No. 5 Tahun 2010"
-        )
+        text = "sebagaimana diatur dalam UU No. 6 Tahun 2023 dan mencabut PP No. 5 Tahun 2010"
         refs = extract_cross_references(text)
         assert len(refs) == 2
 
@@ -273,7 +270,10 @@ class TestFindSemanticLinks:
             "c1": [0.9, 0.1, 0.0],
         }
         result = await find_semantic_links(
-            orphans, all_entities, embeddings_cache=cache, similarity_threshold=0.5,
+            orphans,
+            all_entities,
+            embeddings_cache=cache,
+            similarity_threshold=0.5,
         )
         assert len(result) == 1
         assert result[0]["source_id"] == "o1"
@@ -294,7 +294,10 @@ class TestFindSemanticLinks:
             "c1": [0.0, 1.0, 0.0],
         }
         result = await find_semantic_links(
-            orphans, all_entities, embeddings_cache=cache, similarity_threshold=0.9,
+            orphans,
+            all_entities,
+            embeddings_cache=cache,
+            similarity_threshold=0.9,
         )
         assert result == []
 

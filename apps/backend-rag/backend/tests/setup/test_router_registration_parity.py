@@ -27,6 +27,7 @@ include_routers" test produces false positives.
 Cicatrix ref: .claude/rules/cicatrix-scars.md "Test infrastructure mock
 != production stack (Sprint 1.B 2026-05-02)".
 """
+
 from __future__ import annotations
 
 import inspect
@@ -91,8 +92,7 @@ class TestChannelHealthRegression:
 
         pattern = r"include_router\s*\(\s*channel_health\."
         assert re.search(pattern, body_main), (
-            "channel_health.router NOT in include_routers() — "
-            "Sprint 1.B PR #424 regression."
+            "channel_health.router NOT in include_routers() — Sprint 1.B PR #424 regression."
         )
         assert re.search(pattern, body_light), (
             "channel_health.router NOT in include_light_routers() — "
@@ -119,11 +119,7 @@ class TestIncludeFunctionsParity:
         """Return manifest entry names with process_groups including _API."""
         from backend.app.setup.router_manifest import _API, _BOTH
 
-        return {
-            entry.name
-            for entry in ROUTER_MANIFEST
-            if entry.process_groups in (_API, _BOTH)
-        }
+        return {entry.name for entry in ROUTER_MANIFEST if entry.process_groups in (_API, _BOTH)}
 
     def test_api_routers_symmetric_in_both_include_functions(self):
         source = _read_registration_source()

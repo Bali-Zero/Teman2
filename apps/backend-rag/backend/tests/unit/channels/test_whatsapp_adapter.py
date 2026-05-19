@@ -97,9 +97,7 @@ def webhook_no_messages() -> dict:
                     {
                         "value": {
                             "messaging_product": "whatsapp",
-                            "statuses": [
-                                {"id": "wamid.xxx", "status": "delivered"}
-                            ],
+                            "statuses": [{"id": "wamid.xxx", "status": "delivered"}],
                         },
                         "field": "messages",
                     }
@@ -177,9 +175,7 @@ class TestWhatsAppFormatter:
     def test_format_sources_max_five(self) -> None:
         response = ChannelResponse(
             text="A",
-            sources=[
-                {"title": f"S{i}", "url": f"https://x.com/{i}"} for i in range(10)
-            ],
+            sources=[{"title": f"S{i}", "url": f"https://x.com/{i}"} for i in range(10)],
             metadata={},
         )
         result = WhatsAppMessageFormatter.format_response(response)
@@ -238,9 +234,7 @@ class TestWhatsAppFormatter:
         assert result == "❌ *Errore:* API timeout"
 
     def test_format_empty_text(self) -> None:
-        result = WhatsAppMessageFormatter.format_response(
-            ChannelResponse(text="", metadata={})
-        )
+        result = WhatsAppMessageFormatter.format_response(ChannelResponse(text="", metadata={}))
         assert result == ""
 
 
@@ -257,7 +251,9 @@ class TestWhatsAppAdapter:
         assert adapter.max_message_length == 1600
 
     async def test_receive_message_text(
-        self, adapter: WhatsAppChannelAdapter, sample_webhook: dict,
+        self,
+        adapter: WhatsAppChannelAdapter,
+        sample_webhook: dict,
     ) -> None:
         msg = await adapter.receive_message(sample_webhook)
         assert msg.user_id == "whatsapp_6281234567890"
@@ -270,7 +266,9 @@ class TestWhatsAppAdapter:
         assert msg.metadata["message_type"] == "text"
 
     async def test_receive_message_no_messages(
-        self, adapter: WhatsAppChannelAdapter, webhook_no_messages: dict,
+        self,
+        adapter: WhatsAppChannelAdapter,
+        webhook_no_messages: dict,
     ) -> None:
         msg = await adapter.receive_message(webhook_no_messages)
         assert msg.user_id == "unknown"
@@ -278,7 +276,8 @@ class TestWhatsAppAdapter:
         assert msg.channel == "whatsapp"
 
     async def test_receive_message_no_contacts(
-        self, adapter: WhatsAppChannelAdapter,
+        self,
+        adapter: WhatsAppChannelAdapter,
     ) -> None:
         webhook = {
             "entry": [
@@ -305,13 +304,16 @@ class TestWhatsAppAdapter:
         assert msg.text == "Hi"
 
     async def test_receive_message_malformed_raises(
-        self, adapter: WhatsAppChannelAdapter,
+        self,
+        adapter: WhatsAppChannelAdapter,
     ) -> None:
         with pytest.raises(Exception):
             await adapter.receive_message({"entry": "bad"})
 
     async def test_send_response_success(
-        self, adapter: WhatsAppChannelAdapter, simple_response: ChannelResponse,
+        self,
+        adapter: WhatsAppChannelAdapter,
+        simple_response: ChannelResponse,
     ) -> None:
         mock_resp = MagicMock()
         mock_resp.raise_for_status = MagicMock()
@@ -336,7 +338,9 @@ class TestWhatsAppAdapter:
         assert headers["Authorization"] == "Bearer wa_test_token_123"
 
     async def test_send_response_truncates(
-        self, adapter: WhatsAppChannelAdapter, long_response: ChannelResponse,
+        self,
+        adapter: WhatsAppChannelAdapter,
+        long_response: ChannelResponse,
     ) -> None:
         mock_resp = MagicMock()
         mock_resp.raise_for_status = MagicMock()
@@ -349,12 +353,16 @@ class TestWhatsAppAdapter:
         assert len(sent_text) <= 1600
 
     async def test_send_response_api_error(
-        self, adapter: WhatsAppChannelAdapter, simple_response: ChannelResponse,
+        self,
+        adapter: WhatsAppChannelAdapter,
+        simple_response: ChannelResponse,
     ) -> None:
         adapter.client = AsyncMock()
         adapter.client.post = AsyncMock(
             side_effect=httpx.HTTPStatusError(
-                "401", request=MagicMock(), response=MagicMock(),
+                "401",
+                request=MagicMock(),
+                response=MagicMock(),
             ),
         )
 
@@ -363,13 +371,15 @@ class TestWhatsAppAdapter:
             await adapter.send_response("123", simple_response)
 
     async def test_send_status_update_noop(
-        self, adapter: WhatsAppChannelAdapter,
+        self,
+        adapter: WhatsAppChannelAdapter,
     ) -> None:
         # WhatsApp doesn't support typing indicators
         await adapter.send_status_update("123", "typing")
 
     async def test_stream_response_accumulates_and_sends(
-        self, adapter: WhatsAppChannelAdapter,
+        self,
+        adapter: WhatsAppChannelAdapter,
     ) -> None:
         mock_resp = MagicMock()
         mock_resp.raise_for_status = MagicMock()
@@ -389,7 +399,8 @@ class TestWhatsAppAdapter:
         assert "Hello beautiful world!" in sent_text
 
     async def test_stream_response_with_sources(
-        self, adapter: WhatsAppChannelAdapter,
+        self,
+        adapter: WhatsAppChannelAdapter,
     ) -> None:
         mock_resp = MagicMock()
         mock_resp.raise_for_status = MagicMock()
@@ -411,7 +422,8 @@ class TestWhatsAppAdapter:
         assert "Doc A" in sent_text
 
     async def test_stream_response_with_workflow(
-        self, adapter: WhatsAppChannelAdapter,
+        self,
+        adapter: WhatsAppChannelAdapter,
     ) -> None:
         mock_resp = MagicMock()
         mock_resp.raise_for_status = MagicMock()
@@ -432,7 +444,8 @@ class TestWhatsAppAdapter:
         assert "Setup" in sent_text
 
     async def test_stream_response_empty_stream(
-        self, adapter: WhatsAppChannelAdapter,
+        self,
+        adapter: WhatsAppChannelAdapter,
     ) -> None:
         adapter.client = AsyncMock()
         adapter.client.post = AsyncMock()
@@ -446,7 +459,8 @@ class TestWhatsAppAdapter:
         adapter.client.post.assert_not_called()
 
     async def test_stream_response_error_sends_error_message(
-        self, adapter: WhatsAppChannelAdapter,
+        self,
+        adapter: WhatsAppChannelAdapter,
     ) -> None:
         mock_resp = MagicMock()
         mock_resp.raise_for_status = MagicMock()

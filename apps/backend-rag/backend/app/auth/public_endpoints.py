@@ -320,8 +320,7 @@ _FUNNEL = (
     PublicEndpoint(
         "/api/funnel/session/convert",
         Category.FUNNEL,
-        "Lead→client conversion bridge called by portal login flow. "
-        "Takes session_id + client_id.",
+        "Lead→client conversion bridge called by portal login flow. Takes session_id + client_id.",
     ),
     PublicEndpoint(
         "/api/analytics/funnel-event",

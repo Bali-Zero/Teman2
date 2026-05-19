@@ -266,7 +266,9 @@ class MetricsTracker:
         """
         pool = await self._get_pool()
         if pool is None:
-            logger.debug("Metric not persisted (no DB): %s/%s/%s=%s", experiment, variant, metric, value)
+            logger.debug(
+                "Metric not persisted (no DB): %s/%s/%s=%s", experiment, variant, metric, value
+            )
             return False
 
         if not self._initialized:

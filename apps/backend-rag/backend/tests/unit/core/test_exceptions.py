@@ -417,7 +417,9 @@ class TestExceptionHierarchyChains:
             RetryableError("retry"),
         ]
         for exc in exceptions_to_test:
-            assert isinstance(exc, NuzantaraBaseError), f"{type(exc).__name__} not a NuzantaraBaseError"
+            assert isinstance(exc, NuzantaraBaseError), (
+                f"{type(exc).__name__} not a NuzantaraBaseError"
+            )
 
     def test_qdrant_errors_catchable_by_qdrant_error(self) -> None:
         qdrant_exceptions = [

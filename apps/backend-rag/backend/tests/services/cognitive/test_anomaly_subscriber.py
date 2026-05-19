@@ -66,10 +66,12 @@ def test_trigger_whitelist_only_created():
 async def test_subscriber_ignores_updated(intel_and_detector):
     intel, detector = intel_and_detector
     sub = AnomalyEventSubscriber(intel_repo=intel, detector=detector)
-    out = await sub.handle({
-        "event_type": "dossier_updated",
-        "dossier_id": str(uuid4()),
-    })
+    out = await sub.handle(
+        {
+            "event_type": "dossier_updated",
+            "dossier_id": str(uuid4()),
+        }
+    )
     assert out is None
     detector.analyze_dossier.assert_not_called()
     intel.get_dossier.assert_not_called()
@@ -95,10 +97,12 @@ async def test_subscriber_missing_dossier_id(intel_and_detector):
 async def test_subscriber_bad_uuid(intel_and_detector):
     intel, detector = intel_and_detector
     sub = AnomalyEventSubscriber(intel_repo=intel, detector=detector)
-    out = await sub.handle({
-        "event_type": "dossier_created",
-        "dossier_id": "not-a-uuid",
-    })
+    out = await sub.handle(
+        {
+            "event_type": "dossier_created",
+            "dossier_id": "not-a-uuid",
+        }
+    )
     assert out is None
 
 
@@ -107,10 +111,12 @@ async def test_subscriber_dossier_not_found(intel_and_detector):
     intel, detector = intel_and_detector
     intel.get_dossier = AsyncMock(return_value=None)
     sub = AnomalyEventSubscriber(intel_repo=intel, detector=detector)
-    out = await sub.handle({
-        "event_type": "dossier_created",
-        "dossier_id": str(uuid4()),
-    })
+    out = await sub.handle(
+        {
+            "event_type": "dossier_created",
+            "dossier_id": str(uuid4()),
+        }
+    )
     assert out is None
     detector.analyze_dossier.assert_not_called()
 
@@ -121,10 +127,12 @@ async def test_subscriber_dispatches_on_created(intel_and_detector):
     did = uuid4()
     intel.get_dossier = AsyncMock(return_value=_dossier(did))
     sub = AnomalyEventSubscriber(intel_repo=intel, detector=detector)
-    out = await sub.handle({
-        "event_type": "dossier_created",
-        "dossier_id": str(did),
-    })
+    out = await sub.handle(
+        {
+            "event_type": "dossier_created",
+            "dossier_id": str(did),
+        }
+    )
     assert out is not None
     detector.analyze_dossier.assert_awaited_once()
 
@@ -134,10 +142,12 @@ async def test_subscriber_get_dossier_exception_caught(intel_and_detector):
     intel, detector = intel_and_detector
     intel.get_dossier = AsyncMock(side_effect=RuntimeError("pg down"))
     sub = AnomalyEventSubscriber(intel_repo=intel, detector=detector)
-    out = await sub.handle({
-        "event_type": "dossier_created",
-        "dossier_id": str(uuid4()),
-    })
+    out = await sub.handle(
+        {
+            "event_type": "dossier_created",
+            "dossier_id": str(uuid4()),
+        }
+    )
     assert out is None
 
 
@@ -147,8 +157,10 @@ async def test_subscriber_analyze_exception_caught(intel_and_detector):
     intel.get_dossier = AsyncMock(return_value=_dossier())
     detector.analyze_dossier = AsyncMock(side_effect=RuntimeError("boom"))
     sub = AnomalyEventSubscriber(intel_repo=intel, detector=detector)
-    out = await sub.handle({
-        "event_type": "dossier_created",
-        "dossier_id": str(uuid4()),
-    })
+    out = await sub.handle(
+        {
+            "event_type": "dossier_created",
+            "dossier_id": str(uuid4()),
+        }
+    )
     assert out is None

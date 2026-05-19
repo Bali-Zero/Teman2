@@ -396,10 +396,10 @@ class TestDomainAbstainThresholds:
         from backend.services.rag.agentic.reasoning_utils import get_abstain_threshold
 
         assert get_abstain_threshold("Quando si paga il PPh21?") == 0.10  # tax
-        assert get_abstain_threshold("KITAS extension cost") == 0.12      # visa
-        assert get_abstain_threshold("Quanto costa una società?") == 0.15 # pricing
-        assert get_abstain_threshold("Kode KBLI restoran") == 0.20        # kbli
-        assert get_abstain_threshold("Hello!") == 0.15                    # default
+        assert get_abstain_threshold("KITAS extension cost") == 0.12  # visa
+        assert get_abstain_threshold("Quanto costa una società?") == 0.15  # pricing
+        assert get_abstain_threshold("Kode KBLI restoran") == 0.20  # kbli
+        assert get_abstain_threshold("Hello!") == 0.15  # default
 
     def test_threshold_env_override(self, monkeypatch):
         # User can tune via env var without redeploy
@@ -407,6 +407,7 @@ class TestDomainAbstainThresholds:
         # Need to rebuild the module-level dict; emulate by re-running
         # _build_domain_thresholds and patching the cached one.
         import backend.services.rag.agentic.reasoning_utils as mod
+
         monkeypatch.setattr(mod, "_DOMAIN_THRESHOLDS", mod._build_domain_thresholds())
 
         from backend.services.rag.agentic.reasoning_utils import get_abstain_threshold
@@ -422,6 +423,7 @@ class TestDomainAbstainThresholds:
             "tax:0.05,broken_no_value,kbli:notanumber,pricing:0.18",
         )
         import backend.services.rag.agentic.reasoning_utils as mod
+
         with caplog.at_level("WARNING"):
             thresholds = mod._build_domain_thresholds()
 

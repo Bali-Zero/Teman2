@@ -9,6 +9,7 @@ This is a contract test: it asserts the router calls
 event tick — i.e. without `await`-ing on heavy services like
 ``orchestrator.process_query``.
 """
+
 from __future__ import annotations
 
 import time
@@ -109,19 +110,20 @@ def test_acks_in_under_200ms(client: TestClient, mock_db_pool):
 
 
 @pytest.mark.integration
-def test_persists_payload_to_inbound_webhooks(
-    client: TestClient, mock_db_pool
-):
+def test_persists_payload_to_inbound_webhooks(client: TestClient, mock_db_pool):
     """Router writes payload to inbound_webhooks via persist helper."""
     payload = _whatsapp_payload(message_id="wamid.TEST_PERSIST")
 
-    with patch(
-        "backend.app.routers.whatsapp_chat._verify_whatsapp_signature",
-        return_value=True,
-    ), patch(
-        "backend.services.channels.inbound_webhook_repo.persist",
-        new_callable=AsyncMock,
-    ) as mock_persist:
+    with (
+        patch(
+            "backend.app.routers.whatsapp_chat._verify_whatsapp_signature",
+            return_value=True,
+        ),
+        patch(
+            "backend.services.channels.inbound_webhook_repo.persist",
+            new_callable=AsyncMock,
+        ) as mock_persist,
+    ):
         mock_persist.return_value = (1, True)  # (id, inserted)
         resp = client.post("/webhook/whatsapp", json=payload)
 
@@ -134,17 +136,18 @@ def test_persists_payload_to_inbound_webhooks(
 
 
 @pytest.mark.integration
-def test_invalid_signature_returns_401_without_persist(
-    client: TestClient, mock_db_pool
-):
+def test_invalid_signature_returns_401_without_persist(client: TestClient, mock_db_pool):
     """Signature verification runs BEFORE persist — bad sig = no DB write."""
-    with patch(
-        "backend.app.routers.whatsapp_chat._verify_whatsapp_signature",
-        return_value=False,
-    ), patch(
-        "backend.services.channels.inbound_webhook_repo.persist",
-        new_callable=AsyncMock,
-    ) as mock_persist:
+    with (
+        patch(
+            "backend.app.routers.whatsapp_chat._verify_whatsapp_signature",
+            return_value=False,
+        ),
+        patch(
+            "backend.services.channels.inbound_webhook_repo.persist",
+            new_callable=AsyncMock,
+        ) as mock_persist,
+    ):
         resp = client.post("/webhook/whatsapp", json=_whatsapp_payload())
 
     assert resp.status_code == 401

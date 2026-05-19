@@ -39,6 +39,7 @@ def require_permission(required: str) -> Any:
         async def notify(user=Depends(require_permission("security.breach_notify"))):
             ...
     """
+
     def _check(user: dict[str, Any] = Depends(get_current_user)) -> dict[str, Any]:
         if not check_permission(user, required):
             logger.warning(
@@ -50,4 +51,5 @@ def require_permission(required: str) -> Any:
                 detail=f"Permission required: {required}",
             )
         return user
+
     return _check

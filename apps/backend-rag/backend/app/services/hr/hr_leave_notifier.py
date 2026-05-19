@@ -11,6 +11,7 @@ the shared client. They are expected to be scheduled via FastAPI
 ``BackgroundTasks`` from the request handler so the client never pays
 the email network latency.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -49,9 +50,7 @@ async def notify_leave_request_pending(
     safe_email = escape(requester_email)
     safe_type = escape(leave_type_name)
     safe_reason = escape(reason) if reason else None
-    reason_block = (
-        f"<p><strong>Reason:</strong> {safe_reason}</p>" if safe_reason else ""
-    )
+    reason_block = f"<p><strong>Reason:</strong> {safe_reason}</p>" if safe_reason else ""
 
     html_body = (
         f"<p>A leave request needs your review.</p>"
@@ -67,10 +66,7 @@ async def notify_leave_request_pending(
     await send_internal_email(
         to=recipients["to"],
         cc=recipients["cc"] or None,
-        subject=(
-            f"Leave Request — {safe_name} "
-            f"({total_days} {day_label})"
-        ),
+        subject=(f"Leave Request — {safe_name} ({total_days} {day_label})"),
         body=html_body,
         log_context=f"hr_leave pending req={request_id}",
     )
@@ -113,10 +109,7 @@ async def notify_leave_request_reviewed(
     safe_reason = escape(rejection_reason) if rejection_reason else None
 
     verb = "approved" if action == "approved" else "rejected"
-    headline = (
-        f"<p>Your leave request has been <strong>{verb}</strong>"
-        f" by {safe_reviewer}.</p>"
-    )
+    headline = f"<p>Your leave request has been <strong>{verb}</strong> by {safe_reviewer}.</p>"
     reason_block = (
         f"<p><strong>Reason for rejection:</strong> {safe_reason}</p>"
         if action == "rejected" and safe_reason

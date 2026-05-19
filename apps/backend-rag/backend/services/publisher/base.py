@@ -43,7 +43,7 @@ class DraftPayload:
     topic: str
     tone_register: RegisterTone | None
     cover_image_url: str
-    main_caption: str            # IG caption / X first tweet / LI post
+    main_caption: str  # IG caption / X first tweet / LI post
     slides: list[SlidePayload] = field(default_factory=list)
     hashtags: list[str] = field(default_factory=list)
     link_url: str | None = None  # e.g. balizero.com/kbli/51010 with UTM
@@ -75,12 +75,10 @@ class Publisher(ABC):
     platform_name: Platform
 
     @abstractmethod
-    async def validate(self, draft: DraftPayload) -> ValidationResult:
-        ...
+    async def validate(self, draft: DraftPayload) -> ValidationResult: ...
 
     @abstractmethod
-    async def publish(self, draft: DraftPayload) -> PublishResult:
-        ...
+    async def publish(self, draft: DraftPayload) -> PublishResult: ...
 
     @abstractmethod
     async def delete(self, post_external_id: str) -> bool:

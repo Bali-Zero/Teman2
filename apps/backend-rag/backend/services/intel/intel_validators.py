@@ -15,6 +15,7 @@ which prevents 'valid' status (score >= 0.6 threshold requires not needs_review)
 
 Golden Rule #4: httpx (async) only — never requests.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -158,21 +159,29 @@ async def citation_check(
             # 5xx or unexpected — retry
             logger.info(
                 "citation_check %s: status=%s, retry %d/%d",
-                url, r.status_code, attempt + 1, max_retries,
+                url,
+                r.status_code,
+                attempt + 1,
+                max_retries,
             )
         except httpx.TimeoutException:
             logger.info(
                 "citation_check %s: timeout, retry %d/%d",
-                url, attempt + 1, max_retries,
+                url,
+                attempt + 1,
+                max_retries,
             )
         except httpx.HTTPError as exc:
             logger.info(
                 "citation_check %s: %s, retry %d/%d",
-                url, exc, attempt + 1, max_retries,
+                url,
+                exc,
+                attempt + 1,
+                max_retries,
             )
 
         if attempt + 1 < max_retries:
-            await asyncio.sleep(backoff_base * (2 ** attempt))
+            await asyncio.sleep(backoff_base * (2**attempt))
 
     return CitationResult.SOFT_FAIL
 

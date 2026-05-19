@@ -177,9 +177,12 @@ class TestLouvain:
             "C": {"A", "B"},
         }
         weights = {
-            ("A", "B"): 1.0, ("B", "A"): 1.0,
-            ("A", "C"): 1.0, ("C", "A"): 1.0,
-            ("B", "C"): 1.0, ("C", "B"): 1.0,
+            ("A", "B"): 1.0,
+            ("B", "A"): 1.0,
+            ("A", "C"): 1.0,
+            ("C", "A"): 1.0,
+            ("B", "C"): 1.0,
+            ("C", "B"): 1.0,
         }
         result = detector._louvain(adj, weights)
         # All in same community
@@ -219,23 +222,27 @@ class TestDetect:
             nodes.append({"entity_id": src})
             for tgt in ["A", "B", "C", "D", "E"]:
                 if src != tgt:
-                    edges.append({
-                        "source_entity_id": src,
-                        "target_entity_id": tgt,
-                        "confidence": 1.0,
-                        "relationship_type": "CLUSTER1",
-                    })
+                    edges.append(
+                        {
+                            "source_entity_id": src,
+                            "target_entity_id": tgt,
+                            "confidence": 1.0,
+                            "relationship_type": "CLUSTER1",
+                        }
+                    )
         # Cluster 2: X-Y-Z-W (fully connected)
         for src in ["X", "Y", "Z", "W"]:
             nodes.append({"entity_id": src})
             for tgt in ["X", "Y", "Z", "W"]:
                 if src != tgt:
-                    edges.append({
-                        "source_entity_id": src,
-                        "target_entity_id": tgt,
-                        "confidence": 1.0,
-                        "relationship_type": "CLUSTER2",
-                    })
+                    edges.append(
+                        {
+                            "source_entity_id": src,
+                            "target_entity_id": tgt,
+                            "confidence": 1.0,
+                            "relationship_type": "CLUSTER2",
+                        }
+                    )
 
         conn.fetch.side_effect = [edges, nodes]
 
@@ -254,7 +261,12 @@ class TestDetect:
 
         # Small graph: A-B (only 2 nodes)
         edges = [
-            {"source_entity_id": "A", "target_entity_id": "B", "confidence": 1.0, "relationship_type": "R"},
+            {
+                "source_entity_id": "A",
+                "target_entity_id": "B",
+                "confidence": 1.0,
+                "relationship_type": "R",
+            },
         ]
         nodes = [{"entity_id": "A"}, {"entity_id": "B"}]
         conn.fetch.side_effect = [edges, nodes]
@@ -282,6 +294,7 @@ class TestPersist:
         class _TxCM:
             async def __aenter__(self):
                 return None
+
             async def __aexit__(self, *exc):
                 return False
 
@@ -320,6 +333,7 @@ class TestPersist:
         class _TxCM:
             async def __aenter__(self):
                 return None
+
             async def __aexit__(self, *exc):
                 return False
 

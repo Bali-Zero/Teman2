@@ -66,18 +66,14 @@ def extract_claims_from_response(
             continue
 
         # Detect regulatory references (pasal, ayat, UU, PP, Permen, etc.)
-        has_pasal = bool(
-            re.search(r"(?i)(pasal|ayat|UU|PP|Permen|Kepmen|SE\s)", para)
-        )
+        has_pasal = bool(re.search(r"(?i)(pasal|ayat|UU|PP|Permen|Kepmen|SE\s)", para))
         is_regulatory = bool(
             re.search(
                 r"(?i)(peraturan|undang|regulasi|ketentuan|ditetapkan|berlaku)",
                 para,
             )
         )
-        is_bali = bool(
-            re.search(r"(?i)(bali|ngurah rai|denpasar|badung|gianyar)", para)
-        )
+        is_bali = bool(re.search(r"(?i)(bali|ngurah rai|denpasar|badung|gianyar)", para))
 
         # Determine best tier from source metadata
         highest_tier = 2  # default T2
@@ -131,48 +127,26 @@ def _classify_category(text: str) -> str:
     text_lower = text.lower()
 
     if any(
-        w in text_lower
-        for w in ["mencabut", "menggantikan", "perubahan", "amended", "revoked"]
+        w in text_lower for w in ["mencabut", "menggantikan", "perubahan", "amended", "revoked"]
     ):
         return "LEGAL_CHANGE"
-    if any(
-        w in text_lower for w in ["tarif", "biaya", "pnbp", "fee", "rp ", "usd "]
-    ):
+    if any(w in text_lower for w in ["tarif", "biaya", "pnbp", "fee", "rp ", "usd "]):
         return "FEE_CHANGE"
-    if any(
-        w in text_lower
-        for w in ["deportasi", "overstay", "pelanggaran", "sanksi"]
-    ):
+    if any(w in text_lower for w in ["deportasi", "overstay", "pelanggaran", "sanksi"]):
         return "ENFORCEMENT_ACTION"
-    if any(
-        w in text_lower
-        for w in ["tim pora", "sidak", "operasi gabungan", "razia"]
-    ):
+    if any(w in text_lower for w in ["tim pora", "sidak", "operasi gabungan", "razia"]):
         return "ENFORCEMENT_PATTERN"
-    if any(
-        w in text_lower for w in ["prosedur", "langkah", "step", "tahap"]
-    ):
+    if any(w in text_lower for w in ["prosedur", "langkah", "step", "tahap"]):
         return "PROCEDURAL_STEP"
-    if any(
-        w in text_lower
-        for w in ["syarat", "persyaratan", "dokumen", "requirement"]
-    ):
+    if any(w in text_lower for w in ["syarat", "persyaratan", "dokumen", "requirement"]):
         return "DOCUMENT_REQUIREMENT"
-    if any(
-        w in text_lower for w in ["perda", "pergub", "kabupaten", "provinsi"]
-    ):
+    if any(w in text_lower for w in ["perda", "pergub", "kabupaten", "provinsi"]):
         return "LOCAL_REGULATION"
-    if any(
-        w in text_lower for w in ["wajib", "dilarang", "eligible", "minimum"]
-    ):
+    if any(w in text_lower for w in ["wajib", "dilarang", "eligible", "minimum"]):
         return "ELIGIBILITY_RULE"
-    if any(
-        w in text_lower for w in ["sistem", "portal", "online", "digital"]
-    ):
+    if any(w in text_lower for w in ["sistem", "portal", "online", "digital"]):
         return "SYSTEM_STATUS"
-    if any(
-        w in text_lower for w in ["hari kerja", "working days", "waktu proses"]
-    ):
+    if any(w in text_lower for w in ["hari kerja", "working days", "waktu proses"]):
         return "PROCESSING_TIME"
 
     return "OPERATIONAL_CHANGE"

@@ -5,6 +5,7 @@ resolves to the repo's scripts/ dir, not the test's local namespace.
 Pytest's auto-rootdir behavior shadows scripts/ when tests live in a folder
 named 'scripts/' too — this conftest fixes that.
 """
+
 import sys
 from pathlib import Path
 

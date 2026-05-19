@@ -46,7 +46,8 @@ async def test_team_leader_alert_uses_indonesian_subject(practices):
         new=AsyncMock(side_effect=_capture),
     ):
         await notifier._send_team_leader_alert(  # noqa: SLF001 — pinning private contract
-            "team@balizero.com", practices,
+            "team@balizero.com",
+            practices,
         )
 
     # Subject pinned to Indonesian.
@@ -69,7 +70,8 @@ async def test_team_leader_alert_body_has_no_italian_strings(practices):
         new=AsyncMock(side_effect=_capture),
     ):
         await notifier._send_team_leader_alert(  # noqa: SLF001
-            "team@balizero.com", practices,
+            "team@balizero.com",
+            practices,
         )
 
     body = sent["body"]

@@ -50,7 +50,8 @@ class AnomalyEventSubscriber:
             dossier_id = UUID(str(dossier_id_raw))
         except (TypeError, ValueError):
             self.logger.warning(
-                "anomaly subscriber bad dossier_id %r", dossier_id_raw,
+                "anomaly subscriber bad dossier_id %r",
+                dossier_id_raw,
             )
             return None
 
@@ -65,7 +66,8 @@ class AnomalyEventSubscriber:
             return None
         if dossier is None:
             self.logger.info(
-                "anomaly subscriber dossier %s not found", dossier_id,
+                "anomaly subscriber dossier %s not found",
+                dossier_id,
             )
             return None
 

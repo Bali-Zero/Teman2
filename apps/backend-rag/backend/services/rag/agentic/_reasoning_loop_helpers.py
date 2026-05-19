@@ -169,10 +169,7 @@ def _tool_call_from_json(isolated_json: str) -> Any:
     # "parameters". Accept any of them, default to an empty dict so a call
     # with no args is still usable downstream.
     arguments = (
-        parsed.get("tool_input")
-        or parsed.get("arguments")
-        or parsed.get("parameters")
-        or {}
+        parsed.get("tool_input") or parsed.get("arguments") or parsed.get("parameters") or {}
     )
     if not isinstance(arguments, dict):
         return None

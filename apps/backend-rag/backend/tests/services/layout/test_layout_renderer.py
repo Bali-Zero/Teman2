@@ -124,6 +124,7 @@ def _ig_slide_vars() -> dict[str, str]:
 
 # ── _merge_patches helper ────────────────────────────────────────
 
+
 def test_merge_patches_empty_left():
     merged = _merge_patches("", ".x {}")
     assert merged == ".x {}"
@@ -138,6 +139,7 @@ def test_merge_patches_concatenates():
 
 # ── First-pass success ───────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_render_slide_passes_first_try():
     playwright = _MockPlaywright(shots=[_shot_ok()])
@@ -150,11 +152,13 @@ async def test_render_slide_passes_first_try():
         patcher=patcher,
         max_patch_iterations=3,
     )
-    result = await renderer.render_slide(SlideLayoutSpec(
-        slide_number=2,
-        template=PlatformTemplate.IG_CAROUSEL_SLIDE,
-        variables=_ig_slide_vars(),
-    ))
+    result = await renderer.render_slide(
+        SlideLayoutSpec(
+            slide_number=2,
+            template=PlatformTemplate.IG_CAROUSEL_SLIDE,
+            variables=_ig_slide_vars(),
+        )
+    )
     assert result.ok is True
     assert result.attempts == 1
     assert result.png_bytes == b"PNG_OK"
@@ -164,13 +168,16 @@ async def test_render_slide_passes_first_try():
 
 # ── Retry with patch that fixes things ───────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_render_slide_patch_fixes_overflow():
     playwright = _MockPlaywright(shots=[_shot_ok(), _shot_ok(b"PNG_AFTER_PATCH")])
     qa = _MockQA(flags_seq=[_bad_flags(), _good_flags()])
-    patcher = _MockPatcher(patches=[
-        CSSPatch(ok=True, css=".headline { font-size: 42px; }", rationale="shrink"),
-    ])
+    patcher = _MockPatcher(
+        patches=[
+            CSSPatch(ok=True, css=".headline { font-size: 42px; }", rationale="shrink"),
+        ]
+    )
     renderer = LayoutRenderer(
         template_renderer=TemplateRenderer(),
         playwright=playwright,
@@ -178,11 +185,13 @@ async def test_render_slide_patch_fixes_overflow():
         patcher=patcher,
         max_patch_iterations=3,
     )
-    result = await renderer.render_slide(SlideLayoutSpec(
-        slide_number=2,
-        template=PlatformTemplate.IG_CAROUSEL_SLIDE,
-        variables=_ig_slide_vars(),
-    ))
+    result = await renderer.render_slide(
+        SlideLayoutSpec(
+            slide_number=2,
+            template=PlatformTemplate.IG_CAROUSEL_SLIDE,
+            variables=_ig_slide_vars(),
+        )
+    )
     assert result.ok is True
     assert result.attempts == 2
     assert result.png_bytes == b"PNG_AFTER_PATCH"
@@ -192,14 +201,17 @@ async def test_render_slide_patch_fixes_overflow():
 
 # ── Max retries exhausted ────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_max_iterations_exhausted_escalates():
     playwright = _MockPlaywright(shots=[_shot_ok(), _shot_ok(), _shot_ok()])
     qa = _MockQA(flags_seq=[_bad_flags(), _bad_flags(), _bad_flags()])
-    patcher = _MockPatcher(patches=[
-        CSSPatch(ok=True, css=".x { padding: 10px; }", rationale="a"),
-        CSSPatch(ok=True, css=".x { padding: 20px; }", rationale="b"),
-    ])
+    patcher = _MockPatcher(
+        patches=[
+            CSSPatch(ok=True, css=".x { padding: 10px; }", rationale="a"),
+            CSSPatch(ok=True, css=".x { padding: 20px; }", rationale="b"),
+        ]
+    )
     renderer = LayoutRenderer(
         template_renderer=TemplateRenderer(),
         playwright=playwright,
@@ -207,17 +219,20 @@ async def test_max_iterations_exhausted_escalates():
         patcher=patcher,
         max_patch_iterations=3,
     )
-    result = await renderer.render_slide(SlideLayoutSpec(
-        slide_number=2,
-        template=PlatformTemplate.IG_CAROUSEL_SLIDE,
-        variables=_ig_slide_vars(),
-    ))
+    result = await renderer.render_slide(
+        SlideLayoutSpec(
+            slide_number=2,
+            template=PlatformTemplate.IG_CAROUSEL_SLIDE,
+            variables=_ig_slide_vars(),
+        )
+    )
     assert result.ok is False
     assert result.needs_escalation is True
     assert result.attempts == 3
 
 
 # ── Patcher fails early ──────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_patcher_failure_aborts_loop_early():
@@ -231,11 +246,13 @@ async def test_patcher_failure_aborts_loop_early():
         patcher=patcher,
         max_patch_iterations=3,
     )
-    result = await renderer.render_slide(SlideLayoutSpec(
-        slide_number=2,
-        template=PlatformTemplate.IG_CAROUSEL_SLIDE,
-        variables=_ig_slide_vars(),
-    ))
+    result = await renderer.render_slide(
+        SlideLayoutSpec(
+            slide_number=2,
+            template=PlatformTemplate.IG_CAROUSEL_SLIDE,
+            variables=_ig_slide_vars(),
+        )
+    )
     assert result.ok is False
     assert result.needs_escalation is True
     # only one attempt before aborting
@@ -245,11 +262,14 @@ async def test_patcher_failure_aborts_loop_early():
 
 # ── Screenshot failure ───────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_screenshot_failure_escalates():
-    playwright = _MockPlaywright(shots=[
-        ScreenshotResult(ok=False, error="browser crashed"),
-    ])
+    playwright = _MockPlaywright(
+        shots=[
+            ScreenshotResult(ok=False, error="browser crashed"),
+        ]
+    )
     qa = _MockQA(flags_seq=[])
     patcher = _MockPatcher()
     renderer = LayoutRenderer(
@@ -258,17 +278,20 @@ async def test_screenshot_failure_escalates():
         qa_client=qa,
         patcher=patcher,
     )
-    result = await renderer.render_slide(SlideLayoutSpec(
-        slide_number=2,
-        template=PlatformTemplate.IG_CAROUSEL_SLIDE,
-        variables=_ig_slide_vars(),
-    ))
+    result = await renderer.render_slide(
+        SlideLayoutSpec(
+            slide_number=2,
+            template=PlatformTemplate.IG_CAROUSEL_SLIDE,
+            variables=_ig_slide_vars(),
+        )
+    )
     assert result.ok is False
     assert "screenshot failed" in (result.error or "")
     assert result.needs_escalation is True
 
 
 # ── Template validation failure ──────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_template_validation_error_surfaces():
@@ -295,6 +318,7 @@ async def test_template_validation_error_surfaces():
 
 # ── QA offline → treat as pass (Law 4 graceful) ──────────────────
 
+
 @pytest.mark.asyncio
 async def test_qa_offline_passes_through():
     playwright = _MockPlaywright(shots=[_shot_ok()])
@@ -316,17 +340,20 @@ async def test_qa_offline_passes_through():
         qa_client=qa,
         patcher=patcher,
     )
-    result = await renderer.render_slide(SlideLayoutSpec(
-        slide_number=2,
-        template=PlatformTemplate.IG_CAROUSEL_SLIDE,
-        variables=_ig_slide_vars(),
-    ))
+    result = await renderer.render_slide(
+        SlideLayoutSpec(
+            slide_number=2,
+            template=PlatformTemplate.IG_CAROUSEL_SLIDE,
+            variables=_ig_slide_vars(),
+        )
+    )
     assert result.ok is True
     assert result.png_bytes == b"PNG_OK"
     # Pipeline proceeded despite QA being offline
 
 
 # ── Carousel batch ───────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_carousel_renders_all_slides():

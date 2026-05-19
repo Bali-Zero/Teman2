@@ -15,10 +15,11 @@ import pytest
 # Module-level function test
 # ---------------------------------------------------------------------------
 
-class TestUsesNamedVectors:
 
+class TestUsesNamedVectors:
     def test_known_named_collections(self):
         from backend.services.search.search_service import _uses_named_vectors
+
         assert _uses_named_vectors("legal_unified") is True
         assert _uses_named_vectors("tax_genius") is True
         assert _uses_named_vectors("visa_oracle") is True
@@ -26,16 +27,19 @@ class TestUsesNamedVectors:
 
     def test_hybrid_suffix(self):
         from backend.services.search.search_service import _uses_named_vectors
+
         assert _uses_named_vectors("some_custom_hybrid") is True
 
     def test_non_named_collection(self):
         from backend.services.search.search_service import _uses_named_vectors
+
         assert _uses_named_vectors("some_random_collection") is False
 
 
 # ---------------------------------------------------------------------------
 # SearchService fixture with heavy mocking to avoid real init
 # ---------------------------------------------------------------------------
+
 
 @pytest.fixture
 def mock_settings():
@@ -91,7 +95,12 @@ def search_service(mock_settings):
 
     svc._embedding_cache = OrderedDict()
     svc._embedding_cache_max = 256
-    svc.conflict_stats = {"total_multi_collection_searches": 0, "conflicts_detected": 0, "conflicts_resolved": 0, "timestamp_resolutions": 0}
+    svc.conflict_stats = {
+        "total_multi_collection_searches": 0,
+        "conflicts_detected": 0,
+        "conflicts_resolved": 0,
+        "timestamp_resolutions": 0,
+    }
 
     svc._bm25_vectorizer = None
     svc._bm25_enabled = False
@@ -105,16 +114,18 @@ def search_service(mock_settings):
 # SearchService LEVEL_TO_TIERS
 # ============================================================================
 
-class TestLevelToTiers:
 
+class TestLevelToTiers:
     def test_level_0(self):
         from backend.app.models import TierLevel
         from backend.services.search.search_service import SearchService
+
         assert SearchService.LEVEL_TO_TIERS[0] == [TierLevel.S]
 
     def test_level_3(self):
         from backend.app.models import TierLevel
         from backend.services.search.search_service import SearchService
+
         tiers = SearchService.LEVEL_TO_TIERS[3]
         assert TierLevel.D in tiers
 
@@ -123,8 +134,8 @@ class TestLevelToTiers:
 # _prepare_search_context
 # ============================================================================
 
-class TestPrepareSearchContext:
 
+class TestPrepareSearchContext:
     @pytest.mark.asyncio
     async def test_empty_query_raises(self, search_service):
         with pytest.raises(ValueError, match="cannot be empty"):
@@ -147,11 +158,17 @@ class TestPrepareSearchContext:
 
     @pytest.mark.asyncio
     async def test_valid_returns_tuple(self, search_service):
-        with patch("backend.services.search.keyword_translator.get_keyword_translator") as mock_kt, \
-             patch("backend.services.search.search_service.build_search_filter", return_value=None):
+        with (
+            patch("backend.services.search.keyword_translator.get_keyword_translator") as mock_kt,
+            patch("backend.services.search.search_service.build_search_filter", return_value=None),
+        ):
             mock_kt.return_value.translate.return_value = "test"
             embedding, col, vdb, filt, tiers = await search_service._prepare_search_context(
-                "test query", 1, None, None, None,
+                "test query",
+                1,
+                None,
+                None,
+                None,
             )
             assert len(embedding) == 1536
             assert col == "legal_unified"
@@ -159,8 +176,10 @@ class TestPrepareSearchContext:
     @pytest.mark.asyncio
     async def test_embedding_cache_hit(self, search_service):
         """Second call with same query uses cache."""
-        with patch("backend.services.search.keyword_translator.get_keyword_translator") as mock_kt, \
-             patch("backend.services.search.search_service.build_search_filter", return_value=None):
+        with (
+            patch("backend.services.search.keyword_translator.get_keyword_translator") as mock_kt,
+            patch("backend.services.search.search_service.build_search_filter", return_value=None),
+        ):
             mock_kt.return_value.translate.return_value = "test query"
             await search_service._prepare_search_context("test query", 1, None, None, None)
             # Second call should use cache
@@ -171,8 +190,10 @@ class TestPrepareSearchContext:
     @pytest.mark.asyncio
     async def test_embedding_fails_raises(self, search_service):
         search_service.embedder.generate_query_embedding = AsyncMock(return_value=[])
-        with patch("backend.services.search.keyword_translator.get_keyword_translator") as mock_kt, \
-             patch("backend.services.search.search_service.build_search_filter", return_value=None):
+        with (
+            patch("backend.services.search.keyword_translator.get_keyword_translator") as mock_kt,
+            patch("backend.services.search.search_service.build_search_filter", return_value=None),
+        ):
             mock_kt.return_value.translate.return_value = "fail query"
             with pytest.raises(ValueError, match="Failed to generate"):
                 await search_service._prepare_search_context("fail query", 1, None, None, None)
@@ -181,18 +202,29 @@ class TestPrepareSearchContext:
     async def test_unknown_collection_falls_back(self, search_service):
         """Unknown collection falls back to legal_unified."""
         search_service.collection_manager.get_collection.side_effect = [None, MagicMock()]
-        with patch("backend.services.search.keyword_translator.get_keyword_translator") as mock_kt, \
-             patch("backend.services.search.search_service.build_search_filter", return_value=None):
+        with (
+            patch("backend.services.search.keyword_translator.get_keyword_translator") as mock_kt,
+            patch("backend.services.search.search_service.build_search_filter", return_value=None),
+        ):
             mock_kt.return_value.translate.return_value = "test"
-            _, col, _, _, _ = await search_service._prepare_search_context("test", 1, None, None, None)
+            _, col, _, _, _ = await search_service._prepare_search_context(
+                "test", 1, None, None, None
+            )
             assert col == "legal_unified"
 
     @pytest.mark.asyncio
     async def test_filters_disabled(self, search_service):
-        with patch("backend.services.search.keyword_translator.get_keyword_translator") as mock_kt, \
-             patch("backend.services.search.search_service.build_search_filter", return_value={"tier": "S"}):
+        with (
+            patch("backend.services.search.keyword_translator.get_keyword_translator") as mock_kt,
+            patch(
+                "backend.services.search.search_service.build_search_filter",
+                return_value={"tier": "S"},
+            ),
+        ):
             mock_kt.return_value.translate.return_value = "test"
-            _, _, _, filt, _ = await search_service._prepare_search_context("test", 1, None, None, False)
+            _, _, _, filt, _ = await search_service._prepare_search_context(
+                "test", 1, None, None, False
+            )
             assert filt is None
 
 
@@ -200,14 +232,18 @@ class TestPrepareSearchContext:
 # search
 # ============================================================================
 
-class TestSearch:
 
+class TestSearch:
     @pytest.mark.asyncio
     async def test_basic_search_returns_results(self, search_service, mock_settings):
-        search_service.collection_manager.get_collection.return_value.search = AsyncMock(return_value=[])
-        with patch("backend.services.search.keyword_translator.get_keyword_translator") as mock_kt, \
-             patch("backend.services.search.search_service.build_search_filter", return_value=None), \
-             patch("backend.services.search.search_service.format_search_results", return_value=[]):
+        search_service.collection_manager.get_collection.return_value.search = AsyncMock(
+            return_value=[]
+        )
+        with (
+            patch("backend.services.search.keyword_translator.get_keyword_translator") as mock_kt,
+            patch("backend.services.search.search_service.build_search_filter", return_value=None),
+            patch("backend.services.search.search_service.format_search_results", return_value=[]),
+        ):
             mock_kt.return_value.translate.return_value = "test query"
             result = await search_service.search("test query", user_level=1)
             assert "results" in result
@@ -215,12 +251,18 @@ class TestSearch:
 
     @pytest.mark.asyncio
     async def test_search_with_collection_override(self, search_service, mock_settings):
-        search_service.collection_manager.get_collection.return_value.search = AsyncMock(return_value=[])
-        with patch("backend.services.search.keyword_translator.get_keyword_translator") as mock_kt, \
-             patch("backend.services.search.search_service.build_search_filter", return_value=None), \
-             patch("backend.services.search.search_service.format_search_results", return_value=[]):
+        search_service.collection_manager.get_collection.return_value.search = AsyncMock(
+            return_value=[]
+        )
+        with (
+            patch("backend.services.search.keyword_translator.get_keyword_translator") as mock_kt,
+            patch("backend.services.search.search_service.build_search_filter", return_value=None),
+            patch("backend.services.search.search_service.format_search_results", return_value=[]),
+        ):
             mock_kt.return_value.translate.return_value = "visa KITAS"
-            result = await search_service.search("visa KITAS", user_level=1, collection_override="visa_oracle")
+            result = await search_service.search(
+                "visa KITAS", user_level=1, collection_override="visa_oracle"
+            )
             assert "results" in result
 
     @pytest.mark.asyncio
@@ -229,8 +271,10 @@ class TestSearch:
         search_service.collection_manager.get_collection.return_value.search = AsyncMock(
             side_effect=ValueError("search failed"),
         )
-        with patch("backend.services.search.keyword_translator.get_keyword_translator") as mock_kt, \
-             patch("backend.services.search.search_service.build_search_filter", return_value=None):
+        with (
+            patch("backend.services.search.keyword_translator.get_keyword_translator") as mock_kt,
+            patch("backend.services.search.search_service.build_search_filter", return_value=None),
+        ):
             mock_kt.return_value.translate.return_value = "test"
             result = await search_service.search("test", user_level=1)
             assert result["results"] == []
@@ -241,14 +285,20 @@ class TestSearch:
 # _rrf_fuse_multi (static method)
 # ============================================================================
 
-class TestRRFFuseMulti:
 
+class TestRRFFuseMulti:
     def test_basic_fusion(self):
         from backend.services.search.search_service import SearchService
 
         result_sets = [
-            [{"id": "a", "text": "doc A", "score": 0.9}, {"id": "b", "text": "doc B", "score": 0.7}],
-            [{"id": "b", "text": "doc B", "score": 0.8}, {"id": "c", "text": "doc C", "score": 0.6}],
+            [
+                {"id": "a", "text": "doc A", "score": 0.9},
+                {"id": "b", "text": "doc B", "score": 0.7},
+            ],
+            [
+                {"id": "b", "text": "doc B", "score": 0.8},
+                {"id": "c", "text": "doc C", "score": 0.6},
+            ],
         ]
         fused = SearchService._rrf_fuse_multi(result_sets, k=60)
         assert len(fused) == 3
@@ -286,18 +336,22 @@ class TestRRFFuseMulti:
 # search_with_reranking
 # ============================================================================
 
-class TestSearchWithReranking:
 
+class TestSearchWithReranking:
     @pytest.mark.asyncio
     async def test_early_exit_high_score(self, search_service, mock_settings):
         """Top result > 0.85 → early exit, skip reranking."""
-        search_service.search = AsyncMock(return_value={
-            "results": [{"score": 0.9, "text": "best"}, {"score": 0.6, "text": "ok"}],
-            "query": "test",
-        })
+        search_service.search = AsyncMock(
+            return_value={
+                "results": [{"score": 0.9, "text": "best"}, {"score": 0.6, "text": "ok"}],
+                "query": "test",
+            }
+        )
 
-        with patch("backend.services.search.search_service.METRICS_AVAILABLE", True), \
-             patch("backend.services.search.search_service.rag_early_exit_total", MagicMock()):
+        with (
+            patch("backend.services.search.search_service.METRICS_AVAILABLE", True),
+            patch("backend.services.search.search_service.rag_early_exit_total", MagicMock()),
+        ):
             result = await search_service.search_with_reranking("test", user_level=1, limit=1)
             assert result["early_exit"] is True
             assert result["reranked"] is False
@@ -306,33 +360,41 @@ class TestSearchWithReranking:
     @pytest.mark.asyncio
     async def test_reranking_applied(self, search_service, mock_settings):
         """When top score < 0.85, reranking is applied."""
-        search_service.search = AsyncMock(return_value={
-            "results": [{"score": 0.5, "text": "mid"}, {"score": 0.4, "text": "low"}],
-            "query": "test",
-        })
+        search_service.search = AsyncMock(
+            return_value={
+                "results": [{"score": 0.5, "text": "mid"}, {"score": 0.4, "text": "low"}],
+                "query": "test",
+            }
+        )
 
         mock_reranker = MagicMock()
         mock_reranker.enabled = True
         mock_reranker.rerank = AsyncMock(return_value=[{"score": 0.7, "text": "reranked"}])
 
-        with patch.object(search_service, '_init_reranker', return_value=mock_reranker), \
-             patch("backend.services.search.search_service.METRICS_AVAILABLE", False):
+        with (
+            patch.object(search_service, "_init_reranker", return_value=mock_reranker),
+            patch("backend.services.search.search_service.METRICS_AVAILABLE", False),
+        ):
             result = await search_service.search_with_reranking("test", user_level=1, limit=1)
             assert result["reranked"] is True
             mock_reranker.rerank.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_reranker_disabled(self, search_service, mock_settings):
-        search_service.search = AsyncMock(return_value={
-            "results": [{"score": 0.5, "text": "mid"}],
-            "query": "test",
-        })
+        search_service.search = AsyncMock(
+            return_value={
+                "results": [{"score": 0.5, "text": "mid"}],
+                "query": "test",
+            }
+        )
 
         mock_reranker = MagicMock()
         mock_reranker.enabled = False
 
-        with patch.object(search_service, '_init_reranker', return_value=mock_reranker), \
-             patch("backend.services.search.search_service.METRICS_AVAILABLE", False):
+        with (
+            patch.object(search_service, "_init_reranker", return_value=mock_reranker),
+            patch("backend.services.search.search_service.METRICS_AVAILABLE", False),
+        ):
             result = await search_service.search_with_reranking("test", user_level=1, limit=1)
             assert result["reranked"] is False
             assert result["early_exit"] is False
@@ -342,8 +404,8 @@ class TestSearchWithReranking:
 # _init_bm25_with_retry
 # ============================================================================
 
-class TestInitBM25:
 
+class TestInitBM25:
     @pytest.mark.asyncio
     async def test_bm25_disabled(self, search_service, mock_settings):
         with patch("backend.services.search.search_service.settings", mock_settings):
@@ -353,8 +415,12 @@ class TestInitBM25:
 
     @pytest.mark.asyncio
     async def test_bm25_import_error(self, search_service, mock_settings):
-        with patch("backend.services.search.search_service.settings", mock_settings), \
-             patch("backend.core.bm25_vectorizer.BM25Vectorizer", side_effect=ImportError("no module")):
+        with (
+            patch("backend.services.search.search_service.settings", mock_settings),
+            patch(
+                "backend.core.bm25_vectorizer.BM25Vectorizer", side_effect=ImportError("no module")
+            ),
+        ):
             mock_settings.enable_bm25 = True
             result = await search_service._init_bm25_with_retry()
         assert result is False
@@ -362,9 +428,11 @@ class TestInitBM25:
     @pytest.mark.asyncio
     async def test_bm25_success(self, search_service, mock_settings):
         mock_bm25 = MagicMock()
-        with patch("backend.services.search.search_service.settings", mock_settings), \
-             patch("backend.core.bm25_vectorizer.BM25Vectorizer", return_value=mock_bm25), \
-             patch("backend.services.search.search_service.metrics_collector", MagicMock()):
+        with (
+            patch("backend.services.search.search_service.settings", mock_settings),
+            patch("backend.core.bm25_vectorizer.BM25Vectorizer", return_value=mock_bm25),
+            patch("backend.services.search.search_service.metrics_collector", MagicMock()),
+        ):
             mock_settings.enable_bm25 = True
             result = await search_service._init_bm25_with_retry()
         assert result is True
@@ -375,19 +443,20 @@ class TestInitBM25:
 # _alert_bm25_failure
 # ============================================================================
 
-class TestAlertBM25Failure:
 
+class TestAlertBM25Failure:
     @pytest.mark.asyncio
     async def test_alert_logs_error(self, search_service):
         await search_service._alert_bm25_failure(RuntimeError("test error"))
         # Should not raise
 
+
 # ============================================================================
 # Property accessors
 # ============================================================================
 
-class TestPropertyAccessors:
 
+class TestPropertyAccessors:
     def test_cultural_insights_property(self, search_service):
         search_service._cultural_insights = MagicMock()
         assert search_service.cultural_insights is search_service._cultural_insights

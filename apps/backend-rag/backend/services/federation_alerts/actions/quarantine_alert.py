@@ -13,6 +13,7 @@ Idempotency: federation_alert_proposals.quarantine_token is UNIQUE.
 The token is derived from (proposal_id, reason_code) so re-running
 with the same reason is a no-op.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -47,9 +48,7 @@ async def quarantine_alert_action(
         reason_text        (str, optional)  — human-readable detail
     """
     payload = getattr(proposal, "action_payload", {}) or {}
-    target_id = payload.get("target_proposal_id") or getattr(
-        proposal, "proposal_id", None
-    )
+    target_id = payload.get("target_proposal_id") or getattr(proposal, "proposal_id", None)
     reason_code = str(payload.get("reason_code", "unspecified"))[:64]
     reason_text = str(payload.get("reason_text", reason_code))[:500]
 
@@ -107,9 +106,7 @@ async def quarantine_alert_action(
         if current["status"] in ("completed", "failed", "duplicate"):
             return ActionResult(
                 success=False,
-                message=(
-                    f"cannot quarantine terminal status {current['status']}"
-                ),
+                message=(f"cannot quarantine terminal status {current['status']}"),
             )
 
         result = await conn.fetchrow(
@@ -125,7 +122,9 @@ async def quarantine_alert_action(
                AND status <> 'quarantined'
              RETURNING proposal_id, status
             """,
-            target_id, token, reason_text,
+            target_id,
+            token,
+            reason_text,
         )
 
     if result is None:

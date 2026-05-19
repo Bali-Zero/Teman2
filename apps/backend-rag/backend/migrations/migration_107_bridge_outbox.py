@@ -16,6 +16,7 @@ Reference: docs/superpowers/specs/2026-04-14-organism-nervous-system-design.md Â
 Author: Claude Opus 4.6
 Date: 2026-04-14
 """
+
 from __future__ import annotations
 
 import logging

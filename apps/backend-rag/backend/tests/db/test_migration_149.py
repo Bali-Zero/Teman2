@@ -4,13 +4,11 @@ Spec: docs/superpowers/specs/2026-05-01-post-agentic-injection-design.md §3.4
 Cicatrix: 2026-04-19-migration-runner — ROLLBACK marker mandatory.
 Cicatrix: 2026-04-26-atlas-paywalled — Squawk lint applies at PR time.
 """
+
 from pathlib import Path
 
 MIGRATION_FILE = (
-    Path(__file__).resolve().parents[2]
-    / "db"
-    / "migrations_v2"
-    / "149_client_segments.sql"
+    Path(__file__).resolve().parents[2] / "db" / "migrations_v2" / "149_client_segments.sql"
 )
 
 
@@ -42,8 +40,7 @@ def test_migration_has_tier_check_constraint():
     sql = MIGRATION_FILE.read_text()
     forward_section = sql.split("-- === ROLLBACK ===")[0]
     assert (
-        "CHECK (tier IN (1, 2, 3))" in forward_section
-        or "tier BETWEEN 1 AND 3" in forward_section
+        "CHECK (tier IN (1, 2, 3))" in forward_section or "tier BETWEEN 1 AND 3" in forward_section
     )
 
 

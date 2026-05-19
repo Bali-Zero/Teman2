@@ -21,6 +21,7 @@ import pytest
 # Fixtures / Helpers
 # ============================================================
 
+
 def _make_tool_call(tool_name: str) -> Any:
     """Return a minimal ToolCall-like object."""
     tc = MagicMock()
@@ -72,6 +73,7 @@ def _make_gateway(gemini_tools: list | None = None, has_attr: bool = True) -> An
 # ============================================================
 # Class 1 — Intent Classifier Bypass (Layer 1)
 # ============================================================
+
 
 class TestIntentClassifierBypass:
     """
@@ -172,6 +174,7 @@ class TestIntentClassifierBypass:
 # Class 2 — Trusted Tool Detection (Layer 2a)
 # ============================================================
 
+
 class TestTrustedToolDetection:
     """
     Policy: If a step in state.steps used a tool from _TRUSTED_TOOL_NAMES
@@ -270,6 +273,7 @@ class TestTrustedToolDetection:
 # Class 3 — Pricing Markers in Final Answer (Layer 2b)
 # ============================================================
 
+
 class TestPricingMarkersInAnswer:
     """
     Policy: If state.final_answer contains any pricing marker (rp, idr, usd, juta...)
@@ -346,6 +350,7 @@ class TestPricingMarkersInAnswer:
 # Class 4 — Tools Available Bypass (Layer 2c)
 # ============================================================
 
+
 class TestToolsAvailableBypass:
     """
     Policy: If LLM gateway has _gemini_tools (non-empty) AND state.final_answer
@@ -407,6 +412,7 @@ class TestToolsAvailableBypass:
 # ============================================================
 # Class 5 — ABSTAIN Decision Integration
 # ============================================================
+
 
 class TestAbstainDecisionIntegration:
     """
@@ -517,6 +523,7 @@ class TestAbstainDecisionIntegration:
 # Class 6 — Streaming Path Parity
 # ============================================================
 
+
 class TestStreamingPathParity:
     """
     Policy: The streaming path (execute_react_loop_stream) must have the same
@@ -566,7 +573,7 @@ class TestStreamingPathParity:
         abstain_would_fire = (
             bool(state.final_answer)
             and evidence_score < EvidenceScoreConstants.ABSTAIN_THRESHOLD
-            and not state.skip_rag        # <-- skip_rag=True prevents ABSTAIN
+            and not state.skip_rag  # <-- skip_rag=True prevents ABSTAIN
             and not state.trusted_tools_used
         )
         assert abstain_would_fire is False, (
@@ -761,6 +768,7 @@ class TestStreamingPathParity:
 # Class 7 — apply_shared_trusted_flippers helper (U5 unification)
 # ============================================================
 
+
 class TestApplySharedTrustedFlippers:
     """
     U5 (Wave 2): Both ReAct pipelines (sync + streaming) call the same
@@ -782,6 +790,7 @@ class TestApplySharedTrustedFlippers:
         from backend.services.rag.agentic._reasoning_policy import (
             apply_shared_trusted_flippers,
         )
+
         gw = _make_gateway(gemini_tools=[])
         result = apply_shared_trusted_flippers(
             trusted_tools_used=True,
@@ -797,6 +806,7 @@ class TestApplySharedTrustedFlippers:
         from backend.services.rag.agentic._reasoning_policy import (
             apply_shared_trusted_flippers,
         )
+
         gw = _make_gateway(gemini_tools=[])
         result = apply_shared_trusted_flippers(
             trusted_tools_used=False,
@@ -812,6 +822,7 @@ class TestApplySharedTrustedFlippers:
         from backend.services.rag.agentic._reasoning_policy import (
             apply_shared_trusted_flippers,
         )
+
         gw = _make_gateway(gemini_tools=[MagicMock(), MagicMock()])
         result = apply_shared_trusted_flippers(
             trusted_tools_used=False,
@@ -826,6 +837,7 @@ class TestApplySharedTrustedFlippers:
         from backend.services.rag.agentic._reasoning_policy import (
             apply_shared_trusted_flippers,
         )
+
         gw = _make_gateway(gemini_tools=[])
         result = apply_shared_trusted_flippers(
             trusted_tools_used=False,
@@ -843,6 +855,7 @@ class TestApplySharedTrustedFlippers:
         from backend.services.rag.agentic._reasoning_policy import (
             apply_shared_trusted_flippers,
         )
+
         gw = _make_gateway(gemini_tools=[MagicMock()])
         result = apply_shared_trusted_flippers(
             trusted_tools_used=False,

@@ -1,4 +1,5 @@
 """PDF pipeline: invoke wr2_canva_pdf_render.py via subprocess, return path or None."""
+
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -7,9 +8,11 @@ from backend.services.canva_renderer_v2._pdf_pipeline import PdfRenderError, ren
 
 
 def test_render_pdf_success(tmp_path):
-    slides = {"carousel_id": "test", "slide_count": 1, "slides": [
-        {"index": 1, "layout_family": "cover-photo", "heading": "x", "body": "y"}
-    ]}
+    slides = {
+        "carousel_id": "test",
+        "slide_count": 1,
+        "slides": [{"index": 1, "layout_family": "cover-photo", "heading": "x", "body": "y"}],
+    }
     pdf_dest = tmp_path / "wr2_test.pdf"
 
     def fake_run(args, **kwargs):
@@ -48,6 +51,8 @@ def test_render_pdf_zero_size_output(tmp_path):
 def test_render_pdf_timeout(tmp_path):
     slides = {"slides": []}
     pdf_dest = tmp_path / "wr2_test.pdf"
-    with patch("subprocess.run", side_effect=__import__("subprocess").TimeoutExpired("python", 120)):
+    with patch(
+        "subprocess.run", side_effect=__import__("subprocess").TimeoutExpired("python", 120)
+    ):
         with pytest.raises(PdfRenderError, match="timeout"):
             render_pdf(slides, draft_id="test", out_path=pdf_dest)

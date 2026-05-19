@@ -189,7 +189,8 @@ async def test_measure_collects_sampler_errors_but_continues():
     repo = AsyncMock()
     repo.record_metric = AsyncMock()
     orch = MeasurerOrchestrator(
-        samplers=[ok_sampler, bad_sampler], repo=repo,
+        samplers=[ok_sampler, bad_sampler],
+        repo=repo,
     )
 
     result = await orch.measure(_post())

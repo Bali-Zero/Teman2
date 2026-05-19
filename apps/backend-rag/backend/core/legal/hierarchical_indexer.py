@@ -51,7 +51,12 @@ class HierarchicalIndexer:
     """
 
     def __init__(
-        self, structure_parser, qdrant_client, embeddings, chunker=None, sparse_vectorizer=None,
+        self,
+        structure_parser,
+        qdrant_client,
+        embeddings,
+        chunker=None,
+        sparse_vectorizer=None,
     ) -> None:
         self.parser = structure_parser
         self.qdrant = qdrant_client
@@ -68,7 +73,9 @@ class HierarchicalIndexer:
                 return None
             try:
                 self.db_pool = await asyncpg.create_pool(
-                    settings.database_url, min_size=1, max_size=5,
+                    settings.database_url,
+                    min_size=1,
+                    max_size=5,
                 )
             except Exception as e:
                 logger.warning("⚠️ Failed to create DB pool (non-blocking): %s", e)
@@ -76,7 +83,10 @@ class HierarchicalIndexer:
         return self.db_pool
 
     async def index_legal_document(
-        self, document_text: str, document_id: str, metadata: dict[str, Any],
+        self,
+        document_text: str,
+        document_id: str,
+        metadata: dict[str, Any],
     ) -> dict[str, Any]:
         """
         Indicizza documento con struttura gerarchica completa.
@@ -208,7 +218,13 @@ class HierarchicalIndexer:
         }
 
     async def _add_pasal_to_chunks(
-        self, pasal, document_id, bab_id, bab_title, metadata, chunks_to_index,
+        self,
+        pasal,
+        document_id,
+        bab_id,
+        bab_title,
+        metadata,
+        chunks_to_index,
     ):
         """Helper to process a single Pasal and add it to chunks list"""
         pasal_id = f"{document_id}_Pasal_{pasal['number']}"
@@ -409,7 +425,8 @@ class HierarchicalIndexer:
                         # Fall back to basic INSERT without quality columns
                         if "does not exist" in str(e):
                             logger.warning(
-                                "Quality columns not yet migrated, using basic INSERT: %s", e,
+                                "Quality columns not yet migrated, using basic INSERT: %s",
+                                e,
                             )
                             await conn.execute(
                                 """

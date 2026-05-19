@@ -1,4 +1,5 @@
 """Tests for Olympus v2 RulesEngine."""
+
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -20,16 +21,26 @@ def _make_pool(conn):
 def sample_rules_rows():
     return [
         {
-            "id": 1, "rule_name": "vacuum_dead_pct_threshold",
-            "category": "threshold", "config": '{"value": 10, "unit": "percent"}',
-            "source": "initial", "confidence": 1.0, "applied_count": 0,
-            "last_applied": None, "superseded_by": None,
+            "id": 1,
+            "rule_name": "vacuum_dead_pct_threshold",
+            "category": "threshold",
+            "config": '{"value": 10, "unit": "percent"}',
+            "source": "initial",
+            "confidence": 1.0,
+            "applied_count": 0,
+            "last_applied": None,
+            "superseded_by": None,
         },
         {
-            "id": 2, "rule_name": "audit_retention_days",
-            "category": "policy", "config": '{"value": 90}',
-            "source": "initial", "confidence": 0.8, "applied_count": 5,
-            "last_applied": None, "superseded_by": None,
+            "id": 2,
+            "rule_name": "audit_retention_days",
+            "category": "policy",
+            "config": '{"value": 90}',
+            "source": "initial",
+            "confidence": 0.8,
+            "applied_count": 5,
+            "last_applied": None,
+            "superseded_by": None,
         },
     ]
 

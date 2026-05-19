@@ -183,10 +183,12 @@ async def test_send_pending_partial_failure(repo_tg):
     repo, tg = repo_tg
     m2 = _move(id=uuid4())
     repo.pending_ultra_moves = AsyncMock(return_value=[_move(), m2])
-    tg.send_message = AsyncMock(side_effect=[
-        SendResult(ok=True, message_id=1),
-        SendResult(ok=False, error="rate limited"),
-    ])
+    tg.send_message = AsyncMock(
+        side_effect=[
+            SendResult(ok=True, message_id=1),
+            SendResult(ok=False, error="rate limited"),
+        ]
+    )
     delivery = OracleDelivery(repo=repo, telegram=tg, owner_chat_id="999")
     result = await delivery.send_pending()
     assert result.sent_count == 1
@@ -225,9 +227,12 @@ def _update(action: OracleAction, chat_id: str = "999", message_id: int = 100):
 async def test_callback_rejects_unauthorized(repo_tg):
     repo, tg = repo_tg
     delivery = OracleDelivery(repo=repo, telegram=tg, owner_chat_id="999")
-    result = await delivery.process_callback(_update(
-        OracleAction.APPROVE, chat_id="777",
-    ))
+    result = await delivery.process_callback(
+        _update(
+            OracleAction.APPROVE,
+            chat_id="777",
+        )
+    )
     assert result.unauthorized is True
 
 

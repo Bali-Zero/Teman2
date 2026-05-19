@@ -170,8 +170,7 @@ async def test_init_critical_services_search_fails(mock_app, caplog):
         # Degradation observable via WARN log (substring match — formatter
         # may add ANSI color codes in CI).
         degraded_logs = [
-            rec for rec in caplog.records
-            if "Critical service(s) degraded" in rec.message
+            rec for rec in caplog.records if "Critical service(s) degraded" in rec.message
         ]
         assert len(degraded_logs) == 1, (
             f"expected exactly 1 'Critical service(s) degraded' WARN, "
@@ -227,8 +226,7 @@ async def test_init_critical_services_ai_fails(mock_app, caplog):
         # patched constructor raised — but the boot continues.
         assert search is not None or ai is None  # tolerant of either path
         degraded_logs = [
-            rec for rec in caplog.records
-            if "Critical service(s) degraded" in rec.message
+            rec for rec in caplog.records if "Critical service(s) degraded" in rec.message
         ]
         assert len(degraded_logs) == 1, (
             f"expected exactly 1 'Critical service(s) degraded' WARN, "
@@ -385,7 +383,10 @@ async def test_init_specialized_agents_all_success(mock_app):
         patch("backend.services.misc.client_journey_orchestrator.ClientJourneyOrchestrator"),
     ):
         research, oracle, journey = await _init_specialized_agents(
-            mock_app, MagicMock(), MagicMock(), MagicMock(),
+            mock_app,
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
         )
         assert research is not None
         assert oracle is not None
@@ -404,7 +405,10 @@ async def test_init_specialized_agents_research_fails(mock_app):
         patch("backend.services.misc.client_journey_orchestrator.ClientJourneyOrchestrator"),
     ):
         research, oracle, journey = await _init_specialized_agents(
-            mock_app, MagicMock(), MagicMock(), MagicMock(),
+            mock_app,
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
         )
         assert research is None
         assert oracle is not None
@@ -423,7 +427,10 @@ async def test_init_specialized_agents_oracle_fails(mock_app):
         patch("backend.services.misc.client_journey_orchestrator.ClientJourneyOrchestrator"),
     ):
         research, oracle, journey = await _init_specialized_agents(
-            mock_app, MagicMock(), MagicMock(), MagicMock(),
+            mock_app,
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
         )
         assert research is not None
         assert oracle is None
@@ -441,7 +448,10 @@ async def test_init_specialized_agents_journey_fails(mock_app):
         ),
     ):
         research, oracle, journey = await _init_specialized_agents(
-            mock_app, MagicMock(), MagicMock(), MagicMock(),
+            mock_app,
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
         )
         assert research is not None
         assert oracle is not None
@@ -783,9 +793,15 @@ async def test_intelligent_router_success(mock_app):
     ):
         await initialize_intelligent_router(
             mock_app,
-            MagicMock(), MagicMock(), MagicMock(), MagicMock(),
-            MagicMock(), MagicMock(), MagicMock(),
-            None, MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            None,
+            MagicMock(),
         )
 
 
@@ -802,9 +818,16 @@ async def test_intelligent_router_failure(mock_app):
         patch("backend.app.setup.service_initializer.service_registry"),
     ):
         await initialize_intelligent_router(
-            mock_app, MagicMock(), MagicMock(), MagicMock(),
-            MagicMock(), MagicMock(), MagicMock(), MagicMock(),
-            None, MagicMock(),
+            mock_app,
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            None,
+            MagicMock(),
         )
         assert mock_app.state.intelligent_router is None
 
@@ -822,9 +845,16 @@ async def test_intelligent_router_collaborator_fails(mock_app):
         patch("backend.app.setup.service_initializer.service_registry"),
     ):
         await initialize_intelligent_router(
-            mock_app, MagicMock(), MagicMock(), MagicMock(),
-            MagicMock(), MagicMock(), MagicMock(), MagicMock(),
-            None, MagicMock(),
+            mock_app,
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            None,
+            MagicMock(),
         )
 
 
@@ -841,9 +871,16 @@ async def test_intelligent_router_specialized_fails(mock_app):
         patch("backend.app.setup.service_initializer.service_registry"),
     ):
         await initialize_intelligent_router(
-            mock_app, MagicMock(), MagicMock(), MagicMock(),
-            MagicMock(), MagicMock(), MagicMock(), MagicMock(),
-            MagicMock(), MagicMock(),
+            mock_app,
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
+            MagicMock(),
         )
         assert mock_app.state.specialized_router is None
 

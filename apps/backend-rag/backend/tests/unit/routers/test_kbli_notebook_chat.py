@@ -205,9 +205,7 @@ async def test_translate_query_gateway_unavailable():
 async def test_translate_query_empty_response():
     from backend.app.routers.kbli_notebook_chat import _translate_query_for_kbli
 
-    _mock_llm_gateway.send_message = AsyncMock(
-        return_value=("", "gemini-flash", MagicMock(), {})
-    )
+    _mock_llm_gateway.send_message = AsyncMock(return_value=("", "gemini-flash", MagicMock(), {}))
 
     with patch("backend.app.routers.kbli_notebook_chat.cached", lambda **kw: lambda f: f):
         result = await _translate_query_for_kbli("test")
@@ -335,9 +333,7 @@ async def test_generate_kbli_explanation_llm_error_fallback():
 async def test_generate_kbli_explanation_empty_response():
     from backend.app.routers.kbli_notebook_chat import _generate_kbli_explanation
 
-    _mock_llm_gateway.send_message = AsyncMock(
-        return_value=("", "gemini-flash", MagicMock(), {})
-    )
+    _mock_llm_gateway.send_message = AsyncMock(return_value=("", "gemini-flash", MagicMock(), {}))
 
     mock_result = MagicMock()
     mock_result.code = "56101"
@@ -357,9 +353,7 @@ async def test_generate_kbli_explanation_empty_response():
 async def test_generate_kbli_explanation_indonesian_fallback():
     from backend.app.routers.kbli_notebook_chat import _generate_kbli_explanation
 
-    _mock_llm_gateway.send_message = AsyncMock(
-        side_effect=Exception("LLM failed")
-    )
+    _mock_llm_gateway.send_message = AsyncMock(side_effect=Exception("LLM failed"))
 
     mock_result = MagicMock()
     mock_result.code = "56101"

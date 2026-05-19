@@ -62,19 +62,36 @@ def fixture_kb(tmp_path: Path) -> Path:
         """,
     )
     rows = [
-        ("Regulation Watcher", "skill", "harvest-and-publish: scrape ...",
-         "reflection_RegW", 0.8, "2026-04-14 06:53:33", 3),
-        ("Regulation Watcher", "reflection",
-         '{"what_worked": "scraped 10 regs"}',
-         "reflection_RegW", 0.5, "2026-04-14 06:53:33", 1),
-        ("Regulation Watcher", "insight",
-         "Stream has 351 items; consider dedup.",
-         "reflection_RegW", 0.7, "2026-04-14 06:53:33", 0),
+        (
+            "Regulation Watcher",
+            "skill",
+            "harvest-and-publish: scrape ...",
+            "reflection_RegW",
+            0.8,
+            "2026-04-14 06:53:33",
+            3,
+        ),
+        (
+            "Regulation Watcher",
+            "reflection",
+            '{"what_worked": "scraped 10 regs"}',
+            "reflection_RegW",
+            0.5,
+            "2026-04-14 06:53:33",
+            1,
+        ),
+        (
+            "Regulation Watcher",
+            "insight",
+            "Stream has 351 items; consider dedup.",
+            "reflection_RegW",
+            0.7,
+            "2026-04-14 06:53:33",
+            0,
+        ),
         # noise — must be excluded
-        ("Bus Worker", "harvested_item", "raw http body", None, 0.5,
-         "2026-04-14 06:53:33", 0),
-        ("Bus Worker", "scored_item", "scored body", None, 0.5,
-         "2026-04-14 06:53:33", 0),
+        ("Bus Worker", "harvested_item", "raw http body", None, 0.5, "2026-04-14 06:53:33", 0),
+        ("Bus Worker", "scored_item", "scored body", None, 0.5, "2026-04-14 06:53:33", 0),
     ]
     conn.executemany(
         "INSERT INTO knowledge (agent, type, content, source, confidence, "
@@ -91,6 +108,7 @@ def test_load_rows_filters_to_three_types(fixture_kb: Path) -> None:
         TARGET_TYPES,
         load_rows,
     )
+
     rows = load_rows(fixture_kb)
     assert len(rows) == 3, "must load exactly skill/reflection/insight"
     assert {r.type for r in rows} == set(TARGET_TYPES)
@@ -98,12 +116,14 @@ def test_load_rows_filters_to_three_types(fixture_kb: Path) -> None:
 
 def test_load_rows_respects_limit(fixture_kb: Path) -> None:
     from backend.scripts.migrate_skills_to_qdrant_local import load_rows
+
     rows = load_rows(fixture_kb, limit=2)
     assert len(rows) == 2
 
 
 def test_load_rows_raises_on_missing_db(tmp_path: Path) -> None:
     from backend.scripts.migrate_skills_to_qdrant_local import load_rows
+
     missing = tmp_path / "nope.db"
     with pytest.raises(FileNotFoundError):
         load_rows(missing)
@@ -114,6 +134,7 @@ def test_skill_id_format(fixture_kb: Path) -> None:
         load_rows,
         skill_id_for,
     )
+
     rows = load_rows(fixture_kb)
     skill = next(r for r in rows if r.type == "skill")
     assert skill_id_for(skill) == f"skill_{skill.row_id}"
@@ -125,6 +146,7 @@ def test_point_uuid_is_deterministic(fixture_kb: Path) -> None:
         load_rows,
         point_uuid_for,
     )
+
     rows = load_rows(fixture_kb)
     ids_run1 = [point_uuid_for(r) for r in rows]
     ids_run2 = [point_uuid_for(r) for r in rows]
@@ -137,21 +159,25 @@ def test_payload_for_row_is_flat(fixture_kb: Path) -> None:
         load_rows,
         payload_for,
     )
+
     rows = load_rows(fixture_kb)
     payload = payload_for(rows[0])
     # Golden Rule 11: payload flat, no nested dicts/lists-of-dicts
     for value in payload.values():
-        assert not isinstance(value, dict), (
-            f"nested dict in payload: {value!r}"
-        )
+        assert not isinstance(value, dict), f"nested dict in payload: {value!r}"
     expected_keys = {
-        "skill_id", "type", "content", "source_cell", "source",
-        "confidence", "scope", "valid_from", "uses_count",
+        "skill_id",
+        "type",
+        "content",
+        "source_cell",
+        "source",
+        "confidence",
+        "scope",
+        "valid_from",
+        "uses_count",
         "embedding_dim_check",
     }
-    assert expected_keys <= set(payload), (
-        f"missing keys: {expected_keys - set(payload)}"
-    )
+    assert expected_keys <= set(payload), f"missing keys: {expected_keys - set(payload)}"
     assert payload["embedding_dim_check"] == 1536
     assert payload["scope"] == payload["type"]
     assert payload["source_cell"] == rows[0].agent
@@ -186,7 +212,9 @@ async def test_bootstrap_creates_collection_when_missing(
         def raise_for_status(self) -> None:
             if self.status_code >= 400:
                 raise httpx.HTTPStatusError(
-                    "boom", request=None, response=None,  # type: ignore[arg-type]
+                    "boom",
+                    request=None,
+                    response=None,  # type: ignore[arg-type]
                 )
 
     async def fake_get(self: object, url: str, **_: object) -> FakeResp:
@@ -391,7 +419,9 @@ async def test_count_points_returns_zero_when_collection_missing(
 
         def raise_for_status(self) -> None:
             raise httpx.HTTPStatusError(
-                "404", request=None, response=None,  # type: ignore[arg-type]
+                "404",
+                request=None,
+                response=None,  # type: ignore[arg-type]
             )
 
     async def fake_post(self: object, url: str, **_: object) -> FakeResp:
@@ -409,9 +439,7 @@ async def test_count_points_returns_zero_when_collection_missing(
 def test_anthropic_sdk_never_imported() -> None:
     """Hard rule per CLAUDE.md global: never import paid Anthropic SDK."""
     # parents[2] = backend/, then backend/scripts/<file>
-    src = Path(__file__).resolve().parents[2] / "scripts" / (
-        "migrate_skills_to_qdrant_local.py"
-    )
+    src = Path(__file__).resolve().parents[2] / "scripts" / ("migrate_skills_to_qdrant_local.py")
     assert src.exists(), f"script missing at {src}"
     text = src.read_text()
     assert "import anthropic" not in text
@@ -451,8 +479,12 @@ async def test_run_dry_run_does_not_call_qdrant_or_openai(
     monkeypatch.setenv("OPENAI_API_KEY", "test-key-dry")
 
     args = argparse.Namespace(
-        bootstrap_only=False, dry_run=True, apply=False,
-        qdrant_url="http://test:6333", sqlite_path=fixture_kb, limit=None,
+        bootstrap_only=False,
+        dry_run=True,
+        apply=False,
+        qdrant_url="http://test:6333",
+        sqlite_path=fixture_kb,
+        limit=None,
     )
     rc = await mod._run(args)
     assert rc == 0
@@ -481,14 +513,20 @@ async def test_run_apply_idempotent_via_uuidv5(
     monkeypatch.setattr(mod.OpenAIEmbedder, "embed", fake_embed)
     monkeypatch.setattr(mod, "upsert_points", fake_upsert)
     monkeypatch.setattr(
-        mod, "bootstrap_collection", AsyncMock(return_value=True),
+        mod,
+        "bootstrap_collection",
+        AsyncMock(return_value=True),
     )
     monkeypatch.setattr(mod, "count_points", AsyncMock(return_value=0))
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
 
     args = argparse.Namespace(
-        bootstrap_only=False, dry_run=False, apply=True,
-        qdrant_url="http://test:6333", sqlite_path=fixture_kb, limit=None,
+        bootstrap_only=False,
+        dry_run=False,
+        apply=True,
+        qdrant_url="http://test:6333",
+        sqlite_path=fixture_kb,
+        limit=None,
     )
     rc1 = await mod._run(args)
     midpoint = len(captured)
@@ -528,8 +566,12 @@ async def test_run_bootstrap_only(
     monkeypatch.setenv("OPENAI_API_KEY", "test-key")
 
     args = argparse.Namespace(
-        bootstrap_only=True, dry_run=False, apply=False,
-        qdrant_url="http://test:6333", sqlite_path=fixture_kb, limit=None,
+        bootstrap_only=True,
+        dry_run=False,
+        apply=False,
+        qdrant_url="http://test:6333",
+        sqlite_path=fixture_kb,
+        limit=None,
     )
     rc = await mod._run(args)
     assert rc == 0

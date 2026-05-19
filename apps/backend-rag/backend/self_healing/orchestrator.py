@@ -79,9 +79,7 @@ class SelfHealingOrchestrator:
                 breaker.record_failure(result.error)
 
         # 2. Fire actions for any failing check (that wasn't skipped).
-        failing = {
-            name for name, r in outcome.check_results.items() if not r.healthy
-        }
+        failing = {name for name, r in outcome.check_results.items() if not r.healthy}
         for action in self.actions:
             if action.target_check not in failing:
                 continue
@@ -89,12 +87,14 @@ class SelfHealingOrchestrator:
                 action_result = await action.run()
             except Exception as exc:  # noqa: BLE001
                 self.stats.action(action.name).record(
-                    success=False, error=f"{type(exc).__name__}: {exc}",
+                    success=False,
+                    error=f"{type(exc).__name__}: {exc}",
                 )
                 continue
 
             self.stats.action(action.name).record(
-                success=action_result.success, error=action_result.error,
+                success=action_result.success,
+                error=action_result.error,
             )
             if action_result.success:
                 outcome.actions_fired.append(action.name)
@@ -102,15 +102,17 @@ class SelfHealingOrchestrator:
         # 3. Report cycle to orchestrator.
         if self.reporter is not None:
             try:
-                await self.reporter.report({
-                    "type": "self_heal_cycle",
-                    "severity": "low" if not failing else "medium",
-                    "data": {
-                        "failing_checks": sorted(failing),
-                        "breakers_open": outcome.breakers_open,
-                        "actions_fired": outcome.actions_fired,
-                    },
-                })
+                await self.reporter.report(
+                    {
+                        "type": "self_heal_cycle",
+                        "severity": "low" if not failing else "medium",
+                        "data": {
+                            "failing_checks": sorted(failing),
+                            "breakers_open": outcome.breakers_open,
+                            "actions_fired": outcome.actions_fired,
+                        },
+                    }
+                )
             except Exception as exc:  # noqa: BLE001
                 logger.debug("reporter.report raised: %s", exc)
 
@@ -119,7 +121,5 @@ class SelfHealingOrchestrator:
     def get_stats(self) -> dict[str, object]:
         return {
             **self.stats.snapshot(),
-            "breakers": {
-                name: breaker.snapshot() for name, breaker in self.breakers.items()
-            },
+            "breakers": {name: breaker.snapshot() for name, breaker in self.breakers.items()},
         }

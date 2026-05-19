@@ -44,8 +44,7 @@ async def test_jsonl_write_creates_file_and_appends_line(tmp_path: Path) -> None
     rec = LLMCostRecorder(jsonl_root=tmp_path)
     ev = _sample_event()
     # Patch the other two sinks so we isolate JSONL.
-    with patch.object(rec, "_write_postgres", AsyncMock()), \
-         patch.object(rec, "_write_prometheus"):
+    with patch.object(rec, "_write_postgres", AsyncMock()), patch.object(rec, "_write_prometheus"):
         results = await rec.record(ev)
 
     assert results["jsonl"] is True
@@ -69,8 +68,7 @@ async def test_jsonl_rotates_by_utc_day(tmp_path: Path) -> None:
     day2 = datetime(2026, 4, 19, 0, 0, 1, tzinfo=timezone.utc)
     ev1 = _sample_event(ts_utc=day1)
     ev2 = _sample_event(ts_utc=day2)
-    with patch.object(rec, "_write_postgres", AsyncMock()), \
-         patch.object(rec, "_write_prometheus"):
+    with patch.object(rec, "_write_postgres", AsyncMock()), patch.object(rec, "_write_prometheus"):
         await rec.record(ev1)
         await rec.record(ev2)
 
@@ -86,8 +84,7 @@ async def test_postgres_failure_does_not_block_other_sinks(tmp_path: Path) -> No
     rec = LLMCostRecorder(jsonl_root=tmp_path)
     ev = _sample_event()
     pg_mock = AsyncMock(side_effect=RuntimeError("db is down"))
-    with patch.object(rec, "_write_postgres", pg_mock), \
-         patch.object(rec, "_write_prometheus"):
+    with patch.object(rec, "_write_postgres", pg_mock), patch.object(rec, "_write_prometheus"):
         results = await rec.record(ev)
 
     assert results["postgres"] is False
@@ -101,12 +98,14 @@ async def test_postgres_failure_does_not_block_other_sinks(tmp_path: Path) -> No
 async def test_prometheus_failure_does_not_block_other_sinks(tmp_path: Path) -> None:
     rec = LLMCostRecorder(jsonl_root=tmp_path)
     ev = _sample_event()
-    with patch.object(rec, "_write_postgres", AsyncMock()), \
-         patch.object(
-             rec,
-             "_write_prometheus",
-             side_effect=RuntimeError("prometheus registry missing"),
-         ):
+    with (
+        patch.object(rec, "_write_postgres", AsyncMock()),
+        patch.object(
+            rec,
+            "_write_prometheus",
+            side_effect=RuntimeError("prometheus registry missing"),
+        ),
+    ):
         results = await rec.record(ev)
 
     assert results["prometheus"] is False
@@ -121,8 +120,7 @@ async def test_jsonl_failure_does_not_block_other_sinks(tmp_path: Path) -> None:
     blocker.write_text("not a dir")
     rec = LLMCostRecorder(jsonl_root=blocker)
     ev = _sample_event()
-    with patch.object(rec, "_write_postgres", AsyncMock()), \
-         patch.object(rec, "_write_prometheus"):
+    with patch.object(rec, "_write_postgres", AsyncMock()), patch.object(rec, "_write_prometheus"):
         results = await rec.record(ev)
 
     assert results["jsonl"] is False
@@ -137,8 +135,10 @@ async def test_record_never_raises_even_if_all_sinks_fail(tmp_path: Path) -> Non
     blocker.write_text("not a dir")
     rec = LLMCostRecorder(jsonl_root=blocker)
     ev = _sample_event()
-    with patch.object(rec, "_write_postgres", AsyncMock(side_effect=RuntimeError("db"))), \
-         patch.object(rec, "_write_prometheus", side_effect=RuntimeError("prom")):
+    with (
+        patch.object(rec, "_write_postgres", AsyncMock(side_effect=RuntimeError("db"))),
+        patch.object(rec, "_write_prometheus", side_effect=RuntimeError("prom")),
+    ):
         # The call must return normally, not raise.
         results = await rec.record(ev)
 
@@ -150,8 +150,7 @@ async def test_two_events_same_file_both_land(tmp_path: Path) -> None:
     rec = LLMCostRecorder(jsonl_root=tmp_path)
     ev1 = _sample_event(endpoint="first")
     ev2 = _sample_event(endpoint="second")
-    with patch.object(rec, "_write_postgres", AsyncMock()), \
-         patch.object(rec, "_write_prometheus"):
+    with patch.object(rec, "_write_postgres", AsyncMock()), patch.object(rec, "_write_prometheus"):
         await rec.record(ev1)
         await rec.record(ev2)
 
@@ -167,8 +166,7 @@ async def test_two_events_same_file_both_land(tmp_path: Path) -> None:
 async def test_error_event_records_error_class(tmp_path: Path) -> None:
     rec = LLMCostRecorder(jsonl_root=tmp_path)
     ev = _sample_event(success=False, error_class="DeepSeekError", output_tokens=0)
-    with patch.object(rec, "_write_postgres", AsyncMock()), \
-         patch.object(rec, "_write_prometheus"):
+    with patch.object(rec, "_write_postgres", AsyncMock()), patch.object(rec, "_write_prometheus"):
         await rec.record(ev)
 
     files = list(tmp_path.glob("llm_cost_log.*.jsonl"))

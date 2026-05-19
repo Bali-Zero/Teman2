@@ -10,6 +10,7 @@ Flow per run():
 
 Each draft has its own try/except so one failure doesn't block siblings.
 """
+
 from __future__ import annotations
 
 import enum
@@ -121,7 +122,10 @@ async def process_draft(
         render_pdf(slides, draft_id=str(draft_id), out_path=pdf_path)
     except PdfRenderError as e:
         await _pg.release_lease_permanent(
-            conn, draft_id=draft_id, status="pdf_render_failed", reason=str(e),
+            conn,
+            draft_id=draft_id,
+            status="pdf_render_failed",
+            reason=str(e),
         )
         send_telegram(
             f"🚨 WR2 PDF render FAILED\ndraft: `{draft_id}`\ntopic: {topic[:80]}\nerr: `{str(e)[:300]}`"
@@ -139,11 +143,12 @@ async def process_draft(
         pdf_url, pdf_s3_key = upload_pdf(s3, pdf_path, draft_id=str(draft_id), prefix=tigris_prefix)
     except TigrisError as e:
         await _pg.release_lease_permanent(
-            conn, draft_id=draft_id, status="pdf_render_failed", reason=str(e),
+            conn,
+            draft_id=draft_id,
+            status="pdf_render_failed",
+            reason=str(e),
         )
-        send_telegram(
-            f"🚨 WR2 Tigris upload FAILED\ndraft: `{draft_id}`\nerr: `{str(e)[:300]}`"
-        )
+        send_telegram(f"🚨 WR2 Tigris upload FAILED\ndraft: `{draft_id}`\nerr: `{str(e)[:300]}`")
         log_telemetry(
             draft_id=str(draft_id),
             outcome="tigris_failed",
@@ -169,11 +174,12 @@ async def process_draft(
             )
         else:
             await _pg.release_lease_permanent(
-                conn, draft_id=draft_id, status="canva_import_failed", reason=str(e),
+                conn,
+                draft_id=draft_id,
+                status="canva_import_failed",
+                reason=str(e),
             )
-            send_telegram(
-                f"🚨 WR2 Canva import FAILED\ndraft: `{draft_id}`\nerr: `{str(e)[:300]}`"
-            )
+            send_telegram(f"🚨 WR2 Canva import FAILED\ndraft: `{draft_id}`\nerr: `{str(e)[:300]}`")
             log_telemetry(
                 draft_id=str(draft_id),
                 outcome="canva_import_failed",
@@ -225,25 +231,28 @@ async def _proactive_token_refresh() -> bool:
     import json as _json
     import urllib.parse
     import urllib.request
+
     try:
         storage = OrchestratorTokenStorage()
         if not storage.needs_refresh():
             return True
         data = storage.load_sync()
-        body = urllib.parse.urlencode({
-            "grant_type": "refresh_token",
-            "refresh_token": data["refresh_token"],
-            "client_id": data["client_id"],
-            "client_secret": data["client_secret"],
-        }).encode()
-        req = urllib.request.Request(
-            "https://mcp.canva.com/token", data=body, method="POST"
-        )
+        body = urllib.parse.urlencode(
+            {
+                "grant_type": "refresh_token",
+                "refresh_token": data["refresh_token"],
+                "client_id": data["client_id"],
+                "client_secret": data["client_secret"],
+            }
+        ).encode()
+        req = urllib.request.Request("https://mcp.canva.com/token", data=body, method="POST")
         req.add_header("Content-Type", "application/x-www-form-urlencoded")
         with urllib.request.urlopen(req, timeout=20) as resp:
             new_tokens = _json.loads(resp.read())
         storage.save_sync(new_tokens)
-        logger.info("Canva access token proactively refreshed (expires_in=%s)", new_tokens.get("expires_in"))
+        logger.info(
+            "Canva access token proactively refreshed (expires_in=%s)", new_tokens.get("expires_in")
+        )
         return True
     except TokenStorageError as e:
         logger.error("Token storage error during proactive refresh: %s", e)

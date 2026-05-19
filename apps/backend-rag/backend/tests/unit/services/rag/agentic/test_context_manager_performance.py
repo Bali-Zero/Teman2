@@ -87,7 +87,9 @@ def mock_db_with_delay(mock_db_pool):
 @pytest.mark.asyncio
 @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
 async def test_parallel_loading_timing(
-    mock_get_cache, mock_db_with_delay, mock_memory_orchestrator,
+    mock_get_cache,
+    mock_db_with_delay,
+    mock_memory_orchestrator,
 ):
     """
     Test that parallel loading is faster than sequential.
@@ -170,7 +172,10 @@ async def test_parallel_loading_with_one_failure(mock_get_cache, mock_db_with_de
 @pytest.mark.asyncio
 @patch("backend.services.rag.agentic.context_manager.get_memory_cache")
 async def test_parallel_loading_logs_timing(
-    mock_get_cache, mock_db_pool, mock_memory_orchestrator, caplog,
+    mock_get_cache,
+    mock_db_pool,
+    mock_memory_orchestrator,
+    caplog,
 ):
     """
     Test that timing metrics are logged correctly.

@@ -7,6 +7,7 @@ runs (P0-6 from zero-crash audit 2026-04-29).
 Twitter-specific dedup key: derived from the first
 direct_message_events[0].id when present.
 """
+
 from __future__ import annotations
 
 import time
@@ -103,13 +104,16 @@ def test_acks_in_under_200ms(client: TestClient):
 @pytest.mark.integration
 def test_persists_payload_to_inbound_webhooks(client: TestClient):
     payload = _twitter_payload(dm_id="dm_TEST_DEDUP")
-    with patch(
-        "backend.app.routers.twitter._verify_webhook_signature",
-        return_value=True,
-    ), patch(
-        "backend.services.channels.inbound_webhook_repo.persist",
-        new_callable=AsyncMock,
-    ) as mock_persist:
+    with (
+        patch(
+            "backend.app.routers.twitter._verify_webhook_signature",
+            return_value=True,
+        ),
+        patch(
+            "backend.services.channels.inbound_webhook_repo.persist",
+            new_callable=AsyncMock,
+        ) as mock_persist,
+    ):
         mock_persist.return_value = (1, True)
         resp = client.post("/webhook/twitter", json=payload)
 
@@ -123,13 +127,16 @@ def test_persists_payload_to_inbound_webhooks(client: TestClient):
 @pytest.mark.integration
 def test_invalid_signature_returns_error_without_persist(client: TestClient):
     """Bad signature → no persist (verification gate stays in place)."""
-    with patch(
-        "backend.app.routers.twitter._verify_webhook_signature",
-        return_value=False,
-    ), patch(
-        "backend.services.channels.inbound_webhook_repo.persist",
-        new_callable=AsyncMock,
-    ) as mock_persist:
+    with (
+        patch(
+            "backend.app.routers.twitter._verify_webhook_signature",
+            return_value=False,
+        ),
+        patch(
+            "backend.services.channels.inbound_webhook_repo.persist",
+            new_callable=AsyncMock,
+        ) as mock_persist,
+    ):
         resp = client.post("/webhook/twitter", json=_twitter_payload())
 
     # Existing behavior: invalid sig returns {"status": "error", ...} 200

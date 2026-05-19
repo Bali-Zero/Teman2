@@ -169,8 +169,12 @@ class LeadIntentRepository:
         return LeadIntent(
             id=row["id"],
             source=LeadSource(row["source"]),
-            context=row["context"] if isinstance(row["context"], dict) else json.loads(row["context"] or "{}"),
-            utm=row["utm"] if isinstance(row["utm"], (dict, type(None))) else json.loads(row["utm"] or "null"),
+            context=row["context"]
+            if isinstance(row["context"], dict)
+            else json.loads(row["context"] or "{}"),
+            utm=row["utm"]
+            if isinstance(row["utm"], (dict, type(None)))
+            else json.loads(row["utm"] or "null"),
             fingerprint=row["fingerprint"],
             whatsapp_url=row["whatsapp_url"],
             matched_client_id=row["matched_client_id"],

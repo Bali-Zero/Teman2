@@ -151,7 +151,10 @@ class ChangeImpactAnalyzer:
         pass
 
     def analyze_changes(
-        self, source_file: Path, old_content: str, new_content: str,
+        self,
+        source_file: Path,
+        old_content: str,
+        new_content: str,
     ) -> dict[str, Any]:
         """Analyze changes and determine impact on tests."""
         try:
@@ -343,7 +346,9 @@ class TestMaintainerAgent:
             logger.error("❌ %s", error_msg)
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
-                    time.time() - start_time, success=False, error=error_msg,
+                    time.time() - start_time,
+                    success=False,
+                    error=error_msg,
                 )
             return {"success": False, "error": error_msg}
 
@@ -425,7 +430,9 @@ class TestMaintainerAgent:
             logger.error("❌ %s", error_msg)
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
-                    time.time() - start_time, success=False, error=error_msg,
+                    time.time() - start_time,
+                    success=False,
+                    error=error_msg,
                 )
             return {"source_file": str(source_file), "success": False, "error": error_msg}
 
@@ -490,7 +497,9 @@ class TestMaintainerAgent:
 
             # Analyze impact
             impact = self.impact_analyzer.analyze_changes(
-                source_file, previous_content, current_content,
+                source_file,
+                previous_content,
+                current_content,
             )
 
             logger.debug("📊 Impact analysis for %s: %s", source_file, impact)
@@ -508,7 +517,10 @@ class TestMaintainerAgent:
             }
 
     async def _update_test_file(
-        self, test_file: Path, source_file: Path, impact: dict[str, Any],
+        self,
+        test_file: Path,
+        source_file: Path,
+        impact: dict[str, Any],
     ) -> dict[str, Any]:
         """Update a specific test file based on changes."""
         try:
@@ -517,7 +529,10 @@ class TestMaintainerAgent:
 
             # Generate updated test using LLM
             updated_content = await self._generate_test_update(
-                test_file, source_file, current_test_content, impact,
+                test_file,
+                source_file,
+                current_test_content,
+                impact,
             )
 
             # Validate and save
@@ -558,7 +573,11 @@ class TestMaintainerAgent:
             return {"test_file": str(test_file), "success": False, "error": error_msg}
 
     async def _generate_test_update(
-        self, test_file: Path, source_file: Path, current_test_content: str, impact: dict[str, Any],
+        self,
+        test_file: Path,
+        source_file: Path,
+        current_test_content: str,
+        impact: dict[str, Any],
     ) -> str:
         """Generate updated test content using LLM."""
 
@@ -668,7 +687,11 @@ Return ONLY the complete updated Python test code. No explanations, no markdown 
             cmd = ["python", "-m", "pytest", str(test_file), "-v", "--tb=short"]
 
             result = subprocess.run(
-                cmd, cwd=self.repo_path, capture_output=True, text=True, timeout=60.0,
+                cmd,
+                cwd=self.repo_path,
+                capture_output=True,
+                text=True,
+                timeout=60.0,
             )
 
             success = result.returncode == 0
@@ -724,7 +747,8 @@ async def main():
 
     # Configure logging
     logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s [%(levelname)s] 🔧 TestMaintainer: %(message)s",
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] 🔧 TestMaintainer: %(message)s",
     )
 
     # Create and run agent

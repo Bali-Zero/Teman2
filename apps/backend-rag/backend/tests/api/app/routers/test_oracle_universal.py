@@ -11,6 +11,7 @@ Pydantic request bodies and assert on the Pydantic response bodies — so
 the tests still protect the router's contract even though the service
 layer is stubbed.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -41,9 +42,13 @@ def _happy_result(
     user_email: str | None = "user@example.com",
 ) -> dict[str, Any]:
     """Shape a dict compatible with OracleQueryResponse(**result)."""
-    srcs = sources if sources is not None else [
-        {"id": "doc-1", "title": "KBLI 6411", "score": 0.82},
-    ]
+    srcs = (
+        sources
+        if sources is not None
+        else [
+            {"id": "doc-1", "title": "KBLI 6411", "score": 0.82},
+        ]
+    )
     return {
         "success": True,
         "query": query,
@@ -170,6 +175,7 @@ async def test_query_tax_happy_path() -> None:
 @pytest.mark.asyncio
 async def test_query_property_happy_path_with_sources_off() -> None:
     app = _build_app()
+
     # Router is expected to surface empty `sources` when include_sources=False
     # *if* the service respects the flag. Our stub respects it.
     def _side_effect(**kwargs):  # sync factory returning awaitable result
@@ -243,10 +249,18 @@ async def test_query_fusion_visa_and_property() -> None:
         ),
         collection_used="visa_property_fusion",
         sources=[
-            {"id": "kitas-e28a", "title": "KITAS Investor E28A", "score": 0.88,
-             "collection": "visa_knowledge_hybrid"},
-            {"id": "bpn-hakpakai", "title": "BPN Hak Pakai", "score": 0.81,
-             "collection": "property_knowledge_hybrid"},
+            {
+                "id": "kitas-e28a",
+                "title": "KITAS Investor E28A",
+                "score": 0.88,
+                "collection": "visa_knowledge_hybrid",
+            },
+            {
+                "id": "bpn-hakpakai",
+                "title": "BPN Hak Pakai",
+                "score": 0.81,
+                "collection": "property_knowledge_hybrid",
+            },
         ],
         domain_confidence={"visa": 0.74, "property": 0.69},
     )
@@ -280,10 +294,18 @@ async def test_query_fusion_tax_and_company() -> None:
         answer="The 22 % corporate rate applies with a 50 % facility up to 4.8 B IDR.",
         collection_used="tax_company_fusion",
         sources=[
-            {"id": "pph-badan", "title": "PPh Badan UU HPP", "score": 0.84,
-             "collection": "tax_knowledge_hybrid"},
-            {"id": "pma-setup", "title": "PT PMA Setup Guide", "score": 0.78,
-             "collection": "company_knowledge_hybrid"},
+            {
+                "id": "pph-badan",
+                "title": "PPh Badan UU HPP",
+                "score": 0.84,
+                "collection": "tax_knowledge_hybrid",
+            },
+            {
+                "id": "pma-setup",
+                "title": "PT PMA Setup Guide",
+                "score": 0.78,
+                "collection": "company_knowledge_hybrid",
+            },
         ],
         domain_confidence={"tax": 0.71, "company": 0.66},
     )
@@ -435,10 +457,12 @@ async def test_query_rejects_limit_out_of_range() -> None:
     app = _build_app()
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         r_low = await client.post(
-            "/api/oracle/query", json={"query": "valid query", "limit": 0},
+            "/api/oracle/query",
+            json={"query": "valid query", "limit": 0},
         )
         r_high = await client.post(
-            "/api/oracle/query", json={"query": "valid query", "limit": 51},
+            "/api/oracle/query",
+            json={"query": "valid query", "limit": 51},
         )
     assert r_low.status_code == 422
     assert r_high.status_code == 422
@@ -632,13 +656,15 @@ async def test_query_clarification_needed_is_surfaced() -> None:
     flag and the question text."""
     app = _build_app()
     result = _happy_result(query="ambiguous visa question")
-    result.update({
-        "answer": None,
-        "clarification_needed": True,
-        "clarification_question": "Are you asking for tourism or business travel?",
-        "sources": [],
-        "document_count": 0,
-    })
+    result.update(
+        {
+            "answer": None,
+            "clarification_needed": True,
+            "clarification_question": "Are you asking for tourism or business travel?",
+            "sources": [],
+            "document_count": 0,
+        }
+    )
     process = AsyncMock(return_value=result)
     with patch(f"{_ORACLE_ROUTER_SERVICE}.process_query", process):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -676,14 +702,16 @@ async def test_query_empty_kg_result_still_shapes_response() -> None:
     Router must pass it through without fabricating fields."""
     app = _build_app()
     result = _happy_result(query="obscure edge query")
-    result.update({
-        "answer": "I don't have enough information to answer that reliably.",
-        "sources": [],
-        "citations": [],
-        "document_count": 0,
-        "domain_confidence": {},
-        "routing_reason": "No domain crossed threshold (0.15)",
-    })
+    result.update(
+        {
+            "answer": "I don't have enough information to answer that reliably.",
+            "sources": [],
+            "citations": [],
+            "document_count": 0,
+            "domain_confidence": {},
+            "routing_reason": "No domain crossed threshold (0.15)",
+        }
+    )
     process = AsyncMock(return_value=result)
     with patch(f"{_ORACLE_ROUTER_SERVICE}.process_query", process):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
@@ -1093,10 +1121,7 @@ async def test_query_malformed_service_response_logs_validation_error(monkeypatc
     body = r.json()
     assert body["success"] is False
     assert body["error"].startswith("response_validation_error:")
-    validation_logs = [
-        (msg, args) for msg, args in captured
-        if "validation failed" in msg
-    ]
+    validation_logs = [(msg, args) for msg, args in captured if "validation failed" in msg]
     assert len(validation_logs) == 1, (
         f"expected exactly 1 'validation failed' WARN, got {len(validation_logs)} "
         f"(all captured: {captured})"
@@ -1147,8 +1172,7 @@ async def test_dropped_fields_use_dedicated_logger(monkeypatch) -> None:
 
     assert r.status_code == 200
     assert len(captured) == 1, (
-        f"expected exactly 1 dropped-fields WARN, got {len(captured)} "
-        f"(captured: {captured})"
+        f"expected exactly 1 dropped-fields WARN, got {len(captured)} (captured: {captured})"
     )
     msg, args = captured[0]
     rendered = msg % args if args else msg

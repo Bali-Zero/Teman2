@@ -93,7 +93,9 @@ class TestWorkSessionService:
             patch.object(work_session_service, "_notify_zero"),
         ):
             result = await work_session_service.start_session(
-                "user1", "Test User", "test@example.com",
+                "user1",
+                "Test User",
+                "test@example.com",
             )
             assert result["status"] == "started"
 

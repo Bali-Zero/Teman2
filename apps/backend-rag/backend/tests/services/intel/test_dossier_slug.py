@@ -49,9 +49,8 @@ def test_slug_truncates_at_60_chars():
 
 
 def test_slug_deterministic():
-    assert (
-        build_dossier_slug("Coretax DPP update", DID)
-        == build_dossier_slug("Coretax DPP update", DID)
+    assert build_dossier_slug("Coretax DPP update", DID) == build_dossier_slug(
+        "Coretax DPP update", DID
     )
 
 

@@ -94,6 +94,7 @@ async def save_session(
                     domain_str = ""
                     if url.startswith("http"):
                         from urllib.parse import urlparse
+
                         domain_str = urlparse(url).netloc
 
                     await conn.execute(
@@ -128,7 +129,10 @@ async def save_session(
                     # Compute quality score at insertion time
                     cross_ref = len(claim.source_ids)
                     cred_scores = _collect_credibility_scores(
-                        claim.source_ids, search_results, source_id_map, conn,
+                        claim.source_ids,
+                        search_results,
+                        source_id_map,
+                        conn,
                     )
                     quality = compute_quality_score(
                         valid_as_of=today,

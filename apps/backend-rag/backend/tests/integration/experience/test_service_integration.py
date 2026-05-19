@@ -6,6 +6,7 @@ These exercise:
 - Concurrent record from multiple threads (write_lock correctness)
 - get_by_id lookup used by the router layer
 """
+
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -22,10 +23,14 @@ from backend.services.experience.service import ExperienceService
 def test_trajectory_persists_across_service_instances(tmp_path):
     db = str(tmp_path / "shared.db")
     svc_a = ExperienceService(db_path=db)
-    svc_a.record(TrajectoryRecord(
-        trajectory_id="durable", cell="c1", outcome="success",
-        procedure="must survive reopen",
-    ))
+    svc_a.record(
+        TrajectoryRecord(
+            trajectory_id="durable",
+            cell="c1",
+            outcome="success",
+            procedure="must survive reopen",
+        )
+    )
 
     svc_b = ExperienceService(db_path=db)
     results = svc_b.query(TrajectoryQuery(query="survive"))
@@ -40,14 +45,19 @@ def test_trajectory_coexists_with_skill_entries(tmp_path):
 
     # Use the underlying Genome directly to plant a skill.
     svc._genome.record_skill(
-        cell="c1", skill_id="s1",
+        cell="c1",
+        skill_id="s1",
         procedure="classic consolidated technique",
         confidence=0.9,
     )
-    svc.record(TrajectoryRecord(
-        trajectory_id="t1", cell="c1", outcome="success",
-        procedure="one-off episode",
-    ))
+    svc.record(
+        TrajectoryRecord(
+            trajectory_id="t1",
+            cell="c1",
+            outcome="success",
+            procedure="one-off episode",
+        )
+    )
 
     # Skill search still works and does not see the trajectory
     hits = svc._genome.search("consolidated")
@@ -72,12 +82,14 @@ def test_concurrent_record_preserves_all_writes(tmp_path):
     def writer(tid: int) -> None:
         try:
             for i in range(5):
-                svc.record(TrajectoryRecord(
-                    trajectory_id=f"t_{tid}_{i}",
-                    cell=f"cell_{tid % 3}",
-                    outcome="success" if i % 2 == 0 else "partial",
-                    procedure=f"thread {tid} step {i}",
-                ))
+                svc.record(
+                    TrajectoryRecord(
+                        trajectory_id=f"t_{tid}_{i}",
+                        cell=f"cell_{tid % 3}",
+                        outcome="success" if i % 2 == 0 else "partial",
+                        procedure=f"thread {tid} step {i}",
+                    )
+                )
         except Exception as exc:
             errors.append(exc)
 
@@ -96,10 +108,15 @@ def test_concurrent_record_preserves_all_writes(tmp_path):
 
 def test_get_by_id_returns_trajectory(tmp_path):
     svc = ExperienceService(db_path=str(tmp_path / "db.sqlite"))
-    svc.record(TrajectoryRecord(
-        trajectory_id="abc", cell="c", outcome="success",
-        procedure="lookup me by id", tokens=500,
-    ))
+    svc.record(
+        TrajectoryRecord(
+            trajectory_id="abc",
+            cell="c",
+            outcome="success",
+            procedure="lookup me by id",
+            tokens=500,
+        )
+    )
     found = svc.get_by_id("abc")
     assert found is not None
     assert found.trajectory_id == "abc"
@@ -130,12 +147,22 @@ def test_stats_zero_when_empty(tmp_path):
 
 def test_stats_scoped_by_cell(tmp_path):
     svc = ExperienceService(db_path=str(tmp_path / "multi.db"))
-    svc.record(TrajectoryRecord(
-        trajectory_id="a1", cell="cell_a", outcome="success", procedure="p",
-    ))
-    svc.record(TrajectoryRecord(
-        trajectory_id="b1", cell="cell_b", outcome="failure", procedure="p",
-    ))
+    svc.record(
+        TrajectoryRecord(
+            trajectory_id="a1",
+            cell="cell_a",
+            outcome="success",
+            procedure="p",
+        )
+    )
+    svc.record(
+        TrajectoryRecord(
+            trajectory_id="b1",
+            cell="cell_b",
+            outcome="failure",
+            procedure="p",
+        )
+    )
     assert svc.stats(cell="cell_a")["total"] == 1
     assert svc.stats(cell="cell_b")["total"] == 1
     assert svc.stats()["total"] == 2

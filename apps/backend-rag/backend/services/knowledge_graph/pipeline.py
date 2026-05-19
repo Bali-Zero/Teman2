@@ -275,27 +275,27 @@ class KGPipeline:
         pool = await self._get_db()
 
         async with pool.acquire() as conn:
-          async with conn.transaction():
-            # Collect all unique entities and relations
-            all_entities: dict[str, tuple[ExtractedEntity, list[str]]] = {}
-            all_relations: list[tuple[ExtractedRelation, str]] = []
+            async with conn.transaction():
+                # Collect all unique entities and relations
+                all_entities: dict[str, tuple[ExtractedEntity, list[str]]] = {}
+                all_relations: list[tuple[ExtractedRelation, str]] = []
 
-            for result in results:
-                for entity in result.entities:
-                    eid = entity.id
-                    if eid not in all_entities:
-                        all_entities[eid] = (entity, [result.chunk_id])
-                    else:
-                        all_entities[eid][1].append(result.chunk_id)
+                for result in results:
+                    for entity in result.entities:
+                        eid = entity.id
+                        if eid not in all_entities:
+                            all_entities[eid] = (entity, [result.chunk_id])
+                        else:
+                            all_entities[eid][1].append(result.chunk_id)
 
-                for relation in result.relations:
-                    all_relations.append((relation, result.chunk_id))
+                    for relation in result.relations:
+                        all_relations.append((relation, result.chunk_id))
 
-            # Persist entities
-            for eid, (entity, chunk_ids) in all_entities.items():
-                try:
-                    await conn.execute(
-                        """
+                # Persist entities
+                for eid, (entity, chunk_ids) in all_entities.items():
+                    try:
+                        await conn.execute(
+                            """
                         INSERT INTO kg_nodes (
                             entity_id, entity_type, name, description,
                             properties, confidence, source_collection,
@@ -312,52 +312,52 @@ class KGPipeline:
                             confidence = GREATEST(kg_nodes.confidence, $6),
                             updated_at = NOW()
                         """,
-                        entity.id,
-                        entity.type.value,
-                        entity.name,
-                        None,  # description
-                        json.dumps(entity.attributes),
-                        entity.confidence,
-                        source_collection,
-                        chunk_ids[:50],  # Limit chunk IDs
-                    )
-                    self.stats.entities_persisted += 1
-                except Exception as e:
-                    logger.error("Failed to persist entity %s: %s", eid, e)
+                            entity.id,
+                            entity.type.value,
+                            entity.name,
+                            None,  # description
+                            json.dumps(entity.attributes),
+                            entity.confidence,
+                            source_collection,
+                            chunk_ids[:50],  # Limit chunk IDs
+                        )
+                        self.stats.entities_persisted += 1
+                    except Exception as e:
+                        logger.error("Failed to persist entity %s: %s", eid, e)
 
-            # Persist relations (with schema validation)
-            validator = SchemaValidator()
-            seen_relations: set[str] = set()
-            for relation, chunk_id in all_relations:
-                rel_id = f"{relation.source_id}_{relation.type.value}_{relation.target_id}"
+                # Persist relations (with schema validation)
+                validator = SchemaValidator()
+                seen_relations: set[str] = set()
+                for relation, chunk_id in all_relations:
+                    rel_id = f"{relation.source_id}_{relation.type.value}_{relation.target_id}"
 
-                if rel_id in seen_relations or rel_id in self.relation_registry:
-                    continue
+                    if rel_id in seen_relations or rel_id in self.relation_registry:
+                        continue
 
-                seen_relations.add(rel_id)
-                self.relation_registry.add(rel_id)
+                    seen_relations.add(rel_id)
+                    self.relation_registry.add(rel_id)
 
-                # Look up entity types for validation
-                src_entity = all_entities.get(relation.source_id)
-                tgt_entity = all_entities.get(relation.target_id)
-                src_type = src_entity[0].type.value if src_entity else ""
-                tgt_type = tgt_entity[0].type.value if tgt_entity else ""
+                    # Look up entity types for validation
+                    src_entity = all_entities.get(relation.source_id)
+                    tgt_entity = all_entities.get(relation.target_id)
+                    src_type = src_entity[0].type.value if src_entity else ""
+                    tgt_type = tgt_entity[0].type.value if tgt_entity else ""
 
-                # Validate against ontology schema
-                if not validator.check(
-                    source_id=relation.source_id,
-                    target_id=relation.target_id,
-                    source_type=src_type,
-                    target_type=tgt_type,
-                    relation_type=relation.type.value,
-                    evidence=relation.evidence,
-                    confidence=relation.confidence,
-                ):
-                    continue  # Edge quarantined, skip persistence
+                    # Validate against ontology schema
+                    if not validator.check(
+                        source_id=relation.source_id,
+                        target_id=relation.target_id,
+                        source_type=src_type,
+                        target_type=tgt_type,
+                        relation_type=relation.type.value,
+                        evidence=relation.evidence,
+                        confidence=relation.confidence,
+                    ):
+                        continue  # Edge quarantined, skip persistence
 
-                try:
-                    await conn.execute(
-                        """
+                    try:
+                        await conn.execute(
+                            """
                         INSERT INTO kg_edges (
                             relationship_id, source_entity_id, target_entity_id,
                             relationship_type, properties, confidence,
@@ -365,32 +365,32 @@ class KGPipeline:
                         ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
                         ON CONFLICT DO NOTHING
                         """,
-                        rel_id,
-                        relation.source_id,
-                        relation.target_id,
-                        relation.type.value,
-                        json.dumps({"evidence": relation.evidence}),
-                        relation.confidence,
-                        source_collection,
-                        [chunk_id],
+                            rel_id,
+                            relation.source_id,
+                            relation.target_id,
+                            relation.type.value,
+                            json.dumps({"evidence": relation.evidence}),
+                            relation.confidence,
+                            source_collection,
+                            [chunk_id],
+                        )
+                        self.stats.relations_persisted += 1
+                    except Exception as e:
+                        logger.warning("Failed to persist relation %s: %s", rel_id, e)
+
+                # Log validation summary
+                summary = validator.result.summary()
+                if summary["invalid"] > 0:
+                    logger.warning(
+                        "KG schema validation: %d valid, %d quarantined out of %d edges",
+                        summary["valid"],
+                        summary["invalid"],
+                        summary["total"],
                     )
-                    self.stats.relations_persisted += 1
-                except Exception as e:
-                    logger.warning("Failed to persist relation %s: %s", rel_id, e)
 
-            # Log validation summary
-            summary = validator.result.summary()
-            if summary["invalid"] > 0:
-                logger.warning(
-                    "KG schema validation: %d valid, %d quarantined out of %d edges",
-                    summary["valid"],
-                    summary["invalid"],
-                    summary["total"],
-                )
-
-            # Bump KG version if any nodes or edges were persisted
-            if self.stats.entities_persisted > 0 or self.stats.relations_persisted > 0:
-                increment_kg_version()
+                # Bump KG version if any nodes or edges were persisted
+                if self.stats.entities_persisted > 0 or self.stats.relations_persisted > 0:
+                    increment_kg_version()
 
     async def process_batch(
         self,
@@ -545,7 +545,8 @@ class KGPipeline:
                 for point in points:
                     chunk_id = str(point.get("id", ""))
                     text = point.get("payload", {}).get("text", "") or point.get("payload", {}).get(
-                        "content", "",
+                        "content",
+                        "",
                     )
                     if text and len(text.strip()) > 20:
                         chunks.append((chunk_id, text))

@@ -88,7 +88,8 @@ async def http_exception_handler(request: Request, exc: HTTPException) -> JSONRe
 
 
 async def starlette_http_exception_handler(
-    request: Request, exc: StarletteHTTPException,
+    request: Request,
+    exc: StarletteHTTPException,
 ) -> JSONResponse:
     """
     Global handler for Starlette HTTPException (used by FastAPI internally).

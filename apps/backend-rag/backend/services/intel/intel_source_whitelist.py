@@ -5,39 +5,42 @@ Any staging doc whose source domain is not in the whitelist is flagged
 `needs_review=True` regardless of validator score. Curated list rather than
 regex to avoid false confidence on gov-looking typo-squats.
 """
+
 from __future__ import annotations
 
 from urllib.parse import urlparse
 
 
-INTEL_SOURCE_WHITELIST: frozenset[str] = frozenset({
-    # Government (Indonesia) — bare domains + www
-    "imigrasi.go.id",
-    "bkpm.go.id",
-    "pajak.go.id",
-    "oss.go.id",
-    "kemenkeu.go.id",
-    "kemlu.go.id",
-    "kemenkumham.go.id",
-    "dpr.go.id",
-    "setkab.go.id",
-    "peraturan.go.id",
-    "jdih.go.id",
-    "bi.go.id",
-    "ojk.go.id",
-    # Known legal/regulatory aggregators
-    "hukumonline.com",
-    "www.hukumonline.com",
-    "lawphil.net",
-    "hukumlinemedia.com",
-    # Major Indonesian news (vetted for Bali Zero use)
-    "kompas.com",
-    "tempo.co",
-    "detik.com",
-    "antaranews.com",
-    "jakartaglobe.id",
-    "thejakartapost.com",
-})
+INTEL_SOURCE_WHITELIST: frozenset[str] = frozenset(
+    {
+        # Government (Indonesia) — bare domains + www
+        "imigrasi.go.id",
+        "bkpm.go.id",
+        "pajak.go.id",
+        "oss.go.id",
+        "kemenkeu.go.id",
+        "kemlu.go.id",
+        "kemenkumham.go.id",
+        "dpr.go.id",
+        "setkab.go.id",
+        "peraturan.go.id",
+        "jdih.go.id",
+        "bi.go.id",
+        "ojk.go.id",
+        # Known legal/regulatory aggregators
+        "hukumonline.com",
+        "www.hukumonline.com",
+        "lawphil.net",
+        "hukumlinemedia.com",
+        # Major Indonesian news (vetted for Bali Zero use)
+        "kompas.com",
+        "tempo.co",
+        "detik.com",
+        "antaranews.com",
+        "jakartaglobe.id",
+        "thejakartapost.com",
+    }
+)
 
 
 def is_whitelisted(url: str) -> bool:

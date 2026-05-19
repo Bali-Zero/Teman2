@@ -1,4 +1,5 @@
 """Tests for Rate Limiter — fail-safe fallback on Redis error."""
+
 from unittest.mock import MagicMock
 
 from backend.middleware.rate_limiter import RateLimiter, _rate_limit_storage

@@ -10,6 +10,7 @@ Placed in backend/tests/integration/ with its own conftest.py that
 re-exports all partner fixtures from services/crm/partners/conftest.py
 (option a — import bridge).
 """
+
 from __future__ import annotations
 
 import contextlib
@@ -57,6 +58,7 @@ async def test_full_flow_process_to_paid_email(
         send_calls.append({"to": to, "cc": cc, "subject": subject, "body": body})
 
     import backend.services.crm.partners.emails as emails_mod
+
     monkeypatch.setattr(emails_mod, "_post_email", fake_post)
 
     # Mock PricingService to avoid heavy loading in test environment
@@ -80,8 +82,9 @@ async def test_full_flow_process_to_paid_email(
     assert result["sent"] == 1, f"Expected 1 sent, got {result}"
 
     assert len(send_calls) == 1, f"Expected 1 call after welcome flush, got {len(send_calls)}"
-    assert "Welcome" in send_calls[0]["subject"] or "welcome" in send_calls[0]["subject"].lower(), \
+    assert "Welcome" in send_calls[0]["subject"] or "welcome" in send_calls[0]["subject"].lower(), (
         f"Welcome subject not found: {send_calls[0]['subject']}"
+    )
 
     # ── Step 2: Create client + process + referral ───────────────────────────
     client_id = await client_factory(full_name="Mario Rossi")
@@ -111,6 +114,7 @@ async def test_full_flow_process_to_paid_email(
             @contextlib.asynccontextmanager
             async def _cm():
                 yield db_conn
+
             return _cm()
 
     async def fake_get_pool():
@@ -118,16 +122,16 @@ async def test_full_flow_process_to_paid_email(
 
     monkeypatch.setattr(events_mod, "get_pool", fake_get_pool)
 
-    await handle_practice_status_changed({
-        "practice_id": str(int(process_id)),
-        "new_status": "completed",
-    })
+    await handle_practice_status_changed(
+        {
+            "practice_id": str(int(process_id)),
+            "new_status": "completed",
+        }
+    )
 
     # ── Step 4: Verify accrual ───────────────────────────────────────────────
     engine = CommissionEngine(db_conn)
-    commissions = await engine.repo.list_commissions_for_partner(
-        uuid.UUID(int=partner_id.int)
-    )
+    commissions = await engine.repo.list_commissions_for_partner(uuid.UUID(int=partner_id.int))
     assert len(commissions) == 1, f"Expected 1 commission, got {len(commissions)}"
     c = commissions[0]
     assert c.status == "accrued", f"Expected status=accrued, got {c.status}"
@@ -138,12 +142,15 @@ async def test_full_flow_process_to_paid_email(
     #   pph23 base = 2.0%, no-NPWP surcharge = 20% of base → effective = 2.4%
     #   withholding = 1_500_000 * 2.4% = 36_000
     #   net = 1_500_000 - 36_000 = 1_464_000
-    assert c.gross_amount_idr == Decimal("1500000"), \
+    assert c.gross_amount_idr == Decimal("1500000"), (
         f"Expected gross 1500000, got {c.gross_amount_idr}"
-    assert c.withholding_amount_idr == Decimal("36000"), \
+    )
+    assert c.withholding_amount_idr == Decimal("36000"), (
         f"Expected withholding 36000 (2.4% pph23+surcharge of 1500000), got {c.withholding_amount_idr}"
-    assert c.net_amount_idr == Decimal("1464000"), \
+    )
+    assert c.net_amount_idr == Decimal("1464000"), (
         f"Expected net 1464000 (gross - withholding), got {c.net_amount_idr}"
+    )
 
     # ── Step 5: Fast-forward cooling-off ────────────────────────────────────
     await db_conn.execute(
@@ -173,7 +180,8 @@ async def test_full_flow_process_to_paid_email(
     # ── Step 8: Verify commission email was sent ─────────────────────────────
     commission_call = next(
         (
-            call for call in send_calls
+            call
+            for call in send_calls
             if "Commissione" in call["subject"]
             or "commission" in call["subject"].lower()
             or "Commission" in call["subject"]

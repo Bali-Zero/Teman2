@@ -31,7 +31,9 @@ def mock_db_pool():
 def kg_builder(mock_db_pool):
     """Create KG builder instance"""
     return KnowledgeGraphBuilder(
-        search_service=MagicMock(), db_pool=mock_db_pool, llm_gateway=MagicMock(),
+        search_service=MagicMock(),
+        db_pool=mock_db_pool,
+        llm_gateway=MagicMock(),
     )
 
 
@@ -41,7 +43,9 @@ class TestKnowledgeGraphBuilder:
     def test_init(self, mock_db_pool):
         """Test initialization"""
         builder = KnowledgeGraphBuilder(
-            search_service=MagicMock(), db_pool=mock_db_pool, llm_gateway=MagicMock(),
+            search_service=MagicMock(),
+            db_pool=mock_db_pool,
+            llm_gateway=MagicMock(),
         )
         assert builder.db_pool == mock_db_pool
 
@@ -83,6 +87,8 @@ class TestKnowledgeGraphBuilder:
             }
 
             result = await kg_builder.extract_via_llm(
-                "PT PMA requires investment", "test_collection", "chunk1",
+                "PT PMA requires investment",
+                "test_collection",
+                "chunk1",
             )
             assert "entities" in result

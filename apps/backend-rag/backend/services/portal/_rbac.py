@@ -103,8 +103,7 @@ def _extract_client_id(
     """Pull the `client_id` argument out of a bound call."""
     if "client_id" not in bound_args.arguments:
         raise TypeError(
-            f"require_client_access: '{method_name}' must declare "
-            f"'client_id' as a parameter",
+            f"require_client_access: '{method_name}' must declare 'client_id' as a parameter",
         )
     raw = bound_args.arguments["client_id"]
     if not isinstance(raw, int) or isinstance(raw, bool):

@@ -24,6 +24,7 @@ Safety:
 - Skips the live OpenAI client when the stub path is taken by tests.
 - Handles zero-length vectors (returns infinite distance, never suggests).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -114,20 +115,20 @@ def find_merge_candidates(
     ids = sorted(vectors.keys())
     candidates: list[dict[str, Any]] = []
     for i, a in enumerate(ids):
-        for b in ids[i + 1:]:
+        for b in ids[i + 1 :]:
             d = cosine_distance(vectors[a], vectors[b])
             if d >= threshold:
                 continue
             proc_a = next((s["procedure"] for s in skills if s["id"] == a), "")
             proc_b = next((s["procedure"] for s in skills if s["id"] == b), "")
-            candidates.append({
-                "pair": [a, b],
-                "cosine": round(d, 6),
-                "rationale": (
-                    f"cosine distance {d:.4f} < threshold {threshold:.2f}"
-                ),
-                "procedures": {a: proc_a, b: proc_b},
-            })
+            candidates.append(
+                {
+                    "pair": [a, b],
+                    "cosine": round(d, 6),
+                    "rationale": (f"cosine distance {d:.4f} < threshold {threshold:.2f}"),
+                    "procedures": {a: proc_a, b: proc_b},
+                }
+            )
     return candidates
 
 
@@ -147,6 +148,7 @@ def _default_embedder() -> Embedder:
     class _RealEmbedder:
         def embed(self, text: str, skill_id: str | None = None) -> list[float]:  # noqa: ARG002
             import asyncio
+
             return asyncio.run(gen.generate_single_embedding(text))
 
     return _RealEmbedder()
@@ -159,6 +161,7 @@ def _fetch_active_skills(db_path: str) -> list[dict[str, Any]]:
     """Return all active skills (type='skill', not silenced) as plain dicts."""
     import sqlite3
     from datetime import datetime, timezone
+
     if not os.path.exists(db_path):
         return []
     today = datetime.now(timezone.utc).date().isoformat()
@@ -199,7 +202,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--db-path", default=_default_db_path())
     parser.add_argument("--out", default=_default_out_path())
     parser.add_argument(
-        "--threshold", type=float, default=0.15,
+        "--threshold",
+        type=float,
+        default=0.15,
         help="Cosine distance below which a pair is proposed (default 0.15).",
     )
     args = parser.parse_args(argv)
@@ -222,7 +227,9 @@ def main(argv: list[str] | None = None) -> int:
 
     logger.info(
         "proposals written: %d pairs (threshold=%.3f) -> %s",
-        len(candidates), args.threshold, args.out,
+        len(candidates),
+        args.threshold,
+        args.out,
     )
     return 0
 

@@ -177,7 +177,7 @@ async def test_single_recipient_happy_path():
     assert payload["from_name"] == LOCKED_SENDER_NAME
     assert payload["to"] == "zero@balizero.com"
     assert "Bali Zero" in payload["subject"]
-    assert "<strong>" in payload["body"]   # HTML body rendered
+    assert "<strong>" in payload["body"]  # HTML body rendered
 
 
 @pytest.mark.asyncio
@@ -199,11 +199,13 @@ async def test_multiple_recipients_all_sent():
 @pytest.mark.asyncio
 async def test_partial_failure_counts_correctly():
     client = AsyncMock(spec=httpx.AsyncClient)
-    client.post = AsyncMock(side_effect=[
-        _ok_response(202),
-        _err_response(500, "smtp down"),
-        _ok_response(202),
-    ])
+    client.post = AsyncMock(
+        side_effect=[
+            _ok_response(202),
+            _err_response(500, "smtp down"),
+            _ok_response(202),
+        ]
+    )
     pub = NewsletterPublisher(http_client=client)
     result = await pub.send_roundup(
         _content(),
@@ -254,7 +256,8 @@ async def test_html_escapes_dossier_title_with_html_chars():
 
     dangerous = _dossier(title="<script>alert(1)</script>")
     await pub.send_roundup(
-        _content(dossiers=[dangerous]), ["x@y.com"],
+        _content(dossiers=[dangerous]),
+        ["x@y.com"],
     )
     html = client.post.call_args.kwargs["json"]["body"]
     assert "<script>" not in html

@@ -23,8 +23,10 @@ except ImportError:
 try:
     from backend.core.collection_registry import canonicalize_collection_name
 except ImportError:
+
     def canonicalize_collection_name(collection_name: str) -> str:
         return collection_name
+
 
 try:
     from backend.core.exceptions import (
@@ -35,7 +37,9 @@ try:
 except ImportError:
     # Fallback for standalone execution
     class QdrantServerError(Exception):
-        def __init__(self, message: str, status_code: int, response_text: str | None = None) -> None:
+        def __init__(
+            self, message: str, status_code: int, response_text: str | None = None
+        ) -> None:
             super().__init__(message)
             self.status_code = status_code
             self.response_text = response_text
@@ -183,7 +187,9 @@ def _extract_point_metadata(payload: dict[str, Any]) -> dict[str, Any]:
 
 
 async def _retry_with_backoff(
-    func, max_retries: int = MAX_RETRIES, base_delay: float = RETRY_BASE_DELAY,
+    func,
+    max_retries: int = MAX_RETRIES,
+    base_delay: float = RETRY_BASE_DELAY,
 ):
     """
     Retry function with exponential backoff.
@@ -534,7 +540,8 @@ class QdrantClient:
                     from backend.app.metrics import qdrant_http_error_total
 
                     qdrant_http_error_total.labels(
-                        status_code=e.response.status_code, error_type=error_type.value,
+                        status_code=e.response.status_code,
+                        error_type=error_type.value,
                     ).inc()
                 except ImportError:
                     pass
@@ -563,9 +570,7 @@ class QdrantClient:
                         return {
                             "ids": [str(r["id"]) for r in results],
                             "documents": [r["payload"].get("text", "") for r in results],
-                            "metadatas": [
-                                _extract_point_metadata(r["payload"]) for r in results
-                            ],
+                            "metadatas": [_extract_point_metadata(r["payload"]) for r in results],
                             "distances": [1.0 - r["score"] for r in results],
                             "scores": [r["score"] for r in results],
                             "total_found": len(results),
@@ -842,7 +847,8 @@ class QdrantClient:
                                 error_msg += f": {e.response.text}"
                             errors.append(error_msg)
                             logger.error(
-                                "Qdrant upsert batch failed even with named vectors: %s", error_msg,
+                                "Qdrant upsert batch failed even with named vectors: %s",
+                                error_msg,
                             )
                     else:
                         error_msg = f"HTTP {e.response.status_code}"
@@ -1069,9 +1075,7 @@ class QdrantClient:
                 return {
                     "ids": [str(p["id"]) for p in points],
                     "documents": [p.get("payload", {}).get("text", "") for p in points],
-                    "metadatas": [
-                        _extract_point_metadata(p.get("payload", {})) for p in points
-                    ],
+                    "metadatas": [_extract_point_metadata(p.get("payload", {})) for p in points],
                 }
 
             except httpx.HTTPStatusError as e:

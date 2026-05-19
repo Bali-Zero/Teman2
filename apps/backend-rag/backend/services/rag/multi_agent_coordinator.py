@@ -62,7 +62,8 @@ except ImportError:
 
 
 def _merge_agent_outputs(
-    existing: list[dict[str, Any]], new: list[dict[str, Any]],
+    existing: list[dict[str, Any]],
+    new: list[dict[str, Any]],
 ) -> list[dict[str, Any]]:
     """Reducer: append new agent outputs to existing list."""
     return existing + new
@@ -146,7 +147,8 @@ class LegalAgent:
                 mentions = self.kg_retrieval.extract_entities_from_query(query)
                 if mentions:
                     kg_entities = await self.kg_retrieval.find_kg_entities(
-                        mentions, limit_per_mention=5,
+                        mentions,
+                        limit_per_mention=5,
                     )
                     legal_entities = [
                         e
@@ -359,7 +361,8 @@ class TimelineAgent:
                 ]
                 if time_mentions:
                     duration_entities = await self.kg_retrieval.find_kg_entities(
-                        time_mentions, limit_per_mention=3,
+                        time_mentions,
+                        limit_per_mention=3,
                     )
 
             # Build prompt with legal context

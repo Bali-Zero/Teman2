@@ -154,7 +154,9 @@ class IngestionService:
 
             # Step 7: Store in vector database
             self.vector_db.upsert_documents(
-                chunks=chunk_texts, embeddings=embeddings, metadatas=metadatas,
+                chunks=chunk_texts,
+                embeddings=embeddings,
+                metadatas=metadatas,
             )
 
             logger.info("✅ Successfully ingested: %s", book_title)

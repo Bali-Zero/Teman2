@@ -148,8 +148,9 @@ class TestComputeDaysUntilDeadline:
     def test_day_boundary_hours_dont_matter(self) -> None:
         now_morning = datetime(2026, 4, 7, 1, 0, 0, tzinfo=timezone.utc)
         now_evening = datetime(2026, 4, 7, 23, 59, 0, tzinfo=timezone.utc)
-        assert _compute_days_until_deadline("Q1", 2026, now_morning) == \
-            _compute_days_until_deadline("Q1", 2026, now_evening)
+        assert _compute_days_until_deadline(
+            "Q1", 2026, now_morning
+        ) == _compute_days_until_deadline("Q1", 2026, now_evening)
 
 
 # =====================================================================
@@ -221,7 +222,9 @@ class TestKillSwitch:
         result = await notifier.check_and_notify()
         assert result["status"] == "blocked"
 
-    async def test_true_runs_scan(self, frozen_now: datetime, monkeypatch: pytest.MonkeyPatch) -> None:
+    async def test_true_runs_scan(
+        self, frozen_now: datetime, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         pool = _make_pool(killswitch_value="true", pending_rows=[])
         notifier = LKPMDeadlineNotifier(pool)
         result = await notifier.check_and_notify()
@@ -249,11 +252,10 @@ class TestScanAndClassify:
         async def fake_post_email(self_, to, subject, html_body, cc=None):
             sent_emails.append({"to": to, "cc": cc, "subject": subject})
 
+        monkeypatch.setattr(mod.LKPMDeadlineNotifier, "_post_email", fake_post_email)
         monkeypatch.setattr(
-            mod.LKPMDeadlineNotifier, "_post_email", fake_post_email
-        )
-        monkeypatch.setattr(
-            mod.LKPMDeadlineNotifier, "_send_telegram_alert",
+            mod.LKPMDeadlineNotifier,
+            "_send_telegram_alert",
             lambda *a, **kw: _async_none(),
         )
 
@@ -271,7 +273,8 @@ class TestScanAndClassify:
         notifier = LKPMDeadlineNotifier(pool)
 
         monkeypatch.setattr(
-            mod.LKPMDeadlineNotifier, "_post_email",
+            mod.LKPMDeadlineNotifier,
+            "_post_email",
             lambda *a, **kw: _async_none(),
         )
 
@@ -290,11 +293,10 @@ class TestScanAndClassify:
         async def fake_post_email(self_, to, subject, html_body, cc=None):
             sent_emails.append({"to": to, "cc": cc, "subject": subject})
 
+        monkeypatch.setattr(mod.LKPMDeadlineNotifier, "_post_email", fake_post_email)
         monkeypatch.setattr(
-            mod.LKPMDeadlineNotifier, "_post_email", fake_post_email
-        )
-        monkeypatch.setattr(
-            mod.LKPMDeadlineNotifier, "_send_telegram_alert",
+            mod.LKPMDeadlineNotifier,
+            "_send_telegram_alert",
             lambda *a, **kw: _async_none(),
         )
 
@@ -325,11 +327,10 @@ class TestScanAndClassify:
         async def fake_post_email(self_, to, subject, html_body, cc=None):
             sent_emails.append({"to": to, "cc": cc})
 
+        monkeypatch.setattr(mod.LKPMDeadlineNotifier, "_post_email", fake_post_email)
         monkeypatch.setattr(
-            mod.LKPMDeadlineNotifier, "_post_email", fake_post_email
-        )
-        monkeypatch.setattr(
-            mod.LKPMDeadlineNotifier, "_send_telegram_alert",
+            mod.LKPMDeadlineNotifier,
+            "_send_telegram_alert",
             lambda *a, **kw: _async_none(),
         )
 
@@ -364,12 +365,11 @@ class TestTelegramAlert:
             telegram_calls.append(urgent)
 
         monkeypatch.setattr(
-            mod.LKPMDeadlineNotifier, "_post_email",
+            mod.LKPMDeadlineNotifier,
+            "_post_email",
             lambda *a, **kw: _async_none(),
         )
-        monkeypatch.setattr(
-            mod.LKPMDeadlineNotifier, "_send_telegram_alert", fake_send_telegram
-        )
+        monkeypatch.setattr(mod.LKPMDeadlineNotifier, "_send_telegram_alert", fake_send_telegram)
 
         result = await notifier.check_and_notify()
         assert result["telegram_sent"] is False
@@ -396,20 +396,17 @@ class TestTelegramAlert:
             telegram_calls.append(urgent)
 
         monkeypatch.setattr(
-            mod.LKPMDeadlineNotifier, "_post_email",
+            mod.LKPMDeadlineNotifier,
+            "_post_email",
             lambda *a, **kw: _async_none(),
         )
-        monkeypatch.setattr(
-            mod.LKPMDeadlineNotifier, "_send_telegram_alert", fake_send_telegram
-        )
+        monkeypatch.setattr(mod.LKPMDeadlineNotifier, "_send_telegram_alert", fake_send_telegram)
 
         result = await notifier.check_and_notify()
         assert result["telegram_sent"] is True
         assert len(telegram_calls) == 1
 
-    async def test_validated_status_never_triggers(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    async def test_validated_status_never_triggers(self, monkeypatch: pytest.MonkeyPatch) -> None:
         # Even close to deadline, status='validated' (not 'draft') shouldn't trigger TG
         close_now = datetime(2026, 4, 12, 9, 0, 0, tzinfo=timezone.utc)
 
@@ -430,12 +427,11 @@ class TestTelegramAlert:
             telegram_calls.append(urgent)
 
         monkeypatch.setattr(
-            mod.LKPMDeadlineNotifier, "_post_email",
+            mod.LKPMDeadlineNotifier,
+            "_post_email",
             lambda *a, **kw: _async_none(),
         )
-        monkeypatch.setattr(
-            mod.LKPMDeadlineNotifier, "_send_telegram_alert", fake_send_telegram
-        )
+        monkeypatch.setattr(mod.LKPMDeadlineNotifier, "_send_telegram_alert", fake_send_telegram)
 
         result = await notifier.check_and_notify()
         assert result["telegram_sent"] is False

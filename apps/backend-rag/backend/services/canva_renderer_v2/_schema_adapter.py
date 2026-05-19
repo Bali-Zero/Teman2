@@ -9,6 +9,7 @@ schema directly; orchestrator handles both via this adapter inline.
 
 Source material: /tmp/wr2_legacy_adapter.py (working draft 2026-05-13).
 """
+
 from __future__ import annotations
 
 import logging
@@ -57,6 +58,7 @@ def is_legacy_schema(data: dict[str, Any]) -> bool:
         # Metric: log to stderr with structured prefix so log scrapers can
         # alert on it. Format mirrors Bali Zero cron-agent-python convention.
         import os as _os
+
         draft_id = data.get("draft_id") or data.get("carousel_id") or "unknown"
         logger.warning(
             "[wr2-schema-adapter] legacy_schema_adapted=1 draft_id=%s — "
@@ -87,6 +89,7 @@ def _download_hero(url: str, slide_n: int) -> str | None:
     if not url:
         return None
     import hashlib
+
     HERO_CACHE_DIR.mkdir(parents=True, exist_ok=True)
     url_hash = hashlib.sha1(url.encode()).hexdigest()[:16]
     dest = HERO_CACHE_DIR / f"hero_{slide_n:02d}_{url_hash}.jpg"

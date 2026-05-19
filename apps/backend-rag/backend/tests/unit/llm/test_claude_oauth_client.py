@@ -40,7 +40,8 @@ def _fake_proc(stdout: bytes, stderr: bytes = b"", returncode: int = 0) -> Any:
 
 @pytest.mark.asyncio
 async def test_collect_tokens_ordering(
-    monkeypatch: pytest.MonkeyPatch, clear_oauth_env: None,
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
 ) -> None:
     from backend.llm import claude_oauth_client as mod
 
@@ -56,7 +57,8 @@ async def test_collect_tokens_ordering(
 
 @pytest.mark.asyncio
 async def test_collect_tokens_deduplicates(
-    monkeypatch: pytest.MonkeyPatch, clear_oauth_env: None,
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
 ) -> None:
     from backend.llm import claude_oauth_client as mod
 
@@ -70,7 +72,8 @@ async def test_collect_tokens_deduplicates(
 
 @pytest.mark.asyncio
 async def test_build_env_strips_api_key(
-    monkeypatch: pytest.MonkeyPatch, clear_oauth_env: None,
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
 ) -> None:
     from backend.llm import claude_oauth_client as mod
 
@@ -83,7 +86,8 @@ async def test_build_env_strips_api_key(
 
 @pytest.mark.asyncio
 async def test_complete_async_happy_path(
-    monkeypatch: pytest.MonkeyPatch, clear_oauth_env: None,
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
 ) -> None:
     from backend.llm import claude_oauth_client as mod
 
@@ -92,7 +96,9 @@ async def test_complete_async_happy_path(
     calls: list[dict[str, Any]] = []
 
     async def fake_create(*args: Any, **kwargs: Any) -> Any:
-        calls.append({"args": args, "env_has_api_key": "ANTHROPIC_API_KEY" in kwargs.get("env", {})})
+        calls.append(
+            {"args": args, "env_has_api_key": "ANTHROPIC_API_KEY" in kwargs.get("env", {})}
+        )
         return _fake_proc(stdout=b"hello world", returncode=0)
 
     monkeypatch.setattr(asyncio, "create_subprocess_exec", fake_create)
@@ -108,7 +114,8 @@ async def test_complete_async_happy_path(
 
 @pytest.mark.asyncio
 async def test_complete_async_rate_limit_falls_through(
-    monkeypatch: pytest.MonkeyPatch, clear_oauth_env: None,
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
 ) -> None:
     from backend.llm import claude_oauth_client as mod
 
@@ -134,7 +141,8 @@ async def test_complete_async_rate_limit_falls_through(
 
 @pytest.mark.asyncio
 async def test_complete_async_empty_output_falls_through(
-    monkeypatch: pytest.MonkeyPatch, clear_oauth_env: None,
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
 ) -> None:
     from backend.llm import claude_oauth_client as mod
 
@@ -159,7 +167,8 @@ async def test_complete_async_empty_output_falls_through(
 
 @pytest.mark.asyncio
 async def test_complete_async_all_fail(
-    monkeypatch: pytest.MonkeyPatch, clear_oauth_env: None,
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
 ) -> None:
     from backend.llm import claude_oauth_client as mod
 
@@ -176,7 +185,8 @@ async def test_complete_async_all_fail(
 
 @pytest.mark.asyncio
 async def test_complete_async_cli_missing(
-    monkeypatch: pytest.MonkeyPatch, clear_oauth_env: None,
+    monkeypatch: pytest.MonkeyPatch,
+    clear_oauth_env: None,
 ) -> None:
     from backend.llm import claude_oauth_client as mod
 
@@ -196,6 +206,7 @@ def test_module_imports_without_anthropic_sdk() -> None:
     Claude calls.
     """
     import backend.llm.claude_oauth_client as mod
+
     importlib.reload(mod)
 
     src = open(mod.__file__).read()

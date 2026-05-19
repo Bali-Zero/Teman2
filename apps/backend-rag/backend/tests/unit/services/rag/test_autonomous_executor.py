@@ -365,7 +365,8 @@ class TestExecutePlan:
     async def test_execute_with_approval_rejected(self, executor_with_telegram):
         """Critical step requires approval — rejected."""
         plan = await executor_with_telegram.create_plan(
-            "NPWP registration", "user@test.com",
+            "NPWP registration",
+            "user@test.com",
         )
 
         # Pre-reject the critical step
@@ -382,7 +383,8 @@ class TestExecutePlan:
     async def test_execute_with_approval_approved(self, executor_with_telegram):
         """Critical step requires approval — approved."""
         plan = await executor_with_telegram.create_plan(
-            "NPWP registration", "user@test.com",
+            "NPWP registration",
+            "user@test.com",
         )
 
         # Pre-approve ALL critical steps
@@ -404,7 +406,12 @@ class TestExecuteStep:
     @pytest.mark.asyncio
     async def test_verify_client_data_with_crm(self, executor_with_crm):
         step = _make_step(
-            {"action": "verify_client_data", "description": "verify", "safety_level": StepSafety.SAFE, "rollback_action": ""},
+            {
+                "action": "verify_client_data",
+                "description": "verify",
+                "safety_level": StepSafety.SAFE,
+                "rollback_action": "",
+            },
             0,
         )
         await executor_with_crm._execute_step(step, "user@test.com")
@@ -414,7 +421,12 @@ class TestExecuteStep:
     async def test_verify_client_data_not_found(self, executor_with_crm):
         executor_with_crm.crm_service.search_clients = AsyncMock(return_value=[])
         step = _make_step(
-            {"action": "verify_client_data", "description": "verify", "safety_level": StepSafety.SAFE, "rollback_action": ""},
+            {
+                "action": "verify_client_data",
+                "description": "verify",
+                "safety_level": StepSafety.SAFE,
+                "rollback_action": "",
+            },
             0,
         )
         with pytest.raises(ValueError, match="not found in CRM"):
@@ -423,7 +435,12 @@ class TestExecuteStep:
     @pytest.mark.asyncio
     async def test_verify_client_data_no_crm(self, executor):
         step = _make_step(
-            {"action": "verify_client_data", "description": "verify", "safety_level": StepSafety.SAFE, "rollback_action": ""},
+            {
+                "action": "verify_client_data",
+                "description": "verify",
+                "safety_level": StepSafety.SAFE,
+                "rollback_action": "",
+            },
             0,
         )
         # Should not raise — just logs
@@ -432,7 +449,12 @@ class TestExecuteStep:
     @pytest.mark.asyncio
     async def test_eligibility_check(self, executor):
         step = _make_step(
-            {"action": "check_npwp_eligibility", "description": "check", "safety_level": StepSafety.SAFE, "rollback_action": ""},
+            {
+                "action": "check_npwp_eligibility",
+                "description": "check",
+                "safety_level": StepSafety.SAFE,
+                "rollback_action": "",
+            },
             0,
         )
         await executor._execute_step(step, "user@test.com")
@@ -440,7 +462,12 @@ class TestExecuteStep:
     @pytest.mark.asyncio
     async def test_prepare_documents(self, executor):
         step = _make_step(
-            {"action": "prepare_npwp_documents", "description": "prepare", "safety_level": StepSafety.SAFE, "rollback_action": ""},
+            {
+                "action": "prepare_npwp_documents",
+                "description": "prepare",
+                "safety_level": StepSafety.SAFE,
+                "rollback_action": "",
+            },
             0,
         )
         await executor._execute_step(step, "user@test.com")
@@ -448,7 +475,12 @@ class TestExecuteStep:
     @pytest.mark.asyncio
     async def test_submit_critical(self, executor):
         step = _make_step(
-            {"action": "submit_to_djp", "description": "submit", "safety_level": StepSafety.CRITICAL, "rollback_action": "cancel"},
+            {
+                "action": "submit_to_djp",
+                "description": "submit",
+                "safety_level": StepSafety.CRITICAL,
+                "rollback_action": "cancel",
+            },
             0,
         )
         await executor._execute_step(step, "user@test.com")
@@ -456,7 +488,12 @@ class TestExecuteStep:
     @pytest.mark.asyncio
     async def test_track_status(self, executor):
         step = _make_step(
-            {"action": "track_npwp_status", "description": "track", "safety_level": StepSafety.SAFE, "rollback_action": ""},
+            {
+                "action": "track_npwp_status",
+                "description": "track",
+                "safety_level": StepSafety.SAFE,
+                "rollback_action": "",
+            },
             0,
         )
         await executor._execute_step(step, "user@test.com")
@@ -464,7 +501,12 @@ class TestExecuteStep:
     @pytest.mark.asyncio
     async def test_unknown_action(self, executor):
         step = _make_step(
-            {"action": "unknown_action", "description": "unknown", "safety_level": StepSafety.SAFE, "rollback_action": ""},
+            {
+                "action": "unknown_action",
+                "description": "unknown",
+                "safety_level": StepSafety.SAFE,
+                "rollback_action": "",
+            },
             0,
         )
         # Should just log warning, not raise
@@ -495,7 +537,9 @@ class TestExecuteStepWithRetry:
 
         executor._execute_step = flaky_execute
 
-        with patch("backend.services.rag.autonomous_executor.asyncio.sleep", new_callable=AsyncMock):
+        with patch(
+            "backend.services.rag.autonomous_executor.asyncio.sleep", new_callable=AsyncMock
+        ):
             success = await executor._execute_step_with_retry(plan, step)
 
         assert success is True
@@ -509,7 +553,9 @@ class TestExecuteStepWithRetry:
 
         executor._execute_step = AsyncMock(side_effect=Exception("permanent error"))
 
-        with patch("backend.services.rag.autonomous_executor.asyncio.sleep", new_callable=AsyncMock):
+        with patch(
+            "backend.services.rag.autonomous_executor.asyncio.sleep", new_callable=AsyncMock
+        ):
             success = await executor._execute_step_with_retry(plan, step)
 
         assert success is False
@@ -536,7 +582,9 @@ class TestApprovalFlow:
     async def test_record_approval_persistent(self, persistent_executor, mock_db_pool):
         mock_db_pool._mock_conn.execute = AsyncMock()
         await persistent_executor.record_approval(
-            "plan_1", "step_0", True,
+            "plan_1",
+            "step_0",
+            True,
             approver_email="admin@test.com",
             reason="Looks good",
         )
@@ -757,12 +805,17 @@ class TestPersistenceWithDB:
         mock_db_pool._mock_conn.execute = AsyncMock()
 
         plan = ExecutionPlan(
-            plan_id="plan_test", user_query="test", user_email="u@t.com",
-            task_type="npwp_registration", priority=3,
+            plan_id="plan_test",
+            user_query="test",
+            user_email="u@t.com",
+            task_type="npwp_registration",
+            priority=3,
             steps=[_make_step(TASK_TEMPLATES["npwp_registration"][0], 0)],
-            current_step=0, overall_status=ExecutionStatus.IN_PROGRESS,
+            current_step=0,
+            overall_status=ExecutionStatus.IN_PROGRESS,
             created_at=datetime.now(UTC).isoformat(),
-            completed_at=None, human_approvals=[],
+            completed_at=None,
+            human_approvals=[],
         )
 
         await persistent_executor._persist_step_update(plan, plan["steps"][0])
@@ -773,11 +826,17 @@ class TestPersistenceWithDB:
         mock_db_pool._mock_conn.execute = AsyncMock()
 
         plan = ExecutionPlan(
-            plan_id="plan_test", user_query="test", user_email="u@t.com",
-            task_type="npwp_registration", priority=3, steps=[],
-            current_step=0, overall_status=ExecutionStatus.COMPLETED,
+            plan_id="plan_test",
+            user_query="test",
+            user_email="u@t.com",
+            task_type="npwp_registration",
+            priority=3,
+            steps=[],
+            current_step=0,
+            overall_status=ExecutionStatus.COMPLETED,
             created_at=datetime.now(UTC).isoformat(),
-            completed_at=datetime.now(UTC).isoformat(), human_approvals=[],
+            completed_at=datetime.now(UTC).isoformat(),
+            human_approvals=[],
         )
 
         await persistent_executor._persist_plan_completion(plan)
@@ -788,11 +847,17 @@ class TestPersistenceWithDB:
         mock_db_pool._mock_conn.execute = AsyncMock()
 
         plan = ExecutionPlan(
-            plan_id="plan_test", user_query="test", user_email="u@t.com",
-            task_type="npwp_registration", priority=3, steps=[],
-            current_step=0, overall_status=ExecutionStatus.PENDING,
+            plan_id="plan_test",
+            user_query="test",
+            user_email="u@t.com",
+            task_type="npwp_registration",
+            priority=3,
+            steps=[],
+            current_step=0,
+            overall_status=ExecutionStatus.PENDING,
             created_at=datetime.now(UTC).isoformat(),
-            completed_at=None, human_approvals=[],
+            completed_at=None,
+            human_approvals=[],
         )
 
         await persistent_executor._update_plan_status(plan, ExecutionStatus.IN_PROGRESS)

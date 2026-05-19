@@ -47,13 +47,11 @@ CREATE TABLE IF NOT EXISTS nlm_verification_log (
 """
 
 _CREATE_IDX_DOMAIN = (
-    "CREATE INDEX IF NOT EXISTS idx_nlm_verify_domain "
-    "ON nlm_verification_log (domain)"
+    "CREATE INDEX IF NOT EXISTS idx_nlm_verify_domain ON nlm_verification_log (domain)"
 )
 
 _CREATE_IDX_CREATED = (
-    "CREATE INDEX IF NOT EXISTS idx_nlm_verify_created "
-    "ON nlm_verification_log (created_at)"
+    "CREATE INDEX IF NOT EXISTS idx_nlm_verify_created ON nlm_verification_log (created_at)"
 )
 
 _DROP_TABLE = "DROP TABLE IF EXISTS nlm_verification_log"
@@ -100,9 +98,7 @@ async def _run(database_url: str, *, do_downgrade: bool, dry_run: bool) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(
-        description=f"Migration {MIGRATION_ID}: {MIGRATION_NAME}"
-    )
+    parser = argparse.ArgumentParser(description=f"Migration {MIGRATION_ID}: {MIGRATION_NAME}")
     parser.add_argument(
         "--downgrade",
         action="store_true",

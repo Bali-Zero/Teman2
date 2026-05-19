@@ -57,7 +57,8 @@ router = APIRouter(prefix="/api/crm", tags=["crm-enhanced-documents"])
 async def get_client_documents(
     client_id: int,
     category: str | None = Query(
-        None, description="Filter by category: immigration, pma, tax, personal",
+        None,
+        description="Filter by category: immigration, pma, tax, personal",
     ),
     include_archived: bool = Query(False, description="Include archived documents"),
     pool: Any = Depends(get_database_pool),
@@ -414,7 +415,9 @@ async def archive_document(
         await verify_client_access(client_id, current_user, conn, allow_assigned=True)
         if permanent:
             result = await conn.execute(
-                "DELETE FROM documents WHERE id = $1 AND client_id = $2", doc_id, client_id,
+                "DELETE FROM documents WHERE id = $1 AND client_id = $2",
+                doc_id,
+                client_id,
             )
             action = "deleted"
         else:
@@ -597,7 +600,9 @@ async def upload_document_base64(
                     data.company_id,
                 )
                 if not company_link:
-                    raise HTTPException(status_code=400, detail="Company is not linked to this client")
+                    raise HTTPException(
+                        status_code=400, detail="Company is not linked to this client"
+                    )
 
             drive_service = ServiceAccountDriveService()
 
@@ -610,11 +615,13 @@ async def upload_document_base64(
                 # If specific settings exist for types, use them (simplified from crm_drive_folders)
                 # But to avoid circular imports or config issues, we fall back to root or simple logic
                 if client["client_type"] == "individual" and hasattr(
-                    settings, "gdrive_individuals_folder_id",
+                    settings,
+                    "gdrive_individuals_folder_id",
                 ):
                     parent_id = settings.gdrive_individuals_folder_id or parent_id
                 elif client["client_type"] == "company" and hasattr(
-                    settings, "gdrive_companies_folder_id",
+                    settings,
+                    "gdrive_companies_folder_id",
                 ):
                     parent_id = settings.gdrive_companies_folder_id or parent_id
 
@@ -634,7 +641,8 @@ async def upload_document_base64(
                 except Exception as e:
                     logger.error("Failed to create root folder: %s", e)
                     raise HTTPException(
-                        status_code=500, detail=f"Failed to create root folder: {e}",
+                        status_code=500,
+                        detail=f"Failed to create root folder: {e}",
                     ) from e
 
             # Ensure Subfolder Exists (Find or Create)
@@ -646,7 +654,8 @@ async def upload_document_base64(
                 # If structure fetch fails, maybe root folder is missing/deleted?
                 # We'll just fail for now, or could try to recreate
                 raise HTTPException(
-                    status_code=500, detail=f"Failed to access folder structure: {e}",
+                    status_code=500,
+                    detail=f"Failed to access folder structure: {e}",
                 ) from e
 
             subfolder = next((f for f in structure["folders"] if f["name"] == folder_name), None)
@@ -659,7 +668,9 @@ async def upload_document_base64(
                     )
                     subfolder_id = subfolder_data["id"]
                 except Exception as e:
-                    raise HTTPException(status_code=500, detail=f"Failed to create subfolder: {e}") from e
+                    raise HTTPException(
+                        status_code=500, detail=f"Failed to create subfolder: {e}"
+                    ) from e
             else:
                 subfolder_id = subfolder["id"]
 
@@ -675,7 +686,11 @@ async def upload_document_base64(
                         root_folder_id=subfolder_id,
                     )
                     nested_folder = next(
-                        (f for f in nested_structure["folders"] if f["name"] == data.subfolder_hint),
+                        (
+                            f
+                            for f in nested_structure["folders"]
+                            if f["name"] == data.subfolder_hint
+                        ),
                         None,
                     )
                     if not nested_folder:
@@ -700,10 +715,18 @@ async def upload_document_base64(
                     )
                     if existing_actual and existing_actual["file_id"]:
                         # Find or create "Previous Visa" folder
-                        prev_folder = next(
-                            (f for f in nested_structure["folders"] if f["name"] == "Previous Visa"),
-                            None,
-                        ) if nested_structure else None
+                        prev_folder = (
+                            next(
+                                (
+                                    f
+                                    for f in nested_structure["folders"]
+                                    if f["name"] == "Previous Visa"
+                                ),
+                                None,
+                            )
+                            if nested_structure
+                            else None
+                        )
                         if not prev_folder:
                             try:
                                 prev_data = await drive_service.create_folder(
@@ -728,7 +751,9 @@ async def upload_document_base64(
                                     "UPDATE documents SET subfolder = 'Previous Visa', updated_at = NOW() WHERE id = $1",
                                     existing_actual["id"],
                                 )
-                                logger.info(f"Rotated visa doc {existing_actual['id']} to Previous Visa")
+                                logger.info(
+                                    f"Rotated visa doc {existing_actual['id']} to Previous Visa"
+                                )
                             except Exception as e:
                                 logger.error("Visa rotation failed: %s", e)
 
@@ -741,7 +766,9 @@ async def upload_document_base64(
                     mime_type=data.mime_type,
                 )
             except Exception as e:
-                raise HTTPException(status_code=500, detail=f"Failed to upload to drive: {e}") from e
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to upload to drive: {e}"
+                ) from e
 
             # Create Document Record
             doc_id = await conn.fetchval(
@@ -855,7 +882,9 @@ async def delete_document(
         # Lookup client_id from document for RBAC check
         doc_row = await conn.fetchrow("SELECT client_id FROM documents WHERE id = $1", doc_id)
         if doc_row:
-            await verify_client_access(doc_row["client_id"], current_user, conn, allow_assigned=True)
+            await verify_client_access(
+                doc_row["client_id"], current_user, conn, allow_assigned=True
+            )
         if permanent:
             result = await conn.execute("DELETE FROM documents WHERE id = $1", doc_id)
         else:

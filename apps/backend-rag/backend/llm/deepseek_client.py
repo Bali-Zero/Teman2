@@ -227,9 +227,9 @@ async def complete_async(
         if is_v4_pro:
             input_cm_rate = 0.435  # V4-Pro cache-miss input
             input_ch_rate = 0.435  # V4-Pro cache-hit input (promo aside)
-            output_rate = 0.87     # V4-Pro output
+            output_rate = 0.87  # V4-Pro output
         else:
-            input_cm_rate = 0.14   # V4-Flash / legacy aliases
+            input_cm_rate = 0.14  # V4-Flash / legacy aliases
             input_ch_rate = 0.0028
             output_rate = 0.28
         cache_miss_tokens = max(0, input_tokens - cache_hit_tokens)

@@ -10,8 +10,13 @@ from backend.services.rag.grading.context import GradingContext
 logger = logging.getLogger(__name__)
 
 _REFUSAL_MARKERS = [
-    "unable to", "cannot answer", "i don't know", "non riesco",
-    "i'm not sure", "non sono sicuro", "saya tidak bisa",
+    "unable to",
+    "cannot answer",
+    "i don't know",
+    "non riesco",
+    "i'm not sure",
+    "non sono sicuro",
+    "saya tidak bisa",
 ]
 
 
@@ -65,4 +70,8 @@ class AnswerGrader(BaseGrader):
             hint = "Provide a more complete answer with specific details and source citations"
             return score, f"Answer needs improvement (score={score:.2f})", hint
 
-        return score, f"Good answer (len={answer_len}, conf={conf:.2f}, sources={len(ctx.sources)})", ""
+        return (
+            score,
+            f"Good answer (len={answer_len}, conf={conf:.2f}, sources={len(ctx.sources)})",
+            "",
+        )

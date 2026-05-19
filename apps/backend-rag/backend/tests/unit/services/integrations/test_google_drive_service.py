@@ -82,18 +82,22 @@ def _make_service(
 class TestSanitizeDriveQueryString:
     def test_no_special_chars(self):
         from backend.services.integrations.google_drive_service import GoogleDriveService
+
         assert GoogleDriveService._sanitize_drive_query_string("hello world") == "hello world"
 
     def test_single_quote_escaped(self):
         from backend.services.integrations.google_drive_service import GoogleDriveService
+
         assert GoogleDriveService._sanitize_drive_query_string("it's a test") == "it\\'s a test"
 
     def test_backslash_escaped(self):
         from backend.services.integrations.google_drive_service import GoogleDriveService
+
         assert GoogleDriveService._sanitize_drive_query_string("a\\b") == "a\\\\b"
 
     def test_both_escaped(self):
         from backend.services.integrations.google_drive_service import GoogleDriveService
+
         result = GoogleDriveService._sanitize_drive_query_string("it's a \\test")
         assert result == "it\\'s a \\\\test"
 
@@ -180,7 +184,8 @@ class TestExchangeCode:
         mock_client = AsyncMock()
         mock_client.is_closed = False
         mock_client.post.return_value = _make_mock_response(
-            200, {"access_token": "at-123", "refresh_token": "rt-456", "expires_in": 3600},
+            200,
+            {"access_token": "at-123", "refresh_token": "rt-456", "expires_in": 3600},
         )
         svc._client = mock_client
 
@@ -193,7 +198,8 @@ class TestExchangeCode:
         mock_client = AsyncMock()
         mock_client.is_closed = False
         mock_client.post.return_value = _make_mock_response(
-            400, {"error": "invalid_grant", "error_description": "Bad code"},
+            400,
+            {"error": "invalid_grant", "error_description": "Bad code"},
         )
         svc._client = mock_client
 
@@ -212,7 +218,9 @@ class TestGetValidToken:
         future = datetime.now(timezone.utc) + timedelta(hours=1)
         conn = AsyncMock()
         conn.fetchrow.return_value = {
-            "access_token": "valid-token", "refresh_token": "rt", "expires_at": future,
+            "access_token": "valid-token",
+            "refresh_token": "rt",
+            "expires_at": future,
         }
         svc, _, _ = _make_service(conn=conn)
 
@@ -231,14 +239,17 @@ class TestGetValidToken:
         past = datetime.now(timezone.utc) - timedelta(hours=1)
         conn = AsyncMock()
         conn.fetchrow.return_value = {
-            "access_token": "expired-token", "refresh_token": "rt-valid", "expires_at": past,
+            "access_token": "expired-token",
+            "refresh_token": "rt-valid",
+            "expires_at": past,
         }
         svc, _, _ = _make_service(conn=conn)
 
         mock_client = AsyncMock()
         mock_client.is_closed = False
         mock_client.post.return_value = _make_mock_response(
-            200, {"access_token": "new-token", "expires_in": 3600},
+            200,
+            {"access_token": "new-token", "expires_in": 3600},
         )
         svc._client = mock_client
 
@@ -249,7 +260,9 @@ class TestGetValidToken:
         past = datetime.now(timezone.utc) - timedelta(hours=1)
         conn = AsyncMock()
         conn.fetchrow.return_value = {
-            "access_token": "expired", "refresh_token": None, "expires_at": past,
+            "access_token": "expired",
+            "refresh_token": None,
+            "expires_at": past,
         }
         svc, _, _ = _make_service(conn=conn)
 
@@ -327,7 +340,8 @@ class TestListFiles:
         mock_client = AsyncMock()
         mock_client.is_closed = False
         mock_client.get.return_value = _make_mock_response(
-            200, {"files": [{"id": "f1", "name": "doc.pdf"}], "nextPageToken": "page2"},
+            200,
+            {"files": [{"id": "f1", "name": "doc.pdf"}], "nextPageToken": "page2"},
         )
         svc._client = mock_client
 
@@ -417,7 +431,9 @@ class TestGetUserFolder:
         svc.get_valid_token = AsyncMock(return_value="token")
         mock_client = AsyncMock()
         mock_client.is_closed = False
-        mock_client.get.return_value = _make_mock_response(200, {"files": [{"id": "uf-1", "name": "Anton"}]})
+        mock_client.get.return_value = _make_mock_response(
+            200, {"files": [{"id": "uf-1", "name": "Anton"}]}
+        )
         svc._client = mock_client
         result = await svc.get_user_folder("user-1", "anton@balizero.com")
         assert result["name"] == "Anton"
@@ -436,7 +452,9 @@ class TestCreateFolder:
         svc.get_valid_token = AsyncMock(return_value="token")
         mock_client = AsyncMock()
         mock_client.is_closed = False
-        mock_client.post.return_value = _make_mock_response(200, {"id": "nf", "name": "tf", "webViewLink": "url"})
+        mock_client.post.return_value = _make_mock_response(
+            200, {"id": "nf", "name": "tf", "webViewLink": "url"}
+        )
         svc._client = mock_client
         result = await svc.create_folder("user-1", "tf", parent_id="p1")
         assert result["id"] == "nf"
@@ -446,7 +464,9 @@ class TestCreateFolder:
         svc.get_valid_token = AsyncMock(return_value="token")
         mock_client = AsyncMock()
         mock_client.is_closed = False
-        mock_client.post.return_value = _make_mock_response(403, {"error": {"message": "quota exceeded"}})
+        mock_client.post.return_value = _make_mock_response(
+            403, {"error": {"message": "quota exceeded"}}
+        )
         svc._client = mock_client
         with pytest.raises(ValueError, match="quota exceeded"):
             await svc.create_folder("user-1", "tf")
@@ -459,12 +479,22 @@ class TestListFolderFiles:
         svc.get_valid_token = AsyncMock(return_value="token")
         mock_client = AsyncMock()
         mock_client.is_closed = False
-        mock_client.get.return_value = _make_mock_response(200, {
-            "files": [
-                {"id": "f1", "name": "a.pdf", "mimeType": "application/pdf", "size": "1024", "modifiedTime": "2026-01-01", "createdTime": "2026-01-01"},
-                {"id": "f2", "name": "b/", "mimeType": "application/vnd.google-apps.folder"},
-            ],
-        })
+        mock_client.get.return_value = _make_mock_response(
+            200,
+            {
+                "files": [
+                    {
+                        "id": "f1",
+                        "name": "a.pdf",
+                        "mimeType": "application/pdf",
+                        "size": "1024",
+                        "modifiedTime": "2026-01-01",
+                        "createdTime": "2026-01-01",
+                    },
+                    {"id": "f2", "name": "b/", "mimeType": "application/vnd.google-apps.folder"},
+                ],
+            },
+        )
         svc._client = mock_client
         result = await svc.list_folder_files("user-1", "folder-1", limit=10, offset=0)
         assert result["total"] == 2
@@ -477,12 +507,26 @@ class TestListFolderFiles:
         svc.get_valid_token = AsyncMock(return_value="token")
         mock_client = AsyncMock()
         mock_client.is_closed = False
-        mock_client.get.return_value = _make_mock_response(200, {
-            "files": [{"id": "f3", "name": "c.pdf", "mimeType": "application/pdf", "size": "512", "modifiedTime": "2026-01-01", "createdTime": "2026-01-01"}],
-            "nextPageToken": "cursor-next",
-        })
+        mock_client.get.return_value = _make_mock_response(
+            200,
+            {
+                "files": [
+                    {
+                        "id": "f3",
+                        "name": "c.pdf",
+                        "mimeType": "application/pdf",
+                        "size": "512",
+                        "modifiedTime": "2026-01-01",
+                        "createdTime": "2026-01-01",
+                    }
+                ],
+                "nextPageToken": "cursor-next",
+            },
+        )
         svc._client = mock_client
-        result = await svc.list_folder_files("user-1", "folder-1", limit=50, page_token="cursor-abc")
+        result = await svc.list_folder_files(
+            "user-1", "folder-1", limit=50, page_token="cursor-abc"
+        )
         # pageToken must appear in the params sent to Drive
         call_params = mock_client.get.call_args[1]["params"]
         assert call_params.get("pageToken") == "cursor-abc"
@@ -496,9 +540,21 @@ class TestListFolderFiles:
         svc.get_valid_token = AsyncMock(return_value="token")
         mock_client = AsyncMock()
         mock_client.is_closed = False
-        mock_client.get.return_value = _make_mock_response(200, {
-            "files": [{"id": "f1", "name": "a.pdf", "mimeType": "application/pdf", "size": "100", "modifiedTime": "2026-01-01", "createdTime": "2026-01-01"}],
-        })
+        mock_client.get.return_value = _make_mock_response(
+            200,
+            {
+                "files": [
+                    {
+                        "id": "f1",
+                        "name": "a.pdf",
+                        "mimeType": "application/pdf",
+                        "size": "100",
+                        "modifiedTime": "2026-01-01",
+                        "createdTime": "2026-01-01",
+                    }
+                ],
+            },
+        )
         svc._client = mock_client
         result = await svc.list_folder_files("user-1", "folder-1", limit=10, offset=0)
         assert result["next_page_token"] is None
@@ -512,7 +568,9 @@ class TestUploadFileToFolder:
         svc.get_valid_token = AsyncMock(return_value="token")
         mock_client = AsyncMock()
         mock_client.is_closed = False
-        mock_client.post.return_value = _make_mock_response(200, {"id": "up1", "name": "p.pdf", "size": "2048"})
+        mock_client.post.return_value = _make_mock_response(
+            200, {"id": "up1", "name": "p.pdf", "size": "2048"}
+        )
         mock_client.patch.return_value = _make_mock_response(200, {})
         svc._client = mock_client
 
@@ -525,12 +583,21 @@ class TestUploadFileToFolder:
 class TestGetFolderStats:
     async def test_delegates_to_get_folder_structure(self):
         svc, _, _ = _make_service()
-        svc.get_folder_structure = AsyncMock(return_value={
-            "root_folder_id": "r1",
-            "folders": [{"name": "00_Profile", "file_count": 5, "total_size_bytes": 1048576, "last_modified": None}],
-            "total_files": 5,
-            "total_size_bytes": 1048576,
-        })
+        svc.get_folder_structure = AsyncMock(
+            return_value={
+                "root_folder_id": "r1",
+                "folders": [
+                    {
+                        "name": "00_Profile",
+                        "file_count": 5,
+                        "total_size_bytes": 1048576,
+                        "last_modified": None,
+                    }
+                ],
+                "total_files": 5,
+                "total_size_bytes": 1048576,
+            }
+        )
         result = await svc.get_folder_stats("user-1", "r1")
         assert result["total_files"] == 5
         assert result["total_size_mb"] == 1.0

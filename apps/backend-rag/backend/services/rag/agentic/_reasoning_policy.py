@@ -56,8 +56,7 @@ def detect_pricing_data_in_answer(final_answer: str | None) -> bool:
     answer_lower = final_answer.lower()
     if any(marker in answer_lower for marker in PRICING_ANSWER_MARKERS):
         logger.info(
-            "🔍 [Answer Content] Final answer contains pricing data, "
-            "bypassing evidence check",
+            "🔍 [Answer Content] Final answer contains pricing data, bypassing evidence check",
         )
         return True
     return False

@@ -161,7 +161,8 @@ class WhatsAppChannelAdapter(BaseChannel):
             # Truncate if needed
             if len(formatted_text) > self.whatsapp_config.max_message_length:
                 formatted_text = self.truncate_message(
-                    formatted_text, self.whatsapp_config.max_message_length,
+                    formatted_text,
+                    self.whatsapp_config.max_message_length,
                 )
 
             # Send via Meta API
@@ -196,7 +197,9 @@ class WhatsAppChannelAdapter(BaseChannel):
         logger.debug("WhatsApp status update (no-op): %s for %s", status, channel_id)
 
     async def stream_response(
-        self, channel_id: str, response_stream: AsyncIterator[ChannelResponse],
+        self,
+        channel_id: str,
+        response_stream: AsyncIterator[ChannelResponse],
     ) -> None:
         """
         Stream response to WhatsApp (accumulated, then sent once).

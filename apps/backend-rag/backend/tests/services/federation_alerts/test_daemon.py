@@ -181,9 +181,9 @@ async def test_dispatch_hitl_only_routes_to_awaiting_approval(
     daemon = daemon_with_audit_mock
     repo = MagicMock()
     repo.advance_status = AsyncMock()
-    repo.request_approval = AsyncMock(return_value=_proposal(
-        requested_action="restart_agent", status="awaiting_approval"
-    ))
+    repo.request_approval = AsyncMock(
+        return_value=_proposal(requested_action="restart_agent", status="awaiting_approval")
+    )
 
     daemon._pool = MagicMock()
     # Daemon falls back to "<no-telegram>" when bot_token/chat_id are None
@@ -225,9 +225,7 @@ async def test_dispatch_dry_action_executes_with_dry_run_true(
     proposal = _proposal(requested_action="cleanup_log")
 
     # Capture action invocation
-    fake_result = SimpleNamespace(
-        success=True, message="dry-ok", side_effects=(), metadata={}
-    )
+    fake_result = SimpleNamespace(success=True, message="dry-ok", side_effects=(), metadata={})
     fake_action = AsyncMock(return_value=fake_result)
 
     with patch(
@@ -256,9 +254,7 @@ async def test_dispatch_production_executes_with_dry_run_false(
     daemon._pool = MagicMock()
 
     proposal = _proposal(requested_action="cleanup_log")
-    fake_result = SimpleNamespace(
-        success=True, message="ok", side_effects=(), metadata={}
-    )
+    fake_result = SimpleNamespace(success=True, message="ok", side_effects=(), metadata={})
     fake_action = AsyncMock(return_value=fake_result)
 
     with patch(
@@ -321,9 +317,7 @@ async def test_process_notify_payload_missing_proposal_id(
     daemon = daemon_with_audit_mock
     repo = MagicMock()
     repo.get_by_proposal_id = AsyncMock()
-    await daemon._process_notify_payload(
-        json.dumps({"v": 1}), repo
-    )
+    await daemon._process_notify_payload(json.dumps({"v": 1}), repo)
     repo.get_by_proposal_id.assert_not_called()
 
 
@@ -334,9 +328,7 @@ async def test_process_notify_payload_unknown_proposal(
     daemon = daemon_with_audit_mock
     repo = MagicMock()
     repo.get_by_proposal_id = AsyncMock(return_value=None)
-    await daemon._process_notify_payload(
-        json.dumps({"v": 1, "proposal_id": "ghost"}), repo
-    )
+    await daemon._process_notify_payload(json.dumps({"v": 1, "proposal_id": "ghost"}), repo)
 
 
 @pytest.mark.asyncio
@@ -348,9 +340,7 @@ async def test_process_notify_payload_terminal_proposal_skipped(
     proposal = _proposal(is_terminal=True)
     repo.get_by_proposal_id = AsyncMock(return_value=proposal)
     repo.acquire_lease = AsyncMock()
-    await daemon._process_notify_payload(
-        json.dumps({"v": 1, "proposal_id": "pid-1"}), repo
-    )
+    await daemon._process_notify_payload(json.dumps({"v": 1, "proposal_id": "pid-1"}), repo)
     repo.acquire_lease.assert_not_called()
 
 

@@ -39,7 +39,9 @@ class TestProductivityScorerService:
 
     @pytest.mark.asyncio
     async def test_calculate_productivity_scores_no_sessions(
-        self, productivity_scorer, mock_db_pool,
+        self,
+        productivity_scorer,
+        mock_db_pool,
     ):
         """Test calculating productivity scores with no sessions"""
         mock_db_pool.fetch = AsyncMock(return_value=[])
@@ -85,7 +87,9 @@ class TestProductivityScorerService:
 
     @pytest.mark.asyncio
     async def test_calculate_productivity_scores_zero_hours(
-        self, productivity_scorer, mock_db_pool,
+        self,
+        productivity_scorer,
+        mock_db_pool,
     ):
         """Test calculating productivity scores with zero hours"""
         sessions = [
@@ -105,7 +109,9 @@ class TestProductivityScorerService:
 
     @pytest.mark.asyncio
     async def test_calculate_productivity_scores_multiple_users(
-        self, productivity_scorer, mock_db_pool,
+        self,
+        productivity_scorer,
+        mock_db_pool,
     ):
         """Test calculating productivity scores for multiple users"""
         sessions = [
@@ -132,7 +138,9 @@ class TestProductivityScorerService:
 
     @pytest.mark.asyncio
     async def test_calculate_productivity_scores_custom_days(
-        self, productivity_scorer, mock_db_pool,
+        self,
+        productivity_scorer,
+        mock_db_pool,
     ):
         """Test calculating productivity scores with custom days"""
         sessions = [

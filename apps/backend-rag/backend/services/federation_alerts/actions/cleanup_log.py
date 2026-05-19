@@ -13,6 +13,7 @@ hence the same idempotency_key) is a no-op because the second run will
 find no candidates older than 7d that match the previous run's
 fingerprint.
 """
+
 from __future__ import annotations
 
 import logging
@@ -108,8 +109,7 @@ async def cleanup_log_action(
         return ActionResult(
             success=True,
             message=(
-                f"no candidates under {root} older than {max_age_days}d "
-                f"(max_bytes={max_bytes})"
+                f"no candidates under {root} older than {max_age_days}d (max_bytes={max_bytes})"
             ),
             metadata={"would_remove_count": 0},
         )
@@ -120,8 +120,7 @@ async def cleanup_log_action(
         return ActionResult(
             success=True,
             message=(
-                f"DRY-RUN: would remove {len(candidates)} files "
-                f"({total_bytes} bytes) under {root}"
+                f"DRY-RUN: would remove {len(candidates)} files ({total_bytes} bytes) under {root}"
             ),
             side_effects=paths,
             metadata={

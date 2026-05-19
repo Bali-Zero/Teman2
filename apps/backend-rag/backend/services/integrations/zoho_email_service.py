@@ -341,7 +341,12 @@ class ZohoEmailService:
             Dict with emails, total count, and has_more flag
         """
         logger.info(
-            "[Email] Listing emails user=%s folder=%s limit=%s start=%s search=%s", user_id, folder_id, limit, start, search_key,
+            "[Email] Listing emails user=%s folder=%s limit=%s start=%s search=%s",
+            user_id,
+            folder_id,
+            limit,
+            start,
+            search_key,
         )
         params: dict[str, Any] = {
             "folderId": folder_id,
@@ -419,7 +424,10 @@ class ZohoEmailService:
         return result
 
     async def get_email(
-        self, user_id: str, message_id: str, folder_id: str | None = None,
+        self,
+        user_id: str,
+        message_id: str,
+        folder_id: str | None = None,
     ) -> dict[str, Any]:
         """
         Get full email content.
@@ -437,7 +445,10 @@ class ZohoEmailService:
 
         # Step 1: Get metadata from list endpoint (Zoho doesn't have single message metadata endpoint)
         list_response = await self._request(
-            user_id, "GET", "/messages/view", params={"folderId": folder_id, "limit": "50"},
+            user_id,
+            "GET",
+            "/messages/view",
+            params={"folderId": folder_id, "limit": "50"},
         )
         emails_list = list_response.get("data", [])
 
@@ -608,9 +619,14 @@ class ZohoEmailService:
 
             message_id = response.get("data", {}).get("messageId")
             duration = time.time() - start_time
-            logger.info("[Email] Email sent successfully user=%s message_id=%s", user_id, message_id)
+            logger.info(
+                "[Email] Email sent successfully user=%s message_id=%s", user_id, message_id
+            )
             metrics_collector.record_email_operation(
-                operation="send", user_id=user_id, status="success", duration_seconds=duration,
+                operation="send",
+                user_id=user_id,
+                status="success",
+                duration_seconds=duration,
             )
 
             # Log activity for weekly report
@@ -630,7 +646,10 @@ class ZohoEmailService:
         except Exception:
             duration = time.time() - start_time
             metrics_collector.record_email_operation(
-                operation="send", user_id=user_id, status="error", duration_seconds=duration,
+                operation="send",
+                user_id=user_id,
+                status="error",
+                duration_seconds=duration,
             )
             metrics_collector.record_email_error(error_type="api_error", operation="send")
             raise
@@ -660,7 +679,11 @@ class ZohoEmailService:
         """
         action = "replyall" if reply_all else "reply"
         logger.info(
-            "[Email] Replying to email user=%s message_id=%s reply_all=%s to=%s", user_id, message_id, reply_all, to_address,
+            "[Email] Replying to email user=%s message_id=%s reply_all=%s to=%s",
+            user_id,
+            message_id,
+            reply_all,
+            to_address,
         )
 
         # Build payload with required toAddress
@@ -686,7 +709,9 @@ class ZohoEmailService:
 
         reply_message_id = response.get("data", {}).get("messageId")
         logger.info(
-            "[Email] Reply sent successfully user=%s reply_message_id=%s", user_id, reply_message_id,
+            "[Email] Reply sent successfully user=%s reply_message_id=%s",
+            user_id,
+            reply_message_id,
         )
 
         # Log activity for weekly report
@@ -736,7 +761,9 @@ class ZohoEmailService:
 
         fwd_message_id = response.get("data", {}).get("messageId")
         logger.info(
-            "[Email] Email forwarded successfully user=%s fwd_message_id=%s", user_id, fwd_message_id,
+            "[Email] Email forwarded successfully user=%s fwd_message_id=%s",
+            user_id,
+            fwd_message_id,
         )
 
         # Log activity for weekly report
@@ -802,7 +829,10 @@ class ZohoEmailService:
             Success status
         """
         logger.info(
-            "[Email] Toggling flag user=%s message_id=%s flagged=%s", user_id, message_id, is_flagged,
+            "[Email] Toggling flag user=%s message_id=%s flagged=%s",
+            user_id,
+            message_id,
+            is_flagged,
         )
         await self._request(
             user_id,
@@ -898,7 +928,10 @@ class ZohoEmailService:
 
             duration = time.time() - start_time
             metrics_collector.record_email_operation(
-                operation="delete", user_id=user_id, status="success", duration_seconds=duration,
+                operation="delete",
+                user_id=user_id,
+                status="success",
+                duration_seconds=duration,
             )
 
             # Log activity for weekly report (one entry per delete operation)
@@ -911,7 +944,10 @@ class ZohoEmailService:
         except Exception:
             duration = time.time() - start_time
             metrics_collector.record_email_operation(
-                operation="delete", user_id=user_id, status="error", duration_seconds=duration,
+                operation="delete",
+                user_id=user_id,
+                status="error",
+                duration_seconds=duration,
             )
             metrics_collector.record_email_error(error_type="api_error", operation="delete")
             raise
@@ -938,7 +974,10 @@ class ZohoEmailService:
             Attachment content as bytes
         """
         logger.info(
-            "[Email] Downloading attachment user=%s message_id=%s attachment_id=%s", user_id, message_id, attachment_id,
+            "[Email] Downloading attachment user=%s message_id=%s attachment_id=%s",
+            user_id,
+            message_id,
+            attachment_id,
         )
         account_id = await self._get_account_id(user_id)
         headers = await self._get_headers(user_id)

@@ -91,7 +91,9 @@ def _setup_service_account_credentials() -> tuple[bool, str | None]:
             # CRITICAL: Set env var so SDK finds it!
             os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = gac_path
             logger.info(
-                "✅ Service Account credentials loaded from file: %s (project: %s)", gac_path, project_id,
+                "✅ Service Account credentials loaded from file: %s (project: %s)",
+                gac_path,
+                project_id,
             )
             return True, project_id
         except Exception as e:
@@ -255,7 +257,8 @@ class GenAIClient:
                 self._available = True
                 self._auth_method = "service_account_vertexai"
                 logger.info(
-                    "✅ GenAI client initialized with Vertex AI (project: %s)", _sa_project_id,
+                    "✅ GenAI client initialized with Vertex AI (project: %s)",
+                    _sa_project_id,
                 )
                 return
             except Exception as e:
@@ -383,8 +386,11 @@ class GenAIClient:
                 },
             )
             await emit_llm_metric(
-                provider="gemini", model=model, latency_ms=latency_ms,
-                prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
+                provider="gemini",
+                model=model,
+                latency_ms=latency_ms,
+                prompt_tokens=prompt_tokens,
+                completion_tokens=completion_tokens,
             )
             return {
                 "text": response.text,
@@ -399,10 +405,18 @@ class GenAIClient:
             error_class = type(e).__name__
             logger.error(
                 "LLM call failed",
-                extra={"provider": "gemini", "model": model, "latency_ms": latency_ms, "error": str(e)},
+                extra={
+                    "provider": "gemini",
+                    "model": model,
+                    "latency_ms": latency_ms,
+                    "error": str(e),
+                },
             )
             await emit_llm_metric(
-                provider="gemini", model=model, latency_ms=latency_ms, status="error",
+                provider="gemini",
+                model=model,
+                latency_ms=latency_ms,
+                status="error",
             )
             raise
         finally:
@@ -481,8 +495,7 @@ class GenAIClient:
 
         if not isinstance(response_schema, type) or not issubclass(response_schema, BaseModel):
             raise TypeError(
-                "response_schema must be a Pydantic BaseModel subclass; "
-                f"got {response_schema!r}"
+                f"response_schema must be a Pydantic BaseModel subclass; got {response_schema!r}"
             )
 
         if not self.is_available:
@@ -666,20 +679,35 @@ class GenAIClient:
             latency_ms = round((time.perf_counter() - t0) * 1000)
             logger.info(
                 "LLM stream",
-                extra={"provider": "gemini", "model": model, "latency_ms": latency_ms, "chunks": chunk_count},
+                extra={
+                    "provider": "gemini",
+                    "model": model,
+                    "latency_ms": latency_ms,
+                    "chunks": chunk_count,
+                },
             )
             await emit_llm_metric(
-                provider="gemini", model=model, latency_ms=latency_ms,
+                provider="gemini",
+                model=model,
+                latency_ms=latency_ms,
                 extra={"chunks": str(chunk_count)},
             )
         except Exception as e:
             latency_ms = round((time.perf_counter() - t0) * 1000)
             logger.error(
                 "LLM stream failed",
-                extra={"provider": "gemini", "model": model, "latency_ms": latency_ms, "error": str(e)},
+                extra={
+                    "provider": "gemini",
+                    "model": model,
+                    "latency_ms": latency_ms,
+                    "error": str(e),
+                },
             )
             await emit_llm_metric(
-                provider="gemini", model=model, latency_ms=latency_ms, status="error",
+                provider="gemini",
+                model=model,
+                latency_ms=latency_ms,
+                status="error",
             )
             raise
 

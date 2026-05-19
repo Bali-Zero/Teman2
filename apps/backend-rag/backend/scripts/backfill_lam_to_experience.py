@@ -17,6 +17,7 @@ Safety:
 - Read-only on Qdrant. All writes go through ExperienceService.
 - Honours EXPERIENCE_DB_PATH env var for the target SQLite.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -39,22 +40,53 @@ logger = logging.getLogger(__name__)
 #
 # Explicit allowlists. Anything outside these sets → skip (conservative).
 
-_SUCCESS_TERMS = frozenset({
-    "success", "successful", "succeeded", "ok", "pass", "passed", "resolved",
-})
-_FAILURE_TERMS = frozenset({
-    "failure", "failed", "fail", "error", "crash", "crashed", "aborted",
-})
-_PARTIAL_TERMS = frozenset({
-    "partial", "partially_successful", "partial_success", "timeout", "retry",
-})
+_SUCCESS_TERMS = frozenset(
+    {
+        "success",
+        "successful",
+        "succeeded",
+        "ok",
+        "pass",
+        "passed",
+        "resolved",
+    }
+)
+_FAILURE_TERMS = frozenset(
+    {
+        "failure",
+        "failed",
+        "fail",
+        "error",
+        "crash",
+        "crashed",
+        "aborted",
+    }
+)
+_PARTIAL_TERMS = frozenset(
+    {
+        "partial",
+        "partially_successful",
+        "partial_success",
+        "timeout",
+        "retry",
+    }
+)
 
 # Explicit "known but ambiguous" set — these terms exist in real LAM episodes
 # but don't carry enough signal. Documented in tests so reviewers see the
 # rationale.
-AMBIGUOUS_OUTCOMES = frozenset({
-    "", "unknown", "completed", "done", "finished", "n/a", "?", "maybe",
-})
+AMBIGUOUS_OUTCOMES = frozenset(
+    {
+        "",
+        "unknown",
+        "completed",
+        "done",
+        "finished",
+        "n/a",
+        "?",
+        "maybe",
+    }
+)
 
 
 def normalize_outcome(raw: Any) -> str | None:
@@ -110,9 +142,7 @@ def build_trajectory_record(episode: dict[str, Any]) -> TrajectoryRecord | None:
 
     tokens = metadata.get("tokens") if isinstance(metadata.get("tokens"), int) else None
     duration_ms = (
-        metadata.get("duration_ms")
-        if isinstance(metadata.get("duration_ms"), int)
-        else None
+        metadata.get("duration_ms") if isinstance(metadata.get("duration_ms"), int) else None
     )
 
     tags_raw = episode.get("tags")
@@ -136,8 +166,7 @@ class EpisodeSource(Protocol):
     """Anything iterating over LAM episode dicts. Lets us swap in a fake
     source in tests without a running Qdrant."""
 
-    def iter_episodes(self) -> Iterator[dict[str, Any]]:
-        ...
+    def iter_episodes(self) -> Iterator[dict[str, Any]]: ...
 
 
 def backfill_all(
@@ -183,7 +212,9 @@ def backfill_all(
             report["would_record"] += 1
             logger.info(
                 "[DRY] would record %s (outcome=%s, cell=%s)",
-                rec.trajectory_id, rec.outcome, rec.cell,
+                rec.trajectory_id,
+                rec.outcome,
+                rec.cell,
             )
             continue
 
@@ -212,7 +243,8 @@ class _QdrantEpisodeSource:
         from backend.core.qdrant_db import QdrantClient
 
         client = QdrantClient(
-            qdrant_url=settings.qdrant_url, collection_name="lam_episodes",
+            qdrant_url=settings.qdrant_url,
+            collection_name="lam_episodes",
         )
         offset: Any = None
         seen = 0
@@ -238,11 +270,14 @@ class _QdrantEpisodeSource:
 def main(argv: Iterable[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="Report what would be recorded without writing anywhere.",
     )
     parser.add_argument(
-        "--limit", type=int, default=None,
+        "--limit",
+        type=int,
+        default=None,
         help="Stop after N episodes (default: scan all).",
     )
     args = parser.parse_args(list(argv) if argv is not None else None)

@@ -64,7 +64,9 @@ class TestCrossOracleSynthesisIntegration:
 
     @pytest.mark.asyncio
     async def test_business_planning_query_synthesis(
-        self, cross_oracle_service, mock_search_service,
+        self,
+        cross_oracle_service,
+        mock_search_service,
     ):
         """Test synthesis of business planning queries across multiple oracles"""
         query = "Crea un piano completo per aprire un ristorante a Bali"
@@ -123,7 +125,9 @@ class TestCrossOracleSynthesisIntegration:
 
     @pytest.mark.asyncio
     async def test_comprehensive_analysis_synthesis(
-        self, cross_oracle_service, mock_search_service,
+        self,
+        cross_oracle_service,
+        mock_search_service,
     ):
         """Test comprehensive analysis synthesis"""
         query = "Analisi completa: PT PMA vs PT Lokal per ristorante"
@@ -151,7 +155,8 @@ class TestCrossOracleSynthesisIntegration:
             }
 
             result = await cross_oracle_service.synthesize(
-                query=query, results=comprehensive_results,
+                query=query,
+                results=comprehensive_results,
             )
 
             # Verify comprehensive analysis
@@ -162,7 +167,10 @@ class TestCrossOracleSynthesisIntegration:
 
     @pytest.mark.asyncio
     async def test_synthesis_with_user_context(
-        self, cross_oracle_service, mock_search_service, mock_db_pool,
+        self,
+        cross_oracle_service,
+        mock_search_service,
+        mock_db_pool,
     ):
         """Test synthesis using user context for personalization"""
         query = "Piano per il mio business"

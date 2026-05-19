@@ -218,7 +218,7 @@ class NewsletterPublisher:
         return template.safe_substitute(
             kicker=_escape(f"Week of {content.week_of.isoformat()}"),
             headline=_escape(self._build_headline(content)),
-            body=self._build_body_html(content),   # already HTML-safe
+            body=self._build_body_html(content),  # already HTML-safe
             image_url=self._select_cover(content),  # URL — used in src=""
             patch_css="",
         )
@@ -261,13 +261,10 @@ class NewsletterPublisher:
                 title = _escape(t.title[:180])
                 implication = _escape((t.implication or "")[:220])
                 fragments.append(
-                    f"<br>• {title}"
-                    + (f" — <em>{implication}</em>" if implication else "")
+                    f"<br>• {title}" + (f" — <em>{implication}</em>" if implication else "")
                 )
 
-        fragments.append(
-            "<br><br><em>Bali Zero · balizero.com</em>"
-        )
+        fragments.append("<br><br><em>Bali Zero · balizero.com</em>")
         return "".join(fragments)
 
     def _build_subject(self, content: RoundupContent) -> str:
@@ -289,9 +286,4 @@ def _escape(value: Any) -> str:
     """HTML-escape content safe for email clients."""
     if value is None:
         return ""
-    return (
-        str(value)
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+    return str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

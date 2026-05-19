@@ -98,7 +98,8 @@ class PortalDashboardMixin:
 
             # Get primary company name
             primary_company = next(
-                (c for c in companies if c["is_primary"]), companies[0] if companies else None,
+                (c for c in companies if c["is_primary"]),
+                companies[0] if companies else None,
             )
 
             # Get upcoming tax deadlines (next 30 days)
@@ -701,8 +702,7 @@ class PortalDashboardMixin:
                         "id": d["id"],
                         "type": d["document_type"],
                         "name": d["file_name"],
-                        "downloadable": d["file_url"] is not None
-                        or d["file_id"] is not None,
+                        "downloadable": d["file_url"] is not None or d["file_id"] is not None,
                     }
                     for d in documents
                 ],
@@ -722,10 +722,12 @@ class PortalDashboardMixin:
                 ],
             }
 
-    @cache_invalidating([
-        lambda _self, client_id, *_a, **_k: f"zantara:portal_dashboard:{client_id}:*",
-        lambda _self, client_id, *_a, **_k: f"zantara:crm_client:{client_id}:*",
-    ])
+    @cache_invalidating(
+        [
+            lambda _self, client_id, *_a, **_k: f"zantara:portal_dashboard:{client_id}:*",
+            lambda _self, client_id, *_a, **_k: f"zantara:crm_client:{client_id}:*",
+        ]
+    )
     @require_client_access
     async def set_primary_company(
         self,
@@ -860,6 +862,7 @@ class PortalDashboardMixin:
                 "obligations": obligations,
                 "history": history,
             }
+
     # ================================================
     # TIMELINE
     # ================================================

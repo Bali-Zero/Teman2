@@ -117,7 +117,12 @@ class CollectiveMemoryEmitter:
             logger.error("❌ Failed to emit relationship_updated: %s", e)
 
     async def emit_memory_consolidated(
-        self, event_source: Any, action: str, original_memories: list, new_memory: str, reason: str,
+        self,
+        event_source: Any,
+        action: str,
+        original_memories: list,
+        new_memory: str,
+        reason: str,
     ) -> None:
         """Emette evento memoria consolidata"""
         try:

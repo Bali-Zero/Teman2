@@ -183,7 +183,11 @@ class AlertService:
         return results
 
     def _log_alert(
-        self, title: str, message: str, level: AlertLevel, metadata: dict[str, Any] | None = None,
+        self,
+        title: str,
+        message: str,
+        level: AlertLevel,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Log alert to application logs"""
         log_message = f"[{level.value.upper()}] {title}: {message}"
@@ -200,7 +204,11 @@ class AlertService:
             logger.info(log_message)
 
     async def _send_telegram_alert(
-        self, title: str, message: str, level: AlertLevel, metadata: dict[str, Any] | None = None,
+        self,
+        title: str,
+        message: str,
+        level: AlertLevel,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Send alert to admin Telegram chat"""
         if not self.telegram_bot_token or not self.telegram_admin_chat_id:
@@ -225,7 +233,9 @@ class AlertService:
                 val_str = _esc(str(value)[:200])
                 lines.append(f"• <code>{_esc(key)}</code>: {val_str}")
 
-        lines.append(f"\n<i>Zantara RAG — {datetime.now(timezone.utc).strftime('%H:%M:%S UTC')}</i>")
+        lines.append(
+            f"\n<i>Zantara RAG — {datetime.now(timezone.utc).strftime('%H:%M:%S UTC')}</i>"
+        )
 
         text = "\n".join(lines)
 
@@ -242,7 +252,11 @@ class AlertService:
         response.raise_for_status()
 
     async def _send_slack_alert(
-        self, title: str, message: str, level: AlertLevel, metadata: dict[str, Any] | None = None,
+        self,
+        title: str,
+        message: str,
+        level: AlertLevel,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Send alert to Slack"""
         if not self.slack_webhook:
@@ -295,7 +309,11 @@ class AlertService:
         response.raise_for_status()
 
     async def _send_discord_alert(
-        self, title: str, message: str, level: AlertLevel, metadata: dict[str, Any] | None = None,
+        self,
+        title: str,
+        message: str,
+        level: AlertLevel,
+        metadata: dict[str, Any] | None = None,
     ) -> None:
         """Send alert to Discord"""
         if not self.discord_webhook:
@@ -428,7 +446,8 @@ class AlertService:
         ]
 
         for path, evts in sorted(
-            by_path.items(), key=lambda x: -max(e["duration_ms"] for e in x[1]),
+            by_path.items(),
+            key=lambda x: -max(e["duration_ms"] for e in x[1]),
         ):
             worst = max(e["duration_ms"] for e in evts)
             avg = round(sum(e["duration_ms"] for e in evts) / len(evts))
@@ -438,7 +457,9 @@ class AlertService:
                 f"  {len(evts)}x — max <b>{worst}ms</b> avg {avg}ms — [{times}]",
             )
 
-        lines.append(f"\n<i>Zantara RAG — {datetime.now(timezone.utc).strftime('%H:%M:%S UTC')}</i>")
+        lines.append(
+            f"\n<i>Zantara RAG — {datetime.now(timezone.utc).strftime('%H:%M:%S UTC')}</i>"
+        )
         text = "\n".join(lines)
 
         if self.enable_telegram:

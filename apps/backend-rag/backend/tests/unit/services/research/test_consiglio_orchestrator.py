@@ -46,11 +46,13 @@ def test_claim_is_disputed_respects_custom_threshold():
 def test_result_gate_6_passes_when_all_claims_reach_quorum():
     claims = [
         ConsiglioClaim(
-            key="k1", value="v",
+            key="k1",
+            value="v",
             votes={"claude": True, "gemini": True, "deepseek": True, "notebooklm": True},
         ),
         ConsiglioClaim(
-            key="k2", value="v",
+            key="k2",
+            value="v",
             votes={"claude": True, "gemini": True, "deepseek": True, "notebooklm": False},
         ),
     ]
@@ -61,11 +63,13 @@ def test_result_gate_6_passes_when_all_claims_reach_quorum():
 def test_result_gate_6_fails_if_any_claim_disputed():
     claims = [
         ConsiglioClaim(
-            key="k1", value="v",
+            key="k1",
+            value="v",
             votes={"claude": True, "gemini": True, "deepseek": True, "notebooklm": False},
         ),
         ConsiglioClaim(
-            key="k2", value="v",
+            key="k2",
+            value="v",
             votes={"claude": True, "gemini": False, "deepseek": False, "notebooklm": False},
         ),
     ]
@@ -78,11 +82,13 @@ def test_result_gate_6_adapts_to_available_voters():
     """If only 2 LLMs responded across all claims, Gate 6 requires 2/2."""
     claims = [
         ConsiglioClaim(
-            key="k1", value="v",
+            key="k1",
+            value="v",
             votes={"claude": True, "deepseek": True},
         ),
         ConsiglioClaim(
-            key="k2", value="v",
+            key="k2",
+            value="v",
             votes={"claude": True, "deepseek": False},
         ),
     ]

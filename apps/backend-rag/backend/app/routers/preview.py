@@ -72,7 +72,8 @@ async def upload_preview(
         html_content = payload.html_content
         if "<head>" in html_content and 'name="robots"' not in html_content:
             html_content = html_content.replace(
-                "<head>", '<head>\n<meta name="robots" content="noindex, nofollow">',
+                "<head>",
+                '<head>\n<meta name="robots" content="noindex, nofollow">',
             )
 
         # Save HTML file
@@ -121,7 +122,8 @@ async def get_preview(article_id: str) -> HTMLResponse:
                 # Add noindex meta tag to prevent search engine indexing
                 if "<head>" in html_content and 'name="robots"' not in html_content:
                     html_content = html_content.replace(
-                        "<head>", '<head>\n<meta name="robots" content="noindex, nofollow">',
+                        "<head>",
+                        '<head>\n<meta name="robots" content="noindex, nofollow">',
                     )
 
                 logger.info("Serving preview: %s", article_id)

@@ -42,6 +42,7 @@ from backend.services.rag.agentic.reasoning_utils import (
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_tool(tool_name=None, arguments=None, *, set_arguments=True):
     """Build a simple namespace object that mimics a ToolCall."""
     obj = types.SimpleNamespace()
@@ -56,8 +57,8 @@ def _make_tool(tool_name=None, arguments=None, *, set_arguments=True):
 # get_critical_domain_type
 # ===========================================================================
 
-class TestGetCriticalDomainType:
 
+class TestGetCriticalDomainType:
     def test_visa_keyword_kitas_uppercase(self):
         assert get_critical_domain_type("My KITAS expires next month") == "visa"
 
@@ -100,8 +101,8 @@ class TestGetCriticalDomainType:
 # is_critical_domain
 # ===========================================================================
 
-class TestIsCriticalDomain:
 
+class TestIsCriticalDomain:
     def test_business_complex_intent_overrides_empty_query(self):
         assert is_critical_domain("Hello", "business_complex") is True
 
@@ -128,8 +129,8 @@ class TestIsCriticalDomain:
 # is_valid_tool_call
 # ===========================================================================
 
-class TestIsValidToolCall:
 
+class TestIsValidToolCall:
     def test_empty_dict_arguments_is_valid(self):
         # {} is not None — an empty dict is a legitimate (no-args) call
         obj = _make_tool("vector_search", {})
@@ -164,8 +165,8 @@ class TestIsValidToolCall:
 # calculate_evidence_score
 # ===========================================================================
 
-class TestCalculateEvidenceScore:
 
+class TestCalculateEvidenceScore:
     # --- guard conditions ---
 
     def test_both_none_and_empty_returns_zero(self):
@@ -280,9 +281,9 @@ class TestCalculateEvidenceScore:
         # Even if cosine is < 0.5, penalty only fires when final_score > 0.15
         # Craft a case with zero semantic relevance → final_score ≤ 0.10 → no penalty
         score = calculate_evidence_score(
-            [{"score": 0.35}],   # cosine 0.35 < 0.5, would trigger penalty
+            [{"score": 0.35}],  # cosine 0.35 < 0.5, would trigger penalty
             ["completely unrelated content about something else"],
-            "xyzabc123",          # no meaningful keywords → semantic_relevance = 0.0
+            "xyzabc123",  # no meaningful keywords → semantic_relevance = 0.0
         )
         # final_score already ≤ 0.10; verify penalty didn't make it negative
         assert 0.0 <= score <= 0.10
@@ -323,8 +324,8 @@ class TestCalculateEvidenceScore:
 # _parse_domain_threshold_overrides
 # ===========================================================================
 
-class TestParseDomainThresholdOverrides:
 
+class TestParseDomainThresholdOverrides:
     def test_valid_single_entry(self):
         result = _parse_domain_threshold_overrides("tax:0.10")
         assert result == {"tax": 0.10}
@@ -345,11 +346,13 @@ class TestParseDomainThresholdOverrides:
 
     def test_non_numeric_value_is_skipped_and_warned(self, caplog):
         import logging
+
         with caplog.at_level(logging.WARNING):
             result = _parse_domain_threshold_overrides("kbli:notanumber")
         assert result == {}
-        assert any("notanumber" in r.message or "skipping" in r.message.lower()
-                   for r in caplog.records)
+        assert any(
+            "notanumber" in r.message or "skipping" in r.message.lower() for r in caplog.records
+        )
 
     def test_uppercase_keys_normalized_to_lowercase(self):
         result = _parse_domain_threshold_overrides("TAX:0.10,KBLI:0.20")
@@ -370,6 +373,7 @@ class TestParseDomainThresholdOverrides:
 
     def test_extra_colon_in_value_is_skipped(self, caplog):
         import logging
+
         with caplog.at_level(logging.WARNING):
             result = _parse_domain_threshold_overrides("tax:0.10:extra")
         assert result == {}
@@ -379,8 +383,8 @@ class TestParseDomainThresholdOverrides:
 # classify_query_domain  (priority collisions not covered by existing tests)
 # ===========================================================================
 
-class TestClassifyQueryDomain:
 
+class TestClassifyQueryDomain:
     def test_none_query_returns_default(self):
         assert classify_query_domain(None) == "default"
 
@@ -433,8 +437,8 @@ class TestClassifyQueryDomain:
 # get_abstain_threshold  (env override scenarios)
 # ===========================================================================
 
-class TestGetAbstainThreshold:
 
+class TestGetAbstainThreshold:
     def test_env_override_changes_tax_threshold(self, monkeypatch):
         monkeypatch.setenv("DOMAIN_ABSTAIN_THRESHOLDS", "tax:0.05")
         monkeypatch.setattr(mod, "_DOMAIN_THRESHOLDS", mod._build_domain_thresholds())
@@ -456,8 +460,8 @@ class TestGetAbstainThreshold:
 # detect_team_query
 # ===========================================================================
 
-class TestDetectTeamQuery:
 
+class TestDetectTeamQuery:
     # --- input validation ---
 
     def test_non_string_int_returns_false(self):
@@ -473,6 +477,7 @@ class TestDetectTeamQuery:
 
     def test_dynamic_company_name_marker_matches(self):
         from backend.app.core.config import settings
+
         query = f"i dipendenti {settings.COMPANY_NAME}"
         is_team, qtype, term = detect_team_query(query)
         assert is_team is True
@@ -481,6 +486,7 @@ class TestDetectTeamQuery:
 
     def test_dynamic_company_name_uppercase_in_query(self):
         from backend.app.core.config import settings
+
         query = f"I DIPENDENTI {settings.COMPANY_NAME.upper()}"
         is_team, qtype, _ = detect_team_query(query)
         assert is_team is True
@@ -497,9 +503,7 @@ class TestDetectTeamQuery:
     def test_email_beats_role_lookup(self):
         # query has team context marker AND an email — email lookup comes second
         # in the function, so if list_all doesn't match, email regex fires
-        is_team, qtype, term = detect_team_query(
-            "chi gestisce taxation? contact tax@balizero.com"
-        )
+        is_team, qtype, term = detect_team_query("chi gestisce taxation? contact tax@balizero.com")
         # "chi gestisce" is a team context marker, but re.search for email runs
         # at step 2 (before role lookup at step 3) so email wins
         assert is_team is True
@@ -545,9 +549,7 @@ class TestDetectTeamQuery:
     # --- name patterns: 3-word cap ---
 
     def test_name_capped_at_three_words(self):
-        is_team, qtype, term = detect_team_query(
-            "Chi è Marco Antonio Rossi Bianchi?"
-        )
+        is_team, qtype, term = detect_team_query("Chi è Marco Antonio Rossi Bianchi?")
         assert is_team is True
         assert qtype == "search_by_name"
         words = term.split()
@@ -557,9 +559,7 @@ class TestDetectTeamQuery:
 
     def test_unicode_quotes_stripped_from_name(self):
         # U+201C " and U+201D " around a name
-        is_team, qtype, term = detect_team_query(
-            "Chi è “Marco”?"
-        )
+        is_team, qtype, term = detect_team_query("Chi è “Marco”?")
         assert is_team is True
         assert qtype == "search_by_name"
         assert "“" not in term and "”" not in term

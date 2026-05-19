@@ -5,6 +5,7 @@ turns a Python source file into a list of skill candidate dicts. The CLI glue
 (argparse, filesystem walk, dry-run report) is exercised via an integration
 smoke test that points at a small temp tree.
 """
+
 from __future__ import annotations
 
 import textwrap
@@ -23,23 +24,26 @@ from backend.scripts.catalog_initial_skills import (
 # ─── Function eligibility ────────────────────────────────────────
 
 
-@pytest.mark.parametrize("name,expected", [
-    ("extract_kbli_codes", True),
-    ("parse_akta_founders", True),
-    ("retry_with_backoff", True),
-    ("_private_helper", False),
-    ("__init__", False),
-    ("test_something", False),
-    ("get", False),          # too short / trivial CRUD
-    ("list_items", False),   # CRUD
-    ("create_user", False),  # CRUD
-    ("delete_record", False),
-    # Verbs that carry domain-specific procedure are kept
-    ("detect_proxy_signatures", True),
-    ("normalize_outcome", True),
-    ("chunk_text", True),
-    ("classify_intent", True),
-])
+@pytest.mark.parametrize(
+    "name,expected",
+    [
+        ("extract_kbli_codes", True),
+        ("parse_akta_founders", True),
+        ("retry_with_backoff", True),
+        ("_private_helper", False),
+        ("__init__", False),
+        ("test_something", False),
+        ("get", False),  # too short / trivial CRUD
+        ("list_items", False),  # CRUD
+        ("create_user", False),  # CRUD
+        ("delete_record", False),
+        # Verbs that carry domain-specific procedure are kept
+        ("detect_proxy_signatures", True),
+        ("normalize_outcome", True),
+        ("chunk_text", True),
+        ("classify_intent", True),
+    ],
+)
 def test_is_eligible_function_name(name: str, expected: bool):
     assert is_eligible_function(name) is expected
 
@@ -60,7 +64,9 @@ def test_extract_candidates_ignores_test_files():
     """)
     # Files whose path segments mark them as tests must return zero candidates.
     out = extract_candidates_from_source(
-        source=src, relpath="backend/tests/unit/test_foo.py", cell_hint="foo",
+        source=src,
+        relpath="backend/tests/unit/test_foo.py",
+        cell_hint="foo",
     )
     assert out == []
 
@@ -74,7 +80,9 @@ def test_extract_candidates_skips_private_and_dunder():
             pass
     """)
     out = extract_candidates_from_source(
-        source=src, relpath="backend/services/foo/bar.py", cell_hint="foo",
+        source=src,
+        relpath="backend/services/foo/bar.py",
+        cell_hint="foo",
     )
     assert out == []
 
@@ -86,7 +94,9 @@ def test_extract_candidates_captures_docstring_as_procedure():
             return []
     ''')
     out = extract_candidates_from_source(
-        source=src, relpath="backend/services/akta/parser.py", cell_hint="akta",
+        source=src,
+        relpath="backend/services/akta/parser.py",
+        cell_hint="akta",
     )
     assert len(out) == 1
     cand = out[0]
@@ -106,7 +116,9 @@ def test_extract_candidates_fallback_procedure_when_no_docstring():
             return raw.strip().lower()
     """)
     out = extract_candidates_from_source(
-        source=src, relpath="backend/services/experience/util.py", cell_hint="experience",
+        source=src,
+        relpath="backend/services/experience/util.py",
+        cell_hint="experience",
     )
     assert len(out) == 1
     # Fallback shape: "<name> in <file>" — never empty (required by genome schema).
@@ -125,7 +137,9 @@ def test_extract_candidates_methods_of_classes_included():
                 pass
     ''')
     out = extract_candidates_from_source(
-        source=src, relpath="backend/services/rag/chunker.py", cell_hint="rag",
+        source=src,
+        relpath="backend/services/rag/chunker.py",
+        cell_hint="rag",
     )
     ids = [c.skill_id for c in out]
     assert any("chunk_text" in i for i in ids)
@@ -147,7 +161,9 @@ def test_extract_candidates_crud_excluded():
             return {}
     ''')
     out = extract_candidates_from_source(
-        source=src, relpath="backend/services/crm/repo.py", cell_hint="crm",
+        source=src,
+        relpath="backend/services/crm/repo.py",
+        cell_hint="crm",
     )
     assert out == []
 
@@ -160,7 +176,9 @@ def test_extract_candidates_cell_hint_fallback_when_missing():
             return []
     ''')
     out = extract_candidates_from_source(
-        source=src, relpath="backend/services/misc/parser.py", cell_hint="",
+        source=src,
+        relpath="backend/services/misc/parser.py",
+        cell_hint="",
     )
     assert len(out) == 1
     # Must not start with 'colon' (i.e., empty prefix).
@@ -174,19 +192,23 @@ def test_scan_tree_walks_python_files(tmp_path: Path):
     root = tmp_path / "backend-rag"
     services = root / "backend" / "services" / "foo"
     services.mkdir(parents=True)
-    (services / "parser.py").write_text(_source('''
+    (services / "parser.py").write_text(
+        _source('''
         def parse_something(text):
             """Do something to text."""
             return text
-    '''))
+    ''')
+    )
     (services / "__init__.py").write_text("")
     # Test file should be skipped
     tests = root / "backend" / "tests" / "unit"
     tests.mkdir(parents=True)
-    (tests / "test_parser.py").write_text(_source('''
+    (tests / "test_parser.py").write_text(
+        _source("""
         def test_parse_something():
             pass
-    '''))
+    """)
+    )
 
     cands = scan_tree(root)
     ids = [c.skill_id for c in cands]
@@ -200,8 +222,7 @@ def test_scan_tree_caps_at_explicit_limit(tmp_path: Path):
     pkg = root / "backend" / "services" / "many"
     pkg.mkdir(parents=True)
     body = "\n\n".join(
-        f"def extract_thing_{i}(x):\n    \"\"\"Do {i}.\"\"\"\n    return x"
-        for i in range(20)
+        f'def extract_thing_{i}(x):\n    """Do {i}."""\n    return x' for i in range(20)
     )
     (pkg / "module.py").write_text(body)
 

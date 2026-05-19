@@ -7,6 +7,7 @@ WebhookProcessor is the LISTEN-based worker that drains the
 Tests use mocked asyncpg connection (AsyncMock) — same pattern as
 ``backend/tests/services/events/test_outbox.py``.
 """
+
 from __future__ import annotations
 
 import json
@@ -30,9 +31,9 @@ def test_compute_backoff_first_attempt():
 
 def test_compute_backoff_grows_linearly():
     """Linear backoff: 5min × attempt number."""
-    assert _compute_backoff_seconds(attempts=1) == 300   # 5 min
-    assert _compute_backoff_seconds(attempts=2) == 600   # 10 min
-    assert _compute_backoff_seconds(attempts=3) == 900   # 15 min
+    assert _compute_backoff_seconds(attempts=1) == 300  # 5 min
+    assert _compute_backoff_seconds(attempts=2) == 600  # 10 min
+    assert _compute_backoff_seconds(attempts=3) == 900  # 15 min
     assert _compute_backoff_seconds(attempts=4) == 1200  # 20 min
 
 
@@ -80,8 +81,7 @@ async def test_drain_pending_marks_processed_on_success():
     # Verify execute called with UPDATE inbound_webhooks SET processed_at = NOW()
     conn = pool._conn
     update_calls = [
-        c for c in conn.execute.await_args_list
-        if "processed_at = NOW()" in str(c.args[0])
+        c for c in conn.execute.await_args_list if "processed_at = NOW()" in str(c.args[0])
     ]
     assert len(update_calls) == 1
     assert update_calls[0].args[1] == 42  # bound id
@@ -100,7 +100,8 @@ async def test_drain_pending_skips_rows_without_handler():
     conn = pool._conn
     # Find the UPDATE that marks no handler
     error_updates = [
-        c for c in conn.execute.await_args_list
+        c
+        for c in conn.execute.await_args_list
         if "processed_at = NOW()" in str(c.args[0]) and "no handler" in str(c.args)
     ]
     assert len(error_updates) == 1
@@ -121,7 +122,8 @@ async def test_drain_pending_retry_with_backoff_on_handler_exception():
 
     # Should have called fetchval for the retry update (attempts++ + next_retry_at)
     retry_calls = [
-        c for c in pool._conn.fetchval.await_args_list
+        c
+        for c in pool._conn.fetchval.await_args_list
         if "next_retry_at" in str(c.args[0]) and "attempts + 1" in str(c.args[0])
     ]
     assert len(retry_calls) >= 1
@@ -142,7 +144,8 @@ async def test_drain_pending_marks_terminal_after_5_attempts():
 
     # Find the terminal-mark UPDATE (processed_at + GIVING UP)
     terminal = [
-        c for c in pool._conn.execute.await_args_list
+        c
+        for c in pool._conn.execute.await_args_list
         if "processed_at = NOW()" in str(c.args[0]) and "GIVING UP" in str(c.args)
     ]
     assert len(terminal) == 1
@@ -156,18 +159,15 @@ async def test_drain_pending_idempotent_on_replay():
     no rows because the first call already locked them in its transaction.
     Here we verify the SQL contains the SKIP LOCKED clause.
     """
-    pool = _make_pool_returning(
-        [{"id": 1, "channel": "whatsapp", "payload": {}, "attempts": 0}]
-    )
-    processor = WebhookProcessor(
-        db_pool=pool, handlers={"whatsapp": AsyncMock()}
-    )
+    pool = _make_pool_returning([{"id": 1, "channel": "whatsapp", "payload": {}, "attempts": 0}])
+    processor = WebhookProcessor(db_pool=pool, handlers={"whatsapp": AsyncMock()})
 
     await processor.drain_pending()
 
     # Find the SELECT call
     select_calls = [
-        c for c in pool._conn.fetch.await_args_list
+        c
+        for c in pool._conn.fetch.await_args_list
         if "SELECT" in str(c.args[0]).upper() and "inbound_webhooks" in str(c.args[0])
     ]
     assert len(select_calls) >= 1
@@ -180,8 +180,12 @@ async def test_drain_pending_decodes_payload_str_to_dict():
     handler = AsyncMock()
     pool = _make_pool_returning(
         [
-            {"id": 1, "channel": "whatsapp",
-             "payload": json.dumps({"msg": "from_str"}), "attempts": 0},
+            {
+                "id": 1,
+                "channel": "whatsapp",
+                "payload": json.dumps({"msg": "from_str"}),
+                "attempts": 0,
+            },
         ]
     )
     processor = WebhookProcessor(db_pool=pool, handlers={"whatsapp": handler})

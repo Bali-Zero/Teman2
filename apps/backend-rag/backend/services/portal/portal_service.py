@@ -216,4 +216,3 @@ class PortalService(
             "checks": checks,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
-

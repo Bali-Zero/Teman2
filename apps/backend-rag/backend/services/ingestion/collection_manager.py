@@ -274,7 +274,9 @@ class CollectionManager:
         async with semaphore:
             # Multiple searches can proceed concurrently
             return await collection.search(
-                query_embedding=query_embedding, filter=filter, limit=limit,
+                query_embedding=query_embedding,
+                filter=filter,
+                limit=limit,
             )
 
     async def ingest_with_lock(
@@ -326,6 +328,7 @@ class CollectionManager:
                 self._collection_last_updated[collection_name] = now
                 try:
                     from backend.app.metrics import metrics_collector
+
                     metrics_collector.set_collection_last_updated(collection_name, now)
                 except Exception:
                     pass

@@ -15,6 +15,7 @@ from backend.services.visa_unified.bridge import (
 
 # --- Fake asyncpg.Pool that returns canned rows ---------------------------
 
+
 class _FakeConn:
     def __init__(self, row: dict | None):
         self._row = row
@@ -43,6 +44,7 @@ class _FakePool:
 
 
 # --- get_funnel_context ---------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_get_funnel_context_returns_typed_dataclass():
@@ -144,6 +146,7 @@ async def test_get_funnel_context_flags_referral_mode_when_visa_is_null():
 
 
 # --- augment_chat_system_prompt -------------------------------------------
+
 
 def _ctx(**overrides) -> FunnelContext:
     defaults = {

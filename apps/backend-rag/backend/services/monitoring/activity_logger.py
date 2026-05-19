@@ -170,7 +170,9 @@ class ActivityLogger:
                 )
 
             logger.debug(
-                "📝 Logged activity: %s by %s", action_type, user_email,
+                "📝 Logged activity: %s by %s",
+                action_type,
+                user_email,
                 extra={"action_type": action_type, "user_email": user_email},
             )
             return True
@@ -254,7 +256,10 @@ class ActivityLogger:
                 )
 
             logger.debug(
-                "💬 Logged interaction: %s (%s) by %s", interaction_type, direction, user_email,
+                "💬 Logged interaction: %s (%s) by %s",
+                interaction_type,
+                direction,
+                user_email,
                 extra={"interaction_type": interaction_type, "user_email": user_email},
             )
             return True
@@ -337,7 +342,11 @@ class ActivityLogger:
             # Only log errors or slow requests
             if response_status >= 400 or response_time_ms > 1000:
                 logger.debug(
-                    "🔍 Logged API call: %s %s → %s (%sms)", method, endpoint, response_status, response_time_ms,
+                    "🔍 Logged API call: %s %s → %s (%sms)",
+                    method,
+                    endpoint,
+                    response_status,
+                    response_time_ms,
                     extra={
                         "method": method,
                         "endpoint": endpoint,

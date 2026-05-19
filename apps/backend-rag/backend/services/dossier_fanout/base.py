@@ -23,7 +23,7 @@ class ConsumeResult:
     ok: bool
     skipped: bool = False
     skip_reason: FanoutSkipReason | None = None
-    entity_id: str | None = None   # e.g. Qdrant point id, CRM alert id
+    entity_id: str | None = None  # e.g. Qdrant point id, CRM alert id
     error: str | None = None
     meta: dict[str, Any] = field(default_factory=dict)
 
@@ -44,8 +44,7 @@ class DossierConsumer(ABC):
     require_public_safe: bool = False
 
     @abstractmethod
-    async def consume(self, dossier: ResearchDossier) -> ConsumeResult:
-        ...
+    async def consume(self, dossier: ResearchDossier) -> ConsumeResult: ...
 
     async def noop_skip(
         self,

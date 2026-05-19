@@ -109,7 +109,9 @@ class ToolExecutor:
 
                     # Execute ZantaraTools directly
                     result = await self.zantara_tools.execute_tool(
-                        tool_name=tool_name, tool_input=tool_input, user_id="system",
+                        tool_name=tool_name,
+                        tool_input=tool_input,
+                        user_id="system",
                     )
 
                     if not result.get("success"):
@@ -142,7 +144,8 @@ class ToolExecutor:
                     logger.info("🔌 [MCP] Executing: %s", tool_name)
 
                     result = await self.mcp_client.execute_tool(
-                        tool_name=tool_name, params=tool_input,
+                        tool_name=tool_name,
+                        params=tool_input,
                     )
 
                     if not result.get("success"):
@@ -202,7 +205,10 @@ class ToolExecutor:
         return results
 
     async def execute_tool(
-        self, tool_name: str, tool_input: dict[str, Any], user_id: str = "system",
+        self,
+        tool_name: str,
+        tool_input: dict[str, Any],
+        user_id: str = "system",
     ) -> dict[str, Any]:
         """
         Execute a single tool (for prefetch system)
@@ -226,12 +232,16 @@ class ToolExecutor:
 
                 # Execute ZantaraTools directly
                 result = await self.zantara_tools.execute_tool(
-                    tool_name=tool_name, tool_input=tool_input, user_id=user_id,
+                    tool_name=tool_name,
+                    tool_input=tool_input,
+                    user_id=user_id,
                 )
 
                 if not result.get("success"):
                     error_message = result.get("error", "Unknown error")
-                    logger.error("❌ [ZantaraTools/Prefetch] %s failed: %s", tool_name, error_message)
+                    logger.error(
+                        "❌ [ZantaraTools/Prefetch] %s failed: %s", tool_name, error_message
+                    )
                     return {"success": False, "error": error_message}
 
                 # Extract data from ZantaraTools result

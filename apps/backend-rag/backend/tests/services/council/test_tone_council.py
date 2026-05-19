@@ -52,31 +52,40 @@ class MockCLIRunner(CLIRunner):
 
 
 def _propose(register: str, example: str = "x") -> str:
-    return json.dumps({
-        "register": register,
-        "rationale": f"because {register} fits",
-        "risk": "low",
-        "example_headline": example,
-    })
+    return json.dumps(
+        {
+            "register": register,
+            "rationale": f"because {register} fits",
+            "risk": "low",
+            "example_headline": example,
+        }
+    )
 
 
 def _challenge(best: str, worst: str) -> str:
-    return json.dumps({
-        "best_not_mine": {"author": best, "motivation": "clear framing"},
-        "worst": {"author": worst, "critique": "banal register"},
-    })
+    return json.dumps(
+        {
+            "best_not_mine": {"author": best, "motivation": "clear framing"},
+            "worst": {"author": worst, "critique": "banal register"},
+        }
+    )
 
 
-def _judge(chosen: str, rejected: list[str] | None = None,
-           groupthink: bool = False,
-           rules: list[str] | None = None) -> str:
-    return json.dumps({
-        "chosen_register": chosen,
-        "rationale": "chosen because history says so",
-        "rejected_registers": rejected or [],
-        "hard_rules_triggered": rules or [],
-        "groupthink_detected": groupthink,
-    })
+def _judge(
+    chosen: str,
+    rejected: list[str] | None = None,
+    groupthink: bool = False,
+    rules: list[str] | None = None,
+) -> str:
+    return json.dumps(
+        {
+            "chosen_register": chosen,
+            "rationale": "chosen because history says so",
+            "rejected_registers": rejected or [],
+            "hard_rules_triggered": rules or [],
+            "groupthink_detected": groupthink,
+        }
+    )
 
 
 # ── Concordance helper ────────────────────────────────────────────────
@@ -92,9 +101,15 @@ def test_concordance_ratio_all_agree():
 
 def test_concordance_ratio_majority():
     p = [
-        CouncilProposal(author="claude", register="ironico", rationale="", risk="", example_headline=""),
-        CouncilProposal(author="gemini", register="ironico", rationale="", risk="", example_headline=""),
-        CouncilProposal(author="deepseek", register="analitico", rationale="", risk="", example_headline=""),
+        CouncilProposal(
+            author="claude", register="ironico", rationale="", risk="", example_headline=""
+        ),
+        CouncilProposal(
+            author="gemini", register="ironico", rationale="", risk="", example_headline=""
+        ),
+        CouncilProposal(
+            author="deepseek", register="analitico", rationale="", risk="", example_headline=""
+        ),
     ]
     assert _concordance_ratio(p) == pytest.approx(2 / 3)
 
@@ -105,8 +120,18 @@ def test_concordance_ratio_empty_returns_zero():
 
 def test_concordance_ratio_ignores_errors():
     p = [
-        CouncilProposal(author="claude", register="ironico", rationale="", risk="", example_headline=""),
-        CouncilProposal(author="gemini", register="", rationale="", risk="", example_headline="", ok=False, error="x"),
+        CouncilProposal(
+            author="claude", register="ironico", rationale="", risk="", example_headline=""
+        ),
+        CouncilProposal(
+            author="gemini",
+            register="",
+            rationale="",
+            risk="",
+            example_headline="",
+            ok=False,
+            error="x",
+        ),
     ]
     assert _concordance_ratio(p) == 1.0  # only 1 valid, unanimous
 
@@ -177,7 +202,8 @@ async def test_degraded_when_one_proponent_fails():
             scripted_outputs=[_propose("analitico"), _challenge("gemini", "deepseek")],
         ),
         "gemini": MockCLIRunner(
-            name="gemini", fail_next=True,
+            name="gemini",
+            fail_next=True,
         ),
         "deepseek": MockCLIRunner(
             name="deepseek",
@@ -223,10 +249,7 @@ async def test_hard_rule_same_register_7d_swaps():
     )
     assert result.decision.chosen_register != "analitico"
     assert result.decision.chosen_register in ("pedagogico", "tecnico")
-    assert any(
-        "max_same_register_7d_exceeded" in r
-        for r in result.decision.hard_rules_triggered
-    )
+    assert any("max_same_register_7d_exceeded" in r for r in result.decision.hard_rules_triggered)
     assert "analitico" in result.decision.rejected_registers
 
 

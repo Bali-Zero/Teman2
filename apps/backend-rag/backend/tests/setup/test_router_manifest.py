@@ -32,26 +32,30 @@ from backend.app.setup.router_manifest import (
 ROUTERS_DIR = Path(__file__).resolve().parents[2] / "app" / "routers"
 
 # Files in backend/app/routers/ that are NOT routers (whitelist)
-NON_ROUTER_FILES: frozenset[str] = frozenset({
-    "__init__",
-    "root_endpoints",       # mounted separately in app_factory
-    "audio",                # mounted separately in app_factory
-    "system_observability", # mounted separately in app_factory
-    "crm_migration",       # one-time migration script, not a live router
-    "guardian",             # not live yet (commented out in registration)
-    "memory_vector",       # orphan router — not registered anywhere (never was)
-    # twitter: RE-ENABLED 2026-04-29 (P0-6 zero-crash audit) — now in manifest.
-    "team_members",        # DISABLED: duplicates team.py (audit 2026-04-03)
-    "rag_proxy",           # not in routers dir — lives in backend/app/
-})
+NON_ROUTER_FILES: frozenset[str] = frozenset(
+    {
+        "__init__",
+        "root_endpoints",  # mounted separately in app_factory
+        "audio",  # mounted separately in app_factory
+        "system_observability",  # mounted separately in app_factory
+        "crm_migration",  # one-time migration script, not a live router
+        "guardian",  # not live yet (commented out in registration)
+        "memory_vector",  # orphan router — not registered anywhere (never was)
+        # twitter: RE-ENABLED 2026-04-29 (P0-6 zero-crash audit) — now in manifest.
+        "team_members",  # DISABLED: duplicates team.py (audit 2026-04-03)
+        "rag_proxy",  # not in routers dir — lives in backend/app/
+    }
+)
 
 # Module routers (not in backend/app/routers/) — covered by import_path
 # cron_notifiers IS in routers/ but uses import_path — excluded from module set
-MODULE_ROUTER_NAMES: frozenset[str] = frozenset({
-    "identity",
-    "knowledge",
-    "notifications",
-})
+MODULE_ROUTER_NAMES: frozenset[str] = frozenset(
+    {
+        "identity",
+        "knowledge",
+        "notifications",
+    }
+)
 
 
 class TestManifestIntegrity:
@@ -104,18 +108,12 @@ class TestRouterFileCoverage:
 
     def _router_file_names(self) -> frozenset[str]:
         """Get all Python file stems in the routers directory."""
-        return frozenset(
-            p.stem
-            for p in ROUTERS_DIR.glob("*.py")
-            if p.stem not in NON_ROUTER_FILES
-        )
+        return frozenset(p.stem for p in ROUTERS_DIR.glob("*.py") if p.stem not in NON_ROUTER_FILES)
 
     def _manifest_file_names(self) -> frozenset[str]:
         """Get all router names in manifest that map to routers/ files."""
         return frozenset(
-            entry.name
-            for entry in ROUTER_MANIFEST
-            if entry.name not in MODULE_ROUTER_NAMES
+            entry.name for entry in ROUTER_MANIFEST if entry.name not in MODULE_ROUTER_NAMES
         )
 
     def test_all_router_files_declared_in_manifest(self) -> None:
@@ -183,9 +181,7 @@ class TestRouterGroupQueries:
         api_set = set(routers_for_group("api"))
         rag_set = set(routers_for_group("rag"))
         union = api_set | rag_set
-        assert set(ROUTER_MANIFEST) == union, (
-            "Some manifest entries are not in any process group"
-        )
+        assert set(ROUTER_MANIFEST) == union, "Some manifest entries are not in any process group"
 
 
 class TestModuleRouterImports:
@@ -213,6 +209,4 @@ class TestModuleRouterImports:
                     f"Module {entry.import_path} has no attribute '{entry.attr}'"
                 )
             except ImportError as exc:
-                pytest.fail(
-                    f"Cannot import {entry.import_path} for router '{entry.name}': {exc}"
-                )
+                pytest.fail(f"Cannot import {entry.import_path} for router '{entry.name}': {exc}")

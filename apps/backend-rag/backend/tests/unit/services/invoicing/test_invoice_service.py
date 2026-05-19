@@ -153,7 +153,9 @@ class TestSendInvoiceEmailToClient:
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
 
-        with patch("backend.services.invoicing.invoice_service.httpx.AsyncClient") as mock_client_cls:
+        with patch(
+            "backend.services.invoicing.invoice_service.httpx.AsyncClient"
+        ) as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -181,7 +183,9 @@ class TestSendInvoiceEmailToClient:
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
 
-        with patch("backend.services.invoicing.invoice_service.httpx.AsyncClient") as mock_client_cls:
+        with patch(
+            "backend.services.invoicing.invoice_service.httpx.AsyncClient"
+        ) as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -206,7 +210,9 @@ class TestSendInvoiceEmailToClient:
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
 
-        with patch("backend.services.invoicing.invoice_service.httpx.AsyncClient") as mock_client_cls:
+        with patch(
+            "backend.services.invoicing.invoice_service.httpx.AsyncClient"
+        ) as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -241,7 +247,9 @@ class TestSendAccountingNotification:
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
 
-        with patch("backend.services.invoicing.invoice_service.httpx.AsyncClient") as mock_client_cls:
+        with patch(
+            "backend.services.invoicing.invoice_service.httpx.AsyncClient"
+        ) as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -407,18 +415,25 @@ class TestTriggerOnSendingInvoice:
     async def test_full_success_flow(self, service, mock_db_pool):
         conn = mock_db_pool._mock_conn
         # _fetch_practice_data
-        conn.fetchrow = AsyncMock(side_effect=[
-            _practice_data(),  # fetch practice
-            _client_data(),    # fetch client
-            {"client_id": 100, "quoted_price": 5_000_000},  # update practice: fetchrow in _update
-        ])
+        conn.fetchrow = AsyncMock(
+            side_effect=[
+                _practice_data(),  # fetch practice
+                _client_data(),  # fetch client
+                {
+                    "client_id": 100,
+                    "quoted_price": 5_000_000,
+                },  # update practice: fetchrow in _update
+            ]
+        )
         conn.fetchval = AsyncMock(return_value=None)
         conn.execute = AsyncMock()
 
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
 
-        with patch("backend.services.invoicing.invoice_service.httpx.AsyncClient") as mock_client_cls:
+        with patch(
+            "backend.services.invoicing.invoice_service.httpx.AsyncClient"
+        ) as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -465,18 +480,22 @@ class TestTriggerOnSendingInvoice:
     async def test_client_no_email_skips_email(self, service, mock_db_pool):
         conn = mock_db_pool._mock_conn
         client_no_email = _client_data(email=None)
-        conn.fetchrow = AsyncMock(side_effect=[
-            _practice_data(),
-            client_no_email,
-            {"client_id": 100, "quoted_price": 5_000_000},
-        ])
+        conn.fetchrow = AsyncMock(
+            side_effect=[
+                _practice_data(),
+                client_no_email,
+                {"client_id": 100, "quoted_price": 5_000_000},
+            ]
+        )
         conn.fetchval = AsyncMock(return_value=None)
         conn.execute = AsyncMock()
 
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
 
-        with patch("backend.services.invoicing.invoice_service.httpx.AsyncClient") as mock_client_cls:
+        with patch(
+            "backend.services.invoicing.invoice_service.httpx.AsyncClient"
+        ) as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)
@@ -491,15 +510,19 @@ class TestTriggerOnSendingInvoice:
     @pytest.mark.asyncio
     async def test_email_failure_continues(self, service, mock_db_pool):
         conn = mock_db_pool._mock_conn
-        conn.fetchrow = AsyncMock(side_effect=[
-            _practice_data(),
-            _client_data(),
-            {"client_id": 100, "quoted_price": 5_000_000},
-        ])
+        conn.fetchrow = AsyncMock(
+            side_effect=[
+                _practice_data(),
+                _client_data(),
+                {"client_id": 100, "quoted_price": 5_000_000},
+            ]
+        )
         conn.fetchval = AsyncMock(return_value=None)
         conn.execute = AsyncMock()
 
-        with patch("backend.services.invoicing.invoice_service.httpx.AsyncClient") as mock_client_cls:
+        with patch(
+            "backend.services.invoicing.invoice_service.httpx.AsyncClient"
+        ) as mock_client_cls:
             mock_client = AsyncMock()
             # First call (client email) fails, second (accounting) succeeds
             mock_resp_ok = MagicMock()
@@ -517,11 +540,13 @@ class TestTriggerOnSendingInvoice:
     @pytest.mark.asyncio
     async def test_drive_failure_continues(self, service, mock_db_pool):
         conn = mock_db_pool._mock_conn
-        conn.fetchrow = AsyncMock(side_effect=[
-            _practice_data(),
-            _client_data(),
-            {"client_id": 100, "quoted_price": 5_000_000},
-        ])
+        conn.fetchrow = AsyncMock(
+            side_effect=[
+                _practice_data(),
+                _client_data(),
+                {"client_id": 100, "quoted_price": 5_000_000},
+            ]
+        )
         conn.fetchval = AsyncMock(return_value=None)
         conn.execute = AsyncMock()
 
@@ -532,7 +557,9 @@ class TestTriggerOnSendingInvoice:
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
 
-        with patch("backend.services.invoicing.invoice_service.httpx.AsyncClient") as mock_client_cls:
+        with patch(
+            "backend.services.invoicing.invoice_service.httpx.AsyncClient"
+        ) as mock_client_cls:
             mock_client = AsyncMock()
             mock_client.post = AsyncMock(return_value=mock_response)
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)

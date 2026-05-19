@@ -151,9 +151,7 @@ class PublisherOrchestrator:
         if self.repo is not None and not force:
             existing = await self.repo.get_posts_for_draft(draft.draft_id)
             already = {
-                p.platform.value: (p.post_external_id or "")
-                for p in existing
-                if p.post_external_id
+                p.platform.value: (p.post_external_id or "") for p in existing if p.post_external_id
             }
 
         async def _run(publisher: Publisher) -> PublishResult:
@@ -217,9 +215,7 @@ class PublisherOrchestrator:
 
             last_error = result.error
             if attempt < self.max_retries:
-                delay = self.backoffs_s[
-                    min(attempt - 1, len(self.backoffs_s) - 1)
-                ]
+                delay = self.backoffs_s[min(attempt - 1, len(self.backoffs_s) - 1)]
                 await asyncio.sleep(delay)
 
         return PublishResult(

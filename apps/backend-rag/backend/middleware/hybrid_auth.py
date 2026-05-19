@@ -216,9 +216,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                     "correlation_id": correlation_id,
                     "timestamp": datetime.now(timezone.utc).isoformat(),
                     "bypass_reason": matched_entry.reason if matched_entry else "infra",
-                    "bypass_category": (
-                        matched_entry.category.value if matched_entry else "infra"
-                    ),
+                    "bypass_category": (matched_entry.category.value if matched_entry else "infra"),
                     "bypass_prefix": matched_entry.prefix if matched_entry else None,
                 },
             )
@@ -228,11 +226,14 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                     public_endpoint_access_by_ip,
                     public_endpoint_access_total,
                 )
+
                 public_endpoint_access_total.labels(
-                    endpoint=request.url.path, method=request.method,
+                    endpoint=request.url.path,
+                    method=request.method,
                 ).inc()
                 public_endpoint_access_by_ip.labels(
-                    endpoint=request.url.path, client_ip=client_ip,
+                    endpoint=request.url.path,
+                    client_ip=client_ip,
                 ).inc()
             except (ImportError, AttributeError) as exc:
                 # Metrics subsystem not wired in this deployment (e.g. tests,
@@ -265,6 +266,7 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                 )
 
                 from fastapi.responses import JSONResponse
+
                 cors_headers = self._cors_headers_for_request(request)
                 return JSONResponse(
                     status_code=HTTP_503_SERVICE_UNAVAILABLE,
@@ -357,7 +359,12 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
         debug_key = request.headers.get("X-Debug-Key")
         if debug_key and settings.admin_api_key and debug_key == settings.admin_api_key:
             logger.info("Admin key authenticated via X-Debug-Key from %s", client_host)
-            return {"role": "admin", "email": "admin@internal", "auth_method": "admin_key", "user_id": "admin"}
+            return {
+                "role": "admin",
+                "email": "admin@internal",
+                "auth_method": "admin_key",
+                "user_id": "admin",
+            }
 
         # Priority 1: API Key Authentication (fastest, bypasses database)
         api_key = request.headers.get("X-API-Key")
@@ -442,7 +449,9 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             # Stateless validation using secret key
             # S03: Two-phase JWT expiry enforcement
             payload = jwt.decode(
-                token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm],
+                token,
+                settings.jwt_secret_key,
+                algorithms=[settings.jwt_algorithm],
                 options={"verify_exp": getattr(settings, "jwt_enforce_expiry", False)},
             )
 
@@ -484,7 +493,9 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
             # Stateless validation using secret key
             # S03: Two-phase JWT expiry enforcement
             payload = jwt.decode(
-                jwt_token, settings.jwt_secret_key, algorithms=[settings.jwt_algorithm],
+                jwt_token,
+                settings.jwt_secret_key,
+                algorithms=[settings.jwt_algorithm],
                 options={"verify_exp": getattr(settings, "jwt_enforce_expiry", False)},
             )
 

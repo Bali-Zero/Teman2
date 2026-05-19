@@ -8,6 +8,7 @@ Covers the hot path that runs on every non-excluded request:
   * session logging only fires when both session_id and user_email present
   * IP extraction honors the Fly-Client-IP / X-Forwarded-For / X-Real-IP order
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
@@ -76,9 +77,7 @@ async def test_excluded_path_is_not_logged(
     """Health checks must bypass activity_logger entirely (zero DB writes)."""
     logger_mock = MagicMock()
     logger_mock.log_api_call = AsyncMock()
-    monkeypatch.setattr(
-        "backend.middleware.activity_logging.activity_logger", logger_mock
-    )
+    monkeypatch.setattr("backend.middleware.activity_logging.activity_logger", logger_mock)
 
     request = _make_request(path="/health")
     response = _make_response(200)
@@ -98,9 +97,7 @@ async def test_excluded_prefix_is_not_logged(
     """Paths starting with an excluded prefix (e.g. /docs/some-page) are skipped."""
     logger_mock = MagicMock()
     logger_mock.log_api_call = AsyncMock()
-    monkeypatch.setattr(
-        "backend.middleware.activity_logging.activity_logger", logger_mock
-    )
+    monkeypatch.setattr("backend.middleware.activity_logging.activity_logger", logger_mock)
 
     request = _make_request(path="/docs/oauth2-redirect")
     response = _make_response(200)
@@ -123,9 +120,7 @@ async def test_happy_path_logs_api_call_with_correct_metadata(
     logger_mock = MagicMock()
     logger_mock.log_api_call = AsyncMock()
     logger_mock.log_session = AsyncMock()
-    monkeypatch.setattr(
-        "backend.middleware.activity_logging.activity_logger", logger_mock
-    )
+    monkeypatch.setattr("backend.middleware.activity_logging.activity_logger", logger_mock)
 
     request = _make_request(
         path="/api/crm/clients",
@@ -172,9 +167,7 @@ async def test_get_requests_do_not_forward_request_body(
     """GET requests must not pass a request_body even if one happens to be on state."""
     logger_mock = MagicMock()
     logger_mock.log_api_call = AsyncMock()
-    monkeypatch.setattr(
-        "backend.middleware.activity_logging.activity_logger", logger_mock
-    )
+    monkeypatch.setattr("backend.middleware.activity_logging.activity_logger", logger_mock)
 
     request = _make_request(
         method="GET",
@@ -199,9 +192,7 @@ async def test_activity_logger_exception_does_not_fail_request(
 ) -> None:
     logger_mock = MagicMock()
     logger_mock.log_api_call = AsyncMock(side_effect=RuntimeError("DB down"))
-    monkeypatch.setattr(
-        "backend.middleware.activity_logging.activity_logger", logger_mock
-    )
+    monkeypatch.setattr("backend.middleware.activity_logging.activity_logger", logger_mock)
 
     request = _make_request()
     response = _make_response(200)
@@ -221,9 +212,7 @@ async def test_log_session_exception_does_not_fail_request(
     logger_mock = MagicMock()
     logger_mock.log_api_call = AsyncMock()
     logger_mock.log_session = AsyncMock(side_effect=RuntimeError("session write failed"))
-    monkeypatch.setattr(
-        "backend.middleware.activity_logging.activity_logger", logger_mock
-    )
+    monkeypatch.setattr("backend.middleware.activity_logging.activity_logger", logger_mock)
 
     request = _make_request(
         user={"email": "user@balizero.com"},
@@ -249,9 +238,7 @@ async def test_call_next_exception_is_logged_and_reraised(
     """If downstream handler raises, activity_logger still records status=500 + error_message."""
     logger_mock = MagicMock()
     logger_mock.log_api_call = AsyncMock()
-    monkeypatch.setattr(
-        "backend.middleware.activity_logging.activity_logger", logger_mock
-    )
+    monkeypatch.setattr("backend.middleware.activity_logging.activity_logger", logger_mock)
 
     request = _make_request()
     call_next = AsyncMock(side_effect=ValueError("boom"))
@@ -278,9 +265,7 @@ async def test_session_not_logged_without_user_email(
     logger_mock = MagicMock()
     logger_mock.log_api_call = AsyncMock()
     logger_mock.log_session = AsyncMock()
-    monkeypatch.setattr(
-        "backend.middleware.activity_logging.activity_logger", logger_mock
-    )
+    monkeypatch.setattr("backend.middleware.activity_logging.activity_logger", logger_mock)
 
     request = _make_request(
         user=None,
@@ -300,9 +285,7 @@ async def test_session_not_logged_without_session_id(
     logger_mock = MagicMock()
     logger_mock.log_api_call = AsyncMock()
     logger_mock.log_session = AsyncMock()
-    monkeypatch.setattr(
-        "backend.middleware.activity_logging.activity_logger", logger_mock
-    )
+    monkeypatch.setattr("backend.middleware.activity_logging.activity_logger", logger_mock)
 
     request = _make_request(user={"email": "user@balizero.com"}, cookies={})
     call_next = AsyncMock(return_value=_make_response(200))
@@ -323,9 +306,7 @@ async def test_ip_extraction_prefers_fly_header(
 ) -> None:
     logger_mock = MagicMock()
     logger_mock.log_api_call = AsyncMock()
-    monkeypatch.setattr(
-        "backend.middleware.activity_logging.activity_logger", logger_mock
-    )
+    monkeypatch.setattr("backend.middleware.activity_logging.activity_logger", logger_mock)
 
     request = _make_request(
         headers={
@@ -347,9 +328,7 @@ async def test_ip_extraction_uses_forwarded_for_first_entry(
 ) -> None:
     logger_mock = MagicMock()
     logger_mock.log_api_call = AsyncMock()
-    monkeypatch.setattr(
-        "backend.middleware.activity_logging.activity_logger", logger_mock
-    )
+    monkeypatch.setattr("backend.middleware.activity_logging.activity_logger", logger_mock)
 
     request = _make_request(
         headers={"X-Forwarded-For": "5.6.7.8, 9.9.9.9"},
@@ -367,9 +346,7 @@ async def test_ip_extraction_falls_back_to_unknown(
 ) -> None:
     logger_mock = MagicMock()
     logger_mock.log_api_call = AsyncMock()
-    monkeypatch.setattr(
-        "backend.middleware.activity_logging.activity_logger", logger_mock
-    )
+    monkeypatch.setattr("backend.middleware.activity_logging.activity_logger", logger_mock)
 
     request = _make_request(client_host=None)
     await middleware.dispatch(request, AsyncMock(return_value=_make_response(200)))

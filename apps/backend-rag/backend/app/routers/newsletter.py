@@ -59,7 +59,7 @@ async def send_confirmation_email(
 
     subject = "Confirm your Bali Zero Insights subscription"
     body = f"""
-    <p>Hi{' there' if not email else ''},</p>
+    <p>Hi{" there" if not email else ""},</p>
     <p>Thanks for subscribing to <strong>Bali Zero Insights</strong>.</p>
     <p>Please confirm your email to start receiving our editorial
     updates by clicking the link below:</p>
@@ -171,7 +171,8 @@ class SubscriberResponse(BaseModel):
 
 @router.post("/subscribe", response_model=SubscribeResponse)
 async def subscribe(
-    request: SubscribeRequest, pool=Depends(get_database_pool),
+    request: SubscribeRequest,
+    pool=Depends(get_database_pool),
 ) -> SubscribeResponse:
     """
     Subscribe to the newsletter.
@@ -302,7 +303,8 @@ async def subscribe(
 
 @router.post("/confirm")
 async def confirm_subscription(
-    request: ConfirmRequest, pool=Depends(get_database_pool),
+    request: ConfirmRequest,
+    pool=Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
     Confirm a newsletter subscription using the token from email.
@@ -391,7 +393,8 @@ async def confirm_subscription_via_link(
 
 @router.post("/unsubscribe")
 async def unsubscribe(
-    request: UnsubscribeRequest, pool=Depends(get_database_pool),
+    request: UnsubscribeRequest,
+    pool=Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
     Unsubscribe from the newsletter.
@@ -400,11 +403,13 @@ async def unsubscribe(
         # Find subscriber by ID, email, or token
         if request.subscriberId:
             row = await conn.fetchrow(
-                "SELECT id, email FROM newsletter_subscribers WHERE id = $1", request.subscriberId,
+                "SELECT id, email FROM newsletter_subscribers WHERE id = $1",
+                request.subscriberId,
             )
         elif request.email:
             row = await conn.fetchrow(
-                "SELECT id, email FROM newsletter_subscribers WHERE email = $1", request.email,
+                "SELECT id, email FROM newsletter_subscribers WHERE email = $1",
+                request.email,
             )
         else:
             raise HTTPException(status_code=400, detail="Email or subscriberId required")
@@ -428,7 +433,8 @@ async def unsubscribe(
 
 @router.patch("/preferences")
 async def update_preferences(
-    request: PreferencesRequest, pool=Depends(get_database_pool),
+    request: PreferencesRequest,
+    pool=Depends(get_database_pool),
 ) -> dict[str, Any]:
     """
     Update newsletter preferences.
@@ -437,11 +443,13 @@ async def update_preferences(
         # Find subscriber
         if request.subscriberId:
             row = await conn.fetchrow(
-                "SELECT id FROM newsletter_subscribers WHERE id = $1", request.subscriberId,
+                "SELECT id FROM newsletter_subscribers WHERE id = $1",
+                request.subscriberId,
             )
         elif request.email:
             row = await conn.fetchrow(
-                "SELECT id FROM newsletter_subscribers WHERE email = $1", request.email,
+                "SELECT id FROM newsletter_subscribers WHERE email = $1",
+                request.email,
             )
         else:
             raise HTTPException(status_code=400, detail="Email or subscriberId required")

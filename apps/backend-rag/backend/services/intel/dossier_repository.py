@@ -45,9 +45,7 @@ def _row_to_trend(row: asyncpg.Record) -> TrendSignal:
         language=row["language"],
         urgency_score=float(row["urgency_score"]),
         bali_zero_relevance=(
-            float(row["bali_zero_relevance"])
-            if row["bali_zero_relevance"] is not None
-            else None
+            float(row["bali_zero_relevance"]) if row["bali_zero_relevance"] is not None else None
         ),
         decay_half_life_hours=row["decay_half_life_hours"],
         entities_linked=entities,
@@ -76,12 +74,8 @@ def _row_to_dossier(row: asyncpg.Record) -> ResearchDossier:
         facts=[DossierFact(**f) for f in _parse_json_array(row["facts"])],
         numbers=[DossierNumber(**n) for n in _parse_json_array(row["numbers"])],
         citations=[DossierCitation(**c) for c in _parse_json_array(row["citations"])],
-        entities_linked=[
-            DossierEntity(**e) for e in _parse_json_array(row["entities_linked"])
-        ],
-        precedents=[
-            DossierPrecedent(**p) for p in _parse_json_array(row["precedents"])
-        ],
+        entities_linked=[DossierEntity(**e) for e in _parse_json_array(row["entities_linked"])],
+        precedents=[DossierPrecedent(**p) for p in _parse_json_array(row["precedents"])],
         confidence_0_1=float(row["confidence_0_1"]),
         freshness_expiry=row["freshness_expiry"],
         source_signals=_parse_json_array(row["source_signals"]) or None,
@@ -165,7 +159,9 @@ class IntelRepository(BaseRepository):
         return [_row_to_trend(row) for row in rows]
 
     async def mark_trend_consumed(
-        self, signal_id: UUID, dossier_id: UUID,
+        self,
+        signal_id: UUID,
+        dossier_id: UUID,
     ) -> None:
         await self.execute_safe(
             """
@@ -180,7 +176,8 @@ class IntelRepository(BaseRepository):
     # ── Research Dossiers ────────────────────────────────────────────────
 
     async def upsert_dossier(
-        self, dossier: ResearchDossierCreate,
+        self,
+        dossier: ResearchDossierCreate,
     ) -> ResearchDossier:
         """Upsert by unique slug. Inserts new or refreshes existing.
 
@@ -275,7 +272,9 @@ class IntelRepository(BaseRepository):
         return _row_to_dossier(row) if row else None
 
     async def dossiers_for_category(
-        self, category: TopicCategory, only_fresh: bool = True,
+        self,
+        category: TopicCategory,
+        only_fresh: bool = True,
     ) -> list[ResearchDossier]:
         query = """
             SELECT * FROM research_dossiers

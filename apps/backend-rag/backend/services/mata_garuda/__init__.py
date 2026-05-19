@@ -23,6 +23,7 @@ The adapter exposes:
 Reference: docs/sprint3/mata-garuda-cell-design.md +
 docs/sprint3/review-synthesis-2026-05-04.md (B3 finding 2026-05-04).
 """
+
 from __future__ import annotations
 
 from .cell_adapter import (

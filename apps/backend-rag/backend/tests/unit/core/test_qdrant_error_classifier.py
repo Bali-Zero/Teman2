@@ -52,7 +52,9 @@ class TestQdrantErrorClassifier:
             mock_response = MagicMock()
             mock_response.status_code = status_code
             error = httpx.HTTPStatusError(
-                "Server error", request=MagicMock(), response=mock_response,
+                "Server error",
+                request=MagicMock(),
+                response=mock_response,
             )
 
             error_type, retryable = classifier.classify(error)
@@ -68,7 +70,9 @@ class TestQdrantErrorClassifier:
             mock_response = MagicMock()
             mock_response.status_code = status_code
             error = httpx.HTTPStatusError(
-                "Client error", request=MagicMock(), response=mock_response,
+                "Client error",
+                request=MagicMock(),
+                response=mock_response,
             )
 
             error_type, retryable = classifier.classify(error)

@@ -23,15 +23,40 @@ logger = get_logger(__name__)
 # ─────────────────────────────────────────────────────────────────────────────
 
 FAMILY_MEMBER_KEYWORDS: list[str] = [
-    "family", "familie", "famig",
-    "spouse", "moglie", "marito", "wife", "husband",
-    "child", "children", "figlio", "figlia", "figlie", "figli", "bambino",
-    "son", "daughter", "member", "anggota",
-    "_fam_", "-fam-", "_fam.", " fam ",
-    "dependant", "dependent",
-    "marriage", "pernikahan", "akta nikah", "nikah",
-    "birth", "kelahiran", "akta kelahiran",
-    "family card", "kartu keluarga",
+    "family",
+    "familie",
+    "famig",
+    "spouse",
+    "moglie",
+    "marito",
+    "wife",
+    "husband",
+    "child",
+    "children",
+    "figlio",
+    "figlia",
+    "figlie",
+    "figli",
+    "bambino",
+    "son",
+    "daughter",
+    "member",
+    "anggota",
+    "_fam_",
+    "-fam-",
+    "_fam.",
+    " fam ",
+    "dependant",
+    "dependent",
+    "marriage",
+    "pernikahan",
+    "akta nikah",
+    "nikah",
+    "birth",
+    "kelahiran",
+    "akta kelahiran",
+    "family card",
+    "kartu keluarga",
 ]
 
 CATEGORIZATION_RULES: dict[str, dict[str, list[str]]] = {
@@ -47,8 +72,13 @@ CATEGORIZATION_RULES: dict[str, dict[str, list[str]]] = {
         "passport": ["passport", "paspor", "pport"],
         "photo": ["photo", "foto", "picture", "selfie", "image", "foto_wajah"],
         "alamat": [
-            "alamat", "address", "ktp", "id card", "kartu tanda penduduk",
-            "domicile address", "residential address",
+            "alamat",
+            "address",
+            "ktp",
+            "id card",
+            "kartu tanda penduduk",
+            "domicile address",
+            "residential address",
         ],
         "cv": ["cv", "resume", "curriculum vitae"],
     },
@@ -66,58 +96,113 @@ CATEGORIZATION_RULES: dict[str, dict[str, list[str]]] = {
     },
     "pma": {
         "akta": [
-            "akta", "deed", "pendirian", "notarial",
-            "akta pendirian", "akta perubahan", "deed of establishment",
+            "akta",
+            "deed",
+            "pendirian",
+            "notarial",
+            "akta pendirian",
+            "akta perubahan",
+            "deed of establishment",
         ],
-        "sk": ["sk ", "sk_", "sk-", "surat keputusan", "kemenkumham", "ministry of law", "menkumham"],
+        "sk": [
+            "sk ",
+            "sk_",
+            "sk-",
+            "surat keputusan",
+            "kemenkumham",
+            "ministry of law",
+            "menkumham",
+        ],
         "nib": ["nib", "oss", "nomor induk berusaha", "business id"],
         "npwp_company": [
-            "npwp", "npwp perusahaan", "npwp badan", "npwp pt",
-            "company tax", "npwp company", "tax id company",
+            "npwp",
+            "npwp perusahaan",
+            "npwp badan",
+            "npwp pt",
+            "company tax",
+            "npwp company",
+            "tax id company",
         ],
         "profile_perseroan": [
-            "profil perseroan", "profile perseroan", "company profile",
-            "profil perusahaan", "profile perusahaan", "company presentation",
-            "profil pt", "profil perseroan baru",
+            "profil perseroan",
+            "profile perseroan",
+            "company profile",
+            "profil perusahaan",
+            "profile perusahaan",
+            "company presentation",
+            "profil pt",
+            "profil perseroan baru",
         ],
         "siup": ["siup", "tdp", "izin usaha", "business license"],
         "domicile": ["surat domisili", "domicile letter", "keterangan domisili"],
         "legalisation": ["legalisation", "legalisasi", "apostille", "notarised"],
         "wlkp": ["wlkp", "wajib lapor", "lapor ketenagakerjaan"],
         "bpjs": ["bpjs", "bpjs ketenagakerjaan", "bpjs kesehatan"],
-        "organogram": ["bagan organisasi", "organogram", "organization chart", "org chart", "struktur organisasi"],
-        "rekening_koran": ["rekening koran perusahaan", "bank statement company", "rekening koran pt"],
+        "organogram": [
+            "bagan organisasi",
+            "organogram",
+            "organization chart",
+            "org chart",
+            "struktur organisasi",
+        ],
+        "rekening_koran": [
+            "rekening koran perusahaan",
+            "bank statement company",
+            "rekening koran pt",
+        ],
     },
     "tax": {
         "spt": ["spt"],
         "spt_company": [
-            "spt company", "spt badan", "spt perusahaan",
-            "annual tax company", "pajak tahunan badan",
+            "spt company",
+            "spt badan",
+            "spt perusahaan",
+            "annual tax company",
+            "pajak tahunan badan",
         ],
         "spt_personal": [
-            "spt personal", "spt pribadi", "spt tahunan pribadi",
-            "annual tax personal", "spt op", "spt tahunan",
+            "spt personal",
+            "spt pribadi",
+            "spt tahunan pribadi",
+            "annual tax personal",
+            "spt op",
+            "spt tahunan",
         ],
         "npwp_personal": [
-            "npwp personal", "npwp pribadi", "npwp perorangan",
-            "personal tax id", "npwp",
+            "npwp personal",
+            "npwp pribadi",
+            "npwp perorangan",
+            "personal tax id",
+            "npwp",
         ],
         "lkpm_report": [
-            "lkpm", "laporan kegiatan penanaman modal",
-            "investment activity report", "investment report",
+            "lkpm",
+            "laporan kegiatan penanaman modal",
+            "investment activity report",
+            "investment report",
         ],
         "bpjs": ["bpjs", "social insurance", "jamsostek", "kesehatan bpjs", "ketenagakerjaan bpjs"],
         "pph": [
-            "pph", "income tax", "pajak penghasilan", "withholding tax",
-            "bukti potong", "pemotongan pajak",
+            "pph",
+            "income tax",
+            "pajak penghasilan",
+            "withholding tax",
+            "bukti potong",
+            "pemotongan pajak",
         ],
         "ppn": ["ppn", "vat", "value added tax", "pajak pertambahan nilai"],
         "invoice_tax": ["faktur pajak", "tax invoice", "efaktur"],
     },
     "other": {
         "contract": [
-            "contract", "kontrak", "agreement", "perjanjian",
-            "lease", "rental agreement", "mou", "memorandum",
+            "contract",
+            "kontrak",
+            "agreement",
+            "perjanjian",
+            "lease",
+            "rental agreement",
+            "mou",
+            "memorandum",
         ],
         "letter": ["surat", "letter", "correspondence", "notifikasi"],
         "form": ["form", "formulir", "application form"],
@@ -203,6 +288,7 @@ def extract_expiry_date(filename: str) -> str | None:
         if match:
             try:
                 from datetime import datetime
+
                 date_str = match.group(0)
                 date_obj = datetime.strptime(date_str, date_format)
                 if 1900 <= date_obj.year <= 2100:
@@ -220,7 +306,9 @@ def extract_person_name(filename: str) -> str | None:
     """Extract person name from filename (convention: [Type]_[NAME]_[Date].[ext])."""
     if not filename:
         return None
-    name_without_ext = re.sub(r"\.(pdf|jpg|jpeg|png|doc|docx|xlsx)$", "", filename, flags=re.IGNORECASE)
+    name_without_ext = re.sub(
+        r"\.(pdf|jpg|jpeg|png|doc|docx|xlsx)$", "", filename, flags=re.IGNORECASE
+    )
     parts = name_without_ext.split("_")
     if len(parts) < 2:
         return None
@@ -240,7 +328,13 @@ def auto_categorize_documents_batch(filenames: list[str]) -> list[dict[str, Any]
 def get_categorization_stats(categorizations: list[dict[str, Any]]) -> dict[str, Any]:
     """Get statistics about a batch of categorizations."""
     if not categorizations:
-        return {"total": 0, "by_category": {}, "by_confidence": {}, "avg_confidence": 0.0, "uncategorized": 0}
+        return {
+            "total": 0,
+            "by_category": {},
+            "by_confidence": {},
+            "avg_confidence": 0.0,
+            "uncategorized": 0,
+        }
 
     by_category: dict[str, int] = {}
     confidence_sum = 0.0
@@ -270,6 +364,7 @@ def get_categorization_stats(categorizations: list[dict[str, Any]]) -> dict[str,
 # ─────────────────────────────────────────────────────────────────────────────
 # DocumentUploadService (from document_upload_service.py)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class DocumentUploadService:
     """Service for handling document uploads to Drive."""
@@ -315,11 +410,13 @@ class DocumentUploadService:
             uploaded_by=uploaded_by_email,
         )
 
-    @cache_invalidating([
-        lambda self, client_id, *a, **k: f"zantara:crm_client:{client_id}:documents:*",
-        "zantara:crm_documents:*",
-        "zantara:portal_documents:*",
-    ])
+    @cache_invalidating(
+        [
+            lambda self, client_id, *a, **k: f"zantara:crm_client:{client_id}:documents:*",
+            "zantara:crm_documents:*",
+            "zantara:portal_documents:*",
+        ]
+    )
     async def _upload_document(
         self,
         client_id: int,
@@ -372,7 +469,9 @@ class DocumentUploadService:
             )
             return dict(row) if row else None
 
-    async def _get_or_create_drive_folder(self, client_id: int, client_data: dict) -> dict[str, Any]:
+    async def _get_or_create_drive_folder(
+        self, client_id: int, client_data: dict
+    ) -> dict[str, Any]:
         if client_data.get("drive_folder_id"):
             return {
                 "success": True,
@@ -433,8 +532,12 @@ class DocumentUploadService:
                 )
                 VALUES ($1, $2, $3, $4, $5, $6, NOW())
                 """,
-                client_id, filename, document_type,
-                drive_file_id, drive_file_url, uploaded_by,
+                client_id,
+                filename,
+                document_type,
+                drive_file_id,
+                drive_file_url,
+                uploaded_by,
             )
 
     async def get_client_documents(self, client_id: int) -> list[dict]:

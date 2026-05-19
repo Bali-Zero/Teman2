@@ -26,6 +26,7 @@ logger = logging.getLogger(__name__)
 # AICRMExtractor (from ai_crm_extractor.py)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class AsyncpgJSONEncoder(json.JSONEncoder):
     """Custom JSON encoder to handle asyncpg types (UUID, datetime)."""
 
@@ -42,18 +43,25 @@ class AICRMExtractor:
 
     def __init__(self, ai_client=None) -> None:
         from backend.llm.zantara_ai_client import ZantaraAIClient
+
         try:
             self.client = ai_client if ai_client else ZantaraAIClient()
-            logger.info(f"✅ AICRMExtractor initialized with ZANTARA AI for {settings.COMPANY_NAME}")
+            logger.info(
+                f"✅ AICRMExtractor initialized with ZANTARA AI for {settings.COMPANY_NAME}"
+            )
         except (ImportError, RuntimeError, AttributeError) as e:
-            logger.error("❌ Failed to initialize ZANTARA AI (import/runtime): %s", e, exc_info=True)
+            logger.error(
+                "❌ Failed to initialize ZANTARA AI (import/runtime): %s", e, exc_info=True
+            )
             raise
         except Exception as e:  # noqa: BLE001 — unknown failure modes in LLM client init must surface
             logger.error("❌ Failed to initialize ZANTARA AI (unexpected): %s", e, exc_info=True)
             raise
 
     async def extract_from_conversation(
-        self, messages: list[dict], existing_client_data: dict | None = None,
+        self,
+        messages: list[dict],
+        existing_client_data: dict | None = None,
     ) -> dict:
         conversation_text = "\n\n".join(
             [f"{msg['role'].upper()}: {msg['content']}" for msg in messages],
@@ -61,7 +69,9 @@ class AICRMExtractor:
         existing_data_str = "NO EXISTING CLIENT DATA"
         if existing_client_data:
             existing_data_str = "EXISTING CLIENT DATA:\\n" + json.dumps(
-                existing_client_data, indent=2, cls=AsyncpgJSONEncoder,
+                existing_client_data,
+                indent=2,
+                cls=AsyncpgJSONEncoder,
             )
 
         extraction_prompt = f"""You are an AI assistant analyzing a customer service conversation for {settings.COMPANY_NAME}, a company providing immigration, visa, company setup, and tax services in Bali, Indonesia.
@@ -87,7 +97,9 @@ Extract the following information and return ONLY valid JSON (no markdown, no ex
         content = ""
         try:
             response = await self.client.conversational(
-                extraction_prompt, "system_crm_extractor", max_tokens=8192,
+                extraction_prompt,
+                "system_crm_extractor",
+                max_tokens=8192,
             )
             content = response["text"].strip()
             if content.startswith("```"):
@@ -122,16 +134,35 @@ Extract the following information and return ONLY valid JSON (no markdown, no ex
     def _get_empty_extraction(self) -> dict:
         return {
             "client": {
-                "full_name": None, "email": None, "phone": None,
-                "whatsapp": None, "nationality": None, "confidence": 0.0,
+                "full_name": None,
+                "email": None,
+                "phone": None,
+                "whatsapp": None,
+                "nationality": None,
+                "confidence": 0.0,
             },
-            "practice_intent": {"detected": False, "practice_type_code": None, "confidence": 0.0, "details": ""},
-            "sentiment": "neutral", "urgency": "normal", "summary": "",
-            "action_items": [], "topics_discussed": [],
-            "extracted_entities": {"dates": [], "amounts": [], "locations": [], "documents_mentioned": []},
+            "practice_intent": {
+                "detected": False,
+                "practice_type_code": None,
+                "confidence": 0.0,
+                "details": "",
+            },
+            "sentiment": "neutral",
+            "urgency": "normal",
+            "summary": "",
+            "action_items": [],
+            "topics_discussed": [],
+            "extracted_entities": {
+                "dates": [],
+                "amounts": [],
+                "locations": [],
+                "documents_mentioned": [],
+            },
         }
 
-    async def enrich_client_data(self, extracted: dict, existing_client: dict | None = None) -> dict:
+    async def enrich_client_data(
+        self, extracted: dict, existing_client: dict | None = None
+    ) -> dict:
         if not existing_client:
             return extracted["client"]
         merged = existing_client.copy()
@@ -220,8 +251,12 @@ class BirthplaceEnrichmentService:
             client = self._get_client(timeout=OLLAMA_TIMEOUT)
             response = await client.post(
                 f"{OLLAMA_BASE_URL}/api/generate",
-                json={"model": OLLAMA_MODEL, "prompt": prompt, "stream": False,
-                      "options": {"temperature": 0.7, "num_predict": 500}},
+                json={
+                    "model": OLLAMA_MODEL,
+                    "prompt": prompt,
+                    "stream": False,
+                    "options": {"temperature": 0.7, "num_predict": 500},
+                },
             )
             if response.status_code == 200:
                 return response.json().get("response", "")
@@ -260,6 +295,7 @@ Return ONLY the JSON object, no additional text."""
 
     def parse_enrichment_response(self, response: str) -> dict | None:
         import re
+
         try:
             json_match = re.search(r"\{[\s\S]*\}", response)
             if json_match:
@@ -302,12 +338,15 @@ Return ONLY the JSON object, no additional text."""
                     SET custom_fields = $1, birthplace_enrichment_date = NOW(), updated_at = NOW()
                     WHERE id = $2
                     """,
-                    json.dumps(existing), client_id,
+                    json.dumps(existing),
+                    client_id,
                 )
                 logger.info("Successfully enriched client %s", client_id)
                 return True
         except (asyncpg.PostgresError, json.JSONDecodeError, TypeError) as e:
-            logger.error("Failed to update client %s (DB/serialization): %s", client_id, e, exc_info=True)
+            logger.error(
+                "Failed to update client %s (DB/serialization): %s", client_id, e, exc_info=True
+            )
             return False
         except Exception as e:  # noqa: BLE001 — enrichment never crashes the batch loop
             logger.error("Failed to update client %s (unexpected): %s", client_id, e, exc_info=True)
@@ -316,7 +355,9 @@ Return ONLY the JSON object, no additional text."""
     async def run_batch_enrichment(self) -> dict[str, Any]:
         stats: dict[str, Any] = {
             "started_at": datetime.now(timezone.utc).isoformat(),
-            "clients_processed": 0, "successful": 0, "failed": 0,
+            "clients_processed": 0,
+            "successful": 0,
+            "failed": 0,
         }
         try:
             client = self._get_client(timeout=5.0)
@@ -331,7 +372,8 @@ Return ONLY the JSON object, no additional text."""
             return stats
         except Exception as e:  # noqa: BLE001 — availability probe must never propagate to scheduler
             logger.warning(
-                "⚠️ Birthplace Enrichment skipped: unexpected error probing Ollama (%s).", e,
+                "⚠️ Birthplace Enrichment skipped: unexpected error probing Ollama (%s).",
+                e,
                 exc_info=True,
             )
             stats["error"] = f"Ollama probe error: {e}"
@@ -383,7 +425,9 @@ Return ONLY the title text, nothing else."""
 
 
 async def generate_conversation_title(
-    conversation_id: str, first_user_message: str, max_length: int = 50,
+    conversation_id: str,
+    first_user_message: str,
+    max_length: int = 50,
 ) -> str | None:
     """Generate concise title from first user message. Tries Ollama first, falls back to Gemini."""
     if not first_user_message or len(first_user_message.strip()) < 10:
@@ -407,9 +451,12 @@ async def generate_conversation_title(
     return None
 
 
-async def _generate_title_via_ollama(conversation_id: str, prompt: str, max_length: int) -> str | None:
+async def _generate_title_via_ollama(
+    conversation_id: str, prompt: str, max_length: int
+) -> str | None:
     try:
         from backend.llm.ollama_client import MODEL_FAST, ollama_chat
+
         logger.info("Generating title for conv %s via Ollama (%s)...", conversation_id, MODEL_FAST)
         result = await ollama_chat(
             messages=[{"role": "user", "content": prompt}],
@@ -428,15 +475,20 @@ async def _generate_title_via_ollama(conversation_id: str, prompt: str, max_leng
         return None
     except Exception as e:  # noqa: BLE001 — title generation is best-effort; Gemini fallback follows
         logger.warning(
-            "Ollama title generation unexpected error for conv %s: %s", conversation_id, e,
+            "Ollama title generation unexpected error for conv %s: %s",
+            conversation_id,
+            e,
             exc_info=True,
         )
         return None
 
 
-async def _generate_title_via_gemini(conversation_id: str, prompt: str, max_length: int) -> str | None:
+async def _generate_title_via_gemini(
+    conversation_id: str, prompt: str, max_length: int
+) -> str | None:
     try:
         from backend.llm.genai_client import get_genai_client
+
         client = get_genai_client()
         if not client or not client.is_available:
             logger.warning("GenAI client not available, skipping Gemini fallback")
@@ -458,7 +510,9 @@ async def _generate_title_via_gemini(conversation_id: str, prompt: str, max_leng
         return None
     except Exception as e:  # noqa: BLE001 — title generation is best-effort and must never crash caller
         logger.warning(
-            "Gemini title generation unexpected error for conv %s: %s", conversation_id, e,
+            "Gemini title generation unexpected error for conv %s: %s",
+            conversation_id,
+            e,
             exc_info=True,
         )
         return None

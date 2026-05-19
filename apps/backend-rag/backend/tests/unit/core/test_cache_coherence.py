@@ -72,6 +72,7 @@ class TestSemanticCacheL2:
         domain = classify_query_domain("visa query")
         assert call_args[0][0] == _redis_key_for_domain(domain, key)
         from backend.services.caching.semantic_cache import ttl_for_domain
+
         assert call_args[0][1] == ttl_for_domain(domain)  # per-domain TTL
 
     @pytest.mark.asyncio
@@ -86,11 +87,13 @@ class TestSemanticCacheL2:
         )
 
         key = _query_hash("company setup")
-        payload = json.dumps({
-            "response": {"answer": "PT PMA"},
-            "query": "company setup",
-            "cached_at": time.time(),
-        })
+        payload = json.dumps(
+            {
+                "response": {"answer": "PT PMA"},
+                "query": "company setup",
+                "cached_at": time.time(),
+            }
+        )
 
         mock_redis = AsyncMock()
         mock_redis.get = AsyncMock(return_value=payload)
@@ -212,7 +215,9 @@ class TestUnifiedInvalidation:
         from backend.core.cache import invalidate_all_caches
 
         with (
-            patch("backend.core.cache.invalidate_cache", new_callable=AsyncMock, return_value=5) as mock_cache,
+            patch(
+                "backend.core.cache.invalidate_cache", new_callable=AsyncMock, return_value=5
+            ) as mock_cache,
             patch(
                 "backend.services.caching.semantic_cache.invalidate_semantic_cache_async",
                 new_callable=AsyncMock,
@@ -281,19 +286,14 @@ class TestRouterInvalidationCoverage:
         from pathlib import Path
 
         router_file = (
-            Path(__file__).parent.parent.parent.parent
-            / "app"
-            / "routers"
-            / f"{router_name}.py"
+            Path(__file__).parent.parent.parent.parent / "app" / "routers" / f"{router_name}.py"
         )
         assert router_file.exists(), f"Router file not found: {router_file}"
         source = router_file.read_text()
         assert "from backend.core.cache import" in source, (
             f"{router_name}.py missing 'from backend.core.cache import'"
         )
-        assert "invalidate_cache" in source, (
-            f"{router_name}.py missing 'invalidate_cache' usage"
-        )
+        assert "invalidate_cache" in source, f"{router_name}.py missing 'invalidate_cache' usage"
 
 
 # ---------------------------------------------------------------------------
@@ -303,6 +303,7 @@ class TestRouterInvalidationCoverage:
 
 try:
     import fastapi  # noqa: F401
+
     _HAS_FASTAPI = True
 except ImportError:
     _HAS_FASTAPI = False

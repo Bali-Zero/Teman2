@@ -136,12 +136,14 @@ async def test_sweep_auto_expires_above_48h_never_publishes(repo_and_tg):
 @pytest.mark.asyncio
 async def test_sweep_handles_mixed_bucket(repo_and_tg):
     repo, tg = repo_and_tg
-    repo.fetch_safe = AsyncMock(return_value=[
-        _draft_row(hours_ago=1.0),     # ignored
-        _draft_row(hours_ago=5.0),     # soft
-        _draft_row(hours_ago=15.0),    # repeat
-        _draft_row(hours_ago=60.0),    # expired
-    ])
+    repo.fetch_safe = AsyncMock(
+        return_value=[
+            _draft_row(hours_ago=1.0),  # ignored
+            _draft_row(hours_ago=5.0),  # soft
+            _draft_row(hours_ago=15.0),  # repeat
+            _draft_row(hours_ago=60.0),  # expired
+        ]
+    )
     worker = _worker(repo, tg)
     result = await worker.sweep_once()
     assert result.swept_count == 4
@@ -153,10 +155,12 @@ async def test_sweep_handles_mixed_bucket(repo_and_tg):
 @pytest.mark.asyncio
 async def test_sweep_error_on_one_draft_does_not_abort(repo_and_tg):
     repo, tg = repo_and_tg
-    repo.fetch_safe = AsyncMock(return_value=[
-        _draft_row(hours_ago=50.0),
-        _draft_row(hours_ago=55.0),
-    ])
+    repo.fetch_safe = AsyncMock(
+        return_value=[
+            _draft_row(hours_ago=50.0),
+            _draft_row(hours_ago=55.0),
+        ]
+    )
     repo.update_status = AsyncMock(
         side_effect=[Exception("boom"), None],
     )

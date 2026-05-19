@@ -100,7 +100,9 @@ async def test_edit_message_reply_markup_null_clears():
     a = TelegramReviewAdapter(bot_token="t", http_client=client)
 
     await a.edit_message_reply_markup(
-        chat_id=1, message_id=42, reply_markup=None,
+        chat_id=1,
+        message_id=42,
+        reply_markup=None,
     )
     payload = client.post.call_args.kwargs["data"]
     rm = json.loads(payload["reply_markup"])

@@ -52,7 +52,10 @@ class GoldenAnswerService:
             # PERFORMANCE FIX: Increased pool size from max=10 to max=20 for better concurrency
             # See: docs/debug/performance/database_report.md
             self.pool = await asyncpg.create_pool(
-                self.database_url, min_size=5, max_size=20, command_timeout=30,
+                self.database_url,
+                min_size=5,
+                max_size=20,
+                command_timeout=30,
             )
             logger.info("✅ GoldenAnswerService connected to PostgreSQL (pool: min=5, max=20)")
         except Exception as e:

@@ -35,62 +35,101 @@ from backend.services.war_room.models import (
 
 # ── Enum completeness — must match migration 112 CHECK constraints ──
 
+
 def test_draft_status_values_match_migration():
     expected = {
-        "briefed", "researched", "concept", "drafts",
-        "rendered", "pending_review", "approved",
-        "rejected", "published", "missed",
+        "briefed",
+        "researched",
+        "concept",
+        "drafts",
+        "rendered",
+        "pending_review",
+        "approved",
+        "rejected",
+        "published",
+        "missed",
     }
     assert {s.value for s in DraftStatus} == expected
 
 
 def test_platform_values_match_migration():
     assert {p.value for p in Platform} == {
-        "instagram", "x", "linkedin", "blog", "newsletter",
+        "instagram",
+        "x",
+        "linkedin",
+        "blog",
+        "newsletter",
     }
 
 
 def test_register_tones_are_the_seven_designed():
     expected = {
-        "rituale", "analitico", "ironico", "militante",
-        "pedagogico", "poetico", "tecnico",
+        "rituale",
+        "analitico",
+        "ironico",
+        "militante",
+        "pedagogico",
+        "poetico",
+        "tecnico",
     }
     assert {r.value for r in RegisterTone} == expected
 
 
 def test_metric_source_matches_migration():
     assert {m.value for m in MetricSource} == {
-        "meta_graph", "playwright_scrape", "utm_crm", "partial",
+        "meta_graph",
+        "playwright_scrape",
+        "utm_crm",
+        "partial",
     }
 
 
 def test_rejection_reason_matches_migration():
     assert {r.value for r in RejectionReason} == {
-        "tone", "fact", "visual", "clickbait", "sla_expired", "other",
+        "tone",
+        "fact",
+        "visual",
+        "clickbait",
+        "sla_expired",
+        "other",
     }
 
 
 def test_rejected_by_matches_migration():
     assert {r.value for r in RejectedBy} == {
-        "zero", "validator", "qa_visual", "qa_layout", "system",
+        "zero",
+        "validator",
+        "qa_visual",
+        "qa_layout",
+        "system",
     }
 
 
 def test_missed_run_reason_matches_migration():
     assert {r.value for r in MissedRunReason} == {
-        "pro_offline", "no_trend", "hard_failure", "quota_exceeded",
+        "pro_offline",
+        "no_trend",
+        "hard_failure",
+        "quota_exceeded",
     }
 
 
 def test_cost_type_matches_migration():
     assert {c.value for c in CostType} == {
-        "imagen_ultra", "imagen_fast", "imagen_other",
-        "fireworks_flux", "deepseek_api", "claude_cli",
-        "gemini_cli", "ollama_local", "other",
+        "imagen_ultra",
+        "imagen_fast",
+        "imagen_other",
+        "fireworks_flux",
+        "deepseek_api",
+        "claude_cli",
+        "gemini_cli",
+        "ollama_local",
+        "other",
     }
 
 
 # ── Model validation ─────────────────────────────────────────────────
+
 
 def test_draft_create_minimal():
     draft = WarRoomDraftCreate(topic="B211A extension rules")
@@ -196,6 +235,7 @@ def test_cost_small_decimal():
 
 
 # ── Event payload invariant: <= 8 KB ────────────────────────────────
+
 
 def test_event_payload_is_small():
     """PG LISTEN/NOTIFY payload must be <= 8 KB; we emit only IDs + status."""

@@ -128,8 +128,13 @@ def test_ring_buffer_exception_emit_does_not_crash() -> None:
     handler = RingBufferLogHandler(capacity=5)
     # Record with args that will fail formatting
     bad = logging.LogRecord(
-        name="t", level=logging.INFO, pathname="x", lineno=1,
-        msg="value=%s", args=(object(),), exc_info=None,
+        name="t",
+        level=logging.INFO,
+        pathname="x",
+        lineno=1,
+        msg="value=%s",
+        args=(object(),),
+        exc_info=None,
     )
     # Should not raise — logging.Handler.handleError swallows internally
     handler.emit(bad)

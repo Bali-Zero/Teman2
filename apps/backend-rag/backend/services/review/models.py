@@ -67,9 +67,7 @@ class ReviewRequest:
                 "<i>Scartati dal Consiglio:</i> "
                 + ", ".join(_escape_html(r) for r in self.rejected_registers[:3])
             )
-        parts.append(
-            f"<i>Anteprima:</i> {_escape_html(self.first_slide_text[:280])}"
-        )
+        parts.append(f"<i>Anteprima:</i> {_escape_html(self.first_slide_text[:280])}")
         if self.ultra_cost_usd is not None:
             parts.append(f"<i>Costo immagini:</i> ${self.ultra_cost_usd:.2f}")
         if self.canva_edit_url:
@@ -165,30 +163,35 @@ def build_primary_keyboard(
             {
                 "text": "✅ Approva",
                 "callback_data": encode_callback(
-                    ReviewAction.APPROVE, draft_id,
+                    ReviewAction.APPROVE,
+                    draft_id,
                 ),
             },
             {
                 "text": "✏️ Edit",
                 "callback_data": encode_callback(
-                    ReviewAction.EDIT, draft_id,
+                    ReviewAction.EDIT,
+                    draft_id,
                 ),
             },
             {
                 "text": "❌ Rifiuta",
                 "callback_data": encode_callback(
-                    ReviewAction.REJECT, draft_id,
+                    ReviewAction.REJECT,
+                    draft_id,
                 ),
             },
         ]
     ]
     if canva_edit_url:
-        rows.append([
-            {
-                "text": "🎨 Apri in Canva",
-                "url": canva_edit_url,
-            },
-        ])
+        rows.append(
+            [
+                {
+                    "text": "🎨 Apri in Canva",
+                    "url": canva_edit_url,
+                },
+            ]
+        )
     return {"inline_keyboard": rows}
 
 
@@ -199,13 +202,17 @@ def build_reject_reason_keyboard(draft_id: UUID) -> dict:
             {
                 "text": "🎭 Tono",
                 "callback_data": encode_callback(
-                    ReviewAction.REJECT, draft_id, RejectionReason.TONE,
+                    ReviewAction.REJECT,
+                    draft_id,
+                    RejectionReason.TONE,
                 ),
             },
             {
                 "text": "📚 Fatto errato",
                 "callback_data": encode_callback(
-                    ReviewAction.REJECT, draft_id, RejectionReason.FACT,
+                    ReviewAction.REJECT,
+                    draft_id,
+                    RejectionReason.FACT,
                 ),
             },
         ],
@@ -213,13 +220,17 @@ def build_reject_reason_keyboard(draft_id: UUID) -> dict:
             {
                 "text": "🖼️ Visual",
                 "callback_data": encode_callback(
-                    ReviewAction.REJECT, draft_id, RejectionReason.VISUAL,
+                    ReviewAction.REJECT,
+                    draft_id,
+                    RejectionReason.VISUAL,
                 ),
             },
             {
                 "text": "🎣 Clickbait",
                 "callback_data": encode_callback(
-                    ReviewAction.REJECT, draft_id, RejectionReason.CLICKBAIT,
+                    ReviewAction.REJECT,
+                    draft_id,
+                    RejectionReason.CLICKBAIT,
                 ),
             },
         ],
@@ -227,7 +238,9 @@ def build_reject_reason_keyboard(draft_id: UUID) -> dict:
             {
                 "text": "❔ Altro",
                 "callback_data": encode_callback(
-                    ReviewAction.REJECT, draft_id, RejectionReason.OTHER,
+                    ReviewAction.REJECT,
+                    draft_id,
+                    RejectionReason.OTHER,
                 ),
             },
         ],
@@ -241,9 +254,4 @@ def build_reject_reason_keyboard(draft_id: UUID) -> dict:
 def _escape_html(value: str) -> str:
     if value is None:
         return ""
-    return (
-        str(value)
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+    return str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

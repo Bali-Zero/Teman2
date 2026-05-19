@@ -34,11 +34,15 @@ async def _enqueue_post_publish(
                 VALUES ($1, $2, $3, 'news', $4)
                 ON CONFLICT (slug) DO NOTHING
                 """,
-                slug, title, category, article_id,
+                slug,
+                title,
+                category,
+                article_id,
             )
         logger.info("📥 Enqueued %s for post-publish processing", slug)
     except Exception as exc:
         logger.warning("Failed to enqueue %s for post-publish: %s", slug, exc)
+
 
 router = APIRouter(prefix="/api/news", tags=["News"])
 
@@ -295,7 +299,8 @@ async def create_news(
             # Check for duplicate by external_id
             if item.external_id:
                 existing = await conn.fetchval(
-                    "SELECT id FROM news_items WHERE external_id = $1", item.external_id,
+                    "SELECT id FROM news_items WHERE external_id = $1",
+                    item.external_id,
                 )
                 if existing:
                     return {"success": True, "data": {"id": str(existing)}, "duplicate": True}
@@ -358,7 +363,8 @@ async def create_news_bulk(
                 # Check duplicate
                 if item.external_id:
                     existing = await conn.fetchval(
-                        "SELECT id FROM news_items WHERE external_id = $1", item.external_id,
+                        "SELECT id FROM news_items WHERE external_id = $1",
+                        item.external_id,
                     )
                     if existing:
                         duplicates += 1
@@ -419,7 +425,8 @@ async def update_news_image(
         async with pool.acquire() as conn:
             result = await conn.execute(
                 "UPDATE news_items SET image_url = $1 WHERE id = $2",
-                image_url, news_id,
+                image_url,
+                news_id,
             )
             if result == "UPDATE 0":
                 raise HTTPException(status_code=404, detail="News item not found")

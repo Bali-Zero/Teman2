@@ -26,13 +26,13 @@ logger = logging.getLogger(__name__)
 # was the historical fallback when NB-5 did not yet exist in production.
 # The extended map below corrects this; enable via NLM_EXTENDED_ROUTING.
 _BASE_DOMAIN_NOTEBOOK_MAP: dict[str, list[str]] = {
-    "visa": ["271c7159-0c32-49a1-bda8-803c8e0993a6"],          # NB-2
-    "immigration": ["271c7159-0c32-49a1-bda8-803c8e0993a6"],    # NB-2
-    "tax": ["d4b2eedb-9863-4a1a-81ff-a11b0b45d853"],           # NB-4
-    "legal": ["045f3cdb-ef62-488c-90ba-82594928b671"],          # NB-3
-    "company": ["045f3cdb-ef62-488c-90ba-82594928b671"],        # NB-3
-    "kbli": ["271c7159-0c32-49a1-bda8-803c8e0993a6"],           # NB-2
-    "property": ["045f3cdb-ef62-488c-90ba-82594928b671"],       # NB-3 (historical fallback)
+    "visa": ["271c7159-0c32-49a1-bda8-803c8e0993a6"],  # NB-2
+    "immigration": ["271c7159-0c32-49a1-bda8-803c8e0993a6"],  # NB-2
+    "tax": ["d4b2eedb-9863-4a1a-81ff-a11b0b45d853"],  # NB-4
+    "legal": ["045f3cdb-ef62-488c-90ba-82594928b671"],  # NB-3
+    "company": ["045f3cdb-ef62-488c-90ba-82594928b671"],  # NB-3
+    "kbli": ["271c7159-0c32-49a1-bda8-803c8e0993a6"],  # NB-2
+    "property": ["045f3cdb-ef62-488c-90ba-82594928b671"],  # NB-3 (historical fallback)
 }
 
 # Extended map — adds NB-5..8 and NB-10 so RAG can reach every notebook the
@@ -49,25 +49,26 @@ _BASE_DOMAIN_NOTEBOOK_MAP: dict[str, list[str]] = {
 #   - NB-10 (team)       b319f1b3-74a1-415f-b8c0-c0626b008f29
 _EXTENDED_DOMAIN_NOTEBOOK_MAP: dict[str, list[str]] = {
     **_BASE_DOMAIN_NOTEBOOK_MAP,
-    "property": ["93314ad3-177e-4d2f-956b-fe4be3e47697"],       # NB-5 (corrected)
-    "real_estate": ["93314ad3-177e-4d2f-956b-fe4be3e47697"],    # NB-5
-    "zoning": ["93314ad3-177e-4d2f-956b-fe4be3e47697"],         # NB-5
-    "operations": ["7fbf37ed-e290-491a-98f5-677d6371ad62"],     # NB-6
-    "compliance": ["7fbf37ed-e290-491a-98f5-677d6371ad62"],     # NB-6
-    "editorial": ["42687fcb-87fc-40b1-8af8-8a2ff91f9c4c"],      # NB-7
-    "content": ["42687fcb-87fc-40b1-8af8-8a2ff91f9c4c"],        # NB-7
-    "lifestyle": ["aa9ac5d7-5090-46c7-9d09-89cec4ba13de"],      # NB-8
-    "expat": ["aa9ac5d7-5090-46c7-9d09-89cec4ba13de"],          # NB-8
-    "healthcare": ["aa9ac5d7-5090-46c7-9d09-89cec4ba13de"],     # NB-8
-    "team": ["b319f1b3-74a1-415f-b8c0-c0626b008f29"],           # NB-10
-    "hr": ["b319f1b3-74a1-415f-b8c0-c0626b008f29"],             # NB-10
-    "payroll": ["b319f1b3-74a1-415f-b8c0-c0626b008f29"],        # NB-10
+    "property": ["93314ad3-177e-4d2f-956b-fe4be3e47697"],  # NB-5 (corrected)
+    "real_estate": ["93314ad3-177e-4d2f-956b-fe4be3e47697"],  # NB-5
+    "zoning": ["93314ad3-177e-4d2f-956b-fe4be3e47697"],  # NB-5
+    "operations": ["7fbf37ed-e290-491a-98f5-677d6371ad62"],  # NB-6
+    "compliance": ["7fbf37ed-e290-491a-98f5-677d6371ad62"],  # NB-6
+    "editorial": ["42687fcb-87fc-40b1-8af8-8a2ff91f9c4c"],  # NB-7
+    "content": ["42687fcb-87fc-40b1-8af8-8a2ff91f9c4c"],  # NB-7
+    "lifestyle": ["aa9ac5d7-5090-46c7-9d09-89cec4ba13de"],  # NB-8
+    "expat": ["aa9ac5d7-5090-46c7-9d09-89cec4ba13de"],  # NB-8
+    "healthcare": ["aa9ac5d7-5090-46c7-9d09-89cec4ba13de"],  # NB-8
+    "team": ["b319f1b3-74a1-415f-b8c0-c0626b008f29"],  # NB-10
+    "hr": ["b319f1b3-74a1-415f-b8c0-c0626b008f29"],  # NB-10
+    "payroll": ["b319f1b3-74a1-415f-b8c0-c0626b008f29"],  # NB-10
 }
 
 
 def _extended_routing_enabled() -> bool:
     """Read env var at call time so tests and dev restarts flip cleanly."""
     import os
+
     raw = os.environ.get("NLM_EXTENDED_ROUTING", "").strip().lower()
     return raw in {"1", "true", "yes", "on"}
 
@@ -75,9 +76,7 @@ def _extended_routing_enabled() -> bool:
 def _active_domain_map() -> dict[str, list[str]]:
     """Return the map used for real routing — extended only when the flag is set."""
     return (
-        _EXTENDED_DOMAIN_NOTEBOOK_MAP
-        if _extended_routing_enabled()
-        else _BASE_DOMAIN_NOTEBOOK_MAP
+        _EXTENDED_DOMAIN_NOTEBOOK_MAP if _extended_routing_enabled() else _BASE_DOMAIN_NOTEBOOK_MAP
     )
 
 
@@ -295,10 +294,7 @@ class NLMOrchestrator:
         if self._enrichment is None:
             return None
 
-        tasks = [
-            self._enrichment.query(nb_id, question, timeout=timeout)
-            for nb_id in notebook_ids
-        ]
+        tasks = [self._enrichment.query(nb_id, question, timeout=timeout) for nb_id in notebook_ids]
 
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
