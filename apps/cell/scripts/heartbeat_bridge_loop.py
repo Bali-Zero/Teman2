@@ -40,6 +40,11 @@ logger = logging.getLogger("cell.heartbeat_bridge")
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    # ops-hardening fix 2026-05-19: explicit sys.stdout.
+    # Default basicConfig routes to sys.stderr, which sent 4 INFO
+    # "HTTP Request: GET .../api/channels/.../health 200 OK" lines
+    # per minute to stderr.log (15 MB after ~140 iterations).
+    stream=sys.stdout,
 )
 
 DEFAULT_INTERVAL_SECONDS: float = 60.0
