@@ -8,6 +8,10 @@ on:
       - "scripts/docs_guardian.sh"
       - ".github/workflows/docs-guardian.yml"
 
+concurrency:
+  group: docs-guardian-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   inventory-check:
     runs-on: ubuntu-latest

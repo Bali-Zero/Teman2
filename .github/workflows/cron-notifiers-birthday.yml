@@ -1,8 +1,12 @@
 name: cron - notifiers birthday (daily 00:05 WITA)
 on:
   schedule:
-    - cron: '5 16 * * *'   # 16:05 UTC = 00:05 WITA next day
+    - cron: "5 16 * * *" # 16:05 UTC = 00:05 WITA next day
   workflow_dispatch: {}
+
+concurrency:
+  group: cron-notifiers-birthday-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   run:

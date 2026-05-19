@@ -5,7 +5,7 @@ name: cron - fly cost alert (weekly Mon 09:00 WITA)
 
 on:
   schedule:
-    - cron: '0 1 * * 1' # 01:00 UTC Mon = 09:00 WITA Mon
+    - cron: "0 1 * * 1" # 01:00 UTC Mon = 09:00 WITA Mon
   workflow_dispatch: {}
 
 concurrency:
@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      THRESHOLD_CENTS: '6000' # $60.00 monthly cap
+      THRESHOLD_CENTS: "6000" # $60.00 monthly cap
     steps:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 

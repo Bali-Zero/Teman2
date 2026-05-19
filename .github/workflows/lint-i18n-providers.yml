@@ -14,6 +14,10 @@ on:
       - "tests/lint/test_i18n_providers.sh"
       - ".github/workflows/lint-i18n-providers.yml"
 
+concurrency:
+  group: lint-i18n-providers-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     runs-on: ubuntu-latest

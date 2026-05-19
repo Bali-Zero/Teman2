@@ -8,11 +8,11 @@ on:
   push:
     branches: [main]
     paths:
-      - 'apps/mouth/**'
-      - 'apps/web/**'
-      - 'packages/**'
-      - 'vercel.json'
-      - 'apps/mouth/vercel.json'
+      - "apps/mouth/**"
+      - "apps/web/**"
+      - "packages/**"
+      - "vercel.json"
+      - "apps/mouth/vercel.json"
 
 concurrency:
   group: vercel-production-${{ github.ref }}

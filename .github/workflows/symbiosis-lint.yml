@@ -7,6 +7,10 @@ on:
       - "scripts/lint_symbiosis_promises.py"
       - ".github/workflows/symbiosis-lint.yml"
 
+concurrency:
+  group: symbiosis-lint-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   symbiosis-lint:
     runs-on: ubuntu-latest

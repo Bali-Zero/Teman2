@@ -27,6 +27,10 @@ on:
       - "docs/AI_ONBOARDING.md"
       - ".github/workflows/docs-sync.yml"
 
+concurrency:
+  group: docs-sync-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   check-docs-sync:
     runs-on: ubuntu-latest

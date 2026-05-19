@@ -1,8 +1,12 @@
 name: cron - notifiers email-health (every 30 min)
 on:
   schedule:
-    - cron: '*/30 * * * *'
+    - cron: "*/30 * * * *"
   workflow_dispatch: {}
+
+concurrency:
+  group: cron-notifiers-email-health-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   run:

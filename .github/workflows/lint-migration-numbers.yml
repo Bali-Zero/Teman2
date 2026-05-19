@@ -13,6 +13,10 @@ on:
     paths:
       - "apps/backend-rag/backend/db/migrations_v2/**"
 
+concurrency:
+  group: lint-migration-numbers-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     name: Detect duplicate prefixes
