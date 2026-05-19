@@ -103,14 +103,15 @@ class KBLIEnricher:
     async def run_batch(self, enriched_map: dict[str, Any]) -> None:
         """Run enrichment for a batch of codes."""
         pool = await self.get_db_pool()
-        tasks = []
 
         logger.info(f"🚀 Starting symmetric enrichment for {len(enriched_map)} codes...")
 
-        for code, intel in enriched_map.items():
-            tasks.append(self.enrich_kbli_node(pool, code, intel))
-
-        results = await asyncio.gather(*tasks)
+        async with asyncio.TaskGroup() as tg:
+            tasks = [
+                tg.create_task(self.enrich_kbli_node(pool, code, intel))
+                for code, intel in enriched_map.items()
+            ]
+        results = [t.result() for t in tasks]
         success_rate = sum(1 for r in results if r)
 
         logger.info(f"🏁 Symmetric Batch Complete. Success: {success_rate}/{len(enriched_map)}")

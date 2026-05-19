@@ -208,9 +208,13 @@ class VectorSearchTool(BaseTool):
             if use_hybrid:
                 logger.info("🔀 [Hybrid Search] Using BM25+Dense+RRF+CrossEncoder pipeline")
 
-            search_results = await asyncio.gather(
-                *[_search_collection(col) for col in target_collections],
-            )
+            # Structured concurrency (Python 3.11+); _search_collection swallows exceptions.
+            async with asyncio.TaskGroup() as tg:
+                col_tasks = [
+                    tg.create_task(_search_collection(col))
+                    for col in target_collections
+                ]
+            search_results = [t.result() for t in col_tasks]
 
             # Process and deduplicate results
             for target_col, chunks_res in search_results:

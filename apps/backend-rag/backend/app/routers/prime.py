@@ -818,10 +818,10 @@ async def get_zoning(
         logger.warning("⚠️ [Prime] PrimeNexusService fallback: %s", exc)
 
     # --- FALLBACK: Legacy inline logic (if service import/init fails) ---
-    batara, price = await asyncio.gather(
-        _query_batara(lat, lng),
-        _query_price(lat, lng),
-    )
+    async with asyncio.TaskGroup() as tg:
+        batara_task = tg.create_task(_query_batara(lat, lng))
+        price_task = tg.create_task(_query_price(lat, lng))
+    batara, price = batara_task.result(), price_task.result()
     if batara:
         result: dict[str, Any] = {"status": "found", "lat": lat, "lng": lng, **batara}
         if price:

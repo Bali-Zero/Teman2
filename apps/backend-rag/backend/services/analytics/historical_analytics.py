@@ -431,13 +431,24 @@ async def generate_monthly_report(db_pool, year: int, month: int) -> dict:
 
     logger.info(f"Generating monthly report for {year}-{month:02d}")
 
-    # Run all analytics in parallel
-    completion, response_times, sla, revenue = await asyncio.gather(
-        calculate_completion_rate(db_pool, start_date=start_date, end_date=end_date),
-        calculate_response_times(db_pool, start_date=start_date, end_date=end_date),
-        calculate_sla_compliance(db_pool, start_date=start_date, end_date=end_date),
-        calculate_revenue_metrics(db_pool, start_date=start_date, end_date=end_date),
-    )
+    # Run all analytics in parallel (structured concurrency, Python 3.11+)
+    async with asyncio.TaskGroup() as tg:
+        completion_task = tg.create_task(
+            calculate_completion_rate(db_pool, start_date=start_date, end_date=end_date),
+        )
+        response_times_task = tg.create_task(
+            calculate_response_times(db_pool, start_date=start_date, end_date=end_date),
+        )
+        sla_task = tg.create_task(
+            calculate_sla_compliance(db_pool, start_date=start_date, end_date=end_date),
+        )
+        revenue_task = tg.create_task(
+            calculate_revenue_metrics(db_pool, start_date=start_date, end_date=end_date),
+        )
+    completion = completion_task.result()
+    response_times = response_times_task.result()
+    sla = sla_task.result()
+    revenue = revenue_task.result()
 
     report = {
         "period": {"year": year, "month": month, "start_date": start_date, "end_date": end_date},

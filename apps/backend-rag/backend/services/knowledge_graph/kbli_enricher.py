@@ -126,14 +126,15 @@ class KBLIEnricher:
         targets = await self.get_codes_to_process(section_prefix)
         logger.info(f"🚀 Found {len(targets)} codes to enrich in Section {section_prefix}")
 
-        tasks = []
-        for item in targets[: self.batch_size]:
-            code = item.get("kode_kbli")
-            # Get specific research for this code if available
-            specific_research = research_data.get(code) if research_data else None
-            tasks.append(self.enrich_single_code(item, specific_research))
+        async with asyncio.TaskGroup() as tg:
+            tasks = []
+            for item in targets[: self.batch_size]:
+                code = item.get("kode_kbli")
+                # Get specific research for this code if available
+                specific_research = research_data.get(code) if research_data else None
+                tasks.append(tg.create_task(self.enrich_single_code(item, specific_research)))
 
-        results = await asyncio.gather(*tasks)
+        results = [t.result() for t in tasks]
         success_rate = sum(1 for r in results if r)
         logger.info(f"🏁 Batch complete. Success: {success_rate}/{len(tasks)}")
 

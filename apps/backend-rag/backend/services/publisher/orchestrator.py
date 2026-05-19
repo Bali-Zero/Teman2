@@ -168,11 +168,10 @@ class PublisherOrchestrator:
                 )
             return await self._publish_with_retry(publisher, draft)
 
-        per_platform = await asyncio.gather(
-            *[_run(p) for p in self.publishers],
-            return_exceptions=False,
-        )
-        result.per_platform = list(per_platform)
+        # Structured concurrency (Python 3.11+): equivalent to gather(return_exceptions=False)
+        async with asyncio.TaskGroup() as tg:
+            publisher_tasks = [tg.create_task(_run(p)) for p in self.publishers]
+        result.per_platform = [t.result() for t in publisher_tasks]
 
         # record successes (skip idempotent re-entries; their row already exists)
         if self.repo is not None:

@@ -352,9 +352,12 @@ class ToneCouncil:
                 ok=True,
             )
 
-        return await asyncio.gather(
-            *[_one(name, runner) for name, runner in self.proponents.items()]
-        )
+        async with asyncio.TaskGroup() as tg:
+            tasks = [
+                tg.create_task(_one(name, runner))
+                for name, runner in self.proponents.items()
+            ]
+        return [t.result() for t in tasks]
 
     async def _round_1_challenge(
         self,
@@ -402,9 +405,12 @@ class ToneCouncil:
                 ok=True,
             )
 
-        return await asyncio.gather(
-            *[_one(name, runner) for name, runner in self.proponents.items()]
-        )
+        async with asyncio.TaskGroup() as tg:
+            tasks = [
+                tg.create_task(_one(name, runner))
+                for name, runner in self.proponents.items()
+            ]
+        return [t.result() for t in tasks]
 
     async def _round_2_judge(
         self,
