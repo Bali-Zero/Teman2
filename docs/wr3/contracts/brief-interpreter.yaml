@@ -9,8 +9,8 @@ lifecycle_tier: core
 cost_class: text_planning
 
 cost:
-  ceiling_usd: 0.15
-  ceiling_unit: "$0.15 cash"
+  ceiling_usd: 0.30
+  ceiling_unit: "$0.30 cash (refactor 2026-05-19 empirical)"
   hard_halt_on_exceed: false
 
 allowed_tools:
