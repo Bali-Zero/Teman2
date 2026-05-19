@@ -1,8 +1,12 @@
 name: cron - notifiers all (daily 00:00 WITA)
 on:
   schedule:
-    - cron: '0 16 * * *'   # 16:00 UTC = 00:00 WITA next day
+    - cron: "0 16 * * *" # 16:00 UTC = 00:00 WITA next day
   workflow_dispatch: {}
+
+concurrency:
+  group: cron-notifiers-all-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   run:

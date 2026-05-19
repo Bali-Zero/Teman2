@@ -8,21 +8,21 @@ name: cron - CRM Drive autowatcher
 
 on:
   schedule:
-    - cron: '17 * * * *'
+    - cron: "17 * * * *"
   workflow_dispatch:
     inputs:
       limit:
-        description: 'Max documents/companies to inspect in this pass'
+        description: "Max documents/companies to inspect in this pass"
         required: false
-        default: '10'
+        default: "10"
       allow_ocr:
-        description: 'Allow OCR/Gemini dispatch for pending existing documents'
+        description: "Allow OCR/Gemini dispatch for pending existing documents"
         required: false
-        default: 'true'
+        default: "true"
         type: choice
         options:
-          - 'true'
-          - 'false'
+          - "true"
+          - "false"
 
 concurrency:
   group: cron-crm-drive-autowatcher

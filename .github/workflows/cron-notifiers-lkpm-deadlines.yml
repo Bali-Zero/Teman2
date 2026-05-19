@@ -1,8 +1,12 @@
 name: cron - notifiers lkpm-deadlines (daily 23:00 WITA)
 on:
   schedule:
-    - cron: '0 15 * * *'   # 15:00 UTC = 23:00 WITA same day
+    - cron: "0 15 * * *" # 15:00 UTC = 23:00 WITA same day
   workflow_dispatch: {}
+
+concurrency:
+  group: cron-notifiers-lkpm-deadlines-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   run:
