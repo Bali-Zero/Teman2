@@ -58,8 +58,12 @@
 
     <key>EnvironmentVariables</key>
     <dict>
+      <!-- PATH includes /opt/homebrew/opt/postgresql@17/bin so the
+           wrapper's PG advisory lock (psql call) actually works.
+           Phase 1.0 plist was missing this — single-flight wasn't
+           enforced because psql was not on PATH. -->
       <key>PATH</key>
-      <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
+      <string>/opt/homebrew/opt/postgresql@17/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
       <key>SECRETS_FILE</key>
       <string>/Users/nuzantara/.nuzantara-secrets.env</string>
       <key>REPO_ROOT</key>
@@ -71,6 +75,18 @@
            before kickstart for smoke. -->
       <key>BUDGET_USD</key>
       <string>1.00</string>
+      <!-- Phase 1.1 (2026-05-19 smoke discovery): EvoSkill's
+           ProgramManager runs `git commit` from the main repo cwd to
+           save internal program-iteration checkpoints. Our pre-commit
+           hook (prettier + typecheck) rejects them with exit 1,
+           causing "Cannot save EvoSkill program changes" fatal. The
+           bypass is applied INSIDE scripts/agent-library-evolver-run.sh
+           via `GIT_CONFIG_PARAMETERS` scoped to the evoskill subprocess
+           only — NOT here in the plist EnvironmentVariables. Plist
+           scope would leak the bypass to every child process of the
+           wrapper (e.g. the `gh pr create` git invocations at step §9)
+           which IS in our code path and SHOULD honour the hooks.
+           See scripts/agent-library-evolver-run.sh §6 run_evoskill(). -->
     </dict>
 
     <!-- Logs (survive reboots — out of /tmp, L11 fix) -->
