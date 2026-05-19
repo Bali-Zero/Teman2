@@ -54,31 +54,35 @@ interface PopoverTriggerProps {
   asChild?: boolean;
 }
 
-const PopoverTrigger = React.forwardRef<HTMLButtonElement, PopoverTriggerProps>(
-  ({ children, asChild }, ref) => {
-    const { open, setOpen } = usePopover();
+const PopoverTrigger = ({
+  ref,
+  children,
+  asChild,
+}: PopoverTriggerProps & {
+  ref?: React.Ref<HTMLButtonElement>;
+}) => {
+  const { open, setOpen } = usePopover();
 
-    const handleClick = () => {
-      setOpen(!open);
-    };
+  const handleClick = () => {
+    setOpen(!open);
+  };
 
-    if (asChild && React.isValidElement(children)) {
-      return React.cloneElement(
-        children as React.ReactElement,
-        {
-          onClick: handleClick,
-          ref,
-        } as any,
-      );
-    }
-
-    return (
-      <button ref={ref} onClick={handleClick} type="button">
-        {children}
-      </button>
+  if (asChild && React.isValidElement(children)) {
+    return React.cloneElement(
+      children as React.ReactElement,
+      {
+        onClick: handleClick,
+        ref,
+      } as any,
     );
-  },
-);
+  }
+
+  return (
+    <button ref={ref} onClick={handleClick} type="button">
+      {children}
+    </button>
+  );
+};
 PopoverTrigger.displayName = "PopoverTrigger";
 
 interface PopoverContentProps {
@@ -87,55 +91,60 @@ interface PopoverContentProps {
   align?: "start" | "center" | "end";
 }
 
-const PopoverContent = React.forwardRef<HTMLDivElement, PopoverContentProps>(
-  ({ children, className, align = "center" }, ref) => {
-    const { open, setOpen } = usePopover();
-    const contentRef = React.useRef<HTMLDivElement>(null);
+const PopoverContent = ({
+  ref,
+  children,
+  className,
+  align = "center",
+}: PopoverContentProps & {
+  ref?: React.Ref<HTMLDivElement>;
+}) => {
+  const { open, setOpen } = usePopover();
+  const contentRef = React.useRef<HTMLDivElement>(null);
 
-    React.useImperativeHandle(ref, () => contentRef.current!);
+  React.useImperativeHandle(ref, () => contentRef.current!);
 
-    // Close on click outside
-    React.useEffect(() => {
-      const handleClickOutside = (event: MouseEvent) => {
-        if (
-          contentRef.current &&
-          !contentRef.current.contains(event.target as Node)
-        ) {
-          setOpen(false);
-        }
-      };
-
-      if (open) {
-        document.addEventListener("mousedown", handleClickOutside);
+  // Close on click outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        contentRef.current &&
+        !contentRef.current.contains(event.target as Node)
+      ) {
+        setOpen(false);
       }
-
-      return () => {
-        document.removeEventListener("mousedown", handleClickOutside);
-      };
-    }, [open, setOpen]);
-
-    if (!open) return null;
-
-    const alignClasses = {
-      start: "left-0",
-      center: "left-1/2 -translate-x-1/2",
-      end: "right-0",
     };
 
-    return (
-      <div
-        ref={contentRef}
-        className={cn(
-          "absolute z-50 mt-2 min-w-[200px] rounded-md border bg-[#1a1a1a] p-4 shadow-lg",
-          alignClasses[align],
-          className,
-        )}
-      >
-        {children}
-      </div>
-    );
-  },
-);
+    if (open) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [open, setOpen]);
+
+  if (!open) return null;
+
+  const alignClasses = {
+    start: "left-0",
+    center: "left-1/2 -translate-x-1/2",
+    end: "right-0",
+  };
+
+  return (
+    <div
+      ref={contentRef}
+      className={cn(
+        "absolute z-50 mt-2 min-w-[200px] rounded-md border bg-[#1a1a1a] p-4 shadow-lg",
+        alignClasses[align],
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+};
 PopoverContent.displayName = "PopoverContent";
 
 export { Popover, PopoverTrigger, PopoverContent };

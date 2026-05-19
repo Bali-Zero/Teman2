@@ -36,8 +36,12 @@ describe("ChatSidebar", () => {
   it("has descriptive aria-labels for delete buttons", () => {
     render(<ChatSidebar {...defaultProps} />);
 
-    const deleteButton1 = screen.getByLabelText("Delete conversation: Test Conversation");
-    const deleteButton2 = screen.getByLabelText("Delete conversation: Untitled");
+    const deleteButton1 = screen.getByLabelText(
+      "Delete conversation: Test Conversation",
+    );
+    const deleteButton2 = screen.getByLabelText(
+      "Delete conversation: Untitled",
+    );
 
     expect(deleteButton1).toBeInTheDocument();
     expect(deleteButton2).toBeInTheDocument();
@@ -47,7 +51,7 @@ describe("ChatSidebar", () => {
     render(<ChatSidebar {...defaultProps} />);
 
     const buttons = screen.getAllByRole("button");
-    buttons.forEach(button => {
+    buttons.forEach((button) => {
       expect(button).toHaveAttribute("type", "button");
     });
   });

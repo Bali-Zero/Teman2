@@ -78,10 +78,10 @@ export function Sidebar({
   useEffect(() => {
     if (!isOpen) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
   }, [isOpen, onClose]);
 
   return (
@@ -174,7 +174,9 @@ export function Sidebar({
                         : "hover:bg-white/5 text-[var(--foreground)] border border-transparent"
                     }`}
                     onClick={() => onConversationClick(conv.id)}
-                    aria-current={currentConversationId === conv.id ? "true" : undefined}
+                    aria-current={
+                      currentConversationId === conv.id ? "true" : undefined
+                    }
                   >
                     <div className="flex items-start gap-2">
                       <MessageSquare
@@ -204,7 +206,7 @@ export function Sidebar({
                         ? "hover:bg-[var(--accent)]/20 text-[var(--accent)]"
                         : "hover:bg-white/10 text-[var(--foreground-muted)]"
                     }`}
-                    aria-label={`Delete conversation: ${conv.title || 'Untitled'}`}
+                    aria-label={`Delete conversation: ${conv.title || "Untitled"}`}
                   >
                     <Trash2 className="w-3 h-3" />
                   </button>

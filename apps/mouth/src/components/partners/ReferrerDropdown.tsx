@@ -49,12 +49,16 @@ export function ReferrerDropdown({
       }
     };
     load();
-    return () => { cancelled = true; };
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (isLoading) {
     return (
-      <div className={`flex items-center gap-2 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg ${className}`}>
+      <div
+        className={`flex items-center gap-2 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg ${className}`}
+      >
         <Loader2 size={14} className="animate-spin text-zinc-500" />
         <span className="text-sm text-zinc-500">Loading partners…</span>
       </div>
@@ -63,7 +67,9 @@ export function ReferrerDropdown({
 
   if (error) {
     return (
-      <div className={`px-3 py-2 bg-zinc-800 border border-red-700/50 rounded-lg ${className}`}>
+      <div
+        className={`px-3 py-2 bg-zinc-800 border border-red-700/50 rounded-lg ${className}`}
+      >
         <span className="text-sm text-red-400">{error}</span>
       </div>
     );
@@ -89,7 +95,12 @@ export function ReferrerDropdown({
         {partners.map((p) => (
           <option key={p.id} value={p.id}>
             {/* CRIT-8: commission_tier is optional; use default_commission_value as fallback */}
-            {p.full_name}{p.commission_tier ? ` (${p.commission_tier})` : p.default_commission_value ? ` (${p.default_commission_value}${p.default_commission_type === 'percentage' ? '%' : ' IDR'})` : ''}
+            {p.full_name}
+            {p.commission_tier
+              ? ` (${p.commission_tier})`
+              : p.default_commission_value
+                ? ` (${p.default_commission_value}${p.default_commission_type === "percentage" ? "%" : " IDR"})`
+                : ""}
           </option>
         ))}
       </select>

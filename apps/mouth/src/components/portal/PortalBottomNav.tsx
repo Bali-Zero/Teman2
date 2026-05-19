@@ -54,7 +54,10 @@ export function PortalBottomNav() {
 
   // Only show on mobile
   return (
-    <nav aria-label="Main navigation" className="fixed bottom-0 left-0 right-0 border-t border-white/5 bg-[rgba(19,19,21,0.65)] backdrop-blur-[20px] md:hidden z-50 safe-area-bottom">
+    <nav
+      aria-label="Main navigation"
+      className="fixed bottom-0 left-0 right-0 border-t border-white/5 bg-[rgba(19,19,21,0.65)] backdrop-blur-[20px] md:hidden z-50 safe-area-bottom"
+    >
       <div className="flex items-center justify-around h-16">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -65,8 +68,8 @@ export function PortalBottomNav() {
               key={tab.name}
               href={tab.href}
               aria-current={isActive ? "page" : undefined}
-            aria-label={tab.name}
-            className={cn(
+              aria-label={tab.name}
+              className={cn(
                 "flex flex-col items-center justify-center gap-1 w-full h-full transition-colors relative",
                 isActive
                   ? "text-[var(--accent)] font-medium"

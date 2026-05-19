@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import * as React from 'react';
-import { useState, useCallback } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import * as React from "react";
+import { useState, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   MessageCircle,
   Send,
@@ -12,8 +12,8 @@ import {
   ExternalLink,
   ThumbsUp,
   ThumbsDown,
-} from 'lucide-react';
-import { cn } from '@/lib/utils';
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 // ============================================================================
 // Types
@@ -42,12 +42,12 @@ export interface AskZantaraProps {
   /** Custom class */
   className?: string;
   /** Variant */
-  variant?: 'inline' | 'floating' | 'sidebar';
+  variant?: "inline" | "floating" | "sidebar";
 }
 
 interface Message {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   sources?: { title: string; url: string }[];
   timestamp: Date;
@@ -59,16 +59,16 @@ interface Message {
 
 export function AskZantara({
   context,
-  placeholder = 'Ask a question about this topic...',
+  placeholder = "Ask a question about this topic...",
   suggestedQuestions = [],
   scripted,
-  apiEndpoint = '/api/blog/ask',
+  apiEndpoint = "/api/blog/ask",
   className,
-  variant = 'inline',
+  variant = "inline",
 }: AskZantaraProps) {
-  const [isOpen, setIsOpen] = useState(variant !== 'floating');
+  const [isOpen, setIsOpen] = useState(variant !== "floating");
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
 
@@ -83,7 +83,7 @@ export function AskZantara({
       // Add user message
       const userMessage: Message = {
         id: `user-${Date.now()}`,
-        role: 'user',
+        role: "user",
         content: qa.q,
         timestamp: new Date(),
       };
@@ -96,7 +96,7 @@ export function AskZantara({
       setTimeout(() => {
         const assistantMessage: Message = {
           id: `assistant-${Date.now()}`,
-          role: 'assistant',
+          role: "assistant",
           content: qa.a,
           sources: qa.sources,
           timestamp: new Date(),
@@ -105,7 +105,7 @@ export function AskZantara({
         setIsLoading(false);
       }, delay);
     },
-    [isLoading]
+    [isLoading],
   );
 
   // Handle sending a question (AI mode)
@@ -117,31 +117,31 @@ export function AskZantara({
       // Add user message
       const userMessage: Message = {
         id: `user-${Date.now()}`,
-        role: 'user',
+        role: "user",
         content: q,
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, userMessage]);
-      setInput('');
+      setInput("");
       setShowSuggestions(false);
       setIsLoading(true);
 
       try {
         // Call API
         const response = await fetch(apiEndpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ question: q, context }),
         });
 
-        if (!response.ok) throw new Error('Failed to get response');
+        if (!response.ok) throw new Error("Failed to get response");
 
         const data = await response.json();
 
         // Add assistant message
         const assistantMessage: Message = {
           id: `assistant-${Date.now()}`,
-          role: 'assistant',
+          role: "assistant",
           content: data.answer || "I couldn't find an answer to that question.",
           sources: data.sources,
           timestamp: new Date(),
@@ -151,7 +151,7 @@ export function AskZantara({
         // Add error message
         const errorMessage: Message = {
           id: `error-${Date.now()}`,
-          role: 'assistant',
+          role: "assistant",
           content: "Sorry, I couldn't process your question. Please try again.",
           timestamp: new Date(),
         };
@@ -160,12 +160,12 @@ export function AskZantara({
         setIsLoading(false);
       }
     },
-    [input, isLoading, apiEndpoint, context]
+    [input, isLoading, apiEndpoint, context],
   );
 
   // Handle keyboard submit
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
       handleSend();
     }
@@ -175,24 +175,24 @@ export function AskZantara({
   React.useEffect(() => {
     if (!isOpen) return;
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setIsOpen(false);
+      if (e.key === "Escape") setIsOpen(false);
     };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen]);
 
   // Floating variant
-  if (variant === 'floating') {
+  if (variant === "floating") {
     return (
       <>
         {/* Floating button */}
         <button
           onClick={() => setIsOpen(!isOpen)}
-          aria-label={isOpen ? 'Close Zantara chat' : 'Ask Zantara'}
+          aria-label={isOpen ? "Close Zantara chat" : "Ask Zantara"}
           className={cn(
-            'fixed bottom-6 right-6 z-50 p-4 rounded-full shadow-lg',
-            'bg-gradient-to-r from-[#2251ff] to-[#4d73ff]',
-            'text-white hover:scale-105 transition-transform'
+            "fixed bottom-6 right-6 z-50 p-4 rounded-full shadow-lg",
+            "bg-gradient-to-r from-[#2251ff] to-[#4d73ff]",
+            "text-white hover:scale-105 transition-transform",
           )}
         >
           <MessageCircle className="w-6 h-6" />
@@ -232,9 +232,9 @@ export function AskZantara({
   return (
     <div
       className={cn(
-        'bg-black/40 rounded-2xl border border-white/10 overflow-hidden',
-        variant === 'sidebar' && 'sticky top-4',
-        className
+        "bg-black/40 rounded-2xl border border-white/10 overflow-hidden",
+        variant === "sidebar" && "sticky top-4",
+        className,
       )}
     >
       <AskZantaraContent
@@ -287,8 +287,11 @@ function AskZantaraContent({
   onKeyDown: (e: React.KeyboardEvent) => void;
 }) {
   // Get questions that haven't been asked yet (for scripted mode)
-  const askedQuestions = new Set(messages.filter((m) => m.role === 'user').map((m) => m.content));
-  const remainingScriptedQuestions = scripted?.filter((qa) => !askedQuestions.has(qa.q)) || [];
+  const askedQuestions = new Set(
+    messages.filter((m) => m.role === "user").map((m) => m.content),
+  );
+  const remainingScriptedQuestions =
+    scripted?.filter((qa) => !askedQuestions.has(qa.q)) || [];
   return (
     <>
       {/* Header */}
@@ -299,7 +302,9 @@ function AskZantaraContent({
           </div>
           <div>
             <h4 className="font-medium text-white text-sm">Ask Zantara</h4>
-            <p className="text-white/40 text-xs">AI-powered answers from our knowledge base</p>
+            <p className="text-white/40 text-xs">
+              AI-powered answers from our knowledge base
+            </p>
           </div>
         </div>
       </div>
@@ -310,7 +315,7 @@ function AskZantaraContent({
         {isScriptedMode && remainingScriptedQuestions.length > 0 && (
           <div className="space-y-2">
             <p className="text-white/40 text-xs">
-              {messages.length === 0 ? 'Ask me about:' : 'More questions:'}
+              {messages.length === 0 ? "Ask me about:" : "More questions:"}
             </p>
             {remainingScriptedQuestions.map((qa, i) => (
               <button
@@ -318,10 +323,10 @@ function AskZantaraContent({
                 onClick={() => onScriptedQuestion?.(qa)}
                 disabled={isLoading}
                 className={cn(
-                  'w-full text-left p-3 rounded-lg border text-sm transition-colors',
-                  'bg-white/5 hover:bg-white/10 border-white/10',
-                  'text-white/70 hover:text-white',
-                  'disabled:opacity-50 disabled:cursor-not-allowed'
+                  "w-full text-left p-3 rounded-lg border text-sm transition-colors",
+                  "bg-white/5 hover:bg-white/10 border-white/10",
+                  "text-white/70 hover:text-white",
+                  "disabled:opacity-50 disabled:cursor-not-allowed",
                 )}
               >
                 {qa.q}
@@ -352,12 +357,17 @@ function AskZantaraContent({
         {messages.map((message) => (
           <div
             key={message.id}
-            className={cn('flex', message.role === 'user' ? 'justify-end' : 'justify-start')}
+            className={cn(
+              "flex",
+              message.role === "user" ? "justify-end" : "justify-start",
+            )}
           >
             <div
               className={cn(
-                'max-w-[85%] p-3 rounded-xl text-sm',
-                message.role === 'user' ? 'bg-accent-blue-editorial text-white' : 'bg-white/10 text-white/80'
+                "max-w-[85%] p-3 rounded-xl text-sm",
+                message.role === "user"
+                  ? "bg-accent-blue-editorial text-white"
+                  : "bg-white/10 text-white/80",
               )}
             >
               <p className="whitespace-pre-wrap">{message.content}</p>
@@ -380,14 +390,14 @@ function AskZantaraContent({
               )}
 
               {/* Feedback buttons for assistant messages */}
-              {message.role === 'assistant' && (
+              {message.role === "assistant" && (
                 <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/10">
                   <button
                     className="p-1 rounded hover:bg-white/10 text-white/40 hover:text-emerald-400 transition-colors"
                     aria-label="Helpful"
                     onClick={() => {
                       const el = document.activeElement as HTMLButtonElement;
-                      el?.classList.add('text-emerald-400');
+                      el?.classList.add("text-emerald-400");
                     }}
                   >
                     <ThumbsUp className="w-3 h-3" />
@@ -397,7 +407,7 @@ function AskZantaraContent({
                     aria-label="Not helpful"
                     onClick={() => {
                       const el = document.activeElement as HTMLButtonElement;
-                      el?.classList.add('text-red-400');
+                      el?.classList.add("text-red-400");
                     }}
                   >
                     <ThumbsDown className="w-3 h-3" />
@@ -430,20 +440,20 @@ function AskZantaraContent({
               aria-label="Ask Zantara a question"
               disabled={isLoading}
               className={cn(
-                'w-full px-4 py-2.5 pr-12 rounded-xl',
-                'bg-white/5 border border-white/10',
-                'text-white placeholder:text-white/30',
-                'focus:outline-none focus:border-accent-blue-editorial/50 focus:ring-1 focus:ring-[#2251ff]/20',
-                'transition-colors disabled:opacity-50'
+                "w-full px-4 py-2.5 pr-12 rounded-xl",
+                "bg-white/5 border border-white/10",
+                "text-white placeholder:text-white/30",
+                "focus:outline-none focus:border-accent-blue-editorial/50 focus:ring-1 focus:ring-[#2251ff]/20",
+                "transition-colors disabled:opacity-50",
               )}
             />
             <button
               onClick={() => onSend()}
               disabled={!input.trim() || isLoading}
               className={cn(
-                'absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg',
-                'text-white/40 hover:text-accent-blue-editorial hover:bg-accent-blue-editorial/10',
-                'transition-colors disabled:opacity-30 disabled:cursor-not-allowed'
+                "absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg",
+                "text-white/40 hover:text-accent-blue-editorial hover:bg-accent-blue-editorial/10",
+                "transition-colors disabled:opacity-30 disabled:cursor-not-allowed",
               )}
             >
               <Send className="w-4 h-4" />

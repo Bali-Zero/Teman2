@@ -148,8 +148,15 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
           return;
         }
 
-        if (parsed.type === "tool_call" && parsed.data && typeof parsed.data === "object") {
-          const data = parsed.data as { name?: string; args?: Record<string, unknown> };
+        if (
+          parsed.type === "tool_call" &&
+          parsed.data &&
+          typeof parsed.data === "object"
+        ) {
+          const data = parsed.data as {
+            name?: string;
+            args?: Record<string, unknown>;
+          };
           if (!data.name) return;
           const newCall: ToolCall = {
             name: data.name,
@@ -164,7 +171,11 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
           return;
         }
 
-        if (parsed.type === "tool_result" && parsed.data && typeof parsed.data === "object") {
+        if (
+          parsed.type === "tool_result" &&
+          parsed.data &&
+          typeof parsed.data === "object"
+        ) {
           const data = parsed.data as {
             name?: string;
             result?: unknown;
@@ -174,7 +185,9 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
             ...block,
             toolCalls: block.toolCalls.map((tc) => {
               if (tc.name !== data.name || tc.status !== "running") return tc;
-              const duration = tc.startedAt ? Date.now() - tc.startedAt : undefined;
+              const duration = tc.startedAt
+                ? Date.now() - tc.startedAt
+                : undefined;
               return {
                 ...tc,
                 status: data.error ? "error" : "complete",
@@ -292,14 +305,18 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
         if (!res.ok || !res.body) {
           if (res.status === 401) {
             throw new Error(
-              "Not authenticated. Please log in at https://kita.balizero.com/login or configure the local gateway token."
+              "Not authenticated. Please log in at https://kita.balizero.com/login or configure the local gateway token.",
             );
           }
           if (res.status === 403) {
-            throw new Error("Access denied. Your account is not a registered team member.");
+            throw new Error(
+              "Access denied. Your account is not a registered team member.",
+            );
           }
           if (res.status >= 500) {
-            throw new Error(`Server error (${res.status}). Try again in a moment.`);
+            throw new Error(
+              `Server error (${res.status}). Try again in a moment.`,
+            );
           }
           throw new Error(`Request failed with HTTP ${res.status}`);
         }
@@ -352,7 +369,9 @@ export function useTerminal(options: UseTerminalOptions): UseTerminalReturn {
                 ? {
                     ...tc,
                     status: "complete",
-                    duration: tc.startedAt ? Date.now() - tc.startedAt : undefined,
+                    duration: tc.startedAt
+                      ? Date.now() - tc.startedAt
+                      : undefined,
                   }
                 : tc,
             ),

@@ -67,9 +67,7 @@ describe("Alert composition", () => {
 
     expect(screen.getByText("Heads up!")).toBeInTheDocument();
     expect(
-      screen.getByText(
-        "You can add components to your app using the cli.",
-      ),
+      screen.getByText("You can add components to your app using the cli."),
     ).toBeInTheDocument();
   });
 });

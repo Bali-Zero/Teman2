@@ -17,7 +17,11 @@ function deriveLabel(daysRemaining?: number): string {
   return "Have doubts? Ask 3 free questions";
 }
 
-export function ChatAccordion({ checkHash, sessionJwt, daysRemaining }: ChatAccordionProps) {
+export function ChatAccordion({
+  checkHash,
+  sessionJwt,
+  daysRemaining,
+}: ChatAccordionProps) {
   const [open, setOpen] = useState(false);
 
   if (!sessionJwt) return null;
@@ -27,7 +31,8 @@ export function ChatAccordion({ checkHash, sessionJwt, daysRemaining }: ChatAcco
       style={{
         marginTop: "var(--space-4, 1.5rem)",
         paddingTop: "var(--space-3, 1rem)",
-        borderTop: "1px solid color-mix(in srgb, var(--color-text-muted) 20%, transparent)",
+        borderTop:
+          "1px solid color-mix(in srgb, var(--color-text-muted) 20%, transparent)",
       }}
     >
       <button
@@ -42,7 +47,8 @@ export function ChatAccordion({ checkHash, sessionJwt, daysRemaining }: ChatAcco
           justifyContent: "space-between",
           padding: "var(--space-3, 1rem) var(--space-4, 1.5rem)",
           borderRadius: "0.5rem",
-          background: "color-mix(in srgb, var(--color-text-muted) 6%, transparent)",
+          background:
+            "color-mix(in srgb, var(--color-text-muted) 6%, transparent)",
           color: "var(--color-text)",
           fontFamily: "var(--font-serif, Georgia, serif)",
           fontSize: "1rem",

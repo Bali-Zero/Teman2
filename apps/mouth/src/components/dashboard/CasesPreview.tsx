@@ -143,11 +143,12 @@ export function CasesPreview({ cases, isLoading }: CasesPreviewProps) {
                             : `${caseItem.daysRemaining}d`}
                         </span>
                       )}
-                    {caseItem.status === "completed" && caseItem.completedAt && (
-                      <span className="text-xs text-[var(--foreground-muted)]">
-                        {caseItem.completedAt}
-                      </span>
-                    )}
+                    {caseItem.status === "completed" &&
+                      caseItem.completedAt && (
+                        <span className="text-xs text-[var(--foreground-muted)]">
+                          {caseItem.completedAt}
+                        </span>
+                      )}
                   </div>
                 </div>
               </Link>

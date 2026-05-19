@@ -1,21 +1,28 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Button } from '@/components/ui/button';
-import { X, MessageSquare, ThumbsUp, ThumbsDown, AlertCircle, Send } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { logger } from '@/lib/logger';
+import { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import {
+  X,
+  MessageSquare,
+  ThumbsUp,
+  ThumbsDown,
+  AlertCircle,
+  Send,
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { logger } from "@/lib/logger";
 
 interface FeedbackData {
-  type: 'positive' | 'negative' | 'issue';
+  type: "positive" | "negative" | "issue";
   message: string;
   sessionId: string | null;
   turnCount: number;
   timestamp: Date;
 }
 
-const STORAGE_KEY_SUBMITTED = 'zantara_feedback_submitted';
-const STORAGE_KEY_DISMISSED = 'zantara_feedback_dismissed';
+const STORAGE_KEY_SUBMITTED = "zantara_feedback_submitted";
+const STORAGE_KEY_DISMISSED = "zantara_feedback_dismissed";
 
 /**
  * Feedback Widget - Collect user feedback on long conversations
@@ -29,9 +36,11 @@ export function FeedbackWidget({
   turnCount: number;
 }) {
   const [isVisible, setIsVisible] = useState(false);
-  const [feedbackType, setFeedbackType] = useState<'positive' | 'negative' | 'issue' | null>(null);
-  const [message, setMessage] = useState('');
-  const [correctionText, setCorrectionText] = useState('');
+  const [feedbackType, setFeedbackType] = useState<
+    "positive" | "negative" | "issue" | null
+  >(null);
+  const [message, setMessage] = useState("");
+  const [correctionText, setCorrectionText] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
 
@@ -39,11 +48,11 @@ export function FeedbackWidget({
   useEffect(() => {
     if (!isVisible) return;
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') handleDismiss();
+      if (e.key === "Escape") handleDismiss();
     };
-    document.addEventListener('keydown', onKeyDown);
-    return () => document.removeEventListener('keydown', onKeyDown);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isVisible]);
 
   // Show widget after 8+ turns, but ONLY if not already submitted or dismissed
@@ -69,7 +78,7 @@ export function FeedbackWidget({
 
     try {
       // Map feedback type to rating (1-5 scale)
-      const ratingMap: Record<'positive' | 'negative' | 'issue', number> = {
+      const ratingMap: Record<"positive" | "negative" | "issue", number> = {
         positive: 5,
         negative: 2,
         issue: 1, // Changed to 1 to guarantee review queue trigger
@@ -77,12 +86,12 @@ export function FeedbackWidget({
       const rating = ratingMap[feedbackType];
 
       // Send feedback to backend API (P1 - New endpoint)
-      const response = await fetch('/api/v2/feedback', {
-        method: 'POST',
+      const response = await fetch("/api/v2/feedback", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        credentials: 'include',
+        credentials: "include",
         body: JSON.stringify({
           session_id: activeSessionId,
           rating: rating,
@@ -93,14 +102,16 @@ export function FeedbackWidget({
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: 'Unknown error' }));
+        const errorData = await response
+          .json()
+          .catch(() => ({ detail: "Unknown error" }));
         throw new Error(errorData.detail || `HTTP ${response.status}`);
       }
 
       await response.json();
 
       // Mark as submitted permanently
-      localStorage.setItem(STORAGE_KEY_SUBMITTED, 'true');
+      localStorage.setItem(STORAGE_KEY_SUBMITTED, "true");
 
       // Show success state briefly
       setSubmitSuccess(true);
@@ -108,9 +119,9 @@ export function FeedbackWidget({
         setIsVisible(false);
       }, 2000);
     } catch (error) {
-      logger.error('Failed to submit feedback', {}, error as Error);
+      logger.error("Failed to submit feedback", {}, error as Error);
       // Still mark as submitted to avoid annoying users
-      localStorage.setItem(STORAGE_KEY_SUBMITTED, 'true');
+      localStorage.setItem(STORAGE_KEY_SUBMITTED, "true");
       // Show success anyway - don't bother user with errors
       setSubmitSuccess(true);
       setTimeout(() => {
@@ -124,7 +135,7 @@ export function FeedbackWidget({
   const handleDismiss = () => {
     setIsVisible(false);
     // Mark as dismissed so it won't show again
-    localStorage.setItem(STORAGE_KEY_DISMISSED, 'true');
+    localStorage.setItem(STORAGE_KEY_DISMISSED, "true");
   };
 
   if (!isVisible) {
@@ -151,11 +162,13 @@ export function FeedbackWidget({
             <div className="w-12 h-12 rounded-full bg-[var(--success)]/20 flex items-center justify-center mb-3">
               <ThumbsUp className="w-6 h-6 text-[var(--success)]" />
             </div>
-            <h3 className="text-sm font-semibold text-[var(--foreground)]">Thank you!</h3>
+            <h3 className="text-sm font-semibold text-[var(--foreground)]">
+              Thank you!
+            </h3>
             <p className="text-xs text-[var(--foreground-muted)] mt-1">
               {correctionText.trim()
                 ? "Thanks! I've learned from this update."
-                : 'Your feedback helps us improve.'}
+                : "Your feedback helps us improve."}
             </p>
           </motion.div>
         ) : (
@@ -187,7 +200,7 @@ export function FeedbackWidget({
                   variant="outline"
                   size="sm"
                   className="w-full justify-start gap-2 hover:bg-[var(--success)]/10 hover:border-[var(--success)]/30 hover:text-[var(--success)]"
-                  onClick={() => setFeedbackType('positive')}
+                  onClick={() => setFeedbackType("positive")}
                 >
                   <ThumbsUp className="w-4 h-4" />
                   It&apos;s going well
@@ -196,7 +209,7 @@ export function FeedbackWidget({
                   variant="outline"
                   size="sm"
                   className="w-full justify-start gap-2 hover:bg-yellow-500/10 hover:border-yellow-500/30 hover:text-yellow-500"
-                  onClick={() => setFeedbackType('negative')}
+                  onClick={() => setFeedbackType("negative")}
                 >
                   <ThumbsDown className="w-4 h-4" />I had some issues
                 </Button>
@@ -204,7 +217,7 @@ export function FeedbackWidget({
                   variant="outline"
                   size="sm"
                   className="w-full justify-start gap-2 hover:bg-red-500/10 hover:border-red-500/30 hover:text-red-500"
-                  onClick={() => setFeedbackType('issue')}
+                  onClick={() => setFeedbackType("issue")}
                 >
                   <AlertCircle className="w-4 h-4" />I found a bug
                 </Button>
@@ -218,9 +231,11 @@ export function FeedbackWidget({
               >
                 <div>
                   <label className="text-xs text-[var(--foreground-muted)] block mb-1.5">
-                    {feedbackType === 'positive' && 'What did you like? (optional)'}
-                    {feedbackType === 'negative' && 'What went wrong? (optional)'}
-                    {feedbackType === 'issue' && 'Describe the bug: (optional)'}
+                    {feedbackType === "positive" &&
+                      "What did you like? (optional)"}
+                    {feedbackType === "negative" &&
+                      "What went wrong? (optional)"}
+                    {feedbackType === "issue" && "Describe the bug: (optional)"}
                   </label>
                   <textarea
                     value={message}
@@ -232,10 +247,10 @@ export function FeedbackWidget({
                 </div>
 
                 {/* Correction Textarea - Show only for negative or issue feedback */}
-                {(feedbackType === 'negative' || feedbackType === 'issue') && (
+                {(feedbackType === "negative" || feedbackType === "issue") && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
+                    animate={{ opacity: 1, height: "auto" }}
                     exit={{ opacity: 0, height: 0 }}
                     className="overflow-hidden"
                   >
@@ -257,8 +272,8 @@ export function FeedbackWidget({
                     size="sm"
                     onClick={() => {
                       setFeedbackType(null);
-                      setMessage('');
-                      setCorrectionText('');
+                      setMessage("");
+                      setCorrectionText("");
                     }}
                     disabled={isSubmitting}
                     className="text-[var(--foreground-muted)]"
@@ -278,7 +293,7 @@ export function FeedbackWidget({
                           transition={{
                             duration: 1,
                             repeat: Infinity,
-                            ease: 'linear',
+                            ease: "linear",
                           }}
                         >
                           <Send className="w-4 h-4" />

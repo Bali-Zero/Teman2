@@ -1,6 +1,9 @@
-'use client';
+"use client";
 
-import { usePrimeNexus, type IntelligenceFeature } from '@/contexts/PrimeNexusContext';
+import {
+  usePrimeNexus,
+  type IntelligenceFeature,
+} from "@/contexts/PrimeNexusContext";
 
 interface ZoneDensity {
   zone_code: string;
@@ -11,7 +14,7 @@ interface ZoneDensity {
 function computeZoneDensities(features: IntelligenceFeature[]): ZoneDensity[] {
   const map = new Map<string, ZoneDensity>();
   for (const f of features) {
-    const code = f.properties.zone_code ?? '__unzoned__';
+    const code = f.properties.zone_code ?? "__unzoned__";
     const name = f.properties.zone_name ?? null;
     const existing = map.get(code);
     if (existing) {
@@ -23,17 +26,35 @@ function computeZoneDensities(features: IntelligenceFeature[]): ZoneDensity[] {
   return Array.from(map.values()).sort((a, b) => b.count - a.count);
 }
 
-function StatCard({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
+function StatCard({
+  label,
+  value,
+  accent,
+}: {
+  label: string;
+  value: number;
+  accent?: boolean;
+}) {
   return (
     <div className="rounded-xl bg-white/5 border border-white/10 px-3 py-2 text-center">
-      <p className={`text-lg font-bold ${accent ? 'text-accent-warm' : 'text-white'}`}>{value}</p>
+      <p
+        className={`text-lg font-bold ${accent ? "text-accent-warm" : "text-white"}`}
+      >
+        {value}
+      </p>
       <p className="text-[10px] text-slate-500 mt-0.5 leading-tight">{label}</p>
     </div>
   );
 }
 
-function ZoneDensityRow({ rank, density }: { rank: number; density: ZoneDensity }) {
-  const isMissing = density.zone_code === '__unzoned__';
+function ZoneDensityRow({
+  rank,
+  density,
+}: {
+  rank: number;
+  density: ZoneDensity;
+}) {
+  const isMissing = density.zone_code === "__unzoned__";
   return (
     <div className="flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-white/5 transition-colors">
       <span className="w-5 h-5 rounded-full bg-white/10 flex items-center justify-center text-[10px] font-bold text-slate-400 shrink-0">
@@ -44,9 +65,13 @@ function ZoneDensityRow({ rank, density }: { rank: number; density: ZoneDensity 
           <p className="text-xs text-slate-500 italic">Not geocoded</p>
         ) : (
           <>
-            <p className="text-xs font-semibold text-white truncate">{density.zone_code}</p>
+            <p className="text-xs font-semibold text-white truncate">
+              {density.zone_code}
+            </p>
             {density.zone_name && (
-              <p className="text-[10px] text-slate-500 truncate">{density.zone_name}</p>
+              <p className="text-[10px] text-slate-500 truncate">
+                {density.zone_name}
+              </p>
             )}
           </>
         )}
@@ -57,7 +82,9 @@ function ZoneDensityRow({ rank, density }: { rank: number; density: ZoneDensity 
             KBLI mismatch
           </span>
         )}
-        <span className="text-xs font-medium text-accent-warm">{density.count}</span>
+        <span className="text-xs font-medium text-accent-warm">
+          {density.count}
+        </span>
       </div>
     </div>
   );
@@ -71,11 +98,19 @@ export function ComplianceOverlay() {
   const featureCount = features.length;
 
   // Stats
-  const totalCompanies = features.filter((f) => f.properties.entity_type === 'company').length;
-  const totalClients = features.filter((f) => f.properties.entity_type === 'client').length;
-  const zoneW1 = features.filter((f) => f.properties.zone_code?.startsWith('W-1')).length;
+  const totalCompanies = features.filter(
+    (f) => f.properties.entity_type === "company",
+  ).length;
+  const totalClients = features.filter(
+    (f) => f.properties.entity_type === "client",
+  ).length;
+  const zoneW1 = features.filter((f) =>
+    f.properties.zone_code?.startsWith("W-1"),
+  ).length;
   const zoneK = features.filter(
-    (f) => f.properties.zone_code?.startsWith('K-1') || f.properties.zone_code?.startsWith('K-2')
+    (f) =>
+      f.properties.zone_code?.startsWith("K-1") ||
+      f.properties.zone_code?.startsWith("K-2"),
   ).length;
   const zoneOther = featureCount - zoneW1 - zoneK;
 
@@ -87,7 +122,9 @@ export function ComplianceOverlay() {
       <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-base">&#x1F4CA;</span>
-          <span className="text-sm font-semibold text-white">Intelligence Layer</span>
+          <span className="text-sm font-semibold text-white">
+            Intelligence Layer
+          </span>
         </div>
         {!isLoadingIntelligence && !isAuthError && featureCount > 0 && (
           <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-accent-warm/20 text-accent-warm">
@@ -103,7 +140,9 @@ export function ComplianceOverlay() {
       {isAuthError && (
         <div className="px-4 py-6 text-center">
           <span className="text-2xl block mb-2">&#x1F512;</span>
-          <p className="text-sm font-medium text-white">Admin access required</p>
+          <p className="text-sm font-medium text-white">
+            Admin access required
+          </p>
           <p className="text-xs text-slate-500 mt-1">
             Sign in with an admin account to access intelligence data
           </p>
@@ -123,26 +162,35 @@ export function ComplianceOverlay() {
       {/* No bounds */}
       {!bounds && !isLoadingIntelligence && !isAuthError && (
         <div className="px-4 py-6 text-center">
-          <p className="text-xs text-slate-500">Move the map to analyze intelligence data</p>
+          <p className="text-xs text-slate-500">
+            Move the map to analyze intelligence data
+          </p>
         </div>
       )}
 
       {/* Empty state */}
-      {bounds && !isLoadingIntelligence && !isAuthError && featureCount === 0 && (
-        <div className="px-4 py-6 text-center">
-          <span className="text-2xl block mb-2">&#x1F30F;</span>
-          <p className="text-sm font-medium text-white">No data in this area</p>
-          <p className="text-xs text-slate-500 mt-1">No geocoded businesses found in viewport</p>
-          <a
-            href="/api/prime/v2/health"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 mt-3 text-xs text-accent-warm hover:text-[#e09070] transition-colors"
-          >
-            &#x25B6; Run geocoding
-          </a>
-        </div>
-      )}
+      {bounds &&
+        !isLoadingIntelligence &&
+        !isAuthError &&
+        featureCount === 0 && (
+          <div className="px-4 py-6 text-center">
+            <span className="text-2xl block mb-2">&#x1F30F;</span>
+            <p className="text-sm font-medium text-white">
+              No data in this area
+            </p>
+            <p className="text-xs text-slate-500 mt-1">
+              No geocoded businesses found in viewport
+            </p>
+            <a
+              href="/api/prime/v2/health"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 mt-3 text-xs text-accent-warm hover:text-[#e09070] transition-colors"
+            >
+              &#x25B6; Run geocoding
+            </a>
+          </div>
+        )}
 
       {/* Data view */}
       {!isLoadingIntelligence && !isAuthError && featureCount > 0 && (

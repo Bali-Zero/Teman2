@@ -143,12 +143,8 @@ export function TerminalBlock({ block, isActive = false }: TerminalBlockProps) {
               <span>· {block.tokenCount} tok</span>
             )}
             {!isUser && block.model && <span>· {block.model}</span>}
-            {isError && (
-              <span className="text-[var(--bz-red)]">· error</span>
-            )}
-            {isCancelled && (
-              <span className="text-white/50">· cancelled</span>
-            )}
+            {isError && <span className="text-[var(--bz-red)]">· error</span>}
+            {isCancelled && <span className="text-white/50">· cancelled</span>}
           </div>
         </div>
       </div>

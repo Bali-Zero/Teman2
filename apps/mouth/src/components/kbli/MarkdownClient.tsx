@@ -1,14 +1,14 @@
-'use client';
+"use client";
 
-import dynamic from 'next/dynamic';
-import Link from 'next/link';
-import type { Components } from 'react-markdown';
+import dynamic from "next/dynamic";
+import Link from "next/link";
+import type { Components } from "react-markdown";
 
-const ReactMarkdown = dynamic(() => import('react-markdown'), { ssr: false });
+const ReactMarkdown = dynamic(() => import("react-markdown"), { ssr: false });
 
 const kbliComponents: Components = {
   a: ({ href, children }) => {
-    if (href?.startsWith('/kbli/')) {
+    if (href?.startsWith("/kbli/")) {
       return (
         <Link
           href={href}
@@ -28,7 +28,10 @@ interface MarkdownClientProps {
   withKbliLinks?: boolean;
 }
 
-export function MarkdownClient({ children, withKbliLinks }: MarkdownClientProps) {
+export function MarkdownClient({
+  children,
+  withKbliLinks,
+}: MarkdownClientProps) {
   return (
     <ReactMarkdown components={withKbliLinks ? kbliComponents : undefined}>
       {children}

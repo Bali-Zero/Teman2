@@ -85,9 +85,20 @@ export function InboxTimeline() {
           paddingBottom: "var(--space-3, 12px)",
         }}
       >
-        <h1 style={{ margin: 0, fontSize: "var(--font-size-xl, 20px)" }}>Inbox</h1>
-        <label style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
-          <span style={{ color: "var(--color-text-secondary, #6b7280)" }}>Canale</span>
+        <h1 style={{ margin: 0, fontSize: "var(--font-size-xl, 20px)" }}>
+          Inbox
+        </h1>
+        <label
+          style={{
+            marginLeft: "auto",
+            display: "flex",
+            gap: 8,
+            alignItems: "center",
+          }}
+        >
+          <span style={{ color: "var(--color-text-secondary, #6b7280)" }}>
+            Canale
+          </span>
           <select
             value={channel}
             onChange={(e) => setChannel(e.target.value as InboxChannel | "")}
@@ -114,9 +125,17 @@ export function InboxTimeline() {
           Errore: {error}
         </p>
       ) : items.length === 0 ? (
-        <p style={{ color: "var(--color-text-secondary, #6b7280)" }}>Nessun messaggio.</p>
+        <p style={{ color: "var(--color-text-secondary, #6b7280)" }}>
+          Nessun messaggio.
+        </p>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: "var(--space-4, 16px)" }}>
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            gap: "var(--space-4, 16px)",
+          }}
+        >
           {groups.map(([day, bucket]) => (
             <section key={day} aria-label={day}>
               <h2
@@ -136,7 +155,8 @@ export function InboxTimeline() {
                     key={it.id}
                     style={{
                       padding: "var(--space-3, 12px)",
-                      borderBottom: "1px solid var(--color-border-subtle, #e5e7eb)",
+                      borderBottom:
+                        "1px solid var(--color-border-subtle, #e5e7eb)",
                       display: "flex",
                       flexDirection: "column",
                       gap: 4,
@@ -150,7 +170,9 @@ export function InboxTimeline() {
                         fontSize: "var(--font-size-sm, 12px)",
                       }}
                     >
-                      <span style={{ textTransform: "uppercase", fontWeight: 600 }}>
+                      <span
+                        style={{ textTransform: "uppercase", fontWeight: 600 }}
+                      >
                         {it.channel}
                       </span>
                       <span>·</span>

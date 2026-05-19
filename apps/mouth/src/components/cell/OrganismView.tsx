@@ -20,9 +20,7 @@ export function OrganismView({
   pulse: CellPulse | null;
   alive: boolean;
 }) {
-  const color = alive
-    ? HEALTH_COLORS[pulse?.health_status || "green"]
-    : "#666";
+  const color = alive ? HEALTH_COLORS[pulse?.health_status || "green"] : "#666";
 
   return (
     <div

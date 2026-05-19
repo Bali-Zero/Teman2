@@ -22,7 +22,9 @@ describe("ThemeToggle", () => {
 
   it("renders a toggle button", () => {
     render(<ThemeToggle />);
-    const button = screen.getByRole("button", { name: /toggle theme|switch to/i });
+    const button = screen.getByRole("button", {
+      name: /toggle theme|switch to/i,
+    });
     expect(button).toBeDefined();
   });
 

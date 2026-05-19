@@ -67,22 +67,16 @@ describe("Tabs", () => {
       </Tabs>,
     );
 
-    expect(screen.getByText("Tab 1")).toHaveAttribute(
-      "data-state",
-      "active",
-    );
-    expect(screen.getByText("Tab 2")).toHaveAttribute(
-      "data-state",
-      "inactive",
-    );
+    expect(screen.getByText("Tab 1")).toHaveAttribute("data-state", "active");
+    expect(screen.getByText("Tab 2")).toHaveAttribute("data-state", "inactive");
   });
 });
 
 describe("TabsTrigger", () => {
   it("throws when used outside Tabs", () => {
-    expect(() =>
-      render(<TabsTrigger value="test">Test</TabsTrigger>),
-    ).toThrow("TabsTrigger must be used within Tabs");
+    expect(() => render(<TabsTrigger value="test">Test</TabsTrigger>)).toThrow(
+      "TabsTrigger must be used within Tabs",
+    );
   });
 });
 
