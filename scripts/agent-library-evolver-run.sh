@@ -156,7 +156,6 @@ import json, sys
 print(json.dumps({
     'chat_id': '${TELEGRAM_OWNER_CHAT_ID}',
     'text': sys.argv[1],
-    'parse_mode': 'Markdown'
 }))
 " "${msg}")"
     curl -sS -X POST \

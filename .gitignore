@@ -423,6 +423,8 @@ agent-library/.evoskill/logs/
 agent-library/.evoskill/skills/
 agent-library/.evoskill/prompts/
 agent-library/.evoskill/state.json
+agent-library/.evoskill/loop_checkpoint.json
+agent-library/.evoskill/feedback_history.md
 
 service_roi_calculator.py
 service_zone_finder.py
