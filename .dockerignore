@@ -9,6 +9,8 @@
 !apps/backend-rag/training-data/
 !apps/backend-rag/requirements-prod.txt
 !apps/backend-rag/requirements.txt
+!apps/backend-rag/requirements-prod.lock.txt
+!apps/backend-rag/requirements.lock.txt
 !apps/backend-rag/Dockerfile
 !apps/backend-rag/*.py
 
