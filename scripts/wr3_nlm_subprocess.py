@@ -18,7 +18,7 @@ import shutil
 from dataclasses import dataclass
 from pathlib import Path
 
-NLM_CLI = os.environ.get("WR3_NLM_CLI", "notebooklm-mcp")
+NLM_CLI = os.environ.get("WR3_NLM_CLI", "nlm")
 NLM_TIMEOUT_S = int(os.environ.get("WR3_NLM_TIMEOUT_S", "60"))
 
 
@@ -63,11 +63,11 @@ async def query_nb(
 
     args = [
         bin_path,
-        "query",
-        "--notebook", query.notebook_id,
-        "--question", query.question,
-        "--format", "json",
-        "--max-sources", str(query.max_sources),
+        "notebook", "query",
+        query.notebook_id,
+        query.question,
+        "--json",
+        "--timeout", str(timeout_s or NLM_TIMEOUT_S),
     ]
 
     started = asyncio.get_event_loop().time()
@@ -98,11 +98,25 @@ async def query_nb(
     except json.JSONDecodeError as e:
         raise NLMError(f"NLM returned non-JSON: {stdout[:200]!r}") from e
 
+    # nlm CLI 0.6.10 JSON shape (empirical 2026-05-20):
+    #   {"value": {"answer": "...", "sources_used": [<uuid>, ...], "conversation_id": "...", "citations": {...}}}
+    # Unwrap `value` if present, then accept multiple key spellings for fwd-compat.
+    if "value" in data and isinstance(data["value"], dict):
+        data = data["value"]
+    raw_text = data.get("answer") or data.get("response") or data.get("text", "")
+    source_ids_raw: list = (
+        data.get("sources_used")
+        or data.get("source_ids")
+        or []
+    )
+    if not source_ids_raw and isinstance(data.get("sources"), list):
+        source_ids_raw = [s.get("id") for s in data["sources"] if isinstance(s, dict) and s.get("id")]
+
     return NLMAnswer(
         notebook_id=query.notebook_id,
         question=query.question,
-        raw_text=data.get("answer", ""),
-        source_ids=tuple(data.get("source_ids") or []),
+        raw_text=raw_text,
+        source_ids=tuple(sid for sid in source_ids_raw if sid),
         duration_ms=duration_ms,
     )
 
