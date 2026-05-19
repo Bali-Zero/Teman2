@@ -243,11 +243,22 @@ metadata (then hit the stub raise on reload).
 - `src/harness/deepseek/options.py` — `build_deepseek_options(...)`
   returns a Phase-0-stub dict with `{"sdk": "deepseek", "model":
 "deepseek-v4-pro", "reasoning_effort": "high", "phase_0_stub": True}`.
-- `src/harness/deepseek/executor.py` — `execute_query()` and
-  `parse_response()` BOTH raise `NotImplementedError` with a clear
-  "wire in Phase 1" message. The Phase 1 implementation will POST to
-  `https://api.deepseek.com/v1/chat/completions` with usage-based
-  `BUDGET_USD` enforcement.
+- `src/harness/deepseek/executor.py` — Phase 1 REAL IMPLEMENTATION
+  (was Phase 0 NotImplementedError stub). `execute_query()` POSTs to
+  `https://api.deepseek.com/v1/chat/completions` via httpx async with
+  retry policy 30s→60s→120s on transient errors (5xx, 429, 408,
+  network timeouts), non-retryable raise on 4xx. `parse_response()`
+  unwraps `choices[0].message.content`, strips ```json fences, JSON-
+decodes, validates against the Pydantic `response_model`, and
+builds AgentTrace-compatible fields including `total_cost_usd`computed from`usage.{prompt_cache_hit_tokens, prompt_cache_miss_tokens,
+  completion_tokens}`× public pricing snapshot (deepseek-v4-pro:
+$0.07/M cache-hit, $0.27/M cache-miss, $1.10/M output as of
+2026-05). RuntimeError raised if`DEEPSEEK_API_KEY`env var missing.
+Verified by 21 unit tests in`scripts/test_deepseek_executor.py`
+  (happy path, auth, 401 non-retry, 500 retry, 429 retry, 400 non-
+  retry, JSON code-fence stripping, Pydantic ValidationError capture,
+  empty messages fallback, cost math, fuzzy model prefix match,
+  response_format builder, end-to-end round-trip).
 
 **Files updated to wire the new harness:**
 
