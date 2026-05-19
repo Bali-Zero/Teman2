@@ -29,9 +29,10 @@ class TeamDriveService:
 
         # 1. Ottimizzazione HTTP: Client asincrono condiviso per reuse delle connessioni.
         limits = httpx.Limits(max_keepalive_connections=20, max_connections=100)
-        self.http_client = httpx.AsyncClient(
+        # golden-rule-10-exempt: process-wide singleton, close() wired in app_factory.lifespan via app.state.team_drive_service
+        self.http_client = httpx.AsyncClient(  # golden-rule-10-exempt
             limits=limits, timeout=30.0
-        )  # golden-rule-10-exempt: process-wide singleton, close() wired in app_factory.lifespan via app.state.team_drive_service
+        )
 
         # 2. Inizializzazione dei sottomoduli (Dependency Injection interna)
         self.audit = DriveAuditLogger()
