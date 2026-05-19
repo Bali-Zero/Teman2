@@ -11,9 +11,23 @@ from typing import Literal
 SDKType = Literal["claude", "opencode", "codex", "goose", "openhands", "deepseek"]
 
 # Global SDK selection (can be overridden via CLI arguments).
-# Default remains "claude" for upstream compatibility — Bali Zero
-# evolver.toml explicitly sets "deepseek" before any .run() call.
-_current_sdk: SDKType = "claude"
+#
+# Phase 1 post-merge hotfix 2026-05-19: default was "claude" for
+# upstream compatibility, BUT several agent_profiles modules call
+# `build_options()` at MODULE-LOAD TIME (e.g., proposer.py:35
+# `proposer_options = get_proposer_options()` → build_options(...) →
+# `if sdk == "claude": raise ImportError(...)` from harness/utils.py
+# Phase 0 strip). This crashed `uv run evoskill run` on first
+# import — verified by the kickstart smoke run at 13:12:48 WITA
+# 2026-05-19. evolver.toml `[harness] name="deepseek"` is read by
+# load_config() AFTER the agent_profiles import chain completed,
+# too late to influence the module-load build_options() calls.
+#
+# Fix: default to "deepseek" so module-load build_options() calls
+# route to the sanctioned executor instead of the stripped claude
+# stub. CLI `--harness` flag or evolver.toml still override at run
+# time for any future scenario where a different SDK is needed.
+_current_sdk: SDKType = "deepseek"
 
 _VALID_SDKS = ("claude", "opencode", "codex", "goose", "openhands", "deepseek")
 
