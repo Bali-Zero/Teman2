@@ -61,11 +61,14 @@ jobs:
           cd apps/backend-rag
           pip install --upgrade pip uv
           # requirements.lock.txt is hash-pinned, derived from requirements.txt
-          # via `uv pip compile … --generate-hashes`. The lock declares
-          # cell-core as an editable workspace dep (`-e ../../packages/cell-core`).
+          # via `uv pip compile … --generate-hashes`. uv --require-hashes mode
+          # does NOT accept editable installs (no hashes possible on local paths),
+          # so cell-core is stripped from the lock and installed separately AFTER.
           # uv is 10-100× faster than pip; --require-hashes enforces SHA256
           # against every wheel. See docs/uv-migration.md to regenerate.
           uv pip install --system --require-hashes -r requirements.lock.txt
+          # Editable cell-core workspace dep (out-of-tree, no PyPI hash)
+          uv pip install --system -e ../../packages/cell-core
           uv pip install --system pytest pytest-cov pytest-asyncio pytest-mock fakeredis
 
       - name: pip-audit
@@ -332,6 +335,8 @@ jobs:
           cd apps/backend-rag
           pip install --upgrade pip uv
           uv pip install --system --require-hashes -r requirements.lock.txt
+          # Editable cell-core workspace dep (no PyPI hash, installed separately)
+          uv pip install --system -e ../../packages/cell-core
 
       - name: Start backend (FastAPI on :8000)
         env:
