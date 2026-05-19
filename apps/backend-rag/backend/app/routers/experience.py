@@ -7,6 +7,7 @@ call /query before reasoning from scratch.
 Produces: cell_core.genome rows (type='trajectory') in the shared SQLite KB.
 Consumes: authenticated POST/GET calls from cells + internal dispatchers.
 """
+
 from __future__ import annotations
 
 import logging
@@ -64,7 +65,8 @@ async def record_trajectory(
     except Exception as exc:  # pragma: no cover — defensive
         logger.exception(
             "experience.record failed for trajectory_id=%s by user=%s",
-            payload.trajectory_id, current_user.get("email", "?"),
+            payload.trajectory_id,
+            current_user.get("email", "?"),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -72,8 +74,11 @@ async def record_trajectory(
         ) from exc
     logger.info(
         "experience.record action=%s trajectory_id=%s cell=%s outcome=%s user=%s",
-        result.get("action"), payload.trajectory_id, payload.cell,
-        payload.outcome, current_user.get("email", "?"),
+        result.get("action"),
+        payload.trajectory_id,
+        payload.cell,
+        payload.outcome,
+        current_user.get("email", "?"),
     )
     # Cache namespace kept tight so unrelated consumers are unaffected.
     await invalidate_cache("zantara:experience:*")
@@ -98,7 +103,8 @@ async def query_trajectories(
     except Exception as exc:  # pragma: no cover — defensive
         logger.exception(
             "experience.query failed for query=%r by user=%s",
-            payload.query, current_user.get("email", "?"),
+            payload.query,
+            current_user.get("email", "?"),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

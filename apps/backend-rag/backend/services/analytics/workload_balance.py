@@ -110,7 +110,8 @@ class WorkloadBalanceService:
                 "team_size": team_size,
             },
             "recommendations": self._generate_workload_recommendations(
-                team_stats, ideal_hours_per_person,
+                team_stats,
+                ideal_hours_per_person,
             ),
         }
 

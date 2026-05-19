@@ -42,7 +42,9 @@ class TextChunker:
     Optimized for book content with natural language structure.
     """
 
-    def __init__(self, chunk_size: int = None, chunk_overlap: int = None, max_chunks: int = None) -> None:
+    def __init__(
+        self, chunk_size: int = None, chunk_overlap: int = None, max_chunks: int = None
+    ) -> None:
         """
         Initialize chunker with configuration.
 
@@ -212,7 +214,10 @@ class TextChunker:
             raise
 
     def chunk_by_pages(
-        self, text: str, page_markers: list[int] = None, metadata: dict[str, Any] = None,
+        self,
+        text: str,
+        page_markers: list[int] = None,
+        metadata: dict[str, Any] = None,
     ) -> list[dict[str, Any]]:
         """
         Page-aware chunking: honours page boundaries from PDF extraction.
@@ -288,7 +293,7 @@ class TextChunker:
                 for i, chunk in enumerate(raw_chunks):
                     if i > 0:
                         overlap_text = (
-                            raw_chunks[i - 1][-self.chunk_overlap:]
+                            raw_chunks[i - 1][-self.chunk_overlap :]
                             if len(raw_chunks[i - 1]) > self.chunk_overlap
                             else raw_chunks[i - 1]
                         )

@@ -61,10 +61,12 @@ def builder_with_db(mock_db_pool):
 def mock_llm_gateway():
     """Mock LLMGateway."""
     gw = MagicMock()
-    gw.conversational = AsyncMock(return_value={
-        "text": '{"entities": [{"id": "kbli_56101", "type": "KBLI_CODE", "name": "56101", "description": "Restaurant"}], "relationships": [{"source": "kbli_56101", "target": "permit_nib", "type": "REQUIRES", "description": "needs NIB"}]}',
-        "model": "test-model",
-    })
+    gw.conversational = AsyncMock(
+        return_value={
+            "text": '{"entities": [{"id": "kbli_56101", "type": "KBLI_CODE", "name": "56101", "description": "Restaurant"}], "relationships": [{"source": "kbli_56101", "target": "permit_nib", "type": "REQUIRES", "description": "needs NIB"}]}',
+            "model": "test-model",
+        }
+    )
     return gw
 
 
@@ -119,8 +121,10 @@ class TestEntity:
 class TestRelationship:
     def test_relationship_defaults(self):
         r = Relationship(
-            relationship_id="r1", source_entity_id="s1",
-            target_entity_id="t1", relationship_type="requires",
+            relationship_id="r1",
+            source_entity_id="s1",
+            target_entity_id="t1",
+            relationship_type="requires",
         )
         assert r.properties == {}
         assert r.confidence == 1.0
@@ -188,14 +192,18 @@ class TestAddRelationship:
         assert sample_relationship.relationship_id in builder.relationships
 
     @pytest.mark.asyncio
-    async def test_add_relationship_with_db(self, builder_with_db, mock_db_pool, sample_relationship):
+    async def test_add_relationship_with_db(
+        self, builder_with_db, mock_db_pool, sample_relationship
+    ):
         mock_db_pool.execute = AsyncMock()
         await builder_with_db.add_relationship(sample_relationship)
         assert sample_relationship.relationship_id in builder_with_db.relationships
         mock_db_pool.execute.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_add_relationship_db_error(self, builder_with_db, mock_db_pool, sample_relationship):
+    async def test_add_relationship_db_error(
+        self, builder_with_db, mock_db_pool, sample_relationship
+    ):
         mock_db_pool.execute = AsyncMock(side_effect=Exception("DB error"))
         await builder_with_db.add_relationship(sample_relationship)
         assert sample_relationship.relationship_id in builder_with_db.relationships
@@ -237,7 +245,9 @@ class TestExtractEntitiesFromText:
         for e in entities1:
             builder.entities[e.entity_id] = e
         entities2 = builder.extract_entities_from_text(text)
-        kbli2 = [e for e in entities2 if "56101" in e.name and e.entity_type == EntityType.KBLI_CODE]
+        kbli2 = [
+            e for e in entities2 if "56101" in e.name and e.entity_type == EntityType.KBLI_CODE
+        ]
         assert len(kbli2) == 0
 
     def test_with_source_collection(self, builder):
@@ -321,7 +331,9 @@ class TestExtractViaLLM:
     @pytest.mark.asyncio
     @patch("backend.services.autonomous_agents.knowledge_graph_builder.metrics_collector")
     async def test_successful_extraction(self, mock_metrics, builder_with_llm):
-        result = await builder_with_llm.extract_via_llm("KBLI 56101", source_collection="test", chunk_id="c1")
+        result = await builder_with_llm.extract_via_llm(
+            "KBLI 56101", source_collection="test", chunk_id="c1"
+        )
         assert len(result["entities"]) >= 1
         assert len(result["relationships"]) >= 1
         mock_metrics.record_kg_metrics.assert_called_once()
@@ -343,20 +355,24 @@ class TestExtractViaLLM:
     @pytest.mark.asyncio
     @patch("backend.services.autonomous_agents.knowledge_graph_builder.metrics_collector")
     async def test_extraction_with_code_fence(self, mock_metrics, builder_with_llm):
-        builder_with_llm.llm_gateway.conversational = AsyncMock(return_value={
-            "text": '```json\n{"entities": [{"id": "test_1", "type": "PERMIT", "name": "NIB", "description": "Business ID"}], "relationships": []}\n```',
-            "model": "test",
-        })
+        builder_with_llm.llm_gateway.conversational = AsyncMock(
+            return_value={
+                "text": '```json\n{"entities": [{"id": "test_1", "type": "PERMIT", "name": "NIB", "description": "Business ID"}], "relationships": []}\n```',
+                "model": "test",
+            }
+        )
         result = await builder_with_llm.extract_via_llm("text")
         assert len(result["entities"]) == 1
 
     @pytest.mark.asyncio
     @patch("backend.services.autonomous_agents.knowledge_graph_builder.metrics_collector")
     async def test_entity_id_sanitization(self, mock_metrics, builder_with_llm):
-        builder_with_llm.llm_gateway.conversational = AsyncMock(return_value={
-            "text": '{"entities": [{"id": "test/bad id!", "type": "PERMIT", "name": "Test", "description": "d"}], "relationships": []}',
-            "model": "test",
-        })
+        builder_with_llm.llm_gateway.conversational = AsyncMock(
+            return_value={
+                "text": '{"entities": [{"id": "test/bad id!", "type": "PERMIT", "name": "Test", "description": "d"}], "relationships": []}',
+                "model": "test",
+            }
+        )
         result = await builder_with_llm.extract_via_llm("text")
         eid = result["entities"][0]["entity_id"]
         assert "/" not in eid
@@ -384,12 +400,14 @@ class TestBuildGraphFromCollection:
     @pytest.mark.asyncio
     async def test_with_results_regex(self, builder):
         builder.search = MagicMock()
-        builder.search.search = AsyncMock(return_value={
-            "results": [
-                {"text": "KBLI 56101 restaurant business", "id": "chunk1"},
-                {"text": "work permit requirements", "id": "chunk2"},
-            ],
-        })
+        builder.search.search = AsyncMock(
+            return_value={
+                "results": [
+                    {"text": "KBLI 56101 restaurant business", "id": "chunk1"},
+                    {"text": "work permit requirements", "id": "chunk2"},
+                ],
+            }
+        )
         result = await builder.build_graph_from_collection("test_col")
         assert result >= 0
         assert "test_col" in builder.graph_stats["collections_analyzed"]
@@ -398,9 +416,11 @@ class TestBuildGraphFromCollection:
     @patch("backend.services.autonomous_agents.knowledge_graph_builder.metrics_collector")
     async def test_with_results_llm(self, mock_metrics, builder_with_llm):
         builder_with_llm.search = MagicMock()
-        builder_with_llm.search.search = AsyncMock(return_value={
-            "results": [{"text": "test text", "id": "c1"}],
-        })
+        builder_with_llm.search.search = AsyncMock(
+            return_value={
+                "results": [{"text": "test text", "id": "c1"}],
+            }
+        )
         result = await builder_with_llm.build_graph_from_collection("test_col")
         assert result == 1
 
@@ -419,16 +439,31 @@ class TestRefreshFromDB:
     @pytest.mark.asyncio
     async def test_refresh_from_db(self, builder_with_db, mock_db_pool):
         node_row = {
-            "entity_id": "e1", "entity_type": "permit", "name": "NIB",
-            "description": "Business ID", "properties": '{"key": "val"}',
-            "confidence": 0.9, "source_collection": "test", "source_chunk_ids": ["c1"],
+            "entity_id": "e1",
+            "entity_type": "permit",
+            "name": "NIB",
+            "description": "Business ID",
+            "properties": '{"key": "val"}',
+            "confidence": 0.9,
+            "source_collection": "test",
+            "source_chunk_ids": ["c1"],
         }
         edge_row = {
-            "relationship_id": "r1", "source_entity_id": "e1", "target_entity_id": "e2",
-            "relationship_type": "requires", "properties": {"k": "v"},
-            "confidence": 0.8, "source_collection": "test", "source_chunk_ids": [],
+            "relationship_id": "r1",
+            "source_entity_id": "e1",
+            "target_entity_id": "e2",
+            "relationship_type": "requires",
+            "properties": {"k": "v"},
+            "confidence": 0.8,
+            "source_collection": "test",
+            "source_chunk_ids": [],
         }
-        mock_db_pool.fetch = AsyncMock(side_effect=[[MagicMock(**{"__getitem__": lambda s, k: node_row[k]})], [MagicMock(**{"__getitem__": lambda s, k: edge_row[k]})]])
+        mock_db_pool.fetch = AsyncMock(
+            side_effect=[
+                [MagicMock(**{"__getitem__": lambda s, k: node_row[k]})],
+                [MagicMock(**{"__getitem__": lambda s, k: edge_row[k]})],
+            ]
+        )
 
         # Use simpler approach: mock fetch to return dicts
         mock_node = MagicMock()
@@ -524,8 +559,18 @@ class TestQueryGraph:
         e1 = Entity(entity_id="e1", entity_type="permit", name="NIB", description="d1")
         e2 = Entity(entity_id="e2", entity_type="permit", name="NPWP", description="d2")
         e3 = Entity(entity_id="e3", entity_type="permit", name="SIUP", description="d3")
-        r1 = Relationship(relationship_id="r1", source_entity_id="e1", target_entity_id="e2", relationship_type="requires")
-        r2 = Relationship(relationship_id="r2", source_entity_id="e2", target_entity_id="e3", relationship_type="requires")
+        r1 = Relationship(
+            relationship_id="r1",
+            source_entity_id="e1",
+            target_entity_id="e2",
+            relationship_type="requires",
+        )
+        r2 = Relationship(
+            relationship_id="r2",
+            source_entity_id="e2",
+            target_entity_id="e3",
+            relationship_type="requires",
+        )
 
         await builder.add_entity(e1)
         await builder.add_entity(e2)
@@ -548,8 +593,12 @@ class TestQueryGraph:
     async def test_query_from_db_with_result(self, builder_with_db, mock_db_pool):
         conn = mock_db_pool._mock_conn
         start_node = {
-            "entity_id": "e1", "entity_type": "permit", "name": "NIB",
-            "description": "d", "properties": {}, "confidence": 0.9,
+            "entity_id": "e1",
+            "entity_type": "permit",
+            "name": "NIB",
+            "description": "d",
+            "properties": {},
+            "confidence": 0.9,
             "source_collection": "test",
         }
         # Use a dict-like mock that supports both [] and dict() conversion
@@ -583,7 +632,12 @@ class TestQueryGraph:
 class TestExportEdgeCases:
     @pytest.mark.asyncio
     async def test_cypher_special_chars(self, builder):
-        e = Entity(entity_id="e1", entity_type="permit", name='Test "quoted"', description='Desc with "quotes"')
+        e = Entity(
+            entity_id="e1",
+            entity_type="permit",
+            name='Test "quoted"',
+            description='Desc with "quotes"',
+        )
         await builder.add_entity(e)
         result = await builder.export_graph(format="cypher")
         assert "\u201c" not in result or "quoted" in result  # quotes escaped
@@ -599,8 +653,11 @@ class TestExportEdgeCases:
     @pytest.mark.asyncio
     async def test_cypher_entity_with_properties(self, builder):
         e = Entity(
-            entity_id="e1", entity_type="permit", name="NIB",
-            description="d", properties={"cost": 100, "active": True, "note": "test"},
+            entity_id="e1",
+            entity_type="permit",
+            name="NIB",
+            description="d",
+            properties={"cost": 100, "active": True, "note": "test"},
         )
         await builder.add_entity(e)
         result = await builder.export_graph(format="cypher")

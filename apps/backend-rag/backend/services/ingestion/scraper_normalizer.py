@@ -124,7 +124,8 @@ class ScraperDataNormalizer:
 
             # Record error metrics
             metrics_collector.record_scraper_normalization_error(
-                scraper_type="news", error_type=error_type,
+                scraper_type="news",
+                error_type=error_type,
             )
 
             # Log error
@@ -207,7 +208,8 @@ class ScraperDataNormalizer:
 
             # Record error metrics
             metrics_collector.record_scraper_normalization_error(
-                scraper_type="visa", error_type=error_type,
+                scraper_type="visa",
+                error_type=error_type,
             )
 
             # Log error
@@ -263,7 +265,9 @@ class ScraperDataNormalizer:
         return duplicates
 
     async def _normalize_article_data(
-        self, raw_data: dict[str, Any], document_id: str,
+        self,
+        raw_data: dict[str, Any],
+        document_id: str,
     ) -> dict[str, Any]:
         """Normalize article data"""
 
@@ -314,9 +318,10 @@ class ScraperDataNormalizer:
             "confidence_score": raw_data.get("confidence_score", 0.0),
         }
 
-
     async def _normalize_visa_data(
-        self, raw_data: dict[str, Any], document_id: str,
+        self,
+        raw_data: dict[str, Any],
+        document_id: str,
     ) -> dict[str, Any]:
         """Normalize visa data"""
 
@@ -362,7 +367,6 @@ class ScraperDataNormalizer:
             "scraper_type": raw_data.get("scraper_type", "unknown"),
             "data_quality": raw_data.get("data_quality", "unknown"),
         }
-
 
     def _validate_required_fields(self, data: dict[str, Any], required_fields: list[str]) -> None:
         """Validate that required fields are present and not empty"""

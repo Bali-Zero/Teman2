@@ -105,7 +105,7 @@ class IGPublisher(Publisher):
             issues.append("draft has no slides and no cover")
         if len(draft.slides) + 1 > 10:
             # IG carousel max 10 items (including cover)
-            issues.append(f"carousel has {len(draft.slides)+1} items, max 10")
+            issues.append(f"carousel has {len(draft.slides) + 1} items, max 10")
         caption = draft.main_caption or ""
         if len(caption) > 2200:
             issues.append(f"caption exceeds 2200 chars ({len(caption)})")
@@ -298,7 +298,9 @@ def _build_items(draft: DraftPayload) -> list[SlidePayload]:
 def _parse_id(resp: httpx.Response) -> str | None:
     if resp.status_code != 200:
         logger.warning(
-            "IG API returned %s: %s", resp.status_code, resp.text[:300],
+            "IG API returned %s: %s",
+            resp.status_code,
+            resp.text[:300],
         )
         return None
     try:

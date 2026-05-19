@@ -25,6 +25,7 @@ from backend.db.migration_base import (
 # 1. MigrationIrreversibleError
 # ---------------------------------------------------------------------------
 
+
 def test_migration_irreversible_error_is_exception() -> None:
     err = MigrationIrreversibleError("DROP TABLE users — cannot be reversed")
     assert isinstance(err, Exception)
@@ -40,6 +41,7 @@ def test_migration_irreversible_error_inherits_migration_error() -> None:
 # 2. Legacy whitelist exists and is a frozenset
 # ---------------------------------------------------------------------------
 
+
 def test_legacy_whitelist_is_frozenset() -> None:
     assert isinstance(LEGACY_NO_ROLLBACK_WHITELIST, frozenset)
 
@@ -54,6 +56,7 @@ def test_legacy_whitelist_contains_known_pre_2026_migrations() -> None:
 # ---------------------------------------------------------------------------
 # 3. BaseMigration construction: new migration WITHOUT rollback_sql raises
 # ---------------------------------------------------------------------------
+
 
 def test_new_migration_without_rollback_sql_raises(tmp_path) -> None:
     """A migration number > 111 (post-cutoff) must supply rollback_sql."""
@@ -89,6 +92,7 @@ def test_new_migration_with_rollback_sql_accepted(tmp_path) -> None:
 # 4. Legacy migration WITHOUT rollback_sql is accepted (whitelist bypass)
 # ---------------------------------------------------------------------------
 
+
 def test_legacy_migration_without_rollback_accepted(tmp_path) -> None:
     """Migrations in LEGACY_NO_ROLLBACK_WHITELIST bypass the rollback requirement."""
     sql_file = tmp_path / "001_fix_missing_tables.sql"
@@ -108,6 +112,7 @@ def test_legacy_migration_without_rollback_accepted(tmp_path) -> None:
 # ---------------------------------------------------------------------------
 # 5. verify_apply and verify_rollback return True by default (sync stubs)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_verify_apply_returns_true_by_default(tmp_path) -> None:

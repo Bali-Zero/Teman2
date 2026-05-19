@@ -19,6 +19,7 @@ Schema per line (line-delimited JSON):
 Sensitive payload fields (full prompts, NPWP, NIB, etc.) are NEVER
 logged here — callers pass already-redacted summaries.
 """
+
 from __future__ import annotations
 
 import json
@@ -31,11 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 def _utc_now_iso() -> str:
-    return (
-        datetime.now(timezone.utc)
-        .isoformat(timespec="milliseconds")
-        .replace("+00:00", "Z")
-    )
+    return datetime.now(timezone.utc).isoformat(timespec="milliseconds").replace("+00:00", "Z")
 
 
 class AuditLogger:
@@ -55,7 +52,8 @@ class AuditLogger:
         except OSError as exc:
             logger.warning(
                 "audit log dir creation failed: %s (path=%s)",
-                exc, self._log_dir,
+                exc,
+                self._log_dir,
             )
 
     def _file_for_today(self) -> Path:
@@ -91,14 +89,10 @@ class AuditLogger:
             self._ensure_dir()
             try:
                 with path.open("a", encoding="utf-8") as f:
-                    f.write(
-                        json.dumps(record, ensure_ascii=False, separators=(",", ":"))
-                    )
+                    f.write(json.dumps(record, ensure_ascii=False, separators=(",", ":")))
                     f.write("\n")
             except OSError as exc2:
-                logger.warning(
-                    "audit write retry failed: %s (record dropped)", exc2
-                )
+                logger.warning("audit write retry failed: %s (record dropped)", exc2)
 
     def __repr__(self) -> str:
         return f"AuditLogger(log_dir={self._log_dir!s})"

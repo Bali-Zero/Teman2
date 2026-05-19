@@ -36,7 +36,9 @@ def _compute_crc_response(crc_token: str, consumer_secret: str) -> str:
 
 
 def _verify_webhook_signature(
-    payload_body: bytes, signature_header: str | None, consumer_secret: str,
+    payload_body: bytes,
+    signature_header: str | None,
+    consumer_secret: str,
 ) -> bool:
     """Verify the X-Twitter-Webhooks-Signature header on POST requests.
 
@@ -51,7 +53,8 @@ def _verify_webhook_signature(
     if not signature_header:
         return False
     expected = _compute_crc_response(
-        payload_body.decode("utf-8", errors="replace"), consumer_secret,
+        payload_body.decode("utf-8", errors="replace"),
+        consumer_secret,
     )
     return hmac.compare_digest(f"sha256={signature_header.removeprefix('sha256=')}", expected)
 
@@ -184,6 +187,7 @@ async def twitter_webhook(request: Request) -> dict:
     db_pool = None
     try:
         from backend.app.dependencies import get_database
+
         db_pool = get_database(request)
     except Exception:
         pass
@@ -191,6 +195,7 @@ async def twitter_webhook(request: Request) -> dict:
     if db_pool is not None and inbound_dm_id:
         try:
             from backend.services.channels import inbound_webhook_repo
+
             await inbound_webhook_repo.persist(
                 db_pool,
                 channel="twitter",
@@ -199,9 +204,9 @@ async def twitter_webhook(request: Request) -> dict:
             )
         except Exception as exc:  # noqa: BLE001 — never block ack
             logger.warning(
-                "X webhook: persist failed (dm_id=%s): %s — "
-                "falling back to synchronous-only path",
-                inbound_dm_id, exc,
+                "X webhook: persist failed (dm_id=%s): %s — falling back to synchronous-only path",
+                inbound_dm_id,
+                exc,
             )
 
     try:

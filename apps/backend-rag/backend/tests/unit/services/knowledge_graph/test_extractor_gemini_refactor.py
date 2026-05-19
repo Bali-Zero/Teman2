@@ -38,11 +38,13 @@ async def test_extractor_delegates_to_genai_client_facade():
 
     fake_client = MagicMock()
     # Facade method is `generate_content` (async), returns dict {"text": ..., ...}
-    fake_client.generate_content = AsyncMock(return_value={
-        "text": '{"entities": [], "relations": []}',
-        "model": "gemini-2.0-flash",
-        "usage": {"input_tokens": 50, "output_tokens": 20},
-    })
+    fake_client.generate_content = AsyncMock(
+        return_value={
+            "text": '{"entities": [], "relations": []}',
+            "model": "gemini-2.0-flash",
+            "usage": {"input_tokens": 50, "output_tokens": 20},
+        }
+    )
 
     with patch(
         "backend.services.knowledge_graph.extractor_gemini.get_genai_client",

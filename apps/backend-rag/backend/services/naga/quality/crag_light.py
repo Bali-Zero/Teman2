@@ -30,11 +30,7 @@ class CragDecision:
 
 def _extract_words(text: str) -> set[str]:
     """Extract lowercase words with >= _MIN_WORD_LEN characters."""
-    return {
-        w.lower()
-        for w in _WORD_RE.findall(text)
-        if len(w) >= _MIN_WORD_LEN
-    }
+    return {w.lower() for w in _WORD_RE.findall(text) if len(w) >= _MIN_WORD_LEN}
 
 
 def crag_evaluate(

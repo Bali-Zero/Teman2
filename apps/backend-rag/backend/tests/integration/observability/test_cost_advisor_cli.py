@@ -55,11 +55,14 @@ async def test_daily_cap_silent_when_under_threshold():
 @pytest.mark.asyncio
 async def test_weekly_report_sends_telegram_with_header():
     pool, _ = _make_pool_with_fetchval(Decimal("0"))
-    with patch(
-        "backend.scripts.cost_advisor_cli.send_telegram",
-    ) as mock_tg, patch(
-        "backend.scripts.cost_advisor_cli.CostAdvisor",
-    ) as mock_cls:
+    with (
+        patch(
+            "backend.scripts.cost_advisor_cli.send_telegram",
+        ) as mock_tg,
+        patch(
+            "backend.scripts.cost_advisor_cli.CostAdvisor",
+        ) as mock_cls,
+    ):
         instance = mock_cls.return_value
         instance.analyze_last_window = AsyncMock(return_value=[])
         instance.detect_spikes = AsyncMock(return_value=set())

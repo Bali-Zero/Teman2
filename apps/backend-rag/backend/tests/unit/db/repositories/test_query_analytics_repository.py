@@ -42,9 +42,7 @@ class TestLogQueryJsonbBind:
         )
 
         pool, conn = _mock_pool()
-        conn.fetchrow = AsyncMock(
-            return_value={"id": "00000000-0000-0000-0000-000000000001"}
-        )
+        conn.fetchrow = AsyncMock(return_value={"id": "00000000-0000-0000-0000-000000000001"})
         repo = QueryAnalyticsRepository(pool)
 
         await repo.log_query(query_text="how to set up PT PMA?", user_id="u@example.com")
@@ -64,9 +62,7 @@ class TestLogQueryJsonbBind:
         )
 
         pool, conn = _mock_pool()
-        conn.fetchrow = AsyncMock(
-            return_value={"id": "00000000-0000-0000-0000-000000000002"}
-        )
+        conn.fetchrow = AsyncMock(return_value={"id": "00000000-0000-0000-0000-000000000002"})
         repo = QueryAnalyticsRepository(pool)
 
         await repo.log_query(query_text="anon query", user_id=None)
@@ -85,9 +81,7 @@ class TestLogQueryJsonbBind:
         )
 
         pool, conn = _mock_pool()
-        conn.fetchrow = AsyncMock(
-            return_value={"id": "00000000-0000-0000-0000-000000000003"}
-        )
+        conn.fetchrow = AsyncMock(return_value={"id": "00000000-0000-0000-0000-000000000003"})
         repo = QueryAnalyticsRepository(pool)
 
         await repo.log_query(query_text="q", user_id="x@y.z")

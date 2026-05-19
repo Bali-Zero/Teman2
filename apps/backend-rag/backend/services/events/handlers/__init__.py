@@ -19,6 +19,7 @@ keeps working without touching consumers:
     from backend.services.events.handlers import insert_outbox_event
     from backend.services.events.handlers import _is_duplicate  # tests
 """
+
 from ._core import (  # noqa: F401
     _CHAIN_CONTEXT_MAX,
     _DEDUP_WINDOW_S,

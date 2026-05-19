@@ -113,19 +113,22 @@ def build_keyboard(move_id: UUID) -> dict:
                 {
                     "text": "✅ Approva",
                     "callback_data": encode_callback(
-                        OracleAction.APPROVE, move_id,
+                        OracleAction.APPROVE,
+                        move_id,
                     ),
                 },
                 {
                     "text": "❌ Rifiuta",
                     "callback_data": encode_callback(
-                        OracleAction.REJECT, move_id,
+                        OracleAction.REJECT,
+                        move_id,
                     ),
                 },
                 {
                     "text": "⏸ Defer",
                     "callback_data": encode_callback(
-                        OracleAction.DEFER, move_id,
+                        OracleAction.DEFER,
+                        move_id,
                     ),
                 },
             ]
@@ -152,9 +155,7 @@ def render_move_message(move: UltraMove) -> str:
     if move.estimated_value:
         extras.append(f"<i>Valore stimato:</i> {_escape_html(move.estimated_value[:300])}")
     if move.recommended_tone_register:
-        extras.append(
-            f"<i>Registro suggerito:</i> {_escape_html(move.recommended_tone_register)}"
-        )
+        extras.append(f"<i>Registro suggerito:</i> {_escape_html(move.recommended_tone_register)}")
     if extras:
         lines.append("")
         lines.extend(extras)
@@ -164,12 +165,7 @@ def render_move_message(move: UltraMove) -> str:
 def _escape_html(value: str) -> str:
     if value is None:
         return ""
-    return (
-        str(value)
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+    return str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 # ── Delivery + callback handler ────────────────────────────
@@ -195,7 +191,8 @@ class OracleDelivery:
         self,
     ) -> OracleDeliverySendResult:
         result = OracleDeliverySendResult(
-            move_ids_sent=[], errors=[],
+            move_ids_sent=[],
+            errors=[],
         )
         try:
             moves = await self.repo.pending_ultra_moves()
@@ -235,21 +232,18 @@ class OracleDelivery:
         callback_query_id = cq.get("id", "")
         data = cq.get("data") or ""
         chat_id = str(
-            cq.get("message", {}).get("chat", {}).get("id")
-            or cq.get("from", {}).get("id")
-            or ""
+            cq.get("message", {}).get("chat", {}).get("id") or cq.get("from", {}).get("id") or ""
         )
         message_id = cq.get("message", {}).get("message_id")
         from_user = cq.get("from", {})
-        username = (
-            from_user.get("username")
-            or str(from_user.get("id") or "unknown")
-        )
+        username = from_user.get("username") or str(from_user.get("id") or "unknown")
 
         if chat_id != self.owner_chat_id:
             await self._try_answer(callback_query_id, "Non autorizzato.")
             return OracleCallbackResult(
-                ok=False, unauthorized=True, error="chat_id mismatch",
+                ok=False,
+                unauthorized=True,
+                error="chat_id mismatch",
             )
 
         try:
@@ -267,7 +261,8 @@ class OracleDelivery:
             )
         except Exception as exc:  # noqa: BLE001
             await self._try_answer(
-                callback_query_id, "Errore DB — riprova.",
+                callback_query_id,
+                "Errore DB — riprova.",
             )
             return OracleCallbackResult(
                 ok=False,
@@ -277,7 +272,8 @@ class OracleDelivery:
             )
         if updated is None:
             await self._try_answer(
-                callback_query_id, "Mossa non trovata.",
+                callback_query_id,
+                "Mossa non trovata.",
             )
             return OracleCallbackResult(
                 ok=False,
@@ -305,12 +301,15 @@ class OracleDelivery:
     # ── Telegram helpers ─────────────────────────────────
 
     async def _try_answer(
-        self, callback_query_id: str, text: str,
+        self,
+        callback_query_id: str,
+        text: str,
     ) -> None:
         if not callback_query_id:
             return
         result = await self.telegram.answer_callback_query(
-            callback_query_id=callback_query_id, text=text,
+            callback_query_id=callback_query_id,
+            text=text,
         )
         if not result.ok:
             self.logger.debug("answer_callback_query failed: %s", result.error)
@@ -323,5 +322,6 @@ class OracleDelivery:
         )
         if not result.ok:
             self.logger.debug(
-                "clear keyboard failed: %s", result.error,
+                "clear keyboard failed: %s",
+                result.error,
             )

@@ -107,9 +107,7 @@ class TestSendMessage:
     async def test_success(self, service):
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "messages": [{"id": "wamid.test123"}]
-        }
+        mock_response.json.return_value = {"messages": [{"id": "wamid.test123"}]}
 
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(return_value=mock_response)
@@ -146,7 +144,9 @@ class TestSendMessage:
         mock_client.is_closed = False
         service._client = mock_client
 
-        await service.send_message("6281234567890", "Reply text", reply_to_message_id="wamid.original")
+        await service.send_message(
+            "6281234567890", "Reply text", reply_to_message_id="wamid.original"
+        )
         call_kwargs = mock_client.post.call_args
         payload = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json")
         assert payload["context"]["message_id"] == "wamid.original"

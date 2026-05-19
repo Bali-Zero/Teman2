@@ -156,7 +156,9 @@ class DashboardService:
     # ── 2. Heatmap — register × metric_name avg ────────────────
 
     async def register_performance_heatmap(
-        self, *, days: int = 30,
+        self,
+        *,
+        days: int = 30,
     ) -> list[HeatmapCell]:
         rows = await self.repo.fetch_safe(
             """
@@ -185,7 +187,9 @@ class DashboardService:
     # ── 3. Distribution pie — alert if any >40% ────────────────
 
     async def register_distribution(
-        self, *, days: int = 30,
+        self,
+        *,
+        days: int = 30,
     ) -> DistributionResult:
         rows = await self.repo.fetch_safe(
             """
@@ -265,7 +269,9 @@ class DashboardService:
     # ── 5. Rejections by reason ────────────────────────────────
 
     async def rejection_reasons(
-        self, *, days: int = 30,
+        self,
+        *,
+        days: int = 30,
     ) -> list[RejectionBucket]:
         rows = await self.repo.fetch_safe(
             """
@@ -277,10 +283,7 @@ class DashboardService:
             """,
             days,
         )
-        return [
-            RejectionBucket(reason=row["reason"], count=int(row["n"]))
-            for row in rows
-        ]
+        return [RejectionBucket(reason=row["reason"], count=int(row["n"])) for row in rows]
 
     # ── 6. Cost per draft ──────────────────────────────────────
 
@@ -342,6 +345,7 @@ def _normalize_by_type(value: Any) -> dict[str, float]:
         return {}
     if isinstance(value, str):
         import json
+
         try:
             parsed = json.loads(value)
         except Exception:  # noqa: BLE001
@@ -349,7 +353,4 @@ def _normalize_by_type(value: Any) -> dict[str, float]:
         value = parsed
     if not isinstance(value, dict):
         return {}
-    return {
-        str(k): float(v) if v is not None else 0.0
-        for k, v in value.items()
-    }
+    return {str(k): float(v) if v is not None else 0.0 for k, v in value.items()}

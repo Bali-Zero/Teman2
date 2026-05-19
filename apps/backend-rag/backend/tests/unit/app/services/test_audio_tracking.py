@@ -49,11 +49,21 @@ async def test_openai_stt_records_cost():
         return_value=MagicMock(text="hello world"),
     )
 
-    with patch("builtins.open", MagicMock(return_value=MagicMock(__enter__=MagicMock(return_value=MagicMock()), __exit__=MagicMock(return_value=False)))), \
-         patch(
-             "backend.services.observability.tracking_decorator.record_llm_call",
-             new=AsyncMock(),
-         ) as mock_rec:
+    with (
+        patch(
+            "builtins.open",
+            MagicMock(
+                return_value=MagicMock(
+                    __enter__=MagicMock(return_value=MagicMock()),
+                    __exit__=MagicMock(return_value=False),
+                )
+            ),
+        ),
+        patch(
+            "backend.services.observability.tracking_decorator.record_llm_call",
+            new=AsyncMock(),
+        ) as mock_rec,
+    ):
         result = await svc._openai_stt(file_path="/tmp/x.mp3", duration_seconds=12)
 
     assert result == "hello world"
@@ -61,7 +71,7 @@ async def test_openai_stt_records_cost():
     kwargs = mock_rec.await_args.kwargs
     assert kwargs["provider"] == "openai_audio"
     assert kwargs["model"] == "whisper-1"
-    assert kwargs["input_tokens"] == 12        # seconds passed verbatim
+    assert kwargs["input_tokens"] == 12  # seconds passed verbatim
     assert kwargs["output_tokens"] == len("hello world") // 4
     assert kwargs["success"] is True
 
@@ -115,15 +125,25 @@ async def test_openai_stt_float_duration_is_truncated():
         return_value=MagicMock(text="ciao"),
     )
 
-    with patch("builtins.open", MagicMock(return_value=MagicMock(__enter__=MagicMock(return_value=MagicMock()), __exit__=MagicMock(return_value=False)))), \
-         patch(
-             "backend.services.observability.tracking_decorator.record_llm_call",
-             new=AsyncMock(),
-         ) as mock_rec:
+    with (
+        patch(
+            "builtins.open",
+            MagicMock(
+                return_value=MagicMock(
+                    __enter__=MagicMock(return_value=MagicMock()),
+                    __exit__=MagicMock(return_value=False),
+                )
+            ),
+        ),
+        patch(
+            "backend.services.observability.tracking_decorator.record_llm_call",
+            new=AsyncMock(),
+        ) as mock_rec,
+    ):
         await svc._openai_stt(file_path="/tmp/y.mp3", duration_seconds=7.9)
 
     kwargs = mock_rec.await_args.kwargs
-    assert kwargs["input_tokens"] == 7   # int(7.9) == 7
+    assert kwargs["input_tokens"] == 7  # int(7.9) == 7
 
 
 @pytest.mark.asyncio

@@ -16,13 +16,11 @@ The migration must:
 
 Mirrors test_migration_151.py contract-test pattern.
 """
+
 from pathlib import Path
 
 MIGRATION_FILE = (
-    Path(__file__).resolve().parents[2]
-    / "db"
-    / "migrations_v2"
-    / "152_measurer_event_trigger.sql"
+    Path(__file__).resolve().parents[2] / "db" / "migrations_v2" / "152_measurer_event_trigger.sql"
 )
 
 
@@ -110,12 +108,7 @@ def test_pg_channel_map_registers_measurer_event():
     """The Python-side PG_CHANNEL_MAP must include measurer_event so the
     EventBus listener picks up the new channel and the events_outbox
     replay-on-reconnect hook covers it (mig 146 contract)."""
-    event_bus_path = (
-        Path(__file__).resolve().parents[2]
-        / "services"
-        / "events"
-        / "event_bus.py"
-    )
+    event_bus_path = Path(__file__).resolve().parents[2] / "services" / "events" / "event_bus.py"
     src = event_bus_path.read_text()
     assert '"measurer_event": "measurer.event"' in src, (
         "PG_CHANNEL_MAP must register measurer_event → measurer.event "
@@ -134,9 +127,7 @@ def test_rollback_drops_triggers_then_function():
     drop_trigger_m13_pos = rollback_section.find(
         "DROP TRIGGER IF EXISTS m13_retrain_log_notify_measurer"
     )
-    drop_function_pos = rollback_section.find(
-        "DROP FUNCTION IF EXISTS notify_measurer_event"
-    )
+    drop_function_pos = rollback_section.find("DROP FUNCTION IF EXISTS notify_measurer_event")
     assert drop_trigger_post_pos != -1
     assert drop_trigger_m13_pos != -1
     assert drop_function_pos != -1

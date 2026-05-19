@@ -39,6 +39,7 @@ def _get_kbli_client() -> httpx.AsyncClient:
         )
     return _kbli_http_client
 
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/kbli-notebook", tags=["KBLI Notebook"])
@@ -187,22 +188,22 @@ async def _get_kbli_payload_from_qdrant(code: str) -> dict | None:
     try:
         client = _get_kbli_client()
         for filter_key in (
-                "kode_kbli",
-                "kode",
-                "metadata.kode",
-                "metadata.kode_kbli",
-                "metadata.kode_kbli_2025",
-            ):
-                payload = {
-                    "filter": {"must": [{"key": filter_key, "match": {"value": code}}]},
-                    "limit": 1,
-                    "with_payload": True,
-                }
-                resp = await client.post(url, json=payload, headers=headers)
-                resp.raise_for_status()
-                points = resp.json().get("result", {}).get("points", [])
-                if points:
-                    return points[0].get("payload", {})
+            "kode_kbli",
+            "kode",
+            "metadata.kode",
+            "metadata.kode_kbli",
+            "metadata.kode_kbli_2025",
+        ):
+            payload = {
+                "filter": {"must": [{"key": filter_key, "match": {"value": code}}]},
+                "limit": 1,
+                "with_payload": True,
+            }
+            resp = await client.post(url, json=payload, headers=headers)
+            resp.raise_for_status()
+            points = resp.json().get("result", {}).get("points", [])
+            if points:
+                return points[0].get("payload", {})
     except Exception as e:
         logger.warning("Qdrant lookup for KBLI %s failed (non-critical): %s", code, e)
     return None
@@ -236,7 +237,9 @@ def get_kbli_ttl(code: str) -> int:
 
 @router.get("/search", response_model=list[KBLISearchResult])
 async def search_kbli(
-    query: str, limit: int = 10, search_service=Depends(get_search_service),
+    query: str,
+    limit: int = 10,
+    search_service=Depends(get_search_service),
 ) -> Any:
     """Search for KBLI codes using semantic search (Qdrant)."""
     start_time = time.time()
@@ -307,7 +310,8 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
         async with pool.acquire() as conn:
             # 1. Fetch Main Node
             node = await conn.fetchrow(
-                "SELECT * FROM kg_nodes WHERE entity_id = $1", f"kbli:{code}",
+                "SELECT * FROM kg_nodes WHERE entity_id = $1",
+                f"kbli:{code}",
             )
 
             if not node:
@@ -396,7 +400,9 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
                     if lic.risk_level == "Unknown":
                         lic.risk_level = qdrant_risk
 
-            logger.info("✅ KBLI %s details retrieved (pma=%s, risk=%s)", code, pma_status, risk_profile)
+            logger.info(
+                "✅ KBLI %s details retrieved (pma=%s, risk=%s)", code, pma_status, risk_profile
+            )
 
             result = KBLIDetail(
                 code=code,
@@ -445,7 +451,6 @@ async def inspect_kbli(code: str, pool=Depends(get_optional_database_pool)) -> A
             ) from e
         logger.error("❌ KBLI Inspection Error for %s: %s", code, err_msg, exc_info=True)
         raise HTTPException(status_code=500, detail=f"Internal processing error: {err_msg}") from e
-
 
 
 # CHAT ENDPOINT & LLM HELPERS → kbli_notebook_chat.py

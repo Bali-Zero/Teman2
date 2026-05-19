@@ -12,6 +12,7 @@ Round-1 review feedback (4-LLM cross-review of PR #426):
 - Add JSONL fallback parent-dir creation test (reviewer-Claude)
 - Add emit_one() convenience wrapper test (reviewer-Claude)
 """
+
 from __future__ import annotations
 
 import datetime as dt
@@ -137,9 +138,7 @@ async def test_emit_invalid_status_coerces_to_error(tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_emit_with_non_serializable_payload_does_not_raise(
-    tmp_path, monkeypatch
-):
+async def test_emit_with_non_serializable_payload_does_not_raise(tmp_path, monkeypatch):
     """Round-1 review (4/4 LLMs flagged): a payload with datetime / Decimal /
     asyncpg.Record objects must NOT crash emit() and must NOT crash the
     JSONL fallback either. Both paths use ``default=str`` so the type is
@@ -178,9 +177,7 @@ async def test_emit_with_pool_acquire_raising_falls_back(tmp_path, monkeypatch):
     fake_pool = MagicMock()
     # acquire() raises immediately when entered.
     bad_ctx = MagicMock()
-    bad_ctx.__aenter__ = AsyncMock(
-        side_effect=asyncpg.InterfaceError("pool closed")
-    )
+    bad_ctx.__aenter__ = AsyncMock(side_effect=asyncpg.InterfaceError("pool closed"))
     bad_ctx.__aexit__ = AsyncMock(return_value=None)
     fake_pool.acquire = MagicMock(return_value=bad_ctx)
 
@@ -192,8 +189,7 @@ async def test_emit_with_pool_acquire_raising_falls_back(tmp_path, monkeypatch):
     record = json.loads(fake_jsonl.read_text().strip().splitlines()[0])
     assert record["automation_name"] == "translate.hourly"
     # InterfaceError is a PostgresError subclass -> "db error" branch.
-    assert "db error" in record["_fallback_reason"] or \
-           "unexpected" in record["_fallback_reason"]
+    assert "db error" in record["_fallback_reason"] or "unexpected" in record["_fallback_reason"]
 
 
 @pytest.mark.asyncio

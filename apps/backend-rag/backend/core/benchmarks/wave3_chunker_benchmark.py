@@ -35,24 +35,19 @@ from backend.core.parsers import extract_text_from_pdf  # noqa: E402
 # client doc), medium (regulation PDF), large (PP28), very large (KUHP).
 _DEFAULT_CANDIDATES: list[Path] = [
     Path(
-        "/Users/nuzantara/Desktop/nuzantara/batch4_processing/"
-        "965_Profil Perseroan.pdf",
+        "/Users/nuzantara/Desktop/nuzantara/batch4_processing/965_Profil Perseroan.pdf",
     ),
     Path(
-        "/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/data/assets/"
-        "brochure_balizero_en.pdf",
+        "/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/data/assets/brochure_balizero_en.pdf",
     ),
     Path(
-        "/Users/nuzantara/Desktop/nuzantara/data/kb_sources/"
-        "UU Nomor 20 Tahun 2025.pdf",
+        "/Users/nuzantara/Desktop/nuzantara/data/kb_sources/UU Nomor 20 Tahun 2025.pdf",
     ),
     Path(
-        "/Users/nuzantara/Desktop/nuzantara/data/kb_sources/"
-        "PP Nomor 28 Tahun 2025.pdf",
+        "/Users/nuzantara/Desktop/nuzantara/data/kb_sources/PP Nomor 28 Tahun 2025.pdf",
     ),
     Path(
-        "/Users/nuzantara/Desktop/nuzantara/data/kb_sources/2026_updates/"
-        "UU_1_2023_KUHP_Baru.pdf",
+        "/Users/nuzantara/Desktop/nuzantara/data/kb_sources/2026_updates/UU_1_2023_KUHP_Baru.pdf",
     ),
 ]
 
@@ -186,8 +181,7 @@ def main() -> int:
     max_ratio = max(r["ratio"] for r in rows)
     if max_ratio > args.threshold:
         print(
-            f"FAIL: max ratio {max_ratio:.2f}× exceeds threshold "
-            f"{args.threshold:.1f}×",
+            f"FAIL: max ratio {max_ratio:.2f}× exceeds threshold {args.threshold:.1f}×",
         )
         return 1
     print(f"PASS: max ratio {max_ratio:.2f}× ≤ {args.threshold:.1f}×")

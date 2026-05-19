@@ -9,6 +9,7 @@ Mirrors ExperienceService for trajectories, but:
 Graceful degradation: if cell-core can't be imported, ``is_available`` is
 False and record/query/stats return safe empty defaults.
 """
+
 from __future__ import annotations
 
 import json
@@ -133,15 +134,15 @@ class SkillService:
                 "avg_confidence": 0.0,
             }
         import sqlite3  # Local import keeps this file safe to import without sqlite3
+
         today = self._today()
         conn = sqlite3.connect(self._db_path)
         conn.row_factory = sqlite3.Row
         try:
-            base_where = (
-                "WHERE type='skill' AND (valid_to IS NULL OR valid_to > ?)"
-            )
+            base_where = "WHERE type='skill' AND (valid_to IS NULL OR valid_to > ?)"
             total = conn.execute(
-                f"SELECT COUNT(*) FROM genome {base_where}", (today,),
+                f"SELECT COUNT(*) FROM genome {base_where}",
+                (today,),
             ).fetchone()[0]
             avg_conf = conn.execute(
                 f"SELECT COALESCE(AVG(confidence), 0) FROM genome {base_where}",
@@ -172,13 +173,16 @@ class SkillService:
         }
 
     def get_top_skills(
-        self, tier: SkillTier | str = SkillTier.TIER1, limit: int = 20,
+        self,
+        tier: SkillTier | str = SkillTier.TIER1,
+        limit: int = 20,
     ) -> list[SkillResult]:
         """Return active skills at the requested tier, ordered by confidence."""
         if not self.is_available:
             return []
         tier_value = tier.value if hasattr(tier, "value") else tier
         import sqlite3
+
         today = self._today()
         conn = sqlite3.connect(self._db_path)
         conn.row_factory = sqlite3.Row
@@ -201,6 +205,7 @@ class SkillService:
         if not self.is_available:
             return None
         import sqlite3
+
         conn = sqlite3.connect(self._db_path)
         conn.row_factory = sqlite3.Row
         try:
@@ -236,6 +241,7 @@ class SkillService:
     @staticmethod
     def _today() -> str:
         from datetime import datetime, timezone
+
         return datetime.now(timezone.utc).date().isoformat()
 
     @staticmethod
@@ -243,7 +249,9 @@ class SkillService:
         tier_raw = row.get("tier")
         tier = SkillTier(tier_raw) if tier_raw in ("tier1", "tier2") else None
         scope_raw = row.get("scope") or "Project"
-        scope = SkillScope(scope_raw) if scope_raw in ("Project", "Personal") else SkillScope.PROJECT
+        scope = (
+            SkillScope(scope_raw) if scope_raw in ("Project", "Personal") else SkillScope.PROJECT
+        )
         return SkillResult(
             skill_id=row["id"],
             cell=row["cell_origin"],

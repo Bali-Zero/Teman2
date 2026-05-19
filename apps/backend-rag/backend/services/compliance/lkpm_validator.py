@@ -323,9 +323,7 @@ class LKPMValidator:
         # Parse period
         parts = period.strip().split()
         if len(parts) != 2 or parts[0] not in {"Q1", "Q2", "Q3", "Q4"}:
-            raise LkpmValidationError(
-                f"Period must be 'Q1|Q2|Q3|Q4 YYYY', got {period!r}"
-            )
+            raise LkpmValidationError(f"Period must be 'Q1|Q2|Q3|Q4 YYYY', got {period!r}")
         quarter, year_str = parts[0], parts[1]
         try:
             year = int(year_str)

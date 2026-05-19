@@ -146,12 +146,18 @@ class TestRetrieveNode:
     @pytest.mark.asyncio
     async def test_real_retrieval(self, base_state):
         mock_search = MagicMock()
-        mock_search.search = AsyncMock(return_value={
-            "results": [
-                {"text": "KITAS is a temporary stay permit", "score": 0.95, "metadata": {"source": "immigration"}},
-                {"text": "KITAS requires a sponsor", "score": 0.85, "metadata": {}},
-            ],
-        })
+        mock_search.search = AsyncMock(
+            return_value={
+                "results": [
+                    {
+                        "text": "KITAS is a temporary stay permit",
+                        "score": 0.95,
+                        "metadata": {"source": "immigration"},
+                    },
+                    {"text": "KITAS requires a sponsor", "score": 0.85, "metadata": {}},
+                ],
+            }
+        )
         graph_module._search_service = mock_search
         result = await retrieve_node(base_state)
         assert len(result["documents"]) == 2
@@ -160,9 +166,11 @@ class TestRetrieveNode:
     @pytest.mark.asyncio
     async def test_retrieval_with_non_dict_results(self, base_state):
         mock_search = MagicMock()
-        mock_search.search = AsyncMock(return_value={
-            "results": ["plain text result"],
-        })
+        mock_search.search = AsyncMock(
+            return_value={
+                "results": ["plain text result"],
+            }
+        )
         graph_module._search_service = mock_search
         result = await retrieve_node(base_state)
         assert len(result["documents"]) == 1
@@ -290,7 +298,12 @@ class TestGenerateNode:
         mock_usage.cost_usd = 0.01
         mock_gw = MagicMock()
         mock_gw.send_message = AsyncMock(
-            return_value=("KITAS is a temporary stay permit in Indonesia.", "model", None, mock_usage),
+            return_value=(
+                "KITAS is a temporary stay permit in Indonesia.",
+                "model",
+                None,
+                mock_usage,
+            ),
         )
         graph_module._llm_gateway = mock_gw
 

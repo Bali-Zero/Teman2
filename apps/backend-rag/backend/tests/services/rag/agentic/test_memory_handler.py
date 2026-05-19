@@ -62,9 +62,7 @@ async def test_concurrent_saves_serialized(handler: MemoryHandler, mock_orchestr
     # Launch 3 concurrent saves for the same user
     tasks = [
         asyncio.create_task(
-            handler.save_conversation_memory(
-                user_id="user@test.com", query=f"q{i}", answer=f"a{i}"
-            )
+            handler.save_conversation_memory(user_id="user@test.com", query=f"q{i}", answer=f"a{i}")
         )
         for i in range(3)
     ]
@@ -144,9 +142,7 @@ async def test_lock_timeout_does_not_crash(handler: MemoryHandler, mock_orchestr
 
     try:
         # This should timeout, not crash
-        await handler.save_conversation_memory(
-            user_id="user@test.com", query="q", answer="a"
-        )
+        await handler.save_conversation_memory(user_id="user@test.com", query="q", answer="a")
     finally:
         lock.release()
 
@@ -207,7 +203,8 @@ async def test_create_save_task_returns_none_for_empty_answer(handler: MemoryHan
 
 @pytest.mark.asyncio
 async def test_create_save_task_retains_strong_ref(
-    handler: MemoryHandler, mock_orchestrator: AsyncMock,
+    handler: MemoryHandler,
+    mock_orchestrator: AsyncMock,
 ) -> None:
     """Regression (S09): caller drops the Task, but handler must keep a
     strong ref so CPython can't GC the coroutine mid-save."""
@@ -271,7 +268,8 @@ async def test_lazy_orchestrator_init_failure():
 
 @pytest.mark.asyncio
 async def test_save_concurrent_different_sessions_not_serialized(
-    handler: MemoryHandler, mock_orchestrator: AsyncMock,
+    handler: MemoryHandler,
+    mock_orchestrator: AsyncMock,
 ) -> None:
     """Two saves for the same user but different session_id must run in
     parallel — the lock is now keyed by ``(user_id, session_id)``, so
@@ -329,7 +327,8 @@ async def test_save_concurrent_different_sessions_not_serialized(
 
 @pytest.mark.asyncio
 async def test_save_concurrent_same_session_serialized(
-    handler: MemoryHandler, mock_orchestrator: AsyncMock,
+    handler: MemoryHandler,
+    mock_orchestrator: AsyncMock,
 ) -> None:
     """Two saves for the same user AND session_id must serialize: the
     second caller has to wait for the first lock holder to release before
@@ -377,7 +376,8 @@ async def test_save_concurrent_same_session_serialized(
 
 @pytest.mark.asyncio
 async def test_save_backward_compat_no_session_id(
-    handler: MemoryHandler, mock_orchestrator: AsyncMock,
+    handler: MemoryHandler,
+    mock_orchestrator: AsyncMock,
 ) -> None:
     """Calling save_conversation_memory without session_id must still work
     and must register a lock entry under the sentinel ``__nosession__`` key,
@@ -385,7 +385,9 @@ async def test_save_backward_compat_no_session_id(
     handler._memory_orchestrator = mock_orchestrator
 
     await handler.save_conversation_memory(
-        user_id="user@test.com", query="q", answer="a",
+        user_id="user@test.com",
+        query="q",
+        answer="a",
     )
 
     mock_orchestrator.process_conversation.assert_awaited_once()
@@ -396,7 +398,8 @@ async def test_save_backward_compat_no_session_id(
 
 @pytest.mark.asyncio
 async def test_create_save_task_propagates_session_id(
-    handler: MemoryHandler, mock_orchestrator: AsyncMock,
+    handler: MemoryHandler,
+    mock_orchestrator: AsyncMock,
 ) -> None:
     """create_save_task must forward session_id through to the coroutine
     and include it in the task name for observability."""

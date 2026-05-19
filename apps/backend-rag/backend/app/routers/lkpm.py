@@ -366,7 +366,9 @@ async def get_my_receipts(
         }
     except Exception as e:
         logger.error(
-            "Failed to get LKPM receipts for portal client: %s", e, exc_info=True,
+            "Failed to get LKPM receipts for portal client: %s",
+            e,
+            exc_info=True,
         )
         raise HTTPException(status_code=500, detail=str(e)) from e
 
@@ -395,7 +397,9 @@ async def get_receipts_by_client(
         }
     except Exception as e:
         logger.error(
-            "Failed to get LKPM receipts for client %s: %s", client_id, e,
+            "Failed to get LKPM receipts for client %s: %s",
+            client_id,
+            e,
             exc_info=True,
         )
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -419,7 +423,9 @@ async def get_receipts_for_report(
         }
     except Exception as e:
         logger.error(
-            "Failed to get LKPM receipts for report %s: %s", lkpm_report_id, e,
+            "Failed to get LKPM receipts for report %s: %s",
+            lkpm_report_id,
+            e,
             exc_info=True,
         )
         raise HTTPException(status_code=500, detail=str(e)) from e
@@ -602,7 +608,9 @@ async def get_oss_credentials(
             client_id,
         )
         if not cfg:
-            raise HTTPException(status_code=404, detail=f"LKPM config for client_id={client_id} not found")
+            raise HTTPException(
+                status_code=404, detail=f"LKPM config for client_id={client_id} not found"
+            )
 
     return {
         "success": True,
@@ -610,7 +618,9 @@ async def get_oss_credentials(
         "company_name": cfg["company_name"],
         "oss_username": cfg["oss_username"],
         "oss_password": cfg["oss_password"],
-        "oss_creds_updated_at": cfg["oss_creds_updated_at"].isoformat() if cfg["oss_creds_updated_at"] else None,
+        "oss_creds_updated_at": cfg["oss_creds_updated_at"].isoformat()
+        if cfg["oss_creds_updated_at"]
+        else None,
         "oss_creds_updated_by": cfg["oss_creds_updated_by"],
     }
 

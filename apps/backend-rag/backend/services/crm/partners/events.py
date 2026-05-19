@@ -15,6 +15,7 @@ by the rest of PG_CHANNEL_MAP.
 
 Implementation plan: docs/superpowers/plans/2026-04-20-crm-partners-module.md Task 6
 """
+
 from __future__ import annotations
 
 import logging
@@ -55,9 +56,7 @@ async def handle_practice_status_changed(payload: dict[str, Any]) -> None:
     try:
         pid = int(practice_id_raw) if not isinstance(practice_id_raw, int) else practice_id_raw
     except (ValueError, TypeError):
-        logger.warning(
-            "handle_practice_status_changed: bad practice_id %r", practice_id_raw
-        )
+        logger.warning("handle_practice_status_changed: bad practice_id %r", practice_id_raw)
         return
 
     pool = await get_pool()
@@ -68,9 +67,7 @@ async def handle_practice_status_changed(payload: dict[str, Any]) -> None:
             return
 
         # Read partner_id for the notification payload
-        row = await conn.fetchrow(
-            "SELECT partner_id FROM partner_commissions WHERE id = $1", cid
-        )
+        row = await conn.fetchrow("SELECT partner_id FROM partner_commissions WHERE id = $1", cid)
         if row is None:
             return
         partner_id = row["partner_id"]
@@ -101,9 +98,7 @@ async def _publish_changed(
                 "type": kind,
             },
         )
-    logger.info(
-        "Published partner_commission_changed: %s (%s)", commission_id, kind
-    )
+    logger.info("Published partner_commission_changed: %s (%s)", commission_id, kind)
 
 
 def register_partner_handlers(bus: EventBus) -> None:

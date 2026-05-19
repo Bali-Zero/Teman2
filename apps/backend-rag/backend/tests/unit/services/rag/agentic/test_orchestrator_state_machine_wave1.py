@@ -31,10 +31,12 @@ from backend.services.tools.definitions import AgentState, ToolCall
 
 @pytest.fixture(autouse=True)
 def _patch_tracing():
-    with patch("backend.services.rag.agentic.reasoning.trace_span") as ts, \
-         patch("backend.services.rag.agentic.reasoning.set_span_attribute"), \
-         patch("backend.services.rag.agentic.reasoning.set_span_status"), \
-         patch("backend.services.rag.agentic.reasoning.add_span_event"):
+    with (
+        patch("backend.services.rag.agentic.reasoning.trace_span") as ts,
+        patch("backend.services.rag.agentic.reasoning.set_span_attribute"),
+        patch("backend.services.rag.agentic.reasoning.set_span_status"),
+        patch("backend.services.rag.agentic.reasoning.add_span_event"),
+    ):
         ts.return_value.__enter__ = MagicMock()
         ts.return_value.__exit__ = MagicMock(return_value=False)
         yield
@@ -67,6 +69,7 @@ def _patch_metrics():
 def engine():
     """Basic ReasoningEngine with empty tool_map + no pipeline (keeps the loop pure)."""
     from backend.services.rag.agentic.reasoning import ReasoningEngine
+
     return ReasoningEngine(tool_map={}, response_pipeline=None)
 
 
@@ -192,17 +195,31 @@ class TestLoopTermination:
 
         # Use a tool_result that contains the query keyword so _validate_context_quality
         # doesn't trigger `continue` on low quality (which would confuse R2 vs R9 here)
-        with patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ENGLISH"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.3), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=fake_tool_call), \
-             patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=True), \
-             patch(
-                 "backend.services.rag.agentic.reasoning.execute_tool",
-                 new_callable=AsyncMock,
-                 return_value=("q result q context q", 0.01),
-             ), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock, return_value="processed"):
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.3
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.parse_tool_call",
+                return_value=fake_tool_call,
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=True),
+            patch(
+                "backend.services.rag.agentic.reasoning.execute_tool",
+                new_callable=AsyncMock,
+                return_value=("q result q context q", 0.01),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+                return_value="processed",
+            ),
+        ):
             result_state, _, _, _ = await _run_loop(engine, gateway, state)
 
         # I-R1: loop exited at max_steps — current_step equals the budget
@@ -220,7 +237,6 @@ class TestLoopTermination:
 
 
 class TestSendMessageErrorPaths:
-
     @pytest.mark.asyncio
     async def test_step1_llm_raise_resource_exhausted_yields_abstain(self, engine):
         """R4 + I-R2: step-1 ResourceExhausted → loop breaks → fallback sets final_answer.
@@ -237,12 +253,22 @@ class TestSendMessageErrorPaths:
             send_message_side_effect=ResourceExhausted("quota"),
         )
 
-        with patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ENGLISH"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.0), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None), \
-             patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock):
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.0
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None),
+            patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+            ),
+        ):
             result_state, _, _, _ = await _run_loop(engine, gateway, state)
 
         # Loop broke on step 1
@@ -269,17 +295,31 @@ class TestSendMessageErrorPaths:
 
         gateway = _mk_gateway(send_message_side_effect=send, has_tools=True)
 
-        with patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ENGLISH"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.2), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=fake_tool_call), \
-             patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=True), \
-             patch(
-                 "backend.services.rag.agentic.reasoning.execute_tool",
-                 new_callable=AsyncMock,
-                 return_value=("step1 obs", 0.01),
-             ), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock, return_value="processed"):
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.2
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.parse_tool_call",
+                return_value=fake_tool_call,
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=True),
+            patch(
+                "backend.services.rag.agentic.reasoning.execute_tool",
+                new_callable=AsyncMock,
+                return_value=("step1 obs", 0.01),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+                return_value="processed",
+            ),
+        ):
             result_state, _, _, _ = await _run_loop(engine, gateway, state)
 
         # Step 1's observation survived despite step-2 raise (I-R5)
@@ -296,7 +336,6 @@ class TestSendMessageErrorPaths:
 
 
 class TestToolExecution:
-
     @pytest.mark.asyncio
     async def test_parallel_tool_calls_bumps_step_counter(self, engine):
         """R7 + I-R7: N parallel tool calls → current_step += len(tool_calls) - 1 after the iteration.
@@ -315,27 +354,39 @@ class TestToolExecution:
 
         gateway = _mk_gateway(
             send_message_side_effect=lambda *a, **k: _llm_response(
-                "parallel", candidates=[MagicMock()],
+                "parallel",
+                candidates=[MagicMock()],
             ),
         )
 
         # Patch the module-level helper so parse returns 2 calls
-        with patch(
-            "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
-            return_value=([tc_a, tc_b], "native"),
-        ), patch(
-            "backend.services.rag.agentic.reasoning.execute_tool",
-            new_callable=AsyncMock,
-            return_value=("q obs context q", 0.01),  # include keyword so quality passes
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_query_language", return_value="ENGLISH",
-        ), patch(
-            "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.5,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.post_process_response",
-            new_callable=AsyncMock, return_value="processed",
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
+                return_value=([tc_a, tc_b], "native"),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.execute_tool",
+                new_callable=AsyncMock,
+                return_value=("q obs context q", 0.01),  # include keyword so quality passes
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score",
+                return_value=0.5,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.is_critical_domain",
+                return_value=False,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+                return_value="processed",
+            ),
         ):
             result_state, _, _, _ = await _run_loop(engine, gateway, state)
 
@@ -358,24 +409,39 @@ class TestToolExecution:
 
         gateway = _mk_gateway(
             send_message_side_effect=lambda *a, **k: _llm_response(
-                "thinking", candidates=[MagicMock()],
+                "thinking",
+                candidates=[MagicMock()],
             ),
         )
 
-        with patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=fake_tool), \
-             patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=True), \
-             patch(
-                 "backend.services.rag.agentic.reasoning.execute_tool",
-                 new_callable=AsyncMock, side_effect=boom,
-             ), \
-             patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ENGLISH"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.3), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock, return_value="processed"):
+        with (
+            patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=fake_tool),
+            patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=True),
+            patch(
+                "backend.services.rag.agentic.reasoning.execute_tool",
+                new_callable=AsyncMock,
+                side_effect=boom,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.3
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+                return_value="processed",
+            ),
+        ):
             result_state, _, _, _ = await _run_loop(engine, gateway, state)
 
         # I-R8: observation was replaced with an "Error: ..." string from the wrapper
-        error_steps = [s for s in result_state.steps if s.observation and s.observation.startswith("Error:")]
+        error_steps = [
+            s for s in result_state.steps if s.observation and s.observation.startswith("Error:")
+        ]
         assert len(error_steps) >= 1, (
             f"expected at least one Error: observation in steps; got {[s.observation for s in result_state.steps]}"
         )
@@ -389,7 +455,6 @@ class TestToolExecution:
 
 
 class TestQualityAndEarlyExit:
-
     @pytest.mark.asyncio
     async def test_low_quality_context_continue_loop(self, engine):
         """R9: quality < 0.15 with budget remaining → `continue` to gather more context.
@@ -410,17 +475,29 @@ class TestQualityAndEarlyExit:
         gateway = _mk_gateway(send_message_side_effect=send)
 
         # Patch the engine instance's _validate_context_quality to force low score
-        with patch.object(engine, "_validate_context_quality", return_value=0.05), \
-             patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=tc), \
-             patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=True), \
-             patch(
-                 "backend.services.rag.agentic.reasoning.execute_tool",
-                 new_callable=AsyncMock, return_value=("short", 0.01),
-             ), \
-             patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ENGLISH"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.3), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock, return_value="processed"):
+        with (
+            patch.object(engine, "_validate_context_quality", return_value=0.05),
+            patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=tc),
+            patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=True),
+            patch(
+                "backend.services.rag.agentic.reasoning.execute_tool",
+                new_callable=AsyncMock,
+                return_value=("short", 0.01),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.3
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+                return_value="processed",
+            ),
+        ):
             await _run_loop(engine, gateway, state)
 
         # R9: low quality triggers `continue` → loop iterates at least twice before max_steps
@@ -438,7 +515,7 @@ class TestQualityAndEarlyExit:
         # >500 chars, no "No relevant documents", and contains the query keyword "q"
         # so _validate_context_quality clears the ABSTAIN threshold and doesn't
         # trigger the low-quality `continue` path before the early-exit check.
-        big_result = ("q relevant content " * 40)  # 760 chars, "q" in every fragment
+        big_result = "q relevant content " * 40  # 760 chars, "q" in every fragment
 
         async def send(*a, **k):
             return _llm_response("searching", candidates=[MagicMock()])
@@ -447,17 +524,29 @@ class TestQualityAndEarlyExit:
 
         # Patch _validate_context_quality directly so the result length check
         # reliably passes (bypass the keyword heuristic which is noisy for 1-char queries).
-        with patch.object(engine, "_validate_context_quality", return_value=0.9), \
-             patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=vs_tool), \
-             patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=True), \
-             patch(
-                 "backend.services.rag.agentic.reasoning.execute_tool",
-                 new_callable=AsyncMock, return_value=(big_result, 0.01),
-             ), \
-             patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ENGLISH"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.7), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock, return_value="processed"):
+        with (
+            patch.object(engine, "_validate_context_quality", return_value=0.9),
+            patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=vs_tool),
+            patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=True),
+            patch(
+                "backend.services.rag.agentic.reasoning.execute_tool",
+                new_callable=AsyncMock,
+                return_value=(big_result, 0.01),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.7
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+                return_value="processed",
+            ),
+        ):
             result_state, _, _, _ = await _run_loop(engine, gateway, state)
 
         # R11: early exit fires after the first tool call. Only one AgentStep
@@ -484,16 +573,28 @@ class TestQualityAndEarlyExit:
 
         gateway = _mk_gateway(send_message_side_effect=send)
 
-        with patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=vs_tool), \
-             patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=True), \
-             patch(
-                 "backend.services.rag.agentic.reasoning.execute_tool",
-                 new_callable=AsyncMock, return_value=(big_result, 0.01),
-             ), \
-             patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ENGLISH"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.7), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock, return_value="processed"):
+        with (
+            patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=vs_tool),
+            patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=True),
+            patch(
+                "backend.services.rag.agentic.reasoning.execute_tool",
+                new_callable=AsyncMock,
+                return_value=(big_result, 0.01),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.7
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+                return_value="processed",
+            ),
+        ):
             result_state, _, _, _ = await _run_loop(engine, gateway, state)
 
         # R12: complex intent does NOT early-exit → loop iterates > 1 time
@@ -506,7 +607,6 @@ class TestQualityAndEarlyExit:
 
 
 class TestThoughtOnlyBranch:
-
     @pytest.mark.asyncio
     async def test_thought_only_step_continues_loop(self, engine):
         """R14: LLM returns plain text, no `Final Answer:`, budget remaining → thought step appended, loop continues."""
@@ -522,12 +622,23 @@ class TestThoughtOnlyBranch:
 
         gateway = _mk_gateway(send_message_side_effect=send)
 
-        with patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ENGLISH"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.5), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None), \
-             patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock, return_value="processed"):
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.5
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None),
+            patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+                return_value="processed",
+            ),
+        ):
             result_state, _, _, _ = await _run_loop(engine, gateway, state)
 
         # Loop iterated until Final Answer was emitted — last step is_final=True
@@ -544,7 +655,6 @@ class TestThoughtOnlyBranch:
 
 
 class TestTier1Regeneration:
-
     @pytest.mark.asyncio
     async def test_tier1_regeneration_on_non_critical_low_evidence(self, engine):
         """R22: non-critical + low evidence + final_answer present + not trusted → Tier 1 regen.
@@ -570,12 +680,23 @@ class TestTier1Regeneration:
 
         gateway = _mk_gateway(send_message_side_effect=send, has_tools=False)
 
-        with patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ENGLISH"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.05), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None), \
-             patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock, return_value="processed"):
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.05
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None),
+            patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+                return_value="processed",
+            ),
+        ):
             result_state, _, _, _ = await _run_loop(engine, gateway, state)
 
         # R22: send_message called at least twice (initial + Tier 1 regen)
@@ -602,12 +723,23 @@ class TestTier1Regeneration:
 
         gateway = _mk_gateway(send_message_side_effect=send, has_tools=False)
 
-        with patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ITALIAN"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.05), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None), \
-             patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock, return_value="processed"):
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ITALIAN",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.05
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None),
+            patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+                return_value="processed",
+            ),
+        ):
             result_state, _, _, _ = await _run_loop(engine, gateway, state)
 
         # I-R2: final_answer is set to a localized abstain stub (non-empty string)
@@ -623,11 +755,12 @@ class TestTier1Regeneration:
 
 
 class TestNoContextBranches:
-
     @pytest.mark.asyncio
     async def test_no_context_critical_triggers_abstain_message(self, engine):
         """R26: no final_answer + no context_gathered + critical domain → hardcoded Italian abstain."""
-        state = AgentState(query="visto KITAS?", max_steps=1, current_step=0, intent_type="business_complex")
+        state = AgentState(
+            query="visto KITAS?", max_steps=1, current_step=0, intent_type="business_complex"
+        )
         # Loop will set final_answer only if "Final Answer:" is present OR max_steps reached.
         # Here we make LLM return bare text → at max_steps=1, `state.current_step >= state.max_steps`
         # short-circuit in the no-tool-call branch will set final_answer via extract_final_answer_text.
@@ -641,11 +774,24 @@ class TestNoContextBranches:
 
         gateway = _mk_gateway(send_message_side_effect=ResourceExhausted("quota"))
 
-        with patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ITALIAN"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.0), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=True), \
-             patch("backend.services.rag.agentic.reasoning.get_critical_domain_type", return_value="visa"), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock):
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ITALIAN",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.0
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=True),
+            patch(
+                "backend.services.rag.agentic.reasoning.get_critical_domain_type",
+                return_value="visa",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+            ),
+        ):
             result_state, _, _, _ = await _run_loop(engine, gateway, state, query="visto KITAS?")
 
         # R26: critical + no context + no answer → localized abstain stub (Italian by detect_query_language)
@@ -676,10 +822,21 @@ class TestNoContextBranches:
 
         gateway = _mk_gateway(send_message_side_effect=send, has_tools=False)
 
-        with patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ENGLISH"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.0), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock, return_value="processed"):
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.0
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+                return_value="processed",
+            ),
+        ):
             result_state, _, _, _ = await _run_loop(engine, gateway, state)
 
         # R27: Tier 1 path fired → second send_message call → final_answer populated
@@ -693,7 +850,6 @@ class TestNoContextBranches:
 
 
 class TestPipelineProcessing:
-
     @pytest.mark.asyncio
     async def test_pipeline_verification_fail_triggers_self_correction(self, engine):
         """R29: response_pipeline.process returns verification_score < 0.7 + context → rephrase + retry."""
@@ -705,7 +861,10 @@ class TestPipelineProcessing:
                 {
                     "response": "original bad answer",
                     "verification_score": 0.5,
-                    "verification": {"reasoning": "missing citations", "missing_citations": ["doc1"]},
+                    "verification": {
+                        "reasoning": "missing citations",
+                        "missing_citations": ["doc1"],
+                    },
                 },
                 # 2nd pass (post-correction): good score
                 {
@@ -718,6 +877,7 @@ class TestPipelineProcessing:
             ],
         )
         from backend.services.rag.agentic.reasoning import ReasoningEngine
+
         local_engine = ReasoningEngine(tool_map={}, response_pipeline=pipeline)
 
         state = AgentState(query="q", max_steps=1, current_step=0, intent_type="simple")
@@ -735,12 +895,23 @@ class TestPipelineProcessing:
 
         gateway = _mk_gateway(send_message_side_effect=send, has_tools=True)
 
-        with patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ENGLISH"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.8), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None), \
-             patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock, return_value="processed"):
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.8
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None),
+            patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+                return_value="processed",
+            ),
+        ):
             result_state, _, _, _ = await _run_loop(local_engine, gateway, state)
 
         # R29: pipeline called twice (initial + post self-correction)
@@ -755,6 +926,7 @@ class TestPipelineProcessing:
         pipeline.process = AsyncMock(side_effect=ValueError("pipeline broken"))
 
         from backend.services.rag.agentic.reasoning import ReasoningEngine
+
         local_engine = ReasoningEngine(tool_map={}, response_pipeline=pipeline)
 
         state = AgentState(query="q", max_steps=1, current_step=0, intent_type="simple")
@@ -764,15 +936,22 @@ class TestPipelineProcessing:
             has_tools=True,
         )
 
-        with patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ENGLISH"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.8), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None), \
-             patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=False), \
-             patch(
-                 "backend.services.rag.agentic.reasoning.post_process_response",
-                 return_value="post-processed fallback",
-             ) as mock_pp:
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.8
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None),
+            patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                return_value="post-processed fallback",
+            ) as mock_pp,
+        ):
             result_state, _, _, _ = await _run_loop(local_engine, gateway, state)
 
         # R30: pipeline raised, but post_process_response installed a non-None result

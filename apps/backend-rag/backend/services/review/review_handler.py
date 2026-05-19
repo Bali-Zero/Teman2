@@ -129,10 +129,7 @@ class ReviewHandler:
         from_user = cq.get("from", {})
         incoming_chat_id = str(chat.get("id") or from_user.get("id") or "")
         message_id = cq.get("message", {}).get("message_id")
-        username = (
-            from_user.get("username")
-            or str(from_user.get("id") or "unknown")
-        )
+        username = from_user.get("username") or str(from_user.get("id") or "unknown")
 
         # 1. authorization
         if incoming_chat_id != self.owner_chat_id:
@@ -169,15 +166,23 @@ class ReviewHandler:
         # 3. dispatch by action
         if parsed.action == ReviewAction.APPROVE:
             return await self._handle_approve(
-                parsed, callback_query_id, message_id, username,
+                parsed,
+                callback_query_id,
+                message_id,
+                username,
             )
         if parsed.action == ReviewAction.EDIT:
             return await self._handle_edit(
-                parsed, callback_query_id, username,
+                parsed,
+                callback_query_id,
+                username,
             )
         if parsed.action == ReviewAction.REJECT:
             return await self._handle_reject(
-                parsed, callback_query_id, message_id, username,
+                parsed,
+                callback_query_id,
+                message_id,
+                username,
             )
 
         await self._try_answer(callback_query_id, "Azione sconosciuta.")
@@ -208,7 +213,9 @@ class ReviewHandler:
         if draft.status == DraftStatus.APPROVED:
             # idempotent: already approved — answer + remove keyboard anyway
             await self._try_answer(
-                callback_query_id, "Già approvata.", show_alert=False,
+                callback_query_id,
+                "Già approvata.",
+                show_alert=False,
             )
             if message_id is not None:
                 await self._try_clear_keyboard(message_id)
@@ -285,7 +292,8 @@ class ReviewHandler:
         if parsed.reject_reason is None:
             # first-step: show reason picker keyboard (without touching DB)
             await self._try_answer(
-                callback_query_id, "Scegli il motivo del rifiuto.",
+                callback_query_id,
+                "Scegli il motivo del rifiuto.",
             )
             keyboard = build_reject_reason_keyboard(parsed.draft_id)
             if message_id is not None:
@@ -370,7 +378,8 @@ class ReviewHandler:
         )
         if not result.ok:
             self.logger.debug(
-                "answerCallbackQuery failed: %s", result.error,
+                "answerCallbackQuery failed: %s",
+                result.error,
             )
 
     async def _try_clear_keyboard(self, message_id: int) -> None:
@@ -381,5 +390,6 @@ class ReviewHandler:
         )
         if not result.ok:
             self.logger.debug(
-                "clear keyboard failed: %s", result.error,
+                "clear keyboard failed: %s",
+                result.error,
             )

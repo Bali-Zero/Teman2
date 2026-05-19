@@ -65,7 +65,6 @@ def _mk_clarification_service(
 
 
 class TestSecurityGatePriority:
-
     def test_security_gate_triggered_short_circuits_subsequent(self):
         """G1 + I-G1 + I-G2: security triggers → greeting/casual/identity NOT
         even queried. Downstream upstream predicates are never called.
@@ -82,8 +81,10 @@ class TestSecurityGatePriority:
 
         assert result.triggered is True
         assert result.gate_name == "security"
-        assert "injection" in (result.response or "").lower() or \
-               result.response == "Blocked: injection attempt"
+        assert (
+            "injection" in (result.response or "").lower()
+            or result.response == "Blocked: injection attempt"
+        )
         # I-G2: greeting/casual/identity predicates NOT called
         pb.check_greetings.assert_not_called()
         pb.get_casual_response.assert_not_called()
@@ -96,14 +97,14 @@ class TestSecurityGatePriority:
 
 
 class TestGreetingShortCircuit:
-
     def test_greeting_triggered_short_circuits_from_casual_onward(self):
         """G2 + I-G2: greeting wins → casual/identity not queried, clarification
         not queried, out_of_domain not queried.
         """
         pb = _mk_prompt_builder(greeting="Hi there!")
-        svc = _mk_clarification_service(is_ambiguous=True, confidence=0.9,
-                                          clarification_needed=True)
+        svc = _mk_clarification_service(
+            is_ambiguous=True, confidence=0.9, clarification_needed=True
+        )
         gates = QueryGates(prompt_builder=pb, clarification_service=svc)
 
         result = gates.run_all_gates("hello", {}, conversation_history=[{"role": "user"}])
@@ -123,14 +124,14 @@ class TestGreetingShortCircuit:
 
 
 class TestClarificationOptIn:
-
     def test_clarification_requires_history_argument(self):
         """G5 + I-G3: without conversation_history, clarification_service is
         never consulted — regardless of its presence.
         """
         pb = _mk_prompt_builder()  # all sub-gates miss
-        svc = _mk_clarification_service(is_ambiguous=True, confidence=0.9,
-                                          clarification_needed=True)
+        svc = _mk_clarification_service(
+            is_ambiguous=True, confidence=0.9, clarification_needed=True
+        )
         gates = QueryGates(prompt_builder=pb, clarification_service=svc)
 
         # no conversation_history → clarification skipped
@@ -151,7 +152,8 @@ class TestClarificationOptIn:
 
         # Direct call on the method to bypass composite ordering
         result = gates.check_clarification_gate(
-            "q?", conversation_history=[{"role": "user", "content": "prev"}],
+            "q?",
+            conversation_history=[{"role": "user", "content": "prev"}],
         )
 
         assert result.triggered is False
@@ -162,14 +164,17 @@ class TestClarificationOptIn:
         continues to evaluate G6 (out_of_domain).
         """
         pb = _mk_prompt_builder()  # injection/greeting/casual/identity all miss
-        svc = _mk_clarification_service(is_ambiguous=True, confidence=0.5,
-                                          clarification_needed=True)
+        svc = _mk_clarification_service(
+            is_ambiguous=True, confidence=0.5, clarification_needed=True
+        )
         gates = QueryGates(prompt_builder=pb, clarification_service=svc)
 
         # Intercept is_out_of_domain via monkeypatch not needed; we only
         # assert clarification did NOT win.
         result = gates.run_all_gates(
-            "some text", {}, conversation_history=[{"role": "user"}],
+            "some text",
+            {},
+            conversation_history=[{"role": "user"}],
         )
 
         svc.detect_ambiguity.assert_called_once()
@@ -183,7 +188,6 @@ class TestClarificationOptIn:
 
 
 class TestOutOfDomainGate:
-
     def test_out_of_domain_fallthrough_to_react_path(self, monkeypatch):
         """G6: `is_out_of_domain` returns (False, None) → no trigger, pipeline
         falls through to the ReAct path (I-G4).
@@ -226,7 +230,6 @@ class TestOutOfDomainGate:
 
 
 class TestFallthrough:
-
     def test_fallthrough_returns_triggered_false(self, monkeypatch):
         """FT + I-G4: no gate matches → GateResult(triggered=False,
         response=None, gate_name=None).
@@ -250,7 +253,6 @@ class TestFallthrough:
 
 
 class TestGateResultToCoreResult:
-
     def test_security_gate_mapping(self):
         """I-G5: security-gate CoreResult → verification_score=0.0,
         verification_status="blocked", evidence_score=0.0, warnings populated.
@@ -286,8 +288,11 @@ class TestGateResultToCoreResult:
             triggered=True,
             response="Could you clarify which visa type?",
             gate_name="clarification",
-            metadata={"confidence": 0.9, "reasons": ["multi_intent"],
-                      "entities": {"visa": "unknown"}},
+            metadata={
+                "confidence": 0.9,
+                "reasons": ["multi_intent"],
+                "entities": {"visa": "unknown"},
+            },
         )
         core = gates.gate_result_to_core_result(gate_result, start_time=0.0)
 
@@ -318,7 +323,8 @@ class TestGateResultToCoreResult:
             metadata=None,
         )
         core = gates.gate_result_to_core_result(
-            gate_result, start_time=0.0,
+            gate_result,
+            start_time=0.0,
             extracted_entities={"name": "Mario"},
         )
 
@@ -337,7 +343,6 @@ class TestGateResultToCoreResult:
 
 
 class TestErrorPropagation:
-
     def test_upstream_raise_propagates_not_swallowed(self):
         """Error propagation: a raise inside any sub-predicate (e.g.
         check_greetings) propagates to the caller — run_all_gates does NOT

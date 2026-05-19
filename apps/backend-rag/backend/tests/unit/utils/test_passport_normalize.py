@@ -1,6 +1,5 @@
 """Unit tests for passport field normalization utilities."""
 
-
 from backend.utils.passport_normalize import (
     normalize_date,
     normalize_nationality,

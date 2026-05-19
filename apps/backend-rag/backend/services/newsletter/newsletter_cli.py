@@ -80,7 +80,10 @@ async def run() -> int:
 
     try:
         pool = await asyncpg.create_pool(
-            dsn, min_size=1, max_size=2, command_timeout=60,
+            dsn,
+            min_size=1,
+            max_size=2,
+            command_timeout=60,
         )
     except Exception as exc:  # noqa: BLE001
         logger.error("pool init failed: %s", exc, exc_info=True)
@@ -92,7 +95,8 @@ async def run() -> int:
         cognitive_repo = CognitiveRepository(db_pool=pool)
 
         builder = WeeklyRoundupBuilder(
-            intel_repo=intel_repo, cognitive_repo=cognitive_repo,
+            intel_repo=intel_repo,
+            cognitive_repo=cognitive_repo,
         )
         content = await builder.build()
 
@@ -100,18 +104,24 @@ async def run() -> int:
         publisher = NewsletterPublisher()
         result = await publisher.send_roundup(content, recipients)
 
-        sys.stdout.write(json.dumps({
-            "week_of": result.week_of.isoformat(),
-            "recipients_attempted": result.recipients_attempted,
-            "recipients_sent": result.recipients_sent,
-            "recipients_failed": result.recipients_failed,
-            "subject": result.subject,
-            "skipped": result.skipped,
-            "skip_reason": result.skip_reason,
-            "dossiers_in_roundup": len(content.dossiers),
-            "theses_in_roundup": len(content.theses),
-            "brief_included": content.brief is not None,
-        }, default=str) + "\n")
+        sys.stdout.write(
+            json.dumps(
+                {
+                    "week_of": result.week_of.isoformat(),
+                    "recipients_attempted": result.recipients_attempted,
+                    "recipients_sent": result.recipients_sent,
+                    "recipients_failed": result.recipients_failed,
+                    "subject": result.subject,
+                    "skipped": result.skipped,
+                    "skip_reason": result.skip_reason,
+                    "dossiers_in_roundup": len(content.dossiers),
+                    "theses_in_roundup": len(content.theses),
+                    "brief_included": content.brief is not None,
+                },
+                default=str,
+            )
+            + "\n"
+        )
 
         if result.skipped and result.skip_reason == "empty_roundup":
             _hb("warning", "empty_roundup")

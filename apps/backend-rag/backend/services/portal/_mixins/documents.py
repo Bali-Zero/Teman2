@@ -48,7 +48,6 @@ class PortalDocumentsMixin:
     MAX_UPLOADS_PER_WINDOW: int
     RATE_WINDOW_SECONDS: int
 
-
     @staticmethod
     def _sanitize_filename(filename: str) -> str:
         """Sanitize filename to prevent path traversal and unsafe chars."""
@@ -63,6 +62,7 @@ class PortalDocumentsMixin:
             name, ext = filename.rsplit(".", 1) if "." in filename else (filename, "")
             filename = name[:195] + ("." + ext if ext else "")
         return filename
+
     @staticmethod
     def _classify_document_category(document_type: str, file_name: str) -> str:
         """Auto-classify document_category from document_type and filename."""
@@ -71,23 +71,59 @@ class PortalDocumentsMixin:
         combined = f"{dt} {fn}"
 
         # Immigration
-        if any(k in combined for k in (
-            "kitas", "kitap", "visa", "evisa", "voa", "permit", "imta", "rptka", "itas",
-        )):
+        if any(
+            k in combined
+            for k in (
+                "kitas",
+                "kitap",
+                "visa",
+                "evisa",
+                "voa",
+                "permit",
+                "imta",
+                "rptka",
+                "itas",
+            )
+        ):
             return "immigration"
 
         # Personal
-        if any(k in combined for k in (
-            "passport", "paspor", "ktp", "photo", "foto", "cv ", "resume",
-            "domisili", "skck", "surat keterangan",
-        )):
+        if any(
+            k in combined
+            for k in (
+                "passport",
+                "paspor",
+                "ktp",
+                "photo",
+                "foto",
+                "cv ",
+                "resume",
+                "domisili",
+                "skck",
+                "surat keterangan",
+            )
+        ):
             return "personal"
 
         # Company / PMA
-        if any(k in combined for k in (
-            "akta", "pendirian", "perubahan", "nib", "npwp", "sk ", "profil perseroan",
-            "sertifikat standar", "kbli", "sppl", "pks", "kontrak", "contract",
-        )):
+        if any(
+            k in combined
+            for k in (
+                "akta",
+                "pendirian",
+                "perubahan",
+                "nib",
+                "npwp",
+                "sk ",
+                "profil perseroan",
+                "sertifikat standar",
+                "kbli",
+                "sppl",
+                "pks",
+                "kontrak",
+                "contract",
+            )
+        ):
             return "pma"
 
         # Tax
@@ -172,8 +208,7 @@ class PortalDocumentsMixin:
                     "size_kb": d["file_size_kb"],
                     "practice_id": d["practice_id"],
                     "practice_name": d["practice_name"],
-                    "downloadable": d["file_url"] is not None
-                    or d["file_id"] is not None,
+                    "downloadable": d["file_url"] is not None or d["file_id"] is not None,
                     "created_at": d["created_at"].isoformat(),
                 }
                 for d in documents
@@ -250,11 +285,13 @@ class PortalDocumentsMixin:
             "mime_type": mime_type,
         }
 
-    @cache_invalidating([
-        lambda _self, client_id, *_a, **_k: f"zantara:portal_documents:{client_id}:*",
-        "zantara:portal_documents:*",
-        "zantara:portal_timeline:*",
-    ])
+    @cache_invalidating(
+        [
+            lambda _self, client_id, *_a, **_k: f"zantara:portal_documents:{client_id}:*",
+            "zantara:portal_documents:*",
+            "zantara:portal_timeline:*",
+        ]
+    )
     @require_client_access
     async def upload_document(
         self,
@@ -396,7 +433,9 @@ class PortalDocumentsMixin:
                 }
             else:
                 ocr_result = await DocumentOCR.extract_text(
-                    file_content=file_content, file_name=file_name, mime_type=mime_type,
+                    file_content=file_content,
+                    file_name=file_name,
+                    mime_type=mime_type,
                 )
             processing_results["ocr"] = ocr_result
 
@@ -412,7 +451,8 @@ class PortalDocumentsMixin:
             # STEP 4: EXPIRY DATE DETECTION
             # =========================================================================
             expiry_result = ExpiryDetector.detect_expiry(
-                text=ocr_result.get("text", ""), document_type=document_type,
+                text=ocr_result.get("text", ""),
+                document_type=document_type,
             )
             processing_results["expiry_detection"] = expiry_result
 
@@ -682,7 +722,10 @@ class PortalDocumentsMixin:
             client_folder_name = f"{client_id}_{safe_client_name[:30]}"  # Limit name length
 
             client_folder_id = await self._get_or_create_drive_folder(
-                drive_service, user_id, folder_name=client_folder_name, parent_id=root_folder_id,
+                drive_service,
+                user_id,
+                folder_name=client_folder_name,
+                parent_id=root_folder_id,
             )
 
             if not client_folder_id:
@@ -692,7 +735,10 @@ class PortalDocumentsMixin:
             # Create/get document type folder
             type_folder_name = document_type.replace("_", " ").title()
             type_folder_id = await self._get_or_create_drive_folder(
-                drive_service, user_id, folder_name=type_folder_name, parent_id=client_folder_id,
+                drive_service,
+                user_id,
+                folder_name=type_folder_name,
+                parent_id=client_folder_id,
             )
 
             if not type_folder_id:
@@ -800,7 +846,8 @@ class PortalDocumentsMixin:
             result["success"] = True
             result["file_id"] = uploaded_file.get("id")
             result["file_url"] = uploaded_file.get(
-                "webViewLink", f"https://drive.google.com/file/d/{uploaded_file.get('id')}/view",
+                "webViewLink",
+                f"https://drive.google.com/file/d/{uploaded_file.get('id')}/view",
             )
             result["folder_path"] = folder_path
             result["method"] = "service_account"
@@ -816,7 +863,11 @@ class PortalDocumentsMixin:
         return result
 
     async def _get_or_create_drive_folder(
-        self, drive_service: Any, user_id: str, folder_name: str, parent_id: str = "root",
+        self,
+        drive_service: Any,
+        user_id: str,
+        folder_name: str,
+        parent_id: str = "root",
     ) -> str | None:
         """
         Get existing folder or create new one in Google Drive.
@@ -827,7 +878,9 @@ class PortalDocumentsMixin:
         try:
             # Search for existing folder using list_files with filter
             files_result = await drive_service.list_files(
-                user_id=user_id, folder_id=parent_id, page_size=100,
+                user_id=user_id,
+                folder_id=parent_id,
+                page_size=100,
             )
 
             for file in files_result.get("files", []):
@@ -840,7 +893,9 @@ class PortalDocumentsMixin:
 
             # Create new folder
             new_folder = await drive_service.create_folder(
-                user_id=user_id, name=folder_name, parent_id=parent_id,
+                user_id=user_id,
+                name=folder_name,
+                parent_id=parent_id,
             )
 
             logger.info(f"Created new folder '{folder_name}' with ID: {new_folder.get('id')}")
@@ -947,7 +1002,8 @@ Questa è una notifica automatica da Bali Zero CRM.
                         body=body,
                     )
                     logger.info(
-                        "📧 Document upload notification sent to %s via Zoho", lead_email,
+                        "📧 Document upload notification sent to %s via Zoho",
+                        lead_email,
                     )
 
                 # Also insert CRM notification alert for the bell

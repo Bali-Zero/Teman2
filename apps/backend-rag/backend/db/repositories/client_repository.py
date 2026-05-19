@@ -70,7 +70,10 @@ class ClientRepository(BaseRepository):
     """
 
     async def search_clients_dynamic(
-        self, filters: dict[str, Any], limit: int = 50, offset: int = 0,
+        self,
+        filters: dict[str, Any],
+        limit: int = 50,
+        offset: int = 0,
     ) -> list[asyncpg.Record]:
         """
         1) USO DI QUERYBUILDER: Previene SQL Injection nelle ricerche dinamiche.
@@ -94,15 +97,19 @@ class ClientRepository(BaseRepository):
         except Exception as e:
             # 3) LOGGING STRUTTURATO: Nessun silent swallow
             logger.error(
-                "Errore imprevisto durante la ricerca dinamica dei clienti con filtri %s: %s", filters, e,
+                "Errore imprevisto durante la ricerca dinamica dei clienti con filtri %s: %s",
+                filters,
+                e,
                 exc_info=True,
             )
             raise
 
-    @cache_invalidating([
-        "zantara:crm_clients_stats:*",
-        "zantara:crm_clients:*",
-    ])
+    @cache_invalidating(
+        [
+            "zantara:crm_clients_stats:*",
+            "zantara:crm_clients:*",
+        ]
+    )
     async def create_client_with_details(
         self,
         client_data: dict[str, Any],
@@ -244,13 +251,15 @@ class ClientRepository(BaseRepository):
                 raise
             except asyncpg.ForeignKeyViolationError as e:
                 logger.error(
-                    "Violazione Foreign Key durante la creazione cliente/compagnia: %s", e,
+                    "Violazione Foreign Key durante la creazione cliente/compagnia: %s",
+                    e,
                     exc_info=True,
                 )
                 raise
             except Exception as e:
                 logger.error(
-                    "Fallimento critico e rollback nella transazione create_client_with_details: %s", e,
+                    "Fallimento critico e rollback nella transazione create_client_with_details: %s",
+                    e,
                     exc_info=True,
                 )
                 raise

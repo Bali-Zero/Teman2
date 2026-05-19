@@ -23,7 +23,8 @@ from backend.services.observability.llm_cost_recorder import record_llm_call
 logger = logging.getLogger(__name__)
 
 _usage_ctx: ContextVar[tuple[int, int] | None] = ContextVar(
-    "llm_cost_usage", default=None,
+    "llm_cost_usage",
+    default=None,
 )
 
 
@@ -90,8 +91,10 @@ def llm_cost_tracked(
                     )
                 except Exception as exc:
                     logger.warning(
-                        "llm_cost_tracked: unknown pricing for %s/%s (%s) "
-                        "— recording cost_usd=0.0", provider, model, exc,
+                        "llm_cost_tracked: unknown pricing for %s/%s (%s) — recording cost_usd=0.0",
+                        provider,
+                        model,
+                        exc,
                     )
                     cost_usd = 0.0
 
@@ -110,7 +113,9 @@ def llm_cost_tracked(
                 except Exception as rec_exc:
                     logger.warning(
                         "llm_cost_tracked: recorder failed for %s/%s: %s",
-                        provider, model, rec_exc,
+                        provider,
+                        model,
+                        rec_exc,
                     )
 
         return wrapper

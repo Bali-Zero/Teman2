@@ -57,9 +57,11 @@ async def test_no_pending_no_alert(repo_tg):
 @pytest.mark.asyncio
 async def test_single_pending_sends_alert_and_marks(repo_tg):
     repo, tg = repo_tg
-    repo.pending_missed_runs = AsyncMock(return_value=[
-        _run(MissedRunReason.PRO_OFFLINE),
-    ])
+    repo.pending_missed_runs = AsyncMock(
+        return_value=[
+            _run(MissedRunReason.PRO_OFFLINE),
+        ]
+    )
     alerter = MissedRunsAlerter(repo=repo, telegram=tg, owner_chat_id="999")
     result = await alerter.sweep_once()
     assert result.pending_count == 1
@@ -71,12 +73,17 @@ async def test_single_pending_sends_alert_and_marks(repo_tg):
 @pytest.mark.asyncio
 async def test_telegram_failure_leaves_rows_unmarked(repo_tg):
     repo, tg = repo_tg
-    repo.pending_missed_runs = AsyncMock(return_value=[
-        _run(MissedRunReason.HARD_FAILURE),
-    ])
-    tg.send_message = AsyncMock(return_value=SendResult(
-        ok=False, error="chat not found",
-    ))
+    repo.pending_missed_runs = AsyncMock(
+        return_value=[
+            _run(MissedRunReason.HARD_FAILURE),
+        ]
+    )
+    tg.send_message = AsyncMock(
+        return_value=SendResult(
+            ok=False,
+            error="chat not found",
+        )
+    )
     alerter = MissedRunsAlerter(repo=repo, telegram=tg, owner_chat_id="999")
     result = await alerter.sweep_once()
     assert result.message_sent is False
@@ -88,9 +95,11 @@ async def test_telegram_failure_leaves_rows_unmarked(repo_tg):
 @pytest.mark.asyncio
 async def test_mark_notified_failure_still_counted_as_message_sent(repo_tg):
     repo, tg = repo_tg
-    repo.pending_missed_runs = AsyncMock(return_value=[
-        _run(MissedRunReason.QUOTA_EXCEEDED),
-    ])
+    repo.pending_missed_runs = AsyncMock(
+        return_value=[
+            _run(MissedRunReason.QUOTA_EXCEEDED),
+        ]
+    )
     repo.mark_missed_runs_notified = AsyncMock(side_effect=RuntimeError("pg"))
     alerter = MissedRunsAlerter(repo=repo, telegram=tg, owner_chat_id="999")
     result = await alerter.sweep_once()

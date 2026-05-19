@@ -83,7 +83,9 @@ class TestCollectiveMemoryService:
         mock_conn.execute = AsyncMock()
 
         result = await collective_memory_service.add_contribution(
-            user_id="test@example.com", content="KITAS costs 15M", category="pricing",
+            user_id="test@example.com",
+            content="KITAS costs 15M",
+            category="pricing",
         )
         assert result is not None
 
@@ -111,7 +113,9 @@ class TestCollectiveMemoryService:
         mock_conn.execute = AsyncMock()
 
         result = await collective_memory_service.add_contribution(
-            user_id="test@example.com", content="KITAS costs 15M", category="pricing",
+            user_id="test@example.com",
+            content="KITAS costs 15M",
+            category="pricing",
         )
         assert result is not None
 
@@ -131,7 +135,9 @@ class TestCollectiveMemoryService:
         mock_conn.execute = AsyncMock()
 
         result = await collective_memory_service.refute_fact(
-            user_id="test@example.com", memory_id=1, reason="Incorrect information",
+            user_id="test@example.com",
+            memory_id=1,
+            reason="Incorrect information",
         )
         assert result is not None
 
@@ -339,7 +345,9 @@ class TestCollectiveMemory:
 
     @pytest.mark.asyncio
     async def test_refute_fact_low_confidence_removal(
-        self, collective_memory_service, mock_db_pool,
+        self,
+        collective_memory_service,
+        mock_db_pool,
     ):
         """Test fact removal when confidence too low"""
         from contextlib import asynccontextmanager

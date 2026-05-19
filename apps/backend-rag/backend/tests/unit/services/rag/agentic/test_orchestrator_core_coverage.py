@@ -21,12 +21,15 @@ from backend.services.tools.definitions import AgentState
 # Common patches
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(autouse=True)
 def _patch_tracing():
     """Disable tracing for all tests."""
-    with patch("backend.services.rag.agentic.orchestrator_core.trace_span") as ts, \
-         patch("backend.services.rag.agentic.orchestrator_core.set_span_attribute"), \
-         patch("backend.services.rag.agentic.orchestrator_core.set_span_status"):
+    with (
+        patch("backend.services.rag.agentic.orchestrator_core.trace_span") as ts,
+        patch("backend.services.rag.agentic.orchestrator_core.set_span_attribute"),
+        patch("backend.services.rag.agentic.orchestrator_core.set_span_status"),
+    ):
         ts.return_value.__enter__ = MagicMock()
         ts.return_value.__exit__ = MagicMock(return_value=False)
         yield
@@ -35,7 +38,9 @@ def _patch_tracing():
 @pytest.fixture(autouse=True)
 def _patch_traceable():
     """Disable langsmith traceable decorator."""
-    with patch("backend.services.rag.agentic.orchestrator_core.traceable", lambda **kw: lambda f: f):
+    with patch(
+        "backend.services.rag.agentic.orchestrator_core.traceable", lambda **kw: lambda f: f
+    ):
         yield
 
 
@@ -73,17 +78,25 @@ def mock_deps():
 @pytest.fixture
 def orch(mock_deps):
     """Create OrchestratorCore with all mocked deps."""
-    with patch("backend.services.rag.agentic.orchestrator_core.QueryPlanner"), \
-         patch("backend.services.rag.agentic.orchestrator_core.MultiAgentCoordinator"), \
-         patch("backend.services.rag.agentic.orchestrator_core.requires_multi_agent", return_value=False), \
-         patch("backend.services.rag.agentic.orchestrator_core.KGAutoExpansion"):
+    with (
+        patch("backend.services.rag.agentic.orchestrator_core.QueryPlanner"),
+        patch("backend.services.rag.agentic.orchestrator_core.MultiAgentCoordinator"),
+        patch(
+            "backend.services.rag.agentic.orchestrator_core.requires_multi_agent",
+            return_value=False,
+        ),
+        patch("backend.services.rag.agentic.orchestrator_core.KGAutoExpansion"),
+    ):
         from backend.services.rag.agentic.orchestrator_core import OrchestratorCore
+
         core = OrchestratorCore(**mock_deps)
         # SCAR: Mock context_manager.get_basic_context
-        core.context_manager.get_basic_context = AsyncMock(return_value={
-            "profiles": [],
-            "facts": [],
-        })
+        core.context_manager.get_basic_context = AsyncMock(
+            return_value={
+                "profiles": [],
+                "facts": [],
+            }
+        )
         return core
 
 
@@ -91,8 +104,8 @@ def orch(mock_deps):
 # check_faq_cache
 # ============================================================================
 
-class TestCheckFaqCache:
 
+class TestCheckFaqCache:
     @pytest.mark.asyncio
     async def test_no_faq_cache_returns_none(self, orch):
         orch.faq_cache = None
@@ -110,10 +123,12 @@ class TestCheckFaqCache:
     @pytest.mark.asyncio
     async def test_faq_cache_hit(self, orch):
         orch.faq_cache = AsyncMock()
-        orch.faq_cache.get = AsyncMock(return_value={
-            "answer": "KITAS costs Rp 10M",
-            "metadata": {"domain": "visa", "source": "team_qa"},
-        })
+        orch.faq_cache.get = AsyncMock(
+            return_value={
+                "answer": "KITAS costs Rp 10M",
+                "metadata": {"domain": "visa", "source": "team_qa"},
+            }
+        )
         with patch("backend.app.metrics.faq_cache_hits_total", MagicMock(), create=True):
             result = await orch.check_faq_cache("quanto costa kitas?", {}, time.time())
         assert result is not None
@@ -134,8 +149,8 @@ class TestCheckFaqCache:
 # check_semantic_cache
 # ============================================================================
 
-class TestCheckSemanticCache:
 
+class TestCheckSemanticCache:
     @pytest.mark.asyncio
     async def test_no_cache_returns_none(self, orch):
         orch.semantic_cache = None
@@ -152,9 +167,11 @@ class TestCheckSemanticCache:
     @pytest.mark.asyncio
     async def test_cache_hit(self, orch):
         orch.semantic_cache = AsyncMock()
-        orch.semantic_cache.get_cached_result = AsyncMock(return_value={
-            "result": {"answer": "cached answer", "sources": [{"title": "doc1"}]},
-        })
+        orch.semantic_cache.get_cached_result = AsyncMock(
+            return_value={
+                "result": {"answer": "cached answer", "sources": [{"title": "doc1"}]},
+            }
+        )
         result = await orch.check_semantic_cache("test", {"entity": "visa"}, time.time())
         assert result is not None
         assert isinstance(result, CoreResult)
@@ -185,15 +202,17 @@ class TestCheckSemanticCache:
 # extract_entities_and_kg_context
 # ============================================================================
 
-class TestExtractEntitiesAndKgContext:
 
+class TestExtractEntitiesAndKgContext:
     @pytest.mark.asyncio
     async def test_entity_extraction_only(self, orch):
         orch.entity_extractor.extract_entities = AsyncMock(return_value={"visa_type": "KITAS"})
         orch.kg_retrieval = None
         orch.kg_langgraph_orchestrator = None
 
-        entities, context_str, workflow = await orch.extract_entities_and_kg_context("KITAS question")
+        entities, context_str, workflow = await orch.extract_entities_and_kg_context(
+            "KITAS question"
+        )
         assert entities["visa_type"] == "KITAS"
         assert "KITAS" in context_str
 
@@ -210,11 +229,13 @@ class TestExtractEntitiesAndKgContext:
     async def test_kg_context_included(self, orch):
         orch.entity_extractor.extract_entities = AsyncMock(return_value={})
         mock_kg = MagicMock()
-        mock_kg.get_context_for_query = AsyncMock(return_value=MagicMock(
-            graph_summary="KG: KITAS requires sponsor",
-            entities_found=["KITAS"],
-            relationships=["REQUIRES"],
-        ))
+        mock_kg.get_context_for_query = AsyncMock(
+            return_value=MagicMock(
+                graph_summary="KG: KITAS requires sponsor",
+                entities_found=["KITAS"],
+                relationships=["REQUIRES"],
+            )
+        )
         orch.kg_retrieval = mock_kg
         orch.kg_langgraph_orchestrator = None
 
@@ -237,8 +258,8 @@ class TestExtractEntitiesAndKgContext:
 # _format_workflow_for_prompt
 # ============================================================================
 
-class TestFormatWorkflowForPrompt:
 
+class TestFormatWorkflowForPrompt:
     def test_basic_workflow(self, orch):
         workflow = {
             "type": "visa_application",
@@ -308,8 +329,8 @@ class TestFormatWorkflowForPrompt:
 # _track_workflow
 # ============================================================================
 
-class TestTrackWorkflow:
 
+class TestTrackWorkflow:
     @pytest.mark.asyncio
     async def test_no_db_pool_skips(self, orch):
         orch.db_pool = None
@@ -322,11 +343,19 @@ class TestTrackWorkflow:
         mock_repo = AsyncMock()
         orch.db_pool = mock_pool
 
-        with patch("backend.services.rag.agentic.orchestrator_core.WorkflowAnalyticsRepository") as MockRepo:
+        with patch(
+            "backend.services.rag.agentic.orchestrator_core.WorkflowAnalyticsRepository"
+        ) as MockRepo:
             MockRepo.return_value = mock_repo
             await orch._track_workflow(
                 query="visa question",
-                workflow={"type": "visa", "name": "KITAS", "steps": [{"step": 1}], "source": "kg", "confidence": 0.9},
+                workflow={
+                    "type": "visa",
+                    "name": "KITAS",
+                    "steps": [{"step": 1}],
+                    "source": "kg",
+                    "confidence": 0.9,
+                },
                 execution_time_ms=150,
                 user_email="test@test.com",
             )
@@ -337,7 +366,9 @@ class TestTrackWorkflow:
         mock_pool = MagicMock()
         orch.db_pool = mock_pool
 
-        with patch("backend.services.rag.agentic.orchestrator_core.WorkflowAnalyticsRepository") as MockRepo:
+        with patch(
+            "backend.services.rag.agentic.orchestrator_core.WorkflowAnalyticsRepository"
+        ) as MockRepo:
             MockRepo.return_value.log_workflow = AsyncMock(side_effect=RuntimeError("db fail"))
             await orch._track_workflow(query="test", workflow={"type": "x"})
             # Should not raise
@@ -347,8 +378,8 @@ class TestTrackWorkflow:
 # execute_react_loop
 # ============================================================================
 
-class TestExecuteReactLoop:
 
+class TestExecuteReactLoop:
     @pytest.mark.asyncio
     async def test_successful_loop(self, orch):
         from backend.services.llm_clients.pricing import TokenUsage
@@ -357,11 +388,19 @@ class TestExecuteReactLoop:
         state.final_answer = "Hi!"
         state.steps = []
 
-        orch.reasoning_engine.execute_react_loop = AsyncMock(return_value=(
-            state, "gemini-flash", [], TokenUsage(),
-        ))
+        orch.reasoning_engine.execute_react_loop = AsyncMock(
+            return_value=(
+                state,
+                "gemini-flash",
+                [],
+                TokenUsage(),
+            )
+        )
 
-        with patch("backend.services.rag.agentic.orchestrator_core.wrap_query_with_language_instruction", return_value="hello"):
+        with patch(
+            "backend.services.rag.agentic.orchestrator_core.wrap_query_with_language_instruction",
+            return_value="hello",
+        ):
             result_state, model, usage, duration = await orch.execute_react_loop(
                 state=state,
                 chat=MagicMock(),
@@ -378,7 +417,10 @@ class TestExecuteReactLoop:
         state = AgentState(query="fail")
         orch.reasoning_engine.execute_react_loop = AsyncMock(side_effect=RuntimeError("boom"))
 
-        with patch("backend.services.rag.agentic.orchestrator_core.wrap_query_with_language_instruction", return_value="fail"):
+        with patch(
+            "backend.services.rag.agentic.orchestrator_core.wrap_query_with_language_instruction",
+            return_value="fail",
+        ):
             with pytest.raises(RuntimeError):
                 await orch.execute_react_loop(
                     state=state,
@@ -395,7 +437,10 @@ class TestExecuteReactLoop:
         state = AgentState(query="fail")
         orch.reasoning_engine.execute_react_loop = AsyncMock(side_effect=TypeError("unexpected"))
 
-        with patch("backend.services.rag.agentic.orchestrator_core.wrap_query_with_language_instruction", return_value="fail"):
+        with patch(
+            "backend.services.rag.agentic.orchestrator_core.wrap_query_with_language_instruction",
+            return_value="fail",
+        ):
             with pytest.raises(RuntimeError, match="ReAct loop failed"):
                 await orch.execute_react_loop(
                     state=state,
@@ -412,32 +457,44 @@ class TestExecuteReactLoop:
 # OrchestratorCore init
 # ============================================================================
 
-class TestOrchestratorCoreInit:
 
+class TestOrchestratorCoreInit:
     def test_init_without_db_pool(self, mock_deps):
         mock_deps["db_pool"] = None
-        with patch("backend.services.rag.agentic.orchestrator_core.QueryPlanner"), \
-             patch("backend.services.rag.agentic.orchestrator_core.MultiAgentCoordinator"), \
-             patch("backend.services.rag.agentic.orchestrator_core.KGAutoExpansion"):
+        with (
+            patch("backend.services.rag.agentic.orchestrator_core.QueryPlanner"),
+            patch("backend.services.rag.agentic.orchestrator_core.MultiAgentCoordinator"),
+            patch("backend.services.rag.agentic.orchestrator_core.KGAutoExpansion"),
+        ):
             from backend.services.rag.agentic.orchestrator_core import OrchestratorCore
+
             core = OrchestratorCore(**mock_deps)
         assert core._kg_auto_expansion is None
 
     def test_init_with_db_pool(self, mock_deps):
         mock_deps["db_pool"] = MagicMock()
-        with patch("backend.services.rag.agentic.orchestrator_core.QueryPlanner"), \
-             patch("backend.services.rag.agentic.orchestrator_core.MultiAgentCoordinator"), \
-             patch("backend.services.rag.agentic.orchestrator_core.KGAutoExpansion") as MockKG:
+        with (
+            patch("backend.services.rag.agentic.orchestrator_core.QueryPlanner"),
+            patch("backend.services.rag.agentic.orchestrator_core.MultiAgentCoordinator"),
+            patch("backend.services.rag.agentic.orchestrator_core.KGAutoExpansion") as MockKG,
+        ):
             MockKG.return_value = MagicMock()
             from backend.services.rag.agentic.orchestrator_core import OrchestratorCore
+
             core = OrchestratorCore(**mock_deps)
         assert core._kg_auto_expansion is not None
 
     def test_init_kg_auto_expansion_fails_gracefully(self, mock_deps):
         mock_deps["db_pool"] = MagicMock()
-        with patch("backend.services.rag.agentic.orchestrator_core.QueryPlanner"), \
-             patch("backend.services.rag.agentic.orchestrator_core.MultiAgentCoordinator"), \
-             patch("backend.services.rag.agentic.orchestrator_core.KGAutoExpansion", side_effect=RuntimeError("init fail")):
+        with (
+            patch("backend.services.rag.agentic.orchestrator_core.QueryPlanner"),
+            patch("backend.services.rag.agentic.orchestrator_core.MultiAgentCoordinator"),
+            patch(
+                "backend.services.rag.agentic.orchestrator_core.KGAutoExpansion",
+                side_effect=RuntimeError("init fail"),
+            ),
+        ):
             from backend.services.rag.agentic.orchestrator_core import OrchestratorCore
+
             core = OrchestratorCore(**mock_deps)
         assert core._kg_auto_expansion is None

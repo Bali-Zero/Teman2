@@ -1,4 +1,5 @@
 """Tests for backend.services.common.background.spawn()."""
+
 from __future__ import annotations
 
 import asyncio

@@ -1,4 +1,5 @@
 """Schema adapter: detect legacy + adapt to v2."""
+
 import json
 from pathlib import Path
 

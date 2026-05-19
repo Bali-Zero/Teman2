@@ -35,6 +35,7 @@ Plan: docs/superpowers/plans/2026-04-20-crm-partners-module.md Task 1
 Author: Claude Opus 4.7
 Date: 2026-04-20
 """
+
 from __future__ import annotations
 
 import logging
@@ -114,22 +115,17 @@ async def apply(conn: Any) -> None:
         END $$;
     """)
 
-    await conn.execute(
-        "CREATE UNIQUE INDEX IF NOT EXISTS idx_partners_email"
-        " ON partners (email);"
-    )
+    await conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_partners_email ON partners (email);")
     await conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_partners_assigned_to"
         " ON partners (assigned_to)"
         " WHERE assigned_to IS NOT NULL;"
     )
     await conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_partners_onboarding_status"
-        " ON partners (onboarding_status);"
+        "CREATE INDEX IF NOT EXISTS idx_partners_onboarding_status ON partners (onboarding_status);"
     )
     await conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_partners_entity_type"
-        " ON partners (entity_type);"
+        "CREATE INDEX IF NOT EXISTS idx_partners_entity_type ON partners (entity_type);"
     )
 
     # -------------------------------------------------------------------------
@@ -275,8 +271,7 @@ async def apply(conn: Any) -> None:
         " ON partner_commissions (practice_id);"
     )
     await conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_partner_commissions_status"
-        " ON partner_commissions (status);"
+        "CREATE INDEX IF NOT EXISTS idx_partner_commissions_status ON partner_commissions (status);"
     )
     await conn.execute(
         "CREATE INDEX IF NOT EXISTS idx_partner_commissions_eligible_at"
@@ -319,8 +314,7 @@ async def apply(conn: Any) -> None:
         " ON partner_audit_log (partner_id);"
     )
     await conn.execute(
-        "CREATE INDEX IF NOT EXISTS idx_partner_audit_log_at"
-        " ON partner_audit_log (at DESC);"
+        "CREATE INDEX IF NOT EXISTS idx_partner_audit_log_at ON partner_audit_log (at DESC);"
     )
 
     # -------------------------------------------------------------------------

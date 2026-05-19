@@ -32,6 +32,7 @@ if _PROMPT_VERSION == "v3":
         from backend.prompts.zantara_core_v3 import (
             ZANTARA_MASTER_TEMPLATE,
         )
+
         logger.info("PromptManager: using zantara_core_v3 (ZANTARA_PROMPT_VERSION=v3)")
     except ImportError as exc:  # pragma: no cover — defensive fallback
         logger.warning(
@@ -50,6 +51,7 @@ elif _PROMPT_VERSION == "v2":
         from backend.prompts.zantara_core_v2 import (
             ZANTARA_MASTER_TEMPLATE,
         )
+
         logger.info("PromptManager: using zantara_core_v2 (ZANTARA_PROMPT_VERSION=v2)")
     except ImportError as exc:  # pragma: no cover — defensive fallback
         logger.warning(

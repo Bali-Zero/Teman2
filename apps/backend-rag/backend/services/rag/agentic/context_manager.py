@@ -83,7 +83,9 @@ async def fetch_profile_and_history(
                     WHERE CAST(up.id AS TEXT) = $1 OR up.email = $1
                 """
                 logger.info(
-                    "🧠 [ContextManager] Executing profile query for user_id: %s, session_id: %s", user_id, session_id,
+                    "🧠 [ContextManager] Executing profile query for user_id: %s, session_id: %s",
+                    user_id,
+                    session_id,
                 )
                 row = await conn.fetchrow(query_combined, user_id, session_id)
             else:
@@ -111,7 +113,8 @@ async def fetch_profile_and_history(
                     WHERE CAST(up.id AS TEXT) = $1 OR up.email = $1
                 """
                 logger.info(
-                    "🧠 [ContextManager] Executing profile query for user_id: %s (no session_id)", user_id,
+                    "🧠 [ContextManager] Executing profile query for user_id: %s (no session_id)",
+                    user_id,
                 )
                 row = await conn.fetchrow(query_combined, user_id)
 
@@ -210,12 +213,15 @@ async def fetch_memory_facts(
             logger.warning(f"📋 [ContextManager] Sample facts: {memory_context.profile_facts[:3]}")
         else:
             logger.warning(
-                "⚠️  [ContextManager] NO profile facts found for %s - user recognition will fail!", user_id,
+                "⚠️  [ContextManager] NO profile facts found for %s - user recognition will fail!",
+                user_id,
             )
 
     except (asyncpg.PostgresError, ValueError, RuntimeError, KeyError) as e:
         logger.error(
-            "❌ [ContextManager] Failed to fetch memory context for %s: %s", user_id, e,
+            "❌ [ContextManager] Failed to fetch memory context for %s: %s",
+            user_id,
+            e,
             exc_info=True,
         )
 

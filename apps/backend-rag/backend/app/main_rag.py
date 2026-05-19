@@ -46,7 +46,9 @@ def create_rag_app() -> FastAPI:
         description="Heavy RAG/KG/AI process — SearchService + ZantaraAIClient",
         version=getattr(settings, "VERSION", "5.2.0"),
         lifespan=lifespan_full,
-        docs_url="/docs" if getattr(settings, "ENVIRONMENT", "production") != "production" else None,
+        docs_url="/docs"
+        if getattr(settings, "ENVIRONMENT", "production") != "production"
+        else None,
         redoc_url=None,
         default_response_class=ORJSONResponse,  # 3-10× faster JSON serialization (audit modernization 2026-05-18)
     )

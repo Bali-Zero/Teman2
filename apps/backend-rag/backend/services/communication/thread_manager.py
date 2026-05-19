@@ -132,7 +132,8 @@ class ThreadManager:
         # Update message's thread_id
         await self._db.execute(
             "UPDATE conversation_messages SET thread_id = $1 WHERE id = $2",
-            thread_id, message_id,
+            thread_id,
+            message_id,
         )
 
         # Update thread metadata
@@ -162,7 +163,8 @@ class ThreadManager:
             SET assigned_to = $2, status = 'assigned', last_activity_at = NOW()
             WHERE id = $1
             """,
-            thread_id, email,
+            thread_id,
+            email,
         )
         logger.info("Thread %s assigned to %s", thread_id, email)
 
@@ -220,7 +222,11 @@ class ThreadManager:
         )
 
     async def get_thread_messages(
-        self, thread_id: UUID, *, limit: int = 50, offset: int = 0,
+        self,
+        thread_id: UUID,
+        *,
+        limit: int = 50,
+        offset: int = 0,
     ) -> list[ThreadMessage]:
         """Get messages for a thread, ordered chronologically."""
         rows = await self._db.fetch(
@@ -231,7 +237,9 @@ class ThreadManager:
             ORDER BY created_at ASC
             LIMIT $2 OFFSET $3
             """,
-            thread_id, limit, offset,
+            thread_id,
+            limit,
+            offset,
         )
 
         messages = []
@@ -239,18 +247,22 @@ class ThreadManager:
             meta = row["metadata"]
             if isinstance(meta, str):
                 meta = json.loads(meta)
-            messages.append(ThreadMessage(
-                id=row["id"],
-                channel=row["channel"],
-                direction=row["direction"],
-                sender_id=row["sender_id"],
-                content=row["content"],
-                metadata=meta or {},
-                created_at=row["created_at"].isoformat() if row["created_at"] else "",
-            ))
+            messages.append(
+                ThreadMessage(
+                    id=row["id"],
+                    channel=row["channel"],
+                    direction=row["direction"],
+                    sender_id=row["sender_id"],
+                    content=row["content"],
+                    metadata=meta or {},
+                    created_at=row["created_at"].isoformat() if row["created_at"] else "",
+                )
+            )
         return messages
 
-    async def get_threads(self, filters: ThreadFilter, *, user_email: str | None = None, is_admin: bool = False) -> tuple[list[dict[str, Any]], int]:
+    async def get_threads(
+        self, filters: ThreadFilter, *, user_email: str | None = None, is_admin: bool = False
+    ) -> tuple[list[dict[str, Any]], int]:
         """List threads with filters. Returns (threads, total_count).
 
         Args:
@@ -278,7 +290,9 @@ class ThreadManager:
             conditions.append(f"t.client_id = ${len(params)}")
         if filters.search:
             params.append(f"%{filters.search}%")
-            conditions.append(f"(t.subject ILIKE ${len(params)} OR t.last_message_preview ILIKE ${len(params)})")
+            conditions.append(
+                f"(t.subject ILIKE ${len(params)} OR t.last_message_preview ILIKE ${len(params)})"
+            )
 
         # RBAC: non-admin sees only assigned threads
         if not is_admin and user_email:
@@ -289,7 +303,8 @@ class ThreadManager:
 
         # Total count
         total = await self._db.fetchval(
-            f"SELECT COUNT(*) FROM conversation_threads t {where}", *params,
+            f"SELECT COUNT(*) FROM conversation_threads t {where}",
+            *params,
         )
 
         # Fetch threads with client name join
@@ -320,23 +335,27 @@ class ThreadManager:
             meta = row["metadata"]
             if isinstance(meta, str):
                 meta = json.loads(meta)
-            threads.append({
-                "id": str(row["id"]),
-                "client_id": row["client_id"],
-                "client_name": row["client_name"],
-                "client_email": row["client_email"],
-                "status": row["status"],
-                "priority": row["priority"],
-                "assigned_to": row["assigned_to"],
-                "subject": row["subject"],
-                "channels": row["channels"] or [],
-                "intent": row["intent"],
-                "unread_count": row["unread_count"],
-                "last_message_preview": row["last_message_preview"],
-                "last_activity_at": row["last_activity_at"].isoformat() if row["last_activity_at"] else None,
-                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
-                "metadata": meta or {},
-            })
+            threads.append(
+                {
+                    "id": str(row["id"]),
+                    "client_id": row["client_id"],
+                    "client_name": row["client_name"],
+                    "client_email": row["client_email"],
+                    "status": row["status"],
+                    "priority": row["priority"],
+                    "assigned_to": row["assigned_to"],
+                    "subject": row["subject"],
+                    "channels": row["channels"] or [],
+                    "intent": row["intent"],
+                    "unread_count": row["unread_count"],
+                    "last_message_preview": row["last_message_preview"],
+                    "last_activity_at": row["last_activity_at"].isoformat()
+                    if row["last_activity_at"]
+                    else None,
+                    "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+                    "metadata": meta or {},
+                }
+            )
 
         return threads, total or 0
 
@@ -349,7 +368,9 @@ class ThreadManager:
         lines = []
         for msg in messages:
             direction_icon = "→" if msg.direction == "outbound" else "←"
-            sender = msg.metadata.get("sender_name") or msg.metadata.get("first_name") or msg.sender_id
+            sender = (
+                msg.metadata.get("sender_name") or msg.metadata.get("first_name") or msg.sender_id
+            )
             channel_tag = msg.channel.upper()[:2]
             content_preview = msg.content[:150].replace("\n", " ")
             lines.append(f"[{channel_tag}] {direction_icon} {sender}: {content_preview}")

@@ -19,6 +19,7 @@ Schema adaptation (m108 actual columns):
 
 Idempotency: ON CONFLICT (proposal_id) DO NOTHING.
 """
+
 from __future__ import annotations
 
 import json
@@ -58,10 +59,12 @@ async def propose_kg_entities(
         node_label = str(entity.get("name") or eid)
         node_type = str(entity.get("type") or "unknown")
         node_properties = json.dumps(entity)
-        metadata = json.dumps({
-            "source": _SOURCE_TAG,
-            "staging_id": staging_id,
-        })
+        metadata = json.dumps(
+            {
+                "source": _SOURCE_TAG,
+                "staging_id": staging_id,
+            }
+        )
 
         try:
             result = await conn.execute(
@@ -79,8 +82,12 @@ async def propose_kg_entities(
                 )
                 ON CONFLICT (proposal_id) DO NOTHING
                 """,
-                proposal_id, gap_id, node_label, node_type,
-                node_properties, metadata,
+                proposal_id,
+                gap_id,
+                node_label,
+                node_type,
+                node_properties,
+                metadata,
             )
             # asyncpg returns 'INSERT 0 1' on success, 'INSERT 0 0' on conflict
             if result and result.endswith(" 1"):
@@ -108,8 +115,12 @@ async def propose_kg_entities(
                         'pending', $6::jsonb
                     )
                     """,
-                    proposal_id, gap_id, node_label, node_type,
-                    node_properties, metadata,
+                    proposal_id,
+                    gap_id,
+                    node_label,
+                    node_type,
+                    node_properties,
+                    metadata,
                 )
                 inserted += 1
 

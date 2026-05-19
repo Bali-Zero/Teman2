@@ -8,6 +8,7 @@ Shared fixtures for compliance subsystem tests.
 
 Schema note: `clients` table has no `preferred_language` column — omitted from insert.
 """
+
 from __future__ import annotations
 
 import os
@@ -53,7 +54,8 @@ async def sample_client(db_tx: asyncpg.Connection) -> dict:
         VALUES ($1, $2)
         RETURNING id, full_name, email
         """,
-        "Test Client E2E", "test-e2e@example.com",
+        "Test Client E2E",
+        "test-e2e@example.com",
     )
     return dict(row)
 

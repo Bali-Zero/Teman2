@@ -10,6 +10,7 @@ covered by integration smoke tests in test_actions_integration.py (when
 codex CLI is installed in CI). These unit tests verify the action layer
 only.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -47,7 +48,9 @@ class _Proposal:
 
 @pytest.mark.asyncio
 async def test_xhigh_fix_dry_run_returns_framed_prompt() -> None:
-    p = _Proposal(action_payload={"prompt": "Refactor the login handler to use httpx persistent client."})
+    p = _Proposal(
+        action_payload={"prompt": "Refactor the login handler to use httpx persistent client."}
+    )
     result = await codex_xhigh_fix_action(p, dry_run=True)
     assert result.success is True
     assert result.metadata is not None

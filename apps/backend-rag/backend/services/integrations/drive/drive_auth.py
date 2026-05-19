@@ -78,7 +78,9 @@ class DriveAuthManager:
                 # Se mancano meno di 5 minuti alla scadenza, esegui il refresh
                 if time_to_expiry < 300:
                     logger.info(
-                        "Token OAuth per %s in scadenza (TTL: %ss). Inizio refresh.", user_id, time_to_expiry,
+                        "Token OAuth per %s in scadenza (TTL: %ss). Inizio refresh.",
+                        user_id,
+                        time_to_expiry,
                     )
                     return await self._refresh_oauth_token(user_id, refresh_token)
 
@@ -86,7 +88,10 @@ class DriveAuthManager:
 
         except Exception as e:
             logger.error(
-                "Errore critico nel recupero token OAuth per %s: %s", user_id, e, exc_info=True,
+                "Errore critico nel recupero token OAuth per %s: %s",
+                user_id,
+                e,
+                exc_info=True,
             )
             return None
 
@@ -97,7 +102,8 @@ class DriveAuthManager:
         """
         if not refresh_token:
             logger.error(
-                "Impossibile effettuare il refresh per %s: refresh_token mancante.", user_id,
+                "Impossibile effettuare il refresh per %s: refresh_token mancante.",
+                user_id,
             )
             if METRICS_ENABLED:
                 drive_oauth_refresh_total.labels(status="failed").inc()
@@ -159,7 +165,9 @@ class DriveAuthManager:
             return None
         except Exception as e:
             logger.error(
-                "Errore di sistema imprevisto durante il refresh token per %s: %s", user_id, e,
+                "Errore di sistema imprevisto durante il refresh token per %s: %s",
+                user_id,
+                e,
                 exc_info=True,
             )
             if METRICS_ENABLED:
@@ -180,7 +188,8 @@ class DriveAuthManager:
 
             sa_info = json.loads(sa_json_str)
             credentials = service_account.Credentials.from_service_account_info(
-                sa_info, scopes=self.scopes,
+                sa_info,
+                scopes=self.scopes,
             )
 
             # Nota: L'oggetto request di google.auth è sincrono,
@@ -191,7 +200,9 @@ class DriveAuthManager:
 
         except json.JSONDecodeError as e:
             logger.error(
-                "GOOGLE_SERVICE_ACCOUNT_JSON contiene JSON non valido: %s", e, exc_info=True,
+                "GOOGLE_SERVICE_ACCOUNT_JSON contiene JSON non valido: %s",
+                e,
+                exc_info=True,
             )
             return None
         except Exception as e:
@@ -231,6 +242,9 @@ class DriveAuthManager:
 
         except Exception as e:
             logger.error(
-                "Fallimento recupero permessi folder per l'utente %s: %s", user_email, e, exc_info=True,
+                "Fallimento recupero permessi folder per l'utente %s: %s",
+                user_email,
+                e,
+                exc_info=True,
             )
             return ([], False)

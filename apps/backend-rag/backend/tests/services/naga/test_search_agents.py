@@ -96,9 +96,7 @@ class TestAgentResponse:
     def test_results_default_not_shared(self) -> None:
         r1 = AgentResponse(agent_name="a")
         r2 = AgentResponse(agent_name="b")
-        r1.results.append(
-            SearchResult(url="https://x.com", title="X", content="x")
-        )
+        r1.results.append(SearchResult(url="https://x.com", title="X", content="x"))
         assert len(r2.results) == 0
 
 

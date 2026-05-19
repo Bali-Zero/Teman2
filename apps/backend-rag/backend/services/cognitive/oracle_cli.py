@@ -131,17 +131,23 @@ async def _deliberate(pool: asyncpg.Pool) -> int:
     )
     result = await orchestrator.run_once()
 
-    sys.stdout.write(json.dumps({
-        "context_chars": result.context_chars,
-        "proposals": [
-            {"author": p.author, "ok": p.ok, "moves": len(p.moves)}
-            for p in result.proposals
-        ],
-        "judged": len(result.judged_moves),
-        "inserted": [str(m.id) for m in result.inserted],
-        "degraded": result.degraded,
-        "errors_count": len(result.errors),
-    }, default=str) + "\n")
+    sys.stdout.write(
+        json.dumps(
+            {
+                "context_chars": result.context_chars,
+                "proposals": [
+                    {"author": p.author, "ok": p.ok, "moves": len(p.moves)}
+                    for p in result.proposals
+                ],
+                "judged": len(result.judged_moves),
+                "inserted": [str(m.id) for m in result.inserted],
+                "degraded": result.degraded,
+                "errors_count": len(result.errors),
+            },
+            default=str,
+        )
+        + "\n"
+    )
 
     return 0 if result.inserted or not result.errors else 2
 
@@ -155,13 +161,19 @@ async def _deliver(pool: asyncpg.Pool) -> int:
         owner_chat_id=DEFAULT_OWNER,
     )
     result = await delivery.send_pending()
-    sys.stdout.write(json.dumps({
-        "sent": result.sent_count,
-        "failed": result.failed_count,
-        "skipped": result.skipped_count,
-        "move_ids": [str(x) for x in (result.move_ids_sent or [])],
-        "errors_count": len(result.errors or []),
-    }, default=str) + "\n")
+    sys.stdout.write(
+        json.dumps(
+            {
+                "sent": result.sent_count,
+                "failed": result.failed_count,
+                "skipped": result.skipped_count,
+                "move_ids": [str(x) for x in (result.move_ids_sent or [])],
+                "errors_count": len(result.errors or []),
+            },
+            default=str,
+        )
+        + "\n"
+    )
     return 0 if result.failed_count == 0 else 2
 
 
@@ -173,7 +185,10 @@ async def run(mode: str) -> int:
         return 1
     try:
         pool = await asyncpg.create_pool(
-            dsn, min_size=1, max_size=2, command_timeout=200,
+            dsn,
+            min_size=1,
+            max_size=2,
+            command_timeout=200,
         )
     except Exception as exc:  # noqa: BLE001
         logger.error("pool init failed: %s", exc, exc_info=True)

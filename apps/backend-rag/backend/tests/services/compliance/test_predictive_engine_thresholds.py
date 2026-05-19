@@ -2,6 +2,7 @@
 PredictiveEngine must read per-category urgent thresholds from system_settings,
 falling back to the hardcoded default (7 days) when key missing.
 """
+
 from __future__ import annotations
 
 import asyncpg

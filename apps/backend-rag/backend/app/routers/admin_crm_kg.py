@@ -156,6 +156,7 @@ async def trigger_build_mediated(
         from backend.services.knowledge_graph.mediated_edges_builder import (
             build_mediated_edges,
         )
+
         result = await build_mediated_edges(pool)
         logger.info("crm_kg.build_mediated background result: %s", result)
 
@@ -183,6 +184,7 @@ async def trigger_garbage_collect(
         from backend.services.knowledge_graph.garbage_collector import (
             garbage_collect,
         )
+
         result = await garbage_collect(pool)
         logger.info("crm_kg.garbage_collect background result: %s", result)
 

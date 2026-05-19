@@ -17,6 +17,7 @@ References:
 - docs/superpowers/specs/2026-04-14-organism-nervous-system-design.md §4
 - research/symbiosis/2026-05-13-ticket-G-narrow-spec.md (skills endpoint)
 """
+
 from __future__ import annotations
 
 import hmac
@@ -206,6 +207,7 @@ async def _get_skills_redis_client(request: Request) -> Any:
         raise HTTPException(status_code=503, detail="Redis unavailable")
     try:
         import redis.asyncio as aioredis
+
         client = aioredis.from_url(redis_url, decode_responses=False)
         return client
     except Exception as e:
@@ -234,9 +236,8 @@ async def get_skills(
 
     client = await _get_skills_redis_client(request)
     # Track ad-hoc client so we can close it cleanly at the end
-    is_adhoc = (
-        getattr(request.app.state, "redis_manager", None) is None
-        or not getattr(getattr(request.app.state, "redis_manager", None), "available", False)
+    is_adhoc = getattr(request.app.state, "redis_manager", None) is None or not getattr(
+        getattr(request.app.state, "redis_manager", None), "available", False
     )
 
     events_orphaned = False
@@ -252,7 +253,8 @@ async def get_skills(
                     events_orphaned = True
                     logger.warning(
                         "Bridge skills: gap detected — after_id=%s < stream_lowest=%s",
-                        after_id, stream_lowest_id,
+                        after_id,
+                        stream_lowest_id,
                     )
         except Exception as e:
             logger.debug("XINFO STREAM cell:skills failed (non-fatal): %s", e)
@@ -275,8 +277,9 @@ async def get_skills(
             for entry_id, fields in entries:
                 last_id = entry_id.decode() if isinstance(entry_id, bytes) else entry_id
                 decoded_fields = {
-                    (k.decode() if isinstance(k, bytes) else k):
-                    (v.decode() if isinstance(v, bytes) else v)
+                    (k.decode() if isinstance(k, bytes) else k): (
+                        v.decode() if isinstance(v, bytes) else v
+                    )
                     for k, v in fields.items()
                 }
                 events.append({"id": last_id, "fields": decoded_fields})
@@ -289,7 +292,11 @@ async def get_skills(
 
     logger.info(
         "Bridge skills: returned %d events (after_id=%s last_id=%s orphaned=%s adhoc=%s)",
-        len(events), after_id, last_id, events_orphaned, is_adhoc,
+        len(events),
+        after_id,
+        last_id,
+        events_orphaned,
+        is_adhoc,
     )
     return SkillsResponse(
         events=events,

@@ -211,7 +211,9 @@ class CollectiveMemoryService:
                                 memory_id,
                             )
                             logger.info(
-                                "🎉 [Collective] Fact #%s promoted to collective (sources: %s)", memory_id, actual_source_count,
+                                "🎉 [Collective] Fact #%s promoted to collective (sources: %s)",
+                                memory_id,
+                                actual_source_count,
                             )
 
                         logger.info(

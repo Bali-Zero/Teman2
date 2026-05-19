@@ -15,6 +15,7 @@ The migration must:
 
 Mirrors test_migration_152.py contract-test pattern.
 """
+
 from pathlib import Path
 
 MIGRATION_FILE = (
@@ -152,15 +153,9 @@ def test_rollback_drops_triggers_then_function():
     """
     sql = MIGRATION_FILE.read_text()
     rollback_section = sql.split("-- === ROLLBACK ===")[1]
-    drop_insert_pos = rollback_section.find(
-        "DROP TRIGGER IF EXISTS asset_provenance_notify_insert"
-    )
-    drop_update_pos = rollback_section.find(
-        "DROP TRIGGER IF EXISTS asset_provenance_notify_update"
-    )
-    drop_function_pos = rollback_section.find(
-        "DROP FUNCTION IF EXISTS notify_asset_provenance"
-    )
+    drop_insert_pos = rollback_section.find("DROP TRIGGER IF EXISTS asset_provenance_notify_insert")
+    drop_update_pos = rollback_section.find("DROP TRIGGER IF EXISTS asset_provenance_notify_update")
+    drop_function_pos = rollback_section.find("DROP FUNCTION IF EXISTS notify_asset_provenance")
     assert drop_insert_pos != -1
     assert drop_update_pos != -1
     assert drop_function_pos != -1

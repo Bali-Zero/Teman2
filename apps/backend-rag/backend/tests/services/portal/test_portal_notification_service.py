@@ -103,7 +103,9 @@ async def test_notify_handles_db_error(mock_pool):
 
     service = PortalNotificationService(pool)
     result = await service.notify_document_uploaded(
-        client_id=42, document_type="passport", sent_by="team@balizero.com",
+        client_id=42,
+        document_type="passport",
+        sent_by="team@balizero.com",
     )
 
     assert result is None

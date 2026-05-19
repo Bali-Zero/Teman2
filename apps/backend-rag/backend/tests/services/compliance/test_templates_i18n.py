@@ -1,6 +1,7 @@
 """
 templates_i18n: TEMPLATE_REGISTRY + Jinja interpolation with IT/EN/ID + fallback chain.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -27,8 +28,11 @@ class TestRegistryShape:
 class TestRender:
     def test_render_italian(self) -> None:
         out = render_template(
-            "visa_expiry", "body", "it",
-            days_until=7, visa_type="C1",
+            "visa_expiry",
+            "body",
+            "it",
+            days_until=7,
+            visa_type="C1",
         )
         assert "7" in out
 
@@ -66,8 +70,11 @@ class TestRender:
     def test_render_injects_jinja_variables(self) -> None:
         # The visa_expiry body template uses {{ days_until }}.
         out = render_template(
-            "visa_expiry", "body", "en",
-            days_until=14, visa_type="B211A",
+            "visa_expiry",
+            "body",
+            "en",
+            days_until=14,
+            visa_type="B211A",
         )
         assert "14" in out
         assert "B211A" in out

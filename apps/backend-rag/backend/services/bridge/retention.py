@@ -5,6 +5,7 @@ Called by a separate cron (or invoked manually). Idempotent.
 
 Reference: docs/superpowers/specs/2026-04-14-organism-nervous-system-design.md §4
 """
+
 from __future__ import annotations
 
 import logging
@@ -26,5 +27,7 @@ async def prune_outbox(conn: Any, retention_days: int = RETENTION_DAYS) -> int:
         deleted = int(result.split()[-1]) if result else 0
     except (ValueError, IndexError):
         deleted = 0
-    logger.info("Bridge outbox retention: deleted %d rows older than %d days", deleted, retention_days)
+    logger.info(
+        "Bridge outbox retention: deleted %d rows older than %d days", deleted, retention_days
+    )
     return deleted

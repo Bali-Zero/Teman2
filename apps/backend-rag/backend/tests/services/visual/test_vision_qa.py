@@ -32,6 +32,7 @@ def fake_image() -> bytes:
 
 # ── VisionFlags helpers ──────────────────────────────────────────────
 
+
 def test_rejects_any_when_fails_brief():
     f = VisionFlags(
         matches_brief=False,
@@ -84,16 +85,21 @@ def test_banned_elements_covers_brand_json_list():
 
 # ── OllamaVisionClient ───────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_vision_client_parses_json_flags(fake_image):
     mock_client = AsyncMock(spec=httpx.AsyncClient)
-    mock_client.post = AsyncMock(return_value=_ok_response({
-        "matches_brief": True,
-        "has_banned_elements": [],
-        "brand_fit_score_0_10": 8,
-        "text_area_available_ratio": 0.55,
-        "readability_issues": [],
-    }))
+    mock_client.post = AsyncMock(
+        return_value=_ok_response(
+            {
+                "matches_brief": True,
+                "has_banned_elements": [],
+                "brand_fit_score_0_10": 8,
+                "text_area_available_ratio": 0.55,
+                "readability_issues": [],
+            }
+        )
+    )
     client = OllamaVisionClient(http_client=mock_client)
 
     flags = await client.analyze(fake_image, brief="editorial visa scene")

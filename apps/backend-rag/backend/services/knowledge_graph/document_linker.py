@@ -102,6 +102,7 @@ def _company_uid(npwp: str | None) -> uuid.UUID | None:
 
 # ─── Public API ─────────────────────────────────────────────────────────
 
+
 async def kg_link_document(
     db_pool: asyncpg.Pool,
     *,
@@ -196,10 +197,7 @@ async def kg_link_document(
 
                 # 5. Company node (akta / npwp_company / nib docs)
                 company_id_node = None
-                npwp = (
-                    extracted_fields.get("npwp_company")
-                    or extracted_fields.get("npwp")
-                )
+                npwp = extracted_fields.get("npwp_company") or extracted_fields.get("npwp")
                 if npwp:
                     c_uid = _company_uid(npwp)
                     if c_uid is not None:
@@ -255,16 +253,24 @@ async def kg_link_document(
                     )
 
                 node_count = sum(
-                    1 for n in (
-                        doc_id, client_id_node, practice_id_node,
-                        person_id_node, company_id_node,
-                    ) if n is not None
+                    1
+                    for n in (
+                        doc_id,
+                        client_id_node,
+                        practice_id_node,
+                        person_id_node,
+                        company_id_node,
+                    )
+                    if n is not None
                 )
 
                 logger.info(
-                    "kg_link_document: file_id=%s client_id=%d type=%s "
-                    "nodes=%d edges=%d",
-                    file_id, client_id, document_type, node_count, edge_count,
+                    "kg_link_document: file_id=%s client_id=%d type=%s nodes=%d edges=%d",
+                    file_id,
+                    client_id,
+                    document_type,
+                    node_count,
+                    edge_count,
                 )
                 return {"ok": True, "nodes": node_count, "edges": edge_count}
 
@@ -272,7 +278,10 @@ async def kg_link_document(
         # Best-effort: never let KG-linking errors break the OCR caller.
         logger.error(
             "kg_link_document failed for file_id=%s client_id=%d: %s",
-            file_id, client_id, e, exc_info=True,
+            file_id,
+            client_id,
+            e,
+            exc_info=True,
         )
         return {"ok": False, "error": str(e)}
 
@@ -330,7 +339,9 @@ async def _upsert_node(
             "UPDATE crm_kg_nodes "
             "SET name = $1, properties = $2, updated_at = NOW() "
             "WHERE entity_id = $3",
-            name, merged, existing["entity_id"],
+            name,
+            merged,
+            existing["entity_id"],
         )
         return existing["entity_id"]
 
@@ -371,7 +382,12 @@ async def _insert_edge(
             edge_tier = EXCLUDED.edge_tier,
             confidence = EXCLUDED.confidence
         """,
-        src, tgt, rel_type, properties or {}, edge_tier, confidence,
+        src,
+        tgt,
+        rel_type,
+        properties or {},
+        edge_tier,
+        confidence,
     )
     return 1
 

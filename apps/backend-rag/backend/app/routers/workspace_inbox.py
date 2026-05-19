@@ -4,6 +4,7 @@ Queries `conversation_messages` joined with `clients` for the operator's
 timeline. RBAC: admins see all, team users see only messages linked to
 clients they are assigned to.
 """
+
 from __future__ import annotations
 
 import asyncpg
@@ -26,7 +27,9 @@ def _is_admin(user: dict) -> bool:
 async def feed(
     user: dict = Depends(get_current_user),
     pool: asyncpg.Pool = Depends(get_database_pool),
-    channel: str | None = Query(None, description="Filter by channel: whatsapp|telegram|instagram|web|email"),
+    channel: str | None = Query(
+        None, description="Filter by channel: whatsapp|telegram|instagram|web|email"
+    ),
     client_id: int | None = Query(None, description="Filter by client_id"),
     direction: str | None = Query(None, description="inbound|outbound"),
     limit: int = Query(50, le=200, ge=1),

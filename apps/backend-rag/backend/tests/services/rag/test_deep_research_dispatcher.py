@@ -72,9 +72,7 @@ class TestDeepResearchDispatcher:
 
     @pytest.mark.asyncio
     async def test_check_pending_result(self) -> None:
-        self.mock_redis.get.return_value = json.dumps({
-            "status": "pending", "job_id": "abc-123"
-        })
+        self.mock_redis.get.return_value = json.dumps({"status": "pending", "job_id": "abc-123"})
 
         result = await self.dispatcher.check_result("abc-123")
 
@@ -83,11 +81,13 @@ class TestDeepResearchDispatcher:
 
     @pytest.mark.asyncio
     async def test_check_completed_result(self) -> None:
-        self.mock_redis.get.return_value = json.dumps({
-            "status": "completed",
-            "job_id": "abc-123",
-            "result": "Detailed research findings about KITAS...",
-        })
+        self.mock_redis.get.return_value = json.dumps(
+            {
+                "status": "completed",
+                "job_id": "abc-123",
+                "result": "Detailed research findings about KITAS...",
+            }
+        )
 
         result = await self.dispatcher.check_result("abc-123")
 
@@ -123,9 +123,7 @@ class TestDeepResearchDispatcher:
 
     @pytest.mark.asyncio
     async def test_complete_job_failure_status(self) -> None:
-        success = await self.dispatcher.complete_job(
-            "abc-123", "Error occurred", status="failed"
-        )
+        success = await self.dispatcher.complete_job("abc-123", "Error occurred", status="failed")
 
         assert success is True
         stored = json.loads(self.mock_redis.set.call_args[0][1])

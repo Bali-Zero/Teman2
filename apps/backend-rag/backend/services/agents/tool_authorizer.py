@@ -210,7 +210,10 @@ class ToolAuthorizer:
         # For tools NOT in the list, `_check_requires_confirmation` still
         # returns None and the ALLOWED path below fires.
         confirm_result = self._check_requires_confirmation(
-            user_email, agent_role, tool_name, args,
+            user_email,
+            agent_role,
+            tool_name,
+            args,
         )
         if confirm_result is not None:
             self._audit(
@@ -311,9 +314,7 @@ class ToolAuthorizer:
         enough to render in a small modal (see Phase 3B frontend).
         """
         # Keep args short — modal UI will truncate anyway.
-        arg_preview = ", ".join(
-            f"{k}={_truncate(v)}" for k, v in list(args.items())[:4]
-        )
+        arg_preview = ", ".join(f"{k}={_truncate(v)}" for k, v in list(args.items())[:4])
         if len(args) > 4:
             arg_preview += f", … (+{len(args) - 4} more)"
         return (

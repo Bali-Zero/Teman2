@@ -43,11 +43,14 @@ class InsightsCollector:
         actions: list[PulseAction] = []
         async with self._pool.acquire() as conn:
             if not await self._has_pgss(conn):
-                actions.append(PulseAction(
-                    action_type="query_intelligence", target="pg_stat_statements",
-                    outcome="skipped",
-                    reflection="pg_stat_statements not available",
-                ))
+                actions.append(
+                    PulseAction(
+                        action_type="query_intelligence",
+                        target="pg_stat_statements",
+                        outcome="skipped",
+                        reflection="pg_stat_statements not available",
+                    )
+                )
                 logger.warning("pg_stat_statements not available — skipping query intelligence")
                 return actions
 
@@ -70,7 +73,11 @@ class InsightsCollector:
 
         prev_by_qid: dict[int, float] = {}
         for row in prev_insights:
-            ev = row["evidence"] if isinstance(row["evidence"], dict) else json.loads(row["evidence"])
+            ev = (
+                row["evidence"]
+                if isinstance(row["evidence"], dict)
+                else json.loads(row["evidence"])
+            )
             qid = ev.get("queryid")
             mean = ev.get("mean_exec_time")
             if qid is not None and mean is not None:
@@ -84,7 +91,8 @@ class InsightsCollector:
                 title=f"Top query #{qid}",
                 content=q["query"],
                 evidence={
-                    "queryid": qid, "calls": q["calls"],
+                    "queryid": qid,
+                    "calls": q["calls"],
                     "total_exec_time": round(q["total_exec_time"], 2),
                     "mean_exec_time": round(mean, 2),
                     "rows": q["rows"],
@@ -111,21 +119,27 @@ class InsightsCollector:
                         source="query_intelligence",
                     )
                     await self._persist_insight(anomaly)
-                    actions.append(PulseAction(
-                        action_type="query_regression", target=str(qid),
-                        detail={"pct_change": round(pct_change, 1)},
-                        outcome="success",
-                    ))
+                    actions.append(
+                        PulseAction(
+                            action_type="query_regression",
+                            target=str(qid),
+                            detail={"pct_change": round(pct_change, 1)},
+                            outcome="success",
+                        )
+                    )
                     if self._alert:
                         await self._alert(
                             f"Query regression: #{qid} mean {prev_mean:.0f}ms → {mean:.0f}ms (+{pct_change:.0f}%)"
                         )
 
-        actions.append(PulseAction(
-            action_type="query_intelligence", target="pg_stat_statements",
-            detail={"queries_analyzed": len(top_queries)},
-            outcome="success",
-        ))
+        actions.append(
+            PulseAction(
+                action_type="query_intelligence",
+                target="pg_stat_statements",
+                detail={"queries_analyzed": len(top_queries)},
+                outcome="success",
+            )
+        )
         return actions
 
     async def collect_bloat_insights(self) -> list[PulseAction]:
@@ -158,18 +172,23 @@ class InsightsCollector:
                 title=f"Unused index: {idx['indexrelname']}",
                 content=f"Index on {idx['relname']} has 0 scans, size {idx['idx_size']} bytes. Candidate for DROP.",
                 evidence={
-                    "index": idx["indexrelname"], "table": idx["relname"],
-                    "idx_scan": idx["idx_scan"], "size_bytes": idx["idx_size"],
+                    "index": idx["indexrelname"],
+                    "table": idx["relname"],
+                    "idx_scan": idx["idx_scan"],
+                    "size_bytes": idx["idx_size"],
                 },
                 source="bloat_intelligence",
                 applicable_to=[idx["indexrelname"]],
             )
             await self._persist_insight(insight)
-            actions.append(PulseAction(
-                action_type="unused_index", target=idx["indexrelname"],
-                detail={"table": idx["relname"], "size_bytes": idx["idx_size"]},
-                outcome="proposed",
-            ))
+            actions.append(
+                PulseAction(
+                    action_type="unused_index",
+                    target=idx["indexrelname"],
+                    detail={"table": idx["relname"], "size_bytes": idx["idx_size"]},
+                    outcome="proposed",
+                )
+            )
 
         for tbl in low_idx:
             insight = InsightRecord(
@@ -177,19 +196,24 @@ class InsightsCollector:
                 title=f"Missing index: {tbl['relname']}",
                 content=f"Table {tbl['relname']} has {tbl['seq_scan']} seq scans vs {tbl['idx_scan']} idx scans ({tbl['idx_ratio']}%). Consider adding indexes.",
                 evidence={
-                    "table": tbl["relname"], "seq_scan": tbl["seq_scan"],
-                    "idx_scan": tbl["idx_scan"], "table_size": tbl["table_size"],
+                    "table": tbl["relname"],
+                    "seq_scan": tbl["seq_scan"],
+                    "idx_scan": tbl["idx_scan"],
+                    "table_size": tbl["table_size"],
                     "idx_ratio": float(tbl["idx_ratio"]) if tbl["idx_ratio"] else 0,
                 },
                 source="bloat_intelligence",
                 applicable_to=[tbl["relname"]],
             )
             await self._persist_insight(insight)
-            actions.append(PulseAction(
-                action_type="missing_index", target=tbl["relname"],
-                detail={"seq_scan": tbl["seq_scan"], "idx_ratio": float(tbl["idx_ratio"] or 0)},
-                outcome="proposed",
-            ))
+            actions.append(
+                PulseAction(
+                    action_type="missing_index",
+                    target=tbl["relname"],
+                    detail={"seq_scan": tbl["seq_scan"], "idx_ratio": float(tbl["idx_ratio"] or 0)},
+                    outcome="proposed",
+                )
+            )
 
         return actions
 
@@ -204,9 +228,13 @@ class InsightsCollector:
             async with self._pool.acquire() as conn:
                 await conn.execute(
                     query,
-                    insight.insight_type, insight.title, insight.content,
-                    json.dumps(insight.evidence), insight.source,
-                    insight.confidence, insight.applicable_to,
+                    insight.insight_type,
+                    insight.title,
+                    insight.content,
+                    json.dumps(insight.evidence),
+                    insight.source,
+                    insight.confidence,
+                    insight.applicable_to,
                 )
         except Exception:
             logger.exception("Failed to persist insight: %s", insight.title)

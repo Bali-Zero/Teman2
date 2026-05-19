@@ -212,7 +212,9 @@ class TestRecommendEndpoint:
 
     @patch("backend.app.routers.visa_oracle._persist_session_create")
     @patch("backend.app.routers.visa_oracle.get_visa_oracle_service")
-    def test_recommend_parses_family_yes(self, mock_get_service, mock_persist, client: TestClient) -> None:
+    def test_recommend_parses_family_yes(
+        self, mock_get_service, mock_persist, client: TestClient
+    ) -> None:
         mock_service = MagicMock()
         mock_service.recommend_visas.return_value = []
         mock_service.generate_session_id.return_value = "abc123"

@@ -7,6 +7,7 @@ Design principles:
  - Hard rate limits: max operations per run, max errors before circuit-breaker trip.
  - Idempotent: reprocessing the same target must not create duplicate side-effects.
 """
+
 from __future__ import annotations
 
 import glob
@@ -31,16 +32,18 @@ logger = logging.getLogger(__name__)
 class Rule(str, Enum):
     """Five mutually-exclusive outcomes for each client scanned by the deep audit."""
 
-    R1_TEST_DATA = "R1_test_data"           # name contains test/demo/autocheck → archive
-    R2_CLEAN = "R2_clean"                   # has canonical, zero satellites → no-op
-    R3_MERGE = "R3_merge"                   # has canonical, satellites → consolidate
-    R4_PROVISION_CONSOLIDATE = "R4_provision_consolidate"  # no canonical, satellites → create + move
+    R1_TEST_DATA = "R1_test_data"  # name contains test/demo/autocheck → archive
+    R2_CLEAN = "R2_clean"  # has canonical, zero satellites → no-op
+    R3_MERGE = "R3_merge"  # has canonical, satellites → consolidate
+    R4_PROVISION_CONSOLIDATE = (
+        "R4_provision_consolidate"  # no canonical, satellites → create + move
+    )
     R5_PROVISION_ONLY = "R5_provision_only"  # no canonical, no satellites → just create
 
     SKIP_TEAM_INTERNAL = "SKIP_team_internal"  # status == team_internal
-    SKIP_ARCHIVED = "SKIP_archived"             # status == archived
-    SKIP_EXCEPTION = "SKIP_exception"           # listed in crm_guardian_exceptions
-    SKIP_ANTONELLO = "SKIP_antonello"           # client_id == 68 (owner himself)
+    SKIP_ARCHIVED = "SKIP_archived"  # status == archived
+    SKIP_EXCEPTION = "SKIP_exception"  # listed in crm_guardian_exceptions
+    SKIP_ANTONELLO = "SKIP_antonello"  # client_id == 68 (owner himself)
 
 
 TEST_NAME_MARKERS: tuple[str, ...] = ("test", "demo", "autocheck")
@@ -98,7 +101,7 @@ class GuardianConfig:
     dry_run: bool = True
     batch_size: int = 10
     max_ops_per_client: int = 500
-    max_total_errors: int = 50   # trip circuit breaker (raised from 10 for batch runs)
+    max_total_errors: int = 50  # trip circuit breaker (raised from 10 for batch runs)
     min_confidence: float = 0.6
     individual_crm_id: str = "1mNi2FkhZqP9inJH2Y1taXLCgS95UkYk4"
     companies_id: str = "1PGRBCSzXc8T3LYqEB1-hucBaH2YW77Av"
@@ -148,7 +151,7 @@ class GuardianEvent:
     action: GuardianAction
     target_type: str
     target_id: str
-    status: str              # 'success' | 'partial' | 'error' | 'dry_run' | 'skipped'
+    status: str  # 'success' | 'partial' | 'error' | 'dry_run' | 'skipped'
     client_id: int | None = None
     before_state: dict[str, Any] | None = None
     after_state: dict[str, Any] | None = None
@@ -208,6 +211,7 @@ def build_drive_service(prefer_user_oauth: bool = True) -> Any:
         except Exception as exc:  # noqa: BLE001
             # Log and fall through to SA fallback.
             import logging
+
             logging.getLogger(__name__).warning(
                 "OAuth user drive unavailable, falling back to service account: %s", exc
             )
@@ -250,6 +254,7 @@ def _build_oauth_user_drive():
             if line.startswith("DATABASE_URL="):
                 raw = line.split("=", 1)[1].strip().strip('"')
                 import re as _re
+
                 db_url = _re.sub(r"@[^:/]+(\.internal)?:\d+", "@localhost:15432", raw)
                 break
 
@@ -326,7 +331,10 @@ def _build_service_account_drive():
     candidates.append(str(Path.home() / ".nuzantara-drive-sa.json"))
     candidates.extend(
         glob.glob(
-            str(Path.home() / ".config/gcloud/legacy_credentials/nuzantara-google-drive-sa*/adc.json")
+            str(
+                Path.home()
+                / ".config/gcloud/legacy_credentials/nuzantara-google-drive-sa*/adc.json"
+            )
         )
     )
     for path in candidates:
@@ -348,7 +356,9 @@ def _build_service_account_drive():
 # Kill switch + invariant state helpers
 # ============================================================
 async def is_globally_enabled(conn: asyncpg.Connection) -> bool:
-    val = await conn.fetchval("SELECT value FROM system_settings WHERE key = 'crm_guardian_enabled'")
+    val = await conn.fetchval(
+        "SELECT value FROM system_settings WHERE key = 'crm_guardian_enabled'"
+    )
     return (val or "false").lower() == "true"
 
 
@@ -375,7 +385,9 @@ async def load_exceptions(conn: asyncpg.Connection, invariant_id: str) -> set[tu
     return {(r["target_type"], r["target_id"]) for r in rows}
 
 
-async def bump_circuit_breaker(conn: asyncpg.Connection, invariant_id: str, succeeded: bool, error_message: str | None = None) -> None:
+async def bump_circuit_breaker(
+    conn: asyncpg.Connection, invariant_id: str, succeeded: bool, error_message: str | None = None
+) -> None:
     if succeeded:
         await conn.execute(
             """

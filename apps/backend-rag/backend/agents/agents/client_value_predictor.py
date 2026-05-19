@@ -129,7 +129,9 @@ class ClientValuePredictor:
         return enriched
 
     async def generate_nurturing_message(
-        self, client_data: dict[str, Any], timeout: float = 30.0,
+        self,
+        client_data: dict[str, Any],
+        timeout: float = 30.0,
     ) -> str:
         """
         Generate personalized nurturing message.
@@ -144,7 +146,10 @@ class ClientValuePredictor:
         return await self.message_service.generate_message(client_data, timeout)
 
     async def send_whatsapp_message(
-        self, phone: str, message: str, max_retries: int = 3,
+        self,
+        phone: str,
+        message: str,
+        max_retries: int = 3,
     ) -> str | None:
         """
         Send WhatsApp message via Twilio.
@@ -240,7 +245,8 @@ class ClientValuePredictor:
 
                             # Send WhatsApp
                             message_sid = await self.send_whatsapp_message(
-                                client_data["phone"], message,
+                                client_data["phone"],
+                                message,
                             )
 
                             if message_sid:

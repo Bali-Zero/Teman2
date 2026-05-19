@@ -42,9 +42,7 @@ def _row_to_thesis(row: Any) -> CrossDossierThesis:
         id=row["id"],
         title=row["title"],
         narrative=row["narrative"],
-        source_dossier_ids=[
-            UUID(str(x)) for x in (_parse_json(row["source_dossier_ids"]) or [])
-        ],
+        source_dossier_ids=[UUID(str(x)) for x in (_parse_json(row["source_dossier_ids"]) or [])],
         confidence=float(row["confidence"]),
         implication=row["implication"],
         target_clients_query=row["target_clients_query"],
@@ -116,7 +114,8 @@ class CognitiveRepository(BaseRepository):
     # ── CrossDossierThesis (Sprint 15) ───────────────────────────
 
     async def insert_thesis(
-        self, payload: CrossDossierThesisCreate,
+        self,
+        payload: CrossDossierThesisCreate,
     ) -> CrossDossierThesis:
         row = await self.fetchrow_safe(
             """
@@ -194,7 +193,8 @@ class CognitiveRepository(BaseRepository):
     # ── ComplianceAlert (Sprint 16 — stub for schema symmetry) ──
 
     async def insert_alert(
-        self, payload: ComplianceAlertCreate,
+        self,
+        payload: ComplianceAlertCreate,
     ) -> ComplianceAlert:
         row = await self.fetchrow_safe(
             """
@@ -251,7 +251,9 @@ class CognitiveRepository(BaseRepository):
         return row is not None
 
     async def unresolved_alerts(
-        self, *, severity: AlertSeverity | None = None,
+        self,
+        *,
+        severity: AlertSeverity | None = None,
     ) -> list[ComplianceAlert]:
         if severity is None:
             rows = await self.fetch_safe(
@@ -276,7 +278,8 @@ class CognitiveRepository(BaseRepository):
     # ── WeeklyStrategicBrief (Sprint 17 — schema only) ──────────
 
     async def insert_brief(
-        self, payload: WeeklyStrategicBriefCreate,
+        self,
+        payload: WeeklyStrategicBriefCreate,
     ) -> WeeklyStrategicBrief:
         row = await self.fetchrow_safe(
             """
@@ -358,7 +361,8 @@ class CognitiveRepository(BaseRepository):
     # ── UltraMove (Sprint 18 — schema only) ─────────────────────
 
     async def insert_ultra_move(
-        self, payload: UltraMoveCreate,
+        self,
+        payload: UltraMoveCreate,
     ) -> UltraMove:
         row = await self.fetchrow_safe(
             """

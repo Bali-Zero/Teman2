@@ -120,8 +120,7 @@ class TestInstagramFormatter:
         response = ChannelResponse(
             text="Answer",
             sources=[
-                {"title": f"Source {i}", "url": f"https://example.com/{i}"}
-                for i in range(10)
+                {"title": f"Source {i}", "url": f"https://example.com/{i}"} for i in range(10)
             ],
             metadata={},
         )
@@ -132,9 +131,7 @@ class TestInstagramFormatter:
         assert "Source 3" not in result
 
     def test_format_empty_response(self) -> None:
-        result = InstagramMessageFormatter.format_response(
-            ChannelResponse(text="", metadata={})
-        )
+        result = InstagramMessageFormatter.format_response(ChannelResponse(text="", metadata={}))
         assert result == ""
 
     def test_format_error(self) -> None:
@@ -164,7 +161,9 @@ class TestInstagramAdapter:
         assert adapter.max_message_length == 1000
 
     async def test_receive_message_valid(
-        self, adapter: InstagramChannelAdapter, sample_webhook: dict,
+        self,
+        adapter: InstagramChannelAdapter,
+        sample_webhook: dict,
     ) -> None:
         msg = await adapter.receive_message(sample_webhook)
         assert msg.user_id == "instagram_9876543210"
@@ -175,21 +174,26 @@ class TestInstagramAdapter:
         assert msg.metadata["mid"] == "m_abc123def456"
 
     async def test_receive_message_empty_entry(
-        self, adapter: InstagramChannelAdapter, empty_webhook: dict,
+        self,
+        adapter: InstagramChannelAdapter,
+        empty_webhook: dict,
     ) -> None:
         msg = await adapter.receive_message(empty_webhook)
         assert msg.user_id == "instagram_unknown"
         assert msg.text == ""
 
     async def test_receive_message_malformed_raises(
-        self, adapter: InstagramChannelAdapter,
+        self,
+        adapter: InstagramChannelAdapter,
     ) -> None:
         # entry is not a list -> IndexError
         with pytest.raises(Exception):
             await adapter.receive_message({"entry": "bad"})
 
     async def test_send_response(
-        self, adapter: InstagramChannelAdapter, simple_response: ChannelResponse,
+        self,
+        adapter: InstagramChannelAdapter,
+        simple_response: ChannelResponse,
     ) -> None:
         mock_resp = MagicMock()
         mock_resp.status_code = 200
@@ -205,7 +209,9 @@ class TestInstagramAdapter:
         assert first_call.kwargs["json"]["recipient"]["id"] == "9876543210"
 
     async def test_send_response_truncates_long_message(
-        self, adapter: InstagramChannelAdapter, long_response: ChannelResponse,
+        self,
+        adapter: InstagramChannelAdapter,
+        long_response: ChannelResponse,
     ) -> None:
         adapter.client = AsyncMock()
         adapter.client.post = AsyncMock(return_value=MagicMock())
@@ -217,7 +223,9 @@ class TestInstagramAdapter:
         assert len(sent_text) <= adapter.max_message_length
 
     async def test_send_response_api_error(
-        self, adapter: InstagramChannelAdapter, simple_response: ChannelResponse,
+        self,
+        adapter: InstagramChannelAdapter,
+        simple_response: ChannelResponse,
     ) -> None:
         adapter.client = AsyncMock()
         adapter.client.post = AsyncMock(side_effect=Exception("API down"))
@@ -227,13 +235,15 @@ class TestInstagramAdapter:
             await adapter.send_response("123", simple_response)
 
     async def test_send_status_update_noop(
-        self, adapter: InstagramChannelAdapter,
+        self,
+        adapter: InstagramChannelAdapter,
     ) -> None:
         # Instagram doesn't support typing indicators, should be no-op
         await adapter.send_status_update("123", "typing")
 
     async def test_stream_response_accumulates(
-        self, adapter: InstagramChannelAdapter,
+        self,
+        adapter: InstagramChannelAdapter,
     ) -> None:
         adapter.client = AsyncMock()
         adapter.client.post = AsyncMock(return_value=MagicMock())

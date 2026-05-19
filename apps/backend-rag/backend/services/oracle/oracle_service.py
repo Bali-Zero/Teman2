@@ -119,7 +119,8 @@ async def reason_with_gemini(
     REFACTORED: Delegates to ReasoningEngineService.
     """
     reasoning_engine = ReasoningEngineService(
-        prompt_builder=prompt_builder, response_validator=response_validator,
+        prompt_builder=prompt_builder,
+        response_validator=response_validator,
     )
     return await reasoning_engine.reason_with_gemini(
         documents=documents,
@@ -149,7 +150,8 @@ class OracleService:
             with open(config_path) as f:
                 communication_modes = yaml.safe_load(f)
             self.response_validator = ZantaraResponseValidator(
-                mode_config=communication_modes, dry_run=True,
+                mode_config=communication_modes,
+                dry_run=True,
             )
         except (OSError, FileNotFoundError, ValueError, KeyError) as e:
             logger.warning("Failed to load communication modes: %s", e, exc_info=True)
@@ -159,7 +161,8 @@ class OracleService:
         self.language_detector = LanguageDetectionService()
         self.user_context = UserContextService()
         self.reasoning_engine = ReasoningEngineService(
-            prompt_builder=self.prompt_builder, response_validator=self.response_validator,
+            prompt_builder=self.prompt_builder,
+            response_validator=self.response_validator,
         )
         self.document_retrieval = DocumentRetrievalService()
         self.analytics = OracleAnalyticsService()
@@ -367,7 +370,8 @@ class OracleService:
             user_context_data = await self.user_context.get_full_user_context(request_user_email)
             user_profile = user_context_data["profile"]
             personality_used = user_context_data["personality"].get(
-                "personality_type", "professional",
+                "personality_type",
+                "professional",
             )
             user_memory_facts = user_context_data["memory_facts"]
             user_context_data["user_name"]

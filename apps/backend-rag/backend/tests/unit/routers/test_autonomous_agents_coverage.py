@@ -129,9 +129,7 @@ def test_run_knowledge_graph_builder_with_params(client):
 
 def test_run_knowledge_graph_builder_invalid_days(client):
     """Should reject days_back=0."""
-    response = client.post(
-        "/api/autonomous-agents/knowledge-graph-builder/run?days_back=0"
-    )
+    response = client.post("/api/autonomous-agents/knowledge-graph-builder/run?days_back=0")
     assert response.status_code == 422
 
 
@@ -275,9 +273,12 @@ def test_get_scheduler_status_failure(client):
     """Should return success=False when scheduler raises exception."""
     # Patch the module where it is defined so the lazy import sees it
     import backend.services.misc.autonomous_scheduler as _sched_mod
+
     getattr(_sched_mod, "get_autonomous_scheduler", None)
 
-    with patch.object(_sched_mod, "get_autonomous_scheduler", side_effect=Exception("scheduler unavailable")):
+    with patch.object(
+        _sched_mod, "get_autonomous_scheduler", side_effect=Exception("scheduler unavailable")
+    ):
         response = client.get("/api/autonomous-agents/scheduler/status")
     assert response.status_code == 200
     data = response.json()
@@ -293,6 +294,7 @@ def test_get_scheduler_status_failure(client):
 def test_enable_scheduler_task_success(client):
     """Should return success when task is found and enabled."""
     import backend.services.misc.autonomous_scheduler as _sched_mod
+
     mock_scheduler = MagicMock()
     mock_scheduler.enable_task.return_value = True
     with patch.object(_sched_mod, "get_autonomous_scheduler", return_value=mock_scheduler):
@@ -306,6 +308,7 @@ def test_enable_scheduler_task_success(client):
 def test_enable_scheduler_task_not_found(client):
     """Should return 404 when task is not found."""
     import backend.services.misc.autonomous_scheduler as _sched_mod
+
     mock_scheduler = MagicMock()
     mock_scheduler.enable_task.return_value = False
     with patch.object(_sched_mod, "get_autonomous_scheduler", return_value=mock_scheduler):
@@ -316,6 +319,7 @@ def test_enable_scheduler_task_not_found(client):
 def test_enable_scheduler_task_exception(client):
     """Should return 500 when an unexpected error occurs."""
     import backend.services.misc.autonomous_scheduler as _sched_mod
+
     with patch.object(_sched_mod, "get_autonomous_scheduler", side_effect=RuntimeError("crash")):
         response = client.post("/api/autonomous-agents/scheduler/task/any_task/enable")
     assert response.status_code == 500
@@ -329,10 +333,13 @@ def test_enable_scheduler_task_exception(client):
 def test_disable_scheduler_task_success(client):
     """Should return success when task is found and disabled."""
     import backend.services.misc.autonomous_scheduler as _sched_mod
+
     mock_scheduler = MagicMock()
     mock_scheduler.disable_task.return_value = True
     with patch.object(_sched_mod, "get_autonomous_scheduler", return_value=mock_scheduler):
-        response = client.post("/api/autonomous-agents/scheduler/task/knowledge_graph_builder/disable")
+        response = client.post(
+            "/api/autonomous-agents/scheduler/task/knowledge_graph_builder/disable"
+        )
     assert response.status_code == 200
     data = response.json()
     assert data["success"] is True
@@ -341,6 +348,7 @@ def test_disable_scheduler_task_success(client):
 def test_disable_scheduler_task_not_found(client):
     """Should return 404 when task not found."""
     import backend.services.misc.autonomous_scheduler as _sched_mod
+
     mock_scheduler = MagicMock()
     mock_scheduler.disable_task.return_value = False
     with patch.object(_sched_mod, "get_autonomous_scheduler", return_value=mock_scheduler):
@@ -356,6 +364,7 @@ def test_disable_scheduler_task_not_found(client):
 def test_extract_kg_sample_qdrant_unavailable(client):
     """Should return 503 when Qdrant retriever not available."""
     import backend.app.main_cloud as _main
+
     getattr(_main.app, "state", None)
     # Remove retriever from state
     _main.app.state.retriever = None
@@ -369,6 +378,7 @@ def test_extract_kg_sample_qdrant_unavailable(client):
 def test_extract_kg_sample_qdrant_client_none(client):
     """Should return 503 when retriever.client is None."""
     import backend.app.main_cloud as _main
+
     mock_retriever = MagicMock()
     mock_retriever.client = None
     _main.app.state.retriever = mock_retriever
@@ -422,6 +432,7 @@ def test_extract_kg_sample_qdrant_error(client):
 def test_persist_kg_sample_qdrant_unavailable(client):
     """Should return 503 when Qdrant not available."""
     import backend.app.main_cloud as _main
+
     _main.app.state.retriever = None
     response = client.post("/api/autonomous-agents/knowledge-graph/persist-sample")
     assert response.status_code == 503
@@ -430,6 +441,7 @@ def test_persist_kg_sample_qdrant_unavailable(client):
 def test_persist_kg_sample_db_unavailable(client):
     """Should return 503 when db_pool is None."""
     import backend.app.main_cloud as _main
+
     mock_retriever = MagicMock()
     mock_retriever.client = MagicMock()
     _main.app.state.retriever = mock_retriever

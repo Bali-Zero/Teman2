@@ -147,6 +147,7 @@ def test_mock_db_global_is_gone() -> None:
     """The legacy in-memory MOCK_DB must be removed — it was a foot-gun
     that silently dropped state on every machine restart."""
     from backend.app.routers import dream as dream_module
+
     assert not hasattr(dream_module, "MOCK_DB"), (
         "MOCK_DB still present — TODO #77 not fully closed. "
         "Persistence must go through Postgres only."

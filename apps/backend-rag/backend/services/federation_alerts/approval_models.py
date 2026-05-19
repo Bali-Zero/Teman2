@@ -16,6 +16,7 @@ system_settings. ``proposal_id`` carries the target mode literal
 the literal "mode:<target_mode>" instead of a real proposal_id so
 admins can change mode without going through the proposal SM.
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -29,9 +30,9 @@ _PREFIX = "fad"
 class FADCallback:
     """Parsed fad:* callback payload."""
 
-    action: str           # "approve" | "reject" | "defer" | "mode"
-    target: str           # proposal_id, or mode literal when action=="mode"
-    token_prefix: str     # 8 hex chars
+    action: str  # "approve" | "reject" | "defer" | "mode"
+    target: str  # proposal_id, or mode literal when action=="mode"
+    token_prefix: str  # 8 hex chars
 
     def is_mode_change(self) -> bool:
         return self.action == "mode"
@@ -50,9 +51,7 @@ def encode_callback(action: str, target: str, token_prefix: str) -> str:
         raise ValueError("token_prefix must be 8 hex chars")
     candidate = f"{_PREFIX}:{action}:{target}:{token_prefix}"
     if len(candidate.encode("utf-8")) > 64:
-        raise ValueError(
-            f"callback exceeds Telegram 64-byte limit: {len(candidate)}"
-        )
+        raise ValueError(f"callback exceeds Telegram 64-byte limit: {len(candidate)}")
     return candidate
 
 

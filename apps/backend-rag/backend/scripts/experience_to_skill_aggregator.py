@@ -23,6 +23,7 @@ Usage:
 Output: SKILL_CREATION_PROPOSALS_PATH (default
 ~/.nuzantara/skill_creation_proposals.jsonl), one JSON object per line.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -101,14 +102,12 @@ def _synthesise_procedure(episodes: list[dict[str, Any]]) -> str:
     The human sees the raw sample and decides the real skill body.
     """
     from collections import Counter
+
     procs = [e.get("procedure", "").strip() for e in episodes if e.get("procedure")]
     if not procs:
         return "aggregated from successful trajectories"
     most = Counter(procs).most_common(1)[0][0]
-    return (
-        f"Proposed from {len(episodes)} successful trajectories. "
-        f"Most common body: {most[:400]}"
-    )
+    return f"Proposed from {len(episodes)} successful trajectories. Most common body: {most[:400]}"
 
 
 def propose_skills_from_clusters(
@@ -131,8 +130,7 @@ def propose_skills_from_clusters(
             "procedure": _synthesise_procedure(episodes),
             "precondition": f"Cell '{cell}' running with tags {list(tags_tuple)}.",
             "success_criterion": (
-                f"Outcome reaches 'success' for ≥{min_cluster_size} episodes "
-                f"in a 7-day window."
+                f"Outcome reaches 'success' for ≥{min_cluster_size} episodes in a 7-day window."
             ),
             "confidence": _DEFAULT_PROPOSED_CONFIDENCE,
             "example_trajectory_ids": [e["id"] for e in episodes[:5]],
@@ -146,6 +144,7 @@ def propose_skills_from_clusters(
 
 def _fetch_active_trajectories(db_path: str) -> list[dict[str, Any]]:
     import sqlite3
+
     if not os.path.exists(db_path):
         return []
     today = datetime.now(timezone.utc).date().isoformat()
@@ -192,7 +191,8 @@ def main(argv: list[str] | None = None) -> int:
     trajectories = _fetch_active_trajectories(args.db_path)
     clusters = cluster_trajectories(trajectories, window_days=args.window_days)
     proposals = propose_skills_from_clusters(
-        clusters, min_cluster_size=args.min_cluster_size,
+        clusters,
+        min_cluster_size=args.min_cluster_size,
     )
 
     os.makedirs(os.path.dirname(args.out) or ".", exist_ok=True)
@@ -202,7 +202,10 @@ def main(argv: list[str] | None = None) -> int:
 
     logger.info(
         "proposals written: %d clusters (min_size=%d, window=%dd) -> %s",
-        len(proposals), args.min_cluster_size, args.window_days, args.out,
+        len(proposals),
+        args.min_cluster_size,
+        args.window_days,
+        args.out,
     )
     return 0
 

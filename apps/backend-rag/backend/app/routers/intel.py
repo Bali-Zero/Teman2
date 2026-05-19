@@ -44,11 +44,13 @@ logger = logging.getLogger(__name__)
 
 _embedder = None
 
+
 def get_embedder() -> Any:
     global _embedder
     if _embedder is None:
         _embedder = create_embeddings_generator(api_key=os.getenv("OPENAI_API_KEY"))
     return _embedder
+
 
 # Qdrant collections for intel (from constants)
 INTEL_COLLECTIONS = IntelConstants.COLLECTIONS
@@ -75,10 +77,12 @@ class ScraperSubmission(BaseModel):
     extraction_method: str | None = IntelConstants.DEFAULT_EXTRACTION_METHOD
     tier: str = IntelConstants.DEFAULT_TIER  # T1, T2, T3
     cover_image: str | None = Field(
-        None, description="Cover image URL/path (optional, generated later by enricher)",
+        None,
+        description="Cover image URL/path (optional, generated later by enricher)",
     )
     cover_image_base64: str | None = Field(
-        None, description="Cover image as base64 string (uploaded to Drive on submit)",
+        None,
+        description="Cover image as base64 string (uploaded to Drive on submit)",
     )
 
 
@@ -333,7 +337,11 @@ async def approve_staging_item(
 
     # Send Telegram notification using approval service
     notification_sent = await approval_service.send_approval_notification(
-        type, item_id, data, enriched_data, image_path,
+        type,
+        item_id,
+        data,
+        enriched_data,
+        image_path,
     )
 
     if not notification_sent:
@@ -361,7 +369,9 @@ async def approve_staging_item(
 
 @router.put("/api/intel/staging/{type}/{item_id}")
 async def edit_staging_item(
-    type: str, item_id: str, request: EditStagingItemRequest,
+    type: str,
+    item_id: str,
+    request: EditStagingItemRequest,
 ) -> dict[str, Any]:
     """
     Edit staging item (title, content, category).
@@ -418,7 +428,9 @@ async def edit_staging_item(
 
 @router.post("/api/intel/staging/{type}/{item_id}/cover")
 async def upload_cover_image(
-    type: str, item_id: str, request: CoverImageUploadRequest,
+    type: str,
+    item_id: str,
+    request: CoverImageUploadRequest,
 ) -> dict[str, Any]:
     """
     Upload cover image for staging item.
@@ -447,7 +459,8 @@ async def upload_cover_image(
         image_data = base64.b64decode(request.cover_image_base64)
     except Exception as e:
         logger.error(
-            "Invalid base64 image: %s", e,
+            "Invalid base64 image: %s",
+            e,
             extra={"type": type, "item_id": item_id},
         )
         raise HTTPException(status_code=400, detail=f"Invalid base64 image: {e}") from e
@@ -520,9 +533,13 @@ async def reject_staging_item(type: str, item_id: str) -> dict[str, Any]:
         return {"success": True, "message": "Item rejected and archived", "id": item_id}
     except Exception as e:
         logger.error(
-            "Rejection failed: %s", e, exc_info=True, extra={"type": type, "item_id": item_id},
+            "Rejection failed: %s",
+            e,
+            exc_info=True,
+            extra={"type": type, "item_id": item_id},
         )
         raise HTTPException(status_code=500, detail=str(e)) from e
+
 
 # INGEST & PUBLISH → intel_scraper.py
 
@@ -557,9 +574,15 @@ async def enqueue_post_publish(
                                 THEN 0 ELSE post_publish_queue.attempts END,
                 error_message = NULL
             """,
-            slug, title, category, source, article_id,
+            slug,
+            title,
+            category,
+            source,
+            article_id,
         )
-    logger.info("📥 Post-publish queue: added", extra={"slug": slug, "category": category, "source": source})
+    logger.info(
+        "📥 Post-publish queue: added", extra={"slug": slug, "category": category, "source": source}
+    )
     return {"ok": True, "slug": slug}
 
 
@@ -649,7 +672,8 @@ async def mark_queue_failed(
             SET status = 'failed', error_message = $2
             WHERE slug = ANY($1::text[])
             """,
-            slugs, error,
+            slugs,
+            error,
         )
     logger.info("❌ Post-publish queue: marked failed", extra={"slugs": slugs, "error": error})
     return {"ok": True, "failed": slugs}
@@ -676,9 +700,11 @@ async def mark_step_done(
             SET completed_steps = COALESCE(completed_steps, '{}'::jsonb) || jsonb_build_object($2, true)
             WHERE slug = $1
             """,
-            slug, step,
+            slug,
+            step,
         )
     return {"ok": True, "slug": slug, "step": step}
+
 
 # METRICS, SEARCH, TRENDS → intel_analytics.py
 
@@ -689,11 +715,10 @@ from pydantic import BaseModel as _BaseModel  # noqa: E402 — alias avoids rede
 
 from backend.app.dependencies import get_current_user  # noqa: E402
 
+
 def _require_intel_admin(user: dict[str, Any]) -> None:
     if (user.get("email") or "").lower() not in settings.admin_emails_set:
-        raise HTTPException(
-            status_code=http_status.HTTP_403_FORBIDDEN, detail="admin only"
-        )
+        raise HTTPException(status_code=http_status.HTTP_403_FORBIDDEN, detail="admin only")
 
 
 class RevalidateBody(_BaseModel):
@@ -779,4 +804,3 @@ async def post_revalidate_staging(
             "tier": body.tier,
         },
     )
-

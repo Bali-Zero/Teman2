@@ -8,6 +8,7 @@ Provides:
 
 OAuth handled by OrchestratorTokenStorage passed to OAuthClientProvider.
 """
+
 from __future__ import annotations
 
 import json
@@ -59,19 +60,13 @@ def parse_design_id(result: Any) -> str:
     2. {"content": [{"text": "https://www.canva.com/design/DA.../edit"}]} — URL embed
     """
     content = (
-        result.get("content")
-        if isinstance(result, dict)
-        else getattr(result, "content", None)
+        result.get("content") if isinstance(result, dict) else getattr(result, "content", None)
     )
     if not content:
         raise CanvaImportError(f"MCP result missing content: {result!r}")
 
     first = content[0]
-    text = (
-        first.get("text")
-        if isinstance(first, dict)
-        else getattr(first, "text", None)
-    )
+    text = first.get("text") if isinstance(first, dict) else getattr(first, "text", None)
     if not text:
         raise CanvaImportError(f"MCP result text empty: {first!r}")
 
@@ -131,9 +126,7 @@ class CanvaMcpClient:
         self._http_client = httpx.AsyncClient(  # golden-rule-10-exempt: short-lived cron process, single session, explicit aclose() in __aexit__
             auth=oauth, follow_redirects=True, timeout=60.0
         )
-        self._stream_cm = streamable_http_client(
-            self.server_url, http_client=self._http_client
-        )
+        self._stream_cm = streamable_http_client(self.server_url, http_client=self._http_client)
         (read, write, _) = await self._stream_cm.__aenter__()
         self._session = ClientSession(read, write)
         await self._session.__aenter__()
@@ -155,9 +148,7 @@ class CanvaMcpClient:
             "Run scripts/wr2_bootstrap_canva_oauth.py on Pro."
         )
 
-    async def import_design_from_url(
-        self, url: str, *, title: str
-    ) -> tuple[str, str]:
+    async def import_design_from_url(self, url: str, *, title: str) -> tuple[str, str]:
         """Import a PDF URL into Canva and return (design_id, edit_url).
 
         Raises CanvaImportError on permanent failure (bad URL, auth error, etc.).

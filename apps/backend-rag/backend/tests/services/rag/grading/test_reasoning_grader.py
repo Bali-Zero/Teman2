@@ -18,10 +18,22 @@ class TestReasoningGrader:
     def test_rich_reasoning_pass(self) -> None:
         ctx = GradingContext(
             reasoning_steps=[
-                ReasoningStep(step_type="thought", content="User asks about KITAS requirements for restaurant business"),
-                ReasoningStep(step_type="observation", content="Found: KITAS requires RPTKA approval from Kemnaker with minimum capital IDR 10B for PMA"),
-                ReasoningStep(step_type="thought", content="Need to check KBLI eligibility for restaurant (56101) under PMA scheme"),
-                ReasoningStep(step_type="observation", content="KBLI 56101 is open for PMA with restaurant license from Dinas Pariwisata"),
+                ReasoningStep(
+                    step_type="thought",
+                    content="User asks about KITAS requirements for restaurant business",
+                ),
+                ReasoningStep(
+                    step_type="observation",
+                    content="Found: KITAS requires RPTKA approval from Kemnaker with minimum capital IDR 10B for PMA",
+                ),
+                ReasoningStep(
+                    step_type="thought",
+                    content="Need to check KBLI eligibility for restaurant (56101) under PMA scheme",
+                ),
+                ReasoningStep(
+                    step_type="observation",
+                    content="KBLI 56101 is open for PMA with restaurant license from Dinas Pariwisata",
+                ),
             ],
         )
         result = ReasoningGrader().grade(ctx)

@@ -73,11 +73,12 @@ class CLIRunner(ABC):
     default_timeout: int = 180
 
     @abstractmethod
-    async def run(self, prompt: str, timeout: int | None = None) -> RunnerResult:
-        ...
+    async def run(self, prompt: str, timeout: int | None = None) -> RunnerResult: ...
 
     async def run_json(
-        self, prompt: str, timeout: int | None = None,
+        self,
+        prompt: str,
+        timeout: int | None = None,
     ) -> tuple[dict[str, Any] | None, RunnerResult]:
         """Convenience: run and parse JSON from output (tolerant to markdown fences)."""
         result = await self.run(prompt, timeout=timeout)
@@ -105,15 +106,15 @@ class ClaudeCLIRunner(CLIRunner):
         extra_args: list[str] | None = None,
     ) -> None:
         self.binary_path = (
-            binary_path
-            or shutil.which("claude")
-            or "/Users/nuzantara/.local/bin/claude"
+            binary_path or shutil.which("claude") or "/Users/nuzantara/.local/bin/claude"
         )
         self.extra_args = extra_args or []
 
     # NOTE: Claude CLI uses Max OAuth flat rate — no per-call tracking needed.
     async def run(
-        self, prompt: str, timeout: int | None = None,
+        self,
+        prompt: str,
+        timeout: int | None = None,
     ) -> RunnerResult:
         eff_timeout = timeout or self.default_timeout
         env = {k: v for k, v in os.environ.items() if k != "ANTHROPIC_API_KEY"}
@@ -142,7 +143,9 @@ class GeminiCLIRunner(CLIRunner):
     # parsing — deferred to follow-up. The CLI subprocess does not return
     # structured usage data, so token counts cannot be reliably extracted here.
     async def run(
-        self, prompt: str, timeout: int | None = None,
+        self,
+        prompt: str,
+        timeout: int | None = None,
     ) -> RunnerResult:
         eff_timeout = timeout or self.default_timeout
         cmd = [self.binary_path, "-p", prompt]
@@ -187,7 +190,9 @@ class DeepSeekHTTPRunner(CLIRunner):
 
     @llm_cost_tracked(provider="deepseek", model_attr="model")
     async def run(
-        self, prompt: str, timeout: int | None = None,
+        self,
+        prompt: str,
+        timeout: int | None = None,
     ) -> RunnerResult:
         eff_timeout = timeout or self.default_timeout
         start = time.perf_counter()
@@ -271,7 +276,8 @@ async def _run_subprocess(
 
     try:
         stdout_bytes, stderr_bytes = await asyncio.wait_for(
-            proc.communicate(), timeout=timeout,
+            proc.communicate(),
+            timeout=timeout,
         )
     except asyncio.TimeoutError:
         proc.kill()
@@ -300,7 +306,9 @@ async def _run_subprocess(
         )
     if tolerate_nonzero_with_stdout and stdout:
         logger.debug(
-            "%s returned rc=%s but has stdout; tolerating", name, rc,
+            "%s returned rc=%s but has stdout; tolerating",
+            name,
+            rc,
         )
         return RunnerResult(
             runner_name=name,

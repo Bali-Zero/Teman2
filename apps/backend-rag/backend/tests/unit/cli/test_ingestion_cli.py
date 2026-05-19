@@ -85,7 +85,8 @@ class TestIngestionCLI:
         """Test ingesting laws"""
         with patch("pathlib.Path.exists", return_value=True), patch("builtins.open", create=True):
             with patch.object(
-                ingestion_cli.legal_ingestion_service, "ingest_legal_document",
+                ingestion_cli.legal_ingestion_service,
+                "ingest_legal_document",
             ) as mock_ingest:
                 mock_ingest.return_value = {"ingested": 1}
 
@@ -210,7 +211,8 @@ class TestIngestionCLI:
             patch("pathlib.Path.exists", return_value=True),
             patch("pathlib.Path.glob", return_value=[Path("law1.pdf"), Path("law2.txt")]),
             patch.object(
-                ingestion_cli.legal_ingestion_service, "ingest_legal_document",
+                ingestion_cli.legal_ingestion_service,
+                "ingest_legal_document",
             ) as mock_ingest,
         ):
             mock_ingest.return_value = {"ingested": 1}
@@ -228,7 +230,8 @@ class TestIngestionCLI:
             patch("pathlib.Path.exists", return_value=True),
             patch("pathlib.Path.glob", return_value=[Path("law1.pdf"), Path("law2.pdf")]),
             patch.object(
-                ingestion_cli.legal_ingestion_service, "ingest_legal_document",
+                ingestion_cli.legal_ingestion_service,
+                "ingest_legal_document",
             ) as mock_ingest,
         ):
             mock_ingest.side_effect = [{"ingested": 1}, Exception("Error")]
@@ -274,7 +277,9 @@ class TestIngestionCLI:
     async def test_ingest_document_error(self, ingestion_cli):
         """Test error handling in ingest_document"""
         with patch.object(
-            ingestion_cli.ingestion_service, "ingest_book", side_effect=Exception("Error"),
+            ingestion_cli.ingestion_service,
+            "ingest_book",
+            side_effect=Exception("Error"),
         ):
             result = await ingestion_cli.ingest_document(file_path="/path/to/doc.pdf")
             assert result["success"] is False

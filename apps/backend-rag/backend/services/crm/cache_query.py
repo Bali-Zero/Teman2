@@ -27,6 +27,7 @@ T = TypeVar("T")
 # CRMCache — in-memory TTL cache
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class CRMCache:
     """Cache in-memory per dati CRM con TTL."""
 
@@ -114,12 +115,15 @@ def invalidate_client_cache(client_id: int) -> None:
 
 def invalidate_practice_cache(practice_id: int) -> None:
     """Invalida tutta la cache relativa a una pratica."""
-    spawn(crm_cache.clear_pattern(f"practice:{practice_id}"), name=f"cache_inv_practice_{practice_id}")
+    spawn(
+        crm_cache.clear_pattern(f"practice:{practice_id}"), name=f"cache_inv_practice_{practice_id}"
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # QueryCache — lookup cache for frequent DB queries
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class QueryCache:
     """Cache specifica per query database frequenti."""
@@ -171,10 +175,9 @@ class QueryCache:
         async with self._lock:
             if self._practice_types is None:
                 return None
-            if (
-                self._practice_types_updated
-                and datetime.now(timezone.utc) - self._practice_types_updated > timedelta(hours=1)
-            ):
+            if self._practice_types_updated and datetime.now(
+                timezone.utc
+            ) - self._practice_types_updated > timedelta(hours=1):
                 self._practice_types = None
                 return None
             return self._practice_types
@@ -187,6 +190,7 @@ class QueryCache:
     @staticmethod
     def _normalize_phone(phone: str) -> str:
         from backend.services.crm.validators import normalize_phone_e164
+
         result = normalize_phone_e164(phone)
         return result or phone
 
@@ -212,6 +216,7 @@ query_cache = QueryCache()
 # CRMQueryOptimizer — optimised batch/search queries
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class CRMQueryOptimizer:
     """Ottimizzatore query per operazioni CRM frequenti."""
 
@@ -232,18 +237,20 @@ class CRMQueryOptimizer:
             base = i * 10
             placeholders = ", ".join(f"${base + j}" for j in range(1, 11))
             value_rows.append(f"({placeholders}, NOW(), NOW())")
-            all_params.extend([
-                c.get("full_name"),
-                c.get("email"),
-                c.get("phone"),
-                c.get("whatsapp"),
-                c.get("nationality"),
-                c.get("passport_number"),
-                c.get("status", "active"),
-                c.get("client_type", "individual"),
-                c.get("assigned_to"),
-                _json.dumps(c.get("custom_fields", {})),
-            ])
+            all_params.extend(
+                [
+                    c.get("full_name"),
+                    c.get("email"),
+                    c.get("phone"),
+                    c.get("whatsapp"),
+                    c.get("nationality"),
+                    c.get("passport_number"),
+                    c.get("status", "active"),
+                    c.get("client_type", "individual"),
+                    c.get("assigned_to"),
+                    _json.dumps(c.get("custom_fields", {})),
+                ]
+            )
 
         query = f"""
             INSERT INTO clients (
@@ -341,7 +348,10 @@ class CRMQueryOptimizer:
             return [dict(row) for row in rows]
 
     async def search_clients_optimized(
-        self, query: str, limit: int = 20, offset: int = 0,
+        self,
+        query: str,
+        limit: int = 20,
+        offset: int = 0,
     ) -> tuple[list[dict], int]:
         """Ricerca clienti ottimizzata con full-text search."""
         async with self.db_pool.acquire() as conn:

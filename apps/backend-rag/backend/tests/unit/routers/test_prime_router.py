@@ -498,7 +498,10 @@ async def test_query_price_exception():
 
     with (
         patch.dict(os.environ, {"DATABASE_URL": "postgresql://test:test@localhost/test"}),
-        patch("backend.app.routers.prime.asyncpg.connect", new=AsyncMock(side_effect=Exception("conn fail"))),
+        patch(
+            "backend.app.routers.prime.asyncpg.connect",
+            new=AsyncMock(side_effect=Exception("conn fail")),
+        ),
     ):
         result = await _query_price(-8.7, 115.2)
 
@@ -558,7 +561,9 @@ async def test_search_local_intel_success():
     }
 
     with (
-        patch.dict(os.environ, {"QDRANT_URL": "http://localhost:6333", "QDRANT_API_KEY": "test-key"}),
+        patch.dict(
+            os.environ, {"QDRANT_URL": "http://localhost:6333", "QDRANT_API_KEY": "test-key"}
+        ),
         patch("backend.app.routers.prime._get_embedder", return_value=mock_embed),
         patch("backend.app.routers.prime.httpx.AsyncClient") as mock_client_cls,
     ):

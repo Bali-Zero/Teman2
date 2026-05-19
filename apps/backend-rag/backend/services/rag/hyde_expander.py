@@ -113,9 +113,7 @@ class HyDEExpander:
 
     # ── Private methods ──
 
-    async def _generate_hypothetical_docs(
-        self, query: str, num_docs: int
-    ) -> list[str]:
+    async def _generate_hypothetical_docs(self, query: str, num_docs: int) -> list[str]:
         """Generate hypothetical answer documents via LLM."""
         docs: list[str] = []
 
@@ -166,7 +164,9 @@ class HyDEExpander:
             except (httpx.HTTPError, ValueError, TimeoutError) as exc:
                 logger.warning("HyDE: embedding failed for doc (%s)", exc)
             except Exception as exc:  # noqa: BLE001 — skip bad doc, continue embedding others
-                logger.warning("HyDE: embedding failed unexpectedly for doc (%s)", exc, exc_info=True)
+                logger.warning(
+                    "HyDE: embedding failed unexpectedly for doc (%s)", exc, exc_info=True
+                )
 
         return vectors
 

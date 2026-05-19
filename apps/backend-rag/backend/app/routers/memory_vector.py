@@ -194,7 +194,9 @@ async def search_memories_semantic(request: SearchMemoryRequest) -> MemorySearch
         # Search Qdrant (async)
         db = await get_memory_vector_db()
         results = await db.search(
-            query_embedding=request.query_embedding, filter=where_filter, limit=request.limit,
+            query_embedding=request.query_embedding,
+            filter=where_filter,
+            limit=request.limit,
         )
 
         execution_time = (time.time() - start_time) * 1000
@@ -254,7 +256,8 @@ async def find_similar_memories(request: SimilarMemoryRequest) -> MemorySearchRe
             query_embedding = list(embeddings_raw)
         else:
             raise HTTPException(
-                status_code=500, detail="Invalid embedding format returned by vector store",
+                status_code=500,
+                detail="Invalid embedding format returned by vector store",
             )
 
         results = await db.search(
@@ -363,5 +366,6 @@ async def memory_vector_health() -> dict[str, Any]:
         }
     except Exception as e:
         raise HTTPException(
-            status_code=503, detail=f"Memory vector service unhealthy: {str(e)}",
+            status_code=503,
+            detail=f"Memory vector service unhealthy: {str(e)}",
         ) from e

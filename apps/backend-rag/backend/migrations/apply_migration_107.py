@@ -45,7 +45,9 @@ async def main() -> None:
             "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'bridge_outbox')"
         )
         if exists:
-            logger.info("Table bridge_outbox already exists — migration is idempotent (CREATE IF NOT EXISTS)")
+            logger.info(
+                "Table bridge_outbox already exists — migration is idempotent (CREATE IF NOT EXISTS)"
+            )
 
         logger.info("Applying migration 107: bridge_outbox table")
         await apply(conn)

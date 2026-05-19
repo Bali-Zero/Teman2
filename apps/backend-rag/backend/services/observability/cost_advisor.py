@@ -94,7 +94,8 @@ class CostAdvisor:
     # ------------------------------------------------------------------
 
     async def analyze_last_window(
-        self, days: int = 7,
+        self,
+        days: int = 7,
     ) -> list[EndpointCostSummary]:
         """Aggregate llm_cost_events in the last N days by (endpoint, model, provider)."""
         async with self.pg_pool.acquire() as conn:
@@ -159,10 +160,7 @@ class CostAdvisor:
                     baseline_days,
                 )
                 baseline_dec = Decimal(str(baseline or 0))
-                if (
-                    baseline_dec > 0
-                    and s.total_cost_usd > baseline_dec * Decimal(str(multiplier))
-                ):
+                if baseline_dec > 0 and s.total_cost_usd > baseline_dec * Decimal(str(multiplier)):
                     spikes.add(s.endpoint)
         return spikes
 
@@ -171,7 +169,9 @@ class CostAdvisor:
     # ------------------------------------------------------------------
 
     async def propose_substitutions(
-        self, *, top_n: int = 5,
+        self,
+        *,
+        top_n: int = 5,
     ) -> list[CostRecommendation]:
         """Ask the OAuth client for cheaper model substitutes on top-N endpoints."""
         summaries = await self.analyze_last_window(days=7)
@@ -180,16 +180,18 @@ class CostAdvisor:
         if not top:
             return []
 
-        payload = json.dumps([
-            {
-                "endpoint": s.endpoint,
-                "current_model": s.model,
-                "call_count": s.call_count,
-                "total_cost_usd": str(s.total_cost_usd),
-                "avg_cost_per_call_usd": str(s.avg_cost_per_call_usd),
-            }
-            for s in top
-        ])
+        payload = json.dumps(
+            [
+                {
+                    "endpoint": s.endpoint,
+                    "current_model": s.model,
+                    "call_count": s.call_count,
+                    "total_cost_usd": str(s.total_cost_usd),
+                    "avg_cost_per_call_usd": str(s.avg_cost_per_call_usd),
+                }
+                for s in top
+            ]
+        )
 
         raw = await self.oauth_client.complete(
             system=_JUDGE_SYSTEM_PROMPT,
@@ -251,7 +253,8 @@ class CostAdvisor:
     # ------------------------------------------------------------------
 
     async def persist_recommendations(
-        self, recs: list[CostRecommendation],
+        self,
+        recs: list[CostRecommendation],
     ) -> int:
         """Insert recommendations; skip duplicates landed in the last 7 days.
 

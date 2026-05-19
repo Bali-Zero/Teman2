@@ -322,10 +322,15 @@ async def main():
         description="Re-index kbli_2025_final from KBLI_2025_FINAL_CLEAN.json",
     )
     parser.add_argument(
-        "--dry-run", action="store_true", help="Parse and build but don't embed or upsert",
+        "--dry-run",
+        action="store_true",
+        help="Parse and build but don't embed or upsert",
     )
     parser.add_argument(
-        "--qdrant-url", type=str, default="", help="Qdrant URL (default: from env or localhost)",
+        "--qdrant-url",
+        type=str,
+        default="",
+        help="Qdrant URL (default: from env or localhost)",
     )
     parser.add_argument("--skip-delete", action="store_true", help="Skip deleting old points")
     parser.add_argument("--limit", type=int, default=0, help="Limit number of codes (0=all)")

@@ -306,9 +306,7 @@ class TestCompleteStream:
                 pass
 
     @pytest.mark.asyncio
-    async def test_stream_skips_empty_and_missing_content(
-        self, client: OpenRouterClient
-    ) -> None:
+    async def test_stream_skips_empty_and_missing_content(self, client: OpenRouterClient) -> None:
         """Chunks with empty content or missing delta.content are skipped."""
         lines: list[str] = [
             "data: " + json.dumps({"choices": [{"delta": {}}]}),
@@ -418,9 +416,7 @@ class TestCheckCredits:
         http.get.assert_awaited_once()
 
     @pytest.mark.asyncio
-    async def test_check_credits_returns_error_on_non_200(
-        self, client: OpenRouterClient
-    ) -> None:
+    async def test_check_credits_returns_error_on_non_200(self, client: OpenRouterClient) -> None:
         resp = MagicMock()
         resp.status_code = 403
 
@@ -505,9 +501,7 @@ class TestSmartCompleteStream:
 
     @pytest.mark.asyncio
     async def test_smart_complete_stream_yields_chunks(self) -> None:
-        async def _fake_stream(
-            messages: list[dict], **kwargs: object
-        ) -> AsyncGenerator[str, None]:
+        async def _fake_stream(messages: list[dict], **kwargs: object) -> AsyncGenerator[str, None]:
             for token in ["Hel", "lo"]:
                 yield token
 
@@ -525,9 +519,7 @@ class TestSmartCompleteStream:
     async def test_smart_complete_stream_with_system(self) -> None:
         captured_messages: list[dict] = []
 
-        async def _fake_stream(
-            messages: list[dict], **kwargs: object
-        ) -> AsyncGenerator[str, None]:
+        async def _fake_stream(messages: list[dict], **kwargs: object) -> AsyncGenerator[str, None]:
             captured_messages.extend(messages)
             yield "ok"
 
@@ -548,9 +540,7 @@ class TestSmartCompleteStream:
         """smart_complete_stream defaults to ModelTier.BALANCED."""
         captured_kwargs: dict = {}
 
-        async def _fake_stream(
-            messages: list[dict], **kwargs: object
-        ) -> AsyncGenerator[str, None]:
+        async def _fake_stream(messages: list[dict], **kwargs: object) -> AsyncGenerator[str, None]:
             captured_kwargs.update(kwargs)
             yield "x"
 
@@ -603,9 +593,7 @@ class TestClientLifecycle:
         assert client._client is None
         await client.close()
 
-    def test_headers_include_required_openrouter_fields(
-        self, client: OpenRouterClient
-    ) -> None:
+    def test_headers_include_required_openrouter_fields(self, client: OpenRouterClient) -> None:
         headers: dict = client._get_headers()
         assert headers["Authorization"] == "Bearer test-api-key"
         assert headers["Content-Type"] == "application/json"

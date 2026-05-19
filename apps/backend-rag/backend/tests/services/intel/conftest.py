@@ -8,6 +8,7 @@ Note: kg_proposals table (m108) must exist in nuzantara_dev.
 If it doesn't exist, the integration tests create it within the transaction
 (CREATE TABLE IF NOT EXISTS inside tx — rolled back after each test).
 """
+
 from __future__ import annotations
 
 import os

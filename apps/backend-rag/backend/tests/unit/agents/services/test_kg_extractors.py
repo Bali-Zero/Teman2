@@ -155,7 +155,8 @@ class TestRelationshipExtractor:
         with patch("backend.agents.services.kg_extractors.ZANTARA_AVAILABLE", False):
             extractor = RelationshipExtractor()
             result = await extractor.extract_relationships(
-                [{"type": "law", "name": "Test"}], "Test text",
+                [{"type": "law", "name": "Test"}],
+                "Test text",
             )
             assert result == []
 
@@ -168,7 +169,9 @@ class TestRelationshipExtractor:
 
         entities = [{"type": "law", "name": "Test"}]
         result = await relationship_extractor.extract_relationships(
-            entities, "Test text", timeout=0.1,
+            entities,
+            "Test text",
+            timeout=0.1,
         )
         assert result == []
 

@@ -26,7 +26,8 @@ def _verify_founder_access(current_user=Depends(get_current_user)) -> Any:
     """Verify that the user has founder or admin level access."""
     if current_user.get("role") not in ["Founder", "admin"]:
         raise HTTPException(
-            status_code=403, detail="Access denied. This dashboard is for founders/admins only.",
+            status_code=403,
+            detail="Access denied. This dashboard is for founders/admins only.",
         )
     return current_user
 
@@ -52,7 +53,9 @@ async def get_query_insights_dashboard(
     try:
         return await repo.get_dashboard_summary(days=days)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load query insights: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Failed to load query insights: {str(e)}"
+        ) from e
 
 
 @router.get("/failed")
@@ -66,7 +69,9 @@ async def get_failed_queries(
     try:
         return await repo.get_failed_queries(limit=limit, days=days)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get failed queries: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get failed queries: {str(e)}"
+        ) from e
 
 
 @router.get("/collections")
@@ -79,7 +84,9 @@ async def get_collection_hit_rates(
     try:
         return await repo.get_collection_hit_rates(days=days)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get collection hit rates: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get collection hit rates: {str(e)}"
+        ) from e
 
 
 @router.get("/volume")
@@ -106,7 +113,9 @@ async def get_satisfaction_score(
     try:
         return await repo.get_satisfaction_score(days=days)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get satisfaction score: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get satisfaction score: {str(e)}"
+        ) from e
 
 
 # ========== WRITE ENDPOINT (Any authenticated user) ==========

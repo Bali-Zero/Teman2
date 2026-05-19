@@ -74,16 +74,16 @@ class LLMCallEvent:
     compute ``cost_usd`` using :mod:`backend.services.llm_clients.pricing`.
     """
 
-    provider: str            # 'gemini' | 'deepseek' | 'claude_oauth' | 'openrouter' | …
-    model: str               # exact slug the provider sees
+    provider: str  # 'gemini' | 'deepseek' | 'claude_oauth' | 'openrouter' | …
+    model: str  # exact slug the provider sees
     input_tokens: int
     output_tokens: int
     cost_usd: float
     success: bool
     latency_ms: int
-    endpoint: str | None = None           # caller module, e.g. 'article_composer'
-    request_id: str | None = None         # correlation id if available
-    error_class: str | None = None        # populated when success=False
+    endpoint: str | None = None  # caller module, e.g. 'article_composer'
+    request_id: str | None = None  # correlation id if available
+    error_class: str | None = None  # populated when success=False
     cache_hit_tokens: int = 0
     ts_utc: datetime = field(default_factory=lambda: datetime.now(timezone.utc))
 
@@ -111,7 +111,9 @@ class LLMCostRecorder:
         self.jsonl_root = jsonl_root
         self.retention_days = retention_days
         self._jsonl_lock = asyncio.Lock()
-        self._jsonl_ready: bool | None = None  # tri-state: None=unchecked, True=ok, False=unavailable
+        self._jsonl_ready: bool | None = (
+            None  # tri-state: None=unchecked, True=ok, False=unavailable
+        )
 
         # Lazy refs so import-time cycles stay impossible.
         self._pg_pool_getter = None
@@ -223,11 +225,13 @@ class LLMCostRecorder:
         # Feed the request-size histogram too.
         if event.input_tokens:
             m.llm_request_tokens.labels(
-                model=event.model, type="prompt",
+                model=event.model,
+                type="prompt",
             ).observe(event.input_tokens)
         if event.output_tokens:
             m.llm_request_tokens.labels(
-                model=event.model, type="completion",
+                model=event.model,
+                type="completion",
             ).observe(event.output_tokens)
 
     # -------- public API --------------------------------------------------

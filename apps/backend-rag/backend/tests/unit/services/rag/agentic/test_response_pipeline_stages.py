@@ -30,7 +30,6 @@ from backend.services.rag.agentic.pipeline import (
 
 @pytest.mark.asyncio
 class TestPipelineNoneHandling:
-
     async def test_pipeline_process_none_data_raises_value_error(self):
         """I-P1: `None` input raises ValueError synchronously — callers can
         rely on "if I got a return, it's a dict".
@@ -47,7 +46,6 @@ class TestPipelineNoneHandling:
 
 @pytest.mark.asyncio
 class TestVerificationStage:
-
     async def test_verification_short_response_skips_and_marks_status_skipped(self):
         """VerificationStage + I-P6: response < 50 chars → status='skipped',
         score=1.0, verification_service NOT called.
@@ -101,7 +99,6 @@ class TestVerificationStage:
 
 @pytest.mark.asyncio
 class TestPostProcessingStage:
-
     async def test_postprocessing_empty_response_is_noop(self):
         """PostProcessingStage skip: empty response → post_process_response
         NOT called, data["response"] unchanged (remains empty string).
@@ -125,7 +122,6 @@ class TestPostProcessingStage:
 
 @pytest.mark.asyncio
 class TestCitationStage:
-
     async def test_citation_normalize_dedupes_sorts_and_trims(self):
         """CitationStage happy path: 3 sources (two identical + one distinct
         + varied scores) → dedupe on (title,url), sort by score desc, trim
@@ -188,7 +184,6 @@ class TestCitationStage:
 
 @pytest.mark.asyncio
 class TestFormatStage:
-
     async def test_format_stage_ensures_citations_list_present(self):
         """FormatStage + I-P5: data without 'citations' key → FormatStage
         guarantees data["citations"] = []. Also strips whitespace from
@@ -231,7 +226,6 @@ class _MarkerStage(PipelineStage):
 
 @pytest.mark.asyncio
 class TestChainContinuesOnFailure:
-
     async def test_stage_raise_does_not_abort_chain_marks_failed(self):
         """I-P2 + I-P3: mid-chain stage raise caught at pipeline level.
         stages_completed contains "<Name> (failed)". Next stage still runs.
@@ -242,8 +236,9 @@ class TestChainContinuesOnFailure:
 
         # The raising stage is recorded as "(failed)"
         stages = result["stages_completed"]
-        assert any("_RaisingStage (failed)" in s for s in stages), \
+        assert any("_RaisingStage (failed)" in s for s in stages), (
             f"Expected '_RaisingStage (failed)' in stages_completed: {stages}"
+        )
         # Second stage still ran — marker present
         assert result.get("marker") == "AFTER_RAISE"
         # Second stage recorded as success (no "(failed)" suffix)
@@ -258,7 +253,6 @@ class TestChainContinuesOnFailure:
 
 @pytest.mark.asyncio
 class TestDefaultPipelineCardinality:
-
     async def test_default_pipeline_has_four_stages_in_fixed_order(self):
         """I-P4: create_default_pipeline → exactly 4 stages, in
         [Verification, PostProcessing, Citation, Format] order.

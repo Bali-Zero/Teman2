@@ -17,20 +17,17 @@ logger = logging.getLogger(__name__)
 
 # Patterns that indicate pricing content
 PRICE_PATTERNS = [
-    r"\$[\d,]+",                          # $1,200,000
-    r"USD\s*[\d,]+",                       # USD 1200000
-    r"IDR\s*[\d,.]+",                      # IDR 10,000,000
-    r"Rp\.?\s*[\d,.]+",                    # Rp. 10.000.000
-    r"[\d,]+\s*(?:juta|miliar|ribu)",      # 10 juta, 1 miliar
+    r"\$[\d,]+",  # $1,200,000
+    r"USD\s*[\d,]+",  # USD 1200000
+    r"IDR\s*[\d,.]+",  # IDR 10,000,000
+    r"Rp\.?\s*[\d,.]+",  # Rp. 10.000.000
+    r"[\d,]+\s*(?:juta|miliar|ribu)",  # 10 juta, 1 miliar
 ]
 
 
 def contains_pricing(text: str) -> bool:
     """Check if text contains any pricing patterns."""
-    return any(
-        re.search(p, text, re.IGNORECASE)
-        for p in PRICE_PATTERNS
-    )
+    return any(re.search(p, text, re.IGNORECASE) for p in PRICE_PATTERNS)
 
 
 class PricingGrader(BaseGrader):
@@ -72,7 +69,11 @@ class PricingGrader(BaseGrader):
         combined = max(ratio, kg_ratio)  # either source is fine
 
         if combined < self.fail_fast_threshold:
-            return combined, f"Pricing appears fabricated ({len(answer_prices)} prices, {grounded} grounded)", ""
+            return (
+                combined,
+                f"Pricing appears fabricated ({len(answer_prices)} prices, {grounded} grounded)",
+                "",
+            )
 
         if combined < self.pass_threshold:
             hint = "Verify all prices against official pricing data before including them"

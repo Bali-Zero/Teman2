@@ -18,7 +18,9 @@ class TestExtractFromText:
     """Tests for _extract_from_text internal method."""
 
     def test_preference_extraction(self, extractor):
-        facts = extractor._extract_from_text("Preferisco parlare in italiano ogni giorno", source="user")
+        facts = extractor._extract_from_text(
+            "Preferisco parlare in italiano ogni giorno", source="user"
+        )
         types = [f["type"] for f in facts]
         assert "preference" in types
 
@@ -112,7 +114,9 @@ class TestExtractFactsFromConversation:
         mock_metrics.record_memory_extraction = MagicMock(side_effect=Exception("fail"))
         # Should not raise, just return empty
         facts = extractor.extract_facts_from_conversation(
-            user_message="test", ai_response="test", user_id="user_123",
+            user_message="test",
+            ai_response="test",
+            user_id="user_123",
         )
         # Even if metrics fail, extraction should succeed
         assert isinstance(facts, list)
@@ -122,9 +126,7 @@ class TestExtractQuickFacts:
     """Tests for extract_quick_facts method."""
 
     def test_returns_strings(self, extractor):
-        facts = extractor.extract_quick_facts(
-            "Mi chiamo Marco e ho una società PT PMA"
-        )
+        facts = extractor.extract_quick_facts("Mi chiamo Marco e ho una società PT PMA")
         assert all(isinstance(f, str) for f in facts)
 
     def test_max_facts_respected(self, extractor):
@@ -148,8 +150,18 @@ class TestDeduplicateFacts:
 
     def test_removes_similar_facts(self, extractor):
         facts = [
-            {"content": "marco lives in bali indonesia", "type": "location", "confidence": 0.8, "source": "user"},
-            {"content": "marco lives in bali indonesia area", "type": "location", "confidence": 0.7, "source": "ai"},
+            {
+                "content": "marco lives in bali indonesia",
+                "type": "location",
+                "confidence": 0.8,
+                "source": "user",
+            },
+            {
+                "content": "marco lives in bali indonesia area",
+                "type": "location",
+                "confidence": 0.7,
+                "source": "ai",
+            },
         ]
         result = extractor._deduplicate_facts(facts)
         assert len(result) == 1

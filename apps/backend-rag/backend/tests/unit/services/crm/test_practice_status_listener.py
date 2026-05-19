@@ -18,9 +18,7 @@ def mock_pool():
 
 @pytest.fixture
 def listener(mock_pool):
-    with patch(
-        "backend.services.crm.practice_status_listener.ProcessAutomationService"
-    ) as MockPAS:
+    with patch("backend.services.crm.practice_status_listener.ProcessAutomationService") as MockPAS:
         MockPAS.return_value = AsyncMock()
         inst = PracticeStatusListener(db_dsn="postgres://fake:5432/test", db_pool=mock_pool)
         return inst
@@ -101,59 +99,71 @@ class TestHandleNotification:
     @pytest.mark.asyncio
     async def test_payment_transition_to_paid(self, listener):
         listener._on_payment_received = AsyncMock()
-        payload = json.dumps({
-            "practice_id": 42,
-            "old_status": "inquiry",
-            "new_status": "inquiry",
-            "old_payment": "unpaid",
-            "new_payment": "paid",
-        })
+        payload = json.dumps(
+            {
+                "practice_id": 42,
+                "old_status": "inquiry",
+                "new_status": "inquiry",
+                "old_payment": "unpaid",
+                "new_payment": "paid",
+            }
+        )
         await listener._handle_notification(payload)
         listener._on_payment_received.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_no_payment_transition_if_already_paid(self, listener):
         listener._on_payment_received = AsyncMock()
-        payload = json.dumps({
-            "practice_id": 42,
-            "old_payment": "paid",
-            "new_payment": "paid",
-        })
+        payload = json.dumps(
+            {
+                "practice_id": 42,
+                "old_payment": "paid",
+                "new_payment": "paid",
+            }
+        )
         await listener._handle_notification(payload)
         listener._on_payment_received.assert_not_awaited()
 
     @pytest.mark.asyncio
     async def test_status_change_to_on_process(self, listener):
         listener._on_status_changed = AsyncMock()
-        payload = json.dumps({
-            "practice_id": 42,
-            "old_status": "inquiry",
-            "new_status": "on_process",
-        })
+        payload = json.dumps(
+            {
+                "practice_id": 42,
+                "old_status": "inquiry",
+                "new_status": "on_process",
+            }
+        )
         await listener._handle_notification(payload)
         listener._on_status_changed.assert_awaited_once_with(
-            42, "on_process", pytest.approx(json.loads(payload), abs=0),
+            42,
+            "on_process",
+            pytest.approx(json.loads(payload), abs=0),
         )
 
     @pytest.mark.asyncio
     async def test_status_change_to_submitted(self, listener):
         listener._on_status_changed = AsyncMock()
-        payload = json.dumps({
-            "practice_id": 42,
-            "old_status": "on_process",
-            "new_status": "submitted",
-        })
+        payload = json.dumps(
+            {
+                "practice_id": 42,
+                "old_status": "on_process",
+                "new_status": "submitted",
+            }
+        )
         await listener._handle_notification(payload)
         listener._on_status_changed.assert_awaited_once()
 
     @pytest.mark.asyncio
     async def test_status_unchanged_no_dispatch(self, listener):
         listener._on_status_changed = AsyncMock()
-        payload = json.dumps({
-            "practice_id": 42,
-            "old_status": "inquiry",
-            "new_status": "inquiry",
-        })
+        payload = json.dumps(
+            {
+                "practice_id": 42,
+                "old_status": "inquiry",
+                "new_status": "inquiry",
+            }
+        )
         await listener._handle_notification(payload)
         listener._on_status_changed.assert_not_awaited()
 
@@ -168,7 +178,8 @@ class TestOnPaymentReceived:
         data = {"assigned_to": "team@balizero.com"}
         await listener._on_payment_received(42, data)
         listener._send_payment_emails.assert_awaited_once_with(
-            42, triggered_by="team@balizero.com",
+            42,
+            triggered_by="team@balizero.com",
         )
 
     @pytest.mark.asyncio
@@ -177,7 +188,8 @@ class TestOnPaymentReceived:
         data = {}
         await listener._on_payment_received(42, data)
         listener._send_payment_emails.assert_awaited_once_with(
-            42, triggered_by="asya@balizero.com",
+            42,
+            triggered_by="asya@balizero.com",
         )
 
     @pytest.mark.asyncio
@@ -261,9 +273,15 @@ class TestSendViaInternalApi:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("backend.services.crm.practice_status_listener.httpx.AsyncClient", return_value=mock_client):
+        with patch(
+            "backend.services.crm.practice_status_listener.httpx.AsyncClient",
+            return_value=mock_client,
+        ):
             await listener._send_via_internal_api(
-                "test@example.com", "Subject", "Body", cc="cc@example.com",
+                "test@example.com",
+                "Subject",
+                "Body",
+                cc="cc@example.com",
             )
             mock_client.post.assert_awaited_once()
 
@@ -277,7 +295,10 @@ class TestSendViaInternalApi:
         mock_client.__aenter__ = AsyncMock(return_value=mock_client)
         mock_client.__aexit__ = AsyncMock(return_value=False)
 
-        with patch("backend.services.crm.practice_status_listener.httpx.AsyncClient", return_value=mock_client):
+        with patch(
+            "backend.services.crm.practice_status_listener.httpx.AsyncClient",
+            return_value=mock_client,
+        ):
             await listener._send_via_internal_api("a@b.com", "S", "Line1\nLine2")
             call_kwargs = mock_client.post.call_args
             body = call_kwargs.kwargs["json"]["body"]

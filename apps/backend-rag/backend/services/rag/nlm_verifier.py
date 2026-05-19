@@ -25,10 +25,10 @@ EVIDENCE_MAX: float = 0.60
 
 # NLM notebook IDs by domain
 DOMAIN_NOTEBOOK_MAP: dict[str, str] = {
-    "visa": "271c7159-0c32-49a1-bda8-803c8e0993a6",        # NB-2
+    "visa": "271c7159-0c32-49a1-bda8-803c8e0993a6",  # NB-2
     "immigration": "271c7159-0c32-49a1-bda8-803c8e0993a6",  # NB-2
-    "tax": "d4b2eedb-9863-4a1a-81ff-a11b0b45d853",         # NB-4
-    "legal": "045f3cdb-ef62-488c-90ba-82594928b671",        # NB-3
+    "tax": "d4b2eedb-9863-4a1a-81ff-a11b0b45d853",  # NB-4
+    "legal": "045f3cdb-ef62-488c-90ba-82594928b671",  # NB-3
 }
 
 # Redis rate-limit key and max calls per hour
@@ -245,8 +245,14 @@ def _detect_discrepancy(zantara: str, nlm: str) -> str | None:
 
     # Filter trivial single-digit differences (1, 2, 3 … often ordinals)
     significant_threshold = 4  # numbers with 4+ digits are likely meaningful
-    zantara_significant = {n for n in only_in_zantara if len(n.replace(",", "").replace(".", "")) >= significant_threshold}
-    nlm_significant = {n for n in only_in_nlm if len(n.replace(",", "").replace(".", "")) >= significant_threshold}
+    zantara_significant = {
+        n
+        for n in only_in_zantara
+        if len(n.replace(",", "").replace(".", "")) >= significant_threshold
+    }
+    nlm_significant = {
+        n for n in only_in_nlm if len(n.replace(",", "").replace(".", "")) >= significant_threshold
+    }
 
     parts: list[str] = []
 
@@ -257,9 +263,7 @@ def _detect_discrepancy(zantara: str, nlm: str) -> str | None:
 
     # Length disparity — NLM substantially longer may signal Zantara omitted detail
     if len(nlm) > 3 * max(len(zantara), 1):
-        parts.append(
-            f"length disparity: zantara={len(zantara)} chars, nlm={len(nlm)} chars"
-        )
+        parts.append(f"length disparity: zantara={len(zantara)} chars, nlm={len(nlm)} chars")
 
     return "; ".join(parts) if parts else None
 

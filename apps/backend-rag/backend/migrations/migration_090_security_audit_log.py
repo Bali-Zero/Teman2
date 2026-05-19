@@ -51,11 +51,15 @@ async def apply(conn) -> None:
         "CREATE INDEX IF NOT EXISTS idx_security_audit_created ON security_audit_log(created_at)"
     )
 
-    await conn.execute("""
+    await conn.execute(
+        """
         INSERT INTO migration_history (migration_id, description, applied_at)
         VALUES ($1, $2, NOW())
         ON CONFLICT (migration_id) DO NOTHING
-    """, MIGRATION_ID, DESCRIPTION)
+    """,
+        MIGRATION_ID,
+        DESCRIPTION,
+    )
 
     logger.info(f"✅ Migration {MIGRATION_ID} applied successfully")
 
@@ -64,7 +68,5 @@ async def rollback(conn) -> None:
     """Rollback migration."""
     logger.info(f"Rolling back migration {MIGRATION_ID}")
     await conn.execute("DROP TABLE IF EXISTS security_audit_log CASCADE")
-    await conn.execute(
-        "DELETE FROM migration_history WHERE migration_id = $1", MIGRATION_ID
-    )
+    await conn.execute("DELETE FROM migration_history WHERE migration_id = $1", MIGRATION_ID)
     logger.info(f"✅ Migration {MIGRATION_ID} rolled back")

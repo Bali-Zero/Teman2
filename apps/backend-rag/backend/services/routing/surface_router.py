@@ -39,6 +39,7 @@ SURFACE_ROUTER_ENABLED: bool = os.getenv("SURFACE_ROUTER_ENABLED", "false").lowe
 # Surface names (string enum pattern — avoids enum import overhead)
 # ---------------------------------------------------------------------------
 
+
 class Surface:
     QDRANT_VISA = "qdrant_visa"
     QDRANT_TAX = "qdrant_tax"
@@ -98,68 +99,128 @@ _DOMAIN_TO_SURFACE: dict[str, str] = {
     "property": Surface.QDRANT_PROPERTY,
     "news": Surface.QDRANT_NEWS,
     "team": Surface.QDRANT_PRICING,  # team queries → pricing (same as QueryRouter)
-    "books": Surface.QDRANT_VISA,    # books → fallback (same as QueryRouter)
+    "books": Surface.QDRANT_VISA,  # books → fallback (same as QueryRouter)
 }
 
 # Skills-trigger keywords (ops/internal queries)
-_SKILLS_KEYWORDS: frozenset[str] = frozenset({
-    "internal workflow",
-    "ops procedure",
-    "internal skill",
-    "team workflow",
-    "onboarding checklist",
-    "skill for",
-    "internal ops",
-    "checklist",
-    "procedure",
-    "workflow",
-})
+_SKILLS_KEYWORDS: frozenset[str] = frozenset(
+    {
+        "internal workflow",
+        "ops procedure",
+        "internal skill",
+        "team workflow",
+        "onboarding checklist",
+        "skill for",
+        "internal ops",
+        "checklist",
+        "procedure",
+        "workflow",
+    }
+)
 
 # KITAS/KITAP acronyms — not in QueryRouter's VISA_KEYWORDS, must intercept here
-_VISA_ACRONYMS: frozenset[str] = frozenset({
-    "kitas", "kitap", "imta", "itas", "itap", "vitas", "skt",
-})
+_VISA_ACRONYMS: frozenset[str] = frozenset(
+    {
+        "kitas",
+        "kitap",
+        "imta",
+        "itas",
+        "itap",
+        "vitas",
+        "skt",
+    }
+)
 
 # Tax terms not in QueryRouter's TAX_KEYWORDS (or suppressed by pricing check upstream)
-_TAX_INTERCEPTS: frozenset[str] = frozenset({
-    "pph", "pph21", "pph 21", "ppn", "pajak penghasilan",
-    "bphtb", "spt", "efin", "npwp", "nppn",
-    # These appear in queries where "rate"/"charge"/"fee" would mis-fire pricing:
-    "income tax rate", "corporate income tax", "corporate tax rate",
-    "tax rate for", "withholding tax rate",
-})
+_TAX_INTERCEPTS: frozenset[str] = frozenset(
+    {
+        "pph",
+        "pph21",
+        "pph 21",
+        "ppn",
+        "pajak penghasilan",
+        "bphtb",
+        "spt",
+        "efin",
+        "npwp",
+        "nppn",
+        # These appear in queries where "rate"/"charge"/"fee" would mis-fire pricing:
+        "income tax rate",
+        "corporate income tax",
+        "corporate tax rate",
+        "tax rate for",
+        "withholding tax rate",
+    }
+)
 
 # News-specific terms — when present AND news is in active_domains, news wins
-_NEWS_TERMS: frozenset[str] = frozenset({
-    "berita", "terbaru", "news", "latest news", "recent changes",
-    "pengumuman", "announcement",
-})
+_NEWS_TERMS: frozenset[str] = frozenset(
+    {
+        "berita",
+        "terbaru",
+        "news",
+        "latest news",
+        "recent changes",
+        "pengumuman",
+        "announcement",
+    }
+)
 
 # KG-trigger keywords — entity/relationship queries routed to Neo4j KGOrchestrator
 # Multilingual: EN + IT + ID (R5 Phase 4, 2026-05-17)
-_KG_ENTITY_KEYWORDS: frozenset[str] = frozenset({
-    # Entity resolution
-    "chi è", "who is", "siapa", "direttore", "direktur", "owner of", "pemilik",
-    "entity", "entità", "entitas",
-    # Relationship traversal
-    "relazione tra", "relationship between", "hubungan antara",
-    "collegato a", "linked to", "terhubung ke", "terhubung dengan",
-    "connected to", "kolega", "associated with",
-    # Structure / hierarchy
-    "struttura societaria", "company structure", "struktur perusahaan",
-    "organigramma", "company ownership", "kepemilikan perusahaan",
-    "ownership structure", "shareholder", "pemegang saham",
-    # Graph-specific
-    "graph traversal", "graph search", "knowledge graph",
-    "chi conosce", "who knows", "siapa yang mengenal",
-    "collegato a quale", "linked to which",
-    "entity relationship", "relasi entitas",
-})
+_KG_ENTITY_KEYWORDS: frozenset[str] = frozenset(
+    {
+        # Entity resolution
+        "chi è",
+        "who is",
+        "siapa",
+        "direttore",
+        "direktur",
+        "owner of",
+        "pemilik",
+        "entity",
+        "entità",
+        "entitas",
+        # Relationship traversal
+        "relazione tra",
+        "relationship between",
+        "hubungan antara",
+        "collegato a",
+        "linked to",
+        "terhubung ke",
+        "terhubung dengan",
+        "connected to",
+        "kolega",
+        "associated with",
+        # Structure / hierarchy
+        "struttura societaria",
+        "company structure",
+        "struktur perusahaan",
+        "organigramma",
+        "company ownership",
+        "kepemilikan perusahaan",
+        "ownership structure",
+        "shareholder",
+        "pemegang saham",
+        # Graph-specific
+        "graph traversal",
+        "graph search",
+        "knowledge graph",
+        "chi conosce",
+        "who knows",
+        "siapa yang mengenal",
+        "collegato a quale",
+        "linked to which",
+        "entity relationship",
+        "relasi entitas",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
 # SurfaceDecision dataclass
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class SurfaceDecision:
@@ -168,7 +229,7 @@ class SurfaceDecision:
     collections: list[str]
     domain: str
     confidence: float
-    layer_used: int           # 1 = keyword, 2 = haiku
+    layer_used: int  # 1 = keyword, 2 = haiku
     is_local_only: bool
     latency_ms: float
     is_kg_surface: bool = False  # R5 Phase 4: True → route to KGOrchestrator, skip Qdrant
@@ -214,8 +275,10 @@ def _make_kg_decision(latency_ms: float) -> SurfaceDecision:
 # QueryRouterIntegration proxy (lazy import to avoid circular dep)
 # ---------------------------------------------------------------------------
 
+
 def _get_integration() -> QueryRouterIntegration:
     from backend.services.routing.query_router_integration import QueryRouterIntegration
+
     return QueryRouterIntegration()
 
 
@@ -236,6 +299,7 @@ _HAIKU_SYSTEM = (
 # ---------------------------------------------------------------------------
 # SurfaceRouter
 # ---------------------------------------------------------------------------
+
 
 class SurfaceRouter:
     """Intelligent 2-layer surface router for Bali Zero RAG.
@@ -259,7 +323,8 @@ class SurfaceRouter:
         self._integration: QueryRouterIntegration | None = None
         logger.info(
             "SurfaceRouter init: enabled=%s haiku_threshold=%.2f",
-            enabled, haiku_threshold,
+            enabled,
+            haiku_threshold,
         )
 
     def _router(self) -> QueryRouterIntegration:
@@ -285,7 +350,9 @@ class SurfaceRouter:
         # "internal workflow", "ops procedure", "skill for", etc.
         # Must have 2+ signals to avoid false positives on "checklist for visa"
         hits = sum(1 for kw in _SKILLS_KEYWORDS if kw in q)
-        return hits >= 1 and any(kw in q for kw in ("internal", "ops", "skill", "workflow", "procedure"))
+        return hits >= 1 and any(
+            kw in q for kw in ("internal", "ops", "skill", "workflow", "procedure")
+        )
 
     # ------------------------------------------------------------------
     # Pricing detection (delegate to integration's is_pricing_query)
@@ -335,12 +402,13 @@ class SurfaceRouter:
         """Classify with Claude Haiku. Returns None on any failure."""
         try:
             from backend.llm.claude_oauth_client import ClaudeOAuthClient
-            client = ClaudeOAuthClient(model="claude-haiku-4-5-20251001", timeout_s=int(HAIKU_TIMEOUT_S))
+
+            client = ClaudeOAuthClient(
+                model="claude-haiku-4-5-20251001", timeout_s=int(HAIKU_TIMEOUT_S)
+            )
             prompt = f"{_HAIKU_SYSTEM}\n\nUser query: {query}"
             text = await asyncio.wait_for(
-                asyncio.get_event_loop().run_in_executor(
-                    None, lambda: client.complete(prompt)
-                ),
+                asyncio.get_event_loop().run_in_executor(None, lambda: client.complete(prompt)),
                 timeout=HAIKU_TIMEOUT_S,
             )
             data = json.loads(text.strip())
@@ -376,6 +444,7 @@ class SurfaceRouter:
     def _is_visa_acronym_query(self, query: str) -> bool:
         # Strip punctuation for matching (handles "KITAS?" "KITAS.")
         import re
+
         q = re.sub(r"[^\w\s]", " ", query.lower())
         return any(f" {kw} " in f" {q} " or q.strip().startswith(kw) for kw in _VISA_ACRONYMS)
 
@@ -445,7 +514,10 @@ class SurfaceRouter:
 
         logger.info(
             "SurfaceRouter L1: surface=%s domain=%s confidence=%.2f latency=%.1fms",
-            surface, domain, confidence, elapsed,
+            surface,
+            domain,
+            confidence,
+            elapsed,
         )
 
         return _make_decision(surface, domain, confidence, layer_used=1, latency_ms=elapsed)
@@ -469,7 +541,8 @@ class SurfaceRouter:
         if self.enabled and confidence < self.haiku_threshold:
             logger.info(
                 "SurfaceRouter: L1 confidence=%.2f < threshold=%.2f → Haiku",
-                confidence, self.haiku_threshold,
+                confidence,
+                self.haiku_threshold,
             )
             try:
                 haiku_decision = await self._classify_with_haiku(query)
@@ -482,7 +555,11 @@ class SurfaceRouter:
         elapsed = (time.perf_counter() - t0) * 1000
         logger.info(
             "SurfaceRouter final: surface=%s domain=%s conf=%.2f layer=%d lat=%.1fms",
-            surface, domain, confidence, 1, elapsed,
+            surface,
+            domain,
+            confidence,
+            1,
+            elapsed,
         )
         return _make_decision(surface, domain, confidence, layer_used=1, latency_ms=elapsed)
 
@@ -490,6 +567,7 @@ class SurfaceRouter:
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
+
 
 def _collection_to_domain(collection: str) -> str:
     """Derive domain from physical collection name."""

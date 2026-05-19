@@ -284,7 +284,9 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                             )
                         subfolder_map[parent_id] = (client_id, folder_name)
                         logger.info(
-                            "Drive poll: registered nested folder '%s' for client %s", parent_name, client_id,
+                            "Drive poll: registered nested folder '%s' for client %s",
+                            parent_name,
+                            client_id,
                         )
                     else:
                         skipped += 1
@@ -317,6 +319,7 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                 if file_size > 0 and file_size < 20 * 1024 * 1024:
                     request = drive_service.service.files().get_media(fileId=file_id)
                     import asyncio
+
                     file_content = await asyncio.to_thread(request.execute)
                     content_hash = hashlib.md5(file_content).hexdigest()
 
@@ -325,10 +328,15 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                             """SELECT id FROM documents
                                WHERE client_id = $1 AND content_hash = $2
                                  AND created_at > NOW() - INTERVAL '30 days'""",
-                            client_id, content_hash,
+                            client_id,
+                            content_hash,
                         )
                         if hash_dup:
-                            logger.info("Drive poll: skipped duplicate content hash for %s (matches doc %s)", file_name, hash_dup)
+                            logger.info(
+                                "Drive poll: skipped duplicate content hash for %s (matches doc %s)",
+                                file_name,
+                                hash_dup,
+                            )
                             skipped += 1
                             continue
             except (HttpError, asyncpg.PostgresError, OSError) as e:
@@ -337,7 +345,10 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                 logger.exception("Unexpected error computing content hash for %s", file_name)
 
             logger.info(
-                "Drive poll: new file '%s' in %s for client %s", file_name, folder_name, client_id,
+                "Drive poll: new file '%s' in %s for client %s",
+                file_name,
+                folder_name,
+                client_id,
             )
 
             # Create document record with auto-categorization
@@ -348,15 +359,23 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
             # re-categorize as immigration (conservative — only for "other", not specific categories)
             if doc_category == "other" and isinstance(folder_name, str):
                 folder_lower = folder_name.lower()
-                if folder_lower in ("01_immigration", "actual visa", "previous visa") or "immigration" in folder_lower:
+                if (
+                    folder_lower in ("01_immigration", "actual visa", "previous visa")
+                    or "immigration" in folder_lower
+                ):
                     doc_category = "immigration"
-                    logger.info("Drive poll: folder hint upgraded '%s' from 'other' to 'immigration'", file_name)
+                    logger.info(
+                        "Drive poll: folder hint upgraded '%s' from 'other' to 'immigration'",
+                        file_name,
+                    )
 
             # Detect if file is in Actual Visa / Previous Visa subfolder
             subfolder_value = None
             parent_name_lower = folder_name.lower() if isinstance(folder_name, str) else ""
             if parent_name_lower in ("actual visa", "previous visa"):
-                subfolder_value = "Actual Visa" if "actual" in parent_name_lower else "Previous Visa"
+                subfolder_value = (
+                    "Actual Visa" if "actual" in parent_name_lower else "Previous Visa"
+                )
                 doc_category = "immigration"
 
                 # Visa rotation: if new file in Actual Visa, archive the old one
@@ -374,7 +393,9 @@ async def _do_poll_drive_changes() -> dict[str, Any]:
                                 "UPDATE documents SET subfolder = 'Previous Visa', updated_at = NOW() WHERE id = $1",
                                 old_actual["id"],
                             )
-                            logger.info(f"Drive poll: rotated doc {old_actual['id']} to Previous Visa")
+                            logger.info(
+                                f"Drive poll: rotated doc {old_actual['id']} to Previous Visa"
+                            )
 
             async with db_pool.acquire() as conn:
                 doc_id = await conn.fetchval(

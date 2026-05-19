@@ -56,7 +56,10 @@ class TestMemoryVectorRouter:
     @patch("backend.app.routers.memory_vector.QdrantClient")
     @patch("backend.app.routers.memory_vector.settings")
     def test_initialize_memory_vector_db(
-        self, mock_settings, mock_qdrant_client_class, mock_qdrant_client,
+        self,
+        mock_settings,
+        mock_qdrant_client_class,
+        mock_qdrant_client,
     ):
         """Test initializing memory vector DB"""
         mock_settings.qdrant_url = "http://localhost:6333"
@@ -123,7 +126,8 @@ class TestMemoryVectorRouter:
             return_value=mock_qdrant_client,
         ):
             response = client.post(
-                "/api/memory/search", json={"query_embedding": [0.1] * 384, "limit": 10},
+                "/api/memory/search",
+                json={"query_embedding": [0.1] * 384, "limit": 10},
             )
             assert response.status_code == 200
             data = response.json()

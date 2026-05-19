@@ -122,7 +122,9 @@ class TestRedisManagerInitialize:
     @patch("redis.from_url")
     @patch("redis.asyncio.from_url")
     def test_initialize_success_both_clients(
-        self, mock_async_from_url: MagicMock, mock_sync_from_url: MagicMock,
+        self,
+        mock_async_from_url: MagicMock,
+        mock_sync_from_url: MagicMock,
     ) -> None:
         """Both sync and async clients connect successfully."""
         mock_sync_client = MagicMock()
@@ -143,7 +145,9 @@ class TestRedisManagerInitialize:
     @patch("redis.from_url")
     @patch("redis.asyncio.from_url")
     def test_initialize_sync_fails_async_works(
-        self, mock_async_from_url: MagicMock, mock_sync_from_url: MagicMock,
+        self,
+        mock_async_from_url: MagicMock,
+        mock_sync_from_url: MagicMock,
     ) -> None:
         """Graceful degradation: sync fails but async succeeds."""
         mock_sync_from_url.side_effect = Exception("connection refused")
@@ -162,7 +166,9 @@ class TestRedisManagerInitialize:
     @patch("redis.from_url")
     @patch("redis.asyncio.from_url")
     def test_initialize_sync_works_async_fails(
-        self, mock_async_from_url: MagicMock, mock_sync_from_url: MagicMock,
+        self,
+        mock_async_from_url: MagicMock,
+        mock_sync_from_url: MagicMock,
     ) -> None:
         """Graceful degradation: async fails but sync succeeds."""
         mock_sync_client = MagicMock()
@@ -182,7 +188,9 @@ class TestRedisManagerInitialize:
     @patch("redis.from_url")
     @patch("redis.asyncio.from_url")
     def test_initialize_both_fail(
-        self, mock_async_from_url: MagicMock, mock_sync_from_url: MagicMock,
+        self,
+        mock_async_from_url: MagicMock,
+        mock_sync_from_url: MagicMock,
     ) -> None:
         """Both clients fail — Redis unavailable."""
         mock_sync_from_url.side_effect = Exception("sync fail")
@@ -199,7 +207,9 @@ class TestRedisManagerInitialize:
     @patch("redis.from_url")
     @patch("redis.asyncio.from_url")
     def test_initialize_sync_ping_fails(
-        self, mock_async_from_url: MagicMock, mock_sync_from_url: MagicMock,
+        self,
+        mock_async_from_url: MagicMock,
+        mock_sync_from_url: MagicMock,
     ) -> None:
         """Sync client connects but ping fails."""
         mock_sync_client = MagicMock()

@@ -52,7 +52,7 @@ class ComplianceForecast:
     client_id: int
     client_name: str
     assigned_to: str | None
-    document_type: str              # "visa", "kitas", "passport", "license"
+    document_type: str  # "visa", "kitas", "passport", "license"
     current_visa_type: str | None
 
     # Expiry
@@ -62,9 +62,9 @@ class ComplianceForecast:
     # Predictive
     matched_rule_id: str
     processing_days: int
-    lead_time_start: date           # when the process should BEGIN
-    recommended_action_by: date     # when to CONTACT the client
-    days_until_action: int          # days from today until recommended_action_by
+    lead_time_start: date  # when the process should BEGIN
+    recommended_action_by: date  # when to CONTACT the client
+    days_until_action: int  # days from today until recommended_action_by
 
     # Revenue
     estimated_revenue_idr: int | None
@@ -356,9 +356,7 @@ class PredictiveComplianceEngine:
         # Passport cross-check
         passport_expiry: date | None = row.get("passport_expiry")
         passport_before_visa = bool(
-            passport_expiry
-            and document_type in ("visa", "kitas")
-            and passport_expiry < expiry_date
+            passport_expiry and document_type in ("visa", "kitas") and passport_expiry < expiry_date
         )
 
         # KITAS → KITAP upgrade detection:
@@ -446,7 +444,8 @@ async def _load_urgent_threshold(conn: asyncpg.Connection, category: str) -> int
     """
     key = f"compliance_alert_threshold_urgent_{category}"
     value = await conn.fetchval(
-        "SELECT value FROM system_settings WHERE key = $1", key,
+        "SELECT value FROM system_settings WHERE key = $1",
+        key,
     )
     if value is None:
         return 7

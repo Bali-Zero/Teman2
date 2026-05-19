@@ -99,8 +99,7 @@ async def test_retry_claims_row_and_succeeds(monitor, fake_pool):
 
     # Verify the retry UPDATE to 'sent' was executed
     sent_update_calls = [
-        call for call in fake_pool._conn.execute.call_args_list
-        if "status = 'sent'" in str(call)
+        call for call in fake_pool._conn.execute.call_args_list if "status = 'sent'" in str(call)
     ]
     assert sent_update_calls, "expected UPDATE ... status='sent' to run"
 
@@ -136,7 +135,8 @@ async def test_retry_closes_original_row_on_success(monitor, fake_pool):
     # Both the new row (43) and the original (42) should appear in the
     # 'sent' UPDATE via ANY($1::bigint[]).
     sent_update_args = [
-        call.args for call in fake_pool._conn.execute.call_args_list
+        call.args
+        for call in fake_pool._conn.execute.call_args_list
         if "status = 'sent'" in str(call)
     ]
     # find the one with the bigint[] payload
@@ -178,12 +178,9 @@ async def test_retry_marks_original_superseded_on_failure(monitor, fake_pool):
         await monitor.check_and_retry_failed_emails()
 
     superseded_updates = [
-        call for call in fake_pool._conn.execute.call_args_list
-        if "superseded" in str(call)
+        call for call in fake_pool._conn.execute.call_args_list if "superseded" in str(call)
     ]
-    assert superseded_updates, (
-        "Original row must be marked status='superseded' on retry failure"
-    )
+    assert superseded_updates, "Original row must be marked status='superseded' on retry failure"
 
 
 @pytest.mark.asyncio
@@ -216,7 +213,8 @@ async def test_retry_marks_failed_again_when_brevo_errors(monitor, fake_pool):
 
     # The UPDATE setting new status='failed' with error_message must have run
     failed_updates = [
-        call for call in fake_pool._conn.execute.call_args_list
+        call
+        for call in fake_pool._conn.execute.call_args_list
         if "status = 'failed'" in str(call) and "error_message" in str(call)
     ]
     assert failed_updates, "expected UPDATE to re-mark row 'failed' on retry error"
@@ -287,9 +285,7 @@ async def test_escalate_pages_telegram_and_marks_escalated(monitor, fake_pool):
         },
     ]
 
-    with patch(
-        "backend.services.notifications.email_health_monitor._post_telegram"
-    ) as mock_tg:
+    with patch("backend.services.notifications.email_health_monitor._post_telegram") as mock_tg:
         stats = await monitor.escalate_unrecoverable()
 
     assert stats == {"escalated": 2}
@@ -305,9 +301,7 @@ async def test_escalate_pages_telegram_and_marks_escalated(monitor, fake_pool):
 async def test_escalate_no_unrecoverable_rows_skips_telegram(monitor, fake_pool):
     fake_pool._conn.fetch.return_value = []
 
-    with patch(
-        "backend.services.notifications.email_health_monitor._post_telegram"
-    ) as mock_tg:
+    with patch("backend.services.notifications.email_health_monitor._post_telegram") as mock_tg:
         stats = await monitor.escalate_unrecoverable()
 
     assert stats == {"escalated": 0}
@@ -334,9 +328,7 @@ async def test_escalate_truncates_to_15_items_in_telegram(monitor, fake_pool):
     ]
     fake_pool._conn.fetch.return_value = big_batch
 
-    with patch(
-        "backend.services.notifications.email_health_monitor._post_telegram"
-    ) as mock_tg:
+    with patch("backend.services.notifications.email_health_monitor._post_telegram") as mock_tg:
         await monitor.escalate_unrecoverable()
 
     tg_text = mock_tg.call_args[0][0]
@@ -370,9 +362,7 @@ async def test_daily_report_fires_when_last_report_is_old(monitor, fake_pool):
         {"email_type": "hr_bonus", "status": "sent", "n": 5},
     ]
 
-    with patch(
-        "backend.services.notifications.email_health_monitor._post_telegram"
-    ) as mock_tg:
+    with patch("backend.services.notifications.email_health_monitor._post_telegram") as mock_tg:
         result = await monitor.generate_daily_report()
 
     assert result["report"] == "sent"
@@ -385,7 +375,8 @@ async def test_daily_report_fires_when_last_report_is_old(monitor, fake_pool):
 
     # State upsert must have executed
     upsert_calls = [
-        call for call in fake_pool._conn.execute.call_args_list
+        call
+        for call in fake_pool._conn.execute.call_args_list
         if "INSERT INTO system_settings" in str(call)
     ]
     assert upsert_calls
@@ -413,7 +404,8 @@ async def test_daily_report_empty_window_still_marks_state(monitor, fake_pool):
 
     assert result == {"report": "empty_window"}
     upsert_calls = [
-        call for call in fake_pool._conn.execute.call_args_list
+        call
+        for call in fake_pool._conn.execute.call_args_list
         if "INSERT INTO system_settings" in str(call)
     ]
     assert upsert_calls

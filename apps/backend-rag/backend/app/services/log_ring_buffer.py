@@ -21,6 +21,7 @@ Default 2000 records (~5-10 minutes of typical traffic). At ~1KB per
 serialized record that's ~2MB RSS — negligible. Operators tail the
 debug endpoint frequently enough that long retention is unnecessary.
 """
+
 from __future__ import annotations
 
 import logging
@@ -110,17 +111,13 @@ class RingBufferLogHandler(logging.Handler):
         if module:
             module_prefix = module + "."
             records = [
-                r for r in records
-                if r["module"] == module or r["module"].startswith(module_prefix)
+                r for r in records if r["module"] == module or r["module"].startswith(module_prefix)
             ]
 
         if level:
             threshold = logging.getLevelName(level.upper())
             if isinstance(threshold, int):
-                records = [
-                    r for r in records
-                    if logging.getLevelName(r["level"]) >= threshold
-                ]
+                records = [r for r in records if logging.getLevelName(r["level"]) >= threshold]
 
         return records[: max(0, limit)]
 

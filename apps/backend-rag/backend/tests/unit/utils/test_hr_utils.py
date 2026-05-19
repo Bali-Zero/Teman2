@@ -15,6 +15,7 @@ from backend.app.utils.hr_utils import (
 
 # ─── RBAC ────────────────────────────────────────────────────────────────
 
+
 class TestIsHrAdmin:
     def test_admin_by_email(self) -> None:
         assert is_hr_admin({"email": "zero@balizero.com", "role": "member"})
@@ -37,6 +38,7 @@ class TestIsHrAdmin:
 
 
 # ─── PPh21 ───────────────────────────────────────────────────────────────
+
 
 class TestPPh21:
     def test_below_ptkp_is_zero(self) -> None:
@@ -73,6 +75,7 @@ class TestPPh21:
 
 
 # ─── BPJS ────────────────────────────────────────────────────────────────
+
 
 class TestBPJS:
     def test_standard_salary(self) -> None:
@@ -113,6 +116,7 @@ class TestBPJS:
 
 # ─── Total Deductions ────────────────────────────────────────────────────
 
+
 class TestTotalDeductions:
     def test_deduction_sum(self) -> None:
         d = total_employee_deductions(10_000_000, "TK/0")
@@ -122,6 +126,7 @@ class TestTotalDeductions:
 
 
 # ─── THR ─────────────────────────────────────────────────────────────────
+
 
 class TestTHR:
     def test_full_year(self) -> None:
@@ -146,6 +151,7 @@ class TestTHR:
 
 
 # ─── UMK ─────────────────────────────────────────────────────────────────
+
 
 class TestUMK:
     def test_above_minimum(self) -> None:

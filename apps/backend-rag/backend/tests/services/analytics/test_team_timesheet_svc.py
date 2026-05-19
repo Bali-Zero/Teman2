@@ -58,7 +58,9 @@ def _make_daily_row(
     row.__getitem__ = lambda self, key: {
         "user_id": user_id,
         "email": email,
-        "work_date": (work_date or now).date() if isinstance(work_date or now, datetime) else work_date,
+        "work_date": (work_date or now).date()
+        if isinstance(work_date or now, datetime)
+        else work_date,
         "clock_in_bali": clock_in_bali or now.replace(hour=9, minute=0),
         "clock_out_bali": clock_out_bali or now.replace(hour=17, minute=0),
         "hours_worked": hours_worked,
@@ -81,7 +83,9 @@ def _make_weekly_row(
     row.__getitem__ = lambda self, key: {
         "user_id": user_id,
         "email": email,
-        "week_start": (week_start or now).date() if isinstance(week_start or now, datetime) else week_start,
+        "week_start": (week_start or now).date()
+        if isinstance(week_start or now, datetime)
+        else week_start,
         "days_worked": days_worked,
         "total_hours": total_hours,
         "avg_hours_per_day": avg_hours_per_day,
@@ -221,7 +225,8 @@ class TestModuleFunctions:
 class TestAutoLogoutMonitor:
     @pytest.mark.asyncio
     async def test_start_auto_logout_monitor_sets_running(
-        self, service: TeamTimesheetService,
+        self,
+        service: TeamTimesheetService,
     ) -> None:
         """Starting the monitor should set running=True and create a task."""
         assert service.running is False
@@ -239,7 +244,8 @@ class TestAutoLogoutMonitor:
 
     @pytest.mark.asyncio
     async def test_start_auto_logout_monitor_is_idempotent(
-        self, service: TeamTimesheetService,
+        self,
+        service: TeamTimesheetService,
     ) -> None:
         """Calling start twice should not create a second task."""
         with patch.object(service, "_auto_logout_loop", new_callable=AsyncMock):
@@ -253,7 +259,8 @@ class TestAutoLogoutMonitor:
 
     @pytest.mark.asyncio
     async def test_stop_auto_logout_monitor_clears_state(
-        self, service: TeamTimesheetService,
+        self,
+        service: TeamTimesheetService,
     ) -> None:
         """Stopping the monitor should set running=False."""
         with patch.object(service, "_auto_logout_loop", new_callable=AsyncMock):
@@ -271,7 +278,9 @@ class TestAutoLogoutMonitor:
 class TestClockIn:
     @pytest.mark.asyncio
     async def test_clock_in_success(
-        self, service: TeamTimesheetService, conn: AsyncMock,
+        self,
+        service: TeamTimesheetService,
+        conn: AsyncMock,
     ) -> None:
         """First clock-in of the day should succeed."""
         # No existing session
@@ -288,7 +297,9 @@ class TestClockIn:
 
     @pytest.mark.asyncio
     async def test_clock_in_already_clocked_in_today(
-        self, service: TeamTimesheetService, conn: AsyncMock,
+        self,
+        service: TeamTimesheetService,
+        conn: AsyncMock,
     ) -> None:
         """If user is already clocked in today, should return error."""
         now = datetime.now(BALI_TZ)
@@ -307,7 +318,9 @@ class TestClockIn:
 
     @pytest.mark.asyncio
     async def test_clock_in_stale_session_allows_new_clock_in(
-        self, service: TeamTimesheetService, conn: AsyncMock,
+        self,
+        service: TeamTimesheetService,
+        conn: AsyncMock,
     ) -> None:
         """If online but last action was yesterday, allow new clock-in."""
         yesterday = datetime.now(BALI_TZ) - timedelta(days=1)
@@ -324,7 +337,9 @@ class TestClockIn:
 
     @pytest.mark.asyncio
     async def test_clock_in_with_metadata(
-        self, service: TeamTimesheetService, conn: AsyncMock,
+        self,
+        service: TeamTimesheetService,
+        conn: AsyncMock,
     ) -> None:
         """Metadata (ip, user_agent) should be serialised to JSONB."""
         conn.fetchrow.return_value = None
@@ -365,7 +380,9 @@ class TestClockIn:
 class TestClockOut:
     @pytest.mark.asyncio
     async def test_clock_out_success(
-        self, service: TeamTimesheetService, conn: AsyncMock,
+        self,
+        service: TeamTimesheetService,
+        conn: AsyncMock,
     ) -> None:
         """Clock-out when currently clocked in should succeed and report hours."""
         clock_in_time = datetime.now(BALI_TZ) - timedelta(hours=4)
@@ -389,7 +406,9 @@ class TestClockOut:
 
     @pytest.mark.asyncio
     async def test_clock_out_not_clocked_in(
-        self, service: TeamTimesheetService, conn: AsyncMock,
+        self,
+        service: TeamTimesheetService,
+        conn: AsyncMock,
     ) -> None:
         """Clock-out when not clocked in should return error."""
         conn.fetchrow.return_value = None
@@ -402,7 +421,9 @@ class TestClockOut:
 
     @pytest.mark.asyncio
     async def test_clock_out_with_offline_status(
-        self, service: TeamTimesheetService, conn: AsyncMock,
+        self,
+        service: TeamTimesheetService,
+        conn: AsyncMock,
     ) -> None:
         """If status shows is_online=False, clock-out should fail."""
         status_row = _make_status_row(is_online=False, action_type="clock_out")
@@ -417,7 +438,9 @@ class TestClockOut:
 
     @pytest.mark.asyncio
     async def test_clock_out_handles_naive_clock_in_time(
-        self, service: TeamTimesheetService, conn: AsyncMock,
+        self,
+        service: TeamTimesheetService,
+        conn: AsyncMock,
     ) -> None:
         """If clock_in_time from DB is naive, it should be coerced to BALI_TZ."""
         # Use datetime.now(BALI_TZ) then strip tz so the test is timezone-
@@ -450,7 +473,9 @@ class TestClockOut:
 class TestGetMyStatus:
     @pytest.mark.asyncio
     async def test_get_my_status_online(
-        self, service: TeamTimesheetService, conn: AsyncMock,
+        self,
+        service: TeamTimesheetService,
+        conn: AsyncMock,
     ) -> None:
         """Returns online status with today's and weekly hours."""
         now = datetime.now(BALI_TZ)
@@ -479,7 +504,9 @@ class TestGetMyStatus:
 
     @pytest.mark.asyncio
     async def test_get_my_status_no_records(
-        self, service: TeamTimesheetService, conn: AsyncMock,
+        self,
+        service: TeamTimesheetService,
+        conn: AsyncMock,
     ) -> None:
         """Returns defaults when user has no timesheet records."""
         conn.fetchrow.return_value = None
@@ -501,12 +528,18 @@ class TestGetMyStatus:
 class TestGetTeamOnlineStatus:
     @pytest.mark.asyncio
     async def test_get_team_online_status_returns_list(
-        self, service: TeamTimesheetService, conn: AsyncMock,
+        self,
+        service: TeamTimesheetService,
+        conn: AsyncMock,
     ) -> None:
         """Should return a list of team member statuses."""
         now = datetime.now(BALI_TZ)
-        row1 = _make_status_row(user_id="u1", email="a@bz.com", is_online=True, last_action_bali=now)
-        row2 = _make_status_row(user_id="u2", email="b@bz.com", is_online=False, last_action_bali=now)
+        row1 = _make_status_row(
+            user_id="u1", email="a@bz.com", is_online=True, last_action_bali=now
+        )
+        row2 = _make_status_row(
+            user_id="u2", email="b@bz.com", is_online=False, last_action_bali=now
+        )
 
         mock_row1 = MagicMock(**{"__getitem__": lambda self, key: row1[key]})
         mock_row2 = MagicMock(**{"__getitem__": lambda self, key: row2[key]})
@@ -522,7 +555,9 @@ class TestGetTeamOnlineStatus:
 
     @pytest.mark.asyncio
     async def test_get_team_online_status_empty(
-        self, service: TeamTimesheetService, conn: AsyncMock,
+        self,
+        service: TeamTimesheetService,
+        conn: AsyncMock,
     ) -> None:
         """Returns empty list when no team members found."""
         conn.fetch.return_value = []
@@ -540,7 +575,9 @@ class TestGetTeamOnlineStatus:
 class TestGetDailyHours:
     @pytest.mark.asyncio
     async def test_get_daily_hours_defaults_to_today(
-        self, service: TeamTimesheetService, conn: AsyncMock,
+        self,
+        service: TeamTimesheetService,
+        conn: AsyncMock,
     ) -> None:
         """When no date is passed, should query for today in Bali time."""
         row = _make_daily_row(hours_worked=7.5)
@@ -554,7 +591,9 @@ class TestGetDailyHours:
 
     @pytest.mark.asyncio
     async def test_get_daily_hours_with_specific_date(
-        self, service: TeamTimesheetService, conn: AsyncMock,
+        self,
+        service: TeamTimesheetService,
+        conn: AsyncMock,
     ) -> None:
         """When a datetime is passed, should extract the date part."""
         conn.fetch.return_value = []
@@ -576,7 +615,9 @@ class TestGetDailyHours:
 class TestGetWeeklySummary:
     @pytest.mark.asyncio
     async def test_get_weekly_summary_defaults_to_current_week(
-        self, service: TeamTimesheetService, conn: AsyncMock,
+        self,
+        service: TeamTimesheetService,
+        conn: AsyncMock,
     ) -> None:
         """Should default to the current week start (Monday)."""
         row = _make_weekly_row(days_worked=3, total_hours=24.0, avg_hours_per_day=8.0)
@@ -590,7 +631,9 @@ class TestGetWeeklySummary:
 
     @pytest.mark.asyncio
     async def test_get_weekly_summary_empty(
-        self, service: TeamTimesheetService, conn: AsyncMock,
+        self,
+        service: TeamTimesheetService,
+        conn: AsyncMock,
     ) -> None:
         """Returns empty list when no data for the week."""
         conn.fetch.return_value = []
@@ -608,7 +651,9 @@ class TestGetWeeklySummary:
 class TestGetMonthlySummary:
     @pytest.mark.asyncio
     async def test_get_monthly_summary_defaults_to_current_month(
-        self, service: TeamTimesheetService, conn: AsyncMock,
+        self,
+        service: TeamTimesheetService,
+        conn: AsyncMock,
     ) -> None:
         """Should default to the 1st of the current month."""
         row = _make_monthly_row(days_worked=20, total_hours=160.0, avg_hours_per_day=8.0)
@@ -622,7 +667,9 @@ class TestGetMonthlySummary:
 
     @pytest.mark.asyncio
     async def test_get_monthly_summary_with_specific_month(
-        self, service: TeamTimesheetService, conn: AsyncMock,
+        self,
+        service: TeamTimesheetService,
+        conn: AsyncMock,
     ) -> None:
         """Passing a datetime should extract month_start as the 1st."""
         conn.fetch.return_value = []
@@ -646,7 +693,9 @@ class TestGetMonthlySummary:
 class TestExportTimesheetCsv:
     @pytest.mark.asyncio
     async def test_export_timesheet_csv_generates_header_and_rows(
-        self, service: TeamTimesheetService, conn: AsyncMock,
+        self,
+        service: TeamTimesheetService,
+        conn: AsyncMock,
     ) -> None:
         """CSV should have a header and one row per daily_work_hours record."""
         row = _make_daily_row(hours_worked=8.0)
@@ -663,7 +712,9 @@ class TestExportTimesheetCsv:
 
     @pytest.mark.asyncio
     async def test_export_timesheet_csv_empty(
-        self, service: TeamTimesheetService, conn: AsyncMock,
+        self,
+        service: TeamTimesheetService,
+        conn: AsyncMock,
     ) -> None:
         """No data should produce header only."""
         conn.fetch.return_value = []
@@ -678,7 +729,9 @@ class TestExportTimesheetCsv:
 
     @pytest.mark.asyncio
     async def test_export_timesheet_csv_uses_date_part(
-        self, service: TeamTimesheetService, conn: AsyncMock,
+        self,
+        service: TeamTimesheetService,
+        conn: AsyncMock,
     ) -> None:
         """Datetime args should be converted to date for the SQL query."""
         conn.fetch.return_value = []

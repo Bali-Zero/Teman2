@@ -156,7 +156,9 @@ async def create_interaction(
     try:
         async with db_pool.acquire() as conn:
             if interaction.client_id:
-                await verify_client_access(interaction.client_id, current_user, conn, allow_assigned=True)
+                await verify_client_access(
+                    interaction.client_id, current_user, conn, allow_assigned=True
+                )
             # Insert interaction
             # Note: 'type' and 'content' are legacy NOT NULL columns that must be populated
             content_value = interaction.summary or interaction.subject or "Interaction"
@@ -216,7 +218,10 @@ async def create_interaction(
                 team_member=interaction.team_member,
             )
             log_database_operation(
-                logger, "CREATE", "interactions", record_id=new_interaction["id"],
+                logger,
+                "CREATE",
+                "interactions",
+                record_id=new_interaction["id"],
             )
 
             await invalidate_cache("zantara:crm_interactions_stats:*")
@@ -355,7 +360,8 @@ async def get_interaction(
                     row["team_member"] or ""
                 ).lower() != user_email:
                     raise HTTPException(
-                        status_code=403, detail="You don't have access to this interaction",
+                        status_code=403,
+                        detail="You don't have access to this interaction",
                     )
 
             return dict(row)
@@ -427,7 +433,9 @@ async def get_practice_history(
     try:
         async with db_pool.acquire() as conn:
             # Check practice exists and RBAC via its client_id
-            check = await conn.fetchrow("SELECT id, client_id FROM practices WHERE id = $1", practice_id)
+            check = await conn.fetchrow(
+                "SELECT id, client_id FROM practices WHERE id = $1", practice_id
+            )
             if not check:
                 raise HTTPException(status_code=404, detail="Practice not found")
             await verify_client_access(check["client_id"], current_user, conn, allow_assigned=True)
@@ -616,7 +624,8 @@ async def create_interaction_from_conversation(
         async with db_pool.acquire() as conn:
             # Get or create client by email
             client_row = await conn.fetchrow(
-                "SELECT id FROM clients WHERE email = $1", client_email,
+                "SELECT id FROM clients WHERE email = $1",
+                client_email,
             )
 
             if not client_row:
@@ -662,7 +671,8 @@ async def create_interaction_from_conversation(
             # Auto-generate summary if not provided (take first user message)
             if not summary and conv_row and conv_row.get("messages"):
                 first_user_msg = next(
-                    (m for m in conv_row["messages"] if m.get("role") == "user"), None,
+                    (m for m in conv_row["messages"] if m.get("role") == "user"),
+                    None,
                 )
                 if first_user_msg:
                     summary = first_user_msg.get("content", "")[:SUMMARY_MAX_LENGTH]
@@ -753,7 +763,8 @@ async def delete_interaction(
                 created_by = (existing.get("created_by") or "").lower()
                 if created_by != user_email:
                     raise HTTPException(
-                        status_code=403, detail="You can only delete interactions you created",
+                        status_code=403,
+                        detail="You can only delete interactions you created",
                     )
 
             # Delete the interaction

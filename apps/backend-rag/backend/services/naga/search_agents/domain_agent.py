@@ -222,9 +222,7 @@ class IndonesiaDomainAgent(BaseSearchAgent):
             logger.warning("search_intel failed for query: %s", combined[:80], exc_info=True)
             return []
 
-    async def _call_notebook_query(
-        self, notebook_id: str, combined: str
-    ) -> list[SearchResult]:
+    async def _call_notebook_query(self, notebook_id: str, combined: str) -> list[SearchResult]:
         try:
             resp = await self._notebook_query(notebook_id=notebook_id, query=combined)
             text = resp.get("text", "") if isinstance(resp, dict) else str(resp)

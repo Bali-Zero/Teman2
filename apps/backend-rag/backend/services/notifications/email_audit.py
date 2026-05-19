@@ -33,15 +33,17 @@ _OWNER_CHAT_ID: str = os.getenv("TELEGRAM_OWNER_CHAT_ID", "1125336968")
 
 # Email types treated as operationally critical. Failure on these triggers a
 # Telegram alert immediately (bypassing the retry queue's 3-attempt wait).
-CRITICAL_EMAIL_TYPES: frozenset[str] = frozenset({
-    "waiting_docs_client",
-    "waiting_docs_team",
-    "completion_client",
-    "completion_team",
-    "hr_bonus",
-    "invoice_client",
-    "welcome",
-})
+CRITICAL_EMAIL_TYPES: frozenset[str] = frozenset(
+    {
+        "waiting_docs_client",
+        "waiting_docs_team",
+        "completion_client",
+        "completion_team",
+        "hr_bonus",
+        "invoice_client",
+        "welcome",
+    }
+)
 
 # Email types whose body cannot be reconstructed at retry time
 # (personalized HTML, document URLs, brochure attachments). The retry
@@ -54,11 +56,13 @@ CRITICAL_EMAIL_TYPES: frozenset[str] = frozenset({
 # waiting_docs_team, completion_team, invoice_client, cron_*) are
 # acceptable to retry because a resent plain notification still conveys
 # the actionable content.
-NON_RESURRECTABLE_EMAIL_TYPES: frozenset[str] = frozenset({
-    "waiting_docs_client",
-    "completion_client",
-    "welcome",
-})
+NON_RESURRECTABLE_EMAIL_TYPES: frozenset[str] = frozenset(
+    {
+        "waiting_docs_client",
+        "completion_client",
+        "welcome",
+    }
+)
 
 # Retry schedule: 1h after first failure, 4h after second, escalate after third.
 _RETRY_BACKOFF = (

@@ -86,8 +86,11 @@ def _get_service(request: Request) -> Any:
     db_pool = getattr(request.app.state, "db_pool", None)
     service = PrimeNexusService(cache_service=cache_service, db_pool=db_pool)
     request.app.state.prime_nexus_service = service
-    logger.info("✅ [PrimeNexus] Service initialized (cache=%s, pool=%s)",
-                cache_service is not None, db_pool is not None)
+    logger.info(
+        "✅ [PrimeNexus] Service initialized (cache=%s, pool=%s)",
+        cache_service is not None,
+        db_pool is not None,
+    )
     return service
 
 
@@ -153,8 +156,10 @@ async def intelligence_overlay(
     """
     service = _get_service(request)
     return await service.intelligence(
-        sw_lat=sw_lat, sw_lng=sw_lng,
-        ne_lat=ne_lat, ne_lng=ne_lng,
+        sw_lat=sw_lat,
+        sw_lng=sw_lng,
+        ne_lat=ne_lat,
+        ne_lng=ne_lng,
     )
 
 
@@ -212,7 +217,9 @@ async def temporal_intelligence(
     """
     service = _get_service(request)
     return await service.temporal(
-        zone_code=zone_code, period=period, granularity=granularity,
+        zone_code=zone_code,
+        period=period,
+        granularity=granularity,
     )
 
 
@@ -261,11 +268,16 @@ async def create_proposal(req: CreateProposalRequest, request: Request) -> dict[
     """
     service = _get_service(request)
     result = await service.create_proposal(
-        lat=req.lat, lng=req.lng, zone_code=req.zone_code,
-        zone_name=req.zone_name, kbli_code=req.kbli_code,
-        verdict_label=req.verdict_label, verdict_score=req.verdict_score,
+        lat=req.lat,
+        lng=req.lng,
+        zone_code=req.zone_code,
+        zone_name=req.zone_name,
+        kbli_code=req.kbli_code,
+        verdict_label=req.verdict_label,
+        verdict_score=req.verdict_score,
         analysis_snapshot=req.analysis_snapshot,
-        investor_name=req.investor_name, investor_email=req.investor_email,
+        investor_name=req.investor_name,
+        investor_email=req.investor_email,
         investor_nationality=req.investor_nationality,
     )
     await invalidate_cache("zantara:prime_proposals:*")

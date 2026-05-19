@@ -181,18 +181,20 @@ class TestAuditorFlushBufferError:
         auditor = CRMAuditor(pool)
 
         # Add entry
-        auditor._buffer.append({
-            "action": "client_created",
-            "entity_type": "client",
-            "entity_id": "1",
-            "user_id": "user",
-            "changes": None,
-            "old_values": None,
-            "new_values": None,
-            "metadata": {},
-            "ip_address": None,
-            "user_agent": None,
-        })
+        auditor._buffer.append(
+            {
+                "action": "client_created",
+                "entity_type": "client",
+                "entity_id": "1",
+                "user_id": "user",
+                "changes": None,
+                "old_values": None,
+                "new_values": None,
+                "metadata": {},
+                "ip_address": None,
+                "user_agent": None,
+            }
+        )
 
         conn.execute = AsyncMock(side_effect=Exception("DB error"))
 
@@ -235,10 +237,12 @@ class TestUpdatePracticeStatusError:
     async def test_update_practice_status_db_error(self, mock_pool: tuple) -> None:
         pool, conn = mock_pool
         # First fetchrow returns old status
-        conn.fetchrow = AsyncMock(side_effect=[
-            {"status": "in_progress", "client_id": 1},
-            Exception("DB error on update"),
-        ])
+        conn.fetchrow = AsyncMock(
+            side_effect=[
+                {"status": "in_progress", "client_id": 1},
+                Exception("DB error on update"),
+            ]
+        )
 
         svc = EnhancedCRMService(pool)
 
@@ -261,67 +265,80 @@ class TestCreateHRBonusEntry:
         svc = EnhancedCRMService(pool)
         # Should not raise
         await svc._create_hr_bonus_entry(
-            1, {"assigned_to": "alice@balizero.com"},
+            1,
+            {"assigned_to": "alice@balizero.com"},
         )
 
     @pytest.mark.asyncio
     async def test_bonus_no_rate(self, mock_pool: tuple) -> None:
         pool, conn = mock_pool
         conn.fetchval = AsyncMock(return_value=True)  # table exists
-        conn.fetchrow = AsyncMock(side_effect=[
-            {"code": "KITAS"},  # practice_type found
-            None,  # no rate found
-        ])
+        conn.fetchrow = AsyncMock(
+            side_effect=[
+                {"code": "KITAS"},  # practice_type found
+                None,  # no rate found
+            ]
+        )
 
         svc = EnhancedCRMService(pool)
         await svc._create_hr_bonus_entry(
-            1, {"assigned_to": "alice@balizero.com"},
+            1,
+            {"assigned_to": "alice@balizero.com"},
         )
 
     @pytest.mark.asyncio
     async def test_bonus_no_employee(self, mock_pool: tuple) -> None:
         pool, conn = mock_pool
         conn.fetchval = AsyncMock(return_value=True)
-        conn.fetchrow = AsyncMock(side_effect=[
-            {"code": "KITAS"},  # practice_type
-            {"id": 1, "amount_idr": 500000},  # rate
-            None,  # no employee
-        ])
+        conn.fetchrow = AsyncMock(
+            side_effect=[
+                {"code": "KITAS"},  # practice_type
+                {"id": 1, "amount_idr": 500000},  # rate
+                None,  # no employee
+            ]
+        )
 
         svc = EnhancedCRMService(pool)
         await svc._create_hr_bonus_entry(
-            1, {"assigned_to": "alice@balizero.com"},
+            1,
+            {"assigned_to": "alice@balizero.com"},
         )
 
     @pytest.mark.asyncio
     async def test_bonus_duplicate(self, mock_pool: tuple) -> None:
         pool, conn = mock_pool
         conn.fetchval = AsyncMock(side_effect=[True, 42])  # table exists, existing bonus
-        conn.fetchrow = AsyncMock(side_effect=[
-            {"code": "KITAS"},  # practice_type
-            {"id": 1, "amount_idr": 500000},  # rate
-            {"id": 10},  # employee
-        ])
+        conn.fetchrow = AsyncMock(
+            side_effect=[
+                {"code": "KITAS"},  # practice_type
+                {"id": 1, "amount_idr": 500000},  # rate
+                {"id": 10},  # employee
+            ]
+        )
 
         svc = EnhancedCRMService(pool)
         await svc._create_hr_bonus_entry(
-            1, {"assigned_to": "alice@balizero.com"},
+            1,
+            {"assigned_to": "alice@balizero.com"},
         )
 
     @pytest.mark.asyncio
     async def test_bonus_success(self, mock_pool: tuple) -> None:
         pool, conn = mock_pool
         conn.fetchval = AsyncMock(side_effect=[True, None])  # table exists, no duplicate
-        conn.fetchrow = AsyncMock(side_effect=[
-            {"code": "KITAS"},  # practice_type
-            {"id": 1, "amount_idr": 500000},  # rate
-            {"id": 10},  # employee
-        ])
+        conn.fetchrow = AsyncMock(
+            side_effect=[
+                {"code": "KITAS"},  # practice_type
+                {"id": 1, "amount_idr": 500000},  # rate
+                {"id": 10},  # employee
+            ]
+        )
         conn.execute = AsyncMock()
 
         svc = EnhancedCRMService(pool)
         await svc._create_hr_bonus_entry(
-            1, {"assigned_to": "alice@balizero.com"},
+            1,
+            {"assigned_to": "alice@balizero.com"},
         )
         conn.execute.assert_awaited_once()
 
@@ -332,7 +349,8 @@ class TestCreateHRBonusEntry:
 
         svc = EnhancedCRMService(pool)
         await svc._create_hr_bonus_entry(
-            1, {"assigned_to": "alice@balizero.com"},
+            1,
+            {"assigned_to": "alice@balizero.com"},
         )
 
     @pytest.mark.asyncio
@@ -343,7 +361,8 @@ class TestCreateHRBonusEntry:
         svc = EnhancedCRMService(pool)
         # Should not raise
         await svc._create_hr_bonus_entry(
-            1, {"assigned_to": "alice@balizero.com"},
+            1,
+            {"assigned_to": "alice@balizero.com"},
         )
 
 
@@ -392,11 +411,18 @@ class TestAuditAction:
     def test_all_members(self) -> None:
         # Ensure the enum has all expected members
         expected = {
-            "CLIENT_CREATED", "CLIENT_UPDATED", "CLIENT_DELETED",
-            "PRACTICE_CREATED", "PRACTICE_UPDATED", "PRACTICE_DELETED",
+            "CLIENT_CREATED",
+            "CLIENT_UPDATED",
+            "CLIENT_DELETED",
+            "PRACTICE_CREATED",
+            "PRACTICE_UPDATED",
+            "PRACTICE_DELETED",
             "PRACTICE_STATUS_CHANGED",
-            "INTERACTION_CREATED", "INTERACTION_UPDATED",
-            "ASSIGNMENT_CHANGED", "DATA_EXPORTED", "BULK_OPERATION",
+            "INTERACTION_CREATED",
+            "INTERACTION_UPDATED",
+            "ASSIGNMENT_CHANGED",
+            "DATA_EXPORTED",
+            "BULK_OPERATION",
         }
         actual = {m.name for m in AuditAction}
         assert expected == actual

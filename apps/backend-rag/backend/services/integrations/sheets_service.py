@@ -85,7 +85,8 @@ class SheetsService:
         # Use Direct SA (DWD doesn't have Sheets scope in Workspace config).
         # The target spreadsheets must be shared with the SA email as Editor.
         credentials = service_account.Credentials.from_service_account_file(
-            creds_path, scopes=SCOPES,
+            creds_path,
+            scopes=SCOPES,
         )
         svc = build("sheets", "v4", credentials=credentials)
         self._connected_as = "service-account"

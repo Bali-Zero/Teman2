@@ -8,6 +8,7 @@ Used by EventBus handlers (handlers.py) and the RAG low-confidence trigger.
 
 Reference: docs/superpowers/specs/2026-04-14-organism-nervous-system-design.md §4
 """
+
 from __future__ import annotations
 
 import json
@@ -20,16 +21,18 @@ logger = logging.getLogger(__name__)
 
 
 # Whitelisted event types — anything else is rejected to keep the contract tight.
-ALLOWED_TYPES: frozenset[str] = frozenset({
-    # Phase 1
-    "crm.client_created",
-    "crm.client_sector_changed",
-    "crm.practice_completed",
-    "crm.practice_created",
-    # Phase 2 (entries pre-allowed so Phase 2 doesn't need a migration)
-    "compliance.critical_alert",
-    "rag.low_confidence",
-})
+ALLOWED_TYPES: frozenset[str] = frozenset(
+    {
+        # Phase 1
+        "crm.client_created",
+        "crm.client_sector_changed",
+        "crm.practice_completed",
+        "crm.practice_created",
+        # Phase 2 (entries pre-allowed so Phase 2 doesn't need a migration)
+        "compliance.critical_alert",
+        "rag.low_confidence",
+    }
+)
 
 
 async def insert_outbox_event(
@@ -43,13 +46,11 @@ async def insert_outbox_event(
     """
     if event_type not in ALLOWED_TYPES:
         raise ValueError(
-            f"event_type {event_type!r} not in ALLOWED_TYPES "
-            f"({sorted(ALLOWED_TYPES)})"
+            f"event_type {event_type!r} not in ALLOWED_TYPES ({sorted(ALLOWED_TYPES)})"
         )
 
     row = await conn.fetchrow(
-        "INSERT INTO bridge_outbox (type, payload) "
-        "VALUES ($1, $2::jsonb) RETURNING id",
+        "INSERT INTO bridge_outbox (type, payload) VALUES ($1, $2::jsonb) RETURNING id",
         event_type,
         json.dumps(payload, ensure_ascii=False),
     )

@@ -9,6 +9,7 @@ End-to-end compliance scenario:
   7. alert_outcomes row exists
   8. compute_metrics reflects new outcome
 """
+
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -78,7 +79,8 @@ async def test_full_flow_visa_expiry_to_metrics(db_tx, sample_client) -> None:
 
     # 7. verify outcome row
     count = await db_tx.fetchval(
-        "SELECT COUNT(*) FROM alert_outcomes WHERE alert_id = $1", alerts[0].alert_id,
+        "SELECT COUNT(*) FROM alert_outcomes WHERE alert_id = $1",
+        alerts[0].alert_id,
     )
     assert count == 1
 

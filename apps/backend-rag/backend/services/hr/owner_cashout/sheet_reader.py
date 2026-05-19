@@ -3,6 +3,7 @@
 Uses OWNER_CASHOUT_SA_JSON env var (raw JSON) OR OWNER_CASHOUT_SA_FILE (path).
 Scope: spreadsheets.readonly — this service is read-only by design.
 """
+
 from __future__ import annotations
 
 import json
@@ -60,9 +61,7 @@ class SheetReader:
             return self._service
 
         creds_path = self._resolve_credentials_path()
-        creds = service_account.Credentials.from_service_account_file(
-            creds_path, scopes=SCOPES
-        )
+        creds = service_account.Credentials.from_service_account_file(creds_path, scopes=SCOPES)
         self._service = build("sheets", "v4", credentials=creds, cache_discovery=False)
         logger.info("[CASHOUT] Sheets service initialized (SA)")
         return self._service
@@ -85,9 +84,6 @@ class SheetReader:
         """
         svc = self._get_service()
         result = (
-            svc.spreadsheets()
-            .values()
-            .get(spreadsheetId=spreadsheet_id, range=range_)
-            .execute()
+            svc.spreadsheets().values().get(spreadsheetId=spreadsheet_id, range=range_).execute()
         )
         return result.get("values", [])

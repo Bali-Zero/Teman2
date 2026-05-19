@@ -85,14 +85,13 @@ class TestB1_NoUndocumentedPublicRoutes:
             "/api/practices/123/close",
             "/api/memory/save",
             "/api/export/clients.csv",
-            "/api/agentic-rag/query",   # removed 2026-04-03 F-7 fix
+            "/api/agentic-rag/query",  # removed 2026-04-03 F-7 fix
             "/api/agentic-rag/stream",  # removed 2026-04-03 F-7 fix
         ]
         for path in sensitive:
             req = self._mock_request(path)
             assert not middleware.is_public_endpoint(req), (
-                f"Sensitive path {path!r} must require auth but registry "
-                "treats it as public"
+                f"Sensitive path {path!r} must require auth but registry treats it as public"
             )
 
 

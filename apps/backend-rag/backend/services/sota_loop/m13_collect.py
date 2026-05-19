@@ -4,6 +4,7 @@ Invoked by `com.balizero.sota.m13-collect.plist` through
 `scripts/wr2-cron-wrapper.sh backend.services.sota_loop.m13_collect`.
 Kill switch: system_settings.sota_m13_collect_enabled = 'true'.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -20,9 +21,7 @@ from backend.services.measurer.m13_feedback_loop import (
     M13FeedbackLoop,
 )
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("sota.m13.collect")
 
 
@@ -72,13 +71,9 @@ async def main() -> int:
                     continue
                 sensor = IGGraphSensor(token=token, ig_user_id=ig_id)
                 try:
-                    insights = await sensor._fetch_insights(
-                        post["post_external_id"], "IMAGE"
-                    )
+                    insights = await sensor._fetch_insights(post["post_external_id"], "IMAGE")
                 except Exception as e:
-                    logger.warning(
-                        "insights fetch failed for %s: %s", post["id"], e
-                    )
+                    logger.warning("insights fetch failed for %s: %s", post["id"], e)
                     continue
                 await m13.collect_post_metrics(
                     post_id=post["id"],

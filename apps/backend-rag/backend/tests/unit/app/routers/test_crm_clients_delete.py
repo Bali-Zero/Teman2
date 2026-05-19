@@ -65,6 +65,4 @@ class TestSoftDeleteSql:
         for required in ("deleted_at = NOW()", "status = 'inactive'", "deleted_at IS NULL"):
             if required not in sql_block:
                 missing.append(required)
-        assert not missing, (
-            f"Soft-delete SQL is missing required clause(s): {missing}"
-        )
+        assert not missing, f"Soft-delete SQL is missing required clause(s): {missing}"

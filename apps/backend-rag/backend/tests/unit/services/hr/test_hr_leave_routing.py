@@ -12,19 +12,22 @@ from backend.app.services.hr.hr_leave_routing import (
 
 
 class TestResolveApprover:
-    @pytest.mark.parametrize("requester,expected", [
-        ("kadek.tax@balizero.com",    "tax@balizero.com"),
-        ("angel.tax@balizero.com",    "tax@balizero.com"),
-        ("dewa.ayu.tax@balizero.com", "tax@balizero.com"),
-        ("faysha.tax@balizero.com",   "tax@balizero.com"),
-        ("dea@balizero.com",          "ruslana@balizero.com"),
-        ("rina@balizero.com",         "ruslana@balizero.com"),
-        ("tax@balizero.com",          ZERO_EMAIL),   # Veronika → Zero
-        ("asya@balizero.com",         ZERO_EMAIL),
-        ("ruslana@balizero.com",      ZERO_EMAIL),
-        ("zero@balizero.com",         ZERO_EMAIL),
-        ("random@balizero.com",       ZERO_EMAIL),   # unknown → Zero
-    ])
+    @pytest.mark.parametrize(
+        "requester,expected",
+        [
+            ("kadek.tax@balizero.com", "tax@balizero.com"),
+            ("angel.tax@balizero.com", "tax@balizero.com"),
+            ("dewa.ayu.tax@balizero.com", "tax@balizero.com"),
+            ("faysha.tax@balizero.com", "tax@balizero.com"),
+            ("dea@balizero.com", "ruslana@balizero.com"),
+            ("rina@balizero.com", "ruslana@balizero.com"),
+            ("tax@balizero.com", ZERO_EMAIL),  # Veronika → Zero
+            ("asya@balizero.com", ZERO_EMAIL),
+            ("ruslana@balizero.com", ZERO_EMAIL),
+            ("zero@balizero.com", ZERO_EMAIL),
+            ("random@balizero.com", ZERO_EMAIL),  # unknown → Zero
+        ],
+    )
     def test_routing_rules(self, requester: str, expected: str) -> None:
         assert resolve_approver(requester) == expected
 

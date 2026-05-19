@@ -306,7 +306,10 @@ class TestSampleEvaluation:
 
     @pytest.mark.asyncio
     async def test_evaluate_sample_unknown_method(
-        self, benchmark, sample_dataset, benchmark_config,
+        self,
+        benchmark,
+        sample_dataset,
+        benchmark_config,
     ):
         """Test that unknown method raises error."""
         with pytest.raises(ValueError, match="Unknown search method"):

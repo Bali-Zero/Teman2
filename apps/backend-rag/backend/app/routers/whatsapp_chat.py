@@ -106,7 +106,7 @@ async def notify_zero_conversation_log(
 
     log_text = f"""💬 **WhatsApp Bot Conversation Log**
 
-**Cliente:** {display_name} (+{phone[:4]}***{phone[-2:] if len(phone) > 4 else ''}) {lang_flag}
+**Cliente:** {display_name} (+{phone[:4]}***{phone[-2:] if len(phone) > 4 else ""}) {lang_flag}
 
 **Domanda:**
 _{client_msg_preview}_
@@ -269,7 +269,9 @@ async def process_whatsapp_message(
                 sender_name=sender_name,
             )
             if onboarding_result:
-                logger.info("🎯 Auto-triggered onboarding chain for %s: %s", phone, onboarding_result)
+                logger.info(
+                    "🎯 Auto-triggered onboarding chain for %s: %s", phone, onboarding_result
+                )
                 # Send confirmation message to client
                 await whatsapp_service.send_message(
                     phone=phone,
@@ -676,6 +678,7 @@ async def whatsapp_webhook(
                         continue
                     try:
                         from backend.services.channels import inbound_webhook_repo
+
                         await inbound_webhook_repo.persist(
                             db_pool,
                             channel="whatsapp",
@@ -687,7 +690,8 @@ async def whatsapp_webhook(
                             "WhatsApp webhook: persist failed "
                             "(message_id=%s): %s — falling back to "
                             "BackgroundTasks-only path",
-                            msg_id, exc,
+                            msg_id,
+                            exc,
                         )
 
     for entry in webhook.entry:
@@ -740,6 +744,7 @@ async def whatsapp_webhook(
     # Record webhook metric
     try:
         from backend.app.metrics import metrics_collector
+
         metrics_collector.record_webhook_request(channel="whatsapp", status="success")
     except Exception:
         pass  # Metrics must never break webhook processing

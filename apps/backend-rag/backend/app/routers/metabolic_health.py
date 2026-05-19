@@ -8,6 +8,7 @@ Produces: HTTP JSON snapshots of organism_metrics.db.
 Consumes: authenticated GET calls. Read-only — writes go through the
 scripts/metabolic_rollup.py cron job, not this router.
 """
+
 from __future__ import annotations
 
 import logging
@@ -42,6 +43,7 @@ def _get_store():
 
 def _get_analyzer(store):
     from cell_core.metabolic.trend import TrendAnalyzer
+
     return TrendAnalyzer(store)
 
 

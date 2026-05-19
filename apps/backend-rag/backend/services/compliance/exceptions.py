@@ -9,6 +9,7 @@ Four domain-specific exception classes — one per failure boundary:
 
 All are subclasses of ComplianceError for easy broad-catch.
 """
+
 from __future__ import annotations
 
 

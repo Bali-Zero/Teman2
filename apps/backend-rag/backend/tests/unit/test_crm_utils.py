@@ -25,6 +25,7 @@ class TestIsCrmAdmin:
     def test_none_user_is_not_admin(self):
         assert is_crm_admin(None) is False
 
+
 class TestCanViewAllClients:
     def test_admin_can_view_all(self):
         user = {"email": "zero@balizero.com", "role": "admin"}

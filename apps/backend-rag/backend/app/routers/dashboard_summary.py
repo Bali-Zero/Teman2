@@ -258,12 +258,16 @@ async def get_dashboard_summary(
             ),
             _with_timeout(
                 list_interactions(
-                    interaction_type="whatsapp", limit=5, user_id=user_id, pool=db_pool,
+                    interaction_type="whatsapp",
+                    limit=5,
+                    user_id=user_id,
+                    pool=db_pool,
                 ),
                 [],
             ),
             _with_timeout(
-                _get_email_stats(db_pool, user_id), {"connected": False, "unread_count": 0},
+                _get_email_stats(db_pool, user_id),
+                {"connected": False, "unread_count": 0},
             ),
             _with_timeout(_get_critical_deadlines(db_pool, user_id, is_admin), 0),
         ]

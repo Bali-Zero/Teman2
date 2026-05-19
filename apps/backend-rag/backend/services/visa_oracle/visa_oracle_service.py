@@ -63,8 +63,14 @@ VISA_METADATA: dict[str, dict[str, str]] = {
     "C22A&B Internship (60 Days)": {"duration": "60 days", "validity": "Single entry"},
     "C22A&B Internship (180 Days)": {"duration": "180 days", "validity": "Single entry"},
     # Multiple-entry visas
-    "D12 Business Investigation (1 Year)": {"duration": "Up to 60 days/stay", "validity": "1 year, multiple entry"},
-    "D12 Business Investigation (2 Years)": {"duration": "Up to 60 days/stay", "validity": "2 years, multiple entry"},
+    "D12 Business Investigation (1 Year)": {
+        "duration": "Up to 60 days/stay",
+        "validity": "1 year, multiple entry",
+    },
+    "D12 Business Investigation (2 Years)": {
+        "duration": "Up to 60 days/stay",
+        "validity": "2 years, multiple entry",
+    },
     # KITAS permits
     "E33G Remote Worker (Altus/Onshore)": {"duration": "1 year", "validity": "KITAS — renewable"},
     "E33G Remote Worker (Extend)": {"duration": "1 year", "validity": "KITAS — renewal"},
@@ -74,8 +80,14 @@ VISA_METADATA: dict[str, dict[str, str]] = {
     "Working KITAS (Altus/Onshore)": {"duration": "1 year", "validity": "KITAS — renewable"},
     "Working KITAS (Offshore)": {"duration": "1 year", "validity": "KITAS — offshore process"},
     "Working KITAS (Extend)": {"duration": "1 year", "validity": "KITAS — renewal"},
-    "Investor KITAS 2 Years (Altus/Onshore)": {"duration": "2 years", "validity": "KITAS — renewable"},
-    "Investor KITAS 2 Years (Offshore)": {"duration": "2 years", "validity": "KITAS — offshore process"},
+    "Investor KITAS 2 Years (Altus/Onshore)": {
+        "duration": "2 years",
+        "validity": "KITAS — renewable",
+    },
+    "Investor KITAS 2 Years (Offshore)": {
+        "duration": "2 years",
+        "validity": "KITAS — offshore process",
+    },
     "Investor KITAS 2 Years (Extend)": {"duration": "2 years", "validity": "KITAS — renewal"},
     "Retirement (Altus/Onshore)": {"duration": "1 year", "validity": "KITAS — renewable"},
     "Retirement (Offshore)": {"duration": "1 year", "validity": "KITAS — offshore process"},
@@ -90,7 +102,10 @@ VISA_METADATA: dict[str, dict[str, str]] = {
     "Dependent 1 Year (Offshore)": {"duration": "1 year", "validity": "KITAS dependent — offshore"},
     "Dependent 1 Year (Extend)": {"duration": "1 year", "validity": "KITAS dependent — renewal"},
     "Dependent 2 Years (Altus/Onshore)": {"duration": "2 years", "validity": "KITAS dependent"},
-    "Dependent 2 Years (Offshore)": {"duration": "2 years", "validity": "KITAS dependent — offshore"},
+    "Dependent 2 Years (Offshore)": {
+        "duration": "2 years",
+        "validity": "KITAS dependent — offshore",
+    },
     "Dependent 2 Years (Extend)": {"duration": "2 years", "validity": "KITAS dependent — renewal"},
     # KITAP
     "Investor KITAP + MERP": {"duration": "5 years", "validity": "KITAP — permanent residence"},
@@ -292,15 +307,13 @@ class VisaOracleService:
         family = quiz_answers.get("family", False)
 
         visa_lines = "\n".join(
-            f"  {i+1}. {v.get('visa_name', '?')} — {v.get('price', '?')} "
+            f"  {i + 1}. {v.get('visa_name', '?')} — {v.get('price', '?')} "
             f"(score: {v.get('score', 0):.1f})"
             for i, v in enumerate(recommended_visas[:3])
         )
 
         chat_count = len(messages)
-        handoff = any(
-            "whatsapp" in str(m.get("content", "")).lower() for m in messages
-        )
+        handoff = any("whatsapp" in str(m.get("content", "")).lower() for m in messages)
 
         summary = (
             f"*Visa Oracle Lead* 🧭\n"
@@ -396,7 +409,9 @@ class VisaOracleService:
              "B1 Visa on Arrival (VOA)" → "B1 Visa on Arrival (VOA)" (unchanged)
         """
         variant_suffixes = (
-            "(Altus/Onshore)", "(Offshore)", "(Extend)",
+            "(Altus/Onshore)",
+            "(Offshore)",
+            "(Extend)",
         )
         name = visa_name.strip()
         for suffix in variant_suffixes:

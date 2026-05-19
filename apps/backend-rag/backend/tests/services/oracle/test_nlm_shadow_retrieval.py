@@ -30,6 +30,7 @@ def _fresh_payload(**overrides) -> dict:
 
 # ── activation flag ──────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_disabled_returns_empty(monkeypatch):
     monkeypatch.delenv("NLM_SHADOW_RETRIEVAL_ENABLED", raising=False)
@@ -44,6 +45,7 @@ async def test_enabled_with_no_client_returns_empty(monkeypatch):
 
 
 # ── happy path ───────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_returns_top_k_filtered_by_confidence(monkeypatch):
@@ -70,16 +72,12 @@ async def test_domain_filter_passed_to_qdrant(monkeypatch):
     client = MagicMock()
     client.search = MagicMock(return_value=[_hit(_fresh_payload(nb_label="tax"))])
 
-    await nsr.search_nlm_shadow_claims(
-        [0.0] * 1536, domain="tax", qdrant_client=client
-    )
+    await nsr.search_nlm_shadow_claims([0.0] * 1536, domain="tax", qdrant_client=client)
 
     # Verify the Qdrant filter included nb_label=tax
     call_kwargs = client.search.call_args.kwargs
     qfilter = call_kwargs["query_filter"]
-    nb_conditions = [
-        c for c in qfilter.must if getattr(c, "key", None) == "nb_label"
-    ]
+    nb_conditions = [c for c in qfilter.must if getattr(c, "key", None) == "nb_label"]
     assert len(nb_conditions) == 1
     assert nb_conditions[0].match.value == "tax"
 
@@ -90,9 +88,7 @@ async def test_unknown_domain_dropped(monkeypatch):
     client = MagicMock()
     client.search = MagicMock(return_value=[])
 
-    await nsr.search_nlm_shadow_claims(
-        [0.0] * 1536, domain="not-a-domain", qdrant_client=client
-    )
+    await nsr.search_nlm_shadow_claims([0.0] * 1536, domain="not-a-domain", qdrant_client=client)
 
     # Filter must NOT include nb_label since the domain was rejected
     qfilter = client.search.call_args.kwargs["query_filter"]
@@ -101,6 +97,7 @@ async def test_unknown_domain_dropped(monkeypatch):
 
 
 # ── expiration ───────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_expired_claims_are_dropped(monkeypatch):
@@ -127,14 +124,13 @@ async def test_expired_kept_when_skip_expired_false(monkeypatch):
     client = MagicMock()
     client.search = MagicMock(return_value=fake)
 
-    out = await nsr.search_nlm_shadow_claims(
-        [0.0] * 1536, qdrant_client=client, skip_expired=False
-    )
+    out = await nsr.search_nlm_shadow_claims([0.0] * 1536, qdrant_client=client, skip_expired=False)
     assert len(out) == 1
     assert out[0]["claim_text"] == "OLD"
 
 
 # ── error handling ───────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_qdrant_search_exception_returns_empty(monkeypatch):

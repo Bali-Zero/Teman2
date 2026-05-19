@@ -152,7 +152,9 @@ class SLAWorker:
         ]
 
     def _needs_repeat_alert(
-        self, draft: _PendingDraft, now: datetime,
+        self,
+        draft: _PendingDraft,
+        now: datetime,
     ) -> bool:
         """Quantize current time to ``repeat_interval`` to fire once per slot.
 
@@ -199,7 +201,7 @@ class SLAWorker:
             draft.draft_id,
             RejectionReason.SLA_EXPIRED,
             RejectedBy.SYSTEM,
-            reason_detail=f"SLA expired after {int(self.expire_threshold.total_seconds()//3600)}h",
+            reason_detail=f"SLA expired after {int(self.expire_threshold.total_seconds() // 3600)}h",
         )
         await self.telegram.send_message(
             chat_id=self.owner_chat_id,
@@ -215,9 +217,4 @@ class SLAWorker:
 def _escape_html(value: str) -> str:
     if value is None:
         return ""
-    return (
-        str(value)
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+    return str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

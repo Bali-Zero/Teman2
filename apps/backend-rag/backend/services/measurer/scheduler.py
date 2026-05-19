@@ -102,9 +102,7 @@ class MeasurementScheduler:
                     published_before=published_before,
                 )
             except Exception as exc:  # noqa: BLE001
-                result.errors.append(
-                    f"fetch {window.value}: {type(exc).__name__}: {exc}"
-                )
+                result.errors.append(f"fetch {window.value}: {type(exc).__name__}: {exc}")
                 continue
 
             new_posts = [p for p in posts if p.id not in seen]
@@ -117,9 +115,7 @@ class MeasurementScheduler:
                     result.per_post.append(measurement)
                     result.posts_measured += 1
                 except Exception as exc:  # noqa: BLE001
-                    result.errors.append(
-                        f"measure {post.id}: {type(exc).__name__}: {exc}"
-                    )
+                    result.errors.append(f"measure {post.id}: {type(exc).__name__}: {exc}")
         return result
 
     # ── DB helpers ─────────────────────────────────────────────────

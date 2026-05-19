@@ -191,7 +191,9 @@ async def lifespan(app: FastAPI):
                     run_worker as legal_run_worker,
                 )
 
-                legal_worker_task = asyncio.create_task(legal_run_worker(app.state.db_pool, app.state))
+                legal_worker_task = asyncio.create_task(
+                    legal_run_worker(app.state.db_pool, app.state)
+                )
                 app.state._legal_worker_task = legal_worker_task
                 logger.info("✅ Legal ingestion worker started (PG SKIP LOCKED)")
             except Exception as e:
@@ -235,6 +237,7 @@ async def lifespan(app: FastAPI):
                     from backend.services.events.handlers.crm_hgt_handlers import (
                         register_crm_hgt_handlers,
                     )
+
                     register_crm_hgt_handlers(event_bus)
                 except Exception as crm_exc:
                     logger.warning(
@@ -258,9 +261,7 @@ async def lifespan(app: FastAPI):
                 # Per-channel handlers retry the same business logic the
                 # routers normally invoke synchronously. They re-route via
                 # the existing ChannelRouter on app.state.channel_router.
-                async def _route_via_channel_router(
-                    channel_name: str, payload: dict
-                ) -> None:
+                async def _route_via_channel_router(channel_name: str, payload: dict) -> None:
                     cr = getattr(app.state, "channel_router", None)
                     if cr is None:
                         raise RuntimeError(
@@ -280,9 +281,7 @@ async def lifespan(app: FastAPI):
                 )
                 await webhook_processor.start()
                 app.state.webhook_processor = webhook_processor
-                logger.info(
-                    "✅ WebhookProcessor started (whatsapp+telegram+instagram+twitter)"
-                )
+                logger.info("✅ WebhookProcessor started (whatsapp+telegram+instagram+twitter)")
             except Exception as e:
                 logger.error("⚠️ Failed to initialize WebhookProcessor: %s", e)
 
@@ -391,7 +390,8 @@ async def lifespan(app: FastAPI):
     attendance_monitor = getattr(app.state, "attendance_monitor", None)
     if attendance_monitor:
         await _safe_stop(
-            "Attendance Monitor", attendance_monitor.stop_schedulers(),
+            "Attendance Monitor",
+            attendance_monitor.stop_schedulers(),
         )
 
     # Shutdown Practice Status Listener (M4 + M5)

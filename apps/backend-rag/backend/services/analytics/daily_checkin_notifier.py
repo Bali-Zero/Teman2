@@ -45,7 +45,9 @@ class DailyCheckinNotifier:
 
         self.running = True
         self.task = asyncio.create_task(self._scheduler_loop())
-        logger.info("📧 Daily check-in notifier started (sends at %s:00 Bali time)", CHECK_TIME_HOUR)
+        logger.info(
+            "📧 Daily check-in notifier started (sends at %s:00 Bali time)", CHECK_TIME_HOUR
+        )
 
     async def stop(self) -> None:
         """Stop the notifier."""

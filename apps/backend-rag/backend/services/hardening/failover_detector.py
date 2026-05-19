@@ -30,7 +30,7 @@ class PeerState(str, Enum):
 
 @dataclass
 class FailoverState:
-    peer: str                  # e.g. "Nuzantara" (Pro hostname)
+    peer: str  # e.g. "Nuzantara" (Pro hostname)
     state: PeerState
     last_beat: datetime | None
     minutes_since_beat: float | None
@@ -108,7 +108,7 @@ class FailoverDetector:
                 state=PeerState.STALE,
                 last_beat=last,
                 minutes_since_beat=minutes,
-                should_failover=False,     # don't poach yet — Pro may wake
+                should_failover=False,  # don't poach yet — Pro may wake
                 reason=f"stale {minutes:.0f}min",
             )
         return FailoverState(

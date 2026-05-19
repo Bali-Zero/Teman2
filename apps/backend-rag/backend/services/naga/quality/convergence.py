@@ -64,17 +64,11 @@ def check_convergence(
         coverage = 1.0
         gap_questions: tuple[str, ...] = ()
     else:
-        covered = sum(
-            1 for q in sub_questions if claims_per_question.get(q, 0) >= 1
-        )
+        covered = sum(1 for q in sub_questions if claims_per_question.get(q, 0) >= 1)
         coverage = covered / len(sub_questions)
-        gap_questions = tuple(
-            q for q in sub_questions if claims_per_question.get(q, 0) == 0
-        )
+        gap_questions = tuple(q for q in sub_questions if claims_per_question.get(q, 0) == 0)
 
-    novelty = (
-        new_claims_this_iteration / total_claims if total_claims > 0 else 1.0
-    )
+    novelty = new_claims_this_iteration / total_claims if total_claims > 0 else 1.0
 
     # -- Decision logic ---------------------------------------------------
     # 0. Empty sub-questions -> CONVERGED (nothing to cover)

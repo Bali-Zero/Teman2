@@ -108,6 +108,7 @@ def _build_drive_service() -> Any:
             creds_dict = json.loads(creds_json)
         except json.JSONDecodeError:
             import base64
+
             creds_dict = json.loads(base64.b64decode(creds_json).decode())
 
         scopes = ["https://www.googleapis.com/auth/drive"]
@@ -171,9 +172,11 @@ def _drive_get_or_create_folder(
         f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' "
         f"and '{parent_id}' in parents and trashed = false"
     )
-    result = drive_service.files().list(
-        q=q, fields="files(id)", supportsAllDrives=True, includeItemsFromAllDrives=True
-    ).execute()
+    result = (
+        drive_service.files()
+        .list(q=q, fields="files(id)", supportsAllDrives=True, includeItemsFromAllDrives=True)
+        .execute()
+    )
     files = result.get("files", [])
     if files:
         return files[0]["id"]
@@ -183,9 +186,11 @@ def _drive_get_or_create_folder(
         "mimeType": "application/vnd.google-apps.folder",
         "parents": [parent_id],
     }
-    folder = drive_service.files().create(
-        body=folder_metadata, fields="id", supportsAllDrives=True
-    ).execute()
+    folder = (
+        drive_service.files()
+        .create(body=folder_metadata, fields="id", supportsAllDrives=True)
+        .execute()
+    )
     return folder["id"]
 
 
@@ -196,9 +201,16 @@ def _drive_find_file(
 ) -> dict[str, str] | None:
     """Find a file by exact name in a folder. Returns {file_id, web_view_link} or None."""
     q = f"name = '{file_name}' and '{folder_id}' in parents and trashed = false"
-    result = drive_service.files().list(
-        q=q, fields="files(id,webViewLink)", supportsAllDrives=True, includeItemsFromAllDrives=True
-    ).execute()
+    result = (
+        drive_service.files()
+        .list(
+            q=q,
+            fields="files(id,webViewLink)",
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True,
+        )
+        .execute()
+    )
     files = result.get("files", [])
     if not files:
         return None

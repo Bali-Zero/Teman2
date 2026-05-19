@@ -1,4 +1,5 @@
 """Tests for POST /api/admin/llm-costs/record endpoint."""
+
 import pytest
 from unittest.mock import AsyncMock, patch
 from fastapi import FastAPI
@@ -81,7 +82,7 @@ def test_post_record_rejects_negative_tokens(client):
         json={
             "provider": "gemini",
             "model": "test",
-            "input_tokens": -1,   # invalid — must be >= 0
+            "input_tokens": -1,  # invalid — must be >= 0
             "output_tokens": 10,
             "cost_usd": 0.01,
             "success": True,

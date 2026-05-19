@@ -68,10 +68,9 @@ class TestPrecisionAtK:
         assert count == 10
 
     def test_half_precision(self) -> None:
-        results = (
-            [{"text": f"KITAS doc {i}"} for i in range(5)]
-            + [{"text": f"unrelated doc {i}"} for i in range(5)]
-        )
+        results = [{"text": f"KITAS doc {i}"} for i in range(5)] + [
+            {"text": f"unrelated doc {i}"} for i in range(5)
+        ]
         precision, count = compute_precision_at_k(results, ["KITAS"], k=10)
         assert precision == 0.5
         assert count == 5
@@ -245,8 +244,12 @@ class TestAggregation:
 
     def test_aggregate_multiple_domains(self) -> None:
         results = [
-            QueryResult("v1", "q1", "visa", "visa_oracle", precision_at_10=0.8, mrr=1.0, ndcg_at_10=0.7),
-            QueryResult("t1", "q2", "tax", "tax_genius", precision_at_10=0.6, mrr=0.5, ndcg_at_10=0.5),
+            QueryResult(
+                "v1", "q1", "visa", "visa_oracle", precision_at_10=0.8, mrr=1.0, ndcg_at_10=0.7
+            ),
+            QueryResult(
+                "t1", "q2", "tax", "tax_genius", precision_at_10=0.6, mrr=0.5, ndcg_at_10=0.5
+            ),
         ]
         summary = aggregate_results(results)
         assert "visa" in summary.per_domain

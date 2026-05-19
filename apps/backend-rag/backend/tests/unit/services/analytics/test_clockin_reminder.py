@@ -66,7 +66,9 @@ async def test_send_clockin_reminder_sends_telegram(mock_pool):
         {"email": "dea@balizero.com"},
     ]
 
-    with patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "fake-token", "TELEGRAM_OWNER_CHAT_ID": "12345"}):
+    with patch.dict(
+        "os.environ", {"TELEGRAM_BOT_TOKEN": "fake-token", "TELEGRAM_OWNER_CHAT_ID": "12345"}
+    ):
         with patch("backend.services.analytics.attendance_monitor.httpx.AsyncClient") as mock_cls:
             mock_client = AsyncMock()
             mock_client.__aenter__ = AsyncMock(return_value=mock_client)

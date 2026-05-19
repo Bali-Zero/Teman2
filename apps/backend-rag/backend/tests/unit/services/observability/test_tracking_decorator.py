@@ -15,8 +15,9 @@ async def test_decorator_records_on_success():
         set_usage(input_tokens=100, output_tokens=0)
         return "ok"
 
-    with patch("backend.services.observability.tracking_decorator.record_llm_call",
-               new=AsyncMock()) as mock_rec:
+    with patch(
+        "backend.services.observability.tracking_decorator.record_llm_call", new=AsyncMock()
+    ) as mock_rec:
         result = await fake_call()
 
     assert result == "ok"
@@ -37,8 +38,9 @@ async def test_decorator_records_on_failure():
         set_usage(input_tokens=50, output_tokens=0)
         raise RuntimeError("boom")
 
-    with patch("backend.services.observability.tracking_decorator.record_llm_call",
-               new=AsyncMock()) as mock_rec:
+    with patch(
+        "backend.services.observability.tracking_decorator.record_llm_call", new=AsyncMock()
+    ) as mock_rec:
         with pytest.raises(RuntimeError):
             await fake_call()
 
@@ -57,8 +59,7 @@ async def test_decorator_never_raises_on_recorder_error():
     async def blowup(**_):
         raise OSError("disk full")
 
-    with patch("backend.services.observability.tracking_decorator.record_llm_call",
-               new=blowup):
+    with patch("backend.services.observability.tracking_decorator.record_llm_call", new=blowup):
         result = await fake_call()  # must not raise
 
     assert result == "ok"
@@ -75,8 +76,9 @@ async def test_decorator_uses_model_attr_from_self():
             return "ok"
 
     c = Client()
-    with patch("backend.services.observability.tracking_decorator.record_llm_call",
-               new=AsyncMock()) as mock_rec:
+    with patch(
+        "backend.services.observability.tracking_decorator.record_llm_call", new=AsyncMock()
+    ) as mock_rec:
         await c.call()
 
     assert mock_rec.await_args.kwargs["model"] == "dynamic-model-v2"
@@ -89,8 +91,9 @@ async def test_decorator_falls_back_to_zero_cost_on_unknown_model():
         set_usage(input_tokens=1, output_tokens=1)
         return "ok"
 
-    with patch("backend.services.observability.tracking_decorator.record_llm_call",
-               new=AsyncMock()) as mock_rec:
+    with patch(
+        "backend.services.observability.tracking_decorator.record_llm_call", new=AsyncMock()
+    ) as mock_rec:
         await fake_call()
 
     assert mock_rec.await_args.kwargs["cost_usd"] == 0.0

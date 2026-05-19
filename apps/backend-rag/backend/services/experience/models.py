@@ -10,6 +10,7 @@ quotes / backslashes in a tag would survive JSON escaping but the LIKE
 would miss them silently. Enforcing the slug rule here turns that silent
 failure into a 422 at the boundary.
 """
+
 from __future__ import annotations
 
 from enum import Enum

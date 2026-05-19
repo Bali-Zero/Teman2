@@ -48,7 +48,8 @@ async def get_team_members(
     async with pool.acquire() as conn:
         # Get current user's department and role
         user_row = await conn.fetchrow(
-            "SELECT department, role FROM team_members WHERE email = $1", user_email,
+            "SELECT department, role FROM team_members WHERE email = $1",
+            user_email,
         )
         user_dept = user_row["department"] if user_row else None
         user_role = (user_row["role"] or "").lower() if user_row else ""
@@ -72,9 +73,11 @@ async def get_team_members(
                    ORDER BY name""",
                 visible_emails,
             )
-        elif (
-            user_dept in ["board", "founders", "management"]
-            or user_role in ("founder", "ceo", "board member", "admin")
+        elif user_dept in ["board", "founders", "management"] or user_role in (
+            "founder",
+            "ceo",
+            "board member",
+            "admin",
         ):
             # Board, founders, management, and leadership roles see everyone
             members = await conn.fetch(

@@ -51,11 +51,17 @@ retrieval_scores_avg = safe_register_metric(
 )
 
 retrieval_scores_p95 = safe_register_metric(
-    Gauge, "rag_retrieval_scores_p95", "95th percentile retrieval score (0.0-1.0)", ["time_window"],
+    Gauge,
+    "rag_retrieval_scores_p95",
+    "95th percentile retrieval score (0.0-1.0)",
+    ["time_window"],
 )
 
 retrieval_scores_p99 = safe_register_metric(
-    Gauge, "rag_retrieval_scores_p99", "99th percentile retrieval score (0.0-1.0)", ["time_window"],
+    Gauge,
+    "rag_retrieval_scores_p99",
+    "99th percentile retrieval score (0.0-1.0)",
+    ["time_window"],
 )
 
 abstain_rate = safe_register_metric(
@@ -110,7 +116,9 @@ hybrid_search_usage = safe_register_metric(
 )
 
 reranker_usage = safe_register_metric(
-    Gauge, "rag_reranker_usage_percent", "Percentage of queries using reranking",
+    Gauge,
+    "rag_reranker_usage_percent",
+    "Percentage of queries using reranking",
 )
 
 reranker_improvement = safe_register_metric(
@@ -477,7 +485,8 @@ class RetrievalQualityMonitor:
             # Check threshold breach
             if score < self._alert_thresholds.min_score:
                 alert_threshold_breaches.labels(
-                    metric_name="retrieval_score", severity="warning",
+                    metric_name="retrieval_score",
+                    severity="warning",
                 ).inc()
                 logger.warning(f"Low retrieval score detected: {score:.3f}")
 
@@ -540,7 +549,9 @@ class RetrievalQualityMonitor:
             logger.error("Failed to record cache access: %s", e)
 
     def record_reranker_effectiveness(
-        self, before_scores: list[float], after_scores: list[float],
+        self,
+        before_scores: list[float],
+        after_scores: list[float],
     ) -> None:
         """
         Record reranker effectiveness metrics.
@@ -676,7 +687,10 @@ class RetrievalQualityMonitor:
                 "alerts": {
                     "low_score_queries": low_score_queries,
                     "threshold_breaches": self._get_threshold_breaches(
-                        avg_score, abstain_rate_val, avg_latency, cache_hit_rate_val,
+                        avg_score,
+                        abstain_rate_val,
+                        avg_latency,
+                        cache_hit_rate_val,
                     ),
                 },
                 "alert_thresholds": self._alert_thresholds.to_dict(),
@@ -840,7 +854,8 @@ class RetrievalQualityMonitor:
         try:
             # Query counter
             query_total.labels(
-                search_type=record.search_type, use_reranker=str(record.use_reranker),
+                search_type=record.search_type,
+                use_reranker=str(record.use_reranker),
             ).inc()
 
             # Latency histogram
@@ -982,7 +997,9 @@ class RetrievalQualityMonitor:
         return breaches
 
     def _get_daily_abstain_breakdown(
-        self, abstain_records: list[QueryMetricsRecord], days: int,
+        self,
+        abstain_records: list[QueryMetricsRecord],
+        days: int,
     ) -> list[dict[str, Any]]:
         """Get daily abstain breakdown."""
         cutoff_time = datetime.now(tz=timezone.utc).replace(tzinfo=None) - timedelta(days=days)

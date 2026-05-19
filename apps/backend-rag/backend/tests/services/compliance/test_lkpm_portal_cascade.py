@@ -71,7 +71,8 @@ class TestGetHistoryForPortalClientCascade:
 
     @pytest.mark.asyncio
     async def test_query_filters_by_r_company_id_in_ccl_company_id(
-        self, mock_pool: MagicMock,
+        self,
+        mock_pool: MagicMock,
     ) -> None:
         from backend.services.compliance.lkpm_service import LKPMService
 
@@ -86,8 +87,7 @@ class TestGetHistoryForPortalClientCascade:
         )
         # Inner subquery must pull company_id from client_company_links, not client_id.
         assert re.search(r"SELECT\s+DISTINCT\s+ccl\.company_id", sql), (
-            "subquery should SELECT DISTINCT ccl.company_id from "
-            f"client_company_links, got:\n{sql}"
+            f"subquery should SELECT DISTINCT ccl.company_id from client_company_links, got:\n{sql}"
         )
         # Scar tripwire: the old broken pattern must NOT reappear.
         assert "r.client_id IN" not in sql, (
@@ -101,7 +101,8 @@ class TestGetHistoryForPortalClientCascade:
 
     @pytest.mark.asyncio
     async def test_passes_client_id_as_positional_param(
-        self, mock_pool: MagicMock,
+        self,
+        mock_pool: MagicMock,
     ) -> None:
         from backend.services.compliance.lkpm_service import LKPMService
 
@@ -110,9 +111,7 @@ class TestGetHistoryForPortalClientCascade:
 
         call = mock_pool._conn.fetch.await_args
         # Positional: (sql, client_id)
-        assert call.args[1] == 11139, (
-            f"client_id must be passed as param $1, got {call.args[1:]}"
-        )
+        assert call.args[1] == 11139, f"client_id must be passed as param $1, got {call.args[1:]}"
 
 
 class TestGetReceiptsForPortalClientCascade:
@@ -120,7 +119,8 @@ class TestGetReceiptsForPortalClientCascade:
 
     @pytest.mark.asyncio
     async def test_receipts_cascade_keys_on_r_company_id(
-        self, mock_pool: MagicMock,
+        self,
+        mock_pool: MagicMock,
     ) -> None:
         from backend.services.compliance.lkpm_service import LKPMService
 
@@ -146,7 +146,8 @@ class TestGetReceiptsForPortalClientCascade:
 
     @pytest.mark.asyncio
     async def test_returns_empty_list_when_no_rows(
-        self, mock_pool: MagicMock,
+        self,
+        mock_pool: MagicMock,
     ) -> None:
         """With empty DB response, the method returns [] (not None / raise)."""
         from backend.services.compliance.lkpm_service import LKPMService
@@ -163,7 +164,8 @@ class TestGetReceiptsForReport:
 
     @pytest.mark.asyncio
     async def test_filters_by_lkpm_report_id(
-        self, mock_pool: MagicMock,
+        self,
+        mock_pool: MagicMock,
     ) -> None:
         from backend.services.compliance.lkpm_service import LKPMService
 
@@ -187,7 +189,8 @@ class TestGetHistoryWorkspaceCascade:
 
     @pytest.mark.asyncio
     async def test_cascade_keys_on_r_company_id(
-        self, mock_pool: MagicMock,
+        self,
+        mock_pool: MagicMock,
     ) -> None:
         from backend.services.compliance.lkpm_service import LKPMService
 
@@ -211,7 +214,8 @@ class TestGetReceiptsForClientWorkspace:
 
     @pytest.mark.asyncio
     async def test_receipts_cascade_keys_on_r_company_id(
-        self, mock_pool: MagicMock,
+        self,
+        mock_pool: MagicMock,
     ) -> None:
         from backend.services.compliance.lkpm_service import LKPMService
 

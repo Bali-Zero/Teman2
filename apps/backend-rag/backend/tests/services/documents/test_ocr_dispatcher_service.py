@@ -24,8 +24,11 @@ async def test_dispatch_passport():
         return_value={"success": True},
     ):
         result = await dispatch_ocr_by_folder(
-            db_pool=AsyncMock(), client_id=1, file_id="f1",
-            folder_name="00_Profile", filename="passport_scan.pdf",
+            db_pool=AsyncMock(),
+            client_id=1,
+            file_id="f1",
+            folder_name="00_Profile",
+            filename="passport_scan.pdf",
         )
         assert result["dispatched"] is True
         assert result["handler"] == "passport"
@@ -42,8 +45,11 @@ async def test_dispatch_visa():
         return_value={"success": True},
     ):
         result = await dispatch_ocr_by_folder(
-            db_pool=AsyncMock(), client_id=1, file_id="f1",
-            folder_name="01_Immigration", filename="kitas_extension.pdf",
+            db_pool=AsyncMock(),
+            client_id=1,
+            file_id="f1",
+            folder_name="01_Immigration",
+            filename="kitas_extension.pdf",
         )
         assert result["dispatched"] is True
         assert result["handler"] == "visa"
@@ -60,8 +66,11 @@ async def test_dispatch_nib():
         return_value={"success": True},
     ):
         result = await dispatch_ocr_by_folder(
-            db_pool=AsyncMock(), client_id=1, file_id="f1",
-            folder_name="02_Company", filename="NIB_document.pdf",
+            db_pool=AsyncMock(),
+            client_id=1,
+            file_id="f1",
+            folder_name="02_Company",
+            filename="NIB_document.pdf",
         )
         assert result["dispatched"] is True
         assert result["handler"] == "nib"
@@ -78,8 +87,11 @@ async def test_dispatch_npwp():
         return_value={"success": True},
     ):
         result = await dispatch_ocr_by_folder(
-            db_pool=AsyncMock(), client_id=1, file_id="f1",
-            folder_name="03_Tax", filename="npwp_card.pdf",
+            db_pool=AsyncMock(),
+            client_id=1,
+            file_id="f1",
+            folder_name="03_Tax",
+            filename="npwp_card.pdf",
         )
         assert result["dispatched"] is True
         assert result["handler"] == "npwp"
@@ -102,18 +114,24 @@ async def test_content_classifier_high_confidence_passport():
         "reasoning": "MRZ + 'PASSPORT' header detected",
     }
 
-    with patch(
-        "backend.app.routers.crm_enhanced._auto_classify_content",
-        new_callable=AsyncMock,
-        return_value=classifier_result,
-    ), patch(
-        "backend.app.routers.crm_enhanced._auto_ocr_passport",
-        new_callable=AsyncMock,
-        return_value={"success": True, "extracted": {"passport_number": "AB123456"}},
+    with (
+        patch(
+            "backend.app.routers.crm_enhanced._auto_classify_content",
+            new_callable=AsyncMock,
+            return_value=classifier_result,
+        ),
+        patch(
+            "backend.app.routers.crm_enhanced._auto_ocr_passport",
+            new_callable=AsyncMock,
+            return_value={"success": True, "extracted": {"passport_number": "AB123456"}},
+        ),
     ):
         result = await dispatch_ocr_by_folder(
-            db_pool=AsyncMock(), client_id=1, file_id="f1",
-            folder_name="99_Misc", filename="IMG_2847.pdf",
+            db_pool=AsyncMock(),
+            client_id=1,
+            file_id="f1",
+            folder_name="99_Misc",
+            filename="IMG_2847.pdf",
         )
         assert result["dispatched"] is True
         assert result["handler"] == "passport"
@@ -134,17 +152,23 @@ async def test_content_classifier_low_confidence_skipped():
         "reasoning": "low quality scan, partial visibility",
     }
 
-    with patch(
-        "backend.app.routers.crm_enhanced._auto_classify_content",
-        new_callable=AsyncMock,
-        return_value=classifier_result,
-    ), patch(
-        "backend.app.routers.crm_enhanced._auto_ocr_passport",
-        new_callable=AsyncMock,
-    ) as mock_passport:
+    with (
+        patch(
+            "backend.app.routers.crm_enhanced._auto_classify_content",
+            new_callable=AsyncMock,
+            return_value=classifier_result,
+        ),
+        patch(
+            "backend.app.routers.crm_enhanced._auto_ocr_passport",
+            new_callable=AsyncMock,
+        ) as mock_passport,
+    ):
         result = await dispatch_ocr_by_folder(
-            db_pool=AsyncMock(), client_id=1, file_id="f1",
-            folder_name="99_Misc", filename="blurry_scan.pdf",
+            db_pool=AsyncMock(),
+            client_id=1,
+            file_id="f1",
+            folder_name="99_Misc",
+            filename="blurry_scan.pdf",
         )
         assert result["dispatched"] is False
         assert result["tier"] == "content"
@@ -171,8 +195,11 @@ async def test_content_classifier_unknown_type():
         return_value=classifier_result,
     ):
         result = await dispatch_ocr_by_folder(
-            db_pool=AsyncMock(), client_id=1, file_id="f1",
-            folder_name="99_Misc", filename="random_doc.pdf",
+            db_pool=AsyncMock(),
+            client_id=1,
+            file_id="f1",
+            folder_name="99_Misc",
+            filename="random_doc.pdf",
         )
         assert result["dispatched"] is False
         assert result["tier"] == "content"
@@ -198,8 +225,11 @@ async def test_content_classifier_recognized_but_no_handler():
         return_value=classifier_result,
     ):
         result = await dispatch_ocr_by_folder(
-            db_pool=AsyncMock(), client_id=1, file_id="f1",
-            folder_name="02_Company", filename="document_001.pdf",
+            db_pool=AsyncMock(),
+            client_id=1,
+            file_id="f1",
+            folder_name="02_Company",
+            filename="document_001.pdf",
         )
         assert result["dispatched"] is False
         assert result["tier"] == "content"
@@ -219,8 +249,11 @@ async def test_content_classifier_error_graceful():
         return_value={"error": "Drive 503 timeout"},
     ):
         result = await dispatch_ocr_by_folder(
-            db_pool=AsyncMock(), client_id=1, file_id="f1",
-            folder_name="99_Misc", filename="anything.pdf",
+            db_pool=AsyncMock(),
+            client_id=1,
+            file_id="f1",
+            folder_name="99_Misc",
+            filename="anything.pdf",
         )
         assert result["dispatched"] is False
         assert result["tier"] == "content"
@@ -240,18 +273,24 @@ async def test_content_classifier_handler_failure_recorded():
         "reasoning": "passport detected",
     }
 
-    with patch(
-        "backend.app.routers.crm_enhanced._auto_classify_content",
-        new_callable=AsyncMock,
-        return_value=classifier_result,
-    ), patch(
-        "backend.app.routers.crm_enhanced._auto_ocr_passport",
-        new_callable=AsyncMock,
-        side_effect=RuntimeError("OCR pipeline crashed"),
+    with (
+        patch(
+            "backend.app.routers.crm_enhanced._auto_classify_content",
+            new_callable=AsyncMock,
+            return_value=classifier_result,
+        ),
+        patch(
+            "backend.app.routers.crm_enhanced._auto_ocr_passport",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("OCR pipeline crashed"),
+        ),
     ):
         result = await dispatch_ocr_by_folder(
-            db_pool=AsyncMock(), client_id=1, file_id="f1",
-            folder_name="99_Misc", filename="IMG.pdf",
+            db_pool=AsyncMock(),
+            client_id=1,
+            file_id="f1",
+            folder_name="99_Misc",
+            filename="IMG.pdf",
         )
         assert result["dispatched"] is False
         assert result["tier"] == "content"
@@ -265,17 +304,23 @@ async def test_dispatch_filename_priority_over_content():
     (cost optimization — Tier 1 is free, Tier 2 costs a Vision API call)."""
     from backend.services.documents.ocr_dispatcher_service import dispatch_ocr_by_folder
 
-    with patch(
-        "backend.app.routers.crm_enhanced._auto_classify_content",
-        new_callable=AsyncMock,
-    ) as mock_classifier, patch(
-        "backend.app.routers.crm_enhanced._auto_ocr_passport",
-        new_callable=AsyncMock,
-        return_value={"success": True},
+    with (
+        patch(
+            "backend.app.routers.crm_enhanced._auto_classify_content",
+            new_callable=AsyncMock,
+        ) as mock_classifier,
+        patch(
+            "backend.app.routers.crm_enhanced._auto_ocr_passport",
+            new_callable=AsyncMock,
+            return_value={"success": True},
+        ),
     ):
         result = await dispatch_ocr_by_folder(
-            db_pool=AsyncMock(), client_id=1, file_id="f1",
-            folder_name="00_Profile", filename="passport.pdf",
+            db_pool=AsyncMock(),
+            client_id=1,
+            file_id="f1",
+            folder_name="00_Profile",
+            filename="passport.pdf",
         )
         assert result["tier"] == "filename"
         # Critical: classifier (expensive) must NOT have been called
@@ -304,8 +349,11 @@ async def test_dispatch_no_match_falls_through_to_classifier():
         },
     ) as mock_classifier:
         result = await dispatch_ocr_by_folder(
-            db_pool=AsyncMock(), client_id=1, file_id="f1",
-            folder_name="99_Misc", filename="random_letter.pdf",
+            db_pool=AsyncMock(),
+            client_id=1,
+            file_id="f1",
+            folder_name="99_Misc",
+            filename="random_letter.pdf",
         )
         assert result["dispatched"] is False
         # Tier 2 must have been reached (filename had no match)
@@ -321,17 +369,23 @@ async def test_kg_hook_off_by_default():
     Critical for backward compat: deployed before flag is flipped."""
     from backend.services.documents.ocr_dispatcher_service import dispatch_ocr_by_folder
 
-    with patch(
-        "backend.app.routers.crm_enhanced._auto_ocr_passport",
-        new_callable=AsyncMock,
-        return_value={"success": True, "extracted": {"passport_number": "AB123"}},
-    ), patch(
-        "backend.services.knowledge_graph.document_linker.kg_link_document",
-        new_callable=AsyncMock,
-    ) as mock_kg:
+    with (
+        patch(
+            "backend.app.routers.crm_enhanced._auto_ocr_passport",
+            new_callable=AsyncMock,
+            return_value={"success": True, "extracted": {"passport_number": "AB123"}},
+        ),
+        patch(
+            "backend.services.knowledge_graph.document_linker.kg_link_document",
+            new_callable=AsyncMock,
+        ) as mock_kg,
+    ):
         result = await dispatch_ocr_by_folder(
-            db_pool=AsyncMock(), client_id=1, file_id="f1",
-            folder_name="00_Profile", filename="passport.pdf",
+            db_pool=AsyncMock(),
+            client_id=1,
+            file_id="f1",
+            folder_name="00_Profile",
+            filename="passport.pdf",
         )
         assert result["dispatched"] is True
         # KG link NOT called because flag is off
@@ -348,18 +402,24 @@ async def test_kg_hook_fires_when_flag_on(monkeypatch):
     extracted = {"passport_number": "AB123", "nationality": "RUS"}
     ocr_result = {"success": True, "extracted": extracted}
 
-    with patch(
-        "backend.app.routers.crm_enhanced._auto_ocr_passport",
-        new_callable=AsyncMock,
-        return_value=ocr_result,
-    ), patch(
-        "backend.services.knowledge_graph.document_linker.kg_link_document",
-        new_callable=AsyncMock,
-        return_value={"ok": True, "nodes": 3, "edges": 2},
-    ) as mock_kg:
+    with (
+        patch(
+            "backend.app.routers.crm_enhanced._auto_ocr_passport",
+            new_callable=AsyncMock,
+            return_value=ocr_result,
+        ),
+        patch(
+            "backend.services.knowledge_graph.document_linker.kg_link_document",
+            new_callable=AsyncMock,
+            return_value={"ok": True, "nodes": 3, "edges": 2},
+        ) as mock_kg,
+    ):
         await dispatch_ocr_by_folder(
-            db_pool=AsyncMock(), client_id=42, file_id="drive_x",
-            folder_name="00_Profile", filename="passport.pdf",
+            db_pool=AsyncMock(),
+            client_id=42,
+            file_id="drive_x",
+            folder_name="00_Profile",
+            filename="passport.pdf",
         )
 
         mock_kg.assert_called_once()
@@ -378,18 +438,24 @@ async def test_kg_hook_swallows_exceptions(monkeypatch):
     monkeypatch.setenv("CRM_KG_ENABLED", "1")
     from backend.services.documents.ocr_dispatcher_service import dispatch_ocr_by_folder
 
-    with patch(
-        "backend.app.routers.crm_enhanced._auto_ocr_passport",
-        new_callable=AsyncMock,
-        return_value={"success": True, "extracted": {"passport_number": "AB"}},
-    ), patch(
-        "backend.services.knowledge_graph.document_linker.kg_link_document",
-        new_callable=AsyncMock,
-        side_effect=RuntimeError("DB pool exhausted"),
+    with (
+        patch(
+            "backend.app.routers.crm_enhanced._auto_ocr_passport",
+            new_callable=AsyncMock,
+            return_value={"success": True, "extracted": {"passport_number": "AB"}},
+        ),
+        patch(
+            "backend.services.knowledge_graph.document_linker.kg_link_document",
+            new_callable=AsyncMock,
+            side_effect=RuntimeError("DB pool exhausted"),
+        ),
     ):
         result = await dispatch_ocr_by_folder(
-            db_pool=AsyncMock(), client_id=1, file_id="f1",
-            folder_name="00_Profile", filename="passport.pdf",
+            db_pool=AsyncMock(),
+            client_id=1,
+            file_id="f1",
+            folder_name="00_Profile",
+            filename="passport.pdf",
         )
         # Despite KG crash, dispatcher returns success
         assert result["dispatched"] is True
@@ -410,22 +476,29 @@ async def test_kg_hook_after_content_tier_dispatch(monkeypatch):
     }
     ocr_result = {"success": True, "extracted": {"npwp": "01.234.567.8-901.000"}}
 
-    with patch(
-        "backend.app.routers.crm_enhanced._auto_classify_content",
-        new_callable=AsyncMock,
-        return_value=classifier_result,
-    ), patch(
-        "backend.app.routers.crm_enhanced._auto_ocr_npwp",
-        new_callable=AsyncMock,
-        return_value=ocr_result,
-    ), patch(
-        "backend.services.knowledge_graph.document_linker.kg_link_document",
-        new_callable=AsyncMock,
-        return_value={"ok": True, "nodes": 3, "edges": 2},
-    ) as mock_kg:
+    with (
+        patch(
+            "backend.app.routers.crm_enhanced._auto_classify_content",
+            new_callable=AsyncMock,
+            return_value=classifier_result,
+        ),
+        patch(
+            "backend.app.routers.crm_enhanced._auto_ocr_npwp",
+            new_callable=AsyncMock,
+            return_value=ocr_result,
+        ),
+        patch(
+            "backend.services.knowledge_graph.document_linker.kg_link_document",
+            new_callable=AsyncMock,
+            return_value={"ok": True, "nodes": 3, "edges": 2},
+        ) as mock_kg,
+    ):
         await dispatch_ocr_by_folder(
-            db_pool=AsyncMock(), client_id=42, file_id="drive_x",
-            folder_name="99_Misc", filename="IMG_5555.pdf",
+            db_pool=AsyncMock(),
+            client_id=42,
+            file_id="drive_x",
+            folder_name="99_Misc",
+            filename="IMG_5555.pdf",
         )
 
         mock_kg.assert_called_once()

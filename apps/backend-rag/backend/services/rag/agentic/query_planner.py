@@ -37,54 +37,160 @@ logger = logging.getLogger(__name__)
 # Domain Keyword Dictionaries
 # ============================================================================
 
-_VISA_KEYWORDS: frozenset[str] = frozenset({
-    "kitas", "kitap", "vitas", "visa", "work permit", "rptka", "imta",
-    "immigration", "imigrasi", "izin tinggal", "stay permit", "telex",
-    "e28a", "e31a", "e33a", "e34a", "voa", "visa on arrival",
-    "onshore", "offshore", "tka", "tenaga kerja asing",
-})
+_VISA_KEYWORDS: frozenset[str] = frozenset(
+    {
+        "kitas",
+        "kitap",
+        "vitas",
+        "visa",
+        "work permit",
+        "rptka",
+        "imta",
+        "immigration",
+        "imigrasi",
+        "izin tinggal",
+        "stay permit",
+        "telex",
+        "e28a",
+        "e31a",
+        "e33a",
+        "e34a",
+        "voa",
+        "visa on arrival",
+        "onshore",
+        "offshore",
+        "tka",
+        "tenaga kerja asing",
+    }
+)
 
-_TAX_KEYWORDS: frozenset[str] = frozenset({
-    "tax", "pph", "ppn", "npwp", "pajak", "tasse", "fiscal", "vat",
-    "spt", "efin", "faktur pajak", "bukti potong", "withholding",
-    "pbb", "bea materai", "tax compliance", "tax return",
-})
+_TAX_KEYWORDS: frozenset[str] = frozenset(
+    {
+        "tax",
+        "pph",
+        "ppn",
+        "npwp",
+        "pajak",
+        "tasse",
+        "fiscal",
+        "vat",
+        "spt",
+        "efin",
+        "faktur pajak",
+        "bukti potong",
+        "withholding",
+        "pbb",
+        "bea materai",
+        "tax compliance",
+        "tax return",
+    }
+)
 
-_PROPERTY_KEYWORDS: frozenset[str] = frozenset({
-    "property", "villa", "hak pakai", "hgb", "hak milik",
-    "rental", "real estate", "land", "tanah", "zoning",
-    "bphtb", "imb", "pbg", "slf", "sertifikat tanah",
-    "balik nama", "akta jual beli", "ppat", "notaris",
-})
+_PROPERTY_KEYWORDS: frozenset[str] = frozenset(
+    {
+        "property",
+        "villa",
+        "hak pakai",
+        "hgb",
+        "hak milik",
+        "rental",
+        "real estate",
+        "land",
+        "tanah",
+        "zoning",
+        "bphtb",
+        "imb",
+        "pbg",
+        "slf",
+        "sertifikat tanah",
+        "balik nama",
+        "akta jual beli",
+        "ppat",
+        "notaris",
+    }
+)
 
-_COMPANY_KEYWORDS: frozenset[str] = frozenset({
-    "pt pma", "pt lokal", "perorangan", "cv", "company",
-    "azienda", "società", "firma", "koperasi", "yayasan",
-    "badan hukum", "company setup", "business formation",
-    "nib", "oss", "izin usaha", "siup",
-})
+_COMPANY_KEYWORDS: frozenset[str] = frozenset(
+    {
+        "pt pma",
+        "pt lokal",
+        "perorangan",
+        "cv",
+        "company",
+        "azienda",
+        "società",
+        "firma",
+        "koperasi",
+        "yayasan",
+        "badan hukum",
+        "company setup",
+        "business formation",
+        "nib",
+        "oss",
+        "izin usaha",
+        "siup",
+    }
+)
 
-_KBLI_KEYWORDS: frozenset[str] = frozenset({
-    "kbli", "business classification", "kode usaha",
-    "klasifikasi", "sektor", "business activity",
-})
+_KBLI_KEYWORDS: frozenset[str] = frozenset(
+    {
+        "kbli",
+        "business classification",
+        "kode usaha",
+        "klasifikasi",
+        "sektor",
+        "business activity",
+    }
+)
 
-_PRICING_KEYWORDS: frozenset[str] = frozenset({
-    "how much", "quanto costa", "price", "prezzo", "costo",
-    "berapa biaya", "berapa harga", "cost of", "tarif",
-    "pricing", "fee", "budget",
-})
+_PRICING_KEYWORDS: frozenset[str] = frozenset(
+    {
+        "how much",
+        "quanto costa",
+        "price",
+        "prezzo",
+        "costo",
+        "berapa biaya",
+        "berapa harga",
+        "cost of",
+        "tarif",
+        "pricing",
+        "fee",
+        "budget",
+    }
+)
 
-_GREETING_KEYWORDS: frozenset[str] = frozenset({
-    "hello", "hi", "hey", "ciao", "buongiorno", "buonasera",
-    "good morning", "good afternoon", "halo", "selamat",
-    "thanks", "thank you", "grazie", "terima kasih",
-})
+_GREETING_KEYWORDS: frozenset[str] = frozenset(
+    {
+        "hello",
+        "hi",
+        "hey",
+        "ciao",
+        "buongiorno",
+        "buonasera",
+        "good morning",
+        "good afternoon",
+        "halo",
+        "selamat",
+        "thanks",
+        "thank you",
+        "grazie",
+        "terima kasih",
+    }
+)
 
-_NEWS_KEYWORDS: frozenset[str] = frozenset({
-    "news", "latest", "update", "recent", "notizie",
-    "regulation change", "new law", "perubahan",
-})
+_NEWS_KEYWORDS: frozenset[str] = frozenset(
+    {
+        "news",
+        "latest",
+        "update",
+        "recent",
+        "notizie",
+        "regulation change",
+        "new law",
+        "perubahan",
+    }
+)
 
 # ============================================================================
 # Entity Extraction Patterns
@@ -366,9 +472,7 @@ class QueryPlanner:
 
         # Cross-domain: merge collections from all entity domains
         if plan.complexity == QueryComplexity.CROSS_DOMAIN:
-            entity_domains = {
-                self._entity_type_to_domain(e.entity_type) for e in plan.entities
-            }
+            entity_domains = {self._entity_type_to_domain(e.entity_type) for e in plan.entities}
             for ed in entity_domains:
                 for col in _DOMAIN_COLLECTIONS.get(ed, []):
                     if col not in plan.collections:

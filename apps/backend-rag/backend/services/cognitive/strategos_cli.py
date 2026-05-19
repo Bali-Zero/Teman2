@@ -53,14 +53,20 @@ async def _generate(pool: asyncpg.Pool) -> int:
         runner=runner,
     )
     result = await orchestrator.run_once()
-    sys.stdout.write(json.dumps({
-        "week_of": result.week_of.isoformat(),
-        "inserted": result.inserted,
-        "brief_id": str(result.brief.id) if result.brief else None,
-        "context_chars": result.context_chars,
-        "prompt_chars": result.prompt_chars,
-        "errors_count": len(result.errors),
-    }, default=str) + "\n")
+    sys.stdout.write(
+        json.dumps(
+            {
+                "week_of": result.week_of.isoformat(),
+                "inserted": result.inserted,
+                "brief_id": str(result.brief.id) if result.brief else None,
+                "context_chars": result.context_chars,
+                "prompt_chars": result.prompt_chars,
+                "errors_count": len(result.errors),
+            },
+            default=str,
+        )
+        + "\n"
+    )
     return 0 if result.inserted else 2
 
 
@@ -73,14 +79,20 @@ async def _deliver(pool: asyncpg.Pool) -> int:
         owner_chat_id=DEFAULT_OWNER,
     )
     result = await delivery.send_latest_brief()
-    sys.stdout.write(json.dumps({
-        "ok": result.ok,
-        "brief_id": str(result.brief_id) if result.brief_id else None,
-        "message_id": result.message_id,
-        "skipped": result.skipped,
-        "skip_reason": result.skip_reason,
-        "error": result.error,
-    }, default=str) + "\n")
+    sys.stdout.write(
+        json.dumps(
+            {
+                "ok": result.ok,
+                "brief_id": str(result.brief_id) if result.brief_id else None,
+                "message_id": result.message_id,
+                "skipped": result.skipped,
+                "skip_reason": result.skip_reason,
+                "error": result.error,
+            },
+            default=str,
+        )
+        + "\n"
+    )
     return 0 if result.ok else 2
 
 
@@ -92,7 +104,10 @@ async def run(mode: str) -> int:
         return 1
     try:
         pool = await asyncpg.create_pool(
-            dsn, min_size=1, max_size=2, command_timeout=180,
+            dsn,
+            min_size=1,
+            max_size=2,
+            command_timeout=180,
         )
     except Exception as exc:  # noqa: BLE001
         logger.error("pool init failed: %s", exc, exc_info=True)

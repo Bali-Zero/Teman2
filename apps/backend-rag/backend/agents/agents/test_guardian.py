@@ -162,7 +162,10 @@ class TestGuardian:
         logger.info("🛡️ TestGuardian ready with provider: %s", provider)
 
     async def _generate_text(
-        self, prompt: str, max_tokens: int = 4000, temperature: float = 0.2,
+        self,
+        prompt: str,
+        max_tokens: int = 4000,
+        temperature: float = 0.2,
     ) -> str:
         """
         Generate text using LLM with metrics tracking.
@@ -197,10 +200,12 @@ class TestGuardian:
                 # Record metrics
                 if self.agent_metrics:
                     self.agent_metrics.record_operation(
-                        duration=response.response_time, success=True,
+                        duration=response.response_time,
+                        success=True,
                     )
                     self.metrics_collector.record_test_generation(
-                        duration=response.response_time, success=True,
+                        duration=response.response_time,
+                        success=True,
                     )
 
                 logger.info(
@@ -216,10 +221,13 @@ class TestGuardian:
             # Record failure
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
-                    duration=time.time() - start_time, success=False, error=str(e),
+                    duration=time.time() - start_time,
+                    success=False,
+                    error=str(e),
                 )
                 self.metrics_collector.record_test_generation(
-                    duration=time.time() - start_time, success=False,
+                    duration=time.time() - start_time,
+                    success=False,
                 )
 
             logger.error("❌ LLM generation failed: %s", e)
@@ -297,7 +305,9 @@ class TestGuardian:
                 logger.error("❌ Coverage report not found!")
                 if self.agent_metrics:
                     self.agent_metrics.record_operation(
-                        time.time() - start_time, success=False, error="Coverage report not found",
+                        time.time() - start_time,
+                        success=False,
+                        error="Coverage report not found",
                     )
                 return []
 
@@ -377,7 +387,9 @@ class TestGuardian:
             logger.error("❌ %s", error_msg)
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
-                    time.time() - start_time, success=False, error=error_msg,
+                    time.time() - start_time,
+                    success=False,
+                    error=error_msg,
                 )
             return []
 
@@ -386,7 +398,9 @@ class TestGuardian:
             logger.error("❌ %s", error_msg)
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
-                    time.time() - start_time, success=False, error=error_msg,
+                    time.time() - start_time,
+                    success=False,
+                    error=error_msg,
                 )
             return []
 
@@ -470,7 +484,10 @@ REQUIREMENTS:
 
             # 2. Run
             result = subprocess.run(
-                ["pytest", str(test_path)], cwd=PROJECT_ROOT.parent, capture_output=True, text=True,
+                ["pytest", str(test_path)],
+                cwd=PROJECT_ROOT.parent,
+                capture_output=True,
+                text=True,
             )
 
             # 3. Check
@@ -499,7 +516,9 @@ TASK: Return the FIXED Python code only.
             # Clean response again
             test_code = test_code.replace("```python", "").replace("```", "").strip()
 
-        logger.error("💀 GIVE UP. Could not fix test for %s after %s tries.", target_file, MAX_RETRIES)
+        logger.error(
+            "💀 GIVE UP. Could not fix test for %s after %s tries.", target_file, MAX_RETRIES
+        )
         # Cleanup failed test to not break build
         if test_path.exists():
             test_path.unlink()

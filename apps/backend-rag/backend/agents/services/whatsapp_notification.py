@@ -34,7 +34,11 @@ class WhatsAppNotificationService:
         self.whatsapp_number = whatsapp_number
 
     async def send_message(
-        self, phone: str, message: str, max_retries: int = 3, timeout: float = 30.0,
+        self,
+        phone: str,
+        message: str,
+        max_retries: int = 3,
+        timeout: float = 30.0,
     ) -> str | None:
         """
         Send WhatsApp message via Twilio with retry logic and timeout.

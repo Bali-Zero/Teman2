@@ -12,14 +12,22 @@ from backend.services.research.crm_baseline import fetch_crm_baseline
 
 
 class _FakeAcquire:
-    def __init__(self, conn): self._conn = conn
-    async def __aenter__(self): return self._conn
-    async def __aexit__(self, *exc): return None
+    def __init__(self, conn):
+        self._conn = conn
+
+    async def __aenter__(self):
+        return self._conn
+
+    async def __aexit__(self, *exc):
+        return None
 
 
 class _FakePool:
-    def __init__(self, conn): self._conn = conn
-    def acquire(self): return _FakeAcquire(self._conn)
+    def __init__(self, conn):
+        self._conn = conn
+
+    def acquire(self):
+        return _FakeAcquire(self._conn)
 
 
 @pytest.mark.asyncio

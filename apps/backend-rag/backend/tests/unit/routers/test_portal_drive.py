@@ -25,13 +25,15 @@ async def test_list_files_returns_client_safe_empty_projection() -> None:
     mock_pool.acquire.return_value.__aexit__ = AsyncMock(return_value=False)
 
     mock_drive = MagicMock()
-    mock_drive.get_folder_structure = AsyncMock(return_value={
-        "root_id": "folder_abc123",
-        "root_name": "Client_John",
-        "folders": [{"id": "sub1", "name": "Documents"}, {"id": "sub2", "name": "Final"}],
-        "total_files": 5,
-        "total_size_bytes": 1024000,
-    })
+    mock_drive.get_folder_structure = AsyncMock(
+        return_value={
+            "root_id": "folder_abc123",
+            "root_name": "Client_John",
+            "folders": [{"id": "sub1", "name": "Documents"}, {"id": "sub2", "name": "Final"}],
+            "total_files": 5,
+            "total_size_bytes": 1024000,
+        }
+    )
 
     result = await _list_client_drive_files(mock_pool, mock_drive, client_id=1)
 

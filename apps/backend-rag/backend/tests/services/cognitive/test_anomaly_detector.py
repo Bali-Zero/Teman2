@@ -211,7 +211,9 @@ async def test_happy_path_inserts_alert(intel_repo, cognitive_repo):
         }
     ]
     detector = _make_detector(
-        intel_repo, cognitive_repo, scripts=[_contradictions(payload)],
+        intel_repo,
+        cognitive_repo,
+        scripts=[_contradictions(payload)],
     )
     result = await detector.analyze_dossier(ref)
 
@@ -228,13 +230,15 @@ async def test_rejects_other_id_not_in_batch(intel_repo, cognitive_repo):
     intel_repo.related_fresh_dossiers = AsyncMock(return_value=[other])
     payload = [
         {
-            "other_dossier_id": str(uuid4()),   # not in batch
+            "other_dossier_id": str(uuid4()),  # not in batch
             "contradiction_type": "scope_mismatch",
             "severity": "medium",
         }
     ]
     detector = _make_detector(
-        intel_repo, cognitive_repo, scripts=[_contradictions(payload)],
+        intel_repo,
+        cognitive_repo,
+        scripts=[_contradictions(payload)],
     )
     result = await detector.analyze_dossier(ref)
     assert result.alerts_rejected == 1
@@ -255,7 +259,9 @@ async def test_rejects_self_reference(intel_repo, cognitive_repo):
         }
     ]
     detector = _make_detector(
-        intel_repo, cognitive_repo, scripts=[_contradictions(payload)],
+        intel_repo,
+        cognitive_repo,
+        scripts=[_contradictions(payload)],
     )
     result = await detector.analyze_dossier(ref)
     assert result.alerts_rejected == 1
@@ -274,7 +280,9 @@ async def test_rejects_missing_contradiction_type(intel_repo, cognitive_repo):
         }
     ]
     detector = _make_detector(
-        intel_repo, cognitive_repo, scripts=[_contradictions(payload)],
+        intel_repo,
+        cognitive_repo,
+        scripts=[_contradictions(payload)],
     )
     result = await detector.analyze_dossier(ref)
     assert result.alerts_rejected == 1
@@ -293,7 +301,9 @@ async def test_rejects_invalid_severity_value(intel_repo, cognitive_repo):
         }
     ]
     detector = _make_detector(
-        intel_repo, cognitive_repo, scripts=[_contradictions(payload)],
+        intel_repo,
+        cognitive_repo,
+        scripts=[_contradictions(payload)],
     )
     result = await detector.analyze_dossier(ref)
     assert result.alerts_rejected == 1
@@ -308,11 +318,13 @@ async def test_rejects_below_min_severity(intel_repo, cognitive_repo):
         {
             "other_dossier_id": str(other.id),
             "contradiction_type": "x",
-            "severity": "low",     # below MEDIUM min
+            "severity": "low",  # below MEDIUM min
         }
     ]
     detector = _make_detector(
-        intel_repo, cognitive_repo, scripts=[_contradictions(payload)],
+        intel_repo,
+        cognitive_repo,
+        scripts=[_contradictions(payload)],
     )
     result = await detector.analyze_dossier(ref)
     assert result.alerts_rejected == 1
@@ -333,7 +345,9 @@ async def test_idempotent_skip_when_pair_exists(intel_repo, cognitive_repo):
         }
     ]
     detector = _make_detector(
-        intel_repo, cognitive_repo, scripts=[_contradictions(payload)],
+        intel_repo,
+        cognitive_repo,
+        scripts=[_contradictions(payload)],
     )
     result = await detector.analyze_dossier(ref)
     assert result.idempotent_skipped == 1
@@ -355,7 +369,9 @@ async def test_insert_failure_counts_rejected(intel_repo, cognitive_repo):
         }
     ]
     detector = _make_detector(
-        intel_repo, cognitive_repo, scripts=[_contradictions(payload)],
+        intel_repo,
+        cognitive_repo,
+        scripts=[_contradictions(payload)],
     )
     result = await detector.analyze_dossier(ref)
     assert result.alerts_rejected == 1

@@ -57,7 +57,9 @@ class TestLLMGateway:
 
         chat = MagicMock()
         mock_token_usage = create_token_usage(
-            prompt_tokens=10, completion_tokens=20, model="gemini-2.0-flash-lite",
+            prompt_tokens=10,
+            completion_tokens=20,
+            model="gemini-2.0-flash-lite",
         )
 
         with patch.object(llm_gateway, "_send_with_fallback") as mock_send:
@@ -69,7 +71,9 @@ class TestLLMGateway:
             )
 
             response, model, obj, usage = await llm_gateway.send_message(
-                chat=chat, message="test", tier=TIER_FLASH,
+                chat=chat,
+                message="test",
+                tier=TIER_FLASH,
             )
 
             assert response == "response"
@@ -82,7 +86,9 @@ class TestLLMGateway:
 
         chat = MagicMock()
         mock_token_usage = create_token_usage(
-            prompt_tokens=10, completion_tokens=20, model="openrouter",
+            prompt_tokens=10,
+            completion_tokens=20,
+            model="openrouter",
         )
 
         with patch.object(llm_gateway, "_send_with_fallback") as mock_send:
@@ -95,7 +101,9 @@ class TestLLMGateway:
             )
 
             response, model, obj, usage = await llm_gateway.send_message(
-                chat=chat, message="test", tier=TIER_FLASH,
+                chat=chat,
+                message="test",
+                tier=TIER_FLASH,
             )
 
             assert response == "fallback response"
@@ -108,7 +116,9 @@ class TestLLMGateway:
 
         chat = MagicMock()
         mock_token_usage = create_token_usage(
-            prompt_tokens=10, completion_tokens=20, model="openrouter",
+            prompt_tokens=10,
+            completion_tokens=20,
+            model="openrouter",
         )
 
         with patch.object(llm_gateway, "_send_with_fallback") as mock_send:
@@ -127,7 +137,9 @@ class TestLLMGateway:
         tools = [{"name": "test_tool"}]
         llm_gateway.set_gemini_tools(tools)
         mock_token_usage = create_token_usage(
-            prompt_tokens=10, completion_tokens=20, model="gemini-2.0-flash-lite",
+            prompt_tokens=10,
+            completion_tokens=20,
+            model="gemini-2.0-flash-lite",
         )
 
         with patch.object(llm_gateway, "_send_with_fallback") as mock_send:
@@ -142,7 +154,9 @@ class TestLLMGateway:
         from backend.services.llm_clients.pricing import create_token_usage
 
         mock_token_usage = create_token_usage(
-            prompt_tokens=10, completion_tokens=20, model="gemini-2.0-flash-lite",
+            prompt_tokens=10,
+            completion_tokens=20,
+            model="gemini-2.0-flash-lite",
         )
 
         with patch.object(llm_gateway, "_send_with_fallback") as mock_send:
@@ -159,7 +173,9 @@ class TestLLMGateway:
 
         chat = MagicMock()
         mock_token_usage = create_token_usage(
-            prompt_tokens=10, completion_tokens=20, model="gemini-2.0-flash-lite",
+            prompt_tokens=10,
+            completion_tokens=20,
+            model="gemini-2.0-flash-lite",
         )
 
         with patch.object(llm_gateway, "_send_with_fallback") as mock_send:

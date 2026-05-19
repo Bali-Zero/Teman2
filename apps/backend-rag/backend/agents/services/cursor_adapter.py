@@ -41,7 +41,12 @@ class CursorAdapter:
                 timeout=10.0,
             )
             return result.returncode == 0
-        except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
+        except (
+            FileNotFoundError,
+            subprocess.TimeoutExpired,
+            subprocess.SubprocessError,
+            OSError,
+        ) as e:
             logger.warning("⚠️ Could not open file in Cursor: %s", e)
             return False
 
@@ -54,7 +59,12 @@ class CursorAdapter:
                 timeout=10.0,
             )
             return result.returncode == 0
-        except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
+        except (
+            FileNotFoundError,
+            subprocess.TimeoutExpired,
+            subprocess.SubprocessError,
+            OSError,
+        ) as e:
             logger.warning("⚠️ Could not open folder in Cursor: %s", e)
             return False
 
@@ -70,7 +80,12 @@ class CursorAdapter:
             if result.returncode == 0:
                 return result.stdout
             return None
-        except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
+        except (
+            FileNotFoundError,
+            subprocess.TimeoutExpired,
+            subprocess.SubprocessError,
+            OSError,
+        ) as e:
             logger.warning("⚠️ Cursor diff failed: %s", e)
             return None
 

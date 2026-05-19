@@ -46,8 +46,7 @@ class RetrievalGrader(BaseGrader):
 
         if combined < self.pass_threshold:
             reason = (
-                f"Retrieval below threshold (score={combined:.2f}). "
-                f"Top docs avg={top_avg:.2f}."
+                f"Retrieval below threshold (score={combined:.2f}). Top docs avg={top_avg:.2f}."
             )
             hint = "Try more specific keywords or different entity combinations"
             return combined, reason, hint

@@ -13,9 +13,16 @@ from uuid import UUID
 import asyncpg
 
 from backend.services.crm.partners.models import (
-    Partner, PartnerReferral, PartnerCommission, PartnerAuditLogEntry,
-    EntityType, CommissionType, CommissionStatus, CommissionEntryType,
-    WithholdingCategory, RuleSource,
+    Partner,
+    PartnerReferral,
+    PartnerCommission,
+    PartnerAuditLogEntry,
+    EntityType,
+    CommissionType,
+    CommissionStatus,
+    CommissionEntryType,
+    WithholdingCategory,
+    RuleSource,
 )
 
 logger = logging.getLogger(__name__)
@@ -34,13 +41,32 @@ _ALLOWED_TRANSITIONS: dict[CommissionStatus, set[CommissionStatus]] = {
 }
 
 _PARTNER_UPDATABLE_COLS = {
-    "full_name", "work_role", "company_name", "office_address",
-    "email", "phone", "preferred_language",
-    "entity_type", "npwp", "nik", "tax_withholding_category", "fiscal_address",
-    "bank_name", "bank_account_holder", "bank_account_number",
-    "ewallet_type", "ewallet_number", "payment_currency", "iban", "payment_notes",
-    "default_commission_type", "default_commission_value",
-    "pdp_consent_at", "pdp_consent_version", "terms_accepted_at", "terms_version",
+    "full_name",
+    "work_role",
+    "company_name",
+    "office_address",
+    "email",
+    "phone",
+    "preferred_language",
+    "entity_type",
+    "npwp",
+    "nik",
+    "tax_withholding_category",
+    "fiscal_address",
+    "bank_name",
+    "bank_account_holder",
+    "bank_account_number",
+    "ewallet_type",
+    "ewallet_number",
+    "payment_currency",
+    "iban",
+    "payment_notes",
+    "default_commission_type",
+    "default_commission_value",
+    "pdp_consent_at",
+    "pdp_consent_version",
+    "terms_accepted_at",
+    "terms_version",
 }
 # NB: onboarding_status, assigned_to, welcome_email_sent_at are ONLY settable
 # via their dedicated methods (activate_partner, reassign_partner, mark_welcome_sent).
@@ -71,8 +97,9 @@ class PartnersRepository:
         for k, v in optional.items():
             if k not in _PARTNER_UPDATABLE_COLS:
                 raise ValueError(f"Field {k!r} is not insertable via insert_partner")
-            cols.append(k); vals.append(v)
-        placeholders = ", ".join(f"${i+1}" for i in range(len(vals)))
+            cols.append(k)
+            vals.append(v)
+        placeholders = ", ".join(f"${i + 1}" for i in range(len(vals)))
         sql = f"INSERT INTO partners ({', '.join(cols)}) VALUES ({placeholders}) RETURNING id"
         row = await self.conn.fetchrow(sql, *vals)
         logger.debug("insert_partner id=%s email=%s", row["id"], email)
@@ -114,14 +141,18 @@ class PartnersRepository:
     ) -> list[Partner]:
         where, args = ["TRUE"], []
         if assigned_to is not None:
-            args.append(assigned_to); where.append(f"assigned_to = ${len(args)}")
+            args.append(assigned_to)
+            where.append(f"assigned_to = ${len(args)}")
         if onboarding_status is not None:
-            args.append(onboarding_status); where.append(f"onboarding_status = ${len(args)}")
+            args.append(onboarding_status)
+            where.append(f"onboarding_status = ${len(args)}")
         if orphaned:
             where.append("assigned_to IS NULL")
         if search:
             args.append(f"%{search}%")
-            where.append(f"(full_name ILIKE ${len(args)} OR email ILIKE ${len(args)} OR company_name ILIKE ${len(args)})")
+            where.append(
+                f"(full_name ILIKE ${len(args)} OR email ILIKE ${len(args)} OR company_name ILIKE ${len(args)})"
+            )
         args.append(limit)
         sql = f"SELECT * FROM partners WHERE {' AND '.join(where)} ORDER BY created_at DESC LIMIT ${len(args)}"
         rows = await self.conn.fetch(sql, *args)
@@ -135,7 +166,7 @@ class PartnersRepository:
             raise ValueError(f"Non-updatable fields: {bad}")
         if "email" in fields:
             await self._assert_email_is_not_internal(fields["email"])
-        sets = [f"{k} = ${i+2}" for i, k in enumerate(fields)]
+        sets = [f"{k} = ${i + 2}" for i, k in enumerate(fields)]
         sets.append(f"updated_at = now()")
         sql = f"UPDATE partners SET {', '.join(sets)} WHERE id = $1"
         await self.conn.execute(sql, partner_id, *fields.values())
@@ -158,7 +189,8 @@ class PartnersRepository:
         # CATA-5: new_user_id is team_members.id (VARCHAR string ID)
         await self.conn.execute(
             "UPDATE partners SET assigned_to = $2, updated_at = now() WHERE id = $1",
-            partner_id, new_user_id,
+            partner_id,
+            new_user_id,
         )
 
     async def orphan_partners_of_user(self, user_id: str) -> int:
@@ -180,7 +212,10 @@ class PartnersRepository:
     # ── Referrals ───────────────────────────────────────────────────────
 
     async def insert_referral(
-        self, *, partner_id: UUID, practice_id: int,
+        self,
+        *,
+        partner_id: UUID,
+        practice_id: int,
         # CATA-5: referred_by_user_id is team_members.id (VARCHAR string ID)
         referred_by_user_id: str | None = None,
         share_percent: Decimal = Decimal("100.00"),
@@ -193,7 +228,11 @@ class PartnersRepository:
             VALUES ($1, $2, $3, $4, $5)
             RETURNING id
             """,
-            partner_id, practice_id, share_percent, referred_by_user_id, notes,
+            partner_id,
+            practice_id,
+            share_percent,
+            referred_by_user_id,
+            notes,
         )
         return row["id"]
 
@@ -213,7 +252,8 @@ class PartnersRepository:
     async def update_referral_partner(self, referral_id: UUID, new_partner_id: UUID) -> None:
         await self.conn.execute(
             "UPDATE partner_referrals SET partner_id = $2 WHERE id = $1",
-            referral_id, new_partner_id,
+            referral_id,
+            new_partner_id,
         )
 
     async def delete_referral(self, referral_id: UUID) -> None:
@@ -272,17 +312,33 @@ class PartnersRepository:
                     COALESCE($17, now()),$18,$19,$20)
             RETURNING id
             """,
-            partner_id, entry_type, referral_id, practice_id, related_commission_id,
-            base_amount_idr, commission_type_snapshot, commission_value_snapshot,
-            rule_source, assigned_to_snapshot,
-            gross_amount_idr, withholding_category, withholding_rate,
-            withholding_amount_idr, net_amount_idr,
-            status, eligible_for_approval_at,
-            manual_override_reason, clawback_reason, idempotency_key,
+            partner_id,
+            entry_type,
+            referral_id,
+            practice_id,
+            related_commission_id,
+            base_amount_idr,
+            commission_type_snapshot,
+            commission_value_snapshot,
+            rule_source,
+            assigned_to_snapshot,
+            gross_amount_idr,
+            withholding_category,
+            withholding_rate,
+            withholding_amount_idr,
+            net_amount_idr,
+            status,
+            eligible_for_approval_at,
+            manual_override_reason,
+            clawback_reason,
+            idempotency_key,
         )
         logger.debug(
             "insert_commission id=%s partner=%s type=%s status=%s",
-            row["id"], partner_id, entry_type, status,
+            row["id"],
+            partner_id,
+            entry_type,
+            status,
         )
         return row["id"]
 
@@ -293,12 +349,16 @@ class PartnersRepository:
         return self._row_to_commission(row) if row else None
 
     async def list_commissions_for_partner(
-        self, partner_id: UUID, *, status: CommissionStatus | None = None,
+        self,
+        partner_id: UUID,
+        *,
+        status: CommissionStatus | None = None,
     ) -> list[PartnerCommission]:
         args: list[Any] = [partner_id]
         where = "partner_id = $1"
         if status is not None:
-            args.append(status); where += f" AND status = ${len(args)}"
+            args.append(status)
+            where += f" AND status = ${len(args)}"
         sql = f"SELECT * FROM partner_commissions WHERE {where} ORDER BY created_at DESC"
         rows = await self.conn.fetch(sql, *args)
         return [self._row_to_commission(r) for r in rows]
@@ -330,31 +390,40 @@ class PartnersRepository:
         if current is None:
             raise ValueError(f"Commission {commission_id} not found")
         if new_status not in _ALLOWED_TRANSITIONS.get(current.status, set()):
-            raise ValueError(
-                f"Disallowed transition: {current.status!r} -> {new_status!r}"
-            )
+            raise ValueError(f"Disallowed transition: {current.status!r} -> {new_status!r}")
         logger.debug(
             "update_commission_status id=%s %s->%s", commission_id, current.status, new_status
         )
         fragments, args = ["status = $2"], [commission_id, new_status]
         if new_status == "approved":
-            fragments += ["approved_at = now()", f"approved_by = ${len(args)+1}"]; args.append(approved_by)
+            fragments += ["approved_at = now()", f"approved_by = ${len(args) + 1}"]
+            args.append(approved_by)
         if new_status == "paid":
             fragments += [
                 "paid_at = now()",
-                f"paid_by = ${len(args)+1}", f"paid_via = ${len(args)+2}",
-                f"payment_reference = ${len(args)+3}", f"payment_proof_url = ${len(args)+4}",
-                f"receipt_type = ${len(args)+5}", f"receipt_file_url = ${len(args)+6}",
+                f"paid_by = ${len(args) + 1}",
+                f"paid_via = ${len(args) + 2}",
+                f"payment_reference = ${len(args) + 3}",
+                f"payment_proof_url = ${len(args) + 4}",
+                f"receipt_type = ${len(args) + 5}",
+                f"receipt_file_url = ${len(args) + 6}",
             ]
-            args += [paid_by, paid_via, payment_reference, payment_proof_url,
-                     receipt_type, receipt_file_url]
+            args += [
+                paid_by,
+                paid_via,
+                payment_reference,
+                payment_proof_url,
+                receipt_type,
+                receipt_file_url,
+            ]
         if new_status == "waived":
-            fragments += [f"waiver_reason = ${len(args)+1}"]; args.append(waiver_reason)
+            fragments += [f"waiver_reason = ${len(args) + 1}"]
+            args.append(waiver_reason)
         # CRIT-1: Add WHERE status = old_status to detect concurrent mutations.
         # If another process already transitioned this commission between our
         # get_commission read and this UPDATE, the row count will be 0 and we
         # raise RuntimeError rather than silently succeeding on a stale read.
-        old_status_placeholder = f"${len(args)+1}"
+        old_status_placeholder = f"${len(args) + 1}"
         args.append(current.status)
         sql = (
             f"UPDATE partner_commissions SET {', '.join(fragments)} "
@@ -412,9 +481,15 @@ class PartnersRepository:
             ON CONFLICT (idempotency_key) DO NOTHING
             RETURNING id
             """,
-            email_type, partner_id, commission_id,
-            to_email, cc_emails or [], subject, body_markdown,
-            idempotency_key, created_by,
+            email_type,
+            partner_id,
+            commission_id,
+            to_email,
+            cc_emails or [],
+            subject,
+            body_markdown,
+            idempotency_key,
+            created_by,
         )
         if row is None:
             # Already enqueued (ON CONFLICT DO NOTHING hit). Return existing id.
@@ -461,7 +536,8 @@ class PartnersRepository:
           5th+ failure → failed_dlq (no further retries)
         """
         row = await self.conn.fetchrow(
-            "SELECT attempts FROM partner_email_outbox WHERE id = $1", outbox_id,
+            "SELECT attempts FROM partner_email_outbox WHERE id = $1",
+            outbox_id,
         )
         if row is None:
             return
@@ -471,7 +547,9 @@ class PartnersRepository:
                 "UPDATE partner_email_outbox "
                 "SET status='failed_dlq', attempts=$2, last_error=$3, next_retry_at=now() "
                 "WHERE id = $1",
-                outbox_id, attempts, error,
+                outbox_id,
+                attempts,
+                error,
             )
             return
 
@@ -481,7 +559,9 @@ class PartnersRepository:
             f"SET status='pending', attempts=$2, last_error=$3, "
             f"next_retry_at=now() + interval '{backoff_minutes} minutes' "
             f"WHERE id = $1",
-            outbox_id, attempts, error,
+            outbox_id,
+            attempts,
+            error,
         )
 
     # ── Audit log ───────────────────────────────────────────────────────
@@ -503,7 +583,9 @@ class PartnersRepository:
                 (partner_id, actor_user_id, action, before_json, after_json, reason)
             VALUES ($1, $2, $3, $4, $5, $6)
             """,
-            partner_id, actor_user_id, action,
+            partner_id,
+            actor_user_id,
+            action,
             json.dumps(before) if before else None,
             json.dumps(after) if after else None,
             reason,
@@ -516,11 +598,14 @@ class PartnersRepository:
         )
         return [
             PartnerAuditLogEntry(
-                id=r["id"], partner_id=r["partner_id"],
-                actor_user_id=r["actor_user_id"], action=r["action"],
+                id=r["id"],
+                partner_id=r["partner_id"],
+                actor_user_id=r["actor_user_id"],
+                action=r["action"],
                 before_json=json.loads(r["before_json"]) if r["before_json"] else None,
                 after_json=json.loads(r["after_json"]) if r["after_json"] else None,
-                reason=r["reason"], at=r["at"],
+                reason=r["reason"],
+                at=r["at"],
             )
             for r in rows
         ]

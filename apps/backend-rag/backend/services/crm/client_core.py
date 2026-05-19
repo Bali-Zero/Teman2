@@ -18,7 +18,13 @@ from enum import Enum
 from typing import Any
 
 import asyncpg
-from pydantic import BaseModel, EmailStr, Field, ValidationError as PydanticValidationError, field_validator
+from pydantic import (
+    BaseModel,
+    EmailStr,
+    Field,
+    ValidationError as PydanticValidationError,
+    field_validator,
+)
 
 from backend.app.core.exceptions import (
     DatabaseError,
@@ -41,6 +47,7 @@ logger = logging.getLogger(__name__)
 # ─────────────────────────────────────────────────────────────────────────────
 # Validators (from validators.py)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class ClientValidator(BaseModel):
     """Validatore per dati cliente."""
@@ -236,6 +243,7 @@ def extract_entities_from_text(text: str) -> dict[str, Any]:
 # ─────────────────────────────────────────────────────────────────────────────
 # Audit Trail (from audit_trail.py)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class AuditAction(str, Enum):
     """Tipi di azioni auditabili."""
@@ -501,14 +509,18 @@ class CRMAuditor:
             self._buffer.clear()
 
         except (json.JSONDecodeError, TypeError) as e:
-            logger.warning(f"Failed to flush audit buffer (serialization): {sanitize_error_message(e)}")
+            logger.warning(
+                f"Failed to flush audit buffer (serialization): {sanitize_error_message(e)}"
+            )
         except (asyncpg.PostgresError, OSError) as e:
             logger.warning(f"Failed to flush audit buffer (DB): {sanitize_error_message(e)}")
         except Exception as e:
             logger.exception(f"Failed to flush audit buffer: {sanitize_error_message(e)}")
 
     def _calculate_changes(
-        self, old_values: dict[str, Any], new_values: dict[str, Any],
+        self,
+        old_values: dict[str, Any],
+        new_values: dict[str, Any],
     ) -> dict[str, dict[str, Any]]:
         """Calcola differenze tra old e new values."""
         changes = {}
@@ -585,6 +597,7 @@ async def init_audit_table(db_pool: asyncpg.Pool) -> None:
 # EnhancedCRMService (from enhanced_crm_service.py)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class EnhancedCRMService:
     """
     Servizio CRM ottimizzato e production-ready.
@@ -647,10 +660,12 @@ class EnhancedCRMService:
 
     # ==================== CLIENT OPERATIONS ====================
 
-    @cache_invalidating([
-        "zantara:crm_clients_stats:*",
-        "zantara:crm_clients:*",
-    ])
+    @cache_invalidating(
+        [
+            "zantara:crm_clients_stats:*",
+            "zantara:crm_clients:*",
+        ]
+    )
     async def create_client(
         self,
         client_data: dict[str, Any],
@@ -664,7 +679,8 @@ class EnhancedCRMService:
             existing = await self._find_duplicate_client(validated.model_dump())
             if existing:
                 raise ValidationError(
-                    "Client already exists with email or phone", {"existing_id": existing},
+                    "Client already exists with email or phone",
+                    {"existing_id": existing},
                 )
 
             async with self.db_pool.acquire() as conn:
@@ -715,11 +731,13 @@ class EnhancedCRMService:
             logger.exception(f"Failed to create client: {sanitize_error_message(e)}")
             raise DatabaseError("Failed to create client", operation="insert")
 
-    @cache_invalidating([
-        lambda self, client_id, *a, **k: f"zantara:crm_client:{client_id}:*",
-        "zantara:crm_clients_stats:*",
-        "zantara:crm_clients:*",
-    ])
+    @cache_invalidating(
+        [
+            lambda self, client_id, *a, **k: f"zantara:crm_client:{client_id}:*",
+            "zantara:crm_clients_stats:*",
+            "zantara:crm_clients:*",
+        ]
+    )
     async def update_client(
         self,
         client_id: int,
@@ -731,7 +749,8 @@ class EnhancedCRMService:
         try:
             async with self.db_pool.acquire() as conn:
                 old_data = await conn.fetchrow(
-                    "SELECT * FROM clients WHERE id = $1 AND deleted_at IS NULL", client_id,
+                    "SELECT * FROM clients WHERE id = $1 AND deleted_at IS NULL",
+                    client_id,
                 )
 
                 if not old_data:
@@ -796,7 +815,9 @@ class EnhancedCRMService:
             raise DatabaseError("Failed to update client", operation="update")
 
     async def get_client(
-        self, client_id: int, include_practices: bool = False,
+        self,
+        client_id: int,
+        include_practices: bool = False,
     ) -> dict[str, Any] | None:
         """Recupera cliente con caching."""
         cache_key = f"client:{client_id}:practices:{include_practices}"
@@ -812,7 +833,8 @@ class EnhancedCRMService:
             else:
                 async with self.db_pool.acquire() as conn:
                     row = await conn.fetchrow(
-                        "SELECT * FROM clients WHERE id = $1 AND deleted_at IS NULL", client_id,
+                        "SELECT * FROM clients WHERE id = $1 AND deleted_at IS NULL",
+                        client_id,
                     )
                     result = dict(row) if row else None
 
@@ -829,16 +851,21 @@ class EnhancedCRMService:
             raise DatabaseError("Failed to retrieve client", operation="select")
 
     async def search_clients(
-        self, query: str, limit: int = 20, offset: int = 0,
+        self,
+        query: str,
+        limit: int = 20,
+        offset: int = 0,
     ) -> tuple[list[dict], int]:
         """Ricerca clienti ottimizzata."""
         return await self.optimizer.search_clients_optimized(query, limit, offset)
 
     # ==================== PRACTICE OPERATIONS ====================
 
-    @cache_invalidating([
-        "zantara:crm_practices:*",
-    ])
+    @cache_invalidating(
+        [
+            "zantara:crm_practices:*",
+        ]
+    )
     async def create_practice(
         self,
         practice_data: dict[str, Any],
@@ -896,10 +923,12 @@ class EnhancedCRMService:
             logger.exception(f"Failed to create practice: {sanitize_error_message(e)}")
             raise DatabaseError("Failed to create practice", operation="insert")
 
-    @cache_invalidating([
-        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",
-        "zantara:crm_practices:*",
-    ])
+    @cache_invalidating(
+        [
+            lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",
+            "zantara:crm_practices:*",
+        ]
+    )
     async def update_practice_status(
         self,
         practice_id: int,
@@ -911,7 +940,8 @@ class EnhancedCRMService:
         try:
             async with self.db_pool.acquire() as conn:
                 old = await conn.fetchrow(
-                    "SELECT status, client_id FROM practices WHERE id = $1", practice_id,
+                    "SELECT status, client_id FROM practices WHERE id = $1",
+                    practice_id,
                 )
 
                 if not old:
@@ -959,12 +989,16 @@ class EnhancedCRMService:
 
     # ==================== BATCH OPERATIONS ====================
 
-    @cache_invalidating([
-        "zantara:crm_clients_stats:*",
-        "zantara:crm_clients:*",
-    ])
+    @cache_invalidating(
+        [
+            "zantara:crm_clients_stats:*",
+            "zantara:crm_clients:*",
+        ]
+    )
     async def batch_create_clients(
-        self, clients: list[dict[str, Any]], user_id: str | None = None,
+        self,
+        clients: list[dict[str, Any]],
+        user_id: str | None = None,
     ) -> list[int]:
         """Creazione batch clienti."""
         try:
@@ -989,7 +1023,9 @@ class EnhancedCRMService:
     # ==================== HR BONUS HOOK ====================
 
     async def _create_hr_bonus_entry(
-        self, practice_id: int, practice_data: dict[str, Any],
+        self,
+        practice_id: int,
+        practice_data: dict[str, Any],
     ) -> None:
         """
         Auto-create a bonus ledger entry when a practice is completed.
@@ -1034,7 +1070,8 @@ class EnhancedCRMService:
                 )
                 if not rate:
                     logger.debug(
-                        "HR bonus skip: no active rate for practice_type=%s", practice_type_code,
+                        "HR bonus skip: no active rate for practice_type=%s",
+                        practice_type_code,
                     )
                     return
 
@@ -1048,7 +1085,8 @@ class EnhancedCRMService:
                 )
                 if not emp:
                     logger.debug(
-                        "HR bonus skip: no HR employee for email=%s", assigned_to,
+                        "HR bonus skip: no HR employee for email=%s",
+                        assigned_to,
                     )
                     return
 

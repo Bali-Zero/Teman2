@@ -152,8 +152,13 @@ class TestSlackNotifyErrorHandling:
             async def post(self, *a, **kw):
                 raise httpx.ConnectError("slack down")
 
-        with patch.object(mod, "ConversationTrainer", return_value=mock_trainer), patch.object(
-            httpx, "AsyncClient", _BoomClient,
+        with (
+            patch.object(mod, "ConversationTrainer", return_value=mock_trainer),
+            patch.object(
+                httpx,
+                "AsyncClient",
+                _BoomClient,
+            ),
         ):
             # Must not raise
             await mod.run_conversation_trainer(days_back=1)
@@ -194,8 +199,13 @@ class TestSlackNotifyErrorHandling:
             async def post(self, *a, **kw):
                 raise asyncio.CancelledError
 
-        with patch.object(mod, "ConversationTrainer", return_value=mock_trainer), patch.object(
-            httpx, "AsyncClient", _CancelClient,
+        with (
+            patch.object(mod, "ConversationTrainer", return_value=mock_trainer),
+            patch.object(
+                httpx,
+                "AsyncClient",
+                _CancelClient,
+            ),
         ):
             with pytest.raises(asyncio.CancelledError):
                 await mod.run_conversation_trainer(days_back=1)

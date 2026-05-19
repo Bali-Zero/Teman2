@@ -26,26 +26,26 @@ if TYPE_CHECKING:
 
 class VisaType(str, Enum):
     # ── Visit Visa (single entry, C-series) ──────────────────
-    C1 = "C1"                     # Tourism
-    C2 = "C2"                     # Business
-    C6 = "C6"                     # Social activity
-    C7 = "C7"                     # Art & culture performance
-    C7A = "C7A"                   # Music performance
-    C7B = "C7B"                   # Music crew
-    C18 = "C18"                   # Work trial
-    C22A = "C22A"                 # Internship 60d
+    C1 = "C1"  # Tourism
+    C2 = "C2"  # Business
+    C6 = "C6"  # Social activity
+    C7 = "C7"  # Art & culture performance
+    C7A = "C7A"  # Music performance
+    C7B = "C7B"  # Music crew
+    C18 = "C18"  # Work trial
+    C22A = "C22A"  # Internship 60d
     # ── Multiple Entry (D-series) ────────────────────────────
-    D2 = "D2"                     # Multiple-entry business
-    D12 = "D12"                   # Business investigation 1–2y
+    D2 = "D2"  # Multiple-entry business
+    D12 = "D12"  # Business investigation 1–2y
     # ── KITAS (E-series) ─────────────────────────────────────
-    E23 = "E23"                   # Working KITAS
+    E23 = "E23"  # Working KITAS
     E23_FREELANCE = "E23-FREELANCE"  # Freelance KITAS
-    E28A = "E28A"                 # Investor KITAS 2y
-    E30A = "E30A"                 # Education (basic & secondary)
-    E31 = "E31"                   # Family KITAS
-    E33E = "E33E"                 # Second Home Elder 5y (golden)
-    E33F = "E33F"                 # Second Home Elder 1y
-    E33G = "E33G"                 # Second Home Remote Worker / Digital Nomad
+    E28A = "E28A"  # Investor KITAS 2y
+    E30A = "E30A"  # Education (basic & secondary)
+    E31 = "E31"  # Family KITAS
+    E33E = "E33E"  # Second Home Elder 5y (golden)
+    E33F = "E33F"  # Second Home Elder 1y
+    E33G = "E33G"  # Second Home Remote Worker / Digital Nomad
 
 
 @dataclass(frozen=True)
@@ -55,11 +55,11 @@ class VisaMeta:
     category: str
     purposes: frozenset[Purpose]
     duration_days: int
-    extensions: tuple[int, int]      # (count, days_each); (0, 0) = non-extendable
-    min_budget_idr: int | None       # None = no budget gate
+    extensions: tuple[int, int]  # (count, days_each); (0, 0) = non-extendable
+    min_budget_idr: int | None  # None = no budget gate
     notes: str
-    seed_source: str                 # "seed" | "seed+NB2"
-    duration_source: str             # human-readable citation
+    seed_source: str  # "seed" | "seed+NB2"
+    duration_source: str  # human-readable citation
     fit_tags: frozenset[str] = field(default_factory=frozenset)
 
 
@@ -99,7 +99,7 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             category="Visit Visa",
             purposes=frozenset({Purpose.LONG_TOURISM, Purpose.WORK_REMOTE}),
             duration_days=60,
-            extensions=(2, 60),              # 60 + 2×60 = 180 max
+            extensions=(2, 60),  # 60 + 2×60 = 180 max
             min_budget_idr=None,
             notes="Pure tourism single entry. Extendable twice ×60d = 180d max.",
             seed_source=SEED,
@@ -200,8 +200,8 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             name_id="Visa Kunjungan Bisnis",
             category="Multiple Entry",
             purposes=frozenset({Purpose.WORK_REMOTE, Purpose.INVESTOR}),
-            duration_days=60,            # per entry
-            extensions=(0, 0),           # re-enter instead of extending
+            duration_days=60,  # per entry
+            extensions=(0, 0),  # re-enter instead of extending
             min_budget_idr=None,
             notes="1- or 2-year multiple-entry business. Users who travel in/out.",
             seed_source=SEED_NB2,
@@ -214,7 +214,7 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             category="Multiple Entry",
             purposes=frozenset({Purpose.INVESTOR}),
             duration_days=365,
-            extensions=(1, 365),         # 1 + 1 year = 2 years total
+            extensions=(1, 365),  # 1 + 1 year = 2 years total
             min_budget_idr=None,
             notes="Scouting visa: evaluate market before committing to PT PMA.",
             seed_source=SEED_NB2,
@@ -241,7 +241,7 @@ def _build_meta() -> dict[VisaType, VisaMeta]:
             purposes=frozenset({Purpose.WORK_REMOTE}),
             duration_days=180,
             extensions=(1, 180),
-            min_budget_idr=25_800_000,   # Offshore fee lower bound
+            min_budget_idr=25_800_000,  # Offshore fee lower bound
             notes="Freelance — for users invoicing Indonesian clients, not foreign employers.",
             seed_source=SEED_NB2,
             duration_source=NB2,

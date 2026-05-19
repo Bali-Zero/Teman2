@@ -45,6 +45,7 @@ logger = get_logger(__name__)
 
 router = APIRouter(tags=["intel-scraper"])
 
+
 async def update_homepage_layout(slug: str, position: str) -> None:
     """
     Update homepage-layout.json in the GitHub repo.
@@ -126,7 +127,9 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
 
     # Extract Summary section
     summary_match = re.search(
-        r"## Summary\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE,
+        r"## Summary\s*\n(.*?)(?=\n## |$)",
+        content,
+        re.DOTALL | re.IGNORECASE,
     )
     ai_summary = summary_match.group(1).strip() if summary_match else content[:280]
 
@@ -136,7 +139,9 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
 
     # Extract Bali Zero Take section
     bali_zero_take_match = re.search(
-        r"## Bali Zero Take\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE,
+        r"## Bali Zero Take\s*\n(.*?)(?=\n## |$)",
+        content,
+        re.DOTALL | re.IGNORECASE,
     )
     bali_zero_take_text = (
         bali_zero_take_match.group(1).strip()
@@ -174,7 +179,9 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
 
     # Extract Next Steps section
     next_steps_match = re.search(
-        r"## Next Steps\s*\n(.*?)(?=\n## |$)", content, re.DOTALL | re.IGNORECASE,
+        r"## Next Steps\s*\n(.*?)(?=\n## |$)",
+        content,
+        re.DOTALL | re.IGNORECASE,
     )
     next_steps_text = next_steps_match.group(1).strip() if next_steps_match else ""
 
@@ -298,7 +305,6 @@ def convert_staging_to_enriched_article(staging_data: dict) -> dict:
     }
 
 
-
 # --- SCRAPER INTEGRATION ENDPOINTS ---
 
 
@@ -350,12 +356,16 @@ async def submit_from_scraper(
     try:
         # Classify intel type using service
         intel_type = classification_service.classify_intel_type(
-            submission.category, submission.title, submission.content,
+            submission.category,
+            submission.title,
+            submission.content,
         )
 
         # Generate unique item ID
         item_id = staging_service.generate_item_id(
-            intel_type, submission.title, submission.source_url,
+            intel_type,
+            submission.title,
+            submission.source_url,
         )
 
         # Check for duplicates
@@ -434,7 +444,8 @@ async def submit_from_scraper(
                     logger.warning("Drive service not configured, skipping image upload")
             except Exception as e:
                 logger.warning(
-                    "Failed to upload cover image to Drive: %s", e,
+                    "Failed to upload cover image to Drive: %s",
+                    e,
                     extra={"item_id": item_id},
                 )
 
@@ -443,7 +454,9 @@ async def submit_from_scraper(
 
         # Metrics
         intel_articles_submitted.labels(
-            scraper_type=submission.source_name, intel_type=intel_type, tier=submission.tier,
+            scraper_type=submission.source_name,
+            intel_type=intel_type,
+            tier=submission.tier,
         ).inc()
         intel_scraper_latency.labels(scraper_type=submission.source_name).observe(
             time.time() - start_time,
@@ -476,8 +489,6 @@ async def submit_from_scraper(
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-
-
 async def ingest_intel_to_qdrant(item_id: str, intel_type: str) -> bool:
     """
     Ingest a staging item into the appropriate Qdrant collection.
@@ -501,7 +512,8 @@ async def ingest_intel_to_qdrant(item_id: str, intel_type: str) -> bool:
         collection_name = INTEL_COLLECTIONS.get(intel_type)
         if not collection_name:
             logger.error(
-                "No Qdrant collection mapped for intel_type=%s", intel_type,
+                "No Qdrant collection mapped for intel_type=%s",
+                intel_type,
                 extra={"item_id": item_id, "intel_type": intel_type},
             )
             return False
@@ -550,7 +562,8 @@ async def ingest_intel_to_qdrant(item_id: str, intel_type: str) -> bool:
 
     except Exception as e:
         logger.error(
-            "Qdrant ingestion failed: %s", e,
+            "Qdrant ingestion failed: %s",
+            e,
             exc_info=True,
             extra={"item_id": item_id, "intel_type": intel_type},
         )
@@ -607,7 +620,8 @@ async def publish_staging_item(
                 extra={"type": type, "item_id": item_id, "title": title},
             )
             raise HTTPException(
-                status_code=500, detail="Failed to ingest article to knowledge base",
+                status_code=500,
+                detail="Failed to ingest article to knowledge base",
             )
 
         logger.info(
@@ -640,7 +654,8 @@ async def publish_staging_item(
             )
         except Exception as e:
             logger.error(
-                "⚠️ Failed to register in anti-duplicate system: %s", e,
+                "⚠️ Failed to register in anti-duplicate system: %s",
+                e,
                 exc_info=True,
                 extra={"type": type, "item_id": item_id},
             )
@@ -714,7 +729,8 @@ async def publish_staging_item(
                         )
                 except Exception as e:
                     logger.warning(
-                        "Failed to download cover image from Drive: %s", e,
+                        "Failed to download cover image from Drive: %s",
+                        e,
                         extra={
                             "type": type,
                             "item_id": item_id,
@@ -747,7 +763,8 @@ async def publish_staging_item(
                         )
                 except Exception as e:
                     logger.warning(
-                        "Failed to read cover image from filesystem: %s", e,
+                        "Failed to read cover image from filesystem: %s",
+                        e,
                         extra={
                             "type": type,
                             "item_id": item_id,
@@ -786,14 +803,16 @@ async def publish_staging_item(
                             "https://api.fireworks.ai/inference/v1/workflows/"
                             "accounts/fireworks/models/flux-1-dev-fp8/text_to_image"
                         )
-                        _payload = json.dumps({
-                            "prompt": _prompt,
-                            "negative_prompt": _negative,
-                            "width": 1344,
-                            "height": 768,
-                            "steps": 28,
-                            "cfg_scale": 3.5,
-                        }).encode()
+                        _payload = json.dumps(
+                            {
+                                "prompt": _prompt,
+                                "negative_prompt": _negative,
+                                "width": 1344,
+                                "height": 768,
+                                "steps": 28,
+                                "cfg_scale": 3.5,
+                            }
+                        ).encode()
                         _req = urllib.request.Request(
                             _fw_url,
                             data=_payload,
@@ -807,7 +826,10 @@ async def publish_staging_item(
                             },
                         )
                         _resp = await asyncio.to_thread(
-                            urllib.request.urlopen, _req, None, 60,  # 60s timeout
+                            urllib.request.urlopen,
+                            _req,
+                            None,
+                            60,  # 60s timeout
                         )
                         _img_bytes = await asyncio.to_thread(_resp.read)
                         if len(_img_bytes) > 5000:
@@ -828,7 +850,8 @@ async def publish_staging_item(
                             )
                     except Exception as e:
                         logger.warning(
-                            "Cover image generation via Fireworks failed (non-blocking): %s", e,
+                            "Cover image generation via Fireworks failed (non-blocking): %s",
+                            e,
                             extra={"type": type, "item_id": item_id},
                         )
                 else:
@@ -894,7 +917,8 @@ async def publish_staging_item(
                         )
                     except Exception as layout_err:
                         logger.warning(
-                            "⚠️ Failed to update homepage layout: %s", layout_err,
+                            "⚠️ Failed to update homepage layout: %s",
+                            layout_err,
                             extra={"position": publish_position},
                         )
             else:
@@ -907,12 +931,14 @@ async def publish_staging_item(
 
         except ImportError as e:
             logger.warning(
-                "⚠️ Article composer not available - skipping GitHub publish: %s", e,
+                "⚠️ Article composer not available - skipping GitHub publish: %s",
+                e,
                 extra={"type": type, "item_id": item_id},
             )
         except Exception as e:
             logger.error(
-                "⚠️ Failed to publish to GitHub/Vercel: %s", e,
+                "⚠️ Failed to publish to GitHub/Vercel: %s",
+                e,
                 exc_info=True,
                 extra={"type": type, "item_id": item_id, "title": title},
             )
@@ -980,7 +1006,8 @@ async def publish_staging_item(
                 )
         except Exception as e:
             logger.warning(
-                "Failed to write to news_items (non-blocking): %s", e,
+                "Failed to write to news_items (non-blocking): %s",
+                e,
                 extra={"type": type, "item_id": item_id},
             )
 
@@ -997,7 +1024,8 @@ async def publish_staging_item(
                     VALUES ($1, $2, 'intel')
                     ON CONFLICT (slug) DO NOTHING
                     """,
-                    article_slug, category,
+                    article_slug,
+                    category,
                 )
             logger.info(
                 "📥 Enqueued for post-processing",
@@ -1053,8 +1081,9 @@ async def publish_staging_item(
         raise
     except Exception as e:
         logger.error(
-            "Publish failed: %s", e, exc_info=True, extra={"type": type, "item_id": item_id},
+            "Publish failed: %s",
+            e,
+            exc_info=True,
+            extra={"type": type, "item_id": item_id},
         )
         raise HTTPException(status_code=500, detail=str(e)) from e
-
-

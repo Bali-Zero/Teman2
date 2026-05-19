@@ -72,12 +72,8 @@ class LinkedInPublisher(Publisher):
         http_client: httpx.AsyncClient | None = None,
         timeout: float | None = None,
     ) -> None:
-        self.access_token = (
-            access_token or os.environ.get("LINKEDIN_ACCESS_TOKEN", "")
-        )
-        self.author_urn = (
-            author_urn or os.environ.get("LINKEDIN_AUTHOR_URN", "")
-        )
+        self.access_token = access_token or os.environ.get("LINKEDIN_ACCESS_TOKEN", "")
+        self.author_urn = author_urn or os.environ.get("LINKEDIN_AUTHOR_URN", "")
         if not self.access_token or not self.author_urn:
             raise PublisherError(
                 "LinkedInPublisher requires LINKEDIN_ACCESS_TOKEN + "
@@ -136,11 +132,7 @@ class LinkedInPublisher(Publisher):
                     draft_id=draft.draft_id,
                     error=f"HTTP {resp.status_code}: {resp.text[:300]}",
                 )
-            urn = (
-                resp.headers.get("x-restli-id")
-                or resp.headers.get("x-linkedin-id")
-                or ""
-            )
+            urn = resp.headers.get("x-restli-id") or resp.headers.get("x-linkedin-id") or ""
             if not urn:
                 # fall back to response body
                 try:
@@ -213,11 +205,7 @@ class LinkedInPublisher(Publisher):
                     "source": draft.link_url,
                     "thumbnail": draft.cover_image_url,
                     "title": draft.topic[:200],
-                    "description": (
-                        draft.main_caption[:255]
-                        if draft.main_caption
-                        else None
-                    ),
+                    "description": (draft.main_caption[:255] if draft.main_caption else None),
                 }
             }
         return body

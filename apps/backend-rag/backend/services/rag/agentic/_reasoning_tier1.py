@@ -138,6 +138,7 @@ def _metrics():
     for ``calculate_evidence_score`` and ``parse_tool_call``).
     """
     from backend.services.rag.agentic import reasoning as _reasoning_module
+
     return _reasoning_module
 
 

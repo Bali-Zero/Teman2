@@ -1,4 +1,5 @@
 """Orchestrator top-level: kill-switch + per-draft pipeline + happy path."""
+
 import json
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -28,32 +29,44 @@ async def test_process_draft_happy_path(tmp_path, monkeypatch):
 
     conn = AsyncMock()
     conn.fetchrow.return_value = {
-        "id": "abc-uuid", "topic": "Test",
-        "tone": "ped", "slides_json": json.dumps({"slides": []}),
+        "id": "abc-uuid",
+        "topic": "Test",
+        "tone": "ped",
+        "slides_json": json.dumps({"slides": []}),
     }
 
     mcp_client = AsyncMock()
-    mcp_client.import_design_from_url.return_value = ("DAG123", "https://canva.com/design/DAG123/edit")
+    mcp_client.import_design_from_url.return_value = (
+        "DAG123",
+        "https://canva.com/design/DAG123/edit",
+    )
     mcp_client.move_item_to_folder = AsyncMock()
 
     s3 = MagicMock()
 
-    with patch(
-        "backend.services.canva_renderer_v2.orchestrator.render_pdf",
-        return_value=tmp_path / "fake.pdf",
-    ), patch(
-        "backend.services.canva_renderer_v2.orchestrator.upload_pdf",
-        return_value=(
-            "https://nuzantara-warroom-images.fly.storage.tigris.dev/wr2-pdf/abc-uuid/deadbeef.pdf",
-            "wr2-pdf/abc-uuid/deadbeef.pdf",
+    with (
+        patch(
+            "backend.services.canva_renderer_v2.orchestrator.render_pdf",
+            return_value=tmp_path / "fake.pdf",
         ),
-    ), patch(
-        "backend.services.canva_renderer_v2.orchestrator.delete_pdf_by_key",
+        patch(
+            "backend.services.canva_renderer_v2.orchestrator.upload_pdf",
+            return_value=(
+                "https://nuzantara-warroom-images.fly.storage.tigris.dev/wr2-pdf/abc-uuid/deadbeef.pdf",
+                "wr2-pdf/abc-uuid/deadbeef.pdf",
+            ),
+        ),
+        patch(
+            "backend.services.canva_renderer_v2.orchestrator.delete_pdf_by_key",
+        ),
     ):
         (tmp_path / "fake.pdf").write_bytes(b"%PDF-1.4")
         ok = await process_draft(
-            conn=conn, mcp_client=mcp_client, s3=s3,
-            draft_id="abc-uuid", lease_owner="pid@host",
+            conn=conn,
+            mcp_client=mcp_client,
+            s3=s3,
+            draft_id="abc-uuid",
+            lease_owner="pid@host",
         )
         assert ok is True
         # persist_canva_result was called → status='rendered'
@@ -66,7 +79,9 @@ async def test_process_draft_429_releases_transient_and_deletes_pdf(tmp_path):
     """429 from MCP → release_lease_transient + Tigris delete."""
     conn = AsyncMock()
     conn.fetchrow.return_value = {
-        "id": "abc-uuid", "topic": "T", "tone": "ped",
+        "id": "abc-uuid",
+        "topic": "T",
+        "tone": "ped",
         "slides_json": json.dumps({"slides": []}),
     }
 
@@ -81,20 +96,30 @@ async def test_process_draft_429_releases_transient_and_deletes_pdf(tmp_path):
     def fake_delete_by_key(s3_, *, key: str) -> None:
         deleted_keys.append(key)
 
-    with patch(
-        "backend.services.canva_renderer_v2.orchestrator.render_pdf",
-        return_value=tmp_path / "fake.pdf",
-    ), patch(
-        "backend.services.canva_renderer_v2.orchestrator.upload_pdf",
-        return_value=("https://test/wr2-pdf/abc-uuid/deadbeef.pdf", "wr2-pdf/abc-uuid/deadbeef.pdf"),
-    ), patch(
-        "backend.services.canva_renderer_v2.orchestrator.delete_pdf_by_key",
-        side_effect=fake_delete_by_key,
+    with (
+        patch(
+            "backend.services.canva_renderer_v2.orchestrator.render_pdf",
+            return_value=tmp_path / "fake.pdf",
+        ),
+        patch(
+            "backend.services.canva_renderer_v2.orchestrator.upload_pdf",
+            return_value=(
+                "https://test/wr2-pdf/abc-uuid/deadbeef.pdf",
+                "wr2-pdf/abc-uuid/deadbeef.pdf",
+            ),
+        ),
+        patch(
+            "backend.services.canva_renderer_v2.orchestrator.delete_pdf_by_key",
+            side_effect=fake_delete_by_key,
+        ),
     ):
         (tmp_path / "fake.pdf").write_bytes(b"%PDF-1.4")
         ok = await process_draft(
-            conn=conn, mcp_client=mcp_client, s3=s3,
-            draft_id="abc-uuid", lease_owner="pid@host",
+            conn=conn,
+            mcp_client=mcp_client,
+            s3=s3,
+            draft_id="abc-uuid",
+            lease_owner="pid@host",
         )
         assert ok is False
         assert any("abc-uuid" in k for k in deleted_keys)

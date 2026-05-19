@@ -19,6 +19,7 @@ Usage:
     row = await repo.create_from_alert(alert)
     # ... daemon picks up via LISTEN, advances status through SM
 """
+
 from __future__ import annotations
 
 import json
@@ -79,15 +80,17 @@ class ProposalStatus(str, Enum):
     DUPLICATE = "duplicate"
 
 
-_TERMINAL_STATUSES: frozenset[str] = frozenset({
-    ProposalStatus.OBSERVED.value,
-    ProposalStatus.DRY_SUCCEEDED.value,
-    ProposalStatus.DRY_FAILED.value,
-    ProposalStatus.COMPLETED.value,
-    ProposalStatus.FAILED.value,
-    ProposalStatus.QUARANTINED.value,
-    ProposalStatus.DUPLICATE.value,
-})
+_TERMINAL_STATUSES: frozenset[str] = frozenset(
+    {
+        ProposalStatus.OBSERVED.value,
+        ProposalStatus.DRY_SUCCEEDED.value,
+        ProposalStatus.DRY_FAILED.value,
+        ProposalStatus.COMPLETED.value,
+        ProposalStatus.FAILED.value,
+        ProposalStatus.QUARANTINED.value,
+        ProposalStatus.DUPLICATE.value,
+    }
+)
 
 
 def is_terminal_status(status: str) -> bool:
@@ -180,9 +183,7 @@ class AlertInput(BaseModel):
 
     @field_validator("compact_payload")
     @classmethod
-    def _enforce_compact_payload_size(
-        cls, value: dict[str, Any]
-    ) -> dict[str, Any]:
+    def _enforce_compact_payload_size(cls, value: dict[str, Any]) -> dict[str, Any]:
         """compact_payload is what travels over pg_notify.
 
         DB enforces octet_length(compact_payload::text) < 500. We mirror
@@ -200,9 +201,7 @@ class AlertInput(BaseModel):
         if size >= PG_NOTIFY_HARD_LIMIT_BYTES:
             # Belt-and-suspenders; should be unreachable given the
             # FAD_COMPACT_PAYLOAD_MAX_BYTES guard above.
-            raise ValueError(
-                f"pg_notify hard limit exceeded: {size}B"
-            )
+            raise ValueError(f"pg_notify hard limit exceeded: {size}B")
         return value
 
 
@@ -274,4 +273,6 @@ class ProposalRow(BaseModel):
     completed_at: datetime | None = None
 
     def is_terminal(self) -> bool:
-        return is_terminal_status(self.status if isinstance(self.status, str) else self.status.value)
+        return is_terminal_status(
+            self.status if isinstance(self.status, str) else self.status.value
+        )

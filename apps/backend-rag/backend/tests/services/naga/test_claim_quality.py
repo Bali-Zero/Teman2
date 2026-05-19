@@ -428,7 +428,8 @@ class TestNB2ClaimsScoring:
         ]
 
     def test_nb2_claims_score_above_threshold(
-        self, nb2_representative_claims: list[dict],
+        self,
+        nb2_representative_claims: list[dict],
     ) -> None:
         """All NB-2 representative claims should score > 0 (not zero).
 
@@ -446,19 +447,15 @@ class TestNB2ClaimsScoring:
                 credibility_scores=claim["credibility"],
                 reference_date=ref_date,
             )
-            assert score > 0.0, (
-                f"Claim '{claim['desc']}' scored {score}, expected > 0"
-            )
+            assert score > 0.0, f"Claim '{claim['desc']}' scored {score}, expected > 0"
 
     def test_nb2_verified_claims_score_high(
-        self, nb2_representative_claims: list[dict],
+        self,
+        nb2_representative_claims: list[dict],
     ) -> None:
         """Verified, multi-source NB-2 claims should score >= 0.4."""
         ref_date = date(2026, 4, 5)
-        verified = [
-            c for c in nb2_representative_claims
-            if c["verification_level"] == "VERIFIED"
-        ]
+        verified = [c for c in nb2_representative_claims if c["verification_level"] == "VERIFIED"]
         for claim in verified:
             score = compute_quality_score(
                 valid_as_of=claim["valid_as_of"],
@@ -468,12 +465,11 @@ class TestNB2ClaimsScoring:
                 credibility_scores=claim["credibility"],
                 reference_date=ref_date,
             )
-            assert score >= 0.4, (
-                f"Verified claim '{claim['desc']}' scored {score}, expected >= 0.4"
-            )
+            assert score >= 0.4, f"Verified claim '{claim['desc']}' scored {score}, expected >= 0.4"
 
     def test_nb2_ordering_makes_sense(
-        self, nb2_representative_claims: list[dict],
+        self,
+        nb2_representative_claims: list[dict],
     ) -> None:
         """Better claims should score higher than worse ones."""
         ref_date = date(2026, 4, 5)
@@ -489,9 +485,13 @@ class TestNB2ClaimsScoring:
             )
 
         # Tax (verified, 5 sources) should beat immigration (low, 1 source)
-        assert scores["tax corporate rate (verified, 5 sources)"] > \
-               scores["immigration overstay (low, 1 source)"]
+        assert (
+            scores["tax corporate rate (verified, 5 sources)"]
+            > scores["immigration overstay (low, 1 source)"]
+        )
 
         # Company (verified, 4 sources) should beat bali_specific (provisional, 1 source)
-        assert scores["company PT PMA capital (verified, 4 sources)"] > \
-               scores["bali_specific local regulation (provisional, 1 source)"]
+        assert (
+            scores["company PT PMA capital (verified, 4 sources)"]
+            > scores["bali_specific local regulation (provisional, 1 source)"]
+        )

@@ -6,6 +6,7 @@ Conventions:
   recall    = acted / (acted + expired)      → how often a needed alert fired
   f1        = 2 * p * r / (p + r)  (0 when p+r == 0)
 """
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -65,11 +66,7 @@ async def compute_metrics(
     precision: float = (acted / denom_p) if denom_p > 0 else 0.0
     denom_r = acted + expired
     recall: float = (acted / denom_r) if denom_r > 0 else 0.0
-    f1: float = (
-        (2 * precision * recall / (precision + recall))
-        if (precision + recall) > 0
-        else 0.0
-    )
+    f1: float = (2 * precision * recall / (precision + recall)) if (precision + recall) > 0 else 0.0
 
     threshold_val = await conn.fetchval(
         "SELECT value FROM system_settings WHERE key = $1",

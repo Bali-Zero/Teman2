@@ -31,7 +31,9 @@ class TestRecordQuery:
             "backend.services.ingestion.collection_health_service.canonicalize_collection_name",
             return_value="collection_a",
         ):
-            health_service.record_query("collection_a", had_results=True, result_count=5, avg_score=0.8)
+            health_service.record_query(
+                "collection_a", had_results=True, result_count=5, avg_score=0.8
+            )
             metrics = health_service.metrics["collection_a"]
             assert metrics["query_count"] == 1
             assert metrics["hit_count"] == 1
@@ -70,9 +72,19 @@ class TestRecordQueriesBatch:
             side_effect=lambda x: x,
         ):
             batch = [
-                {"collection_name": "collection_a", "had_results": True, "result_count": 3, "avg_score": 0.7},
+                {
+                    "collection_name": "collection_a",
+                    "had_results": True,
+                    "result_count": 3,
+                    "avg_score": 0.7,
+                },
                 {"collection_name": "collection_a", "had_results": False},
-                {"collection_name": "collection_b", "had_results": True, "result_count": 1, "avg_score": 0.5},
+                {
+                    "collection_name": "collection_b",
+                    "had_results": True,
+                    "result_count": 1,
+                    "avg_score": 0.5,
+                },
             ]
             health_service.record_queries_batch(batch)
             assert health_service.metrics["collection_a"]["query_count"] == 2
@@ -84,9 +96,11 @@ class TestRecordQueriesBatch:
             "backend.services.ingestion.collection_health_service.canonicalize_collection_name",
             return_value="nonexistent",
         ):
-            health_service.record_queries_batch([
-                {"collection_name": "nonexistent", "had_results": True},
-            ])
+            health_service.record_queries_batch(
+                [
+                    {"collection_name": "nonexistent", "had_results": True},
+                ]
+            )
 
 
 # ── calculate_staleness ────────────────────────────────────────────────────
@@ -122,50 +136,64 @@ class TestCalculateStaleness:
 class TestCalculateHealthStatus:
     def test_critical_very_stale(self, health_service):
         result = health_service.calculate_health_status(
-            hit_rate=0.9, avg_confidence=0.8,
-            staleness=StalenessSeverity.VERY_STALE, query_count=100,
+            hit_rate=0.9,
+            avg_confidence=0.8,
+            staleness=StalenessSeverity.VERY_STALE,
+            query_count=100,
         )
         assert result == HealthStatus.CRITICAL
 
     def test_critical_low_hit_rate(self, health_service):
         result = health_service.calculate_health_status(
-            hit_rate=0.3, avg_confidence=0.8,
-            staleness=StalenessSeverity.FRESH, query_count=20,
+            hit_rate=0.3,
+            avg_confidence=0.8,
+            staleness=StalenessSeverity.FRESH,
+            query_count=20,
         )
         assert result == HealthStatus.CRITICAL
 
     def test_critical_low_confidence(self, health_service):
         result = health_service.calculate_health_status(
-            hit_rate=0.9, avg_confidence=0.2,
-            staleness=StalenessSeverity.FRESH, query_count=20,
+            hit_rate=0.9,
+            avg_confidence=0.2,
+            staleness=StalenessSeverity.FRESH,
+            query_count=20,
         )
         assert result == HealthStatus.CRITICAL
 
     def test_warning_stale(self, health_service):
         result = health_service.calculate_health_status(
-            hit_rate=0.9, avg_confidence=0.8,
-            staleness=StalenessSeverity.STALE, query_count=5,
+            hit_rate=0.9,
+            avg_confidence=0.8,
+            staleness=StalenessSeverity.STALE,
+            query_count=5,
         )
         assert result == HealthStatus.WARNING
 
     def test_warning_medium_hit_rate(self, health_service):
         result = health_service.calculate_health_status(
-            hit_rate=0.5, avg_confidence=0.8,
-            staleness=StalenessSeverity.FRESH, query_count=10,
+            hit_rate=0.5,
+            avg_confidence=0.8,
+            staleness=StalenessSeverity.FRESH,
+            query_count=10,
         )
         assert result == HealthStatus.WARNING
 
     def test_excellent(self, health_service):
         result = health_service.calculate_health_status(
-            hit_rate=0.9, avg_confidence=0.8,
-            staleness=StalenessSeverity.FRESH, query_count=20,
+            hit_rate=0.9,
+            avg_confidence=0.8,
+            staleness=StalenessSeverity.FRESH,
+            query_count=20,
         )
         assert result == HealthStatus.EXCELLENT
 
     def test_good_default(self, health_service):
         result = health_service.calculate_health_status(
-            hit_rate=0.7, avg_confidence=0.6,
-            staleness=StalenessSeverity.AGING, query_count=3,
+            hit_rate=0.7,
+            avg_confidence=0.6,
+            staleness=StalenessSeverity.AGING,
+            query_count=3,
         )
         assert result == HealthStatus.GOOD
 
@@ -176,50 +204,78 @@ class TestCalculateHealthStatus:
 class TestGenerateRecommendations:
     def test_very_stale_recommendation(self, health_service):
         recs = health_service.generate_recommendations(
-            "test", HealthStatus.CRITICAL, StalenessSeverity.VERY_STALE,
-            hit_rate=0.9, avg_confidence=0.8, query_count=20,
+            "test",
+            HealthStatus.CRITICAL,
+            StalenessSeverity.VERY_STALE,
+            hit_rate=0.9,
+            avg_confidence=0.8,
+            query_count=20,
         )
         assert any("URGENT" in r for r in recs)
 
     def test_stale_recommendation(self, health_service):
         recs = health_service.generate_recommendations(
-            "test", HealthStatus.WARNING, StalenessSeverity.STALE,
-            hit_rate=0.9, avg_confidence=0.8, query_count=20,
+            "test",
+            HealthStatus.WARNING,
+            StalenessSeverity.STALE,
+            hit_rate=0.9,
+            avg_confidence=0.8,
+            query_count=20,
         )
         assert any("WARNING" in r for r in recs)
 
     def test_low_hit_rate_recommendation(self, health_service):
         recs = health_service.generate_recommendations(
-            "test", HealthStatus.CRITICAL, StalenessSeverity.FRESH,
-            hit_rate=0.3, avg_confidence=0.8, query_count=20,
+            "test",
+            HealthStatus.CRITICAL,
+            StalenessSeverity.FRESH,
+            hit_rate=0.3,
+            avg_confidence=0.8,
+            query_count=20,
         )
         assert any("hit rate" in r.lower() for r in recs)
 
     def test_low_confidence_recommendation(self, health_service):
         recs = health_service.generate_recommendations(
-            "test", HealthStatus.CRITICAL, StalenessSeverity.FRESH,
-            hit_rate=0.9, avg_confidence=0.2, query_count=20,
+            "test",
+            HealthStatus.CRITICAL,
+            StalenessSeverity.FRESH,
+            hit_rate=0.9,
+            avg_confidence=0.2,
+            query_count=20,
         )
         assert any("confidence" in r.lower() for r in recs)
 
     def test_no_queries_recommendation(self, health_service):
         recs = health_service.generate_recommendations(
-            "test", HealthStatus.GOOD, StalenessSeverity.FRESH,
-            hit_rate=0.0, avg_confidence=0.0, query_count=0,
+            "test",
+            HealthStatus.GOOD,
+            StalenessSeverity.FRESH,
+            hit_rate=0.0,
+            avg_confidence=0.0,
+            query_count=0,
         )
         assert any("No queries" in r for r in recs)
 
     def test_updates_collection_not_fresh(self, health_service):
         recs = health_service.generate_recommendations(
-            "updates_feed", HealthStatus.WARNING, StalenessSeverity.STALE,
-            hit_rate=0.9, avg_confidence=0.8, query_count=20,
+            "updates_feed",
+            HealthStatus.WARNING,
+            StalenessSeverity.STALE,
+            hit_rate=0.9,
+            avg_confidence=0.8,
+            query_count=20,
         )
         assert any("auto-ingestion" in r for r in recs)
 
     def test_all_good(self, health_service):
         recs = health_service.generate_recommendations(
-            "test", HealthStatus.EXCELLENT, StalenessSeverity.FRESH,
-            hit_rate=0.9, avg_confidence=0.8, query_count=20,
+            "test",
+            HealthStatus.EXCELLENT,
+            StalenessSeverity.FRESH,
+            hit_rate=0.9,
+            avg_confidence=0.8,
+            query_count=20,
         )
         assert any("good" in r.lower() for r in recs)
 

@@ -199,7 +199,9 @@ class PrimeNexusService:
         # Cache result (24h)
         if self._cache:
             try:
-                await self._cache.set(cache_key, str(dist) if dist is not None else "null", ttl=86400)
+                await self._cache.set(
+                    cache_key, str(dist) if dist is not None else "null", ttl=86400
+                )
             except Exception:
                 logger.debug("[PrimeNexus] Sea distance cache set failed")
 
@@ -259,7 +261,8 @@ class PrimeNexusService:
 
         return {
             "status": "outside_coverage",
-            "lat": lat, "lng": lng,
+            "lat": lat,
+            "lng": lng,
             "zone": None,
             "cache_hit": False,
             "sea_distance_m": None,
@@ -267,7 +270,10 @@ class PrimeNexusService:
         }
 
     async def _enrich_resolve_response(
-        self, response: dict[str, Any], lat: float, lng: float,
+        self,
+        response: dict[str, Any],
+        lat: float,
+        lng: float,
     ) -> dict[str, Any]:
         """Enrich resolve response with sea_distance_m."""
         sea_dist = await self._query_sea_distance(lat, lng)
@@ -334,13 +340,20 @@ class PrimeNexusService:
 
             label_info = ZONE_LABELS.get(
                 zone_code,
-                {"label_en": zone_name, "desc_en": zone_definition[:120] if zone_definition else ""},
+                {
+                    "label_en": zone_name,
+                    "desc_en": zone_definition[:120] if zone_definition else "",
+                },
             )
             building_codes = calculate_building_yield(zone_code)
 
             logger.info(
                 "✅ [PrimeNexus/BATARA] %s '%s' @ %s,%s — %d businesses",
-                zone_code, zone_name, lat, lng, len(businesses),
+                zone_code,
+                zone_name,
+                lat,
+                lng,
+                len(businesses),
             )
             return {
                 "zone_code": zone_code,
@@ -378,23 +391,32 @@ class PrimeNexusService:
         try:
             client = await self._get_client()
             cities_resp = await client.get(
-                f"{GISTARU_RDTR_API}/cities/51", headers=GISTARU_HEADERS, timeout=30.0,
+                f"{GISTARU_RDTR_API}/cities/51",
+                headers=GISTARU_HEADERS,
+                timeout=30.0,
             )
             cities_resp.raise_for_status()
             cities_body = cities_resp.json()
-            cities = cities_body.get("data", cities_body) if isinstance(cities_body, dict) else cities_body
+            cities = (
+                cities_body.get("data", cities_body)
+                if isinstance(cities_body, dict)
+                else cities_body
+            )
 
             for city in cities:
                 city_id = city.get("id")
                 if not city_id:
                     continue
                 rdtr_resp = await client.get(
-                    f"{GISTARU_RDTR_API}/rdtr/{city_id}", headers=GISTARU_HEADERS,
+                    f"{GISTARU_RDTR_API}/rdtr/{city_id}",
+                    headers=GISTARU_HEADERS,
                 )
                 if rdtr_resp.status_code != 200:
                     continue
                 rdtr_body = rdtr_resp.json()
-                rdtr_list = rdtr_body.get("data", rdtr_body) if isinstance(rdtr_body, dict) else rdtr_body
+                rdtr_list = (
+                    rdtr_body.get("data", rdtr_body) if isinstance(rdtr_body, dict) else rdtr_body
+                )
                 if not isinstance(rdtr_list, list):
                     continue
 
@@ -402,12 +424,16 @@ class PrimeNexusService:
                     mapserver_path = rdtr.get("url_mapserver", "")
                     if not mapserver_path:
                         continue
-                    qs = urlencode({
-                        "geometry": f"{lng},{lat}",
-                        "geometryType": "esriGeometryPoint",
-                        "spatialRel": "esriSpatialRelIntersects",
-                        "outFields": "*", "returnGeometry": "false", "f": "json",
-                    })
+                    qs = urlencode(
+                        {
+                            "geometry": f"{lng},{lat}",
+                            "geometryType": "esriGeometryPoint",
+                            "spatialRel": "esriSpatialRelIntersects",
+                            "outFields": "*",
+                            "returnGeometry": "false",
+                            "f": "json",
+                        }
+                    )
                     arcgis_base = "https://gistaru.atrbpn.go.id/arcgis/rest/services"
                     proxied = f"{GISTARU_PROXY}{arcgis_base}/{mapserver_path}/0/query?{qs}"
                     try:
@@ -432,10 +458,23 @@ class PrimeNexusService:
                         "desa": attrs.get("WADMKD", "N/A"),
                         "kecamatan": attrs.get("WADMKC", ""),
                         "kabupaten": attrs.get("WADMKK", "") or city_name,
-                        "kdb": "N/A", "klb": "N/A", "kdh": "N/A", "tb": "N/A", "gsb": "N/A",
+                        "kdb": "N/A",
+                        "klb": "N/A",
+                        "kdh": "N/A",
+                        "tb": "N/A",
+                        "gsb": "N/A",
                         "overlays": {
                             k: attrs.get(k)
-                            for k in ("KKOP_1", "LP2B_2", "KRB_03", "TEB_05", "CAGBUD", "RESAIR", "SEMPDN", "HANKAM")
+                            for k in (
+                                "KKOP_1",
+                                "LP2B_2",
+                                "KRB_03",
+                                "TEB_05",
+                                "CAGBUD",
+                                "RESAIR",
+                                "SEMPDN",
+                                "HANKAM",
+                            )
                             if attrs.get(k) and attrs.get(k) != "Tidak Ada"
                         },
                     }
@@ -467,7 +506,8 @@ class PrimeNexusService:
                         "avg_price_per_are, risk_score FROM bali_zoning_layers "
                         "WHERE ST_Contains(boundary, ST_SetSRID(ST_MakePoint($1, $2), 4326)) "
                         "ORDER BY risk_score DESC LIMIT 1",
-                        lng, lat,
+                        lng,
+                        lat,
                     )
                 finally:
                     await conn.close()
@@ -485,7 +525,8 @@ class PrimeNexusService:
                         "avg_price_per_are, risk_score FROM bali_zoning_layers "
                         "WHERE ST_Contains(boundary, ST_SetSRID(ST_MakePoint($1, $2), 4326)) "
                         "ORDER BY risk_score DESC LIMIT 1",
-                        lng, lat,
+                        lng,
+                        lat,
                     )
             except (asyncpg.PostgresError, OSError) as exc:
                 logger.warning("[PrimeNexus] PostGIS pool query failed: %s", exc)
@@ -511,7 +552,8 @@ class PrimeNexusService:
                         "SELECT avg_price_per_are FROM bali_zoning_layers "
                         "WHERE ST_Contains(boundary, ST_SetSRID(ST_MakePoint($1, $2), 4326)) "
                         "ORDER BY risk_score DESC LIMIT 1",
-                        lng, lat,
+                        lng,
+                        lat,
                     )
                 finally:
                     await conn.close()
@@ -528,7 +570,8 @@ class PrimeNexusService:
                         "SELECT avg_price_per_are FROM bali_zoning_layers "
                         "WHERE ST_Contains(boundary, ST_SetSRID(ST_MakePoint($1, $2), 4326)) "
                         "ORDER BY risk_score DESC LIMIT 1",
-                        lng, lat,
+                        lng,
+                        lat,
                     )
                     if row and row["avg_price_per_are"]:
                         return float(row["avg_price_per_are"])
@@ -572,11 +615,17 @@ class PrimeNexusService:
 
     # ── Response builders ────────────────────────────────────────────
     def _build_resolve_response(
-        self, lat: float, lng: float, batara: dict[str, Any], source: str, confidence: float,
+        self,
+        lat: float,
+        lng: float,
+        batara: dict[str, Any],
+        source: str,
+        confidence: float,
     ) -> dict[str, Any]:
         return {
             "status": "found",
-            "lat": lat, "lng": lng,
+            "lat": lat,
+            "lng": lng,
             "zone": {
                 "zone_code": batara["zone_code"],
                 "zone_name": batara["zone_name"],
@@ -593,25 +642,46 @@ class PrimeNexusService:
             },
             "cache_hit": False,
             # Backward compat fields (flat, for prime.py wrapper)
-            **{k: batara.get(k) for k in (
-                "zone_code", "zone_name", "zone_label_en", "zone_description_en",
-                "zone_color_hex", "is_restricted", "businesses", "business_count",
-                "overlays", "building_codes", "kdb", "klb", "kdh", "tb", "gsb", "desa",
-            )},
+            **{
+                k: batara.get(k)
+                for k in (
+                    "zone_code",
+                    "zone_name",
+                    "zone_label_en",
+                    "zone_description_en",
+                    "zone_color_hex",
+                    "is_restricted",
+                    "businesses",
+                    "business_count",
+                    "overlays",
+                    "building_codes",
+                    "kdb",
+                    "klb",
+                    "kdh",
+                    "tb",
+                    "gsb",
+                    "desa",
+                )
+            },
             "source": "BATARA/Badung DPUPR (official)",
         }
 
     def _build_resolve_response_from_gistaru(
-        self, lat: float, lng: float, gistaru: dict[str, Any],
+        self,
+        lat: float,
+        lng: float,
+        gistaru: dict[str, Any],
     ) -> dict[str, Any]:
         zone_code = gistaru.get("code", "N/A")
         label_info = ZONE_LABELS.get(
-            zone_code, {"label_en": gistaru.get("name", ""), "desc_en": ""},
+            zone_code,
+            {"label_en": gistaru.get("name", ""), "desc_en": ""},
         )
         building_codes = calculate_building_yield(zone_code)
         return {
             "status": "found",
-            "lat": lat, "lng": lng,
+            "lat": lat,
+            "lng": lng,
             "zone": {
                 "zone_code": zone_code,
                 "zone_name": gistaru.get("name", ""),
@@ -644,18 +714,23 @@ class PrimeNexusService:
         }
 
     def _build_resolve_response_from_postgis(
-        self, lat: float, lng: float, row: asyncpg.Record,
+        self,
+        lat: float,
+        lng: float,
+        row: asyncpg.Record,
     ) -> dict[str, Any]:
         zone_type: str = row["zoning_type"]
         zone_code = zone_type.split(":")[0].strip()
         zone_name = zone_type.split(":", 1)[1].strip() if ":" in zone_type else zone_type
         label_info = ZONE_LABELS.get(
-            zone_code, {"label_en": zone_name, "desc_en": "Contact local authorities for details"},
+            zone_code,
+            {"label_en": zone_name, "desc_en": "Contact local authorities for details"},
         )
         building_codes = calculate_building_yield(zone_code)
         return {
             "status": "found",
-            "lat": lat, "lng": lng,
+            "lat": lat,
+            "lng": lng,
             "zone": {
                 "zone_code": zone_code,
                 "zone_name": zone_name,
@@ -780,11 +855,15 @@ class PrimeNexusService:
             roi_url = os.environ.get("ROI_CALCULATOR_URL", "http://localhost:8001/calculator")
             try:
                 client = await self._get_client()
-                roi_resp = await client.post(roi_url, json={
-                    "land_size_m2": land_size_m2,
-                    "price_total_idr": price_idr,
-                    "zone_code": zone_code,
-                }, timeout=10.0)
+                roi_resp = await client.post(
+                    roi_url,
+                    json={
+                        "land_size_m2": land_size_m2,
+                        "price_total_idr": price_idr,
+                        "zone_code": zone_code,
+                    },
+                    timeout=10.0,
+                )
                 roi_resp.raise_for_status()
                 rd = roi_resp.json()
                 roi_data = {
@@ -830,7 +909,9 @@ class PrimeNexusService:
             avg_price_per_are * (land_size_m2 / 100) if avg_price_per_are and land_size_m2 else None
         )
         if njop_proxy and njop_proxy > 0:
-            kabupaten = (zone_data.get("kecamatan", "") if zone_data else "") or resolve_result.get("district", "")
+            kabupaten = (zone_data.get("kecamatan", "") if zone_data else "") or resolve_result.get(
+                "district", ""
+            )
             property_tax = calculate_property_tax(njop_proxy, kabupaten)
 
         # Step 4c: Property eligibility (only if nationality provided)
@@ -888,13 +969,19 @@ class PrimeNexusService:
 
         logger.info(
             "[PrimeNexus] analyze: verdict=%s score=%d zone=%s kbli=%s",
-            verdict_label, scoring["score"], zone_code, kbli_code,
+            verdict_label,
+            scoring["score"],
+            zone_code,
+            kbli_code,
         )
         return result
 
     # ── Intel search (Qdrant balizero_news) ──────────────────────────
     async def _search_intel(
-        self, zone_code: str, subdistrict: str, limit: int = 4,
+        self,
+        zone_code: str,
+        subdistrict: str,
+        limit: int = 4,
     ) -> list[dict[str, Any]]:
         """Semantic search for investment-relevant articles near the zone."""
         try:
@@ -935,14 +1022,16 @@ class PrimeNexusService:
                 source_url = payload.get("source_url", "")
                 if not title or not source_url:
                     continue
-                articles.append({
-                    "title": title,
-                    "source_url": source_url,
-                    "category": payload.get("category", ""),
-                    "source_name": payload.get("source_name", ""),
-                    "published_at": payload.get("published_at", ""),
-                    "relevance_score": round(score, 3),
-                })
+                articles.append(
+                    {
+                        "title": title,
+                        "source_url": source_url,
+                        "category": payload.get("category", ""),
+                        "source_name": payload.get("source_name", ""),
+                        "published_at": payload.get("published_at", ""),
+                        "relevance_score": round(score, 3),
+                    }
+                )
                 if len(articles) >= limit:
                     break
             return articles
@@ -959,8 +1048,10 @@ class PrimeNexusService:
     # ── Layer 3: CRM Intelligence Overlay ───────────────────────────
     async def intelligence(
         self,
-        sw_lat: float, sw_lng: float,
-        ne_lat: float, ne_lng: float,
+        sw_lat: float,
+        sw_lng: float,
+        ne_lat: float,
+        ne_lng: float,
         include_clients: bool = True,
         include_companies: bool = True,
         include_practices: bool = True,
@@ -985,8 +1076,18 @@ class PrimeNexusService:
             try:
                 conn = await asyncpg.connect(db_url)
                 try:
-                    return await self._intelligence_query(conn, sw_lat, sw_lng, ne_lat, ne_lng,
-                                                          include_clients, include_companies, max_features, features, stats)
+                    return await self._intelligence_query(
+                        conn,
+                        sw_lat,
+                        sw_lng,
+                        ne_lat,
+                        ne_lng,
+                        include_clients,
+                        include_companies,
+                        max_features,
+                        features,
+                        stats,
+                    )
                 finally:
                     await conn.close()
             except (asyncpg.PostgresError, OSError) as exc:
@@ -999,8 +1100,16 @@ class PrimeNexusService:
         try:
             async with pool.acquire() as conn:
                 return await self._intelligence_query(
-                    conn, sw_lat, sw_lng, ne_lat, ne_lng,
-                    include_clients, include_companies, max_features, features, stats,
+                    conn,
+                    sw_lat,
+                    sw_lng,
+                    ne_lat,
+                    ne_lng,
+                    include_clients,
+                    include_companies,
+                    max_features,
+                    features,
+                    stats,
                 )
         except (asyncpg.PostgresError, OSError) as exc:
             logger.warning("[PrimeNexus] Intelligence query failed: %s", exc)
@@ -1012,14 +1121,20 @@ class PrimeNexusService:
     async def _intelligence_query(
         self,
         conn: asyncpg.Connection,
-        sw_lat: float, sw_lng: float, ne_lat: float, ne_lng: float,
-        include_clients: bool, include_companies: bool,
+        sw_lat: float,
+        sw_lng: float,
+        ne_lat: float,
+        ne_lng: float,
+        include_clients: bool,
+        include_companies: bool,
         max_features: int,
-        features: list[dict[str, Any]], stats: dict[str, int],
+        features: list[dict[str, Any]],
+        stats: dict[str, int],
     ) -> dict[str, Any]:
         """Execute intelligence queries against a connection."""
         if include_companies and len(features) < max_features:
-            rows = await conn.fetch("""
+            rows = await conn.fetch(
+                """
                 SELECT c.id, c.company_name, c.company_type, c.kbli_code,
                        c.status, c.rdtr_zone_code,
                        ST_Y(c.geo_point) as lat, ST_X(c.geo_point) as lng
@@ -1027,39 +1142,62 @@ class PrimeNexusService:
                 WHERE c.geo_point IS NOT NULL
                   AND ST_Contains(ST_MakeEnvelope($1, $2, $3, $4, 4326), c.geo_point)
                 LIMIT $5
-            """, sw_lng, sw_lat, ne_lng, ne_lat, max_features - len(features))
+            """,
+                sw_lng,
+                sw_lat,
+                ne_lng,
+                ne_lat,
+                max_features - len(features),
+            )
             for row in rows:
-                features.append({
-                    "type": "Feature",
-                    "geometry": {"type": "Point", "coordinates": [row["lng"], row["lat"]]},
-                    "properties": {
-                        "entity_type": "company", "entity_id": row["id"],
-                        "name": row["company_name"], "company_type": row["company_type"],
-                        "kbli_code": row["kbli_code"], "status": row["status"],
-                        "zone_code": row["rdtr_zone_code"],
-                    },
-                })
+                features.append(
+                    {
+                        "type": "Feature",
+                        "geometry": {"type": "Point", "coordinates": [row["lng"], row["lat"]]},
+                        "properties": {
+                            "entity_type": "company",
+                            "entity_id": row["id"],
+                            "name": row["company_name"],
+                            "company_type": row["company_type"],
+                            "kbli_code": row["kbli_code"],
+                            "status": row["status"],
+                            "zone_code": row["rdtr_zone_code"],
+                        },
+                    }
+                )
             stats["companies"] = len(rows)
 
         if include_clients and len(features) < max_features:
-            rows = await conn.fetch("""
+            rows = await conn.fetch(
+                """
                 SELECT c.id, c.full_name, c.status, c.nationality, c.rdtr_zone_code,
                        ST_Y(c.geo_point) as lat, ST_X(c.geo_point) as lng
                 FROM clients c
                 WHERE c.geo_point IS NOT NULL AND c.status = 'active'
                   AND ST_Contains(ST_MakeEnvelope($1, $2, $3, $4, 4326), c.geo_point)
                 LIMIT $5
-            """, sw_lng, sw_lat, ne_lng, ne_lat, max_features - len(features))
+            """,
+                sw_lng,
+                sw_lat,
+                ne_lng,
+                ne_lat,
+                max_features - len(features),
+            )
             for row in rows:
-                features.append({
-                    "type": "Feature",
-                    "geometry": {"type": "Point", "coordinates": [row["lng"], row["lat"]]},
-                    "properties": {
-                        "entity_type": "client", "entity_id": row["id"],
-                        "name": row["full_name"], "status": row["status"],
-                        "nationality": row["nationality"], "zone_code": row["rdtr_zone_code"],
-                    },
-                })
+                features.append(
+                    {
+                        "type": "Feature",
+                        "geometry": {"type": "Point", "coordinates": [row["lng"], row["lat"]]},
+                        "properties": {
+                            "entity_type": "client",
+                            "entity_id": row["id"],
+                            "name": row["full_name"],
+                            "status": row["status"],
+                            "nationality": row["nationality"],
+                            "zone_code": row["rdtr_zone_code"],
+                        },
+                    }
+                )
             stats["clients"] = len(rows)
 
         return {"type": "FeatureCollection", "features": features[:max_features], "stats": stats}
@@ -1068,20 +1206,40 @@ class PrimeNexusService:
 
     # Saturation thresholds per zone-type prefix
     _SATURATION_THRESHOLDS: dict[str, int] = {
-        "K": 100, "W": 50, "C": 80, "R": 20, "SPU": 60, "KT": 50,
+        "K": 100,
+        "W": 50,
+        "C": 80,
+        "R": 20,
+        "SPU": 60,
+        "KT": 50,
     }
 
     # 2-digit KBLI sector labels
     _KBLI_2DIGIT_LABELS: dict[str, str] = {
-        "10": "Food Manufacturing", "11": "Beverages", "41": "Construction",
-        "46": "Wholesale Trade", "47": "Retail Trade", "49": "Transport",
-        "55": "Accommodation", "56": "F&B Services", "58": "Publishing",
-        "62": "Software/IT", "63": "Information Services", "68": "Real Estate",
-        "70": "Management Consulting", "71": "Architecture/Engineering",
-        "72": "Scientific R&D", "73": "Advertising/Marketing",
-        "74": "Professional Services", "79": "Travel Agencies",
-        "82": "Business Support", "85": "Education", "86": "Health Services",
-        "90": "Creative/Arts", "93": "Sports/Recreation", "96": "Personal Services",
+        "10": "Food Manufacturing",
+        "11": "Beverages",
+        "41": "Construction",
+        "46": "Wholesale Trade",
+        "47": "Retail Trade",
+        "49": "Transport",
+        "55": "Accommodation",
+        "56": "F&B Services",
+        "58": "Publishing",
+        "62": "Software/IT",
+        "63": "Information Services",
+        "68": "Real Estate",
+        "70": "Management Consulting",
+        "71": "Architecture/Engineering",
+        "72": "Scientific R&D",
+        "73": "Advertising/Marketing",
+        "74": "Professional Services",
+        "79": "Travel Agencies",
+        "82": "Business Support",
+        "85": "Education",
+        "86": "Health Services",
+        "90": "Creative/Arts",
+        "93": "Sports/Recreation",
+        "96": "Personal Services",
     }
 
     async def density(self, zone_code: str) -> dict[str, Any]:
@@ -1178,15 +1336,30 @@ class PrimeNexusService:
                         prior_rej = rej_rows[0]["prior"] or 0
                         if recent_rej > prior_rej + 2:
                             trend_score -= 1
-                            factors.append({"signal": "rejections", "direction": "worse",
-                                           "detail": f"{recent_rej} vs {prior_rej} prior period"})
+                            factors.append(
+                                {
+                                    "signal": "rejections",
+                                    "direction": "worse",
+                                    "detail": f"{recent_rej} vs {prior_rej} prior period",
+                                }
+                            )
                         elif recent_rej < prior_rej:
                             trend_score += 1
-                            factors.append({"signal": "rejections", "direction": "better",
-                                           "detail": f"{recent_rej} vs {prior_rej} prior period"})
+                            factors.append(
+                                {
+                                    "signal": "rejections",
+                                    "direction": "better",
+                                    "detail": f"{recent_rej} vs {prior_rej} prior period",
+                                }
+                            )
                         else:
-                            factors.append({"signal": "rejections", "direction": "stable",
-                                           "detail": f"{recent_rej} recent, {prior_rej} prior"})
+                            factors.append(
+                                {
+                                    "signal": "rejections",
+                                    "direction": "stable",
+                                    "detail": f"{recent_rej} recent, {prior_rej} prior",
+                                }
+                            )
 
                     # Signal 2: Expiry density (practices expiring within 90 days)
                     exp_rows = await conn.fetch(
@@ -1204,11 +1377,21 @@ class PrimeNexusService:
                     expiring = exp_rows[0]["cnt"] if exp_rows else 0
                     if expiring > 5:
                         trend_score -= 1
-                        factors.append({"signal": "expiring_practices", "direction": "worse",
-                                       "detail": f"{expiring} expiring within 90 days"})
+                        factors.append(
+                            {
+                                "signal": "expiring_practices",
+                                "direction": "worse",
+                                "detail": f"{expiring} expiring within 90 days",
+                            }
+                        )
                     else:
-                        factors.append({"signal": "expiring_practices", "direction": "stable",
-                                       "detail": f"{expiring} expiring within 90 days"})
+                        factors.append(
+                            {
+                                "signal": "expiring_practices",
+                                "direction": "stable",
+                                "detail": f"{expiring} expiring within 90 days",
+                            }
+                        )
 
                     # Signal 3: Activity momentum (new companies 3m vs prior 3m)
                     act_rows = await conn.fetch(
@@ -1227,15 +1410,30 @@ class PrimeNexusService:
                         prior_act = act_rows[0]["prior"] or 0
                         if recent_act > prior_act + 2:
                             trend_score += 1
-                            factors.append({"signal": "new_companies", "direction": "better",
-                                           "detail": f"{recent_act} vs {prior_act} prior period"})
+                            factors.append(
+                                {
+                                    "signal": "new_companies",
+                                    "direction": "better",
+                                    "detail": f"{recent_act} vs {prior_act} prior period",
+                                }
+                            )
                         elif recent_act < prior_act - 2:
                             trend_score -= 1
-                            factors.append({"signal": "new_companies", "direction": "worse",
-                                           "detail": f"{recent_act} vs {prior_act} prior period"})
+                            factors.append(
+                                {
+                                    "signal": "new_companies",
+                                    "direction": "worse",
+                                    "detail": f"{recent_act} vs {prior_act} prior period",
+                                }
+                            )
                         else:
-                            factors.append({"signal": "new_companies", "direction": "stable",
-                                           "detail": f"{recent_act} recent, {prior_act} prior"})
+                            factors.append(
+                                {
+                                    "signal": "new_companies",
+                                    "direction": "stable",
+                                    "detail": f"{recent_act} recent, {prior_act} prior",
+                                }
+                            )
             except (asyncpg.PostgresError, OSError) as exc:
                 logger.warning("[PrimeNexus] Predict query failed: %s", exc)
             except Exception:
@@ -1268,14 +1466,22 @@ class PrimeNexusService:
     # ── Layer 6: Temporal Intelligence ──────────────────────────────
 
     _PERIOD_MAP: dict[str, str] = {
-        "1m": "1 month", "3m": "3 months", "6m": "6 months", "12m": "12 months",
+        "1m": "1 month",
+        "3m": "3 months",
+        "6m": "6 months",
+        "12m": "12 months",
     }
     _GRANULARITY_MAP: dict[str, str] = {
-        "daily": "day", "weekly": "week", "monthly": "month",
+        "daily": "day",
+        "weekly": "week",
+        "monthly": "month",
     }
 
     async def temporal(
-        self, zone_code: str, period: str = "6m", granularity: str = "weekly",
+        self,
+        zone_code: str,
+        period: str = "6m",
+        granularity: str = "weekly",
     ) -> dict[str, Any]:
         """Layer 6: Temporal activity analysis for a zone."""
         cache_key = f"prime:temporal:{zone_code}:{period}:{granularity}"
@@ -1322,12 +1528,14 @@ class PrimeNexusService:
                     for row in rows:
                         practices = row["practices"]
                         companies = row["companies"]
-                        buckets.append({
-                            "date": row["bucket"].isoformat()[:10] if row["bucket"] else None,
-                            "practices": practices,
-                            "companies": companies,
-                            "activity_score": practices + companies,
-                        })
+                        buckets.append(
+                            {
+                                "date": row["bucket"].isoformat()[:10] if row["bucket"] else None,
+                                "practices": practices,
+                                "companies": companies,
+                                "activity_score": practices + companies,
+                            }
+                        )
             except (asyncpg.PostgresError, OSError) as exc:
                 logger.warning("[PrimeNexus] Temporal query failed: %s", exc)
             except Exception:
@@ -1386,7 +1594,9 @@ class PrimeNexusService:
                         ORDER BY published_at DESC NULLS LAST
                         LIMIT $3
                         """,
-                        zone_code, zone_label, limit,
+                        zone_code,
+                        zone_label,
+                        limit,
                     )
                     for row in rows:
                         title = row["title"] or ""
@@ -1394,15 +1604,19 @@ class PrimeNexusService:
                         if norm in seen_titles:
                             continue
                         seen_titles.add(norm)
-                        regulations.append({
-                            "title": title,
-                            "summary": (row["summary"] or "")[:200],
-                            "category": row["category"] or "",
-                            "sentiment": row["ai_sentiment"] or "neutral",
-                            "published_at": row["published_at"].isoformat() if row["published_at"] else "",
-                            "source_url": row["source_url"] or "",
-                            "source": "database",
-                        })
+                        regulations.append(
+                            {
+                                "title": title,
+                                "summary": (row["summary"] or "")[:200],
+                                "category": row["category"] or "",
+                                "sentiment": row["ai_sentiment"] or "neutral",
+                                "published_at": row["published_at"].isoformat()
+                                if row["published_at"]
+                                else "",
+                                "source_url": row["source_url"] or "",
+                                "source": "database",
+                            }
+                        )
             except (asyncpg.PostgresError, OSError) as exc:
                 logger.warning("[PrimeNexus] Regulations SQL query failed: %s", exc)
             except Exception:
@@ -1416,15 +1630,17 @@ class PrimeNexusService:
                 if norm in seen_titles:
                     continue
                 seen_titles.add(norm)
-                regulations.append({
-                    "title": art.get("title", ""),
-                    "summary": "",
-                    "category": art.get("category", ""),
-                    "sentiment": "neutral",
-                    "published_at": art.get("published_at", ""),
-                    "source_url": art.get("source_url", ""),
-                    "source": "qdrant",
-                })
+                regulations.append(
+                    {
+                        "title": art.get("title", ""),
+                        "summary": "",
+                        "category": art.get("category", ""),
+                        "sentiment": "neutral",
+                        "published_at": art.get("published_at", ""),
+                        "source_url": art.get("source_url", ""),
+                        "source": "qdrant",
+                    }
+                )
         except (httpx.HTTPError, json.JSONDecodeError, KeyError, TypeError) as exc:
             logger.debug("[PrimeNexus] Regulations Qdrant failed: %s", exc)
         except Exception:
@@ -1458,6 +1674,7 @@ class PrimeNexusService:
     ) -> dict[str, Any]:
         """Create a shareable investment proposal."""
         import secrets
+
         token = secrets.token_urlsafe(32)
 
         if not self._db_pool:
@@ -1474,10 +1691,18 @@ class PrimeNexusService:
                     ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
                     RETURNING id, token, created_at, expires_at
                     """,
-                    token, lat, lng, zone_code, zone_name, kbli_code,
-                    verdict_label, verdict_score,
+                    token,
+                    lat,
+                    lng,
+                    zone_code,
+                    zone_name,
+                    kbli_code,
+                    verdict_label,
+                    verdict_score,
                     json.dumps(analysis_snapshot or {}, default=str),
-                    investor_name, investor_email, investor_nationality,
+                    investor_name,
+                    investor_email,
+                    investor_nationality,
                 )
                 return {
                     "id": row["id"],
@@ -1516,6 +1741,7 @@ class PrimeNexusService:
 
                 # Check expiry
                 from datetime import datetime, timezone
+
                 if row["expires_at"] and row["expires_at"] < datetime.now(timezone.utc):
                     return {"error": "expired", "expired_at": row["expires_at"].isoformat()}
 
@@ -1565,8 +1791,13 @@ class PrimeNexusService:
         suggestions: list[str] = []
 
         if not self._db_pool:
-            return {"client_id": client_id, "entities": [], "risk_concentration": {},
-                    "suggestions": [], "overall_health": 0.0}
+            return {
+                "client_id": client_id,
+                "entities": [],
+                "risk_concentration": {},
+                "suggestions": [],
+                "overall_health": 0.0,
+            }
 
         try:
             async with self._db_pool.acquire() as conn:
@@ -1588,15 +1819,20 @@ class PrimeNexusService:
                     if zone and zone in RESTRICTED_ZONES:
                         health -= 0.3
                         issues.append(f"Zone {zone} is restricted")
-                    entities.append({
-                        "type": "company", "id": comp["id"],
-                        "name": comp["company_name"] or f"Company #{comp['id']}",
-                        "zone_code": zone, "kbli_code": comp["kbli_code"],
-                        "lat": comp["lat"], "lng": comp["lng"],
-                        "status": comp["status"],
-                        "health_score": round(max(0, health), 2),
-                        "issues": issues,
-                    })
+                    entities.append(
+                        {
+                            "type": "company",
+                            "id": comp["id"],
+                            "name": comp["company_name"] or f"Company #{comp['id']}",
+                            "zone_code": zone,
+                            "kbli_code": comp["kbli_code"],
+                            "lat": comp["lat"],
+                            "lng": comp["lng"],
+                            "status": comp["status"],
+                            "health_score": round(max(0, health), 2),
+                            "issues": issues,
+                        }
+                    )
 
                 # Get practices with expiry
                 practices = await conn.fetch(
@@ -1616,6 +1852,7 @@ class PrimeNexusService:
                     issues_p: list[str] = []
                     if prac["expiry_date"]:
                         from datetime import date
+
                         delta = prac["expiry_date"] - date.today()
                         days_until_expiry = delta.days
                         if days_until_expiry < 0:
@@ -1624,19 +1861,26 @@ class PrimeNexusService:
                         elif days_until_expiry < 30:
                             health -= 0.3
                             issues_p.append(f"Expires in {days_until_expiry} days")
-                            suggestions.append(f"Renew {prac['practice_type_code']} (expires in {days_until_expiry}d)")
+                            suggestions.append(
+                                f"Renew {prac['practice_type_code']} (expires in {days_until_expiry}d)"
+                            )
                         elif days_until_expiry < 90:
                             health -= 0.1
                             issues_p.append(f"Expires in {days_until_expiry} days")
-                    entities.append({
-                        "type": "practice", "id": prac["id"],
-                        "name": prac["practice_type_code"] or f"Practice #{prac['id']}",
-                        "status": prac["status"],
-                        "expiry_date": prac["expiry_date"].isoformat() if prac["expiry_date"] else None,
-                        "days_until_expiry": days_until_expiry,
-                        "health_score": round(max(0, health), 2),
-                        "issues": issues_p,
-                    })
+                    entities.append(
+                        {
+                            "type": "practice",
+                            "id": prac["id"],
+                            "name": prac["practice_type_code"] or f"Practice #{prac['id']}",
+                            "status": prac["status"],
+                            "expiry_date": prac["expiry_date"].isoformat()
+                            if prac["expiry_date"]
+                            else None,
+                            "days_until_expiry": days_until_expiry,
+                            "health_score": round(max(0, health), 2),
+                            "issues": issues_p,
+                        }
+                    )
 
         except (asyncpg.PostgresError, OSError) as exc:
             logger.warning("[PrimeNexus] Portfolio query failed: %s", exc)
@@ -1645,9 +1889,11 @@ class PrimeNexusService:
 
         # Risk concentration
         from collections import Counter
+
         zone_counts = Counter(e.get("zone_code") for e in entities if e.get("zone_code"))
         kbli_counts = Counter(
-            (e.get("kbli_code") or "")[:2] for e in entities
+            (e.get("kbli_code") or "")[:2]
+            for e in entities
             if e.get("kbli_code") and e["type"] == "company"
         )
 
@@ -1658,7 +1904,9 @@ class PrimeNexusService:
 
         for zone, pct in zone_concentration.items():
             if pct > 0.8:
-                warnings.append(f"{int(pct * 100)}% of companies in zone {zone} — consider diversifying")
+                warnings.append(
+                    f"{int(pct * 100)}% of companies in zone {zone} — consider diversifying"
+                )
 
         # Overall health
         health_scores = [e.get("health_score", 0.5) for e in entities]

@@ -11,6 +11,7 @@ Scenarios covered:
   raising (lazy fallback remains in charge)
 - Malformed payload does not crash the listener
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -37,6 +38,7 @@ def _reset_kg_state() -> None:
 
 
 # ── Publisher ─────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_increment_publishes_invalidate_after_debounce(
@@ -110,7 +112,9 @@ class _FakePubSub:
     async def close(self) -> None:
         self.closed = True
 
-    async def get_message(self, ignore_subscribe_messages: bool = True, timeout: float = 1.0) -> dict[str, Any] | None:
+    async def get_message(
+        self, ignore_subscribe_messages: bool = True, timeout: float = 1.0
+    ) -> dict[str, Any] | None:
         try:
             return await asyncio.wait_for(self._messages.get(), timeout=timeout)
         except asyncio.TimeoutError:
@@ -205,6 +209,7 @@ async def test_listener_exits_cleanly_without_redis(
 
 
 # ── End-to-end cross-cell visibility ──────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_writer_to_reader_roundtrip_under_100ms(

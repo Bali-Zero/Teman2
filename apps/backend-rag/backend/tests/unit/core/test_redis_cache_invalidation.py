@@ -106,7 +106,9 @@ class TestInvalidateCollectionCache:
             "zantara:search:visa_oracle:*": ["zantara:search:visa_oracle:def"],
         }
 
-        async def mock_scan(cursor: int = 0, match: str = "*", count: int = 100) -> tuple[int, list[str]]:
+        async def mock_scan(
+            cursor: int = 0, match: str = "*", count: int = 100
+        ) -> tuple[int, list[str]]:
             keys = scan_results.get(match, [])
             # Return keys on first scan, empty on subsequent
             if keys and match in scan_results:
@@ -149,7 +151,9 @@ class TestInvalidateSessionCache:
 
         assert deleted == 1
         mock_client.scan.assert_called_once_with(
-            cursor=0, match="zantara:session:sess123:*", count=100,
+            cursor=0,
+            match="zantara:session:sess123:*",
+            count=100,
         )
 
     @pytest.mark.asyncio
@@ -166,7 +170,9 @@ class TestInvalidateSessionCache:
 
         assert deleted == 2
         mock_client.scan.assert_called_once_with(
-            cursor=0, match="zantara:session:*", count=100,
+            cursor=0,
+            match="zantara:session:*",
+            count=100,
         )
 
 

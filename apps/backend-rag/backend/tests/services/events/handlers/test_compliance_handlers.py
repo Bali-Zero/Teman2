@@ -4,6 +4,7 @@ All tests are pure unit tests — no DB, no Redis, no network.
 `invalidate_cache` is patched at its home module so deferred imports inside
 each handler resolve to the mock.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -90,10 +91,14 @@ class TestOnComplianceAlertOutcome:
         assert mock_inv.call_count == 1
         assert mock_inv.call_args_list[0] == call("zantara:compliance_metrics:*")
 
-    async def test_happy_path_logs_alert_id_and_outcome(self, caplog: pytest.LogCaptureFixture) -> None:
+    async def test_happy_path_logs_alert_id_and_outcome(
+        self, caplog: pytest.LogCaptureFixture
+    ) -> None:
         """INFO log must mention alert_id and outcome."""
         with patch(_CACHE_PATCH, new=AsyncMock(return_value=1)):
-            with caplog.at_level(logging.INFO, logger="backend.services.events.handlers.compliance_handlers"):
+            with caplog.at_level(
+                logging.INFO, logger="backend.services.events.handlers.compliance_handlers"
+            ):
                 await on_compliance_alert_outcome({"alert_id": 101, "outcome": "acted"})
 
         assert any("101" in r.message and "acted" in r.message for r in caplog.records)
@@ -108,10 +113,14 @@ class TestOnComplianceAlertOutcome:
     async def test_cache_exception_is_swallowed(self, caplog: pytest.LogCaptureFixture) -> None:
         """ConnectionError from invalidate_cache must not propagate."""
         with patch(_CACHE_PATCH, new=AsyncMock(side_effect=ConnectionError("redis timeout"))):
-            with caplog.at_level(logging.DEBUG, logger="backend.services.events.handlers.compliance_handlers"):
+            with caplog.at_level(
+                logging.DEBUG, logger="backend.services.events.handlers.compliance_handlers"
+            ):
                 await on_compliance_alert_outcome({"alert_id": 5, "outcome": "dismissed"})
 
-        assert any("compliance outcome cache invalidation skipped" in r.message for r in caplog.records)
+        assert any(
+            "compliance outcome cache invalidation skipped" in r.message for r in caplog.records
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -145,10 +154,14 @@ class TestOnIntelValidationComplete:
     async def test_cache_exception_is_swallowed(self, caplog: pytest.LogCaptureFixture) -> None:
         """OSError from invalidate_cache must not propagate."""
         with patch(_CACHE_PATCH, new=AsyncMock(side_effect=OSError("unreachable"))):
-            with caplog.at_level(logging.DEBUG, logger="backend.services.events.handlers.compliance_handlers"):
+            with caplog.at_level(
+                logging.DEBUG, logger="backend.services.events.handlers.compliance_handlers"
+            ):
                 await on_intel_validation_complete({"staging_id": "s1"})
 
-        assert any("intel validation cache invalidation skipped" in r.message for r in caplog.records)
+        assert any(
+            "intel validation cache invalidation skipped" in r.message for r in caplog.records
+        )
 
     async def test_cache_key_uses_staging_id_verbatim_str(self) -> None:
         """String staging_id is interpolated verbatim."""
@@ -173,19 +186,29 @@ class TestOnIntelValidationComplete:
 class TestOnLkpmReadypackGenerated:
     async def test_logs_all_fields(self, caplog: pytest.LogCaptureFixture) -> None:
         """Handler logs client_id, period, and drive_url at INFO level."""
-        payload = {"client_id": 55, "period": "2026-Q1", "drive_url": "https://drive.google.com/xyz"}
-        with caplog.at_level(logging.INFO, logger="backend.services.events.handlers.compliance_handlers"):
+        payload = {
+            "client_id": 55,
+            "period": "2026-Q1",
+            "drive_url": "https://drive.google.com/xyz",
+        }
+        with caplog.at_level(
+            logging.INFO, logger="backend.services.events.handlers.compliance_handlers"
+        ):
             result = await on_lkpm_readypack_generated(payload)
 
         assert result is None
         assert any(
-            "55" in r.message and "2026-Q1" in r.message and "https://drive.google.com/xyz" in r.message
+            "55" in r.message
+            and "2026-Q1" in r.message
+            and "https://drive.google.com/xyz" in r.message
             for r in caplog.records
         )
 
     async def test_empty_payload_does_not_raise(self, caplog: pytest.LogCaptureFixture) -> None:
         """All .get() return None — handler must not raise."""
-        with caplog.at_level(logging.INFO, logger="backend.services.events.handlers.compliance_handlers"):
+        with caplog.at_level(
+            logging.INFO, logger="backend.services.events.handlers.compliance_handlers"
+        ):
             await on_lkpm_readypack_generated({})
 
         assert any(r.levelno == logging.INFO for r in caplog.records)
@@ -193,7 +216,9 @@ class TestOnLkpmReadypackGenerated:
     async def test_no_cache_calls(self) -> None:
         """This handler never calls invalidate_cache."""
         with patch(_CACHE_PATCH, new=AsyncMock(return_value=0)) as mock_inv:
-            await on_lkpm_readypack_generated({"client_id": 1, "period": "2026-Q1", "drive_url": "https://x"})
+            await on_lkpm_readypack_generated(
+                {"client_id": 1, "period": "2026-Q1", "drive_url": "https://x"}
+            )
 
         assert mock_inv.call_count == 0
 
@@ -220,7 +245,9 @@ class TestHandlersDict:
     def test_all_handlers_are_coroutine_functions(self) -> None:
         """Every value in HANDLERS must be awaitable."""
         for key, handler in HANDLERS.items():
-            assert asyncio.iscoroutinefunction(handler), f"HANDLERS[{key!r}] is not a coroutine function"
+            assert asyncio.iscoroutinefunction(handler), (
+                f"HANDLERS[{key!r}] is not a coroutine function"
+            )
 
     def test_length_is_exactly_four(self) -> None:
         """Guard against silent additions or deletions — update test if HANDLERS grows."""

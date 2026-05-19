@@ -1,4 +1,5 @@
 """Ensure RenewalRule carries an NB-2 citation field (decision #9)."""
+
 from __future__ import annotations
 
 import dataclasses

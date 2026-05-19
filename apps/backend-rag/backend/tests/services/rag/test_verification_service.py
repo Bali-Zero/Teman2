@@ -118,15 +118,19 @@ class TestVerificationServiceWithLLM:
         service = VerificationService()
         mock_client = MagicMock()
         mock_client.is_available = True
-        mock_client.generate_content = AsyncMock(return_value={
-            "text": json.dumps({
-                "status": "verified",
-                "score": 0.95,
-                "reasoning": "All claims supported by context",
-                "corrections": None,
-                "missing_citations": [],
-            })
-        })
+        mock_client.generate_content = AsyncMock(
+            return_value={
+                "text": json.dumps(
+                    {
+                        "status": "verified",
+                        "score": 0.95,
+                        "reasoning": "All claims supported by context",
+                        "corrections": None,
+                        "missing_citations": [],
+                    }
+                )
+            }
+        )
         service._genai_client = mock_client
 
         result = await service.verify_response(
@@ -143,15 +147,19 @@ class TestVerificationServiceWithLLM:
         service = VerificationService()
         mock_client = MagicMock()
         mock_client.is_available = True
-        mock_client.generate_content = AsyncMock(return_value={
-            "text": json.dumps({
-                "status": "hallucination",
-                "score": 0.1,
-                "reasoning": "Claims fabricated law UU 999/2025",
-                "corrections": "Remove reference to UU 999/2025",
-                "missing_citations": ["UU 999/2025"],
-            })
-        })
+        mock_client.generate_content = AsyncMock(
+            return_value={
+                "text": json.dumps(
+                    {
+                        "status": "hallucination",
+                        "score": 0.1,
+                        "reasoning": "Claims fabricated law UU 999/2025",
+                        "corrections": "Remove reference to UU 999/2025",
+                        "missing_citations": ["UU 999/2025"],
+                    }
+                )
+            }
+        )
         service._genai_client = mock_client
 
         result = await service.verify_response(
@@ -168,17 +176,23 @@ class TestVerificationServiceWithLLM:
         service = VerificationService()
         mock_client = MagicMock()
         mock_client.is_available = True
-        mock_client.generate_content = AsyncMock(return_value={
-            "text": json.dumps({
-                "status": "partial",
-                "score": 0.69,
-                "reasoning": "Mostly correct but one claim unsupported",
-            })
-        })
+        mock_client.generate_content = AsyncMock(
+            return_value={
+                "text": json.dumps(
+                    {
+                        "status": "partial",
+                        "score": 0.69,
+                        "reasoning": "Mostly correct but one claim unsupported",
+                    }
+                )
+            }
+        )
         service._genai_client = mock_client
 
         result = await service.verify_response(
-            query="test", draft_answer="test", context_chunks=["ctx"],
+            query="test",
+            draft_answer="test",
+            context_chunks=["ctx"],
         )
         assert result.is_valid is False  # 0.69 < 0.7
 
@@ -187,9 +201,11 @@ class TestVerificationServiceWithLLM:
         service = VerificationService()
         mock_client = MagicMock()
         mock_client.is_available = True
-        mock_client.generate_content = AsyncMock(return_value={
-            "text": json.dumps({"status": "verified", "score": 0.9, "reasoning": "ok"})
-        })
+        mock_client.generate_content = AsyncMock(
+            return_value={
+                "text": json.dumps({"status": "verified", "score": 0.9, "reasoning": "ok"})
+            }
+        )
         service._genai_client = mock_client
 
         await service.verify_response(

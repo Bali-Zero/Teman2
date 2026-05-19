@@ -111,18 +111,21 @@ class TestCalculateBuildingYield:
     def test_unknown_zone_returns_none(self) -> None:
         assert calculate_building_yield("ZZZZZZ") is None
 
-    @patch("backend.services.prime.geo_service._BUILDING_CODES", {
-        "K-1": {
-            "name": "Kawasan Komersial 1",
-            "KDB": "70",
-            "KLB": "3.0",
-            "KDH": "20",
-            "KTB": "50",
-            "TB": "15 Meter",
-            "GSB": "5 Meter",
-            "note": "test note",
+    @patch(
+        "backend.services.prime.geo_service._BUILDING_CODES",
+        {
+            "K-1": {
+                "name": "Kawasan Komersial 1",
+                "KDB": "70",
+                "KLB": "3.0",
+                "KDH": "20",
+                "KTB": "50",
+                "TB": "15 Meter",
+                "GSB": "5 Meter",
+                "note": "test note",
+            },
         },
-    })
+    )
     def test_valid_zone_returns_dict(self) -> None:
         result = calculate_building_yield("K-1")
         assert result is not None
@@ -132,9 +135,12 @@ class TestCalculateBuildingYield:
         assert result["max_height_meters"] == 15.0
         assert result["notes"] == "test note"
 
-    @patch("backend.services.prime.geo_service._BUILDING_CODES", {
-        "BAD": {"name": "Bad", "KDB": "not_a_number"},
-    })
+    @patch(
+        "backend.services.prime.geo_service._BUILDING_CODES",
+        {
+            "BAD": {"name": "Bad", "KDB": "not_a_number"},
+        },
+    )
     def test_parse_error_returns_none(self) -> None:
         result = calculate_building_yield("BAD")
         assert result is None
@@ -520,7 +526,12 @@ class TestPrimeNexusService:
             "business_count": 1,
             "overlays": {},
             "building_codes": None,
-            "kdb": "70", "klb": "3.0", "kdh": "20", "tb": "15", "gsb": "5", "desa": "Kuta",
+            "kdb": "70",
+            "klb": "3.0",
+            "kdh": "20",
+            "tb": "15",
+            "gsb": "5",
+            "desa": "Kuta",
         }
         result = svc._build_resolve_response(-8.65, 115.22, batara_data, "batara_live", 1.0)
         assert result["status"] == "found"
@@ -580,7 +591,12 @@ class TestPrimeNexusService:
             "business_count": 0,
             "overlays": {},
             "building_codes": None,
-            "kdb": "70", "klb": "3.0", "kdh": "20", "tb": "15", "gsb": "5", "desa": "Kuta",
+            "kdb": "70",
+            "klb": "3.0",
+            "kdh": "20",
+            "tb": "15",
+            "gsb": "5",
+            "desa": "Kuta",
         }
         svc._query_batara = AsyncMock(return_value=batara_data)
         svc._cache_zone = AsyncMock()

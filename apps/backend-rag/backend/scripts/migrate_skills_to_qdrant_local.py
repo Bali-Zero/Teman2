@@ -211,8 +211,7 @@ async def bootstrap_collection(url: str) -> bool:
         resp = await client.get(f"{url}/collections/{COLLECTION_NAME}")
     if resp.status_code == 200:
         _validate_existing_collection_shape(resp.json())
-        logger.info("collection %s already exists at %s (shape OK)",
-                    COLLECTION_NAME, url)
+        logger.info("collection %s already exists at %s (shape OK)", COLLECTION_NAME, url)
         return False
     if resp.status_code != 404:
         raise RuntimeError(
@@ -222,25 +221,22 @@ async def bootstrap_collection(url: str) -> bool:
     body = {"vectors": {"size": VECTOR_SIZE, "distance": DISTANCE}}
     async with httpx.AsyncClient(timeout=30.0) as client:
         put_resp = await client.put(
-            f"{url}/collections/{COLLECTION_NAME}", json=body,
+            f"{url}/collections/{COLLECTION_NAME}",
+            json=body,
         )
     if put_resp.status_code == 200:
         logger.info("created collection %s (dim=%d)", COLLECTION_NAME, VECTOR_SIZE)
         return True
     # TOCTOU defense: a sibling caller may have created the collection in
     # the GET-then-PUT window. Qdrant returns 4xx with "already exists" text.
-    if (
-        400 <= put_resp.status_code < 500
-        and "already exists" in put_resp.text.lower()
-    ):
+    if 400 <= put_resp.status_code < 500 and "already exists" in put_resp.text.lower():
         logger.info(
-            "collection %s created by sibling between GET and PUT — "
-            "treating as success", COLLECTION_NAME,
+            "collection %s created by sibling between GET and PUT — treating as success",
+            COLLECTION_NAME,
         )
         return False
     raise RuntimeError(
-        f"create collection failed: {put_resp.status_code} "
-        f"{put_resp.text[:200]}",
+        f"create collection failed: {put_resp.status_code} {put_resp.text[:200]}",
     )
 
 
@@ -306,7 +302,8 @@ class OpenAIEmbedder:
         for i in range(0, len(texts), EMBED_BATCH_SIZE):
             chunk = texts[i : i + EMBED_BATCH_SIZE]
             resp = await client.embeddings.create(
-                model=self._model, input=chunk,
+                model=self._model,
+                input=chunk,
             )
             vecs = [item.embedding for item in resp.data]
             for v in vecs:
@@ -341,7 +338,9 @@ async def _run(args: argparse.Namespace) -> int:
     if args.dry_run:
         logger.info(
             "dry-run: would embed %d texts and upsert %d points to %s",
-            len(rows), len(rows), qdrant_url,
+            len(rows),
+            len(rows),
+            qdrant_url,
         )
         existing = await count_points(qdrant_url)
         logger.info("current points in %s: %d", COLLECTION_NAME, existing)
@@ -353,7 +352,8 @@ async def _run(args: argparse.Namespace) -> int:
 
     total_batches = (len(rows) + UPSERT_BATCH_SIZE - 1) // UPSERT_BATCH_SIZE
     for batch_index, batch_start in enumerate(
-        range(0, len(rows), UPSERT_BATCH_SIZE), start=1,
+        range(0, len(rows), UPSERT_BATCH_SIZE),
+        start=1,
     ):
         batch = rows[batch_start : batch_start + UPSERT_BATCH_SIZE]
         texts = [r.content for r in batch]
@@ -369,7 +369,9 @@ async def _run(args: argparse.Namespace) -> int:
         await upsert_points(qdrant_url, points)
         logger.info(
             "upserted batch %d/%d (%d points)",
-            batch_index, total_batches, len(points),
+            batch_index,
+            total_batches,
+            len(points),
         )
 
     final_count = await count_points(qdrant_url)
@@ -384,23 +386,30 @@ def main() -> int:
     """CLI entry point. Returns shell exit code."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
-        "--bootstrap-only", action="store_true",
+        "--bootstrap-only",
+        action="store_true",
         help="Create collection if missing, then exit.",
     )
     parser.add_argument(
-        "--dry-run", action="store_true",
+        "--dry-run",
+        action="store_true",
         help="Read + log counts; do NOT call OpenAI nor mutate Qdrant.",
     )
     parser.add_argument(
-        "--apply", action="store_true",
+        "--apply",
+        action="store_true",
         help="Read + embed + upsert (idempotent via UUIDv5 point ids).",
     )
     parser.add_argument("--qdrant-url", default=DEFAULT_QDRANT_URL)
     parser.add_argument(
-        "--sqlite-path", default=str(DEFAULT_SQLITE_PATH), type=Path,
+        "--sqlite-path",
+        default=str(DEFAULT_SQLITE_PATH),
+        type=Path,
     )
     parser.add_argument(
-        "--limit", type=int, default=None,
+        "--limit",
+        type=int,
+        default=None,
         help="Limit rows for smoke runs.",
     )
     args = parser.parse_args()

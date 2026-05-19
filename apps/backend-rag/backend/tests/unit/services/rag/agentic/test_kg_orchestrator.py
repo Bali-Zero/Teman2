@@ -252,6 +252,7 @@ class TestBuildResponse:
         kg_ctx.entities_found = [{"name": "e1"}]
 
         import time
+
         resp = orchestrator._build_response(
             answer="Answer",
             confidence=0.8,
@@ -274,6 +275,7 @@ class TestBuildResponse:
         kg_ctx.entities_found = []
 
         import time
+
         resp = orchestrator._build_response(
             answer="Answer",
             confidence=0.5,
@@ -300,10 +302,18 @@ class TestBuildResponse:
         kg_ctx.entities_found = []
 
         import time
+
         resp = orchestrator._build_response(
-            answer="A", confidence=0.5, reasoning_trace=[], sources=[],
-            intent_result={}, kg_context=kg_ctx, golden_route=golden,
-            collections_searched=[], model_used="x", start_time=time.time(),
+            answer="A",
+            confidence=0.5,
+            reasoning_trace=[],
+            sources=[],
+            intent_result={},
+            kg_context=kg_ctx,
+            golden_route=golden,
+            collections_searched=[],
+            model_used="x",
+            start_time=time.time(),
         )
         assert "days" in resp.estimated_timeline
         assert resp.estimated_cost is None
@@ -316,7 +326,8 @@ class TestProcess:
     @pytest.mark.asyncio
     async def test_process_error_returns_fallback(self, orchestrator):
         with patch.object(
-            orchestrator, "_classify_intent",
+            orchestrator,
+            "_classify_intent",
             new_callable=AsyncMock,
             side_effect=Exception("boom"),
         ):

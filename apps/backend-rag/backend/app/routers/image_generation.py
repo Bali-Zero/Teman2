@@ -34,7 +34,9 @@ async def generate_image(request: ImageGenerationRequest) -> ImageGenerationResp
     """
     if not request.prompt or not request.prompt.strip():
         return ImageGenerationResponse(
-            images=[], success=False, error="Prompt cannot be empty",
+            images=[],
+            success=False,
+            error="Prompt cannot be empty",
         )
 
     try:
@@ -66,5 +68,7 @@ async def generate_image(request: ImageGenerationRequest) -> ImageGenerationResp
     except Exception as e:
         logger.error("Image generation failed: %s", e)
         return ImageGenerationResponse(
-            images=[], success=False, error=f"Image generation failed: {e}",
+            images=[],
+            success=False,
+            error=f"Image generation failed: {e}",
         )

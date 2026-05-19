@@ -184,11 +184,7 @@ class TelegramReviewAdapter:
                 )
 
             result = body.get("result", {})
-            message_id = (
-                result.get("message_id")
-                if isinstance(result, dict)
-                else None
-            )
+            message_id = result.get("message_id") if isinstance(result, dict) else None
             return SendResult(
                 ok=True,
                 message_id=message_id,

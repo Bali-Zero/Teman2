@@ -116,7 +116,8 @@ class TestSlidesToOperations:
     def test_replace_text_on_heading_uses_mapped_element_id(self) -> None:
         ops = slides_to_operations(_slides_fixture())
         slide_1_heading_ops = [
-            op for op in ops
+            op
+            for op in ops
             if op["type"] == "replace_text"
             and op["page_index"] == 1
             and op.get("text") == "BALI HAS A NEW IMMIGRATION TASK FORCE."
@@ -133,9 +134,9 @@ class TestSlidesToOperations:
         # bug observed in DAHJDtWApaw / DAHJCzTzn1I (2026-05-08).
         ops = slides_to_operations(_slides_fixture())
         body_ops = [
-            op for op in ops
-            if op["type"] == "replace_text"
-            and "100 officers" in (op.get("text") or "")
+            op
+            for op in ops
+            if op["type"] == "replace_text" and "100 officers" in (op.get("text") or "")
         ]
         assert len(body_ops) == 1
         assert body_ops[0]["element_id"] is None
@@ -155,8 +156,7 @@ class TestSlidesToOperations:
     def test_slide_without_image_omits_upload_op(self) -> None:
         ops = slides_to_operations(_slides_fixture())
         page_3_upload_ops = [
-            op for op in ops
-            if op["type"] == "upload-asset-from-url" and op["page_index"] == 3
+            op for op in ops if op["type"] == "upload-asset-from-url" and op["page_index"] == 3
         ]
         assert page_3_upload_ops == []
 
@@ -190,9 +190,7 @@ class TestSlidesToOperations:
 
         for page_index in (9, 11):
             page_ops = [op for op in replace_ops if op["page_index"] == page_index]
-            assert len(page_ops) == 2, (
-                f"page {page_index} must have heading + body ops"
-            )
+            assert len(page_ops) == 2, f"page {page_index} must have heading + body ops"
             # All element_ids are None because TEMPLATE_SLOTS is None-filled
             assert all(op["element_id"] is None for op in page_ops)
 

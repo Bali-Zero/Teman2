@@ -344,10 +344,12 @@ class InvoiceGenerator:
             discount_label = "Discount"
             if discount_reason and discount_reason.strip():
                 discount_label = f"Discount ({discount_reason.strip()})"
-            totals_data.append([
-                f"{discount_label}:",
-                f"− {self.CURRENCY} {safe_discount:,.0f}",
-            ])
+            totals_data.append(
+                [
+                    f"{discount_label}:",
+                    f"− {self.CURRENCY} {safe_discount:,.0f}",
+                ]
+            )
         totals_data.append(["Tax (0%):", f"{self.CURRENCY} 0"])
 
         total_row = [

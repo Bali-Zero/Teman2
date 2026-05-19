@@ -1,4 +1,5 @@
 """Tests for OracleAnalyticsService — focus on the fire-and-forget task protection (S09)."""
+
 from __future__ import annotations
 
 import asyncio

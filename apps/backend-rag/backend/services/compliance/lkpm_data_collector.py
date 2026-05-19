@@ -163,7 +163,8 @@ class LKPMDataCollector:
         )
 
     def categorize_transactions(
-        self, entries: list[dict[str, Any]],
+        self,
+        entries: list[dict[str, Any]],
     ) -> list[TransactionCategorization]:
         """
         Map journal entries to LKPM categories deterministically.
@@ -224,7 +225,8 @@ class LKPMDataCollector:
         return "other", "domestic", False
 
     def _aggregate_categorized(
-        self, items: list[TransactionCategorization],
+        self,
+        items: list[TransactionCategorization],
     ) -> InvestmentRealization:
         """Sum categorized transactions into InvestmentRealization."""
         totals: dict[str, int] = {

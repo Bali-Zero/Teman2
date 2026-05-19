@@ -37,18 +37,36 @@ async def test_get_billing_returns_invoices():
     mock_conn = AsyncMock()
     mock_conn.fetch.return_value = [
         {
-            "id": 1, "invoice_number": "INV-202602-00010", "amount_idr": 20000000.0,
-            "invoice_source": "local_pdf", "drive_file_id": "abc", "drive_web_link": "https://drive.google.com/abc",
-            "email_sent_to_client": True, "generated_at": None, "created_at": None,
-            "practice_id": 10, "practice_name": "KITAS B211A", "practice_category": "visa",
-            "payment_status": "pending", "quoted_price": 20000000.0,
+            "id": 1,
+            "invoice_number": "INV-202602-00010",
+            "amount_idr": 20000000.0,
+            "invoice_source": "local_pdf",
+            "drive_file_id": "abc",
+            "drive_web_link": "https://drive.google.com/abc",
+            "email_sent_to_client": True,
+            "generated_at": None,
+            "created_at": None,
+            "practice_id": 10,
+            "practice_name": "KITAS B211A",
+            "practice_category": "visa",
+            "payment_status": "pending",
+            "quoted_price": 20000000.0,
         },
         {
-            "id": 2, "invoice_number": "INV-202603-00015", "amount_idr": 35000000.0,
-            "invoice_source": "local_pdf", "drive_file_id": "def", "drive_web_link": "https://drive.google.com/def",
-            "email_sent_to_client": True, "generated_at": None, "created_at": None,
-            "practice_id": 15, "practice_name": "PT PMA Setup", "practice_category": "company",
-            "payment_status": "paid", "quoted_price": 35000000.0,
+            "id": 2,
+            "invoice_number": "INV-202603-00015",
+            "amount_idr": 35000000.0,
+            "invoice_source": "local_pdf",
+            "drive_file_id": "def",
+            "drive_web_link": "https://drive.google.com/def",
+            "email_sent_to_client": True,
+            "generated_at": None,
+            "created_at": None,
+            "practice_id": 15,
+            "practice_name": "PT PMA Setup",
+            "practice_category": "company",
+            "payment_status": "paid",
+            "quoted_price": 35000000.0,
         },
     ]
 
@@ -58,7 +76,8 @@ async def test_get_billing_returns_invoices():
 
     service = PortalService(mock_pool)
     result = await service.get_billing(
-        client_id=1, current_user={"client_id": 1, "email": "c1@example.com"},
+        client_id=1,
+        current_user={"client_id": 1, "email": "c1@example.com"},
     )
 
     assert len(result["invoices"]) == 2
@@ -81,7 +100,8 @@ async def test_get_billing_empty():
 
     service = PortalService(mock_pool)
     result = await service.get_billing(
-        client_id=999, current_user={"client_id": 999, "email": "c999@example.com"},
+        client_id=999,
+        current_user={"client_id": 999, "email": "c999@example.com"},
     )
 
     assert len(result["invoices"]) == 0
@@ -101,7 +121,8 @@ async def test_get_billing_fallback_on_missing_table():
 
     service = PortalService(mock_pool)
     result = await service.get_billing(
-        client_id=1, current_user={"client_id": 1, "email": "c1@example.com"},
+        client_id=1,
+        current_user={"client_id": 1, "email": "c1@example.com"},
     )
 
     assert len(result["invoices"]) == 0
@@ -142,7 +163,10 @@ async def test_get_billing_route_hides_service_errors() -> None:
 async def test_get_invoice_pdf_url():
     """get_invoice_pdf_url returns a portal proxy URL, not Drive details."""
     mock_conn = AsyncMock()
-    mock_conn.fetchrow.return_value = {"drive_web_link": "https://drive.google.com/abc", "drive_file_id": "abc123"}
+    mock_conn.fetchrow.return_value = {
+        "drive_web_link": "https://drive.google.com/abc",
+        "drive_file_id": "abc123",
+    }
 
     mock_pool = MagicMock()
     mock_pool.acquire.return_value.__aenter__ = AsyncMock(return_value=mock_conn)
@@ -284,11 +308,13 @@ async def test_download_invoice_pdf_returns_none_for_missing_invoice() -> None:
 @pytest.mark.asyncio
 async def test_download_invoice_pdf_returns_none_for_unextractable_drive_link() -> None:
     """download_invoice_pdf refuses invoice rows without a usable Drive file id."""
-    service, _mock_conn = _make_invoice_service({
-        "invoice_number": "INV-202602-00010",
-        "drive_web_link": "https://example.com/not-google-drive",
-        "drive_file_id": None,
-    })
+    service, _mock_conn = _make_invoice_service(
+        {
+            "invoice_number": "INV-202602-00010",
+            "drive_web_link": "https://example.com/not-google-drive",
+            "drive_file_id": None,
+        }
+    )
 
     result = await service.download_invoice_pdf(
         client_id=1,
@@ -302,13 +328,17 @@ async def test_download_invoice_pdf_returns_none_for_unextractable_drive_link() 
 @pytest.mark.asyncio
 async def test_download_invoice_pdf_raises_when_drive_not_connected() -> None:
     """download_invoice_pdf reports missing Google Drive token as a backend failure."""
-    service, _mock_conn = _make_invoice_service({
-        "invoice_number": "INV-202602-00010",
-        "drive_web_link": None,
-        "drive_file_id": "invoice_drive_123",
-    })
+    service, _mock_conn = _make_invoice_service(
+        {
+            "invoice_number": "INV-202602-00010",
+            "drive_web_link": None,
+            "drive_file_id": "invoice_drive_123",
+        }
+    )
 
-    with patch("backend.services.integrations.google_drive_service.GoogleDriveService") as drive_cls:
+    with patch(
+        "backend.services.integrations.google_drive_service.GoogleDriveService"
+    ) as drive_cls:
         drive_cls.SYSTEM_USER_ID = "SYSTEM"
         drive_cls.return_value.get_valid_token = AsyncMock(return_value=None)
 
@@ -323,11 +353,13 @@ async def test_download_invoice_pdf_raises_when_drive_not_connected() -> None:
 @pytest.mark.asyncio
 async def test_download_invoice_pdf_returns_none_when_metadata_is_404() -> None:
     """download_invoice_pdf returns None when Drive metadata lookup is 404."""
-    service, _mock_conn = _make_invoice_service({
-        "invoice_number": "INV-202602-00010",
-        "drive_web_link": None,
-        "drive_file_id": "invoice_drive_123",
-    })
+    service, _mock_conn = _make_invoice_service(
+        {
+            "invoice_number": "INV-202602-00010",
+            "drive_web_link": None,
+            "drive_file_id": "invoice_drive_123",
+        }
+    )
     meta_response = MagicMock(status_code=404)
     async_http = MagicMock()
     async_http.get = AsyncMock(return_value=meta_response)
@@ -353,11 +385,13 @@ async def test_download_invoice_pdf_returns_none_when_metadata_is_404() -> None:
 @pytest.mark.asyncio
 async def test_download_invoice_pdf_raises_when_metadata_fetch_fails() -> None:
     """download_invoice_pdf raises on non-200 Drive metadata errors."""
-    service, _mock_conn = _make_invoice_service({
-        "invoice_number": "INV-202602-00010",
-        "drive_web_link": None,
-        "drive_file_id": "invoice_drive_123",
-    })
+    service, _mock_conn = _make_invoice_service(
+        {
+            "invoice_number": "INV-202602-00010",
+            "drive_web_link": None,
+            "drive_file_id": "invoice_drive_123",
+        }
+    )
     meta_response = MagicMock(status_code=503)
     async_http = MagicMock()
     async_http.get = AsyncMock(return_value=meta_response)
@@ -382,11 +416,13 @@ async def test_download_invoice_pdf_raises_when_metadata_fetch_fails() -> None:
 @pytest.mark.asyncio
 async def test_download_invoice_pdf_returns_none_when_download_is_404() -> None:
     """download_invoice_pdf returns None when Drive media download is 404."""
-    service, _mock_conn = _make_invoice_service({
-        "invoice_number": "INV-202602-00010",
-        "drive_web_link": None,
-        "drive_file_id": "invoice_drive_123",
-    })
+    service, _mock_conn = _make_invoice_service(
+        {
+            "invoice_number": "INV-202602-00010",
+            "drive_web_link": None,
+            "drive_file_id": "invoice_drive_123",
+        }
+    )
     meta_response = MagicMock(status_code=200)
     meta_response.json.return_value = {"name": "invoice.pdf", "mimeType": "application/pdf"}
     download_response = MagicMock(status_code=404)
@@ -414,11 +450,13 @@ async def test_download_invoice_pdf_returns_none_when_download_is_404() -> None:
 @pytest.mark.asyncio
 async def test_download_invoice_pdf_raises_when_download_fails() -> None:
     """download_invoice_pdf raises on non-200 Drive download errors."""
-    service, _mock_conn = _make_invoice_service({
-        "invoice_number": "INV-202602-00010",
-        "drive_web_link": None,
-        "drive_file_id": "invoice_drive_123",
-    })
+    service, _mock_conn = _make_invoice_service(
+        {
+            "invoice_number": "INV-202602-00010",
+            "drive_web_link": None,
+            "drive_file_id": "invoice_drive_123",
+        }
+    )
     meta_response = MagicMock(status_code=200)
     meta_response.json.return_value = {"name": "invoice.pdf", "mimeType": "application/pdf"}
     download_response = MagicMock(status_code=500)
@@ -440,6 +478,7 @@ async def test_download_invoice_pdf_raises_when_download_fails() -> None:
                 invoice_id=1,
                 current_user={"client_id": 1, "email": "c1@example.com"},
             )
+
 
 @pytest.mark.asyncio
 async def test_get_invoice_pdf_url_route_returns_proxy_url() -> None:

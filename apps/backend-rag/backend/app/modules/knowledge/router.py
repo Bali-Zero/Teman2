@@ -129,7 +129,9 @@ async def semantic_search(query: SearchQuery, request: Request) -> SearchRespons
 
                 # Create search result
                 result = SearchResult(
-                    text=text, metadata=metadata, similarity_score=round(similarity_score, 4),
+                    text=text,
+                    metadata=metadata,
+                    similarity_score=round(similarity_score, 4),
                 )
 
                 search_results.append(result)
@@ -229,7 +231,8 @@ async def get_parent_documents_debug(document_id: str) -> dict[str, Any]:
     except Exception as e:
         logger.error("Error fetching parent documents: %s", e, exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Failed to fetch parent documents: {str(e)}",
+            status_code=500,
+            detail=f"Failed to fetch parent documents: {str(e)}",
         ) from e
 
 
@@ -239,7 +242,8 @@ router_public = APIRouter(prefix="/api/public", tags=["public"])
 
 @router_public.get("/bab/{document_id}")
 async def get_bab_public(
-    document_id: str, current_user: dict = Depends(get_current_user),
+    document_id: str,
+    current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     Get BAB (Buku Acuan Bali) document by ID.

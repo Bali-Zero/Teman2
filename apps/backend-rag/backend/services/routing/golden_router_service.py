@@ -55,7 +55,9 @@ class GoldenRouterService:
         if not self.db_pool:
             try:
                 self.db_pool = await asyncpg.create_pool(
-                    settings.database_url, min_size=1, max_size=5,
+                    settings.database_url,
+                    min_size=1,
+                    max_size=5,
                 )
             except Exception as e:
                 logger.error("Failed to create DB pool: %s", e)
@@ -159,7 +161,9 @@ class GoldenRouterService:
             if not embeddings and queries:
                 loop = asyncio.get_running_loop()
                 embeddings = await loop.run_in_executor(
-                    None, self.embeddings.generate_embeddings, queries,
+                    None,
+                    self.embeddings.generate_embeddings,
+                    queries,
                 )
 
             self.route_embeddings = np.array(embeddings)

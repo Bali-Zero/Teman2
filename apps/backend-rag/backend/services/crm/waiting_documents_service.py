@@ -25,7 +25,8 @@ from backend.services.notifications.email_http import get_email_client
 
 # Internal email API — uses Brevo, from=zantara@balizero.com
 _EMAIL_API_URL = os.getenv(
-    "INTERNAL_EMAIL_API_URL", "https://nuzantara-rag.fly.dev/api/notifications/send-email",
+    "INTERNAL_EMAIL_API_URL",
+    "https://nuzantara-rag.fly.dev/api/notifications/send-email",
 )
 _EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", "")
 
@@ -39,10 +40,12 @@ class WaitingDocumentsService:
         self.db_pool = db_pool
         self.zoho_email_service = ZohoEmailService(db_pool)
 
-    @cache_invalidating([
-        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
-        "zantara:crm_practices:*",
-    ])
+    @cache_invalidating(
+        [
+            lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
+            "zantara:crm_practices:*",
+        ]
+    )
     async def trigger_on_waiting_documents(
         self,
         practice_id: int,
@@ -90,7 +93,8 @@ class WaitingDocumentsService:
                     )
                     results["team_leader_notified"] = True
                     logger.info(
-                        "Waiting docs notification sent to team leader %s", team_leader_email,
+                        "Waiting docs notification sent to team leader %s",
+                        team_leader_email,
                     )
                 except Exception as e:
                     logger.error("Failed to notify team leader: %s", e)
@@ -124,7 +128,9 @@ class WaitingDocumentsService:
 
         except Exception as error:
             logger.error(
-                "Waiting documents automation failed for practice %s: %s", practice_id, error,
+                "Waiting documents automation failed for practice %s: %s",
+                practice_id,
+                error,
                 exc_info=True,
             )
             return {"success": False, "error": str(error)}
@@ -233,7 +239,9 @@ Zantara — Bali Zero Team
             email_type="waiting_docs_client",
             practice_id=practice_data["id"],
             client_id=practice_data.get("client_id"),
-            cc=team_member_email if team_member_email and team_member_email != client_email else None,
+            cc=team_member_email
+            if team_member_email and team_member_email != client_email
+            else None,
             include_logo=True,
         )
 
@@ -286,7 +294,10 @@ Zantara — Bali Zero Team
             response.raise_for_status()
             logger.info("Email sent to %s via Brevo", to_email)
             await record_email_result(
-                self.db_pool, row_id, status="sent", provider="brevo",
+                self.db_pool,
+                row_id,
+                status="sent",
+                provider="brevo",
             )
             return
         except Exception as brevo_error:
@@ -302,17 +313,25 @@ Zantara — Bali Zero Team
             )
             logger.info("Email sent to %s via Zoho fallback", to_email)
             await record_email_result(
-                self.db_pool, row_id, status="sent", provider="zoho",
+                self.db_pool,
+                row_id,
+                status="sent",
+                provider="zoho",
                 error_message=f"brevo_failed: {brevo_err_msg}",
             )
             return
         except Exception as zoho_error:
             combined_err = f"brevo: {brevo_err_msg} | zoho: {zoho_error}"
             logger.error(
-                "Both Brevo and Zoho failed for %s: %s", to_email, combined_err,
+                "Both Brevo and Zoho failed for %s: %s",
+                to_email,
+                combined_err,
             )
             await record_email_result(
-                self.db_pool, row_id, status="failed", provider="zoho",
+                self.db_pool,
+                row_id,
+                status="failed",
+                provider="zoho",
                 error_message=combined_err,
             )
             notify_email_failure_critical(

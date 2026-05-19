@@ -31,7 +31,6 @@ logger = get_logger(__name__)
 router = APIRouter(tags=["intel-analytics"])
 
 
-
 # ─── System metrics ───────────────────────────────────────────────────────────
 
 
@@ -99,7 +98,9 @@ async def get_system_metrics() -> Any:
             archive_dir = staging_service.get_staging_dir(archive_type) / "archived" / "approved"
             if archive_dir.exists():
                 for file_path in sorted(
-                    archive_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True,
+                    archive_dir.glob("*.json"),
+                    key=lambda p: p.stat().st_mtime,
+                    reverse=True,
                 ):
                     try:
                         with open(file_path) as f:
@@ -139,7 +140,9 @@ async def get_system_metrics() -> Any:
             archive_dir = staging_service.get_staging_dir(archive_type) / "archived" / "approved"
             if archive_dir.exists():
                 for file_path in sorted(
-                    archive_dir.glob("*.json"), key=lambda p: p.stat().st_mtime, reverse=True,
+                    archive_dir.glob("*.json"),
+                    key=lambda p: p.stat().st_mtime,
+                    reverse=True,
                 )[:10]:
                     try:
                         with open(file_path) as f:
@@ -213,7 +216,9 @@ async def search_intel(request: IntelSearchRequest) -> dict[str, Any]:
 
                 # Search (async)
                 results = await client.search(
-                    query_embedding=query_embedding, filter=where_filter, limit=request.limit,
+                    query_embedding=query_embedding,
+                    filter=where_filter,
+                    limit=request.limit,
                 )
 
                 # Parse results
@@ -287,7 +292,8 @@ async def store_intel(request: IntelStoreRequest) -> dict[str, Any]:
 
 @router.get("/api/intel/critical")
 async def get_critical_items(
-    category: str | None = None, days: int = IntelConstants.DUPLICATE_CHECK_DAYS,
+    category: str | None = None,
+    days: int = IntelConstants.DUPLICATE_CHECK_DAYS,
 ) -> dict[str, Any]:
     """Get critical impact items"""
     try:
@@ -334,7 +340,9 @@ async def get_critical_items(
                         timeout=HttpTimeoutConstants.INTEL_SCRAPER_TIMEOUT,
                     ) as http_client:
                         response = await http_client.post(
-                            scroll_url, json=scroll_payload, headers=headers,
+                            scroll_url,
+                            json=scroll_payload,
+                            headers=headers,
                         )
                         response.raise_for_status()
                         scroll_data = response.json().get("result", {})
@@ -345,7 +353,8 @@ async def get_critical_items(
                         ]
                 except Exception as scroll_error:
                     logger.warning(
-                        "Qdrant scroll with filter failed, falling back to peek: %s", scroll_error,
+                        "Qdrant scroll with filter failed, falling back to peek: %s",
+                        scroll_error,
                     )
                     results = await client.peek(limit=100)
                     filtered_metadatas = []
@@ -392,7 +401,8 @@ async def get_critical_items(
 
 @router.get("/api/intel/trends")
 async def get_trends(
-    category: str | None = None, _days: int = IntelConstants.TRENDS_ANALYSIS_DAYS,
+    category: str | None = None,
+    _days: int = IntelConstants.TRENDS_ANALYSIS_DAYS,
 ) -> dict[str, Any]:
     """Get trending topics and keywords"""
     try:
@@ -442,7 +452,8 @@ async def get_intelligence_analytics(days: int = IntelConstants.TRENDS_ANALYSIS_
     except Exception as e:
         logger.error("Failed to calculate analytics: %s", e, exc_info=True)
         raise HTTPException(
-            status_code=500, detail=f"Analytics calculation failed: {str(e)}",
+            status_code=500,
+            detail=f"Analytics calculation failed: {str(e)}",
         ) from e
 
 

@@ -59,6 +59,8 @@ async def get_orchestrator(request: Request) -> Any:
         surface_router = getattr(request.app.state, "surface_router", None)
         if surface_router and hasattr(_agentic_rag_orchestrator, "core"):
             _agentic_rag_orchestrator.core._surface_router = surface_router
-            logger.info("✅ [R5 Phase 5] SurfaceRouter injected into OrchestratorCore (main singleton)")
+            logger.info(
+                "✅ [R5 Phase 5] SurfaceRouter injected into OrchestratorCore (main singleton)"
+            )
 
     return _agentic_rag_orchestrator

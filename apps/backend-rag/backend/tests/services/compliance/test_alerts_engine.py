@@ -3,6 +3,7 @@ AlertsEngine.generate_alerts orchestration.
 
 Tests use real DB (db_tx) + mocked PricingTool/Dispatcher.
 """
+
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -61,10 +62,14 @@ def mock_dispatcher() -> AsyncMock:
 
 @pytest.mark.asyncio
 async def test_generate_empty_forecasts_returns_empty(
-    db_tx: asyncpg.Connection, mock_pricing, mock_dispatcher,
+    db_tx: asyncpg.Connection,
+    mock_pricing,
+    mock_dispatcher,
 ) -> None:
     engine = AlertsEngine.with_connection(
-        db_tx, pricing=mock_pricing, dispatcher=mock_dispatcher,
+        db_tx,
+        pricing=mock_pricing,
+        dispatcher=mock_dispatcher,
     )
     out = await engine.generate_alerts([])
     assert out == []
@@ -73,13 +78,19 @@ async def test_generate_empty_forecasts_returns_empty(
 
 @pytest.mark.asyncio
 async def test_generate_creates_new_alert(
-    db_tx: asyncpg.Connection, sample_client, mock_pricing, mock_dispatcher,
+    db_tx: asyncpg.Connection,
+    sample_client,
+    mock_pricing,
+    mock_dispatcher,
 ) -> None:
     engine = AlertsEngine.with_connection(
-        db_tx, pricing=mock_pricing, dispatcher=mock_dispatcher,
+        db_tx,
+        pricing=mock_pricing,
+        dispatcher=mock_dispatcher,
     )
     forecast = _make_forecast(
-        client_id=sample_client["id"], matched_rule_id="visa_c1_doc_99",
+        client_id=sample_client["id"],
+        matched_rule_id="visa_c1_doc_99",
     )
     out = await engine.generate_alerts([forecast])
     assert len(out) == 1
@@ -89,10 +100,15 @@ async def test_generate_creates_new_alert(
 
 @pytest.mark.asyncio
 async def test_generate_dedup_skip_same_severity(
-    db_tx: asyncpg.Connection, sample_client, mock_pricing, mock_dispatcher,
+    db_tx: asyncpg.Connection,
+    sample_client,
+    mock_pricing,
+    mock_dispatcher,
 ) -> None:
     engine = AlertsEngine.with_connection(
-        db_tx, pricing=mock_pricing, dispatcher=mock_dispatcher,
+        db_tx,
+        pricing=mock_pricing,
+        dispatcher=mock_dispatcher,
     )
     forecast = _make_forecast(client_id=sample_client["id"])
     await engine.generate_alerts([forecast])
@@ -106,20 +122,28 @@ async def test_generate_dedup_skip_same_severity(
 
 @pytest.mark.asyncio
 async def test_generate_promotes_on_severity_upgrade(
-    db_tx: asyncpg.Connection, sample_client, mock_pricing, mock_dispatcher,
+    db_tx: asyncpg.Connection,
+    sample_client,
+    mock_pricing,
+    mock_dispatcher,
 ) -> None:
     engine = AlertsEngine.with_connection(
-        db_tx, pricing=mock_pricing, dispatcher=mock_dispatcher,
+        db_tx,
+        pricing=mock_pricing,
+        dispatcher=mock_dispatcher,
     )
     warn = _make_forecast(
-        client_id=sample_client["id"], urgency_level="warning",
+        client_id=sample_client["id"],
+        urgency_level="warning",
         days_until_expiry=30,
     )
     await engine.generate_alerts([warn])
     mock_dispatcher.reset_mock()
 
     urg = _make_forecast(
-        client_id=sample_client["id"], urgency_level="urgent", days_until_expiry=7,
+        client_id=sample_client["id"],
+        urgency_level="urgent",
+        days_until_expiry=7,
     )
     out = await engine.generate_alerts([urg])
     assert out[0].severity == "urgent"
@@ -129,11 +153,16 @@ async def test_generate_promotes_on_severity_upgrade(
 
 @pytest.mark.asyncio
 async def test_generate_uses_pricing_tool_never_hardcoded(
-    db_tx: asyncpg.Connection, sample_client, mock_pricing, mock_dispatcher,
+    db_tx: asyncpg.Connection,
+    sample_client,
+    mock_pricing,
+    mock_dispatcher,
 ) -> None:
     mock_pricing.get_price = MagicMock(return_value=12_000_000)
     engine = AlertsEngine.with_connection(
-        db_tx, pricing=mock_pricing, dispatcher=mock_dispatcher,
+        db_tx,
+        pricing=mock_pricing,
+        dispatcher=mock_dispatcher,
     )
     forecast = _make_forecast(client_id=sample_client["id"])
     out = await engine.generate_alerts([forecast])
@@ -143,7 +172,10 @@ async def test_generate_uses_pricing_tool_never_hardcoded(
 
 @pytest.mark.asyncio
 async def test_generate_sets_nb2_ref_from_rule_registry(
-    db_tx: asyncpg.Connection, sample_client, mock_pricing, mock_dispatcher,
+    db_tx: asyncpg.Connection,
+    sample_client,
+    mock_pricing,
+    mock_dispatcher,
     monkeypatch,
 ) -> None:
     # Patch the renewal rules registry to include a rule with nb2_ref set
@@ -167,10 +199,13 @@ async def test_generate_sets_nb2_ref_from_rule_registry(
     monkeypatch.setattr(rr_module, "RENEWAL_RULES", patched)
 
     engine = AlertsEngine.with_connection(
-        db_tx, pricing=mock_pricing, dispatcher=mock_dispatcher,
+        db_tx,
+        pricing=mock_pricing,
+        dispatcher=mock_dispatcher,
     )
     forecast = _make_forecast(
-        client_id=sample_client["id"], matched_rule_id="visa_c1_renewal_rule",
+        client_id=sample_client["id"],
+        matched_rule_id="visa_c1_renewal_rule",
     )
     out = await engine.generate_alerts([forecast])
     assert out[0].nb2_ref == "NB-2-doc-X-p-42"
@@ -178,10 +213,15 @@ async def test_generate_sets_nb2_ref_from_rule_registry(
 
 @pytest.mark.asyncio
 async def test_generate_renders_all_three_languages(
-    db_tx: asyncpg.Connection, sample_client, mock_pricing, mock_dispatcher,
+    db_tx: asyncpg.Connection,
+    sample_client,
+    mock_pricing,
+    mock_dispatcher,
 ) -> None:
     engine = AlertsEngine.with_connection(
-        db_tx, pricing=mock_pricing, dispatcher=mock_dispatcher,
+        db_tx,
+        pricing=mock_pricing,
+        dispatcher=mock_dispatcher,
     )
     forecast = _make_forecast(client_id=sample_client["id"])
     out = await engine.generate_alerts([forecast])
@@ -192,7 +232,9 @@ async def test_generate_renders_all_three_languages(
 
 @pytest.mark.asyncio
 async def test_engine_with_real_dispatcher_end_to_end(
-    db_tx: asyncpg.Connection, sample_client, mock_pricing,
+    db_tx: asyncpg.Connection,
+    sample_client,
+    mock_pricing,
 ) -> None:
     from backend.services.compliance.alert_dispatcher import AlertDispatcher
 
@@ -204,7 +246,9 @@ async def test_engine_with_real_dispatcher_end_to_end(
         wa_service=AsyncMock(),
     )
     engine = AlertsEngine.with_connection(
-        db_tx, pricing=mock_pricing, dispatcher=dispatcher,
+        db_tx,
+        pricing=mock_pricing,
+        dispatcher=dispatcher,
     )
     forecast = _make_forecast(client_id=sample_client["id"])
     out = await engine.generate_alerts([forecast])

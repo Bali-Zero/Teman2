@@ -20,15 +20,19 @@ def _write_state(path: Path, ingestion_verifications: dict) -> None:
 
 # ── check_ingestion_freshness ────────────────────────────────────────────────
 
+
 def test_freshness_fresh_when_recent_ok(tmp_path):
     state = tmp_path / "fresh_state.json"
     now_iso = datetime.now(tz=timezone.utc).isoformat()
-    _write_state(state, {
-        "nb-1": {
-            "last": {"started_at": now_iso, "status": "ok", "uuid": "abc123"},
-            "history": [],
-        }
-    })
+    _write_state(
+        state,
+        {
+            "nb-1": {
+                "last": {"started_at": now_iso, "status": "ok", "uuid": "abc123"},
+                "history": [],
+            }
+        },
+    )
     verdict = reg.check_ingestion_freshness("nb-1", state_path=state)
     assert verdict["status"] == "fresh"
     assert verdict["last_status"] == "ok"
@@ -40,11 +44,14 @@ def test_freshness_fresh_when_recent_ok(tmp_path):
 def test_freshness_stale_when_canary_status_not_ok(tmp_path):
     state = tmp_path / "state.json"
     now_iso = datetime.now(tz=timezone.utc).isoformat()
-    _write_state(state, {
-        "nb-1": {
-            "last": {"started_at": now_iso, "status": "stale", "uuid": "x"},
-        }
-    })
+    _write_state(
+        state,
+        {
+            "nb-1": {
+                "last": {"started_at": now_iso, "status": "stale", "uuid": "x"},
+            }
+        },
+    )
     verdict = reg.check_ingestion_freshness("nb-1", state_path=state)
     assert verdict["status"] == "stale"
     assert "status=stale" in verdict["reason"]
@@ -53,11 +60,14 @@ def test_freshness_stale_when_canary_status_not_ok(tmp_path):
 def test_freshness_stale_when_too_old(tmp_path):
     state = tmp_path / "state.json"
     old = (datetime.now(tz=timezone.utc) - timedelta(hours=48)).isoformat()
-    _write_state(state, {
-        "nb-1": {
-            "last": {"started_at": old, "status": "ok", "uuid": "x"},
-        }
-    })
+    _write_state(
+        state,
+        {
+            "nb-1": {
+                "last": {"started_at": old, "status": "ok", "uuid": "x"},
+            }
+        },
+    )
     # Default threshold = 24h
     verdict = reg.check_ingestion_freshness("nb-1", state_path=state, max_stale_hours=24)
     assert verdict["status"] == "stale"
@@ -90,6 +100,7 @@ def test_freshness_handles_corrupt_json(tmp_path):
 
 # ── resolve_notebook with enforce_freshness ──────────────────────────────────
 
+
 def test_resolve_notebook_default_does_not_gate(tmp_path, monkeypatch):
     """Backward compatibility: default behavior is NO gating."""
     monkeypatch.delenv("NLM_ENFORCE_FRESHNESS", raising=False)
@@ -103,12 +114,15 @@ def test_resolve_notebook_returns_none_when_stale_and_gated(tmp_path, monkeypatc
     """enforce_freshness=True + stale state → None (caller falls back)."""
     state = tmp_path / "state.json"
     old = (datetime.now(tz=timezone.utc) - timedelta(hours=48)).isoformat()
-    _write_state(state, {
-        # NB-2 UUID on zero@balizero.com (migration 2026-05-18)
-        "271c7159-0c32-49a1-bda8-803c8e0993a6": {
-            "last": {"started_at": old, "status": "ok", "uuid": "x"},
-        }
-    })
+    _write_state(
+        state,
+        {
+            # NB-2 UUID on zero@balizero.com (migration 2026-05-18)
+            "271c7159-0c32-49a1-bda8-803c8e0993a6": {
+                "last": {"started_at": old, "status": "ok", "uuid": "x"},
+            }
+        },
+    )
     monkeypatch.setenv("NLM_FRESHNESS_STATE_FILE", str(state))
     result = reg.resolve_notebook(
         "KITAS visa requirements",
@@ -122,12 +136,15 @@ def test_resolve_notebook_returns_nb_when_fresh_and_gated(tmp_path, monkeypatch)
     """enforce_freshness=True + fresh state → NB returned with freshness verdict."""
     state = tmp_path / "state.json"
     now = datetime.now(tz=timezone.utc).isoformat()
-    _write_state(state, {
-        # NB-2 UUID on zero@balizero.com (migration 2026-05-18)
-        "271c7159-0c32-49a1-bda8-803c8e0993a6": {
-            "last": {"started_at": now, "status": "ok", "uuid": "fresh"},
-        }
-    })
+    _write_state(
+        state,
+        {
+            # NB-2 UUID on zero@balizero.com (migration 2026-05-18)
+            "271c7159-0c32-49a1-bda8-803c8e0993a6": {
+                "last": {"started_at": now, "status": "ok", "uuid": "fresh"},
+            }
+        },
+    )
     monkeypatch.setenv("NLM_FRESHNESS_STATE_FILE", str(state))
     result = reg.resolve_notebook("KITAS visa", enforce_freshness=True)
     assert result is not None

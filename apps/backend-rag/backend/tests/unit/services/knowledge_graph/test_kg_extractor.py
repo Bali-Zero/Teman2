@@ -2,7 +2,6 @@
 Unit tests for Knowledge Graph data models (S05: KGExtractor class removed)
 """
 
-
 from backend.services.knowledge_graph.extractor import (
     ExtractedEntity,
     ExtractedRelation,
@@ -14,8 +13,12 @@ from backend.services.knowledge_graph.ontology import EntityType, RelationType
 class TestDataModels:
     def test_extracted_entity(self):
         entity = ExtractedEntity(
-            id="e1", type=EntityType.UNDANG_UNDANG, name="UU No. 6 Tahun 2023",
-            mention="UU No 6/2023", attributes={"number": 6, "year": 2023}, confidence=0.95,
+            id="e1",
+            type=EntityType.UNDANG_UNDANG,
+            name="UU No. 6 Tahun 2023",
+            mention="UU No 6/2023",
+            attributes={"number": 6, "year": 2023},
+            confidence=0.95,
         )
         assert entity.id == "e1"
         assert entity.type == EntityType.UNDANG_UNDANG
@@ -29,8 +32,11 @@ class TestDataModels:
 
     def test_extracted_relation(self):
         rel = ExtractedRelation(
-            source_id="e1", target_id="e2", type=RelationType.REQUIRES,
-            evidence="PT PMA wajib memiliki NIB", confidence=0.9,
+            source_id="e1",
+            target_id="e2",
+            type=RelationType.REQUIRES,
+            evidence="PT PMA wajib memiliki NIB",
+            confidence=0.9,
         )
         assert rel.source_id == "e1"
         assert rel.type == RelationType.REQUIRES

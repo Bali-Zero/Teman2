@@ -16,15 +16,9 @@ _FALLBACK_MESSAGE = "I'm sorry, I cannot fulfill this request."
 
 STUB_MESSAGES: dict[str, dict[str, str]] = {
     "abstain": {
-        "ITALIAN": (
-            "Mi dispiace, non ho trovato informazioni rilevanti per questa domanda."
-        ),
-        "INDONESIAN": (
-            "Maaf, saya tidak menemukan informasi yang relevan untuk pertanyaan ini."
-        ),
-        "ENGLISH": (
-            "I'm sorry, I couldn't find relevant information for this question."
-        ),
+        "ITALIAN": ("Mi dispiace, non ho trovato informazioni rilevanti per questa domanda."),
+        "INDONESIAN": ("Maaf, saya tidak menemukan informasi yang relevan untuk pertanyaan ini."),
+        "ENGLISH": ("I'm sorry, I couldn't find relevant information for this question."),
     },
     "abstain_detailed": {
         "ITALIAN": (
@@ -56,15 +50,11 @@ STUB_MESSAGES: dict[str, dict[str, str]] = {
         ),
     },
     "error": {
-        "ITALIAN": (
-            "Mi dispiace, non sono riuscito a completare la richiesta. Riprova."
-        ),
+        "ITALIAN": ("Mi dispiace, non sono riuscito a completare la richiesta. Riprova."),
         "INDONESIAN": (
             "Maaf, saya tidak dapat menyelesaikan permintaan tersebut. Silakan coba lagi."
         ),
-        "ENGLISH": (
-            "I'm sorry, I couldn't complete the request. Please try again."
-        ),
+        "ENGLISH": ("I'm sorry, I couldn't complete the request. Please try again."),
     },
     "confused": {
         "ITALIAN": (

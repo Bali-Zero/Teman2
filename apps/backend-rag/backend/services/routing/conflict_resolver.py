@@ -88,7 +88,9 @@ class ConflictResolver:
         return conflicts
 
     def resolve_conflicts(
-        self, results_by_collection: dict[str, list[dict]], conflicts: list[dict],
+        self,
+        results_by_collection: dict[str, list[dict]],
+        conflicts: list[dict],
     ) -> tuple[list[dict], list[dict]]:
         """
         Resolve conflicts using timestamp and relevance-based priority.
@@ -183,7 +185,10 @@ class ConflictResolver:
             self.stats["conflicts_resolved"] += 1
 
             logger.info(
-                "✅ [Conflict Resolved] %s (preferred) > %s - reason: %s", winner_coll, loser_coll, resolution_reason,
+                "✅ [Conflict Resolved] %s (preferred) > %s - reason: %s",
+                winner_coll,
+                loser_coll,
+                resolution_reason,
             )
 
         return resolved_results, conflict_reports

@@ -1,4 +1,5 @@
 """Tests for PDF parser — runs against actual PDFs in ~/Downloads."""
+
 from __future__ import annotations
 
 from pathlib import Path

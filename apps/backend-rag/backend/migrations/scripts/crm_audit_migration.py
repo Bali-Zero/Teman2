@@ -266,7 +266,9 @@ async def backfill_existing_data():
                     client["created_by"],
                     json.dumps(dict(client)),
                     json.dumps({"created": True}),
-                    json.dumps({"migration": True, "backfilled": datetime.now(tz=timezone.utc).isoformat()}),
+                    json.dumps(
+                        {"migration": True, "backfilled": datetime.now(tz=timezone.utc).isoformat()}
+                    ),
                     client["created_at"],
                 )
 

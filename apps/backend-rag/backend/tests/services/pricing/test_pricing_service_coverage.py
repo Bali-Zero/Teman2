@@ -75,9 +75,7 @@ def pricing_service():
         # Make the chained Path operations work
         mock_path.__truediv__ = MagicMock(return_value=mock_path_instance)
 
-        with patch(
-            "builtins.open", mock_open(read_data=json.dumps(SAMPLE_PRICES))
-        ):
+        with patch("builtins.open", mock_open(read_data=json.dumps(SAMPLE_PRICES))):
             from backend.services.pricing.pricing_service import PricingService
 
             service = PricingService.__new__(PricingService)

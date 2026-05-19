@@ -57,7 +57,8 @@ class IntelEventSubscriber:
         dossier_id_raw = payload.get("dossier_id")
         if not dossier_id_raw:
             self.logger.debug(
-                "intel.event missing dossier_id: %s", payload,
+                "intel.event missing dossier_id: %s",
+                payload,
             )
             return None
 
@@ -65,7 +66,8 @@ class IntelEventSubscriber:
             dossier_id = UUID(str(dossier_id_raw))
         except (TypeError, ValueError):
             self.logger.warning(
-                "intel.event bad dossier_id %r", dossier_id_raw,
+                "intel.event bad dossier_id %r",
+                dossier_id_raw,
             )
             return None
 
@@ -73,13 +75,16 @@ class IntelEventSubscriber:
             dossier = await self.repo.get_dossier(dossier_id)
         except Exception as exc:  # noqa: BLE001
             self.logger.warning(
-                "intel.event get_dossier failed %s: %s", dossier_id, exc,
+                "intel.event get_dossier failed %s: %s",
+                dossier_id,
+                exc,
             )
             return None
 
         if dossier is None:
             self.logger.info(
-                "intel.event dossier %s not found (deleted?)", dossier_id,
+                "intel.event dossier %s not found (deleted?)",
+                dossier_id,
             )
             return None
 
@@ -87,7 +92,9 @@ class IntelEventSubscriber:
             return await self.dispatcher.dispatch(dossier)
         except Exception as exc:  # noqa: BLE001
             self.logger.warning(
-                "intel.event dispatch failed %s: %s", dossier_id, exc,
+                "intel.event dispatch failed %s: %s",
+                dossier_id,
+                exc,
                 exc_info=True,
             )
             return None

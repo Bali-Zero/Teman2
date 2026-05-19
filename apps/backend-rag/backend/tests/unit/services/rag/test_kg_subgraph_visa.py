@@ -14,8 +14,11 @@ def _make_pool(conn=None):
     conn = conn or AsyncMock()
 
     class _Ctx:
-        async def __aenter__(self): return conn
-        async def __aexit__(self, *a): pass
+        async def __aenter__(self):
+            return conn
+
+        async def __aexit__(self, *a):
+            pass
 
     pool.acquire = MagicMock(return_value=_Ctx())
     return pool, conn
@@ -52,6 +55,7 @@ def _make_state(**kwargs):
 class TestIdentifyVisaTypeNode:
     async def test_kitas_from_keyword(self):
         from backend.services.rag.kg_subgraph_visa import identify_visa_type_node
+
         state = _make_state(query="I need a KITAS for work")
         result = await identify_visa_type_node(state, MagicMock())
         assert result["visa_type"] == "kitas"
@@ -60,6 +64,7 @@ class TestIdentifyVisaTypeNode:
 
     async def test_kitap_from_keyword(self):
         from backend.services.rag.kg_subgraph_visa import identify_visa_type_node
+
         state = _make_state(query="How to get KITAP for retirement")
         result = await identify_visa_type_node(state, MagicMock())
         assert result["visa_type"] == "kitap"
@@ -67,12 +72,14 @@ class TestIdentifyVisaTypeNode:
 
     async def test_vitas_from_keyword(self):
         from backend.services.rag.kg_subgraph_visa import identify_visa_type_node
+
         state = _make_state(query="I need a VITAS social visit visa")
         result = await identify_visa_type_node(state, MagicMock())
         assert result["visa_type"] == "vitas"
 
     async def test_tourist_visa(self):
         from backend.services.rag.kg_subgraph_visa import identify_visa_type_node
+
         state = _make_state(query="tourist visit to Bali")
         result = await identify_visa_type_node(state, MagicMock())
         assert result["visa_type"] == "visa_on_arrival"
@@ -80,6 +87,7 @@ class TestIdentifyVisaTypeNode:
 
     async def test_work_indicators_default_kitas(self):
         from backend.services.rag.kg_subgraph_visa import identify_visa_type_node
+
         state = _make_state(query="I need to work as a chef in Bali")
         result = await identify_visa_type_node(state, MagicMock())
         assert result["visa_type"] == "kitas"
@@ -87,24 +95,28 @@ class TestIdentifyVisaTypeNode:
 
     async def test_default_vitas_for_generic(self):
         from backend.services.rag.kg_subgraph_visa import identify_visa_type_node
+
         state = _make_state(query="What are my options for staying in Indonesia")
         result = await identify_visa_type_node(state, MagicMock())
         assert result["visa_type"] == "vitas"
 
     async def test_director_employment_type(self):
         from backend.services.rag.kg_subgraph_visa import identify_visa_type_node
+
         state = _make_state(query="I am a director and need a KITAS")
         result = await identify_visa_type_node(state, MagicMock())
         assert result["employment_type"] == "director"
 
     async def test_employee_employment_type(self):
         from backend.services.rag.kg_subgraph_visa import identify_visa_type_node
+
         state = _make_state(query="employee visa for staff chef")
         result = await identify_visa_type_node(state, MagicMock())
         assert result["employment_type"] == "employee"
 
     async def test_investor_employment_type(self):
         from backend.services.rag.kg_subgraph_visa import identify_visa_type_node
+
         state = _make_state(query="investor shareholder visa")
         result = await identify_visa_type_node(state, MagicMock())
         assert result["employment_type"] == "shareholder"
@@ -117,8 +129,11 @@ class TestIdentifyVisaTypeNode:
         mock_pool = MagicMock()
 
         class _Ctx:
-            async def __aenter__(self): return mock_conn
-            async def __aexit__(self, *a): pass
+            async def __aenter__(self):
+                return mock_conn
+
+            async def __aexit__(self, *a):
+                pass
 
         mock_pool.acquire = MagicMock(return_value=_Ctx())
 
@@ -134,8 +149,11 @@ class TestIdentifyVisaTypeNode:
         mock_pool = MagicMock()
 
         class _Ctx:
-            async def __aenter__(self): return mock_conn
-            async def __aexit__(self, *a): pass
+            async def __aenter__(self):
+                return mock_conn
+
+            async def __aexit__(self, *a):
+                pass
 
         mock_pool.acquire = MagicMock(return_value=_Ctx())
 
@@ -153,6 +171,7 @@ class TestIdentifyVisaTypeNode:
 class TestCheckRPTKARequirementsNode:
     async def test_skips_when_not_required(self):
         from backend.services.rag.kg_subgraph_visa import check_rptka_requirements_node
+
         state = _make_state(requires_rptka=False)
         result = await check_rptka_requirements_node(state, AsyncMock())
         assert len(result.get("visa_requirements", [])) == 0
@@ -161,7 +180,11 @@ class TestCheckRPTKARequirementsNode:
         from backend.services.rag.kg_subgraph_visa import check_rptka_requirements_node
 
         conn = AsyncMock()
-        conn.fetchrow.return_value = {"entity_id": "rptka:1", "name": "RPTKA", "properties": {"duration": "3-4 weeks", "validity": "5 years"}}
+        conn.fetchrow.return_value = {
+            "entity_id": "rptka:1",
+            "name": "RPTKA",
+            "properties": {"duration": "3-4 weeks", "validity": "5 years"},
+        }
         conn.fetch.return_value = [
             {"req": "Submit application", "dur": None, "val": None},
             {"req": "Pay DKP-TKA", "dur": None, "val": None},
@@ -214,7 +237,15 @@ class TestGetVisaRequirementsNode:
 
         conn = AsyncMock()
         conn.fetchrow.side_effect = [
-            {"entity_id": "kitas:1", "name": "KITAS", "properties": {"documents": ["Passport"], "processing_time": "14 days", "validity": "1 year"}},
+            {
+                "entity_id": "kitas:1",
+                "name": "KITAS",
+                "properties": {
+                    "documents": ["Passport"],
+                    "processing_time": "14 days",
+                    "validity": "1 year",
+                },
+            },
             {"dur_desc": "12 months", "dur_name": "KITAS Duration"},
         ]
         conn.fetch.side_effect = [
@@ -276,9 +307,12 @@ class TestSynthesizeVisaWorkflowNode:
         )
 
         from backend.services.rag.confidence import ConfidenceBreakdown
+
         breakdown = ConfidenceBreakdown(overall=0.82)
 
-        with patch("backend.services.rag.confidence.calculate_subgraph_confidence", return_value=breakdown):
+        with patch(
+            "backend.services.rag.confidence.calculate_subgraph_confidence", return_value=breakdown
+        ):
             result = await synthesize_visa_workflow_node(state)
 
         wf = result["workflow"]
@@ -291,10 +325,14 @@ class TestSynthesizeVisaWorkflowNode:
         from backend.services.rag.kg_subgraph_visa import synthesize_visa_workflow_node
         from backend.services.rag.confidence import ConfidenceBreakdown
 
-        state = _make_state(visa_type="kitap", requires_rptka=False, duration_months=60, kg_sources_used=1)
+        state = _make_state(
+            visa_type="kitap", requires_rptka=False, duration_months=60, kg_sources_used=1
+        )
         breakdown = ConfidenceBreakdown(overall=0.75)
 
-        with patch("backend.services.rag.confidence.calculate_subgraph_confidence", return_value=breakdown):
+        with patch(
+            "backend.services.rag.confidence.calculate_subgraph_confidence", return_value=breakdown
+        ):
             result = await synthesize_visa_workflow_node(state)
 
         assert len(result["workflow"]["steps"]) == 3
@@ -303,10 +341,14 @@ class TestSynthesizeVisaWorkflowNode:
         from backend.services.rag.kg_subgraph_visa import synthesize_visa_workflow_node
         from backend.services.rag.confidence import ConfidenceBreakdown
 
-        state = _make_state(visa_type="visa_on_arrival", requires_rptka=False, duration_months=1, kg_sources_used=0)
+        state = _make_state(
+            visa_type="visa_on_arrival", requires_rptka=False, duration_months=1, kg_sources_used=0
+        )
         breakdown = ConfidenceBreakdown(overall=0.60)
 
-        with patch("backend.services.rag.confidence.calculate_subgraph_confidence", return_value=breakdown):
+        with patch(
+            "backend.services.rag.confidence.calculate_subgraph_confidence", return_value=breakdown
+        ):
             result = await synthesize_visa_workflow_node(state)
 
         assert len(result["workflow"]["steps"]) == 1
@@ -336,6 +378,7 @@ class TestBuildVisaSubgraph:
 class TestFallbackData:
     def test_all_visa_types_have_fallback(self):
         from backend.services.rag.kg_subgraph_visa import _FALLBACK_REQUIREMENTS
+
         assert "kitas" in _FALLBACK_REQUIREMENTS
         assert "kitap" in _FALLBACK_REQUIREMENTS
         assert "vitas" in _FALLBACK_REQUIREMENTS
@@ -343,6 +386,7 @@ class TestFallbackData:
 
     def test_fallback_durations(self):
         from backend.services.rag.kg_subgraph_visa import _FALLBACK_DURATION_MONTHS
+
         assert _FALLBACK_DURATION_MONTHS["kitas"] == 12
         assert _FALLBACK_DURATION_MONTHS["kitap"] == 60
         assert _FALLBACK_DURATION_MONTHS["vitas"] == 2
@@ -350,9 +394,11 @@ class TestFallbackData:
 
     def test_rptka_fallback_steps(self):
         from backend.services.rag.kg_subgraph_visa import _FALLBACK_RPTKA_STEPS
+
         assert len(_FALLBACK_RPTKA_STEPS) == 5
 
     def test_entity_type_mapping(self):
         from backend.services.rag.kg_subgraph_visa import _VISA_TYPE_TO_ENTITY_TYPE
+
         assert _VISA_TYPE_TO_ENTITY_TYPE["kitas"] == "kitas"
         assert _VISA_TYPE_TO_ENTITY_TYPE["visa_on_arrival"] == "voa"

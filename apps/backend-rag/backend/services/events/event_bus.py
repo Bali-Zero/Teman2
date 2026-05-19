@@ -149,6 +149,7 @@ _HANDLER_TIMEOUT_S = 10  # max seconds per handler before it is cancelled
 @dataclass
 class EventTrace:
     """Lightweight trace for observability."""
+
     event_type: str
     timestamp: float
     handler_count: int
@@ -254,7 +255,7 @@ class EventBus:
         )
         self._traces.append(trace)
         if len(self._traces) > self._max_traces:
-            self._traces = self._traces[-self._max_traces:]
+            self._traces = self._traces[-self._max_traces :]
 
         if handlers:
             logger.debug(
@@ -309,12 +310,9 @@ class EventBus:
         if self._running:
             return
         self._running = True
-        self._listen_task = asyncio.create_task(
-            self._listen_loop(), name="event_bus_listener"
-        )
+        self._listen_task = asyncio.create_task(self._listen_loop(), name="event_bus_listener")
         logger.info(
-            f"✅ EventBus started — listening on PG channels: "
-            f"{list(PG_CHANNEL_MAP.keys())}"
+            f"✅ EventBus started — listening on PG channels: {list(PG_CHANNEL_MAP.keys())}"
         )
 
     async def stop(self) -> None:
@@ -353,10 +351,7 @@ class EventBus:
         for pg_channel in PG_CHANNEL_MAP:
             await self._conn.add_listener(pg_channel, self._on_pg_notification)
 
-        logger.info(
-            f"📡 EventBus: listening on PG channels: "
-            f"{list(PG_CHANNEL_MAP.keys())}"
-        )
+        logger.info(f"📡 EventBus: listening on PG channels: {list(PG_CHANNEL_MAP.keys())}")
 
         # Replay events that landed in events_outbox while the listener was
         # disconnected. This closes the durability gap of pg_notify (volatile,
@@ -395,9 +390,7 @@ class EventBus:
         and must never bring down the listener.
         """
         if self._db_pool is None:
-            logger.info(
-                "EventBus: outbox replay skipped — no db_pool configured"
-            )
+            logger.info("EventBus: outbox replay skipped — no db_pool configured")
             return
 
         try:
@@ -410,12 +403,12 @@ class EventBus:
         try:
             async with self._db_pool.acquire() as replay_conn:
                 for pg_channel in PG_CHANNEL_MAP:
-                    async def _dispatch(
-                        payload: dict[str, Any], _ch: str = pg_channel
-                    ) -> None:
+
+                    async def _dispatch(payload: dict[str, Any], _ch: str = pg_channel) -> None:
                         await self._handle_pg_event(
                             # orjson 3-10× faster; .decode() because _handle_pg_event expects str
-                            _ch, orjson.dumps(payload, default=str).decode()
+                            _ch,
+                            orjson.dumps(payload, default=str).decode(),
                         )
 
                     try:
@@ -442,9 +435,7 @@ class EventBus:
                         )
                         total += count
         except Exception as exc:  # noqa: BLE001 — pool acquire / unexpected
-            logger.error(
-                "EventBus: outbox replay aborted: %s", exc, exc_info=True
-            )
+            logger.error("EventBus: outbox replay aborted: %s", exc, exc_info=True)
             return
 
         if total == 0:
@@ -454,9 +445,7 @@ class EventBus:
         if self._conn and not self._conn.is_closed():
             try:
                 for pg_channel in PG_CHANNEL_MAP:
-                    await self._conn.remove_listener(
-                        pg_channel, self._on_pg_notification
-                    )
+                    await self._conn.remove_listener(pg_channel, self._on_pg_notification)
                 await self._conn.close()
             except Exception:
                 pass
@@ -543,11 +532,12 @@ class EventBus:
         recent_traces = self._traces[-50:] if self._traces else []
         return {
             "running": self._running,
-            "pg_connected": self._conn is not None and not self._conn.is_closed() if self._conn else False,
+            "pg_connected": self._conn is not None and not self._conn.is_closed()
+            if self._conn
+            else False,
             "pg_channels": list(PG_CHANNEL_MAP.keys()),
             "subscriber_count": {
-                event_type: len(handlers)
-                for event_type, handlers in self._subscribers.items()
+                event_type: len(handlers) for event_type, handlers in self._subscribers.items()
             },
             "event_counts": dict(self._event_counts),
             "error_counts": dict(self._error_counts),

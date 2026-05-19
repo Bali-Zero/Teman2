@@ -102,5 +102,7 @@ def register_middleware(app: FastAPI) -> None:
         pii_label = ""
 
     logger.info(
-        "✅ Middleware registered: CORS + %s + Auth + Tracing + ErrorMonitoring + RateLimiting + ActivityLogging%s", compression, pii_label,
+        "✅ Middleware registered: CORS + %s + Auth + Tracing + ErrorMonitoring + RateLimiting + ActivityLogging%s",
+        compression,
+        pii_label,
     )

@@ -50,7 +50,9 @@ class TestHealthStartupFailed:
     """Verify /health propagates startup_failed as HTTP 503."""
 
     def test_health_returns_503_when_startup_failed_true(
-        self, app: FastAPI, client: TestClient,
+        self,
+        app: FastAPI,
+        client: TestClient,
     ) -> None:
         """When app.state.startup_failed=True, /health must return 503."""
         app.state.startup_failed = True
@@ -68,7 +70,9 @@ class TestHealthStartupFailed:
         )
 
     def test_health_returns_503_after_warmup_deadline(
-        self, app: FastAPI, client: TestClient,
+        self,
+        app: FastAPI,
+        client: TestClient,
     ) -> None:
         """When startup_complete=False and started >180s ago, return 503."""
         app.state.startup_failed = False
@@ -88,7 +92,9 @@ class TestHealthStartupFailed:
         )
 
     def test_health_returns_200_on_normal_ready_state(
-        self, app: FastAPI, client: TestClient,
+        self,
+        app: FastAPI,
+        client: TestClient,
     ) -> None:
         """When services are healthy, /health must still return 200."""
         app.state.startup_failed = False
@@ -106,7 +112,8 @@ class TestHealthStartupFailed:
         app.state.search_service = mock_search_service
 
         with patch(
-            "backend.app.routers.health.get_qdrant_stats", new_callable=AsyncMock,
+            "backend.app.routers.health.get_qdrant_stats",
+            new_callable=AsyncMock,
         ) as mock_stats:
             mock_stats.return_value = {"collections": 12, "total_documents": 100_000}
             response = client.get("/health")
@@ -115,6 +122,4 @@ class TestHealthStartupFailed:
             f"Expected 200 on healthy ready state; got {response.status_code}"
         )
         body = response.json()
-        assert body["status"] == "healthy", (
-            f"Expected status=healthy; got {body['status']}"
-        )
+        assert body["status"] == "healthy", f"Expected status=healthy; got {body['status']}"

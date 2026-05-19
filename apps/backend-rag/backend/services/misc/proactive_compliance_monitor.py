@@ -31,7 +31,8 @@ import warnings
 warnings.warn(
     "services.misc.proactive_compliance_monitor is deprecated; use "
     "services.compliance.alerts_engine.AlertsEngine.",
-    DeprecationWarning, stacklevel=2,
+    DeprecationWarning,
+    stacklevel=2,
 )
 
 import asyncio
@@ -223,7 +224,11 @@ class ProactiveComplianceMonitor:
         return item
 
     def add_visa_expiry(
-        self, client_id: str, visa_type: str, expiry_date: str, passport_number: str,
+        self,
+        client_id: str,
+        visa_type: str,
+        expiry_date: str,
+        passport_number: str,
     ) -> ComplianceItem:
         """
         Add KITAS/KITAP expiry tracking.
@@ -251,7 +256,10 @@ class ProactiveComplianceMonitor:
         )
 
     def add_annual_tax_deadline(
-        self, client_id: str, deadline_type: str, year: int,
+        self,
+        client_id: str,
+        deadline_type: str,
+        year: int,
     ) -> ComplianceItem:
         """
         Add annual tax deadline (SPT Tahunan, etc.).
@@ -271,7 +279,9 @@ class ProactiveComplianceMonitor:
             raise ValueError(f"Unknown deadline type: {deadline_type}")
 
         # Calculate deadline date
-        deadline_date = datetime(year, template["deadline_month"], template["deadline_day"], tzinfo=timezone.utc)
+        deadline_date = datetime(
+            year, template["deadline_month"], template["deadline_day"], tzinfo=timezone.utc
+        )
 
         compliance_type = template["compliance_type"]
         if isinstance(compliance_type, ComplianceType):
@@ -405,7 +415,9 @@ class ProactiveComplianceMonitor:
         return success
 
     def get_upcoming_deadlines(
-        self, client_id: str | None = None, days_ahead: int = 90,
+        self,
+        client_id: str | None = None,
+        days_ahead: int = 90,
     ) -> list[ComplianceItem]:
         """
         Get upcoming compliance deadlines.
@@ -422,7 +434,9 @@ class ProactiveComplianceMonitor:
         return self.compliance_tracker.get_upcoming_deadlines(client_id, days_ahead)
 
     def get_alerts_for_client(
-        self, client_id: str, status_filter: AlertStatus | None = None,
+        self,
+        client_id: str,
+        status_filter: AlertStatus | None = None,
     ) -> list[ComplianceAlert]:
         """
         Get alerts for a specific client.

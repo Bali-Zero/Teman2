@@ -5,7 +5,6 @@ Tests alert sending, rate limiting, latency digest,
 and multi-channel dispatch (Telegram, Slack, Discord).
 """
 
-
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import httpx
@@ -27,6 +26,7 @@ def _make_service(
 
     with patch("backend.app.core.config.settings", mock_settings):
         from backend.services.monitoring.alert_service import AlertService
+
         svc = AlertService()
 
     return svc
@@ -40,6 +40,7 @@ def _make_service(
 class TestAlertLevel:
     def test_enum_values(self):
         from backend.services.monitoring.alert_service import AlertLevel
+
         assert AlertLevel.INFO.value == "info"
         assert AlertLevel.WARNING.value == "warning"
         assert AlertLevel.ERROR.value == "error"
@@ -114,22 +115,26 @@ class TestInit:
 class TestLogAlert:
     def test_log_critical(self):
         from backend.services.monitoring.alert_service import AlertLevel
+
         svc = _make_service()
         # Should not raise
         svc._log_alert("Title", "Message", AlertLevel.CRITICAL, {"key": "val"})
 
     def test_log_error(self):
         from backend.services.monitoring.alert_service import AlertLevel
+
         svc = _make_service()
         svc._log_alert("Title", "Message", AlertLevel.ERROR)
 
     def test_log_warning(self):
         from backend.services.monitoring.alert_service import AlertLevel
+
         svc = _make_service()
         svc._log_alert("Title", "Message", AlertLevel.WARNING)
 
     def test_log_info(self):
         from backend.services.monitoring.alert_service import AlertLevel
+
         svc = _make_service()
         svc._log_alert("Title", "Message", AlertLevel.INFO)
 
@@ -143,12 +148,14 @@ class TestLogAlert:
 class TestSendAlert:
     async def test_always_logs(self):
         from backend.services.monitoring.alert_service import AlertLevel
+
         svc = _make_service(telegram=False)
         result = await svc.send_alert("Title", "Msg", AlertLevel.INFO)
         assert result["logging"] is True
 
     async def test_sends_telegram(self):
         from backend.services.monitoring.alert_service import AlertLevel
+
         svc = _make_service(telegram=True)
         mock_client = AsyncMock()
         mock_client.is_closed = False
@@ -162,6 +169,7 @@ class TestSendAlert:
 
     async def test_rate_limits_duplicate_alert(self):
         from backend.services.monitoring.alert_service import AlertLevel
+
         svc = _make_service(telegram=True)
         mock_client = AsyncMock()
         mock_client.is_closed = False
@@ -180,6 +188,7 @@ class TestSendAlert:
 
     async def test_global_rate_limit(self):
         from backend.services.monitoring.alert_service import AlertLevel
+
         svc = _make_service(telegram=True)
         svc._global_max_per_minute = 2  # Low limit for testing
         mock_client = AsyncMock()
@@ -198,6 +207,7 @@ class TestSendAlert:
 
     async def test_telegram_failure_handled(self):
         from backend.services.monitoring.alert_service import AlertLevel
+
         svc = _make_service(telegram=True)
         mock_client = AsyncMock()
         mock_client.is_closed = False
@@ -218,8 +228,11 @@ class TestSendAlert:
 class TestSendHttpErrorAlert:
     async def test_5xx_critical(self):
         from backend.services.monitoring.alert_service import AlertLevel
+
         svc = _make_service(telegram=False)
-        svc.send_alert = AsyncMock(return_value={"logging": True, "telegram": False, "slack": False, "discord": False})
+        svc.send_alert = AsyncMock(
+            return_value={"logging": True, "telegram": False, "slack": False, "discord": False}
+        )
 
         await svc.send_http_error_alert(503, "GET", "/health")
         call_args = svc.send_alert.call_args
@@ -227,8 +240,11 @@ class TestSendHttpErrorAlert:
 
     async def test_500_error(self):
         from backend.services.monitoring.alert_service import AlertLevel
+
         svc = _make_service(telegram=False)
-        svc.send_alert = AsyncMock(return_value={"logging": True, "telegram": False, "slack": False, "discord": False})
+        svc.send_alert = AsyncMock(
+            return_value={"logging": True, "telegram": False, "slack": False, "discord": False}
+        )
 
         await svc.send_http_error_alert(500, "POST", "/api/chat")
         call_args = svc.send_alert.call_args
@@ -236,8 +252,11 @@ class TestSendHttpErrorAlert:
 
     async def test_4xx_warning(self):
         from backend.services.monitoring.alert_service import AlertLevel
+
         svc = _make_service(telegram=False)
-        svc.send_alert = AsyncMock(return_value={"logging": True, "telegram": False, "slack": False, "discord": False})
+        svc.send_alert = AsyncMock(
+            return_value={"logging": True, "telegram": False, "slack": False, "discord": False}
+        )
 
         await svc.send_http_error_alert(404, "GET", "/missing")
         call_args = svc.send_alert.call_args
@@ -245,11 +264,17 @@ class TestSendHttpErrorAlert:
 
     async def test_includes_metadata(self):
         svc = _make_service(telegram=False)
-        svc.send_alert = AsyncMock(return_value={"logging": True, "telegram": False, "slack": False, "discord": False})
+        svc.send_alert = AsyncMock(
+            return_value={"logging": True, "telegram": False, "slack": False, "discord": False}
+        )
 
         await svc.send_http_error_alert(
-            500, "POST", "/api/chat", error_detail="DB timeout",
-            request_id="req-123", user_agent="Mozilla/5.0",
+            500,
+            "POST",
+            "/api/chat",
+            error_detail="DB timeout",
+            request_id="req-123",
+            user_agent="Mozilla/5.0",
         )
         call_args = svc.send_alert.call_args
         metadata = call_args.kwargs["metadata"]
@@ -295,8 +320,24 @@ class TestSendHourlyDigest:
     async def test_sends_digest(self):
         svc = _make_service(telegram=True)
         svc._latency_buffer = [
-            {"ts": "10:00", "duration_ms": 5000, "method": "GET", "path": "/api/search", "threshold_ms": 3000, "request_id": "", "user_agent": ""},
-            {"ts": "10:05", "duration_ms": 8000, "method": "GET", "path": "/api/search", "threshold_ms": 3000, "request_id": "", "user_agent": ""},
+            {
+                "ts": "10:00",
+                "duration_ms": 5000,
+                "method": "GET",
+                "path": "/api/search",
+                "threshold_ms": 3000,
+                "request_id": "",
+                "user_agent": "",
+            },
+            {
+                "ts": "10:05",
+                "duration_ms": 8000,
+                "method": "GET",
+                "path": "/api/search",
+                "threshold_ms": 3000,
+                "request_id": "",
+                "user_agent": "",
+            },
         ]
         mock_client = AsyncMock()
         mock_client.is_closed = False
@@ -318,6 +359,7 @@ class TestSendHourlyDigest:
 class TestSendResourceAlert:
     async def test_warning_level(self):
         from backend.services.monitoring.alert_service import AlertLevel
+
         svc = _make_service(telegram=False)
         svc.send_alert = AsyncMock()
 
@@ -327,6 +369,7 @@ class TestSendResourceAlert:
 
     async def test_critical_level(self):
         from backend.services.monitoring.alert_service import AlertLevel
+
         svc = _make_service(telegram=False)
         svc.send_alert = AsyncMock()
 
@@ -353,11 +396,13 @@ class TestSlackAlert:
         svc._client = mock_client
 
         from backend.services.monitoring.alert_service import AlertLevel
+
         result = await svc.send_alert("Title", "Msg", AlertLevel.ERROR)
         assert result["slack"] is True
 
     async def test_skips_when_no_webhook(self):
         from backend.services.monitoring.alert_service import AlertLevel
+
         svc = _make_service(telegram=False, slack=False)
         # _send_slack_alert should early return
         await svc._send_slack_alert("t", "m", AlertLevel.INFO)
@@ -375,11 +420,13 @@ class TestDiscordAlert:
         svc._client = mock_client
 
         from backend.services.monitoring.alert_service import AlertLevel
+
         result = await svc.send_alert("Title", "Msg", AlertLevel.ERROR)
         assert result["discord"] is True
 
     async def test_skips_when_no_webhook(self):
         from backend.services.monitoring.alert_service import AlertLevel
+
         svc = _make_service(telegram=False, discord=False)
         await svc._send_discord_alert("t", "m", AlertLevel.INFO)
 
@@ -416,6 +463,7 @@ class TestStartDigestLoop:
 class TestGetAlertService:
     def test_returns_instance(self):
         import backend.services.monitoring.alert_service as mod
+
         mod._alert_service = None
         with patch("backend.services.monitoring.alert_service.AlertService") as mock_cls:
             mock_cls.return_value = MagicMock()

@@ -33,7 +33,10 @@ class AuditService:
 
         try:
             self.pool = await asyncpg.create_pool(
-                self.database_url, min_size=1, max_size=5, command_timeout=10,
+                self.database_url,
+                min_size=1,
+                max_size=5,
+                command_timeout=10,
             )
             logger.info("✅ AuditService connected to database")
         except Exception as e:
@@ -90,7 +93,9 @@ class AuditService:
                     failure_reason,
                     json.dumps(metadata) if metadata else None,
                 )
-                logger.debug("📝 Auth audit logged: %s for %s (Success: %s)", action, email, success)
+                logger.debug(
+                    "📝 Auth audit logged: %s for %s (Success: %s)", action, email, success
+                )
 
         except Exception as e:
             logger.error("❌ Failed to log auth event: %s", e)

@@ -22,6 +22,7 @@ from backend.services.compliance.visa_expiry_team_notifier import (
 # _fmt_date
 # ---------------------------------------------------------------------------
 
+
 class TestFmtDate:
     def test_none(self) -> None:
         assert _fmt_date(None) == "\u2014"
@@ -42,6 +43,7 @@ class TestFmtDate:
 # ---------------------------------------------------------------------------
 # _build_client_row
 # ---------------------------------------------------------------------------
+
 
 class TestBuildClientRow:
     def _base_client(self, days: int = 15) -> dict[str, Any]:
@@ -144,6 +146,7 @@ class TestBuildClientRow:
 # VisaExpiryTeamNotifier — mock DB pool
 # ---------------------------------------------------------------------------
 
+
 def _make_pool(
     rows: list[dict[str, Any]] | None = None,
     raise_on_fetch: Exception | None = None,
@@ -163,6 +166,7 @@ def _make_pool(
 # ---------------------------------------------------------------------------
 # _get_expiring_documents
 # ---------------------------------------------------------------------------
+
 
 class TestGetExpiringDocuments:
     @pytest.mark.asyncio
@@ -189,6 +193,7 @@ class TestGetExpiringDocuments:
 # ---------------------------------------------------------------------------
 # check_and_notify
 # ---------------------------------------------------------------------------
+
 
 class TestCheckAndNotify:
     @pytest.mark.asyncio
@@ -242,6 +247,7 @@ class TestCheckAndNotify:
 # _send_team_leader_alert
 # ---------------------------------------------------------------------------
 
+
 class TestSendTeamLeaderAlert:
     @pytest.mark.asyncio
     async def test_builds_and_sends_email(self) -> None:
@@ -269,7 +275,9 @@ class TestSendTeamLeaderAlert:
         ]
         await notifier._send_team_leader_alert("leader@bz.com", clients)
         mock_client.post.assert_awaited_once()
-        payload = mock_client.post.call_args.kwargs.get("json") or mock_client.post.call_args[1].get("json")
+        payload = mock_client.post.call_args.kwargs.get("json") or mock_client.post.call_args[
+            1
+        ].get("json")
         assert "leader@bz.com" in payload["to"]
         assert "SCADENZE" in payload["subject"]
 
@@ -277,6 +285,7 @@ class TestSendTeamLeaderAlert:
 # ---------------------------------------------------------------------------
 # _send_zero_summary
 # ---------------------------------------------------------------------------
+
 
 class TestSendZeroSummary:
     @pytest.mark.asyncio
@@ -317,7 +326,9 @@ class TestSendZeroSummary:
         ]
         await notifier._send_zero_summary(clients)
         mock_client.post.assert_awaited_once()
-        payload = mock_client.post.call_args.kwargs.get("json") or mock_client.post.call_args[1].get("json")
+        payload = mock_client.post.call_args.kwargs.get("json") or mock_client.post.call_args[
+            1
+        ].get("json")
         assert ADMIN_EMAIL in payload["to"]
         # Body should contain both leaders
         assert "leader_a@bz.com" in payload["body"]
@@ -350,13 +361,16 @@ class TestSendZeroSummary:
             },
         ]
         await notifier._send_zero_summary(clients)
-        payload = mock_client.post.call_args.kwargs.get("json") or mock_client.post.call_args[1].get("json")
+        payload = mock_client.post.call_args.kwargs.get("json") or mock_client.post.call_args[
+            1
+        ].get("json")
         assert "documento" in payload["subject"]
 
 
 # ---------------------------------------------------------------------------
 # _post_email
 # ---------------------------------------------------------------------------
+
 
 class TestPostEmail:
     @pytest.mark.asyncio
@@ -391,9 +405,11 @@ class TestPostEmail:
 # _get_http_client (static)
 # ---------------------------------------------------------------------------
 
+
 class TestGetHttpClient:
     def test_returns_client(self) -> None:
         import httpx
+
         client = VisaExpiryTeamNotifier._get_http_client()
         assert isinstance(client, httpx.AsyncClient)
 
@@ -401,6 +417,7 @@ class TestGetHttpClient:
 # ---------------------------------------------------------------------------
 # ALERT_THRESHOLDS config
 # ---------------------------------------------------------------------------
+
 
 class TestConfig:
     def test_thresholds_tuple(self) -> None:

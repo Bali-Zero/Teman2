@@ -27,14 +27,12 @@ UP_SQL = [
     # 1. conversations.session_id
     """CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_conversations_session_id
        ON conversations (session_id)""",
-
     # 2. practices.assigned_to — partial (RBAC filter)
     #    Drop the old plain index first so the partial replacement can take its name slot.
     "DROP INDEX IF EXISTS idx_practices_assigned_to",
     """CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_practices_assigned_to
        ON practices (assigned_to)
        WHERE assigned_to IS NOT NULL""",
-
     # 3. practices.client_id
     """CREATE INDEX CONCURRENTLY IF NOT EXISTS idx_practices_client_id
        ON practices (client_id)""",

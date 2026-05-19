@@ -63,10 +63,12 @@ def test_dossier_event_types_whitelist():
 async def test_handle_ignores_trend_signal_event(repo_dispatcher):
     repo, dispatcher = repo_dispatcher
     sub = IntelEventSubscriber(repo=repo, dispatcher=dispatcher)
-    out = await sub.handle({
-        "event_type": "trend_signal_detected",
-        "signal_id": str(uuid4()),
-    })
+    out = await sub.handle(
+        {
+            "event_type": "trend_signal_detected",
+            "signal_id": str(uuid4()),
+        }
+    )
     assert out is None
     dispatcher.dispatch.assert_not_called()
     repo.get_dossier.assert_not_called()
@@ -85,10 +87,12 @@ async def test_handle_requires_dossier_id(repo_dispatcher):
 async def test_handle_rejects_bad_uuid(repo_dispatcher):
     repo, dispatcher = repo_dispatcher
     sub = IntelEventSubscriber(repo=repo, dispatcher=dispatcher)
-    out = await sub.handle({
-        "event_type": "dossier_created",
-        "dossier_id": "not-a-uuid",
-    })
+    out = await sub.handle(
+        {
+            "event_type": "dossier_created",
+            "dossier_id": "not-a-uuid",
+        }
+    )
     assert out is None
     dispatcher.dispatch.assert_not_called()
 
@@ -99,10 +103,12 @@ async def test_handle_dispatches_on_dossier_created(repo_dispatcher):
     did = uuid4()
     repo.get_dossier = AsyncMock(return_value=_dossier(did))
     sub = IntelEventSubscriber(repo=repo, dispatcher=dispatcher)
-    out = await sub.handle({
-        "event_type": "dossier_created",
-        "dossier_id": str(did),
-    })
+    out = await sub.handle(
+        {
+            "event_type": "dossier_created",
+            "dossier_id": str(did),
+        }
+    )
     assert out is not None
     dispatcher.dispatch.assert_awaited_once()
 
@@ -113,10 +119,12 @@ async def test_handle_dispatches_on_dossier_updated(repo_dispatcher):
     did = uuid4()
     repo.get_dossier = AsyncMock(return_value=_dossier(did))
     sub = IntelEventSubscriber(repo=repo, dispatcher=dispatcher)
-    out = await sub.handle({
-        "event_type": "dossier_updated",
-        "dossier_id": str(did),
-    })
+    out = await sub.handle(
+        {
+            "event_type": "dossier_updated",
+            "dossier_id": str(did),
+        }
+    )
     assert out is not None
 
 
@@ -125,10 +133,12 @@ async def test_handle_dossier_not_found_silently(repo_dispatcher):
     repo, dispatcher = repo_dispatcher
     repo.get_dossier = AsyncMock(return_value=None)
     sub = IntelEventSubscriber(repo=repo, dispatcher=dispatcher)
-    out = await sub.handle({
-        "event_type": "dossier_created",
-        "dossier_id": str(uuid4()),
-    })
+    out = await sub.handle(
+        {
+            "event_type": "dossier_created",
+            "dossier_id": str(uuid4()),
+        }
+    )
     assert out is None
     dispatcher.dispatch.assert_not_called()
 
@@ -138,10 +148,12 @@ async def test_handle_get_dossier_exception_caught(repo_dispatcher):
     repo, dispatcher = repo_dispatcher
     repo.get_dossier = AsyncMock(side_effect=RuntimeError("pg down"))
     sub = IntelEventSubscriber(repo=repo, dispatcher=dispatcher)
-    out = await sub.handle({
-        "event_type": "dossier_created",
-        "dossier_id": str(uuid4()),
-    })
+    out = await sub.handle(
+        {
+            "event_type": "dossier_created",
+            "dossier_id": str(uuid4()),
+        }
+    )
     assert out is None
     dispatcher.dispatch.assert_not_called()
 
@@ -152,8 +164,10 @@ async def test_handle_dispatch_exception_caught(repo_dispatcher):
     repo.get_dossier = AsyncMock(return_value=_dossier())
     dispatcher.dispatch = AsyncMock(side_effect=RuntimeError("boom"))
     sub = IntelEventSubscriber(repo=repo, dispatcher=dispatcher)
-    out = await sub.handle({
-        "event_type": "dossier_created",
-        "dossier_id": str(uuid4()),
-    })
+    out = await sub.handle(
+        {
+            "event_type": "dossier_created",
+            "dossier_id": str(uuid4()),
+        }
+    )
     assert out is None

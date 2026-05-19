@@ -139,7 +139,8 @@ async def snapshot_one(
         "errors": [],
         "fetched_at": datetime.now(tz=timezone.utc).isoformat(),
         "used_playwright_at_start": scraper.scrape_stats.get(
-            "playwright_fallback_invocations", 0,
+            "playwright_fallback_invocations",
+            0,
         ),
     }
     client = scraper._get_client()
@@ -172,7 +173,8 @@ async def snapshot_one(
         "used_playwright_at_start",
     )
     (out_dir / "meta.json").write_text(
-        json.dumps(result, indent=2, default=str), encoding="utf-8",
+        json.dumps(result, indent=2, default=str),
+        encoding="utf-8",
     )
     return result
 
@@ -215,7 +217,8 @@ async def main() -> int:
     overall["total_sources"] = len(TOP5_SOURCES)
     overall["scrape_stats"] = scraper.get_stats()
     (RAW_ROOT / "index.json").write_text(
-        json.dumps(overall, indent=2, default=str), encoding="utf-8",
+        json.dumps(overall, indent=2, default=str),
+        encoding="utf-8",
     )
     logger.info(
         "Wave 3 snapshot: %d/%d sources successful — index.json written.",

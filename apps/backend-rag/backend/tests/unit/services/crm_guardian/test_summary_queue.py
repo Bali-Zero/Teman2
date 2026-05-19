@@ -5,6 +5,7 @@ priority values) is locked in here — any future schema change to
 crm_guardian_summary_queue or the priority semantics must update these
 tests in lockstep.
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
@@ -97,8 +98,10 @@ class TestEnqueueClient:
         conn.fetchrow = AsyncMock(return_value={"enabled": False})  # is_enqueue_enabled
         result = await enqueue_client(conn, 42)
         assert result == {
-            "client_id": 42, "queue_id": None,
-            "action": "skipped_disabled", "priority": None,
+            "client_id": 42,
+            "queue_id": None,
+            "action": "skipped_disabled",
+            "priority": None,
         }
 
     @pytest.mark.asyncio
@@ -113,7 +116,8 @@ class TestEnqueueClient:
                 return {"enabled": False}  # should NOT be reached with force=True
             if "FROM clients" in sql:
                 return {
-                    "id": 1, "google_drive_folder_id": "folder_x",
+                    "id": 1,
+                    "google_drive_folder_id": "folder_x",
                     "tier": "VIP",
                 }
             if "status IN ('pending', 'running')" in sql:
@@ -178,8 +182,10 @@ class TestEnqueueClient:
         conn.fetchrow = mock_fetchrow
         result = await enqueue_client(conn, 1)
         assert result == {
-            "client_id": 1, "queue_id": 777,
-            "action": "already_pending", "priority": PRIORITY_STANDARD,
+            "client_id": 1,
+            "queue_id": 777,
+            "action": "already_pending",
+            "priority": PRIORITY_STANDARD,
         }
         # No INSERT executed
         assert not any("INSERT INTO" in s for s in captured_sqls)
@@ -201,8 +207,10 @@ class TestEnqueueClient:
         conn.fetchrow = mock_fetchrow
         result = await enqueue_client(conn, 5)
         assert result == {
-            "client_id": 5, "queue_id": 4242,
-            "action": "inserted", "priority": PRIORITY_VIP,
+            "client_id": 5,
+            "queue_id": 4242,
+            "action": "inserted",
+            "priority": PRIORITY_VIP,
         }
 
     @pytest.mark.asyncio
@@ -230,8 +238,10 @@ class TestEnqueueClient:
         conn.fetchrow = mock_fetchrow
         result = await enqueue_client(conn, 5)
         assert result == {
-            "client_id": 5, "queue_id": 888,
-            "action": "already_pending", "priority": PRIORITY_STANDARD,
+            "client_id": 5,
+            "queue_id": 888,
+            "action": "already_pending",
+            "priority": PRIORITY_STANDARD,
         }
         assert call_count["pending_check"] == 2
 
@@ -308,8 +318,7 @@ class TestEnqueueClientsForCompanyFolder:
             if "FROM clients" in sql:
                 # Per enqueue_client client lookup
                 cid = args[0]
-                return {"id": cid, "google_drive_folder_id": f"f_{cid}",
-                        "tier": "standard"}
+                return {"id": cid, "google_drive_folder_id": f"f_{cid}", "tier": "standard"}
             if "status IN ('pending', 'running')" in sql:
                 return None
             if "INSERT INTO" in sql:
@@ -339,8 +348,7 @@ class TestEnqueueClientsForCompanyFolder:
                 return {"enabled": True}
             if "FROM clients" in sql:
                 cid = args[0]
-                return {"id": cid, "google_drive_folder_id": f"f_{cid}",
-                        "tier": "standard"}
+                return {"id": cid, "google_drive_folder_id": f"f_{cid}", "tier": "standard"}
             if "status IN ('pending', 'running')" in sql:
                 cid = args[0]
                 if cid == 70:

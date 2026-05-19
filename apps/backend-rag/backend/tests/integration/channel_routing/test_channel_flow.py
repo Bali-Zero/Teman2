@@ -5,7 +5,6 @@ Tests the end-to-end flow from raw webhook → channel adapter → normalized me
 for Telegram and WhatsApp channels.
 """
 
-
 import pytest
 
 from backend.channels.base import ChannelMessage, ChannelResponse
@@ -20,9 +19,7 @@ class TestTelegramChannelFlow:
     def telegram_adapter(self):
         from backend.channels.telegram.adapter import TelegramChannelAdapter
 
-        return TelegramChannelAdapter(
-            {"bot_token": "test_token", "max_message_length": 4096}
-        )
+        return TelegramChannelAdapter({"bot_token": "test_token", "max_message_length": 4096})
 
     @pytest.mark.asyncio
     async def test_telegram_text_message_flow(self, telegram_adapter):
@@ -119,9 +116,7 @@ class TestWhatsAppChannelFlow:
                                         "text": {"body": "I need help with my visa"},
                                     }
                                 ],
-                                "contacts": [
-                                    {"profile": {"name": "Jane Smith"}}
-                                ],
+                                "contacts": [{"profile": {"name": "Jane Smith"}}],
                             }
                         }
                     ]

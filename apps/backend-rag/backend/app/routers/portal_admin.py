@@ -75,10 +75,7 @@ async def search_clients(
     return {
         "success": True,
         "count": len(rows),
-        "items": [
-            {"id": r["id"], "email": r["email"], "full_name": r["full_name"]}
-            for r in rows
-        ],
+        "items": [{"id": r["id"], "email": r["email"], "full_name": r["full_name"]} for r in rows],
     }
 
 

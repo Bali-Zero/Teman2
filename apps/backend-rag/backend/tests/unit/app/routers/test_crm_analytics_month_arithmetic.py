@@ -8,13 +8,7 @@ Step 2: After the fix it should PASS.
 import ast
 from pathlib import Path
 
-ROUTER_PATH = (
-    Path(__file__).parents[5]
-    / "backend"
-    / "app"
-    / "routers"
-    / "crm_analytics.py"
-)
+ROUTER_PATH = Path(__file__).parents[5] / "backend" / "app" / "routers" / "crm_analytics.py"
 
 
 def _source() -> str:
@@ -24,6 +18,7 @@ def _source() -> str:
 # ---------------------------------------------------------------------------
 # Test 1 — regression guard: the bad pattern must NOT be present
 # ---------------------------------------------------------------------------
+
 
 def test_no_timedelta_days_times_30() -> None:
     """Assert the file contains no occurrence of timedelta(days=i * 30)."""
@@ -39,18 +34,13 @@ def test_no_timedelta_days_times_30() -> None:
 # Test 2 — verify helper functions are defined (AST-level, no import needed)
 # ---------------------------------------------------------------------------
 
+
 def test_helper_functions_defined() -> None:
     """Assert _months_ago and _next_month_start are defined at module level."""
     source = _source()
     tree = ast.parse(source)
-    func_names = {
-        node.name
-        for node in ast.walk(tree)
-        if isinstance(node, ast.FunctionDef)
-    }
-    assert "_months_ago" in func_names, (
-        "_months_ago helper function not found in crm_analytics.py"
-    )
+    func_names = {node.name for node in ast.walk(tree) if isinstance(node, ast.FunctionDef)}
+    assert "_months_ago" in func_names, "_months_ago helper function not found in crm_analytics.py"
     assert "_next_month_start" in func_names, (
         "_next_month_start helper function not found in crm_analytics.py"
     )
@@ -60,6 +50,7 @@ def test_helper_functions_defined() -> None:
 # Test 3 — functional correctness of _months_ago (inline re-implementation
 #           to avoid importing the full FastAPI module graph)
 # ---------------------------------------------------------------------------
+
 
 def _months_ago_ref(n: int):
     """Reference implementation identical to what the spec requires."""
@@ -102,6 +93,7 @@ def test_months_ago_six_consecutive_are_distinct() -> None:
 # Test 4 — functional correctness of _next_month_start
 # ---------------------------------------------------------------------------
 
+
 def _next_month_start_ref(dt):
     """Reference implementation identical to what the spec requires."""
     from datetime import datetime, timezone
@@ -134,5 +126,5 @@ def test_month_ranges_are_contiguous() -> None:
     for i in range(len(months) - 1):
         assert ends[i] == months[i + 1], (
             f"Gap or overlap between month {i} end ({ends[i]}) "
-            f"and month {i+1} start ({months[i+1]})"
+            f"and month {i + 1} start ({months[i + 1]})"
         )

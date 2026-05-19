@@ -23,7 +23,8 @@ def service(mock_pool: MagicMock) -> LegalInstrumentsService:
 
 @pytest.mark.asyncio
 async def test_get_active_instruments_for_domain(
-    service: LegalInstrumentsService, mock_pool: MagicMock,
+    service: LegalInstrumentsService,
+    mock_pool: MagicMock,
 ) -> None:
     mock_rows = [
         {
@@ -72,7 +73,8 @@ async def test_mark_uploaded_to_nb(service: LegalInstrumentsService, mock_pool: 
 
 @pytest.mark.asyncio
 async def test_get_conflict_notes_for_domain(
-    service: LegalInstrumentsService, mock_pool: MagicMock,
+    service: LegalInstrumentsService,
+    mock_pool: MagicMock,
 ) -> None:
     mock_rows = [
         {

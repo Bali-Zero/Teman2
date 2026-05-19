@@ -38,7 +38,9 @@ class BaseRepository:
 
     # ── Safe fetch helpers ──────────────────────────────────────────────
     async def fetchrow_safe(
-        self, query: str, *args: Any,
+        self,
+        query: str,
+        *args: Any,
     ) -> asyncpg.Record | None:
         """Fetch a single row, logging errors with context."""
         async with self.db_pool.acquire() as conn:
@@ -49,7 +51,9 @@ class BaseRepository:
                 raise
 
     async def fetch_safe(
-        self, query: str, *args: Any,
+        self,
+        query: str,
+        *args: Any,
     ) -> list[asyncpg.Record]:
         """Fetch multiple rows, logging errors with context."""
         async with self.db_pool.acquire() as conn:
@@ -60,7 +64,9 @@ class BaseRepository:
                 raise
 
     async def execute_safe(
-        self, query: str, *args: Any,
+        self,
+        query: str,
+        *args: Any,
     ) -> str:
         """Execute a statement, logging errors with context."""
         async with self.db_pool.acquire() as conn:

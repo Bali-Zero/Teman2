@@ -49,19 +49,34 @@ async def test_load_posts_returns_empty_when_too_few():
 
 def test_classified_post_schema_has_all_attrs():
     cp = ClassifiedPost(
-        post_id="p5", caption="Hook one\nBody here",
-        format="CAROUSEL_ALBUM", hook_type="question",
-        tone_register="pedagogico", topic="visa",
-        posted_hour_wita=12, likes=100, comments=5, saves=20, reach=1500,
+        post_id="p5",
+        caption="Hook one\nBody here",
+        format="CAROUSEL_ALBUM",
+        hook_type="question",
+        tone_register="pedagogico",
+        topic="visa",
+        posted_hour_wita=12,
+        likes=100,
+        comments=5,
+        saves=20,
+        reach=1500,
     )
     assert cp.engagement_rate == pytest.approx((100 + 5 + 20) / 1500, rel=0.01)
 
 
 def test_classified_post_engagement_rate_zero_reach():
     cp = ClassifiedPost(
-        post_id="p5", caption="x", format="IMAGE", hook_type="question",
-        tone_register="tecnico", topic="tax", posted_hour_wita=10,
-        likes=5, comments=0, saves=1, reach=0,
+        post_id="p5",
+        caption="x",
+        format="IMAGE",
+        hook_type="question",
+        tone_register="tecnico",
+        topic="tax",
+        posted_hour_wita=10,
+        likes=5,
+        comments=0,
+        saves=1,
+        reach=0,
     )
     assert cp.engagement_rate == 0.0
 
@@ -72,6 +87,7 @@ def test_classified_post_engagement_rate_zero_reach():
 def test_classify_hooks_parses_claude_json_output():
     """classify_hooks_batch returns {post_id: hook_type} from claude -p JSON."""
     from unittest.mock import patch
+
     analyzer = EmpiricalIGAnalyzer(ig_sensor=None)
     posts = [
         {"post_id": "p1", "caption": "Did you know KBLI 2025 changed?"},
@@ -92,6 +108,7 @@ def test_classify_hooks_parses_claude_json_output():
 def test_classify_hooks_falls_back_on_rc_nonzero():
     """If claude -p exits nonzero, return 'unknown' for every post."""
     from unittest.mock import patch
+
     analyzer = EmpiricalIGAnalyzer(ig_sensor=None)
     posts = [{"post_id": "p1", "caption": "x"}]
     fake_proc = type("P", (), {"returncode": 1, "stdout": "", "stderr": "err"})()
@@ -102,6 +119,7 @@ def test_classify_hooks_falls_back_on_rc_nonzero():
 
 def test_classify_hooks_falls_back_on_unparseable_output():
     from unittest.mock import patch
+
     analyzer = EmpiricalIGAnalyzer(ig_sensor=None)
     posts = [{"post_id": "p1", "caption": "x"}, {"post_id": "p2", "caption": "y"}]
     fake_proc = type("P", (), {"returncode": 0, "stdout": "just prose, no JSON", "stderr": ""})()
@@ -114,16 +132,21 @@ def test_classify_hooks_sends_batch_prompt_to_claude():
     """Verify the subprocess call uses `claude -p` with a prompt mentioning
     hook_type categories and all post_ids."""
     from unittest.mock import patch
+
     analyzer = EmpiricalIGAnalyzer(ig_sensor=None)
     posts = [
         {"post_id": "p1", "caption": "A"},
         {"post_id": "p2", "caption": "B"},
     ]
-    fake_proc = type("P", (), {
-        "returncode": 0,
-        "stdout": '{"classifications":[{"post_id":"p1","hook_type":"stat"},{"post_id":"p2","hook_type":"story"}]}',
-        "stderr": "",
-    })()
+    fake_proc = type(
+        "P",
+        (),
+        {
+            "returncode": 0,
+            "stdout": '{"classifications":[{"post_id":"p1","hook_type":"stat"},{"post_id":"p2","hook_type":"story"}]}',
+            "stderr": "",
+        },
+    )()
     with patch("subprocess.run", return_value=fake_proc) as run_mock:
         analyzer.classify_hooks_batch(posts)
     args, kwargs = run_mock.call_args
@@ -143,6 +166,7 @@ def test_classify_hooks_sends_batch_prompt_to_claude():
 
 def test_classify_tones_parses_gemini_json_output():
     from unittest.mock import patch
+
     analyzer = EmpiricalIGAnalyzer(ig_sensor=None)
     posts = [
         {"post_id": "p1", "caption": "In linea con la normativa BKPM..."},
@@ -162,13 +186,18 @@ def test_classify_tones_parses_gemini_json_output():
 def test_classify_tones_uses_gemini_cli():
     """Must shell out to `gemini -m gemini-3.1-pro-preview -p <prompt>`."""
     from unittest.mock import patch
+
     analyzer = EmpiricalIGAnalyzer(ig_sensor=None)
     posts = [{"post_id": "p1", "caption": "x"}]
-    fake_proc = type("P", (), {
-        "returncode": 0,
-        "stdout": '{"classifications":[{"post_id":"p1","tone_register":"pedagogico"}]}',
-        "stderr": "",
-    })()
+    fake_proc = type(
+        "P",
+        (),
+        {
+            "returncode": 0,
+            "stdout": '{"classifications":[{"post_id":"p1","tone_register":"pedagogico"}]}',
+            "stderr": "",
+        },
+    )()
     with patch("subprocess.run", return_value=fake_proc) as run_mock:
         analyzer.classify_tones_batch(posts)
     cmd = run_mock.call_args.args[0]
@@ -177,13 +206,13 @@ def test_classify_tones_uses_gemini_cli():
     assert "3.1" in cmd[2]  # model flag value contains 3.1
     assert cmd[3] == "-p"
     prompt = cmd[4]
-    for reg in ("pedagogico", "analitico", "tecnico", "rituale",
-                "poetico", "ironico", "militante"):
+    for reg in ("pedagogico", "analitico", "tecnico", "rituale", "poetico", "ironico", "militante"):
         assert reg in prompt
 
 
 def test_classify_tones_falls_back_on_rc_nonzero():
     from unittest.mock import patch
+
     analyzer = EmpiricalIGAnalyzer(ig_sensor=None)
     posts = [{"post_id": "p1", "caption": "x"}, {"post_id": "p2", "caption": "y"}]
     fake_proc = type("P", (), {"returncode": 2, "stdout": "", "stderr": "boom"})()
@@ -194,8 +223,15 @@ def test_classify_tones_falls_back_on_rc_nonzero():
 
 def test_check_skew_flags_dominant_tone():
     """Gate 2: if one tone >60% of sample, flag as skewed."""
-    dist = {"pedagogico": 18, "analitico": 3, "tecnico": 2, "ironico": 1,
-            "rituale": 1, "militante": 0, "poetico": 0}  # 72% pedagogico
+    dist = {
+        "pedagogico": 18,
+        "analitico": 3,
+        "tecnico": 2,
+        "ironico": 1,
+        "rituale": 1,
+        "militante": 0,
+        "poetico": 0,
+    }  # 72% pedagogico
     ok, dominant, pct = EmpiricalIGAnalyzer.check_skew(dist, threshold=0.6)
     assert ok is False
     assert dominant == "pedagogico"
@@ -203,8 +239,15 @@ def test_check_skew_flags_dominant_tone():
 
 
 def test_check_skew_ok_when_balanced():
-    dist = {"pedagogico": 10, "analitico": 8, "tecnico": 4, "ironico": 1,
-            "rituale": 1, "militante": 1, "poetico": 0}
+    dist = {
+        "pedagogico": 10,
+        "analitico": 8,
+        "tecnico": 4,
+        "ironico": 1,
+        "rituale": 1,
+        "militante": 1,
+        "poetico": 0,
+    }
     ok, _, _ = EmpiricalIGAnalyzer.check_skew(dist, threshold=0.6)
     assert ok is True
 

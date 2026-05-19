@@ -23,14 +23,18 @@ from backend.app.modules.notifications.router import (
 @pytest.fixture
 def req_external():
     return SendEmailRequest(
-        to="alice@example.com", subject="hi", body="<p>x</p>",
+        to="alice@example.com",
+        subject="hi",
+        body="<p>x</p>",
     )
 
 
 @pytest.fixture
 def req_intra():
     return SendEmailRequest(
-        to="bob@balizero.com", subject="hi", body="<p>x</p>",
+        to="bob@balizero.com",
+        subject="hi",
+        body="<p>x</p>",
     )
 
 

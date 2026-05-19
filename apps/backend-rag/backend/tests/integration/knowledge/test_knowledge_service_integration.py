@@ -225,7 +225,9 @@ class TestKnowledgeServiceIntegration:
 
             # Execute search with reranking
             result = await knowledge_service_integration.search_with_reranking(
-                query="Test query", user_level=1, limit=2,
+                query="Test query",
+                user_level=1,
+                limit=2,
             )
 
             # Verify reranking applied
@@ -249,7 +251,9 @@ class TestKnowledgeServiceIntegration:
 
             # Execute search with reranking
             result = await knowledge_service_integration.search_with_reranking(
-                query="Test query", user_level=1, limit=5,
+                query="Test query",
+                user_level=1,
+                limit=5,
             )
 
             # Verify reranking not applied
@@ -261,7 +265,10 @@ class TestKnowledgeServiceIntegration:
         """Test collection override integration"""
         # Override to specific collection
         result = await knowledge_service_integration.search(
-            query="Any query", user_level=1, limit=5, collection_override="tax_genius",
+            query="Any query",
+            user_level=1,
+            limit=5,
+            collection_override="tax_genius",
         )
 
         # Verify override applied
@@ -275,7 +282,10 @@ class TestKnowledgeServiceIntegration:
         """Test fallback to visa_oracle when unknown collection specified"""
         # Use a non-existent collection override
         result = await knowledge_service_integration.search(
-            query="Test query", user_level=1, limit=5, collection_override="nonexistent_collection",
+            query="Test query",
+            user_level=1,
+            limit=5,
+            collection_override="nonexistent_collection",
         )
 
         # Should fallback to visa_oracle
@@ -299,7 +309,9 @@ class TestKnowledgeServiceIntegration:
         )
 
         result = await knowledge_service_integration.search(
-            query="Test query", user_level=1, limit=5,
+            query="Test query",
+            user_level=1,
+            limit=5,
         )
 
         # Verify all results formatted correctly
@@ -349,7 +361,9 @@ class TestKnowledgeServiceIntegration:
             # Service may re-raise or return an error response
             try:
                 result = await knowledge_service_integration.search(
-                    query="Test query", user_level=1, limit=5,
+                    query="Test query",
+                    user_level=1,
+                    limit=5,
                 )
                 # If no exception, service handled gracefully
                 assert result is not None
@@ -469,7 +483,8 @@ class TestKnowledgeServiceIntegration:
 
             # Test POST /api/search
             response = client.post(
-                "/api/search", json={"query": "Test query", "level": 1, "limit": 5},
+                "/api/search",
+                json={"query": "Test query", "level": 1, "limit": 5},
             )
 
             # Verify fallback used

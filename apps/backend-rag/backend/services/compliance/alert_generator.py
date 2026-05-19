@@ -5,6 +5,7 @@ This module is kept as a backward-compat shim. The in-memory alert dict was
 removed as part of the 2026-04-18 compliance-intel-e2e PR. All code should
 migrate to AlertsEngine + AlertRepository.
 """
+
 from __future__ import annotations
 
 import warnings
@@ -39,7 +40,8 @@ class AlertGeneratorService:  # pragma: no cover — shim
         warnings.warn(
             "AlertGeneratorService is deprecated; use AlertsEngine. "
             "Calls are now no-ops returning safe defaults.",
-            DeprecationWarning, stacklevel=2,
+            DeprecationWarning,
+            stacklevel=2,
         )
         # Backward-compat attribute accessed by ProactiveComplianceMonitor
         self.alerts: dict = {}
@@ -48,7 +50,8 @@ class AlertGeneratorService:  # pragma: no cover — shim
         warnings.warn(
             "AlertGeneratorService.generate_alert is a deprecated no-op; "
             "use AlertsEngine.generate_alerts(forecasts).",
-            DeprecationWarning, stacklevel=2,
+            DeprecationWarning,
+            stacklevel=2,
         )
         return None
 
@@ -56,7 +59,8 @@ class AlertGeneratorService:  # pragma: no cover — shim
         warnings.warn(
             "AlertGeneratorService.find_existing_alert is a deprecated no-op; "
             "use AlertRepository.find_active_by_dedup_key.",
-            DeprecationWarning, stacklevel=2,
+            DeprecationWarning,
+            stacklevel=2,
         )
         return None
 
@@ -64,7 +68,8 @@ class AlertGeneratorService:  # pragma: no cover — shim
         warnings.warn(
             "AlertGeneratorService.get_alerts_for_client is a deprecated no-op; "
             "use AlertRepository.list_by_client.",
-            DeprecationWarning, stacklevel=2,
+            DeprecationWarning,
+            stacklevel=2,
         )
         return []
 
@@ -72,7 +77,8 @@ class AlertGeneratorService:  # pragma: no cover — shim
         warnings.warn(
             "AlertGeneratorService.acknowledge_alert is a deprecated no-op; "
             "use AlertRepository.update_status(alert_id, new_status='acknowledged').",
-            DeprecationWarning, stacklevel=2,
+            DeprecationWarning,
+            stacklevel=2,
         )
         return False
 
@@ -80,7 +86,8 @@ class AlertGeneratorService:  # pragma: no cover — shim
         warnings.warn(
             "AlertGeneratorService.mark_alert_sent is a deprecated no-op; "
             "use AlertRepository.update_status(alert_id, new_status='sent').",
-            DeprecationWarning, stacklevel=2,
+            DeprecationWarning,
+            stacklevel=2,
         )
         return False
 

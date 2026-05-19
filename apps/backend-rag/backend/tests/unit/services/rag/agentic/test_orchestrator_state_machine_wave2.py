@@ -189,8 +189,15 @@ def orch(_mock_db_pool, _stub_final_state):
 
             metrics = MagicMock()
             metrics.extract_timings_from_state = MagicMock(
-                return_value={"total": 0.1, "embedding": 0, "search": 0, "rerank": 0,
-                               "llm": 0.1, "reasoning": 0.1, "tools": 0},
+                return_value={
+                    "total": 0.1,
+                    "embedding": 0,
+                    "search": 0,
+                    "rerank": 0,
+                    "llm": 0.1,
+                    "reasoning": 0.1,
+                    "tools": 0,
+                },
             )
             metrics.extract_collections_from_state = MagicMock(return_value=set())
             metrics.extract_sources_from_state = MagicMock(return_value=[])
@@ -200,9 +207,17 @@ def orch(_mock_db_pool, _stub_final_state):
             metrics.log_query_completion = MagicMock()
             orchestrator.core.metrics_manager = metrics
 
-            def _build_core_result(state, sources, extracted_entities, model_used,
-                                    token_usage, timings, start_time, workflow=None,
-                                    reasoning=None):
+            def _build_core_result(
+                state,
+                sources,
+                extracted_entities,
+                model_used,
+                token_usage,
+                timings,
+                start_time,
+                workflow=None,
+                reasoning=None,
+            ):
                 return CoreResult(
                     answer=state.final_answer or "",
                     sources=sources or [],
@@ -211,6 +226,7 @@ def orch(_mock_db_pool, _stub_final_state):
                     timings=timings or {},
                     evidence_score=getattr(state, "evidence_score", 0.0) or 0.0,
                 )
+
             orchestrator.core.response_builder = MagicMock()
             orchestrator.core.response_builder.build_core_result = MagicMock(
                 side_effect=_build_core_result,
@@ -248,10 +264,12 @@ class TestQueryPlannerActive:
         planner.plan(...) and CRAGRouter.route(...) are invoked synchronously.
         """
         mock_plan = MagicMock()
-        with patch.object(orch.core, "_query_planner") as mock_planner, \
-             patch("backend.services.rag.agentic.orchestrator_core._USE_QUERY_PLANNER", True), \
-             patch("backend.services.rag.agentic.orchestrator_core._ENABLE_CRAG_ROUTER", True), \
-             patch("backend.services.rag.agentic.orchestrator_core.CRAGRouter") as mock_crag_cls:
+        with (
+            patch.object(orch.core, "_query_planner") as mock_planner,
+            patch("backend.services.rag.agentic.orchestrator_core._USE_QUERY_PLANNER", True),
+            patch("backend.services.rag.agentic.orchestrator_core._ENABLE_CRAG_ROUTER", True),
+            patch("backend.services.rag.agentic.orchestrator_core.CRAGRouter") as mock_crag_cls,
+        ):
             mock_planner.plan = MagicMock(return_value=mock_plan)
             mock_router = MagicMock()
             mock_router.route = MagicMock()
@@ -279,9 +297,11 @@ class TestQueryPlannerShadow:
     async def test_shadow_mode_threads_plan_through_crag_router(self, orch):
         mock_plan = MagicMock()
 
-        with patch.object(orch.core, "_query_planner") as mock_planner, \
-             patch("backend.services.rag.agentic.orchestrator_core._ENABLE_CRAG_ROUTER", True), \
-             patch("backend.services.rag.agentic.orchestrator_core.CRAGRouter") as mock_crag_cls:
+        with (
+            patch.object(orch.core, "_query_planner") as mock_planner,
+            patch("backend.services.rag.agentic.orchestrator_core._ENABLE_CRAG_ROUTER", True),
+            patch("backend.services.rag.agentic.orchestrator_core.CRAGRouter") as mock_crag_cls,
+        ):
             mock_planner.plan = MagicMock(return_value=mock_plan)
             mock_router = MagicMock()
             mock_router.route = MagicMock(return_value=MagicMock())
@@ -497,7 +517,9 @@ class TestKGAutoExpansionGate:
     """O24: evidence > 0.6 → spawn expand_from_response (fire-and-forget)."""
 
     async def test_high_evidence_spawns_kg_auto_expansion(
-        self, orch, _stub_final_state,
+        self,
+        orch,
+        _stub_final_state,
     ):
         """O24: ev=0.8 (>0.6) → _kg_auto_expansion.expand_from_response is
         scheduled as a background task (fire-and-forget).
@@ -510,12 +532,15 @@ class TestKGAutoExpansionGate:
         async def _expand(**kwargs):
             expand_called.set()
             return None
+
         kg_auto.expand_from_response = _expand
         orch.core._kg_auto_expansion = kg_auto
 
         # Provide source chunks so the extract helper has something to pass
         with patch.object(
-            orch.core, "_extract_source_chunks_text", return_value=["chunk 1", "chunk 2"],
+            orch.core,
+            "_extract_source_chunks_text",
+            return_value=["chunk 1", "chunk 2"],
         ):
             await orch.process_query("KITAS rules?", "user@test.com")
 
@@ -525,7 +550,9 @@ class TestKGAutoExpansionGate:
         assert expand_called.is_set()
 
     async def test_low_evidence_skips_kg_auto_expansion(
-        self, orch, _stub_final_state,
+        self,
+        orch,
+        _stub_final_state,
     ):
         """O24 negative: ev=0.4 (<0.6) → expand_from_response is NOT called."""
         _stub_final_state.evidence_score = 0.4
@@ -537,6 +564,7 @@ class TestKGAutoExpansionGate:
         async def _expand(**kwargs):
             expand_called.set()
             return None
+
         kg_auto.expand_from_response = _expand
         orch.core._kg_auto_expansion = kg_auto
 
@@ -567,7 +595,9 @@ class TestTier1RegenExceptionContract:
     """
 
     async def test_tier1_regen_service_unavailable_caught_and_stubbed(
-        self, orch, _stub_final_state,
+        self,
+        orch,
+        _stub_final_state,
     ):
         """U1-contract-A: ServiceUnavailable (in tuple) caught, abstain stub set."""
         # Force low evidence + non-critical + non-trusted + final_answer present
@@ -592,7 +622,9 @@ class TestTier1RegenExceptionContract:
         assert result.answer.startswith("[ABSTAIN-STUB]")
 
     async def test_tier1_regen_typeerror_propagates_as_runtime(
-        self, orch, _stub_final_state,
+        self,
+        orch,
+        _stub_final_state,
     ):
         """U1-contract-B: exceptions outside the narrow catch (e.g. TypeError)
         propagate up. orchestrator_core wraps them as RuntimeError.

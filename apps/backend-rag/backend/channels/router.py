@@ -122,7 +122,9 @@ class ChannelRouter:
 
             # 2.5 Deduplication check BEFORE persist (prevents duplicate DB rows)
             if message_deduplicator and await message_deduplicator.is_duplicate(
-                channel, message.user_id, message.text,
+                channel,
+                message.user_id,
+                message.text,
             ):
                 logger.warning(
                     f"🔁 Duplicate message dropped: channel={channel}, user={message.user_id}",
@@ -158,7 +160,8 @@ class ChannelRouter:
 
             # 7. Process through conversation engine
             response_stream = self.conversation_engine.process_message(
-                message=message, channel_config=channel_config,
+                message=message,
+                channel_config=channel_config,
             )
 
             # 8. Stream response via adapter
@@ -288,6 +291,7 @@ class ChannelRouter:
             # 3. Thread management
             if self._thread_manager is None:
                 from backend.services.communication.thread_manager import ThreadManager
+
                 self._thread_manager = ThreadManager(db_pool)
 
             thread_id = await self._thread_manager.get_or_create_thread(
@@ -300,6 +304,7 @@ class ChannelRouter:
 
             # Update thread with intent/priority
             from backend.services.communication.models import Priority
+
             await self._thread_manager.update_thread(
                 thread_id,
                 priority=Priority(decision.priority.value),
@@ -307,7 +312,8 @@ class ChannelRouter:
             if decision.intent:
                 await db_pool.execute(
                     "UPDATE conversation_threads SET intent = $1 WHERE id = $2 AND intent IS NULL",
-                    decision.intent.value, thread_id,
+                    decision.intent.value,
+                    thread_id,
                 )
 
         except Exception as e:
@@ -318,6 +324,7 @@ class ChannelRouter:
         try:
             if self._identity_resolver is None:
                 from backend.services.crm.assignment import ClientIdentityResolver
+
                 self._identity_resolver = ClientIdentityResolver(db_pool)
 
             channel = message.channel

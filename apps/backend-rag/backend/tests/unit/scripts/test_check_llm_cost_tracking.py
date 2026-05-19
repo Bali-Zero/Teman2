@@ -47,13 +47,11 @@ def test_tracked_file_passes(tmp_path):
 def test_scan_returns_violations(tmp_path):
     bad = tmp_path / "bad.py"
     bad.write_text(
-        "from openai import AsyncOpenAI\n"
-        "AsyncOpenAI().chat.completions.create()\n",
+        "from openai import AsyncOpenAI\nAsyncOpenAI().chat.completions.create()\n",
     )
     good = tmp_path / "good.py"
     good.write_text(
-        "from openai import AsyncOpenAI\n"
-        "record_llm_call()\n",
+        "from openai import AsyncOpenAI\nrecord_llm_call()\n",
     )
 
     violations = scan_files([tmp_path])
@@ -68,6 +66,7 @@ def test_scan_respects_whitelist(tmp_path, monkeypatch):
 
     # Inject our test path substring into the whitelist
     import check_llm_cost_tracking as mod
+
     original = list(mod.WHITELIST_SUBSTRINGS)
     try:
         mod.WHITELIST_SUBSTRINGS.append("ollama_client.py")

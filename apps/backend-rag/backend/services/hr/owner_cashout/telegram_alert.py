@@ -5,6 +5,7 @@ Chat ID is hardcoded to Zero's private chat (verified 2026-04-07).
 
 Best-effort: never raises — we don't want alerting to break sync.
 """
+
 from __future__ import annotations
 
 import logging

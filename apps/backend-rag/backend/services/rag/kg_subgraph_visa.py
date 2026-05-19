@@ -148,7 +148,9 @@ _VISA_TYPE_TO_ENTITY_TYPE: dict[str, str] = {
 
 
 async def identify_visa_type_node(
-    state: VisaState, llm: Any, db_pool: asyncpg.Pool | None = None,
+    state: VisaState,
+    llm: Any,
+    db_pool: asyncpg.Pool | None = None,
 ) -> VisaState:
     """
     Identify visa type from query and user context.
@@ -224,7 +226,9 @@ async def identify_visa_type_node(
                     if kg_visa_type in _VISA_TYPE_TO_ENTITY_TYPE:
                         visa_type = kg_visa_type
                         logger.info(
-                            "✅ [Visa Subgraph] KG override: employment:%s REQUIRES %s", employment_type, kg_visa_type,
+                            "✅ [Visa Subgraph] KG override: employment:%s REQUIRES %s",
+                            employment_type,
+                            kg_visa_type,
                         )
         except Exception as e:
             logger.warning("⚠️ [Visa Subgraph] KG employment lookup failed: %s", e)
@@ -398,7 +402,8 @@ async def get_visa_requirements_node(state: VisaState, db_pool: asyncpg.Pool) ->
                         requirements["validity"] = props["validity"]
                 kg_sources += 1
                 logger.info(
-                    "✅ [Visa Subgraph] Got node properties for %s from KG", entity_type,
+                    "✅ [Visa Subgraph] Got node properties for %s from KG",
+                    entity_type,
                 )
 
             # Query 2: Get REQUIRES edges (required documents/permits)
@@ -504,7 +509,9 @@ async def get_visa_requirements_node(state: VisaState, db_pool: asyncpg.Pool) ->
     state["kg_sources_used"] = state.get("kg_sources_used", 0) + kg_sources
 
     logger.info(
-        "✅ [Visa Subgraph] Requirements added for %s (KG sources: %s)", visa_type, kg_sources,
+        "✅ [Visa Subgraph] Requirements added for %s (KG sources: %s)",
+        visa_type,
+        kg_sources,
     )
 
     return state

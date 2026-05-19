@@ -302,9 +302,7 @@ Return ONLY the JSON object, no other text."""
             result.processing_time_ms = (result.completed_at - start_time).total_seconds() * 1000
 
             self.ingestion_stats["failed"] += 1
-            logger.warning(
-                "Ingestion data error for %s: %s", scraped_doc.document_id, e
-            )
+            logger.warning("Ingestion data error for %s: %s", scraped_doc.document_id, e)
         except OSError as e:
             result.status = IngestionStatus.FAILED
             result.error_message = str(e)
@@ -324,9 +322,7 @@ Return ONLY the JSON object, no other text."""
             result.processing_time_ms = (result.completed_at - start_time).total_seconds() * 1000
 
             self.ingestion_stats["failed"] += 1
-            logger.exception(
-                "Unexpected ingestion failure for %s", scraped_doc.document_id
-            )
+            logger.exception("Unexpected ingestion failure for %s", scraped_doc.document_id)
 
         self.ingestion_stats["total_processed"] += 1
         self.ingestion_stats["last_run"] = datetime.now(tz=timezone.utc).isoformat()
@@ -357,9 +353,7 @@ Return ONLY the JSON object, no other text."""
                 result = await self.ingest_document(doc, target_collection)
                 results.append(result)
             except Exception as e:
-                logger.exception(
-                    "Batch ingestion error for %s", doc.document_id
-                )
+                logger.exception("Batch ingestion error for %s", doc.document_id)
                 results.append(
                     IngestionResult(
                         document_id=doc.document_id,

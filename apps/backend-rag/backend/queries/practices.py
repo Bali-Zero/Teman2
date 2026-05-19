@@ -11,9 +11,7 @@ from typing import Any
 import asyncpg
 
 
-async def get_practice_by_id(
-    conn: asyncpg.Connection, practice_id: int
-) -> dict[str, Any] | None:
+async def get_practice_by_id(conn: asyncpg.Connection, practice_id: int) -> dict[str, Any] | None:
     """Fetch a single practice with basic client info."""
     row = await conn.fetchrow(
         """

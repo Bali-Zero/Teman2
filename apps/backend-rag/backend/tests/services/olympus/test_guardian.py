@@ -1,4 +1,5 @@
 """Tests for Olympus v2 Guardian — feedback loop and shutdown."""
+
 import pytest
 from unittest.mock import AsyncMock, MagicMock
 from backend.services.olympus.guardian import OlympusGuardian
@@ -15,11 +16,28 @@ class TestGuardianFeedbackLoop:
         guardian.rules_engine.record_applied = AsyncMock()
         guardian.rules_engine.lower_confidence = AsyncMock()
         guardian.pulse = MagicMock()
-        guardian.pulse.run_full_pulse = AsyncMock(return_value=[
-            PulseAction(action_type="vacuum", target="t1", outcome="success", rule_applied="vacuum_dead_pct_threshold"),
-            PulseAction(action_type="vacuum", target="t2", outcome="success", rule_applied="vacuum_dead_pct_threshold"),
-            PulseAction(action_type="cleanup", target="t3", outcome="success", rule_applied="audit_retention_days"),
-        ])
+        guardian.pulse.run_full_pulse = AsyncMock(
+            return_value=[
+                PulseAction(
+                    action_type="vacuum",
+                    target="t1",
+                    outcome="success",
+                    rule_applied="vacuum_dead_pct_threshold",
+                ),
+                PulseAction(
+                    action_type="vacuum",
+                    target="t2",
+                    outcome="success",
+                    rule_applied="vacuum_dead_pct_threshold",
+                ),
+                PulseAction(
+                    action_type="cleanup",
+                    target="t3",
+                    outcome="success",
+                    rule_applied="audit_retention_days",
+                ),
+            ]
+        )
         guardian.alerts = MagicMock()
         guardian.alerts.send_pulse_summary = AsyncMock()
         guardian._persist_action = AsyncMock()
@@ -39,9 +57,16 @@ class TestGuardianFeedbackLoop:
         guardian.rules_engine.record_applied = AsyncMock()
         guardian.rules_engine.lower_confidence = AsyncMock()
         guardian.pulse = MagicMock()
-        guardian.pulse.run_full_pulse = AsyncMock(return_value=[
-            PulseAction(action_type="vacuum", target="t1", outcome="failure", rule_applied="vacuum_dead_pct_threshold"),
-        ])
+        guardian.pulse.run_full_pulse = AsyncMock(
+            return_value=[
+                PulseAction(
+                    action_type="vacuum",
+                    target="t1",
+                    outcome="failure",
+                    rule_applied="vacuum_dead_pct_threshold",
+                ),
+            ]
+        )
         guardian.alerts = MagicMock()
         guardian.alerts.send_pulse_summary = AsyncMock()
         guardian._persist_action = AsyncMock()
@@ -58,9 +83,16 @@ class TestGuardianFeedbackLoop:
         guardian.rules_engine.record_applied = AsyncMock()
         guardian.rules_engine.lower_confidence = AsyncMock()
         guardian.pulse = MagicMock()
-        guardian.pulse.run_full_pulse = AsyncMock(return_value=[
-            PulseAction(action_type="vacuum", target="t1", outcome="success", rule_applied="vacuum_dead_pct_threshold"),
-        ])
+        guardian.pulse.run_full_pulse = AsyncMock(
+            return_value=[
+                PulseAction(
+                    action_type="vacuum",
+                    target="t1",
+                    outcome="success",
+                    rule_applied="vacuum_dead_pct_threshold",
+                ),
+            ]
+        )
         guardian.alerts = MagicMock()
         guardian.alerts.send_pulse_summary = AsyncMock()
         guardian._persist_action = AsyncMock()
@@ -78,11 +110,13 @@ class TestGuardianFeedbackLoop:
         guardian.rules_engine.record_applied = AsyncMock()
         guardian.rules_engine.lower_confidence = AsyncMock()
         guardian.pulse = MagicMock()
-        guardian.pulse.run_full_pulse = AsyncMock(return_value=[
-            PulseAction(action_type="a", outcome="success"),
-            PulseAction(action_type="b", outcome="failure"),
-            PulseAction(action_type="c", outcome="failure"),
-        ])
+        guardian.pulse.run_full_pulse = AsyncMock(
+            return_value=[
+                PulseAction(action_type="a", outcome="success"),
+                PulseAction(action_type="b", outcome="failure"),
+                PulseAction(action_type="c", outcome="failure"),
+            ]
+        )
         guardian.alerts = MagicMock()
         guardian.alerts.send_pulse_summary = AsyncMock()
         guardian._persist_action = AsyncMock()
@@ -102,16 +136,29 @@ class TestGuardianV3Insights:
         guardian.rules_engine.record_applied = AsyncMock()
         guardian.rules_engine.lower_confidence = AsyncMock()
         guardian.pulse = MagicMock()
-        guardian.pulse.run_full_pulse = AsyncMock(return_value=[
-            PulseAction(action_type="vacuum", target="t1", outcome="success", rule_applied="vacuum_dead_pct_threshold"),
-        ])
+        guardian.pulse.run_full_pulse = AsyncMock(
+            return_value=[
+                PulseAction(
+                    action_type="vacuum",
+                    target="t1",
+                    outcome="success",
+                    rule_applied="vacuum_dead_pct_threshold",
+                ),
+            ]
+        )
         guardian.insights = MagicMock()
-        guardian.insights.collect_query_insights = AsyncMock(return_value=[
-            PulseAction(action_type="query_intelligence", target="pg_stat_statements", outcome="success"),
-        ])
-        guardian.insights.collect_bloat_insights = AsyncMock(return_value=[
-            PulseAction(action_type="unused_index", target="idx_old", outcome="proposed"),
-        ])
+        guardian.insights.collect_query_insights = AsyncMock(
+            return_value=[
+                PulseAction(
+                    action_type="query_intelligence", target="pg_stat_statements", outcome="success"
+                ),
+            ]
+        )
+        guardian.insights.collect_bloat_insights = AsyncMock(
+            return_value=[
+                PulseAction(action_type="unused_index", target="idx_old", outcome="proposed"),
+            ]
+        )
         guardian.alerts = MagicMock()
         guardian.alerts.send_pulse_summary = AsyncMock()
         guardian._persist_action = AsyncMock()

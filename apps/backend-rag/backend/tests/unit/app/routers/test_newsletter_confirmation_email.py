@@ -147,12 +147,15 @@ def test_subscribe_new_calls_send_confirmation_email() -> None:
     app.dependency_overrides[get_database_pool] = lambda: pool
     client = TestClient(app)
     try:
-        with patch(
-            "backend.app.routers.newsletter.send_confirmation_email",
-            new=AsyncMock(),
-        ) as mock_send, patch(
-            "backend.app.routers.newsletter.invalidate_cache",
-            new=AsyncMock(),
+        with (
+            patch(
+                "backend.app.routers.newsletter.send_confirmation_email",
+                new=AsyncMock(),
+            ) as mock_send,
+            patch(
+                "backend.app.routers.newsletter.invalidate_cache",
+                new=AsyncMock(),
+            ),
         ):
             response = client.post(
                 "/api/blog/newsletter/subscribe",
@@ -189,12 +192,15 @@ def test_subscribe_resend_calls_send_confirmation_email() -> None:
     app.dependency_overrides[get_database_pool] = lambda: pool
     client = TestClient(app)
     try:
-        with patch(
-            "backend.app.routers.newsletter.send_confirmation_email",
-            new=AsyncMock(),
-        ) as mock_send, patch(
-            "backend.app.routers.newsletter.invalidate_cache",
-            new=AsyncMock(),
+        with (
+            patch(
+                "backend.app.routers.newsletter.send_confirmation_email",
+                new=AsyncMock(),
+            ) as mock_send,
+            patch(
+                "backend.app.routers.newsletter.invalidate_cache",
+                new=AsyncMock(),
+            ),
         ):
             response = client.post(
                 "/api/blog/newsletter/subscribe",

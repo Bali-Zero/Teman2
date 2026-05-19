@@ -8,6 +8,7 @@ so the ``WebhookProcessor`` can wake immediately via PG LISTEN.
 
 P0-6 from zero-crash audit 2026-04-29.
 """
+
 from __future__ import annotations
 
 import json
@@ -88,8 +89,7 @@ async def persist(
             if row is None:
                 # Duplicate was deduped at ON CONFLICT — nothing to wake up.
                 logger.debug(
-                    "inbound_webhooks: duplicate dedup_key=%s on channel=%s "
-                    "(silently dropped)",
+                    "inbound_webhooks: duplicate dedup_key=%s on channel=%s (silently dropped)",
                     dedup_key,
                     channel,
                 )
@@ -116,8 +116,7 @@ async def persist(
                 # inbound_webhooks and the processor will pick it up via
                 # the 5s poll.
                 logger.warning(
-                    "inbound_webhooks: outbox notify failed for id=%d "
-                    "channel=%s: %s",
+                    "inbound_webhooks: outbox notify failed for id=%d channel=%s: %s",
                     new_id,
                     channel,
                     exc,

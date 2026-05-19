@@ -73,16 +73,24 @@ class TestFollowupServiceMetrics:
 
         # Get initial metric values
         initial_requests = followup_requests_total.labels(
-            method="ai", topic="business", language="en", status="success",
+            method="ai",
+            topic="business",
+            language="en",
+            status="success",
         )._value.get()
 
         await followup_service.get_followups(
-            query="Test query", response="Test response", use_ai=True,
+            query="Test query",
+            response="Test response",
+            use_ai=True,
         )
 
         # Verify metrics were incremented
         final_requests = followup_requests_total.labels(
-            method="ai", topic="business", language="en", status="success",
+            method="ai",
+            topic="business",
+            language="en",
+            status="success",
         )._value.get()
         assert final_requests > initial_requests
 
@@ -90,16 +98,20 @@ class TestFollowupServiceMetrics:
     async def test_metrics_recorded_on_fallback(self, followup_service_no_ai):
         """Test that metrics are recorded when using fallback"""
         initial_topic_based = followup_topic_based_total.labels(
-            topic="business", language="en",
+            topic="business",
+            language="en",
         )._value.get()
 
         await followup_service_no_ai.get_followups(
-            query="Test query", response="Test response", use_ai=False,
+            query="Test query",
+            response="Test response",
+            use_ai=False,
         )
 
         # Verify topic-based metric was incremented
         final_topic_based = followup_topic_based_total.labels(
-            topic="business", language="en",
+            topic="business",
+            language="en",
         )._value.get()
         assert final_topic_based > initial_topic_based
 
@@ -113,7 +125,9 @@ class TestFollowupServiceMetrics:
         initial_error = followup_ai_generation_total.labels(status="error")._value.get()
 
         await followup_service.get_followups(
-            query="Test query", response="Test response", use_ai=True,
+            query="Test query",
+            response="Test response",
+            use_ai=True,
         )
 
         final_error = followup_ai_generation_total.labels(status="error")._value.get()
@@ -127,13 +141,17 @@ class TestFollowupServiceMetrics:
         )
 
         await followup_service.get_followups(
-            query="Test query", response="Test response", use_ai=True,
+            query="Test query",
+            response="Test response",
+            use_ai=True,
         )
 
         # Verify duration histogram has observations
         # prometheus_client Histogram._buckets can be dict or list depending on version
         hist_child = followup_generation_duration.labels(
-            method="ai", topic="business", language="en",
+            method="ai",
+            topic="business",
+            language="en",
         )
         buckets = getattr(hist_child, "_buckets", None)
         if buckets is not None:
@@ -143,15 +161,20 @@ class TestFollowupServiceMetrics:
     def test_topic_based_metrics_incremented(self, followup_service):
         """Test that topic-based metrics are incremented"""
         initial_count = followup_topic_based_total.labels(
-            topic="immigration", language="it",
+            topic="immigration",
+            language="it",
         )._value.get()
 
         followup_service.get_topic_based_followups(
-            _query="Test", _response="Test", topic="immigration", language="it",
+            _query="Test",
+            _response="Test",
+            topic="immigration",
+            language="it",
         )
 
         final_count = followup_topic_based_total.labels(
-            topic="immigration", language="it",
+            topic="immigration",
+            language="it",
         )._value.get()
         assert final_count > initial_count
 
@@ -165,7 +188,9 @@ class TestFollowupServiceMetrics:
         initial_success = followup_ai_generation_total.labels(status="success")._value.get()
 
         await followup_service.generate_dynamic_followups(
-            query="Test", response="Test", language="en",
+            query="Test",
+            response="Test",
+            language="en",
         )
 
         final_success = followup_ai_generation_total.labels(status="success")._value.get()
@@ -179,7 +204,9 @@ class TestFollowupServiceMetrics:
         initial_error = followup_ai_generation_total.labels(status="error")._value.get()
 
         await followup_service.generate_dynamic_followups(
-            query="Test", response="Test", language="en",
+            query="Test",
+            response="Test",
+            language="en",
         )
 
         final_error = followup_ai_generation_total.labels(status="error")._value.get()
@@ -211,7 +238,9 @@ class TestFollowupServiceLogging:
 
         with caplog.at_level("INFO"):
             await followup_service.get_followups(
-                query="Test query", response="Test response", use_ai=True,
+                query="Test query",
+                response="Test response",
+                use_ai=True,
             )
 
         assert "Followups" in caplog.text or "followup" in caplog.text.lower()
@@ -224,7 +253,9 @@ class TestFollowupServiceLogging:
 
         with caplog.at_level("ERROR"):
             await followup_service.get_followups(
-                query="Test query", response="Test response", use_ai=True,
+                query="Test query",
+                response="Test response",
+                use_ai=True,
             )
 
         assert "error" in caplog.text.lower() or "failed" in caplog.text.lower()

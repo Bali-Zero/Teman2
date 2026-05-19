@@ -19,19 +19,19 @@ from enum import Enum
 class KGStrategy(str, Enum):
     """Strategy for Knowledge Graph usage in query processing."""
 
-    NONE = "none"                        # Skip KG entirely
-    ENTITY_LOOKUP = "entity_lookup"      # Just resolve entities (1 SQL query)
-    SUBGRAPH = "subgraph"                # Run domain subgraph (company/visa/etc.)
-    FULL_TRAVERSAL = "full_traversal"    # BFS multi-hop (complex queries)
-    GOLDEN_ROUTE = "golden_route"        # Deterministic workflow path
+    NONE = "none"  # Skip KG entirely
+    ENTITY_LOOKUP = "entity_lookup"  # Just resolve entities (1 SQL query)
+    SUBGRAPH = "subgraph"  # Run domain subgraph (company/visa/etc.)
+    FULL_TRAVERSAL = "full_traversal"  # BFS multi-hop (complex queries)
+    GOLDEN_ROUTE = "golden_route"  # Deterministic workflow path
 
 
 class QueryComplexity(str, Enum):
     """Estimated complexity of the query."""
 
-    SIMPLE = "simple"            # Greeting, small talk, single fact
-    LOOKUP = "lookup"            # Single entity lookup (pricing, KBLI code)
-    MULTI_HOP = "multi_hop"      # Requires graph traversal (KITAS for restaurant)
+    SIMPLE = "simple"  # Greeting, small talk, single fact
+    LOOKUP = "lookup"  # Single entity lookup (pricing, KBLI code)
+    MULTI_HOP = "multi_hop"  # Requires graph traversal (KITAS for restaurant)
     CROSS_DOMAIN = "cross_domain"  # Multiple domains (PT PMA + KITAS + tax)
 
 

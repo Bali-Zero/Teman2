@@ -80,7 +80,10 @@ class TestE2EConversationFlow:
 
     @pytest.mark.asyncio
     async def test_save_conversation_with_auto_crm(
-        self, conversation_service, mock_db_pool, mock_memory_cache,
+        self,
+        conversation_service,
+        mock_db_pool,
+        mock_memory_cache,
     ):
         """Test saving conversation persists to DB and memory cache"""
         user_email = "test@example.com"
@@ -110,7 +113,10 @@ class TestE2EConversationFlow:
 
     @pytest.mark.asyncio
     async def test_conversation_history_retrieval(
-        self, conversation_service, mock_db_pool, mock_memory_cache,
+        self,
+        conversation_service,
+        mock_db_pool,
+        mock_memory_cache,
     ):
         """Test retrieving conversation history from DB and memory cache"""
         user_email = "test@example.com"
@@ -130,7 +136,9 @@ class TestE2EConversationFlow:
 
         # Retrieve history
         result = await conversation_service.get_history(
-            user_email=user_email, limit=10, session_id=session_id,
+            user_email=user_email,
+            limit=10,
+            session_id=session_id,
         )
 
         # Verify history retrieved
@@ -141,7 +149,10 @@ class TestE2EConversationFlow:
 
     @pytest.mark.asyncio
     async def test_conversation_history_fallback_to_memory_cache(
-        self, conversation_service, mock_db_pool, mock_memory_cache,
+        self,
+        conversation_service,
+        mock_db_pool,
+        mock_memory_cache,
     ):
         """Test fallback to memory cache when DB is unavailable"""
         user_email = "test@example.com"
@@ -161,7 +172,9 @@ class TestE2EConversationFlow:
 
         # Retrieve history
         result = await conversation_service.get_history(
-            user_email=user_email, limit=10, session_id=session_id,
+            user_email=user_email,
+            limit=10,
+            session_id=session_id,
         )
 
         # Verify fallback to memory cache
@@ -171,7 +184,10 @@ class TestE2EConversationFlow:
 
     @pytest.mark.asyncio
     async def test_multi_turn_conversation_context(
-        self, conversation_service, mock_db_pool, mock_memory_cache,
+        self,
+        conversation_service,
+        mock_db_pool,
+        mock_memory_cache,
     ):
         """Test that multi-turn conversations maintain context"""
         user_email = "test@example.com"
@@ -200,11 +216,15 @@ class TestE2EConversationFlow:
 
         # Save both turns
         result1 = await conversation_service.save_conversation(
-            user_email=user_email, messages=turn1_messages, session_id=session_id,
+            user_email=user_email,
+            messages=turn1_messages,
+            session_id=session_id,
         )
 
         result2 = await conversation_service.save_conversation(
-            user_email=user_email, messages=turn2_messages, session_id=session_id,
+            user_email=user_email,
+            messages=turn2_messages,
+            session_id=session_id,
         )
 
         # Verify both saved
@@ -216,7 +236,10 @@ class TestE2EConversationFlow:
 
     @pytest.mark.asyncio
     async def test_conversation_with_episodic_memory_linking(
-        self, conversation_service, mock_db_pool, mock_memory_cache,
+        self,
+        conversation_service,
+        mock_db_pool,
+        mock_memory_cache,
     ):
         """Test that conversations are linked to episodic memory events"""
         user_email = "test@example.com"
@@ -246,7 +269,9 @@ class TestE2EConversationFlow:
 
             # Save conversation
             result = await conversation_service.save_conversation(
-                user_email=user_email, messages=messages, session_id=session_id,
+                user_email=user_email,
+                messages=messages,
+                session_id=session_id,
             )
 
             # Verify conversation saved
@@ -257,7 +282,10 @@ class TestE2EConversationFlow:
 
     @pytest.mark.asyncio
     async def test_conversation_metadata_persistence(
-        self, conversation_service, mock_db_pool, mock_memory_cache,
+        self,
+        conversation_service,
+        mock_db_pool,
+        mock_memory_cache,
     ):
         """Test that conversation metadata is properly persisted"""
         user_email = "test@example.com"
@@ -278,7 +306,10 @@ class TestE2EConversationFlow:
 
         # Save with metadata
         result = await conversation_service.save_conversation(
-            user_email=user_email, messages=messages, session_id="test-session", metadata=metadata,
+            user_email=user_email,
+            messages=messages,
+            session_id="test-session",
+            metadata=metadata,
         )
 
         # Verify metadata was included
@@ -290,7 +321,10 @@ class TestE2EConversationFlow:
 
     @pytest.mark.asyncio
     async def test_conversation_error_handling(
-        self, conversation_service, mock_db_pool, mock_memory_cache,
+        self,
+        conversation_service,
+        mock_db_pool,
+        mock_memory_cache,
     ):
         """Test error handling when DB fails but memory cache succeeds"""
         user_email = "test@example.com"
@@ -302,7 +336,9 @@ class TestE2EConversationFlow:
 
         # Save conversation - should fallback to memory cache
         result = await conversation_service.save_conversation(
-            user_email=user_email, messages=messages, session_id="test-session",
+            user_email=user_email,
+            messages=messages,
+            session_id="test-session",
         )
 
         # Verify graceful degradation

@@ -2,6 +2,7 @@
 Regression: ANNUAL_DEADLINES must not embed government prices.
 Prices come from PricingTool only (Golden Rule #12, CLAUDE.md §4).
 """
+
 from __future__ import annotations
 
 from backend.services.compliance.templates import ComplianceTemplatesService

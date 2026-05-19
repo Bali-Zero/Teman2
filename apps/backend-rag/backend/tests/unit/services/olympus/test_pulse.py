@@ -294,9 +294,7 @@ class TestRebuildInvalidIndexes:
     @pytest.mark.asyncio
     async def test_reindex_success(self, pulse, mock_pool):
         _, conn = mock_pool
-        conn.fetch.return_value = [
-            {"index_name": "idx_broken", "table_name": "clients"}
-        ]
+        conn.fetch.return_value = [{"index_name": "idx_broken", "table_name": "clients"}]
 
         actions = await pulse.rebuild_invalid_indexes()
         assert len(actions) == 1
@@ -306,9 +304,7 @@ class TestRebuildInvalidIndexes:
     @pytest.mark.asyncio
     async def test_reindex_failure(self, pulse, mock_pool):
         _, conn = mock_pool
-        conn.fetch.return_value = [
-            {"index_name": "idx_broken", "table_name": "clients"}
-        ]
+        conn.fetch.return_value = [{"index_name": "idx_broken", "table_name": "clients"}]
         conn.execute.side_effect = Exception("reindex failed")
 
         actions = await pulse.rebuild_invalid_indexes()
@@ -451,15 +447,16 @@ class TestEnsureNextPartition:
 class TestRunFullPulse:
     @pytest.mark.asyncio
     async def test_aggregates_all_actions(self, pulse):
-        with patch.object(pulse, "vacuum_bloated_tables", new_callable=AsyncMock) as v, \
-             patch.object(pulse, "cleanup_audit_trail", new_callable=AsyncMock) as c, \
-             patch.object(pulse, "repair_sequences", new_callable=AsyncMock) as r, \
-             patch.object(pulse, "rebuild_invalid_indexes", new_callable=AsyncMock) as i, \
-             patch.object(pulse, "refresh_materialized_views", new_callable=AsyncMock) as m, \
-             patch.object(pulse, "cleanup_expired_sessions", new_callable=AsyncMock) as s, \
-             patch.object(pulse, "ensure_next_partition", new_callable=AsyncMock) as p, \
-             patch.object(pulse, "autovacuum_advisor", new_callable=AsyncMock) as a:
-
+        with (
+            patch.object(pulse, "vacuum_bloated_tables", new_callable=AsyncMock) as v,
+            patch.object(pulse, "cleanup_audit_trail", new_callable=AsyncMock) as c,
+            patch.object(pulse, "repair_sequences", new_callable=AsyncMock) as r,
+            patch.object(pulse, "rebuild_invalid_indexes", new_callable=AsyncMock) as i,
+            patch.object(pulse, "refresh_materialized_views", new_callable=AsyncMock) as m,
+            patch.object(pulse, "cleanup_expired_sessions", new_callable=AsyncMock) as s,
+            patch.object(pulse, "ensure_next_partition", new_callable=AsyncMock) as p,
+            patch.object(pulse, "autovacuum_advisor", new_callable=AsyncMock) as a,
+        ):
             from backend.services.olympus.models import PulseAction
 
             v.return_value = [PulseAction(action_type="vacuum", outcome="success")]

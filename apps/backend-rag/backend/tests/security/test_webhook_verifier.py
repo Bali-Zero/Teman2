@@ -91,7 +91,11 @@ class TestVerifyMetaHmac:
     def test_missing_secret_with_require_raises(self) -> None:
         with pytest.raises(WebhookVerificationError) as ei:
             verify_meta_hmac(
-                b"x", "sha256=abc", None, provider="whatsapp", require_secret=True,
+                b"x",
+                "sha256=abc",
+                None,
+                provider="whatsapp",
+                require_secret=True,
             )
         assert ei.value.reason == "missing_secret"
 
@@ -153,9 +157,14 @@ class TestVerifyTwitterHmac:
         # Regression guard: if someone refactors and switches to .hexdigest(),
         # this hex-shaped header must NOT be accepted as a valid base64.
         body = b"hello"
-        hex_sig = "sha256=" + hmac.new(
-            TWITTER_SECRET.encode(), body, hashlib.sha256,
-        ).hexdigest()
+        hex_sig = (
+            "sha256="
+            + hmac.new(
+                TWITTER_SECRET.encode(),
+                body,
+                hashlib.sha256,
+            ).hexdigest()
+        )
         with pytest.raises(WebhookVerificationError) as ei:
             verify_twitter_hmac(body, hex_sig, TWITTER_SECRET)
         assert ei.value.reason == "signature_mismatch"

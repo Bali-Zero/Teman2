@@ -27,6 +27,7 @@ from backend.agents.services.llm_adapter import (
 # Fixtures
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def adapter():
     """LLMAdapter with fast settings and no real network calls."""
@@ -52,6 +53,7 @@ def adapter():
 def reset_singleton():
     """Reset the singleton between tests."""
     import backend.agents.services.llm_adapter as mod
+
     mod._llm_adapter = None
     yield
     mod._llm_adapter = None
@@ -60,6 +62,7 @@ def reset_singleton():
 # ─────────────────────────────────────────────────────────────────────────────
 # LLMMetrics
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def test_metrics_success_rate_zero_when_no_requests():
     m = LLMMetrics()
@@ -85,6 +88,7 @@ def test_metrics_avg_response_time_calculated():
 # CircuitBreakerState.reset
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_circuit_breaker_reset():
     cb = CircuitBreakerState(
         state=CircuitState.OPEN,
@@ -103,6 +107,7 @@ def test_circuit_breaker_reset():
 # ─────────────────────────────────────────────────────────────────────────────
 # _classify_error
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def test_classify_error_model_not_found(adapter):
     err = RuntimeError("model not found")
@@ -178,6 +183,7 @@ def test_classify_error_default_transient(adapter):
 # _check_circuit_breaker
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_check_circuit_breaker_closed_allows(adapter):
     assert adapter._check_circuit_breaker() is True
 
@@ -208,6 +214,7 @@ def test_check_circuit_breaker_half_open_allows(adapter):
 # _record_circuit_breaker_success
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_record_circuit_breaker_success_half_open_counts(adapter):
     adapter.circuit_breaker.state = CircuitState.HALF_OPEN
     adapter.circuit_breaker.success_count = 0
@@ -232,6 +239,7 @@ def test_record_circuit_breaker_success_closed_decrements_failures(adapter):
 # ─────────────────────────────────────────────────────────────────────────────
 # _record_circuit_breaker_failure
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def test_record_circuit_breaker_failure_permanent_ignored(adapter):
     adapter.circuit_breaker.failure_count = 0
@@ -260,6 +268,7 @@ def test_record_circuit_breaker_failure_half_open_reopens(adapter):
 # ─────────────────────────────────────────────────────────────────────────────
 # generate — mock provider
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_generate_mock_provider(adapter):
@@ -314,6 +323,7 @@ async def test_generate_circuit_open_returns_mock(adapter):
 # ─────────────────────────────────────────────────────────────────────────────
 # generate — Ollama success
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_generate_ollama_success(adapter):
@@ -396,6 +406,7 @@ async def test_generate_ollama_all_retries_fail_returns_mock(adapter):
 # _call_mock
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_call_mock_returns_response(adapter):
     request = LLMRequest(prompt="mock me")
@@ -409,6 +420,7 @@ async def test_call_mock_returns_response(adapter):
 # ─────────────────────────────────────────────────────────────────────────────
 # _call_ollama
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_call_ollama_success(adapter):
@@ -441,7 +453,9 @@ async def test_call_ollama_empty_response_raises(adapter):
 @pytest.mark.asyncio
 async def test_call_ollama_timeout_raises(adapter):
     with patch.object(
-        adapter.client, "post", new_callable=AsyncMock,
+        adapter.client,
+        "post",
+        new_callable=AsyncMock,
         side_effect=httpx.TimeoutException("timeout"),
     ):
         with pytest.raises(RuntimeError, match="Ollama timeout"):
@@ -463,6 +477,7 @@ async def test_call_ollama_http_error_raises(adapter):
 # _get_cache_key
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_get_cache_key_deterministic(adapter):
     r = LLMRequest(prompt="hello", max_tokens=100, temperature=0.5)
     k1 = adapter._get_cache_key(r)
@@ -481,6 +496,7 @@ def test_get_cache_key_different_prompts(adapter):
 # _cache_response (LRU eviction)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_cache_response_lru_eviction(adapter):
     adapter.cache_size = 3
     # Fill cache
@@ -496,6 +512,7 @@ def test_cache_response_lru_eviction(adapter):
 # ─────────────────────────────────────────────────────────────────────────────
 # _check_rate_limit
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_check_rate_limit_allows_when_under(adapter):
@@ -536,6 +553,7 @@ async def test_check_rate_limit_resets_after_minute(adapter):
 # get_metrics / reset_metrics
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_get_metrics_returns_dict(adapter):
     metrics = adapter.get_metrics()
     assert "total_requests" in metrics
@@ -559,13 +577,16 @@ def test_reset_metrics(adapter):
 # health_check
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_health_check_ollama_available(adapter):
     mock_response = MagicMock()
     mock_response.status_code = 200
-    mock_response.json = MagicMock(return_value={
-        "models": [{"name": "qwen2.5:latest"}],
-    })
+    mock_response.json = MagicMock(
+        return_value={
+            "models": [{"name": "qwen2.5:latest"}],
+        }
+    )
 
     with patch.object(adapter.client, "get", new_callable=AsyncMock, return_value=mock_response):
         health = await adapter.health_check()
@@ -590,7 +611,9 @@ async def test_health_check_ollama_model_not_found(adapter):
 @pytest.mark.asyncio
 async def test_health_check_ollama_unreachable(adapter):
     with patch.object(
-        adapter.client, "get", new_callable=AsyncMock,
+        adapter.client,
+        "get",
+        new_callable=AsyncMock,
         side_effect=httpx.ConnectError("refused"),
     ):
         health = await adapter.health_check()
@@ -603,6 +626,7 @@ async def test_health_check_ollama_unreachable(adapter):
 # close
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_close(adapter):
     with patch.object(adapter.client, "aclose", new_callable=AsyncMock) as mock_close:
@@ -613,6 +637,7 @@ async def test_close(adapter):
 # ─────────────────────────────────────────────────────────────────────────────
 # _ensure_ollama_available
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_ensure_ollama_available_auto_start_disabled(adapter):
@@ -628,9 +653,11 @@ async def test_ensure_ollama_available_already_running(adapter):
     adapter.auto_start_ollama = True
     mock_response = MagicMock()
     mock_response.status_code = 200
-    mock_response.json = MagicMock(return_value={
-        "models": [{"name": "qwen2.5:latest"}],
-    })
+    mock_response.json = MagicMock(
+        return_value={
+            "models": [{"name": "qwen2.5:latest"}],
+        }
+    )
 
     with patch.object(adapter.client, "get", new_callable=AsyncMock, return_value=mock_response):
         await adapter._ensure_ollama_available()
@@ -641,7 +668,9 @@ async def test_ensure_ollama_available_already_running(adapter):
 async def test_ensure_ollama_unavailable_no_command(adapter):
     adapter.auto_start_ollama = True
 
-    with patch.object(adapter.client, "get", new_callable=AsyncMock, side_effect=Exception("no connection")):
+    with patch.object(
+        adapter.client, "get", new_callable=AsyncMock, side_effect=Exception("no connection")
+    ):
         with patch("shutil.which", return_value=None):
             # Should not raise
             await adapter._ensure_ollama_available()
@@ -651,15 +680,20 @@ async def test_ensure_ollama_unavailable_no_command(adapter):
 # get_llm_adapter singleton
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_get_llm_adapter_creates_singleton():
-    with patch.dict("os.environ", {"OLLAMA_MODEL": "test-model", "OLLAMA_URL": "http://test:11434"}):
+    with patch.dict(
+        "os.environ", {"OLLAMA_MODEL": "test-model", "OLLAMA_URL": "http://test:11434"}
+    ):
         a1 = get_llm_adapter()
         a2 = get_llm_adapter()
     assert a1 is a2
 
 
 def test_get_llm_adapter_uses_env_vars():
-    with patch.dict("os.environ", {"OLLAMA_MODEL": "my-model", "OLLAMA_URL": "http://myhost:11434"}):
+    with patch.dict(
+        "os.environ", {"OLLAMA_MODEL": "my-model", "OLLAMA_URL": "http://myhost:11434"}
+    ):
         adapter = get_llm_adapter()
     assert adapter.ollama_model == "my-model"
     assert adapter.ollama_url == "http://myhost:11434"
@@ -679,6 +713,7 @@ async def test_close_llm_adapter_resets_singleton():
 @pytest.mark.asyncio
 async def test_close_llm_adapter_noop_when_none():
     import backend.agents.services.llm_adapter as mod
+
     mod._llm_adapter = None
     # Should not raise
     await close_llm_adapter()

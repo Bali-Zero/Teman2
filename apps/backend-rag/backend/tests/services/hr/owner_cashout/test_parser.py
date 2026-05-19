@@ -1,4 +1,5 @@
 """Tests for owner cashout sheet parser."""
+
 import json
 from pathlib import Path
 
@@ -130,7 +131,7 @@ class TestParseBsTab:
         assert julianna.margin_bs_idr == 3_000_000
         assert julianna.final_price_idr == 4_000_000
         assert julianna.total_income_idr == 0  # BS doesn't populate this
-        assert julianna.margin_bz_idr == 0     # BS doesn't populate this
+        assert julianna.margin_bz_idr == 0  # BS doesn't populate this
         assert julianna.note is None
 
     def test_skips_empty_rows(self):

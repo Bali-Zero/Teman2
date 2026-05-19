@@ -112,9 +112,7 @@ def silence_telegram(monkeypatch):
         def read(self):
             return b'{"ok":true,"result":{"message_id":1}}'
 
-    monkeypatch.setattr(
-        urlreq, "urlopen", lambda *a, **kw: _Resp()
-    )
+    monkeypatch.setattr(urlreq, "urlopen", lambda *a, **kw: _Resp())
 
 
 # ---------------------------------------------------------------------------
@@ -131,9 +129,7 @@ async def test_returns_false_for_non_fad_callback(mock_db_pool, admin_env) -> No
 
 
 @pytest.mark.asyncio
-async def test_malformed_callback_handled_silently(
-    mock_db_pool, admin_env
-) -> None:
+async def test_malformed_callback_handled_silently(mock_db_pool, admin_env) -> None:
     pool, _ = mock_db_pool
     cq = _callback_query(data="fad:malformed")
     handled = await handle_fad_callback(cq, pool=pool, bot_token="t")
@@ -206,9 +202,7 @@ async def test_token_mismatch_rejected(mock_db_pool, admin_env) -> None:
     pid = "550e8400-e29b-41d4-a716-446655440000"
     real_token = generate_approval_token()
     conn.fetchrow = AsyncMock(
-        return_value=_proposal_dict(
-            proposal_id=pid, approval_token=real_token
-        )
+        return_value=_proposal_dict(proposal_id=pid, approval_token=real_token)
     )
     # Use a fake prefix, NOT derived from real_token
     cb = encode_callback("approve", pid, "00000000")
@@ -221,9 +215,7 @@ async def test_token_mismatch_rejected(mock_db_pool, admin_env) -> None:
 
 
 @pytest.mark.asyncio
-async def test_callback_on_terminal_proposal_idempotent(
-    mock_db_pool, admin_env
-) -> None:
+async def test_callback_on_terminal_proposal_idempotent(mock_db_pool, admin_env) -> None:
     """Late callback on already-completed proposal must not double-execute."""
     pool, conn = mock_db_pool
     pid = "550e8400-e29b-41d4-a716-446655440000"
@@ -280,11 +272,7 @@ async def test_defer_no_db_write(mock_db_pool, admin_env) -> None:
     token = generate_approval_token()
     prefix = callback_token_prefix(token, pid)
 
-    conn.fetchrow = AsyncMock(
-        return_value=_proposal_dict(
-            proposal_id=pid, approval_token=token
-        )
-    )
+    conn.fetchrow = AsyncMock(return_value=_proposal_dict(proposal_id=pid, approval_token=token))
 
     cb = encode_callback("defer", pid, prefix)
     cq = _callback_query(data=cb)
@@ -301,9 +289,7 @@ async def test_defer_no_db_write(mock_db_pool, admin_env) -> None:
 
 
 @pytest.mark.asyncio
-async def test_mode_change_rejected_when_no_secret(
-    mock_db_pool, admin_env, monkeypatch
-) -> None:
+async def test_mode_change_rejected_when_no_secret(mock_db_pool, admin_env, monkeypatch) -> None:
     """Without FEDERATION_ALERT_MODE_TOKEN env, mode changes refuse."""
     monkeypatch.delenv("FEDERATION_ALERT_MODE_TOKEN", raising=False)
     pool, conn = mock_db_pool
@@ -316,9 +302,7 @@ async def test_mode_change_rejected_when_no_secret(
 
 
 @pytest.mark.asyncio
-async def test_mode_change_token_mismatch_rejected(
-    mock_db_pool, admin_env, monkeypatch
-) -> None:
+async def test_mode_change_token_mismatch_rejected(mock_db_pool, admin_env, monkeypatch) -> None:
     monkeypatch.setenv("FEDERATION_ALERT_MODE_TOKEN", "secret-mode")
     pool, conn = mock_db_pool
     cb = encode_callback("mode", "dry_action", "00000000")  # wrong prefix
@@ -330,9 +314,7 @@ async def test_mode_change_token_mismatch_rejected(
 
 
 @pytest.mark.asyncio
-async def test_mode_change_happy_path(
-    mock_db_pool, admin_env, monkeypatch
-) -> None:
+async def test_mode_change_happy_path(mock_db_pool, admin_env, monkeypatch) -> None:
     import hashlib
     import hmac
 

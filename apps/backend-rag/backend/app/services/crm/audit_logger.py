@@ -110,7 +110,9 @@ class CRMAuditLogger:
             return False
 
     def _detect_changes(
-        self, old_state: dict[str, Any], new_state: dict[str, Any],
+        self,
+        old_state: dict[str, Any],
+        new_state: dict[str, Any],
     ) -> dict[str, Any]:
         """Detect what changed between old and new state"""
         changes = {}
@@ -299,7 +301,9 @@ def audit_change(entity_type: str, change_type: str = "update") -> Any:
                 request = all_params.get("request")
                 if request and hasattr(request, "state"):
                     user_email = getattr(request.state, "user", {}).get("email")
-            entity_id = all_params.get("client_id") or all_params.get("case_id") or all_params.get("id")
+            entity_id = (
+                all_params.get("client_id") or all_params.get("case_id") or all_params.get("id")
+            )
 
             # Get old state before change
             old_state = {}
@@ -311,7 +315,8 @@ def audit_change(entity_type: str, change_type: str = "update") -> Any:
                     if pool:
                         async with pool.acquire() as conn:
                             row = await conn.fetchrow(
-                                "SELECT * FROM clients WHERE id = $1", entity_id,
+                                "SELECT * FROM clients WHERE id = $1",
+                                entity_id,
                             )
                             if row and hasattr(row, "items"):
                                 old_state = dict(row)

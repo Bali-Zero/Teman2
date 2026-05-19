@@ -254,6 +254,7 @@ class TestGetOpenRouterClient:
     @patch("backend.services.rag.agentic.llm_gateway.OpenRouterClient")
     def test_init_failure(self, mock_or, gateway):
         import httpx
+
         mock_or.side_effect = httpx.HTTPError("fail")
         client = gateway._get_openrouter_client()
         assert client is None
@@ -273,7 +274,9 @@ class TestSendMessage:
             return_value=("response text", "model-name", MagicMock(), mock_usage),
         )
         text, model, obj, usage = await gateway.send_message(
-            chat=None, message="Hello", tier=TIER_FLASH,
+            chat=None,
+            message="Hello",
+            tier=TIER_FLASH,
         )
         assert text == "response text"
         assert model == "model-name"
@@ -293,7 +296,8 @@ class TestSendMessage:
             return_value=("response", "model", None, mock_usage),
         )
         await gateway.send_message(
-            chat=None, message="Hello",
+            chat=None,
+            message="Hello",
             system_prompt="You are Zantara",
             tier=TIER_PRO,
         )
@@ -309,7 +313,8 @@ class TestSendMessage:
             return_value=("r", "m", None, mock_usage),
         )
         await gateway.send_message(
-            chat=None, message="Hello",
+            chat=None,
+            message="Hello",
             conversation_messages=[{"role": "user", "content": "prev"}],
         )
         call_kwargs = gateway._send_with_fallback.call_args[1]
@@ -323,7 +328,8 @@ class TestSendMessage:
             return_value=("r", "m", None, mock_usage),
         )
         await gateway.send_message(
-            chat=None, message="What is this?",
+            chat=None,
+            message="What is this?",
             images=[{"base64": "data:image/png;base64,abc", "name": "test.png"}],
         )
         call_kwargs = gateway._send_with_fallback.call_args[1]
@@ -355,6 +361,9 @@ class TestGetGenAIClient:
     def test_init_error(self, gateway):
         gateway._genai_client = None
         with patch("backend.services.rag.agentic.llm_gateway.GENAI_AVAILABLE", True):
-            with patch("backend.services.rag.agentic.llm_gateway.get_genai_client", side_effect=Exception("fail")):
+            with patch(
+                "backend.services.rag.agentic.llm_gateway.get_genai_client",
+                side_effect=Exception("fail"),
+            ):
                 result = gateway._get_genai_client()
                 assert result is None

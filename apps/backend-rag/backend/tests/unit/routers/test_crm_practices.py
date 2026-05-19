@@ -262,7 +262,9 @@ class TestPracticeUpdate:
 
 class TestListPractices:
     @pytest.mark.asyncio
-    async def test_list_basic(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict) -> None:
+    async def test_list_basic(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
         from backend.app.routers.crm_practices import list_practices
 
         row = MagicMock()
@@ -272,83 +274,141 @@ class TestListPractices:
 
         mock_db_conn.fetch = AsyncMock(return_value=[{"id": 1, "status": "inquiry"}])
 
-        with patch("backend.app.routers.crm_practices.get_practices_user_filter", return_value=None):
+        with patch(
+            "backend.app.routers.crm_practices.get_practices_user_filter", return_value=None
+        ):
             result = await list_practices(
-                client_id=None, status=None, assigned_to=None,
-                practice_type=None, priority=None, month=None,
-                include_history=False, limit=50, offset=0,
-                db_pool=mock_db_pool, current_user=admin_user,
+                client_id=None,
+                status=None,
+                assigned_to=None,
+                practice_type=None,
+                priority=None,
+                month=None,
+                include_history=False,
+                limit=50,
+                offset=0,
+                db_pool=mock_db_pool,
+                current_user=admin_user,
             )
         assert isinstance(result, list)
 
     @pytest.mark.asyncio
-    async def test_list_with_all_filters(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict) -> None:
+    async def test_list_with_all_filters(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
         from backend.app.routers.crm_practices import list_practices
 
         mock_db_conn.fetch = AsyncMock(return_value=[])
 
-        with patch("backend.app.routers.crm_practices.get_practices_user_filter", return_value=None):
+        with patch(
+            "backend.app.routers.crm_practices.get_practices_user_filter", return_value=None
+        ):
             result = await list_practices(
-                client_id=1, status="inquiry", assigned_to="team@balizero.com",
-                practice_type="kitas_sponsor", priority="high", month="2026-03",
-                include_history=False, limit=10, offset=0,
-                db_pool=mock_db_pool, current_user=admin_user,
+                client_id=1,
+                status="inquiry",
+                assigned_to="team@balizero.com",
+                practice_type="kitas_sponsor",
+                priority="high",
+                month="2026-03",
+                include_history=False,
+                limit=10,
+                offset=0,
+                db_pool=mock_db_pool,
+                current_user=admin_user,
             )
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_list_with_history(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict) -> None:
+    async def test_list_with_history(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
         from backend.app.routers.crm_practices import list_practices
 
         row = {"id": 5, "status": "on_process"}
-        mock_db_conn.fetch = AsyncMock(side_effect=[
-            [row],  # main query
-            [],     # history query
-        ])
+        mock_db_conn.fetch = AsyncMock(
+            side_effect=[
+                [row],  # main query
+                [],  # history query
+            ]
+        )
 
-        with patch("backend.app.routers.crm_practices.get_practices_user_filter", return_value=None):
+        with patch(
+            "backend.app.routers.crm_practices.get_practices_user_filter", return_value=None
+        ):
             result = await list_practices(
-                client_id=None, status=None, assigned_to=None,
-                practice_type=None, priority=None, month=None,
-                include_history=True, limit=50, offset=0,
-                db_pool=mock_db_pool, current_user=admin_user,
+                client_id=None,
+                status=None,
+                assigned_to=None,
+                practice_type=None,
+                priority=None,
+                month=None,
+                include_history=True,
+                limit=50,
+                offset=0,
+                db_pool=mock_db_pool,
+                current_user=admin_user,
             )
         assert len(result) == 1
         assert result[0].get("status_transitions") == []
 
     @pytest.mark.asyncio
-    async def test_list_rbac_team_user(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict) -> None:
+    async def test_list_rbac_team_user(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict
+    ) -> None:
         from backend.app.routers.crm_practices import list_practices
 
         mock_db_conn.fetch = AsyncMock(return_value=[])
 
-        with patch("backend.app.routers.crm_practices.get_practices_user_filter", return_value="team@balizero.com"):
+        with patch(
+            "backend.app.routers.crm_practices.get_practices_user_filter",
+            return_value="team@balizero.com",
+        ):
             result = await list_practices(
-                client_id=None, status=None, assigned_to=None,
-                practice_type=None, priority=None, month=None,
-                include_history=False, limit=50, offset=0,
-                db_pool=mock_db_pool, current_user=team_user,
+                client_id=None,
+                status=None,
+                assigned_to=None,
+                practice_type=None,
+                priority=None,
+                month=None,
+                include_history=False,
+                limit=50,
+                offset=0,
+                db_pool=mock_db_pool,
+                current_user=team_user,
             )
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_list_non_dict_user(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock) -> None:
+    async def test_list_non_dict_user(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock
+    ) -> None:
         """When called directly and current_user is not a dict, RBAC is skipped."""
         from backend.app.routers.crm_practices import list_practices
 
         mock_db_conn.fetch = AsyncMock(return_value=[])
 
-        with patch("backend.app.routers.crm_practices.get_practices_user_filter", return_value=None):
+        with patch(
+            "backend.app.routers.crm_practices.get_practices_user_filter", return_value=None
+        ):
             result = await list_practices(
-                client_id=None, status=None, assigned_to=None,
-                practice_type=None, priority=None, month=None,
-                include_history=False, limit=50, offset=0,
-                db_pool=mock_db_pool, current_user="not-a-dict",
+                client_id=None,
+                status=None,
+                assigned_to=None,
+                practice_type=None,
+                priority=None,
+                month=None,
+                include_history=False,
+                limit=50,
+                offset=0,
+                db_pool=mock_db_pool,
+                current_user="not-a-dict",
             )
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_list_with_pool_param(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock) -> None:
+    async def test_list_with_pool_param(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock
+    ) -> None:
         """When pool parameter is provided, it overrides db_pool."""
         from backend.app.routers.crm_practices import list_practices
 
@@ -363,10 +423,17 @@ class TestListPractices:
         other_pool.acquire = MagicMock(return_value=acm)
 
         result = await list_practices(
-            client_id=None, status=None, assigned_to=None,
-            practice_type=None, priority=None, month=None,
-            include_history=False, limit=50, offset=0,
-            db_pool=mock_db_pool, current_user="not-a-dict",
+            client_id=None,
+            status=None,
+            assigned_to=None,
+            practice_type=None,
+            priority=None,
+            month=None,
+            include_history=False,
+            limit=50,
+            offset=0,
+            db_pool=mock_db_pool,
+            current_user="not-a-dict",
             pool=other_pool,
         )
         assert result == []
@@ -380,41 +447,60 @@ class TestListPractices:
 
 class TestGetActivePractices:
     @pytest.mark.asyncio
-    async def test_active_admin(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict) -> None:
+    async def test_active_admin(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
         from backend.app.routers.crm_practices import get_active_practices
 
         mock_db_conn.fetch = AsyncMock(return_value=[{"id": 1, "status": "on_process"}])
 
-        with patch("backend.app.routers.crm_practices.get_practices_user_filter", return_value=None):
+        with patch(
+            "backend.app.routers.crm_practices.get_practices_user_filter", return_value=None
+        ):
             result = await get_active_practices(
-                request=MagicMock(), assigned_to=None,
-                db_pool=mock_db_pool, current_user=admin_user,
+                request=MagicMock(),
+                assigned_to=None,
+                db_pool=mock_db_pool,
+                current_user=admin_user,
             )
         assert len(result) == 1
 
     @pytest.mark.asyncio
-    async def test_active_team_filtered(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict) -> None:
+    async def test_active_team_filtered(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict
+    ) -> None:
         from backend.app.routers.crm_practices import get_active_practices
 
         mock_db_conn.fetch = AsyncMock(return_value=[])
 
-        with patch("backend.app.routers.crm_practices.get_practices_user_filter", return_value="team@balizero.com"):
+        with patch(
+            "backend.app.routers.crm_practices.get_practices_user_filter",
+            return_value="team@balizero.com",
+        ):
             result = await get_active_practices(
-                request=MagicMock(), assigned_to=None,
-                db_pool=mock_db_pool, current_user=team_user,
+                request=MagicMock(),
+                assigned_to=None,
+                db_pool=mock_db_pool,
+                current_user=team_user,
             )
         assert result == []
 
     @pytest.mark.asyncio
-    async def test_active_with_explicit_assigned_to(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict) -> None:
+    async def test_active_with_explicit_assigned_to(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
         from backend.app.routers.crm_practices import get_active_practices
 
         mock_db_conn.fetch = AsyncMock(return_value=[])
 
-        with patch("backend.app.routers.crm_practices.get_practices_user_filter", return_value=None):
+        with patch(
+            "backend.app.routers.crm_practices.get_practices_user_filter", return_value=None
+        ):
             result = await get_active_practices(
-                request=MagicMock(), assigned_to="specific@balizero.com",
-                db_pool=mock_db_pool, current_user=admin_user,
+                request=MagicMock(),
+                assigned_to="specific@balizero.com",
+                db_pool=mock_db_pool,
+                current_user=admin_user,
             )
         assert result == []
 
@@ -426,28 +512,41 @@ class TestGetActivePractices:
 
 class TestUpcomingRenewals:
     @pytest.mark.asyncio
-    async def test_renewals_success(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict) -> None:
+    async def test_renewals_success(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
         from backend.app.routers.crm_practices import get_upcoming_renewals
 
         mock_db_conn.fetch = AsyncMock(return_value=[{"id": 1, "days_until_expiry": 30}])
 
-        with patch("backend.app.routers.crm_practices.get_practices_user_filter", return_value=None):
+        with patch(
+            "backend.app.routers.crm_practices.get_practices_user_filter", return_value=None
+        ):
             result = await get_upcoming_renewals(
-                request=MagicMock(), days=90,
-                db_pool=mock_db_pool, current_user=admin_user,
+                request=MagicMock(),
+                days=90,
+                db_pool=mock_db_pool,
+                current_user=admin_user,
             )
         assert len(result) == 1
 
     @pytest.mark.asyncio
-    async def test_renewals_team_user(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict) -> None:
+    async def test_renewals_team_user(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict
+    ) -> None:
         from backend.app.routers.crm_practices import get_upcoming_renewals
 
         mock_db_conn.fetch = AsyncMock(return_value=[])
 
-        with patch("backend.app.routers.crm_practices.get_practices_user_filter", return_value="team@balizero.com"):
+        with patch(
+            "backend.app.routers.crm_practices.get_practices_user_filter",
+            return_value="team@balizero.com",
+        ):
             result = await get_upcoming_renewals(
-                request=MagicMock(), days=30,
-                db_pool=mock_db_pool, current_user=team_user,
+                request=MagicMock(),
+                days=30,
+                db_pool=mock_db_pool,
+                current_user=team_user,
             )
         assert result == []
 
@@ -459,45 +558,78 @@ class TestUpcomingRenewals:
 
 class TestPracticeTypesCatalog:
     @pytest.mark.asyncio
-    async def test_catalog_success(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict) -> None:
+    async def test_catalog_success(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
         from backend.app.routers.crm_practices import get_practice_types_catalog
 
         rows = [
-            {"id": 1, "code": "kitas_sponsor", "name": "KITAS Sponsor", "description": "desc", "category": "kitas", "base_price": Decimal("15000000"), "typical_duration_days": 30},
-            {"id": 2, "code": "pt_pma", "name": "PT PMA", "description": "desc", "category": "company", "base_price": None, "typical_duration_days": 60},
+            {
+                "id": 1,
+                "code": "kitas_sponsor",
+                "name": "KITAS Sponsor",
+                "description": "desc",
+                "category": "kitas",
+                "base_price": Decimal("15000000"),
+                "typical_duration_days": 30,
+            },
+            {
+                "id": 2,
+                "code": "pt_pma",
+                "name": "PT PMA",
+                "description": "desc",
+                "category": "company",
+                "base_price": None,
+                "typical_duration_days": 60,
+            },
         ]
         mock_db_conn.fetch = AsyncMock(return_value=rows)
 
         result = await get_practice_types_catalog(
-            db_pool=mock_db_pool, current_user=admin_user,
+            db_pool=mock_db_pool,
+            current_user=admin_user,
         )
         assert "categories" in result
         assert "total_services" in result
         assert result["total_services"] == 2
 
     @pytest.mark.asyncio
-    async def test_catalog_empty(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict) -> None:
+    async def test_catalog_empty(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
         from backend.app.routers.crm_practices import get_practice_types_catalog
 
         mock_db_conn.fetch = AsyncMock(return_value=[])
 
         result = await get_practice_types_catalog(
-            db_pool=mock_db_pool, current_user=admin_user,
+            db_pool=mock_db_pool,
+            current_user=admin_user,
         )
         assert result["categories"] == []
         assert result["total_services"] == 0
 
     @pytest.mark.asyncio
-    async def test_catalog_other_category(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict) -> None:
+    async def test_catalog_other_category(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
         from backend.app.routers.crm_practices import get_practice_types_catalog
 
         rows = [
-            {"id": 1, "code": "misc", "name": "Misc", "description": "", "category": None, "base_price": None, "typical_duration_days": None},
+            {
+                "id": 1,
+                "code": "misc",
+                "name": "Misc",
+                "description": "",
+                "category": None,
+                "base_price": None,
+                "typical_duration_days": None,
+            },
         ]
         mock_db_conn.fetch = AsyncMock(return_value=rows)
 
         result = await get_practice_types_catalog(
-            db_pool=mock_db_pool, current_user=admin_user,
+            db_pool=mock_db_pool,
+            current_user=admin_user,
         )
         # category=None maps to "other"
         cat_codes = [c["code"] for c in result["categories"]]
@@ -511,36 +643,50 @@ class TestPracticeTypesCatalog:
 
 class TestGetPractice:
     @pytest.mark.asyncio
-    async def test_get_practice_admin(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict, practice_row: dict) -> None:
+    async def test_get_practice_admin(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict, practice_row: dict
+    ) -> None:
         from backend.app.routers.crm_practices import get_practice
 
         mock_db_conn.fetchrow = AsyncMock(return_value=practice_row)
 
-        with patch("backend.app.routers.crm_practices.get_practices_user_filter", return_value=None):
+        with patch(
+            "backend.app.routers.crm_practices.get_practices_user_filter", return_value=None
+        ):
             result = await get_practice(
-                request=MagicMock(), practice_id=1,
-                db_pool=mock_db_pool, current_user=admin_user,
+                request=MagicMock(),
+                practice_id=1,
+                db_pool=mock_db_pool,
+                current_user=admin_user,
             )
         assert result["id"] == 1
 
     @pytest.mark.asyncio
-    async def test_get_practice_not_found(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict) -> None:
+    async def test_get_practice_not_found(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
         from fastapi import HTTPException
 
         from backend.app.routers.crm_practices import get_practice
 
         mock_db_conn.fetchrow = AsyncMock(return_value=None)
 
-        with patch("backend.app.routers.crm_practices.get_practices_user_filter", return_value=None):
+        with patch(
+            "backend.app.routers.crm_practices.get_practices_user_filter", return_value=None
+        ):
             with pytest.raises(HTTPException) as exc_info:
                 await get_practice(
-                    request=MagicMock(), practice_id=999,
-                    db_pool=mock_db_pool, current_user=admin_user,
+                    request=MagicMock(),
+                    practice_id=999,
+                    db_pool=mock_db_pool,
+                    current_user=admin_user,
                 )
             assert exc_info.value.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_get_practice_rbac_filtered(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict) -> None:
+    async def test_get_practice_rbac_filtered(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict
+    ) -> None:
         from fastapi import HTTPException
 
         from backend.app.routers.crm_practices import get_practice
@@ -548,11 +694,16 @@ class TestGetPractice:
         # RBAC filter applied, fetchrow returns None (not visible)
         mock_db_conn.fetchrow = AsyncMock(return_value=None)
 
-        with patch("backend.app.routers.crm_practices.get_practices_user_filter", return_value="team@balizero.com"):
+        with patch(
+            "backend.app.routers.crm_practices.get_practices_user_filter",
+            return_value="team@balizero.com",
+        ):
             with pytest.raises(HTTPException) as exc_info:
                 await get_practice(
-                    request=MagicMock(), practice_id=1,
-                    db_pool=mock_db_pool, current_user=team_user,
+                    request=MagicMock(),
+                    practice_id=1,
+                    db_pool=mock_db_pool,
+                    current_user=team_user,
                 )
             assert exc_info.value.status_code == 404
 
@@ -564,11 +715,25 @@ class TestGetPractice:
 
 class TestUpdatePractice:
     @pytest.mark.asyncio
-    async def test_update_status_admin(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict) -> None:
+    async def test_update_status_admin(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
         from backend.app.routers.crm_practices import PracticeUpdate, update_practice
 
-        old_row = {"status": "inquiry", "client_id": 42, "client_visible": True, "created_by": "admin@balizero.com", "assigned_to": "team@balizero.com"}
-        updated_row = {"id": 1, "status": "waiting_documents", "client_visible": True, "practice_type_id": 10, "client_id": 42}
+        old_row = {
+            "status": "inquiry",
+            "client_id": 42,
+            "client_visible": True,
+            "created_by": "admin@balizero.com",
+            "assigned_to": "team@balizero.com",
+        }
+        updated_row = {
+            "id": 1,
+            "status": "waiting_documents",
+            "client_visible": True,
+            "practice_type_id": 10,
+            "client_id": 42,
+        }
         mock_db_conn.fetchrow = AsyncMock(side_effect=[old_row, updated_row])
         mock_db_conn.execute = AsyncMock(return_value=None)
 
@@ -581,18 +746,29 @@ class TestUpdatePractice:
             patch("backend.app.routers.crm_practices.to_jsonb", return_value="{}"),
         ):
             result = await update_practice(
-                request=MagicMock(), practice_id=1, updates=updates,
-                db_pool=mock_db_pool, current_user=admin_user,
+                request=MagicMock(),
+                practice_id=1,
+                updates=updates,
+                db_pool=mock_db_pool,
+                current_user=admin_user,
             )
         assert result["status"] == "waiting_documents"
 
     @pytest.mark.asyncio
-    async def test_update_no_fields(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict) -> None:
+    async def test_update_no_fields(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
         from fastapi import HTTPException
 
         from backend.app.routers.crm_practices import PracticeUpdate, update_practice
 
-        old_row = {"status": "inquiry", "client_id": 42, "client_visible": True, "created_by": "admin@balizero.com", "assigned_to": "team@balizero.com"}
+        old_row = {
+            "status": "inquiry",
+            "client_id": 42,
+            "client_visible": True,
+            "created_by": "admin@balizero.com",
+            "assigned_to": "team@balizero.com",
+        }
         mock_db_conn.fetchrow = AsyncMock(return_value=old_row)
 
         updates = PracticeUpdate()
@@ -602,18 +778,29 @@ class TestUpdatePractice:
         ):
             with pytest.raises(HTTPException) as exc_info:
                 await update_practice(
-                    request=MagicMock(), practice_id=1, updates=updates,
-                    db_pool=mock_db_pool, current_user=admin_user,
+                    request=MagicMock(),
+                    practice_id=1,
+                    updates=updates,
+                    db_pool=mock_db_pool,
+                    current_user=admin_user,
                 )
             assert exc_info.value.status_code == 400
 
     @pytest.mark.asyncio
-    async def test_update_non_admin_forbidden(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict) -> None:
+    async def test_update_non_admin_forbidden(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict
+    ) -> None:
         from fastapi import HTTPException
 
         from backend.app.routers.crm_practices import PracticeUpdate, update_practice
 
-        old_row = {"status": "inquiry", "client_id": 42, "client_visible": True, "created_by": "other@balizero.com", "assigned_to": "other@balizero.com"}
+        old_row = {
+            "status": "inquiry",
+            "client_id": 42,
+            "client_visible": True,
+            "created_by": "other@balizero.com",
+            "assigned_to": "other@balizero.com",
+        }
         mock_db_conn.fetchrow = AsyncMock(return_value=old_row)
 
         updates = PracticeUpdate(status="on_process")
@@ -623,38 +810,63 @@ class TestUpdatePractice:
         ):
             with pytest.raises(HTTPException) as exc_info:
                 await update_practice(
-                    request=MagicMock(), practice_id=1, updates=updates,
-                    db_pool=mock_db_pool, current_user=team_user,
+                    request=MagicMock(),
+                    practice_id=1,
+                    updates=updates,
+                    db_pool=mock_db_pool,
+                    current_user=team_user,
                 )
             assert exc_info.value.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_update_invalid_transition(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict) -> None:
+    async def test_update_invalid_transition(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
         from backend.app.routers.crm_practices import PracticeUpdate, update_practice
         from backend.services.crm.practice_state_machine import InvalidTransitionError
 
-        old_row = {"status": "inquiry", "client_id": 42, "client_visible": True, "created_by": "admin@balizero.com", "assigned_to": "team@balizero.com"}
+        old_row = {
+            "status": "inquiry",
+            "client_id": 42,
+            "client_visible": True,
+            "created_by": "admin@balizero.com",
+            "assigned_to": "team@balizero.com",
+        }
         mock_db_conn.fetchrow = AsyncMock(return_value=old_row)
 
         updates = PracticeUpdate(status="completed")
 
         with (
             patch("backend.app.routers.crm_practices.is_crm_admin", return_value=True),
-            patch("backend.app.routers.crm_practices.validate_transition", side_effect=InvalidTransitionError("inquiry", "completed", "bad")),
+            patch(
+                "backend.app.routers.crm_practices.validate_transition",
+                side_effect=InvalidTransitionError("inquiry", "completed", "bad"),
+            ),
         ):
             with pytest.raises(Exception):
                 await update_practice(
-                    request=MagicMock(), practice_id=1, updates=updates,
-                    db_pool=mock_db_pool, current_user=admin_user,
+                    request=MagicMock(),
+                    practice_id=1,
+                    updates=updates,
+                    db_pool=mock_db_pool,
+                    current_user=admin_user,
                 )
 
     @pytest.mark.asyncio
-    async def test_update_not_found(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict) -> None:
+    async def test_update_not_found(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
         from fastapi import HTTPException
 
         from backend.app.routers.crm_practices import PracticeUpdate, update_practice
 
-        old_row = {"status": "inquiry", "client_id": 42, "client_visible": True, "created_by": "admin@balizero.com", "assigned_to": "team@balizero.com"}
+        old_row = {
+            "status": "inquiry",
+            "client_id": 42,
+            "client_visible": True,
+            "created_by": "admin@balizero.com",
+            "assigned_to": "team@balizero.com",
+        }
         mock_db_conn.fetchrow = AsyncMock(side_effect=[old_row, None])
         mock_db_conn.execute = AsyncMock(return_value=None)
 
@@ -666,8 +878,11 @@ class TestUpdatePractice:
         ):
             with pytest.raises(HTTPException) as exc_info:
                 await update_practice(
-                    request=MagicMock(), practice_id=999, updates=updates,
-                    db_pool=mock_db_pool, current_user=admin_user,
+                    request=MagicMock(),
+                    practice_id=999,
+                    updates=updates,
+                    db_pool=mock_db_pool,
+                    current_user=admin_user,
                 )
             assert exc_info.value.status_code == 404
 
@@ -679,13 +894,17 @@ class TestUpdatePractice:
 
 class TestDeletePractice:
     @pytest.mark.asyncio
-    async def test_delete_admin(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict) -> None:
+    async def test_delete_admin(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
         from backend.app.routers.crm_practices import delete_practice
 
-        mock_db_conn.fetchrow = AsyncMock(side_effect=[
-            {"created_by": "someone", "assigned_to": "someone"},
-            {"id": 1},
-        ])
+        mock_db_conn.fetchrow = AsyncMock(
+            side_effect=[
+                {"created_by": "someone", "assigned_to": "someone"},
+                {"id": 1},
+            ]
+        )
         mock_db_conn.execute = AsyncMock(return_value=None)
 
         with (
@@ -693,13 +912,17 @@ class TestDeletePractice:
             patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()),
         ):
             result = await delete_practice(
-                request=MagicMock(), practice_id=1,
-                db_pool=mock_db_pool, current_user=admin_user,
+                request=MagicMock(),
+                practice_id=1,
+                db_pool=mock_db_pool,
+                current_user=admin_user,
             )
         assert result["success"] is True
 
     @pytest.mark.asyncio
-    async def test_delete_not_found(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict) -> None:
+    async def test_delete_not_found(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
         from fastapi import HTTPException
 
         from backend.app.routers.crm_practices import delete_practice
@@ -708,35 +931,47 @@ class TestDeletePractice:
 
         with pytest.raises(HTTPException) as exc_info:
             await delete_practice(
-                request=MagicMock(), practice_id=999,
-                db_pool=mock_db_pool, current_user=admin_user,
+                request=MagicMock(),
+                practice_id=999,
+                db_pool=mock_db_pool,
+                current_user=admin_user,
             )
         assert exc_info.value.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_delete_non_admin_forbidden(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict) -> None:
+    async def test_delete_non_admin_forbidden(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict
+    ) -> None:
         from fastapi import HTTPException
 
         from backend.app.routers.crm_practices import delete_practice
 
-        mock_db_conn.fetchrow = AsyncMock(return_value={"created_by": "other@balizero.com", "assigned_to": "other@balizero.com"})
+        mock_db_conn.fetchrow = AsyncMock(
+            return_value={"created_by": "other@balizero.com", "assigned_to": "other@balizero.com"}
+        )
 
         with patch("backend.app.routers.crm_practices.is_crm_admin", return_value=False):
             with pytest.raises(HTTPException) as exc_info:
                 await delete_practice(
-                    request=MagicMock(), practice_id=1,
-                    db_pool=mock_db_pool, current_user=team_user,
+                    request=MagicMock(),
+                    practice_id=1,
+                    db_pool=mock_db_pool,
+                    current_user=team_user,
                 )
             assert exc_info.value.status_code == 403
 
     @pytest.mark.asyncio
-    async def test_delete_non_admin_owner_allowed(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict) -> None:
+    async def test_delete_non_admin_owner_allowed(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, team_user: dict
+    ) -> None:
         from backend.app.routers.crm_practices import delete_practice
 
-        mock_db_conn.fetchrow = AsyncMock(side_effect=[
-            {"created_by": "team@balizero.com", "assigned_to": None},
-            {"id": 1},
-        ])
+        mock_db_conn.fetchrow = AsyncMock(
+            side_effect=[
+                {"created_by": "team@balizero.com", "assigned_to": None},
+                {"id": 1},
+            ]
+        )
         mock_db_conn.execute = AsyncMock(return_value=None)
 
         with (
@@ -744,8 +979,10 @@ class TestDeletePractice:
             patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()),
         ):
             result = await delete_practice(
-                request=MagicMock(), practice_id=1,
-                db_pool=mock_db_pool, current_user=team_user,
+                request=MagicMock(),
+                practice_id=1,
+                db_pool=mock_db_pool,
+                current_user=team_user,
             )
         assert result["success"] is True
 
@@ -757,7 +994,9 @@ class TestDeletePractice:
 
 class TestAddDocument:
     @pytest.mark.asyncio
-    async def test_add_document_success(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict) -> None:
+    async def test_add_document_success(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
         from backend.app.routers.crm_practices import add_document_to_practice
 
         mock_db_conn.fetchrow = AsyncMock(return_value={"documents": []})
@@ -765,16 +1004,21 @@ class TestAddDocument:
 
         with patch("backend.app.routers.crm_practices.invalidate_cache", new=AsyncMock()):
             result = await add_document_to_practice(
-                request=MagicMock(), practice_id=1,
-                document_name="Passport Copy", drive_file_id="drive123",
+                request=MagicMock(),
+                practice_id=1,
+                document_name="Passport Copy",
+                drive_file_id="drive123",
                 uploaded_by="team@balizero.com",
-                db_pool=mock_db_pool, current_user=admin_user,
+                db_pool=mock_db_pool,
+                current_user=admin_user,
             )
         assert result["success"] is True
         assert result["document"]["name"] == "Passport Copy"
 
     @pytest.mark.asyncio
-    async def test_add_document_not_found(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict) -> None:
+    async def test_add_document_not_found(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
+    ) -> None:
         from fastapi import HTTPException
 
         from backend.app.routers.crm_practices import add_document_to_practice
@@ -783,10 +1027,13 @@ class TestAddDocument:
 
         with pytest.raises(HTTPException) as exc_info:
             await add_document_to_practice(
-                request=MagicMock(), practice_id=999,
-                document_name="Test", drive_file_id="x",
+                request=MagicMock(),
+                practice_id=999,
+                document_name="Test",
+                drive_file_id="x",
                 uploaded_by="t@b.com",
-                db_pool=mock_db_pool, current_user=admin_user,
+                db_pool=mock_db_pool,
+                current_user=admin_user,
             )
         assert exc_info.value.status_code == 404
 
@@ -805,7 +1052,9 @@ class TestHRBonus:
         await _create_hr_bonus_on_completed(mock_db_pool, 1, {})
 
     @pytest.mark.asyncio
-    async def test_hr_bonus_table_not_exists(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock) -> None:
+    async def test_hr_bonus_table_not_exists(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock
+    ) -> None:
         from backend.app.routers.crm_practices import _create_hr_bonus_on_completed
 
         mock_db_conn.fetchval = AsyncMock(return_value=False)
@@ -813,7 +1062,9 @@ class TestHRBonus:
         await _create_hr_bonus_on_completed(mock_db_pool, 1, {"assigned_to": "team@balizero.com"})
 
     @pytest.mark.asyncio
-    async def test_hr_bonus_no_practice_type(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock) -> None:
+    async def test_hr_bonus_no_practice_type(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock
+    ) -> None:
         from backend.app.routers.crm_practices import _create_hr_bonus_on_completed
 
         mock_db_conn.fetchval = AsyncMock(return_value=True)
@@ -826,36 +1077,46 @@ class TestHRBonus:
         from backend.app.routers.crm_practices import _create_hr_bonus_on_completed
 
         mock_db_conn.fetchval = AsyncMock(return_value=True)
-        mock_db_conn.fetchrow = AsyncMock(side_effect=[
-            {"code": "kitas_sponsor"},  # practice type
-            None,  # no rate
-        ])
+        mock_db_conn.fetchrow = AsyncMock(
+            side_effect=[
+                {"code": "kitas_sponsor"},  # practice type
+                None,  # no rate
+            ]
+        )
 
         await _create_hr_bonus_on_completed(mock_db_pool, 1, {"assigned_to": "team@balizero.com"})
 
     @pytest.mark.asyncio
-    async def test_hr_bonus_no_employee(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock) -> None:
+    async def test_hr_bonus_no_employee(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock
+    ) -> None:
         from backend.app.routers.crm_practices import _create_hr_bonus_on_completed
 
         mock_db_conn.fetchval = AsyncMock(return_value=True)
-        mock_db_conn.fetchrow = AsyncMock(side_effect=[
-            {"code": "kitas_sponsor"},  # practice type
-            {"id": 1, "amount_idr": 500000},  # rate
-            None,  # no employee
-        ])
+        mock_db_conn.fetchrow = AsyncMock(
+            side_effect=[
+                {"code": "kitas_sponsor"},  # practice type
+                {"id": 1, "amount_idr": 500000},  # rate
+                None,  # no employee
+            ]
+        )
 
         await _create_hr_bonus_on_completed(mock_db_pool, 1, {"assigned_to": "team@balizero.com"})
 
     @pytest.mark.asyncio
-    async def test_hr_bonus_existing_entry(self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock) -> None:
+    async def test_hr_bonus_existing_entry(
+        self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock
+    ) -> None:
         from backend.app.routers.crm_practices import _create_hr_bonus_on_completed
 
         mock_db_conn.fetchval = AsyncMock(side_effect=[True, 99])  # table exists, existing entry
-        mock_db_conn.fetchrow = AsyncMock(side_effect=[
-            {"code": "kitas_sponsor"},  # practice type
-            {"id": 1, "amount_idr": 500000},  # rate
-            {"id": 7},  # employee
-        ])
+        mock_db_conn.fetchrow = AsyncMock(
+            side_effect=[
+                {"code": "kitas_sponsor"},  # practice type
+                {"id": 1, "amount_idr": 500000},  # rate
+                {"id": 7},  # employee
+            ]
+        )
 
         await _create_hr_bonus_on_completed(mock_db_pool, 1, {"assigned_to": "team@balizero.com"})
 
@@ -864,15 +1125,19 @@ class TestHRBonus:
         from backend.app.routers.crm_practices import _create_hr_bonus_on_completed
 
         mock_db_conn.fetchval = AsyncMock(side_effect=[True, None])  # table exists, no existing
-        mock_db_conn.fetchrow = AsyncMock(side_effect=[
-            {"code": "kitas_sponsor"},
-            {"id": 1, "amount_idr": 500000},
-            {"id": 7},
-        ])
+        mock_db_conn.fetchrow = AsyncMock(
+            side_effect=[
+                {"code": "kitas_sponsor"},
+                {"id": 1, "amount_idr": 500000},
+                {"id": 7},
+            ]
+        )
         mock_db_conn.execute = AsyncMock(return_value=None)
 
         with patch("backend.app.routers.crm_practices._notify_hr_bonus_pending", new=AsyncMock()):
-            await _create_hr_bonus_on_completed(mock_db_pool, 1, {"assigned_to": "team@balizero.com"})
+            await _create_hr_bonus_on_completed(
+                mock_db_pool, 1, {"assigned_to": "team@balizero.com"}
+            )
         mock_db_conn.execute.assert_called_once()
 
 
@@ -894,15 +1159,22 @@ class TestNotifyHRBonus:
         # audit); we pass a MagicMock — send_internal_email is patched so the
         # pool is never actually touched.
         mock_pool = MagicMock()
-        with patch(
-            "backend.app.routers.crm_practices.send_internal_email",
-            new=AsyncMock(),
-        ) as mock_send, patch(
-            "backend.app.routers.crm_practices.settings.hr_notification_email",
-            "asya@balizero.com",
+        with (
+            patch(
+                "backend.app.routers.crm_practices.send_internal_email",
+                new=AsyncMock(),
+            ) as mock_send,
+            patch(
+                "backend.app.routers.crm_practices.settings.hr_notification_email",
+                "asya@balizero.com",
+            ),
         ):
             await _notify_hr_bonus_pending(
-                mock_pool, "team@balizero.com", "kitas_sponsor", 500000, 42,
+                mock_pool,
+                "team@balizero.com",
+                "kitas_sponsor",
+                500000,
+                42,
             )
         mock_send.assert_called_once()
         call_kwargs = mock_send.call_args
@@ -928,16 +1200,18 @@ class TestUploadClientDocument:
     ) -> None:
         from backend.app.routers import crm_practices
 
-        mock_db_conn.fetchrow = AsyncMock(side_effect=[
-            {
-                "id": 11,
-                "practice_id": 7,
-                "client_id": 42,
-                "client_name": "Client One",
-                "document_type": "passport",
-            },
-            {"id": 42},
-        ])
+        mock_db_conn.fetchrow = AsyncMock(
+            side_effect=[
+                {
+                    "id": 11,
+                    "practice_id": 7,
+                    "client_id": 42,
+                    "client_name": "Client One",
+                    "document_type": "passport",
+                },
+                {"id": 42},
+            ]
+        )
         mock_db_conn.execute = AsyncMock(return_value="UPDATE 1")
 
         canonical_upload = AsyncMock(return_value={"success": True, "document_id": 501})

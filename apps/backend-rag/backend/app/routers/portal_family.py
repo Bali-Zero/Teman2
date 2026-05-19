@@ -26,11 +26,7 @@ def _is_adult(dob: date | None) -> bool:
     if not dob:
         return True  # default to adult when unknown; safer re: editability
     today = date.today()
-    age = (
-        today.year
-        - dob.year
-        - ((today.month, today.day) < (dob.month, dob.day))
-    )
+    age = today.year - dob.year - ((today.month, today.day) < (dob.month, dob.day))
     return age >= 18
 
 
@@ -44,9 +40,7 @@ def _shape_member(row: asyncpg.Record) -> dict[str, Any]:
         "is_adult": _is_adult(dob),
         "nationality": row["nationality"],
         "passport_number": row["passport_number"],
-        "passport_expiry": row["passport_expiry"].isoformat()
-        if row["passport_expiry"]
-        else None,
+        "passport_expiry": row["passport_expiry"].isoformat() if row["passport_expiry"] else None,
         "visa_type": row["current_visa_type"],
         "visa_expiry": row["visa_expiry"].isoformat() if row["visa_expiry"] else None,
         "email": row["email"],

@@ -44,15 +44,17 @@ def test_v2_whitelist_includes_v1_plus_codex_overnight_queue() -> None:
     codex_visual_dispatch) are HITL_ONLY (broad blast radius or
     public-facing artifacts).
     """
-    assert ALLOWED_L2_ACTIONS == frozenset({
-        # V1 maintenance ops
-        "cleanup_log",
-        "ack_outbox_event",
-        "quarantine_alert",
-        "prune_consumed_outbox",
-        # V2 Codex 5.5 — non-destructive enqueue only
-        "codex_overnight_queue",
-    })
+    assert ALLOWED_L2_ACTIONS == frozenset(
+        {
+            # V1 maintenance ops
+            "cleanup_log",
+            "ack_outbox_event",
+            "quarantine_alert",
+            "prune_consumed_outbox",
+            # V2 Codex 5.5 — non-destructive enqueue only
+            "codex_overnight_queue",
+        }
+    )
 
 
 def test_v2_hitl_only_includes_codex_deep_actions() -> None:
@@ -105,8 +107,12 @@ def test_classify_unknown_action_blocked() -> None:
 
 def test_list_actions_contains_all_v1() -> None:
     registered = set(list_actions())
-    assert {"cleanup_log", "ack_outbox_event", "quarantine_alert",
-            "prune_consumed_outbox"}.issubset(registered)
+    assert {
+        "cleanup_log",
+        "ack_outbox_event",
+        "quarantine_alert",
+        "prune_consumed_outbox",
+    }.issubset(registered)
 
 
 def test_get_action_returns_callable() -> None:
@@ -146,8 +152,7 @@ async def test_cleanup_log_dry_run_lists_files(tmp_path, monkeypatch) -> None:
     new.write_text("fresh")
     # Backdate old by 30 days
     old_mtime = (
-        cleanup_module.datetime.now(cleanup_module.timezone.utc)
-        - cleanup_module.timedelta(days=30)
+        cleanup_module.datetime.now(cleanup_module.timezone.utc) - cleanup_module.timedelta(days=30)
     ).timestamp()
     os.utime(old, (old_mtime, old_mtime))
     monkeypatch.setenv("HOME", str(tmp_path))
@@ -179,9 +184,7 @@ async def test_cleanup_log_respects_max_age_clamp() -> None:
 @pytest.mark.asyncio
 async def test_ack_outbox_event_missing_id() -> None:
     proposal = SimpleNamespace(action_payload={})
-    result = await ack_module.ack_outbox_event_action(
-        proposal, dry_run=True, db_pool=MagicMock()
-    )
+    result = await ack_module.ack_outbox_event_action(proposal, dry_run=True, db_pool=MagicMock())
     assert result.success is False
     assert "outbox_id" in result.message
 
@@ -197,9 +200,7 @@ async def test_ack_outbox_event_missing_pool() -> None:
 @pytest.mark.asyncio
 async def test_ack_outbox_event_invalid_type() -> None:
     proposal = SimpleNamespace(action_payload={"outbox_id": "not-int"})
-    result = await ack_module.ack_outbox_event_action(
-        proposal, dry_run=True, db_pool=MagicMock()
-    )
+    result = await ack_module.ack_outbox_event_action(proposal, dry_run=True, db_pool=MagicMock())
     assert result.success is False
     assert "must be int" in result.message
 
@@ -209,9 +210,7 @@ async def test_ack_outbox_event_idempotent_already_consumed(mock_db_pool) -> Non
     pool, conn = mock_db_pool
     conn.fetchrow = AsyncMock(return_value=None)  # UPDATE matched 0 rows
     proposal = SimpleNamespace(action_payload={"outbox_id": 42})
-    result = await ack_module.ack_outbox_event_action(
-        proposal, dry_run=False, db_pool=pool
-    )
+    result = await ack_module.ack_outbox_event_action(proposal, dry_run=False, db_pool=pool)
     assert result.success is True
     assert "already consumed" in result.message
 
@@ -219,13 +218,9 @@ async def test_ack_outbox_event_idempotent_already_consumed(mock_db_pool) -> Non
 @pytest.mark.asyncio
 async def test_ack_outbox_event_succeeds(mock_db_pool) -> None:
     pool, conn = mock_db_pool
-    conn.fetchrow = AsyncMock(
-        return_value={"id": 42, "channel": "federation_alert"}
-    )
+    conn.fetchrow = AsyncMock(return_value={"id": 42, "channel": "federation_alert"})
     proposal = SimpleNamespace(action_payload={"outbox_id": 42, "reason": "test"})
-    result = await ack_module.ack_outbox_event_action(
-        proposal, dry_run=False, db_pool=pool
-    )
+    result = await ack_module.ack_outbox_event_action(proposal, dry_run=False, db_pool=pool)
     assert result.success is True
     assert "acked outbox_id 42" in result.message
     assert any("42" in s for s in result.side_effects)
@@ -266,9 +261,7 @@ async def test_quarantine_alert_dry_run_existing(mock_db_pool) -> None:
             "reason_code": "duplicate_fingerprint",
         }
     )
-    result = await quarantine_module.quarantine_alert_action(
-        proposal, dry_run=True, db_pool=pool
-    )
+    result = await quarantine_module.quarantine_alert_action(proposal, dry_run=True, db_pool=pool)
     assert result.success is True
     assert "DRY-RUN" in result.message
     assert "pid-x" in result.message
@@ -290,9 +283,7 @@ async def test_quarantine_alert_already_quarantined(mock_db_pool) -> None:
             "reason_code": "duplicate_fingerprint",
         }
     )
-    result = await quarantine_module.quarantine_alert_action(
-        proposal, dry_run=True, db_pool=pool
-    )
+    result = await quarantine_module.quarantine_alert_action(proposal, dry_run=True, db_pool=pool)
     assert result.success is True
     assert "already quarantined" in result.message
 
@@ -301,12 +292,8 @@ async def test_quarantine_alert_already_quarantined(mock_db_pool) -> None:
 async def test_quarantine_alert_terminal_blocked(mock_db_pool) -> None:
     pool, conn = mock_db_pool
     conn.fetchrow = AsyncMock(return_value={"status": "completed"})
-    proposal = SimpleNamespace(
-        action_payload={"target_proposal_id": "pid-x", "reason_code": "x"}
-    )
-    result = await quarantine_module.quarantine_alert_action(
-        proposal, dry_run=False, db_pool=pool
-    )
+    proposal = SimpleNamespace(action_payload={"target_proposal_id": "pid-x", "reason_code": "x"})
+    result = await quarantine_module.quarantine_alert_action(proposal, dry_run=False, db_pool=pool)
     assert result.success is False
     assert "terminal" in result.message
 
@@ -330,9 +317,7 @@ async def test_quarantine_alert_token_deterministic() -> None:
 @pytest.mark.asyncio
 async def test_prune_consumed_outbox_no_pool() -> None:
     proposal = SimpleNamespace(action_payload={})
-    result = await prune_module.prune_consumed_outbox_action(
-        proposal, dry_run=True, db_pool=None
-    )
+    result = await prune_module.prune_consumed_outbox_action(proposal, dry_run=True, db_pool=None)
     assert result.success is False
 
 
@@ -341,9 +326,7 @@ async def test_prune_consumed_outbox_dry_run(mock_db_pool) -> None:
     pool, conn = mock_db_pool
     conn.fetchval = AsyncMock(return_value=42)
     proposal = SimpleNamespace(action_payload={})
-    result = await prune_module.prune_consumed_outbox_action(
-        proposal, dry_run=True, db_pool=pool
-    )
+    result = await prune_module.prune_consumed_outbox_action(proposal, dry_run=True, db_pool=pool)
     assert result.success is True
     assert "would prune 42" in result.message
 

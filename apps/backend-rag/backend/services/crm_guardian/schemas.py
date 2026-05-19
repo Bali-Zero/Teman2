@@ -28,6 +28,7 @@ backward-compatible requires a new migration to add the new version to
 crm_guardian_summary_queue.schema_version default and a new prompt file
 under prompts/.
 """
+
 from __future__ import annotations
 
 from datetime import date
@@ -40,6 +41,7 @@ SCHEMA_VERSION = "v3.0"
 
 class Identity(BaseModel):
     """Core identity — passport is the authoritative PK across systems."""
+
     model_config = ConfigDict(extra="forbid")
 
     full_name: str | None = None
@@ -53,6 +55,7 @@ class Identity(BaseModel):
 
 class VisaStatus(BaseModel):
     """Current Indonesian immigration status."""
+
     model_config = ConfigDict(extra="forbid")
 
     visa_type: str | None = Field(default=None, description="E28A, C1, D12, KITAS, KITAP, …")
@@ -69,17 +72,29 @@ class TaxRecord(BaseModel):
     Phase 1 cross-folder: SPT extracted from cartelle company linkate via
     client_company_links + cartelle 03_Tax sotto la cliente root.
     """
+
     model_config = ConfigDict(extra="forbid")
 
     period: str = Field(description="Filing period: '2024', 'Q1-2025', 'Masa-01-2025', etc.")
-    spt_type: Literal[
-        "SPT_Tahunan", "SPT_Masa_PPN", "SPT_Masa_PPh21",
-        "SPT_Masa_PPh23", "SPT_Masa_PPh25", "Other",
-    ] | None = None
+    spt_type: (
+        Literal[
+            "SPT_Tahunan",
+            "SPT_Masa_PPN",
+            "SPT_Masa_PPh21",
+            "SPT_Masa_PPh23",
+            "SPT_Masa_PPh25",
+            "Other",
+        ]
+        | None
+    ) = None
     filed_at: date | None = None
-    amount_idr: int | None = Field(default=None, description="Pajak terutang or bukti potong amount.")
+    amount_idr: int | None = Field(
+        default=None, description="Pajak terutang or bukti potong amount."
+    )
     status: Literal["filed", "pending", "overdue", "audited", "rejected", "unknown"] = "unknown"
-    source_file_id: str | None = Field(default=None, description="Drive file ID of source SPT document.")
+    source_file_id: str | None = Field(
+        default=None, description="Drive file ID of source SPT document."
+    )
     notes: str | None = None
 
 
@@ -89,6 +104,7 @@ class LkpmRecord(BaseModel):
     Required by BKPM for PT PMA every quarter. Extracted from cartelle
     company linkate (per Phase 1 cross-folder enqueue).
     """
+
     model_config = ConfigDict(extra="forbid")
 
     period: str = Field(description="Quarter: 'Q1-2025', 'Q4-2024', etc.")
@@ -106,6 +122,7 @@ class Company(BaseModel):
     v2.0: includes tax_records + lkpm_history cross-folder, plus
     source_company_folders tracking which Drive folder IDs contributed.
     """
+
     model_config = ConfigDict(extra="forbid")
 
     legal_name: str | None = None
@@ -183,6 +200,7 @@ class Shareholder(BaseModel):
 
 class PropertyAsset(BaseModel):
     """Real estate / villa / lease — Bali-specific."""
+
     model_config = ConfigDict(extra="forbid")
 
     label: str | None = None
@@ -194,11 +212,14 @@ class PropertyAsset(BaseModel):
 
 class DocumentRef(BaseModel):
     """Reference to a source file inside the client's canonical folder."""
+
     model_config = ConfigDict(extra="forbid")
 
     file_id: str
     file_name: str
-    doc_type: str = Field(description="akta, nib, npwp, passport, visa, evisa, bukti_mutasi, statement, sk, other")
+    doc_type: str = Field(
+        description="akta, nib, npwp, passport, visa, evisa, bukti_mutasi, statement, sk, other"
+    )
     issued_at: date | None = None
     expires_at: date | None = None
     subject_entity: str | None = None
@@ -207,6 +228,7 @@ class DocumentRef(BaseModel):
 
 class Timeline(BaseModel):
     """Chronological milestones extracted from documents."""
+
     model_config = ConfigDict(extra="forbid")
 
     event_date: date
@@ -217,6 +239,7 @@ class Timeline(BaseModel):
 
 class Compliance(BaseModel):
     """Compliance signals (LKPM, SPT, BPJS, expiries)."""
+
     model_config = ConfigDict(extra="forbid")
 
     lkpm_last_reported: date | None = None
@@ -230,6 +253,7 @@ class Compliance(BaseModel):
 
 class Profile(BaseModel):
     """Top-level tiering and archetype (used for routing + AI Profile Card)."""
+
     model_config = ConfigDict(extra="forbid")
 
     archetype: Literal[
@@ -264,6 +288,7 @@ class L1ClientSummary(BaseModel):
     SHAPE is enforced: downstream code can `.profile.archetype` without
     defensive `.get()` chains.
     """
+
     model_config = ConfigDict(extra="forbid")
 
     schema_version: str = SCHEMA_VERSION
@@ -296,7 +321,9 @@ class L1ClientSummary(BaseModel):
 
     # Extraction quality self-report from Gemini
     extraction_confidence: float | None = Field(
-        default=None, ge=0.0, le=1.0,
+        default=None,
+        ge=0.0,
+        le=1.0,
         description="Gemini self-reported confidence (0-1). Below 0.6 flags manual review.",
     )
     extraction_notes: list[str] = Field(

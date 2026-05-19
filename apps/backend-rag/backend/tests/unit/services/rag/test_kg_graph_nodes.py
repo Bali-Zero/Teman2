@@ -205,13 +205,17 @@ class TestFormatChainsForLlm:
         assert "No graph chains found" in result
 
     def test_single_chain(self) -> None:
-        chains = [[{
-            "source_name": "KBLI 56101",
-            "source_type": "kbli",
-            "relationship_type": "REQUIRES",
-            "target_name": "PT PMA",
-            "target_type": "company",
-        }]]
+        chains = [
+            [
+                {
+                    "source_name": "KBLI 56101",
+                    "source_type": "kbli",
+                    "relationship_type": "REQUIRES",
+                    "target_name": "PT PMA",
+                    "target_type": "company",
+                }
+            ]
+        ]
         result = format_chains_for_llm(chains)
         assert "Chain 1:" in result
         assert "KBLI 56101" in result
@@ -219,13 +223,18 @@ class TestFormatChainsForLlm:
         assert "PT PMA" in result
 
     def test_multiple_chains_truncated_at_10(self) -> None:
-        chains = [[{
-            "source_name": f"Entity{i}",
-            "source_type": "type",
-            "relationship_type": "REQUIRES",
-            "target_name": f"Target{i}",
-            "target_type": "type",
-        }] for i in range(15)]
+        chains = [
+            [
+                {
+                    "source_name": f"Entity{i}",
+                    "source_type": "type",
+                    "relationship_type": "REQUIRES",
+                    "target_name": f"Target{i}",
+                    "target_type": "type",
+                }
+            ]
+            for i in range(15)
+        ]
         result = format_chains_for_llm(chains)
         assert "Chain 10:" in result
         assert "Chain 11:" not in result
@@ -242,27 +251,33 @@ class TestExtractEvidenceFromChains:
 
     def test_extracts_unique_entities(self) -> None:
         chains = [
-            [{
-                "target_entity_id": "e1",
-                "target_name": "PT PMA",
-                "target_type": "company",
-                "relationship_type": "REQUIRES",
-                "source_name": "KBLI",
-            }],
-            [{
-                "target_entity_id": "e1",  # duplicate
-                "target_name": "PT PMA",
-                "target_type": "company",
-                "relationship_type": "ENABLES",
-                "source_name": "NIB",
-            }],
-            [{
-                "target_entity_id": "e2",
-                "target_name": "KITAS",
-                "target_type": "visa",
-                "relationship_type": "REQUIRES",
-                "source_name": "PT PMA",
-            }],
+            [
+                {
+                    "target_entity_id": "e1",
+                    "target_name": "PT PMA",
+                    "target_type": "company",
+                    "relationship_type": "REQUIRES",
+                    "source_name": "KBLI",
+                }
+            ],
+            [
+                {
+                    "target_entity_id": "e1",  # duplicate
+                    "target_name": "PT PMA",
+                    "target_type": "company",
+                    "relationship_type": "ENABLES",
+                    "source_name": "NIB",
+                }
+            ],
+            [
+                {
+                    "target_entity_id": "e2",
+                    "target_name": "KITAS",
+                    "target_type": "visa",
+                    "relationship_type": "REQUIRES",
+                    "source_name": "PT PMA",
+                }
+            ],
         ]
         evidence = extract_evidence_from_chains(chains)
         assert len(evidence) == 2  # e1 deduplicated
@@ -319,8 +334,9 @@ class TestUnderstandQueryNode:
     """Tests for the query understanding LangGraph node."""
 
     @staticmethod
-    def _structured_llm(parsed_obj: Any | None = None,
-                        *, side_effect: Any | None = None) -> AsyncMock:
+    def _structured_llm(
+        parsed_obj: Any | None = None, *, side_effect: Any | None = None
+    ) -> AsyncMock:
         """Build an LLM mock compatible with PR #382 structured-output API.
 
         `understand_query_node` calls `llm.with_structured_output(QueryIntentSchema)`
@@ -346,9 +362,14 @@ class TestUnderstandQueryNode:
         )
 
         state = _make_state(query="What is KITAS?")
-        llm = self._structured_llm(QueryIntentSchema(
-            intent="visa", domain="visa", entities=["KITAS"], citizenship="foreign",
-        ))
+        llm = self._structured_llm(
+            QueryIntentSchema(
+                intent="visa",
+                domain="visa",
+                entities=["KITAS"],
+                citizenship="foreign",
+            )
+        )
 
         result = await understand_query_node(state, llm)
         assert result["intent"] == "visa"
@@ -379,6 +400,7 @@ class TestUnderstandQueryNode:
         state = _make_state(query="npwp registration")
         try:
             from backend.services.rag.kg_graph_nodes import QueryIntentSchema
+
             QueryIntentSchema(intent="x")  # missing required fields
         except ValidationError as ve:
             llm = self._structured_llm(side_effect=ve)
@@ -396,9 +418,13 @@ class TestUnderstandQueryNode:
         )
 
         state = _make_state(query="how to start business in bali")
-        llm = self._structured_llm(QueryIntentSchema(
-            intent="company_setup", domain="company", entities=["PT PMA"],
-        ))
+        llm = self._structured_llm(
+            QueryIntentSchema(
+                intent="company_setup",
+                domain="company",
+                entities=["PT PMA"],
+            )
+        )
 
         result = await understand_query_node(state, llm)
         assert result["intent"] == "company_setup"
@@ -462,14 +488,21 @@ class TestResolveEntitiesNode:
         mock_conn = AsyncMock()
 
         # Simulate record behavior
-        mock_row = {"entity_id": "kbli:56101", "name": "56101", "confidence": 0.9, "entity_type": "kbli"}
+        mock_row = {
+            "entity_id": "kbli:56101",
+            "name": "56101",
+            "confidence": 0.9,
+            "entity_type": "kbli",
+        }
         mock_conn.fetch = AsyncMock(return_value=[mock_row])
 
         db_pool = AsyncMock()
-        db_pool.acquire = MagicMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=mock_conn),
-            __aexit__=AsyncMock(return_value=False),
-        ))
+        db_pool.acquire = MagicMock(
+            return_value=AsyncMock(
+                __aenter__=AsyncMock(return_value=mock_conn),
+                __aexit__=AsyncMock(return_value=False),
+            )
+        )
 
         with patch("backend.services.rag.kg_cache.get_kg_cache") as mock_cache_fn:
             mock_cache = AsyncMock()
@@ -499,11 +532,15 @@ class TestTraverseGraphNode:
     async def test_cache_hit(self) -> None:
         from backend.services.rag.kg_graph_nodes import traverse_graph_node
 
-        cached_chains = [[{
-            "source_entity_id": "a",
-            "target_entity_id": "b",
-            "relationship_type": "REQUIRES",
-        }]]
+        cached_chains = [
+            [
+                {
+                    "source_entity_id": "a",
+                    "target_entity_id": "b",
+                    "relationship_type": "REQUIRES",
+                }
+            ]
+        ]
         state = _make_state(current_entities=["a"])
 
         with patch("backend.services.rag.kg_cache.get_kg_cache") as mock_cache_fn:
@@ -540,10 +577,12 @@ class TestTraverseGraphNode:
         mock_conn.fetch = AsyncMock(side_effect=[[mock_edge], []])
 
         db_pool = AsyncMock()
-        db_pool.acquire = MagicMock(return_value=AsyncMock(
-            __aenter__=AsyncMock(return_value=mock_conn),
-            __aexit__=AsyncMock(return_value=False),
-        ))
+        db_pool.acquire = MagicMock(
+            return_value=AsyncMock(
+                __aenter__=AsyncMock(return_value=mock_conn),
+                __aexit__=AsyncMock(return_value=False),
+            )
+        )
 
         with patch("backend.services.rag.kg_cache.get_kg_cache") as mock_cache_fn:
             mock_cache = AsyncMock()
@@ -579,15 +618,19 @@ class TestReasonOverGraphNode:
     async def test_with_chains(self) -> None:
         from backend.services.rag.kg_graph_nodes import reason_over_graph_node
 
-        chains = [[{
-            "source_entity_id": "a",
-            "source_name": "KBLI 56101",
-            "source_type": "kbli",
-            "relationship_type": "REQUIRES",
-            "target_entity_id": "b",
-            "target_name": "PT PMA",
-            "target_type": "company",
-        }]]
+        chains = [
+            [
+                {
+                    "source_entity_id": "a",
+                    "source_name": "KBLI 56101",
+                    "source_type": "kbli",
+                    "relationship_type": "REQUIRES",
+                    "target_entity_id": "b",
+                    "target_name": "PT PMA",
+                    "target_type": "company",
+                }
+            ]
+        ]
         state = _make_state(
             query="What do I need for a restaurant?",
             relationship_chains=chains,
@@ -625,22 +668,26 @@ class TestSynthesizeWorkflowNode:
         from backend.services.rag.kg_graph_nodes import synthesize_workflow_node
 
         chains = [
-            [{
-                "source_entity_id": "a",
-                "target_entity_id": "b",
-                "target_name": "PT PMA",
-                "target_type": "company",
-                "relationship_type": "REQUIRES",
-                "depth": 1,
-            }],
-            [{
-                "source_entity_id": "b",
-                "target_entity_id": "c",
-                "target_name": "NIB",
-                "target_type": "document",
-                "relationship_type": "ENABLES",
-                "depth": 2,
-            }],
+            [
+                {
+                    "source_entity_id": "a",
+                    "target_entity_id": "b",
+                    "target_name": "PT PMA",
+                    "target_type": "company",
+                    "relationship_type": "REQUIRES",
+                    "depth": 1,
+                }
+            ],
+            [
+                {
+                    "source_entity_id": "b",
+                    "target_entity_id": "c",
+                    "target_name": "NIB",
+                    "target_type": "document",
+                    "relationship_type": "ENABLES",
+                    "depth": 2,
+                }
+            ],
         ]
         state = _make_state(
             relationship_chains=chains,
@@ -650,6 +697,7 @@ class TestSynthesizeWorkflowNode:
 
         with patch("backend.services.rag.confidence.calculate_dynamic_confidence") as mock_conf:
             from backend.services.rag.confidence import ConfidenceBreakdown
+
             mock_conf.return_value = ConfidenceBreakdown(overall=0.82)
             db_pool = AsyncMock()
             result = await synthesize_workflow_node(state, db_pool)

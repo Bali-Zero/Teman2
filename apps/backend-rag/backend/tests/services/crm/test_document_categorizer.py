@@ -2,7 +2,6 @@
 Tests for document_categorizer.py - Document auto-categorization from filenames.
 """
 
-
 from backend.services.crm.document_categorizer import (
     auto_categorize_document,
     auto_categorize_documents_batch,

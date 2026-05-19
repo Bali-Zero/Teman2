@@ -102,16 +102,8 @@ def _build_company_map(
 ) -> TaxCompanyPilotMap:
     first = rows[0]
     client_ids = [int(row["client_id"]) for row in rows]
-    all_docs = [
-        doc
-        for client_id in client_ids
-        for doc in documents_by_client.get(client_id, [])
-    ]
-    all_kg = [
-        kg
-        for client_id in client_ids
-        for kg in kg_by_client.get(client_id, [])
-    ]
+    all_docs = [doc for client_id in client_ids for doc in documents_by_client.get(client_id, [])]
+    all_kg = [kg for client_id in client_ids for kg in kg_by_client.get(client_id, [])]
 
     people = [_person_from_link(row) for row in rows]
     documents = [_document_from_row(doc) for doc in all_docs]
@@ -281,7 +273,9 @@ def _evidence_links(
     for row in rows:
         folder_url = _drive_folder(row.get("client_folder_id"))
         if folder_url:
-            links.append(TaxCompanyPilotEvidenceLink(label=row["client_name"], url=folder_url, kind="folder"))
+            links.append(
+                TaxCompanyPilotEvidenceLink(label=row["client_name"], url=folder_url, kind="folder")
+            )
     for document in documents:
         if document.evidence_url:
             links.append(
@@ -318,7 +312,9 @@ def _gaps(
             }
         )
     if not documents:
-        gaps.append({"code": "missing_documents", "label": "Attach source documents.", "severity": "high"})
+        gaps.append(
+            {"code": "missing_documents", "label": "Attach source documents.", "severity": "high"}
+        )
     if documents and not any(document.group == "company" for document in documents):
         gaps.append(
             {
@@ -327,10 +323,24 @@ def _gaps(
                 "severity": "medium",
             }
         )
-    if documents and not any(document.group in ("tax", "lkpm", "coretax") for document in documents):
-        gaps.append({"code": "missing_tax_trail", "label": "Attach tax or LKPM evidence.", "severity": "medium"})
+    if documents and not any(
+        document.group in ("tax", "lkpm", "coretax") for document in documents
+    ):
+        gaps.append(
+            {
+                "code": "missing_tax_trail",
+                "label": "Attach tax or LKPM evidence.",
+                "severity": "medium",
+            }
+        )
     if not kg_rows:
-        gaps.append({"code": "missing_kg_edges", "label": "Run OCR/KG linking for stronger relationships.", "severity": "low"})
+        gaps.append(
+            {
+                "code": "missing_kg_edges",
+                "label": "Run OCR/KG linking for stronger relationships.",
+                "severity": "low",
+            }
+        )
     return gaps
 
 
@@ -375,7 +385,11 @@ def _story_recap(
     workspace_ai: TaxCompanyPilotWorkspaceAiSnapshot | None,
 ) -> str:
     identity = next(
-        (fact.detail for fact in (workspace_ai.facts if workspace_ai else []) if fact.category == "identity"),
+        (
+            fact.detail
+            for fact in (workspace_ai.facts if workspace_ai else [])
+            if fact.category == "identity"
+        ),
         None,
     )
     if identity:
@@ -547,9 +561,7 @@ def _pilot_fallbacks_missing_from(
         return []
     dynamic_names = " ".join(dossier.company.name.lower() for dossier in dynamic_maps)
     missing = [
-        key
-        for key in (_pilot_key(term) for term in requested)
-        if key and key not in dynamic_names
+        key for key in (_pilot_key(term) for term in requested) if key and key not in dynamic_names
     ]
     if not missing:
         return []

@@ -49,6 +49,7 @@ class TestHyDEExpander:
         """Cached vectors returned without LLM/embedding calls."""
         cached_vectors = [[0.5] * 1536, [0.6] * 1536]
         import json
+
         self.mock_redis.get.return_value = json.dumps(cached_vectors)
 
         vectors = await self.expander.expand("What is KITAS?")

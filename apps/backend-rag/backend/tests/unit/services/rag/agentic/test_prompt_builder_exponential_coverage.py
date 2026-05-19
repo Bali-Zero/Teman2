@@ -261,7 +261,9 @@ class TestBuildSystemPromptBasic:
             },
         }
         prompt = builder.build_system_prompt(
-            user_id="marco@example.com", context=context, query="Test query",
+            user_id="marco@example.com",
+            context=context,
+            query="Test query",
         )
         assert "Marco" in prompt
         assert "Entrepreneur" in prompt
@@ -271,7 +273,9 @@ class TestBuildSystemPromptBasic:
         builder = SystemPromptBuilder()
         context = {"facts": ["Interested in PT PMA", "Budget: $50k USD", "From Italy"]}
         prompt = builder.build_system_prompt(
-            user_id="test@example.com", context=context, query="Test",
+            user_id="test@example.com",
+            context=context,
+            query="Test",
         )
         assert "PT PMA" in prompt
         assert "Budget" in prompt
@@ -286,7 +290,9 @@ class TestBuildSystemPromptBasic:
             ],
         }
         prompt = builder.build_system_prompt(
-            user_id="test@example.com", context=context, query="Test",
+            user_id="test@example.com",
+            context=context,
+            query="Test",
         )
         assert "E33G" in prompt or "COLLECTIVE KNOWLEDGE" in prompt
 
@@ -295,7 +301,9 @@ class TestBuildSystemPromptBasic:
         builder = SystemPromptBuilder()
         context = {"entities": {"user_name": "Marco", "user_city": "Milan", "visa_type": "KITAS"}}
         prompt = builder.build_system_prompt(
-            user_id="test@example.com", context=context, query="Test",
+            user_id="test@example.com",
+            context=context,
+            query="Test",
         )
         assert "Marco" in prompt or "Milan" in prompt
 
@@ -304,7 +312,9 @@ class TestBuildSystemPromptBasic:
         builder = SystemPromptBuilder()
         context = {"timeline_summary": "User started visa process in January 2024"}
         prompt = builder.build_system_prompt(
-            user_id="test@example.com", context=context, query="Test",
+            user_id="test@example.com",
+            context=context,
+            query="Test",
         )
         assert "January 2024" in prompt or "RECENT HISTORY" in prompt
 
@@ -313,7 +323,9 @@ class TestBuildSystemPromptBasic:
         builder = SystemPromptBuilder()
         context = {"rag_results": "[1] KITAS costs 15M IDR [2] Requires passport"}
         prompt = builder.build_system_prompt(
-            user_id="test@example.com", context=context, query="Test",
+            user_id="test@example.com",
+            context=context,
+            query="Test",
         )
         assert "KITAS" in prompt or "{rag_results}" in prompt
 
@@ -347,7 +359,9 @@ class TestBuildSystemPromptLanguageDetection:
         """Test Italian language detection"""
         builder = SystemPromptBuilder()
         prompt = builder.build_system_prompt(
-            user_id="test@example.com", context={}, query="Ciao, come posso aprire una PT PMA?",
+            user_id="test@example.com",
+            context={},
+            query="Ciao, come posso aprire una PT PMA?",
         )
         assert "ITALIAN" in prompt or "Italiano" in prompt
 
@@ -355,7 +369,9 @@ class TestBuildSystemPromptLanguageDetection:
         """Test English language detection"""
         builder = SystemPromptBuilder()
         prompt = builder.build_system_prompt(
-            user_id="test@example.com", context={}, query="Hello, how can I open a PT PMA?",
+            user_id="test@example.com",
+            context={},
+            query="Hello, how can I open a PT PMA?",
         )
         # English might not have special header, but should work
         assert isinstance(prompt, str)
@@ -364,7 +380,9 @@ class TestBuildSystemPromptLanguageDetection:
         """Test Indonesian language detection"""
         builder = SystemPromptBuilder()
         prompt = builder.build_system_prompt(
-            user_id="test@example.com", context={}, query="Apa yang perlu untuk buka PT PMA?",
+            user_id="test@example.com",
+            context={},
+            query="Apa yang perlu untuk buka PT PMA?",
         )
         # Indonesian should use base template
         assert isinstance(prompt, str)
@@ -383,7 +401,9 @@ class TestBuildSystemPromptLanguageDetection:
         """Test Spanish language detection"""
         builder = SystemPromptBuilder()
         prompt = builder.build_system_prompt(
-            user_id="test@example.com", context={}, query="Hola, ¿cómo puedo abrir una PT PMA?",
+            user_id="test@example.com",
+            context={},
+            query="Hola, ¿cómo puedo abrir una PT PMA?",
         )
         assert "SPANISH" in prompt or "Español" in prompt
 
@@ -401,7 +421,9 @@ class TestBuildSystemPromptLanguageDetection:
         """Test prompt is generated for Portuguese-like query (falls back to default language)."""
         builder = SystemPromptBuilder()
         prompt = builder.build_system_prompt(
-            user_id="test@example.com", context={}, query="Olá, como posso obter um visto de trabalho na Indonésia?",
+            user_id="test@example.com",
+            context={},
+            query="Olá, como posso obter um visto de trabalho na Indonésia?",
         )
         # Language detector may not support Portuguese — verify prompt is generated and contains language header
         assert "SPEAKER" in prompt or "PORTUGUESE" in prompt or "Português" in prompt
@@ -420,7 +442,9 @@ class TestBuildSystemPromptLanguageDetection:
         """Test Chinese language detection (Kanji only)"""
         builder = SystemPromptBuilder()
         prompt = builder.build_system_prompt(
-            user_id="test@example.com", context={}, query="你好，如何开设PT PMA？",
+            user_id="test@example.com",
+            context={},
+            query="你好，如何开设PT PMA？",
         )
         assert "CHINESE" in prompt or "中文" in prompt
 
@@ -428,7 +452,9 @@ class TestBuildSystemPromptLanguageDetection:
         """Test Arabic language detection"""
         builder = SystemPromptBuilder()
         prompt = builder.build_system_prompt(
-            user_id="test@example.com", context={}, query="مرحبا، كيف يمكنني فتح PT PMA؟",
+            user_id="test@example.com",
+            context={},
+            query="مرحبا، كيف يمكنني فتح PT PMA؟",
         )
         assert "ARABIC" in prompt or "العربية" in prompt
 
@@ -436,7 +462,9 @@ class TestBuildSystemPromptLanguageDetection:
         """Test Russian/Ukrainian detection (Cyrillic)"""
         builder = SystemPromptBuilder()
         prompt = builder.build_system_prompt(
-            user_id="test@example.com", context={}, query="Привет, как открыть PT PMA?",
+            user_id="test@example.com",
+            context={},
+            query="Привет, как открыть PT PMA?",
         )
         assert "RUSSIAN" in prompt or "UKRAINIAN" in prompt
 
@@ -449,7 +477,9 @@ class TestBuildSystemPromptPersonas:
         builder = SystemPromptBuilder()
         context = {"profile": {"email": "antonello@example.com", "name": "Antonello"}}
         prompt = builder.build_system_prompt(
-            user_id="antonello@example.com", context=context, query="Test",
+            user_id="antonello@example.com",
+            context=context,
+            query="Test",
         )
         assert "CREATOR" in prompt or "ARCHITECT MODE" in prompt
 
@@ -458,7 +488,9 @@ class TestBuildSystemPromptPersonas:
         builder = SystemPromptBuilder()
         context = {"profile": {"email": "siano@example.com"}}
         prompt = builder.build_system_prompt(
-            user_id="siano@example.com", context=context, query="Test",
+            user_id="siano@example.com",
+            context=context,
+            query="Test",
         )
         assert "CREATOR" in prompt or "ARCHITECT MODE" in prompt
 
@@ -467,7 +499,9 @@ class TestBuildSystemPromptPersonas:
         builder = SystemPromptBuilder()
         context = {"profile": {"email": "team@balizero.com", "role": "admin"}}
         prompt = builder.build_system_prompt(
-            user_id="team@balizero.com", context=context, query="Test",
+            user_id="team@balizero.com",
+            context=context,
+            query="Test",
         )
         assert "TEAM" in prompt or "INTERNAL TEAM MODE" in prompt
 
@@ -476,7 +510,9 @@ class TestBuildSystemPromptPersonas:
         builder = SystemPromptBuilder()
         context = {"profile": {"email": "user@example.com", "role": "admin"}}
         prompt = builder.build_system_prompt(
-            user_id="user@example.com", context=context, query="Test",
+            user_id="user@example.com",
+            context=context,
+            query="Test",
         )
         assert "TEAM" in prompt or "INTERNAL TEAM MODE" in prompt
 
@@ -485,7 +521,9 @@ class TestBuildSystemPromptPersonas:
         builder = SystemPromptBuilder()
         context = {"profile": {"email": "regular@example.com", "role": "client"}}
         prompt = builder.build_system_prompt(
-            user_id="regular@example.com", context=context, query="Test",
+            user_id="regular@example.com",
+            context=context,
+            query="Test",
         )
         # Should not have CREATOR or TEAM persona
         assert "ARCHITECT MODE" not in prompt or "INTERNAL TEAM MODE" not in prompt
@@ -501,13 +539,17 @@ class TestBuildSystemPromptCaching:
 
         # First call - cache miss
         prompt1 = builder.build_system_prompt(
-            user_id="test@example.com", context=context, query="Test",
+            user_id="test@example.com",
+            context=context,
+            query="Test",
         )
 
         # Second call with same params - cache hit
         with patch("time.time", return_value=time.time() + 10):  # Within TTL
             prompt2 = builder.build_system_prompt(
-                user_id="test@example.com", context=context, query="Test",
+                user_id="test@example.com",
+                context=context,
+                query="Test",
             )
             # Should be same prompt (cached)
             assert prompt1 == prompt2
@@ -517,7 +559,9 @@ class TestBuildSystemPromptCaching:
         builder = SystemPromptBuilder()
 
         prompt1 = builder.build_system_prompt(
-            user_id="test@example.com", context={"facts": ["Fact 1"]}, query="Test",
+            user_id="test@example.com",
+            context={"facts": ["Fact 1"]},
+            query="Test",
         )
 
         prompt2 = builder.build_system_prompt(
@@ -540,7 +584,9 @@ class TestBuildSystemPromptCaching:
         # Second call after TTL expiry
         with patch("time.time", return_value=time.time() + 400):  # Beyond 300s TTL
             prompt2 = builder.build_system_prompt(
-                user_id="test@example.com", context=context, query="Test",
+                user_id="test@example.com",
+                context=context,
+                query="Test",
             )
             # Should rebuild (cache expired)
             assert isinstance(prompt2, str)
@@ -577,7 +623,10 @@ class TestBuildSystemPromptGreetingCheck:
         ]
 
         prompt = builder.build_system_prompt(
-            user_id="test@example.com", context={}, query="Test", conversation_history=history,
+            user_id="test@example.com",
+            context={},
+            query="Test",
+            conversation_history=history,
         )
 
         assert "ALREADY greeted" in prompt or "DO NOT" in prompt
@@ -591,7 +640,10 @@ class TestBuildSystemPromptGreetingCheck:
         ]
 
         prompt = builder.build_system_prompt(
-            user_id="test@example.com", context={}, query="Test", conversation_history=history,
+            user_id="test@example.com",
+            context={},
+            query="Test",
+            conversation_history=history,
         )
 
         # Should not have warning
@@ -1279,7 +1331,9 @@ class TestPromptBuilderEdgeCases:
         """Test with empty strings"""
         builder = SystemPromptBuilder()
         prompt = builder.build_system_prompt(
-            user_id="", context={"profile": {"name": ""}}, query="",
+            user_id="",
+            context={"profile": {"name": ""}},
+            query="",
         )
         assert isinstance(prompt, str)
 
@@ -1288,7 +1342,9 @@ class TestPromptBuilderEdgeCases:
         builder = SystemPromptBuilder()
         long_query = "A" * 1000
         prompt = builder.build_system_prompt(
-            user_id="test@example.com", context={}, query=long_query,
+            user_id="test@example.com",
+            context={},
+            query=long_query,
         )
         assert isinstance(prompt, str)
 
@@ -1296,7 +1352,9 @@ class TestPromptBuilderEdgeCases:
         """Test with special characters"""
         builder = SystemPromptBuilder()
         prompt = builder.build_system_prompt(
-            user_id="test@example.com", context={}, query="Test with émojis 🎉 and unicode 中文",
+            user_id="test@example.com",
+            context={},
+            query="Test with émojis 🎉 and unicode 中文",
         )
         assert isinstance(prompt, str)
 
@@ -1307,7 +1365,9 @@ class TestPromptBuilderEdgeCases:
         # Build prompts with different parameters
         for i in range(5):
             builder.build_system_prompt(
-                user_id=f"user{i}@example.com", context={"facts": [f"Fact {i}"]}, query="Test",
+                user_id=f"user{i}@example.com",
+                context={"facts": [f"Fact {i}"]},
+                query="Test",
             )
 
         # Cache should have entries

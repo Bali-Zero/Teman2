@@ -80,7 +80,8 @@ async def send_message(
     """Send a message from this node to another node (or broadcast to 'all')."""
     if req.to_node not in VALID_NODES:
         raise HTTPException(
-            status_code=400, detail=f"Unknown node: {req.to_node}. Valid: {VALID_NODES}",
+            status_code=400,
+            detail=f"Unknown node: {req.to_node}. Valid: {VALID_NODES}",
         )
 
     from_node = _email_to_node(email)

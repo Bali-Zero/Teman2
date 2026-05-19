@@ -60,7 +60,8 @@ async def validate_auth_token(token: str | None) -> dict[str, Any] | None:
         # S03: Two-phase JWT expiry enforcement
         verify_exp = getattr(settings, "jwt_enforce_expiry", False)
         payload = jwt.decode(
-            token, settings.jwt_secret_key,
+            token,
+            settings.jwt_secret_key,
             algorithms=[settings.jwt_algorithm],
             options={"verify_exp": verify_exp},
         )
@@ -84,6 +85,7 @@ async def validate_auth_token(token: str | None) -> dict[str, Any] | None:
                 exp = payload.get("exp")
                 if exp:
                     from datetime import datetime, timezone
+
                     if datetime.fromtimestamp(exp, tz=timezone.utc) < datetime.now(timezone.utc):
                         logger.warning(
                             f"S03_AUDIT: Expired token in validation for {email} "

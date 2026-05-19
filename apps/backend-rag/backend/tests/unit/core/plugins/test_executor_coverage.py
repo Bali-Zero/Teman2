@@ -26,6 +26,7 @@ from backend.core.plugins.plugin import (
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _make_plugin(
     name: str = "test.plugin",
     rate_limit: int | None = None,
@@ -70,6 +71,7 @@ def _make_plugin(
 # Fixtures
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def executor():
     return PluginExecutor()
@@ -91,6 +93,7 @@ def executor_with_redis():
 # __init__
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_executor_init_without_redis(executor):
     assert executor.redis is None
     assert executor._redis_available is False
@@ -106,6 +109,7 @@ def test_executor_init_with_redis(executor_with_redis):
 # execute — plugin not found
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_execute_plugin_not_found(executor):
     with patch("backend.core.plugins.executor.registry") as mock_registry:
@@ -118,6 +122,7 @@ async def test_execute_plugin_not_found(executor):
 # ─────────────────────────────────────────────────────────────────────────────
 # execute — auth check
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_execute_requires_auth_no_user_id(executor):
@@ -141,6 +146,7 @@ async def test_execute_requires_auth_with_user_id(executor):
 # ─────────────────────────────────────────────────────────────────────────────
 # execute — input validation failure
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_execute_input_validation_failure(executor):
@@ -169,6 +175,7 @@ async def test_execute_input_validation_failure(executor):
 # execute — successful execution
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_execute_success(executor):
     plugin = _make_plugin(name="success.plugin")
@@ -183,6 +190,7 @@ async def test_execute_success(executor):
 # ─────────────────────────────────────────────────────────────────────────────
 # execute — retry logic
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_execute_retry_on_failure(executor):
@@ -279,6 +287,7 @@ async def test_execute_timeout_retry(executor):
 # execute — circuit breaker
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_execute_circuit_breaker_open(executor):
     """Circuit breaker rejects requests when open."""
@@ -321,6 +330,7 @@ async def test_execute_circuit_breaker_resets_after_cooldown(executor):
 # ─────────────────────────────────────────────────────────────────────────────
 # execute — rate limiting (memory)
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_execute_rate_limit_exceeded(executor):
@@ -368,6 +378,7 @@ async def test_execute_rate_limit_clears_old_timestamps(executor):
 # ─────────────────────────────────────────────────────────────────────────────
 # execute — caching
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_execute_cache_hit(executor_with_redis):
@@ -417,6 +428,7 @@ async def test_execute_no_cache_when_disabled(executor_with_redis):
 # _generate_cache_key
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def test_generate_cache_key_deterministic(executor):
     key1 = executor._generate_cache_key("test.plugin", {"a": 1, "b": 2})
     key2 = executor._generate_cache_key("test.plugin", {"b": 2, "a": 1})
@@ -432,6 +444,7 @@ def test_generate_cache_key_different_inputs(executor):
 # ─────────────────────────────────────────────────────────────────────────────
 # _check_rate_limit — Redis path
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_check_rate_limit_redis_ok(executor_with_redis):
@@ -461,6 +474,7 @@ async def test_check_rate_limit_redis_failure_fallback(executor_with_redis):
 # ─────────────────────────────────────────────────────────────────────────────
 # _is_circuit_broken
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def test_is_circuit_broken_no_entry(executor):
     assert executor._is_circuit_broken("unknown") is False
@@ -495,6 +509,7 @@ def test_is_circuit_broken_resets_after_cooldown(executor):
 # _record_success / _record_failure
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_record_success_updates_metrics(executor):
     await executor._record_success("test.plugin", 0.5)
@@ -518,12 +533,15 @@ async def test_record_failure_updates_circuit_breaker(executor):
     for _ in range(CIRCUIT_BREAKER_FAILURE_THRESHOLD):
         await executor._record_failure("test.plugin", "error")
     assert "test.plugin" in executor._circuit_breakers
-    assert executor._circuit_breakers["test.plugin"]["failures"] >= CIRCUIT_BREAKER_FAILURE_THRESHOLD
+    assert (
+        executor._circuit_breakers["test.plugin"]["failures"] >= CIRCUIT_BREAKER_FAILURE_THRESHOLD
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # get_metrics
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_get_metrics_no_calls(executor):
@@ -554,6 +572,7 @@ def test_get_all_metrics(executor):
 # warm_plugins
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_warm_plugins(executor):
     plugin = _make_plugin(name="warm.plugin")
@@ -583,6 +602,7 @@ async def test_warm_plugins_on_load_failure(executor):
 # ─────────────────────────────────────────────────────────────────────────────
 # _get_cached / _cache_result
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_get_cached_no_redis(executor):

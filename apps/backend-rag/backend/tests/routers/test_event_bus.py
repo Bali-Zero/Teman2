@@ -16,7 +16,10 @@ import backend.app.routers.event_bus as event_bus_module
 def app() -> FastAPI:
     application = FastAPI()
     application.include_router(event_bus_module.router)
-    application.dependency_overrides[event_bus_module.get_current_user] = lambda: {"id": "1", "role": "admin"}
+    application.dependency_overrides[event_bus_module.get_current_user] = lambda: {
+        "id": "1",
+        "role": "admin",
+    }
     return application
 
 
@@ -35,10 +38,14 @@ class TestEventBusEndpoints:
     @pytest.mark.integration
     def test_emit_returns_trace_data(self, app: FastAPI, client: TestClient) -> None:
         app.state.event_bus = SimpleNamespace(
-            emit=AsyncMock(return_value=SimpleNamespace(handler_count=2, duration_ms=3.5, errors=[])),
+            emit=AsyncMock(
+                return_value=SimpleNamespace(handler_count=2, duration_ms=3.5, errors=[])
+            ),
         )
 
-        response = client.post("/api/events/emit", json={"event_type": "test.ping", "payload": {"hello": "world"}})
+        response = client.post(
+            "/api/events/emit", json={"event_type": "test.ping", "payload": {"hello": "world"}}
+        )
 
         assert response.status_code == 200
         assert response.json()["emitted"] is True

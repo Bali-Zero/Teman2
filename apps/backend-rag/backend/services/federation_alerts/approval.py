@@ -22,6 +22,7 @@ NB: FAD callbacks DO NOT carry chat_id. The whitelist of allowed
 ``approver_chat_id`` values is enforced by ``is_admin_chat_id``,
 checked at the webhook layer before any DB mutation.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -35,8 +36,8 @@ logger = logging.getLogger(__name__)
 
 # Token format constants — the full token is opaque, the public prefix
 # is what travels through the Telegram callback (max 64 bytes total).
-_TOKEN_BYTES: Final[int] = 32       # 32 random bytes -> 64 hex chars
-_PREFIX_HEX_CHARS: Final[int] = 8    # surfaced in fad:<action>:<id>:<8hex>
+_TOKEN_BYTES: Final[int] = 32  # 32 random bytes -> 64 hex chars
+_PREFIX_HEX_CHARS: Final[int] = 8  # surfaced in fad:<action>:<id>:<8hex>
 
 
 def generate_approval_token() -> str:

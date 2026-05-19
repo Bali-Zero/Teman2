@@ -1,4 +1,5 @@
 """Telegram notify is best-effort: never raises, swallows network errors."""
+
 from unittest.mock import patch
 from backend.services.canva_renderer_v2._telegram import send_telegram
 

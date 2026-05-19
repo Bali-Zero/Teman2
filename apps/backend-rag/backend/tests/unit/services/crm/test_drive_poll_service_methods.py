@@ -25,12 +25,7 @@ from backend.services.integrations.service_account_drive_service import (
 )
 
 DRIVE_VAR_NAMES = {"drive_service", "self.drive_service", "self._drive_service"}
-DRIVE_POLL_PATH = (
-    Path(__file__).resolve().parents[4]
-    / "services"
-    / "crm"
-    / "drive_poll_service.py"
-)
+DRIVE_POLL_PATH = Path(__file__).resolve().parents[4] / "services" / "crm" / "drive_poll_service.py"
 
 # Attributes accessed but not invoked as methods on the client (e.g. raw
 # google-api-python-client `service` handle). These are documented escape
@@ -68,7 +63,9 @@ def test_service_account_drive_service_implements_all_methods_called_by_drive_po
 
     source = DRIVE_POLL_PATH.read_text(encoding="utf-8")
     invoked = _collect_drive_service_methods(source)
-    assert invoked, "AST extraction returned 0 methods — extractor is broken or file structure changed"
+    assert invoked, (
+        "AST extraction returned 0 methods — extractor is broken or file structure changed"
+    )
 
     implemented = {
         name

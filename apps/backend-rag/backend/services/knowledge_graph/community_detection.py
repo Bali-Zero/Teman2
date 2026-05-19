@@ -174,7 +174,7 @@ class CommunityDetector:
                 for c, k_in in neighbor_comms.items():
                     # Modularity gain of moving node to community c
                     sigma_tot = comm_total[c]
-                    gain = (k_in - resolution * sigma_tot * k_i / (2.0 * m))
+                    gain = k_in - resolution * sigma_tot * k_i / (2.0 * m)
                     if gain > best_gain:
                         best_gain = gain
                         best_comm = c
@@ -243,9 +243,7 @@ class CommunityDetector:
             cid = f"comm_L0_{cid_hash}"
 
             # Find top entities by degree (hub nodes)
-            member_degrees = [
-                (m, len(adj.get(m, set()))) for m in members
-            ]
+            member_degrees = [(m, len(adj.get(m, set()))) for m in members]
             member_degrees.sort(key=lambda x: x[1], reverse=True)
             top_ents = [m for m, _d in member_degrees[:5]]
 
@@ -262,14 +260,16 @@ class CommunityDetector:
                 reverse=True,
             )[:5]
 
-            communities.append(Community(
-                community_id=cid,
-                level=0,
-                members=members,
-                member_count=len(members),
-                top_entities=top_ents,
-                top_relations=top_rels,
-            ))
+            communities.append(
+                Community(
+                    community_id=cid,
+                    level=0,
+                    members=members,
+                    member_count=len(members),
+                    top_entities=top_ents,
+                    top_relations=top_rels,
+                )
+            )
 
         elapsed = time.time() - start
         logger.info(
@@ -309,8 +309,16 @@ class CommunityDetector:
 
                 # Batch insert communities
                 comm_rows = [
-                    (c.community_id, c.level, c.parent_id, c.name, c.summary,
-                     c.member_count, c.top_entities, c.top_relations)
+                    (
+                        c.community_id,
+                        c.level,
+                        c.parent_id,
+                        c.name,
+                        c.summary,
+                        c.member_count,
+                        c.top_entities,
+                        c.top_relations,
+                    )
                     for c in communities
                 ]
                 await conn.executemany(

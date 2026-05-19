@@ -64,7 +64,8 @@ async def upgrade(conn: asyncpg.Connection) -> None:
             SELECT 1 FROM information_schema.table_constraints
             WHERE table_name = $1 AND constraint_name = $2
             """,
-            table, cname,
+            table,
+            cname,
         )
         if exists:
             print(f"  {cname} already exists — skip")

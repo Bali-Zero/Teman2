@@ -11,6 +11,7 @@ Validates the SQL file's structural invariants without needing a real DB:
 Real-DB roundtrip is left for the apply-all integration test that runs
 in CI (test_migration_apply_strips_rollback.py walks the directory).
 """
+
 from __future__ import annotations
 
 import re
@@ -19,10 +20,7 @@ from pathlib import Path
 import pytest
 
 MIGRATION_PATH = (
-    Path(__file__).parent.parent.parent
-    / "db"
-    / "migrations_v2"
-    / "139_intel_radar_findings.sql"
+    Path(__file__).parent.parent.parent / "db" / "migrations_v2" / "139_intel_radar_findings.sql"
 )
 
 _ROLLBACK_MARKER = re.compile(r"^\s*--\s*===\s*ROLLBACK\s*===\s*$", re.MULTILINE | re.IGNORECASE)
@@ -98,11 +96,13 @@ def test_partial_indexes_for_query_paths(split_sql: tuple[str, str]) -> None:
     forward, _ = split_sql
     assert re.search(
         r"idx_intel_radar_findings_unprocessed.*WHERE\s+processed\s*=\s*FALSE",
-        forward, re.IGNORECASE | re.DOTALL,
+        forward,
+        re.IGNORECASE | re.DOTALL,
     ), "missing partial index on unprocessed"
     assert re.search(
         r"idx_intel_radar_findings_pickable.*WHERE\s+processed\s*=\s*TRUE\s+AND\s+scraper_picked\s*=\s*FALSE",
-        forward, re.IGNORECASE | re.DOTALL,
+        forward,
+        re.IGNORECASE | re.DOTALL,
     ), "missing partial index on pickable"
 
 

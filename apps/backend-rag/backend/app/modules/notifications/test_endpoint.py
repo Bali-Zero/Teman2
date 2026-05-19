@@ -35,10 +35,12 @@ class TestNotificationRequest(BaseModel):
     """Request body for testing notifications."""
 
     client_id: int | None = Field(
-        None, description="Test with specific client, or random if omitted",
+        None,
+        description="Test with specific client, or random if omitted",
     )
     alert_type: AlertType | None = Field(
-        None, description="Force specific alert type, or auto-detect",
+        None,
+        description="Force specific alert type, or auto-detect",
     )
     force_send: bool = Field(False, description="If true, actually sends email (use with caution!)")
     test_email: str | None = Field(None, description="Override recipient email for testing")
@@ -111,7 +113,8 @@ async def test_notification(
                 )
                 if not row:
                     raise HTTPException(
-                        status_code=404, detail=f"Client {request.client_id} not found",
+                        status_code=404,
+                        detail=f"Client {request.client_id} not found",
                     )
                 rows = [row]
             else:

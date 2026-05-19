@@ -225,7 +225,10 @@ class TestStreamEvent:
         from backend.services.rag.agentic.orchestrator import StreamEvent
 
         event = StreamEvent(
-            type="token", data="Hello", timestamp=12345.67, correlation_id="test-id",
+            type="token",
+            data="Hello",
+            timestamp=12345.67,
+            correlation_id="test-id",
         )
         assert event.type == "token"
         assert event.data == "Hello"
@@ -255,7 +258,9 @@ class TestOrchestratorMethods:
     def test_create_error_event(self, orchestrator):
         """Test creating error event - covers lines 825-841"""
         error_event = orchestrator._create_error_event(
-            error_type="validation", message="Invalid query", correlation_id="test-corr-123",
+            error_type="validation",
+            message="Invalid query",
+            correlation_id="test-corr-123",
         )
         assert error_event["type"] == "error"
         assert error_event["data"]["error_type"] == "validation"
@@ -323,7 +328,9 @@ class TestOrchestratorMethods:
         """Test save memory skips anonymous user - covers lines 370-371"""
         # Should return immediately for anonymous
         await orchestrator._save_conversation_memory(
-            user_id="anonymous", query="test query", answer="test answer",
+            user_id="anonymous",
+            query="test query",
+            answer="test answer",
         )
         # No exception = success
 
@@ -331,7 +338,9 @@ class TestOrchestratorMethods:
     async def test_save_conversation_memory_empty_user(self, orchestrator):
         """Test save memory skips empty user_id"""
         await orchestrator._save_conversation_memory(
-            user_id="", query="test query", answer="test answer",
+            user_id="",
+            query="test query",
+            answer="test answer",
         )
         # No exception = success
 
@@ -365,7 +374,9 @@ class TestOrchestratorMethods:
             orch.memory_handler.get_memory_orchestrator = AsyncMock(return_value=mock_mem_instance)
 
             await orch._save_conversation_memory(
-                user_id="test@example.com", query="What is PT PMA?", answer="PT PMA is...",
+                user_id="test@example.com",
+                query="What is PT PMA?",
+                answer="PT PMA is...",
             )
 
             mock_mem_instance.process_conversation.assert_called_once()
@@ -391,7 +402,9 @@ class TestOrchestratorMethods:
 
             # Should not raise, just return early
             await orch._save_conversation_memory(
-                user_id="test@example.com", query="test", answer="test",
+                user_id="test@example.com",
+                query="test",
+                answer="test",
             )
             # No exception = success
 
@@ -434,7 +447,8 @@ class TestProcessQueryBranches:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -474,7 +488,8 @@ class TestProcessQueryBranches:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -511,7 +526,8 @@ class TestProcessQueryBranches:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -548,7 +564,8 @@ class TestProcessQueryBranches:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -587,7 +604,8 @@ class TestProcessQueryBranches:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
             patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
         ):
@@ -630,7 +648,8 @@ class TestProcessQueryBranches:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
             patch("backend.services.rag.agentic.orchestrator.ClarificationService") as mock_cs,
         ):
@@ -665,7 +684,9 @@ class TestProcessQueryBranches:
             tools = [MockTool()]
             # IMPORTANT: Pass clarification_service to constructor (it's a parameter, not auto-created)
             orch = AgenticRAGOrchestrator(
-                tools=tools, db_pool=mock_db_pool, clarification_service=mock_clarification,
+                tools=tools,
+                db_pool=mock_db_pool,
+                clarification_service=mock_clarification,
             )
 
             # Mock get_full_context so prepare_query_context returns prior_history.
@@ -701,7 +722,8 @@ class TestProcessQueryBranches:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
         ):
             # Configure context window manager for summarization
@@ -744,7 +766,10 @@ class TestProcessQueryBranches:
             context_manager = orch.core.context_manager
 
             async def mock_get_full_context(
-                user_id, query, conversation_history=None, session_id=None,
+                user_id,
+                query,
+                conversation_history=None,
+                session_id=None,
             ):
                 # Trigger real apply_context_window_management with the history_to_summarize.
                 # This calls mock_cwm_instance.trim_conversation_history → needs_summarization=True
@@ -778,7 +803,8 @@ class TestProcessQueryBranches:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -820,7 +846,8 @@ class TestProcessQueryAdvanced:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
             patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
         ):
@@ -881,7 +908,8 @@ class TestProcessQueryAdvanced:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
             patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
@@ -976,7 +1004,8 @@ class TestProcessQueryAdvanced:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
             patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
@@ -1047,7 +1076,8 @@ class TestProcessQueryAdvanced:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
             patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
         ):
@@ -1100,7 +1130,8 @@ class TestProcessQueryAdvanced:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
             patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
@@ -1166,7 +1197,8 @@ class TestStreamQuery:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -1212,7 +1244,8 @@ class TestStreamQuery:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -1256,7 +1289,8 @@ class TestStreamQuery:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -1295,7 +1329,8 @@ class TestStreamQuery:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -1340,7 +1375,8 @@ class TestStreamQuery:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -1368,7 +1404,9 @@ class TestStreamQuery:
 
             tools = [MockTool()]
             orch = AgenticRAGOrchestrator(
-                tools=tools, db_pool=mock_db_pool, clarification_service=mock_clarification,
+                tools=tools,
+                db_pool=mock_db_pool,
+                clarification_service=mock_clarification,
             )
 
             events = []
@@ -1394,7 +1432,8 @@ class TestStreamQuery:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
             patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
         ):
@@ -1439,7 +1478,8 @@ class TestStreamQuery:
             patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_fs,
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
             patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
         ):
@@ -1515,7 +1555,8 @@ class TestStreamQuery:
             patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_fs,
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
             patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
@@ -1537,7 +1578,9 @@ class TestStreamQuery:
             mock_kg.return_value.get_context_for_query = AsyncMock(return_value=None)
             mock_llm.return_value.create_chat_with_history.return_value = AsyncMock()
             mock_llm.return_value._genai_client = type(
-                "obj", (object,), {"DEFAULT_MODEL": "gemini-2.0-flash"},
+                "obj",
+                (object,),
+                {"DEFAULT_MODEL": "gemini-2.0-flash"},
             )()
 
             mock_ic.return_value.classify_intent = AsyncMock(
@@ -1595,7 +1638,8 @@ class TestStreamQuery:
             patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_fs,
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
             patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
@@ -1617,7 +1661,9 @@ class TestStreamQuery:
             mock_kg.return_value.get_context_for_query = AsyncMock(return_value=None)
             mock_llm.return_value.create_chat_with_history.return_value = AsyncMock()
             mock_llm.return_value._genai_client = type(
-                "obj", (object,), {"DEFAULT_MODEL": "gemini-2.0-flash"},
+                "obj",
+                (object,),
+                {"DEFAULT_MODEL": "gemini-2.0-flash"},
             )()
 
             mock_ic.return_value.classify_intent = AsyncMock(
@@ -1663,7 +1709,8 @@ class TestStreamQuery:
             patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_fs,
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
             patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
@@ -1685,7 +1732,9 @@ class TestStreamQuery:
             mock_kg.return_value.get_context_for_query = AsyncMock(return_value=None)
             mock_llm.return_value.create_chat_with_history.return_value = AsyncMock()
             mock_llm.return_value._genai_client = type(
-                "obj", (object,), {"DEFAULT_MODEL": "gemini-2.0-flash"},
+                "obj",
+                (object,),
+                {"DEFAULT_MODEL": "gemini-2.0-flash"},
             )()
 
             mock_ic.return_value.classify_intent = AsyncMock(
@@ -1733,7 +1782,8 @@ class TestStreamQuery:
             patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_fs,
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
             patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
@@ -1755,7 +1805,9 @@ class TestStreamQuery:
             mock_kg.return_value.get_context_for_query = AsyncMock(return_value=None)
             mock_llm.return_value.create_chat_with_history.return_value = AsyncMock()
             mock_llm.return_value._genai_client = type(
-                "obj", (object,), {"DEFAULT_MODEL": "gemini-2.0-flash"},
+                "obj",
+                (object,),
+                {"DEFAULT_MODEL": "gemini-2.0-flash"},
             )()
             mock_fs.return_value.get_followups = AsyncMock(return_value=[])
 
@@ -1803,7 +1855,8 @@ class TestStreamQuery:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -1850,7 +1903,8 @@ class TestStreamQuery:
             # Use Italian recall trigger
             events = []
             async for event in orch.stream_query(
-                "Ti ricordi quello che abbiamo detto?", user_id="test",
+                "Ti ricordi quello che abbiamo detto?",
+                user_id="test",
             ):
                 events.append(event)
 
@@ -1876,7 +1930,8 @@ class TestStreamQuery:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
         ):
             # Long history that needs summarization
@@ -2157,11 +2212,13 @@ class TestTeamQueryHandling:
             patch("backend.services.rag.agentic.orchestrator.FollowupService"),
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
             patch("backend.services.rag.agentic.orchestrator.detect_team_query") as mock_detect,
             patch(
-                "backend.services.rag.agentic.orchestrator.execute_tool", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.execute_tool",
+                new_callable=AsyncMock,
             ) as mock_exec,
         ):
             mock_cwm.return_value.trim_conversation_history.return_value = {
@@ -2242,12 +2299,14 @@ class TestTeamQueryHandling:
             patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_fs,
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
             patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.detect_team_query") as mock_detect,
             patch(
-                "backend.services.rag.agentic.orchestrator.execute_tool", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.execute_tool",
+                new_callable=AsyncMock,
             ) as mock_exec,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
         ):
@@ -2275,7 +2334,9 @@ class TestTeamQueryHandling:
             mock_kg.return_value.get_context_for_query = AsyncMock(return_value=None)
             mock_llm.return_value.create_chat_with_history.return_value = AsyncMock()
             mock_llm.return_value._genai_client = type(
-                "obj", (object,), {"DEFAULT_MODEL": "gemini-2.0-flash"},
+                "obj",
+                (object,),
+                {"DEFAULT_MODEL": "gemini-2.0-flash"},
             )()
 
             mock_ic.return_value.classify_intent = AsyncMock(
@@ -2324,7 +2385,8 @@ class TestEventValidationErrors:
             patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_fs,
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
             patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
@@ -2349,7 +2411,9 @@ class TestEventValidationErrors:
             mock_kg.return_value.get_context_for_query = AsyncMock(return_value=None)
             mock_llm.return_value.create_chat_with_history.return_value = AsyncMock()
             mock_llm.return_value._genai_client = type(
-                "obj", (object,), {"DEFAULT_MODEL": "gemini-2.0-flash"},
+                "obj",
+                (object,),
+                {"DEFAULT_MODEL": "gemini-2.0-flash"},
             )()
 
             mock_ic.return_value.classify_intent = AsyncMock(
@@ -2405,7 +2469,8 @@ class TestEventValidationErrors:
             patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_fs,
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
             patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
@@ -2427,7 +2492,9 @@ class TestEventValidationErrors:
             mock_kg.return_value.get_context_for_query = AsyncMock(return_value=None)
             mock_llm.return_value.create_chat_with_history.return_value = AsyncMock()
             mock_llm.return_value._genai_client = type(
-                "obj", (object,), {"DEFAULT_MODEL": "gemini-2.0-flash"},
+                "obj",
+                (object,),
+                {"DEFAULT_MODEL": "gemini-2.0-flash"},
             )()
 
             mock_ic.return_value.classify_intent = AsyncMock(
@@ -2483,7 +2550,8 @@ class TestFollowupGeneration:
             patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_fs,
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
             patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
@@ -2505,7 +2573,9 @@ class TestFollowupGeneration:
             mock_kg.return_value.get_context_for_query = AsyncMock(return_value=None)
             mock_llm.return_value.create_chat_with_history.return_value = AsyncMock()
             mock_llm.return_value._genai_client = type(
-                "obj", (object,), {"DEFAULT_MODEL": "gemini-2.0-flash"},
+                "obj",
+                (object,),
+                {"DEFAULT_MODEL": "gemini-2.0-flash"},
             )()
 
             mock_ic.return_value.classify_intent = AsyncMock(
@@ -2514,7 +2584,11 @@ class TestFollowupGeneration:
 
             # Mock followup service to return questions
             mock_fs.return_value.get_followups = AsyncMock(
-                return_value=["Quali documenti servono?", "Quanto costa?", "Quanto tempo ci vuole?"],
+                return_value=[
+                    "Quali documenti servono?",
+                    "Quanto costa?",
+                    "Quanto tempo ci vuole?",
+                ],
             )
 
             # Mock ReAct loop with LONG answer (>50 chars to trigger followup)
@@ -2558,7 +2632,8 @@ class TestFollowupGeneration:
             patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_fs,
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
             patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
@@ -2580,7 +2655,9 @@ class TestFollowupGeneration:
             mock_kg.return_value.get_context_for_query = AsyncMock(return_value=None)
             mock_llm.return_value.create_chat_with_history.return_value = AsyncMock()
             mock_llm.return_value._genai_client = type(
-                "obj", (object,), {"DEFAULT_MODEL": "gemini-2.0-flash"},
+                "obj",
+                (object,),
+                {"DEFAULT_MODEL": "gemini-2.0-flash"},
             )()
 
             mock_ic.return_value.classify_intent = AsyncMock(
@@ -2630,7 +2707,8 @@ class TestFollowupGeneration:
             patch("backend.services.rag.agentic.orchestrator.FollowupService") as mock_fs,
             patch("backend.services.rag.agentic.orchestrator.GoldenAnswerService"),
             patch(
-                "backend.services.rag.agentic.orchestrator.get_user_context", new_callable=AsyncMock,
+                "backend.services.rag.agentic.orchestrator.get_user_context",
+                new_callable=AsyncMock,
             ) as mock_ctx,
             patch("backend.services.rag.agentic.query_gates.is_out_of_domain") as mock_ood,
             patch("backend.services.rag.agentic.orchestrator.metrics_collector"),
@@ -2652,7 +2730,9 @@ class TestFollowupGeneration:
             mock_kg.return_value.get_context_for_query = AsyncMock(return_value=None)
             mock_llm.return_value.create_chat_with_history.return_value = AsyncMock()
             mock_llm.return_value._genai_client = type(
-                "obj", (object,), {"DEFAULT_MODEL": "gemini-2.0-flash"},
+                "obj",
+                (object,),
+                {"DEFAULT_MODEL": "gemini-2.0-flash"},
             )()
 
             mock_ic.return_value.classify_intent = AsyncMock(
@@ -2790,7 +2870,10 @@ class TestSaveConversationMemoryEdgeCases:
             mock_mem_instance.initialize = AsyncMock()
             mock_mem_instance.process_conversation = AsyncMock(
                 return_value=MagicMock(
-                    success=True, facts_saved=1, facts_extracted=1, processing_time_ms=10.0,
+                    success=True,
+                    facts_saved=1,
+                    facts_extracted=1,
+                    processing_time_ms=10.0,
                 ),
             )
 

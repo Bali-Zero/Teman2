@@ -39,6 +39,7 @@ from scripts.drive_token_watchdog import (
 # classify_tier — tier-by-tier
 # ---------------------------------------------------------------------------
 
+
 class TestClassifyTier:
     """Each tier fires at the documented boundary."""
 
@@ -103,6 +104,7 @@ class TestClassifyTier:
 # render_alert_text — formatting
 # ---------------------------------------------------------------------------
 
+
 class TestRenderAlertText:
     def test_render_30_day_message_includes_days(self) -> None:
         text = render_alert_text(classify_tier(25))
@@ -123,6 +125,7 @@ class TestRenderAlertText:
 # ---------------------------------------------------------------------------
 # should_alert — idempotency
 # ---------------------------------------------------------------------------
+
 
 class TestShouldAlert:
     """The state-file logic that prevents Telegram spam."""
@@ -176,6 +179,7 @@ class TestShouldAlert:
 # parse_expires_at + compute_days_left — date math
 # ---------------------------------------------------------------------------
 
+
 class TestDateMath:
     def test_parse_iso_with_tz(self) -> None:
         dt = parse_expires_at("2026-08-01T12:00:00+00:00")
@@ -206,6 +210,7 @@ class TestDateMath:
 # ---------------------------------------------------------------------------
 # End-to-end tier-driven alert simulation (mocked timestamps)
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.parametrize(
     "days,expected_tier",

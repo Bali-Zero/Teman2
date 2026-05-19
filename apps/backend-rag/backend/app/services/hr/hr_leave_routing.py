@@ -7,15 +7,16 @@ Everyone else (including Veronika herself) → Zero
 When the org chart changes, update SUPERVISOR_MAP and add tests.
 No DB column, no migration: 7 employees, rules stable per Zero (2026-04-07).
 """
+
 from __future__ import annotations
 
 SUPERVISOR_MAP: dict[str, str] = {
-    "kadek.tax@balizero.com":    "tax@balizero.com",  # Veronika
-    "angel.tax@balizero.com":    "tax@balizero.com",
+    "kadek.tax@balizero.com": "tax@balizero.com",  # Veronika
+    "angel.tax@balizero.com": "tax@balizero.com",
     "dewa.ayu.tax@balizero.com": "tax@balizero.com",
-    "faysha.tax@balizero.com":   "tax@balizero.com",
-    "dea@balizero.com":          "ruslana@balizero.com",
-    "rina@balizero.com":         "ruslana@balizero.com",
+    "faysha.tax@balizero.com": "tax@balizero.com",
+    "dea@balizero.com": "ruslana@balizero.com",
+    "rina@balizero.com": "ruslana@balizero.com",
 }
 
 ZERO_EMAIL = "zero@balizero.com"

@@ -24,9 +24,15 @@ def repo() -> MagicMock:
 def app(repo: MagicMock) -> FastAPI:
     application = FastAPI()
     application.include_router(query_analytics_module.router)
-    application.dependency_overrides[query_analytics_module._verify_founder_access] = lambda: {"id": "1", "role": "admin"}
+    application.dependency_overrides[query_analytics_module._verify_founder_access] = lambda: {
+        "id": "1",
+        "role": "admin",
+    }
     application.dependency_overrides[query_analytics_module._get_repo] = lambda: repo
-    application.dependency_overrides[query_analytics_module.get_current_user] = lambda: {"id": "1", "role": "user"}
+    application.dependency_overrides[query_analytics_module.get_current_user] = lambda: {
+        "id": "1",
+        "role": "user",
+    }
     return application
 
 
@@ -57,11 +63,12 @@ class TestAnalyticsEndpoints:
         assert response.status_code == 400
 
     @pytest.mark.integration
-    def test_feedback_returns_404_when_query_missing(self, client: TestClient, repo: MagicMock) -> None:
+    def test_feedback_returns_404_when_query_missing(
+        self, client: TestClient, repo: MagicMock
+    ) -> None:
         repo.record_feedback = AsyncMock(return_value=False)
         response = client.post(
             "/api/analytics/query-insights/feedback",
             json={"query_id": "q1", "feedback": "thumbs_up"},
         )
         assert response.status_code == 404
-

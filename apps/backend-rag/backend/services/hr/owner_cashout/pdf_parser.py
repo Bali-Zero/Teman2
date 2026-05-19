@@ -2,6 +2,7 @@
 
 Uses pdfplumber to extract tables from spreadsheet-exported PDFs.
 """
+
 from __future__ import annotations
 
 import logging
@@ -124,7 +125,7 @@ def parse_bonus_pdf(pdf_path: str | Path) -> list[dict[str, Any]]:
     with pdfplumber.open(pdf_path) as pdf:
         for page in pdf.pages:
             tables = page.extract_tables()
-            for table in (tables or []):
+            for table in tables or []:
                 for row in table:
                     if row is not None:
                         all_rows.append(row)
@@ -203,11 +204,13 @@ def parse_bonus_pdf(pdf_path: str | Path) -> list[dict[str, Any]]:
         # This is a data row (client + service)
         if cell1 or cell0:
             item_seq += 1
-            current["items"].append({
-                "client_name": cell0,
-                "service_type": cell1 or "",
-                "row_index": item_seq,
-            })
+            current["items"].append(
+                {
+                    "client_name": cell0,
+                    "service_type": cell1 or "",
+                    "row_index": item_seq,
+                }
+            )
 
     # Handle last employee if no trailing TOTAL (shouldn't happen but safety)
     if current is not None and current["items"]:

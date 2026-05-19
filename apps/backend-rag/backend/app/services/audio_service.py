@@ -50,7 +50,10 @@ class AudioService:
             logger.warning("AudioService: OpenAI not available (no API key), Pollinations only")
 
     async def transcribe_audio(
-        self, file_path_or_buffer, model: str = "whisper-1", language: str | None = None,
+        self,
+        file_path_or_buffer,
+        model: str = "whisper-1",
+        language: str | None = None,
     ) -> str:
         """
         Transcribe audio to text.
@@ -71,7 +74,9 @@ class AudioService:
                 )
             else:
                 transcript = await self.openai_client.audio.transcriptions.create(
-                    model=model, file=file_path_or_buffer, language=language,
+                    model=model,
+                    file=file_path_or_buffer,
+                    language=language,
                 )
                 return transcript.text
 
@@ -179,7 +184,9 @@ class AudioService:
         """
         set_usage(input_tokens=len(text), output_tokens=0)
         response = await self.openai_client.audio.speech.create(
-            model=model, voice=voice, input=text,
+            model=model,
+            voice=voice,
+            input=text,
         )
         return response.content
 
@@ -201,7 +208,9 @@ class AudioService:
         set_usage(input_tokens=int(duration_seconds), output_tokens=0)
         with open(file_path, "rb") as f:
             resp = await self.openai_client.audio.transcriptions.create(
-                model="whisper-1", file=f, language=language,
+                model="whisper-1",
+                file=f,
+                language=language,
             )
         text = resp.text
         # Update output_tokens now that we know the transcription length.

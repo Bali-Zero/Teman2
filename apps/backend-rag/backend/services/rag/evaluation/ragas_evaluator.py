@@ -27,6 +27,7 @@ def create_default_client() -> Any:  # type: ignore[misc]
     """Placeholder — backend.llm.client was removed."""
     raise NotImplementedError("UnifiedLLMClient not available; pass llm_client explicitly")
 
+
 logger = logging.getLogger(__name__)
 
 # Evaluation prompt templates (multilingual ID/EN)
@@ -381,7 +382,10 @@ class RAGASEvaluator:
         return result
 
     async def evaluate_context_precision(
-        self, query: str, context: list[str], ground_truth: str,
+        self,
+        query: str,
+        context: list[str],
+        ground_truth: str,
     ) -> dict[str, Any]:
         """
         Evaluate context precision - retrieved context is relevant.
@@ -416,7 +420,10 @@ class RAGASEvaluator:
         return result
 
     async def evaluate_context_recall(
-        self, query: str, context: list[str], ground_truth: str,
+        self,
+        query: str,
+        context: list[str],
+        ground_truth: str,
     ) -> dict[str, Any]:
         """
         Evaluate context recall - all relevant context is retrieved.
@@ -451,7 +458,9 @@ class RAGASEvaluator:
         return result
 
     async def evaluate_context_entity_recall(
-        self, answer: str, context: list[str],
+        self,
+        answer: str,
+        context: list[str],
     ) -> dict[str, Any]:
         """
         Evaluate context entity recall - entities in answer are in context.

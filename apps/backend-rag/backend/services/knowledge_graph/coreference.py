@@ -362,7 +362,7 @@ class CoreferenceResolver:
             # Defensive: the CLI may return extra prose around the ID.
             # Take the first non-empty line and strip it of trailing
             # punctuation / quotes.
-            first_line = result.splitlines()[0].strip().strip('"`\' .')
+            first_line = result.splitlines()[0].strip().strip("\"`' .")
             return first_line or None
 
         except (ClaudeOAuthError, ClaudeOAuthNotAvailable) as e:

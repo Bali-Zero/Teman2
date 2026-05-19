@@ -139,7 +139,8 @@ def _validate_context_quality(
 
     # Penalize if too few items
     item_count_penalty = min(
-        len(context_items) / EvidenceScoreConstants.PREFERRED_CONTEXT_ITEMS, 1.0,
+        len(context_items) / EvidenceScoreConstants.PREFERRED_CONTEXT_ITEMS,
+        1.0,
     )
 
     final_score = (
@@ -284,7 +285,13 @@ class ReasoningEngine:
                             {"role": "assistant", "content": text_response},
                         )
 
-                    except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
+                    except (
+                        ResourceExhausted,
+                        ServiceUnavailable,
+                        asyncio.TimeoutError,
+                        ValueError,
+                        RuntimeError,
+                    ) as e:
                         logger.error("Error during chat interaction: %s", e, exc_info=True)
                         set_span_status("error", str(e))
                         break
@@ -359,10 +366,13 @@ class ReasoningEngine:
 
                             # --- CITATION HANDLING ---
                             if tool_call.tool_name == "vector_search":
-                                tool_result, source_count, content_substantial = \
+                                tool_result, source_count, content_substantial = (
                                     handle_vector_search_sources(
-                                        state, tool_result, log_prefix="Agent",
+                                        state,
+                                        tool_result,
+                                        log_prefix="Agent",
                                     )
+                                )
                                 if content_substantial:
                                     set_span_attribute("sources_collected", source_count)
 
@@ -452,7 +462,9 @@ class ReasoningEngine:
                         # (Complex queries stay in the loop — they may need KG.)
                         intent_type = getattr(state, "intent_type", "simple")
                         if should_early_exit_on_vector_search(
-                            tool_call.tool_name, tool_result, intent_type,
+                            tool_call.tool_name,
+                            tool_result,
+                            intent_type,
                         ):
                             logger.info("🚀 [Early Exit] Sufficient context from retrieval.")
                             set_span_attribute("early_exit", "true")
@@ -477,7 +489,9 @@ class ReasoningEngine:
                         ):
                             state.final_answer = extract_final_answer_text(text_response)
                             step = AgentStep(
-                                step_number=state.current_step, thought=text_response, is_final=True,
+                                step_number=state.current_step,
+                                thought=text_response,
+                                is_final=True,
                             )
                             state.steps.append(step)
                             set_span_attribute("is_final_answer", "true")
@@ -496,8 +510,9 @@ class ReasoningEngine:
         # Check if trusted tools (calculator, pricing, team, crm) were used successfully.
         # These tools provide their own evidence and don't need KB sources.
         # Also honour state.trusted_tools_used set by early-exit paths (e.g. CRM).
-        trusted_tools_used = getattr(state, "trusted_tools_used", False) or \
-            detect_trusted_tool_usage(state.steps, _TRUSTED_TOOL_NAMES)
+        trusted_tools_used = getattr(
+            state, "trusted_tools_used", False
+        ) or detect_trusted_tool_usage(state.steps, _TRUSTED_TOOL_NAMES)
 
         # ==================== EVIDENCE SCORE CALCULATION ====================
         # 🔍 TRACING: Evidence score calculation
@@ -563,7 +578,8 @@ class ReasoningEngine:
             else:
                 # TIER 1: Regenerate with Transparency Protocol
                 emit_tier1_activation_metrics(
-                    intent_type, has_context=bool(state.context_gathered),
+                    intent_type,
+                    has_context=bool(state.context_gathered),
                 )
                 logger.info(
                     f"🌊 [Tier 1] Regenerating answer with Transparency Protocol "
@@ -597,7 +613,13 @@ class ReasoningEngine:
                     logger.info(
                         f"🌊 [Tier 1] Answer regenerated with General Intelligence (duration: {tier1_duration:.2f}s)",
                     )
-                except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
+                except (
+                    ResourceExhausted,
+                    ServiceUnavailable,
+                    asyncio.TimeoutError,
+                    ValueError,
+                    RuntimeError,
+                ) as e:
                     tier1_duration = time.time() - tier1_start_time
                     emit_tier1_failure_metrics(intent_type, tier1_duration, e)
                     logger.error(
@@ -681,7 +703,13 @@ class ReasoningEngine:
                         logger.info(
                             f"🌊 [Tier 1] General Intelligence response generated (duration: {tier1_duration:.2f}s)",
                         )
-                    except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
+                    except (
+                        ResourceExhausted,
+                        ServiceUnavailable,
+                        asyncio.TimeoutError,
+                        ValueError,
+                        RuntimeError,
+                    ) as e:
                         tier1_duration = time.time() - tier1_start_time
                         emit_tier1_failure_metrics(intent_type, tier1_duration, e)
                         logger.error(
@@ -732,7 +760,13 @@ Make it feel natural and helpful, not forced.
                         enable_function_calling=False,
                     )
                     accumulated_usage = accumulated_usage + final_usage
-                except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError):
+                except (
+                    ResourceExhausted,
+                    ServiceUnavailable,
+                    asyncio.TimeoutError,
+                    ValueError,
+                    RuntimeError,
+                ):
                     logger.error("Failed to generate final answer", exc_info=True)
                     state.final_answer = "I apologize, but I couldn't generate a final answer based on the gathered information."
         elif not state.final_answer:
@@ -755,7 +789,13 @@ Make it feel natural and helpful, not forced.
                         enable_function_calling=False,
                     )
                     accumulated_usage = accumulated_usage + final_usage
-                except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError):
+                except (
+                    ResourceExhausted,
+                    ServiceUnavailable,
+                    asyncio.TimeoutError,
+                    ValueError,
+                    RuntimeError,
+                ):
                     logger.error("Failed to generate answer for general task", exc_info=True)
                     state.final_answer = self._get_localized_stub("error", language)
             else:
@@ -766,7 +806,8 @@ Make it feel natural and helpful, not forced.
                 if is_critical:
                     domain_type = get_critical_domain_type(query)
                     logger.warning(
-                        "🛡️ [Uncertainty] No context gathered for critical domain, triggering ABSTAIN (Domain: %s)", domain_type,
+                        "🛡️ [Uncertainty] No context gathered for critical domain, triggering ABSTAIN (Domain: %s)",
+                        domain_type,
                     )
                     emit_strict_abstain_metrics(intent_type, domain_type)
                     state.final_answer = self._get_localized_stub("abstain", language)
@@ -807,7 +848,13 @@ Make it feel natural and helpful, not forced.
                         logger.info(
                             f"🌊 [Tier 1] General Intelligence response generated (no context, duration: {tier1_duration:.2f}s)",
                         )
-                    except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
+                    except (
+                        ResourceExhausted,
+                        ServiceUnavailable,
+                        asyncio.TimeoutError,
+                        ValueError,
+                        RuntimeError,
+                    ) as e:
                         tier1_duration = time.time() - tier1_start_time
                         emit_tier1_failure_metrics(intent_type, tier1_duration, e)
                         logger.error(
@@ -959,7 +1006,13 @@ Do not invent information. If the context is insufficient, admit it.
                     images=step_images,
                 )
 
-            except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
+            except (
+                ResourceExhausted,
+                ServiceUnavailable,
+                asyncio.TimeoutError,
+                ValueError,
+                RuntimeError,
+            ) as e:
                 logger.error("Error during chat interaction: %s", e, exc_info=True)
                 yield {"type": "error", "data": {"message": str(e)}}
                 break
@@ -967,7 +1020,8 @@ Do not invent information. If the context is insufficient, admit it.
             # Parse for tool calls (native first, regex fallback). Streaming
             # executes one at a time; take the first of the returned list.
             tool_calls, _parse_mode = parse_tool_calls_from_response(
-                response_obj, text_response,
+                response_obj,
+                text_response,
             )
             tool_call = tool_calls[0] if tool_calls else None
 
@@ -993,13 +1047,15 @@ Do not invent information. If the context is insufficient, admit it.
 
                 # Handle citation from vector_search
                 if tool_call.tool_name == "vector_search":
-                    tool_result, source_count, content_substantial = \
-                        handle_vector_search_sources(
-                            state, tool_result, log_prefix="Agent Stream",
-                        )
+                    tool_result, source_count, content_substantial = handle_vector_search_sources(
+                        state,
+                        tool_result,
+                        log_prefix="Agent Stream",
+                    )
                     if content_substantial:
                         logger.info(
-                            "📚 [Agent Stream] Collected %d sources", source_count,
+                            "📚 [Agent Stream] Collected %d sources",
+                            source_count,
                         )
 
                 # Handle image generation results
@@ -1035,7 +1091,9 @@ Do not invent information. If the context is insufficient, admit it.
                 # Early exit optimization (simple queries only — complex may need KG).
                 intent_type = getattr(state, "intent_type", "simple")
                 if should_early_exit_on_vector_search(
-                    tool_call.tool_name, tool_result, intent_type,
+                    tool_call.tool_name,
+                    tool_result,
+                    intent_type,
                 ):
                     logger.info("🚀 [Stream Early Exit] Sufficient context from retrieval.")
                     break
@@ -1044,10 +1102,7 @@ Do not invent information. If the context is insufficient, admit it.
                     logger.info("🚀 [Stream Early Exit] CRM data retrieved, skipping extra steps.")
                     state.trusted_tools_used = True
                     break
-                if (
-                    tool_call.tool_name == "vector_search"
-                    and intent_type in COMPLEX_QUERY_INTENTS
-                ):
+                if tool_call.tool_name == "vector_search" and intent_type in COMPLEX_QUERY_INTENTS:
                     logger.info(
                         "🔗 [Stream Complex Query] Allowing multi-tool reasoning (KG may be needed)",
                     )
@@ -1057,7 +1112,9 @@ Do not invent information. If the context is insufficient, admit it.
                 if "Final Answer:" in text_response or state.current_step >= state.max_steps:
                     state.final_answer = extract_final_answer_text(text_response)
                     step = AgentStep(
-                        step_number=state.current_step, thought=text_response, is_final=True,
+                        step_number=state.current_step,
+                        thought=text_response,
+                        is_final=True,
                     )
                     state.steps.append(step)
                     break
@@ -1067,12 +1124,13 @@ Do not invent information. If the context is insufficient, admit it.
         # ==================== TRUSTED TOOLS CHECK (BEFORE EVIDENCE) ====================
         # Tool success = high evidence (RAG-native). Also honour
         # state.trusted_tools_used set by early-exit paths (e.g. CRM).
-        trusted_tools_used = getattr(state, "trusted_tools_used", False) or \
-            detect_trusted_tool_usage(
-                state.steps,
-                _TRUSTED_TOOL_NAMES,
-                log_prefix="Trusted Tools - Stream",
-            )
+        trusted_tools_used = getattr(
+            state, "trusted_tools_used", False
+        ) or detect_trusted_tool_usage(
+            state.steps,
+            _TRUSTED_TOOL_NAMES,
+            log_prefix="Trusted Tools - Stream",
+        )
 
         # ==================== EVIDENCE SCORE CALCULATION ====================
         sources = state.sources if hasattr(state, "sources") else None
@@ -1171,7 +1229,13 @@ Do not invent information. If the context is insufficient, admit it.
                     logger.info(
                         f"🌊 [Tier 1 Stream] Answer regenerated with General Intelligence (duration: {tier1_duration:.2f}s)",
                     )
-                except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
+                except (
+                    ResourceExhausted,
+                    ServiceUnavailable,
+                    asyncio.TimeoutError,
+                    ValueError,
+                    RuntimeError,
+                ) as e:
                     tier1_duration = time.time() - tier1_start_time
                     emit_tier1_failure_metrics(intent_type, tier1_duration, e)
                     logger.error(
@@ -1249,7 +1313,13 @@ Do not invent information. If the context is insufficient, admit it.
                         logger.info(
                             f"🌊 [Tier 1 Stream] General Intelligence response generated (duration: {tier1_duration:.2f}s)",
                         )
-                    except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
+                    except (
+                        ResourceExhausted,
+                        ServiceUnavailable,
+                        asyncio.TimeoutError,
+                        ValueError,
+                        RuntimeError,
+                    ) as e:
                         tier1_duration = time.time() - tier1_start_time
                         emit_tier1_failure_metrics(intent_type, tier1_duration, e)
                         logger.error(
@@ -1293,7 +1363,13 @@ Make it feel natural and helpful, not forced.
                         tier=model_tier,
                         enable_function_calling=False,
                     )
-                except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError):
+                except (
+                    ResourceExhausted,
+                    ServiceUnavailable,
+                    asyncio.TimeoutError,
+                    ValueError,
+                    RuntimeError,
+                ):
                     state.final_answer = "I apologize, but I couldn't generate a final answer."
         elif not state.final_answer:
             # No context gathered at all
@@ -1310,7 +1386,13 @@ Make it feel natural and helpful, not forced.
                         tier=model_tier,
                         enable_function_calling=False,
                     )
-                except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError):
+                except (
+                    ResourceExhausted,
+                    ServiceUnavailable,
+                    asyncio.TimeoutError,
+                    ValueError,
+                    RuntimeError,
+                ):
                     logger.error("Failed to generate answer for general task", exc_info=True)
                     state.final_answer = self._get_localized_stub("error", language)
             else:
@@ -1321,7 +1403,8 @@ Make it feel natural and helpful, not forced.
                 if is_critical:
                     domain_type = get_critical_domain_type(query)
                     logger.warning(
-                        "🛡️ [Uncertainty Stream] No context gathered for critical domain, triggering ABSTAIN (Domain: %s)", domain_type,
+                        "🛡️ [Uncertainty Stream] No context gathered for critical domain, triggering ABSTAIN (Domain: %s)",
+                        domain_type,
                     )
                     emit_strict_abstain_metrics(intent_type, domain_type)
                     state.final_answer = self._get_localized_stub("abstain", language)
@@ -1356,7 +1439,13 @@ Make it feel natural and helpful, not forced.
                         logger.info(
                             f"🌊 [Tier 1 Stream] General Intelligence response generated (no context, duration: {tier1_duration:.2f}s)",
                         )
-                    except (ResourceExhausted, ServiceUnavailable, asyncio.TimeoutError, ValueError, RuntimeError) as e:
+                    except (
+                        ResourceExhausted,
+                        ServiceUnavailable,
+                        asyncio.TimeoutError,
+                        ValueError,
+                        RuntimeError,
+                    ) as e:
                         tier1_duration = time.time() - tier1_start_time
                         emit_tier1_failure_metrics(intent_type, tier1_duration, e)
                         logger.error(

@@ -55,7 +55,9 @@ class NLMShadowChunk(BaseModel):
 
     # Lifecycle
     source: str = Field(default="nlm_shadow", description="Always 'nlm_shadow' for this collection")
-    ttl_hours: int = Field(default=72, ge=1, description="Soft TTL — runtime should ignore beyond this")
+    ttl_hours: int = Field(
+        default=72, ge=1, description="Soft TTL — runtime should ignore beyond this"
+    )
 
     @field_validator("claim_text")
     @classmethod

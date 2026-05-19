@@ -10,6 +10,7 @@ Test strategy: mount the router in an isolated FastAPI app, stub
 override `get_current_user` to bypass auth, drive the endpoint with
 synthetic error_rate values across the three thresholds.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -168,16 +169,18 @@ async def test_health_public_does_not_leak_dlq_metrics_or_counts():
         _, body = await _get_health_public(app)
 
     forbidden_top_level = {
-        "dlq", "stats", "registered_count", "error_rate", "timestamp", "status",
+        "dlq",
+        "stats",
+        "registered_count",
+        "error_rate",
+        "timestamp",
+        "status",
     }
     assert not (set(body.keys()) & forbidden_top_level), (
-        f"public endpoint leaked top-level keys: "
-        f"{set(body.keys()) & forbidden_top_level}"
+        f"public endpoint leaked top-level keys: {set(body.keys()) & forbidden_top_level}"
     )
     for chan in body["channels"].values():
-        assert set(chan.keys()) == {"status"}, (
-            f"channel body leaked extra keys: {chan.keys()}"
-        )
+        assert set(chan.keys()) == {"status"}, f"channel body leaked extra keys: {chan.keys()}"
 
 
 @pytest.mark.asyncio
@@ -223,9 +226,7 @@ async def test_health_public_uninitialized_returns_known_channels_unknown_status
     assert "ts" in body and isinstance(body["ts"], (int, float))
     assert set(body["channels"].keys()) == {"whatsapp", "telegram", "instagram", "web"}
     for chan_name, chan_body in body["channels"].items():
-        assert chan_body == {"status": "unknown"}, (
-            f"{chan_name} unexpected body shape: {chan_body}"
-        )
+        assert chan_body == {"status": "unknown"}, f"{chan_name} unexpected body shape: {chan_body}"
     # An informational `info` field is acceptable so operators can tell why
     # the response is `unknown` from a lone curl.
     assert "info" in body or "error" in body

@@ -11,6 +11,7 @@ DATABASE_URL resolution + pg-proxy check as the real cron modules:
 Edit the KEYS list below to flip specific switches. Default: all 5 SOTA
 kill-switches ON (full Loop active).
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -23,11 +24,11 @@ import asyncpg
 # (key, value) — value must be string 'true' or 'false' (scripts compare
 # == 'true' exactly, case-sensitive).
 KEYS: list[tuple[str, str]] = [
-    ("sota_m13_collect_enabled", "true"),   # m13-collect cron (every 6h)
-    ("sota_m13_weekly_enabled", "true"),    # m13-weekly cron (Sun 06:00)
-    ("sota_m13_monthly_enabled", "true"),   # m13-monthly cron (1st 04:30)
-    ("sota_research_enabled", "true"),      # router /api/research/control/research
-    ("sota_retrain_enabled", "true"),       # router /api/research/control/retrain
+    ("sota_m13_collect_enabled", "true"),  # m13-collect cron (every 6h)
+    ("sota_m13_weekly_enabled", "true"),  # m13-weekly cron (Sun 06:00)
+    ("sota_m13_monthly_enabled", "true"),  # m13-monthly cron (1st 04:30)
+    ("sota_research_enabled", "true"),  # router /api/research/control/research
+    ("sota_retrain_enabled", "true"),  # router /api/research/control/retrain
 ]
 
 

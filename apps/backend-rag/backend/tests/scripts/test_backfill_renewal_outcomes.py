@@ -1,4 +1,5 @@
 """Test post-hoc inference of renewal outcomes from historical state."""
+
 from datetime import datetime, timedelta, timezone
 
 from scripts.backfill_renewal_outcomes import infer_outcome
@@ -34,9 +35,7 @@ class TestInferOutcome:
         alert = _alert(target_date_offset_days=-30)  # target was 30d ago
         practice = {"status": "on_process", "completed_at": None}
         interactions_count = 0
-        assert (
-            infer_outcome(alert, practice, interactions_count) == "expired_no_action"
-        )
+        assert infer_outcome(alert, practice, interactions_count) == "expired_no_action"
 
     def test_no_completion_no_interactions_not_expired_returns_client_ignored(self):
         alert = _alert(target_date_offset_days=10)  # future target

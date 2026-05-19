@@ -1,4 +1,5 @@
 """OrchestratorTokenStorage: HMAC + flock + proactive refresh + atomic write."""
+
 import json
 import multiprocessing
 import os
@@ -115,8 +116,14 @@ def _worker_lock_test(token_file: str, hmac_key: str, barrier_path: str):
         time.sleep(0.05)
     s = OrchestratorTokenStorage()
     tok = s.load_sync()
-    s.save_sync({**tok, "access_token": f"by_pid_{os.getpid()}",
-                 "expires_in": 3600, "refresh_token": tok["refresh_token"]})
+    s.save_sync(
+        {
+            **tok,
+            "access_token": f"by_pid_{os.getpid()}",
+            "expires_in": 3600,
+            "refresh_token": tok["refresh_token"],
+        }
+    )
 
 
 def test_flock_serializes_concurrent_writes(tmp_path, monkeypatch):

@@ -11,12 +11,14 @@ from backend.app.routers.hr import _require_can_review_leave
 
 def _mock_service_returning_request(requester_email: str) -> Any:
     service = AsyncMock()
-    service.get_leave_request = AsyncMock(return_value={
-        "id": 1,
-        "requester_email": requester_email,
-        "requester_name": "Test Employee",
-        "status": "pending",
-    })
+    service.get_leave_request = AsyncMock(
+        return_value={
+            "id": 1,
+            "requester_email": requester_email,
+            "requester_name": "Test Employee",
+            "status": "pending",
+        }
+    )
     return service
 
 

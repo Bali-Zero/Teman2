@@ -20,6 +20,7 @@ from backend.services.rag.multi_hop import (
 # SubQuery / MultiHopPlan dataclasses
 # ---------------------------------------------------------------------------
 
+
 class TestSubQuery:
     def test_defaults(self) -> None:
         sq = SubQuery(text="open a restaurant")
@@ -61,6 +62,7 @@ class TestMultiHopPlan:
 # ---------------------------------------------------------------------------
 # MergedHopContext
 # ---------------------------------------------------------------------------
+
 
 class TestMergedHopContext:
     def test_to_prompt_context_empty(self) -> None:
@@ -125,6 +127,7 @@ class TestMergedHopContext:
 # _classify_domain
 # ---------------------------------------------------------------------------
 
+
 class TestClassifyDomain:
     def test_visa_keywords(self) -> None:
         assert _classify_domain("I need a KITAS work permit") == "visa"
@@ -152,6 +155,7 @@ class TestClassifyDomain:
 # _get_collections_for_domain
 # ---------------------------------------------------------------------------
 
+
 class TestGetCollectionsForDomain:
     def test_visa_collections(self) -> None:
         cols = _get_collections_for_domain("visa")
@@ -169,6 +173,7 @@ class TestGetCollectionsForDomain:
 # ---------------------------------------------------------------------------
 # MultiHopEngine.decompose
 # ---------------------------------------------------------------------------
+
 
 class TestDecompose:
     def setup_method(self) -> None:
@@ -188,15 +193,11 @@ class TestDecompose:
         assert plan.original_query.startswith("I want")
 
     def test_multi_domain_with_dan(self) -> None:
-        plan = self.engine.decompose(
-            "Saya mau buka PT PMA dan mengurus visa KITAS"
-        )
+        plan = self.engine.decompose("Saya mau buka PT PMA dan mengurus visa KITAS")
         assert plan.hop_count >= 1
 
     def test_multi_domain_with_semicolon(self) -> None:
-        plan = self.engine.decompose(
-            "Setup PT PMA for restaurant; apply for KITAS work permit"
-        )
+        plan = self.engine.decompose("Setup PT PMA for restaurant; apply for KITAS work permit")
         assert plan.hop_count >= 1
 
     def test_short_fragments_filtered(self) -> None:
@@ -205,9 +206,7 @@ class TestDecompose:
         assert plan.hop_count == 1
 
     def test_same_domain_fragments_merged(self) -> None:
-        plan = self.engine.decompose(
-            "I need a KITAS visa and also a stay permit extension"
-        )
+        plan = self.engine.decompose("I need a KITAS visa and also a stay permit extension")
         # Both fragments are visa domain, should be merged into 1
         domains = plan.domains
         assert domains.count("visa") <= 1
@@ -222,6 +221,7 @@ class TestDecompose:
 # MultiHopEngine.execute_hops
 # ---------------------------------------------------------------------------
 
+
 class TestExecuteHops:
     def setup_method(self) -> None:
         self.engine = MultiHopEngine()
@@ -233,12 +233,14 @@ class TestExecuteHops:
             sub_queries=[SubQuery(text="KITAS visa", domain="visa")],
         )
         mock_kg = AsyncMock()
-        mock_kg.get_kg_context = AsyncMock(return_value={
-            "entities_found": [{"entity_id": "kitas", "name": "KITAS"}],
-            "relationships": [{"type": "REQUIRES"}],
-            "source_chunk_ids": ["c1"],
-            "graph_summary": "Visa KG",
-        })
+        mock_kg.get_kg_context = AsyncMock(
+            return_value={
+                "entities_found": [{"entity_id": "kitas", "name": "KITAS"}],
+                "relationships": [{"type": "REQUIRES"}],
+                "source_chunk_ids": ["c1"],
+                "graph_summary": "Visa KG",
+            }
+        )
         mock_pool = MagicMock()
 
         result = await self.engine.execute_hops(plan, mock_kg, mock_pool)
@@ -256,12 +258,14 @@ class TestExecuteHops:
             ],
         )
         mock_kg = AsyncMock()
-        mock_kg.get_kg_context = AsyncMock(return_value={
-            "entities_found": [{"entity_id": "ent_1", "name": "E1"}],
-            "relationships": [],
-            "source_chunk_ids": [],
-            "graph_summary": "",
-        })
+        mock_kg.get_kg_context = AsyncMock(
+            return_value={
+                "entities_found": [{"entity_id": "ent_1", "name": "E1"}],
+                "relationships": [],
+                "source_chunk_ids": [],
+                "graph_summary": "",
+            }
+        )
         mock_pool = MagicMock()
 
         result = await self.engine.execute_hops(plan, mock_kg, mock_pool)
@@ -281,11 +285,15 @@ class TestExecuteHops:
         shared_entity = {"entity_id": "pt_pma", "name": "PT PMA"}
 
         call_count = 0
+
         async def side_effect(query, db_pool):
             nonlocal call_count
             call_count += 1
             return {
-                "entities_found": [shared_entity, {"entity_id": f"unique_{call_count}", "name": f"U{call_count}"}],
+                "entities_found": [
+                    shared_entity,
+                    {"entity_id": f"unique_{call_count}", "name": f"U{call_count}"},
+                ],
                 "relationships": [],
                 "source_chunk_ids": [],
                 "graph_summary": "",
@@ -309,6 +317,7 @@ class TestExecuteHops:
             ],
         )
         call_count = 0
+
         async def side_effect(query, db_pool):
             nonlocal call_count
             call_count += 1

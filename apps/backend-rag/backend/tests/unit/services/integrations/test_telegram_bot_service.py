@@ -11,6 +11,7 @@ def service():
     with patch("backend.services.integrations.telegram_bot_service.settings") as mock_settings:
         mock_settings.telegram_bot_token = "test_token_123"
         from backend.services.integrations.telegram_bot_service import TelegramBotService
+
         svc = TelegramBotService()
         svc._token = "test_token_123"
         return svc
@@ -42,7 +43,9 @@ class TestGetClient:
     @pytest.mark.asyncio
     async def test_creates_client_when_none(self, service):
         service._client = None
-        with patch("backend.services.integrations.telegram_bot_service.HttpTimeoutConstants") as mock_const:
+        with patch(
+            "backend.services.integrations.telegram_bot_service.HttpTimeoutConstants"
+        ) as mock_const:
             mock_const.TELEGRAM_TIMEOUT = 30.0
             client = await service._get_client()
             assert client is not None
@@ -160,7 +163,9 @@ class TestSendPhoto:
         service._client = mock_client
 
         await service.send_photo(
-            chat_id=123, photo=b"img", caption="My photo",
+            chat_id=123,
+            photo=b"img",
+            caption="My photo",
             reply_markup={"inline_keyboard": []},
         )
         mock_client.post.assert_awaited_once()
@@ -300,7 +305,9 @@ class TestAnswerCallbackQuery:
         service._client = mock_client
 
         result = await service.answer_callback_query(
-            callback_query_id="abc123", text="Done", show_alert=True,
+            callback_query_id="abc123",
+            text="Done",
+            show_alert=True,
         )
         assert result["ok"] is True
 
@@ -325,7 +332,11 @@ class TestFileMethods:
     @pytest.mark.asyncio
     async def test_get_file_error(self, service, mock_client):
         mock_response = MagicMock()
-        mock_response.json.return_value = {"ok": False, "error_code": 404, "description": "Not found"}
+        mock_response.json.return_value = {
+            "ok": False,
+            "error_code": 404,
+            "description": "Not found",
+        }
         mock_client.post = AsyncMock(return_value=mock_response)
         service._client = mock_client
 
@@ -364,7 +375,9 @@ class TestEditMessageText:
         service._client = mock_client
 
         result = await service.edit_message_text(
-            chat_id=123, message_id=456, text="Updated",
+            chat_id=123,
+            message_id=456,
+            text="Updated",
         )
         assert result["ok"] is True
 

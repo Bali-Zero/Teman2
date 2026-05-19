@@ -85,10 +85,12 @@ class PortalMessagingMixin:
                 "unread_count": unread,
             }
 
-    @cache_invalidating([
-        lambda self, client_id, *a, **k: f"zantara:portal_messages:{client_id}:*",
-        "zantara:portal_messages:*",
-    ])
+    @cache_invalidating(
+        [
+            lambda self, client_id, *a, **k: f"zantara:portal_messages:{client_id}:*",
+            "zantara:portal_messages:*",
+        ]
+    )
     @require_client_access
     async def send_message(
         self,
@@ -127,9 +129,11 @@ class PortalMessagingMixin:
                 "created_at": message["created_at"].isoformat(),
             }
 
-    @cache_invalidating([
-        lambda self, client_id, *a, **k: f"zantara:portal_messages:{client_id}:*",
-    ])
+    @cache_invalidating(
+        [
+            lambda self, client_id, *a, **k: f"zantara:portal_messages:{client_id}:*",
+        ]
+    )
     @require_client_access
     async def mark_message_read(
         self,
@@ -191,9 +195,11 @@ class PortalMessagingMixin:
                 "timezone": prefs["timezone"],
             }
 
-    @cache_invalidating([
-        lambda self, client_id, *a, **k: f"zantara:portal_preferences:{client_id}:*",
-    ])
+    @cache_invalidating(
+        [
+            lambda self, client_id, *a, **k: f"zantara:portal_preferences:{client_id}:*",
+        ]
+    )
     @require_client_access
     async def update_preferences(
         self,

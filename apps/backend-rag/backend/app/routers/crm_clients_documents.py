@@ -30,6 +30,7 @@ logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/crm/clients", tags=["crm-clients-documents"])
 
+
 @router.get("/metrics/summary")
 async def get_crm_metrics_summary(
     current_user: dict = Depends(get_current_user),
@@ -176,7 +177,11 @@ async def extract_passport_enhanced(
 
     import httpx
 
-    from backend.utils.passport_normalize import normalize_date, normalize_nationality, title_case_name
+    from backend.utils.passport_normalize import (
+        normalize_date,
+        normalize_nationality,
+        title_case_name,
+    )
 
     # Ollama URL: local Pro (H24) or configurable via env
     OLLAMA_URL = os.environ.get("OLLAMA_URL", "http://localhost:11434")
@@ -188,14 +193,18 @@ async def extract_passport_enhanced(
         if request.client_id is not None:
             async with db_pool.acquire() as conn:
                 # RBAC: verify user has access to this specific client
-                await verify_client_access(request.client_id, current_user, conn, allow_assigned=True)
+                await verify_client_access(
+                    request.client_id, current_user, conn, allow_assigned=True
+                )
 
                 client = await conn.fetchrow(
-                    "SELECT full_name FROM clients WHERE id = $1", request.client_id,
+                    "SELECT full_name FROM clients WHERE id = $1",
+                    request.client_id,
                 )
                 if not client:
                     return PassportPreviewResponse(
-                        success=False, message=f"Client {request.client_id} not found",
+                        success=False,
+                        message=f"Client {request.client_id} not found",
                     )
                 existing_name = client["full_name"]
 
@@ -257,7 +266,9 @@ Use null for unclear fields. Return ONLY JSON."""
                 else:
                     logger.warning("Ollama returned empty response, falling back to Gemini")
             else:
-                logger.warning(f"Ollama OCR failed: HTTP {ollama_response.status_code}, falling back to Gemini")
+                logger.warning(
+                    f"Ollama OCR failed: HTTP {ollama_response.status_code}, falling back to Gemini"
+                )
         except Exception as e:
             logger.warning("Ollama unreachable (%s), falling back to Gemini Vision", e)
 
@@ -337,9 +348,7 @@ Use null for unclear fields. Return ONLY JSON."""
                 # UU PDP audit: document OCR returned a non-ISO expiry date.
                 # Surfacing the mis-parse as a warning preserves traceability
                 # without rejecting the whole extraction.
-                warnings.append(
-                    "Passport expiry date format unrecognised — manual review required"
-                )
+                warnings.append("Passport expiry date format unrecognised — manual review required")
                 logger.info(
                     "crm.passport_ocr.invalid_expiry_format",
                     extra={"raw_expiry": str(expiry)[:32]},
@@ -358,12 +367,16 @@ Use null for unclear fields. Return ONLY JSON."""
                 gender=extracted.get("gender") if extracted else None,
                 passport_number=extracted.get("passport_number") if extracted else None,
                 passport_expiry=extracted.get("expiry_date") if extracted else None,
-                issuing_country=extracted.get("issuing_country") or extracted.get("nationality") if extracted else None,
+                issuing_country=extracted.get("issuing_country") or extracted.get("nationality")
+                if extracted
+                else None,
                 birthplace=extracted.get("birthplace") if extracted else None,
                 mrz_line1=extracted.get("mrz_line1") if extracted else None,
                 mrz_line2=extracted.get("mrz_line2") if extracted else None,
                 warnings=warnings if extracted else ["OCR extraction failed"],
-                message="Preview — fields extracted but not saved" if extracted else "Could not extract passport data",
+                message="Preview — fields extracted but not saved"
+                if extracted
+                else "Could not extract passport data",
             )
 
         # --- Persist mode (client_id is not None) ---
@@ -624,13 +637,16 @@ Rules:
         vision_model = os.environ.get("OLLAMA_VISION_MODEL", "qwen2.5vl:7b")
 
         async with httpx.AsyncClient(timeout=120.0) as http:
-            resp = await http.post(f"{ollama_url}/api/generate", json={
-                "model": vision_model,
-                "prompt": ocr_prompt,
-                "images": [base64.b64encode(file_data).decode()],
-                "stream": False,
-                "options": {"temperature": 0.1, "num_predict": 2000},
-            })
+            resp = await http.post(
+                f"{ollama_url}/api/generate",
+                json={
+                    "model": vision_model,
+                    "prompt": ocr_prompt,
+                    "images": [base64.b64encode(file_data).decode()],
+                    "stream": False,
+                    "options": {"temperature": 0.1, "num_predict": 2000},
+                },
+            )
 
         if resp.status_code != 200:
             logger.error("NPWP OCR: Ollama HTTP %d", resp.status_code)
@@ -756,13 +772,16 @@ Rules:
         vision_model = os.environ.get("OLLAMA_VISION_MODEL", "qwen2.5vl:7b")
 
         async with httpx.AsyncClient(timeout=120.0) as http:
-            resp = await http.post(f"{ollama_url}/api/generate", json={
-                "model": vision_model,
-                "prompt": ocr_prompt,
-                "images": [base64.b64encode(file_data).decode()],
-                "stream": False,
-                "options": {"temperature": 0.1, "num_predict": 2000},
-            })
+            resp = await http.post(
+                f"{ollama_url}/api/generate",
+                json={
+                    "model": vision_model,
+                    "prompt": ocr_prompt,
+                    "images": [base64.b64encode(file_data).decode()],
+                    "stream": False,
+                    "options": {"temperature": 0.1, "num_predict": 2000},
+                },
+            )
 
         if resp.status_code != 200:
             logger.error("NIB OCR: Ollama HTTP %d", resp.status_code)

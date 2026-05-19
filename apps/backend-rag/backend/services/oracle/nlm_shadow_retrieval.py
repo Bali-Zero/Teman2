@@ -25,10 +25,17 @@ COLLECTION_NAME = "nlm_shadow_hybrid"
 # Domain → typed nb_label filter so the orchestrator can narrow by domain.
 # Mirrors apps/backend-rag/backend/services/oracle/nlm_notebook_registry.py
 # but kept independent — this module never has to know the registry shape.
-_KNOWN_DOMAINS = frozenset({
-    "immigration", "company", "tax", "property",
-    "operations", "editorial", "lifestyle",
-})
+_KNOWN_DOMAINS = frozenset(
+    {
+        "immigration",
+        "company",
+        "tax",
+        "property",
+        "operations",
+        "editorial",
+        "lifestyle",
+    }
+)
 
 _DEFAULT_TOP_K = 5
 _DEFAULT_MIN_CONFIDENCE = 0.6
@@ -41,7 +48,10 @@ def is_enabled() -> bool:
     set`` change takes effect on the next request without redeploy.
     """
     return os.environ.get("NLM_SHADOW_RETRIEVAL_ENABLED", "").lower() in (
-        "1", "true", "yes", "on",
+        "1",
+        "true",
+        "yes",
+        "on",
     )
 
 
@@ -130,7 +140,9 @@ async def search_nlm_shadow_claims(
     out: list[dict[str, Any]] = []
     now = datetime.now(tz=timezone.utc)
     for hit in result or []:
-        payload = getattr(hit, "payload", None) or (hit.get("payload") if isinstance(hit, dict) else {})
+        payload = getattr(hit, "payload", None) or (
+            hit.get("payload") if isinstance(hit, dict) else {}
+        )
         if not payload:
             continue
         confidence = float(payload.get("deepseek_confidence", 0.0) or 0.0)
@@ -141,16 +153,18 @@ async def search_nlm_shadow_claims(
         score = getattr(hit, "score", None)
         if score is None and isinstance(hit, dict):
             score = hit.get("score")
-        out.append({
-            "claim_text": payload.get("claim_text", ""),
-            "score": float(score) if score is not None else 0.0,
-            "nb_id": payload.get("nb_id", ""),
-            "nb_label": payload.get("nb_label", ""),
-            "extraction_run_id": payload.get("extraction_run_id", ""),
-            "extracted_at": payload.get("extracted_at", ""),
-            "deepseek_confidence": confidence,
-            "ttl_hours": int(payload.get("ttl_hours", 72)),
-        })
+        out.append(
+            {
+                "claim_text": payload.get("claim_text", ""),
+                "score": float(score) if score is not None else 0.0,
+                "nb_id": payload.get("nb_id", ""),
+                "nb_label": payload.get("nb_label", ""),
+                "extraction_run_id": payload.get("extraction_run_id", ""),
+                "extracted_at": payload.get("extracted_at", ""),
+                "deepseek_confidence": confidence,
+                "ttl_hours": int(payload.get("ttl_hours", 72)),
+            }
+        )
         if len(out) >= top_k:
             break
     return out
@@ -176,6 +190,7 @@ def _resolve_qdrant_client() -> Any:
     """Lazy-import the canonical Qdrant client singleton if available."""
     try:
         from backend.core import qdrant_db
+
         getter = getattr(qdrant_db, "get_qdrant_client", None)
         if callable(getter):
             return getter()

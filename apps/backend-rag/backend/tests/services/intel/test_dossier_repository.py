@@ -84,16 +84,19 @@ def _dossier_row(**overrides):
 
 # ── Trend signals ─────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_append_trend(repo_and_conn):
     repo, conn = repo_and_conn
     conn.fetchrow = AsyncMock(return_value=_trend_row())
-    sig = await repo.append_trend(TrendSignalCreate(
-        source=TrendSource.RSS,
-        topic="KBLI 2025 enforcement wave",
-        urgency_score=72.5,
-        bali_zero_relevance=88.0,
-    ))
+    sig = await repo.append_trend(
+        TrendSignalCreate(
+            source=TrendSource.RSS,
+            topic="KBLI 2025 enforcement wave",
+            urgency_score=72.5,
+            bali_zero_relevance=88.0,
+        )
+    )
     assert sig.source == TrendSource.RSS
     assert sig.urgency_score == 72.5
     assert sig.bali_zero_relevance == 88.0
@@ -130,6 +133,7 @@ async def test_mark_trend_consumed(repo_and_conn):
 
 # ── Dossiers ──────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_upsert_dossier_new(repo_and_conn):
     repo, conn = repo_and_conn
@@ -144,15 +148,17 @@ async def test_upsert_dossier_new(repo_and_conn):
     conn.fetchrow = AsyncMock(return_value=new_row)
     conn.execute = AsyncMock(return_value="INSERT 0 1")
 
-    d = await repo.upsert_dossier(ResearchDossierCreate(
-        slug="b211a-fourth-extension-2026",
-        title="B211A",
-        topic_category=TopicCategory.VISA,
-        freshness_expiry=_now() + timedelta(days=30),
-        facts=[DossierFact(claim="A", confidence=0.8)],
-        citations=[DossierCitation(norma="Permenkumham 22/2023")],
-        public_safe=True,
-    ))
+    d = await repo.upsert_dossier(
+        ResearchDossierCreate(
+            slug="b211a-fourth-extension-2026",
+            title="B211A",
+            topic_category=TopicCategory.VISA,
+            freshness_expiry=_now() + timedelta(days=30),
+            facts=[DossierFact(claim="A", confidence=0.8)],
+            citations=[DossierCitation(norma="Permenkumham 22/2023")],
+            public_safe=True,
+        )
+    )
     assert d.slug == "test-dossier"  # mock row value
     # no refresh log entry because was_update=False
     conn.execute.assert_not_called()
@@ -171,13 +177,15 @@ async def test_upsert_dossier_conflict_logs_refresh(repo_and_conn):
     conn.fetchrow = AsyncMock(return_value=updated_row)
     conn.execute = AsyncMock(return_value="INSERT 0 1")
 
-    await repo.upsert_dossier(ResearchDossierCreate(
-        slug="already-exists",
-        title="Refresh",
-        topic_category=TopicCategory.TAX,
-        freshness_expiry=_now() + timedelta(days=30),
-        confidence_0_1=0.8,
-    ))
+    await repo.upsert_dossier(
+        ResearchDossierCreate(
+            slug="already-exists",
+            title="Refresh",
+            topic_category=TopicCategory.TAX,
+            freshness_expiry=_now() + timedelta(days=30),
+            confidence_0_1=0.8,
+        )
+    )
     # refresh log written exactly once on conflict
     assert conn.execute.call_count == 1
     executed_query = conn.execute.call_args[0][0]
@@ -222,6 +230,7 @@ async def test_archive_dossier(repo_and_conn):
 
 # ── Reuse tracking ────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_record_reuse(repo_and_conn):
     repo, conn = repo_and_conn
@@ -254,11 +263,13 @@ async def test_reuse_ratio_zero_when_no_dossiers(repo_and_conn):
 @pytest.mark.asyncio
 async def test_consumer_coverage(repo_and_conn):
     repo, conn = repo_and_conn
-    conn.fetch = AsyncMock(return_value=[
-        {"consumer_type": "chatbot", "n": 45},
-        {"consumer_type": "warroom", "n": 12},
-        {"consumer_type": "crm", "n": 8},
-    ])
+    conn.fetch = AsyncMock(
+        return_value=[
+            {"consumer_type": "chatbot", "n": 45},
+            {"consumer_type": "warroom", "n": 12},
+            {"consumer_type": "crm", "n": 8},
+        ]
+    )
     cov = await repo.consumer_coverage(days=30)
     assert cov == {"chatbot": 45, "warroom": 12, "crm": 8}
 

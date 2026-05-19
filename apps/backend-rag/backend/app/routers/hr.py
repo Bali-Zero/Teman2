@@ -33,6 +33,7 @@ router = APIRouter(prefix="/api/hr", tags=["hr-payroll"])
 
 # ─── Pydantic Models ────────────────────────────────────────────────────
 
+
 class EmployeeCreate(BaseModel):
     team_member_id: str
     hire_date: date
@@ -81,6 +82,7 @@ class PayrollCalculateRequest(BaseModel):
 
 
 # ─── Helpers ─────────────────────────────────────────────────────────────
+
 
 def _get_hr_service(db_pool: asyncpg.Pool) -> HRService:
     return HRService(db_pool)
@@ -145,7 +147,8 @@ def _get_user_id(current_user: dict[str, Any]) -> str:
 
 
 async def _get_my_employee_id(
-    service: HRService, user: dict[str, Any],
+    service: HRService,
+    user: dict[str, Any],
 ) -> int:
     """Get the employee_id for the current user, or raise 404."""
     emp = await service.get_employee_by_email(user["email"])
@@ -155,6 +158,7 @@ async def _get_my_employee_id(
 
 
 # ─── EMPLOYEES (admin only) ─────────────────────────────────────────────
+
 
 @router.get("/employees")
 async def list_employees(
@@ -205,6 +209,7 @@ async def upsert_employee(
 
 # ─── BONUS RATES (admin only) ───────────────────────────────────────────
 
+
 @router.get("/bonus-rates")
 async def list_bonus_rates(
     current_user: dict[str, Any] = Depends(get_current_user),
@@ -232,6 +237,7 @@ async def upsert_bonus_rate(
 
 
 # ─── BONUSES ─────────────────────────────────────────────────────────────
+
 
 @router.get("/bonuses")
 async def list_bonuses(
@@ -273,6 +279,7 @@ async def approve_bonus(
 
 # ─── PAYROLL ─────────────────────────────────────────────────────────────
 
+
 @router.post("/payroll/calculate")
 async def calculate_payroll(
     data: PayrollCalculateRequest,
@@ -283,7 +290,9 @@ async def calculate_payroll(
     _require_hr_admin(current_user)
     service = _get_hr_service(db_pool)
     result = await service.calculate_payroll(
-        data.month, data.year, _get_user_id(current_user),
+        data.month,
+        data.year,
+        _get_user_id(current_user),
     )
     await invalidate_cache("zantara:hr_payroll:*")
     return {"success": True, **result}
@@ -377,6 +386,7 @@ async def mark_payroll_paid(
 
 # ─── LEAVE ───────────────────────────────────────────────────────────────
 
+
 @router.get("/leave/types")
 async def get_leave_types(
     current_user: dict[str, Any] = Depends(get_current_user),
@@ -407,10 +417,12 @@ async def request_leave(
     service = _get_hr_service(db_pool)
     my_id = await _get_my_employee_id(service, current_user)
     try:
-        result = await service.request_leave({
-            "employee_id": my_id,
-            **data.model_dump(),
-        })
+        result = await service.request_leave(
+            {
+                "employee_id": my_id,
+                **data.model_dump(),
+            }
+        )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
@@ -420,9 +432,7 @@ async def request_leave(
         notify_leave_request_pending,
         request_id=result["id"],
         requester_email=current_user.get("email", ""),
-        requester_name=(
-            current_user.get("full_name") or current_user.get("email", "")
-        ),
+        requester_name=(current_user.get("full_name") or current_user.get("email", "")),
         leave_type_name=leave_type_name,
         start_date=data.start_date,
         end_date=data.end_date,
@@ -504,7 +514,8 @@ async def approve_leave(
     req = await _require_can_review_leave(service, current_user, request_id)
     try:
         await service.approve_leave(
-            request_id, _get_user_id(current_user),
+            request_id,
+            _get_user_id(current_user),
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -515,9 +526,7 @@ async def approve_leave(
         requester_email=req.get("requester_email", ""),
         requester_name=req.get("requester_name") or req.get("requester_email", ""),
         reviewer_email=current_user.get("email", ""),
-        reviewer_name=(
-            current_user.get("name") or current_user.get("email", "")
-        ),
+        reviewer_name=(current_user.get("name") or current_user.get("email", "")),
         leave_type_name=req.get("leave_type_name") or "Leave",
         start_date=req["start_date"],
         end_date=req["end_date"],
@@ -553,7 +562,9 @@ async def reject_leave(
     req = await _require_can_review_leave(service, current_user, request_id)
     try:
         await service.reject_leave(
-            request_id, _get_user_id(current_user), data.reason or "",
+            request_id,
+            _get_user_id(current_user),
+            data.reason or "",
         )
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -564,9 +575,7 @@ async def reject_leave(
         requester_email=req.get("requester_email", ""),
         requester_name=req.get("requester_name") or req.get("requester_email", ""),
         reviewer_email=current_user.get("email", ""),
-        reviewer_name=(
-            current_user.get("name") or current_user.get("email", "")
-        ),
+        reviewer_name=(current_user.get("name") or current_user.get("email", "")),
         leave_type_name=req.get("leave_type_name") or "Leave",
         start_date=req["start_date"],
         end_date=req["end_date"],
@@ -587,6 +596,7 @@ async def reject_leave(
 
 
 # ─── DASHBOARD ───────────────────────────────────────────────────────────
+
 
 @router.get("/dashboard")
 async def get_dashboard(

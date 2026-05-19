@@ -26,17 +26,15 @@ from backend.services.federation_alerts.models import (
     "db_mode,env_mode,expected",
     [
         ("production", None, "production"),
-        ("production", "observe", "observe"),         # env downgrades
-        ("production", "dry_action", "dry_action"),   # env downgrades
-        ("observe", "production", "observe"),         # env CANNOT upgrade
-        ("dry_action", "production", "dry_action"),   # env CANNOT upgrade
+        ("production", "observe", "observe"),  # env downgrades
+        ("production", "dry_action", "dry_action"),  # env downgrades
+        ("observe", "production", "observe"),  # env CANNOT upgrade
+        ("dry_action", "production", "dry_action"),  # env CANNOT upgrade
         ("dry_deliberate", "dry_deliberate", "dry_deliberate"),
-        ("production", "garbage", "production"),      # invalid env → DB
+        ("production", "garbage", "production"),  # invalid env → DB
     ],
 )
-def test_effective_mode_takes_safer(
-    db_mode: str, env_mode: str | None, expected: str
-) -> None:
+def test_effective_mode_takes_safer(db_mode: str, env_mode: str | None, expected: str) -> None:
     assert effective_mode(db_mode, env_mode) == expected
 
 

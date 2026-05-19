@@ -59,6 +59,7 @@ def mock_whatsapp_adapter():
 def test_channel_router_import():
     """ChannelRouter should be importable."""
     from backend.channels.router import ChannelRouter
+
     assert ChannelRouter is not None
 
 

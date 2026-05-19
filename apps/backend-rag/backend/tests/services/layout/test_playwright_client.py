@@ -63,7 +63,9 @@ async def test_screenshot_once_returns_error_if_playwright_missing(monkeypatch):
 
     client = PlaywrightClient()
     result = await client.screenshot_once(
-        "<html></html>", width=1080, height=1350,
+        "<html></html>",
+        width=1080,
+        height=1350,
     )
     assert result.ok is False
     assert "playwright" in (result.error or "").lower()

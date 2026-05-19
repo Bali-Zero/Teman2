@@ -27,10 +27,13 @@ def _build_app(mock_conn: AsyncMock, client: dict | None = None) -> TestClient:
         def acquire(self):
             return _PoolCtx()
 
-    app.dependency_overrides[get_current_client] = lambda: client or {
-        "client_id": 42,
-        "user_id": "550e8400-e29b-41d4-a716-446655440000",
-    }
+    app.dependency_overrides[get_current_client] = lambda: (
+        client
+        or {
+            "client_id": 42,
+            "user_id": "550e8400-e29b-41d4-a716-446655440000",
+        }
+    )
     app.dependency_overrides[get_database_pool] = lambda: _Pool()
     return TestClient(app)
 
@@ -106,9 +109,7 @@ def test_put_prefs_upserts_successfully() -> None:
 
 def test_put_prefs_503_when_table_missing() -> None:
     mock_conn = AsyncMock()
-    mock_conn.execute.side_effect = Exception(
-        "relation 'notification_prefs' does not exist"
-    )
+    mock_conn.execute.side_effect = Exception("relation 'notification_prefs' does not exist")
     tc = _build_app(mock_conn)
     r = tc.put(
         "/api/portal/notifications/prefs",

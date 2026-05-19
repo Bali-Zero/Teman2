@@ -108,12 +108,15 @@ async def cross_reference_claims(
         for domain_row in domains:
             domain = domain_row["domain"]
 
-            claims = await conn.fetch("""
+            claims = await conn.fetch(
+                """
                 SELECT id, session_id, claim_text, quality_score, cross_ref_count
                 FROM naga_claims
                 WHERE domain = $1 AND claim_status = 'active'
                 ORDER BY created_at ASC
-            """, domain)
+            """,
+                domain,
+            )
 
             # Check existing transitions to avoid re-processing
             existing = set()
@@ -139,7 +142,8 @@ async def cross_reference_claims(
                         continue
 
                     sim = trigram_similarity(
-                        newer["claim_text"], older["claim_text"],
+                        newer["claim_text"],
+                        older["claim_text"],
                     )
                     if sim < threshold:
                         continue

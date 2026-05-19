@@ -1,4 +1,5 @@
 """Tigris S3 client: put_object with retry + delete + URL build."""
+
 from unittest.mock import MagicMock
 
 import pytest
@@ -44,14 +45,16 @@ def test_upload_pdf_legacy_mode(tmp_path, fake_s3):
     """content_addressed=False uses the predictable legacy key."""
     pdf = tmp_path / "test.pdf"
     pdf.write_bytes(b"%PDF-1.4\n...\n%%EOF")
-    url, key = upload_pdf(fake_s3, pdf, draft_id="abc-123", prefix="wr2-pdf",
-                          content_addressed=False)
+    url, key = upload_pdf(
+        fake_s3, pdf, draft_id="abc-123", prefix="wr2-pdf", content_addressed=False
+    )
     assert key == "wr2-pdf/abc-123.pdf"
     assert url.endswith("/wr2-pdf/abc-123.pdf")
 
 
 def test_upload_pdf_retries_on_transient_error(tmp_path):
     from botocore.exceptions import ClientError
+
     pdf = tmp_path / "test.pdf"
     pdf.write_bytes(b"%PDF-1.4\n")
     s3 = MagicMock()
@@ -67,6 +70,7 @@ def test_upload_pdf_retries_on_transient_error(tmp_path):
 
 def test_upload_pdf_exhausts_retries(tmp_path):
     from botocore.exceptions import ClientError
+
     pdf = tmp_path / "test.pdf"
     pdf.write_bytes(b"%PDF-1.4\n")
     s3 = MagicMock()

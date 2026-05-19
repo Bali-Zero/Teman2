@@ -164,11 +164,12 @@ async def test_understand_query_node_success(sample_state, mock_llm):
     from unittest.mock import AsyncMock, MagicMock
 
     from backend.services.rag.kg_graph_nodes import QueryIntentSchema
+
     mock_response = QueryIntentSchema(
         intent="company_setup",
         domain="company",
         entities=["kbli:56101", "pt_pma"],
-        citizenship="foreign"
+        citizenship="foreign",
     )
     mock_structured_llm = MagicMock()
     mock_structured_llm.ainvoke = AsyncMock(return_value=mock_response)
@@ -188,6 +189,7 @@ async def test_understand_query_node_success(sample_state, mock_llm):
 async def test_understand_query_node_parse_error(sample_state, mock_llm):
     """Test understand_query_node handles generic LLM errors via fallback."""
     from unittest.mock import AsyncMock, MagicMock
+
     # Mock LLM error
     mock_structured_llm = MagicMock()
     mock_structured_llm.ainvoke = AsyncMock(side_effect=Exception("LLM Error"))
@@ -272,7 +274,7 @@ async def test_resolve_entities_node_fuzzy_match(sample_state, mock_db_pool):
     # conn.fetch is called twice: first for batch exact (empty), then for fuzzy
     conn.fetch.side_effect = [
         [],  # Batch exact match: no results
-        [   # Fuzzy match results
+        [  # Fuzzy match results
             {
                 "entity_id": "kbli:56101",
                 "name": "Restauran",

@@ -23,9 +23,7 @@ def mock_deps():
     )
     p2 = patch("backend.agents.services.llm_adapter.get_llm_adapter")
     p3 = patch("backend.agents.services.test_metrics.get_metrics_collector")
-    p4 = patch(
-        "backend.agents.services.unified_coverage_collector.UnifiedCoverageCollector"
-    )
+    p4 = patch("backend.agents.services.unified_coverage_collector.UnifiedCoverageCollector")
 
     mock_dca = p1.start()
     mock_llm = p2.start()
@@ -112,9 +110,7 @@ class TestRunFullAnalysis:
         # Mock differential
         orchestrator.differential_analyzer.calculate_delta.return_value = None
 
-        result = await orchestrator.run_full_analysis(
-            {"generate_tests": False}
-        )
+        result = await orchestrator.run_full_analysis({"generate_tests": False})
 
         assert result["analysis_type"] == "unified_full"
         assert "coverage_report" in result
@@ -122,9 +118,7 @@ class TestRunFullAnalysis:
         assert "summary" in result
 
     @pytest.mark.asyncio
-    async def test_full_analysis_saves_baseline_when_requested(
-        self, orchestrator, mock_deps
-    ):
+    async def test_full_analysis_saves_baseline_when_requested(self, orchestrator, mock_deps):
         mock_report = MagicMock()
         mock_report.overall_coverage = 40.0
         mock_report.components = {}
@@ -133,18 +127,12 @@ class TestRunFullAnalysis:
         orchestrator.coverage_collector.collect_all_coverage.return_value = mock_report
         orchestrator.differential_analyzer.calculate_delta.return_value = None
 
-        await orchestrator.run_full_analysis(
-            {"save_baseline": True, "generate_tests": False}
-        )
+        await orchestrator.run_full_analysis({"save_baseline": True, "generate_tests": False})
 
-        orchestrator.differential_analyzer.save_baseline.assert_called_once_with(
-            mock_report
-        )
+        orchestrator.differential_analyzer.save_baseline.assert_called_once_with(mock_report)
 
     @pytest.mark.asyncio
-    async def test_full_analysis_records_metrics_on_success(
-        self, orchestrator, mock_deps
-    ):
+    async def test_full_analysis_records_metrics_on_success(self, orchestrator, mock_deps):
         mock_report = MagicMock()
         mock_report.overall_coverage = 40.0
         mock_report.components = {}
@@ -161,9 +149,7 @@ class TestRunFullAnalysis:
 
     @pytest.mark.asyncio
     async def test_full_analysis_handles_exception(self, orchestrator, mock_deps):
-        orchestrator.coverage_collector.collect_all_coverage.side_effect = (
-            RuntimeError("kaboom")
-        )
+        orchestrator.coverage_collector.collect_all_coverage.side_effect = RuntimeError("kaboom")
 
         result = await orchestrator.run_full_analysis({"generate_tests": False})
 
@@ -233,12 +219,12 @@ class TestGenerateTestsForGaps:
         mock_report.components = {"backend": mock_comp}
 
         # Mock LLM generates test code
-        with patch.object(
-            orchestrator, "_generate_test_with_qwen", new_callable=AsyncMock
-        ) as mock_gen, patch.object(
-            orchestrator, "_save_test_file", return_value="/tmp/test.py"
-        ), patch.object(
-            orchestrator, "_run_test", new_callable=AsyncMock, return_value=True
+        with (
+            patch.object(
+                orchestrator, "_generate_test_with_qwen", new_callable=AsyncMock
+            ) as mock_gen,
+            patch.object(orchestrator, "_save_test_file", return_value="/tmp/test.py"),
+            patch.object(orchestrator, "_run_test", new_callable=AsyncMock, return_value=True),
         ):
             mock_gen.return_value = "def test_something(): pass"
             result = await orchestrator._generate_tests_for_gaps(mock_report, 5)

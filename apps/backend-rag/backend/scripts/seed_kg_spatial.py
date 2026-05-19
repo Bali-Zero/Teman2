@@ -48,13 +48,18 @@ async def seed_zone_nodes(conn: asyncpg.Connection) -> int:
             "district": row["district_name"] or "",
         }
 
-        await conn.execute("""
+        await conn.execute(
+            """
             INSERT INTO kg_nodes (entity_id, entity_name, entity_type, source_collection, payload, confidence, created_at)
             VALUES ($1, $2, 'zone', 'bali_zoning_layers', $3, 0.95, NOW())
             ON CONFLICT (entity_id) DO UPDATE SET
                 payload = EXCLUDED.payload,
                 confidence = EXCLUDED.confidence
-        """, entity_id, f"Zone {zone_code}: {zone_name}", json.dumps(payload))
+        """,
+            entity_id,
+            f"Zone {zone_code}: {zone_name}",
+            json.dumps(payload),
+        )
         count += 1
 
     logger.info("✅ Seeded %d zone nodes", count)
@@ -83,13 +88,18 @@ async def seed_area_nodes(conn: asyncpg.Connection) -> int:
             "subdistrict": subdistrict,
         }
 
-        await conn.execute("""
+        await conn.execute(
+            """
             INSERT INTO kg_nodes (entity_id, entity_name, entity_type, source_collection, payload, confidence, created_at)
             VALUES ($1, $2, 'area', 'bali_zoning_layers', $3, 0.95, NOW())
             ON CONFLICT (entity_id) DO UPDATE SET
                 payload = EXCLUDED.payload,
                 confidence = EXCLUDED.confidence
-        """, entity_id, area_name, json.dumps(payload))
+        """,
+            entity_id,
+            area_name,
+            json.dumps(payload),
+        )
         count += 1
 
     logger.info("✅ Seeded %d area nodes", count)
@@ -111,11 +121,14 @@ async def seed_located_in_edges(conn: asyncpg.Connection) -> int:
         company_name = row["company_name"]
 
         # Find company entity in KG (if exists)
-        company_node = await conn.fetchrow("""
+        company_node = await conn.fetchrow(
+            """
             SELECT entity_id FROM kg_nodes
             WHERE entity_type = 'pt_pma' AND entity_name ILIKE $1
             LIMIT 1
-        """, f"%{company_name}%")
+        """,
+            f"%{company_name}%",
+        )
 
         if not company_node:
             continue
@@ -124,16 +137,21 @@ async def seed_located_in_edges(conn: asyncpg.Connection) -> int:
 
         # Check zone node exists
         zone_exists = await conn.fetchval(
-            "SELECT 1 FROM kg_nodes WHERE entity_id = $1", zone_entity_id,
+            "SELECT 1 FROM kg_nodes WHERE entity_id = $1",
+            zone_entity_id,
         )
         if not zone_exists:
             continue
 
-        await conn.execute("""
+        await conn.execute(
+            """
             INSERT INTO kg_edges (source_entity_id, target_entity_id, relation_type, confidence)
             VALUES ($1, $2, 'LOCATED_IN', 0.9)
             ON CONFLICT (source_entity_id, target_entity_id, relation_type) DO NOTHING
-        """, company_node["entity_id"], zone_entity_id)
+        """,
+            company_node["entity_id"],
+            zone_entity_id,
+        )
         count += 1
 
     logger.info("✅ Created %d LOCATED_IN edges (company → zone)", count)
@@ -155,7 +173,9 @@ async def main() -> None:
         edges = await seed_located_in_edges(conn)
         logger.info(
             "✅ KG spatial seed complete: %d zones, %d areas, %d LOCATED_IN edges",
-            zones, areas, edges,
+            zones,
+            areas,
+            edges,
         )
     finally:
         await conn.close()

@@ -38,9 +38,14 @@ class MemoryFact(BaseModel):
     content: str = Field(..., min_length=1, description="The fact content")
     fact_type: FactType = Field(default=FactType.GENERAL, description="Type of fact")
     confidence: float = Field(default=0.8, ge=0.0, le=1.0, description="Confidence score")
-    source: str = Field(default="user", description="Source: 'user' or 'ai'", sa_column_kwargs={"server_default": "user"})
+    source: str = Field(
+        default="user",
+        description="Source: 'user' or 'ai'",
+        sa_column_kwargs={"server_default": "user"},
+    )
     created_at: datetime = Field(
-        default_factory=datetime.now, description="When fact was extracted",
+        default_factory=datetime.now,
+        description="When fact was extracted",
     )
 
     class Config:
@@ -56,18 +61,27 @@ class MemoryContext(BaseModel):
 
     user_id: str = Field(..., description="User identifier (email)")
     profile_facts: list[str] = Field(
-        default_factory=list, description="List of profile facts (max 10)",
+        default_factory=list,
+        description="List of profile facts (max 10)",
     )
     collective_facts: list[str] = Field(
-        default_factory=list, description="Shared knowledge from collective memory",
+        default_factory=list,
+        description="Shared knowledge from collective memory",
     )
     timeline_summary: str = Field(
-        default="", description="Formatted summary of recent episodic events",
+        default="",
+        description="Formatted summary of recent episodic events",
     )
     kg_entities: list[dict] = Field(
-        default_factory=list, description="Knowledge graph entities relevant to context",
+        default_factory=list,
+        description="Knowledge graph entities relevant to context",
     )
-    summary: str = Field(default="", max_length=500, description="Conversation summary", sa_column_kwargs={"server_default": ""})
+    summary: str = Field(
+        default="",
+        max_length=500,
+        description="Conversation summary",
+        sa_column_kwargs={"server_default": ""},
+    )
     counters: dict[str, int] = Field(
         default_factory=lambda: {"conversations": 0, "searches": 0, "tasks": 0},
         description="Activity counters",
@@ -187,14 +201,18 @@ class UserFactModel(SQLModel, table=True):
     user_id: str = Field(index=True, max_length=36)
 
     # Core Content
-    fact_type: str = Field(default="general", max_length=50, sa_column_kwargs={"server_default": "general"})
+    fact_type: str = Field(
+        default="general", max_length=50, sa_column_kwargs={"server_default": "general"}
+    )
     fact_key: str | None = Field(default=None, max_length=100)
     fact_value: str = Field(sa_column=Column(Text))
 
     # Metadata
     confidence: float = Field(default=1.0)
     source_message_id: str | None = Field(default=None, max_length=255)
-    extraction_method: str = Field(default="pattern", max_length=50, sa_column_kwargs={"server_default": "pattern"})
+    extraction_method: str = Field(
+        default="pattern", max_length=50, sa_column_kwargs={"server_default": "pattern"}
+    )
     # Status
     is_active: bool = Field(default=True)
     superseded_by: str | None = Field(default=None, max_length=36)
@@ -218,7 +236,9 @@ class EpisodicMemoryModel(SQLModel, table=True):
     user_id: str = Field(index=True, max_length=36)
 
     # Event Details
-    event_type: str = Field(default="general", max_length=50, sa_column_kwargs={"server_default": "general"})
+    event_type: str = Field(
+        default="general", max_length=50, sa_column_kwargs={"server_default": "general"}
+    )
     title: str = Field(max_length=255)
     description: str | None = Field(default=None, sa_column=Column(Text))
     emotion: str | None = Field(default=None, max_length=50)
@@ -249,7 +269,9 @@ class CollectiveMemoryModel(SQLModel, table=True):
 
     # Content
     content: str = Field(sa_column=Column(Text))
-    category: str = Field(default="general", max_length=50, sa_column_kwargs={"server_default": "general"})
+    category: str = Field(
+        default="general", max_length=50, sa_column_kwargs={"server_default": "general"}
+    )
     tags: list[str] = Field(default_factory=list, sa_column=Column(JSON))
 
     # Vector Search

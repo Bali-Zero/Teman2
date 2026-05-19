@@ -2,7 +2,6 @@
 Tests for domain_formatter.py - Domain-specific formatting instructions.
 """
 
-
 from backend.services.communication.domain_formatter import get_domain_format_instruction
 
 

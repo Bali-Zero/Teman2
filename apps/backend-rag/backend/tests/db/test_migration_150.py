@@ -2,13 +2,11 @@
 
 Spec: docs/superpowers/specs/2026-05-01-post-agentic-injection-design.md §3.4
 """
+
 from pathlib import Path
 
 MIGRATION_FILE = (
-    Path(__file__).resolve().parents[2]
-    / "db"
-    / "migrations_v2"
-    / "150_renewal_alert_outcomes.sql"
+    Path(__file__).resolve().parents[2] / "db" / "migrations_v2" / "150_renewal_alert_outcomes.sql"
 )
 
 
@@ -42,9 +40,7 @@ def test_migration_has_outcome_check_constraint():
         "client_ignored",
         "expired_no_action",
     ):
-        assert outcome_value in forward_section, (
-            f"Outcome {outcome_value} missing in CHECK"
-        )
+        assert outcome_value in forward_section, f"Outcome {outcome_value} missing in CHECK"
 
 
 def test_migration_has_observed_by_check():

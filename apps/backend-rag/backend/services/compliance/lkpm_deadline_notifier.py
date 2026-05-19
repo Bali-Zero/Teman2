@@ -153,8 +153,7 @@ class LKPMDeadlineNotifier:
             )
         if enabled != "true":
             logger.warning(
-                "LKPM deadline notifier BLOCKED -- awaiting owner approval "
-                "(set %s=true)",
+                "LKPM deadline notifier BLOCKED -- awaiting owner approval (set %s=true)",
                 KILLSWITCH_KEY,
             )
             return {"status": "blocked", "reason": "awaiting_owner_approval"}
@@ -196,9 +195,7 @@ class LKPMDeadlineNotifier:
                         await self._send_unassigned_alert(rows)
                     emails_sent += 1
                 except Exception:
-                    logger.exception(
-                        "Failed to send LKPM reminder for assignee=%s", assignee
-                    )
+                    logger.exception("Failed to send LKPM reminder for assignee=%s", assignee)
 
         # Telegram alert for urgent drafts
         telegram_sent = await self._maybe_send_telegram(in_window, now)
@@ -261,7 +258,8 @@ class LKPMDeadlineNotifier:
     ) -> bool:
         """Send Telegram alert if any in-window row has days<=3 AND status='draft'."""
         urgent = [
-            r for r in rows
+            r
+            for r in rows
             if r.get("days_until_deadline", 999) <= TELEGRAM_URGENCY_DAYS
             and r.get("status") == "draft"
         ]
@@ -281,10 +279,7 @@ class LKPMDeadlineNotifier:
         lines = [f"*LKPM URGENT* - {len(urgent_rows)} laporan draft mendekati deadline:\n"]
         for r in urgent_rows:
             days = r.get("days_until_deadline", "?")
-            lines.append(
-                f"  - {r['company_name']} ({r['quarter']} {r['year']}): "
-                f"{days} hari lagi"
-            )
+            lines.append(f"  - {r['company_name']} ({r['quarter']} {r['year']}): {days} hari lagi")
         lines.append(f"\nDashboard: {LKPM_DASHBOARD_URL}")
 
         bot = TelegramBotService()
@@ -388,8 +383,10 @@ Yuk dicek biar nggak kelewat deadline!</p>
         # — deterministic close. Equivalent to OK_CONTEXT_MANAGER per the
         # P0-5 audit; flagged only because the instantiation is on a
         # different line than the `async with`.
-        return httpx.AsyncClient(  # golden-rule-10-exempt: factory used exclusively via `async with`
-            headers={"User-Agent": "LKPMDeadlineNotifier/1.0"},
+        return (
+            httpx.AsyncClient(  # golden-rule-10-exempt: factory used exclusively via `async with`
+                headers={"User-Agent": "LKPMDeadlineNotifier/1.0"},
+            )
         )
 
 

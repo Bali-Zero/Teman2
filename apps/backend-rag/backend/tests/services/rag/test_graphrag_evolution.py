@@ -490,9 +490,7 @@ class TestMigration077:
         mock_conn = AsyncMock()
         await apply(mock_conn)
 
-        all_sql = " ".join(
-            str(call.args[0]) for call in mock_conn.execute.call_args_list
-        )
+        all_sql = " ".join(str(call.args[0]) for call in mock_conn.execute.call_args_list)
         assert "kg_nodes_staging" in all_sql
         assert "kg_edges_staging" in all_sql
         assert "source_collection_previous" in all_sql

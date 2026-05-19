@@ -3,6 +3,7 @@
 Reads the WEEKLY CASHOUT sheet, parses BZ/BS tabs, upserts to Postgres atomically
 per week. Logs each run to owner_cashout_sync_log.
 """
+
 from __future__ import annotations
 
 import logging
@@ -29,7 +30,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class SyncResult:
-    status: str                  # 'success' | 'partial' | 'failed'
+    status: str  # 'success' | 'partial' | 'failed'
     weeks_processed: int
     weeks_skipped: int
     rows_upserted: int
@@ -59,7 +60,9 @@ async def upsert_week(
                     last_synced_at = now()
                 RETURNING id
                 """,
-                week_start, tab_bz, tab_bs,
+                week_start,
+                tab_bz,
+                tab_bs,
             )
 
             await conn.execute(
@@ -70,9 +73,19 @@ async def upsert_week(
             if rows:
                 records = [
                     (
-                        week_id, r.entity, r.row_index, r.client_name, r.process,
-                        r.pnbp_idr, r.urgent_idr, r.rptka_imta_idr, r.total_income_idr,
-                        r.margin_bs_idr, r.margin_bz_idr, r.final_price_idr, r.note,
+                        week_id,
+                        r.entity,
+                        r.row_index,
+                        r.client_name,
+                        r.process,
+                        r.pnbp_idr,
+                        r.urgent_idr,
+                        r.rptka_imta_idr,
+                        r.total_income_idr,
+                        r.margin_bs_idr,
+                        r.margin_bz_idr,
+                        r.final_price_idr,
+                        r.note,
                     )
                     for r in rows
                 ]
@@ -113,9 +126,7 @@ async def upsert_week(
             return week_id
 
 
-async def _create_sync_log(
-    pool: asyncpg.Pool, triggered_by: str
-) -> int:
+async def _create_sync_log(pool: asyncpg.Pool, triggered_by: str) -> int:
     async with pool.acquire() as c:
         return await c.fetchval(
             """
@@ -225,7 +236,8 @@ async def run_sync(pool: asyncpg.Pool, *, triggered_by: str) -> SyncResult:
             status = "success"
 
         await _finalize_sync_log(
-            pool, log_id,
+            pool,
+            log_id,
             status=status,
             weeks_processed=weeks_processed,
             weeks_skipped=weeks_skipped,
@@ -244,7 +256,8 @@ async def run_sync(pool: asyncpg.Pool, *, triggered_by: str) -> SyncResult:
     except Exception as e:
         logger.exception("[CASHOUT] sync failed")
         await _finalize_sync_log(
-            pool, log_id,
+            pool,
+            log_id,
             status="failed",
             weeks_processed=weeks_processed,
             weeks_skipped=weeks_skipped,
@@ -252,9 +265,7 @@ async def run_sync(pool: asyncpg.Pool, *, triggered_by: str) -> SyncResult:
             unknown_tabs=unknown_tabs,
             error=str(e)[:500],
         )
-        await send_alert(
-            f"\u274c *Owner Cashout sync failed*\n```\n{str(e)[:400]}\n```"
-        )
+        await send_alert(f"\u274c *Owner Cashout sync failed*\n```\n{str(e)[:400]}\n```")
         return SyncResult(
             status="failed",
             weeks_processed=weeks_processed,

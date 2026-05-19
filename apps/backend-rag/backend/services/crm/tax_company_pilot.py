@@ -390,9 +390,7 @@ def _build_readiness(pilot_map: TaxCompanyPilotMap) -> TaxCompanyPilotReadiness:
         100 - sum(_readiness_penalty(gap.severity) for gap in pilot_map.gaps),
     )
     status: Literal["needs_review", "blocked"] = (
-        "blocked"
-        if any(gap.severity == "high" for gap in pilot_map.gaps)
-        else "needs_review"
+        "blocked" if any(gap.severity == "high" for gap in pilot_map.gaps) else "needs_review"
     )
     label = "Blocked" if status == "blocked" else "Needs review"
     actions = sorted(pilot_map.next_best_actions, key=_readiness_reason_priority)

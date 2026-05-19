@@ -1,4 +1,5 @@
 """Tests for owner cashout sync service (upsert_week + run_sync)."""
+
 import os
 from datetime import date
 
@@ -93,9 +94,7 @@ async def test_upsert_week_inserts_week_and_rows(db_pool):
     )
 
     async with db_pool.acquire() as c:
-        week = await c.fetchrow(
-            "SELECT * FROM owner_weekly_cashout_weeks WHERE id = $1", week_id
-        )
+        week = await c.fetchrow("SELECT * FROM owner_weekly_cashout_weeks WHERE id = $1", week_id)
         assert week["week_start"] == date(2025, 8, 22)
         assert week["tab_name_bz"] == "BZ 22 AUG"
         assert week["tab_name_bs"] == "BS 22 AUG"
@@ -116,12 +115,18 @@ async def test_upsert_week_is_idempotent(db_pool):
     rows_bz = [make_bz_row("CLIENT A", 1_000_000, 2_700_000)]
 
     id1 = await upsert_week(
-        db_pool, week_start=date(2025, 8, 22),
-        tab_bz="BZ 22 AUG", tab_bs="BS 22 AUG", rows=rows_bz,
+        db_pool,
+        week_start=date(2025, 8, 22),
+        tab_bz="BZ 22 AUG",
+        tab_bs="BS 22 AUG",
+        rows=rows_bz,
     )
     id2 = await upsert_week(
-        db_pool, week_start=date(2025, 8, 22),
-        tab_bz="BZ 22 AUG", tab_bs="BS 22 AUG", rows=rows_bz,
+        db_pool,
+        week_start=date(2025, 8, 22),
+        tab_bz="BZ 22 AUG",
+        tab_bs="BS 22 AUG",
+        rows=rows_bz,
     )
 
     assert id1 == id2
@@ -140,15 +145,21 @@ async def test_upsert_week_replaces_rows_on_rerun(db_pool):
         make_bz_row("CLIENT B", 1_100_000, 2_700_000),
     ]
     await upsert_week(
-        db_pool, week_start=date(2025, 8, 22),
-        tab_bz="BZ 22 AUG", tab_bs=None, rows=rows_first,
+        db_pool,
+        week_start=date(2025, 8, 22),
+        tab_bz="BZ 22 AUG",
+        tab_bs=None,
+        rows=rows_first,
     )
 
     # Second run: only 1 client (client B removed from sheet)
     rows_second = [make_bz_row("CLIENT A", 1_000_000, 2_700_000)]
     week_id = await upsert_week(
-        db_pool, week_start=date(2025, 8, 22),
-        tab_bz="BZ 22 AUG", tab_bs=None, rows=rows_second,
+        db_pool,
+        week_start=date(2025, 8, 22),
+        tab_bz="BZ 22 AUG",
+        tab_bs=None,
+        rows=rows_second,
     )
 
     async with db_pool.acquire() as c:
@@ -192,7 +203,17 @@ async def test_run_sync_happy_path(db_pool):
     fake_tabs = {
         "BZ 22 AUG": [
             ["NEW CASHOUT"],
-            ["NAME", "PROCESS", "PNBP", "URGENT", "RPTKA/IMTA", "TOTAL INCOME", "MARGIN BS", "MARGIN BZ", "NOTE"],
+            [
+                "NAME",
+                "PROCESS",
+                "PNBP",
+                "URGENT",
+                "RPTKA/IMTA",
+                "TOTAL INCOME",
+                "MARGIN BS",
+                "MARGIN BZ",
+                "NOTE",
+            ],
             ["A BC", "C1", "Rp1,000,000", "", "", "Rp2,700,000", "Rp600,000", "Rp1,100,000"],
         ],
         "BS 22 AUG": [
@@ -222,7 +243,17 @@ async def test_run_sync_unknown_tab_triggers_partial(db_pool):
     fake_tabs = {
         "BZ 22 AUG": [
             ["NEW CASHOUT"],
-            ["NAME", "PROCESS", "PNBP", "URGENT", "RPTKA/IMTA", "TOTAL INCOME", "MARGIN BS", "MARGIN BZ", "NOTE"],
+            [
+                "NAME",
+                "PROCESS",
+                "PNBP",
+                "URGENT",
+                "RPTKA/IMTA",
+                "TOTAL INCOME",
+                "MARGIN BS",
+                "MARGIN BZ",
+                "NOTE",
+            ],
             ["A BC", "C1", "Rp1,000,000", "", "", "Rp2,700,000", "Rp600,000", "Rp1,100,000"],
         ],
         "BS 22 AUG": [
@@ -232,17 +263,30 @@ async def test_run_sync_unknown_tab_triggers_partial(db_pool):
         ],
         "BZ 13 FEB 26": [  # unknown, not in TAB_TO_WEEK
             ["NEW CASHOUT"],
-            ["NAME", "PROCESS", "PNBP", "URGENT", "RPTKA/IMTA", "TOTAL INCOME", "MARGIN BS", "MARGIN BZ", "NOTE"],
+            [
+                "NAME",
+                "PROCESS",
+                "PNBP",
+                "URGENT",
+                "RPTKA/IMTA",
+                "TOTAL INCOME",
+                "MARGIN BS",
+                "MARGIN BZ",
+                "NOTE",
+            ],
             ["X Y", "C1", "Rp1,000,000", "", "", "Rp2,700,000", "Rp600,000", "Rp1,100,000"],
         ],
     }
 
-    with patch(
-        "backend.services.hr.owner_cashout.sync_service.SheetReader",
-        return_value=FakeReader(fake_tabs),
-    ), patch(
-        "backend.services.hr.owner_cashout.sync_service.send_alert",
-    ) as mock_alert:
+    with (
+        patch(
+            "backend.services.hr.owner_cashout.sync_service.SheetReader",
+            return_value=FakeReader(fake_tabs),
+        ),
+        patch(
+            "backend.services.hr.owner_cashout.sync_service.send_alert",
+        ) as mock_alert,
+    ):
         result = await run_sync(db_pool, triggered_by="test")
 
     assert result.status == "partial"
@@ -259,7 +303,17 @@ async def test_run_sync_writes_log_row(db_pool):
     fake_tabs = {
         "BZ 22 AUG": [
             ["NEW CASHOUT"],
-            ["NAME", "PROCESS", "PNBP", "URGENT", "RPTKA/IMTA", "TOTAL INCOME", "MARGIN BS", "MARGIN BZ", "NOTE"],
+            [
+                "NAME",
+                "PROCESS",
+                "PNBP",
+                "URGENT",
+                "RPTKA/IMTA",
+                "TOTAL INCOME",
+                "MARGIN BS",
+                "MARGIN BZ",
+                "NOTE",
+            ],
             ["A BC", "C1", "Rp1,000,000", "", "", "Rp2,700,000", "Rp600,000", "Rp1,100,000"],
         ],
     }

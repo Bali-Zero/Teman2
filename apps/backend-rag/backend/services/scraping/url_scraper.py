@@ -24,6 +24,7 @@ Security notes
   paranoia rises, wrap in an IP-allowlist check.
 - Response size is capped at 5 MB; oversized responses are truncated.
 """
+
 from __future__ import annotations
 
 import logging

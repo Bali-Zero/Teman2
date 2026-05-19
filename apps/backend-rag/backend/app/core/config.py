@@ -218,7 +218,8 @@ class Settings(BaseSettings):
 
     # ZeroEntropy Re-ranker Configuration (External API)
     zerank_api_key: str | None = Field(
-        default=None, description="ZeroEntropy API Key - Set via ZERANK_API_KEY env var",
+        default=None,
+        description="ZeroEntropy API Key - Set via ZERANK_API_KEY env var",
     )
     zerank_api_url: str = Field(
         default="https://api.zeroentropy.dev/v1/models/rerank",
@@ -450,12 +451,9 @@ class Settings(BaseSettings):
         if not v:
             env = os.getenv("ENVIRONMENT", "development")
             if env.lower() in ("test", "testing"):
-                raise ValueError(
-                    "API_KEYS not set. Ensure conftest.py sets it before import."
-                )
+                raise ValueError("API_KEYS not set. Ensure conftest.py sets it before import.")
             raise ValueError(
-                "API_KEYS must be set. "
-                "Export API_KEYS as a comma-separated list of secure keys."
+                "API_KEYS must be set. Export API_KEYS as a comma-separated list of secure keys."
             )
 
         return v
@@ -776,11 +774,7 @@ class Settings(BaseSettings):
         raw = self.admin_emails
         if not raw:
             return self._ADMIN_EMAILS_FALLBACK
-        emails = {
-            e.strip().lower()
-            for e in raw.split(",")
-            if e.strip()
-        }
+        emails = {e.strip().lower() for e in raw.split(",") if e.strip()}
         if not emails:
             return self._ADMIN_EMAILS_FALLBACK
         return frozenset(emails)
@@ -791,11 +785,7 @@ class Settings(BaseSettings):
         raw = self.notification_cc_emails
         if not raw:
             return ()
-        return tuple(
-            e.strip().lower()
-            for e in raw.split(",")
-            if e.strip()
-        )
+        return tuple(e.strip().lower() for e in raw.split(",") if e.strip())
 
     # ========================================
     # GOOGLE SERVICES CONFIGURATION

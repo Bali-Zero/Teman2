@@ -157,7 +157,8 @@ class LegalChunker:
                         f"Non-Pasal block too large ({len(chunk_text)} chars), splitting semantically",
                     )
                     semantic_subchunks = await self.semantic_splitter.split_text(
-                        chunk_text, self.max_pasal_tokens,
+                        chunk_text,
+                        self.max_pasal_tokens,
                     )
                     for sub in semantic_subchunks:
                         context = self._build_context(metadata)
@@ -182,7 +183,9 @@ class LegalChunker:
             if pasal_length > char_limit:
                 # Split by Ayat first
                 logger.debug(
-                    "Pasal %s too large (%s chars), splitting by Ayat", pasal_num, pasal_length,
+                    "Pasal %s too large (%s chars), splitting by Ayat",
+                    pasal_num,
+                    pasal_length,
                 )
                 ayat_chunks = self._split_by_ayat(pasal_text, pasal_num)
 
@@ -190,16 +193,21 @@ class LegalChunker:
                     # If Ayat itself is still huge (or no Ayat were found), use Semantic Splitting
                     if len(ayat_chunk) > char_limit:
                         semantic_subchunks = await self.semantic_splitter.split_text(
-                            ayat_chunk, self.max_pasal_tokens,
+                            ayat_chunk,
+                            self.max_pasal_tokens,
                         )
                         for sub in semantic_subchunks:
                             context = self._build_context(
-                                metadata, bab=bab_context, pasal=f"Pasal {pasal_num}",
+                                metadata,
+                                bab=bab_context,
+                                pasal=f"Pasal {pasal_num}",
                             )
                             chunks.append(self._create_chunk(sub, context, metadata, pasal_num))
                     else:
                         context = self._build_context(
-                            metadata, bab=bab_context, pasal=f"Pasal {pasal_num}",
+                            metadata,
+                            bab=bab_context,
+                            pasal=f"Pasal {pasal_num}",
                         )
                         chunks.append(self._create_chunk(ayat_chunk, context, metadata, pasal_num))
             else:

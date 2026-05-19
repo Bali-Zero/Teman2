@@ -38,6 +38,7 @@ from backend.services.visa_check.catalogue import FitTag, VisaMeta, VisaType
 # both modules have fully initialised.
 def _get_visa_meta() -> dict[VisaType, VisaMeta]:
     from backend.services.visa_check.catalogue import VISA_META  # noqa: PLC0415
+
     return VISA_META
 
 
@@ -68,8 +69,8 @@ _BUDGET_CEILING: dict[BudgetBand, int] = {
 @dataclass(frozen=True)
 class RankedVisa:
     visa: VisaType
-    score: float                   # 0.0 – 1.0
-    reason: str                    # 1–2 sentences, user-facing
+    score: float  # 0.0 – 1.0
+    reason: str  # 1–2 sentences, user-facing
     fit_tags: frozenset[str] = field(default_factory=frozenset)
 
 
@@ -78,7 +79,7 @@ class MatchResult:
     ranking: list[RankedVisa]
     pre_arrival_steps: list[str]
     referral_mode: bool
-    referral_reason: str = ""      # used when ranking is empty
+    referral_reason: str = ""  # used when ranking is empty
 
     # ── Backwards-compat properties (router + existing tests) ────
 
@@ -286,7 +287,7 @@ def _rank_for_purpose(
 
 
 _MAX_RESULTS: dict[Purpose, int] = {
-    Purpose.WORK_EMPLOYEE: 3,      # E23 + short-term (C18/C22A) alternatives
+    Purpose.WORK_EMPLOYEE: 3,  # E23 + short-term (C18/C22A) alternatives
     Purpose.STUDENT: 2,
     Purpose.FAMILY: 2,
     Purpose.RETIREMENT: 2,

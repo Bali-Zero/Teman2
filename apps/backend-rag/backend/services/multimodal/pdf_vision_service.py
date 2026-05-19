@@ -110,7 +110,9 @@ class PDFVisionService:
             result = await self._analyze_via_ollama(prompt, image_base64)
             if result:
                 logger.info(
-                    "👁️ Vision analysis complete via Ollama for %s p.%s", local_path, page_number,
+                    "👁️ Vision analysis complete via Ollama for %s p.%s",
+                    local_path,
+                    page_number,
                 )
                 if is_drive_file and os.path.exists(local_path):
                     os.remove(local_path)
@@ -120,12 +122,16 @@ class PDFVisionService:
             # ⚠️ UU PDP COMPLIANCE: This sends document images to Google servers (cross-border transfer)
             # Art. 56 requires safeguards for cross-border data transfer
             logger.warning(
-                "⚠️ [CROSS-BORDER] Ollama local OCR failed, falling back to Gemini API for %s p.%s. Document image will be sent to Google servers.", local_path, page_number
+                "⚠️ [CROSS-BORDER] Ollama local OCR failed, falling back to Gemini API for %s p.%s. Document image will be sent to Google servers.",
+                local_path,
+                page_number,
             )
             result = await self._analyze_via_gemini(prompt, image_base64)
             if result:
                 logger.info(
-                    "👁️ Vision analysis complete via Gemini (CROSS-BORDER) for %s p.%s", local_path, page_number,
+                    "👁️ Vision analysis complete via Gemini (CROSS-BORDER) for %s p.%s",
+                    local_path,
+                    page_number,
                 )
                 if is_drive_file and os.path.exists(local_path):
                     os.remove(local_path)
@@ -220,7 +226,10 @@ class PDFVisionService:
         return Image.open(io.BytesIO(img_data))
 
     async def extract_kbli_table(
-        self, pdf_identifier: str, page_range: tuple[int, int], is_drive_file: bool = True,
+        self,
+        pdf_identifier: str,
+        page_range: tuple[int, int],
+        is_drive_file: bool = True,
     ) -> str:
         """
         Estrae dati KBLI da un range di pagine.

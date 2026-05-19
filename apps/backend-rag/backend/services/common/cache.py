@@ -23,6 +23,7 @@ fallback) and on ``backend.app.metrics`` counters for observability. Both
 dependencies are imported lazily so tests can monkeypatch the underlying hooks
 without pulling the FastAPI app graph.
 """
+
 from __future__ import annotations
 
 import inspect

@@ -15,6 +15,7 @@ from backend.services.naga.config.naga_config import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def config() -> NagaConfig:
     """Return a default NagaConfig instance."""
@@ -25,17 +26,14 @@ def config() -> NagaConfig:
 def source_weights_path() -> Path:
     """Return the path to source_weights.json."""
     return (
-        Path(__file__).resolve().parents[3]
-        / "services"
-        / "naga"
-        / "config"
-        / "source_weights.json"
+        Path(__file__).resolve().parents[3] / "services" / "naga" / "config" / "source_weights.json"
     )
 
 
 # ---------------------------------------------------------------------------
 # TierBudget dataclass
 # ---------------------------------------------------------------------------
+
 
 class TestTierBudget:
     """Verify TierBudget dataclass construction and defaults."""
@@ -56,6 +54,7 @@ class TestTierBudget:
 # ---------------------------------------------------------------------------
 # Tier budgets
 # ---------------------------------------------------------------------------
+
 
 class TestTierBudgets:
     """All three tiers must exist with their documented limits."""
@@ -95,6 +94,7 @@ class TestTierBudgets:
 # Convergence thresholds
 # ---------------------------------------------------------------------------
 
+
 class TestConvergenceThresholds:
     """Thresholds must be in [0, 1] and match documented defaults."""
 
@@ -120,6 +120,7 @@ class TestConvergenceThresholds:
 # ---------------------------------------------------------------------------
 # Channel TTLs
 # ---------------------------------------------------------------------------
+
 
 class TestChannelTTLs:
     """Per-channel TTL overrides must be present and positive."""
@@ -150,6 +151,7 @@ class TestChannelTTLs:
 # ---------------------------------------------------------------------------
 # source_weights.json — file-level checks
 # ---------------------------------------------------------------------------
+
 
 class TestSourceWeightsFile:
     """source_weights.json must exist, parse, and contain required keys."""
@@ -193,14 +195,13 @@ class TestSourceWeightsFile:
         data = json.loads(source_weights_path.read_text(encoding="utf-8"))
         for section in ("default", "domain_overrides", "freshness_weights"):
             for key, val in data[section].items():
-                assert 0.0 <= val <= 1.0, (
-                    f"{section}.{key} = {val} is outside [0, 1]"
-                )
+                assert 0.0 <= val <= 1.0, f"{section}.{key} = {val} is outside [0, 1]"
 
 
 # ---------------------------------------------------------------------------
 # NagaConfig.load_source_weights()
 # ---------------------------------------------------------------------------
+
 
 class TestLoadSourceWeights:
     """NagaConfig must be able to load and return source weights."""

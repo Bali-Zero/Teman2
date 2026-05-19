@@ -14,6 +14,7 @@ live in scripts/wr3_supervisor.py).
 Pattern mirrors test_outbox.py / test_outbox_callsite_integration.py with
 AsyncMock connections — no real PG needed at unit test scope.
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock
@@ -41,6 +42,7 @@ def supervisor_module():
     """Load the WR3 supervisor module, skip if not yet authored."""
     try:
         import importlib
+
         return importlib.import_module("scripts.wr3_supervisor")
     except ModuleNotFoundError as exc:
         pytest.skip(f"scripts.wr3_supervisor not yet authored: {exc}")

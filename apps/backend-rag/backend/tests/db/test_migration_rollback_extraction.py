@@ -5,6 +5,7 @@ A SQL migration file may include a trailing `-- === ROLLBACK ===` marker line;
 everything after it is the rollback SQL. The manager must pass that string
 into BaseMigration(rollback_sql=...) for post-111 migrations.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -23,26 +24,15 @@ class TestExtractRollbackSql:
         assert _extract_rollback_sql(sql) is None
 
     def test_marker_splits_content(self) -> None:
-        sql = (
-            "CREATE TABLE foo (id INT);\n"
-            "-- === ROLLBACK ===\n"
-            "DROP TABLE foo;\n"
-        )
+        sql = "CREATE TABLE foo (id INT);\n-- === ROLLBACK ===\nDROP TABLE foo;\n"
         assert _extract_rollback_sql(sql) == "DROP TABLE foo;"
 
     def test_marker_is_case_insensitive(self) -> None:
-        sql = (
-            "CREATE TABLE foo (id INT);\n"
-            "-- === rollback ===\n"
-            "DROP TABLE foo;\n"
-        )
+        sql = "CREATE TABLE foo (id INT);\n-- === rollback ===\nDROP TABLE foo;\n"
         assert _extract_rollback_sql(sql) == "DROP TABLE foo;"
 
     def test_empty_rollback_section_returns_empty_string(self) -> None:
-        sql = (
-            "CREATE TABLE foo (id INT);\n"
-            "-- === ROLLBACK ===\n"
-        )
+        sql = "CREATE TABLE foo (id INT);\n-- === ROLLBACK ===\n"
         assert _extract_rollback_sql(sql) == ""
 
     def test_multiline_rollback_preserved(self) -> None:
@@ -61,7 +51,9 @@ class TestDiscoverMigrationsPlumbing:
 
     @pytest.mark.asyncio
     async def test_rollback_sql_is_propagated_to_dict(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+        self,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         # Arrange: create a temp migrations_v2 dir with two files:
         # one without marker (rollback_sql=None), one with marker.
@@ -72,9 +64,7 @@ class TestDiscoverMigrationsPlumbing:
             encoding="utf-8",
         )
         (v2_dir / "200_new.sql").write_text(
-            "CREATE TABLE foo (id INT);\n"
-            "-- === ROLLBACK ===\n"
-            "DROP TABLE foo;\n",
+            "CREATE TABLE foo (id INT);\n-- === ROLLBACK ===\nDROP TABLE foo;\n",
             encoding="utf-8",
         )
 
@@ -83,6 +73,7 @@ class TestDiscoverMigrationsPlumbing:
         # `Path(__file__).parent / "migrations_v2"`, so we shim that by
         # monkey-patching the module's __file__ to a sibling of tmp_path.
         import backend.db.migration_manager as mm
+
         fake_parent = tmp_path / "db"
         fake_parent.mkdir()
         fake_file = fake_parent / "migration_manager.py"

@@ -17,6 +17,7 @@ Invariants are opt-in (default enabled=false, dry_run=true). State lives in
 crm_guardian_state. Audit trail lives in crm_guardian_events (append-only).
 Global kill switch: system_settings.crm_guardian_enabled.
 """
+
 from .base import (
     GuardianAction,
     GuardianConfig,

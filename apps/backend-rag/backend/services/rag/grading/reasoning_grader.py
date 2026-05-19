@@ -56,7 +56,11 @@ class ReasoningGrader(BaseGrader):
             score += 0.05
 
         if score < self.fail_fast_threshold:
-            return score, f"Reasoning critically shallow ({step_count} steps, avg {avg_length:.0f} chars)", ""
+            return (
+                score,
+                f"Reasoning critically shallow ({step_count} steps, avg {avg_length:.0f} chars)",
+                "",
+            )
 
         if score < self.pass_threshold:
             hint = "Produce more detailed observations grounded in source documents"

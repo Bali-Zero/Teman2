@@ -404,7 +404,9 @@ class TestSendEmail:
                 content="body",
                 cc=["cc@b.com"],
                 bcc=["bcc@b.com"],
-                attachments=[{"store_name": "s", "attachment_path": "/p", "attachment_name": "f.pdf"}],
+                attachments=[
+                    {"store_name": "s", "attachment_path": "/p", "attachment_name": "f.pdf"}
+                ],
                 is_html=False,
             )
 
@@ -609,7 +611,9 @@ class TestGetEmail:
 
 class TestLogActivity:
     @pytest.mark.asyncio
-    async def test_log_activity_success(self, service: ZohoEmailService, mock_pool: MagicMock) -> None:
+    async def test_log_activity_success(
+        self, service: ZohoEmailService, mock_pool: MagicMock
+    ) -> None:
         mock_pool._conn.fetchval = AsyncMock(return_value="user@balizero.com")
         mock_pool._conn.execute = AsyncMock()
 
@@ -623,7 +627,9 @@ class TestLogActivity:
 
     @pytest.mark.asyncio
     async def test_log_activity_failure_does_not_raise(
-        self, service: ZohoEmailService, mock_pool: MagicMock,
+        self,
+        service: ZohoEmailService,
+        mock_pool: MagicMock,
     ) -> None:
         mock_pool._conn.fetchval = AsyncMock(side_effect=Exception("DB error"))
 

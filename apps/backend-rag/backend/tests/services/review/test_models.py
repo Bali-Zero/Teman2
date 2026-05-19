@@ -111,11 +111,7 @@ def test_primary_keyboard_has_three_buttons():
 
 def test_reject_reason_keyboard_covers_all_reasons():
     kb = build_reject_reason_keyboard(DID)
-    data = [
-        btn["callback_data"]
-        for row in kb["inline_keyboard"]
-        for btn in row
-    ]
+    data = [btn["callback_data"] for row in kb["inline_keyboard"] for btn in row]
     reasons = [d.split(":")[3] for d in data]
     assert set(reasons) == {"tone", "fact", "visual", "clickbait", "other"}
 

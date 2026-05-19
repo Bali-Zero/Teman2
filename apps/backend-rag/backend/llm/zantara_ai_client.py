@@ -291,7 +291,9 @@ class ZantaraAIClient:
         return gemini_history, last_user_message
 
     def _estimate_tokens(
-        self, messages: list[dict[str, str]], response_text: str,
+        self,
+        messages: list[dict[str, str]],
+        response_text: str,
     ) -> dict[str, int]:
         """
         Estimate token counts for input and output.
@@ -452,7 +454,8 @@ class ZantaraAIClient:
 
         # Validate inputs
         self._validate_inputs(
-            max_tokens=max_tokens, messages=[{"role": "user", "content": message}],
+            max_tokens=max_tokens,
+            messages=[{"role": "user", "content": message}],
         )
 
         # Build system prompt
@@ -578,11 +581,16 @@ class ZantaraAIClient:
                 if err_class == "permanent":
                     logger.error(
                         "LLM stream permanent error",
-                        extra={"user_id": user_id, "attempt": attempt + 1, "error": str(last_exception)},
+                        extra={
+                            "user_id": user_id,
+                            "attempt": attempt + 1,
+                            "error": str(last_exception),
+                        },
                     )
                     break
                 delay = _compute_delay(
-                    err_class, attempt,
+                    err_class,
+                    attempt,
                     self.retry_handler.base_delay,
                     self.retry_handler.backoff_factor,
                 )

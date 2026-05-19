@@ -102,10 +102,12 @@ class GradingContext:
         if isinstance(trace, list):
             for entry in trace:
                 if isinstance(entry, dict):
-                    steps.append(ReasoningStep(
-                        step_type=entry.get("type", "thought"),
-                        content=entry.get("content", str(entry)),
-                    ))
+                    steps.append(
+                        ReasoningStep(
+                            step_type=entry.get("type", "thought"),
+                            content=entry.get("content", str(entry)),
+                        )
+                    )
                 elif isinstance(entry, str):
                     steps.append(ReasoningStep(content=entry))
                 else:

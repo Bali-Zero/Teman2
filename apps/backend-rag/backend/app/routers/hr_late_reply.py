@@ -195,7 +195,8 @@ async def get_late_reply_form(
 
     if row is None or not secrets.compare_digest(row["reply_token"], token):
         logger.warning(
-            "get_late_reply_form: invalid token for incident_id=%s", incident_id,
+            "get_late_reply_form: invalid token for incident_id=%s",
+            incident_id,
         )
         return HTMLResponse(_render_invalid(), status_code=404)
 
@@ -244,7 +245,8 @@ async def post_late_reply(
 
         if row is None or not secrets.compare_digest(row["reply_token"], token):
             logger.warning(
-                "post_late_reply: invalid token for incident_id=%s", incident_id,
+                "post_late_reply: invalid token for incident_id=%s",
+                incident_id,
             )
             raise HTTPException(status_code=404, detail="invalid token")
 

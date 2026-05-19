@@ -130,38 +130,43 @@ def cognitive_repo():
 def _make_orch(intel, cognitive, scripts=None, fail=False) -> ConnectorOrchestrator:
     runner = MockRunner(scripts=scripts or [], fail=fail)
     return ConnectorOrchestrator(
-        intel_repo=intel, cognitive_repo=cognitive, runner=runner,
+        intel_repo=intel,
+        cognitive_repo=cognitive,
+        runner=runner,
     )
 
 
 async def _stub_dossiers(intel, dossiers):
     """fetch_safe returns asyncpg.Record-like rows when queried for dossiers."""
+
     async def side_effect(query, *args):
         # The connector uses _row_to_dossier which expects certain columns.
         rows = []
         for d in dossiers:
-            rows.append({
-                "id": d.id,
-                "slug": d.slug,
-                "title": d.title,
-                "topic_category": d.topic_category.value,
-                "domains": json.dumps(d.domains),
-                "public_safe": d.public_safe,
-                "facts": json.dumps([]),
-                "numbers": json.dumps([]),
-                "citations": json.dumps([]),
-                "entities_linked": json.dumps([]),
-                "precedents": json.dumps([]),
-                "confidence_0_1": d.confidence_0_1,
-                "freshness_expiry": d.freshness_expiry,
-                "source_signals": None,
-                "language": d.language,
-                "summary_short": d.summary_short,
-                "summary_medium": d.summary_medium,
-                "created_at": d.created_at,
-                "updated_at": d.updated_at,
-                "archived_at": d.archived_at,
-            })
+            rows.append(
+                {
+                    "id": d.id,
+                    "slug": d.slug,
+                    "title": d.title,
+                    "topic_category": d.topic_category.value,
+                    "domains": json.dumps(d.domains),
+                    "public_safe": d.public_safe,
+                    "facts": json.dumps([]),
+                    "numbers": json.dumps([]),
+                    "citations": json.dumps([]),
+                    "entities_linked": json.dumps([]),
+                    "precedents": json.dumps([]),
+                    "confidence_0_1": d.confidence_0_1,
+                    "freshness_expiry": d.freshness_expiry,
+                    "source_signals": None,
+                    "language": d.language,
+                    "summary_short": d.summary_short,
+                    "summary_medium": d.summary_medium,
+                    "created_at": d.created_at,
+                    "updated_at": d.updated_at,
+                    "archived_at": d.archived_at,
+                }
+            )
         return rows
 
     intel.fetch_safe = AsyncMock(side_effect=side_effect)
@@ -221,7 +226,7 @@ async def test_rejects_thesis_below_min_confidence(intel_repo, cognitive_repo):
             "title": "weak",
             "narrative": "shaky link",
             "source_dossier_ids": [str(d1.id), str(d2.id)],
-            "confidence": 0.4,   # below MIN_CONFIDENCE
+            "confidence": 0.4,  # below MIN_CONFIDENCE
         }
     ]
     orch = _make_orch(intel_repo, cognitive_repo, scripts=[_theses_json(theses_payload)])

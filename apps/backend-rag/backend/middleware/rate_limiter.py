@@ -30,10 +30,7 @@ def _evict_stale_keys() -> None:
     if len(_rate_limit_storage) <= _MAX_RATE_LIMIT_KEYS:
         return
     cutoff = time.time() - _EVICTION_STALE_SECONDS
-    _rate_limit_storage = {
-        k: v for k, v in _rate_limit_storage.items()
-        if v and v[-1] > cutoff
-    }
+    _rate_limit_storage = {k: v for k, v in _rate_limit_storage.items() if v and v[-1] > cutoff}
 
 
 class RateLimiter:
@@ -86,7 +83,9 @@ class RateLimiter:
             self.redis_client = None
             self.redis_available = False
             manager.register_component("rate_limiter", "fallback_memory")
-            logger.warning("Rate limiter using in-memory storage — no Redis available, rate limits not shared across workers")
+            logger.warning(
+                "Rate limiter using in-memory storage — no Redis available, rate limits not shared across workers"
+            )
 
     def _try_recover(self) -> None:
         """Attempt to reconnect to Redis if we've been in fallback mode."""

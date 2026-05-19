@@ -176,7 +176,8 @@ async def migrate_collection(
                 scroll_payload["offset"] = offset
 
             response = await http_client.post(
-                f"/collections/{collection_name}/points/scroll", json=scroll_payload,
+                f"/collections/{collection_name}/points/scroll",
+                json=scroll_payload,
             )
             response.raise_for_status()
             data = response.json().get("result", {})

@@ -328,7 +328,10 @@ class PostgreSQLDebugger:
         return True, None
 
     async def execute_query(
-        self, query: str, limit: int = 100, pool: asyncpg.Pool | None = None,
+        self,
+        query: str,
+        limit: int = 100,
+        pool: asyncpg.Pool | None = None,
     ) -> dict[str, Any]:
         """
         Execute a read-only query safely.

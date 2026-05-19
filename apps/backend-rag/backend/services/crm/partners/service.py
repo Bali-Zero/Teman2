@@ -155,10 +155,11 @@ class PartnersService:
         **fields: Any,
     ) -> None:
         if actor_role == "partner":
-            raise HTTPException(status_code=403, detail="partners may not update their own profile via this endpoint")
-        current = await verify_partner_access_with_role(
-            self, actor_user, actor_role, partner_id
-        )
+            raise HTTPException(
+                status_code=403,
+                detail="partners may not update their own profile via this endpoint",
+            )
+        current = await verify_partner_access_with_role(self, actor_user, actor_role, partner_id)
         before = {k: getattr(current, k) for k in fields if hasattr(current, k)}
         try:
             await self.repo.update_partner(partner_id, **fields)
@@ -255,6 +256,7 @@ def _is_admin_role_or_email(email: str | None, role: str | None) -> bool:
     (service).
     """
     from backend.app.core.config import settings
+
     e = (email or "").strip().lower()
     if e and e in settings.admin_emails_set:
         return True
@@ -269,9 +271,7 @@ async def _is_admin(conn: asyncpg.Connection, user_id: str) -> bool:
     _is_admin_role_or_email logic so email allowlist and role whitelist
     stay aligned with the router layer (PR #162).
     """
-    row = await conn.fetchrow(
-        "SELECT email, role FROM team_members WHERE id = $1", user_id
-    )
+    row = await conn.fetchrow("SELECT email, role FROM team_members WHERE id = $1", user_id)
     if not row:
         return False
     return _is_admin_role_or_email(row["email"], row["role"])
@@ -283,9 +283,7 @@ async def _get_role(conn: asyncpg.Connection, user_id: str) -> str | None:
     return row["role"] if row else None
 
 
-async def verify_partner_access(
-    svc: PartnersService, actor_user: str, partner_id: UUID
-) -> Partner:
+async def verify_partner_access(svc: PartnersService, actor_user: str, partner_id: UUID) -> Partner:
     # CATA-5: actor_user is team_members.id (VARCHAR string ID)
     role = await _get_role(svc.conn, actor_user)
     return await verify_partner_access_with_role(svc, actor_user, role, partner_id)

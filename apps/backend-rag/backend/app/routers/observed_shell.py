@@ -19,6 +19,7 @@ two ``router_registration.py`` include functions, and the new contract
 test). NOT added to ``PUBLIC_ENDPOINTS`` because the X-API-Key gate is
 the right authorisation surface for service-to-service traffic.
 """
+
 from __future__ import annotations
 
 import logging
@@ -98,10 +99,7 @@ async def emit_observed_shell_event(
     if body.status not in VALID_STATUSES:
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=(
-                f"status must be one of {sorted(VALID_STATUSES)!r}; "
-                f"got {body.status!r}"
-            ),
+            detail=(f"status must be one of {sorted(VALID_STATUSES)!r}; got {body.status!r}"),
         )
 
     pool = getattr(request.app.state, "db_pool", None)

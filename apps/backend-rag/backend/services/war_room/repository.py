@@ -307,13 +307,17 @@ class WarRoomRepository(BaseRepository):
             )
             logger.debug(
                 "WarRoomRepository: tagged provenance kind=%s id=%s reliability=%s%s",
-                asset_kind, asset_id, reliability, credibility,
+                asset_kind,
+                asset_id,
+                reliability,
+                credibility,
             )
         except Exception:
             logger.exception(
                 "WarRoomRepository: tag_provenance failed kind=%s id=%s "
                 "(non-fatal; primary INSERT already committed)",
-                asset_kind, asset_id,
+                asset_kind,
+                asset_id,
             )
 
     async def count_posts_published_today(
@@ -472,7 +476,8 @@ class WarRoomRepository(BaseRepository):
         )
 
     async def pending_missed_runs(
-        self, days: int = 2,
+        self,
+        days: int = 2,
     ) -> list[WarRoomMissedRun]:
         """Unnotified missed runs within the lookback window."""
         rows = await self.fetch_safe(
@@ -499,7 +504,8 @@ class WarRoomRepository(BaseRepository):
         ]
 
     async def mark_missed_runs_notified(
-        self, ids: list[UUID],
+        self,
+        ids: list[UUID],
     ) -> None:
         if not ids:
             return

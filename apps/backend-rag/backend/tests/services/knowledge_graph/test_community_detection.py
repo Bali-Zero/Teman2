@@ -38,8 +38,12 @@ class TestLouvainAlgorithm:
         # Cluster 1: A-B-C fully connected
         # Cluster 2: D-E-F fully connected
         adj: dict[str, set[str]] = {
-            "A": {"B", "C"}, "B": {"A", "C"}, "C": {"A", "B"},
-            "D": {"E", "F"}, "E": {"D", "F"}, "F": {"D", "E"},
+            "A": {"B", "C"},
+            "B": {"A", "C"},
+            "C": {"A", "B"},
+            "D": {"E", "F"},
+            "E": {"D", "F"},
+            "F": {"D", "E"},
         }
         weights: dict[tuple[str, str], float] = {}
         for n1 in adj:
@@ -58,9 +62,13 @@ class TestLouvainAlgorithm:
         """A bridge node between two cliques."""
         detector = self._make_detector()
         adj: dict[str, set[str]] = {
-            "A": {"B", "C", "X"}, "B": {"A", "C"}, "C": {"A", "B"},
+            "A": {"B", "C", "X"},
+            "B": {"A", "C"},
+            "C": {"A", "B"},
             "X": {"A", "D"},  # bridge
-            "D": {"E", "F", "X"}, "E": {"D", "F"}, "F": {"D", "E"},
+            "D": {"E", "F", "X"},
+            "E": {"D", "F"},
+            "F": {"D", "E"},
         }
         weights: dict[tuple[str, str], float] = {}
         for n1 in adj:
@@ -76,8 +84,11 @@ class TestLouvainAlgorithm:
         """Strongly weighted edges should keep nodes together."""
         detector = self._make_detector()
         adj: dict[str, set[str]] = {
-            "A": {"B", "C"}, "B": {"A", "C"}, "C": {"A", "B", "D"},
-            "D": {"C", "E"}, "E": {"D"},
+            "A": {"B", "C"},
+            "B": {"A", "C"},
+            "C": {"A", "B", "D"},
+            "D": {"C", "E"},
+            "E": {"D"},
         }
         weights: dict[tuple[str, str], float] = {}
         # Strong A-B-C cluster

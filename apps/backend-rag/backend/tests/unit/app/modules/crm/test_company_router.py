@@ -115,17 +115,35 @@ class TestCompanyRecordToDict:
         """created_at is None."""
         record = _make_company_record()
         data = {
-            "id": 1, "uuid": "uuid", "company_name": "X", "company_type": "PT",
-            "brand_name": None, "kbli_code": None, "kbli_description": None,
-            "nib": None, "npwp_company": None, "akta_pendirian_no": None,
-            "akta_pendirian_date": None, "akta_perubahan_no": None,
-            "akta_perubahan_date": None, "sk_menhumkam_no": None,
-            "sk_menhumkam_date": None, "registered_address": None,
-            "office_address": None, "city": None, "province": None,
-            "postal_code": None, "company_phone": None, "company_email": None,
-            "status": "active", "setup_progress": 0,
-            "google_drive_folder_id": None, "custom_fields": None,
-            "created_at": None, "updated_at": None, "created_by": None,
+            "id": 1,
+            "uuid": "uuid",
+            "company_name": "X",
+            "company_type": "PT",
+            "brand_name": None,
+            "kbli_code": None,
+            "kbli_description": None,
+            "nib": None,
+            "npwp_company": None,
+            "akta_pendirian_no": None,
+            "akta_pendirian_date": None,
+            "akta_perubahan_no": None,
+            "akta_perubahan_date": None,
+            "sk_menhumkam_no": None,
+            "sk_menhumkam_date": None,
+            "registered_address": None,
+            "office_address": None,
+            "city": None,
+            "province": None,
+            "postal_code": None,
+            "company_phone": None,
+            "company_email": None,
+            "status": "active",
+            "setup_progress": 0,
+            "google_drive_folder_id": None,
+            "custom_fields": None,
+            "created_at": None,
+            "updated_at": None,
+            "created_by": None,
         }
         record.__getitem__ = lambda s, k: data[k]
         result = company_record_to_dict(record)
@@ -220,17 +238,36 @@ class TestListCompanies:
 
         _make_company_record()
         data = {
-            "id": 1, "uuid": "uuid-123", "company_name": "Test", "company_type": "PT PMA",
-            "brand_name": None, "kbli_code": "62019", "kbli_description": "IT",
-            "nib": "123", "npwp_company": "00.000", "akta_pendirian_no": None,
-            "akta_pendirian_date": None, "akta_perubahan_no": None,
-            "akta_perubahan_date": None, "sk_menhumkam_no": None,
-            "sk_menhumkam_date": None, "registered_address": None,
-            "office_address": None, "city": "Denpasar", "province": "Bali",
-            "postal_code": None, "company_phone": None, "company_email": None,
-            "status": "active", "setup_progress": 0, "google_drive_folder_id": None,
-            "custom_fields": None, "created_at": datetime(2025, 1, 1),
-            "updated_at": None, "created_by": "admin", "associates_count": 3,
+            "id": 1,
+            "uuid": "uuid-123",
+            "company_name": "Test",
+            "company_type": "PT PMA",
+            "brand_name": None,
+            "kbli_code": "62019",
+            "kbli_description": "IT",
+            "nib": "123",
+            "npwp_company": "00.000",
+            "akta_pendirian_no": None,
+            "akta_pendirian_date": None,
+            "akta_perubahan_no": None,
+            "akta_perubahan_date": None,
+            "sk_menhumkam_no": None,
+            "sk_menhumkam_date": None,
+            "registered_address": None,
+            "office_address": None,
+            "city": "Denpasar",
+            "province": "Bali",
+            "postal_code": None,
+            "company_phone": None,
+            "company_email": None,
+            "status": "active",
+            "setup_progress": 0,
+            "google_drive_folder_id": None,
+            "custom_fields": None,
+            "created_at": datetime(2025, 1, 1),
+            "updated_at": None,
+            "created_by": "admin",
+            "associates_count": 3,
         }
         row = MagicMock()
         row.__getitem__ = lambda s, k: data[k]
@@ -283,8 +320,11 @@ class TestCreateCompany:
 
         row = MagicMock()
         row.__getitem__ = lambda s, k: {
-            "id": 1, "uuid": "uuid-new", "company_name": "New PT",
-            "company_type": "PT PMA", "status": "active",
+            "id": 1,
+            "uuid": "uuid-new",
+            "company_name": "New PT",
+            "company_type": "PT PMA",
+            "status": "active",
         }[k]
         mock_db_pool._mock_conn.fetchrow = AsyncMock(return_value=row)
 
@@ -785,13 +825,21 @@ class TestTaxRecord:
         test_app.dependency_overrides[get_current_user] = lambda: mock_current_user
 
         tax_data = {
-            "id": 1, "uuid": "tax-uuid", "npwp": "00.000.000",
-            "npwp_status": "active", "tax_center": "KPP Denpasar",
-            "is_pph21_registered": True, "is_pph23_registered": False,
-            "is_pph25_registered": True, "is_ppn_registered": True,
-            "is_pph29_registered": False, "tax_year": 2025,
-            "reporting_period": "monthly", "last_filing_date": None,
-            "next_filing_date": None, "compliance_status": "compliant",
+            "id": 1,
+            "uuid": "tax-uuid",
+            "npwp": "00.000.000",
+            "npwp_status": "active",
+            "tax_center": "KPP Denpasar",
+            "is_pph21_registered": True,
+            "is_pph23_registered": False,
+            "is_pph25_registered": True,
+            "is_ppn_registered": True,
+            "is_pph29_registered": False,
+            "tax_year": 2025,
+            "reporting_period": "monthly",
+            "last_filing_date": None,
+            "next_filing_date": None,
+            "compliance_status": "compliant",
             "custom_fields": None,
         }
         tax_row = MagicMock()

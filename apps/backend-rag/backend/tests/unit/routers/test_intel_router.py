@@ -45,10 +45,12 @@ def client(mock_services):
 
     # Override auth dependency
     from backend.app.utils.internal_api_auth import verify_internal_api_key
+
     app.dependency_overrides[verify_internal_api_key] = lambda: True
 
     # Override DB pool with proper async context manager
     from backend.app.dependencies import get_database_pool
+
     mock_conn = AsyncMock()
     mock_conn.execute = AsyncMock()
     mock_conn.fetch = AsyncMock(return_value=[])
@@ -68,7 +70,9 @@ def client(mock_services):
 class TestListPendingItems:
     def test_list_all(self, client, mock_services):
         mock_services["staging"].list_pending_items.return_value = {
-            "news": [], "visa": [], "total": 0,
+            "news": [],
+            "visa": [],
+            "total": 0,
         }
         response = client.get("/api/intel/staging/pending")
         assert response.status_code == 200

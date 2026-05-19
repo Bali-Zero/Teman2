@@ -4,6 +4,7 @@ Tests the pure-Python logic (outcome normalisation, trajectory construction,
 dedup keys) without a live Qdrant. The Qdrant scroll is exercised via a
 fake client in backfill_all().
 """
+
 from __future__ import annotations
 
 import pytest
@@ -90,7 +91,9 @@ def test_build_record_from_valid_episode():
 
 def test_build_record_skips_ambiguous_outcome():
     episode = {
-        "id": "ep_2", "content": "x", "agent": "lam",
+        "id": "ep_2",
+        "content": "x",
+        "agent": "lam",
         "outcome": "completed",  # ambiguous
     }
     assert build_trajectory_record(episode) is None
@@ -98,14 +101,20 @@ def test_build_record_skips_ambiguous_outcome():
 
 def test_build_record_skips_empty_content():
     episode = {
-        "id": "ep_3", "content": "", "agent": "lam", "outcome": "success",
+        "id": "ep_3",
+        "content": "",
+        "agent": "lam",
+        "outcome": "success",
     }
     assert build_trajectory_record(episode) is None
 
 
 def test_build_record_handles_missing_metadata():
     episode = {
-        "id": "ep_4", "content": "body", "agent": "lam", "outcome": "success",
+        "id": "ep_4",
+        "content": "body",
+        "agent": "lam",
+        "outcome": "success",
     }
     rec = build_trajectory_record(episode)
     assert rec is not None
@@ -137,13 +146,15 @@ class _FakeQdrantSource:
 
 def test_backfill_records_only_explicit_outcomes(tmp_path):
     svc = ExperienceService(db_path=str(tmp_path / "b.db"))
-    source = _FakeQdrantSource([
-        {"id": "a", "content": "good run", "agent": "lam", "outcome": "success"},
-        {"id": "b", "content": "crashed", "agent": "lam", "outcome": "failed"},
-        {"id": "c", "content": "done", "agent": "lam", "outcome": "completed"},  # skip
-        {"id": "d", "content": "", "agent": "lam", "outcome": "success"},  # skip empty
-        {"id": "e", "content": "try again", "agent": "lam", "outcome": "partial"},
-    ])
+    source = _FakeQdrantSource(
+        [
+            {"id": "a", "content": "good run", "agent": "lam", "outcome": "success"},
+            {"id": "b", "content": "crashed", "agent": "lam", "outcome": "failed"},
+            {"id": "c", "content": "done", "agent": "lam", "outcome": "completed"},  # skip
+            {"id": "d", "content": "", "agent": "lam", "outcome": "success"},  # skip empty
+            {"id": "e", "content": "try again", "agent": "lam", "outcome": "partial"},
+        ]
+    )
     report = backfill_all(source, svc, dry_run=False)
 
     assert report["total_seen"] == 5
@@ -160,10 +171,12 @@ def test_backfill_records_only_explicit_outcomes(tmp_path):
 def test_backfill_is_idempotent(tmp_path):
     """Running twice on the same source does not duplicate rows."""
     svc = ExperienceService(db_path=str(tmp_path / "b.db"))
-    source = _FakeQdrantSource([
-        {"id": "a", "content": "x", "agent": "lam", "outcome": "success"},
-        {"id": "b", "content": "y", "agent": "lam", "outcome": "failed"},
-    ])
+    source = _FakeQdrantSource(
+        [
+            {"id": "a", "content": "x", "agent": "lam", "outcome": "success"},
+            {"id": "b", "content": "y", "agent": "lam", "outcome": "failed"},
+        ]
+    )
     backfill_all(source, svc, dry_run=False)
     backfill_all(source, svc, dry_run=False)
     stats = svc.stats()
@@ -172,9 +185,11 @@ def test_backfill_is_idempotent(tmp_path):
 
 def test_backfill_dry_run_does_not_write(tmp_path):
     svc = ExperienceService(db_path=str(tmp_path / "b.db"))
-    source = _FakeQdrantSource([
-        {"id": "a", "content": "x", "agent": "lam", "outcome": "success"},
-    ])
+    source = _FakeQdrantSource(
+        [
+            {"id": "a", "content": "x", "agent": "lam", "outcome": "success"},
+        ]
+    )
     report = backfill_all(source, svc, dry_run=True)
     assert report["recorded"] == 0
     assert report["would_record"] == 1
