@@ -3,6 +3,15 @@
 
 echo "🔍 Running pre-push hooks..."
 
+# Cicatrix lint: block resurrection of formally-purged LaunchAgent plist
+# (cicatrix-scars.md 2026-05-13/19 — WR2 canva-renderer panel decision)
+echo "🩹 Running cicatrix lint (LaunchAgent purge sentinel)..."
+if [ -x "scripts/launchd_cicatrix_lint.sh" ]; then
+    bash scripts/launchd_cicatrix_lint.sh || exit 1
+else
+    echo "⚠️  scripts/launchd_cicatrix_lint.sh missing — skipping"
+fi
+
 # Test suite runs in pre-commit hook (type checking + linting + import chain).
 # Full test:ci with coverage is too slow for pre-push (~120s) and causes
 # false positives from coverage exit codes. Run manually: npm run test:ci
