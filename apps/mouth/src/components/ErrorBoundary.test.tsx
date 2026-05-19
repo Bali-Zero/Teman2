@@ -75,9 +75,7 @@ describe("ErrorBoundary", () => {
         <ThrowingComponent shouldThrow={true} />
       </ErrorBoundary>,
     );
-    expect(
-      screen.getByText("Custom error: Test error"),
-    ).toBeInTheDocument();
+    expect(screen.getByText("Custom error: Test error")).toBeInTheDocument();
     expect(screen.getByText("Custom retry")).toBeInTheDocument();
   });
 

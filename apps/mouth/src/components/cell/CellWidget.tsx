@@ -138,8 +138,8 @@ export function CellWidget() {
                   >
                     <span>Budget</span>
                     <span>
-                      ${pulse.budget_spent.toFixed(2)} /{" "}
-                      ${pulse.budget_limit.toFixed(2)}
+                      ${pulse.budget_spent.toFixed(2)} / $
+                      {pulse.budget_limit.toFixed(2)}
                     </span>
                   </div>
                   <div
@@ -192,10 +192,14 @@ export function CellWidget() {
         @keyframes cell-widget-pulse {
           0%,
           100% {
-            box-shadow: 0 0 12px ${color}40, 0 0 24px ${color}20;
+            box-shadow:
+              0 0 12px ${color}40,
+              0 0 24px ${color}20;
           }
           50% {
-            box-shadow: 0 0 20px ${color}60, 0 0 40px ${color}30;
+            box-shadow:
+              0 0 20px ${color}60,
+              0 0 40px ${color}30;
           }
         }
       `}</style>

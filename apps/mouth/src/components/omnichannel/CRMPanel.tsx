@@ -1,9 +1,12 @@
-'use client';
+"use client";
 
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import type { CRMContext, Thread } from '@/lib/api/omnichannel/omnichannel.types';
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import type {
+  CRMContext,
+  Thread,
+} from "@/lib/api/omnichannel/omnichannel.types";
 
 interface CRMPanelProps {
   thread: Thread | null;
@@ -13,15 +16,20 @@ interface CRMPanelProps {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  inquiry: 'bg-blue-500/20 text-blue-400',
-  waiting_documents: 'bg-yellow-500/20 text-yellow-400',
-  sending_invoice: 'bg-purple-500/20 text-purple-400',
-  on_process: 'bg-orange-500/20 text-orange-400',
-  completed: 'bg-green-500/20 text-green-400',
-  cancelled: 'bg-red-500/20 text-red-400',
+  inquiry: "bg-blue-500/20 text-blue-400",
+  waiting_documents: "bg-yellow-500/20 text-yellow-400",
+  sending_invoice: "bg-purple-500/20 text-purple-400",
+  on_process: "bg-orange-500/20 text-orange-400",
+  completed: "bg-green-500/20 text-green-400",
+  cancelled: "bg-red-500/20 text-red-400",
 };
 
-export function CRMPanel({ thread, context, isLoading, onAssign }: CRMPanelProps) {
+export function CRMPanel({
+  thread,
+  context,
+  isLoading,
+  onAssign,
+}: CRMPanelProps) {
   if (!thread) {
     return (
       <div className="flex items-center justify-center h-full text-[var(--foreground-muted)] text-sm">
@@ -59,16 +67,22 @@ export function CRMPanel({ thread, context, isLoading, onAssign }: CRMPanelProps
                   />
                 ) : (
                   <div className="w-8 h-8 rounded-full bg-[var(--accent)]/20 flex items-center justify-center text-xs font-bold text-[var(--accent)]">
-                    {(client.full_name || '?')[0].toUpperCase()}
+                    {(client.full_name || "?")[0].toUpperCase()}
                   </div>
                 )}
                 <div>
-                  <p className="font-medium text-sm text-[var(--foreground)]">{client.full_name}</p>
-                  <p className="text-xs text-[var(--foreground-muted)]">{client.email}</p>
+                  <p className="font-medium text-sm text-[var(--foreground)]">
+                    {client.full_name}
+                  </p>
+                  <p className="text-xs text-[var(--foreground-muted)]">
+                    {client.email}
+                  </p>
                 </div>
               </div>
               {client.phone && (
-                <p className="text-xs text-[var(--foreground-muted)]">Phone: {client.phone}</p>
+                <p className="text-xs text-[var(--foreground-muted)]">
+                  Phone: {client.phone}
+                </p>
               )}
               {client.nationality && (
                 <p className="text-xs text-[var(--foreground-muted)]">
@@ -85,7 +99,9 @@ export function CRMPanel({ thread, context, isLoading, onAssign }: CRMPanelProps
               </Badge>
             </div>
           ) : (
-            <p className="text-xs text-[var(--foreground-muted)] italic">Unidentified sender</p>
+            <p className="text-xs text-[var(--foreground-muted)] italic">
+              Unidentified sender
+            </p>
           )}
         </section>
 
@@ -95,13 +111,15 @@ export function CRMPanel({ thread, context, isLoading, onAssign }: CRMPanelProps
             Assignment
           </h4>
           <div className="space-y-2">
-            <p className="text-sm text-[var(--foreground)]">{thread.assigned_to || 'Unassigned'}</p>
+            <p className="text-sm text-[var(--foreground)]">
+              {thread.assigned_to || "Unassigned"}
+            </p>
             <div className="flex gap-1">
               <Button
                 variant="outline"
                 size="sm"
                 className="text-xs h-7"
-                onClick={() => onAssign('zero@balizero.com')}
+                onClick={() => onAssign("zero@balizero.com")}
               >
                 Assign to Zero
               </Button>
@@ -109,7 +127,7 @@ export function CRMPanel({ thread, context, isLoading, onAssign }: CRMPanelProps
                 variant="outline"
                 size="sm"
                 className="text-xs h-7"
-                onClick={() => onAssign('asya@balizero.com')}
+                onClick={() => onAssign("asya@balizero.com")}
               >
                 Assign to Asya
               </Button>
@@ -125,13 +143,16 @@ export function CRMPanel({ thread, context, isLoading, onAssign }: CRMPanelProps
             </h4>
             <div className="space-y-2">
               {context.practices.map((p) => (
-                <div key={p.id} className="rounded bg-[var(--background-secondary)] p-2">
+                <div
+                  key={p.id}
+                  className="rounded bg-[var(--background-secondary)] p-2"
+                >
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-medium text-[var(--foreground)]">
                       {p.practice_type}
                     </span>
                     <Badge
-                      className={`text-[10px] ${STATUS_COLORS[p.status] || 'bg-gray-500/20 text-gray-400'}`}
+                      className={`text-[10px] ${STATUS_COLORS[p.status] || "bg-gray-500/20 text-gray-400"}`}
                     >
                       {p.status}
                     </Badge>
@@ -155,7 +176,10 @@ export function CRMPanel({ thread, context, isLoading, onAssign }: CRMPanelProps
             </h4>
             <div className="space-y-1">
               {context.alerts.map((a) => (
-                <div key={a.id} className="text-xs p-2 rounded bg-red-500/10 text-red-400">
+                <div
+                  key={a.id}
+                  className="text-xs p-2 rounded bg-red-500/10 text-red-400"
+                >
                   {a.message}
                 </div>
               ))}
@@ -171,13 +195,20 @@ export function CRMPanel({ thread, context, isLoading, onAssign }: CRMPanelProps
             </h4>
             <div className="space-y-1">
               {context.interactions.slice(0, 5).map((i) => (
-                <div key={i.id} className="text-xs p-2 rounded bg-[var(--background-secondary)]">
+                <div
+                  key={i.id}
+                  className="text-xs p-2 rounded bg-[var(--background-secondary)]"
+                >
                   <span className="font-medium">{i.interaction_type}</span>
                   {i.sentiment && (
-                    <span className="ml-1 text-[var(--foreground-muted)]">({i.sentiment})</span>
+                    <span className="ml-1 text-[var(--foreground-muted)]">
+                      ({i.sentiment})
+                    </span>
                   )}
                   {i.summary && (
-                    <p className="text-[var(--foreground-muted)] mt-0.5 truncate">{i.summary}</p>
+                    <p className="text-[var(--foreground-muted)] mt-0.5 truncate">
+                      {i.summary}
+                    </p>
                   )}
                 </div>
               ))}

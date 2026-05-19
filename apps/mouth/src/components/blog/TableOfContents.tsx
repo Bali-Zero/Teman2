@@ -179,7 +179,9 @@ export function FloatingToc({ content }: { content: string }) {
       {/* Floating button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        aria-label={isOpen ? "Close table of contents" : "Open table of contents"}
+        aria-label={
+          isOpen ? "Close table of contents" : "Open table of contents"
+        }
         className={cn(
           "fixed bottom-4 right-4 z-40 p-3 rounded-full shadow-lg",
           "bg-violet-600 text-white",

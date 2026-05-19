@@ -1,22 +1,28 @@
-'use client';
+"use client";
 
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { AccountSettings } from './AccountSettings';
-import { SecuritySettings } from './SecuritySettings';
-import { NotificationSettings } from './NotificationSettings';
-import { PrivacySettings } from './PrivacySettings';
-import { LanguageSettings } from './LanguageSettings';
+import { useRouter, useSearchParams } from "next/navigation";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AccountSettings } from "./AccountSettings";
+import { SecuritySettings } from "./SecuritySettings";
+import { NotificationSettings } from "./NotificationSettings";
+import { PrivacySettings } from "./PrivacySettings";
+import { LanguageSettings } from "./LanguageSettings";
 
-const TAB_IDS = ['account', 'security', 'notifications', 'privacy', 'language'] as const;
+const TAB_IDS = [
+  "account",
+  "security",
+  "notifications",
+  "privacy",
+  "language",
+] as const;
 type TabId = (typeof TAB_IDS)[number];
 
 const LABELS: Record<TabId, string> = {
-  account: 'Account',
-  security: 'Security',
-  notifications: 'Notifications',
-  privacy: 'Privacy',
-  language: 'Language',
+  account: "Account",
+  security: "Security",
+  notifications: "Notifications",
+  privacy: "Privacy",
+  language: "Language",
 };
 
 /**
@@ -29,12 +35,14 @@ const LABELS: Record<TabId, string> = {
 export function SettingsTabs() {
   const router = useRouter();
   const sp = useSearchParams();
-  const raw = sp?.get('tab') ?? 'account';
-  const active: TabId = (TAB_IDS as readonly string[]).includes(raw) ? (raw as TabId) : 'account';
+  const raw = sp?.get("tab") ?? "account";
+  const active: TabId = (TAB_IDS as readonly string[]).includes(raw)
+    ? (raw as TabId)
+    : "account";
 
   const setTab = (t: string) => {
-    const params = new URLSearchParams(sp?.toString() ?? '');
-    params.set('tab', t);
+    const params = new URLSearchParams(sp?.toString() ?? "");
+    params.set("tab", t);
     router.replace(`/portal/settings?${params.toString()}`);
   };
 

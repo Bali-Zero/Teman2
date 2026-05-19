@@ -58,7 +58,13 @@ export function TerminalMarkdown({ children }: TerminalMarkdownProps) {
               {c}
             </h3>
           ),
-          a: ({ children: c, href }: { children?: ReactNode; href?: string }) => (
+          a: ({
+            children: c,
+            href,
+          }: {
+            children?: ReactNode;
+            href?: string;
+          }) => (
             <a
               href={href}
               target="_blank"

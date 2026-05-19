@@ -31,9 +31,7 @@ describe("Progress", () => {
       <Progress value={75} indicatorClassName="bg-green-500" />,
     );
     // The indicator is a child element
-    const indicator = container.querySelector(
-      "[class*='bg-green-500']",
-    );
+    const indicator = container.querySelector("[class*='bg-green-500']");
     expect(indicator).toBeTruthy();
   });
 

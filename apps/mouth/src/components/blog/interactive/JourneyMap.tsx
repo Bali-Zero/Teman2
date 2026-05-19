@@ -199,7 +199,9 @@ export function JourneyMap({
                         <span
                           className={cn(
                             "font-bold",
-                            isCurrent ? "text-accent-blue-editorial" : "text-white/60",
+                            isCurrent
+                              ? "text-accent-blue-editorial"
+                              : "text-white/60",
                           )}
                         >
                           {index + 1}

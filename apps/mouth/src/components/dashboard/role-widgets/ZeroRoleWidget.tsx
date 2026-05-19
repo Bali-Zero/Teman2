@@ -49,7 +49,10 @@ export function ZeroRoleWidget({ metrics }: Props) {
       <div className="flex flex-col gap-1.5 flex-1">
         {metrics.visti_scadenza > 0 && (
           <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[rgba(196,92,120,0.07)] border border-[rgba(196,92,120,0.18)]">
-            <AlertTriangle size={11} className="text-accent-pink-editorial flex-shrink-0" />
+            <AlertTriangle
+              size={11}
+              className="text-accent-pink-editorial flex-shrink-0"
+            />
             <span className="text-[10px] font-semibold text-accent-pink-editorial">
               {metrics.visti_scadenza} visti &lt; 7gg
             </span>
@@ -68,7 +71,10 @@ export function ZeroRoleWidget({ metrics }: Props) {
 
         {!hasAlerts && (
           <div className="flex items-center gap-2 px-2.5 py-2 rounded-lg bg-[rgba(92,184,138,0.06)] border border-[rgba(92,184,138,0.16)]">
-            <CheckCircle2 size={11} className="text-accent-sage flex-shrink-0" />
+            <CheckCircle2
+              size={11}
+              className="text-accent-sage flex-shrink-0"
+            />
             <span className="text-[10px] font-semibold text-accent-sage">
               No critical alerts
             </span>

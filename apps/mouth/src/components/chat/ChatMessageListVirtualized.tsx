@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import { RefObject, useRef, useCallback, useEffect, useState } from 'react';
-import { useVirtualizer } from '@tanstack/react-virtual';
-import Image from 'next/image';
-import { motion } from 'framer-motion';
-import { Button } from '@/components/ui/button';
-import { MessageBubble } from './MessageBubble';
-import { ThinkingIndicator } from './ThinkingIndicator';
-import { NewMessagesPill } from './NewMessagesPill';
-import { ChatMessageListSkeleton } from '@/components/ui/skeleton';
-import { Message } from '@/types';
+import { RefObject, useRef, useCallback, useEffect, useState } from "react";
+import { useVirtualizer } from "@tanstack/react-virtual";
+import Image from "next/image";
+import { motion } from "framer-motion";
+import { Button } from "@/components/ui/button";
+import { MessageBubble } from "./MessageBubble";
+import { ThinkingIndicator } from "./ThinkingIndicator";
+import { NewMessagesPill } from "./NewMessagesPill";
+import { ChatMessageListSkeleton } from "@/components/ui/skeleton";
+import { Message } from "@/types";
 
 export interface ChatMessageListVirtualizedProps {
   messages: Message[];
@@ -49,12 +49,16 @@ export function ChatMessageListVirtualized({
   const filteredMessages = messages.filter((message, index) => {
     const isLastMessage = index === messages.length - 1;
     const isEmptyAssistantPlaceholder =
-      message.role === 'assistant' && !message.content && isLastMessage && isLoading;
+      message.role === "assistant" &&
+      !message.content &&
+      isLastMessage &&
+      isLoading;
     return !isEmptyAssistantPlaceholder;
   });
 
   // Use virtualization only for large message counts
-  const shouldVirtualize = filteredMessages.length > THRESHOLD_FOR_VIRTUALIZATION;
+  const shouldVirtualize =
+    filteredMessages.length > THRESHOLD_FOR_VIRTUALIZATION;
 
   const virtualizer = useVirtualizer({
     count: filteredMessages.length,
@@ -109,7 +113,13 @@ export function ChatMessageListVirtualized({
     if (grew) {
       setUnreadCount((n) => n + (newCount - (lastSeenLengthRef.current - 1)));
     }
-  }, [filteredMessages.length, scrollToBottom, thinkingElapsedTime, isLoading, isAtBottom]);
+  }, [
+    filteredMessages.length,
+    scrollToBottom,
+    thinkingElapsedTime,
+    isLoading,
+    isAtBottom,
+  ]);
 
   const handlePillClick = useCallback(() => {
     setUnreadCount(0);
@@ -128,7 +138,7 @@ export function ChatMessageListVirtualized({
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.8, ease: 'easeOut' }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
           className="relative mb-8"
         >
           <Image
@@ -142,7 +152,9 @@ export function ChatMessageListVirtualized({
         </motion.div>
 
         <div className="space-y-4 text-center mb-12">
-          <h1 className="text-2xl font-light tracking-[0.2em] text-white/90 uppercase">Zantara</h1>
+          <h1 className="text-2xl font-light tracking-[0.2em] text-white/90 uppercase">
+            Zantara
+          </h1>
           <div className="flex items-center justify-center gap-4">
             <div className="h-[1px] w-12 bg-gradient-to-r from-transparent to-white/30" />
             <p className="text-xs text-[var(--foreground-muted)] tracking-[0.4em] uppercase font-medium">
@@ -158,7 +170,7 @@ export function ChatMessageListVirtualized({
             variant="outline"
             size="lg"
             className="rounded-xl gap-2 hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] transition-all focus-ring"
-            onClick={() => onFollowUpClick?.('What can you help me with?')}
+            onClick={() => onFollowUpClick?.("What can you help me with?")}
             aria-label="Ask what Zantara can do"
           >
             <span className="text-lg" aria-hidden="true">
@@ -170,7 +182,7 @@ export function ChatMessageListVirtualized({
             variant="outline"
             size="lg"
             className="rounded-xl gap-2 hover:bg-[var(--accent)]/10 hover:border-[var(--accent)] transition-all focus-ring"
-            onClick={() => onFollowUpClick?.('Summarize my tasks for today')}
+            onClick={() => onFollowUpClick?.("Summarize my tasks for today")}
             aria-label="Get task summary"
           >
             <span className="text-lg" aria-hidden="true">
@@ -203,7 +215,7 @@ export function ChatMessageListVirtualized({
           ref={parentRef}
           onScroll={handleScroll}
           className="flex-1 overflow-auto min-h-0 h-full"
-          style={{ contain: 'strict' }}
+          style={{ contain: "strict" }}
           role="log"
           aria-label="Chat messages"
           aria-live="polite"
@@ -216,16 +228,17 @@ export function ChatMessageListVirtualized({
           >
             {virtualizer.getVirtualItems().map((virtualRow) => {
               const message = filteredMessages[virtualRow.index];
-              const isLastMessage = virtualRow.index === filteredMessages.length - 1;
+              const isLastMessage =
+                virtualRow.index === filteredMessages.length - 1;
 
               return (
                 <div
                   key={message.id || message.timestamp.getTime()}
                   style={{
-                    position: 'absolute',
+                    position: "absolute",
                     top: 0,
                     left: 0,
-                    width: '100%',
+                    width: "100%",
                     transform: `translateY(${virtualRow.start}px)`,
                   }}
                   data-index={virtualRow.index}
@@ -256,7 +269,11 @@ export function ChatMessageListVirtualized({
 
           <div ref={messagesEndRef} />
         </div>
-        <NewMessagesPill show={!isAtBottom} unreadCount={unreadCount} onClick={handlePillClick} />
+        <NewMessagesPill
+          show={!isAtBottom}
+          unreadCount={unreadCount}
+          onClick={handlePillClick}
+        />
       </div>
     );
   }
@@ -300,7 +317,11 @@ export function ChatMessageListVirtualized({
           <div ref={messagesEndRef} />
         </div>
       </div>
-      <NewMessagesPill show={!isAtBottom} unreadCount={unreadCount} onClick={handlePillClick} />
+      <NewMessagesPill
+        show={!isAtBottom}
+        unreadCount={unreadCount}
+        onClick={handlePillClick}
+      />
     </div>
   );
 }
