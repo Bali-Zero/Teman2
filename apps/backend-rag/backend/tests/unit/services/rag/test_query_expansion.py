@@ -40,8 +40,7 @@ class TestGenerateSynonyms:
         assert len(variants) > 0
         # Should contain at least one synonym for KITAS
         found = any(
-            "residence permit" in v.lower() or "kartu izin tinggal" in v.lower()
-            for v in variants
+            "residence permit" in v.lower() or "kartu izin tinggal" in v.lower() for v in variants
         )
         assert found, f"Expected synonym for KITAS, got: {variants}"
 
@@ -170,9 +169,7 @@ class TestExpand:
     @pytest.mark.asyncio
     async def test_expand_exception_returns_original(self, expander):
         """If expansion fails, return original query."""
-        with patch.object(
-            expander, "generate_synonyms", side_effect=RuntimeError("boom")
-        ):
+        with patch.object(expander, "generate_synonyms", side_effect=RuntimeError("boom")):
             result = await expander.expand("test query")
         assert result == ["test query"]
 
@@ -268,9 +265,7 @@ class TestGetExpansionDetails:
 
     @pytest.mark.asyncio
     async def test_details_relaxed_query_included(self, expander):
-        result = await expander.get_expansion_details(
-            "I only need KITAS info"
-        )
+        result = await expander.get_expansion_details("I only need KITAS info")
         assert result["relaxed_query"] is not None
         assert "only" not in result["relaxed_query"].lower()
 
@@ -335,9 +330,7 @@ class TestGetGenaiClient:
 class TestGetQueryExpander:
     def test_singleton(self):
         with patch("backend.services.rag.query_expansion.get_cache_service"):
-            with patch(
-                "backend.services.rag.query_expansion.GENAI_AVAILABLE", False
-            ):
+            with patch("backend.services.rag.query_expansion.GENAI_AVAILABLE", False):
                 import backend.services.rag.query_expansion as mod
 
                 mod._query_expander_instance = None

@@ -215,8 +215,7 @@ class TestRoutingTargetsBindType:
         pool = _CapturingPool()
         router = IntelLakeRouter(pool)  # type: ignore[arg-type]
         await router.route_event(
-            {"item_id": "11111111-1111-1111-1111-111111111111",
-             "source_domain": "imigrasi.go.id"}
+            {"item_id": "11111111-1111-1111-1111-111111111111", "source_domain": "imigrasi.go.id"}
         )
         # UPDATE args after query: item_id, new_status, routing_targets
         bound_targets = self._update_call(pool)[3]
@@ -231,8 +230,10 @@ class TestRoutingTargetsBindType:
         pool = _CapturingPool()
         router = IntelLakeRouter(pool)  # type: ignore[arg-type]
         await router.route_event(
-            {"item_id": "22222222-2222-2222-2222-222222222222",
-             "source_domain": "regulatory-watcher"}
+            {
+                "item_id": "22222222-2222-2222-2222-222222222222",
+                "source_domain": "regulatory-watcher",
+            }
         )
         bound_targets = self._update_call(pool)[3]
         assert isinstance(bound_targets, dict), (
@@ -247,8 +248,7 @@ class TestRoutingTargetsBindType:
         pool = _CapturingPool()
         router = IntelLakeRouter(pool)  # type: ignore[arg-type]
         await router.route_event(
-            {"item_id": "33333333-3333-3333-3333-333333333333",
-             "source_domain": "detik.com"}
+            {"item_id": "33333333-3333-3333-3333-333333333333", "source_domain": "detik.com"}
         )
         bound_status = self._update_call(pool)[2]
         assert bound_status == "blog"

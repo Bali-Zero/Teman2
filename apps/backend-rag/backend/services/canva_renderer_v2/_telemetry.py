@@ -7,6 +7,7 @@ or manual cleanup (not this module's responsibility).
 
 Never raises — telemetry must never break the orchestrator.
 """
+
 from __future__ import annotations
 
 import json
@@ -44,8 +45,12 @@ def _maybe_rotate(path: Path) -> None:
 
 
 def log_telemetry(
-    *, draft_id: str, outcome: str, duration_s: float,
-    attempt: int = 1, exc_head: str = "",
+    *,
+    draft_id: str,
+    outcome: str,
+    duration_s: float,
+    attempt: int = 1,
+    exc_head: str = "",
 ) -> None:
     try:
         path = _path()

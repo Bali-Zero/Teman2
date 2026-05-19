@@ -61,7 +61,9 @@ def patched_reasoning() -> Iterator[None]:
     import backend.services.rag.agentic.reasoning as reasoning_module
 
     with patch.object(
-        reasoning_module, "parse_tool_call", side_effect=_fake_parse_tool_call,
+        reasoning_module,
+        "parse_tool_call",
+        side_effect=_fake_parse_tool_call,
     ):
         yield
 
@@ -76,13 +78,7 @@ class _NoCandidatesResponse:
 def test_parse_regex_degraded_nested_fences(patched_reasoning: None) -> None:
     """Double-wrapped ```json``` fences (OpenRouter quirk) must be unwrapped
     before the brace-balanced scan finds the tool_call object."""
-    text_response = (
-        "```json\n"
-        "```json\n"
-        f"{_VALID_TOOL_JSON}\n"
-        "```\n"
-        "```"
-    )
+    text_response = f"```json\n```json\n{_VALID_TOOL_JSON}\n```\n```"
     tool_calls, mode = parse_tool_calls_from_response(
         response_obj=_NoCandidatesResponse(),
         text_response=text_response,
@@ -101,7 +97,7 @@ def test_parse_regex_degraded_trailing_prose(patched_reasoning: None) -> None:
     text_response = (
         "Some reasoning before the call.\n"
         f"{_VALID_TOOL_JSON}\n"
-        "Some trailing thoughts that include {stray braces} and \"quotes\"."
+        'Some trailing thoughts that include {stray braces} and "quotes".'
     )
     tool_calls, mode = parse_tool_calls_from_response(
         response_obj=_NoCandidatesResponse(),
@@ -119,7 +115,7 @@ def test_parse_still_returns_none_when_no_tool_call(patched_reasoning: None) -> 
     ``"none"`` — degraded must not invent a call from unrelated braces."""
     text_response = (
         "I could not answer this query because the retrieval tool is down. "
-        "Here is an unrelated JSON snippet: {\"status\": \"error\"} and "
+        'Here is an unrelated JSON snippet: {"status": "error"} and '
         "some trailing prose."
     )
     tool_calls, mode = parse_tool_calls_from_response(

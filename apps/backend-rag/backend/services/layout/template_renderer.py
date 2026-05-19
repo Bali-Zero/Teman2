@@ -72,7 +72,9 @@ class TemplateRenderer:
         )
 
     def _validate_required(
-        self, spec: TemplateSpec, variables: dict[str, str],
+        self,
+        spec: TemplateSpec,
+        variables: dict[str, str],
     ) -> None:
         missing = [v for v in spec.required_vars if v not in variables]
         if missing:
@@ -86,9 +88,4 @@ def _escape_html(value: str) -> str:
     if value is None:
         return ""
     s = str(value)
-    return (
-        s.replace("&", "&amp;")
-         .replace("<", "&lt;")
-         .replace(">", "&gt;")
-         .replace('"', "&quot;")
-    )
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', "&quot;")

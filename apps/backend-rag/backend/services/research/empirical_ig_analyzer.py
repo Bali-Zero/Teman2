@@ -21,8 +21,13 @@ logger = logging.getLogger(__name__)
 
 HOOK_CATEGORIES = ("question", "stat", "story", "contrarian", "list")
 TONE_REGISTERS = (
-    "pedagogico", "analitico", "tecnico", "rituale",
-    "poetico", "ironico", "militante",
+    "pedagogico",
+    "analitico",
+    "tecnico",
+    "rituale",
+    "poetico",
+    "ironico",
+    "militante",
 )
 GEMINI_MODEL = "gemini-3.1-pro-preview"
 
@@ -75,8 +80,8 @@ class EmpiricalIGAnalyzer:
         prompt_lines = [
             "Classify the HOOK TYPE of each Instagram post below. Emit ONLY a "
             "single JSON object on the last line, no prose, no markdown fences. "
-            f"Schema: {{\"classifications\":[{{\"post_id\":\"<id>\","
-            f"\"hook_type\":\"{categories}\"}}]}}",
+            f'Schema: {{"classifications":[{{"post_id":"<id>",'
+            f'"hook_type":"{categories}"}}]}}',
             "",
         ]
         for p in posts:
@@ -114,7 +119,9 @@ class EmpiricalIGAnalyzer:
             except json.JSONDecodeError:
                 continue
             cls = parsed.get("classifications") or []
-            return {c["post_id"]: c["hook_type"] for c in cls if "post_id" in c and "hook_type" in c}
+            return {
+                c["post_id"]: c["hook_type"] for c in cls if "post_id" in c and "hook_type" in c
+            }
 
         logger.warning("no JSON line in claude -p output; falling back")
         return {p["post_id"]: "unknown" for p in posts}
@@ -130,8 +137,8 @@ class EmpiricalIGAnalyzer:
         prompt_lines = [
             "Classify the TONE REGISTER of each Instagram post. Emit ONLY a "
             "single JSON object on the last line, no prose. "
-            f"Schema: {{\"classifications\":[{{\"post_id\":\"<id>\","
-            f"\"tone_register\":\"{registers}\"}}]}}",
+            f'Schema: {{"classifications":[{{"post_id":"<id>",'
+            f'"tone_register":"{registers}"}}]}}',
             "",
         ]
         for p in posts:

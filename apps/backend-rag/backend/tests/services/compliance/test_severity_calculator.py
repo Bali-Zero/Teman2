@@ -66,9 +66,7 @@ class TestCalculateSeverity:
 
     def test_today_deadline_is_urgent_or_critical(self, calculator):
         # Today could be 0 days (urgent) or -0 depending on time
-        severity, days = calculator.calculate_severity(
-            datetime.now(tz=timezone.utc).isoformat()
-        )
+        severity, days = calculator.calculate_severity(datetime.now(tz=timezone.utc).isoformat())
         assert severity in (AlertSeverity.URGENT, AlertSeverity.CRITICAL)
 
     def test_handles_iso_format(self, calculator):
@@ -90,9 +88,7 @@ class TestGetDaysUntilDeadline:
         assert days < 0
 
     def test_today_near_zero(self, calculator):
-        days = calculator.get_days_until_deadline(
-            datetime.now(tz=timezone.utc).isoformat()
-        )
+        days = calculator.get_days_until_deadline(datetime.now(tz=timezone.utc).isoformat())
         assert -1 <= days <= 0
 
 

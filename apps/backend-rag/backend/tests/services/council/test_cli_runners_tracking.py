@@ -134,7 +134,7 @@ async def test_deepseek_runner_records_on_http_error_status() -> None:
     mock_rec.assert_awaited_once()
     kwargs = mock_rec.await_args.kwargs
     assert kwargs["provider"] == "deepseek"
-    assert kwargs["success"] is True   # no exception escaped
+    assert kwargs["success"] is True  # no exception escaped
     assert kwargs["input_tokens"] == 0
     assert kwargs["output_tokens"] == 0
 

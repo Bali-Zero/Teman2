@@ -130,7 +130,9 @@ async def test_sample_skips_persist_when_disabled():
         return [_lead(), _lead(), _lead()]
 
     sampler = UTMAttributionSampler(
-        repo=repo, lead_lookup_fn=lookup, persist_leads=False,
+        repo=repo,
+        lead_lookup_fn=lookup,
+        persist_leads=False,
     )
     result = await sampler.sample(_post())
     assert result.ok is True
@@ -144,7 +146,10 @@ def test_sampler_supports_all_platforms():
 
     sampler = UTMAttributionSampler(repo=AsyncMock(), lead_lookup_fn=lookup)
     for p in (
-        Platform.INSTAGRAM, Platform.X, Platform.LINKEDIN,
-        Platform.BLOG, Platform.NEWSLETTER,
+        Platform.INSTAGRAM,
+        Platform.X,
+        Platform.LINKEDIN,
+        Platform.BLOG,
+        Platform.NEWSLETTER,
     ):
         assert sampler.supports(p) is True

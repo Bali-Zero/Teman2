@@ -63,7 +63,11 @@ class TestSaveConversation:
 
     @patch("backend.app.routers.conversations.get_memory_cache")
     def test_save_conversation_success(
-        self, mock_get_cache, client, mock_db_pool, sample_messages,
+        self,
+        mock_get_cache,
+        client,
+        mock_db_pool,
+        sample_messages,
     ):
         """Happy path: save messages to DB."""
         mock_cache = MagicMock()
@@ -91,7 +95,9 @@ class TestSaveConversation:
 
     @patch("backend.app.routers.conversations.get_memory_cache")
     def test_save_conversation_no_db_pool(
-        self, mock_get_cache, mock_current_user,
+        self,
+        mock_get_cache,
+        mock_current_user,
     ):
         """When db_pool is None, falls back to memory cache."""
         from backend.app.dependencies import get_current_user, get_database_pool
@@ -189,7 +195,10 @@ class TestGetConversationHistory:
 
     @patch("backend.app.routers.conversations.get_memory_cache")
     def test_get_history_fallback_to_memory_cache(
-        self, mock_get_cache, client, mock_db_pool,
+        self,
+        mock_get_cache,
+        client,
+        mock_db_pool,
     ):
         """When DB returns nothing and session_id provided, fall back to cache."""
         conn = mock_db_pool._mock_conn

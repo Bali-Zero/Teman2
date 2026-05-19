@@ -59,7 +59,6 @@ class RenewalRule:
 
 RENEWAL_RULES: dict[str, RenewalRule] = {
     # ── KITAS Extends (most common) ───────────────────────────────────────────
-
     "kitas_investor_extend": RenewalRule(
         rule_id="kitas_investor_extend",
         document_types=("visa", "kitas"),
@@ -78,7 +77,6 @@ RENEWAL_RULES: dict[str, RenewalRule] = {
         complexity=1.5,
         notes="Process via MOLINA. Confirm sponsor PT PMA still active.",
     ),
-
     "kitas_spouse_extend": RenewalRule(
         rule_id="kitas_spouse_extend",
         document_types=("visa", "kitas"),
@@ -97,7 +95,6 @@ RENEWAL_RULES: dict[str, RenewalRule] = {
         complexity=1.0,
         notes="Sponsor KITAS must be valid for the duration of spouse KITAS.",
     ),
-
     "kitas_dependent_extend": RenewalRule(
         rule_id="kitas_dependent_extend",
         document_types=("visa", "kitas"),
@@ -115,7 +112,6 @@ RENEWAL_RULES: dict[str, RenewalRule] = {
         complexity=1.0,
         notes="Check if dependent is under 18; different docs for children.",
     ),
-
     "kitas_remote_worker_extend": RenewalRule(
         rule_id="kitas_remote_worker_extend",
         document_types=("visa", "kitas"),
@@ -133,7 +129,6 @@ RENEWAL_RULES: dict[str, RenewalRule] = {
         complexity=1.0,
         notes="E33G extend — verify foreign income source documentation.",
     ),
-
     "kitas_retirement_extend": RenewalRule(
         rule_id="kitas_retirement_extend",
         document_types=("visa", "kitas"),
@@ -152,7 +147,6 @@ RENEWAL_RULES: dict[str, RenewalRule] = {
         complexity=1.0,
         notes="Altus/Onshore available. Confirm health insurance covers Bali.",
     ),
-
     "kitas_freelance_extend": RenewalRule(
         rule_id="kitas_freelance_extend",
         document_types=("visa", "kitas"),
@@ -170,9 +164,7 @@ RENEWAL_RULES: dict[str, RenewalRule] = {
         complexity=1.5,
         notes="E23 6-month validity. Higher cost due to Altus processing.",
     ),
-
     # ── KITAS Working (complex — RPTKA + IMTA required) ──────────────────────
-
     "kitas_working_extend": RenewalRule(
         rule_id="kitas_working_extend",
         document_types=("visa", "kitas"),
@@ -193,9 +185,7 @@ RENEWAL_RULES: dict[str, RenewalRule] = {
         complexity=2.0,
         notes="Bundle: RPTKA → IMTA → KITAS. Allow 30 working days.",
     ),
-
     # ── KITAP upgrade (long process, high value) ─────────────────────────────
-
     "kitap_investor_upgrade": RenewalRule(
         rule_id="kitap_investor_upgrade",
         document_types=("visa", "kitas"),
@@ -215,9 +205,7 @@ RENEWAL_RULES: dict[str, RenewalRule] = {
         complexity=3.0,
         notes="KITAP requires 5+ years continuous KITAS. Police clearance 3-month validity.",
     ),
-
     # ── Tourist / Short Stay ─────────────────────────────────────────────────
-
     "visa_tourist_extension": RenewalRule(
         rule_id="visa_tourist_extension",
         document_types=("visa",),
@@ -233,9 +221,7 @@ RENEWAL_RULES: dict[str, RenewalRule] = {
         complexity=1.0,
         notes="Extension adds +30 days. Only 1 extension allowed per C1 entry.",
     ),
-
     # ── Passport renewal (not a BZ service — advisory only) ──────────────────
-
     "passport_renewal": RenewalRule(
         rule_id="passport_renewal",
         document_types=("passport",),
@@ -251,11 +237,9 @@ RENEWAL_RULES: dict[str, RenewalRule] = {
         ),
         complexity=1.0,
         notes="Advisory only — BZ does not process passports. Remind client to contact embassy. "
-              "Passport must be valid for 6+ months beyond KITAS expiry.",
+        "Passport must be valid for 6+ months beyond KITAS expiry.",
     ),
-
     # ── IMTA/RPTKA standalone renewal ────────────────────────────────────────
-
     "imta_annual_renewal": RenewalRule(
         rule_id="imta_annual_renewal",
         document_types=("license",),
@@ -274,9 +258,7 @@ RENEWAL_RULES: dict[str, RenewalRule] = {
         complexity=2.0,
         notes="Annual permit for foreign workers. Usually bundled with Working KITAS renewal.",
     ),
-
     # ── Fallback rule — unknown/generic visa ─────────────────────────────────
-
     "generic_visa_renewal": RenewalRule(
         rule_id="generic_visa_renewal",
         document_types=("visa", "kitas", "license"),

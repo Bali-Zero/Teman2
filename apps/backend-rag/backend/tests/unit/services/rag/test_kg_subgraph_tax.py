@@ -252,7 +252,11 @@ class TestCalculateTaxRequirements:
         state = _base_state(business_entity_type="pt_pma", revenue_amount=None)
         result = await calculate_tax_requirements_node(state)
         # No estimated_tax obligation added
-        estimated = [o for o in result.get("tax_obligations", []) if o.get("obligation_type") == "estimated_tax"]
+        estimated = [
+            o
+            for o in result.get("tax_obligations", [])
+            if o.get("obligation_type") == "estimated_tax"
+        ]
         assert len(estimated) == 0
 
     @pytest.mark.asyncio
@@ -263,7 +267,9 @@ class TestCalculateTaxRequirements:
             vat_applicable=False,
         )
         result = await calculate_tax_requirements_node(state)
-        estimated = [o for o in result["tax_obligations"] if o.get("obligation_type") == "estimated_tax"]
+        estimated = [
+            o for o in result["tax_obligations"] if o.get("obligation_type") == "estimated_tax"
+        ]
         assert len(estimated) == 1
         calcs = estimated[0]["calculations"]
         # 1B * 0.20 (margin) * 0.22 (rate) = 44M
@@ -279,7 +285,9 @@ class TestCalculateTaxRequirements:
             vat_applicable=True,
         )
         result = await calculate_tax_requirements_node(state)
-        estimated = [o for o in result["tax_obligations"] if o.get("obligation_type") == "estimated_tax"]
+        estimated = [
+            o for o in result["tax_obligations"] if o.get("obligation_type") == "estimated_tax"
+        ]
         calcs = estimated[0]["calculations"]
         assert "vat_ppn" in calcs
         assert calcs["vat_ppn"] == pytest.approx(5_000_000_000 * 0.11)
@@ -292,7 +300,9 @@ class TestCalculateTaxRequirements:
             vat_applicable=False,
         )
         result = await calculate_tax_requirements_node(state)
-        estimated = [o for o in result["tax_obligations"] if o.get("obligation_type") == "estimated_tax"]
+        estimated = [
+            o for o in result["tax_obligations"] if o.get("obligation_type") == "estimated_tax"
+        ]
         calcs = estimated[0]["calculations"]
         net_profit = 2_000_000_000 * 0.20
         assert calcs["corporate_tax_pph"] == pytest.approx(net_profit * 0.22)
@@ -305,7 +315,9 @@ class TestCalculateTaxRequirements:
             vat_applicable=False,
         )
         result = await calculate_tax_requirements_node(state)
-        estimated = [o for o in result["tax_obligations"] if o.get("obligation_type") == "estimated_tax"]
+        estimated = [
+            o for o in result["tax_obligations"] if o.get("obligation_type") == "estimated_tax"
+        ]
         calcs = estimated[0]["calculations"]
         assert calcs["personal_tax_pph"] == pytest.approx(50_000_000 * 0.05)
 
@@ -317,7 +329,9 @@ class TestCalculateTaxRequirements:
             vat_applicable=False,
         )
         result = await calculate_tax_requirements_node(state)
-        calcs = [o for o in result["tax_obligations"] if o.get("obligation_type") == "estimated_tax"][0]["calculations"]
+        calcs = [
+            o for o in result["tax_obligations"] if o.get("obligation_type") == "estimated_tax"
+        ][0]["calculations"]
         expected = 3_000_000 + (100_000_000 - 60_000_000) * 0.15
         assert calcs["personal_tax_pph"] == pytest.approx(expected)
 
@@ -328,7 +342,9 @@ class TestCalculateTaxRequirements:
             revenue_amount=400_000_000,
         )
         result = await calculate_tax_requirements_node(state)
-        calcs = [o for o in result["tax_obligations"] if o.get("obligation_type") == "estimated_tax"][0]["calculations"]
+        calcs = [
+            o for o in result["tax_obligations"] if o.get("obligation_type") == "estimated_tax"
+        ][0]["calculations"]
         expected = 31_500_000 + (400_000_000 - 250_000_000) * 0.25
         assert calcs["personal_tax_pph"] == pytest.approx(expected)
 
@@ -339,7 +355,9 @@ class TestCalculateTaxRequirements:
             revenue_amount=1_000_000_000,
         )
         result = await calculate_tax_requirements_node(state)
-        calcs = [o for o in result["tax_obligations"] if o.get("obligation_type") == "estimated_tax"][0]["calculations"]
+        calcs = [
+            o for o in result["tax_obligations"] if o.get("obligation_type") == "estimated_tax"
+        ][0]["calculations"]
         expected = 94_000_000 + (1_000_000_000 - 500_000_000) * 0.30
         assert calcs["personal_tax_pph"] == pytest.approx(expected)
 
@@ -351,7 +369,9 @@ class TestCalculateTaxRequirements:
             vat_applicable=True,
         )
         result = await calculate_tax_requirements_node(state)
-        calcs = [o for o in result["tax_obligations"] if o.get("obligation_type") == "estimated_tax"][0]["calculations"]
+        calcs = [
+            o for o in result["tax_obligations"] if o.get("obligation_type") == "estimated_tax"
+        ][0]["calculations"]
         assert "vat_ppn" in calcs
 
     @pytest.mark.asyncio
@@ -361,7 +381,9 @@ class TestCalculateTaxRequirements:
             revenue_amount=100_000_000,
         )
         result = await calculate_tax_requirements_node(state)
-        calcs = [o for o in result["tax_obligations"] if o.get("obligation_type") == "estimated_tax"][0]["calculations"]
+        calcs = [
+            o for o in result["tax_obligations"] if o.get("obligation_type") == "estimated_tax"
+        ][0]["calculations"]
         assert calcs == {}
 
 
@@ -425,7 +447,9 @@ class TestSynthesizeTaxWorkflow:
         result = await synthesize_tax_workflow_node(state)
         step_actions = [s["action"] for s in result["workflow"]["steps"]]
         # perorangan without VAT has no monthly filings
-        assert not any("Monthly" in a or "monthly" in a.lower() for a in step_actions if "filing" in a.lower())
+        assert not any(
+            "Monthly" in a or "monthly" in a.lower() for a in step_actions if "filing" in a.lower()
+        )
 
     @pytest.mark.asyncio
     async def test_annual_return_always_present(self):

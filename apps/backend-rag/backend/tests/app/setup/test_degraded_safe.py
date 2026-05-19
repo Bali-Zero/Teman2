@@ -78,7 +78,8 @@ class TestDegradedSafe:
 
     @pytest.mark.asyncio
     async def test_degraded_safe_passes_through_on_success(
-        self, app: FastAPI,
+        self,
+        app: FastAPI,
     ) -> None:
         """On success the decorator must NOT touch app.state.degraded_services
         and must return the wrapped function's value verbatim."""
@@ -94,13 +95,13 @@ class TestDegradedSafe:
         # degraded_services should either be absent or not contain ai_client
         degraded = getattr(app.state, "degraded_services", set())
         assert "ai_client" not in degraded, (
-            "successful init must NOT register service as degraded; "
-            f"got {degraded}"
+            f"successful init must NOT register service as degraded; got {degraded}"
         )
 
     @pytest.mark.asyncio
     async def test_degraded_safe_accumulates_multiple_failures(
-        self, app: FastAPI,
+        self,
+        app: FastAPI,
     ) -> None:
         """Two distinct failures must both end up in degraded_services."""
 
@@ -124,7 +125,9 @@ class TestGetSearchServiceDegraded:
     """`get_search_service` returns structured 503 when service is None."""
 
     def test_get_search_service_503_when_degraded(
-        self, app: FastAPI, request_factory,
+        self,
+        app: FastAPI,
+        request_factory,
     ) -> None:
         """When app.state.search_service is None and degraded set contains
         'search', the dependency must raise HTTPException(503) with
@@ -155,7 +158,9 @@ class TestGetSearchServiceDegraded:
         assert "search" in exc.detail["degraded_services"]
 
     def test_get_search_service_returns_when_present(
-        self, app: FastAPI, request_factory,
+        self,
+        app: FastAPI,
+        request_factory,
     ) -> None:
         """Smoke positive path: when the service is set, the dependency
         returns it without raising."""

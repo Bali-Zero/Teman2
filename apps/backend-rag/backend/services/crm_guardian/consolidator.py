@@ -6,6 +6,7 @@ R4 (no canonical, satellites → provision + consolidate).
 All file moves preserve the revision history (Drive API `files.update`
 with addParents/removeParents, not copy+delete).
 """
+
 from __future__ import annotations
 
 import logging
@@ -51,11 +52,15 @@ def _drive_create_folder(drive, name: str, parent_id: str) -> dict:
         "mimeType": "application/vnd.google-apps.folder",
         "parents": [parent_id],
     }
-    return drive.files().create(
-        body=metadata,
-        fields="id, name, parents, createdTime",
-        supportsAllDrives=True,
-    ).execute()
+    return (
+        drive.files()
+        .create(
+            body=metadata,
+            fields="id, name, parents, createdTime",
+            supportsAllDrives=True,
+        )
+        .execute()
+    )
 
 
 def _drive_list_children(drive, folder_id: str) -> list[dict]:
@@ -79,28 +84,38 @@ def _drive_list_children(drive, folder_id: str) -> list[dict]:
     return out
 
 
-def _drive_move(drive, file_id: str, new_parent_id: str, old_parent_id: str, new_name: str | None = None) -> dict:
+def _drive_move(
+    drive, file_id: str, new_parent_id: str, old_parent_id: str, new_name: str | None = None
+) -> dict:
     """Move a file/folder: add to new parent, remove from old. Optionally rename."""
     body: dict[str, Any] = {}
     if new_name:
         body["name"] = new_name
-    return drive.files().update(
-        fileId=file_id,
-        body=body or None,
-        addParents=new_parent_id,
-        removeParents=old_parent_id,
-        fields="id, name, parents",
-        supportsAllDrives=True,
-    ).execute()
+    return (
+        drive.files()
+        .update(
+            fileId=file_id,
+            body=body or None,
+            addParents=new_parent_id,
+            removeParents=old_parent_id,
+            fields="id, name, parents",
+            supportsAllDrives=True,
+        )
+        .execute()
+    )
 
 
 def _drive_trash(drive, file_id: str) -> dict:
-    return drive.files().update(
-        fileId=file_id,
-        body={"trashed": True},
-        fields="id, trashed",
-        supportsAllDrives=True,
-    ).execute()
+    return (
+        drive.files()
+        .update(
+            fileId=file_id,
+            body={"trashed": True},
+            fields="id, trashed",
+            supportsAllDrives=True,
+        )
+        .execute()
+    )
 
 
 # Shared soft-delete folder inside BALI ZERO root. Items are moved here
@@ -119,11 +134,16 @@ def _drive_move_to_dumpster(drive, file_id: str, label: str | None = None) -> di
     My Drive and reappears in one central location for manual bulk-trash.
     """
     import time
-    meta = drive.files().get(
-        fileId=file_id,
-        fields="id, name, parents",
-        supportsAllDrives=True,
-    ).execute()
+
+    meta = (
+        drive.files()
+        .get(
+            fileId=file_id,
+            fields="id, name, parents",
+            supportsAllDrives=True,
+        )
+        .execute()
+    )
     original_name = meta.get("name", file_id)
     original_parents = meta.get("parents", [])
 
@@ -136,14 +156,18 @@ def _drive_move_to_dumpster(drive, file_id: str, label: str | None = None) -> di
     if new_name != original_name:
         body["name"] = new_name
 
-    return drive.files().update(
-        fileId=file_id,
-        body=body or None,
-        addParents=DA_TRASHARE_FOLDER_ID,
-        removeParents=",".join(original_parents) if original_parents else None,
-        fields="id, name, parents",
-        supportsAllDrives=True,
-    ).execute()
+    return (
+        drive.files()
+        .update(
+            fileId=file_id,
+            body=body or None,
+            addParents=DA_TRASHARE_FOLDER_ID,
+            removeParents=",".join(original_parents) if original_parents else None,
+            fields="id, name, parents",
+            supportsAllDrives=True,
+        )
+        .execute()
+    )
 
 
 def _safe_filename_component(name: str, max_len: int = 60) -> str:
@@ -229,7 +253,11 @@ def plan_consolidation(
                 # File — schedule move
                 rel_component = _safe_filename_component(rel_path.replace("/", "_"), max_len=40)
                 orig = _safe_filename_component(c["name"], max_len=80)
-                new_name = f"{sat_short}__{rel_component}__{orig}" if rel_component else f"{sat_short}__{orig}"
+                new_name = (
+                    f"{sat_short}__{rel_component}__{orig}"
+                    if rel_component
+                    else f"{sat_short}__{orig}"
+                )
                 ops.append(
                     MoveOp(
                         file_id=c["id"],
@@ -378,11 +406,13 @@ async def apply_consolidation_for_client(
     # along with the move and can be cleaned on a second pass).
     trashed = 0
     if not dry and errors == 0:
-        client_label = f"client{plan_row.get('client_id','?')}"
+        client_label = f"client{plan_row.get('client_id', '?')}"
         for sat in plan_row["satellites"]:
             try:
                 remaining = _drive_list_children(drive, sat["id"])
-                any_files = any(c["mimeType"] != "application/vnd.google-apps.folder" for c in remaining)
+                any_files = any(
+                    c["mimeType"] != "application/vnd.google-apps.folder" for c in remaining
+                )
                 if any_files:
                     await record_event(
                         conn,
@@ -440,7 +470,8 @@ async def apply_consolidation_for_client(
         if current != canonical_id:
             await conn.execute(
                 "UPDATE clients SET google_drive_folder_id = $2 WHERE id = $1",
-                client_id, canonical_id,
+                client_id,
+                canonical_id,
             )
             await record_event(
                 conn,
@@ -516,7 +547,11 @@ async def apply_provision_and_consolidate(
                 target_type="folder",
                 target_id=f"dry_canonical_{client_id}",
                 status="dry_run",
-                after_state={"name": f"{client_id}_{full_name}", "parent": parent_id, "template_subfolders": len(STANDARD_SUBFOLDERS)},
+                after_state={
+                    "name": f"{client_id}_{full_name}",
+                    "parent": parent_id,
+                    "template_subfolders": len(STANDARD_SUBFOLDERS),
+                },
             ),
         )
         # Also log what I3 would do
@@ -550,7 +585,8 @@ async def apply_provision_and_consolidate(
     # Update DB immediately so re-runs are safe
     await conn.execute(
         "UPDATE clients SET google_drive_folder_id = $2 WHERE id = $1",
-        client_id, canonical_id,
+        client_id,
+        canonical_id,
     )
 
     # Now run consolidation with the freshly created canonical

@@ -2,7 +2,6 @@
 Tests for explanation_detector.py - Explanation level detection and alternative requests.
 """
 
-
 from backend.services.communication.explanation_detector import (
     build_alternatives_instructions,
     build_explanation_instructions,

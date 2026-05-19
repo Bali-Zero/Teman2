@@ -303,7 +303,10 @@ class TestPortalServiceDashboard:
 
     @pytest.mark.asyncio
     async def test_get_dashboard_client_not_found(
-        self, portal_service, mock_conn, ctx_client_999,
+        self,
+        portal_service,
+        mock_conn,
+        ctx_client_999,
     ):
         """Dashboard raises ValueError for missing client."""
         mock_conn.fetchrow.return_value = None
@@ -312,7 +315,10 @@ class TestPortalServiceDashboard:
 
     @pytest.mark.asyncio
     async def test_get_dashboard_success(
-        self, portal_service, mock_conn, ctx_client_1,
+        self,
+        portal_service,
+        mock_conn,
+        ctx_client_1,
     ):
         """Dashboard returns expected structure for valid client."""
         mock_conn.fetchrow.side_effect = [
@@ -402,7 +408,10 @@ class TestPortalServiceUpload:
 
     @pytest.mark.asyncio
     async def test_upload_document_virus_detected(
-        self, portal_service, mock_conn, ctx_client_1,
+        self,
+        portal_service,
+        mock_conn,
+        ctx_client_1,
     ):
         """Upload blocked when virus detected."""
         malicious_content = b"<?php evil_code();"
@@ -417,7 +426,10 @@ class TestPortalServiceUpload:
 
     @pytest.mark.asyncio
     async def test_upload_document_rate_limit(
-        self, portal_service, mock_conn, ctx_client_1,
+        self,
+        portal_service,
+        mock_conn,
+        ctx_client_1,
     ):
         """Upload blocked when rate limit exceeded."""
         portal_service._upload_rate_limits[1] = [
@@ -436,7 +448,10 @@ class TestPortalServiceUpload:
 
     @pytest.mark.asyncio
     async def test_upload_document_invalid_mime(
-        self, portal_service, mock_conn, ctx_client_1,
+        self,
+        portal_service,
+        mock_conn,
+        ctx_client_1,
     ):
         """Upload blocked for disallowed MIME type."""
         portal_service._upload_rate_limits.pop(1, None)
@@ -456,7 +471,10 @@ class TestPortalServiceDocumentDownload:
 
     @pytest.mark.asyncio
     async def test_download_document_streams_owned_visible_drive_file(
-        self, portal_service, mock_conn, ctx_client_1,
+        self,
+        portal_service,
+        mock_conn,
+        ctx_client_1,
     ):
         """Download uses client ownership and server-side Drive fetch."""
         mock_conn.fetchrow.return_value = {
@@ -479,7 +497,9 @@ class TestPortalServiceDocumentDownload:
         async_http.get = AsyncMock(side_effect=[meta_response, download_response])
 
         with (
-            patch("backend.services.integrations.google_drive_service.GoogleDriveService") as drive_cls,
+            patch(
+                "backend.services.integrations.google_drive_service.GoogleDriveService"
+            ) as drive_cls,
             patch("httpx.AsyncClient") as client_cls,
         ):
             drive_cls.SYSTEM_USER_ID = "SYSTEM"
@@ -539,7 +559,8 @@ class TestPortalServiceMessaging:
         mock_conn.fetchval.side_effect = [1, 1]
 
         result = await portal_service.get_messages(
-            client_id=1, current_user=ctx_client_1,
+            client_id=1,
+            current_user=ctx_client_1,
         )
         assert result["total"] == 1
         assert result["unread_count"] == 1
@@ -566,23 +587,33 @@ class TestPortalServiceMessaging:
 
     @pytest.mark.asyncio
     async def test_mark_message_read_success(
-        self, portal_service, mock_conn, ctx_client_1,
+        self,
+        portal_service,
+        mock_conn,
+        ctx_client_1,
     ):
         """mark_message_read returns success when row updated."""
         mock_conn.execute.return_value = "UPDATE 1"
         result = await portal_service.mark_message_read(
-            client_id=1, message_id=42, current_user=ctx_client_1,
+            client_id=1,
+            message_id=42,
+            current_user=ctx_client_1,
         )
         assert result["success"] is True
 
     @pytest.mark.asyncio
     async def test_mark_message_read_not_found(
-        self, portal_service, mock_conn, ctx_client_1,
+        self,
+        portal_service,
+        mock_conn,
+        ctx_client_1,
     ):
         """mark_message_read returns failure when no row updated."""
         mock_conn.execute.return_value = "UPDATE 0"
         result = await portal_service.mark_message_read(
-            client_id=1, message_id=999, current_user=ctx_client_1,
+            client_id=1,
+            message_id=999,
+            current_user=ctx_client_1,
         )
         assert result["success"] is False
 
@@ -597,12 +628,16 @@ class TestPortalServicePreferences:
 
     @pytest.mark.asyncio
     async def test_get_preferences_defaults(
-        self, portal_service, mock_conn, ctx_client_1,
+        self,
+        portal_service,
+        mock_conn,
+        ctx_client_1,
     ):
         """Returns defaults when no preferences stored."""
         mock_conn.fetchrow.return_value = None
         result = await portal_service.get_preferences(
-            client_id=1, current_user=ctx_client_1,
+            client_id=1,
+            current_user=ctx_client_1,
         )
         assert result["email_notifications"] is True
         assert result["language"] == "en"
@@ -610,7 +645,10 @@ class TestPortalServicePreferences:
 
     @pytest.mark.asyncio
     async def test_get_preferences_stored(
-        self, portal_service, mock_conn, ctx_client_1,
+        self,
+        portal_service,
+        mock_conn,
+        ctx_client_1,
     ):
         """Returns stored preferences."""
         mock_conn.fetchrow.return_value = {
@@ -620,7 +658,8 @@ class TestPortalServicePreferences:
             "timezone": "Europe/Rome",
         }
         result = await portal_service.get_preferences(
-            client_id=1, current_user=ctx_client_1,
+            client_id=1,
+            current_user=ctx_client_1,
         )
         assert result["language"] == "it"
         assert result["email_notifications"] is False
@@ -636,14 +675,18 @@ class TestPortalServiceTimeline:
 
     @pytest.mark.asyncio
     async def test_get_timeline_returns_structure(
-        self, portal_service, mock_conn, ctx_client_1,
+        self,
+        portal_service,
+        mock_conn,
+        ctx_client_1,
     ):
         """get_timeline returns expected top-level keys."""
         mock_conn.fetch.return_value = []
         mock_conn.fetchrow.return_value = None
 
         result = await portal_service.get_timeline(
-            client_id=1, current_user=ctx_client_1,
+            client_id=1,
+            current_user=ctx_client_1,
         )
         assert result["scope"] == "portal"
         assert "entries" in result

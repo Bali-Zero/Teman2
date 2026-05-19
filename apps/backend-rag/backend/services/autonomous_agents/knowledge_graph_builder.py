@@ -259,7 +259,9 @@ class KnowledgeGraphBuilder:
         logger.info("⚠️ LLM not available, using Regex extraction fallback")
         entities = self.extract_entities_from_text(text, source_collection="api_request")
         relationships = self.infer_relationships_from_text(
-            text, entities, source_collection="api_request",
+            text,
+            entities,
+            source_collection="api_request",
         )
 
         metrics_collector.record_kg_metrics(len(entities), len(relationships), "regex")
@@ -276,7 +278,9 @@ class KnowledgeGraphBuilder:
         }
 
     def extract_entities_from_text(
-        self, text: str, source_collection: str | None = None,
+        self,
+        text: str,
+        source_collection: str | None = None,
     ) -> list[Entity]:
         """Extract entities from text (Sync helper)"""
         entities = []
@@ -306,7 +310,10 @@ class KnowledgeGraphBuilder:
         return entities
 
     def infer_relationships_from_text(
-        self, text: str, entities: list[Entity], source_collection: str | None = None,
+        self,
+        text: str,
+        entities: list[Entity],
+        source_collection: str | None = None,
     ) -> list[Relationship]:
         """Infer relationships (Sync helper)"""
         relationships = []
@@ -367,7 +374,9 @@ class KnowledgeGraphBuilder:
             # Use LLM extraction if available (more accurate)
             if self.llm_gateway:
                 await self.extract_via_llm(
-                    text, source_collection=collection_name, chunk_id=chunk_id,
+                    text,
+                    source_collection=collection_name,
+                    chunk_id=chunk_id,
                 )
                 total_added += 1
             else:
@@ -447,7 +456,10 @@ class KnowledgeGraphBuilder:
             logger.error("Failed to refresh from DB: %s", e)
 
     async def extract_via_llm(
-        self, text: str, source_collection: str = None, chunk_id: str = None,
+        self,
+        text: str,
+        source_collection: str = None,
+        chunk_id: str = None,
     ) -> dict:
         """
         Extract entities and relationships using LLM (Semantic Extraction).
@@ -545,7 +557,9 @@ class KnowledgeGraphBuilder:
                 await self.add_relationship(rel)
 
             metrics_collector.record_kg_metrics(
-                len(extracted_entities), len(extracted_relationships), "llm",
+                len(extracted_entities),
+                len(extracted_relationships),
+                "llm",
             )
 
             logger.info(

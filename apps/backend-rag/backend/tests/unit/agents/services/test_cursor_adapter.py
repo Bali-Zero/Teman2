@@ -5,6 +5,7 @@ Covers:
 - graceful degradation when cursor CLI absent
 - update/read .cursorrules file roundtrip
 """
+
 from __future__ import annotations
 
 import subprocess
@@ -59,7 +60,9 @@ class TestCursorAdapterSubprocessFailures:
         ):
             assert tmp_adapter.is_available() is False
 
-    def test_open_file_does_not_swallow_keyboard_interrupt(self, tmp_adapter: CursorAdapter) -> None:
+    def test_open_file_does_not_swallow_keyboard_interrupt(
+        self, tmp_adapter: CursorAdapter
+    ) -> None:
         """KeyboardInterrupt must propagate — it's not a subprocess error."""
         with patch(
             "backend.agents.services.cursor_adapter.subprocess.run",

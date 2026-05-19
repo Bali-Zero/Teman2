@@ -18,6 +18,7 @@ from backend.services.visual.imagen_client import ImagenClient, ImagenQuality
 
 def _ok_body() -> dict:
     import base64
+
     b64 = base64.b64encode(b"\x89PNG_x").decode("ascii")
     return {"predictions": [{"bytesBase64Encoded": b64, "mimeType": "image/png"}]}
 

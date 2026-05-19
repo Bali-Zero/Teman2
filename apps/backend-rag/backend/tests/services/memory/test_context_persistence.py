@@ -13,6 +13,7 @@ from backend.conversation.engine import _SESSION_CONTEXT_TTL, ConversationEngine
 
 # ── Helpers ──────────────────────────────────────────────────────
 
+
 def _make_engine() -> ConversationEngine:
     """Create a ConversationEngine with a mocked orchestrator."""
     mock_orchestrator = MagicMock()
@@ -77,7 +78,9 @@ class TestLoadContext:
         # Should warm cache
         mock_cache.set.assert_called_once()
         call_args = mock_cache.set.call_args
-        assert call_args[1]["ttl"] == _SESSION_CONTEXT_TTL or call_args[0][2] == _SESSION_CONTEXT_TTL
+        assert (
+            call_args[1]["ttl"] == _SESSION_CONTEXT_TTL or call_args[0][2] == _SESSION_CONTEXT_TTL
+        )
 
     @pytest.mark.asyncio
     async def test_cache_miss_db_miss(self) -> None:

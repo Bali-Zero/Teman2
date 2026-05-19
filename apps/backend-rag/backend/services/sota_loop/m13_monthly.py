@@ -6,6 +6,7 @@ Invoked by `com.balizero.sota.m13-monthly.plist` through
 Re-runs: baseline snapshot, competitor scraping (if CSV ready),
 persona inference, Consiglio. Archives 09_wr2_weights_YYYY-MM.json.
 """
+
 from __future__ import annotations
 
 import json
@@ -16,9 +17,7 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("sota.m13.monthly")
 
 
@@ -31,9 +30,7 @@ def _repo_root() -> Path:
 
 def run(cmd: list[str], *, timeout: int = 1800) -> int:
     logger.info("run: %s", " ".join(cmd))
-    r = subprocess.run(
-        cmd, capture_output=True, text=True, timeout=timeout, check=False
-    )
+    r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, check=False)
     if r.returncode != 0:
         logger.warning("cmd rc=%s stderr=%s", r.returncode, r.stderr[-400:])
     return r.returncode
@@ -73,9 +70,7 @@ def main() -> int:
         mtime = datetime.fromtimestamp(csv_path.stat().st_mtime, tz=timezone.utc)
         age_days = (datetime.now(timezone.utc) - mtime).days
         if age_days >= 35:
-            logger.warning(
-                "competitor CSV is %d days old — ask team to re-scrape", age_days
-            )
+            logger.warning("competitor CSV is %d days old — ask team to re-scrape", age_days)
         elif not ingest_script.is_file():
             logger.warning(
                 "competitor CSV ready but ingest script missing — Task 13 still TODO; skipping"
@@ -106,9 +101,7 @@ def main() -> int:
     if weights_path.is_file():
         new_weights = json.loads(weights_path.read_text())
         archive_path = research / f"09_wr2_weights_{month}.json"
-        archive_path.write_text(
-            json.dumps(new_weights, indent=2), encoding="utf-8"
-        )
+        archive_path.write_text(json.dumps(new_weights, indent=2), encoding="utf-8")
         logger.info("archived weights to %s", archive_path)
 
     # Write monthly report

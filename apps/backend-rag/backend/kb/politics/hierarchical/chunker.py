@@ -57,10 +57,26 @@ def _detect_language(text: str) -> str:
     is overwhelmingly Indonesian with some English field names.
     """
     id_markers = [
-        "presiden", "gubernur", "partai", "pemilu", "jabatan",
-        "wakil", "menteri", "yurisdiksi", "lahir", "anggota",
-        "keanggotaan", "berdiri", "pimpinan", "republik", "indonesia",
-        "tokoh", "calon", "suara", "daerah", "kontes",
+        "presiden",
+        "gubernur",
+        "partai",
+        "pemilu",
+        "jabatan",
+        "wakil",
+        "menteri",
+        "yurisdiksi",
+        "lahir",
+        "anggota",
+        "keanggotaan",
+        "berdiri",
+        "pimpinan",
+        "republik",
+        "indonesia",
+        "tokoh",
+        "calon",
+        "suara",
+        "daerah",
+        "kontes",
     ]
     lower = text.lower()
     id_count = sum(1 for m in id_markers if m in lower)
@@ -100,7 +116,9 @@ class HierarchicalChunker:
         # Build parent text (full record representation)
         parent_text = self._build_parent_text(record)
         if not parent_text.strip():
-            logger.warning("Empty parent text for record %s at %s:%s", record_id, source_path, line_offset)
+            logger.warning(
+                "Empty parent text for record %s at %s:%s", record_id, source_path, line_offset
+            )
             return []
 
         language = _detect_language(parent_text)
@@ -124,18 +142,20 @@ class HierarchicalChunker:
         children: list[Chunk] = []
         for i, claim_text in enumerate(claims):
             child_id = _deterministic_id(record_id, "child", i)
-            children.append(Chunk(
-                id=child_id,
-                text=claim_text,
-                chunk_type="child",
-                parent_id=parent_id,
-                record_id=record_id,
-                record_type=record_type,
-                source_path=source_path,
-                offset=line_offset,
-                language=language,
-                metadata=self._extract_metadata(record),
-            ))
+            children.append(
+                Chunk(
+                    id=child_id,
+                    text=claim_text,
+                    chunk_type="child",
+                    parent_id=parent_id,
+                    record_id=record_id,
+                    record_type=record_type,
+                    source_path=source_path,
+                    offset=line_offset,
+                    language=language,
+                    metadata=self._extract_metadata(record),
+                )
+            )
 
         return [parent, *children]
 

@@ -5,6 +5,7 @@ without requiring a live database connection (AsyncMock pattern).
 
 Spec: docs/superpowers/reviews/2026-04-21-partners-v1/99-synthesis.md CRIT-2
 """
+
 from __future__ import annotations
 
 import re
@@ -26,6 +27,7 @@ def _normalize(sql: str) -> str:
 async def test_migration_120_creates_outbox_table():
     """apply() must create partner_email_outbox with all required columns."""
     from backend.migrations.migration_120_partner_email_outbox import apply
+
     conn = AsyncMock()
     await apply(conn)
     sql = _collect_sql(conn.execute.call_args_list)
@@ -39,17 +41,23 @@ async def test_migration_120_creates_outbox_table():
 async def test_migration_120_check_constraints():
     """apply() must include CHECK constraints for email_type and status."""
     from backend.migrations.migration_120_partner_email_outbox import apply
+
     conn = AsyncMock()
     await apply(conn)
     sql = _collect_sql(conn.execute.call_args_list)
-    assert "'welcome', 'commission_earned'" in sql or ("'welcome'" in sql and "'commission_earned'" in sql)
-    assert "'pending', 'sent', 'failed_dlq'" in sql or ("'pending'" in sql and "'failed_dlq'" in sql)
+    assert "'welcome', 'commission_earned'" in sql or (
+        "'welcome'" in sql and "'commission_earned'" in sql
+    )
+    assert "'pending', 'sent', 'failed_dlq'" in sql or (
+        "'pending'" in sql and "'failed_dlq'" in sql
+    )
 
 
 @pytest.mark.asyncio
 async def test_migration_120_idempotent():
     """apply() uses IF NOT EXISTS / DO $$ guards — all indexes use IF NOT EXISTS."""
     from backend.migrations.migration_120_partner_email_outbox import apply
+
     conn = AsyncMock()
     await apply(conn)
     sql = _collect_sql(conn.execute.call_args_list)
@@ -71,6 +79,7 @@ async def test_migration_120_idempotent():
 async def test_migration_120_creates_indexes():
     """apply() must create both named indexes."""
     from backend.migrations.migration_120_partner_email_outbox import apply
+
     conn = AsyncMock()
     await apply(conn)
     sql = _collect_sql(conn.execute.call_args_list)
@@ -82,6 +91,7 @@ async def test_migration_120_creates_indexes():
 async def test_migration_120_rollback():
     """rollback() must drop the table and both indexes."""
     from backend.migrations.migration_120_partner_email_outbox import rollback
+
     conn = AsyncMock()
     await rollback(conn)
     sql = _collect_sql(conn.execute.call_args_list)
@@ -94,6 +104,7 @@ async def test_migration_120_rollback():
 async def test_migration_120_rollback_index_before_table():
     """rollback() must drop indexes before the table (FK-safe order)."""
     from backend.migrations.migration_120_partner_email_outbox import rollback
+
     conn = AsyncMock()
     await rollback(conn)
     sql = _collect_sql(conn.execute.call_args_list)

@@ -5,6 +5,7 @@ rollback each, ensuring schema state matches pre/post expectations.
 Uses the `db_tx` fixture from conftest.py — transaction-scoped, rolled back
 at teardown. Requires local Postgres running on the default URL.
 """
+
 from __future__ import annotations
 
 import os
@@ -148,9 +149,7 @@ async def test_base_migration_apply_strips_rollback_section() -> None:
             "  checksum VARCHAR(64) NOT NULL, description TEXT,"
             "  execution_time_ms INTEGER, rollback_sql TEXT)"
         )
-        await conn.execute(
-            "DELETE FROM schema_migrations WHERE migration_number IN (114, 115)"
-        )
+        await conn.execute("DELETE FROM schema_migrations WHERE migration_number IN (114, 115)")
 
         sql_text = (_MIG_DIR / "114_compliance_alerts.sql").read_text(encoding="utf-8")
         rollback = _extract_rollback_sql(sql_text)
@@ -168,6 +167,7 @@ async def test_base_migration_apply_strips_rollback_section() -> None:
         # if global settings point elsewhere. Do this by monkey-patching at the
         # module level for this single call.
         from backend.db import migration_base as mb
+
         original_url = mb.settings.database_url
         mb.settings.database_url = _TEST_DB_URL  # type: ignore[misc]
         try:
@@ -185,9 +185,7 @@ async def test_base_migration_apply_strips_rollback_section() -> None:
 
         # Cleanup: drop what we just created so other tests are not affected.
         await conn.execute("DROP TABLE IF EXISTS compliance_alerts CASCADE")
-        await conn.execute(
-            "DELETE FROM schema_migrations WHERE migration_number = 114"
-        )
+        await conn.execute("DELETE FROM schema_migrations WHERE migration_number = 114")
     finally:
         await conn.close()
 
@@ -215,9 +213,7 @@ async def test_apply_all_pending_creates_compliance_chain() -> None:
             "  execution_time_ms INTEGER, rollback_sql TEXT,"
             "  applied_by VARCHAR(255) DEFAULT 'system')"
         )
-        await conn.execute(
-            "DELETE FROM _schema_versions WHERE migration_number IN (114, 115, 116)"
-        )
+        await conn.execute("DELETE FROM _schema_versions WHERE migration_number IN (114, 115, 116)")
         await conn.execute(
             "CREATE TABLE IF NOT EXISTS schema_migrations ("
             "  id SERIAL PRIMARY KEY, migration_name VARCHAR(255) UNIQUE NOT NULL,"
@@ -241,13 +237,15 @@ async def test_apply_all_pending_creates_compliance_chain() -> None:
                 "(migration_name, migration_number, description, applied_by, checksum) "
                 "VALUES ($1, $2, 'pre-applied', 'test', 'fake') "
                 "ON CONFLICT DO NOTHING",
-                name, n,
+                name,
+                n,
             )
 
         mgr = MigrationManager(database_url=_TEST_DB_URL)
         try:
             await mgr.connect()
             from backend.db import migration_base as mb
+
             original_url = mb.settings.database_url
             mb.settings.database_url = _TEST_DB_URL  # type: ignore[misc]
             try:

@@ -101,11 +101,13 @@ def _detect_obsolete_code(text: str) -> tuple[str, str] | None:
     retired visa code that needs query expansion + regulatory flagging.
     Matches word-boundary (B211 won't match B2115 etc.)."""
     import re
+
     upper = text.upper()
     for code, (_replacement, hint) in OBSOLETE_VISA_CODES.items():
         if re.search(rf"\b{re.escape(code)}\b", upper):
             return code, hint
     return None
+
 
 # Telegram chat ID for Damar / team lead notifications
 TELEGRAM_LEAD_CHAT_ID = 1125336968
@@ -292,34 +294,103 @@ def _detect_language(text: str) -> str:
     # French — function words + common visa verbs. Avoid words shared with
     # Italian/Spanish ("visa", "pour" ambiguous).
     fr_markers = {
-        "je", "mon", "comment", "bonjour", "merci", "besoin", "obtenir",
-        "quel", "faire", "suis", "voudrais", "veux", "aller", "mes",
-        "avec", "cette", "quelle", "prendre", "étape", "demande",
+        "je",
+        "mon",
+        "comment",
+        "bonjour",
+        "merci",
+        "besoin",
+        "obtenir",
+        "quel",
+        "faire",
+        "suis",
+        "voudrais",
+        "veux",
+        "aller",
+        "mes",
+        "avec",
+        "cette",
+        "quelle",
+        "prendre",
+        "étape",
+        "demande",
     }
     if sum(1 for w in fr_markers if f" {w} " in f" {lower} ") >= 2:
         return "fr"
     # Italian — function words + visa-chat common verbs.
     it_markers = {
-        "il", "come", "posso", "vorrei", "quanto", "bisogno", "voglio",
-        "vorrebbe", "cosa", "mio", "mia", "sono", "serve", "fare",
-        "visto", "anni", "soggiorno", "lavorare", "aprire", "vivere",
-        "turismo", "famiglia", "due", "tre", "meglio", "quale",
+        "il",
+        "come",
+        "posso",
+        "vorrei",
+        "quanto",
+        "bisogno",
+        "voglio",
+        "vorrebbe",
+        "cosa",
+        "mio",
+        "mia",
+        "sono",
+        "serve",
+        "fare",
+        "visto",
+        "anni",
+        "soggiorno",
+        "lavorare",
+        "aprire",
+        "vivere",
+        "turismo",
+        "famiglia",
+        "due",
+        "tre",
+        "meglio",
+        "quale",
     }
     if sum(1 for w in it_markers if f" {w} " in f" {lower} ") >= 2:
         return "it"
     # German
     de_markers = {
-        "ich", "wie", "brauche", "visum", "kann", "mein", "möchte",
-        "für", "arbeit", "bali", "welches", "wohnen", "nach", "eine",
-        "muss", "lang", "jahr",
+        "ich",
+        "wie",
+        "brauche",
+        "visum",
+        "kann",
+        "mein",
+        "möchte",
+        "für",
+        "arbeit",
+        "bali",
+        "welches",
+        "wohnen",
+        "nach",
+        "eine",
+        "muss",
+        "lang",
+        "jahr",
     }
     if sum(1 for w in de_markers if f" {w} " in f" {lower} ") >= 2:
         return "de"
     # Spanish
     es_markers = {
-        "necesito", "como", "puedo", "quiero", "abrir", "trabajar",
-        "vivir", "cuanto", "cuánto", "años", "meses", "tengo",
-        "para", "una", "que", "qué", "mi", "tener", "tiempo",
+        "necesito",
+        "como",
+        "puedo",
+        "quiero",
+        "abrir",
+        "trabajar",
+        "vivir",
+        "cuanto",
+        "cuánto",
+        "años",
+        "meses",
+        "tengo",
+        "para",
+        "una",
+        "que",
+        "qué",
+        "mi",
+        "tener",
+        "tiempo",
     }
     if sum(1 for w in es_markers if f" {w} " in f" {lower} ") >= 2:
         return "es"
@@ -398,7 +469,9 @@ async def _persist_session_handoff(db_pool: Any, session_id: str) -> None:
 
 @router.post("/recommend", response_model=RecommendResponse)
 async def recommend(
-    request: Request, body: RecommendRequest, db_pool=Depends(get_database_pool),
+    request: Request,
+    body: RecommendRequest,
+    db_pool=Depends(get_database_pool),
 ) -> RecommendResponse:
     """
     Score and rank visa types for the given quiz answers.
@@ -426,7 +499,11 @@ async def recommend(
         ip_hash = service.hash_ip(request.client.host if request.client else "unknown")
         spawn(
             _persist_session_create(
-                db_pool, session_id, body.model_dump(), visas, ip_hash,
+                db_pool,
+                session_id,
+                body.model_dump(),
+                visas,
+                ip_hash,
             )
         )
 
@@ -439,7 +516,9 @@ async def recommend(
 
 @router.post("/chat", response_model=ChatResponse)
 async def chat(
-    request: Request, body: ChatRequest, db_pool=Depends(get_database_pool),
+    request: Request,
+    body: ChatRequest,
+    db_pool=Depends(get_database_pool),
 ) -> ChatResponse:
     """
     Answer a visa question using the hybrid search pipeline.
@@ -465,9 +544,16 @@ async def chat(
     # fallback when detection is inconclusive. Default is English because Bali
     # Zero serves a foreign / international audience; the site is in English.
     _lang_names = {
-        "ru": "Russian", "zh": "Chinese", "ko": "Korean", "ja": "Japanese",
-        "id": "Indonesian", "fr": "French", "it": "Italian", "de": "German",
-        "es": "Spanish", "en": "English",
+        "ru": "Russian",
+        "zh": "Chinese",
+        "ko": "Korean",
+        "ja": "Japanese",
+        "id": "Indonesian",
+        "fr": "French",
+        "it": "Italian",
+        "de": "German",
+        "es": "Spanish",
+        "en": "English",
     }
     _detected = _detect_language(body.message)
     _browser_lang = (body.language or "").strip().lower()[:2]
@@ -505,7 +591,8 @@ async def chat(
         token = auth.split(" ", 1)[1].strip()
         try:
             claims = _jose_jwt.decode(
-                token, _settings.jwt_secret_key,
+                token,
+                _settings.jwt_secret_key,
                 algorithms=[_settings.jwt_algorithm],
                 options={"verify_exp": True},
             )
@@ -585,9 +672,7 @@ async def chat(
             logger.info("visa-oracle /chat: no results for session=%s", body.session_id[:12])
             return ChatResponse(
                 success=True,
-                answer=ABSTAIN_FALLBACK_BY_LANG.get(
-                    response_lang, ABSTAIN_FALLBACK_BY_LANG["en"]
-                ),
+                answer=ABSTAIN_FALLBACK_BY_LANG.get(response_lang, ABSTAIN_FALLBACK_BY_LANG["en"]),
                 confidence=CONFIDENCE_ABSTAIN,
                 sources=[],
                 session_id=body.session_id,
@@ -629,9 +714,7 @@ async def chat(
             )
             return ChatResponse(
                 success=True,
-                answer=ABSTAIN_FALLBACK_BY_LANG.get(
-                    response_lang, ABSTAIN_FALLBACK_BY_LANG["en"]
-                ),
+                answer=ABSTAIN_FALLBACK_BY_LANG.get(response_lang, ABSTAIN_FALLBACK_BY_LANG["en"]),
                 confidence=CONFIDENCE_ABSTAIN,
                 sources=[],
                 session_id=body.session_id,
@@ -687,9 +770,7 @@ async def chat(
             )
             return ChatResponse(
                 success=True,
-                answer=TIMEOUT_FALLBACK_BY_LANG.get(
-                    response_lang, TIMEOUT_FALLBACK_BY_LANG["en"]
-                ),
+                answer=TIMEOUT_FALLBACK_BY_LANG.get(response_lang, TIMEOUT_FALLBACK_BY_LANG["en"]),
                 confidence=CONFIDENCE_CAUTIOUS,
                 sources=sources,
                 session_id=body.session_id,
@@ -697,9 +778,7 @@ async def chat(
 
         if confidence == CONFIDENCE_CAUTIOUS:
             answer_text = (
-                HEDGING_PREFIX_BY_LANG.get(
-                    response_lang, HEDGING_PREFIX_BY_LANG["en"]
-                )
+                HEDGING_PREFIX_BY_LANG.get(response_lang, HEDGING_PREFIX_BY_LANG["en"])
                 + answer_text
             )
 
@@ -710,12 +789,8 @@ async def chat(
         )
 
         # Persist Q&A non-blocking
-        spawn(
-            _persist_session_append_message(db_pool, body.session_id, "user", body.message)
-        )
-        spawn(
-            _persist_session_append_message(db_pool, body.session_id, "assistant", answer_text)
-        )
+        spawn(_persist_session_append_message(db_pool, body.session_id, "user", body.message))
+        spawn(_persist_session_append_message(db_pool, body.session_id, "assistant", answer_text))
 
         return ChatResponse(
             success=True,
@@ -732,7 +807,9 @@ async def chat(
 
 @router.post("/handoff", response_model=HandoffResponse)
 async def handoff(
-    request: Request, body: HandoffRequest, db_pool=Depends(get_database_pool),
+    request: Request,
+    body: HandoffRequest,
+    db_pool=Depends(get_database_pool),
 ) -> HandoffResponse:
     """
     Build WhatsApp deep-link URL and send Telegram lead notification.
@@ -763,8 +840,7 @@ async def handoff(
         telegram_sent = False
         qa = body.quiz_answers or {}
         has_real_data = any(
-            qa.get(k) and qa.get(k) != "Unknown"
-            for k in ("nationality", "purpose", "duration")
+            qa.get(k) and qa.get(k) != "Unknown" for k in ("nationality", "purpose", "duration")
         ) or bool(body.recommended_visas)
         try:
             if not has_real_data:
@@ -793,9 +869,7 @@ async def handoff(
                 )
         except Exception as tg_exc:
             # Non-fatal — still return WhatsApp URL
-            logger.warning(
-                "visa-oracle /handoff: Telegram notification failed: %s", tg_exc
-            )
+            logger.warning("visa-oracle /handoff: Telegram notification failed: %s", tg_exc)
 
         # Mark handoff in session non-blocking
         spawn(_persist_session_handoff(db_pool, body.session_id))

@@ -248,7 +248,12 @@ except ImportError:
 _RELATIONSHIP_PATTERNS: list[tuple[str, str, str, str]] = [
     ("*", "dokumen", r"(?:requires?|memerlukan|wajib)\s+(\w+)", "REQUIRES"),
     ("*", "*", r"(?:governed by|diatur dalam|berdasarkan)\s+(\w+)", "GOVERNED_BY"),
-    ("*", "jangka_waktu", r"(?:valid(?:ity)?|berlaku|masa)\s+(\d+\s*(?:year|tahun|month|bulan))", "HAS_DURATION"),
+    (
+        "*",
+        "jangka_waktu",
+        r"(?:valid(?:ity)?|berlaku|masa)\s+(\d+\s*(?:year|tahun|month|bulan))",
+        "HAS_DURATION",
+    ),
 ]
 
 
@@ -293,7 +298,8 @@ def extract_entities_heuristic(text: str) -> list[ExtractedNode]:
 
 
 def extract_relationships_heuristic(
-    text: str, entities: list[ExtractedNode],
+    text: str,
+    entities: list[ExtractedNode],
 ) -> list[ExtractedEdge]:
     """
     Extract relationships between entities found in the text.
@@ -320,16 +326,14 @@ def extract_relationships_heuristic(
         sentence_lower = sentence.lower()
 
         # Find entities mentioned in this sentence
-        mentioned = [
-            e for e in entities if e.name.lower() in sentence_lower
-        ]
+        mentioned = [e for e in entities if e.name.lower() in sentence_lower]
 
         if len(mentioned) < 2:
             continue
 
         # Check for relationship keywords
         for i, source in enumerate(mentioned):
-            for target in mentioned[i + 1:]:
+            for target in mentioned[i + 1 :]:
                 # Check REQUIRES pattern
                 if re.search(
                     r"(?:requires?|needs?|memerlukan|wajib|harus)",
@@ -350,7 +354,9 @@ def extract_relationships_heuristic(
                     rel_type = "RELATED_TO"
 
                 edge_id = generate_edge_id(
-                    source.entity_id, target.entity_id, rel_type,
+                    source.entity_id,
+                    target.entity_id,
+                    rel_type,
                 )
 
                 if edge_id in seen_edge_ids:
@@ -537,7 +543,9 @@ class KGAutoExpansion:
                     # Stage nodes (ON CONFLICT DO NOTHING — idempotent)
                     for entity in entities:
                         inserted = await self._stage_node(
-                            conn, entity, source_chunk_ids or [],
+                            conn,
+                            entity,
+                            source_chunk_ids or [],
                         )
                         if inserted:
                             result.nodes_inserted += 1
@@ -547,7 +555,9 @@ class KGAutoExpansion:
                     # Stage edges (only if both source and target exist in KG or staging)
                     for edge in edges:
                         inserted = await self._stage_edge(
-                            conn, edge, source_chunk_ids or [],
+                            conn,
+                            edge,
+                            source_chunk_ids or [],
                         )
                         if inserted:
                             result.edges_inserted += 1

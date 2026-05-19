@@ -49,7 +49,10 @@ class TestTier1Fallback:
                 "gemini-2.0-flash",
                 None,
                 MagicMock(
-                    prompt_tokens=100, completion_tokens=50, total_tokens=150, cost_usd=0.001,
+                    prompt_tokens=100,
+                    completion_tokens=50,
+                    total_tokens=150,
+                    cost_usd=0.001,
                 ),
             ),
         )
@@ -179,7 +182,10 @@ class TestTier1Fallback:
                 "gemini-2.0-flash",
                 None,
                 MagicMock(
-                    prompt_tokens=100, completion_tokens=50, total_tokens=150, cost_usd=0.001,
+                    prompt_tokens=100,
+                    completion_tokens=50,
+                    total_tokens=150,
+                    cost_usd=0.001,
                 ),
             ),
         )

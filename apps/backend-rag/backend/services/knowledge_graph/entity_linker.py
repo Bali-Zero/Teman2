@@ -29,15 +29,21 @@ logger = logging.getLogger(__name__)
 _ENTITY_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
     # Laws and regulations
     ("undang_undang", re.compile(r"UU\s*(?:No\.?\s*)?(\d+)\s*(?:Tahun\s*)?(\d{4})", re.IGNORECASE)),
-    ("peraturan_pemerintah", re.compile(r"PP\s*(?:No\.?\s*)?(\d+)\s*(?:Tahun\s*)?(\d{4})", re.IGNORECASE)),
+    (
+        "peraturan_pemerintah",
+        re.compile(r"PP\s*(?:No\.?\s*)?(\d+)\s*(?:Tahun\s*)?(\d{4})", re.IGNORECASE),
+    ),
     ("perpres", re.compile(r"Perpres\s*(?:No\.?\s*)?(\d+)\s*(?:Tahun\s*)?(\d{4})", re.IGNORECASE)),
     ("permen", re.compile(r"Permen\w*\s*(?:No\.?\s*)?(\d+)\s*(?:Tahun\s*)?(\d{4})", re.IGNORECASE)),
     # CONTEXT-style prefixes observed in legal_unified payloads:
     # `PP - NO 6624 - TAHUN 2021`, `UU - NO 11 - TAHUN 2020`
-    ("ctx_law", re.compile(
-        r"\b(UU|PP|Perpres|Permen\w*)\s*-\s*NO\s+(\d+)\s*-\s*TAHUN\s+(\d{4})",
-        re.IGNORECASE,
-    )),
+    (
+        "ctx_law",
+        re.compile(
+            r"\b(UU|PP|Perpres|Permen\w*)\s*-\s*NO\s+(\d+)\s*-\s*TAHUN\s+(\d{4})",
+            re.IGNORECASE,
+        ),
+    ),
     # KBLI codes
     ("kbli", re.compile(r"KBLI\s*(\d{4,5})", re.IGNORECASE)),
     # Visa types
@@ -119,11 +125,13 @@ def extract_mentions(text: str) -> list[dict[str, str]]:
 
             if normalized not in seen:
                 seen.add(normalized)
-                mentions.append({
-                    "type": entity_type,
-                    "text": mention_text,
-                    "normalized": normalized,
-                })
+                mentions.append(
+                    {
+                        "type": entity_type,
+                        "text": mention_text,
+                        "normalized": normalized,
+                    }
+                )
 
     return mentions
 

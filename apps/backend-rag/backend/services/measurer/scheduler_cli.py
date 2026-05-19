@@ -53,9 +53,7 @@ def _build_samplers() -> list:
     added here behind a feature flag.
     """
     samplers: list = []
-    if os.environ.get("IG_LONG_LIVED_TOKEN") or os.environ.get(
-        "INSTAGRAM_ACCESS_TOKEN"
-    ):
+    if os.environ.get("IG_LONG_LIVED_TOKEN") or os.environ.get("INSTAGRAM_ACCESS_TOKEN"):
         from backend.services.measurer.meta_graph_sampler import (
             MetaGraphSampler,
         )
@@ -84,7 +82,10 @@ async def run() -> int:
 
     try:
         pool = await asyncpg.create_pool(
-            dsn, min_size=1, max_size=2, command_timeout=60,
+            dsn,
+            min_size=1,
+            max_size=2,
+            command_timeout=60,
         )
     except Exception as exc:  # noqa: BLE001
         logger.error("pool init failed: %s", exc, exc_info=True)

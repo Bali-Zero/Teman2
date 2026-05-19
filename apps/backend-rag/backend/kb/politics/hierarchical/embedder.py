@@ -154,15 +154,67 @@ class LocalEmbedder:
 
 
 # Indonesian stopwords (common function words that add noise)
-_ID_STOPWORDS = frozenset([
-    "yang", "dan", "di", "ke", "dari", "ini", "itu", "dengan", "untuk",
-    "pada", "adalah", "akan", "juga", "atau", "tidak", "oleh", "sudah",
-    "ada", "dalam", "telah", "seorang", "sebuah", "sebagai", "dapat",
-    "secara", "mereka", "kami", "kita", "saya", "ia", "dia", "nya",
-    "hal", "atas", "bawah", "lain", "masih", "belum", "hanya",
-    "the", "a", "an", "is", "of", "in", "to", "and", "for", "was",
-    "with", "on", "as", "by", "at", "from", "this", "that",
-])
+_ID_STOPWORDS = frozenset(
+    [
+        "yang",
+        "dan",
+        "di",
+        "ke",
+        "dari",
+        "ini",
+        "itu",
+        "dengan",
+        "untuk",
+        "pada",
+        "adalah",
+        "akan",
+        "juga",
+        "atau",
+        "tidak",
+        "oleh",
+        "sudah",
+        "ada",
+        "dalam",
+        "telah",
+        "seorang",
+        "sebuah",
+        "sebagai",
+        "dapat",
+        "secara",
+        "mereka",
+        "kami",
+        "kita",
+        "saya",
+        "ia",
+        "dia",
+        "nya",
+        "hal",
+        "atas",
+        "bawah",
+        "lain",
+        "masih",
+        "belum",
+        "hanya",
+        "the",
+        "a",
+        "an",
+        "is",
+        "of",
+        "in",
+        "to",
+        "and",
+        "for",
+        "was",
+        "with",
+        "on",
+        "as",
+        "by",
+        "at",
+        "from",
+        "this",
+        "that",
+    ]
+)
 
 # Regex: split on non-alphanumeric, keep Indonesian chars
 _TOKENIZE_RE = re.compile(r"[a-zA-Z0-9\u00C0-\u024F]+")
@@ -250,7 +302,9 @@ class BM25SparseEncoder:
                 continue
             idf = self._idf.get(term, 0.0)
             # BM25 TF component
-            tf_score = (count * (self.k1 + 1)) / (count + self.k1 * (1 - self.b + self.b * dl / self._avg_dl))
+            tf_score = (count * (self.k1 + 1)) / (
+                count + self.k1 * (1 - self.b + self.b * dl / self._avg_dl)
+            )
             weight = idf * tf_score
             if weight > 0:
                 indices.append(self._vocab[term])

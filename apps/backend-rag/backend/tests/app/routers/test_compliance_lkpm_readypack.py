@@ -11,6 +11,7 @@ DB uses real Postgres; test data committed + cleaned up in teardown.
 LkpmReadyPack.generate is mocked where it lives so the heavy orchestration
 (Drive, Brevo, PDF) does not execute during router tests.
 """
+
 from __future__ import annotations
 
 import os
@@ -243,9 +244,7 @@ async def test_happy_path_admin_dry_run(pool: asyncpg.Pool) -> None:
         instance.generate = AsyncMock(return_value=mock_result)
         MockClass.return_value = instance
 
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as http:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as http:
             resp = await http.post(
                 f"/api/v1/lkpm/ready-pack/{client_id}",
                 json={"period": "Q1 2026", "send_email": False, "dry_run": True},
@@ -281,9 +280,7 @@ async def test_incomplete_report_returns_422(pool: asyncpg.Pool) -> None:
         )
         MockClass.return_value = instance
 
-        async with AsyncClient(
-            transport=ASGITransport(app=app), base_url="http://test"
-        ) as http:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as http:
             resp = await http.post(
                 f"/api/v1/lkpm/ready-pack/{client_id}",
                 json={"period": "Q2 2026", "send_email": False, "dry_run": False},
@@ -310,9 +307,7 @@ async def test_team_user_not_assigned_gets_403(pool: asyncpg.Pool) -> None:
     team_user = {"email": "kadek.tax@balizero.com", "role": "team", "is_admin": False}
     app = make_app(team_user, pool)
 
-    async with AsyncClient(
-        transport=ASGITransport(app=app), base_url="http://test"
-    ) as http:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as http:
         resp = await http.post(
             f"/api/v1/lkpm/ready-pack/{client_id}",
             json={"period": "Q1 2026", "send_email": False, "dry_run": True},

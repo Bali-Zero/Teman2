@@ -138,8 +138,7 @@ def validate_edge(
 
     if schema.source_types and src_enum not in schema.source_types:
         logger.warning(
-            "Schema violation: source_type=%s not allowed for relation=%s "
-            "(allowed: %s)",
+            "Schema violation: source_type=%s not allowed for relation=%s (allowed: %s)",
             source_type,
             relation_type,
             [t.value for t in schema.source_types],
@@ -161,8 +160,7 @@ def validate_edge(
 
     if schema.target_types and tgt_enum not in schema.target_types:
         logger.warning(
-            "Schema violation: target_type=%s not allowed for relation=%s "
-            "(allowed: %s)",
+            "Schema violation: target_type=%s not allowed for relation=%s (allowed: %s)",
             target_type,
             relation_type,
             [t.value for t in schema.target_types],
@@ -265,10 +263,7 @@ def _build_violation_reason(
 
     if schema.source_types and src_enum not in schema.source_types:
         allowed = [t.value for t in schema.source_types]
-        return (
-            f"Source type '{source_type}' not allowed for {relation_type}. "
-            f"Allowed: {allowed}"
-        )
+        return f"Source type '{source_type}' not allowed for {relation_type}. Allowed: {allowed}"
 
     try:
         EntityType(target_lower)
@@ -277,6 +272,5 @@ def _build_violation_reason(
 
     allowed_targets = [t.value for t in schema.target_types]
     return (
-        f"Target type '{target_type}' not allowed for {relation_type}. "
-        f"Allowed: {allowed_targets}"
+        f"Target type '{target_type}' not allowed for {relation_type}. Allowed: {allowed_targets}"
     )

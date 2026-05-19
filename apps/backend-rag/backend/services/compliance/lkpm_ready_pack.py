@@ -5,6 +5,7 @@ LKPM Ready Pack Generator — HTML output formatted for OSS copy-paste
 All values are deterministic. Same input = same output, always.
 Narrative uses pre-written templates with fill-in-the-blank, NOT AI generation.
 """
+
 from __future__ import annotations
 
 import logging
@@ -261,7 +262,6 @@ def generate_ready_pack_html(pack: LKPMReadyPack) -> str:
     </div>
 </body>
 </html>"""
-
 
 
 def _cumulative_row(label: str, cumulative: int, planned: int) -> str:
@@ -534,9 +534,7 @@ class LkpmReadyPack:
                 if success:
                     email_sent_to = client_email
                 else:
-                    logger.warning(
-                        "LkpmReadyPack: Brevo send returned False for %s", client_email
-                    )
+                    logger.warning("LkpmReadyPack: Brevo send returned False for %s", client_email)
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
                     "LkpmReadyPack: email send failed for client %d — %s", client_id, exc

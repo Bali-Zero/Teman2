@@ -53,9 +53,7 @@ def _render_phrase_choices(key: str, prefix: str = "      ") -> str:
     """Render the per-language variants of a business phrase as
     ``- en: "..."`` lines for inline injection into examples."""
     variants = all_languages_for(key)
-    return "\n".join(
-        f'{prefix}- {lang}: "{text}"' for lang, text in variants.items()
-    )
+    return "\n".join(f'{prefix}- {lang}: "{text}"' for lang, text in variants.items())
 
 
 # ---------------------------------------------------------------------------

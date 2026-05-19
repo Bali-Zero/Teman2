@@ -38,6 +38,7 @@ from backend.services.oracle.cross_notebook_correlator import (
 # Domain detection
 # --------------------------------------------------------------------------- #
 
+
 class TestDetectDomains:
     def test_single_domain_match(self) -> None:
         result = detect_domains("I need a KITAS visa for Bali")
@@ -84,6 +85,7 @@ class TestIsMultiDomain:
 # NLM query
 # --------------------------------------------------------------------------- #
 
+
 class TestQueryNotebookSync:
     def test_success(self) -> None:
         mock_result = MagicMock()
@@ -129,6 +131,7 @@ class TestQueryNotebookSync:
 # Claim extraction
 # --------------------------------------------------------------------------- #
 
+
 class TestExtractClaims:
     def test_empty_text(self) -> None:
         assert _extract_claims("") == []
@@ -141,7 +144,12 @@ class TestExtractClaims:
         assert all(len(c) > 30 for c in claims)
 
     def test_max_claims_limit(self) -> None:
-        text = ". ".join([f"This is claim number {i} with enough characters to pass the filter" for i in range(20)])
+        text = ". ".join(
+            [
+                f"This is claim number {i} with enough characters to pass the filter"
+                for i in range(20)
+            ]
+        )
         claims = _extract_claims(text, max_claims=3)
         assert len(claims) <= 3
 
@@ -167,6 +175,7 @@ class TestExtractClaims:
 # --------------------------------------------------------------------------- #
 # Correlation engine
 # --------------------------------------------------------------------------- #
+
 
 class TestComputeClaimOverlap:
     def test_identical_claims(self) -> None:
@@ -238,8 +247,12 @@ class TestBuildCorrelationMatrix:
 
     def test_single_response(self) -> None:
         responses = [
-            NotebookResponse(domain="immigration", notebook_id="nb1",
-                             label="Immigration", response="A long claim here about visas and immigration process in Bali."),
+            NotebookResponse(
+                domain="immigration",
+                notebook_id="nb1",
+                label="Immigration",
+                response="A long claim here about visas and immigration process in Bali.",
+            ),
         ]
         result = build_correlation_matrix(responses)
         assert result == []  # Need 2+ domains to correlate
@@ -247,11 +260,15 @@ class TestBuildCorrelationMatrix:
     def test_two_domains_with_overlap(self) -> None:
         responses = [
             NotebookResponse(
-                domain="immigration", notebook_id="nb1", label="Immigration",
+                domain="immigration",
+                notebook_id="nb1",
+                label="Immigration",
                 response="The visa application requires documents and fees payment at the immigration office in Bali.",
             ),
             NotebookResponse(
-                domain="company", notebook_id="nb2", label="Company",
+                domain="company",
+                notebook_id="nb2",
+                label="Company",
                 response="Company setup requires documents and fees payment at the business licensing office in Bali.",
             ),
         ]
@@ -261,12 +278,26 @@ class TestBuildCorrelationMatrix:
     def test_max_correlations_limit(self) -> None:
         responses = [
             NotebookResponse(
-                domain="immigration", notebook_id="nb1", label="Immigration",
-                response=". ".join([f"Immigration claim {i} is very important and relevant to visas" for i in range(10)]),
+                domain="immigration",
+                notebook_id="nb1",
+                label="Immigration",
+                response=". ".join(
+                    [
+                        f"Immigration claim {i} is very important and relevant to visas"
+                        for i in range(10)
+                    ]
+                ),
             ),
             NotebookResponse(
-                domain="company", notebook_id="nb2", label="Company",
-                response=". ".join([f"Company claim {i} is very important and relevant to business" for i in range(10)]),
+                domain="company",
+                notebook_id="nb2",
+                label="Company",
+                response=". ".join(
+                    [
+                        f"Company claim {i} is very important and relevant to business"
+                        for i in range(10)
+                    ]
+                ),
             ),
         ]
         result = build_correlation_matrix(responses, max_correlations=5)
@@ -274,10 +305,19 @@ class TestBuildCorrelationMatrix:
 
     def test_responses_with_errors_skipped(self) -> None:
         responses = [
-            NotebookResponse(domain="immigration", notebook_id="nb1", label="Immigration",
-                             response=None, error="timeout"),
-            NotebookResponse(domain="company", notebook_id="nb2", label="Company",
-                             response="Valid response about company formation process in Indonesia with all the details."),
+            NotebookResponse(
+                domain="immigration",
+                notebook_id="nb1",
+                label="Immigration",
+                response=None,
+                error="timeout",
+            ),
+            NotebookResponse(
+                domain="company",
+                notebook_id="nb2",
+                label="Company",
+                response="Valid response about company formation process in Indonesia with all the details.",
+            ),
         ]
         result = build_correlation_matrix(responses)
         assert result == []  # Only 1 valid domain, no cross-domain pairs
@@ -287,12 +327,15 @@ class TestBuildCorrelationMatrix:
 # Synthesis
 # --------------------------------------------------------------------------- #
 
+
 class TestOllamaSynthesis:
     def test_success(self) -> None:
         mock_response = MagicMock()
-        mock_response.read.return_value = json.dumps({
-            "message": {"content": "Unified synthesis here"},
-        }).encode()
+        mock_response.read.return_value = json.dumps(
+            {
+                "message": {"content": "Unified synthesis here"},
+            }
+        ).encode()
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
 
@@ -306,15 +349,20 @@ class TestOllamaSynthesis:
 
     def test_with_contradictions(self) -> None:
         contradiction = CorrelationEntry(
-            claim_a="Visa takes 5 days", domain_a="immigration",
-            claim_b="Visa takes 30 days", domain_b="company",
-            relationship="CONTRADICT", confidence=0.8,
+            claim_a="Visa takes 5 days",
+            domain_a="immigration",
+            claim_b="Visa takes 30 days",
+            domain_b="company",
+            relationship="CONTRADICT",
+            confidence=0.8,
         )
 
         mock_response = MagicMock()
-        mock_response.read.return_value = json.dumps({
-            "message": {"content": "There is a contradiction"},
-        }).encode()
+        mock_response.read.return_value = json.dumps(
+            {
+                "message": {"content": "There is a contradiction"},
+            }
+        ).encode()
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
 
@@ -339,10 +387,15 @@ class TestOllamaSynthesis:
 class TestConcatenationFallback:
     def test_basic_fallback(self) -> None:
         responses = [
-            NotebookResponse(domain="immigration", notebook_id="nb1",
-                             label="Immigration", response="Visa info here"),
-            NotebookResponse(domain="company", notebook_id="nb2",
-                             label="Company", response="Company info here"),
+            NotebookResponse(
+                domain="immigration",
+                notebook_id="nb1",
+                label="Immigration",
+                response="Visa info here",
+            ),
+            NotebookResponse(
+                domain="company", notebook_id="nb2", label="Company", response="Company info here"
+            ),
         ]
         result = _concatenation_fallback("test query", responses, [])
         assert "Immigration" in result
@@ -351,14 +404,21 @@ class TestConcatenationFallback:
 
     def test_with_contradictions(self) -> None:
         responses = [
-            NotebookResponse(domain="immigration", notebook_id="nb1",
-                             label="Immigration", response="Takes 5 days"),
+            NotebookResponse(
+                domain="immigration",
+                notebook_id="nb1",
+                label="Immigration",
+                response="Takes 5 days",
+            ),
         ]
         contradictions = [
             CorrelationEntry(
-                claim_a="Takes 5 days", domain_a="immigration",
-                claim_b="Takes 30 days", domain_b="company",
-                relationship="CONTRADICT", confidence=0.8,
+                claim_a="Takes 5 days",
+                domain_a="immigration",
+                claim_b="Takes 30 days",
+                domain_b="company",
+                relationship="CONTRADICT",
+                confidence=0.8,
             ),
         ]
         result = _concatenation_fallback("query", responses, contradictions)
@@ -370,8 +430,13 @@ class TestConcatenationFallback:
 
     def test_none_response_skipped(self) -> None:
         responses = [
-            NotebookResponse(domain="immigration", notebook_id="nb1",
-                             label="Immigration", response=None, error="timeout"),
+            NotebookResponse(
+                domain="immigration",
+                notebook_id="nb1",
+                label="Immigration",
+                response=None,
+                error="timeout",
+            ),
         ]
         result = _concatenation_fallback("query", responses, [])
         assert "Immigration" not in result  # response is None
@@ -381,42 +446,62 @@ class TestConcatenationFallback:
 # CrossNotebookResult dataclass
 # --------------------------------------------------------------------------- #
 
+
 class TestCrossNotebookResult:
     def test_has_contradictions_true(self) -> None:
         result = CrossNotebookResult(
-            query="test", domains_matched=["a", "b"],
-            notebook_responses=[], correlations=[],
-            contradictions=[MagicMock()], synthesis="", synthesis_source="ollama",
+            query="test",
+            domains_matched=["a", "b"],
+            notebook_responses=[],
+            correlations=[],
+            contradictions=[MagicMock()],
+            synthesis="",
+            synthesis_source="ollama",
             total_latency_ms=100,
         )
         assert result.has_contradictions is True
 
     def test_has_contradictions_false(self) -> None:
         result = CrossNotebookResult(
-            query="test", domains_matched=["a"],
-            notebook_responses=[], correlations=[],
-            contradictions=[], synthesis="", synthesis_source="ollama",
+            query="test",
+            domains_matched=["a"],
+            notebook_responses=[],
+            correlations=[],
+            contradictions=[],
+            synthesis="",
+            synthesis_source="ollama",
             total_latency_ms=100,
         )
         assert result.has_contradictions is False
 
     def test_successful_domains(self) -> None:
         result = CrossNotebookResult(
-            query="test", domains_matched=["a", "b"],
+            query="test",
+            domains_matched=["a", "b"],
             notebook_responses=[
                 NotebookResponse(domain="a", notebook_id="1", label="A", response="ok"),
-                NotebookResponse(domain="b", notebook_id="2", label="B", response=None, error="err"),
+                NotebookResponse(
+                    domain="b", notebook_id="2", label="B", response=None, error="err"
+                ),
             ],
-            correlations=[], contradictions=[], synthesis="",
-            synthesis_source="ollama", total_latency_ms=100,
+            correlations=[],
+            contradictions=[],
+            synthesis="",
+            synthesis_source="ollama",
+            total_latency_ms=100,
         )
         assert result.successful_domains == ["a"]
 
     def test_errors_field(self) -> None:
         result = CrossNotebookResult(
-            query="test", domains_matched=[], notebook_responses=[],
-            correlations=[], contradictions=[], synthesis="",
-            synthesis_source="n/a", total_latency_ms=0,
+            query="test",
+            domains_matched=[],
+            notebook_responses=[],
+            correlations=[],
+            contradictions=[],
+            synthesis="",
+            synthesis_source="n/a",
+            total_latency_ms=0,
             errors=["error1", "error2"],
         )
         assert len(result.errors) == 2
@@ -425,6 +510,7 @@ class TestCrossNotebookResult:
 # --------------------------------------------------------------------------- #
 # CrossNotebookCorrelator class
 # --------------------------------------------------------------------------- #
+
 
 class TestCorrelatorClass:
     def test_init_defaults(self) -> None:
@@ -488,7 +574,10 @@ class TestCorrelatorAsync:
 
         with patch(
             "backend.services.oracle.cross_notebook_correlator._query_notebook_sync",
-            return_value=("Response from notebook with enough text content for claims extraction", None),
+            return_value=(
+                "Response from notebook with enough text content for claims extraction",
+                None,
+            ),
         ):
             result = await c.query_async("visa for PMA company setup with tax npwp compliance")
             assert len(result.domains_matched) >= 2
@@ -500,26 +589,36 @@ class TestBuildResult:
     def test_with_ollama_success(self) -> None:
         c = CrossNotebookCorrelator(use_ollama=True)
         responses = [
-            NotebookResponse(domain="immigration", notebook_id="nb1",
-                             label="Immigration", response="visa info here in bali"),
-            NotebookResponse(domain="company", notebook_id="nb2",
-                             label="Company", response="company info here in bali"),
+            NotebookResponse(
+                domain="immigration",
+                notebook_id="nb1",
+                label="Immigration",
+                response="visa info here in bali",
+            ),
+            NotebookResponse(
+                domain="company",
+                notebook_id="nb2",
+                label="Company",
+                response="company info here in bali",
+            ),
         ]
 
         with patch(
             "backend.services.oracle.cross_notebook_correlator._call_ollama_synthesis",
             return_value="Unified answer",
         ):
-            result = c._build_result("test", ["immigration", "company"],
-                                      responses, [], time.monotonic())
+            result = c._build_result(
+                "test", ["immigration", "company"], responses, [], time.monotonic()
+            )
             assert result.synthesis == "Unified answer"
             assert result.synthesis_source == "ollama"
 
     def test_ollama_fails_uses_fallback(self) -> None:
         c = CrossNotebookCorrelator(use_ollama=True)
         responses = [
-            NotebookResponse(domain="immigration", notebook_id="nb1",
-                             label="Immigration", response="visa info"),
+            NotebookResponse(
+                domain="immigration", notebook_id="nb1", label="Immigration", response="visa info"
+            ),
         ]
 
         with patch(
@@ -534,6 +633,7 @@ class TestBuildResult:
 # Module singleton
 # --------------------------------------------------------------------------- #
 
+
 class TestGetCorrelator:
     def test_creates_singleton(self) -> None:
         with patch("backend.services.oracle.cross_notebook_correlator._default_correlator", None):
@@ -542,6 +642,8 @@ class TestGetCorrelator:
 
     def test_returns_existing(self) -> None:
         existing = CrossNotebookCorrelator()
-        with patch("backend.services.oracle.cross_notebook_correlator._default_correlator", existing):
+        with patch(
+            "backend.services.oracle.cross_notebook_correlator._default_correlator", existing
+        ):
             c = get_correlator()
             assert c is existing

@@ -45,11 +45,13 @@ class TestAPIKeyDBResolution:
         auth = APIKeyAuth()
 
         mock_conn = AsyncMock()
-        mock_conn.fetchrow = AsyncMock(return_value={
-            "role": "readonly",
-            "permissions": ["read"],
-            "is_active": True,
-        })
+        mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "role": "readonly",
+                "permissions": ["read"],
+                "is_active": True,
+            }
+        )
 
         result = await auth.resolve_role_from_db("test_api_key_1", mock_conn)
         assert result is not None
@@ -78,9 +80,7 @@ class TestAPIKeyDBResolution:
         mock_conn = AsyncMock()
         mock_conn.execute = AsyncMock()
 
-        await auth.auto_migrate_key(
-            "test_api_key_1", "user", ["read"], mock_conn
-        )
+        await auth.auto_migrate_key("test_api_key_1", "user", ["read"], mock_conn)
 
         mock_conn.execute.assert_called_once()
         call_args = mock_conn.execute.call_args
@@ -95,11 +95,13 @@ class TestAPIKeyDBResolution:
         auth = APIKeyAuth()
 
         mock_conn = AsyncMock()
-        mock_conn.fetchrow = AsyncMock(return_value={
-            "role": "readonly",
-            "permissions": ["read"],
-            "is_active": True,
-        })
+        mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "role": "readonly",
+                "permissions": ["read"],
+                "is_active": True,
+            }
+        )
         mock_conn.execute = AsyncMock()
 
         result = await auth.validate_api_key_enhanced("test_api_key_1", mock_conn)

@@ -101,7 +101,9 @@ def _get_analyzer() -> AnalyzerEngine:
         _analyzer.registry.add_recognizer(_npwp_new_recognizer)
         _analyzer.registry.add_recognizer(_passport_id_recognizer)
         _analyzer.registry.add_recognizer(_phone_id_recognizer)
-        logger.info("PII Scanner initialized with Indonesian recognizers (KTP, NPWP, Passport, Phone)")
+        logger.info(
+            "PII Scanner initialized with Indonesian recognizers (KTP, NPWP, Passport, Phone)"
+        )
     return _analyzer
 
 
@@ -124,8 +126,13 @@ def scan_text(text: str, language: str = "en") -> list[dict[str, Any]]:
         text=text,
         language=language,
         entities=[
-            "PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER",
-            "ID_KTP", "ID_NPWP", "ID_PASSPORT", "PHONE_ID",
+            "PERSON",
+            "EMAIL_ADDRESS",
+            "PHONE_NUMBER",
+            "ID_KTP",
+            "ID_NPWP",
+            "ID_PASSPORT",
+            "PHONE_ID",
         ],
     )
     return [
@@ -134,7 +141,7 @@ def scan_text(text: str, language: str = "en") -> list[dict[str, Any]]:
             "start": r.start,
             "end": r.end,
             "score": r.score,
-            "text": text[r.start:r.end],
+            "text": text[r.start : r.end],
         }
         for r in results
     ]
@@ -153,7 +160,8 @@ def redact_text(text: str, language: str = "en") -> tuple[str, int]:
 
 
 def redact_text_detailed(
-    text: str, language: str = "en",
+    text: str,
+    language: str = "en",
 ) -> tuple[str, int, list[str]]:
     """
     Scan and redact PII from text, also returning the flat list of detected
@@ -167,8 +175,13 @@ def redact_text_detailed(
         text=text,
         language=language,
         entities=[
-            "PERSON", "EMAIL_ADDRESS", "PHONE_NUMBER",
-            "ID_KTP", "ID_NPWP", "ID_PASSPORT", "PHONE_ID",
+            "PERSON",
+            "EMAIL_ADDRESS",
+            "PHONE_NUMBER",
+            "ID_KTP",
+            "ID_NPWP",
+            "ID_PASSPORT",
+            "PHONE_ID",
         ],
     )
 
@@ -179,10 +192,7 @@ def redact_text_detailed(
     patterns = [r.entity_type for r in results]
 
     if patterns:
-        logger.warning(
-            f"PII redacted: {len(patterns)} entities found "
-            f"({', '.join(set(patterns))})"
-        )
+        logger.warning(f"PII redacted: {len(patterns)} entities found ({', '.join(set(patterns))})")
 
     return anonymized.text, len(patterns), patterns
 
@@ -265,7 +275,9 @@ class PIIScannerMiddleware:
                         all_patterns.extend(patterns)
                 if total_redacted > 0:
                     logger.info(
-                        "[PIIScanner] Redacted %s PII entities from agentic response on %s", total_redacted, path
+                        "[PIIScanner] Redacted %s PII entities from agentic response on %s",
+                        total_redacted,
+                        path,
                     )
                     # Persist a durable audit row per distinct pattern.
                     subject = None
@@ -312,5 +324,7 @@ class PIIScannerMiddleware:
             else:
                 updated_headers.append((name, value))
 
-        await send({"type": "http.response.start", "status": response_status, "headers": updated_headers})
+        await send(
+            {"type": "http.response.start", "status": response_status, "headers": updated_headers}
+        )
         await send({"type": "http.response.body", "body": redacted_body})

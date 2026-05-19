@@ -11,6 +11,7 @@ Covers:
   - extract_json_block: fenced + balanced-brace fallback
   - queue_mark_running / queue_mark_terminal SQL parameter shape
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -32,14 +33,11 @@ def _import_worker():
     # Resolve repo root by walking up from this test file:
     # test_worker_helpers.py → crm_guardian → services → unit → tests →
     # backend → backend-rag → apps → <repo_root>
-    worker_path = (
-        Path(__file__).resolve().parents[7]
-        / "scripts"
-        / "crm_guardian_gemini_worker.py"
-    )
+    worker_path = Path(__file__).resolve().parents[7] / "scripts" / "crm_guardian_gemini_worker.py"
     assert worker_path.exists(), f"worker not found at {worker_path}"
     spec = importlib.util.spec_from_file_location(
-        "crm_guardian_gemini_worker", worker_path,
+        "crm_guardian_gemini_worker",
+        worker_path,
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -72,8 +70,9 @@ class TestCrossFolderFingerprint:
             {"id": "a", "modifiedTime": "2026-05-16T10:00:00Z", "source_folder_id": "f1"},
             {"id": "b", "modifiedTime": "2026-05-16T11:00:00Z", "source_folder_id": "f1"},
         ]
-        assert worker.compute_cross_folder_fingerprint(files) == \
-               worker.compute_cross_folder_fingerprint(files)
+        assert worker.compute_cross_folder_fingerprint(
+            files
+        ) == worker.compute_cross_folder_fingerprint(files)
 
     def test_order_independence(self, worker) -> None:
         """Files in different order must produce same hash (sorted internally)."""
@@ -85,8 +84,9 @@ class TestCrossFolderFingerprint:
             {"id": "b", "modifiedTime": "t2", "source_folder_id": "F"},
             {"id": "a", "modifiedTime": "t1", "source_folder_id": "F"},
         ]
-        assert worker.compute_cross_folder_fingerprint(f1) == \
-               worker.compute_cross_folder_fingerprint(f2)
+        assert worker.compute_cross_folder_fingerprint(
+            f1
+        ) == worker.compute_cross_folder_fingerprint(f2)
 
     def test_folder_id_sensitivity(self, worker) -> None:
         """Same file moved between folders → different fingerprint.
@@ -97,14 +97,16 @@ class TestCrossFolderFingerprint:
         """
         f1 = [{"id": "x", "modifiedTime": "t", "source_folder_id": "folder_A"}]
         f2 = [{"id": "x", "modifiedTime": "t", "source_folder_id": "folder_B"}]
-        assert worker.compute_cross_folder_fingerprint(f1) != \
-               worker.compute_cross_folder_fingerprint(f2)
+        assert worker.compute_cross_folder_fingerprint(
+            f1
+        ) != worker.compute_cross_folder_fingerprint(f2)
 
     def test_modified_time_sensitivity(self, worker) -> None:
         f1 = [{"id": "x", "modifiedTime": "2026-05-16T10:00:00Z", "source_folder_id": "F"}]
         f2 = [{"id": "x", "modifiedTime": "2026-05-16T11:00:00Z", "source_folder_id": "F"}]
-        assert worker.compute_cross_folder_fingerprint(f1) != \
-               worker.compute_cross_folder_fingerprint(f2)
+        assert worker.compute_cross_folder_fingerprint(
+            f1
+        ) != worker.compute_cross_folder_fingerprint(f2)
 
 
 # ---------------------------------------------------------------------------
@@ -115,7 +117,9 @@ class TestCrossFolderFingerprint:
 class TestCrossFolderContextBlock:
     def test_no_linked_companies(self, worker) -> None:
         block = worker.build_cross_folder_context_block(
-            client_id=42, client_root_folder="folder_root", linked_companies=[],
+            client_id=42,
+            client_root_folder="folder_root",
+            linked_companies=[],
         )
         assert block.startswith("<CROSS_FOLDER_CONTEXT>")
         assert block.endswith("</CROSS_FOLDER_CONTEXT>")
@@ -134,7 +138,9 @@ class TestCrossFolderContextBlock:
             },
         ]
         block = worker.build_cross_folder_context_block(
-            client_id=1, client_root_folder="root_id", linked_companies=companies,
+            client_id=1,
+            client_root_folder="root_id",
+            linked_companies=companies,
         )
         assert "- id: co_folder_abc" in block
         assert "company_name: PT Sample Bali" in block
@@ -160,7 +166,9 @@ class TestCrossFolderContextBlock:
             },
         ]
         block = worker.build_cross_folder_context_block(
-            client_id=1, client_root_folder="root", linked_companies=companies,
+            client_id=1,
+            client_root_folder="root",
+            linked_companies=companies,
         )
         # Both folders rendered
         assert "p_folder" in block
@@ -171,18 +179,23 @@ class TestCrossFolderContextBlock:
 
     def test_block_yaml_like_indentation(self, worker) -> None:
         """Each linked company nested under 2-space indent for LLM parseability."""
-        companies = [{
-            "company_id": 1, "company_name": "X", "google_drive_folder_id": "f",
-            "role": "Director", "is_primary": False,
-        }]
+        companies = [
+            {
+                "company_id": 1,
+                "company_name": "X",
+                "google_drive_folder_id": "f",
+                "role": "Director",
+                "is_primary": False,
+            }
+        ]
         block = worker.build_cross_folder_context_block(
-            client_id=1, client_root_folder="r", linked_companies=companies,
+            client_id=1,
+            client_root_folder="r",
+            linked_companies=companies,
         )
         # Each sub-field indented under "  - id:" parent
         lines = block.split("\n")
-        company_field_lines = [
-            line for line in lines if line.startswith("    company_name")
-        ]
+        company_field_lines = [line for line in lines if line.startswith("    company_name")]
         assert len(company_field_lines) == 1
 
 
@@ -195,6 +208,7 @@ class TestAggregateCrossFolderFiles:
     @pytest.mark.asyncio
     async def test_no_linked_companies_only_cliente(self, worker, monkeypatch) -> None:
         """No companies → only cliente root files contribute to fingerprint."""
+
         async def mock_list(_drive, folder_id: str) -> list[dict[str, Any]]:
             if folder_id == "cliente_root":
                 return [
@@ -236,13 +250,15 @@ class TestAggregateCrossFolderFiles:
         flat, name_map = await worker.aggregate_cross_folder_files(
             drive_service=MagicMock(),
             client_folder_id="cliente_root",
-            linked_companies=[{
-                "google_drive_folder_id": "company_root",
-                "company_name": "PT Test",
-                "company_id": 1,
-                "role": "Director",
-                "is_primary": True,
-            }],
+            linked_companies=[
+                {
+                    "google_drive_folder_id": "company_root",
+                    "company_name": "PT Test",
+                    "company_id": 1,
+                    "role": "Director",
+                    "is_primary": True,
+                }
+            ],
         )
         assert len(flat) == 2
         # Provenance attribution preserved per-file
@@ -253,7 +269,9 @@ class TestAggregateCrossFolderFiles:
 
     @pytest.mark.asyncio
     async def test_company_folder_error_does_not_break_pipeline(
-        self, worker, monkeypatch,
+        self,
+        worker,
+        monkeypatch,
     ) -> None:
         """A flaky company Drive folder must not block the cliente summary —
         Symbiosis Law 4 graceful degradation."""
@@ -272,13 +290,15 @@ class TestAggregateCrossFolderFiles:
         flat, name_map = await worker.aggregate_cross_folder_files(
             drive_service=MagicMock(),
             client_folder_id="cliente_root",
-            linked_companies=[{
-                "google_drive_folder_id": "flaky_co",
-                "company_name": "PT Flaky",
-                "company_id": 99,
-                "role": "Director",
-                "is_primary": False,
-            }],
+            linked_companies=[
+                {
+                    "google_drive_folder_id": "flaky_co",
+                    "company_name": "PT Flaky",
+                    "company_id": 99,
+                    "role": "Director",
+                    "is_primary": False,
+                }
+            ],
         )
         # cliente files still present, company silently dropped
         assert len(flat) == 1
@@ -347,8 +367,11 @@ class TestFetchLinkedCompanies:
     @pytest.mark.asyncio
     async def test_returns_dicts(self, worker) -> None:
         mock_row = {
-            "company_id": 1, "role": "Director", "is_primary": True,
-            "company_name": "PT X", "google_drive_folder_id": "drive_id",
+            "company_id": 1,
+            "role": "Director",
+            "is_primary": True,
+            "company_name": "PT X",
+            "google_drive_folder_id": "drive_id",
         }
         mock_conn = MagicMock()
         mock_conn.fetch = AsyncMock(return_value=[mock_row])
@@ -376,7 +399,9 @@ class TestQueueMarkRunning:
         mock_conn.fetchrow = mock_fetchrow
 
         result = await worker.queue_mark_running(
-            mock_conn, client_id=42, run_id="abc-uuid",
+            mock_conn,
+            client_id=42,
+            run_id="abc-uuid",
         )
         assert result == 999
         sql, args = captured[0]
@@ -390,7 +415,9 @@ class TestQueueMarkRunning:
         mock_conn = MagicMock()
         mock_conn.fetchrow = AsyncMock(return_value=None)
         result = await worker.queue_mark_running(
-            mock_conn, client_id=42, run_id="x",
+            mock_conn,
+            client_id=42,
+            run_id="x",
         )
         assert result is None
 
@@ -420,7 +447,9 @@ class TestQueueMarkTerminal:
         mock_conn.execute = mock_execute
 
         await worker.queue_mark_terminal(
-            mock_conn, queue_id=1, status="success",
+            mock_conn,
+            queue_id=1,
+            status="success",
             duration_ms=12345,
         )
         assert len(captured) == 1
@@ -444,7 +473,9 @@ class TestQueueMarkTerminal:
         mock_conn.fetchrow = mock_fetchrow
 
         await worker.queue_mark_terminal(
-            mock_conn, queue_id=1, status="error",
+            mock_conn,
+            queue_id=1,
+            status="error",
             last_error="DOM timeout",
         )
         assert len(executes) == 1
@@ -467,7 +498,9 @@ class TestQueueMarkTerminal:
         mock_conn.fetchrow = mock_fetchrow
 
         await worker.queue_mark_terminal(
-            mock_conn, queue_id=1, status="error",
+            mock_conn,
+            queue_id=1,
+            status="error",
             last_error="final fail",
         )
         # Single UPDATE that does NOT set next_retry_at (terminal)

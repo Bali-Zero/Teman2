@@ -7,6 +7,7 @@ Covers:
 - notification_log dedup (ref-based)
 - per-channel failure isolation
 """
+
 from __future__ import annotations
 
 import uuid
@@ -279,7 +280,8 @@ async def test_dedup_expired_25h_ago_does_not_block_resend(
     await db_tx.execute(
         "INSERT INTO notification_log (user_id, channel, ref, sent_at) "
         "VALUES ($1::uuid, $2, $3, NOW() - INTERVAL '25 hours')",
-        portal_user_id, "email_client",
+        portal_user_id,
+        "email_client",
         f"compliance_alert:{alert.alert_id}:email_client",
     )
     await db_tx.execute(

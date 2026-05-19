@@ -24,24 +24,46 @@ from backend.services.intel.dossier_models import (
 
 # ── Enums match migration 113 CHECK constraints ──
 
+
 def test_trend_source_values_match_migration():
     assert {s.value for s in TrendSource} == {
-        "xai", "gtrends", "reddit", "rss", "scraper", "manual",
+        "xai",
+        "gtrends",
+        "reddit",
+        "rss",
+        "scraper",
+        "manual",
     }
 
 
 def test_topic_category_values_match_migration():
     assert {c.value for c in TopicCategory} == {
-        "visa", "tax", "kbli", "property", "compliance",
-        "cultural", "macro", "finance", "crypto", "other",
+        "visa",
+        "tax",
+        "kbli",
+        "property",
+        "compliance",
+        "cultural",
+        "macro",
+        "finance",
+        "crypto",
+        "other",
     }
 
 
 def test_consumer_type_includes_10_dossier_consumers_plus_4_cognitive():
     """Design §16 defines 10 consumers; §17 adds 4 cognitive layers."""
     base_consumers = {
-        "chatbot", "crm", "nlm", "curiosity", "council",
-        "warroom", "newsletter", "guardian", "team", "public",
+        "chatbot",
+        "crm",
+        "nlm",
+        "curiosity",
+        "council",
+        "warroom",
+        "newsletter",
+        "guardian",
+        "team",
+        "public",
     }
     cognitive = {"connector", "anomaly", "strategos", "oracle"}
     assert {c.value for c in ConsumerType} == base_consumers | cognitive
@@ -49,11 +71,16 @@ def test_consumer_type_includes_10_dossier_consumers_plus_4_cognitive():
 
 def test_refresh_reason_values_match_migration():
     assert {r.value for r in RefreshReason} == {
-        "expiry", "new_source", "manual", "consumer_request", "anomaly_trigger",
+        "expiry",
+        "new_source",
+        "manual",
+        "consumer_request",
+        "anomaly_trigger",
     }
 
 
 # ── TrendSignalCreate ─────────────────────────────────────────────────
+
 
 def test_trend_signal_create_minimal():
     sig = TrendSignalCreate(
@@ -92,6 +119,7 @@ def test_trend_signal_relevance_range_enforced():
 
 # ── Dossier building blocks ───────────────────────────────────────────
 
+
 def test_dossier_fact_confidence_range():
     f = DossierFact(claim="DJP Coretax active since 2025", confidence=0.9)
     assert 0 <= f.confidence <= 1
@@ -123,6 +151,7 @@ def test_dossier_entity_requires_kg_id():
 
 
 # ── ResearchDossierCreate ─────────────────────────────────────────────
+
 
 def test_dossier_create_minimal():
     expiry = datetime.now(timezone.utc) + timedelta(days=30)
@@ -184,6 +213,7 @@ def test_dossier_confidence_range():
 
 
 # ── IntelEventPayload ─────────────────────────────────────────────────
+
 
 def test_event_payload_size_invariant_under_1kb():
     payload = IntelEventPayload(

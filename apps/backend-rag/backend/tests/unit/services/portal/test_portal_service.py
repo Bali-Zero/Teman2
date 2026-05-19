@@ -431,7 +431,12 @@ class TestPortalServiceDashboardHelpers:
     def test_build_action_items_max_5(self) -> None:
         visa_data = {"status": "warning", "daysRemaining": 25}
         items = [
-            {"id": i, "practice_name": f"P{i}", "missing_documents": ["doc"], "status": "in_progress"}
+            {
+                "id": i,
+                "practice_name": f"P{i}",
+                "missing_documents": ["doc"],
+                "status": "in_progress",
+            }
             for i in range(10)
         ]
         result = self.service._build_action_items(items, visa_data)

@@ -299,7 +299,9 @@ async def search_shared_memory(
                 """
                 interaction_params: list = [days, limit]
                 if assigned_filter is not None:
-                    interaction_sql += " AND (LOWER(c.assigned_to) = $3 OR LOWER(i.team_member) = $3)"
+                    interaction_sql += (
+                        " AND (LOWER(c.assigned_to) = $3 OR LOWER(i.team_member) = $3)"
+                    )
                     interaction_params.append(assigned_filter)
                 interaction_sql += " ORDER BY i.interaction_date DESC LIMIT $2"
                 interaction_rows = await conn.fetch(interaction_sql, *interaction_params)
@@ -414,7 +416,10 @@ async def get_client_full_context(
             client = dict(client_row)
 
             # RBAC Check
-            if assigned_filter is not None and (client["assigned_to"] or "").lower() != assigned_filter:
+            if (
+                assigned_filter is not None
+                and (client["assigned_to"] or "").lower() != assigned_filter
+            ):
                 raise HTTPException(status_code=403, detail="You don't have access to this client")
 
             # Practices

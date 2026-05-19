@@ -60,11 +60,15 @@ async def test_rank_orders_by_rrf_when_scores_present():
     ]
 
     qdrant = SimpleNamespace()
-    qdrant.query_points = AsyncMock(return_value=_query_response([
-        _scored_point(id_a, 0.95),
-        _scored_point(id_b, 0.80),
-        _scored_point(id_c, 0.40),
-    ]))
+    qdrant.query_points = AsyncMock(
+        return_value=_query_response(
+            [
+                _scored_point(id_a, 0.95),
+                _scored_point(id_b, 0.80),
+                _scored_point(id_c, 0.40),
+            ]
+        )
+    )
 
     filt = QdrantDossierFilter(
         qdrant_client=qdrant,
@@ -138,10 +142,12 @@ async def test_rank_dispatches_sync_client_to_executor():
         {"id": id_b, "confidence_0_1": 0.6, "title": "B"},
     ]
 
-    response = _query_response([
-        _scored_point(id_a, 0.9),
-        _scored_point(id_b, 0.2),
-    ])
+    response = _query_response(
+        [
+            _scored_point(id_a, 0.9),
+            _scored_point(id_b, 0.2),
+        ]
+    )
     qdrant = SimpleNamespace()
     qdrant.query_points = MagicMock(return_value=response)  # sync callable
 
@@ -169,9 +175,13 @@ async def test_rank_excludes_missing_rows_from_cosine_ranking():
 
     qdrant = SimpleNamespace()
     # Only id_hit returns from Qdrant.
-    qdrant.query_points = AsyncMock(return_value=_query_response([
-        _scored_point(id_hit, 0.9),
-    ]))
+    qdrant.query_points = AsyncMock(
+        return_value=_query_response(
+            [
+                _scored_point(id_hit, 0.9),
+            ]
+        )
+    )
 
     filt = QdrantDossierFilter(
         qdrant_client=qdrant,
@@ -207,22 +217,24 @@ async def test_context_builder_no_filter_unchanged(repos):
     """Omitting dossier_filter preserves legacy ranking-by-confidence order."""
     intel, cognitive, war_room = repos
     id_a, id_b = uuid4(), uuid4()
-    intel.fetch_safe = AsyncMock(return_value=[
-        {
-            "id": id_a,
-            "title": "Alpha",
-            "topic_category": "visa",
-            "confidence_0_1": 0.90,
-            "summary_short": "alpha summary",
-        },
-        {
-            "id": id_b,
-            "title": "Beta",
-            "topic_category": "tax",
-            "confidence_0_1": 0.40,
-            "summary_short": "beta summary",
-        },
-    ])
+    intel.fetch_safe = AsyncMock(
+        return_value=[
+            {
+                "id": id_a,
+                "title": "Alpha",
+                "topic_category": "visa",
+                "confidence_0_1": 0.90,
+                "summary_short": "alpha summary",
+            },
+            {
+                "id": id_b,
+                "title": "Beta",
+                "topic_category": "tax",
+                "confidence_0_1": 0.40,
+                "summary_short": "beta summary",
+            },
+        ]
+    )
 
     builder = StrategosContextBuilder(
         intel_repo=intel,

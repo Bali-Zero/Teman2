@@ -330,7 +330,8 @@ class TestCheckStructure:
     def test_well_structured_content(self) -> None:
         svc = QualityCheckService()
         doc = _make_doc(
-            full_text="Pasal 1\n\n1. First point\n2. Second point\n\nBab II\n\n3. Third point\n" * 30,
+            full_text="Pasal 1\n\n1. First point\n2. Second point\n\nBab II\n\n3. Third point\n"
+            * 30,
             key_points=["p1", "p2", "p3"],
         )
         result = svc._check_structure(doc)
@@ -533,7 +534,9 @@ class TestValidate:
         svc = QualityCheckService(min_accept_score=0.99)
         doc = _make_doc()
         await svc.validate(doc)
-        assert svc.validation_stats["rejected"] >= 0  # May or may not be rejected depending on score
+        assert (
+            svc.validation_stats["rejected"] >= 0
+        )  # May or may not be rejected depending on score
 
     @pytest.mark.asyncio
     async def test_multiple_validations_average(self) -> None:

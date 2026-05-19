@@ -29,17 +29,18 @@ from backend.services.notifications.email_branding import logo_header_html, team
 logger = get_logger(__name__)
 
 _EMAIL_API_URL = os.getenv(
-    "INTERNAL_EMAIL_API_URL", "https://nuzantara-rag.fly.dev/api/notifications/send-email",
+    "INTERNAL_EMAIL_API_URL",
+    "https://nuzantara-rag.fly.dev/api/notifications/send-email",
 )
 _EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", "")
 
 # Status transitions that warrant a client-facing email.
 # Maps new_status → human label used in logs (actual email copy lives in ProcessAutomationService).
 _CLIENT_NOTIFY_STATUSES: set[str] = {
-    "on_process",    # M4 + M5: payment confirmed, work started
-    "submitted",     # M5: docs submitted to authority
-    "approved",      # M5: practice approved
-    "completed",     # M5: documents delivered
+    "on_process",  # M4 + M5: payment confirmed, work started
+    "submitted",  # M5: docs submitted to authority
+    "approved",  # M5: practice approved
+    "completed",  # M5: documents delivered
 }
 
 _RECONNECT_DELAY_S = 5  # seconds to wait before reconnecting after error
@@ -92,7 +93,12 @@ class PracticeStatusListener:
                 logger.debug("practice_status_listener retry loop cancelled — exiting cleanly")
                 break
             except Exception as exc:
-                logger.error("PracticeStatusListener error, reconnecting in %ss: %s", _RECONNECT_DELAY_S, exc, exc_info=True)
+                logger.error(
+                    "PracticeStatusListener error, reconnecting in %ss: %s",
+                    _RECONNECT_DELAY_S,
+                    exc,
+                    exc_info=True,
+                )
                 await self._close_conn()
                 if self._running:
                     await asyncio.sleep(_RECONNECT_DELAY_S)
@@ -156,7 +162,12 @@ class PracticeStatusListener:
         new_payment: str | None = data.get("new_payment")
 
         logger.info(
-            "practice_changed: practice=%s status=%s→%s payment=%s→%s", practice_id, old_status, new_status, old_payment, new_payment,
+            "practice_changed: practice=%s status=%s→%s payment=%s→%s",
+            practice_id,
+            old_status,
+            new_status,
+            old_payment,
+            new_payment,
         )
 
         # ── M4: payment_status → 'paid' ───────────────────────────────────
@@ -184,10 +195,14 @@ class PracticeStatusListener:
         try:
             await self._send_payment_emails(practice_id, triggered_by=assigned_to)
         except (httpx.HTTPError, asyncpg.PostgresError, ValueError) as exc:
-            logger.error("M4 payment email failed for practice %s: %s", practice_id, exc, exc_info=True)
+            logger.error(
+                "M4 payment email failed for practice %s: %s", practice_id, exc, exc_info=True
+            )
         except Exception as exc:  # noqa: BLE001 — EventBus callback must never crash listener loop
             logger.error(
-                "M4 payment email unexpected error for practice %s: %s", practice_id, exc,
+                "M4 payment email unexpected error for practice %s: %s",
+                practice_id,
+                exc,
                 exc_info=True,
             )
 
@@ -232,8 +247,12 @@ Zantara — Bali Zero Team
 """
             try:
                 await self._send_via_internal_api(
-                    client_email, subject, body,
-                    cc=team_member_email if team_member_email and team_member_email != client_email else None,
+                    client_email,
+                    subject,
+                    body,
+                    cc=team_member_email
+                    if team_member_email and team_member_email != client_email
+                    else None,
                     include_logo=True,
                 )
                 logger.info("M4: payment confirmation sent to client %s", client_email)
@@ -241,7 +260,9 @@ Zantara — Bali Zero Team
                 logger.error("M4: failed to email client %s: %s", client_email, exc, exc_info=True)
             except Exception as exc:  # noqa: BLE001 — must continue to the team email below
                 logger.error(
-                    "M4: unexpected error emailing client %s: %s", client_email, exc,
+                    "M4: unexpected error emailing client %s: %s",
+                    client_email,
+                    exc,
                     exc_info=True,
                 )
 
@@ -284,17 +305,24 @@ Zantara — Bali Zero Team
                 )
                 logger.info("M4: team notification sent to %s (CC: asya)", team_member_email)
             except httpx.HTTPError as exc:
-                logger.error("M4: failed to email team member %s: %s", team_member_email, exc, exc_info=True)
+                logger.error(
+                    "M4: failed to email team member %s: %s", team_member_email, exc, exc_info=True
+                )
             except Exception as exc:  # noqa: BLE001 — notification failure never blocks the listener
                 logger.error(
-                    "M4: unexpected error emailing team member %s: %s", team_member_email, exc,
+                    "M4: unexpected error emailing team member %s: %s",
+                    team_member_email,
+                    exc,
                     exc_info=True,
                 )
 
     # ── M5 handler ────────────────────────────────────────────────────────
 
     async def _on_status_changed(
-        self, practice_id: int, new_status: str, data: dict,
+        self,
+        practice_id: int,
+        new_status: str,
+        data: dict,
     ) -> None:
         """
         M5 — Practice status milestone reached.
@@ -315,17 +343,26 @@ Zantara — Bali Zero Team
                 await self._send_milestone_email(practice_id, new_status, assigned_to)
         except (httpx.HTTPError, asyncpg.PostgresError, ValueError) as exc:
             logger.error(
-                "M5: status milestone handler failed for practice %s new_status=%s: %s", practice_id, new_status, exc,
+                "M5: status milestone handler failed for practice %s new_status=%s: %s",
+                practice_id,
+                new_status,
+                exc,
                 exc_info=True,
             )
         except Exception as exc:  # noqa: BLE001 — EventBus callback must never crash listener loop
             logger.error(
-                "M5: status milestone handler unexpected error for practice %s new_status=%s: %s", practice_id, new_status, exc,
+                "M5: status milestone handler unexpected error for practice %s new_status=%s: %s",
+                practice_id,
+                new_status,
+                exc,
                 exc_info=True,
             )
 
     async def _send_milestone_email(
-        self, practice_id: int, status: str, triggered_by: str,
+        self,
+        practice_id: int,
+        status: str,
+        triggered_by: str,
     ) -> None:
         """Send client-facing milestone update for submitted/approved/completed."""
         practice_data = await self._process_svc._fetch_practice_data(practice_id)
@@ -345,16 +382,27 @@ Zantara — Bali Zero Team
 
         try:
             await self._send_via_internal_api(
-                client_email, subject, body,
-                cc=team_member_email if team_member_email and team_member_email != client_email else None,
+                client_email,
+                subject,
+                body,
+                cc=team_member_email
+                if team_member_email and team_member_email != client_email
+                else None,
                 include_logo=True,
             )
-            logger.info("M5: milestone '%s' email sent to %s (practice %s)", status, client_email, practice_id)
+            logger.info(
+                "M5: milestone '%s' email sent to %s (practice %s)",
+                status,
+                client_email,
+                practice_id,
+            )
         except httpx.HTTPError as exc:
             logger.error("M5: milestone email failed for %s: %s", client_email, exc, exc_info=True)
         except Exception as exc:  # noqa: BLE001 — milestone notification failure never propagates
             logger.error(
-                "M5: milestone email unexpected error for %s: %s", client_email, exc,
+                "M5: milestone email unexpected error for %s: %s",
+                client_email,
+                exc,
                 exc_info=True,
             )
 
@@ -400,6 +448,7 @@ Zantara — Bali Zero Team
 
 
 # ── Email copy for status milestones ──────────────────────────────────────────
+
 
 def _milestone_content(
     client_name: str,

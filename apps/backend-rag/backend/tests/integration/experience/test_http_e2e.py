@@ -4,6 +4,7 @@ Exercises record → query → stats → get_by_id against a TestClient session
 backed by a real ExperienceService on a temp SQLite path. This is the
 deployment smoke test in miniature.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -34,13 +35,16 @@ def test_full_lifecycle_record_query_stats_get(client):
         ("e2e_2", "failure", "DLP blocked draft caption — PII detected."),
         ("e2e_3", "partial", "Published 2/3 assets; third timed out on vision scan."),
     ):
-        resp = client.post("/api/experience/record", json={
-            "trajectory_id": tid,
-            "cell": "curator",
-            "outcome": outcome,
-            "procedure": proc,
-            "tags": ["e2e"],
-        })
+        resp = client.post(
+            "/api/experience/record",
+            json={
+                "trajectory_id": tid,
+                "cell": "curator",
+                "outcome": outcome,
+                "procedure": proc,
+                "tags": ["e2e"],
+            },
+        )
         assert resp.status_code == 200, resp.text
         assert resp.json()["action"] == "inserted"
 
@@ -73,8 +77,10 @@ def test_full_lifecycle_record_query_stats_get(client):
 
 def test_idempotent_post_over_http(client):
     payload = {
-        "trajectory_id": "dup_http", "cell": "c",
-        "outcome": "success", "procedure": "idempotent over HTTP",
+        "trajectory_id": "dup_http",
+        "cell": "c",
+        "outcome": "success",
+        "procedure": "idempotent over HTTP",
     }
     first = client.post("/api/experience/record", json=payload)
     second = client.post("/api/experience/record", json=payload)
@@ -85,13 +91,22 @@ def test_idempotent_post_over_http(client):
 
 def test_outcome_filter_over_http(client):
     for tid, oc in (("a1", "success"), ("b1", "failure"), ("c1", "partial")):
-        client.post("/api/experience/record", json={
-            "trajectory_id": tid, "cell": "c", "outcome": oc,
-            "procedure": "shared wording blob",
-        })
-    resp = client.post("/api/experience/query", json={
-        "query": "shared", "outcome": "failure",
-    })
+        client.post(
+            "/api/experience/record",
+            json={
+                "trajectory_id": tid,
+                "cell": "c",
+                "outcome": oc,
+                "procedure": "shared wording blob",
+            },
+        )
+    resp = client.post(
+        "/api/experience/query",
+        json={
+            "query": "shared",
+            "outcome": "failure",
+        },
+    )
     assert resp.status_code == 200
     body = resp.json()
     assert body["count"] == 1

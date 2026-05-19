@@ -85,7 +85,8 @@ def _truncate_oversized_input(text: str, max_tokens: int = _OPENAI_EMBED_INPUT_T
 
 
 def _split_by_token_budget(
-    texts: list[str], budget: int = _OPENAI_EMBED_TOKEN_BUDGET,
+    texts: list[str],
+    budget: int = _OPENAI_EMBED_TOKEN_BUDGET,
 ) -> list[list[str]]:
     """Split texts into sub-batches each under `budget` tokens.
 
@@ -108,6 +109,7 @@ def _split_by_token_budget(
     if current:
         sub_batches.append(current)
     return sub_batches
+
 
 # Tracing utilities (with fallback for standalone usage)
 try:
@@ -483,7 +485,8 @@ class EmbeddingsGenerator:
         return all_embeddings
 
     async def _generate_embeddings_sentence_transformers(
-        self, texts: list[str],
+        self,
+        texts: list[str],
     ) -> list[list[float]]:
         """Generate embeddings using Sentence Transformers (Thread Pool Offload)"""
         logger.info(f"Generating embeddings for {len(texts)} texts using Sentence Transformers")
@@ -495,7 +498,9 @@ class EmbeddingsGenerator:
             embeddings = await loop.run_in_executor(
                 self._executor,
                 lambda: self.transformer.encode(
-                    texts, convert_to_numpy=True, show_progress_bar=False,
+                    texts,
+                    convert_to_numpy=True,
+                    show_progress_bar=False,
                 ),
             )
 

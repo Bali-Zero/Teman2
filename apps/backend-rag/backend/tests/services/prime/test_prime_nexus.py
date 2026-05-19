@@ -123,8 +123,10 @@ class TestInvestmentScore:
     def test_rejected_kbli_hard_block(self) -> None:
         result = calculate_investment_score(
             zone_data={"code": "K-1", "source": "batara_live", "overlays": {}},
-            kbli_state="REJECTED", kbli_code="68111",
-            roi_data=None, geo_data=None,
+            kbli_state="REJECTED",
+            kbli_code="68111",
+            roi_data=None,
+            geo_data=None,
         )
         assert result["verdict"] == "RED"
         assert result["can_invest"] is False
@@ -133,15 +135,18 @@ class TestInvestmentScore:
     def test_nonbuildable_zone_hard_block(self) -> None:
         result = calculate_investment_score(
             zone_data={"code": "BA", "source": "batara_live", "overlays": {}},
-            kbli_state="APPROVED", kbli_code="55110",
-            roi_data=None, geo_data=None,
+            kbli_state="APPROVED",
+            kbli_code="55110",
+            roi_data=None,
+            geo_data=None,
         )
         assert result["verdict"] == "RED"
 
     def test_good_zone_green_verdict(self) -> None:
         result = calculate_investment_score(
             zone_data={"code": "W-1", "source": "batara_live", "overlays": {}, "klb": "2.5"},
-            kbli_state="APPROVED", kbli_code="55110",
+            kbli_state="APPROVED",
+            kbli_code="55110",
             roi_data={"golden_strategy": {"roi": 15.0, "bey": 4}},
             geo_data={"flood_risk": "safe", "densita_1km": 50, "walk_score": 70},
         )
@@ -151,7 +156,8 @@ class TestInvestmentScore:
     def test_gistaru_caps_at_yellow(self) -> None:
         result = calculate_investment_score(
             zone_data={"code": "W-1", "source": "gistaru_rdtr", "overlays": {}},
-            kbli_state="APPROVED", kbli_code="55110",
+            kbli_state="APPROVED",
+            kbli_code="55110",
             roi_data={"golden_strategy": {"roi": 15.0, "bey": 4}},
             geo_data={"flood_risk": "safe", "densita_1km": 50, "walk_score": 70},
         )
@@ -171,13 +177,23 @@ class TestPrimeNexusService:
 
     @pytest.mark.asyncio
     async def test_resolve_cache_hit(self) -> None:
-        cached_data = json.dumps({
-            "status": "found", "lat": -8.648, "lng": 115.132,
-            "zone_code": "K-1", "zone_name": "Commercial",
-            "zone": {"zone_code": "K-1", "zone_name": "Commercial",
-                     "zone_label_en": "Commercial", "zone_description_en": "test",
-                     "source": "batara_live", "confidence": 1.0},
-        })
+        cached_data = json.dumps(
+            {
+                "status": "found",
+                "lat": -8.648,
+                "lng": 115.132,
+                "zone_code": "K-1",
+                "zone_name": "Commercial",
+                "zone": {
+                    "zone_code": "K-1",
+                    "zone_name": "Commercial",
+                    "zone_label_en": "Commercial",
+                    "zone_description_en": "test",
+                    "source": "batara_live",
+                    "confidence": 1.0,
+                },
+            }
+        )
         cache = AsyncMock()
         cache.get = AsyncMock(return_value=cached_data)
         service = PrimeNexusService(cache_service=cache)
@@ -189,15 +205,28 @@ class TestPrimeNexusService:
     async def test_resolve_batara_success(self, service: PrimeNexusService) -> None:
         batara_response = {
             "status": 200,
-            "data": {"territorials": {"geom": [{
-                "zone": {
-                    "code": "K-1", "name": "Commercial Zone", "color": "232 71 42",
-                    "definition": "Large scale commerce", "activities": [],
-                    "zone_intensity_requirements": [],
-                },
-                "location": {"name": "Kuta"},
-                "kkop_1": "", "lp2b_2": "", "krb_03": "", "cagbud": "", "teb_05": "",
-            }]}},
+            "data": {
+                "territorials": {
+                    "geom": [
+                        {
+                            "zone": {
+                                "code": "K-1",
+                                "name": "Commercial Zone",
+                                "color": "232 71 42",
+                                "definition": "Large scale commerce",
+                                "activities": [],
+                                "zone_intensity_requirements": [],
+                            },
+                            "location": {"name": "Kuta"},
+                            "kkop_1": "",
+                            "lp2b_2": "",
+                            "krb_03": "",
+                            "cagbud": "",
+                            "teb_05": "",
+                        }
+                    ]
+                }
+            },
         }
         mock_resp = MagicMock()
         mock_resp.status_code = 200
@@ -245,13 +274,23 @@ class TestAnalyze:
         # Mock resolve to return a known zone
         async def mock_resolve(lat: float, lng: float) -> dict:
             return {
-                "status": "found", "lat": lat, "lng": lng,
-                "zone_code": "W-1", "zone_name": "Tourism Zone",
-                "zone_label_en": "Tourism", "zone_description_en": "test",
+                "status": "found",
+                "lat": lat,
+                "lng": lng,
+                "zone_code": "W-1",
+                "zone_name": "Tourism Zone",
+                "zone_label_en": "Tourism",
+                "zone_description_en": "test",
                 "zone": {"zone_code": "W-1", "source": "batara_live"},
                 "source": "batara_live",
-                "kdb": "60", "klb": "2.0", "kdh": "20", "tb": "15 Meter", "gsb": "5",
-                "desa": "Kuta", "businesses": [], "overlays": {},
+                "kdb": "60",
+                "klb": "2.0",
+                "kdh": "20",
+                "tb": "15 Meter",
+                "gsb": "5",
+                "desa": "Kuta",
+                "businesses": [],
+                "overlays": {},
                 "cache_hit": False,
             }
 
@@ -273,12 +312,21 @@ class TestAnalyze:
 
         async def mock_resolve(lat: float, lng: float) -> dict:
             return {
-                "status": "found", "lat": lat, "lng": lng,
-                "zone_code": "K-2", "zone_name": "Commercial",
+                "status": "found",
+                "lat": lat,
+                "lng": lng,
+                "zone_code": "K-2",
+                "zone_name": "Commercial",
                 "zone": {"zone_code": "K-2", "source": "batara_live"},
                 "source": "batara_live",
-                "kdb": "N/A", "klb": "N/A", "kdh": "N/A", "tb": "N/A", "gsb": "N/A",
-                "desa": "Seminyak", "businesses": [], "overlays": {},
+                "kdb": "N/A",
+                "klb": "N/A",
+                "kdh": "N/A",
+                "tb": "N/A",
+                "gsb": "N/A",
+                "desa": "Seminyak",
+                "businesses": [],
+                "overlays": {},
                 "cache_hit": False,
             }
 
@@ -294,11 +342,13 @@ class TestAnalyze:
         """Cached analyze result should return immediately."""
         import json as json_mod
 
-        cached_data = json_mod.dumps({
-            "status": "analyzed",
-            "coordinates": {"lat": -8.648, "lng": 115.132},
-            "verdict": {"label": "GREEN", "score": 82, "can_invest": True},
-        })
+        cached_data = json_mod.dumps(
+            {
+                "status": "analyzed",
+                "coordinates": {"lat": -8.648, "lng": 115.132},
+                "verdict": {"label": "GREEN", "score": 82, "can_invest": True},
+            }
+        )
         cache = AsyncMock()
         cache.get = AsyncMock(return_value=cached_data)
         service = PrimeNexusService(cache_service=cache)
@@ -317,8 +367,11 @@ class TestAnalyze:
 
         async def mock_resolve(lat: float, lng: float) -> dict:
             return {
-                "status": "outside_coverage", "lat": lat, "lng": lng,
-                "zone": None, "cache_hit": False,
+                "status": "outside_coverage",
+                "lat": lat,
+                "lng": lng,
+                "zone": None,
+                "cache_hit": False,
             }
 
         service.resolve = mock_resolve  # type: ignore[assignment]
@@ -432,7 +485,10 @@ class TestIntelligenceOverlay:
 
         service._db_pool = mock_pool
         result = await service.intelligence(
-            sw_lat=-8.70, sw_lng=115.10, ne_lat=-8.60, ne_lng=115.20,
+            sw_lat=-8.70,
+            sw_lng=115.10,
+            ne_lat=-8.60,
+            ne_lng=115.20,
             include_clients=False,  # avoid second fetch call with different schema
         )
         assert result["type"] == "FeatureCollection"
@@ -440,6 +496,7 @@ class TestIntelligenceOverlay:
         feat = result["features"][0]
         assert feat["type"] == "Feature"
         assert feat["geometry"]["type"] == "Point"
+
 
 # ── Layer 4 Density Tests ──────────────────────────────────────────
 
@@ -526,11 +583,13 @@ class TestPredictZone:
     async def test_predict_declining_zone(self, service: PrimeNexusService) -> None:
         mock_conn = AsyncMock()
         # Signal 1: many recent rejections
-        mock_conn.fetch = AsyncMock(side_effect=[
-            [{"recent": 10, "prior": 1}],  # rejections: worse
-            [{"cnt": 8}],  # expiry: worse (>5)
-            [{"recent": 1, "prior": 10}],  # companies: worse
-        ])
+        mock_conn.fetch = AsyncMock(
+            side_effect=[
+                [{"recent": 10, "prior": 1}],  # rejections: worse
+                [{"cnt": 8}],  # expiry: worse (>5)
+                [{"recent": 1, "prior": 10}],  # companies: worse
+            ]
+        )
 
         from contextlib import asynccontextmanager
 
@@ -549,11 +608,13 @@ class TestPredictZone:
     @pytest.mark.asyncio
     async def test_predict_improving_zone(self, service: PrimeNexusService) -> None:
         mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(side_effect=[
-            [{"recent": 0, "prior": 5}],  # rejections: better
-            [{"cnt": 1}],  # expiry: stable
-            [{"recent": 15, "prior": 3}],  # companies: better
-        ])
+        mock_conn.fetch = AsyncMock(
+            side_effect=[
+                [{"recent": 0, "prior": 5}],  # rejections: better
+                [{"cnt": 1}],  # expiry: stable
+                [{"recent": 15, "prior": 3}],  # companies: better
+            ]
+        )
 
         from contextlib import asynccontextmanager
 
@@ -668,9 +729,13 @@ class TestRegulations:
 
         mock_rows = [
             {
-                "id": 1, "title": "New zoning rules for K-3", "summary": "Details here",
-                "category": "property", "ai_sentiment": "neutral",
-                "published_at": datetime(2026, 4, 1), "source_url": "https://example.com/1",
+                "id": 1,
+                "title": "New zoning rules for K-3",
+                "summary": "Details here",
+                "category": "property",
+                "ai_sentiment": "neutral",
+                "published_at": datetime(2026, 4, 1),
+                "source_url": "https://example.com/1",
             },
         ]
         mock_conn = AsyncMock()
@@ -698,9 +763,13 @@ class TestRegulations:
 
         mock_rows = [
             {
-                "id": 1, "title": "Same Article", "summary": "test",
-                "category": "business", "ai_sentiment": "positive",
-                "published_at": datetime(2026, 4, 1), "source_url": "https://example.com/1",
+                "id": 1,
+                "title": "Same Article",
+                "summary": "test",
+                "category": "business",
+                "ai_sentiment": "positive",
+                "published_at": datetime(2026, 4, 1),
+                "source_url": "https://example.com/1",
             },
         ]
         mock_conn = AsyncMock()
@@ -717,10 +786,16 @@ class TestRegulations:
         service._db_pool = mock_pool
 
         # Qdrant returns same article
-        service._search_intel = AsyncMock(return_value=[
-            {"title": "Same Article", "source_url": "https://example.com/1",
-             "category": "business", "published_at": "2026-04-01"},
-        ])
+        service._search_intel = AsyncMock(
+            return_value=[
+                {
+                    "title": "Same Article",
+                    "source_url": "https://example.com/1",
+                    "category": "business",
+                    "published_at": "2026-04-01",
+                },
+            ]
+        )
 
         result = await service.regulations("K-3")
         assert result["total_found"] == 1  # Deduplicated
@@ -748,7 +823,8 @@ class TestProposals:
         from datetime import datetime
 
         mock_row = {
-            "id": 1, "token": "test_token_123",
+            "id": 1,
+            "token": "test_token_123",
             "created_at": datetime(2026, 4, 6, 10, 0),
             "expires_at": datetime(2026, 4, 13, 10, 0),
         }
@@ -766,8 +842,11 @@ class TestProposals:
         service._db_pool = mock_pool
 
         result = await service.create_proposal(
-            lat=-8.648, lng=115.132, zone_code="K-3",
-            verdict_label="GREEN", verdict_score=72,
+            lat=-8.648,
+            lng=115.132,
+            zone_code="K-3",
+            verdict_label="GREEN",
+            verdict_score=72,
         )
         assert result["token"] == "test_token_123"
         assert result["status"] == "draft"
@@ -795,11 +874,20 @@ class TestProposals:
         from datetime import datetime, timezone
 
         mock_row = {
-            "id": 1, "token": "expired_token", "lat": -8.648, "lng": 115.132,
-            "zone_code": "K-3", "zone_name": "Commercial", "kbli_code": "55110",
-            "verdict_label": "GREEN", "verdict_score": 72,
-            "analysis_snapshot": "{}", "pricing_snapshot": None,
-            "investor_name": None, "investor_email": None, "investor_nationality": None,
+            "id": 1,
+            "token": "expired_token",
+            "lat": -8.648,
+            "lng": 115.132,
+            "zone_code": "K-3",
+            "zone_name": "Commercial",
+            "kbli_code": "55110",
+            "verdict_label": "GREEN",
+            "verdict_score": 72,
+            "analysis_snapshot": "{}",
+            "pricing_snapshot": None,
+            "investor_name": None,
+            "investor_email": None,
+            "investor_nationality": None,
             "status": "draft",
             "created_at": datetime(2026, 3, 1, tzinfo=timezone.utc),
             "expires_at": datetime(2026, 3, 8, tzinfo=timezone.utc),  # expired
@@ -846,12 +934,24 @@ class TestPortfolio:
         from datetime import date
 
         company_rows = [
-            {"id": 1, "company_name": "Test PT", "kbli_code": "55110",
-             "rdtr_zone_code": "K-3", "lat": -8.648, "lng": 115.132, "status": "active"},
+            {
+                "id": 1,
+                "company_name": "Test PT",
+                "kbli_code": "55110",
+                "rdtr_zone_code": "K-3",
+                "lat": -8.648,
+                "lng": 115.132,
+                "status": "active",
+            },
         ]
         practice_rows = [
-            {"id": 10, "practice_type_code": "kitas_investor", "status": "active",
-             "expiry_date": date(2026, 5, 1), "notes": ""},
+            {
+                "id": 10,
+                "practice_type_code": "kitas_investor",
+                "status": "active",
+                "expiry_date": date(2026, 5, 1),
+                "notes": "",
+            },
         ]
         call_count = 0
 
@@ -885,8 +985,15 @@ class TestPortfolio:
     @pytest.mark.asyncio
     async def test_portfolio_risk_concentration(self, service: PrimeNexusService) -> None:
         company_rows = [
-            {"id": i, "company_name": f"Co {i}", "kbli_code": "55110",
-             "rdtr_zone_code": "K-3", "lat": -8.648, "lng": 115.132, "status": "active"}
+            {
+                "id": i,
+                "company_name": f"Co {i}",
+                "kbli_code": "55110",
+                "rdtr_zone_code": "K-3",
+                "lat": -8.648,
+                "lng": 115.132,
+                "status": "active",
+            }
             for i in range(1, 6)
         ]
         call_count = 0
@@ -1022,11 +1129,19 @@ class TestCoastlineDistance:
     def test_sea_distance_scoring_modifier_near(self) -> None:
         """Scoring engine applies +5/-3 for sea_distance < 200m."""
         geo_data = {"sea_distance_m": 150.0}
-        zone_data = {"code": "W-1", "source": "batara_live", "overlays": {},
-                     "klb": "2.0", "tb": "15 Meter"}
+        zone_data = {
+            "code": "W-1",
+            "source": "batara_live",
+            "overlays": {},
+            "klb": "2.0",
+            "tb": "15 Meter",
+        }
         result = calculate_investment_score(
-            zone_data=zone_data, kbli_state="APPROVED",
-            kbli_code="55111", roi_data=None, geo_data=geo_data,
+            zone_data=zone_data,
+            kbli_state="APPROVED",
+            kbli_code="55111",
+            roi_data=None,
+            geo_data=geo_data,
         )
         modifiers_text = " ".join(result["modifiers"])
         assert "premium" in modifiers_text.lower() or "costa" in modifiers_text.lower()
@@ -1035,11 +1150,13 @@ class TestCoastlineDistance:
     def test_sea_distance_scoring_no_modifier_inland(self) -> None:
         """No sea modifier when distance > 1000m."""
         geo_data = {"sea_distance_m": 5000.0}
-        zone_data = {"code": "K-1", "source": "batara_live", "overlays": {},
-                     "klb": "2.0"}
+        zone_data = {"code": "K-1", "source": "batara_live", "overlays": {}, "klb": "2.0"}
         result = calculate_investment_score(
-            zone_data=zone_data, kbli_state="APPROVED",
-            kbli_code="56111", roi_data=None, geo_data=geo_data,
+            zone_data=zone_data,
+            kbli_state="APPROVED",
+            kbli_code="56111",
+            roi_data=None,
+            geo_data=geo_data,
         )
         modifiers_text = " ".join(result["modifiers"])
         assert "costa" not in modifiers_text.lower()
@@ -1167,7 +1284,8 @@ class TestRiskScore:
         """risk_score < 0.2 → 10 points (safest)."""
         result = calculate_investment_score(
             zone_data={"code": "K-1", "source": "postgis_cache", "overlays": {}, "klb": "2.0"},
-            kbli_state="APPROVED", kbli_code="56111",
+            kbli_state="APPROVED",
+            kbli_code="56111",
             roi_data=None,
             geo_data={"risk_score": 0.1},
         )
@@ -1177,7 +1295,8 @@ class TestRiskScore:
         """risk_score >= 0.8 → 0 points (highest risk)."""
         result = calculate_investment_score(
             zone_data={"code": "W-1", "source": "batara_live", "overlays": {}, "klb": "1.5"},
-            kbli_state="APPROVED", kbli_code="55111",
+            kbli_state="APPROVED",
+            kbli_code="55111",
             roi_data=None,
             geo_data={"risk_score": 0.85},
         )
@@ -1187,7 +1306,8 @@ class TestRiskScore:
         """risk_score 0.4-0.6 → 5 points."""
         result = calculate_investment_score(
             zone_data={"code": "K-2", "source": "batara_live", "overlays": {}, "klb": "1.0"},
-            kbli_state="APPROVED", kbli_code="47111",
+            kbli_state="APPROVED",
+            kbli_code="47111",
             roi_data=None,
             geo_data={"risk_score": 0.5},
         )
@@ -1197,7 +1317,8 @@ class TestRiskScore:
         """Old flood_risk string still works when risk_score absent."""
         result = calculate_investment_score(
             zone_data={"code": "K-1", "source": "batara_live", "overlays": {}, "klb": "2.0"},
-            kbli_state="APPROVED", kbli_code="56111",
+            kbli_state="APPROVED",
+            kbli_code="56111",
             roi_data=None,
             geo_data={"flood_risk": "safe"},
         )
@@ -1207,7 +1328,8 @@ class TestRiskScore:
         """No geo_data at all → default 7 points."""
         result = calculate_investment_score(
             zone_data={"code": "K-1", "source": "batara_live", "overlays": {}, "klb": "2.0"},
-            kbli_state="APPROVED", kbli_code="56111",
+            kbli_state="APPROVED",
+            kbli_code="56111",
             roi_data=None,
             geo_data=None,
         )

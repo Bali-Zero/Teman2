@@ -33,6 +33,7 @@ async def lifespan_light(app: FastAPI):
 
     async def _background_light_init():
         from backend.app.setup.service_initializer import initialize_services_light
+
         try:
             await initialize_services_light(app)
         except Exception as e:
@@ -49,6 +50,7 @@ async def lifespan_light(app: FastAPI):
         else:
             try:
                 from backend.app.modules.notifications.scheduler import init_scheduler
+
                 app.state.notification_scheduler = await init_scheduler(app.state.db_pool)
                 logger.info("✅ Notification Scheduler initialized")
             except Exception as e:
@@ -66,6 +68,7 @@ async def lifespan_light(app: FastAPI):
         await db_pool.close()
         logger.info("✅ DB pool closed")
     from backend.app.rag_proxy import close_proxy_client
+
     await close_proxy_client()
 
 
@@ -91,7 +94,9 @@ def create_api_app() -> FastAPI:
         description="Light CRUD/auth/webhook process — no RAG",
         version=getattr(settings, "VERSION", "5.2.0"),
         lifespan=lifespan_light,
-        docs_url="/docs" if getattr(settings, "ENVIRONMENT", "production") != "production" else None,
+        docs_url="/docs"
+        if getattr(settings, "ENVIRONMENT", "production") != "production"
+        else None,
         redoc_url=None,
         default_response_class=ORJSONResponse,  # 3-10× faster JSON serialization (audit modernization 2026-05-18)
     )
@@ -106,6 +111,7 @@ def create_api_app() -> FastAPI:
     # Proxy router: catches heavy routes and forwards to rag process
     # Must be added LAST (after all light routers)
     from backend.app.rag_proxy import create_proxy_router, is_proxy_enabled
+
     if is_proxy_enabled():
         api.include_router(create_proxy_router())
         logger.info("✅ RAG proxy router registered (forwarding to rag process)")

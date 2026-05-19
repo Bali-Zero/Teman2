@@ -95,7 +95,9 @@ async def garbage_collect(db_pool: asyncpg.Pool) -> dict[str, Any]:
 
     except Exception as e:
         logger.error(
-            "crm_kg garbage_collect failed: %s", e, exc_info=True,
+            "crm_kg garbage_collect failed: %s",
+            e,
+            exc_info=True,
         )
         return {"ok": False, "error": str(e)}
 
@@ -207,7 +209,9 @@ async def _hard_delete_old_edges(conn: asyncpg.Connection) -> int:
     )
     """
     result = await conn.execute(
-        sql, str(_HARD_DELETE_GRACE_DAYS), _MAX_HARD_DELETE_PER_PASS,
+        sql,
+        str(_HARD_DELETE_GRACE_DAYS),
+        _MAX_HARD_DELETE_PER_PASS,
     )
     return _parse_deleted_count(result)
 

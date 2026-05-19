@@ -64,14 +64,14 @@ class RulesEngine:
             await conn.execute(
                 "UPDATE olympus_rules SET applied_count = applied_count + 1, "
                 "last_applied = $1, updated_at = $1 WHERE rule_name = $2",
-                now, rule_name,
+                now,
+                rule_name,
             )
         rule = self.rules.get(rule_name)
         if rule is not None:
             rule.applied_count += 1
             rule.last_applied = now
-        logger.debug("Rule '%s' applied (count=%d)", rule_name,
-                      rule.applied_count if rule else 0)
+        logger.debug("Rule '%s' applied (count=%d)", rule_name, rule.applied_count if rule else 0)
 
     async def lower_confidence(self, rule_name: str, delta: float = -0.1) -> None:
         """Decrease confidence on failure. Called by guardian when a pulse action fails."""
@@ -84,9 +84,10 @@ class RulesEngine:
 
         async with self._pool.acquire() as conn:
             await conn.execute(
-                "UPDATE olympus_rules SET confidence = $1, updated_at = $2 "
-                "WHERE rule_name = $3",
-                new_confidence, now, rule_name,
+                "UPDATE olympus_rules SET confidence = $1, updated_at = $2 WHERE rule_name = $3",
+                new_confidence,
+                now,
+                rule_name,
             )
 
         old = rule.confidence

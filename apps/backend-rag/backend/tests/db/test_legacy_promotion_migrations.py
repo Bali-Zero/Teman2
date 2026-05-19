@@ -31,11 +31,7 @@ from pathlib import Path
 
 import pytest
 
-MIG_DIR = (
-    Path(__file__).resolve().parents[2]
-    / "db"
-    / "migrations_v2"
-)
+MIG_DIR = Path(__file__).resolve().parents[2] / "db" / "migrations_v2"
 
 
 # Files this batch ships. Originally numbered 129–137 with one
@@ -106,9 +102,7 @@ def files() -> dict[str, str]:
 
 def test_every_file_has_rollback_marker(files: dict[str, str]) -> None:
     for name, sql in files.items():
-        assert _ROLLBACK_MARKER.search(sql), (
-            f"{name}: missing '-- === ROLLBACK ===' marker"
-        )
+        assert _ROLLBACK_MARKER.search(sql), f"{name}: missing '-- === ROLLBACK ===' marker"
 
 
 def test_forward_and_rollback_blocks_non_empty(files: dict[str, str]) -> None:
@@ -128,9 +122,13 @@ def test_create_uses_if_not_exists(files: dict[str, str]) -> None:
     `_schema_versions` and `schema_migrations` disagree mid-transition.
     """
     create_table_pat = re.compile(r"\bCREATE\s+TABLE\b(?!\s+IF\s+NOT\s+EXISTS)", re.IGNORECASE)
-    create_index_pat = re.compile(r"\bCREATE\s+(?:UNIQUE\s+)?INDEX\b(?!\s+(?:CONCURRENTLY\s+)?IF\s+NOT\s+EXISTS)", re.IGNORECASE)
+    create_index_pat = re.compile(
+        r"\bCREATE\s+(?:UNIQUE\s+)?INDEX\b(?!\s+(?:CONCURRENTLY\s+)?IF\s+NOT\s+EXISTS)",
+        re.IGNORECASE,
+    )
     add_column_pat = re.compile(
-        r"\bADD\s+COLUMN\b(?!\s+IF\s+NOT\s+EXISTS)", re.IGNORECASE,
+        r"\bADD\s+COLUMN\b(?!\s+IF\s+NOT\s+EXISTS)",
+        re.IGNORECASE,
     )
 
     for name, sql in files.items():
@@ -201,12 +199,8 @@ def test_files_match_directory_listing() -> None:
     # 131 is intentionally reserved for unify_migration_tracking
     # 142, 143 used to live in this range as 129_legacy_user_profiles and
     # 130_legacy_conversations; renumbered out by P0-7 (2026-04-29).
-    in_range_legacy = tuple(
-        f for f in LEGACY_PROMOTION_FILES if 129 <= int(f[:3]) <= 137
-    )
+    in_range_legacy = tuple(f for f in LEGACY_PROMOTION_FILES if 129 <= int(f[:3]) <= 137)
     expected = sorted(in_range_legacy + NON_LEGACY_FILES_IN_RANGE)
     assert actual == expected, (
-        f"unexpected files in 129–137 range\n"
-        f"  expected: {expected}\n"
-        f"  actual:   {actual}"
+        f"unexpected files in 129–137 range\n  expected: {expected}\n  actual:   {actual}"
     )

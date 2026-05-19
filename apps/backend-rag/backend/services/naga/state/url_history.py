@@ -47,9 +47,7 @@ def _normalize_url(raw: str) -> str:
     path = parsed.path.rstrip("/") or "/"
 
     # Reconstruct without fragment
-    normalised = urlunparse(
-        (parsed.scheme, parsed.netloc, path, parsed.params, query_str, "")
-    )
+    normalised = urlunparse((parsed.scheme, parsed.netloc, path, parsed.params, query_str, ""))
     return normalised
 
 

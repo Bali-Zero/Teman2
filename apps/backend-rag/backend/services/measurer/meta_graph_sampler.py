@@ -44,7 +44,7 @@ DEFAULT_TIMEOUT = 20.0
 _API_TO_CANONICAL: dict[str, str] = {
     "reach": METRIC_REACH,
     "impressions": METRIC_IMPRESSIONS,
-    "saved": METRIC_SAVES,       # Graph API uses 'saved'
+    "saved": METRIC_SAVES,  # Graph API uses 'saved'
     "saves": METRIC_SAVES,
     "shares": METRIC_SHARES,
     "likes": METRIC_LIKES,
@@ -103,8 +103,7 @@ class MetaGraphSampler(MetricSampler):
         )
         if not self.access_token:
             raise SamplerError(
-                "MetaGraphSampler requires IG_LONG_LIVED_TOKEN "
-                "(or INSTAGRAM_ACCESS_TOKEN)",
+                "MetaGraphSampler requires IG_LONG_LIVED_TOKEN (or INSTAGRAM_ACCESS_TOKEN)",
             )
         self.metrics = metrics or _DEFAULT_CAROUSEL_METRICS
         self.graph_base = (graph_base or DEFAULT_GRAPH_BASE).rstrip("/")

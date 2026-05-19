@@ -39,34 +39,36 @@ def _build_deps(**overrides: object) -> MagicMock:
     # Exa neural search
     deps.exa_search = overrides.get(
         "exa_search",
-        AsyncMock(return_value={
-            "results": [
-                {
-                    "url": "https://imigrasi.go.id/golden-visa",
-                    "title": "Golden Visa Indonesia",
-                    "text": (
-                        "Indonesia launched the Golden Visa program in 2024. "
-                        "Minimum investment $350,000 for 5 years. The Golden Visa "
-                        "is regulated by PP 40/2024 and managed by Direktorat "
-                        "Jenderal Imigrasi. Requirements include a valid passport, "
-                        "proof of investment, and a clean criminal record."
-                    ),
-                    "score": 0.92,
-                },
-                {
-                    "url": "https://expat.id/golden-visa-guide",
-                    "title": "Golden Visa Guide",
-                    "text": (
-                        "The Golden Visa requires a minimum investment of $350,000. "
-                        "Processing takes 15 business days. Applicants must submit "
-                        "the application through the official imigrasi portal. "
-                        "The visa is valid for 5 or 10 years depending on the "
-                        "investment amount."
-                    ),
-                    "score": 0.78,
-                },
-            ],
-        }),
+        AsyncMock(
+            return_value={
+                "results": [
+                    {
+                        "url": "https://imigrasi.go.id/golden-visa",
+                        "title": "Golden Visa Indonesia",
+                        "text": (
+                            "Indonesia launched the Golden Visa program in 2024. "
+                            "Minimum investment $350,000 for 5 years. The Golden Visa "
+                            "is regulated by PP 40/2024 and managed by Direktorat "
+                            "Jenderal Imigrasi. Requirements include a valid passport, "
+                            "proof of investment, and a clean criminal record."
+                        ),
+                        "score": 0.92,
+                    },
+                    {
+                        "url": "https://expat.id/golden-visa-guide",
+                        "title": "Golden Visa Guide",
+                        "text": (
+                            "The Golden Visa requires a minimum investment of $350,000. "
+                            "Processing takes 15 business days. Applicants must submit "
+                            "the application through the official imigrasi portal. "
+                            "The visa is valid for 5 or 10 years depending on the "
+                            "investment amount."
+                        ),
+                        "score": 0.78,
+                    },
+                ],
+            }
+        ),
     )
 
     # Brave web search
@@ -84,16 +86,18 @@ def _build_deps(**overrides: object) -> MagicMock:
     # Internal RAG (ask_legal)
     deps.ask_legal = overrides.get(
         "ask_legal",
-        AsyncMock(return_value={
-            "answer": (
-                "Golden Visa Indonesia diatur PP 40/2024. Investasi minimum "
-                "$350,000. Persyaratan meliputi paspor valid, bukti investasi, "
-                "dan surat keterangan catatan kepolisian (SKCK). Berlaku untuk "
-                "WNA yang ingin berinvestasi di Indonesia."
-            ),
-            "sources": [{"title": "PP 40/2024"}],
-            "confidence": 0.88,
-        }),
+        AsyncMock(
+            return_value={
+                "answer": (
+                    "Golden Visa Indonesia diatur PP 40/2024. Investasi minimum "
+                    "$350,000. Persyaratan meliputi paspor valid, bukti investasi, "
+                    "dan surat keterangan catatan kepolisian (SKCK). Berlaku untuk "
+                    "WNA yang ingin berinvestasi di Indonesia."
+                ),
+                "sources": [{"title": "PP 40/2024"}],
+                "confidence": 0.88,
+            }
+        ),
     )
 
     # Intel search
@@ -105,11 +109,13 @@ def _build_deps(**overrides: object) -> MagicMock:
     # NLM notebook query
     deps.notebook_query = overrides.get(
         "notebook_query",
-        AsyncMock(return_value={
-            "status": "success",
-            "text": "Confirmed. Golden Visa Indonesia requires minimum investment.",
-            "sources_used": [],
-        }),
+        AsyncMock(
+            return_value={
+                "status": "success",
+                "text": "Confirmed. Golden Visa Indonesia requires minimum investment.",
+                "sources_used": [],
+            }
+        ),
     )
 
     # Episodic memory
@@ -119,43 +125,45 @@ def _build_deps(**overrides: object) -> MagicMock:
     )
 
     # Gemini generate (returns valid evidence JSON)
-    evidence_json = json.dumps({
-        "sub_q_1": {
-            "facts": [
-                {
-                    "text": "Golden Visa requires $350,000 minimum investment",
-                    "source_ids": ["s0"],
-                    "confidence": 0.92,
-                },
-                {
-                    "text": "Processing takes 15 business days",
-                    "source_ids": ["s1"],
-                    "confidence": 0.78,
-                },
-            ],
-            "contradictions": [],
-            "gaps": ["No data on renewal process"],
-            "data_points": [
-                {
-                    "label": "Minimum Investment",
-                    "value": "$350,000",
-                    "source_id": "s0",
-                },
-            ],
-        },
-        "sub_q_2": {
-            "facts": [
-                {
-                    "text": "Golden Visa regulated by PP 40/2024",
-                    "source_ids": ["s0"],
-                    "confidence": 0.90,
-                },
-            ],
-            "contradictions": [],
-            "gaps": [],
-            "data_points": [],
-        },
-    })
+    evidence_json = json.dumps(
+        {
+            "sub_q_1": {
+                "facts": [
+                    {
+                        "text": "Golden Visa requires $350,000 minimum investment",
+                        "source_ids": ["s0"],
+                        "confidence": 0.92,
+                    },
+                    {
+                        "text": "Processing takes 15 business days",
+                        "source_ids": ["s1"],
+                        "confidence": 0.78,
+                    },
+                ],
+                "contradictions": [],
+                "gaps": ["No data on renewal process"],
+                "data_points": [
+                    {
+                        "label": "Minimum Investment",
+                        "value": "$350,000",
+                        "source_id": "s0",
+                    },
+                ],
+            },
+            "sub_q_2": {
+                "facts": [
+                    {
+                        "text": "Golden Visa regulated by PP 40/2024",
+                        "source_ids": ["s0"],
+                        "confidence": 0.90,
+                    },
+                ],
+                "contradictions": [],
+                "gaps": [],
+                "data_points": [],
+            },
+        }
+    )
 
     deps.gemini_generate = overrides.get(
         "gemini_generate",
@@ -178,8 +186,7 @@ async def test_full_research_flow() -> None:
     convergence detector, and report writer.  Only external I/O is mocked.
     """
     query = (
-        "Analisi completa golden visa Indonesia: "
-        "requisiti, costi, confronto con KITAS Investasi"
+        "Analisi completa golden visa Indonesia: requisiti, costi, confronto con KITAS Investasi"
     )
 
     # ---- 1. Gateway classification ------------------------------------
@@ -303,8 +310,7 @@ async def test_action_engine_integration() -> None:
     action engine to verify it proposes relevant actions.
     """
     query = (
-        "Analisi completa golden visa Indonesia: "
-        "requisiti, costi, confronto con KITAS Investasi"
+        "Analisi completa golden visa Indonesia: requisiti, costi, confronto con KITAS Investasi"
     )
 
     deps = _build_deps()
@@ -338,9 +344,7 @@ async def test_action_engine_integration() -> None:
         ),
         ClaimRecord(
             claim_id="NB2-integ002",
-            claim_text=(
-                "Golden Visa launched as new policy for Indonesia investment."
-            ),
+            claim_text=("Golden Visa launched as new policy for Indonesia investment."),
             category="LEGAL_CHANGE",
             confidence_class="VERIFIED",
             confidence_score=0.85,
@@ -381,9 +385,7 @@ async def test_action_engine_integration() -> None:
 
     # The second claim has VERIFIED + news keyword (launched, new policy)
     # -> should trigger draft_article
-    assert "draft_article" in action_types, (
-        f"Expected draft_article action, got {action_types}"
-    )
+    assert "draft_article" in action_types, f"Expected draft_article action, got {action_types}"
 
     # The third claim is LOW + indonesia -> escalation
     assert "escalation" in action_types, (
@@ -410,10 +412,7 @@ async def test_action_engine_integration() -> None:
     print(f"     Gaps input: {len(gaps)}")
     print(f"     Actions detected: {len(actions)}")
     for action in actions:
-        print(
-            f"       - [{action.priority}] {action.action_type}: "
-            f"{action.description[:80]}"
-        )
+        print(f"       - [{action.priority}] {action.action_type}: {action.description[:80]}")
 
 
 # ---------------------------------------------------------------------------
@@ -453,7 +452,5 @@ class TestGatewayClassification:
 
     def test_hybrid_domain(self) -> None:
         """Query with Indonesia + foreign country -> hybrid."""
-        gw = classify_query(
-            "confronto golden visa Indonesia e golden visa Portugal"
-        )
+        gw = classify_query("confronto golden visa Indonesia e golden visa Portugal")
         assert gw.domain == "hybrid"

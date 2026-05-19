@@ -181,7 +181,9 @@ class VisaExpiryTeamNotifier:
         Subject: "⚠️ Documenti in scadenza — {n} clienti da contattare"
         """
         n = len(clients)
-        subject = f"[SCADENZE] ⚠️ Documenti in scadenza — {n} client{'i' if n != 1 else 'e'} da contattare"
+        subject = (
+            f"[SCADENZE] ⚠️ Documenti in scadenza — {n} client{'i' if n != 1 else 'e'} da contattare"
+        )
 
         rows_html = "\n".join(_build_client_row(c) for c in clients)
 
@@ -347,8 +349,10 @@ Ogni team leader ha già ricevuto la propria notifica individuale.</p>
         — deterministic close. Equivalent to OK_CONTEXT_MANAGER per the
         P0-5 audit.
         """
-        return httpx.AsyncClient(  # golden-rule-10-exempt: factory used exclusively via `async with`
-            headers={"User-Agent": "VisaExpiryTeamNotifier/1.0"},
+        return (
+            httpx.AsyncClient(  # golden-rule-10-exempt: factory used exclusively via `async with`
+                headers={"User-Agent": "VisaExpiryTeamNotifier/1.0"},
+            )
         )
 
 

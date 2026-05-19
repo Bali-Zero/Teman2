@@ -70,7 +70,7 @@ def _strip_sha256_prefix(value: str) -> str | None:
     prefix = "sha256="
     if not value.startswith(prefix):
         return None
-    return value[len(prefix):]
+    return value[len(prefix) :]
 
 
 def verify_meta_hmac(

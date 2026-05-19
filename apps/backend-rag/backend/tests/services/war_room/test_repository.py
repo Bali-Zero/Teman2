@@ -105,11 +105,13 @@ async def test_count_registers_last_14d_empty(repo_and_conn):
 @pytest.mark.asyncio
 async def test_count_registers_last_14d_with_data(repo_and_conn):
     repo, conn = repo_and_conn
-    conn.fetch = AsyncMock(return_value=[
-        {"register": "analitico", "n": 4},
-        {"register": "pedagogico", "n": 2},
-        {"register": "ironico", "n": 1},
-    ])
+    conn.fetch = AsyncMock(
+        return_value=[
+            {"register": "analitico", "n": 4},
+            {"register": "pedagogico", "n": 2},
+            {"register": "ironico", "n": 1},
+        ]
+    )
     counts = await repo.count_registers_last_14d()
     assert counts == {"analitico": 4, "pedagogico": 2, "ironico": 1}
 
@@ -119,24 +121,28 @@ async def test_create_post(repo_and_conn):
     repo, conn = repo_and_conn
     now = _now()
     draft_id = uuid4()
-    conn.fetchrow = AsyncMock(return_value={
-        "id": uuid4(),
-        "draft_id": draft_id,
-        "platform": "instagram",
-        "post_external_id": "ig_17890",
-        "post_url": "https://instagram.com/p/abc",
-        "register": "analitico",
-        "published_at": now,
-        "final_text": "caption text",
-    })
-    post = await repo.create_post(WarRoomPostCreate(
-        draft_id=draft_id,
-        platform=Platform.INSTAGRAM,
-        post_external_id="ig_17890",
-        post_url="https://instagram.com/p/abc",
-        tone_register=RegisterTone.ANALITICO,
-        final_text="caption text",
-    ))
+    conn.fetchrow = AsyncMock(
+        return_value={
+            "id": uuid4(),
+            "draft_id": draft_id,
+            "platform": "instagram",
+            "post_external_id": "ig_17890",
+            "post_url": "https://instagram.com/p/abc",
+            "register": "analitico",
+            "published_at": now,
+            "final_text": "caption text",
+        }
+    )
+    post = await repo.create_post(
+        WarRoomPostCreate(
+            draft_id=draft_id,
+            platform=Platform.INSTAGRAM,
+            post_external_id="ig_17890",
+            post_url="https://instagram.com/p/abc",
+            tone_register=RegisterTone.ANALITICO,
+            final_text="caption text",
+        )
+    )
     assert post.draft_id == draft_id
     assert post.platform == Platform.INSTAGRAM
 
@@ -175,14 +181,16 @@ async def test_record_rejection(repo_and_conn):
     repo, conn = repo_and_conn
     now = _now()
     draft_id = uuid4()
-    conn.fetchrow = AsyncMock(return_value={
-        "id": uuid4(),
-        "draft_id": draft_id,
-        "reason": "clickbait",
-        "reason_detail": "trap metaphor",
-        "rejected_by": "validator",
-        "rejected_at": now,
-    })
+    conn.fetchrow = AsyncMock(
+        return_value={
+            "id": uuid4(),
+            "draft_id": draft_id,
+            "reason": "clickbait",
+            "reason_detail": "trap metaphor",
+            "rejected_by": "validator",
+            "rejected_at": now,
+        }
+    )
     rej = await repo.record_rejection(
         draft_id,
         RejectionReason.CLICKBAIT,

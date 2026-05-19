@@ -81,7 +81,9 @@ async def _load_conversation_history(client_id: int | None, limit: int = 10) -> 
         # Rows are newest-first; reverse to chronological order
         return [f"[{row['direction']}] {row['content']}" for row in reversed(rows)]
     except Exception as e:
-        logger.warning("[GRAPH] Failed to load conversation history for client %s: %s", client_id, e)
+        logger.warning(
+            "[GRAPH] Failed to load conversation history for client %s: %s", client_id, e
+        )
         return []
 
 
@@ -110,7 +112,9 @@ async def retrieve_node(state: WorkflowState) -> WorkflowState:
     # Load conversation history from DB (non-blocking: returns [] on failure)
     conversation_history = await _load_conversation_history(client_id)
     if conversation_history:
-        logger.info(f"[RETRIEVE_NODE] Loaded {len(conversation_history)} prior messages for client {client_id}")
+        logger.info(
+            f"[RETRIEVE_NODE] Loaded {len(conversation_history)} prior messages for client {client_id}"
+        )
 
     try:
         # Check if SearchService is available
@@ -551,7 +555,11 @@ async def transform_query_node(state: WorkflowState) -> WorkflowState:
     filtered_docs = state.get("filtered_documents", [])
     if filtered_docs:
         first_doc = filtered_docs[0]
-        doc_snippet = (first_doc.get("content", first_doc.get("text", ""))[:100] if isinstance(first_doc, dict) else str(first_doc)[:100])
+        doc_snippet = (
+            first_doc.get("content", first_doc.get("text", ""))[:100]
+            if isinstance(first_doc, dict)
+            else str(first_doc)[:100]
+        )
         transformed = f"{original_query} specifically about {doc_snippet[:50]}"
     else:
         transformed = f"detailed information about {original_query}"

@@ -75,13 +75,9 @@ class QdrantDossierFilter:
 
             rrf_scores: dict[Any, float] = {}
             for rank, row in enumerate(by_cos, start=1):
-                rrf_scores[row["id"]] = (
-                    rrf_scores.get(row["id"], 0.0) + 1.0 / (self.rrf_k + rank)
-                )
+                rrf_scores[row["id"]] = rrf_scores.get(row["id"], 0.0) + 1.0 / (self.rrf_k + rank)
             for rank, row in enumerate(by_conf, start=1):
-                rrf_scores[row["id"]] = (
-                    rrf_scores.get(row["id"], 0.0) + 1.0 / (self.rrf_k + rank)
-                )
+                rrf_scores[row["id"]] = rrf_scores.get(row["id"], 0.0) + 1.0 / (self.rrf_k + rank)
 
             ranked = sorted(
                 dossier_rows,

@@ -17,7 +17,9 @@ class DrivePermissionsManager:
     evitando l'uso della SDK sincrona ufficiale.
     """
 
-    def __init__(self, auth_manager: Any, http_client: httpx.AsyncClient, audit: Any | None = None) -> None:
+    def __init__(
+        self, auth_manager: Any, http_client: httpx.AsyncClient, audit: Any | None = None
+    ) -> None:
         self.auth_manager = auth_manager
         self.http_client = http_client
         self.audit = audit
@@ -108,7 +110,11 @@ class DrivePermissionsManager:
 
     @drive_operation("update_permission")
     async def update_permission(
-        self, user_email: str, file_id: str, permission_id: str, request: Any,
+        self,
+        user_email: str,
+        file_id: str,
+        permission_id: str,
+        request: Any,
     ) -> dict[str, Any]:
         """
         Aggiorna il ruolo di un permesso esistente (es. da 'reader' a 'writer').
@@ -143,7 +149,10 @@ class DrivePermissionsManager:
 
     @drive_operation("remove_permission")
     async def remove_permission(
-        self, user_email: str, file_id: str, permission_id: str,
+        self,
+        user_email: str,
+        file_id: str,
+        permission_id: str,
     ) -> dict[str, bool]:
         """
         Rimuove / revoca un permesso di accesso a un file o cartella.

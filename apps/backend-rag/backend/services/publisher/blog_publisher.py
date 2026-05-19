@@ -73,19 +73,13 @@ class BlogPublisher(Publisher):
         self.content_root = Path(
             content_root or os.environ.get("BLOG_CONTENT_ROOT", DEFAULT_CONTENT_ROOT)
         )
-        self.repo_root = Path(
-            repo_root or self._infer_repo_root(self.content_root)
-        )
-        self.site_url = (
-            site_url or os.environ.get("BLOG_SITE_URL", DEFAULT_SITE_URL)
-        ).rstrip("/")
+        self.repo_root = Path(repo_root or self._infer_repo_root(self.content_root))
+        self.site_url = (site_url or os.environ.get("BLOG_SITE_URL", DEFAULT_SITE_URL)).rstrip("/")
         self.url_prefix = (
             url_prefix or os.environ.get("BLOG_URL_PREFIX", DEFAULT_URL_PREFIX)
         ).rstrip("/")
         env_skip = os.environ.get("BLOG_PUBLISH_SKIP_PUSH", "").strip()
-        self.skip_push = (
-            skip_push if skip_push is not None else env_skip in ("1", "true", "yes")
-        )
+        self.skip_push = skip_push if skip_push is not None else env_skip in ("1", "true", "yes")
         self._clock = clock or (lambda: datetime.now(timezone.utc))
 
     # ── Public API ───────────────────────────────────────────────────
@@ -140,12 +134,11 @@ class BlogPublisher(Publisher):
             file_path.write_text(mdx, encoding="utf-8")
 
             relative = str(file_path.relative_to(self.repo_root))
-            commit_message = (
-                f"content(war-room): {draft.topic[:60]} [{slug}]"
-            )
+            commit_message = f"content(war-room): {draft.topic[:60]} [{slug}]"
 
             add_rc, add_err = await self._git(
-                ["add", relative], cwd=self.repo_root,
+                ["add", relative],
+                cwd=self.repo_root,
             )
             if add_rc != 0:
                 return PublishResult(
@@ -156,7 +149,8 @@ class BlogPublisher(Publisher):
                 )
 
             commit_rc, commit_err = await self._git(
-                ["commit", "-m", commit_message], cwd=self.repo_root,
+                ["commit", "-m", commit_message],
+                cwd=self.repo_root,
             )
             # rc=1 can mean "nothing to commit" when file already staged —
             # treat as idempotent success if stderr confirms no changes.
@@ -170,7 +164,8 @@ class BlogPublisher(Publisher):
 
             if not self.skip_push:
                 push_rc, push_err = await self._git(
-                    ["push"], cwd=self.repo_root,
+                    ["push"],
+                    cwd=self.repo_root,
                 )
                 if push_rc != 0:
                     return PublishResult(
@@ -212,7 +207,8 @@ class BlogPublisher(Publisher):
             if not full.exists():
                 return False
             rc, err = await self._git(
-                ["rm", post_external_id], cwd=self.repo_root,
+                ["rm", post_external_id],
+                cwd=self.repo_root,
             )
             if rc != 0:
                 return False

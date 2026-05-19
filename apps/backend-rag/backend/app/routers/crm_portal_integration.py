@@ -46,6 +46,7 @@ def _team_impersonation_ctx(client_id: int, current_user: dict) -> ClientContext
         name=str(current_user.get("name") or ""),
     )
 
+
 logger = get_logger(__name__)
 
 router = APIRouter(prefix="/api/crm/portal", tags=["crm-portal-integration"])

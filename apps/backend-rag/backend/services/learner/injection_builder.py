@@ -72,7 +72,7 @@ class MemoriaEpisodicaBuilder:
             return block
         # over budget — truncate body, keeping open/close tags intact
         overhead = len(BLOCK_OPEN) + len(BLOCK_CLOSE) + 3  # newlines
-        budget = self.max_chars - overhead - 1            # room for ellipsis
+        budget = self.max_chars - overhead - 1  # room for ellipsis
         if budget <= 0:
             return BLOCK_OPEN + "\n" + BLOCK_CLOSE
         truncated = body[:budget].rstrip() + "…"

@@ -47,7 +47,8 @@ from backend.self_healing.orchestrator import SelfHealingOrchestrator
 from backend.self_healing.reporter import OrchestratorReporter
 
 logging.basicConfig(
-    level=logging.INFO, format="🤖 [Backend Agent] %(asctime)s - %(levelname)s - %(message)s",
+    level=logging.INFO,
+    format="🤖 [Backend Agent] %(asctime)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -160,7 +161,9 @@ class BackendSelfHealingAgent:
 
         def _healthy(name: str) -> bool:
             r = outcome.check_results.get(name)
-            return r.healthy if r is not None else True  # Skipped → breaker open → treat as unchanged
+            return (
+                r.healthy if r is not None else True
+            )  # Skipped → breaker open → treat as unchanged
 
         def _percent(name: str, field: str) -> float:
             r = outcome.check_results.get(name)
@@ -215,12 +218,14 @@ class BackendSelfHealingAgent:
         for name, result in outcome.check_results.items():
             if result.healthy:
                 continue
-            issues.append({
-                "type": type_map.get(name, name),
-                "severity": severity_map.get(name, "medium"),
-                "message": result.error or f"{name} check failed",
-                "detail": result.detail,
-            })
+            issues.append(
+                {
+                    "type": type_map.get(name, name),
+                    "severity": severity_map.get(name, "medium"),
+                    "message": result.error or f"{name} check failed",
+                    "detail": result.detail,
+                }
+            )
 
         if issues:
             logger.warning(
@@ -239,9 +244,7 @@ class BackendSelfHealingAgent:
         fix_snapshot = self.orchestrator.stats.snapshot().get("actions", {})
         for issue in issues:
             logger.info(f"🔧 Auto-fix cycle already handled: {issue['type']}")
-            action_hits = [
-                name for name, s in fix_snapshot.items() if s.get("last_run_at")
-            ]
+            action_hits = [name for name, s in fix_snapshot.items() if s.get("last_run_at")]
             if action_hits:
                 self.fix_count += 1
             else:

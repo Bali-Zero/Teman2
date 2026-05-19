@@ -7,6 +7,7 @@ from the same cell lands within a rolling window.
 Cluster key (deliberately conservative): (cell, sorted_tags_tuple). We only
 aggregate trajectories that already agree on tags — no NLP matching.
 """
+
 from __future__ import annotations
 
 import json
@@ -27,9 +28,7 @@ def _traj(
     procedure: str = "published asset cleanly",
     days_ago: int = 0,
 ) -> dict:
-    vf = (
-        datetime.now(timezone.utc).date() - timedelta(days=days_ago)
-    ).isoformat()
+    vf = (datetime.now(timezone.utc).date() - timedelta(days=days_ago)).isoformat()
     return {
         "id": trajectory_id,
         "cell_origin": cell,
@@ -47,16 +46,11 @@ def _traj(
 
 
 def test_cluster_by_cell_and_tags():
-    trajs = [
-        _traj(cell="curator", tags=["ig", "carousel"], trajectory_id=f"t{i}")
-        for i in range(12)
-    ] + [
-        _traj(cell="curator", tags=["wa"], trajectory_id=f"w{i}")
-        for i in range(3)
-    ] + [
-        _traj(cell="other", tags=["ig", "carousel"], trajectory_id=f"o{i}")
-        for i in range(5)
-    ]
+    trajs = (
+        [_traj(cell="curator", tags=["ig", "carousel"], trajectory_id=f"t{i}") for i in range(12)]
+        + [_traj(cell="curator", tags=["wa"], trajectory_id=f"w{i}") for i in range(3)]
+        + [_traj(cell="other", tags=["ig", "carousel"], trajectory_id=f"o{i}") for i in range(5)]
+    )
     clusters = cluster_trajectories(trajs)
     assert ("curator", ("carousel", "ig")) in clusters
     assert len(clusters[("curator", ("carousel", "ig"))]) == 12
@@ -87,10 +81,7 @@ def test_cluster_only_success_outcome():
 
 def test_cluster_window_excludes_old_trajectories():
     """Trajectories older than window_days must not appear in clusters."""
-    trajs = [
-        _traj(tags=["ig"], trajectory_id=f"t{i}", days_ago=i)
-        for i in range(15)
-    ]
+    trajs = [_traj(tags=["ig"], trajectory_id=f"t{i}", days_ago=i) for i in range(15)]
     clusters = cluster_trajectories(trajs, window_days=7)
     key = ("curator", ("ig",))
     assert key in clusters
@@ -103,8 +94,7 @@ def test_cluster_window_excludes_old_trajectories():
 
 def test_proposal_emitted_when_threshold_met():
     trajs = [
-        _traj(tags=["ig"], trajectory_id=f"t{i}",
-              procedure=f"published ig asset iteration {i}")
+        _traj(tags=["ig"], trajectory_id=f"t{i}", procedure=f"published ig asset iteration {i}")
         for i in range(10)
     ]
     clusters = cluster_trajectories(trajs)
@@ -124,10 +114,7 @@ def test_proposal_emitted_when_threshold_met():
 
 
 def test_proposal_not_emitted_below_threshold():
-    trajs = [
-        _traj(tags=["ig"], trajectory_id=f"t{i}")
-        for i in range(5)
-    ]
+    trajs = [_traj(tags=["ig"], trajectory_id=f"t{i}") for i in range(5)]
     clusters = cluster_trajectories(trajs)
     proposals = propose_skills_from_clusters(clusters, min_cluster_size=10)
     assert proposals == []
@@ -160,12 +147,18 @@ def test_main_writes_proposals_jsonl_when_cluster_meets_threshold(tmp_path):
         )
 
     out = tmp_path / "skill_creation_proposals.jsonl"
-    rc = main([
-        "--db-path", str(db),
-        "--out", str(out),
-        "--min-cluster-size", "10",
-        "--window-days", "7",
-    ])
+    rc = main(
+        [
+            "--db-path",
+            str(db),
+            "--out",
+            str(out),
+            "--min-cluster-size",
+            "10",
+            "--window-days",
+            "7",
+        ]
+    )
     assert rc == 0
     assert out.exists()
     lines = [line for line in out.read_text().splitlines() if line.strip()]
@@ -182,14 +175,25 @@ def test_main_no_proposals_writes_empty_file(tmp_path):
     g = Genome(db_path=str(db))
     # One-off trajectory: below threshold.
     g.record_trajectory(
-        cell="c", trajectory_id="solo", outcome="success",
-        procedure="x", tags=["ig"],
+        cell="c",
+        trajectory_id="solo",
+        outcome="success",
+        procedure="x",
+        tags=["ig"],
     )
     out = tmp_path / "proposals.jsonl"
-    rc = main([
-        "--db-path", str(db), "--out", str(out),
-        "--min-cluster-size", "10", "--window-days", "7",
-    ])
+    rc = main(
+        [
+            "--db-path",
+            str(db),
+            "--out",
+            str(out),
+            "--min-cluster-size",
+            "10",
+            "--window-days",
+            "7",
+        ]
+    )
     assert rc == 0
     if out.exists():
         assert out.read_text().strip() == ""

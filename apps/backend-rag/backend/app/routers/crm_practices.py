@@ -237,13 +237,17 @@ class PracticeCreate(BaseModel):
     status: str = "inquiry"
     priority: str = "normal"  # 'low', 'normal', 'high', 'urgent'
     quoted_price: Decimal | None = None
-    discount_amount: Decimal | None = None  # Fixed-IDR discount; final invoice total = quoted_price - discount_amount
+    discount_amount: Decimal | None = (
+        None  # Fixed-IDR discount; final invoice total = quoted_price - discount_amount
+    )
     discount_reason: str | None = None  # Free-text reason, optional, surfaced on invoice PDF
     assigned_to: str | None = None  # team member email
     start_date: datetime | None = None
     notes: str | None = None
     internal_notes: str | None = None
-    family_member_id: int | None = None  # If practice is for a specific family member (dependent KITAS etc.)
+    family_member_id: int | None = (
+        None  # If practice is for a specific family member (dependent KITAS etc.)
+    )
 
     @field_validator("status")
     @classmethod
@@ -433,9 +437,16 @@ async def create_practice(
 
             # Insert practice — conditionally include start_date
             insert_columns = [
-                "client_id", "practice_type_id", "status", "priority",
-                "quoted_price", "assigned_to", "notes", "internal_notes",
-                "inquiry_date", "created_by",
+                "client_id",
+                "practice_type_id",
+                "status",
+                "priority",
+                "quoted_price",
+                "assigned_to",
+                "notes",
+                "internal_notes",
+                "inquiry_date",
+                "created_by",
             ]
             insert_values: list[Any] = [
                 practice.client_id,
@@ -756,7 +767,9 @@ async def list_practices(
                     query_parts.append(f" AND p.assigned_to = ${param_index}")
                     params.append(practices_filter)
                     param_index += 1
-                    logger.info("RBAC: Filtering practices for %s (p.assigned_to)", practices_filter)
+                    logger.info(
+                        "RBAC: Filtering practices for %s (p.assigned_to)", practices_filter
+                    )
 
             # Month filter
             month_range = _parse_month_param(month)
@@ -943,22 +956,26 @@ async def get_practice_types_catalog(
                 cat = row["category"] or "other"
                 if cat not in categories:
                     categories[cat] = []
-                categories[cat].append({
-                    "code": row["code"],
-                    "name": row["name"],
-                    "description": row["description"],
-                    "base_price": float(row["base_price"]) if row["base_price"] else None,
-                    "typical_duration_days": row["typical_duration_days"],
-                })
+                categories[cat].append(
+                    {
+                        "code": row["code"],
+                        "name": row["name"],
+                        "description": row["description"],
+                        "base_price": float(row["base_price"]) if row["base_price"] else None,
+                        "typical_duration_days": row["typical_duration_days"],
+                    }
+                )
 
             result = []
             for cat_code in CATEGORY_ORDER:
                 if cat_code in categories:
-                    result.append({
-                        "code": cat_code,
-                        "label": CATEGORY_LABELS.get(cat_code, cat_code),
-                        "services": categories[cat_code],
-                    })
+                    result.append(
+                        {
+                            "code": cat_code,
+                            "label": CATEGORY_LABELS.get(cat_code, cat_code),
+                            "services": categories[cat_code],
+                        }
+                    )
 
             return {
                 "categories": result,
@@ -1129,7 +1146,8 @@ async def update_practice(
                 )
                 if not (created_by_match or assigned_to_match):
                     raise HTTPException(
-                        status_code=403, detail="You don't have permission to update this practice",
+                        status_code=403,
+                        detail="You don't have permission to update this practice",
                     )
 
             # Validate state machine transition if status is being changed
@@ -1220,13 +1238,10 @@ async def update_practice(
             # for each field (fall back to the value already on the row).
             if updates.discount_amount is not None:
                 effective_quoted = (
-                    updates.quoted_price
-                    if updates.quoted_price is not None
-                    else old_quoted_price
+                    updates.quoted_price if updates.quoted_price is not None else old_quoted_price
                 )
-                if (
-                    effective_quoted is not None
-                    and Decimal(updates.discount_amount) > Decimal(effective_quoted)
+                if effective_quoted is not None and Decimal(updates.discount_amount) > Decimal(
+                    effective_quoted
                 ):
                     raise HTTPException(
                         status_code=400,
@@ -1260,26 +1275,32 @@ async def update_practice(
             # touched, even when only the reason changes. Idempotent — we
             # ignore the case where the new value equals the old one.
             try:
-                discount_changed = (
-                    updates.discount_amount is not None
-                    and (
-                        old_discount_amount is None
-                        or Decimal(updates.discount_amount) != Decimal(old_discount_amount)
-                    )
+                discount_changed = updates.discount_amount is not None and (
+                    old_discount_amount is None
+                    or Decimal(updates.discount_amount) != Decimal(old_discount_amount)
                 )
                 reason_changed = (
-                    updates.discount_reason is not None
-                    and (updates.discount_reason or "").strip()
+                    updates.discount_reason is not None and (updates.discount_reason or "").strip()
                 )
                 if discount_changed or reason_changed:
-                    user_email = current_user.get("email", "system") if isinstance(current_user, dict) else "system"
+                    user_email = (
+                        current_user.get("email", "system")
+                        if isinstance(current_user, dict)
+                        else "system"
+                    )
                     audit_entry = {
-                        "amount": str(updates.discount_amount) if updates.discount_amount is not None else (str(old_discount_amount) if old_discount_amount is not None else None),
+                        "amount": str(updates.discount_amount)
+                        if updates.discount_amount is not None
+                        else (
+                            str(old_discount_amount) if old_discount_amount is not None else None
+                        ),
                         "reason": (updates.discount_reason or "").strip() or None,
                         "applied_by": user_email,
                         "applied_at": datetime.now(tz=timezone.utc).isoformat(),
                         "event": "update",
-                        "previous_amount": str(old_discount_amount) if old_discount_amount is not None else None,
+                        "previous_amount": str(old_discount_amount)
+                        if old_discount_amount is not None
+                        else None,
                     }
                     new_meta = dict(old_metadata or {})
                     log = new_meta.get("discount_log") or []
@@ -1347,7 +1368,8 @@ async def update_practice(
                         except Exception as e:
                             if getattr(e, "sqlstate", None) != "42P01":
                                 logger.warning(
-                                    "Could not create timeline event for status change: %s", e,
+                                    "Could not create timeline event for status change: %s",
+                                    e,
                                 )
 
             # Notify client via portal about status change
@@ -1433,7 +1455,9 @@ async def update_practice(
                         triggered_by=user_email,
                     ),
                 )
-                logger.info("🚀 Waiting documents automation triggered for practice %s", practice_id)
+                logger.info(
+                    "🚀 Waiting documents automation triggered for practice %s", practice_id
+                )
 
             # 🚀 Invoice Automation: Trigger when status changes to 'sending_invoice'
             if updates.status == "sending_invoice" and old_status != "sending_invoice":
@@ -1462,7 +1486,8 @@ async def update_practice(
                     ),
                 )
                 logger.info(
-                    "🚀 Process completion automation triggered for practice %s", practice_id,
+                    "🚀 Process completion automation triggered for practice %s",
+                    practice_id,
                 )
 
                 # 🎯 HR Bonus Auto-Creation: create bonus ledger entry for assigned team member
@@ -1528,7 +1553,8 @@ async def delete_practice(
                 assigned_to_match = assigned_to == user_email
                 if not (created_by_match or assigned_to_match):
                     raise HTTPException(
-                        status_code=403, detail="You don't have permission to delete this practice",
+                        status_code=403,
+                        detail="You don't have permission to delete this practice",
                     )
 
             # Soft delete - mark as cancelled
@@ -1825,7 +1851,9 @@ async def regenerate_invoice(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Failed to regenerate invoice for practice %s: %s", practice_id, e, exc_info=True)
+        logger.error(
+            "Failed to regenerate invoice for practice %s: %s", practice_id, e, exc_info=True
+        )
         raise handle_database_error(e)
 
 
@@ -1928,7 +1956,8 @@ async def add_required_document(
         async with db_pool.acquire() as conn:
             # Check if practice exists
             practice = await conn.fetchrow(
-                "SELECT id, client_id FROM practices WHERE id = $1", practice_id,
+                "SELECT id, client_id FROM practices WHERE id = $1",
+                practice_id,
             )
             if not practice:
                 raise HTTPException(status_code=404, detail="Practice not found")
@@ -2018,7 +2047,9 @@ async def delete_required_document(
                 raise HTTPException(status_code=404, detail="Document not found")
 
             logger.info(
-                "Deleted required document %s from practice %s", doc_id, practice_id,
+                "Deleted required document %s from practice %s",
+                doc_id,
+                practice_id,
                 extra={
                     "practice_id": practice_id,
                     "doc_id": doc_id,
@@ -2080,7 +2111,9 @@ async def update_required_document(
                 raise HTTPException(status_code=404, detail="Document not found")
 
             logger.info(
-                "Updated required document %s for practice %s", doc_id, practice_id,
+                "Updated required document %s for practice %s",
+                doc_id,
+                practice_id,
                 extra={
                     "practice_id": practice_id,
                     "doc_id": doc_id,
@@ -2142,7 +2175,8 @@ async def upload_client_document(
 
             # Verify client is uploading their own document
             client = await conn.fetchrow(
-                "SELECT id FROM clients WHERE email = $1", current_user.get("email"),
+                "SELECT id FROM clients WHERE email = $1",
+                current_user.get("email"),
             )
 
             if not client or client["id"] != req_doc["client_id"]:
@@ -2184,7 +2218,8 @@ async def upload_client_document(
             )
 
             logger.info(
-                "Client uploaded document for practice %s", practice_id,
+                "Client uploaded document for practice %s",
+                practice_id,
                 extra={
                     "practice_id": practice_id,
                     "required_doc_id": request.required_doc_id,

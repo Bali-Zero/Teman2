@@ -218,7 +218,8 @@ class ZohoInvoiceService:
             {
                 "name": service_name,
                 "description": practice_data.get(
-                    "notes", f"Service for {client_data['full_name']}",
+                    "notes",
+                    f"Service for {client_data['full_name']}",
                 ),
                 "rate": quoted_price,
                 "quantity": 1,

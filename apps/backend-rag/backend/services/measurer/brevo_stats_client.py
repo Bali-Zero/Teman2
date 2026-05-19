@@ -85,7 +85,11 @@ class BrevoStatsClient:
             opens += gs.get("uniqueViews", 0)
             clicks += gs.get("uniqueClicks", 0)
         if sent == 0:
-            return {"campaigns_analyzed": len(campaigns), "avg_open_rate": 0.0, "avg_click_rate": 0.0}
+            return {
+                "campaigns_analyzed": len(campaigns),
+                "avg_open_rate": 0.0,
+                "avg_click_rate": 0.0,
+            }
         return {
             "campaigns_analyzed": len(campaigns),
             "avg_open_rate": opens / sent,

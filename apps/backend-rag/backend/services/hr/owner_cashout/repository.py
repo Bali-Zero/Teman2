@@ -2,6 +2,7 @@
 
 All functions return plain dicts suitable for JSON serialization.
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -47,7 +48,9 @@ async def get_overview(pool: asyncpg.Pool) -> dict[str, Any]:
         "last_week": meta["last_week"],
         "kpi": {
             "margin_bz_total_idr": int(meta["mbz_total"]),
-            "margin_bz_last_week_idr": int(last_week_row["total_margin_bz_idr"]) if last_week_row else 0,
+            "margin_bz_last_week_idr": int(last_week_row["total_margin_bz_idr"])
+            if last_week_row
+            else 0,
             "margin_bs_total_idr": int(meta["mbs_total"]),
             "practices_total": int(meta["practices_total"]),
             "practices_last_week": int(last_week_row["total_practices"]) if last_week_row else 0,
@@ -78,9 +81,7 @@ async def list_weeks(pool: asyncpg.Pool) -> list[dict[str, Any]]:
     return [dict(r) for r in rows]
 
 
-async def get_week_details(
-    pool: asyncpg.Pool, week_id: int
-) -> dict[str, Any] | None:
+async def get_week_details(pool: asyncpg.Pool, week_id: int) -> dict[str, Any] | None:
     async with pool.acquire() as c:
         week = await c.fetchrow(
             """

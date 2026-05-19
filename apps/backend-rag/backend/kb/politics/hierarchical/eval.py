@@ -111,13 +111,15 @@ def load_eval_queries(path: Path) -> list[EvalQuery]:
             if not line:
                 continue
             obj = json.loads(line)
-            queries.append(EvalQuery(
-                query=obj["query"],
-                relevant_doc_ids=obj.get("relevant_doc_ids", []),
-                weak_label=obj.get("weak_label", False),
-                query_type=obj.get("query_type", ""),
-                language=obj.get("language", "id"),
-            ))
+            queries.append(
+                EvalQuery(
+                    query=obj["query"],
+                    relevant_doc_ids=obj.get("relevant_doc_ids", []),
+                    weak_label=obj.get("weak_label", False),
+                    query_type=obj.get("query_type", ""),
+                    language=obj.get("language", "id"),
+                )
+            )
     return queries
 
 
@@ -146,14 +148,16 @@ def evaluate(
         ndcg = _ndcg_at_k(retrieved_ids, relevant_set, k)
         recall = _recall_at_k(retrieved_ids, relevant_set, k)
 
-        per_query.append(EvalResult(
-            query=eq.query,
-            ndcg_at_5=round(ndcg, 4),
-            recall_at_5=round(recall, 4),
-            retrieved_ids=retrieved_ids,
-            relevant_ids=eq.relevant_doc_ids,
-            weak_label=eq.weak_label,
-        ))
+        per_query.append(
+            EvalResult(
+                query=eq.query,
+                ndcg_at_5=round(ndcg, 4),
+                recall_at_5=round(recall, 4),
+                retrieved_ids=retrieved_ids,
+                relevant_ids=eq.relevant_doc_ids,
+                weak_label=eq.weak_label,
+            )
+        )
 
     # Aggregate
     all_ndcg = [r.ndcg_at_5 for r in per_query]
@@ -169,7 +173,9 @@ def evaluate(
         mean_ndcg_at_5=round(sum(all_ndcg) / len(all_ndcg), 4) if all_ndcg else 0.0,
         mean_recall_at_5=round(sum(all_recall) / len(all_recall), 4) if all_recall else 0.0,
         mean_ndcg_hard_labels=round(sum(hard_ndcg) / len(hard_ndcg), 4) if hard_ndcg else 0.0,
-        mean_recall_hard_labels=round(sum(hard_recall) / len(hard_recall), 4) if hard_recall else 0.0,
+        mean_recall_hard_labels=round(sum(hard_recall) / len(hard_recall), 4)
+        if hard_recall
+        else 0.0,
         total_queries=len(per_query),
         hard_label_queries=len(hard),
         weak_label_queries=weak_count,

@@ -46,11 +46,15 @@ class ContextWindowManager:
             logger.warning("⚠️ ZANTARA AI not available for summarization: %s", e)
             self.zantara_client = None
         logger.info(
-            "✅ ContextWindowManager initialized (max: %s, threshold: %s)", max_messages, summary_threshold,
+            "✅ ContextWindowManager initialized (max: %s, threshold: %s)",
+            max_messages,
+            summary_threshold,
         )
 
     def trim_conversation_history(
-        self, conversation_history: list[dict], current_summary: str | None = None,
+        self,
+        conversation_history: list[dict],
+        current_summary: str | None = None,
     ) -> dict:
         """
         Trim conversation history to prevent context overflow
@@ -90,7 +94,8 @@ class ContextWindowManager:
         # CASE 2: Medium conversation - approaching limit
         if total_messages <= self.summary_threshold:
             logger.info(
-                "📊 [Context] Conversation medium (%s msgs) - approaching limit", total_messages,
+                "📊 [Context] Conversation medium (%s msgs) - approaching limit",
+                total_messages,
             )
             # Keep recent messages, but warn
             recent_messages = conversation_history[-self.max_messages :]
@@ -103,7 +108,8 @@ class ContextWindowManager:
 
         # CASE 3: Long conversation - needs summarization
         logger.info(
-            "📊 [Context] Conversation long (%s msgs) - triggering summarization", total_messages,
+            "📊 [Context] Conversation long (%s msgs) - triggering summarization",
+            total_messages,
         )
 
         # Keep last max_messages in full
@@ -150,7 +156,6 @@ Focus on:
 - Important context for future messages
 
 Summary:"""
-
 
     def get_context_status(self, conversation_history: list[dict]) -> dict:
         """
@@ -218,7 +223,9 @@ Summary:"""
         return hashlib.sha256(raw.encode()).hexdigest()
 
     async def generate_summary(
-        self, messages: list[dict], existing_summary: str | None = None,
+        self,
+        messages: list[dict],
+        existing_summary: str | None = None,
     ) -> str:
         """
         Generate conversation summary using ZANTARA AI (fast & cheap).
@@ -261,7 +268,9 @@ Update the summary to include both the previous context and new messages."""
             logger.info(f"📝 [Summary] Generating summary for {len(messages)} messages...")
 
             summary = await self.zantara_client.generate_text(
-                prompt=prompt, max_tokens=8192, temperature=0.3,
+                prompt=prompt,
+                max_tokens=8192,
+                temperature=0.3,
             )
 
             result = summary.strip()
@@ -337,7 +346,10 @@ class AdvancedContextWindowManager:
         return len(text) // 4  # Rough estimation
 
     async def process_conversation_history(
-        self, conversation_history: list[dict], system_prompt: str, current_query: str,
+        self,
+        conversation_history: list[dict],
+        system_prompt: str,
+        current_query: str,
     ) -> dict:
         """
         Process history to fit within token limits.

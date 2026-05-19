@@ -104,7 +104,8 @@ class WeeklyRoundupBuilder:
         # 2. theses (L1 Connector)
         try:
             theses = await self.cognitive_repo.recent_theses(
-                days=self.theses_lookback, active_only=True,
+                days=self.theses_lookback,
+                active_only=True,
             )
             content.theses = theses[: self.theses_max]
         except Exception as exc:  # noqa: BLE001

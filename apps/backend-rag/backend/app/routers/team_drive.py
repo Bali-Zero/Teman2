@@ -309,7 +309,8 @@ async def drive_status(
             logger.info("[TEAM_DRIVE] BZ root folder accessible: %s", files_accessible)
         except Exception as e2:
             logger.error(
-                "[TEAM_DRIVE] BZ root folder also failed: %s. Returning connected=true anyway (SA is configured).", e2,
+                "[TEAM_DRIVE] BZ root folder also failed: %s. Returning connected=true anyway (SA is configured).",
+                e2,
             )
             files_accessible = False
 
@@ -477,7 +478,8 @@ async def search_files(
     current_user: Annotated[dict, Depends(get_current_user)],
     drive: Annotated[TeamDriveService, Depends(get_drive)],
     file_type: str | None = Query(
-        None, description="Filter by type: folder, document, spreadsheet, pdf",
+        None,
+        description="Filter by type: folder, document, spreadsheet, pdf",
     ),
     page_size: int = Query(20, ge=1, le=50),
 ) -> dict[str, Any]:
@@ -553,7 +555,8 @@ async def upload_file(
     # Check write permission
     if not await check_write_permission(user_email, parent_id, pool, drive):
         raise HTTPException(
-            status_code=403, detail="Non hai i permessi per caricare file in questa cartella",
+            status_code=403,
+            detail="Non hai i permessi per caricare file in questa cartella",
         )
 
     try:
@@ -605,7 +608,9 @@ async def create_folder(
         await invalidate_cache("zantara:team_drive:*")
 
         return OperationResponse(
-            success=True, file=FileItem(**result), message=f"Cartella '{request.name}' creata",
+            success=True,
+            file=FileItem(**result),
+            message=f"Cartella '{request.name}' creata",
         )
 
     except Exception as e:
@@ -680,7 +685,9 @@ async def rename_file(
         await invalidate_cache("zantara:team_drive:*")
 
         return OperationResponse(
-            success=True, file=FileItem(**result), message=f"Rinominato in '{request.new_name}'",
+            success=True,
+            file=FileItem(**result),
+            message=f"Rinominato in '{request.new_name}'",
         )
 
     except Exception as e:
@@ -733,7 +740,8 @@ async def move_file(
     # Check write permission on destination
     if not await check_write_permission(user_email, request.new_parent_id, pool, drive):
         raise HTTPException(
-            status_code=403, detail="Non hai i permessi per spostare file in questa cartella",
+            status_code=403,
+            detail="Non hai i permessi per spostare file in questa cartella",
         )
 
     try:
@@ -770,7 +778,8 @@ async def copy_file(
     if request.parent_id:
         if not await check_write_permission(user_email, request.parent_id, pool, drive):
             raise HTTPException(
-                status_code=403, detail="Non hai i permessi per copiare file in questa cartella",
+                status_code=403,
+                detail="Non hai i permessi per copiare file in questa cartella",
             )
 
     try:
@@ -949,7 +958,9 @@ async def remove_permission(
             permission_id=permission_id,
         )
 
-        logger.info("[TEAM_DRIVE] %s removed permission %s from %s", user_email, permission_id, file_id)
+        logger.info(
+            "[TEAM_DRIVE] %s removed permission %s from %s", user_email, permission_id, file_id
+        )
         await invalidate_cache("zantara:team_drive:*")
 
         return {"success": True, "message": "Permesso rimosso"}

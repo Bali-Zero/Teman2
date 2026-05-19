@@ -325,7 +325,9 @@ def get_cache_service() -> CacheService:
 
 
 def cached(
-    ttl: int = DEFAULT_CACHE_TTL, prefix: str = "default", cache_service: CacheService | None = None,
+    ttl: int = DEFAULT_CACHE_TTL,
+    prefix: str = "default",
+    cache_service: CacheService | None = None,
 ) -> Any:
     """
     Decorator to cache function results
@@ -372,7 +374,9 @@ def cached(
     return decorator
 
 
-async def invalidate_cache(pattern: str = "zantara:*", cache_service: CacheService | None = None) -> int:
+async def invalidate_cache(
+    pattern: str = "zantara:*", cache_service: CacheService | None = None
+) -> int:
     """
     Invalidate cache entries matching pattern
 
@@ -445,7 +449,10 @@ async def invalidate_all_caches(
 
     total = cache_count + semantic_count
     logger.info(
-        "Unified invalidation: %s cache_service + %s semantic_cache = %s total", cache_count, semantic_count, total,
+        "Unified invalidation: %s cache_service + %s semantic_cache = %s total",
+        cache_count,
+        semantic_count,
+        total,
     )
     return {"cache_service": cache_count, "semantic_cache": semantic_count}
 

@@ -124,9 +124,7 @@ class EmailSubscriptionRepository:
             )
         return [self._row_to_sub(r) for r in rows]
 
-    async def mark_fired(
-        self, subscription_id: int, *, next_fire_at: datetime | None
-    ) -> None:
+    async def mark_fired(self, subscription_id: int, *, next_fire_at: datetime | None) -> None:
         """Increment fired_count; set next_fire_at (or NULL if last)."""
         async with self._pool.acquire() as conn:
             await conn.execute(

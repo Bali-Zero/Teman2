@@ -63,7 +63,10 @@ class TestWebhookEndpoints:
 
     @pytest.mark.integration
     def test_callback_query_short_circuits_when_handled(self, client: TestClient) -> None:
-        with patch("backend.app.routers.telegram_webhook.handle_intel_callback", AsyncMock(return_value=True)):
+        with patch(
+            "backend.app.routers.telegram_webhook.handle_intel_callback",
+            AsyncMock(return_value=True),
+        ):
             response = client.post(
                 "/webhook/telegram",
                 json={"update_id": 2, "callback_query": {"data": "intel:approve:news:item-1"}},
@@ -93,4 +96,3 @@ class TestWebhookEndpoints:
         response = client.get("/webhook/telegram/health")
         assert response.status_code == 200
         assert response.json()["channel"] == "telegram"
-

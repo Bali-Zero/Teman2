@@ -127,7 +127,8 @@ class ClientCompanyLink(SQLModel, table=True):
     # Relationships
     company: Company | None = Relationship(back_populates="client_links")
     client: Optional["Client"] = Relationship(
-        back_populates="company_links", sa_relationship_kwargs={"lazy": "selectin"},
+        back_populates="company_links",
+        sa_relationship_kwargs={"lazy": "selectin"},
     )
 
 
@@ -159,7 +160,9 @@ class CompanyDocument(SQLModel, table=True):
     reminder_date: date | None = None
 
     # File Storage
-    storage_type: str = Field(default="google_drive", max_length=50, sa_column_kwargs={"server_default": "google_drive"})
+    storage_type: str = Field(
+        default="google_drive", max_length=50, sa_column_kwargs={"server_default": "google_drive"}
+    )
     google_drive_file_id: str | None = Field(default=None, max_length=255)
     google_drive_file_url: str | None = Field(default=None, sa_column=Column(Text))
     file_name: str | None = Field(default=None, max_length=500)
@@ -228,7 +231,12 @@ class TaxRecord(SQLModel, table=True):
     next_payment_date: date | None = None
 
     # Status
-    compliance_status: str = Field(default="compliant", max_length=50, index=True, sa_column_kwargs={"server_default": "compliant"})
+    compliance_status: str = Field(
+        default="compliant",
+        max_length=50,
+        index=True,
+        sa_column_kwargs={"server_default": "compliant"},
+    )
     # Custom Fields
     custom_fields: dict[str, Any] = Field(default_factory=dict, sa_column=Column(JSON))
 
@@ -266,7 +274,9 @@ class TaxDocument(SQLModel, table=True):
     paid_amount: Decimal | None = Field(default=None, sa_column=Column(Numeric(15, 2)))
     currency: str = Field(default="IDR", max_length=10, sa_column_kwargs={"server_default": "IDR"})
     # File Storage
-    storage_type: str = Field(default="google_drive", max_length=50, sa_column_kwargs={"server_default": "google_drive"})
+    storage_type: str = Field(
+        default="google_drive", max_length=50, sa_column_kwargs={"server_default": "google_drive"}
+    )
     google_drive_file_id: str | None = Field(default=None, max_length=255)
     google_drive_file_url: str | None = Field(default=None, sa_column=Column(Text))
     file_name: str | None = Field(default=None, max_length=500)

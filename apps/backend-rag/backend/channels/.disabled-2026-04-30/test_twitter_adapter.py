@@ -160,9 +160,7 @@ class TestTwitterFormatter:
     def test_format_sources_max_three(self) -> None:
         response = ChannelResponse(
             text="Answer",
-            sources=[
-                {"title": f"S{i}", "url": f"https://x.com/{i}"} for i in range(10)
-            ],
+            sources=[{"title": f"S{i}", "url": f"https://x.com/{i}"} for i in range(10)],
             metadata={},
         )
         result = TwitterMessageFormatter.format_response(response)
@@ -184,9 +182,7 @@ class TestTwitterFormatter:
         assert result == "❌ Error: oops"
 
     def test_format_empty_text(self) -> None:
-        result = TwitterMessageFormatter.format_response(
-            ChannelResponse(text="", metadata={})
-        )
+        result = TwitterMessageFormatter.format_response(ChannelResponse(text="", metadata={}))
         assert result == ""
 
 
@@ -203,7 +199,9 @@ class TestTwitterAdapter:
         assert adapter.max_message_length == 10000
 
     async def test_receive_message_valid(
-        self, adapter: TwitterChannelAdapter, sample_dm_webhook: dict,
+        self,
+        adapter: TwitterChannelAdapter,
+        sample_dm_webhook: dict,
     ) -> None:
         msg = await adapter.receive_message(sample_dm_webhook)
         assert msg.user_id == "twitter_111222333"
@@ -213,20 +211,25 @@ class TestTwitterAdapter:
         assert msg.metadata["sender_id"] == "111222333"
 
     async def test_receive_message_no_events(
-        self, adapter: TwitterChannelAdapter, empty_dm_webhook: dict,
+        self,
+        adapter: TwitterChannelAdapter,
+        empty_dm_webhook: dict,
     ) -> None:
         msg = await adapter.receive_message(empty_dm_webhook)
         assert msg.user_id == "unknown"
         assert msg.text == ""
 
     async def test_receive_message_malformed_raises(
-        self, adapter: TwitterChannelAdapter,
+        self,
+        adapter: TwitterChannelAdapter,
     ) -> None:
         with pytest.raises(Exception):
             await adapter.receive_message({"direct_message_events": "bad"})
 
     def test_oauth1_header_structure(self, adapter: TwitterChannelAdapter) -> None:
-        header = adapter._oauth1_header("POST", "https://api.x.com/2/dm_conversations/with/123/messages")
+        header = adapter._oauth1_header(
+            "POST", "https://api.x.com/2/dm_conversations/with/123/messages"
+        )
         assert header.startswith("OAuth ")
         assert "oauth_consumer_key" in header
         assert "oauth_signature" in header
@@ -242,7 +245,9 @@ class TestTwitterAdapter:
         assert h1 != h2
 
     async def test_send_response_success(
-        self, adapter: TwitterChannelAdapter, simple_response: ChannelResponse,
+        self,
+        adapter: TwitterChannelAdapter,
+        simple_response: ChannelResponse,
     ) -> None:
         mock_resp = MagicMock()
         mock_resp.status_code = 201
@@ -257,7 +262,9 @@ class TestTwitterAdapter:
         assert call_args.kwargs["json"]["text"] == "Hello, how can I help you?"
 
     async def test_send_response_api_error_status(
-        self, adapter: TwitterChannelAdapter, simple_response: ChannelResponse,
+        self,
+        adapter: TwitterChannelAdapter,
+        simple_response: ChannelResponse,
     ) -> None:
         mock_resp = MagicMock()
         mock_resp.status_code = 403
@@ -269,7 +276,9 @@ class TestTwitterAdapter:
         await adapter.send_response("123", simple_response)
 
     async def test_send_response_network_error(
-        self, adapter: TwitterChannelAdapter, simple_response: ChannelResponse,
+        self,
+        adapter: TwitterChannelAdapter,
+        simple_response: ChannelResponse,
     ) -> None:
         adapter.client = AsyncMock()
         adapter.client.post = AsyncMock(side_effect=Exception("Network error"))
@@ -279,7 +288,9 @@ class TestTwitterAdapter:
             await adapter.send_response("123", simple_response)
 
     async def test_send_response_truncates(
-        self, adapter: TwitterChannelAdapter, long_response: ChannelResponse,
+        self,
+        adapter: TwitterChannelAdapter,
+        long_response: ChannelResponse,
     ) -> None:
         mock_resp = MagicMock()
         mock_resp.status_code = 201
@@ -292,12 +303,14 @@ class TestTwitterAdapter:
         assert len(sent_text) <= adapter.max_message_length
 
     async def test_send_status_update_noop(
-        self, adapter: TwitterChannelAdapter,
+        self,
+        adapter: TwitterChannelAdapter,
     ) -> None:
         await adapter.send_status_update("123", "typing")
 
     async def test_stream_response_accumulates(
-        self, adapter: TwitterChannelAdapter,
+        self,
+        adapter: TwitterChannelAdapter,
     ) -> None:
         mock_resp = MagicMock()
         mock_resp.status_code = 201
@@ -314,7 +327,8 @@ class TestTwitterAdapter:
         assert "Part A Part B" in sent_text
 
     async def test_stream_response_empty_stream(
-        self, adapter: TwitterChannelAdapter,
+        self,
+        adapter: TwitterChannelAdapter,
     ) -> None:
         adapter.client = AsyncMock()
         adapter.client.post = AsyncMock()

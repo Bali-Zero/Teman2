@@ -65,7 +65,10 @@ class IntelStagingService:
         return self.visa_staging_dir if intel_type == "visa" else self.news_staging_dir
 
     def generate_item_id(
-        self, intel_type: Literal["visa", "news"], title: str, source_url: str,
+        self,
+        intel_type: Literal["visa", "news"],
+        title: str,
+        source_url: str,
     ) -> str:
         """
         Generate unique item ID for staging item.
@@ -125,7 +128,9 @@ class IntelStagingService:
         return staging_file
 
     def load_staging_item(
-        self, intel_type: Literal["visa", "news"], item_id: str,
+        self,
+        intel_type: Literal["visa", "news"],
+        item_id: str,
     ) -> dict[str, Any] | None:
         """
         Load staging item from file.
@@ -148,14 +153,19 @@ class IntelStagingService:
                 return json.load(f)
         except Exception as e:
             logger.error(
-                "Error reading staging file %s: %s", file_path, e,
+                "Error reading staging file %s: %s",
+                file_path,
+                e,
                 exc_info=True,
                 extra={"intel_type": intel_type, "item_id": item_id},
             )
             return None
 
     def check_duplicate(
-        self, intel_type: Literal["visa", "news"], source_url: str, days: int = 7,
+        self,
+        intel_type: Literal["visa", "news"],
+        source_url: str,
+        days: int = 7,
     ) -> dict[str, Any] | None:
         """
         Check if article with same source_url exists in staging.
@@ -242,7 +252,8 @@ class IntelStagingService:
         for category, directory in dirs_to_check:
             if not directory.exists():
                 logger.warning(
-                    "Directory does not exist: %s", directory,
+                    "Directory does not exist: %s",
+                    directory,
                     extra={"category": category},
                 )
                 continue
@@ -272,7 +283,9 @@ class IntelStagingService:
                         )
                 except Exception as e:
                     logger.error(
-                        "Error reading staging file %s: %s", file_path, e,
+                        "Error reading staging file %s: %s",
+                        file_path,
+                        e,
                         exc_info=True,
                         extra={"file": str(file_path), "category": category},
                     )
@@ -304,7 +317,9 @@ class IntelStagingService:
                             )
                     except Exception as e:
                         logger.error(
-                            "Error reading archived file %s: %s", file_path, e,
+                            "Error reading archived file %s: %s",
+                            file_path,
+                            e,
                             extra={"file": str(file_path), "category": category},
                         )
 

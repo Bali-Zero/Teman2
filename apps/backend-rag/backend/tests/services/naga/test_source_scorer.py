@@ -14,6 +14,7 @@ from backend.services.naga.search_agents.base import SearchResult
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _result(
     url: str = "https://example.com/page",
     title: str = "Test",
@@ -38,6 +39,7 @@ def _result(
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def config() -> NagaConfig:
     return NagaConfig()
@@ -51,6 +53,7 @@ def today() -> date:
 # ---------------------------------------------------------------------------
 # Credibility scoring
 # ---------------------------------------------------------------------------
+
 
 class TestCredibilityScoring:
     """Credibility is resolved via domain_overrides > .go.id > source_type > unknown."""
@@ -110,6 +113,7 @@ class TestCredibilityScoring:
 # ---------------------------------------------------------------------------
 # Freshness scoring
 # ---------------------------------------------------------------------------
+
 
 class TestFreshnessScoring:
     """Freshness score depends on the age of freshness_date."""
@@ -187,6 +191,7 @@ class TestFreshnessScoring:
 # Combined score
 # ---------------------------------------------------------------------------
 
+
 class TestCombinedScore:
     """Combined formula: credibility * 0.40 + freshness * 0.25 + relevance * 0.35."""
 
@@ -232,6 +237,7 @@ class TestCombinedScore:
 # ---------------------------------------------------------------------------
 # score_sources (batch)
 # ---------------------------------------------------------------------------
+
 
 class TestScoreSources:
     """Batch scoring: filters, sorts, stores metadata."""

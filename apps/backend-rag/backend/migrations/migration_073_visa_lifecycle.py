@@ -7,6 +7,7 @@ Adds:
 - documents.subfolder (VARCHAR 100) — tracks subfolder within category (e.g. "Actual Visa")
 - Index on documents(client_id, subfolder) for fast actual visa lookup
 """
+
 import logging
 
 import asyncpg

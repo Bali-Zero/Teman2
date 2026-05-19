@@ -50,7 +50,8 @@ async def test_chat_rejects_missing_jwt_when_check_hash_present(monkeypatch):
 
     req = _build_request(auth_header=None)
     body = mod.ChatRequest(
-        session_id="s1", message="hello",
+        session_id="s1",
+        message="hello",
         check_hash="abc1234567890000",
     )
     with pytest.raises(HTTPException) as ei:
@@ -66,7 +67,8 @@ async def test_chat_rejects_wrong_signature(monkeypatch):
     token = _make_jwt("abc1234567890000", wrong_key=True)
     req = _build_request(f"Bearer {token}")
     body = mod.ChatRequest(
-        session_id="s1", message="hello",
+        session_id="s1",
+        message="hello",
         check_hash="abc1234567890000",
     )
     with pytest.raises(HTTPException) as ei:
@@ -82,7 +84,8 @@ async def test_chat_rejects_sub_mismatch(monkeypatch):
     token = _make_jwt("DIFFERENT_HASH")
     req = _build_request(f"Bearer {token}")
     body = mod.ChatRequest(
-        session_id="s1", message="hello",
+        session_id="s1",
+        message="hello",
         check_hash="abc1234567890000",
     )
     with pytest.raises(HTTPException) as ei:
@@ -107,7 +110,8 @@ async def test_chat_returns_410_when_funnel_context_vanished(monkeypatch):
     token = _make_jwt("abc1234567890000")
     req = _build_request(f"Bearer {token}")
     body = mod.ChatRequest(
-        session_id="s1", message="hello",
+        session_id="s1",
+        message="hello",
         check_hash="abc1234567890000",
     )
     with pytest.raises(HTTPException) as ei:
@@ -124,10 +128,14 @@ async def test_chat_augments_system_prompt_when_jwt_valid(monkeypatch):
 
     ctx = FunnelContext(
         check_hash="abc1234567890000",
-        nationality="USA", purpose="work_remote",
-        duration_months=12, budget_band="50m_500m",
-        recommended_visa="E33G", estimated_cost_idr=13_000_000,
-        alternatives=["E23-FREELANCE", "C1"], referral_mode=False,
+        nationality="USA",
+        purpose="work_remote",
+        duration_months=12,
+        budget_band="50m_500m",
+        recommended_visa="E33G",
+        estimated_cost_idr=13_000_000,
+        alternatives=["E23-FREELANCE", "C1"],
+        referral_mode=False,
     )
 
     async def _ctx(*_a, **_kw):
@@ -173,12 +181,13 @@ async def test_chat_augments_system_prompt_when_jwt_valid(monkeypatch):
     token = _make_jwt("abc1234567890000")
     req = _build_request(f"Bearer {token}")
     body = mod.ChatRequest(
-        session_id="sess-1", message="posso estendere?",
-        check_hash="abc1234567890000", language="it",
+        session_id="sess-1",
+        message="posso estendere?",
+        check_hash="abc1234567890000",
+        language="it",
     )
     resp = await mod.chat(req, body, db_pool=None)
 
     assert "E33G" in captured["contents"]
-    assert ("13,000,000" in captured["contents"]
-            or "13000000" in captured["contents"])
+    assert "13,000,000" in captured["contents"] or "13000000" in captured["contents"]
     assert resp.session_id == "sess-1"

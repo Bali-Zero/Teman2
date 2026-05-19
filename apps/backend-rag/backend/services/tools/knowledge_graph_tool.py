@@ -57,7 +57,11 @@ class KnowledgeGraphTool(BaseTool):
         }
 
     async def execute(
-        self, entity: str, depth: int = 1, relationship_type: str = None, **kwargs,
+        self,
+        entity: str,
+        depth: int = 1,
+        relationship_type: str = None,
+        **kwargs,
     ) -> str:
         """
         Execute the graph search.

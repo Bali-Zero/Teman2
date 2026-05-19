@@ -123,15 +123,24 @@ class TestSendTelegramAlert:
             _send_telegram_alert("test alert")  # Should not raise
 
     def test_successful_send(self) -> None:
-        with patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "test-token", "TELEGRAM_OWNER_CHAT_ID": "123"}, clear=False):
-            with patch("backend.services.crm.drive_poll_service.urllib.request.urlopen") as mock_urlopen:
+        with patch.dict(
+            "os.environ",
+            {"TELEGRAM_BOT_TOKEN": "test-token", "TELEGRAM_OWNER_CHAT_ID": "123"},
+            clear=False,
+        ):
+            with patch(
+                "backend.services.crm.drive_poll_service.urllib.request.urlopen"
+            ) as mock_urlopen:
                 mock_urlopen.return_value = MagicMock()
                 _send_telegram_alert("Circuit breaker open!")
                 mock_urlopen.assert_called_once()
 
     def test_send_failure_caught(self) -> None:
         with patch.dict("os.environ", {"TELEGRAM_BOT_TOKEN": "test-token"}, clear=False):
-            with patch("backend.services.crm.drive_poll_service.urllib.request.urlopen", side_effect=Exception("network error")):
+            with patch(
+                "backend.services.crm.drive_poll_service.urllib.request.urlopen",
+                side_effect=Exception("network error"),
+            ):
                 _send_telegram_alert("test")  # Should not raise
 
 
@@ -190,7 +199,10 @@ class TestInferDocumentType:
         assert _infer_document_type("LKPM_report.pdf", "03_Tax") == "lkpm"
 
     def test_profile_perseroan(self) -> None:
-        assert _infer_document_type("Profile Perseroan PT ABC.pdf", "02_Company") == "profile_perseroan"
+        assert (
+            _infer_document_type("Profile Perseroan PT ABC.pdf", "02_Company")
+            == "profile_perseroan"
+        )
 
     def test_company_profile(self) -> None:
         assert _infer_document_type("Company Profile.pdf", "02_Company") == "profile_perseroan"
@@ -240,9 +252,7 @@ class TestPollDriveChanges:
 
     @pytest.mark.asyncio
     async def test_circuit_open_returns_status(self) -> None:
-        with patch(
-            "backend.services.crm.drive_poll_service._drive_circuit_breaker"
-        ) as mock_cb:
+        with patch("backend.services.crm.drive_poll_service._drive_circuit_breaker") as mock_cb:
             mock_cb.call = AsyncMock(return_value=None)
             result = await poll_drive_changes()
             assert result["status"] == "circuit_open"
@@ -250,9 +260,7 @@ class TestPollDriveChanges:
 
     @pytest.mark.asyncio
     async def test_exception_returns_error(self) -> None:
-        with patch(
-            "backend.services.crm.drive_poll_service._drive_circuit_breaker"
-        ) as mock_cb:
+        with patch("backend.services.crm.drive_poll_service._drive_circuit_breaker") as mock_cb:
             mock_cb.call = AsyncMock(side_effect=RuntimeError("boom"))
             mock_cb.failure_threshold = 3
             mock_cb.recovery_timeout = 300
@@ -263,9 +271,7 @@ class TestPollDriveChanges:
     @pytest.mark.asyncio
     async def test_success_returns_result(self) -> None:
         expected: dict[str, Any] = {"status": "ok", "processed": 3, "changes": 5, "skipped": 2}
-        with patch(
-            "backend.services.crm.drive_poll_service._drive_circuit_breaker"
-        ) as mock_cb:
+        with patch("backend.services.crm.drive_poll_service._drive_circuit_breaker") as mock_cb:
             mock_cb.call = AsyncMock(return_value=expected)
             result = await poll_drive_changes()
             assert result == expected
@@ -299,7 +305,13 @@ class TestPollDriveChanges:
             {"value": "start-token"},
         ]
         conn.fetch.side_effect = [
-            [{"client_id": 42, "subfolder_name": "01_Immigration", "subfolder_id": "folder-immigration"}],
+            [
+                {
+                    "client_id": 42,
+                    "subfolder_name": "01_Immigration",
+                    "subfolder_id": "folder-immigration",
+                }
+            ],
             [],
         ]
         conn.fetchval.side_effect = [
@@ -329,7 +341,10 @@ class TestPollDriveChanges:
         ocr_dispatch = AsyncMock(return_value={"dispatched": True})
 
         with (
-            patch("backend.services.crm.drive_poll_service.asyncpg.create_pool", new=AsyncMock(return_value=fake_pool)),
+            patch(
+                "backend.services.crm.drive_poll_service.asyncpg.create_pool",
+                new=AsyncMock(return_value=fake_pool),
+            ),
             patch(
                 "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
                 return_value=drive_service,

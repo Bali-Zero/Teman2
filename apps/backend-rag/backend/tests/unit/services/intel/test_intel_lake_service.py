@@ -202,14 +202,11 @@ class TestRawPayloadBindType:
         svc = IntelLakeService(pool)  # type: ignore[arg-type]
         payload = {"k": "v"}
         await svc.record_observation(_make_obs(raw_payload=payload))
-        call = self._find_call(
-            pool.conn.fetchval_calls, "INSERT INTO intel_observations"
-        )
+        call = self._find_call(pool.conn.fetchval_calls, "INSERT INTO intel_observations")
         # args after query: item_id, producer_name, raw_payload, score
         bound_raw = call[3]
         assert isinstance(bound_raw, dict), (
-            f"intel_observations.raw_payload bound as {type(bound_raw).__name__}, "
-            f"expected dict"
+            f"intel_observations.raw_payload bound as {type(bound_raw).__name__}, expected dict"
         )
         assert bound_raw == payload
 

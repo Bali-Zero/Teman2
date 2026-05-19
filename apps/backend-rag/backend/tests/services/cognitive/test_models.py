@@ -33,7 +33,10 @@ def test_alert_severity_values():
 
 def test_ultra_move_decision_values():
     assert {d.value for d in UltraMoveDecision} == {
-        "pending", "approved", "rejected", "deferred",
+        "pending",
+        "approved",
+        "rejected",
+        "deferred",
     }
 
 
@@ -142,7 +145,7 @@ def test_brief_create_with_lists():
 def test_ultra_move_create_title_cap():
     with pytest.raises(ValidationError):
         UltraMoveCreate(
-            thesis="x" * 600,   # > 500
+            thesis="x" * 600,  # > 500
             narrative="y",
         )
 

@@ -143,12 +143,14 @@ class ConnectorOrchestrator:
 
         prompt = _render_prompt(dossiers, self.max_theses)
         parsed, runner_result = await self.runner.run_json(
-            prompt, timeout=self.timeout,
+            prompt,
+            timeout=self.timeout,
         )
         if runner_result.ok and parsed is None:
             self.logger.warning("runner returned non-JSON; retrying once")
             parsed, runner_result = await self.runner.run_json(
-                prompt, timeout=self.timeout,
+                prompt,
+                timeout=self.timeout,
             )
         if not runner_result.ok or parsed is None:
             result.errors.append(
@@ -205,9 +207,7 @@ class ConnectorOrchestrator:
     ) -> str:
         """Returns ``inserted``, ``idempotent``, or ``rejected``."""
         try:
-            source_ids = [
-                UUID(str(x)) for x in (raw.get("source_dossier_ids") or [])
-            ]
+            source_ids = [UUID(str(x)) for x in (raw.get("source_dossier_ids") or [])]
         except (TypeError, ValueError):
             return "rejected"
 
@@ -231,7 +231,8 @@ class ConnectorOrchestrator:
         # idempotency — same source-set recently? skip.
         try:
             already = await self.cognitive_repo.thesis_exists_for_sources(
-                valid_sources, days=IDEMPOTENCY_LOOKBACK_DAYS,
+                valid_sources,
+                days=IDEMPOTENCY_LOOKBACK_DAYS,
             )
         except Exception as exc:  # noqa: BLE001
             self.logger.debug("idempotency check failed: %s", exc)

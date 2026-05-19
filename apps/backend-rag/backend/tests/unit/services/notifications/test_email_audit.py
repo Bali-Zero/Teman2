@@ -97,9 +97,7 @@ async def test_record_email_result_first_failure_schedules_1h(fake_pool):
     """Attempt 1 failure → retry_after = NOW()+1h."""
     fake_pool._conn.fetchval.return_value = 1  # attempt_number=1
 
-    await record_email_result(
-        fake_pool, 7, status="failed", provider="brevo", error_message="500"
-    )
+    await record_email_result(fake_pool, 7, status="failed", provider="brevo", error_message="500")
 
     # 1h is the first backoff step (_RETRY_BACKOFF[0])
     assert fake_pool._conn.execute.called
@@ -123,18 +121,14 @@ async def test_record_email_result_non_resurrectable_skips_retry_schedule(fake_p
         return_value={"attempt_number": 1, "email_type": "completion_client"},
     )
 
-    await record_email_result(
-        fake_pool, 7, status="failed", provider="brevo", error_message="500"
-    )
+    await record_email_result(fake_pool, 7, status="failed", provider="brevo", error_message="500")
 
     # Inspect the UPDATE call — retry_after arg (4th positional after
     # the UPDATE sql) must be None.
     update_call = fake_pool._conn.execute.call_args
     # Args are: (sql, row_id, status, provider, error_message, retry_after)
     # Positional (not kwargs).
-    assert update_call.args[5] is None, (
-        "completion_client must not schedule retry — should be None"
-    )
+    assert update_call.args[5] is None, "completion_client must not schedule retry — should be None"
 
 
 @pytest.mark.asyncio
@@ -144,14 +138,10 @@ async def test_record_email_result_resurrectable_schedules_retry(fake_pool):
         return_value={"attempt_number": 1, "email_type": "hr_bonus"},
     )
 
-    await record_email_result(
-        fake_pool, 7, status="failed", provider="brevo", error_message="500"
-    )
+    await record_email_result(fake_pool, 7, status="failed", provider="brevo", error_message="500")
 
     update_call = fake_pool._conn.execute.call_args
-    assert update_call.args[5] is not None, (
-        "hr_bonus attempt=1 must schedule retry (1h backoff)"
-    )
+    assert update_call.args[5] is not None, "hr_bonus attempt=1 must schedule retry (1h backoff)"
 
 
 @pytest.mark.asyncio
@@ -160,9 +150,7 @@ async def test_record_email_result_invalid_status_coerced_to_failed(fake_pool):
     still reachable by the retry worker."""
     fake_pool._conn.fetchval.return_value = 1
 
-    await record_email_result(
-        fake_pool, 7, status="what_is_this", provider="brevo"
-    )
+    await record_email_result(fake_pool, 7, status="what_is_this", provider="brevo")
 
     # Still calls execute (the row is updated, just with coerced status)
     assert fake_pool._conn.execute.called
@@ -184,9 +172,7 @@ def test_notify_email_failure_critical_sends_telegram(monkeypatch):
     # frozen at first import of the module earlier in the test session.
     from backend.services.notifications import email_audit
 
-    with patch(
-        "backend.services.notifications.email_audit.urllib.request.urlopen"
-    ) as mock_open:
+    with patch("backend.services.notifications.email_audit.urllib.request.urlopen") as mock_open:
         notify_email_failure_critical(
             email_type="waiting_docs_client",
             to_email="client@example.com",
@@ -213,9 +199,7 @@ def test_notify_alert_distinguishes_resurrectable_from_non_resurrectable(monkeyp
     """
     monkeypatch.setenv("TELEGRAM_BOT_TOKEN", "fake-token")
 
-    with patch(
-        "backend.services.notifications.email_audit.urllib.request.urlopen"
-    ) as mock_open:
+    with patch("backend.services.notifications.email_audit.urllib.request.urlopen") as mock_open:
         notify_email_failure_critical(
             email_type="hr_bonus",
             to_email="asya@balizero.com",
@@ -227,9 +211,7 @@ def test_notify_alert_distinguishes_resurrectable_from_non_resurrectable(monkeyp
     assert b"Queued+for+retry" in data_hr
     assert b"Not+queued" not in data_hr
 
-    with patch(
-        "backend.services.notifications.email_audit.urllib.request.urlopen"
-    ) as mock_open:
+    with patch("backend.services.notifications.email_audit.urllib.request.urlopen") as mock_open:
         notify_email_failure_critical(
             email_type="welcome",
             to_email="c@example.com",
@@ -247,9 +229,7 @@ def test_notify_email_failure_critical_no_token_is_noop(monkeypatch):
     attempt any network call."""
     monkeypatch.delenv("TELEGRAM_BOT_TOKEN", raising=False)
 
-    with patch(
-        "backend.services.notifications.email_audit.urllib.request.urlopen"
-    ) as mock_open:
+    with patch("backend.services.notifications.email_audit.urllib.request.urlopen") as mock_open:
         notify_email_failure_critical(
             email_type="hr_bonus",
             to_email="asya@balizero.com",

@@ -25,6 +25,7 @@ Safety:
 - Idempotent via ``skill_id = "{cell}:{func_name}@{source_file}"``.
 - Cap per run: ``--limit`` (default 50) — we want 30–50 solid seeds, not 200.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -44,10 +45,20 @@ logger = logging.getLogger(__name__)
 
 # Substring rejects — if a function name starts with any of these, skip.
 _CRUD_PREFIXES = (
-    "get_", "list_", "fetch_", "load_", "read_",
-    "create_", "insert_", "add_",
-    "update_", "set_", "put_",
-    "delete_", "remove_", "drop_",
+    "get_",
+    "list_",
+    "fetch_",
+    "load_",
+    "read_",
+    "create_",
+    "insert_",
+    "add_",
+    "update_",
+    "set_",
+    "put_",
+    "delete_",
+    "remove_",
+    "drop_",
     "save_",  # generic persistence
 )
 
@@ -57,7 +68,11 @@ _MIN_NAME_LEN = 4
 # Directory / path fragments that indicate test or migration files. Candidates
 # from these files are never emitted.
 _EXCLUDED_PATH_FRAGMENTS = (
-    "/tests/", "/test/", "/migrations/", "/__pycache__/", "/.venv/",
+    "/tests/",
+    "/test/",
+    "/migrations/",
+    "/__pycache__/",
+    "/.venv/",
     "/node_modules/",
 )
 
@@ -171,30 +186,36 @@ def extract_candidates_from_source(
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             if not is_eligible_function(node.name):
                 continue
-            candidates.append(SkillCandidate(
-                cell=cell_hint,
-                skill_id=_make_skill_id(cell_hint, node.name, relpath),
-                procedure=_docstring_or_fallback(node, node.name, relpath),
-                source_file=relpath,
-                source_line=node.lineno,
-                context="module-level function",
-            ))
+            candidates.append(
+                SkillCandidate(
+                    cell=cell_hint,
+                    skill_id=_make_skill_id(cell_hint, node.name, relpath),
+                    procedure=_docstring_or_fallback(node, node.name, relpath),
+                    source_file=relpath,
+                    source_line=node.lineno,
+                    context="module-level function",
+                )
+            )
         elif isinstance(node, ast.ClassDef):
             # Public methods of classes
             for item in node.body:
                 if isinstance(item, (ast.FunctionDef, ast.AsyncFunctionDef)):
                     if not is_eligible_function(item.name):
                         continue
-                    candidates.append(SkillCandidate(
-                        cell=cell_hint,
-                        skill_id=_make_skill_id(
-                            cell_hint, f"{node.name}.{item.name}", relpath,
-                        ),
-                        procedure=_docstring_or_fallback(item, item.name, relpath),
-                        source_file=relpath,
-                        source_line=item.lineno,
-                        context=f"method of {node.name}",
-                    ))
+                    candidates.append(
+                        SkillCandidate(
+                            cell=cell_hint,
+                            skill_id=_make_skill_id(
+                                cell_hint,
+                                f"{node.name}.{item.name}",
+                                relpath,
+                            ),
+                            procedure=_docstring_or_fallback(item, item.name, relpath),
+                            source_file=relpath,
+                            source_line=item.lineno,
+                            context=f"method of {node.name}",
+                        )
+                    )
     return candidates
 
 
@@ -248,7 +269,8 @@ def scan_tree(root: Path, limit: int = 50) -> list[SkillCandidate]:
             if len(candidates) >= limit:
                 logger.warning(
                     "hit limit=%d before finishing tree; truncating. Re-run "
-                    "with a higher --limit to see the rest.", limit,
+                    "with a higher --limit to see the rest.",
+                    limit,
                 )
                 return candidates
     return candidates
@@ -312,23 +334,32 @@ def _default_repo_root() -> Path:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
-        "--repo-root", type=Path, default=_default_repo_root(),
+        "--repo-root",
+        type=Path,
+        default=_default_repo_root(),
         help="Monorepo root to scan (default: inferred from script location).",
     )
     parser.add_argument(
-        "--limit", type=int, default=50,
+        "--limit",
+        type=int,
+        default=50,
         help="Hard cap on candidates emitted (default: 50).",
     )
     parser.add_argument(
-        "--dry-run", action="store_true", default=True,
+        "--dry-run",
+        action="store_true",
+        default=True,
         help="Only print the report; do not write to the Genome.",
     )
     parser.add_argument(
-        "--apply", action="store_true",
+        "--apply",
+        action="store_true",
         help="Actually record the candidates (turns off dry-run).",
     )
     parser.add_argument(
-        "--subtree", action="append", default=[],
+        "--subtree",
+        action="append",
+        default=[],
         help=(
             "Restrict scan to this sub-path, relative to repo-root. May be "
             "given multiple times. Defaults to apps/backend-rag and apps/mata-garuda."

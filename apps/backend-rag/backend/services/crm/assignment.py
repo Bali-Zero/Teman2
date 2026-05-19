@@ -28,6 +28,7 @@ logger = logging.getLogger(__name__)
 # ClientIdentityResolver (from client_identity_resolver.py)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def normalize_phone(phone: str | None) -> str | None:
     """
     Normalize phone number to E.164 format.
@@ -141,12 +142,17 @@ class ClientIdentityResolver:
                 email,
             )
 
-    @cache_invalidating([
-        "zantara:messaging_identity:*",
-        lambda self, channel, identifier, client_id: f"zantara:crm_client:{client_id}:*",
-    ])
+    @cache_invalidating(
+        [
+            "zantara:messaging_identity:*",
+            lambda self, channel, identifier, client_id: f"zantara:crm_client:{client_id}:*",
+        ]
+    )
     async def link_messaging_user_to_client(
-        self, channel: str, identifier: str, client_id: int,
+        self,
+        channel: str,
+        identifier: str,
+        client_id: int,
     ) -> bool:
         """
         Link a messaging_user to a client.
@@ -195,12 +201,17 @@ class ClientIdentityResolver:
 
             return success
 
-    @cache_invalidating([
-        "zantara:crm_clients_stats:*",
-        "zantara:crm_clients:*",
-    ])
+    @cache_invalidating(
+        [
+            "zantara:crm_clients_stats:*",
+            "zantara:crm_clients:*",
+        ]
+    )
     async def resolve_or_create_client(
-        self, channel: str, identifier: str, client_data: dict[str, Any] | None = None,
+        self,
+        channel: str,
+        identifier: str,
+        client_data: dict[str, Any] | None = None,
     ) -> tuple[int, bool]:
         """
         Resolve client identity or create new client.
@@ -300,6 +311,7 @@ class ClientIdentityResolver:
 # Lead Assignment Agent (from lead_assignment_agent.py)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class LeadAssignmentState(TypedDict):
     """State for Lead Assignment workflow"""
 
@@ -326,7 +338,8 @@ class LeadAssignmentState(TypedDict):
 
 
 async def check_duplicates(
-    state: LeadAssignmentState, db_pool: "asyncpg.Pool",
+    state: LeadAssignmentState,
+    db_pool: "asyncpg.Pool",
 ) -> LeadAssignmentState:
     """
     Step 1: Entity resolution - check for duplicate clients
@@ -560,7 +573,9 @@ async def assign_lead(state: LeadAssignmentState, db_pool: "asyncpg.Pool") -> Le
 
 
 async def send_telegram_notification(
-    state: LeadAssignmentState, db_pool: "asyncpg.Pool", telegram_service,
+    state: LeadAssignmentState,
+    db_pool: "asyncpg.Pool",
+    telegram_service,
 ) -> LeadAssignmentState:
     """
     Step 3: Send Telegram notification to assigned lead
@@ -748,7 +763,10 @@ async def trigger_lead_assignment(
 
     except Exception as e:
         logger.error(
-            "❌ Lead assignment workflow failed for client #%s: %s", client_id, e, exc_info=True,
+            "❌ Lead assignment workflow failed for client #%s: %s",
+            client_id,
+            e,
+            exc_info=True,
         )
         return {
             "client_id": client_id,

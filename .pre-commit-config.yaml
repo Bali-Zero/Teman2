@@ -3,7 +3,7 @@ repos:
     rev: v1.5.0
     hooks:
       - id: detect-secrets
-        args: ['--baseline', '.secrets.baseline']
+        args: ["--baseline", ".secrets.baseline"]
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.5.0
@@ -18,19 +18,18 @@ repos:
       - id: debug-statements
         language_version: python3
 
-  - repo: https://github.com/psf/black
-    rev: 23.12.1
-    hooks:
-      - id: black
-        language_version: python3
-        files: ^apps/backend-rag/
-
-  - repo: https://github.com/charliermarsh/ruff-pre-commit
-    rev: v0.1.8
+  # Ruff (lint + format) — replaces Black + flake8/isort/pyupgrade.
+  # Bumped 2026-05-18 from v0.1.8 (Dec 2023) → v0.15.13 (current stable, 2026-05).
+  # ruff-format replaces psf/black 1:1 — Black hook removed in same commit.
+  # See: chore/precommit-ruff-format-mypy-gate-2026-05-18 (audit modernization finding #6).
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.13
     hooks:
       - id: ruff
         files: ^apps/backend-rag/
         args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+        files: ^apps/backend-rag/
 
   - repo: https://github.com/pre-commit/mirrors-eslint
     rev: v8.56.0
@@ -93,6 +92,25 @@ repos:
         # Only runs against files added/modified at repo root (no slash in path).
         # The script accepts file paths as argv and exits 1 if any is not whitelisted.
         files: ^[^/]+$
+
+      # ── MYPY GATE on dependencies.py (cicatrix SPOF guard 2026-05-18) ───────
+      # The "Rogue AI Import Removal" cicatrix (2026-04-21) documents how AI
+      # refactors silently remove `Any` from typing imports in
+      # backend/app/dependencies.py — that file is imported by EVERY router,
+      # so a missing symbol crashes the entire FastAPI app at startup.
+      # mypy --strict on this single file would have caught it pre-commit.
+      # Scoped intentionally to ONE file (not full backend) to stay fast and
+      # to avoid blocking commits on the ~960 typing debts in the wider tree.
+      # Uses `language: python` + additional_dependencies so mypy ships in an
+      # isolated pre-commit env (works even if user shell has no venv active).
+      - id: mypy-dependencies-py
+        name: mypy --strict on dependencies.py (cicatrix SPOF guard)
+        entry: mypy --strict --no-error-summary --ignore-missing-imports apps/backend-rag/backend/app/dependencies.py
+        language: python
+        additional_dependencies:
+          - mypy>=1.13.0
+        files: ^apps/backend-rag/backend/app/dependencies\.py$
+        pass_filenames: false
 
       - id: validate-organs-registry
         name: "Validate apps/organism/organism/organs_registry.yaml"

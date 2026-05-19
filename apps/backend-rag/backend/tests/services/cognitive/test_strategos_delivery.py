@@ -35,9 +35,8 @@ def _brief(
         id=DID,
         week_of=date(2026, 4, 20),
         top_themes=themes or [{"name": "Balance", "weight": 0.5}],
-        proposed_actions=actions or [
-            {"action": "commissiona 3 analitici", "owner": "war_room", "deadline_days": 5}
-        ],
+        proposed_actions=actions
+        or [{"action": "commissiona 3 analitici", "owner": "war_room", "deadline_days": 5}],
         kpi_targets={"reach_uplift_pct": 20},
         team_assignments={"war_room": "Damar"},
         narrative="Settimana di ribilanciamento",
@@ -218,9 +217,12 @@ def _update(action: StrategosAction, chat_id: str = "999", message_id: int = 100
 async def test_callback_rejects_unauthorized_chat(repo_tg):
     repo, tg = repo_tg
     delivery = StrategosDelivery(repo=repo, telegram=tg, owner_chat_id="999")
-    result = await delivery.process_callback(_update(
-        StrategosAction.APPROVE, chat_id="777",
-    ))
+    result = await delivery.process_callback(
+        _update(
+            StrategosAction.APPROVE,
+            chat_id="777",
+        )
+    )
     assert result.unauthorized is True
     tg.answer_callback_query.assert_awaited()
 

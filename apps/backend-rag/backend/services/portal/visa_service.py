@@ -62,7 +62,10 @@ class VisaService:
                 status = "expiring_soon"
 
         logger.info(
-            "Generated visa summary", client_id=client_id, status=status, days_until=days_until,
+            "Generated visa summary",
+            client_id=client_id,
+            status=status,
+            days_until=days_until,
         )
 
         return VisaSummary(
@@ -73,10 +76,12 @@ class VisaService:
             status=status,
         )
 
-    @cache_invalidating([
-        lambda self, client_id, *a, **k: f"zantara:portal_visa:{client_id}:*",
-        lambda self, client_id, *a, **k: f"zantara:portal_timeline:{client_id}:*",
-    ])
+    @cache_invalidating(
+        [
+            lambda self, client_id, *a, **k: f"zantara:portal_visa:{client_id}:*",
+            lambda self, client_id, *a, **k: f"zantara:portal_timeline:{client_id}:*",
+        ]
+    )
     async def create_visa_record(
         self,
         client_id: int,
@@ -125,9 +130,11 @@ class VisaService:
             logger.info("Created visa record", client_id=client_id, visa_type=visa_type)
             return VisaRecord(**dict(row))
 
-    @cache_invalidating([
-        "zantara:portal_visa:*",
-    ])
+    @cache_invalidating(
+        [
+            "zantara:portal_visa:*",
+        ]
+    )
     async def update_visa_status(self, visa_id: int, new_status: str) -> VisaRecord | None:
         """Update visa status (e.g., expiring_soon, expired)."""
         async with self.db_pool.acquire() as conn:

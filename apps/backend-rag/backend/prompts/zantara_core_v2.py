@@ -28,16 +28,14 @@ from backend.prompts.zantara_core import (
     LANGUAGE_PROTOCOL,  # the protocol itself; reused verbatim
     SYSTEM_INSTRUCTIONS,  # XML structural, no IT-only phrases
     TEAM_PERSONA,  # backward-compatible re-export for v3/import consumers
-    )
+)
 
 
 # Helper: render a {lang: phrase} dict as a 3-line model instruction so the
 # model can pick the correct variant via LANGUAGE_PROTOCOL.
 def _render_phrase_choices(key: str, prefix: str = "  ") -> str:
     variants = all_languages_for(key)
-    return "\n".join(
-        f"{prefix}- {lang}: \"{text}\"" for lang, text in variants.items()
-    )
+    return "\n".join(f'{prefix}- {lang}: "{text}"' for lang, text in variants.items())
 
 
 # ---------------------------------------------------------------------------

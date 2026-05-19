@@ -56,18 +56,26 @@ async def test_returns_block_with_empty_message_when_no_data(repo):
 
 @pytest.mark.asyncio
 async def test_includes_all_three_sections(repo):
-    repo.recent_rejections = AsyncMock(return_value=[
-        _rej(RejectionReason.TONE),
-        _rej(RejectionReason.TONE),
-        _rej(RejectionReason.CLICKBAIT),
-    ])
+    repo.recent_rejections = AsyncMock(
+        return_value=[
+            _rej(RejectionReason.TONE),
+            _rej(RejectionReason.TONE),
+            _rej(RejectionReason.CLICKBAIT),
+        ]
+    )
 
     async def skill_search(query, limit):
         return [
-            {"name": "war_room:analitico:ig:abc", "confidence": 0.82,
-             "procedure": "prefer analitico on visa topics"},
-            {"name": "war_room:tecnico:linkedin:xyz", "confidence": 0.7,
-             "procedure": "deep-dive Permenkumham works on LI"},
+            {
+                "name": "war_room:analitico:ig:abc",
+                "confidence": 0.82,
+                "procedure": "prefer analitico on visa topics",
+            },
+            {
+                "name": "war_room:tecnico:linkedin:xyz",
+                "confidence": 0.7,
+                "procedure": "deep-dive Permenkumham works on LI",
+            },
         ]
 
     async def council_perf():
@@ -106,8 +114,7 @@ async def test_includes_all_three_sections(repo):
 async def test_skills_limited_to_five(repo):
     async def skill_search(query, limit):
         return [
-            {"name": f"skill:{i}", "confidence": 0.8, "procedure": f"proc {i}"}
-            for i in range(10)
+            {"name": f"skill:{i}", "confidence": 0.8, "procedure": f"proc {i}"} for i in range(10)
         ]
 
     b = MemoriaEpisodicaBuilder(repo=repo, skill_search_fn=skill_search)
@@ -149,7 +156,7 @@ async def test_truncation_keeps_ellipsis_inside_block(repo):
 
     b = MemoriaEpisodicaBuilder(repo=repo, skill_search_fn=skill_search)
     out = await b.build()
-    inner = out[len(BLOCK_OPEN):-len(BLOCK_CLOSE)].strip()
+    inner = out[len(BLOCK_OPEN) : -len(BLOCK_CLOSE)].strip()
     assert inner.endswith("…") or not inner.endswith("…") and len(out) <= MAX_BLOCK_CHARS
     # block tags still intact
     assert out.startswith(BLOCK_OPEN)

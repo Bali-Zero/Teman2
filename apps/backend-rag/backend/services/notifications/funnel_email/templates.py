@@ -39,8 +39,8 @@ _CLOCK_SUBJECTS: dict[str, str] = {
     "visa_clock_d60": "Your {visa_type} expires in 60 days — time to start",
     "visa_clock_d30": "{visa_type} renewal: 30 days left to gather docs",
     "visa_clock_d14": "{visa_type}: 14 days — kantor imigrasi window opens",
-    "visa_clock_d7":  "{visa_type}: 1 week to pickup or renewal",
-    "visa_clock_d1":  "{visa_type} expires tomorrow",
+    "visa_clock_d7": "{visa_type}: 1 week to pickup or renewal",
+    "visa_clock_d1": "{visa_type} expires tomorrow",
 }
 
 _CLOCK_BODIES: dict[str, str] = {
@@ -123,8 +123,8 @@ def render_match_prearrival(
     )
     html = _wrap_html(
         title=subject,
-        body=body + f"<ol class=\"bz-steps\">{steps_html}</ol>"
-                    "<p>If you want us to file on arrival, book a 15-minute call: </p>",
+        body=body + f'<ol class="bz-steps">{steps_html}</ol>'
+        "<p>If you want us to file on arrival, book a 15-minute call: </p>",
         primary_cta=("Continue on WhatsApp", whatsapp_url),
         unsubscribe_url=unsubscribe_url,
     )

@@ -128,7 +128,9 @@ class TestGetLateReplyForm:
         assert token in response.text  # rendered into the hidden form field
 
     def test_get_form_with_wrong_token_returns_404(
-        self, app: FastAPI, client: TestClient,
+        self,
+        app: FastAPI,
+        client: TestClient,
     ) -> None:
         incident_id = uuid4()
         pool = _make_pool(
@@ -150,7 +152,9 @@ class TestGetLateReplyForm:
         assert "Tautan tidak valid" in response.text
 
     def test_get_form_when_already_replied(
-        self, app: FastAPI, client: TestClient,
+        self,
+        app: FastAPI,
+        client: TestClient,
     ) -> None:
         incident_id = uuid4()
         token = "valid_token_with_enough_length_xyz"
@@ -192,7 +196,9 @@ class TestPostLateReply:
         )
 
     def test_awaiting_reply_transitions_to_resolved(
-        self, app: FastAPI, client: TestClient,
+        self,
+        app: FastAPI,
+        client: TestClient,
     ) -> None:
         incident_id = uuid4()
         token = "valid_token_with_enough_length_aaa"
@@ -215,7 +221,9 @@ class TestPostLateReply:
         assert args[1] == STATE_RESOLVED
 
     def test_reminder_sent_transitions_to_resolved_late(
-        self, app: FastAPI, client: TestClient,
+        self,
+        app: FastAPI,
+        client: TestClient,
     ) -> None:
         incident_id = uuid4()
         token = "valid_token_with_enough_length_bbb"
@@ -235,7 +243,9 @@ class TestPostLateReply:
         assert args[1] == STATE_RESOLVED_LATE
 
     def test_escalated_state_is_preserved_on_late_reply(
-        self, app: FastAPI, client: TestClient,
+        self,
+        app: FastAPI,
+        client: TestClient,
     ) -> None:
         """
         Reply arriving AFTER the ultimatum must NOT downgrade the state.
@@ -269,7 +279,9 @@ class TestPostLateReply:
         assert args[0] == "Sorry, I had a family emergency on that day."
 
     def test_invalid_token_returns_404(
-        self, app: FastAPI, client: TestClient,
+        self,
+        app: FastAPI,
+        client: TestClient,
     ) -> None:
         incident_id = uuid4()
         pool = _make_pool(
@@ -282,7 +294,9 @@ class TestPostLateReply:
         _override_pool(app, pool)
 
         response = self._post(
-            client, incident_id, "wrong_token_value_zzzzzzzzz",
+            client,
+            incident_id,
+            "wrong_token_value_zzzzzzzzz",
         )
 
         assert response.status_code == 404
@@ -290,7 +304,9 @@ class TestPostLateReply:
         assert pool._conn.executed == []
 
     def test_replay_after_first_reply_is_idempotent(
-        self, app: FastAPI, client: TestClient,
+        self,
+        app: FastAPI,
+        client: TestClient,
     ) -> None:
         incident_id = uuid4()
         token = "valid_token_with_enough_length_ddd"

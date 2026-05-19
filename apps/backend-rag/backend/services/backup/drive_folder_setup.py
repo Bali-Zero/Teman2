@@ -34,6 +34,7 @@ Usage::
     # if all three already exist):
     PYTHONPATH=. python -m backend.services.backup.drive_folder_setup
 """
+
 from __future__ import annotations
 
 import argparse
@@ -335,8 +336,7 @@ def setup_folders(*, apply: bool = False) -> dict[str, Any]:
                 "status": "existed",
                 "child_count_sample": len(children),
                 "children_sample": [
-                    {"id": c["id"], "name": c["name"], "mime": c["mimeType"]}
-                    for c in children
+                    {"id": c["id"], "name": c["name"], "mime": c["mimeType"]} for c in children
                 ],
             }
             continue
@@ -396,8 +396,7 @@ def main(argv: list[str] | None = None) -> int:
     ]
     for name, info in summary["folders"].items():
         out_lines.append(f"  - {name}: id={info['id']} status={info['status']}")
-    out_lines.extend(["=" * 72, "Summary JSON:",
-                      json.dumps(summary, indent=2, sort_keys=True)])
+    out_lines.extend(["=" * 72, "Summary JSON:", json.dumps(summary, indent=2, sort_keys=True)])
     sys.stdout.write("\n".join(out_lines) + "\n")
     return 0
 

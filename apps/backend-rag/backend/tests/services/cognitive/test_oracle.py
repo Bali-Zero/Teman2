@@ -40,17 +40,23 @@ class MockRunner(CLIRunner):
         self.call_count += 1
         if self.fail:
             return RunnerResult(
-                runner_name=self.name, prompt_chars=len(prompt),
-                ok=False, error="runner down",
+                runner_name=self.name,
+                prompt_chars=len(prompt),
+                ok=False,
+                error="runner down",
             )
         if idx >= len(self.scripts):
             return RunnerResult(
-                runner_name=self.name, prompt_chars=len(prompt),
-                ok=False, error="out of script",
+                runner_name=self.name,
+                prompt_chars=len(prompt),
+                ok=False,
+                error="out of script",
             )
         return RunnerResult(
-            runner_name=self.name, prompt_chars=len(prompt),
-            ok=True, output=self.scripts[idx],
+            runner_name=self.name,
+            prompt_chars=len(prompt),
+            ok=True,
+            output=self.scripts[idx],
         )
 
 

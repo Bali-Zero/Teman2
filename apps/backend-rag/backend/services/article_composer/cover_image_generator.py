@@ -72,10 +72,40 @@ def _build_prompt_fallback(title: str, category: str, summary: str | None) -> st
 
     # Extract meaningful words from title
     stop = {
-        "the", "a", "an", "in", "of", "for", "and", "or", "to", "is", "are",
-        "was", "were", "what", "how", "why", "when", "who", "which", "with",
-        "from", "that", "this", "will", "have", "has", "its", "do", "does",
-        "new", "your", "must", "now", "can",
+        "the",
+        "a",
+        "an",
+        "in",
+        "of",
+        "for",
+        "and",
+        "or",
+        "to",
+        "is",
+        "are",
+        "was",
+        "were",
+        "what",
+        "how",
+        "why",
+        "when",
+        "who",
+        "which",
+        "with",
+        "from",
+        "that",
+        "this",
+        "will",
+        "have",
+        "has",
+        "its",
+        "do",
+        "does",
+        "new",
+        "your",
+        "must",
+        "now",
+        "can",
     }
     words = [w for w in re.sub(r"[^\w\s]", "", title.lower()).split() if w not in stop]
     keywords = " ".join(words[:5])
@@ -98,7 +128,9 @@ def build_prompt(title: str, category: str, summary: str | None) -> str:
         import sys
         from pathlib import Path
 
-        scraper_scripts = Path(__file__).parent.parent.parent.parent.parent / "bali-intel-scraper" / "scripts"
+        scraper_scripts = (
+            Path(__file__).parent.parent.parent.parent.parent / "bali-intel-scraper" / "scripts"
+        )
         if str(scraper_scripts) not in sys.path:
             sys.path.insert(0, str(scraper_scripts))
 
@@ -170,7 +202,10 @@ class CoverImageGenerator:
         """
         try:
             result = await self._generate(
-                title=title, summary=summary, category=category, slug=slug,
+                title=title,
+                summary=summary,
+                category=category,
+                slug=slug,
             )
             if result:
                 image_url = result["url"]
@@ -225,7 +260,10 @@ class CoverImageGenerator:
     ) -> dict | None:
         """Generate image, return {"url": ..., "bytes": ..., "prompt": ...} or None."""
         result = await self.generate_bytes(
-            title=title, summary=summary, category=category, slug=slug,
+            title=title,
+            summary=summary,
+            category=category,
+            slug=slug,
         )
         if not result:
             return None
@@ -295,7 +333,9 @@ class CoverImageGenerator:
                 logger.debug("[CoverImage] Pollinations [%s] HTTP error: %s", model, exc)
             except Exception as exc:
                 logger.warning(
-                    "[CoverImage] Pollinations [%s] unexpected error: %s", model, exc,
+                    "[CoverImage] Pollinations [%s] unexpected error: %s",
+                    model,
+                    exc,
                     exc_info=True,
                 )
         return None

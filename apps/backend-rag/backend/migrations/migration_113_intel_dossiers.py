@@ -282,7 +282,9 @@ async def rollback(conn: Any) -> None:
     await conn.execute("DROP TRIGGER IF EXISTS trg_research_dossiers_notify ON research_dossiers;")
     await conn.execute("DROP TRIGGER IF EXISTS trg_trend_signals_notify ON trend_signals;")
     await conn.execute("DROP TRIGGER IF EXISTS trg_trend_signals_expires_at ON trend_signals;")
-    await conn.execute("DROP TRIGGER IF EXISTS trg_research_dossiers_updated_at ON research_dossiers;")
+    await conn.execute(
+        "DROP TRIGGER IF EXISTS trg_research_dossiers_updated_at ON research_dossiers;"
+    )
     await conn.execute("DROP FUNCTION IF EXISTS notify_intel_event();")
     await conn.execute("DROP FUNCTION IF EXISTS trend_signals_expires_at();")
     await conn.execute("DROP FUNCTION IF EXISTS research_dossiers_updated_at();")

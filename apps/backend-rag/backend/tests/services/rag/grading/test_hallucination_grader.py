@@ -43,7 +43,9 @@ class TestHallucinationGrader:
         ctx = GradingContext(
             answer="The quantum blockchain protocol enables instant KITAS through satellite uplink",
             retrieved_documents=[
-                RetrievedDoc(content="KITAS is a stay permit for foreign workers in Indonesia", score=0.3),
+                RetrievedDoc(
+                    content="KITAS is a stay permit for foreign workers in Indonesia", score=0.3
+                ),
             ],
         )
         result = HallucinationGrader().grade(ctx)

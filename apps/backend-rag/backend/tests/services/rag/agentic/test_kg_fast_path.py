@@ -21,6 +21,7 @@ from backend.services.routing.surface_router import Surface, SurfaceDecision
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _make_kg_decision() -> SurfaceDecision:
     return SurfaceDecision(
         surface=Surface.KG,
@@ -66,6 +67,7 @@ def _make_kg_orchestrator_result() -> dict:
 # ---------------------------------------------------------------------------
 # 1. KG fast-path integration — _try_kg_fast_path method
 # ---------------------------------------------------------------------------
+
 
 class TestKGFastPath:
     """Tests for OrchestratorCore._try_kg_fast_path (internal helper)."""
@@ -151,7 +153,6 @@ class TestKGFastPath:
         """_try_kg_fast_path returns None (graceful degrade) when kg_orchestrator.query raises."""
         mock_kg_orchestrator.query.side_effect = RuntimeError("Neo4j connection failed")
 
-
         core = _make_minimal_core(kg_langgraph_orchestrator=mock_kg_orchestrator)
         core._surface_router = MagicMock()
         core._surface_router.decide.return_value = _make_kg_decision()
@@ -170,7 +171,6 @@ class TestKGFastPath:
         """_try_kg_fast_path calls kg_orchestrator.initialize() when app is None."""
         mock_kg_orchestrator.app = None  # not yet initialized
         mock_kg_orchestrator.initialize = AsyncMock()
-
 
         core = _make_minimal_core(kg_langgraph_orchestrator=mock_kg_orchestrator)
         core._surface_router = MagicMock()
@@ -208,6 +208,7 @@ class TestKGFastPath:
 # 2. OrchestratorCore._surface_router attribute
 # ---------------------------------------------------------------------------
 
+
 class TestOrchestratorCoreSurfaceRouterAttr:
     def test_core_has_surface_router_attr(self):
         """OrchestratorCore must expose _surface_router attribute (default None)."""
@@ -222,6 +223,7 @@ class TestOrchestratorCoreSurfaceRouterAttr:
     def test_surface_router_can_be_set_post_init(self):
         """_surface_router can be injected post-init (pattern used by service_initializer)."""
         from backend.services.routing.surface_router import SurfaceRouter
+
         core = _make_minimal_core()
         router = SurfaceRouter()
         core._surface_router = router
@@ -231,6 +233,7 @@ class TestOrchestratorCoreSurfaceRouterAttr:
 # ---------------------------------------------------------------------------
 # Fixture helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_minimal_core(kg_langgraph_orchestrator=None):
     """Build a minimal OrchestratorCore with all dependencies mocked."""

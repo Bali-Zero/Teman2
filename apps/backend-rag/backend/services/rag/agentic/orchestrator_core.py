@@ -290,6 +290,7 @@ class OrchestratorCore:
                 if self.retriever and hasattr(self.retriever, "embedder"):
                     try:
                         import numpy as np
+
                         raw = await self.retriever.embedder.generate_query_embedding(query)
                         if raw:
                             query_embedding = np.array(raw, dtype=np.float32)
@@ -410,7 +411,9 @@ class OrchestratorCore:
                     return result
             except Exception as e:
                 logger.warning(
-                    "⚠️ [KG LangGraph] Failed to synthesize workflow: %s", e, exc_info=True,
+                    "⚠️ [KG LangGraph] Failed to synthesize workflow: %s",
+                    e,
+                    exc_info=True,
                 )
                 set_span_status("error", str(e))
                 return None
@@ -637,7 +640,10 @@ class OrchestratorCore:
         )
 
         try:
-            if not hasattr(self.kg_langgraph_orchestrator, "app") or self.kg_langgraph_orchestrator.app is None:
+            if (
+                not hasattr(self.kg_langgraph_orchestrator, "app")
+                or self.kg_langgraph_orchestrator.app is None
+            ):
                 await self.kg_langgraph_orchestrator.initialize()
 
             kg_result = await self.kg_langgraph_orchestrator.query(
@@ -645,7 +651,9 @@ class OrchestratorCore:
                 user_context=user_context,
             )
         except Exception as exc:
-            logger.warning("⚠️ [R5 KG] KGLangGraphOrchestrator.query failed: %s — falling through to ReAct", exc)
+            logger.warning(
+                "⚠️ [R5 KG] KGLangGraphOrchestrator.query failed: %s — falling through to ReAct", exc
+            )
             return None
 
         if not kg_result:
@@ -747,7 +755,8 @@ class OrchestratorCore:
             except Exception as unexpected_error:
                 # Catch-all for unexpected errors with detailed logging
                 logger.critical(
-                    "🚨 Unexpected error in ReAct loop: %s", unexpected_error,
+                    "🚨 Unexpected error in ReAct loop: %s",
+                    unexpected_error,
                     exc_info=True,
                     extra={"error_type": type(unexpected_error).__name__},
                 )
@@ -834,7 +843,9 @@ class OrchestratorCore:
         )
         if gate_result.triggered:
             return self.query_gates.gate_result_to_core_result(
-                gate_result, start_time, extracted_entities=extracted_entities,
+                gate_result,
+                start_time,
+                extracted_entities=extracted_entities,
             )
 
         # 3. Check FAQ cache (exact match, < 1ms)
@@ -888,7 +899,8 @@ class OrchestratorCore:
                 ssr_result = await self._specialized_router.route_cross_oracle(query)
             elif self._specialized_router.detect_client_journey(query, intent_category):
                 ssr_result = await self._specialized_router.route_client_journey(
-                    query, user_id or "anonymous",
+                    query,
+                    user_id or "anonymous",
                 )
             if ssr_result and ssr_result.get("response"):
                 return CoreResult(
@@ -1050,9 +1062,7 @@ class OrchestratorCore:
             # Collect source chunk texts from tool results
             source_chunks_text = self._extract_source_chunks_text(state)
             source_chunk_ids = [
-                s.get("chunk_id", s.get("id", ""))
-                for s in sources
-                if isinstance(s, dict)
+                s.get("chunk_id", s.get("id", "")) for s in sources if isinstance(s, dict)
             ]
             spawn(
                 self._kg_auto_expansion.expand_from_response(
@@ -1159,7 +1169,9 @@ class OrchestratorCore:
                                 source=tool_name,
                             ),
                         )
-                        sources_list.append({"source": tool_name, "content": step.observation[:500]})
+                        sources_list.append(
+                            {"source": tool_name, "content": step.observation[:500]}
+                        )
 
             ctx = GradingContext(
                 answer=answer,
@@ -1193,7 +1205,8 @@ class OrchestratorCore:
                 ):
                     try:
                         verified = await grade_with_llm_verification(
-                            ctx, llm_gateway=self.llm_gateway,
+                            ctx,
+                            llm_gateway=self.llm_gateway,
                         )
                         results["hallucination_llm"] = {
                             "decision": verified.decision.value,

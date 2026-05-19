@@ -105,7 +105,9 @@ class TestLazyClientLoading:
     """Test _get_genai_client and _available property."""
 
     def test_get_genai_client_returns_cached(
-        self, service: GeminiJakselService, mock_genai_client: MagicMock,
+        self,
+        service: GeminiJakselService,
+        mock_genai_client: MagicMock,
     ) -> None:
         result = service._get_genai_client()
         assert result is mock_genai_client
@@ -113,7 +115,9 @@ class TestLazyClientLoading:
     @patch("backend.services.llm_clients.gemini_service.GENAI_AVAILABLE", True)
     @patch("backend.services.llm_clients.gemini_service.get_genai_client")
     def test_get_genai_client_lazy_loads(
-        self, mock_get: MagicMock, _patch_persona: Any,
+        self,
+        mock_get: MagicMock,
+        _patch_persona: Any,
     ) -> None:
         client = MagicMock()
         client.is_available = True
@@ -127,19 +131,22 @@ class TestLazyClientLoading:
 
     @patch("backend.services.llm_clients.gemini_service.GENAI_AVAILABLE", False)
     def test_get_genai_client_returns_none_when_unavailable(
-        self, _patch_persona: Any,
+        self,
+        _patch_persona: Any,
     ) -> None:
         svc = GeminiJakselService()
         assert svc._get_genai_client() is None
 
     def test_available_property_true(
-        self, service: GeminiJakselService,
+        self,
+        service: GeminiJakselService,
     ) -> None:
         assert service._available is True
 
     @patch("backend.services.llm_clients.gemini_service.GENAI_AVAILABLE", False)
     def test_available_property_false_when_no_sdk(
-        self, _patch_persona: Any,
+        self,
+        _patch_persona: Any,
     ) -> None:
         svc = GeminiJakselService()
         assert svc._available is False
@@ -155,7 +162,9 @@ class TestGenerateResponseStream:
 
     @pytest.mark.asyncio
     async def test_stream_success_yields_chunks(
-        self, service: GeminiJakselService, mock_genai_client: MagicMock,
+        self,
+        service: GeminiJakselService,
+        mock_genai_client: MagicMock,
     ) -> None:
         """Gemini available, circuit closed -> yields chunks from chat stream."""
         chat = mock_genai_client.create_chat.return_value
@@ -175,7 +184,9 @@ class TestGenerateResponseStream:
 
     @pytest.mark.asyncio
     async def test_stream_with_context(
-        self, service: GeminiJakselService, mock_genai_client: MagicMock,
+        self,
+        service: GeminiJakselService,
+        mock_genai_client: MagicMock,
     ) -> None:
         """Context string is prepended to the user message."""
         chat = mock_genai_client.create_chat.return_value
@@ -189,7 +200,8 @@ class TestGenerateResponseStream:
 
         chunks: list[str] = []
         async for chunk in service.generate_response_stream(
-            "query", context="some context",
+            "query",
+            context="some context",
         ):
             chunks.append(chunk)
 
@@ -200,7 +212,9 @@ class TestGenerateResponseStream:
 
     @pytest.mark.asyncio
     async def test_stream_with_history(
-        self, service: GeminiJakselService, mock_genai_client: MagicMock,
+        self,
+        service: GeminiJakselService,
+        mock_genai_client: MagicMock,
     ) -> None:
         """Conversation history is passed through to the chat session."""
         chat = mock_genai_client.create_chat.return_value
@@ -228,7 +242,9 @@ class TestGenerateResponseStream:
 
     @pytest.mark.asyncio
     async def test_stream_records_circuit_success(
-        self, service: GeminiJakselService, mock_genai_client: MagicMock,
+        self,
+        service: GeminiJakselService,
+        mock_genai_client: MagicMock,
     ) -> None:
         """Successful stream records success on the circuit breaker."""
         chat = mock_genai_client.create_chat.return_value
@@ -257,7 +273,9 @@ class TestStreamFallbackBehavior:
 
     @pytest.mark.asyncio
     async def test_resource_exhausted_triggers_fallback(
-        self, service: GeminiJakselService, mock_genai_client: MagicMock,
+        self,
+        service: GeminiJakselService,
+        mock_genai_client: MagicMock,
     ) -> None:
         """ResourceExhausted (429) triggers OpenRouter fallback."""
         chat = mock_genai_client.create_chat.return_value
@@ -284,7 +302,9 @@ class TestStreamFallbackBehavior:
 
     @pytest.mark.asyncio
     async def test_service_unavailable_triggers_fallback(
-        self, service: GeminiJakselService, mock_genai_client: MagicMock,
+        self,
+        service: GeminiJakselService,
+        mock_genai_client: MagicMock,
     ) -> None:
         """ServiceUnavailable triggers OpenRouter fallback."""
         chat = mock_genai_client.create_chat.return_value
@@ -311,7 +331,9 @@ class TestStreamFallbackBehavior:
 
     @pytest.mark.asyncio
     async def test_rate_limit_google_api_error_triggers_fallback(
-        self, service: GeminiJakselService, mock_genai_client: MagicMock,
+        self,
+        service: GeminiJakselService,
+        mock_genai_client: MagicMock,
     ) -> None:
         """GoogleAPIError containing '429' triggers fallback."""
         chat = mock_genai_client.create_chat.return_value
@@ -338,7 +360,9 @@ class TestStreamFallbackBehavior:
 
     @pytest.mark.asyncio
     async def test_non_rate_limit_google_api_error_raises(
-        self, service: GeminiJakselService, mock_genai_client: MagicMock,
+        self,
+        service: GeminiJakselService,
+        mock_genai_client: MagicMock,
     ) -> None:
         """GoogleAPIError without rate-limit keyword raises directly."""
         chat = mock_genai_client.create_chat.return_value
@@ -364,7 +388,9 @@ class TestCircuitBreakerBehavior:
 
     @pytest.mark.asyncio
     async def test_open_circuit_skips_gemini(
-        self, service: GeminiJakselService, mock_genai_client: MagicMock,
+        self,
+        service: GeminiJakselService,
+        mock_genai_client: MagicMock,
     ) -> None:
         """When circuit is open, Gemini is not called at all."""
         # Force circuit open
@@ -390,7 +416,9 @@ class TestCircuitBreakerBehavior:
 
     @pytest.mark.asyncio
     async def test_failure_records_on_circuit(
-        self, service: GeminiJakselService, mock_genai_client: MagicMock,
+        self,
+        service: GeminiJakselService,
+        mock_genai_client: MagicMock,
     ) -> None:
         """ResourceExhausted errors increment the circuit failure count."""
         chat = mock_genai_client.create_chat.return_value
@@ -426,7 +454,9 @@ class TestGenerateResponse:
 
     @pytest.mark.asyncio
     async def test_generate_response_concatenates_stream(
-        self, service: GeminiJakselService, mock_genai_client: MagicMock,
+        self,
+        service: GeminiJakselService,
+        mock_genai_client: MagicMock,
     ) -> None:
         """generate_response collects all streaming chunks into a single string."""
         chat = mock_genai_client.create_chat.return_value
@@ -442,7 +472,9 @@ class TestGenerateResponse:
 
     @pytest.mark.asyncio
     async def test_generate_response_with_context(
-        self, service: GeminiJakselService, mock_genai_client: MagicMock,
+        self,
+        service: GeminiJakselService,
+        mock_genai_client: MagicMock,
     ) -> None:
         """Context is passed through to streaming layer."""
         chat = mock_genai_client.create_chat.return_value
@@ -460,7 +492,9 @@ class TestGenerateResponse:
 
     @pytest.mark.asyncio
     async def test_generate_response_returns_empty_on_no_chunks(
-        self, service: GeminiJakselService, mock_genai_client: MagicMock,
+        self,
+        service: GeminiJakselService,
+        mock_genai_client: MagicMock,
     ) -> None:
         """If the stream yields nothing, result is an empty string."""
         chat = mock_genai_client.create_chat.return_value
@@ -485,7 +519,8 @@ class TestOpenRouterFallback:
 
     @pytest.mark.asyncio
     async def test_fallback_raises_when_no_client(
-        self, service: GeminiJakselService,
+        self,
+        service: GeminiJakselService,
     ) -> None:
         """RuntimeError if OpenRouter client cannot be loaded."""
         service._openrouter_client = None
@@ -495,7 +530,8 @@ class TestOpenRouterFallback:
 
     @pytest.mark.asyncio
     async def test_fallback_success(
-        self, service: GeminiJakselService,
+        self,
+        service: GeminiJakselService,
     ) -> None:
         """Successful OpenRouter fallback returns content."""
         mock_result = MagicMock()
@@ -546,7 +582,8 @@ class TestMessageConversion:
         assert "prev a" in [m["content"] for m in messages]
 
     def test_conversion_skips_empty_history_content(
-        self, service: GeminiJakselService,
+        self,
+        service: GeminiJakselService,
     ) -> None:
         history = [
             {"role": "user", "content": ""},
@@ -578,7 +615,8 @@ class TestGeminiServiceWrapper:
 
     @pytest.mark.asyncio
     async def test_wrapper_generate_response_with_context(
-        self, _patch_persona: Any,
+        self,
+        _patch_persona: Any,
     ) -> None:
         """Context list is joined into a string before delegation."""
         wrapper = GeminiService()
@@ -586,7 +624,8 @@ class TestGeminiServiceWrapper:
         wrapper._service.generate_response = mock_inner
 
         result = await wrapper.generate_response(
-            "prompt", context=["line1", "line2"],
+            "prompt",
+            context=["line1", "line2"],
         )
         assert result == "ctx response"
         # Verify context was joined

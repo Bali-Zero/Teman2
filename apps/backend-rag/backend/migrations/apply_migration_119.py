@@ -87,7 +87,9 @@ async def main() -> None:
         }
         missing_keys = expected_keys - keys
         if missing_keys:
-            logger.error("❌ Migration 119 post-verify: missing system_settings keys %s", missing_keys)
+            logger.error(
+                "❌ Migration 119 post-verify: missing system_settings keys %s", missing_keys
+            )
             sys.exit(2)
 
         logger.info(

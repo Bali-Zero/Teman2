@@ -22,7 +22,8 @@ def compliance_monitor():
     mock_search = MagicMock()
     mock_notification = MagicMock()
     return ProactiveComplianceMonitor(
-        search_service=mock_search, notification_service=mock_notification,
+        search_service=mock_search,
+        notification_service=mock_notification,
     )
 
 
@@ -41,7 +42,8 @@ class TestProactiveComplianceMonitor:
         mock_search = MagicMock()
         mock_notification = MagicMock()
         monitor = ProactiveComplianceMonitor(
-            search_service=mock_search, notification_service=mock_notification,
+            search_service=mock_search,
+            notification_service=mock_notification,
         )
         assert monitor.search == mock_search
         assert monitor.notification_service == mock_notification

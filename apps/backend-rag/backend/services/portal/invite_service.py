@@ -30,10 +30,12 @@ class InviteService:
     def __init__(self, pool: asyncpg.Pool) -> None:
         self.pool = pool
 
-    @cache_invalidating([
-        lambda self, client_id, *a, **k: f"zantara:portal_invitations:{client_id}:*",
-        "zantara:portal_invitations:*",
-    ])
+    @cache_invalidating(
+        [
+            lambda self, client_id, *a, **k: f"zantara:portal_invitations:{client_id}:*",
+            "zantara:portal_invitations:*",
+        ]
+    )
     async def create_invitation(
         self,
         client_id: int,
@@ -147,10 +149,12 @@ class InviteService:
                 "email": result["email"],
             }
 
-    @cache_invalidating([
-        "zantara:portal_invitations:*",
-        "zantara:crm_clients:*",
-    ])
+    @cache_invalidating(
+        [
+            "zantara:portal_invitations:*",
+            "zantara:crm_clients:*",
+        ]
+    )
     async def complete_registration(
         self,
         token: str,
@@ -303,10 +307,12 @@ class InviteService:
                 for row in rows
             ]
 
-    @cache_invalidating([
-        lambda self, client_id, *a, **k: f"zantara:portal_invitations:{client_id}:*",
-        "zantara:portal_invitations:*",
-    ])
+    @cache_invalidating(
+        [
+            lambda self, client_id, *a, **k: f"zantara:portal_invitations:{client_id}:*",
+            "zantara:portal_invitations:*",
+        ]
+    )
     async def resend_invitation(
         self,
         client_id: int,

@@ -15,13 +15,16 @@ from backend.services.tools.definitions import AgentState, AgentStep, ToolCall
 # Module-level helpers
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture(autouse=True)
 def _patch_tracing():
     """Disable tracing for all tests."""
-    with patch("backend.services.rag.agentic.reasoning.trace_span") as ts, \
-         patch("backend.services.rag.agentic.reasoning.set_span_attribute"), \
-         patch("backend.services.rag.agentic.reasoning.set_span_status"), \
-         patch("backend.services.rag.agentic.reasoning.add_span_event"):
+    with (
+        patch("backend.services.rag.agentic.reasoning.trace_span") as ts,
+        patch("backend.services.rag.agentic.reasoning.set_span_attribute"),
+        patch("backend.services.rag.agentic.reasoning.set_span_status"),
+        patch("backend.services.rag.agentic.reasoning.add_span_event"),
+    ):
         ts.return_value.__enter__ = MagicMock()
         ts.return_value.__exit__ = MagicMock(return_value=False)
         yield
@@ -55,6 +58,7 @@ def _patch_metrics():
 def engine():
     """Basic ReasoningEngine with empty tool_map."""
     from backend.services.rag.agentic.reasoning import ReasoningEngine
+
     return ReasoningEngine(tool_map={}, response_pipeline=None)
 
 
@@ -62,8 +66,8 @@ def engine():
 # _validate_context_quality (module-level function)
 # ============================================================================
 
-class TestValidateContextQuality:
 
+class TestValidateContextQuality:
     def test_empty_context_returns_zero(self, engine):
         assert engine._validate_context_quality("hello", []) == 0.0
 
@@ -92,8 +96,8 @@ class TestValidateContextQuality:
 # _get_localized_stub
 # ============================================================================
 
-class TestLocalizedStub:
 
+class TestLocalizedStub:
     def test_italian_abstain(self, engine):
         result = engine._get_localized_stub("abstain", "ITALIAN")
         assert "Mi dispiace" in result
@@ -131,8 +135,8 @@ class TestLocalizedStub:
 # Trusted Tools check
 # ============================================================================
 
-class TestTrustedToolsCheck:
 
+class TestTrustedToolsCheck:
     @pytest.mark.asyncio
     async def test_trusted_tool_bypasses_evidence_scoring(self, engine):
         """When a trusted tool (e.g. get_pricing) has output, evidence = 0.85."""
@@ -159,18 +163,30 @@ class TestTrustedToolsCheck:
 
         # Simulate the engine already having run the loop (we just test post-loop logic)
         # We patch execute_react_loop internals
-        with patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ENGLISH"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.05), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock, return_value="processed"):
-
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.05
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+                return_value="processed",
+            ),
+        ):
             # We need to mock the LLM call to simulate the loop
-            mock_gateway.send_message = AsyncMock(return_value=(
-                "Final Answer: The KITAS costs Rp 10.000.000",
-                "gemini-flash",
-                MagicMock(candidates=[]),
-                TokenUsage(),
-            ))
+            mock_gateway.send_message = AsyncMock(
+                return_value=(
+                    "Final Answer: The KITAS costs Rp 10.000.000",
+                    "gemini-flash",
+                    MagicMock(candidates=[]),
+                    TokenUsage(),
+                )
+            )
 
             result_state, model_name, msgs, usage = await engine.execute_react_loop(
                 state=state,
@@ -185,7 +201,6 @@ class TestTrustedToolsCheck:
             )
             # trusted_tools_used should be True since get_pricing was used with substantial output
             assert result_state.trusted_tools_used is True
-
 
     @pytest.mark.asyncio
     async def test_trusted_tool_with_error_observation_not_trusted(self, engine):
@@ -207,18 +222,30 @@ class TestTrustedToolsCheck:
         mock_gateway._gemini_tools = []
         from backend.services.llm_clients.pricing import TokenUsage
 
-        mock_gateway.send_message = AsyncMock(return_value=(
-            "Final Answer: Could not get pricing",
-            "gemini-flash",
-            MagicMock(candidates=[]),
-            TokenUsage(),
-        ))
+        mock_gateway.send_message = AsyncMock(
+            return_value=(
+                "Final Answer: Could not get pricing",
+                "gemini-flash",
+                MagicMock(candidates=[]),
+                TokenUsage(),
+            )
+        )
 
-        with patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ENGLISH"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.05), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock, return_value="processed"):
-
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.05
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+                return_value="processed",
+            ),
+        ):
             result_state, _, _, _ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=mock_gateway,
@@ -238,8 +265,8 @@ class TestTrustedToolsCheck:
 # Evidence scoring & ABSTAIN logic
 # ============================================================================
 
-class TestEvidenceScoring:
 
+class TestEvidenceScoring:
     @pytest.mark.asyncio
     async def test_low_evidence_critical_domain_strict_abstain(self, engine):
         """Critical domain + low evidence → strict ABSTAIN."""
@@ -251,19 +278,33 @@ class TestEvidenceScoring:
         mock_gateway._gemini_tools = []
         from backend.services.llm_clients.pricing import TokenUsage
 
-        mock_gateway.send_message = AsyncMock(return_value=(
-            "Final Answer: You need a B211",
-            "gemini-flash",
-            MagicMock(candidates=[]),
-            TokenUsage(),
-        ))
+        mock_gateway.send_message = AsyncMock(
+            return_value=(
+                "Final Answer: You need a B211",
+                "gemini-flash",
+                MagicMock(candidates=[]),
+                TokenUsage(),
+            )
+        )
 
-        with patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ENGLISH"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.05), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=True), \
-             patch("backend.services.rag.agentic.reasoning.get_critical_domain_type", return_value="visa"), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock):
-
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.05
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=True),
+            patch(
+                "backend.services.rag.agentic.reasoning.get_critical_domain_type",
+                return_value="visa",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+            ),
+        ):
             result_state, _, _, _ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=mock_gateway,
@@ -276,7 +317,10 @@ class TestEvidenceScoring:
                 tool_execution_counter={"count": 0},
             )
             # ABSTAIN should override the original answer
-            assert "I can help you with" in result_state.final_answer or "informazioni verificate" in result_state.final_answer
+            assert (
+                "I can help you with" in result_state.final_answer
+                or "informazioni verificate" in result_state.final_answer
+            )
 
     @pytest.mark.asyncio
     async def test_pricing_data_in_answer_trusts_output(self, engine):
@@ -289,18 +333,29 @@ class TestEvidenceScoring:
         mock_gateway._gemini_tools = []
         from backend.services.llm_clients.pricing import TokenUsage
 
-        mock_gateway.send_message = AsyncMock(return_value=(
-            "Final Answer: Costa Rp 5.000.000",
-            "gemini-flash",
-            MagicMock(candidates=[]),
-            TokenUsage(),
-        ))
+        mock_gateway.send_message = AsyncMock(
+            return_value=(
+                "Final Answer: Costa Rp 5.000.000",
+                "gemini-flash",
+                MagicMock(candidates=[]),
+                TokenUsage(),
+            )
+        )
 
-        with patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ITALIAN"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.05), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock):
-
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ITALIAN",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.05
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+            ),
+        ):
             result_state, _, _, _ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=mock_gateway,
@@ -325,18 +380,29 @@ class TestEvidenceScoring:
         mock_gateway._gemini_tools = [MagicMock()]  # Has tools available
         from backend.services.llm_clients.pricing import TokenUsage
 
-        mock_gateway.send_message = AsyncMock(return_value=(
-            "Final Answer: Hello!",
-            "gemini-flash",
-            MagicMock(candidates=[]),
-            TokenUsage(),
-        ))
+        mock_gateway.send_message = AsyncMock(
+            return_value=(
+                "Final Answer: Hello!",
+                "gemini-flash",
+                MagicMock(candidates=[]),
+                TokenUsage(),
+            )
+        )
 
-        with patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ENGLISH"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.05), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock):
-
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.05
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+            ),
+        ):
             result_state, _, _, _ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=mock_gateway,
@@ -360,18 +426,29 @@ class TestEvidenceScoring:
         mock_gateway._gemini_tools = []
         from backend.services.llm_clients.pricing import TokenUsage
 
-        mock_gateway.send_message = AsyncMock(return_value=(
-            "Final Answer: Here is the translation",
-            "gemini-flash",
-            MagicMock(candidates=[]),
-            TokenUsage(),
-        ))
+        mock_gateway.send_message = AsyncMock(
+            return_value=(
+                "Final Answer: Here is the translation",
+                "gemini-flash",
+                MagicMock(candidates=[]),
+                TokenUsage(),
+            )
+        )
 
-        with patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ENGLISH"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.01), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock):
-
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.01
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+            ),
+        ):
             result_state, _, _, _ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=mock_gateway,
@@ -391,8 +468,8 @@ class TestEvidenceScoring:
 # ReAct loop: tool parsing and execution
 # ============================================================================
 
-class TestReactLoop:
 
+class TestReactLoop:
     @pytest.mark.asyncio
     async def test_no_tool_call_final_answer(self, engine):
         """When LLM returns 'Final Answer:' text, loop ends and answer is stored."""
@@ -401,20 +478,31 @@ class TestReactLoop:
 
         mock_gateway = MagicMock()
         mock_gateway._gemini_tools = []
-        mock_gateway.send_message = AsyncMock(return_value=(
-            "Final Answer: Hi there!",
-            "gemini-flash",
-            MagicMock(candidates=[]),
-            TokenUsage(),
-        ))
+        mock_gateway.send_message = AsyncMock(
+            return_value=(
+                "Final Answer: Hi there!",
+                "gemini-flash",
+                MagicMock(candidates=[]),
+                TokenUsage(),
+            )
+        )
 
-        with patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ENGLISH"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.5), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None), \
-             patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock):
-
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.5
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None),
+            patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+            ),
+        ):
             result_state, model, msgs, usage = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=mock_gateway,
@@ -440,11 +528,20 @@ class TestReactLoop:
         mock_gateway._gemini_tools = []
         mock_gateway.send_message = AsyncMock(side_effect=ResourceExhausted("quota"))
 
-        with patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ENGLISH"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.0), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock):
-
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.0
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+            ),
+        ):
             result_state, _, _, _ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=mock_gateway,
@@ -467,20 +564,31 @@ class TestReactLoop:
         state = AgentState(query="test", max_steps=1, current_step=0)
         mock_gateway = MagicMock()
         mock_gateway._gemini_tools = []
-        mock_gateway.send_message = AsyncMock(return_value=(
-            "Just thinking...",
-            "gemini-flash",
-            MagicMock(candidates=[]),
-            TokenUsage(),
-        ))
+        mock_gateway.send_message = AsyncMock(
+            return_value=(
+                "Just thinking...",
+                "gemini-flash",
+                MagicMock(candidates=[]),
+                TokenUsage(),
+            )
+        )
 
-        with patch("backend.services.rag.agentic.reasoning.detect_query_language", return_value="ENGLISH"), \
-             patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.0), \
-             patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None), \
-             patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=False), \
-             patch("backend.services.rag.agentic.reasoning.post_process_response", new_callable=AsyncMock):
-
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.0
+            ),
+            patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False),
+            patch("backend.services.rag.agentic.reasoning.parse_tool_call", return_value=None),
+            patch("backend.services.rag.agentic.reasoning.is_valid_tool_call", return_value=False),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                new_callable=AsyncMock,
+            ),
+        ):
             result_state, _, _, _ = await engine.execute_react_loop(
                 state=state,
                 llm_gateway=mock_gateway,
@@ -500,10 +608,11 @@ class TestReactLoop:
 # _TRUSTED_TOOL_NAMES constant
 # ============================================================================
 
-class TestTrustedToolNames:
 
+class TestTrustedToolNames:
     def test_trusted_tool_names_contains_expected(self):
         from backend.services.rag.agentic.reasoning import _TRUSTED_TOOL_NAMES
+
         assert "calculator" in _TRUSTED_TOOL_NAMES
         assert "get_pricing" in _TRUSTED_TOOL_NAMES
         assert "vector_search" in _TRUSTED_TOOL_NAMES
@@ -512,4 +621,5 @@ class TestTrustedToolNames:
 
     def test_trusted_tool_names_is_frozenset(self):
         from backend.services.rag.agentic.reasoning import _TRUSTED_TOOL_NAMES
+
         assert isinstance(_TRUSTED_TOOL_NAMES, frozenset)

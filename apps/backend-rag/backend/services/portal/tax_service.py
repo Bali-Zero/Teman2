@@ -18,7 +18,9 @@ class TaxService:
         self.db_pool = db_pool
 
     async def get_client_taxes(
-        self, client_id: int, include_completed: bool = False,
+        self,
+        client_id: int,
+        include_completed: bool = False,
     ) -> list[TaxObligation]:
         """
         Get all tax obligations for a client.
@@ -89,10 +91,12 @@ class TaxService:
                 status=status,
             )
 
-    @cache_invalidating([
-        lambda self, client_id, *a, **k: f"zantara:portal_tax:{client_id}:*",
-        lambda self, client_id, *a, **k: f"zantara:portal_timeline:{client_id}:*",
-    ])
+    @cache_invalidating(
+        [
+            lambda self, client_id, *a, **k: f"zantara:portal_tax:{client_id}:*",
+            lambda self, client_id, *a, **k: f"zantara:portal_timeline:{client_id}:*",
+        ]
+    )
     async def create_obligation(
         self,
         client_id: int,
@@ -146,12 +150,17 @@ class TaxService:
             )
             return TaxObligation(**dict(row))
 
-    @cache_invalidating([
-        "zantara:portal_tax:*",
-        "zantara:portal_timeline:*",
-    ])
+    @cache_invalidating(
+        [
+            "zantara:portal_tax:*",
+            "zantara:portal_timeline:*",
+        ]
+    )
     async def update_status(
-        self, obligation_id: int, new_status: str, amount_paid: float | None = None,
+        self,
+        obligation_id: int,
+        new_status: str,
+        amount_paid: float | None = None,
     ) -> TaxObligation | None:
         """Update obligation status and create timeline event."""
         async with self.db_pool.acquire() as conn, conn.transaction():

@@ -67,8 +67,7 @@ def send_telegram(*, text: str, chat_id: str = TELEGRAM_CHAT_ID) -> None:
     bot_token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     if not bot_token:
         logger.warning(
-            "TELEGRAM_BOT_TOKEN not set — skipping Telegram delivery. "
-            "Message would have been: %s",
+            "TELEGRAM_BOT_TOKEN not set — skipping Telegram delivery. Message would have been: %s",
             text[:200],
         )
         return

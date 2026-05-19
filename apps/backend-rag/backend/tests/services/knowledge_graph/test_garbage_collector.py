@@ -65,12 +65,14 @@ async def test_garbage_collect_happy_path():
     conn = AsyncMock()
     # Order matches function: orphan_documents, orphan_clients,
     # orphan_practices, hard_delete_old_edges
-    conn.execute = AsyncMock(side_effect=[
-        "UPDATE 3",   # documents
-        "UPDATE 1",   # clients
-        "UPDATE 2",   # practices
-        "DELETE 7",   # edges
-    ])
+    conn.execute = AsyncMock(
+        side_effect=[
+            "UPDATE 3",  # documents
+            "UPDATE 1",  # clients
+            "UPDATE 2",  # practices
+            "DELETE 7",  # edges
+        ]
+    )
     pool = _make_pool_mock(conn)
 
     result = await garbage_collect(pool)
@@ -101,9 +103,14 @@ async def test_garbage_collect_swallows_db_error():
 async def test_garbage_collect_zero_orphans_is_normal():
     """Steady state (no orphans) is the expected case after first cleanup."""
     conn = AsyncMock()
-    conn.execute = AsyncMock(side_effect=[
-        "UPDATE 0", "UPDATE 0", "UPDATE 0", "DELETE 0",
-    ])
+    conn.execute = AsyncMock(
+        side_effect=[
+            "UPDATE 0",
+            "UPDATE 0",
+            "UPDATE 0",
+            "DELETE 0",
+        ]
+    )
     pool = _make_pool_mock(conn)
 
     result = await garbage_collect(pool)
@@ -117,9 +124,14 @@ async def test_garbage_collect_zero_orphans_is_normal():
 async def test_garbage_collect_passes_grace_days_to_sql():
     """The hard-delete query must receive the configured grace days."""
     conn = AsyncMock()
-    conn.execute = AsyncMock(side_effect=[
-        "UPDATE 0", "UPDATE 0", "UPDATE 0", "DELETE 0",
-    ])
+    conn.execute = AsyncMock(
+        side_effect=[
+            "UPDATE 0",
+            "UPDATE 0",
+            "UPDATE 0",
+            "DELETE 0",
+        ]
+    )
     pool = _make_pool_mock(conn)
 
     await garbage_collect(pool)
@@ -138,9 +150,14 @@ async def test_garbage_collect_passes_grace_days_to_sql():
 async def test_soft_delete_documents_query_filters_archived():
     """Documents that are is_archived = TRUE should also be considered orphan."""
     conn = AsyncMock()
-    conn.execute = AsyncMock(side_effect=[
-        "UPDATE 0", "UPDATE 0", "UPDATE 0", "DELETE 0",
-    ])
+    conn.execute = AsyncMock(
+        side_effect=[
+            "UPDATE 0",
+            "UPDATE 0",
+            "UPDATE 0",
+            "DELETE 0",
+        ]
+    )
     pool = _make_pool_mock(conn)
 
     await garbage_collect(pool)
@@ -156,9 +173,14 @@ async def test_soft_delete_documents_query_filters_archived():
 async def test_soft_delete_clients_respects_clients_deleted_at():
     """clients table uses soft-delete via deleted_at — same pattern."""
     conn = AsyncMock()
-    conn.execute = AsyncMock(side_effect=[
-        "UPDATE 0", "UPDATE 0", "UPDATE 0", "DELETE 0",
-    ])
+    conn.execute = AsyncMock(
+        side_effect=[
+            "UPDATE 0",
+            "UPDATE 0",
+            "UPDATE 0",
+            "DELETE 0",
+        ]
+    )
     pool = _make_pool_mock(conn)
 
     await garbage_collect(pool)
@@ -172,9 +194,14 @@ async def test_soft_delete_clients_respects_clients_deleted_at():
 async def test_hard_delete_edges_uses_grace_window():
     """Edge GC must use NOW() - interval to filter expired soft-deletes."""
     conn = AsyncMock()
-    conn.execute = AsyncMock(side_effect=[
-        "UPDATE 0", "UPDATE 0", "UPDATE 0", "DELETE 0",
-    ])
+    conn.execute = AsyncMock(
+        side_effect=[
+            "UPDATE 0",
+            "UPDATE 0",
+            "UPDATE 0",
+            "DELETE 0",
+        ]
+    )
     pool = _make_pool_mock(conn)
 
     await garbage_collect(pool)

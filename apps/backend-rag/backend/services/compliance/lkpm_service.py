@@ -193,7 +193,8 @@ class LKPMService:
         """Auto-create lkpm_client_config from CRM company data if missing."""
         async with self.db_pool.acquire() as conn:
             existing = await conn.fetchval(
-                "SELECT id FROM lkpm_client_config WHERE client_id = $1", client_id,
+                "SELECT id FROM lkpm_client_config WHERE client_id = $1",
+                client_id,
             )
             if existing:
                 return
@@ -231,7 +232,8 @@ class LKPMService:
                 )
             else:
                 logger.warning(
-                    "No active company found for client %s, cannot auto-create config", client_id,
+                    "No active company found for client %s, cannot auto-create config",
+                    client_id,
                 )
 
     async def get_history_for_portal_client(self, client_id: int) -> list[LKPMBatchItem]:
@@ -290,7 +292,8 @@ class LKPMService:
         return [dict(r) for r in rows]
 
     async def get_receipts_for_portal_client(
-        self, client_id: int,
+        self,
+        client_id: int,
     ) -> list[dict[str, Any]]:
         """
         Portal-facing: every OSS receipt of every company where the client is a
@@ -343,7 +346,9 @@ class LKPMService:
 
         # Calculate cumulative
         cumulative = await self._calculate_cumulative(
-            submission.client_id, submission.quarter, submission.year,
+            submission.client_id,
+            submission.quarter,
+            submission.year,
         )
         draft.cumulative = InvestmentRealization(
             equipment_domestic=cumulative.equipment_domestic + draft.realized.equipment_domestic,
@@ -832,7 +837,10 @@ class LKPMService:
         return row["id"]
 
     async def _calculate_cumulative(
-        self, client_id: int, quarter: str, year: int,
+        self,
+        client_id: int,
+        quarter: str,
+        year: int,
     ) -> InvestmentRealization:
         """Sum all previous quarters' realization for cumulative total."""
         # Quarter ordering for comparison

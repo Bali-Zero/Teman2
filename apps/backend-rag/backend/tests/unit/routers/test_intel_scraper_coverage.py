@@ -19,8 +19,10 @@ from backend.app.dependencies import get_current_user, get_database_pool
 # Build a minimal test app that includes the intel_scraper router directly
 # ---------------------------------------------------------------------------
 
+
 def _build_test_app():
     from backend.app.routers.intel_scraper import router as intel_scraper_router
+
     test_app = FastAPI()
     test_app.include_router(intel_scraper_router)
     return test_app
@@ -162,7 +164,9 @@ async def test_submit_scraper_success(client_no_auth):
     mock_staging_svc = MagicMock()
     mock_staging_svc.generate_item_id.return_value = "visa-2026-test-123"
     mock_staging_svc.check_duplicate.return_value = None
-    mock_staging_svc.save_staging_item.return_value = "/tmp/intel_pending/visa/visa-2026-test-123.json"
+    mock_staging_svc.save_staging_item.return_value = (
+        "/tmp/intel_pending/visa/visa-2026-test-123.json"
+    )
     mock_staging_svc.update_staging_queue_metrics = MagicMock()
 
     with (

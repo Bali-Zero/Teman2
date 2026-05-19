@@ -28,6 +28,7 @@ Reference impl: ``apps/backend-rag/backend/services/bridge/outbox.py``
 (generalised here — bridge_outbox is a different table for Pro/Air
 sync; events_outbox is the universal EventBus durability layer).
 """
+
 from __future__ import annotations
 
 import json
@@ -66,9 +67,7 @@ def validate_channel(channel: str) -> None:
     the contract narrow.
     """
     if not isinstance(channel, str) or not _CHANNEL_RE.match(channel):
-        raise InvalidChannelError(
-            f"channel name must match {_CHANNEL_RE.pattern}, got {channel!r}"
-        )
+        raise InvalidChannelError(f"channel name must match {_CHANNEL_RE.pattern}, got {channel!r}")
 
 
 async def publish(
@@ -238,9 +237,7 @@ async def replay_unconsumed(
             try:
                 payload_dict = json.loads(raw_payload)
             except json.JSONDecodeError as exc:
-                logger.error(
-                    "events_outbox: invalid JSON in row id=%d: %s", outbox_id, exc
-                )
+                logger.error("events_outbox: invalid JSON in row id=%d: %s", outbox_id, exc)
                 continue
         elif isinstance(raw_payload, dict):
             payload_dict = dict(raw_payload)
@@ -318,9 +315,7 @@ async def get_unconsumed_count(
     """Diagnostic: count of unconsumed rows, optionally filtered by channel."""
     if channel is None:
         return int(
-            await conn.fetchval(
-                "SELECT COUNT(*) FROM events_outbox WHERE consumed_at IS NULL"
-            )
+            await conn.fetchval("SELECT COUNT(*) FROM events_outbox WHERE consumed_at IS NULL")
         )
     validate_channel(channel)
     return int(

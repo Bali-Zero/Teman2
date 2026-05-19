@@ -14,6 +14,7 @@ from backend.services.memory.orchestrator import MemoryOrchestrator, MemoryServi
 
 # ── Helpers ──────────────────────────────────────────────────────
 
+
 def _make_orchestrator() -> MemoryOrchestrator:
     """Create a MemoryOrchestrator without connecting to any DB."""
     return MemoryOrchestrator(db_pool=None, database_url=None)
@@ -130,7 +131,9 @@ class TestAlertDegradedMode:
 
         metadata = mock_alert.send_alert.call_args[1]["metadata"]
         assert set(metadata["degraded_features"]) == {
-            "collective_memory", "episodic_memory", "kg_repository",
+            "collective_memory",
+            "episodic_memory",
+            "kg_repository",
         }
 
     @pytest.mark.asyncio

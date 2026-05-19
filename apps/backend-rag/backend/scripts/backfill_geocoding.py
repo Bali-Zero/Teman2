@@ -67,12 +67,15 @@ async def geocode_address(api_key: str, address: str) -> tuple[float, float, str
     """Geocode an address using Google Maps Geocoding API."""
     try:
         async with httpx.AsyncClient(timeout=10) as client:
-            resp = await client.get(GOOGLE_GEOCODE_URL, params={
-                "address": f"{address}, Bali, Indonesia",
-                "key": api_key,
-                "region": "id",
-                "language": "en",
-            })
+            resp = await client.get(
+                GOOGLE_GEOCODE_URL,
+                params={
+                    "address": f"{address}, Bali, Indonesia",
+                    "key": api_key,
+                    "region": "id",
+                    "language": "en",
+                },
+            )
             data = resp.json()
 
             if data.get("status") != "OK" or not data.get("results"):
@@ -87,13 +90,16 @@ async def geocode_address(api_key: str, address: str) -> tuple[float, float, str
 
 async def process_jobs(conn: asyncpg.Connection, api_key: str, batch_size: int = 50) -> dict:
     """Process pending geocoding jobs."""
-    jobs = await conn.fetch("""
+    jobs = await conn.fetch(
+        """
         SELECT id, entity_type, entity_id, address_text, attempts
         FROM geocoding_jobs
         WHERE status = 'pending' AND attempts < 3
         ORDER BY id
         LIMIT $1
-    """, batch_size)
+    """,
+        batch_size,
+    )
 
     stats = {"processed": 0, "success": 0, "failed": 0, "skipped": 0}
 
@@ -107,12 +113,18 @@ async def process_jobs(conn: asyncpg.Connection, api_key: str, batch_size: int =
         if result:
             lat, lng, source = result
             # Update job
-            await conn.execute("""
+            await conn.execute(
+                """
                 UPDATE geocoding_jobs
                 SET status = 'completed', result_lat = $1, result_lng = $2,
                     result_source = $3, processed_at = NOW(), attempts = attempts + 1
                 WHERE id = $4
-            """, lat, lng, source, job_id)
+            """,
+                lat,
+                lng,
+                source,
+                job_id,
+            )
 
             # Update company/client geo_point (whitelist table name — no SQL injection)
             entity_type = job["entity_type"]
@@ -122,29 +134,47 @@ async def process_jobs(conn: asyncpg.Connection, api_key: str, batch_size: int =
             if not table:
                 logger.warning("Unknown entity_type '%s' for job #%d", entity_type, job_id)
                 continue
-            await conn.execute(f"""
+            await conn.execute(
+                f"""
                 UPDATE {table}
                 SET geo_point = ST_SetSRID(ST_MakePoint($1, $2), 4326),
                     geocoded_at = NOW(),
                     geocode_source = $3
                 WHERE id = $4
-            """, lng, lat, source, entity_id)
+            """,
+                lng,
+                lat,
+                source,
+                entity_id,
+            )
 
             stats["success"] += 1
             logger.info(
                 "✅ Geocoded %s #%d: %s → (%.6f, %.6f)",
-                entity_type, entity_id, address[:40], lat, lng,
+                entity_type,
+                entity_id,
+                address[:40],
+                lat,
+                lng,
             )
         else:
-            await conn.execute("""
+            await conn.execute(
+                """
                 UPDATE geocoding_jobs
                 SET attempts = attempts + 1,
                     error_message = 'Google API returned no results',
                     status = CASE WHEN attempts + 1 >= 3 THEN 'failed' ELSE 'pending' END
                 WHERE id = $1
-            """, job_id)
+            """,
+                job_id,
+            )
             stats["failed"] += 1
-            logger.warning("❌ Failed to geocode %s #%d: %s", job["entity_type"], job["entity_id"], address[:40])
+            logger.warning(
+                "❌ Failed to geocode %s #%d: %s",
+                job["entity_type"],
+                job["entity_id"],
+                address[:40],
+            )
 
         # Small delay to be respectful (even though Google doesn't require it)
         await asyncio.sleep(0.1)
@@ -176,7 +206,9 @@ async def reverse_resolve_zones(conn: asyncpg.Connection) -> int:
 async def main() -> None:
     parser = argparse.ArgumentParser(description="Batch geocode companies")
     parser.add_argument("--limit", type=int, default=100, help="Max companies to process")
-    parser.add_argument("--new-only", action="store_true", help="Only process new (never-attempted) companies")
+    parser.add_argument(
+        "--new-only", action="store_true", help="Only process new (never-attempted) companies"
+    )
     parser.add_argument("--batch-size", type=int, default=50, help="Jobs per batch")
     args = parser.parse_args()
 
@@ -212,7 +244,11 @@ async def main() -> None:
         elapsed = time.time() - start
         logger.info(
             "🏁 Geocoding complete in %.1fs: %d processed, %d success, %d failed, %d zones resolved",
-            elapsed, stats["processed"], stats["success"], stats["failed"], zones_resolved,
+            elapsed,
+            stats["processed"],
+            stats["success"],
+            stats["failed"],
+            zones_resolved,
         )
     finally:
         await conn.close()

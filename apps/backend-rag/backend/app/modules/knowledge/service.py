@@ -92,47 +92,60 @@ class KnowledgeService:
                 collection_name=resolved_collections["bali_zero_pricing_hybrid"],
             ),
             "visa_oracle": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["visa_oracle"],
+                qdrant_url=qdrant_url,
+                collection_name=resolved_collections["visa_oracle"],
             ),
             "kbli_2025_final": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["kbli_2025_final"],
+                qdrant_url=qdrant_url,
+                collection_name=resolved_collections["kbli_2025_final"],
             ),
             "tax_genius": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["tax_genius"],
+                qdrant_url=qdrant_url,
+                collection_name=resolved_collections["tax_genius"],
             ),
             "legal_architect": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["legal_architect"],
+                qdrant_url=qdrant_url,
+                collection_name=resolved_collections["legal_architect"],
             ),
             "legal_unified": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["legal_unified"],
+                qdrant_url=qdrant_url,
+                collection_name=resolved_collections["legal_unified"],
             ),
             "kb_indonesian": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["kb_indonesian"],
+                qdrant_url=qdrant_url,
+                collection_name=resolved_collections["kb_indonesian"],
             ),
             "balizero_news": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["balizero_news"],
+                qdrant_url=qdrant_url,
+                collection_name=resolved_collections["balizero_news"],
             ),
             "zantara_books": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["zantara_books"],
+                qdrant_url=qdrant_url,
+                collection_name=resolved_collections["zantara_books"],
             ),
             "cultural_insights": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["cultural_insights"],
+                qdrant_url=qdrant_url,
+                collection_name=resolved_collections["cultural_insights"],
             ),
             "tax_updates": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["tax_updates"],
+                qdrant_url=qdrant_url,
+                collection_name=resolved_collections["tax_updates"],
             ),
             "tax_knowledge": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["tax_knowledge"],
+                qdrant_url=qdrant_url,
+                collection_name=resolved_collections["tax_knowledge"],
             ),
             "property_listings": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["property_listings"],
+                qdrant_url=qdrant_url,
+                collection_name=resolved_collections["property_listings"],
             ),
             "property_knowledge": QdrantClient(
                 qdrant_url=qdrant_url,
                 collection_name=resolved_collections["property_knowledge"],
             ),
             "legal_updates": QdrantClient(
-                qdrant_url=qdrant_url, collection_name=resolved_collections["legal_updates"],
+                qdrant_url=qdrant_url,
+                collection_name=resolved_collections["legal_updates"],
             ),
             "legal_intelligence": QdrantClient(
                 qdrant_url=qdrant_url,
@@ -198,7 +211,10 @@ class KnowledgeService:
                 f"Query: '{query[:50]}...', embedding_dim={len(query_embedding)}, provider={self.embedder.provider}",
             )
             logger.debug(
-                "Parameters: collection_override=%s, user_level=%s, limit=%s", collection_override, user_level, limit,
+                "Parameters: collection_override=%s, user_level=%s, limit=%s",
+                collection_override,
+                user_level,
+                limit,
             )
 
             # Detect if pricing query

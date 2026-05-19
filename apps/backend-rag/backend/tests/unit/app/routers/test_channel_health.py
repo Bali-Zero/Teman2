@@ -2,6 +2,7 @@
 
 Spec ref: docs/superpowers/specs/2026-05-01-post-agentic-injection-design.md §3.3.5
 """
+
 from fastapi.testclient import TestClient
 
 

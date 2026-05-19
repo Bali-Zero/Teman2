@@ -29,6 +29,7 @@ Symbiosis Law 7 (Numbers first): every extraction emits structured log fields
 (extractor, duration_ms, page_count, text_length, confidence) so we can
 benchmark before/after Phase 1.5 once running.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -77,20 +78,34 @@ PAGE_RENDER_DPI = 200
 # Doc-types that get the full content extraction path. Other files fall
 # through to extractor='skipped' and remain metadata-only (filename + modtime).
 # Aligned with the L1 schema doc_type enum.
-PRIORITY_DOC_TYPES: frozenset[str] = frozenset({
-    "passport", "evisa", "visa", "kitas", "kitap",
-    "nib", "npwp", "akta", "sk",
-    "lkpm", "spt", "bukti_potong", "tax_record",
-})
+PRIORITY_DOC_TYPES: frozenset[str] = frozenset(
+    {
+        "passport",
+        "evisa",
+        "visa",
+        "kitas",
+        "kitap",
+        "nib",
+        "npwp",
+        "akta",
+        "sk",
+        "lkpm",
+        "spt",
+        "bukti_potong",
+        "tax_record",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
 # Health check (module-import time, cached)
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class OcrHealth:
     """Captured at first health probe, reused for the worker run."""
+
     tesseract_ok: bool
     tesseract_version: str | None
     pdfminer_ok: bool
@@ -134,7 +149,8 @@ async def check_health(force: bool = False) -> OcrHealth:
     tesseract_version: str | None = None
     try:
         proc = await asyncio.create_subprocess_exec(
-            TESSERACT_BIN, "--version",
+            TESSERACT_BIN,
+            "--version",
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.STDOUT,
         )
@@ -151,6 +167,7 @@ async def check_health(force: bool = False) -> OcrHealth:
     pdfminer_ok = False
     try:
         import pdfminer.high_level  # noqa: F401
+
         pdfminer_ok = True
     except ImportError as e:
         logger.warning("OCR health: pdfminer.six missing: %s", e)
@@ -159,6 +176,7 @@ async def check_health(force: bool = False) -> OcrHealth:
     pypdfium2_ok = False
     try:
         import pypdfium2  # noqa: F401
+
         pypdfium2_ok = True
     except ImportError as e:
         logger.warning("OCR health: pypdfium2 missing: %s", e)
@@ -177,7 +195,8 @@ async def check_health(force: bool = False) -> OcrHealth:
             else:
                 logger.warning(
                     "OCR health: Ollama up but %s not pulled (available: %s)",
-                    OLLAMA_VISION_MODEL, sorted(models)[:5],
+                    OLLAMA_VISION_MODEL,
+                    sorted(models)[:5],
                 )
     except (httpx.HTTPError, Exception) as e:
         logger.warning("OCR health: Ollama probe failed: %s", e)
@@ -211,9 +230,11 @@ async def check_health(force: bool = False) -> OcrHealth:
 # Extraction primitives
 # ---------------------------------------------------------------------------
 
+
 @dataclass(frozen=True)
 class ExtractionResult:
     """Outcome of a single-file extraction."""
+
     text: str
     extractor: Literal["pdfminer", "tesseract", "qwen25vl", "mixed", "skipped"]
     confidence: float | None
@@ -239,6 +260,7 @@ async def _extract_pdfminer(pdf_bytes: bytes) -> tuple[str, int]:
     Runs in a thread (pdfminer is sync + CPU-bound). Returns empty string if
     the PDF has no text layer (scanned-only) — caller falls back to OCR.
     """
+
     def _sync_extract() -> tuple[str, int]:
         from pdfminer.high_level import extract_text
         from pdfminer.pdfpage import PDFPage
@@ -266,6 +288,7 @@ async def _rasterize_pdf_pages(
 
     Returns empty list if pypdfium2 missing or rasterization fails.
     """
+
     def _sync_rasterize() -> list[bytes]:
         try:
             import pypdfium2 as pdfium
@@ -299,9 +322,12 @@ async def _tesseract_ocr_png(png_bytes: bytes) -> tuple[str, float]:
     """
     proc = await asyncio.create_subprocess_exec(
         TESSERACT_BIN,
-        "stdin", "stdout",
-        "-l", TESSERACT_LANGS,
-        "--psm", "6",
+        "stdin",
+        "stdout",
+        "-l",
+        TESSERACT_LANGS,
+        "--psm",
+        "6",
         "tsv",
         stdin=asyncio.subprocess.PIPE,
         stdout=asyncio.subprocess.PIPE,
@@ -374,9 +400,7 @@ async def _qwen25vl_extract(png_bytes_list: list[bytes]) -> tuple[str, float]:
             "Output text only, no commentary, no field labels. "
             "If a section is unreadable, write [unreadable]."
         ),
-        "images": [
-            base64.b64encode(png).decode("ascii") for png in png_bytes_list
-        ],
+        "images": [base64.b64encode(png).decode("ascii") for png in png_bytes_list],
         "stream": False,
         "options": {"temperature": 0.0, "num_predict": 2048},
         # qwen 3.5 family default thinking off (cf. CLAUDE.md ollama rule)
@@ -403,6 +427,7 @@ async def _qwen25vl_extract(png_bytes_list: list[bytes]) -> tuple[str, float]:
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
 
 async def extract_file_content(
     *,
@@ -434,8 +459,12 @@ async def extract_file_content(
     # Filter: only invest OCR budget on doc_types that matter for L1
     if doc_type not in PRIORITY_DOC_TYPES:
         return ExtractionResult(
-            text="", extractor="skipped", confidence=None,
-            page_count=None, duration_ms=0, truncated=False,
+            text="",
+            extractor="skipped",
+            confidence=None,
+            page_count=None,
+            duration_ms=0,
+            truncated=False,
             notes=f"non_priority_doc_type:{doc_type}",
         )
 
@@ -445,8 +474,12 @@ async def extract_file_content(
 
     if not (is_pdf or is_image):
         return ExtractionResult(
-            text="", extractor="skipped", confidence=None,
-            page_count=None, duration_ms=0, truncated=False,
+            text="",
+            extractor="skipped",
+            confidence=None,
+            page_count=None,
+            duration_ms=0,
+            truncated=False,
             notes=f"unsupported_mime:{mime_type}",
         )
 
@@ -465,17 +498,22 @@ async def extract_file_content(
         if pdfminer_text and len(pdfminer_text) >= 200:
             truncated_text, truncated = _truncate(pdfminer_text)
             return ExtractionResult(
-                text=truncated_text, extractor="pdfminer",
-                confidence=None, page_count=page_count,
+                text=truncated_text,
+                extractor="pdfminer",
+                confidence=None,
+                page_count=page_count,
                 duration_ms=int((time.monotonic() - started) * 1000),
-                truncated=truncated, notes=None,
+                truncated=truncated,
+                notes=None,
             )
 
         # 2. Rasterize + tesseract
         if not (health.tesseract_ok and health.pypdfium2_ok):
             return ExtractionResult(
-                text=pdfminer_text or "", extractor="pdfminer" if pdfminer_text else "skipped",
-                confidence=None, page_count=page_count,
+                text=pdfminer_text or "",
+                extractor="pdfminer" if pdfminer_text else "skipped",
+                confidence=None,
+                page_count=page_count,
                 duration_ms=int((time.monotonic() - started) * 1000),
                 truncated=False,
                 notes="no_ocr_stack_for_scanned_pdf",
@@ -484,10 +522,13 @@ async def extract_file_content(
         page_pngs = await _rasterize_pdf_pages(file_bytes, max_pages=MAX_PAGES_PER_FILE)
         if not page_pngs:
             return ExtractionResult(
-                text=pdfminer_text or "", extractor="pdfminer" if pdfminer_text else "skipped",
-                confidence=None, page_count=page_count,
+                text=pdfminer_text or "",
+                extractor="pdfminer" if pdfminer_text else "skipped",
+                confidence=None,
+                page_count=page_count,
                 duration_ms=int((time.monotonic() - started) * 1000),
-                truncated=False, notes="rasterize_failed",
+                truncated=False,
+                notes="rasterize_failed",
             )
 
         # OCR every page, aggregate
@@ -504,13 +545,11 @@ async def extract_file_content(
         n_pages = len(page_pngs)
 
         # 3. Vision fallback if tesseract was weak AND model available
-        if (
-            avg_conf < TESSERACT_FALLBACK_THRESHOLD
-            and health.ollama_vision_ok
-        ):
+        if avg_conf < TESSERACT_FALLBACK_THRESHOLD and health.ollama_vision_ok:
             logger.info(
                 "tesseract conf=%.2f below %.2f, trying vision fallback",
-                avg_conf, TESSERACT_FALLBACK_THRESHOLD,
+                avg_conf,
+                TESSERACT_FALLBACK_THRESHOLD,
             )
             # Only send first 2 pages to vision (latency cap)
             vision_text, vision_conf = await _qwen25vl_extract(page_pngs[:2])
@@ -521,8 +560,10 @@ async def extract_file_content(
                     combined = f"{vision_text}\n\n[pdfminer-text-layer]\n{pdfminer_text}"
                 tt, truncated = _truncate(combined)
                 return ExtractionResult(
-                    text=tt, extractor="qwen25vl",
-                    confidence=vision_conf, page_count=n_pages,
+                    text=tt,
+                    extractor="qwen25vl",
+                    confidence=vision_conf,
+                    page_count=n_pages,
                     duration_ms=int((time.monotonic() - started) * 1000),
                     truncated=truncated,
                     notes=f"vision_fallback,tesseract_conf={avg_conf:.2f}",
@@ -534,37 +575,50 @@ async def extract_file_content(
             combined = f"{tesseract_text}\n\n[pdfminer-text-layer]\n{pdfminer_text}"
             tt, truncated = _truncate(combined)
             return ExtractionResult(
-                text=tt, extractor="mixed",
-                confidence=avg_conf, page_count=n_pages,
+                text=tt,
+                extractor="mixed",
+                confidence=avg_conf,
+                page_count=n_pages,
                 duration_ms=int((time.monotonic() - started) * 1000),
-                truncated=truncated, notes=None,
+                truncated=truncated,
+                notes=None,
             )
 
         # Pure tesseract result
         if tesseract_text:
             tt, truncated = _truncate(tesseract_text)
             return ExtractionResult(
-                text=tt, extractor="tesseract",
-                confidence=avg_conf, page_count=n_pages,
+                text=tt,
+                extractor="tesseract",
+                confidence=avg_conf,
+                page_count=n_pages,
                 duration_ms=int((time.monotonic() - started) * 1000),
-                truncated=truncated, notes=None,
+                truncated=truncated,
+                notes=None,
             )
 
         # Nothing worked
         return ExtractionResult(
-            text="", extractor="skipped", confidence=None,
+            text="",
+            extractor="skipped",
+            confidence=None,
             page_count=n_pages,
             duration_ms=int((time.monotonic() - started) * 1000),
-            truncated=False, notes="all_extractors_empty",
+            truncated=False,
+            notes="all_extractors_empty",
         )
 
     # ---- Image path (passport scans, evisa screenshots) ----
     # Image bytes go straight to tesseract; if weak, vision fallback.
     if not health.tesseract_ok:
         return ExtractionResult(
-            text="", extractor="skipped", confidence=None,
-            page_count=1, duration_ms=int((time.monotonic() - started) * 1000),
-            truncated=False, notes="no_tesseract_for_image",
+            text="",
+            extractor="skipped",
+            confidence=None,
+            page_count=1,
+            duration_ms=int((time.monotonic() - started) * 1000),
+            truncated=False,
+            notes="no_tesseract_for_image",
         )
 
     t, c = await _tesseract_ocr_png(file_bytes)
@@ -574,8 +628,10 @@ async def extract_file_content(
         if vt and vc > c:
             tt, truncated = _truncate(vt)
             return ExtractionResult(
-                text=tt, extractor="qwen25vl",
-                confidence=vc, page_count=1,
+                text=tt,
+                extractor="qwen25vl",
+                confidence=vc,
+                page_count=1,
                 duration_ms=int((time.monotonic() - started) * 1000),
                 truncated=truncated,
                 notes=f"vision_fallback,tesseract_conf={c:.2f}",
@@ -584,16 +640,23 @@ async def extract_file_content(
     if t:
         tt, truncated = _truncate(t)
         return ExtractionResult(
-            text=tt, extractor="tesseract",
-            confidence=c, page_count=1,
+            text=tt,
+            extractor="tesseract",
+            confidence=c,
+            page_count=1,
             duration_ms=int((time.monotonic() - started) * 1000),
-            truncated=truncated, notes=None,
+            truncated=truncated,
+            notes=None,
         )
 
     return ExtractionResult(
-        text="", extractor="skipped", confidence=None,
-        page_count=1, duration_ms=int((time.monotonic() - started) * 1000),
-        truncated=False, notes="image_ocr_empty",
+        text="",
+        extractor="skipped",
+        confidence=None,
+        page_count=1,
+        duration_ms=int((time.monotonic() - started) * 1000),
+        truncated=False,
+        notes="image_ocr_empty",
     )
 
 
@@ -601,8 +664,11 @@ async def extract_file_content(
 # Cache layer (asyncpg)
 # ---------------------------------------------------------------------------
 
+
 async def get_cached_content(
-    conn: asyncpg.Connection, file_id: str, modified_time_ms: int,
+    conn: asyncpg.Connection,
+    file_id: str,
+    modified_time_ms: int,
 ) -> dict[str, Any] | None:
     """Return the cached row for (file_id, modified_time_ms) if alive.
 
@@ -618,7 +684,8 @@ async def get_cached_content(
           AND modified_time_ms = $2
           AND deleted_at IS NULL
         """,
-        file_id, modified_time_ms,
+        file_id,
+        modified_time_ms,
     )
     if row is None:
         return None
@@ -653,7 +720,8 @@ async def upsert_cache_row(
           AND modified_time_ms <> $2
           AND deleted_at IS NULL
         """,
-        file_id, modified_time_ms,
+        file_id,
+        modified_time_ms,
     )
 
     row = await conn.fetchrow(
@@ -676,15 +744,22 @@ async def upsert_cache_row(
             last_seen_at     = NOW()
         RETURNING id
         """,
-        file_id, modified_time_ms, result.content_hash, result.text,
-        len(result.text), result.extractor, result.confidence,
-        result.page_count, result.notes,
+        file_id,
+        modified_time_ms,
+        result.content_hash,
+        result.text,
+        len(result.text),
+        result.extractor,
+        result.confidence,
+        result.page_count,
+        result.notes,
     )
     return row["id"]
 
 
 async def soft_delete_missing(
-    conn: asyncpg.Connection, file_ids_alive: set[str],
+    conn: asyncpg.Connection,
+    file_ids_alive: set[str],
 ) -> int:
     """Soft-delete cache rows whose file_id is no longer in the alive set.
 

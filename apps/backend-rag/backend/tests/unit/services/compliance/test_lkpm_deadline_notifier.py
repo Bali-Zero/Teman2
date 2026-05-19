@@ -23,6 +23,7 @@ from backend.services.compliance.lkpm_deadline_notifier import (
 # Pure helper tests
 # ---------------------------------------------------------------------------
 
+
 class TestComputeDaysUntilDeadline:
     def test_q1_same_year(self) -> None:
         now = datetime(2026, 3, 15, tzinfo=timezone.utc)
@@ -108,6 +109,7 @@ class TestRowColor:
 # LKPMDeadlineNotifier — HTML builders
 # ---------------------------------------------------------------------------
 
+
 class TestBuildTableRow:
     def test_basic_row(self) -> None:
         row = {
@@ -172,6 +174,7 @@ class TestBuildEmailBody:
 # LKPMDeadlineNotifier — check_and_notify
 # ---------------------------------------------------------------------------
 
+
 def _make_db_pool(
     killswitch: str = "true",
     pending_rows: list[dict[str, Any]] | None = None,
@@ -179,16 +182,24 @@ def _make_db_pool(
     """Create a mock db_pool that supports `acquire()` context manager."""
     conn = AsyncMock()
     conn.fetchval = AsyncMock(return_value=killswitch)
-    conn.fetch = AsyncMock(return_value=[MagicMock(**{
-        "__iter__": lambda self: iter(pending_rows or []),
-        "keys.return_value": [],
-    })])
+    conn.fetch = AsyncMock(
+        return_value=[
+            MagicMock(
+                **{
+                    "__iter__": lambda self: iter(pending_rows or []),
+                    "keys.return_value": [],
+                }
+            )
+        ]
+    )
     # Make rows iterable as dicts
     if pending_rows:
         conn.fetch.return_value = [MagicMock(**dict(row.items())) for row in pending_rows]
+
         # Simpler: just return the rows directly via side_effect
         async def _fetch_side_effect(query, *args):
             return pending_rows
+
         conn.fetch.side_effect = _fetch_side_effect
 
     pool = MagicMock()
@@ -217,7 +228,9 @@ class TestCheckAndNotify:
     async def test_ok_when_no_pending(self) -> None:
         pool = _make_db_pool(killswitch="true", pending_rows=[])
         notifier = LKPMDeadlineNotifier(pool)
-        with patch.object(notifier, "_get_pending_reports", new_callable=AsyncMock, return_value=[]):
+        with patch.object(
+            notifier, "_get_pending_reports", new_callable=AsyncMock, return_value=[]
+        ):
             result = await notifier.check_and_notify()
         assert result["status"] == "ok"
         assert result["emails_sent"] == 0
@@ -225,7 +238,8 @@ class TestCheckAndNotify:
     @pytest.mark.asyncio
     @patch("backend.services.compliance.lkpm_deadline_notifier.httpx.AsyncClient")
     async def test_sends_assignee_and_unassigned_emails(
-        self, mock_client_cls: MagicMock,
+        self,
+        mock_client_cls: MagicMock,
     ) -> None:
         now = datetime(2026, 4, 1, tzinfo=timezone.utc)
         rows = [
@@ -266,7 +280,9 @@ class TestCheckAndNotify:
 
         notifier = LKPMDeadlineNotifier(pool)
 
-        with patch.object(notifier, "_maybe_send_telegram", new_callable=AsyncMock, return_value=False):
+        with patch.object(
+            notifier, "_maybe_send_telegram", new_callable=AsyncMock, return_value=False
+        ):
             with patch("backend.services.compliance.lkpm_deadline_notifier.datetime") as mock_dt:
                 mock_dt.now.return_value = now
                 mock_dt.side_effect = lambda *a, **kw: datetime(*a, **kw)
@@ -279,6 +295,7 @@ class TestCheckAndNotify:
 # ---------------------------------------------------------------------------
 # _maybe_send_telegram
 # ---------------------------------------------------------------------------
+
 
 class TestMaybeSendTelegram:
     @pytest.mark.asyncio
@@ -296,7 +313,9 @@ class TestMaybeSendTelegram:
         assert result is False
 
     @pytest.mark.asyncio
-    @patch("backend.services.compliance.lkpm_deadline_notifier.LKPMDeadlineNotifier._send_telegram_alert")
+    @patch(
+        "backend.services.compliance.lkpm_deadline_notifier.LKPMDeadlineNotifier._send_telegram_alert"
+    )
     async def test_sends_for_urgent_drafts(self, mock_send: AsyncMock) -> None:
         mock_send.return_value = None
         notifier = LKPMDeadlineNotifier(db_pool=MagicMock())
@@ -314,11 +333,21 @@ class TestMaybeSendTelegram:
         mock_send.assert_awaited_once()
 
     @pytest.mark.asyncio
-    @patch("backend.services.compliance.lkpm_deadline_notifier.LKPMDeadlineNotifier._send_telegram_alert")
+    @patch(
+        "backend.services.compliance.lkpm_deadline_notifier.LKPMDeadlineNotifier._send_telegram_alert"
+    )
     async def test_returns_false_on_telegram_error(self, mock_send: AsyncMock) -> None:
         mock_send.side_effect = RuntimeError("Telegram down")
         notifier = LKPMDeadlineNotifier(db_pool=MagicMock())
-        rows = [{"days_until_deadline": 1, "status": "draft", "company_name": "X", "quarter": "Q1", "year": 2026}]
+        rows = [
+            {
+                "days_until_deadline": 1,
+                "status": "draft",
+                "company_name": "X",
+                "quarter": "Q1",
+                "year": 2026,
+            }
+        ]
         result = await notifier._maybe_send_telegram(rows, datetime.now(timezone.utc))
         assert result is False
 
@@ -326,6 +355,7 @@ class TestMaybeSendTelegram:
 # ---------------------------------------------------------------------------
 # _post_email
 # ---------------------------------------------------------------------------
+
 
 class TestPostEmail:
     @pytest.mark.asyncio
@@ -346,7 +376,10 @@ class TestPostEmail:
         notifier._client = mock_client
 
         await notifier._post_email(
-            to="a@b.com", subject="test", html_body="<p>hi</p>", cc="cc@b.com",
+            to="a@b.com",
+            subject="test",
+            html_body="<p>hi</p>",
+            cc="cc@b.com",
         )
         call_kwargs = mock_client.post.call_args
         payload = call_kwargs.kwargs.get("json") or call_kwargs[1].get("json")
@@ -371,6 +404,7 @@ class TestPostEmail:
 # ---------------------------------------------------------------------------
 # run_lkpm_deadline_notifier_task (module-level entry point)
 # ---------------------------------------------------------------------------
+
 
 class TestEntryPoint:
     @pytest.mark.asyncio

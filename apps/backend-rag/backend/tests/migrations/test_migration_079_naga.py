@@ -18,6 +18,7 @@ from backend.migrations.migration_079_naga_tables import apply, rollback
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _collect_executed_sql(calls: list[tuple]) -> str:
     """Join all SQL strings passed to conn.execute into one blob."""
     return "\n".join(call.args[0] for call in calls if call.args)
@@ -68,6 +69,7 @@ async def test_all_five_tables_dropped_on_rollback():
 # Key design decisions (from Naga spec review)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_evidence_map_uri_not_jsonb():
     """evidence_map must be stored as TEXT URI, not JSONB (Pointer State Pattern)."""
@@ -77,9 +79,7 @@ async def test_evidence_map_uri_not_jsonb():
     norm = _normalize(sql)
     assert "evidence_map_uri" in sql, "Missing evidence_map_uri column"
     # Must be TEXT type (normalized to collapse alignment spaces)
-    assert "evidence_map_uri TEXT" in norm, (
-        "evidence_map_uri must be TEXT type"
-    )
+    assert "evidence_map_uri TEXT" in norm, "evidence_map_uri must be TEXT type"
 
 
 @pytest.mark.asyncio
@@ -130,6 +130,7 @@ async def test_claim_transitions_table_exists():
 # Idempotency
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_idempotent_create_tables():
     """All CREATE TABLE statements must use IF NOT EXISTS."""
@@ -140,8 +141,7 @@ async def test_idempotent_create_tables():
     create_table_if_count = sql.count("CREATE TABLE IF NOT EXISTS")
     assert create_table_count > 0, "No CREATE TABLE found"
     assert create_table_count == create_table_if_count, (
-        f"Not all CREATE TABLE use IF NOT EXISTS "
-        f"({create_table_count} vs {create_table_if_count})"
+        f"Not all CREATE TABLE use IF NOT EXISTS ({create_table_count} vs {create_table_if_count})"
     )
 
 
@@ -199,14 +199,13 @@ async def test_gin_index_for_topic_tags():
     await apply(conn)
     sql = _collect_executed_sql(conn.execute.call_args_list)
     # Find the section around the topic index
-    assert "USING GIN" in sql or "USING gin" in sql, (
-        "topic_tags index must use GIN operator class"
-    )
+    assert "USING GIN" in sql or "USING gin" in sql, "topic_tags index must use GIN operator class"
 
 
 # ---------------------------------------------------------------------------
 # Foreign keys and constraints
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_cascade_deletes():
@@ -223,9 +222,7 @@ async def test_cascade_deletes():
     cascade_count = sql.count("ON DELETE CASCADE")
     # At minimum: sources->sessions, claims->sessions, evidence->claims,
     # evidence->sources, transitions->from, transitions->to = 6
-    assert cascade_count >= 6, (
-        f"Expected at least 6 ON DELETE CASCADE, found {cascade_count}"
-    )
+    assert cascade_count >= 6, f"Expected at least 6 ON DELETE CASCADE, found {cascade_count}"
 
 
 @pytest.mark.asyncio
@@ -243,6 +240,7 @@ async def test_unique_constraints():
 # ---------------------------------------------------------------------------
 # Column type checks
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_sessions_has_required_columns():
@@ -331,6 +329,7 @@ async def test_claims_has_required_columns():
 # ---------------------------------------------------------------------------
 # apply / rollback are async callables
 # ---------------------------------------------------------------------------
+
 
 def test_apply_is_async():
     """apply must be an async function."""

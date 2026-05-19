@@ -54,12 +54,20 @@ HEAVY_PREFIXES = (
 _proxy_client: httpx.AsyncClient | None = None
 _proxy_client_lock = asyncio.Lock()
 
-_HOP_BY_HOP_RESPONSE = frozenset({
-    "connection", "keep-alive", "transfer-encoding",
-    "te", "trailers", "upgrade", "proxy-authenticate", "proxy-authorization",
-    "content-length",     # Let Starlette recalculate — middleware may modify body
-    "content-encoding",   # httpx auto-decompresses; forwarding gzip header with plain body breaks clients
-})
+_HOP_BY_HOP_RESPONSE = frozenset(
+    {
+        "connection",
+        "keep-alive",
+        "transfer-encoding",
+        "te",
+        "trailers",
+        "upgrade",
+        "proxy-authenticate",
+        "proxy-authorization",
+        "content-length",  # Let Starlette recalculate — middleware may modify body
+        "content-encoding",  # httpx auto-decompresses; forwarding gzip header with plain body breaks clients
+    }
+)
 
 
 def _filter_response_headers(headers) -> dict:
@@ -85,7 +93,9 @@ async def get_proxy_client() -> httpx.AsyncClient:
             if _proxy_client is None or _proxy_client.is_closed:
                 _proxy_client = httpx.AsyncClient(
                     base_url=get_rag_worker_url(),
-                    timeout=httpx.Timeout(300.0, connect=10.0),  # 5min for agentic RAG with tool calls
+                    timeout=httpx.Timeout(
+                        300.0, connect=10.0
+                    ),  # 5min for agentic RAG with tool calls
                     limits=httpx.Limits(max_connections=50, max_keepalive_connections=20),
                 )
     return _proxy_client
@@ -109,13 +119,17 @@ async def proxy_request(request: Request) -> Response:
 
     # Forward all headers except hop-by-hop
     hop_by_hop = {
-        "connection", "keep-alive", "proxy-authenticate", "proxy-authorization",
-        "te", "trailers", "transfer-encoding", "upgrade", "host",
+        "connection",
+        "keep-alive",
+        "proxy-authenticate",
+        "proxy-authorization",
+        "te",
+        "trailers",
+        "transfer-encoding",
+        "upgrade",
+        "host",
     }
-    headers = {
-        k: v for k, v in request.headers.items()
-        if k.lower() not in hop_by_hop
-    }
+    headers = {k: v for k, v in request.headers.items() if k.lower() not in hop_by_hop}
     client_host = request.client.host if request.client else "unknown"
     existing_xff = request.headers.get("x-forwarded-for")
     headers["x-forwarded-for"] = f"{existing_xff}, {client_host}" if existing_xff else client_host

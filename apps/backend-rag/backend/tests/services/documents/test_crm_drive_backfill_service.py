@@ -37,7 +37,9 @@ class _FakeConn:
 
 
 @pytest.mark.asyncio
-async def test_backfill_links_completed_existing_document_without_ocr(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_backfill_links_completed_existing_document_without_ocr(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from backend.services.documents.crm_drive_backfill_service import run_crm_drive_backfill
 
     monkeypatch.delenv("CRM_KG_ENABLED", raising=False)
@@ -60,14 +62,17 @@ async def test_backfill_links_completed_existing_document_without_ocr(monkeypatc
         ],
     )
 
-    with patch(
-        "backend.services.knowledge_graph.document_linker.kg_link_document",
-        new_callable=AsyncMock,
-        return_value={"ok": True, "nodes": 3, "edges": 2},
-    ) as mock_kg, patch(
-        "backend.services.documents.ocr_dispatcher_service.dispatch_ocr_by_folder",
-        new_callable=AsyncMock,
-    ) as mock_dispatch:
+    with (
+        patch(
+            "backend.services.knowledge_graph.document_linker.kg_link_document",
+            new_callable=AsyncMock,
+            return_value={"ok": True, "nodes": 3, "edges": 2},
+        ) as mock_kg,
+        patch(
+            "backend.services.documents.ocr_dispatcher_service.dispatch_ocr_by_folder",
+            new_callable=AsyncMock,
+        ) as mock_dispatch,
+    ):
         result = await run_crm_drive_backfill(pool, limit=5, dry_run=False)
 
     assert result["processed"] == 1
@@ -81,7 +86,9 @@ async def test_backfill_links_completed_existing_document_without_ocr(monkeypatc
 
 
 @pytest.mark.asyncio
-async def test_backfill_links_completed_json_string_without_ocr(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_backfill_links_completed_json_string_without_ocr(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from backend.services.documents.crm_drive_backfill_service import run_crm_drive_backfill
 
     monkeypatch.delenv("CRM_KG_ENABLED", raising=False)
@@ -104,14 +111,17 @@ async def test_backfill_links_completed_json_string_without_ocr(monkeypatch: pyt
         ],
     )
 
-    with patch(
-        "backend.services.knowledge_graph.document_linker.kg_link_document",
-        new_callable=AsyncMock,
-        return_value={"ok": True, "nodes": 2, "edges": 1},
-    ) as mock_kg, patch(
-        "backend.services.documents.ocr_dispatcher_service.dispatch_ocr_by_folder",
-        new_callable=AsyncMock,
-    ) as mock_dispatch:
+    with (
+        patch(
+            "backend.services.knowledge_graph.document_linker.kg_link_document",
+            new_callable=AsyncMock,
+            return_value={"ok": True, "nodes": 2, "edges": 1},
+        ) as mock_kg,
+        patch(
+            "backend.services.documents.ocr_dispatcher_service.dispatch_ocr_by_folder",
+            new_callable=AsyncMock,
+        ) as mock_dispatch,
+    ):
         result = await run_crm_drive_backfill(pool, limit=5, dry_run=False)
 
     assert result["processed"] == 1
@@ -122,7 +132,9 @@ async def test_backfill_links_completed_json_string_without_ocr(monkeypatch: pyt
 
 
 @pytest.mark.asyncio
-async def test_backfill_skips_pending_existing_document_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_backfill_skips_pending_existing_document_by_default(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     from backend.services.documents.crm_drive_backfill_service import run_crm_drive_backfill
 
     monkeypatch.delenv("CRM_KG_ENABLED", raising=False)
@@ -145,19 +157,22 @@ async def test_backfill_skips_pending_existing_document_by_default(monkeypatch: 
         ],
     )
 
-    with patch(
-        "backend.services.documents.ocr_dispatcher_service.dispatch_ocr_by_folder",
-        new_callable=AsyncMock,
-        return_value={
-            "dispatched": True,
-            "handler": "npwp",
-            "result": {"success": True, "extracted": {"npwp": "01.234"}},
-        },
-    ) as mock_dispatch, patch(
-        "backend.services.knowledge_graph.document_linker.kg_link_document",
-        new_callable=AsyncMock,
-        return_value={"ok": True, "nodes": 3, "edges": 2},
-    ) as mock_kg:
+    with (
+        patch(
+            "backend.services.documents.ocr_dispatcher_service.dispatch_ocr_by_folder",
+            new_callable=AsyncMock,
+            return_value={
+                "dispatched": True,
+                "handler": "npwp",
+                "result": {"success": True, "extracted": {"npwp": "01.234"}},
+            },
+        ) as mock_dispatch,
+        patch(
+            "backend.services.knowledge_graph.document_linker.kg_link_document",
+            new_callable=AsyncMock,
+            return_value={"ok": True, "nodes": 3, "edges": 2},
+        ) as mock_kg,
+    ):
         result = await run_crm_drive_backfill(pool, limit=5, dry_run=False)
 
     assert result["processed"] == 1
@@ -194,19 +209,22 @@ async def test_backfill_dispatches_pending_existing_document_to_ocr_when_allowed
         ],
     )
 
-    with patch(
-        "backend.services.documents.ocr_dispatcher_service.dispatch_ocr_by_folder",
-        new_callable=AsyncMock,
-        return_value={
-            "dispatched": True,
-            "handler": "npwp",
-            "result": {"success": True, "extracted": {"npwp": "01.234"}},
-        },
-    ) as mock_dispatch, patch(
-        "backend.services.knowledge_graph.document_linker.kg_link_document",
-        new_callable=AsyncMock,
-        return_value={"ok": True, "nodes": 3, "edges": 2},
-    ) as mock_kg:
+    with (
+        patch(
+            "backend.services.documents.ocr_dispatcher_service.dispatch_ocr_by_folder",
+            new_callable=AsyncMock,
+            return_value={
+                "dispatched": True,
+                "handler": "npwp",
+                "result": {"success": True, "extracted": {"npwp": "01.234"}},
+            },
+        ) as mock_dispatch,
+        patch(
+            "backend.services.knowledge_graph.document_linker.kg_link_document",
+            new_callable=AsyncMock,
+            return_value={"ok": True, "nodes": 3, "edges": 2},
+        ) as mock_kg,
+    ):
         result = await run_crm_drive_backfill(
             pool,
             limit=5,
@@ -249,18 +267,21 @@ async def test_backfill_does_not_double_link_when_dispatcher_kg_enabled(
         ],
     )
 
-    with patch(
-        "backend.services.documents.ocr_dispatcher_service.dispatch_ocr_by_folder",
-        new_callable=AsyncMock,
-        return_value={
-            "dispatched": True,
-            "handler": "npwp",
-            "result": {"success": True, "extracted": {"npwp": "01.234"}},
-        },
-    ) as mock_dispatch, patch(
-        "backend.services.knowledge_graph.document_linker.kg_link_document",
-        new_callable=AsyncMock,
-    ) as mock_kg:
+    with (
+        patch(
+            "backend.services.documents.ocr_dispatcher_service.dispatch_ocr_by_folder",
+            new_callable=AsyncMock,
+            return_value={
+                "dispatched": True,
+                "handler": "npwp",
+                "result": {"success": True, "extracted": {"npwp": "01.234"}},
+            },
+        ) as mock_dispatch,
+        patch(
+            "backend.services.knowledge_graph.document_linker.kg_link_document",
+            new_callable=AsyncMock,
+        ) as mock_kg,
+    ):
         result = await run_crm_drive_backfill(
             pool,
             limit=5,
@@ -298,13 +319,16 @@ async def test_backfill_dry_run_only_counts_candidates() -> None:
         ],
     )
 
-    with patch(
-        "backend.services.documents.ocr_dispatcher_service.dispatch_ocr_by_folder",
-        new_callable=AsyncMock,
-    ) as mock_dispatch, patch(
-        "backend.services.knowledge_graph.document_linker.kg_link_document",
-        new_callable=AsyncMock,
-    ) as mock_kg:
+    with (
+        patch(
+            "backend.services.documents.ocr_dispatcher_service.dispatch_ocr_by_folder",
+            new_callable=AsyncMock,
+        ) as mock_dispatch,
+        patch(
+            "backend.services.knowledge_graph.document_linker.kg_link_document",
+            new_callable=AsyncMock,
+        ) as mock_kg,
+    ):
         result = await run_crm_drive_backfill(pool, limit=5, dry_run=True)
 
     assert result["candidate_count"] == 1

@@ -23,6 +23,7 @@ Single-instance: lease + advisory lock per proposal_id (B5+B6). Two
 daemons on the same Pro coexist safely — only one acquires each
 proposal's lease.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -74,9 +75,7 @@ class FederationAlertDaemon:
 
     async def start(self) -> None:
         """Block until SIGTERM. Idempotent for the same instance."""
-        self._pool = await asyncpg.create_pool(
-            self._config.database_url, min_size=1, max_size=4
-        )
+        self._pool = await asyncpg.create_pool(self._config.database_url, min_size=1, max_size=4)
         self._install_signal_handlers()
 
         repo = FederationAlertRepo(pool=self._pool)
@@ -175,7 +174,9 @@ class FederationAlertDaemon:
             ) as exc:
                 logger.warning(
                     "LISTEN %s connection lost: %s; reconnecting in %.1fs",
-                    PG_CHANNEL, exc, backoff,
+                    PG_CHANNEL,
+                    exc,
+                    backoff,
                 )
                 self._audit.emit(
                     "daemon.listener_lost",
@@ -207,9 +208,7 @@ class FederationAlertDaemon:
         repo = FederationAlertRepo(pool=self._pool)  # type: ignore[arg-type]
         await self._process_notify_payload(json.dumps(payload), repo)
 
-    async def _process_notify_payload(
-        self, payload_str: str, repo: FederationAlertRepo
-    ) -> None:
+    async def _process_notify_payload(self, payload_str: str, repo: FederationAlertRepo) -> None:
         try:
             payload = json.loads(payload_str)
         except json.JSONDecodeError as exc:
@@ -227,9 +226,7 @@ class FederationAlertDaemon:
 
         proposal = await repo.get_by_proposal_id(proposal_id)
         if proposal is None:
-            logger.warning(
-                "federation_alert references unknown proposal %s", proposal_id
-            )
+            logger.warning("federation_alert references unknown proposal %s", proposal_id)
             return
 
         # Skip terminal proposals (already processed).
@@ -278,9 +275,7 @@ class FederationAlertDaemon:
                     last_error=repr(exc)[:500],
                 )
         finally:
-            await repo.release_lease(
-                proposal_id, owner=self._config.daemon_owner
-            )
+            await repo.release_lease(proposal_id, owner=self._config.daemon_owner)
 
     async def _effective_mode(self, repo: FederationAlertRepo) -> str:
         db_mode = await repo.get_db_mode()
@@ -348,9 +343,7 @@ class FederationAlertDaemon:
             return
 
         if policy.requires_approval:
-            await self._request_telegram_approval(
-                repo, proposal, mode, reason=policy.reason
-            )
+            await self._request_telegram_approval(repo, proposal, mode, reason=policy.reason)
             return
 
         # ----- ALLOWED_L2 actions: execute (dry-run gated by mode) -----
@@ -394,17 +387,9 @@ class FederationAlertDaemon:
         )
 
         if is_dry:
-            terminal = (
-                ProposalStatus.DRY_SUCCEEDED
-                if result.success
-                else ProposalStatus.DRY_FAILED
-            )
+            terminal = ProposalStatus.DRY_SUCCEEDED if result.success else ProposalStatus.DRY_FAILED
         else:
-            terminal = (
-                ProposalStatus.COMPLETED
-                if result.success
-                else ProposalStatus.FAILED
-            )
+            terminal = ProposalStatus.COMPLETED if result.success else ProposalStatus.FAILED
 
         await repo.advance_status(
             proposal_id,
@@ -499,9 +484,7 @@ class FederationAlertDaemon:
                 telegram_message_id=message_id,
             )
         except RuntimeError as exc:
-            logger.warning(
-                "request_approval failed for %s: %s", proposal_id, exc
-            )
+            logger.warning("request_approval failed for %s: %s", proposal_id, exc)
             self._audit.emit(
                 "proposal.approval_request_failed",
                 proposal_id=proposal_id,

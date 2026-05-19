@@ -159,7 +159,10 @@ def mock_llm_response():
 @patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.call_claude_with_retry")
 def test_compose_article_success(
-    mock_call, test_client, sample_compose_request, mock_llm_response,
+    mock_call,
+    test_client,
+    sample_compose_request,
+    mock_llm_response,
 ):
     """Test successful article composition via DeepSeek."""
     mock_call.return_value = mock_llm_response
@@ -296,7 +299,9 @@ def test_compose_article_missing_api_key(test_client, sample_compose_request):
 @patch.dict("os.environ", {"DEEPSEEK_API_KEY": "test-key"})
 @patch("backend.app.routers.article_composer.call_claude_with_retry")
 def test_compose_article_json_parse_error(
-    mock_call, test_client, sample_compose_request,
+    mock_call,
+    test_client,
+    sample_compose_request,
 ):
     """Test compose handles JSON parse errors from the LLM."""
     mock_call.return_value = ClaudeOAuthMessage(
@@ -366,7 +371,9 @@ def test_compose_status_not_configured(test_client):
 @pytest.mark.asyncio
 @patch("backend.services.integrations.github_publisher.github_publisher")
 async def test_publish_article_with_cover_image(
-    mock_publisher, test_client, sample_enriched_article,
+    mock_publisher,
+    test_client,
+    sample_enriched_article,
 ):
     """Test publishing article with cover image (base64)"""
     # Setup mock
@@ -405,7 +412,9 @@ async def test_publish_article_with_cover_image(
 @pytest.mark.asyncio
 @patch("backend.services.integrations.github_publisher.github_publisher")
 async def test_publish_article_without_cover_image(
-    mock_publisher, test_client, sample_enriched_article,
+    mock_publisher,
+    test_client,
+    sample_enriched_article,
 ):
     """Test publishing article without cover image"""
     # Setup mock
@@ -430,7 +439,9 @@ async def test_publish_article_without_cover_image(
 
 @patch("backend.services.integrations.github_publisher.github_publisher")
 def test_publish_article_github_not_configured(
-    mock_publisher, test_client, sample_enriched_article,
+    mock_publisher,
+    test_client,
+    sample_enriched_article,
 ):
     """Test publish fails when GitHub not configured"""
     mock_publisher.is_configured = False
@@ -599,7 +610,10 @@ def test_build_enrichment_prompt_priority_instructions():
 @patch("backend.app.routers.article_composer.call_claude_with_retry")
 @patch("backend.services.integrations.github_publisher.github_publisher")
 def test_full_compose_and_publish_flow(
-    mock_publisher, mock_call, test_client, mock_llm_response,
+    mock_publisher,
+    mock_call,
+    test_client,
+    mock_llm_response,
 ):
     """Integration test: compose article then publish it (DeepSeek-backed)."""
     mock_call.return_value = mock_llm_response

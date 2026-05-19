@@ -10,6 +10,7 @@ Covers:
 6. enqueue_commission_earned inserts a pending row for a paid commission.
 7. enqueue_commission_earned is idempotent.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -37,8 +38,7 @@ async def test_enqueue_welcome_inserts_outbox_row(db_conn, partner_factory):
         await enqueue_welcome(db_conn, uuid.UUID(int=pid.int))
 
     row = await db_conn.fetchrow(
-        "SELECT email_type, partner_id, status FROM partner_email_outbox "
-        "WHERE partner_id = $1",
+        "SELECT email_type, partner_id, status FROM partner_email_outbox WHERE partner_id = $1",
         uuid.UUID(int=pid.int),
     )
     assert row is not None, "Expected outbox row after enqueue_welcome"
@@ -120,8 +120,7 @@ async def test_flush_outbox_retries_on_transient_failure(db_conn, partner_factor
     assert result["dlq"] == 0
 
     row = await db_conn.fetchrow(
-        "SELECT status, attempts, last_error FROM partner_email_outbox "
-        "WHERE partner_id = $1",
+        "SELECT status, attempts, last_error FROM partner_email_outbox WHERE partner_id = $1",
         uuid.UUID(int=pid.int),
     )
     assert row["status"] == "pending", "Should remain pending after first failure"
@@ -186,9 +185,7 @@ async def test_enqueue_commission_earned_inserts_outbox_row(
 
 
 @pytest.mark.asyncio
-async def test_enqueue_commission_earned_idempotent(
-    db_conn, partner_factory, commission_factory
-):
+async def test_enqueue_commission_earned_idempotent(db_conn, partner_factory, commission_factory):
     """Calling enqueue_commission_earned twice must produce exactly one outbox row."""
     pid = await partner_factory()
     cid = await commission_factory(

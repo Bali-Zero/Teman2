@@ -300,7 +300,9 @@ class TestRecordQueryMetrics:
         """Test that exceptions are logged not raised."""
         # This should not raise
         with patch.object(
-            monitor, "_update_prometheus_metrics", side_effect=Exception("Test error"),
+            monitor,
+            "_update_prometheus_metrics",
+            side_effect=Exception("Test error"),
         ):
             monitor.record_query_metrics(
                 query="test",
@@ -349,7 +351,8 @@ class TestRecordRetrievalScore:
         monitor.record_retrieval_score(0.2)  # Below default threshold of 0.3
 
         mock_prometheus_metrics["alert_threshold_breaches"].labels.assert_called_once_with(
-            metric_name="retrieval_score", severity="warning",
+            metric_name="retrieval_score",
+            severity="warning",
         )
 
 
@@ -365,7 +368,8 @@ class TestRecordAbstain:
         monitor.record_abstain()
 
         mock_prometheus_metrics["abstain_total"].labels.assert_called_once_with(
-            domain="general", reason="low_confidence",
+            domain="general",
+            reason="low_confidence",
         )
         assert len(monitor._query_records) == 1
 
@@ -378,7 +382,8 @@ class TestRecordAbstain:
         monitor.record_abstain(domain="visa", reason="safety")
 
         mock_prometheus_metrics["abstain_total"].labels.assert_called_once_with(
-            domain="visa", reason="safety",
+            domain="visa",
+            reason="safety",
         )
 
         record = monitor._query_records[0]

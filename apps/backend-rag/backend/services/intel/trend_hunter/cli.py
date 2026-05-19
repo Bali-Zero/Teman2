@@ -79,9 +79,7 @@ async def run() -> int:
             )
             + "\n"
         )
-        if not summary.adapters_run or all(
-            (not a.ok) for a in summary.adapters_run
-        ):
+        if not summary.adapters_run or all((not a.ok) for a in summary.adapters_run):
             return 2
         return 0
     finally:

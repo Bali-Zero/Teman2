@@ -80,10 +80,7 @@ class ConfirmationService:
         if self._listener_task is not None and not self._listener_task.done():
             return
         if not self._redis_available():
-            logger.warning(
-                "ConfirmationService: Redis unavailable at start; "
-                "listener not started"
-            )
+            logger.warning("ConfirmationService: Redis unavailable at start; listener not started")
             return
         self._listener_task = asyncio.create_task(self._pubsub_listener())
         logger.info("ConfirmationService: pubsub listener started")
@@ -122,9 +119,7 @@ class ConfirmationService:
         """
         client = self._get_client()
         if client is None:
-            raise ConfirmationRedisDown(
-                "Redis unavailable; cannot persist confirmation request"
-            )
+            raise ConfirmationRedisDown("Redis unavailable; cannot persist confirmation request")
 
         request_id = str(uuid.uuid4())
         payload = {
@@ -154,15 +149,17 @@ class ConfirmationService:
         # 3. Emit SSE event
         if emitter is not None:
             try:
-                await emitter({
-                    "type": "confirmation_required",
-                    "data": {
-                        "request_id": request_id,
-                        "tool_name": tool_name,
-                        "args": args,
-                        "preview": preview,
-                    },
-                })
+                await emitter(
+                    {
+                        "type": "confirmation_required",
+                        "data": {
+                            "request_id": request_id,
+                            "tool_name": tool_name,
+                            "args": args,
+                            "preview": preview,
+                        },
+                    }
+                )
             except Exception as exc:
                 logger.warning(
                     "ConfirmationService: emitter raised %s; continuing",
@@ -173,9 +170,7 @@ class ConfirmationService:
         try:
             decision = await asyncio.wait_for(future, timeout=timeout)
         except asyncio.TimeoutError:
-            raise ConfirmationTimeout(
-                f"No resolution within {timeout}s"
-            ) from None
+            raise ConfirmationTimeout(f"No resolution within {timeout}s") from None
         finally:
             async with self._lock:
                 self._pending.pop(request_id, None)
@@ -220,8 +215,7 @@ class ConfirmationService:
 
         if payload.get("user_email") != user_email:
             logger.warning(
-                "ConfirmationService: resolve denied — user %s does "
-                "not own request %s (owner: %s)",
+                "ConfirmationService: resolve denied — user %s does not own request %s (owner: %s)",
                 user_email,
                 request_id,
                 payload.get("user_email"),
@@ -238,10 +232,12 @@ class ConfirmationService:
         try:
             await client.publish(
                 CONFIRMATION_PUBSUB_CHANNEL,
-                json.dumps({
-                    "request_id": request_id,
-                    "decision": decision,
-                }),
+                json.dumps(
+                    {
+                        "request_id": request_id,
+                        "decision": decision,
+                    }
+                ),
             )
         except Exception as exc:
             logger.warning("ConfirmationService: publish failed: %s", exc)

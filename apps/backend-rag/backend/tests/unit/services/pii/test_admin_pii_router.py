@@ -21,9 +21,11 @@ from backend.app.routers.debug import verify_debug_access
 
 def _row(**fields):
     """Stub that behaves like an asyncpg.Record for dict(r)."""
+
     class _R(dict):
         def __init__(self, d):
             super().__init__(d)
+
     return _R(fields)
 
 
@@ -82,9 +84,13 @@ class TestListViolations:
         # Return exactly `limit` rows → next_cursor must be last id
         fetch.return_value = [
             _row(
-                id=100 - i, request_id=None, route="/x",
-                pattern_matched="ID_KTP", severity="high",
-                user_hash=None, occurrence_count=1,
+                id=100 - i,
+                request_id=None,
+                route="/x",
+                pattern_matched="ID_KTP",
+                severity="high",
+                user_hash=None,
+                occurrence_count=1,
                 created_at=datetime.now(timezone.utc),
             )
             for i in range(5)
@@ -99,9 +105,13 @@ class TestListViolations:
         app, fetch = app_with_pool
         fetch.return_value = [
             _row(
-                id=7, request_id=None, route="/x",
-                pattern_matched="ID_KTP", severity="high",
-                user_hash=None, occurrence_count=1,
+                id=7,
+                request_id=None,
+                route="/x",
+                pattern_matched="ID_KTP",
+                severity="high",
+                user_hash=None,
+                occurrence_count=1,
                 created_at=datetime.now(timezone.utc),
             ),
         ]
@@ -119,7 +129,8 @@ class TestTrend:
             _row(
                 pattern_matched="ID_KTP",
                 day=datetime(2026, 4, 18, tzinfo=timezone.utc),
-                count=3, total_occurrences=5,
+                count=3,
+                total_occurrences=5,
             ),
         ]
         with TestClient(app) as c:
@@ -137,7 +148,8 @@ class TestByRoute:
         fetch.return_value = [
             _row(
                 route="/api/agentic/ask",
-                violation_count=42, total_occurrences=99,
+                violation_count=42,
+                total_occurrences=99,
                 distinct_patterns=3,
                 last_seen=datetime.now(timezone.utc),
             ),

@@ -131,7 +131,10 @@ class PoliticsIngestionService:
 
         embeddings = self.embedder.generate_embeddings(documents)
         self.vector_db.upsert_documents(
-            chunks=documents, embeddings=embeddings, metadatas=metadatas, ids=ids,
+            chunks=documents,
+            embeddings=embeddings,
+            metadatas=metadatas,
+            ids=ids,
         )
 
         return {"success": True, "documents_added": len(documents)}

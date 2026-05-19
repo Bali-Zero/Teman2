@@ -58,7 +58,8 @@ class IntelApprovalService:
         team_config = get_team_config(intel_type)
         if not team_config or not team_config["approvers"]:
             logger.warning(
-                "No approvers configured for %s", intel_type,
+                "No approvers configured for %s",
+                intel_type,
                 extra={"intel_type": intel_type, "item_id": item_id},
             )
             return False
@@ -66,14 +67,19 @@ class IntelApprovalService:
         chat_ids = get_chat_ids(intel_type)
         if not chat_ids:
             logger.warning(
-                "No chat IDs found for %s", intel_type,
+                "No chat IDs found for %s",
+                intel_type,
                 extra={"intel_type": intel_type, "item_id": item_id},
             )
             return False
 
         # Build notification content
         caption = self._build_notification_caption(
-            intel_type, item_id, item_data, enriched_data, team_config,
+            intel_type,
+            item_id,
+            item_data,
+            enriched_data,
+            team_config,
         )
         keyboard = self._build_approval_keyboard(intel_type, item_id)
 
@@ -103,7 +109,8 @@ class IntelApprovalService:
 
                 success_count += 1
                 logger.info(
-                    "Rich notification sent to %s", chat_id,
+                    "Rich notification sent to %s",
+                    chat_id,
                     extra={
                         "intel_type": intel_type,
                         "item_id": item_id,
@@ -114,7 +121,9 @@ class IntelApprovalService:
                 )
             except Exception as e:
                 logger.error(
-                    "Failed to send notification to %s: %s", chat_id, e,
+                    "Failed to send notification to %s: %s",
+                    chat_id,
+                    e,
                     extra={
                         "intel_type": intel_type,
                         "item_id": item_id,
@@ -164,7 +173,9 @@ class IntelApprovalService:
 
         source = item_data.get("source_name", item_data.get("source", "Unknown"))
         source_url = item_data.get("source_url", item_data.get("url", ""))
-        detected_at = item_data.get("detected_at", datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M"))
+        detected_at = item_data.get(
+            "detected_at", datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M")
+        )
 
         emoji_map = {"visa": "🛂", "news": "📰"}
         emoji = emoji_map.get(intel_type, "📋")
@@ -201,7 +212,9 @@ class IntelApprovalService:
         return caption
 
     def _build_approval_keyboard(
-        self, intel_type: Literal["visa", "news"], item_id: str,
+        self,
+        intel_type: Literal["visa", "news"],
+        item_id: str,
     ) -> dict[str, Any]:
         """
         Build inline keyboard for approval/rejection buttons.
@@ -264,7 +277,9 @@ class IntelApprovalService:
 
         except Exception as e:
             logger.error(
-                "Failed to save voting status for %s: %s", item_id, e,
+                "Failed to save voting status for %s: %s",
+                item_id,
+                e,
                 exc_info=True,
                 extra={"item_id": item_id, "intel_type": intel_type},
             )

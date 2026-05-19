@@ -44,8 +44,9 @@ def _send_ok(mid: int = 42) -> SendResult:
     return SendResult(ok=True, message_id=mid)
 
 
-def _update(data: str, chat_id: str = OWNER_CHAT_ID, user: str = "zero",
-            message_id: int = 55) -> dict:
+def _update(
+    data: str, chat_id: str = OWNER_CHAT_ID, user: str = "zero", message_id: int = 55
+) -> dict:
     return {
         "callback_query": {
             "id": "cbq-1",
@@ -71,6 +72,7 @@ def repo_and_telegram():
 
 
 # ── send_review_request ─────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_send_review_request_happy_path(repo_and_telegram):
@@ -129,8 +131,11 @@ async def test_send_review_request_telegram_fail(repo_and_telegram):
     )
     handler = ReviewHandler(repo=repo, telegram=tg, owner_chat_id=OWNER_CHAT_ID)
     req = ReviewRequest(
-        draft_id=DID, topic="t", tone_register="tecnico",
-        cover_image_url="https://x/y", first_slide_text="b",
+        draft_id=DID,
+        topic="t",
+        tone_register="tecnico",
+        cover_image_url="https://x/y",
+        first_slide_text="b",
     )
     result = await handler.send_review_request(req)
     assert result.ok is False
@@ -138,6 +143,7 @@ async def test_send_review_request_telegram_fail(repo_and_telegram):
 
 
 # ── process_callback: authorization ─────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_callback_rejects_unauthorized_chat(repo_and_telegram):
@@ -167,6 +173,7 @@ async def test_callback_bad_data_answers_invalid(repo_and_telegram):
 
 
 # ── APPROVE ─────────────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_callback_approve_happy_path(repo_and_telegram):
@@ -227,6 +234,7 @@ async def test_callback_approve_invalid_transition(repo_and_telegram):
 
 # ── EDIT ────────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_callback_edit_acknowledges_only(repo_and_telegram):
     repo, tg = repo_and_telegram
@@ -242,6 +250,7 @@ async def test_callback_edit_acknowledges_only(repo_and_telegram):
 
 
 # ── REJECT two-step ─────────────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_callback_reject_first_step_shows_reason_picker(repo_and_telegram):
@@ -268,9 +277,13 @@ async def test_callback_reject_second_step_commits_rejection(repo_and_telegram):
     repo.record_rejection = AsyncMock()
     handler = ReviewHandler(repo=repo, telegram=tg, owner_chat_id=OWNER_CHAT_ID)
 
-    update = _update(encode_callback(
-        ReviewAction.REJECT, DID, RejectionReason.CLICKBAIT,
-    ))
+    update = _update(
+        encode_callback(
+            ReviewAction.REJECT,
+            DID,
+            RejectionReason.CLICKBAIT,
+        )
+    )
     result = await handler.process_callback(update)
     assert result.ok is True
     assert result.new_status == DraftStatus.REJECTED
@@ -290,9 +303,13 @@ async def test_callback_reject_idempotent_on_already_rejected(repo_and_telegram)
     repo.record_rejection = AsyncMock()
     handler = ReviewHandler(repo=repo, telegram=tg, owner_chat_id=OWNER_CHAT_ID)
 
-    update = _update(encode_callback(
-        ReviewAction.REJECT, DID, RejectionReason.TONE,
-    ))
+    update = _update(
+        encode_callback(
+            ReviewAction.REJECT,
+            DID,
+            RejectionReason.TONE,
+        )
+    )
     result = await handler.process_callback(update)
     assert result.idempotent_noop is True
     repo.update_status.assert_not_called()
@@ -305,9 +322,13 @@ async def test_callback_reject_missing_draft(repo_and_telegram):
     repo.get_draft = AsyncMock(return_value=None)
     handler = ReviewHandler(repo=repo, telegram=tg, owner_chat_id=OWNER_CHAT_ID)
 
-    update = _update(encode_callback(
-        ReviewAction.REJECT, DID, RejectionReason.TONE,
-    ))
+    update = _update(
+        encode_callback(
+            ReviewAction.REJECT,
+            DID,
+            RejectionReason.TONE,
+        )
+    )
     result = await handler.process_callback(update)
     assert result.ok is False
     assert "not found" in (result.error or "")

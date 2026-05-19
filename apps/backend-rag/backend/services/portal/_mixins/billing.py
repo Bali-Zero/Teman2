@@ -92,21 +92,25 @@ class PortalBillingMixin:
             if payment_status == "paid":
                 total_paid += amount
 
-            invoices.append({
-                "id": row["id"],
-                "invoice_number": row["invoice_number"],
-                "amount_idr": amount,
-                "invoice_source": row["invoice_source"],
-                "has_pdf": bool(row["drive_file_id"]),
-                "drive_web_link": None,
-                "email_sent": bool(row["email_sent_to_client"]),
-                "generated_at": row["generated_at"].isoformat() if row["generated_at"] else None,
-                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
-                "practice_id": row["practice_id"],
-                "practice_name": row["practice_name"],
-                "practice_category": row["practice_category"],
-                "payment_status": payment_status,
-            })
+            invoices.append(
+                {
+                    "id": row["id"],
+                    "invoice_number": row["invoice_number"],
+                    "amount_idr": amount,
+                    "invoice_source": row["invoice_source"],
+                    "has_pdf": bool(row["drive_file_id"]),
+                    "drive_web_link": None,
+                    "email_sent": bool(row["email_sent_to_client"]),
+                    "generated_at": row["generated_at"].isoformat()
+                    if row["generated_at"]
+                    else None,
+                    "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+                    "practice_id": row["practice_id"],
+                    "practice_name": row["practice_name"],
+                    "practice_category": row["practice_category"],
+                    "payment_status": payment_status,
+                }
+            )
 
         return {
             "invoices": invoices,
@@ -172,9 +176,7 @@ class PortalBillingMixin:
             return None
 
         extractor = getattr(self, "_extract_drive_file_id", None)
-        file_id = row["drive_file_id"] or (
-            extractor(row["drive_web_link"]) if extractor else None
-        )
+        file_id = row["drive_file_id"] or (extractor(row["drive_web_link"]) if extractor else None)
         if not file_id:
             return None
 
@@ -223,11 +225,13 @@ class PortalBillingMixin:
     # PROFILE UPDATE
     # ================================================
 
-    @cache_invalidating([
-        lambda _self, client_id, *_a, **_k: f"zantara:portal_profile:{client_id}:*",
-        lambda _self, client_id, *_a, **_k: f"zantara:crm_client:{client_id}:*",
-        "zantara:portal_messages:*",
-    ])
+    @cache_invalidating(
+        [
+            lambda _self, client_id, *_a, **_k: f"zantara:portal_profile:{client_id}:*",
+            lambda _self, client_id, *_a, **_k: f"zantara:crm_client:{client_id}:*",
+            "zantara:portal_messages:*",
+        ]
+    )
     @require_client_access
     async def update_profile(
         self,
@@ -250,8 +254,7 @@ class PortalBillingMixin:
         Returns the updated profile.
         """
         safe_fields = {
-            k: v for k, v in fields.items()
-            if k in self.PROFILE_EDITABLE_FIELDS and v is not None
+            k: v for k, v in fields.items() if k in self.PROFILE_EDITABLE_FIELDS and v is not None
         }
 
         async with self.pool.acquire() as conn:
@@ -270,7 +273,9 @@ class PortalBillingMixin:
                     *params,
                 )
 
-                logger.info(f"Portal profile updated for client {client_id}: {list(safe_fields.keys())}")
+                logger.info(
+                    f"Portal profile updated for client {client_id}: {list(safe_fields.keys())}"
+                )
 
                 # Notify CRM team: insert notification_alerts record (deduped daily)
                 fields_label = ", ".join(k.replace("_", " ") for k in safe_fields)
@@ -287,7 +292,11 @@ class PortalBillingMixin:
                         "Portal: profile update",
                     )
                 except Exception as e:
-                    logger.warning("Failed to insert portal_profile_update alert for client %s: %s", client_id, e)
+                    logger.warning(
+                        "Failed to insert portal_profile_update alert for client %s: %s",
+                        client_id,
+                        e,
+                    )
 
                 # Insert portal_messages record so CRM team can see the change in thread view
                 try:
@@ -301,7 +310,9 @@ class PortalBillingMixin:
                         f"Client updated their profile via the portal: {fields_label}.",
                     )
                 except Exception as e:
-                    logger.warning("Failed to insert portal_messages record for client %s: %s", client_id, e)
+                    logger.warning(
+                        "Failed to insert portal_messages record for client %s: %s", client_id, e
+                    )
 
             return await self._get_profile_data(conn, client_id)
 
@@ -341,7 +352,9 @@ class PortalBillingMixin:
                 "email": row["assigned_to_email"],
                 "name": row["assigned_to_name"],
                 "avatar_url": row["assigned_to_avatar"],
-            } if row["assigned_to_email"] else None,
+            }
+            if row["assigned_to_email"]
+            else None,
         }
 
 

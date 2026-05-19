@@ -468,7 +468,9 @@ class TestNormalizeNewsArticle:
         with patch("backend.services.ingestion.scraper_normalizer.ingestion_logger") as mock_logger:
             mock_logger.start_ingestion.return_value = "doc-123"
             mock_logger.scraper_data_normalized = MagicMock()
-            with patch("backend.services.ingestion.scraper_normalizer.metrics_collector") as mock_metrics:
+            with patch(
+                "backend.services.ingestion.scraper_normalizer.metrics_collector"
+            ) as mock_metrics:
                 mock_metrics.record_scraper_data_normalized = MagicMock()
                 result = await n.normalize_news_article(raw, source="test_scraper")
 
@@ -485,7 +487,9 @@ class TestNormalizeNewsArticle:
         with patch("backend.services.ingestion.scraper_normalizer.ingestion_logger") as mock_logger:
             mock_logger.start_ingestion.return_value = "doc-fail"
             mock_logger.ingestion_failed = MagicMock()
-            with patch("backend.services.ingestion.scraper_normalizer.metrics_collector") as mock_metrics:
+            with patch(
+                "backend.services.ingestion.scraper_normalizer.metrics_collector"
+            ) as mock_metrics:
                 mock_metrics.record_scraper_normalization_error = MagicMock()
                 with pytest.raises(ValueError, match="Missing required fields"):
                     await n.normalize_news_article(raw)
@@ -503,7 +507,9 @@ class TestNormalizeNewsArticle:
         with patch("backend.services.ingestion.scraper_normalizer.ingestion_logger") as mock_logger:
             mock_logger.start_ingestion.return_value = "doc-short"
             mock_logger.ingestion_failed = MagicMock()
-            with patch("backend.services.ingestion.scraper_normalizer.metrics_collector") as mock_metrics:
+            with patch(
+                "backend.services.ingestion.scraper_normalizer.metrics_collector"
+            ) as mock_metrics:
                 mock_metrics.record_scraper_normalization_error = MagicMock()
                 with pytest.raises(ValueError, match="Content too short"):
                     await n.normalize_news_article(raw)
@@ -521,7 +527,9 @@ class TestNormalizeNewsArticle:
         with patch("backend.services.ingestion.scraper_normalizer.ingestion_logger") as mock_logger:
             mock_logger.start_ingestion.return_value = "doc-long"
             mock_logger.scraper_data_normalized = MagicMock()
-            with patch("backend.services.ingestion.scraper_normalizer.metrics_collector") as mock_metrics:
+            with patch(
+                "backend.services.ingestion.scraper_normalizer.metrics_collector"
+            ) as mock_metrics:
                 mock_metrics.record_scraper_data_normalized = MagicMock()
                 result = await n.normalize_news_article(raw)
 
@@ -546,7 +554,9 @@ class TestNormalizeVisaInformation:
         with patch("backend.services.ingestion.scraper_normalizer.ingestion_logger") as mock_logger:
             mock_logger.start_ingestion.return_value = "visa-doc-1"
             mock_logger.scraper_data_normalized = MagicMock()
-            with patch("backend.services.ingestion.scraper_normalizer.metrics_collector") as mock_metrics:
+            with patch(
+                "backend.services.ingestion.scraper_normalizer.metrics_collector"
+            ) as mock_metrics:
                 mock_metrics.record_scraper_data_normalized = MagicMock()
                 result = await n.normalize_visa_information(raw)
 
@@ -563,7 +573,9 @@ class TestNormalizeVisaInformation:
         with patch("backend.services.ingestion.scraper_normalizer.ingestion_logger") as mock_logger:
             mock_logger.start_ingestion.return_value = "visa-fail"
             mock_logger.ingestion_failed = MagicMock()
-            with patch("backend.services.ingestion.scraper_normalizer.metrics_collector") as mock_metrics:
+            with patch(
+                "backend.services.ingestion.scraper_normalizer.metrics_collector"
+            ) as mock_metrics:
                 mock_metrics.record_scraper_normalization_error = MagicMock()
                 with pytest.raises(ValueError, match="Missing required fields"):
                     await n.normalize_visa_information(raw)

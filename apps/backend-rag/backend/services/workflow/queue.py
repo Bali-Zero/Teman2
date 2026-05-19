@@ -103,7 +103,10 @@ async def _ack_job(conn: asyncpg.Connection, job_id: uuid.UUID) -> None:
 
 
 async def _fail_job(
-    conn: asyncpg.Connection, job_id: uuid.UUID, error: str, retry_count: int,
+    conn: asyncpg.Connection,
+    job_id: uuid.UUID,
+    error: str,
+    retry_count: int,
 ) -> None:
     new_status = "failed" if retry_count >= MAX_RETRIES else "pending"
     # If retrying: reset visible_at to now + 1 min backoff
@@ -196,7 +199,10 @@ async def run_worker(db_pool: asyncpg.Pool, app_state: Any) -> None:
                     job = await _dequeue_one(conn)
 
             if job:
-                spawn(_process_job(job, db_pool, app_state), name=f"workflow_job_{job.get('id', 'unknown')}")
+                spawn(
+                    _process_job(job, db_pool, app_state),
+                    name=f"workflow_job_{job.get('id', 'unknown')}",
+                )
             else:
                 await asyncio.sleep(WORKER_POLL_INTERVAL_SECONDS)
 

@@ -89,7 +89,8 @@ class OrchestratorStreamingCore:
 
         # IMMEDIATE: Yield granular thinking indicator for user feedback
         yield thinking_service.create_thinking_event(
-            ThinkingPhase.ANALYZING, message_override="🧠 Analyzing request & intent...",
+            ThinkingPhase.ANALYZING,
+            message_override="🧠 Analyzing request & intent...",
         )
 
         # 1. Prepare context (TIERED LOADING)
@@ -108,22 +109,28 @@ class OrchestratorStreamingCore:
 
             # ENRICHMENT PHASE
             yield thinking_service.create_thinking_event(
-                ThinkingPhase.SEARCHING, message_override="🔍 Retrieving memory & facts...",
+                ThinkingPhase.SEARCHING,
+                message_override="🔍 Retrieving memory & facts...",
             )
 
             # Parallel Enrichment: Memory + Entities + LangGraph
             async def _enrich_memory() -> Any:
                 return await self.core.context_manager.enrich_user_context(
-                    user_context, user_id, query,
+                    user_context,
+                    user_id,
+                    query,
                 )
 
             async def _extract_entities_and_kg() -> Any:
                 return await self.core.extract_entities_and_kg_context(
-                    query, user_context=user_context,
+                    query,
+                    user_context=user_context,
                 )
 
             enrich_results = await asyncio.gather(
-                _enrich_memory(), _extract_entities_and_kg(), return_exceptions=True,
+                _enrich_memory(),
+                _extract_entities_and_kg(),
+                return_exceptions=True,
             )
 
             # Process Memory result
@@ -184,31 +191,58 @@ class OrchestratorStreamingCore:
         # directly and inject results into context. This avoids Gemini wasting
         # 2-3 ReAct steps trying vector_search before discovering crm_query.
         crm_precall_context = ""
-        _crm_keywords = {"clienti", "clients", "klien", "pratiche", "practices",
-                         "quanti", "how many", "berapa", "attivi", "active",
-                         "in corso", "in progress", "scadenza", "expiring",
-                         "leads", "breakdown", "database", "cerca cliente", "find client"}
+        _crm_keywords = {
+            "clienti",
+            "clients",
+            "klien",
+            "pratiche",
+            "practices",
+            "quanti",
+            "how many",
+            "berapa",
+            "attivi",
+            "active",
+            "in corso",
+            "in progress",
+            "scadenza",
+            "expiring",
+            "leads",
+            "breakdown",
+            "database",
+            "cerca cliente",
+            "find client",
+        }
         query_lower = query.lower()
         if any(kw in query_lower for kw in _crm_keywords):
             crm_tool = self.core.tool_map.get("crm_query")
             if crm_tool:
                 try:
                     # Determine best query_type
-                    if any(w in query_lower for w in ("quanti", "how many", "berapa", "attivi", "active", "leads")):
+                    if any(
+                        w in query_lower
+                        for w in ("quanti", "how many", "berapa", "attivi", "active", "leads")
+                    ):
                         crm_result = await crm_tool.execute(query_type="client_stats")
-                    elif any(w in query_lower for w in ("pratiche", "practices", "in corso", "in progress", "breakdown")):
+                    elif any(
+                        w in query_lower
+                        for w in ("pratiche", "practices", "in corso", "in progress", "breakdown")
+                    ):
                         crm_result = await crm_tool.execute(query_type="practice_stats")
                     elif any(w in query_lower for w in ("scadenza", "expiring")):
                         crm_result = await crm_tool.execute(query_type="expiring_documents")
                     elif any(w in query_lower for w in ("cerca", "find", "search")):
                         # Extract search term (naive: everything after the keyword)
-                        crm_result = await crm_tool.execute(query_type="search_clients", search_term=query)
+                        crm_result = await crm_tool.execute(
+                            query_type="search_clients", search_term=query
+                        )
                     else:
                         crm_result = await crm_tool.execute(query_type="client_stats")
 
                     if crm_result and len(crm_result) > 10:
                         crm_precall_context = f"\n\n[CRM DATABASE RESULTS — USE THESE NUMBERS IN YOUR ANSWER]\n{crm_result}\n"
-                        logger.info(f"🚀 [CRM Pre-call] Injected {len(crm_result)} bytes of CRM data into context")
+                        logger.info(
+                            f"🚀 [CRM Pre-call] Injected {len(crm_result)} bytes of CRM data into context"
+                        )
                 except Exception as e:
                     logger.warning("[CRM Pre-call] Failed: %s", e)
 
@@ -279,7 +313,8 @@ class OrchestratorStreamingCore:
                 if raw_event and raw_event.get("type") == "tool_call":
                     tool_name = raw_event.get("data", {}).get("tool_name", "unknown tool")
                     yield thinking_service.create_thinking_event(
-                        ThinkingPhase.TOOL_CALLING, tool_name=tool_name,
+                        ThinkingPhase.TOOL_CALLING,
+                        tool_name=tool_name,
                     )
 
                 # Process and validate events
@@ -356,7 +391,8 @@ class OrchestratorStreamingCore:
                     )
             except Exception as analytics_err:
                 logger.warning(
-                    "Failed to log streaming query analytics (non-critical): %s", analytics_err,
+                    "Failed to log streaming query analytics (non-critical): %s",
+                    analytics_err,
                 )
 
         except Exception as e:
@@ -441,7 +477,8 @@ class OrchestratorStreamingCore:
         )
 
     async def _single_event_generator(
-        self, event: dict | None,
+        self,
+        event: dict | None,
     ) -> AsyncGenerator[dict | None, None]:
         """
         Convert single event to async generator.

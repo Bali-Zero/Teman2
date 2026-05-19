@@ -82,6 +82,7 @@ _EMAIL_RE = re.compile(r"[\w.+-]+@[\w.-]+\.[\w.-]+")
 # upstream is a generic `id`.
 _CLIENT_ID_RE = re.compile(r"\bCL-\d{3,}\b")
 
+
 def _is_pii_key(key: Any) -> bool:
     if not isinstance(key, str):
         return False
@@ -170,6 +171,7 @@ def _before_send(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] 
         # hatch for Golden Rule #8 — noqa prevents the compliance test
         # from flagging it.
         import sys
+
         print(  # noqa: T201 — see comment above; logger is unsafe here
             f"[sentry_config] _before_send raised {type(exc).__name__}: {exc}",
             file=sys.stderr,

@@ -58,6 +58,7 @@ def _make_publisher(tmp_repo: Path, *, skip_push: bool = True) -> BlogPublisher:
 @pytest.fixture
 def git_mock():
     """Patch BlogPublisher._git so we don't hit the real git binary."""
+
     async def fake_git(self, argv, *, cwd):
         return 0, ""
 

@@ -116,7 +116,9 @@ class VisionRAGService:
 
                 # Analizza con Vision
                 element = await self._analyze_visual_element(
-                    image_bytes, page_num + 1, "image_{page_num}_{img_idx}",
+                    image_bytes,
+                    page_num + 1,
+                    "image_{page_num}_{img_idx}",
                 )
                 if element:
                     visual_elements.append(element)
@@ -140,7 +142,10 @@ class VisionRAGService:
         )
 
     async def _analyze_visual_element(
-        self, image_bytes: bytes, page_num: int, element_id: str,
+        self,
+        image_bytes: bytes,
+        page_num: int,
+        element_id: str,
     ) -> VisualElement | None:
         """
         Analizza un elemento visivo. Ollama-first, Gemini fallback.
@@ -305,7 +310,10 @@ Output JSON:
         return "\n".join(lines)
 
     async def query_with_vision(
-        self, query: str, documents: list[MultiModalDocument], include_images: bool = True,
+        self,
+        query: str,
+        documents: list[MultiModalDocument],
+        include_images: bool = True,
     ) -> dict[str, Any]:
         """
         Query che considera sia testo che elementi visuali.

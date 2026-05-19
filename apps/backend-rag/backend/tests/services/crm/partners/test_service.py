@@ -216,15 +216,19 @@ async def test_reassign_nonexistent_partner_raises_404(db_conn, user_factory):
     svc = PartnersService(db_conn)
     with pytest.raises(HTTPException) as exc:
         await svc.reassign_partner(
-            uuid4(), new_user_id=None,
-            actor_user=admin, reason="cleanup",
+            uuid4(),
+            new_user_id=None,
+            actor_user=admin,
+            reason="cleanup",
         )
     assert exc.value.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_update_partner_rejects_partner_role_self_update(
-    db_conn, user_factory, partner_factory,
+    db_conn,
+    user_factory,
+    partner_factory,
 ):
     """update_partner rejects partner-role actor at service layer (spec §7.2)."""
     partner_id = await partner_factory()
@@ -233,13 +237,15 @@ async def test_update_partner_rejects_partner_role_self_update(
     partner_user = await user_factory(role="partner")
     await db_conn.execute(
         "UPDATE team_members SET partner_id = $2 WHERE id = $1",
-        str(partner_user), uuid.UUID(int=partner_id.int),
+        str(partner_user),
+        uuid.UUID(int=partner_id.int),
     )
     svc = PartnersService(db_conn)
     with pytest.raises(HTTPException) as exc:
         await svc.update_partner(
             partner_id,
-            actor_user=partner_user, actor_role="partner",
+            actor_user=partner_user,
+            actor_role="partner",
             full_name="New Name",
         )
     assert exc.value.status_code == 403

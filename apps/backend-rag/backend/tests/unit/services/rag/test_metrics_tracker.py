@@ -65,9 +65,12 @@ class TestQueryMetric:
 
     def test_to_dict_no_metadata(self):
         qm = QueryMetric(
-            query_id="q1", user_id="u1",
-            experiment="exp1", variant="A",
-            metric="ctr", value=1.0,
+            query_id="q1",
+            user_id="u1",
+            experiment="exp1",
+            variant="A",
+            metric="ctr",
+            value=1.0,
         )
         d = qm.to_dict()
         assert d["metadata"] is None
@@ -148,8 +151,12 @@ class TestRecordMetric:
     @pytest.mark.asyncio
     async def test_record_success(self, tracker, mock_conn):
         result = await tracker.record_metric(
-            experiment="exp1", variant="A", metric="ctr",
-            value=1.0, user_id="u1", query_id="q1",
+            experiment="exp1",
+            variant="A",
+            metric="ctr",
+            value=1.0,
+            user_id="u1",
+            query_id="q1",
         )
         assert result is True
         assert mock_conn.execute.await_count == 2  # metrics + summary
@@ -162,15 +169,21 @@ class TestRecordMetric:
             side_effect=Exception("fail"),
         ):
             result = await tracker.record_metric(
-                experiment="exp1", variant="A", metric="ctr", value=1.0,
+                experiment="exp1",
+                variant="A",
+                metric="ctr",
+                value=1.0,
             )
             assert result is False
 
     @pytest.mark.asyncio
     async def test_record_with_metadata(self, tracker):
         result = await tracker.record_metric(
-            experiment="exp1", variant="A", metric="ctr",
-            value=1.0, metadata={"source": "telegram"},
+            experiment="exp1",
+            variant="A",
+            metric="ctr",
+            value=1.0,
+            metadata={"source": "telegram"},
         )
         assert result is True
 
@@ -183,7 +196,10 @@ class TestRecordMetric:
         tracker._initialized = True
 
         result = await tracker.record_metric(
-            experiment="exp1", variant="A", metric="ctr", value=1.0,
+            experiment="exp1",
+            variant="A",
+            metric="ctr",
+            value=1.0,
         )
         assert result is False
 
@@ -195,8 +211,10 @@ class TestRecordQueryMetrics:
     @pytest.mark.asyncio
     async def test_record_multiple(self, tracker):
         result = await tracker.record_query_metrics(
-            query_id="q1", user_id="u1",
-            experiment="exp1", variant="A",
+            query_id="q1",
+            user_id="u1",
+            experiment="exp1",
+            variant="A",
             metrics={"ctr": 1.0, "latency": 200.0},
         )
         assert result is True
@@ -214,8 +232,10 @@ class TestRecordQueryMetrics:
         tracker._initialized = True
 
         result = await tracker.record_query_metrics(
-            query_id="q1", user_id="u1",
-            experiment="exp1", variant="A",
+            query_id="q1",
+            user_id="u1",
+            experiment="exp1",
+            variant="A",
             metrics={"ctr": 1.0},
         )
         assert result is False
@@ -238,17 +258,25 @@ class TestGetExperimentAggregates:
     @pytest.mark.asyncio
     async def test_returns_aggregates(self):
         mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(side_effect=[
-            [
-                {"variant": "A", "metric": "ctr", "count": 10,
-                 "sum_values": 8.0, "sum_squares": 7.0,
-                 "min_value": 0.0, "max_value": 1.0},
-            ],
-            [
-                {"metric": "ctr", "value": 0.8},
-                {"metric": "ctr", "value": 1.0},
-            ],
-        ])
+        mock_conn.fetch = AsyncMock(
+            side_effect=[
+                [
+                    {
+                        "variant": "A",
+                        "metric": "ctr",
+                        "count": 10,
+                        "sum_values": 8.0,
+                        "sum_squares": 7.0,
+                        "min_value": 0.0,
+                        "max_value": 1.0,
+                    },
+                ],
+                [
+                    {"metric": "ctr", "value": 0.8},
+                    {"metric": "ctr", "value": 1.0},
+                ],
+            ]
+        )
         pool = _make_pool(mock_conn)
         tracker = MetricsTracker(pool=pool)
         tracker._initialized = True
@@ -265,15 +293,20 @@ class TestGetMetricsByQuery:
     @pytest.mark.asyncio
     async def test_returns_metrics(self):
         mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(return_value=[
-            {
-                "query_id": "q1", "user_id": "u1",
-                "experiment": "exp1", "variant": "A",
-                "metric": "ctr", "value": 1.0,
-                "timestamp": datetime.now(timezone.utc),
-                "metadata": '{"source": "web"}',
-            },
-        ])
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "query_id": "q1",
+                    "user_id": "u1",
+                    "experiment": "exp1",
+                    "variant": "A",
+                    "metric": "ctr",
+                    "value": 1.0,
+                    "timestamp": datetime.now(timezone.utc),
+                    "metadata": '{"source": "web"}',
+                },
+            ]
+        )
         pool = _make_pool(mock_conn)
         tracker = MetricsTracker(pool=pool)
         tracker._initialized = True
@@ -300,10 +333,16 @@ class TestGetUserExposure:
     @pytest.mark.asyncio
     async def test_with_experiment(self):
         mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(return_value=[
-            {"experiment": "exp1", "variant": "A",
-             "first_exposure": datetime.now(timezone.utc), "query_count": 5},
-        ])
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "experiment": "exp1",
+                    "variant": "A",
+                    "first_exposure": datetime.now(timezone.utc),
+                    "query_count": 5,
+                },
+            ]
+        )
         pool = _make_pool(mock_conn)
         tracker = MetricsTracker(pool=pool)
         tracker._initialized = True
@@ -330,15 +369,20 @@ class TestExportExperimentData:
     @pytest.mark.asyncio
     async def test_export(self):
         mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(return_value=[
-            {
-                "query_id": "q1", "user_id": "u1",
-                "experiment": "exp1", "variant": "A",
-                "metric": "ctr", "value": 1.0,
-                "timestamp": datetime.now(timezone.utc),
-                "metadata": None,
-            },
-        ])
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "query_id": "q1",
+                    "user_id": "u1",
+                    "experiment": "exp1",
+                    "variant": "A",
+                    "metric": "ctr",
+                    "value": 1.0,
+                    "timestamp": datetime.now(timezone.utc),
+                    "metadata": None,
+                },
+            ]
+        )
         pool = _make_pool(mock_conn)
         tracker = MetricsTracker(pool=pool)
         tracker._initialized = True
@@ -355,14 +399,18 @@ class TestGetActiveExperiments:
     @pytest.mark.asyncio
     async def test_returns_active(self):
         mock_conn = AsyncMock()
-        mock_conn.fetch = AsyncMock(return_value=[
-            {
-                "experiment": "exp1", "variant": "A",
-                "query_count": 50, "unique_users": 10,
-                "first_query": datetime.now(timezone.utc),
-                "last_query": datetime.now(timezone.utc),
-            },
-        ])
+        mock_conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "experiment": "exp1",
+                    "variant": "A",
+                    "query_count": 50,
+                    "unique_users": 10,
+                    "first_query": datetime.now(timezone.utc),
+                    "last_query": datetime.now(timezone.utc),
+                },
+            ]
+        )
         pool = _make_pool(mock_conn)
         tracker = MetricsTracker(pool=pool)
         tracker._initialized = True

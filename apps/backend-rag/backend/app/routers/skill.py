@@ -9,6 +9,7 @@ stale ones.
 Produces: cell_core.genome rows (type='skill') in the shared SQLite KB.
 Consumes: authenticated POST/GET calls from cells + internal dispatchers.
 """
+
 from __future__ import annotations
 
 import logging
@@ -63,7 +64,8 @@ async def record_skill(
     except Exception as exc:  # pragma: no cover
         logger.exception(
             "skill.record failed for skill_id=%s by user=%s",
-            payload.skill_id, current_user.get("email", "?"),
+            payload.skill_id,
+            current_user.get("email", "?"),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -71,7 +73,9 @@ async def record_skill(
         ) from exc
     logger.info(
         "skill.record action=%s skill_id=%s cell=%s user=%s",
-        result.get("action"), payload.skill_id, payload.cell,
+        result.get("action"),
+        payload.skill_id,
+        payload.cell,
         current_user.get("email", "?"),
     )
     await invalidate_cache("zantara:skill:*")
@@ -100,7 +104,8 @@ async def query_skills(
     except Exception as exc:  # pragma: no cover
         logger.exception(
             "skill.query failed for query=%r by user=%s",
-            payload.query, current_user.get("email", "?"),
+            payload.query,
+            current_user.get("email", "?"),
         )
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

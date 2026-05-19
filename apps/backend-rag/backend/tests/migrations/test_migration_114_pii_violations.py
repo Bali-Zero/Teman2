@@ -28,8 +28,13 @@ class TestMigration114:
         assert "CREATE TABLE" in create_table
         assert "pii_violations" in create_table
         for col in (
-            "request_id", "route", "pattern_matched", "severity",
-            "user_hash", "occurrence_count", "created_at",
+            "request_id",
+            "route",
+            "pattern_matched",
+            "severity",
+            "user_hash",
+            "occurrence_count",
+            "created_at",
         ):
             assert col in create_table
 

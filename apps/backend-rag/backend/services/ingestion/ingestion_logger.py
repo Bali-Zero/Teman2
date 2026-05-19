@@ -282,7 +282,9 @@ class IngestionLogger:
 
         # Also log to standard logger for backward compatibility
         self.std_logger.error(
-            "Parsing error for %s: %s", document_id, error_details,
+            "Parsing error for %s: %s",
+            document_id,
+            error_details,
             extra={
                 "document_id": document_id,
                 "file_path": file_path,
@@ -398,7 +400,9 @@ class IngestionLogger:
 
         # Also log to standard logger
         self.std_logger.error(
-            "Ingestion failed for %s: %s", document_id, error_details,
+            "Ingestion failed for %s: %s",
+            document_id,
+            error_details,
             extra={
                 "document_id": document_id,
                 "file_path": file_path,

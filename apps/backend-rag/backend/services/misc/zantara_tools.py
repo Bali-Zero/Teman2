@@ -26,7 +26,10 @@ class ZantaraTools:
         logger.info("✅ ZantaraTools initialized")
 
     async def execute_tool(
-        self, tool_name: str, tool_input: dict[str, Any], _user_id: str = "system",
+        self,
+        tool_name: str,
+        tool_input: dict[str, Any],
+        _user_id: str = "system",
     ) -> dict[str, Any]:
         """
         Execute a Zantara tool

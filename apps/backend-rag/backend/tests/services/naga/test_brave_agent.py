@@ -122,8 +122,7 @@ class TestBraveSearchFetchesContent:
     @pytest.mark.asyncio()
     async def test_fetch_called_for_top_n_results(self) -> None:
         brave_results = [
-            _brave_result(url=f"https://example.com/{i}", title=f"Page {i}")
-            for i in range(7)
+            _brave_result(url=f"https://example.com/{i}", title=f"Page {i}") for i in range(7)
         ]
         brave_call = AsyncMock(return_value=_make_brave_response(brave_results))
         fetch_call = AsyncMock(return_value="Fetched body content.")
@@ -156,9 +155,7 @@ class TestBraveSearchFetchesContent:
         fetch_call = AsyncMock(return_value="content")
 
         agent = BraveSearchAgent(brave_call=brave_call, fetch_call=fetch_call)
-        await agent.search(
-            query="q", sub_question="sq", max_results=5, fetch_top_n=5
-        )
+        await agent.search(query="q", sub_question="sq", max_results=5, fetch_top_n=5)
 
         fetch_call.assert_awaited_once()
         call_kwargs = fetch_call.call_args.kwargs
@@ -187,9 +184,7 @@ class TestBraveSearchFallsBackToDescription:
         fetch_call = AsyncMock(side_effect=Exception("Connection timeout"))
 
         agent = BraveSearchAgent(brave_call=brave_call, fetch_call=fetch_call)
-        response = await agent.search(
-            query="test", sub_question="sub", fetch_top_n=5
-        )
+        response = await agent.search(query="test", sub_question="sub", fetch_top_n=5)
 
         assert response.error is None
         assert len(response.results) == 1
@@ -208,9 +203,7 @@ class TestBraveSearchFallsBackToDescription:
         fetch_call = AsyncMock(return_value="")
 
         agent = BraveSearchAgent(brave_call=brave_call, fetch_call=fetch_call)
-        response = await agent.search(
-            query="test", sub_question="sub", fetch_top_n=5
-        )
+        response = await agent.search(query="test", sub_question="sub", fetch_top_n=5)
 
         assert response.results[0].content == "Brave snippet."
 
@@ -229,9 +222,7 @@ class TestBraveSearchHandlesError:
         fetch_call = AsyncMock()
 
         agent = BraveSearchAgent(brave_call=brave_call, fetch_call=fetch_call)
-        response = await agent.search(
-            query="test", sub_question="sub"
-        )
+        response = await agent.search(query="test", sub_question="sub")
 
         assert isinstance(response, AgentResponse)
         assert response.agent_name == "brave"

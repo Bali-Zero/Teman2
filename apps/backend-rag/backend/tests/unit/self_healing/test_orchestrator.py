@@ -88,7 +88,9 @@ class TestOrchestratorCycle:
         # 3 consecutive failures → breaker OPEN → next cycle skips check
         check = FakeCheck("api", [False, False, False, False])
         orch = SelfHealingOrchestrator(
-            checks=[check], failure_threshold=3, cooldown_seconds=9999,
+            checks=[check],
+            failure_threshold=3,
+            cooldown_seconds=9999,
         )
 
         await orch.run_cycle()

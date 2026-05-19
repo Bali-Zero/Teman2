@@ -406,7 +406,8 @@ class ChangeDetector:
         try:
             async with self.db_pool.acquire() as conn:
                 rows = await conn.fetch(
-                    "SELECT * FROM kg_monitored_documents WHERE source_id = $1", source_id,
+                    "SELECT * FROM kg_monitored_documents WHERE source_id = $1",
+                    source_id,
                 )
 
                 for row in rows:

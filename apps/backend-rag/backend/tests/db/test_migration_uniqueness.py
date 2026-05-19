@@ -10,6 +10,7 @@ These tests don't touch the database — they exercise the disk-walking
 helper in isolation, plus a smoke test against the real
 `migrations_v2/` directory to catch regressions.
 """
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -77,11 +78,7 @@ def test_real_migrations_v2_has_no_duplicates():
     without going through the CI guardrail (e.g. a direct push, or a
     force-push past branch protection).
     """
-    real_dir = (
-        Path(__file__).resolve().parents[2]
-        / "db"
-        / "migrations_v2"
-    )
+    real_dir = Path(__file__).resolve().parents[2] / "db" / "migrations_v2"
     if not real_dir.is_dir():
         pytest.skip(f"migrations_v2 dir not found at {real_dir}")
 

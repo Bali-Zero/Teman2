@@ -106,10 +106,12 @@ async def test_upsert_node_creates_when_missing():
     """No existing node for the lookup key → INSERT path."""
     conn = AsyncMock()
     new_uid = uuid.uuid4()
-    conn.fetchrow = AsyncMock(side_effect=[
-        None,  # SELECT existing returns nothing
-        {"entity_id": new_uid},  # INSERT RETURNING
-    ])
+    conn.fetchrow = AsyncMock(
+        side_effect=[
+            None,  # SELECT existing returns nothing
+            {"entity_id": new_uid},  # INSERT RETURNING
+        ]
+    )
 
     result = await _upsert_node(
         conn,
@@ -132,13 +134,15 @@ async def test_upsert_node_updates_existing_and_merges_properties():
     """Re-upload same file → UPDATE path, properties merged not overwritten."""
     conn = AsyncMock()
     existing_uid = uuid.uuid4()
-    conn.fetchrow = AsyncMock(return_value={
-        "entity_id": existing_uid,
-        "properties": {
-            "nationality": "RUS",
-            "document_type": "passport",
-        },
-    })
+    conn.fetchrow = AsyncMock(
+        return_value={
+            "entity_id": existing_uid,
+            "properties": {
+                "nationality": "RUS",
+                "document_type": "passport",
+            },
+        }
+    )
     conn.execute = AsyncMock()
 
     # Re-OCR finds new field "gender" but doesn't re-extract "nationality"
@@ -169,10 +173,12 @@ async def test_upsert_node_strips_none_values():
     """
     conn = AsyncMock()
     existing_uid = uuid.uuid4()
-    conn.fetchrow = AsyncMock(return_value={
-        "entity_id": existing_uid,
-        "properties": {"nationality": "RUS", "gender": "F"},
-    })
+    conn.fetchrow = AsyncMock(
+        return_value={
+            "entity_id": existing_uid,
+            "properties": {"nationality": "RUS", "gender": "F"},
+        }
+    )
     conn.execute = AsyncMock()
 
     await _upsert_node(
@@ -255,11 +261,13 @@ async def test_kg_link_document_passport_full_flow(monkeypatch):
     monkeypatch.setattr(document_linker, "_upsert_node", fake_upsert)
     monkeypatch.setattr(document_linker, "_insert_edge", fake_edge)
     monkeypatch.setattr(
-        document_linker, "_client_full_name",
+        document_linker,
+        "_client_full_name",
         AsyncMock(return_value="Marina Pinyaylova"),
     )
     monkeypatch.setattr(
-        document_linker, "_practice_name",
+        document_linker,
+        "_practice_name",
         AsyncMock(return_value=None),
     )
 
@@ -292,10 +300,7 @@ async def test_kg_link_document_passport_full_flow(monkeypatch):
     # Document was upserted with file_id key
     assert any(c["entity_type"] == "crm_document" for c in upsert_calls)
     # Client was upserted with client_id key
-    assert any(
-        c["entity_type"] == "crm_client" and c.get("client_id") == 42
-        for c in upsert_calls
-    )
+    assert any(c["entity_type"] == "crm_client" and c.get("client_id") == 42 for c in upsert_calls)
     # Person was upserted with person_uid (deterministic UUID)
     person_calls = [c for c in upsert_calls if c["entity_type"] == "crm_person"]
     assert len(person_calls) == 1
@@ -334,11 +339,13 @@ async def test_kg_link_document_skips_person_when_no_passport(monkeypatch):
     monkeypatch.setattr(document_linker, "_upsert_node", fake_upsert)
     monkeypatch.setattr(document_linker, "_insert_edge", fake_edge)
     monkeypatch.setattr(
-        document_linker, "_client_full_name",
+        document_linker,
+        "_client_full_name",
         AsyncMock(return_value="Marina Pinyaylova"),
     )
     monkeypatch.setattr(
-        document_linker, "_practice_name",
+        document_linker,
+        "_practice_name",
         AsyncMock(return_value=None),
     )
 
@@ -375,10 +382,14 @@ async def test_kg_link_document_swallows_exceptions(monkeypatch):
 
     monkeypatch.setattr(document_linker, "_upsert_node", boom)
     monkeypatch.setattr(
-        document_linker, "_client_full_name", AsyncMock(return_value="x"),
+        document_linker,
+        "_client_full_name",
+        AsyncMock(return_value="x"),
     )
     monkeypatch.setattr(
-        document_linker, "_practice_name", AsyncMock(return_value=None),
+        document_linker,
+        "_practice_name",
+        AsyncMock(return_value=None),
     )
 
     conn = AsyncMock()

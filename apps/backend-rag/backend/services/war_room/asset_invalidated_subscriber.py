@@ -107,7 +107,8 @@ class AssetInvalidatedSubscriber:
             asset_uuid = UUID(str(asset_id))
         except (TypeError, ValueError):
             logger.warning(
-                "AssetInvalidatedSubscriber: bad asset_id %r", asset_id,
+                "AssetInvalidatedSubscriber: bad asset_id %r",
+                asset_id,
             )
             return
 
@@ -169,7 +170,6 @@ class AssetInvalidatedSubscriber:
                 await conn.execute(sql, draft_id, str(invalidated_at), invalidated_by)
         except Exception:
             logger.exception(
-                "AssetInvalidatedSubscriber: failed to patch brief_json "
-                "for draft=%s",
+                "AssetInvalidatedSubscriber: failed to patch brief_json for draft=%s",
                 draft_id,
             )

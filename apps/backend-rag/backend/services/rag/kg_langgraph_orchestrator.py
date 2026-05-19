@@ -199,7 +199,10 @@ def route_after_query_understanding(state: KGAgentState) -> str:
     entities_count = len(state.get("extracted_entities", []))
 
     logger.info(
-        "🔀 [Router] After understand_query: intent=%s, domain=%s, entities=%s", intent, domain, entities_count,
+        "🔀 [Router] After understand_query: intent=%s, domain=%s, entities=%s",
+        intent,
+        domain,
+        entities_count,
     )
 
     # PHASE 1: Domain-based routing (highest priority, strictly validated via Pydantic schema)
@@ -257,7 +260,9 @@ def route_after_traversal(state: KGAgentState) -> str:
     if chains_count > 0:
         # Could implement expand_search logic here (try synonyms, related entities)
         # For now, proceed with limited evidence
-        logger.info("⚠️ [Router] Limited evidence (%s chains), proceeding to reasoning", chains_count)
+        logger.info(
+            "⚠️ [Router] Limited evidence (%s chains), proceeding to reasoning", chains_count
+        )
         return "reason"
     logger.info("❌ [Router] No graph evidence found, terminating")
     return END
@@ -306,6 +311,7 @@ async def invoke_subgraph(
 
     logger.info("%s [%sSubgraph] Invoking %s Subgraph...", domain_emoji, domain_name, domain_name)
     import time as _time
+
     _subgraph_start = _time.time()
 
     try:
@@ -316,7 +322,9 @@ async def invoke_subgraph(
         kg_subgraph_requests_total.labels(domain=domain_lower, status="error").inc()
         raise
     finally:
-        kg_subgraph_duration_seconds.labels(domain=domain_lower).observe(_time.time() - _subgraph_start)
+        kg_subgraph_duration_seconds.labels(domain=domain_lower).observe(
+            _time.time() - _subgraph_start
+        )
 
     workflow_name = state["workflow"]["name"] if state.get("workflow") else "None"
     logger.info("✅ [%sSubgraph] Workflow synthesized: %s", domain_name, workflow_name)
@@ -655,7 +663,15 @@ class KGLangGraphOrchestrator:
 
             # Track success metrics
             raw_intent = final_state.get("intent", "unknown")
-            valid_intents = {"company_setup", "visa", "hire", "property", "tax", "general", "unknown"}
+            valid_intents = {
+                "company_setup",
+                "visa",
+                "hire",
+                "property",
+                "tax",
+                "general",
+                "unknown",
+            }
             intent_label = raw_intent if raw_intent in valid_intents else "unknown"
             kg_langgraph_queries_total.labels(status="success", intent=intent_label).inc()
 
@@ -665,7 +681,15 @@ class KGLangGraphOrchestrator:
         except Exception as e:
             # Track error metrics and return empty result (don't crash the caller)
             raw_intent = initial_state.get("intent", "unknown")
-            valid_intents = {"company_setup", "visa", "hire", "property", "tax", "general", "unknown"}
+            valid_intents = {
+                "company_setup",
+                "visa",
+                "hire",
+                "property",
+                "tax",
+                "general",
+                "unknown",
+            }
             intent_label = raw_intent if raw_intent in valid_intents else "unknown"
             kg_langgraph_queries_total.labels(status="error", intent=intent_label).inc()
             logger.error("❌ [Query] KG exploration failed: %s", e, exc_info=True)

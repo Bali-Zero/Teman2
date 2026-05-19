@@ -13,6 +13,7 @@ Safety bounds:
 
 dry_run=True → returns full prompt + target output path without spawning Codex.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -38,18 +39,20 @@ DISPATCH_ROOT = Path(os.path.expanduser("~/Desktop/nuzantara/research/dispatch")
 SAFE_NAME_CHARS = string.ascii_letters + string.digits + "-_"
 
 
-_STRIPPED_ENV_KEYS: frozenset[str] = frozenset({
-    # Golden Rule #13 — Anthropic OAuth-only.
-    "ANTHROPIC_API_KEY",
-    "AWS_BEDROCK_ANTHROPIC_KEY",
-    "VERTEX_AI_ANTHROPIC_KEY",
-    # Codex CLI uses OAuth Pro $200 quota for gpt-image-2; the parent
-    # process's OPENAI_API_KEY (embedding-only) MUST NOT leak into the
-    # image-gen subprocess where it would open a per-call billing path.
-    "OPENAI_API_KEY",
-    "GEMINI_API_KEY",
-    "GOOGLE_API_KEY",
-})
+_STRIPPED_ENV_KEYS: frozenset[str] = frozenset(
+    {
+        # Golden Rule #13 — Anthropic OAuth-only.
+        "ANTHROPIC_API_KEY",
+        "AWS_BEDROCK_ANTHROPIC_KEY",
+        "VERTEX_AI_ANTHROPIC_KEY",
+        # Codex CLI uses OAuth Pro $200 quota for gpt-image-2; the parent
+        # process's OPENAI_API_KEY (embedding-only) MUST NOT leak into the
+        # image-gen subprocess where it would open a per-call billing path.
+        "OPENAI_API_KEY",
+        "GEMINI_API_KEY",
+        "GOOGLE_API_KEY",
+    }
+)
 
 
 def _safe_env() -> dict[str, str]:
@@ -123,10 +126,7 @@ async def codex_image_gen_action(
             metadata={"action": "codex_image_gen", "target_path": str(out_path)},
         )
 
-    framed_prompt = (
-        f"$imagegen {prompt}\n\n"
-        f"Save the generated image to: {out_path}"
-    )
+    framed_prompt = f"$imagegen {prompt}\n\nSave the generated image to: {out_path}"
 
     if dry_run:
         return ActionResult(

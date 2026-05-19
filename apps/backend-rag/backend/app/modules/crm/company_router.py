@@ -91,7 +91,9 @@ async def list_companies(
         query += f" AND c.kbli_code = ${len(params) + 1}"
         params.append(kbli)
 
-    query += f" GROUP BY c.id ORDER BY c.company_name LIMIT ${len(params) + 1} OFFSET ${len(params) + 2}"
+    query += (
+        f" GROUP BY c.id ORDER BY c.company_name LIMIT ${len(params) + 1} OFFSET ${len(params) + 2}"
+    )
     params.extend([limit, skip])
 
     async with db.acquire() as conn:
@@ -281,7 +283,8 @@ async def get_company(
 
         # Get tax record
         tax_row = await conn.fetchrow(
-            "SELECT * FROM tax_records WHERE entity_type = 'company' AND entity_id = $1", company_id,
+            "SELECT * FROM tax_records WHERE entity_type = 'company' AND entity_id = $1",
+            company_id,
         )
 
         company["associates"] = [
@@ -641,7 +644,9 @@ async def delete_company_document(
     """Delete a company document"""
     async with db.acquire() as conn:
         result = await conn.execute(
-            "DELETE FROM company_documents WHERE id = $1 AND company_id = $2", doc_id, company_id,
+            "DELETE FROM company_documents WHERE id = $1 AND company_id = $2",
+            doc_id,
+            company_id,
         )
         if result == "DELETE 0":
             raise HTTPException(status_code=404, detail="Document not found")
@@ -662,7 +667,8 @@ async def get_company_tax_record(
     """Get tax record for a company"""
     async with db.acquire() as conn:
         row = await conn.fetchrow(
-            "SELECT * FROM tax_records WHERE entity_type = 'company' AND entity_id = $1", company_id,
+            "SELECT * FROM tax_records WHERE entity_type = 'company' AND entity_id = $1",
+            company_id,
         )
 
         if not row:
@@ -729,7 +735,17 @@ async def get_company_tax_record(
 _DRIVE_FILENAME_TO_DOCTYPE: list[tuple[list[str], str]] = [
     (["akta pendirian", "akta_pendirian", "deed of establishment"], "akta_pendirian"),
     (["akta perubahan", "akta_perubahan", "amendment"], "akta_perubahan"),
-    (["sk kemenkumham", "sk pendirian", "sk_pendirian", "sk_decree", "sk kemenkum", "sk menkumham"], "sk_decree"),
+    (
+        [
+            "sk kemenkumham",
+            "sk pendirian",
+            "sk_pendirian",
+            "sk_decree",
+            "sk kemenkum",
+            "sk menkumham",
+        ],
+        "sk_decree",
+    ),
     (["npwp"], "npwp"),
     (["nib", "nomor induk berusaha"], "nib"),
     (["company profile", "profil perseroan", "profil pt", "profile perseroan"], "company_profile"),
@@ -785,11 +801,15 @@ async def sync_company_drive_folder(
 
         if sa_json:
             import tempfile
+
             with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
                 f.write(sa_json)
                 sa_path = f.name
         elif not sa_path:
-            raise HTTPException(status_code=503, detail="Drive credentials not configured (set GOOGLE_CREDENTIALS_JSON)")
+            raise HTTPException(
+                status_code=503,
+                detail="Drive credentials not configured (set GOOGLE_CREDENTIALS_JSON)",
+            )
 
         creds = service_account.Credentials.from_service_account_file(
             sa_path,
@@ -854,7 +874,8 @@ async def sync_company_drive_folder(
             # Check if already tracked
             existing = await conn.fetchval(
                 "SELECT id FROM company_documents WHERE company_id = $1 AND google_drive_file_id = $2",
-                company_id, file_id,
+                company_id,
+                file_id,
             )
             if existing:
                 skipped.append(filename)
@@ -869,10 +890,16 @@ async def sync_company_drive_folder(
                 VALUES ($1, $2, $3, $4, $5, 'active', false)
                 RETURNING id
                 """,
-                company_id, doc_type, filename, file_id, web_url,
+                company_id,
+                doc_type,
+                filename,
+                file_id,
+                web_url,
             )
             added.append({"id": doc_id, "file_name": filename, "document_type": doc_type})
-            logger.info("[sync-drive] Added doc %s (%s) → company %s", filename, doc_type, company_id)
+            logger.info(
+                "[sync-drive] Added doc %s (%s) → company %s", filename, doc_type, company_id
+            )
 
             # Queue for OCR if applicable
             if doc_type in ("npwp", "nib", "company_profile") and primary_client_id:
@@ -880,9 +907,11 @@ async def sync_company_drive_folder(
 
     # Trigger OCR in background for newly added docs
     if ocr_tasks and primary_client_id:
+
         async def _run_ocr_tasks() -> None:
             try:
                 from backend.app.routers.crm_enhanced import _dispatch_ocr_by_folder
+
                 ocr_pool = db
                 for fid, fname, dtype, _did in ocr_tasks:
                     try:

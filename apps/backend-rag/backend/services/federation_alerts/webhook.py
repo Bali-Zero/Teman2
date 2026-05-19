@@ -14,6 +14,7 @@ Validation pipeline:
 All failure paths log + answer the callback so the user gets feedback
 in the UI ("Invalid token", "Already processed", etc.).
 """
+
 from __future__ import annotations
 
 import json
@@ -85,16 +86,14 @@ async def handle_fad_callback(
     chat_id = callback_query.get("message", {}).get("chat", {}).get("id")
     message_id = callback_query.get("message", {}).get("message_id")
     from_user = callback_query.get("from", {}) or {}
-    actor = (
-        from_user.get("username")
-        or str(from_user.get("id", "unknown"))
-    )
+    actor = from_user.get("username") or str(from_user.get("id", "unknown"))
 
     parsed: FADCallback | None = decode_callback(callback_data)
     if parsed is None:
         logger.warning("FAD callback malformed: %s", callback_data[:80])
         _answer_callback(
-            bot_token, callback_id,
+            bot_token,
+            callback_id,
             "Invalid callback (malformed)",
             show_alert=True,
         )
@@ -103,10 +102,12 @@ async def handle_fad_callback(
     if not is_admin_chat_id(chat_id):
         logger.warning(
             "FAD callback from non-admin chat_id=%s (data=%s)",
-            chat_id, callback_data[:60],
+            chat_id,
+            callback_data[:60],
         )
         _answer_callback(
-            bot_token, callback_id,
+            bot_token,
+            callback_id,
             "Not authorized",
             show_alert=True,
         )
@@ -116,13 +117,23 @@ async def handle_fad_callback(
 
     if parsed.is_mode_change():
         return await _handle_mode_change(
-            repo, parsed, callback_id, chat_id, message_id,
-            bot_token, actor,
+            repo,
+            parsed,
+            callback_id,
+            chat_id,
+            message_id,
+            bot_token,
+            actor,
         )
 
     return await _handle_approval(
-        repo, parsed, callback_id, chat_id, message_id,
-        bot_token, actor,
+        repo,
+        parsed,
+        callback_id,
+        chat_id,
+        message_id,
+        bot_token,
+        actor,
     )
 
 
@@ -139,36 +150,35 @@ async def _handle_approval(
     proposal = await repo.get_by_proposal_id(proposal_id)
     if proposal is None:
         _answer_callback(
-            bot_token, callback_id,
+            bot_token,
+            callback_id,
             "Proposal not found",
             show_alert=True,
         )
         return True
 
     # Token check (B6: even if message ID is captured, token mismatch rejects)
-    valid = verify_callback_token(
-        proposal.approval_token, proposal_id, parsed.token_prefix
-    )
+    valid = verify_callback_token(proposal.approval_token, proposal_id, parsed.token_prefix)
     if not valid:
         logger.warning(
             "FAD callback token mismatch for proposal=%s (presented=%s)",
-            proposal_id, parsed.token_prefix,
+            proposal_id,
+            parsed.token_prefix,
         )
         _answer_callback(
-            bot_token, callback_id,
+            bot_token,
+            callback_id,
             "Token expired or invalid",
             show_alert=True,
         )
         return True
 
     # State guard: only accept callbacks while in awaiting_approval
-    status_str = (
-        proposal.status if isinstance(proposal.status, str)
-        else proposal.status.value
-    )
+    status_str = proposal.status if isinstance(proposal.status, str) else proposal.status.value
     if status_str != "awaiting_approval":
         _answer_callback(
-            bot_token, callback_id,
+            bot_token,
+            callback_id,
             f"Already {status_str}",
             show_alert=False,
         )
@@ -178,9 +188,7 @@ async def _handle_approval(
         try:
             await repo.record_approval(proposal_id, approved_by=actor)
         except LookupError:
-            _answer_callback(
-                bot_token, callback_id, "Race lost — already decided"
-            )
+            _answer_callback(bot_token, callback_id, "Race lost — already decided")
             return True
         _answer_callback(bot_token, callback_id, "✅ Approved")
         if message_id is not None and chat_id is not None:
@@ -201,9 +209,7 @@ async def _handle_approval(
                 reason="rejected via Telegram inline button",
             )
         except LookupError:
-            _answer_callback(
-                bot_token, callback_id, "Race lost — already decided"
-            )
+            _answer_callback(bot_token, callback_id, "Race lost — already decided")
             return True
         _answer_callback(bot_token, callback_id, "❌ Rejected")
         if message_id is not None and chat_id is not None:
@@ -224,7 +230,9 @@ async def _handle_approval(
         return True
 
     _answer_callback(
-        bot_token, callback_id, f"Unknown action: {parsed.action}",
+        bot_token,
+        callback_id,
+        f"Unknown action: {parsed.action}",
         show_alert=True,
     )
     return True
@@ -255,7 +263,8 @@ async def _handle_mode_change(
     mode_secret = os.environ.get("FEDERATION_ALERT_MODE_TOKEN", "").strip()
     if not mode_secret:
         _answer_callback(
-            bot_token, callback_id,
+            bot_token,
+            callback_id,
             "Mode change disabled (no token configured)",
             show_alert=True,
         )
@@ -266,11 +275,10 @@ async def _handle_mode_change(
         hashlib.sha256,
     ).hexdigest()[:8]
     if not hmac.compare_digest(expected_prefix, parsed.token_prefix.lower()):
-        logger.warning(
-            "FAD mode change token mismatch (target=%s)", parsed.target
-        )
+        logger.warning("FAD mode change token mismatch (target=%s)", parsed.target)
         _answer_callback(
-            bot_token, callback_id,
+            bot_token,
+            callback_id,
             "Mode change token invalid",
             show_alert=True,
         )
@@ -280,12 +288,15 @@ async def _handle_mode_change(
         await repo.set_db_mode(parsed.target, changed_by=actor)
     except ValueError as exc:
         _answer_callback(
-            bot_token, callback_id, f"Invalid mode: {exc}",
+            bot_token,
+            callback_id,
+            f"Invalid mode: {exc}",
             show_alert=True,
         )
         return True
     _answer_callback(
-        bot_token, callback_id,
+        bot_token,
+        callback_id,
         f"Mode → {parsed.target}",
     )
     if message_id is not None and chat_id is not None:

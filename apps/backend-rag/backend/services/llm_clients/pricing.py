@@ -314,7 +314,4 @@ def compute_cost(
         KeyError: If the (provider, model) pair is not registered.
     """
     entry = _PRICING_TABLE[(provider, model)]
-    return (
-        input_tokens * entry["input_per_token"]
-        + output_tokens * entry["output_per_token"]
-    )
+    return input_tokens * entry["input_per_token"] + output_tokens * entry["output_per_token"]

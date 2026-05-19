@@ -16,14 +16,27 @@ logger = get_logger(__name__)
 
 # Fields that warrant a client notification when updated
 SIGNIFICANT_FIELDS = {
-    "passport_number", "passport_expiry", "visa_type", "visa_expiry",
-    "address", "city", "province", "status", "date_of_birth",
+    "passport_number",
+    "passport_expiry",
+    "visa_type",
+    "visa_expiry",
+    "address",
+    "city",
+    "province",
+    "status",
+    "date_of_birth",
 }
 
 # Fields that are internal-only and should NOT trigger notifications
 INTERNAL_FIELDS = {
-    "assigned_to", "notes", "tags", "custom_fields", "lead_source",
-    "last_contacted_at", "avatar_url", "service_interest",
+    "assigned_to",
+    "notes",
+    "tags",
+    "custom_fields",
+    "lead_source",
+    "last_contacted_at",
+    "avatar_url",
+    "service_interest",
 }
 
 
@@ -113,12 +126,16 @@ class PortalNotificationService:
                     sent_by,
                 )
                 logger.info(
-                    "Portal notification sent to client %s: %s", client_id, subject,
+                    "Portal notification sent to client %s: %s",
+                    client_id,
+                    subject,
                 )
                 return msg_id
         except Exception as e:
             logger.error(
-                "Failed to insert portal notification for client %s: %s", client_id, e,
+                "Failed to insert portal notification for client %s: %s",
+                client_id,
+                e,
             )
             # Audit bug #4: previously returned None silently — client lost
             # every status-change notification when insert failed. Page the

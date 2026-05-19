@@ -7,6 +7,7 @@ matches test_migration_079_naga.py convention).
 Note: The plan originally referenced migration_101, but 101-106 already exist
 in main. We use 107 to avoid collision.
 """
+
 from __future__ import annotations
 
 import re

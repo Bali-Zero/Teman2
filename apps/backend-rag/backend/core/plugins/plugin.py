@@ -71,7 +71,8 @@ class PluginMetadata(BaseModel):
 
     # Backward compatibility
     legacy_handler_key: str | None = Field(
-        None, description="Original handler key for backward compatibility (e.g., 'gmail.send')",
+        None,
+        description="Original handler key for backward compatibility (e.g., 'gmail.send')",
     )
 
     @validator("version")

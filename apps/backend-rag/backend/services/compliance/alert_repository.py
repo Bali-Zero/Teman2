@@ -4,6 +4,7 @@ AlertRepository — asyncpg CRUD on compliance_alerts (m114).
 Built on BaseRepository (db/base_repository.py) for pool management.
 Also exposes `with_connection(conn)` for transaction-scoped use in tests.
 """
+
 from __future__ import annotations
 
 import json
@@ -20,6 +21,7 @@ from backend.db.base_repository import BaseRepository
 @dataclass
 class AlertRow:
     """In-code mirror of compliance_alerts row."""
+
     alert_id: str
     client_id: int
     category: str
@@ -108,11 +110,22 @@ class AlertRepository(BaseRepository):
               $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15::jsonb,$16
             ) RETURNING *
             """,
-            row.alert_id, row.client_id, row.category, row.severity, row.status,
-            row.deadline, row.days_until, row.compliance_item_ref, row.dedup_key,
-            row.message_it, row.message_en, row.message_id,
-            row.suggested_action, row.estimated_cost_idr,
-            json.dumps(row.evidence_refs or []), row.nb2_ref,
+            row.alert_id,
+            row.client_id,
+            row.category,
+            row.severity,
+            row.status,
+            row.deadline,
+            row.days_until,
+            row.compliance_item_ref,
+            row.dedup_key,
+            row.message_it,
+            row.message_en,
+            row.message_id,
+            row.suggested_action,
+            row.estimated_cost_idr,
+            json.dumps(row.evidence_refs or []),
+            row.nb2_ref,
         )
         return _row_to_alert(record)
 
@@ -138,7 +151,11 @@ class AlertRepository(BaseRepository):
         return _row_to_alert(record) if record else None
 
     async def promote(
-        self, alert_id: str, *, new_severity: str, new_days_until: int,
+        self,
+        alert_id: str,
+        *,
+        new_severity: str,
+        new_days_until: int,
     ) -> AlertRow:
         record = await self._exec(
             "fetchrow",
@@ -150,7 +167,9 @@ class AlertRepository(BaseRepository):
              WHERE alert_id = $1
             RETURNING *
             """,
-            alert_id, new_severity, new_days_until,
+            alert_id,
+            new_severity,
+            new_days_until,
         )
         if record is None:
             raise LookupError(f"alert_id {alert_id} not found")
@@ -183,7 +202,11 @@ class AlertRepository(BaseRepository):
         return _row_to_alert(record)
 
     async def list_by_client(
-        self, client_id: int, *, limit: int = 50, offset: int = 0,
+        self,
+        client_id: int,
+        *,
+        limit: int = 50,
+        offset: int = 0,
     ) -> list[AlertRow]:
         records = await self._exec(
             "fetch",
@@ -193,7 +216,9 @@ class AlertRepository(BaseRepository):
              ORDER BY created_at DESC
              LIMIT $2 OFFSET $3
             """,
-            client_id, limit, offset,
+            client_id,
+            limit,
+            offset,
         )
         return [_row_to_alert(r) for r in records]
 

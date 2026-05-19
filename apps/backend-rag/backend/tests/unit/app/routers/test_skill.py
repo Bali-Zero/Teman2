@@ -3,6 +3,7 @@
 HTTP contract of /api/skill/* against a FastAPI TestClient with a real
 SkillService backed by a temp SQLite path.
 """
+
 from __future__ import annotations
 
 import json
@@ -27,7 +28,8 @@ def app(service: SkillService) -> FastAPI:
     app.include_router(router)
     app.dependency_overrides[get_skill_service] = lambda: service
     app.dependency_overrides[get_current_user] = lambda: {
-        "email": "zero@balizero.com", "role": "admin",
+        "email": "zero@balizero.com",
+        "role": "admin",
     }
     return app
 
@@ -91,12 +93,20 @@ def test_record_requires_auth(service):
 
 
 def test_query_returns_matching(client):
-    client.post("/api/skill/record", json=_record_payload(
-        skill_id="a", procedure="DLP pre-publish scan body.",
-    ))
-    client.post("/api/skill/record", json=_record_payload(
-        skill_id="b", procedure="Chunk text into overlapping windows.",
-    ))
+    client.post(
+        "/api/skill/record",
+        json=_record_payload(
+            skill_id="a",
+            procedure="DLP pre-publish scan body.",
+        ),
+    )
+    client.post(
+        "/api/skill/record",
+        json=_record_payload(
+            skill_id="b",
+            procedure="Chunk text into overlapping windows.",
+        ),
+    )
     resp = client.post("/api/skill/query", json={"query": "DLP"})
     assert resp.status_code == 200
     body = resp.json()
@@ -111,13 +121,24 @@ def test_query_limit_cap_422(client):
 
 def test_query_filters_tier_and_min_conf(client):
     # Record two skills, promote one to tier1 directly via DB.
-    client.post("/api/skill/record", json=_record_payload(
-        skill_id="hot", procedure="hot prose alpha", confidence=0.9,
-    ))
-    client.post("/api/skill/record", json=_record_payload(
-        skill_id="cold", procedure="hot prose bravo", confidence=0.4,
-    ))
+    client.post(
+        "/api/skill/record",
+        json=_record_payload(
+            skill_id="hot",
+            procedure="hot prose alpha",
+            confidence=0.9,
+        ),
+    )
+    client.post(
+        "/api/skill/record",
+        json=_record_payload(
+            skill_id="cold",
+            procedure="hot prose bravo",
+            confidence=0.4,
+        ),
+    )
     import sqlite3
+
     # Reach into the service's own db (fixture wired it this way)
     svc = client.app.dependency_overrides[get_skill_service]()
     conn = sqlite3.connect(svc._db_path)
@@ -125,9 +146,14 @@ def test_query_filters_tier_and_min_conf(client):
     conn.commit()
     conn.close()
 
-    resp = client.post("/api/skill/query", json={
-        "query": "prose", "tier": "tier1", "min_confidence": 0.5,
-    })
+    resp = client.post(
+        "/api/skill/query",
+        json={
+            "query": "prose",
+            "tier": "tier1",
+            "min_confidence": 0.5,
+        },
+    )
     assert resp.status_code == 200
     ids = [r["skill_id"] for r in resp.json()["results"]]
     assert ids == ["hot"]
@@ -138,9 +164,13 @@ def test_query_filters_tier_and_min_conf(client):
 
 def test_stats_endpoint(client):
     for i in range(3):
-        client.post("/api/skill/record", json=_record_payload(
-            skill_id=f"s{i}", procedure=f"proc {i}",
-        ))
+        client.post(
+            "/api/skill/record",
+            json=_record_payload(
+                skill_id=f"s{i}",
+                procedure=f"proc {i}",
+            ),
+        )
     resp = client.get("/api/skill/stats")
     assert resp.status_code == 200
     data = resp.json()
@@ -153,10 +183,16 @@ def test_stats_endpoint(client):
 
 
 def test_top_endpoint_defaults_tier1(client):
-    client.post("/api/skill/record", json=_record_payload(
-        skill_id="t1only", procedure="promoted body", confidence=0.95,
-    ))
+    client.post(
+        "/api/skill/record",
+        json=_record_payload(
+            skill_id="t1only",
+            procedure="promoted body",
+            confidence=0.95,
+        ),
+    )
     import sqlite3
+
     svc = client.app.dependency_overrides[get_skill_service]()
     conn = sqlite3.connect(svc._db_path)
     conn.execute("UPDATE genome SET tier='tier1' WHERE id='t1only'")
@@ -189,11 +225,10 @@ def test_merge_proposals_empty_by_default(client, monkeypatch, tmp_path):
 
 def test_merge_proposals_reads_written_file(client, monkeypatch, tmp_path):
     path = tmp_path / "p.jsonl"
-    path.write_text(
-        json.dumps({"pair": ["a", "b"], "cosine": 0.09}) + "\n"
-    )
+    path.write_text(json.dumps({"pair": ["a", "b"], "cosine": 0.09}) + "\n")
     monkeypatch.setattr(
-        "backend.services.skill.service.MERGE_PROPOSALS_PATH", str(path),
+        "backend.services.skill.service.MERGE_PROPOSALS_PATH",
+        str(path),
     )
     resp = client.get("/api/skill/merge-proposals")
     assert resp.status_code == 200

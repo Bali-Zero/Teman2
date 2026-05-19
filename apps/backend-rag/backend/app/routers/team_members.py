@@ -1,4 +1,5 @@
 """Team members endpoint — returns active team members for dropdowns and assignments."""
+
 from __future__ import annotations
 
 from typing import Any

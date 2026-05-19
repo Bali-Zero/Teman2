@@ -66,12 +66,14 @@ async def test_get_dashboard_handles_optional_query_failures() -> None:
 def test_build_visa_dashboard_data_completed_without_expiry_is_active() -> None:
     service, _conn = _service_with_conn()
 
-    result = service._build_visa_dashboard_data({
-        "status": "completed",
-        "expiry_date": None,
-        "code": None,
-        "name": "KITAS",
-    })
+    result = service._build_visa_dashboard_data(
+        {
+            "status": "completed",
+            "expiry_date": None,
+            "code": None,
+            "name": "KITAS",
+        }
+    )
 
     assert result["status"] == "active"
     assert result["type"] == "KITAS"
@@ -82,12 +84,14 @@ def test_build_visa_dashboard_data_completed_without_expiry_is_active() -> None:
 def test_build_visa_dashboard_data_unknown_status_is_pending() -> None:
     service, _conn = _service_with_conn()
 
-    result = service._build_visa_dashboard_data({
-        "status": "blocked",
-        "expiry_date": datetime.now(timezone.utc) + timedelta(days=200),
-        "code": "E33",
-        "name": "KITAS",
-    })
+    result = service._build_visa_dashboard_data(
+        {
+            "status": "blocked",
+            "expiry_date": datetime.now(timezone.utc) + timedelta(days=200),
+            "code": "E33",
+            "name": "KITAS",
+        }
+    )
 
     assert result["status"] == "pending"
 
@@ -486,15 +490,17 @@ async def test_get_tax_overview_shapes_obligations_and_history() -> None:
 async def test_get_tax_overview_handles_query_failure_and_overdue_deadline() -> None:
     service, conn = _service_with_conn()
     conn.fetch.side_effect = RuntimeError("tax practices unavailable")
-    service._get_standard_tax_deadlines = MagicMock(return_value=[
-        {
-            "type": "PPh",
-            "period": "May 2026",
-            "due_date": "2026-05-01T00:00:00+00:00",
-            "days_until": -3,
-            "urgency": "urgent",
-        },
-    ])
+    service._get_standard_tax_deadlines = MagicMock(
+        return_value=[
+            {
+                "type": "PPh",
+                "period": "May 2026",
+                "due_date": "2026-05-01T00:00:00+00:00",
+                "days_until": -3,
+                "urgency": "urgent",
+            },
+        ]
+    )
 
     result = await service.get_tax_overview(1, current_user=_ctx())
 
@@ -506,15 +512,17 @@ async def test_get_tax_overview_handles_query_failure_and_overdue_deadline() -> 
 async def test_get_tax_overview_marks_near_deadline_attention() -> None:
     service, conn = _service_with_conn()
     conn.fetch.return_value = []
-    service._get_standard_tax_deadlines = MagicMock(return_value=[
-        {
-            "type": "PPh",
-            "period": "May 2026",
-            "due_date": "2026-05-17T00:00:00+00:00",
-            "days_until": 7,
-            "urgency": "urgent",
-        },
-    ])
+    service._get_standard_tax_deadlines = MagicMock(
+        return_value=[
+            {
+                "type": "PPh",
+                "period": "May 2026",
+                "due_date": "2026-05-17T00:00:00+00:00",
+                "days_until": 7,
+                "urgency": "urgent",
+            },
+        ]
+    )
 
     result = await service.get_tax_overview(1, current_user=_ctx())
 

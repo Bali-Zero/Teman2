@@ -33,12 +33,16 @@ logger = logging.getLogger(__name__)
 # Pydantic Schemas
 # ============================================================================
 
+
 class QueryIntentSchema(BaseModel):
     """Schema per la validazione rigorosa dell'output LLM durante Query Understanding."""
+
     intent: str = Field(description="Intent: company_setup, visa, hire, property, tax, general")
     domain: str = Field(description="Domain: visa, tax, property, kbli, company, general")
     entities: list[str] = Field(default_factory=list, description="List of extracted entities")
-    citizenship: str = Field(default="domestic", description="Citizenship inferred from context: foreign vs domestic")
+    citizenship: str = Field(
+        default="domestic", description="Citizenship inferred from context: foreign vs domestic"
+    )
 
 
 # ============================================================================
@@ -184,7 +188,9 @@ Return ONLY a JSON object:
         state["extracted_entities"] = parsed_result.entities
 
         # Store domain for routing decisions
-        domain = parsed_result.domain if parsed_result.domain else domain_hints.get("domain", "general")
+        domain = (
+            parsed_result.domain if parsed_result.domain else domain_hints.get("domain", "general")
+        )
         state["domain"] = domain
 
         # Update user_context with citizenship and domain
@@ -199,7 +205,8 @@ Return ONLY a JSON object:
         )
     except ValidationError as e:
         logger.error(
-            "❌ [Understand Query] LLM output validation failed: %s. Falling back to domain hints.", e,
+            "❌ [Understand Query] LLM output validation failed: %s. Falling back to domain hints.",
+            e,
         )
         state["intent"] = domain_hints.get("intent", "general")
         state["domain"] = domain_hints.get("domain", "general")
@@ -492,7 +499,8 @@ async def resolve_entities_node(
                     entity_ids.append(eid)
                     confidence_scores[eid] = conf
                     await cache.set_resolved_entity(
-                        entity_str, {"entity_id": eid, "confidence": conf},
+                        entity_str,
+                        {"entity_id": eid, "confidence": conf},
                     )
                     kg_entity_resolution_total.labels(outcome="exact_match").inc()
                     logger.info("✅ [Resolve] Exact match: %s → %s", entity_str, eid)
@@ -537,7 +545,8 @@ async def resolve_entities_node(
                     entity_ids.append(eid)
                     confidence_scores[eid] = conf
                     await cache.set_resolved_entity(
-                        entity_str, {"entity_id": eid, "confidence": conf},
+                        entity_str,
+                        {"entity_id": eid, "confidence": conf},
                     )
                     kg_entity_resolution_total.labels(outcome="fuzzy_match").inc()
                     logger.info(

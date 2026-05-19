@@ -119,5 +119,3 @@ async def get_expiry_alerts_summary(
         )
 
         return {"counts": dict(summary), "urgent_alerts": [dict(a) for a in urgent]}
-
-

@@ -233,9 +233,7 @@ class ToneCouncil:
             research_json if isinstance(research_json, str) else json.dumps(research_json)
         )
 
-        runner_outputs: dict[str, list[RunnerResult]] = {
-            name: [] for name in self.proponents
-        }
+        runner_outputs: dict[str, list[RunnerResult]] = {name: [] for name in self.proponents}
         runner_outputs["judge"] = []
 
         # Round 0 — propose (parallel, isolated)
@@ -329,7 +327,8 @@ class ToneCouncil:
 
         async def _one(name: str, runner: CLIRunner) -> CouncilProposal:
             parsed, result = await runner.run_json(
-                prompts[name], timeout=self.round_0_timeout,
+                prompts[name],
+                timeout=self.round_0_timeout,
             )
             runner_outputs[name].append(result)
             if not result.ok or parsed is None:
@@ -442,9 +441,7 @@ class ToneCouncil:
             ],
             ensure_ascii=False,
         )
-        history_str = ", ".join(
-            f"{k}={v}" for k, v in sorted(registers_last_14d.items())
-        )
+        history_str = ", ".join(f"{k}={v}" for k, v in sorted(registers_last_14d.items()))
         scars_str = "; ".join(recent_scars[:5]) if recent_scars else ""
 
         prompt = render_round_2_judge_prompt(
@@ -470,8 +467,7 @@ class ToneCouncil:
             chosen_register=chosen,
             rationale=str(parsed.get("rationale", "")).strip(),
             rejected_registers=[
-                str(r).strip().lower()
-                for r in parsed.get("rejected_registers", []) or []
+                str(r).strip().lower() for r in parsed.get("rejected_registers", []) or []
             ],
             hard_rules_triggered=[
                 str(r).strip() for r in parsed.get("hard_rules_triggered", []) or []
@@ -500,15 +496,11 @@ class ToneCouncil:
         chosen = decision.chosen_register
 
         if history.get(chosen, 0) >= MAX_SAME_REGISTER_7D:
-            violations.append(
-                f"max_same_register_7d_exceeded:{chosen}={history[chosen]}"
-            )
+            violations.append(f"max_same_register_7d_exceeded:{chosen}={history[chosen]}")
         if chosen in ("ironico", "militante"):
             cinico_like = history.get("ironico", 0) + history.get("militante", 0)
             if cinico_like >= MAX_IRONIC_OR_MILITANT_7D:
-                violations.append(
-                    f"max_ironic_militant_7d_exceeded:sum={cinico_like}"
-                )
+                violations.append(f"max_ironic_militant_7d_exceeded:sum={cinico_like}")
 
         # Groupthink detection (independent of what judge said)
         concordance = _concordance_ratio(proposals)
@@ -525,10 +517,7 @@ class ToneCouncil:
         proposed_registers = {
             p.register for p in proposals if p.ok and _is_valid_register(p.register)
         }
-        candidates = [
-            r for r in ALL_REGISTERS
-            if r != chosen and r in proposed_registers
-        ] or [
+        candidates = [r for r in ALL_REGISTERS if r != chosen and r in proposed_registers] or [
             r for r in ALL_REGISTERS if r != chosen
         ]
         candidates.sort(key=lambda r: history.get(r, 0))
@@ -544,15 +533,19 @@ class ToneCouncil:
             violations,
             groupthink,
         )
-        decision.rejected_registers = list({
-            *decision.rejected_registers,
-            chosen,
-        })
-        decision.hard_rules_triggered = list({
-            *decision.hard_rules_triggered,
-            *violations,
-            *(["groupthink_swap"] if groupthink else []),
-        })
+        decision.rejected_registers = list(
+            {
+                *decision.rejected_registers,
+                chosen,
+            }
+        )
+        decision.hard_rules_triggered = list(
+            {
+                *decision.hard_rules_triggered,
+                *violations,
+                *(["groupthink_swap"] if groupthink else []),
+            }
+        )
         decision.chosen_register = new_chosen
         decision.rationale = (
             (decision.rationale or "")
@@ -561,7 +554,8 @@ class ToneCouncil:
         return decision
 
     def _fallback_decision(
-        self, proposals: list[CouncilProposal],
+        self,
+        proposals: list[CouncilProposal],
     ) -> JudgeDecision:
         """Pick majority register among ok proposals — used if judge fails."""
         valid = [p for p in proposals if p.ok and _is_valid_register(p.register)]

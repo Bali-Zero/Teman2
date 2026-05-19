@@ -127,9 +127,7 @@ class TestAddMessageToThread:
     async def test_outbound_no_unread_increment(self, manager, mock_db):
         mock_db.execute = AsyncMock()
 
-        await manager.add_message_to_thread(
-            THREAD_UUID, 2, "telegram", direction="outbound"
-        )
+        await manager.add_message_to_thread(THREAD_UUID, 2, "telegram", direction="outbound")
         # Check the thread update query doesn't contain unread_count
         second_call = mock_db.execute.call_args_list[1]
         query = second_call[0][0]
@@ -365,9 +363,7 @@ class TestGetThreads:
         mock_db.fetchval = AsyncMock(return_value=0)
         mock_db.fetch = AsyncMock(return_value=[])
 
-        await manager.get_threads(
-            ThreadFilter(), user_email="staff@balizero.com", is_admin=False
-        )
+        await manager.get_threads(ThreadFilter(), user_email="staff@balizero.com", is_admin=False)
         # Should add RBAC condition
         fetchval_query = mock_db.fetchval.call_args[0][0]
         assert "assigned_to" in fetchval_query

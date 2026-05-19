@@ -369,7 +369,9 @@ async def create_client(
                     )
                     if existing_company_id:
                         logger.info(
-                            "Company dedup: found existing company %s by NIB %s", existing_company_id, nib
+                            "Company dedup: found existing company %s by NIB %s",
+                            existing_company_id,
+                            nib,
                         )
 
             if not existing_company_id:
@@ -493,7 +495,10 @@ async def list_clients(
         rbac_filter = get_crm_user_filter(current_user)
 
         logger.info(
-            "📋 [CRM Clients] User %s requesting clients list (assigned_to_filter=%s, rbac_filter=%s)", current_user_email, assigned_to, rbac_filter,
+            "📋 [CRM Clients] User %s requesting clients list (assigned_to_filter=%s, rbac_filter=%s)",
+            current_user_email,
+            assigned_to,
+            rbac_filter,
         )
 
         async with db_pool.acquire() as conn:
@@ -1098,7 +1103,9 @@ async def get_clients_stats(
                 "new_last_30_days": new_last_30_days,
                 "by_practice_type": by_practice_type,
                 "passport_expired": passport_health_row["expired"] if passport_health_row else 0,
-                "passport_expiring_soon": passport_health_row["expiring_soon"] if passport_health_row else 0,
+                "passport_expiring_soon": passport_health_row["expiring_soon"]
+                if passport_health_row
+                else 0,
                 "silent_30d": passport_health_row["silent_30d"] if passport_health_row else 0,
             }
 
@@ -1129,7 +1136,8 @@ async def get_client_audit_trail(
             await verify_client_access(client_id, current_user, conn, allow_assigned=True)
 
             client = await conn.fetchrow(
-                "SELECT id, full_name, assigned_to FROM clients WHERE id = $1 AND deleted_at IS NULL", client_id,
+                "SELECT id, full_name, assigned_to FROM clients WHERE id = $1 AND deleted_at IS NULL",
+                client_id,
             )
 
             if not client:
@@ -1137,7 +1145,9 @@ async def get_client_audit_trail(
 
         # Get audit trail
         trail = await audit_logger.get_audit_trail(
-            entity_type="client", entity_id=client_id, limit=limit,
+            entity_type="client",
+            entity_id=client_id,
+            limit=limit,
         )
 
         return {
@@ -1272,7 +1282,8 @@ async def get_client_ai_summary(
                     WHERE id = $1
                       AND (assigned_to = $2 OR assigned_to IS NULL)
                     """,
-                    client_id, assigned_filter,
+                    client_id,
+                    assigned_filter,
                 )
             else:
                 row = await conn.fetchrow(
@@ -1304,9 +1315,14 @@ async def get_client_ai_summary(
                 # injection vector even though FastAPI already validates the
                 # path param as int (defense in depth).
                 safe_client_id = int(client_id)
-                safe_schema = str(row["ai_summary_schema_version"] or "").replace(
-                    "\n", " ",
-                ).replace("\r", " ")[:64]
+                safe_schema = (
+                    str(row["ai_summary_schema_version"] or "")
+                    .replace(
+                        "\n",
+                        " ",
+                    )
+                    .replace("\r", " ")[:64]
+                )
                 safe_fp = (row["ai_summary_file_hash"] or "")[:12]
                 logger.info(
                     "ai_summary served client_id=%d schema=%s fp=%s elapsed_ms=%d",
@@ -1349,7 +1365,8 @@ async def get_client_ai_summary(
     except Exception as e:
         # CodeQL log-injection: cast to int defangs any non-numeric path.
         logger.exception(
-            "ai_summary fetch failed for client %d", int(client_id),
+            "ai_summary fetch failed for client %d",
+            int(client_id),
         )
         raise handle_database_error(e) from e
 

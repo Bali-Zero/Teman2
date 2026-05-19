@@ -24,7 +24,8 @@ def _verify_founder_access(current_user=Depends(get_current_user)) -> Any:
     """Verify that the user has founder or admin level access."""
     if current_user.get("role") not in ["Founder", "admin"]:
         raise HTTPException(
-            status_code=403, detail="Access denied. This dashboard is for founders/admins only.",
+            status_code=403,
+            detail="Access denied. This dashboard is for founders/admins only.",
         )
     return current_user
 
@@ -50,7 +51,9 @@ async def get_workflow_dashboard(
     try:
         return await repo.get_dashboard_summary(days=days)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to load workflow dashboard: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Failed to load workflow dashboard: {str(e)}"
+        ) from e
 
 
 @router.get("/workflow-dashboard/top")
@@ -78,7 +81,9 @@ async def get_workflow_volume(
     try:
         return await repo.get_workflow_volume(granularity=granularity, days=days)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get workflow volume: {str(e)}") from e
+        raise HTTPException(
+            status_code=500, detail=f"Failed to get workflow volume: {str(e)}"
+        ) from e
 
 
 # ========== WRITE ENDPOINT (Any authenticated user) ==========

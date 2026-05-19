@@ -1,4 +1,5 @@
 """Tests for low-confidence emitter (writes rag.low_confidence to bridge_outbox)."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock

@@ -88,12 +88,14 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None) -> A
     else:
         expire = now + timedelta(hours=JWT_ACCESS_TOKEN_EXPIRE_HOURS)
 
-    to_encode.update({
-        "exp": expire,
-        "iat": now,
-        "jti": str(uuid.uuid4()),
-        "type": "access",
-    })
+    to_encode.update(
+        {
+            "exp": expire,
+            "iat": now,
+            "jti": str(uuid.uuid4()),
+            "type": "access",
+        }
+    )
     return jwt.encode(to_encode, JWT_SECRET_KEY, algorithm=JWT_ALGORITHM)
 
 
@@ -112,7 +114,9 @@ async def get_current_user(
     try:
         # S03: Two-phase JWT expiry enforcement
         payload = jwt.decode(
-            credentials.credentials, JWT_SECRET_KEY, algorithms=[JWT_ALGORITHM],
+            credentials.credentials,
+            JWT_SECRET_KEY,
+            algorithms=[JWT_ALGORITHM],
             options={"verify_exp": getattr(settings, "jwt_enforce_expiry", False)},
         )
         user_id: str = payload.get("sub")
@@ -174,7 +178,8 @@ async def _auto_clockin_if_needed(
                 INSERT INTO team_timesheet (user_id, email, action_type, metadata)
                 VALUES ($1, $2, 'clock_in', '{"source": "auto_login"}'::jsonb)
                 """,
-                user_id, email,
+                user_id,
+                email,
             )
             logger.info("🟢 Auto clock-in: %s (from login)", email)
             return True
@@ -221,7 +226,9 @@ async def login(
             brute_force = BruteForceDetector(redis_client=redis_client)
 
             if await brute_force.is_blocked(client_ip or "", request.email):
-                logger.warning(f"S03: Login blocked (brute force) ip={client_ip} email={request.email}")
+                logger.warning(
+                    f"S03: Login blocked (brute force) ip={client_ip} email={request.email}"
+                )
                 raise HTTPException(
                     status_code=429,
                     detail="Too many failed attempts. Please try again later.",

@@ -10,6 +10,7 @@ methods:
 Each test uses an in-memory CacheService instance (Redis absent → LRU fallback)
 and seeds some cache keys that should be wiped after the mutation succeeds.
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock, patch
@@ -43,6 +44,7 @@ async def _assert_cleared(cache: CacheService, *keys: str) -> None:
 
 
 # ── 1. create_client fans out to both stats + list namespaces ──────────────
+
 
 @pytest.mark.asyncio
 async def test_create_client_invalidates_crm_namespaces(in_memory_cache: CacheService) -> None:
@@ -89,6 +91,7 @@ async def test_create_client_invalidates_crm_namespaces(in_memory_cache: CacheSe
 
 
 # ── 2. update_practice_status targets per-practice + namespace ─────────────
+
 
 @pytest.mark.asyncio
 async def test_update_practice_status_invalidates_per_practice(
@@ -141,6 +144,7 @@ async def test_update_practice_status_invalidates_per_practice(
 
 # ── 3. mark_message_read clears only the portal_messages namespace ─────────
 
+
 @pytest.mark.asyncio
 async def test_mark_message_read_invalidates_portal_messages(
     in_memory_cache: CacheService,
@@ -170,7 +174,8 @@ async def test_mark_message_read_invalidates_portal_messages(
         side_effect=in_memory_cache.clear_pattern,
     ):
         result = await svc.mark_message_read(
-            client_id=42, message_id=777,
+            client_id=42,
+            message_id=777,
             current_user={"client_id": 42, "email": "test@example.com"},
         )
 

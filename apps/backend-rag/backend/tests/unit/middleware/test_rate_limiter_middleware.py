@@ -8,6 +8,7 @@ Covers the paths not exercised by test_rate_limiter.py (fail-safe only):
   * stale-key eviction when the storage grows past the threshold
   * /health, /docs, /openapi.json are never rate-limited
 """
+
 from __future__ import annotations
 
 import time

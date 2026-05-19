@@ -143,9 +143,9 @@ class TestAdminSetConsumers:
             assert crm_utils.is_crm_admin({"email": "new-admin@example.com"}) is True
             # Old hardcoded admin is no longer an admin when override takes effect
             # (unless it was in the override set — which it isn't).
-            assert (
-                crm_utils.is_crm_admin({"email": "zero@balizero.com"}) is False
-            ), "override must replace, not extend, the historical fallback"
+            assert crm_utils.is_crm_admin({"email": "zero@balizero.com"}) is False, (
+                "override must replace, not extend, the historical fallback"
+            )
         finally:
             crm_utils.settings = original
 

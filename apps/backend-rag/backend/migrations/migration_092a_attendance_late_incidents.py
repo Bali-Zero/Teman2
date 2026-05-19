@@ -119,11 +119,15 @@ async def apply(conn) -> None:
         FOR EACH ROW EXECUTE FUNCTION trg_attendance_late_incidents_touch()
     """)
 
-    await conn.execute("""
+    await conn.execute(
+        """
         INSERT INTO migration_history (migration_id, description, applied_at)
         VALUES ($1, $2, NOW())
         ON CONFLICT (migration_id) DO NOTHING
-    """, MIGRATION_ID, DESCRIPTION)
+    """,
+        MIGRATION_ID,
+        DESCRIPTION,
+    )
 
     logger.info(f"✅ Migration {MIGRATION_ID} applied successfully")
 
@@ -131,12 +135,12 @@ async def apply(conn) -> None:
 async def rollback(conn) -> None:
     logger.info(f"Rolling back migration {MIGRATION_ID}")
     await conn.execute(
-        "DROP TRIGGER IF EXISTS attendance_late_incidents_touch "
-        "ON attendance_late_incidents",
+        "DROP TRIGGER IF EXISTS attendance_late_incidents_touch ON attendance_late_incidents",
     )
     await conn.execute("DROP FUNCTION IF EXISTS trg_attendance_late_incidents_touch()")
     await conn.execute("DROP TABLE IF EXISTS attendance_late_incidents CASCADE")
     await conn.execute(
-        "DELETE FROM migration_history WHERE migration_id = $1", MIGRATION_ID,
+        "DELETE FROM migration_history WHERE migration_id = $1",
+        MIGRATION_ID,
     )
     logger.info(f"✅ Migration {MIGRATION_ID} rolled back")

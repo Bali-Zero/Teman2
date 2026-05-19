@@ -558,7 +558,8 @@ async def _gistaru_rdtr_lookup(lat: float, lon: float) -> dict[str, Any] | None:
                 else cities_body
             )
             logger.info(
-                "GISTARU: %d kabupaten found", len(cities) if isinstance(cities, list) else 0,
+                "GISTARU: %d kabupaten found",
+                len(cities) if isinstance(cities, list) else 0,
             )
 
             # For each kabupaten, get RDTR list and try spatial query
@@ -674,7 +675,9 @@ async def _gistaru_rdtr_lookup(lat: float, lon: float) -> dict[str, Any] | None:
 
 
 async def _gistaru_rdtr_direct_query(
-    lat: float, lon: float, service_path: str,
+    lat: float,
+    lon: float,
+    service_path: str,
 ) -> dict[str, Any] | None:
     """
     Direct spatial query to a known GISTARU MapServer service.

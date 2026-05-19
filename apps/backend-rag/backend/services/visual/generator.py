@@ -48,7 +48,7 @@ logger = logging.getLogger(__name__)
 @dataclass
 class SlideSpec:
     slide_number: int
-    image_prompt: str            # scene_core
+    image_prompt: str  # scene_core
     is_cover: bool = False
 
 
@@ -214,9 +214,7 @@ class VisualGenerator:
                         if fallback_result.ok:
                             result.ok = True
                             return result
-                result.error = (
-                    f"imagen exhausted ({attempt} attempts): {imagen_result.error}"
-                )
+                result.error = f"imagen exhausted ({attempt} attempts): {imagen_result.error}"
                 result.needs_escalation = True
                 return result
 

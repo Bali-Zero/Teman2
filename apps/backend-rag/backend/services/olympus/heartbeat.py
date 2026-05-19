@@ -46,7 +46,8 @@ class Heartbeat:
 
             # FIX BUG-3: rule key must be "long_query_threshold_seconds"
             long_query_threshold: int = self._rules.get_threshold(
-                "long_query_threshold_seconds", default=30,
+                "long_query_threshold_seconds",
+                default=30,
             )
             long_queries = await self._count_long_queries(conn, long_query_threshold)
             lock_waits = await self._count_lock_waits(conn)
@@ -73,9 +74,12 @@ class Heartbeat:
         snapshot.health_score = snapshot.compute_health_score(dead_tuple_ratio)
         logger.info(
             "Heartbeat: pool=%d/%d active=%d/%d long=%d locks=%d",
-            pool_size - pool_idle, pool_size,
-            active_connections, max_connections,
-            long_queries, lock_waits,
+            pool_size - pool_idle,
+            pool_size,
+            active_connections,
+            max_connections,
+            long_queries,
+            lock_waits,
         )
         return snapshot
 
@@ -101,7 +105,9 @@ class Heartbeat:
             await self.alert(msg)
             messages.append(msg)
 
-        health_threshold: int = self._rules.get_threshold("health_score_alert_threshold", default=60)
+        health_threshold: int = self._rules.get_threshold(
+            "health_score_alert_threshold", default=60
+        )
         if snapshot.health_score is not None and snapshot.health_score < health_threshold:
             msg = f"Health score {snapshot.health_score} below threshold {health_threshold}"
             await self.alert(msg)
@@ -112,6 +118,7 @@ class Heartbeat:
 
     async def persist(self, snapshot: HeartbeatSnapshot) -> None:
         import json
+
         query = """
             INSERT INTO olympus_heartbeats (
                 pool_size, pool_idle, active_connections, max_connections,
@@ -123,11 +130,16 @@ class Heartbeat:
         async with self._pool.acquire() as conn:
             await conn.execute(
                 query,
-                snapshot.pool_size, snapshot.pool_idle,
-                snapshot.active_connections, snapshot.max_connections,
-                snapshot.db_size_bytes, json.dumps(snapshot.bloat_top3),
-                snapshot.long_queries, snapshot.lock_waits,
-                snapshot.alerts_sent, snapshot.recorded_at,
+                snapshot.pool_size,
+                snapshot.pool_idle,
+                snapshot.active_connections,
+                snapshot.max_connections,
+                snapshot.db_size_bytes,
+                json.dumps(snapshot.bloat_top3),
+                snapshot.long_queries,
+                snapshot.lock_waits,
+                snapshot.alerts_sent,
+                snapshot.recorded_at,
                 snapshot.pool_utilization,
                 snapshot.cache_hit_ratio,
                 json.dumps(snapshot.top_tables_by_size),

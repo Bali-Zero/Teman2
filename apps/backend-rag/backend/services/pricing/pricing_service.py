@@ -109,9 +109,7 @@ class PricingService:
     def _load_prices(self) -> None:
         """Load official prices from the 2026 JSON file."""
         try:
-            json_path = (
-                Path(__file__).parent.parent.parent / "data" / _PRICING_FILENAME
-            )
+            json_path = Path(__file__).parent.parent.parent / "data" / _PRICING_FILENAME
 
             if not json_path.exists():
                 logger.warning("Official prices file not found at %s", json_path)
@@ -130,7 +128,8 @@ class PricingService:
             # real number of priced rows.
             service_count = len(_iter_service_entries(self.prices.get("services", {})))
             categories_present = [
-                cat for cat in (*_FLAT_CATEGORIES, *_NESTED_CATEGORIES)
+                cat
+                for cat in (*_FLAT_CATEGORIES, *_NESTED_CATEGORIES)
                 if cat in self.prices.get("services", {})
             ]
             logger.info(
@@ -199,7 +198,9 @@ class PricingService:
         if not self.loaded:
             return {
                 "error": "Official prices not loaded",
-                "contact": self.prices.get("contact_info", self.prices.get("metadata", {}).get("contact", {})),
+                "contact": self.prices.get(
+                    "contact_info", self.prices.get("metadata", {}).get("contact", {})
+                ),
             }
 
         query_lower = query.lower().strip()

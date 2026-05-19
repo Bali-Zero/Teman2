@@ -37,7 +37,12 @@ def generate_facts_for_member(member: dict) -> list[dict]:
     if member.get("location"):
         identity += f", lavora da {member['location']}"
     facts.append(
-        {"content": identity, "fact_type": "identity", "confidence": 1.0, "source": "team_database"},
+        {
+            "content": identity,
+            "fact_type": "identity",
+            "confidence": 1.0,
+            "source": "team_database",
+        },
     )
 
     # 2. Language preferences
@@ -257,7 +262,8 @@ async def apply_migration(database_url: str = None):
 
             # Delete existing facts for this user (clean slate)
             await conn.execute(
-                "DELETE FROM memory_facts WHERE user_id = $1 AND source = 'team_database'", email,
+                "DELETE FROM memory_facts WHERE user_id = $1 AND source = 'team_database'",
+                email,
             )
 
             # Insert new facts

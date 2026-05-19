@@ -103,7 +103,9 @@ def register_handlers(
         if _is_duplicate(dedup_key):
             return
 
-        logger.info("🔔 Event client.changed: %s client_id=%s email=%s", operation, client_id, email)
+        logger.info(
+            "🔔 Event client.changed: %s client_id=%s email=%s", operation, client_id, email
+        )
 
         # Invalidate CRM cache
         try:
@@ -182,7 +184,10 @@ def register_handlers(
             return
 
         logger.info(
-            "🔔 Event practice.status_changed: practice_id=%s %s→%s", practice_id, old_status, new_status
+            "🔔 Event practice.status_changed: practice_id=%s %s→%s",
+            practice_id,
+            old_status,
+            new_status,
         )
 
         # Invalidate practice cache
@@ -267,7 +272,10 @@ def register_handlers(
             return
 
         logger.info(
-            "🔔 Event compliance.alert: severity=%s client_id=%s type=%s", severity, client_id, alert_type
+            "🔔 Event compliance.alert: severity=%s client_id=%s type=%s",
+            severity,
+            client_id,
+            alert_type,
         )
 
         # Store in cross-chain context
@@ -503,9 +511,7 @@ async def _log_whatsapp_message_interaction(
                 message_context_id,
             )
 
-            client_id = _coerce_int(
-                row["client_id"] if row else payload.get("client_id")
-            )
+            client_id = _coerce_int(row["client_id"] if row else payload.get("client_id"))
             if client_id is None:
                 logger.info(
                     "whatsapp.message_received prospect-only context id=%s",
@@ -534,9 +540,7 @@ async def _log_whatsapp_message_interaction(
                 or payload.get("preview")
                 or f"[{media_type}]"
             )
-            message_date = (
-                row["message_date"] if row else payload.get("message_date")
-            )
+            message_date = row["message_date"] if row else payload.get("message_date")
             team_member = (
                 (row["team_member_email"] if row else None)
                 or payload.get("team_member_email")

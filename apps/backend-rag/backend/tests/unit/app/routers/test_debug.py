@@ -163,14 +163,22 @@ def test_get_logs_filters_by_module(mock_settings, auth_headers):
         _logging.LogRecord(
             name="backend.app.routers.dream",
             level=_logging.INFO,
-            pathname="x", lineno=1, msg="dream-msg", args=(), exc_info=None,
+            pathname="x",
+            lineno=1,
+            msg="dream-msg",
+            args=(),
+            exc_info=None,
         ),
     )
     handler.emit(
         _logging.LogRecord(
             name="backend.app.routers.newsletter",
             level=_logging.INFO,
-            pathname="x", lineno=1, msg="newsletter-msg", args=(), exc_info=None,
+            pathname="x",
+            lineno=1,
+            msg="newsletter-msg",
+            args=(),
+            exc_info=None,
         ),
     )
 
@@ -441,7 +449,9 @@ def test_postgres_query(mock_settings, auth_headers):
         mock_instance.execute_query = AsyncMock(return_value={"columns": [], "rows": []})
 
         response = client.post(
-            "/api/debug/postgres/query", json={"query": "SELECT 1"}, headers=auth_headers,
+            "/api/debug/postgres/query",
+            json={"query": "SELECT 1"},
+            headers=auth_headers,
         )
         assert response.status_code == 200
         assert response.json()["success"] is True
@@ -453,7 +463,9 @@ def test_postgres_query_validation_error(mock_settings, auth_headers):
         mock_instance.execute_query = AsyncMock(side_effect=ValueError("Unsafe query"))
 
         response = client.post(
-            "/api/debug/postgres/query", json={"query": "DELETE FROM table"}, headers=auth_headers,
+            "/api/debug/postgres/query",
+            json={"query": "DELETE FROM table"},
+            headers=auth_headers,
         )
         assert response.status_code == 400
 

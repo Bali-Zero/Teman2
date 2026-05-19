@@ -109,11 +109,13 @@ async def test_nlm_feeder_consumer_requires_public_safe():
 
 @pytest.mark.asyncio
 async def test_curiosity_consumer_meta_preserved():
-    fn = AsyncMock(return_value={
-        "ok": True,
-        "entity_id": "gap:visa-b211a-2026",
-        "gaps_closed": 2,
-    })
+    fn = AsyncMock(
+        return_value={
+            "ok": True,
+            "entity_id": "gap:visa-b211a-2026",
+            "gaps_closed": 2,
+        }
+    )
     c = CuriosityConsumer(curiosity_close_fn=fn)
     r = await c.consume(_dossier())
     assert r.ok is True

@@ -1,4 +1,5 @@
 """Tests for Semantic Cache."""
+
 from backend.services.caching.semantic_cache import (
     _L1_CACHE,
     cache_response,
@@ -41,6 +42,7 @@ class TestSemanticCache:
 
     def test_lru_eviction(self):
         from backend.services.caching.semantic_cache import _L1_MAX_SIZE
+
         for i in range(_L1_MAX_SIZE + 10):
             cache_response(f"query {i}", {"i": i})
         stats = get_cache_stats()

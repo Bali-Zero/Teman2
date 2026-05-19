@@ -49,9 +49,9 @@ logger = logging.getLogger(__name__)
 
 # ── Config ────────────────────────────────────────────────────────────────────
 
-NLM_QUERY_TIMEOUT = 90       # seconds per notebook query
+NLM_QUERY_TIMEOUT = 90  # seconds per notebook query
 MAX_NOTEBOOKS_PER_QUERY = 4  # max fan-out (memory pressure)
-MIN_DOMAINS_FOR_CROSS = 2    # minimum domains to trigger cross-query
+MIN_DOMAINS_FOR_CROSS = 2  # minimum domains to trigger cross-query
 
 # Ollama (synthesis)
 OLLAMA_URL = "http://localhost:11434/api/chat"
@@ -63,49 +63,105 @@ DOMAIN_REGISTRY: dict[str, dict[str, Any]] = {
     "immigration": {
         "notebook_id": "271c7159-0c32-49a1-bda8-803c8e0993a6",
         "label": "Immigration & Visa",
-        "keywords": {"visa", "kitas", "kitap", "tka", "immigration", "imigrasi",
-                     "work permit", "stay permit", "foreigner", "expat"},
+        "keywords": {
+            "visa",
+            "kitas",
+            "kitap",
+            "tka",
+            "immigration",
+            "imigrasi",
+            "work permit",
+            "stay permit",
+            "foreigner",
+            "expat",
+        },
     },
     "company": {
         "notebook_id": "045f3cdb-ef62-488c-90ba-82594928b671",
         "label": "Company & Licensing",
-        "keywords": {"company", "kbli", "pma", "oss", "licensing", "nib",
-                     "investment", "business", "pt ", "perseroan"},
+        "keywords": {
+            "company",
+            "kbli",
+            "pma",
+            "oss",
+            "licensing",
+            "nib",
+            "investment",
+            "business",
+            "pt ",
+            "perseroan",
+        },
     },
     "tax": {
         "notebook_id": "d4b2eedb-9863-4a1a-81ff-a11b0b45d853",
         "label": "Tax & Compliance",
-        "keywords": {"tax", "compliance", "lkpm", "npwp", "pph", "ppn",
-                     "coretax", "bpjs", "fiscal", "pajak"},
+        "keywords": {
+            "tax",
+            "compliance",
+            "lkpm",
+            "npwp",
+            "pph",
+            "ppn",
+            "coretax",
+            "bpjs",
+            "fiscal",
+            "pajak",
+        },
     },
     "property": {
         "notebook_id": "93314ad3-177e-4d2f-956b-fe4be3e47697",
         "label": "Property & Zoning",
-        "keywords": {"property", "zoning", "land", "hgb", "hak pakai",
-                     "building", "villa", "real estate", "leasehold"},
+        "keywords": {
+            "property",
+            "zoning",
+            "land",
+            "hgb",
+            "hak pakai",
+            "building",
+            "villa",
+            "real estate",
+            "leasehold",
+        },
     },
     "operations": {
         "notebook_id": "7fbf37ed-e290-491a-98f5-677d6371ad62",
         "label": "Operations",
-        "keywords": {"sop", "team", "pricing", "crm", "workflow",
-                     "competitor", "bpjs", "umr", "salary"},
+        "keywords": {
+            "sop",
+            "team",
+            "pricing",
+            "crm",
+            "workflow",
+            "competitor",
+            "bpjs",
+            "umr",
+            "salary",
+        },
     },
     "editorial": {
         "notebook_id": "42687fcb-87fc-40b1-8af8-8a2ff91f9c4c",
         "label": "Editorial & Market",
-        "keywords": {"seo", "content", "market", "intel", "trends",
-                     "news", "article", "editorial"},
+        "keywords": {"seo", "content", "market", "intel", "trends", "news", "article", "editorial"},
     },
     "lifestyle": {
         "notebook_id": "aa9ac5d7-5090-46c7-9d09-89cec4ba13de",
         "label": "Expat Life",
-        "keywords": {"lifestyle", "expat", "healthcare", "cost of living",
-                     "culture", "digital nomad", "education", "school"},
+        "keywords": {
+            "lifestyle",
+            "expat",
+            "healthcare",
+            "cost of living",
+            "culture",
+            "digital nomad",
+            "education",
+            "school",
+        },
     },
 }
 
 
 # ── Data models ───────────────────────────────────────────────────────────────
+
 
 @dataclass
 class NotebookResponse:
@@ -135,7 +191,7 @@ class CrossNotebookResult:
     correlations: list[CorrelationEntry]
     contradictions: list[CorrelationEntry]  # subset where relationship == CONTRADICT
     synthesis: str
-    synthesis_source: str   # "ollama" | "concatenation_fallback"
+    synthesis_source: str  # "ollama" | "concatenation_fallback"
     total_latency_ms: int
     errors: list[str] = field(default_factory=list)
 
@@ -149,6 +205,7 @@ class CrossNotebookResult:
 
 
 # ── Domain detection ──────────────────────────────────────────────────────────
+
 
 def detect_domains(query: str, threshold: int = 1) -> list[str]:
     """Return list of domain keys that match the query.
@@ -178,6 +235,7 @@ def is_multi_domain(query: str) -> bool:
 
 
 # ── NLM query ─────────────────────────────────────────────────────────────────
+
 
 def _query_notebook_sync(notebook_id: str, query: str) -> tuple[str | None, str | None]:
     """Query a single notebook via nlm CLI. Returns (response, error)."""
@@ -231,6 +289,7 @@ async def _query_notebook_async(
 
 # ── Claim extraction ──────────────────────────────────────────────────────────
 
+
 def _extract_claims(text: str, max_claims: int = 8) -> list[str]:
     """Extract atomic claims from response text.
 
@@ -240,6 +299,7 @@ def _extract_claims(text: str, max_claims: int = 8) -> list[str]:
         return []
     # Split on sentence boundaries
     import re
+
     sentences = re.split(r"(?<=[.!?])\s+", text.strip())
     claims = []
     for s in sentences:
@@ -253,6 +313,7 @@ def _extract_claims(text: str, max_claims: int = 8) -> list[str]:
 
 # ── Correlation engine ────────────────────────────────────────────────────────
 
+
 def _compute_claim_overlap(claim_a: str, claim_b: str) -> float:
     """Compute word overlap score between two claims (Jaccard-like).
 
@@ -263,9 +324,35 @@ def _compute_claim_overlap(claim_a: str, claim_b: str) -> float:
     words_a = set(claim_a.lower().split())
     words_b = set(claim_b.lower().split())
     # Remove stop words
-    stop = {"the", "a", "an", "is", "are", "was", "were", "in", "on", "at",
-            "to", "of", "for", "and", "or", "but", "that", "this", "with",
-            "dari", "di", "ke", "dan", "atau", "yang", "untuk", "dengan"}
+    stop = {
+        "the",
+        "a",
+        "an",
+        "is",
+        "are",
+        "was",
+        "were",
+        "in",
+        "on",
+        "at",
+        "to",
+        "of",
+        "for",
+        "and",
+        "or",
+        "but",
+        "that",
+        "this",
+        "with",
+        "dari",
+        "di",
+        "ke",
+        "dan",
+        "atau",
+        "yang",
+        "untuk",
+        "dengan",
+    }
     words_a -= stop
     words_b -= stop
     if not words_a or not words_b:
@@ -275,16 +362,42 @@ def _compute_claim_overlap(claim_a: str, claim_b: str) -> float:
     return len(intersection) / len(union)
 
 
-_CONTRADICT_KEYWORDS = frozenset({
-    "however", "but", "contrary", "different", "unlike", "instead",
-    "not", "no ", "cannot", "berbeda", "tidak", "bukan", "sebaliknya",
-    "namun", "tetapi", "melainkan",
-})
+_CONTRADICT_KEYWORDS = frozenset(
+    {
+        "however",
+        "but",
+        "contrary",
+        "different",
+        "unlike",
+        "instead",
+        "not",
+        "no ",
+        "cannot",
+        "berbeda",
+        "tidak",
+        "bukan",
+        "sebaliknya",
+        "namun",
+        "tetapi",
+        "melainkan",
+    }
+)
 
-_AGREE_KEYWORDS = frozenset({
-    "also", "similarly", "likewise", "same", "confirm", "consistent",
-    "sama", "juga", "sesuai", "konfirmasi", "selaras",
-})
+_AGREE_KEYWORDS = frozenset(
+    {
+        "also",
+        "similarly",
+        "likewise",
+        "same",
+        "confirm",
+        "consistent",
+        "sama",
+        "juga",
+        "sesuai",
+        "konfirmasi",
+        "selaras",
+    }
+)
 
 
 def _classify_relationship(claim_a: str, claim_b: str, overlap: float) -> tuple[str, float]:
@@ -343,20 +456,24 @@ def build_correlation_matrix(
                     relationship, confidence = _classify_relationship(ca, cb, overlap)
                     # Only include non-trivial correlations
                     if relationship in ("CONTRADICT", "AGREE") or overlap > 0.1:
-                        correlations.append(CorrelationEntry(
-                            claim_a=ca,
-                            domain_a=domain_a,
-                            claim_b=cb,
-                            domain_b=domain_b,
-                            relationship=relationship,
-                            confidence=confidence,
-                        ))
+                        correlations.append(
+                            CorrelationEntry(
+                                claim_a=ca,
+                                domain_a=domain_a,
+                                claim_b=cb,
+                                domain_b=domain_b,
+                                relationship=relationship,
+                                confidence=confidence,
+                            )
+                        )
 
     # Sort by confidence desc, prioritize contradictions
-    correlations.sort(key=lambda c: (
-        0 if c.relationship == "CONTRADICT" else 1,
-        -c.confidence,
-    ))
+    correlations.sort(
+        key=lambda c: (
+            0 if c.relationship == "CONTRADICT" else 1,
+            -c.confidence,
+        )
+    )
     return correlations[:max_correlations]
 
 
@@ -394,16 +511,17 @@ def _call_ollama_synthesis(
     contradiction_text = ""
     if contradictions:
         contradiction_text = "\n\nIDENTIFIED CONTRADICTIONS:\n" + "\n".join(
-            f"- [{c.domain_a.upper()}] says: \"{c.claim_a[:150]}\"\n"
-            f"  vs [{c.domain_b.upper()}] says: \"{c.claim_b[:150]}\""
+            f'- [{c.domain_a.upper()}] says: "{c.claim_a[:150]}"\n'
+            f'  vs [{c.domain_b.upper()}] says: "{c.claim_b[:150]}"'
             for c in contradictions[:3]
         )
 
     user_msg = (
         f"USER QUERY: {query}\n\n"
-        f"DOMAIN RESPONSES:\n\n" + "\n\n".join(sections) +
-        contradiction_text +
-        "\n\nPlease synthesize all domain information into a unified answer."
+        f"DOMAIN RESPONSES:\n\n"
+        + "\n\n".join(sections)
+        + contradiction_text
+        + "\n\nPlease synthesize all domain information into a unified answer."
     )
 
     payload = {
@@ -454,13 +572,13 @@ def _concatenation_fallback(
         lines.append("⚠️ **Potential Contradictions:**")
         for c in contradictions[:3]:
             lines.append(
-                f"- [{c.domain_a}] vs [{c.domain_b}]: "
-                f"\"{c.claim_a[:100]}\" / \"{c.claim_b[:100]}\""
+                f'- [{c.domain_a}] vs [{c.domain_b}]: "{c.claim_a[:100]}" / "{c.claim_b[:100]}"'
             )
     return "\n".join(lines)
 
 
 # ── Main correlator class ─────────────────────────────────────────────────────
+
 
 class CrossNotebookCorrelator:
     """Cross-notebook intelligence correlator.
@@ -564,12 +682,14 @@ class CrossNotebookCorrelator:
         tasks = []
         for domain in domains:
             data = self._registry[domain]
-            tasks.append(_query_notebook_async(
-                domain=domain,
-                notebook_id=data["notebook_id"],
-                label=data["label"],
-                query=query,
-            ))
+            tasks.append(
+                _query_notebook_async(
+                    domain=domain,
+                    notebook_id=data["notebook_id"],
+                    label=data["label"],
+                    query=query,
+                )
+            )
 
         responses: list[NotebookResponse] = await asyncio.gather(*tasks, return_exceptions=False)
         errors = [f"{r.domain}: {r.error}" for r in responses if r.error]
@@ -591,11 +711,7 @@ class CrossNotebookCorrelator:
         contradictions = [c for c in correlations if c.relationship == "CONTRADICT"]
 
         # Synthesis
-        domain_triples = [
-            (r.domain, r.label, r.response)
-            for r in successful
-            if r.response
-        ]
+        domain_triples = [(r.domain, r.label, r.response) for r in successful if r.response]
 
         synthesis = None
         synthesis_source = "concatenation_fallback"

@@ -125,13 +125,17 @@ class RSSAdapter(SourceAdapter):
                     resp = await client.get(feed_url)
                     if resp.status_code != 200:
                         logger.debug(
-                            "rss %s returned %s", feed_url, resp.status_code,
+                            "rss %s returned %s",
+                            feed_url,
+                            resp.status_code,
                         )
                         continue
                     items = _parse_rss(resp.text)
                 except Exception as exc:  # noqa: BLE001
                     logger.warning(
-                        "rss fetch failed for %s: %s", feed_url, exc,
+                        "rss fetch failed for %s: %s",
+                        feed_url,
+                        exc,
                     )
                     continue
 
@@ -281,9 +285,18 @@ def _heuristic_urgency(haystack: str) -> float:
     """Cheap pre-scoring based on urgency markers — refined later by Gemini CLI."""
     score = 40.0
     urgent_markers = (
-        "breaking", "urgent", "deadline", "effective",
-        "enforcement", "sanction", "deportation", "audit",
-        "segera", "batas waktu", "sanksi", "mendesak",
+        "breaking",
+        "urgent",
+        "deadline",
+        "effective",
+        "enforcement",
+        "sanction",
+        "deportation",
+        "audit",
+        "segera",
+        "batas waktu",
+        "sanksi",
+        "mendesak",
     )
     for marker in urgent_markers:
         if marker in haystack:

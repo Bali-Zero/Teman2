@@ -375,7 +375,8 @@ class LegalIngestionService:
                 drive_web_link = drive_file.get("webViewLink")
 
                 logger.info(
-                    "[STAGE 1.5] Uploaded to Drive: %s", drive_file_id,
+                    "[STAGE 1.5] Uploaded to Drive: %s",
+                    drive_file_id,
                     extra={
                         "document_id": document_id,
                         "stage": "drive_upload",
@@ -388,7 +389,8 @@ class LegalIngestionService:
             except Exception as e:
                 # Non bloccare ingestione se Drive fallisce
                 logger.warning(
-                    "[STAGE 1.5] Google Drive upload failed (non-blocking): %s", e,
+                    "[STAGE 1.5] Google Drive upload failed (non-blocking): %s",
+                    e,
                     extra={
                         "document_id": document_id,
                         "stage": "drive_upload",
@@ -435,7 +437,8 @@ class LegalIngestionService:
                 pricing_removed = len(lines) - len(filtered_lines)
                 cleaned_text = separator.join(filtered_lines)
                 logger.info(
-                    "[STAGE 2] Removed %s segments containing pricing info", pricing_removed,
+                    "[STAGE 2] Removed %s segments containing pricing info",
+                    pricing_removed,
                     extra={
                         "document_id": document_id,
                         "stage": "cleaning",
@@ -540,7 +543,8 @@ Return ONLY valid JSON, no markdown."""
                             metadata.update({k: v for k, v in ai_metadata.items() if v})
                 except Exception as e:
                     logger.warning(
-                        "[STAGE 3] Google AI Studio fallback failed: %s", e,
+                        "[STAGE 3] Google AI Studio fallback failed: %s",
+                        e,
                         extra={
                             "document_id": document_id,
                             "stage": "metadata_extraction",
@@ -685,7 +689,8 @@ Return ONLY valid JSON, no markdown."""
             )
 
             logger.info(
-                "[STAGE 6] Successfully ingested legal document: %s", document_title,
+                "[STAGE 6] Successfully ingested legal document: %s",
+                document_title,
                 extra={
                     "document_id": document_id,
                     "stage": "completion",
@@ -763,7 +768,8 @@ Return ONLY valid JSON, no markdown."""
                     error_msg = str(e)
                     kg_duration = time.time() - kg_start
                     logger.warning(
-                        "[STAGE 7] KG extraction failed (non-blocking): %s", error_msg,
+                        "[STAGE 7] KG extraction failed (non-blocking): %s",
+                        error_msg,
                         extra={
                             "document_id": document_id,
                             "stage": "kg_extraction",
@@ -922,7 +928,9 @@ Return ONLY valid JSON, no markdown."""
             except Exception as e:
                 # Se list_files fallisce, prova a creare direttamente
                 logger.warning(
-                    "Error listing files in %s: %s. Attempting to create folder...", current_parent_id, e
+                    "Error listing files in %s: %s. Attempting to create folder...",
+                    current_parent_id,
+                    e,
                 )
                 try:
                     folder = await drive_service.create_folder(
@@ -1015,9 +1023,7 @@ Return ONLY valid JSON, no markdown."""
                                 creds_path = f.name
                             os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = creds_path
 
-                        client = genai.Client(
-                            vertexai=True, project=project_id, location=location
-                        )
+                        client = genai.Client(vertexai=True, project=project_id, location=location)
                         gemini = client
                         logger.info("Gemini client initialized for KG extraction")
                 except Exception as e:

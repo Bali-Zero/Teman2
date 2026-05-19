@@ -46,17 +46,13 @@ def test_callback_token_prefix_deterministic() -> None:
 def test_callback_token_prefix_different_per_proposal() -> None:
     """Same approval_token but different proposal_id → different prefix."""
     token = "secret"
-    assert callback_token_prefix(token, "pid-A") != callback_token_prefix(
-        token, "pid-B"
-    )
+    assert callback_token_prefix(token, "pid-A") != callback_token_prefix(token, "pid-B")
 
 
 def test_callback_token_prefix_different_per_token() -> None:
     """Same proposal_id but different approval_token → different prefix."""
     pid = "pid-X"
-    assert callback_token_prefix("token1", pid) != callback_token_prefix(
-        "token2", pid
-    )
+    assert callback_token_prefix("token1", pid) != callback_token_prefix("token2", pid)
 
 
 # ---------------------------------------------------------------------------

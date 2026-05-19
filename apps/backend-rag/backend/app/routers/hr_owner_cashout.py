@@ -2,6 +2,7 @@
 
 All routes gated by require_owner. 403 for non-owner team members.
 """
+
 from __future__ import annotations
 
 import logging
@@ -68,9 +69,7 @@ async def trigger_sync(
 
     async def _runner() -> None:
         try:
-            await sync_service.run_sync(
-                pool, triggered_by=f"manual:{email}"
-            )
+            await sync_service.run_sync(pool, triggered_by=f"manual:{email}")
         except Exception:
             logger.exception("[CASHOUT] background sync failed")
 

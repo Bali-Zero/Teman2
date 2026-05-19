@@ -108,19 +108,22 @@ def build_keyboard(brief_id: UUID) -> dict:
                 {
                     "text": "✅ Approva",
                     "callback_data": encode_callback(
-                        StrategosAction.APPROVE, brief_id,
+                        StrategosAction.APPROVE,
+                        brief_id,
                     ),
                 },
                 {
                     "text": "✏️ Adjust",
                     "callback_data": encode_callback(
-                        StrategosAction.ADJUST, brief_id,
+                        StrategosAction.ADJUST,
+                        brief_id,
                     ),
                 },
                 {
                     "text": "❌ Rifiuta",
                     "callback_data": encode_callback(
-                        StrategosAction.REJECT, brief_id,
+                        StrategosAction.REJECT,
+                        brief_id,
                     ),
                 },
             ]
@@ -175,12 +178,7 @@ def render_brief_message(brief: WeeklyStrategicBrief) -> str:
 def _escape_html(value: str) -> str:
     if value is None:
         return ""
-    return (
-        str(value)
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+    return str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 # ── Delivery + callback handler ──────────────────────────────
@@ -258,16 +256,16 @@ class StrategosDelivery:
         callback_query_id = cq.get("id", "")
         data = cq.get("data") or ""
         chat_id = str(
-            cq.get("message", {}).get("chat", {}).get("id")
-            or cq.get("from", {}).get("id")
-            or ""
+            cq.get("message", {}).get("chat", {}).get("id") or cq.get("from", {}).get("id") or ""
         )
         message_id = cq.get("message", {}).get("message_id")
 
         if chat_id != self.owner_chat_id:
             await self._try_answer(callback_query_id, "Non autorizzato.")
             return StrategosCallbackResult(
-                ok=False, unauthorized=True, error="chat_id mismatch",
+                ok=False,
+                unauthorized=True,
+                error="chat_id mismatch",
             )
 
         try:
@@ -275,7 +273,8 @@ class StrategosDelivery:
         except StrategosCallbackError as exc:
             await self._try_answer(callback_query_id, "Callback invalido.")
             return StrategosCallbackResult(
-                ok=False, error=f"decode: {exc}",
+                ok=False,
+                error=f"decode: {exc}",
             )
 
         if parsed.action == StrategosAction.ADJUST:
@@ -294,11 +293,13 @@ class StrategosDelivery:
         approved = parsed.action == StrategosAction.APPROVE
         try:
             updated = await self.repo.update_brief_approval(
-                parsed.brief_id, approved=approved,
+                parsed.brief_id,
+                approved=approved,
             )
         except Exception as exc:  # noqa: BLE001
             await self._try_answer(
-                callback_query_id, "Errore DB — riprova.",
+                callback_query_id,
+                "Errore DB — riprova.",
             )
             return StrategosCallbackResult(
                 ok=False,
@@ -308,7 +309,8 @@ class StrategosDelivery:
             )
         if updated is None:
             await self._try_answer(
-                callback_query_id, "Brief non trovato.",
+                callback_query_id,
+                "Brief non trovato.",
             )
             return StrategosCallbackResult(
                 ok=False,
@@ -332,12 +334,15 @@ class StrategosDelivery:
     # ── Telegram helpers ────────────────────────────────────
 
     async def _try_answer(
-        self, callback_query_id: str, text: str,
+        self,
+        callback_query_id: str,
+        text: str,
     ) -> None:
         if not callback_query_id:
             return
         result = await self.telegram.answer_callback_query(
-            callback_query_id=callback_query_id, text=text,
+            callback_query_id=callback_query_id,
+            text=text,
         )
         if not result.ok:
             self.logger.debug("answer_callback_query failed: %s", result.error)
@@ -350,5 +355,6 @@ class StrategosDelivery:
         )
         if not result.ok:
             self.logger.debug(
-                "clear keyboard failed: %s", result.error,
+                "clear keyboard failed: %s",
+                result.error,
             )

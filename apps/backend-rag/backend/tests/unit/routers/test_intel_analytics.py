@@ -72,9 +72,7 @@ class TestGetSystemMetrics:
     @pytest.mark.asyncio
     async def test_metrics_basic_success(self, _patch_imports):
         """Metrics returns expected keys when everything is healthy."""
-        with patch(
-            "backend.app.routers.intel_analytics.QdrantClient"
-        ) as mock_qd:
+        with patch("backend.app.routers.intel_analytics.QdrantClient") as mock_qd:
             mock_qd.return_value = MagicMock()
             from backend.app.routers.intel_analytics import get_system_metrics
 
@@ -295,8 +293,7 @@ class TestSearchIntel:
 
         if len(result["results"]) >= 2:
             assert (
-                result["results"][0]["similarity_score"]
-                >= result["results"][1]["similarity_score"]
+                result["results"][0]["similarity_score"] >= result["results"][1]["similarity_score"]
             )
 
 
@@ -363,17 +360,14 @@ class TestGetCriticalItems:
 
     @pytest.mark.asyncio
     async def test_critical_items_returns_structure(self, _patch_imports):
-        with patch(
-            "backend.app.routers.intel_analytics.QdrantClient"
-        ), patch(
-            "backend.app.routers.intel_analytics.httpx.AsyncClient"
-        ) as mock_http:
+        with (
+            patch("backend.app.routers.intel_analytics.QdrantClient"),
+            patch("backend.app.routers.intel_analytics.httpx.AsyncClient") as mock_http,
+        ):
             mock_resp = AsyncMock()
             mock_resp.status_code = 200
             mock_resp.raise_for_status = MagicMock()
-            mock_resp.json.return_value = {
-                "result": {"points": []}
-            }
+            mock_resp.json.return_value = {"result": {"points": []}}
             mock_ctx = AsyncMock()
             mock_ctx.__aenter__ = AsyncMock(return_value=mock_ctx)
             mock_ctx.__aexit__ = AsyncMock(return_value=False)
@@ -393,18 +387,19 @@ class TestGetCriticalItems:
 
     @pytest.mark.asyncio
     async def test_critical_items_with_category(self, _patch_imports):
-        with patch(
-            "backend.app.routers.intel_analytics.QdrantClient"
-        ) as mock_qd_cls:
+        with patch("backend.app.routers.intel_analytics.QdrantClient") as mock_qd_cls:
             # Make scroll fail so it falls back to peek
             mock_client = AsyncMock()
             mock_client.peek.return_value = {"metadatas": []}
             mock_qd_cls.return_value = mock_client
 
-            with patch(
-                "backend.app.routers.intel_analytics.httpx.AsyncClient",
-                side_effect=Exception("scroll fails"),
-            ), patch("backend.app.routers.intel_analytics.settings") as mock_settings:
+            with (
+                patch(
+                    "backend.app.routers.intel_analytics.httpx.AsyncClient",
+                    side_effect=Exception("scroll fails"),
+                ),
+                patch("backend.app.routers.intel_analytics.settings") as mock_settings,
+            ):
                 mock_settings.qdrant_url = "http://localhost:6333"
                 mock_settings.qdrant_api_key = ""
                 from backend.app.routers.intel_analytics import get_critical_items

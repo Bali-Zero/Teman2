@@ -105,9 +105,7 @@ _INDONESIA_PATTERN: re.Pattern[str] = re.compile(
 )
 
 # Gap keywords that trigger follow-up actions.
-_GAP_REGULATION_KEYWORDS: frozenset[str] = frozenset(
-    {"regulation", "normativa"}
-)
+_GAP_REGULATION_KEYWORDS: frozenset[str] = frozenset({"regulation", "normativa"})
 
 
 # ---------------------------------------------------------------------------
@@ -211,7 +209,10 @@ def detect_actions(
                 ActionItem(
                     action_type="escalation",
                     description=f"Low-confidence Indonesia claim needs review: {claim.claim_text[:120]}",
-                    payload={"claim_id": claim.claim_id, "confidence_score": claim.confidence_score},
+                    payload={
+                        "claim_id": claim.claim_id,
+                        "confidence_score": claim.confidence_score,
+                    },
                     rationale="LOW confidence claim in Indonesia domain — requires human review",
                     auto_execute=True,  # escalation: always auto
                     priority="high",

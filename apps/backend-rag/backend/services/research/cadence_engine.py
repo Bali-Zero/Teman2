@@ -24,28 +24,39 @@ from __future__ import annotations
 from typing import Any
 
 CHANNELS: list[str] = [
-    "instagram", "linkedin", "tiktok", "threads", "x_twitter",
-    "youtube_long", "youtube_shorts", "telegram", "whatsapp",
-    "newsletter", "blog_seo", "podcast", "xiaohongshu_weibo", "quora_reddit",
+    "instagram",
+    "linkedin",
+    "tiktok",
+    "threads",
+    "x_twitter",
+    "youtube_long",
+    "youtube_shorts",
+    "telegram",
+    "whatsapp",
+    "newsletter",
+    "blog_seo",
+    "podcast",
+    "xiaohongshu_weibo",
+    "quora_reddit",
 ]
 TIMEZONES: list[str] = ["WITA", "GMT+1", "GMT+8"]
 
 # Base windows per channel — hours (0-23) in the audience's LOCAL tz.
 _BASE_WINDOWS: dict[str, list[int]] = {
-    "instagram":         [7, 12, 19, 21],
-    "linkedin":          [7, 8, 12, 17],
-    "tiktok":            [18, 19, 20, 21, 22],
-    "threads":           [7, 19, 22],
-    "x_twitter":         [8, 12, 17, 22],
-    "youtube_long":      [19, 20, 21],
-    "youtube_shorts":    [17, 18, 19, 20, 21],
-    "telegram":          [8, 12, 18],
-    "whatsapp":          [9, 12, 16],
-    "newsletter":        [8, 17],
-    "blog_seo":          [10, 11],
-    "podcast":           [7, 18],
+    "instagram": [7, 12, 19, 21],
+    "linkedin": [7, 8, 12, 17],
+    "tiktok": [18, 19, 20, 21, 22],
+    "threads": [7, 19, 22],
+    "x_twitter": [8, 12, 17, 22],
+    "youtube_long": [19, 20, 21],
+    "youtube_shorts": [17, 18, 19, 20, 21],
+    "telegram": [8, 12, 18],
+    "whatsapp": [9, 12, 16],
+    "newsletter": [8, 17],
+    "blog_seo": [10, 11],
+    "podcast": [7, 18],
     "xiaohongshu_weibo": [12, 19, 21],
-    "quora_reddit":      [10, 14, 21],
+    "quora_reddit": [10, 14, 21],
 }
 
 
@@ -63,8 +74,7 @@ def build_cadence_matrix() -> dict[str, Any]:
     for channel in CHANNELS:
         base = _BASE_WINDOWS.get(channel, [])
         matrix[channel] = {
-            tz: {str(hour): _score_hour(hour, base) for hour in range(24)}
-            for tz in TIMEZONES
+            tz: {str(hour): _score_hour(hour, base) for hour in range(24)} for tz in TIMEZONES
         }
     return {
         "version": "v0-literature-derived",

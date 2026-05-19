@@ -104,32 +104,42 @@ def test_frontmatter_with_dossier_and_score():
 def test_frontmatter_source_theses_caps_at_ten():
     extras = MdxExtras(source_theses=[f"thesis-{i}" for i in range(20)])
     fm = render_frontmatter(
-        title="T", slug="s",
+        title="T",
+        slug="s",
         published_at=datetime(2026, 4, 18, tzinfo=timezone.utc),
-        tone_register=None, cover_image_url="",
-        hashtags=[], draft_id=DID, extras=extras,
+        tone_register=None,
+        cover_image_url="",
+        hashtags=[],
+        draft_id=DID,
+        extras=extras,
     )
     # Should contain at most 10 theses (cap from impl)
-    assert 'thesis-0' in fm
-    assert 'thesis-9' in fm
-    assert 'thesis-10' not in fm
+    assert "thesis-0" in fm
+    assert "thesis-9" in fm
+    assert "thesis-10" not in fm
 
 
 def test_frontmatter_composite_score_clamped():
     fm_hi = render_frontmatter(
-        title="T", slug="s",
+        title="T",
+        slug="s",
         published_at=datetime(2026, 4, 18, tzinfo=timezone.utc),
-        tone_register=None, cover_image_url="",
-        hashtags=[], draft_id=DID,
+        tone_register=None,
+        cover_image_url="",
+        hashtags=[],
+        draft_id=DID,
         extras=MdxExtras(composite_score=1.5),
     )
     assert "composite_score: 1.000" in fm_hi
 
     fm_lo = render_frontmatter(
-        title="T", slug="s",
+        title="T",
+        slug="s",
         published_at=datetime(2026, 4, 18, tzinfo=timezone.utc),
-        tone_register=None, cover_image_url="",
-        hashtags=[], draft_id=DID,
+        tone_register=None,
+        cover_image_url="",
+        hashtags=[],
+        draft_id=DID,
         extras=MdxExtras(composite_score=-0.5),
     )
     assert "composite_score: 0.000" in fm_lo
@@ -138,10 +148,14 @@ def test_frontmatter_composite_score_clamped():
 def test_frontmatter_escapes_dossier_id():
     extras = MdxExtras(dossier_id='ab"cd')
     fm = render_frontmatter(
-        title="T", slug="s",
+        title="T",
+        slug="s",
         published_at=datetime(2026, 4, 18, tzinfo=timezone.utc),
-        tone_register=None, cover_image_url="",
-        hashtags=[], draft_id=DID, extras=extras,
+        tone_register=None,
+        cover_image_url="",
+        hashtags=[],
+        draft_id=DID,
+        extras=extras,
     )
     assert 'dossier_id: "ab\\"cd"' in fm
 

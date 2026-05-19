@@ -74,6 +74,7 @@ class TestJWTExpiryValidation:
         """Helper: create a JWT with specific expiry."""
         if secret is None:
             from backend.app.core.config import settings
+
             secret = settings.jwt_secret_key
         now = datetime.now(timezone.utc)
         payload = {
@@ -101,6 +102,7 @@ class TestJWTExpiryValidation:
 
     def _get_secret(self) -> str:
         from backend.app.core.config import settings
+
         return settings.jwt_secret_key
 
     def test_valid_token_passes(self):
@@ -154,6 +156,7 @@ class TestValidationModuleExpiry:
 
     def _make_token(self, exp_delta: timedelta) -> str:
         from backend.app.core.config import settings
+
         now = datetime.now(timezone.utc)
         payload = {
             "sub": "user-1",
@@ -168,11 +171,13 @@ class TestValidationModuleExpiry:
 
     def _get_secret(self) -> str:
         from backend.app.core.config import settings
+
         return settings.jwt_secret_key
 
     @pytest.mark.asyncio
     async def test_valid_token_returns_user(self):
         from backend.app.auth.validation import validate_auth_token
+
         token = self._make_token(exp_delta=timedelta(hours=1))
         result = await validate_auth_token(token)
         assert result is not None
@@ -181,6 +186,7 @@ class TestValidationModuleExpiry:
     @pytest.mark.asyncio
     async def test_expired_token_audit_mode_returns_user_with_flag(self):
         from backend.app.auth.validation import validate_auth_token
+
         token = self._make_token(exp_delta=timedelta(hours=-1))
         real_secret = self._get_secret()
         with patch("backend.app.auth.validation.settings") as mock_settings:
@@ -194,6 +200,7 @@ class TestValidationModuleExpiry:
     @pytest.mark.asyncio
     async def test_expired_token_enforce_mode_returns_none(self):
         from backend.app.auth.validation import validate_auth_token
+
         token = self._make_token(exp_delta=timedelta(hours=-1))
         real_secret = self._get_secret()
         with patch("backend.app.auth.validation.settings") as mock_settings:
@@ -238,7 +245,9 @@ class TestFullAuthFlowS03:
             data={"sub": "u1", "email": "zero@balizero.com", "role": "admin"},
         )
         payload = jose_jwt.decode(
-            token, settings.jwt_secret_key, algorithms=["HS256"],
+            token,
+            settings.jwt_secret_key,
+            algorithms=["HS256"],
         )
 
         assert "exp" in payload
@@ -291,6 +300,7 @@ class TestTokenRevocationInAuth:
 
     def _make_token(self, jti: str = "test-jti-revoke") -> str:
         from backend.app.core.config import settings
+
         now = datetime.now(timezone.utc)
         payload = {
             "sub": "user-1",
@@ -342,6 +352,7 @@ class TestSprint3QuickFixes:
     def test_grace_period_removed(self):
         """jwt_grace_period_days should no longer exist in config."""
         from backend.app.core.config import settings
+
         assert not hasattr(settings, "jwt_grace_period_days")
 
     def test_scraper_key_no_hardcoded_default(self):
@@ -349,6 +360,7 @@ class TestSprint3QuickFixes:
         import inspect
 
         from backend.app.core.config import Settings
+
         source = inspect.getsource(Settings)
         assert 'default="dev_scraper_key"' not in source
 
@@ -357,6 +369,7 @@ class TestSprint3QuickFixes:
         import inspect
 
         from backend.app.modules.identity.service import IdentityService
+
         source = inspect.getsource(IdentityService.__init__)
         assert "zantara_default_secret_key_2025" not in source
 
@@ -364,11 +377,18 @@ class TestSprint3QuickFixes:
         """Tokens with type=access should pass."""
         from backend.app.core.config import settings
         from backend.app.deps.auth import get_current_user
+
         now = datetime.now(timezone.utc)
         token = jose_jwt.encode(
-            {"sub": "u1", "email": "t@b.com", "role": "admin",
-             "exp": now + timedelta(hours=1), "type": "access"},
-            settings.jwt_secret_key, algorithm="HS256",
+            {
+                "sub": "u1",
+                "email": "t@b.com",
+                "role": "admin",
+                "exp": now + timedelta(hours=1),
+                "type": "access",
+            },
+            settings.jwt_secret_key,
+            algorithm="HS256",
         )
         request = MagicMock()
         request.state = MagicMock(spec=[])
@@ -383,11 +403,18 @@ class TestSprint3QuickFixes:
 
         from backend.app.core.config import settings
         from backend.app.deps.auth import get_current_user
+
         now = datetime.now(timezone.utc)
         token = jose_jwt.encode(
-            {"sub": "u1", "email": "t@b.com", "role": "admin",
-             "exp": now + timedelta(hours=1), "type": "refresh"},
-            settings.jwt_secret_key, algorithm="HS256",
+            {
+                "sub": "u1",
+                "email": "t@b.com",
+                "role": "admin",
+                "exp": now + timedelta(hours=1),
+                "type": "refresh",
+            },
+            settings.jwt_secret_key,
+            algorithm="HS256",
         )
         request = MagicMock()
         request.state = MagicMock(spec=[])
@@ -401,11 +428,12 @@ class TestSprint3QuickFixes:
         """Pre-S03 tokens without type claim should still pass."""
         from backend.app.core.config import settings
         from backend.app.deps.auth import get_current_user
+
         now = datetime.now(timezone.utc)
         token = jose_jwt.encode(
-            {"sub": "u1", "email": "t@b.com", "role": "admin",
-             "exp": now + timedelta(hours=1)},
-            settings.jwt_secret_key, algorithm="HS256",
+            {"sub": "u1", "email": "t@b.com", "role": "admin", "exp": now + timedelta(hours=1)},
+            settings.jwt_secret_key,
+            algorithm="HS256",
         )
         request = MagicMock()
         request.state = MagicMock(spec=[])

@@ -180,9 +180,7 @@ class TestDispatchAgents:
         from backend.services.naga.search_agents.base import AgentResponse
 
         for m in [mock_exa, mock_brave, mock_domain]:
-            m.search.return_value = AgentResponse(
-                agent_name="a", results=[], search_calls_used=1
-            )
+            m.search.return_value = AgentResponse(agent_name="a", results=[], search_calls_used=1)
 
         responses = await orchestrator._dispatch_agents(
             "query", "sub_q", "hybrid", mock_exa, mock_brave, mock_domain
@@ -198,9 +196,7 @@ class TestDispatchAgents:
         from backend.services.naga.search_agents.base import AgentResponse
 
         for m in [mock_exa, mock_brave]:
-            m.search.return_value = AgentResponse(
-                agent_name="a", results=[], search_calls_used=1
-            )
+            m.search.return_value = AgentResponse(agent_name="a", results=[], search_calls_used=1)
 
         responses = await orchestrator._dispatch_agents(
             "query", "sub_q", "unknown_domain", mock_exa, mock_brave, mock_domain
@@ -235,20 +231,17 @@ class TestResearch:
             search_calls_used=1,
         )
 
-        with patch(
-            "backend.services.naga.orchestrator.classify_query"
-        ) as mock_gw, patch(
-            "backend.services.naga.orchestrator.ExaSearchAgent"
-        ) as mock_exa_cls, patch(
-            "backend.services.naga.orchestrator.BraveSearchAgent"
-        ) as mock_brave_cls, patch(
-            "backend.services.naga.orchestrator.IndonesiaDomainAgent"
-        ) as mock_domain_cls, patch(
-            "backend.services.naga.orchestrator.generate_report",
-            return_value="# Report\nContent here.",
-        ), patch(
-            "backend.services.naga.orchestrator.check_convergence"
-        ) as mock_conv:
+        with (
+            patch("backend.services.naga.orchestrator.classify_query") as mock_gw,
+            patch("backend.services.naga.orchestrator.ExaSearchAgent") as mock_exa_cls,
+            patch("backend.services.naga.orchestrator.BraveSearchAgent") as mock_brave_cls,
+            patch("backend.services.naga.orchestrator.IndonesiaDomainAgent") as mock_domain_cls,
+            patch(
+                "backend.services.naga.orchestrator.generate_report",
+                return_value="# Report\nContent here.",
+            ),
+            patch("backend.services.naga.orchestrator.check_convergence") as mock_conv,
+        ):
             # Gateway
             mock_gw.return_value = MagicMock(tier="flash", domain="general", mode="oneshot")
 
@@ -275,23 +268,18 @@ class TestResearch:
     async def test_research_with_unknown_tier_falls_back(self, mock_deps):
         from backend.services.naga.orchestrator import NagaOrchestrator
 
-        with patch(
-            "backend.services.naga.orchestrator.classify_query"
-        ) as mock_gw, patch(
-            "backend.services.naga.orchestrator.ExaSearchAgent"
-        ) as mock_exa_cls, patch(
-            "backend.services.naga.orchestrator.BraveSearchAgent"
-        ) as mock_brave_cls, patch(
-            "backend.services.naga.orchestrator.IndonesiaDomainAgent"
-        ) as mock_domain_cls, patch(
-            "backend.services.naga.orchestrator.generate_report",
-            return_value="# Report",
-        ), patch(
-            "backend.services.naga.orchestrator.check_convergence"
-        ) as mock_conv:
-            mock_gw.return_value = MagicMock(
-                tier="unknown_tier", domain="general", mode="oneshot"
-            )
+        with (
+            patch("backend.services.naga.orchestrator.classify_query") as mock_gw,
+            patch("backend.services.naga.orchestrator.ExaSearchAgent") as mock_exa_cls,
+            patch("backend.services.naga.orchestrator.BraveSearchAgent") as mock_brave_cls,
+            patch("backend.services.naga.orchestrator.IndonesiaDomainAgent") as mock_domain_cls,
+            patch(
+                "backend.services.naga.orchestrator.generate_report",
+                return_value="# Report",
+            ),
+            patch("backend.services.naga.orchestrator.check_convergence") as mock_conv,
+        ):
+            mock_gw.return_value = MagicMock(tier="unknown_tier", domain="general", mode="oneshot")
 
             from backend.services.naga.search_agents.base import AgentResponse
 
@@ -317,27 +305,23 @@ class TestResearch:
 
         mock_deps.db_pool = AsyncMock()
 
-        with patch(
-            "backend.services.naga.orchestrator.classify_query"
-        ) as mock_gw, patch(
-            "backend.services.naga.orchestrator.ExaSearchAgent"
-        ), patch(
-            "backend.services.naga.orchestrator.BraveSearchAgent"
-        ), patch(
-            "backend.services.naga.orchestrator.IndonesiaDomainAgent"
-        ), patch(
-            "backend.services.naga.orchestrator.generate_report",
-            return_value="# Report",
-        ), patch(
-            "backend.services.naga.orchestrator.check_convergence"
-        ) as mock_conv, patch(
-            "backend.services.naga.persist.save_session",
-            new_callable=AsyncMock,
-            return_value="sess-123",
+        with (
+            patch("backend.services.naga.orchestrator.classify_query") as mock_gw,
+            patch("backend.services.naga.orchestrator.ExaSearchAgent"),
+            patch("backend.services.naga.orchestrator.BraveSearchAgent"),
+            patch("backend.services.naga.orchestrator.IndonesiaDomainAgent"),
+            patch(
+                "backend.services.naga.orchestrator.generate_report",
+                return_value="# Report",
+            ),
+            patch("backend.services.naga.orchestrator.check_convergence") as mock_conv,
+            patch(
+                "backend.services.naga.persist.save_session",
+                new_callable=AsyncMock,
+                return_value="sess-123",
+            ),
         ):
-            mock_gw.return_value = MagicMock(
-                tier="flash", domain="general", mode="oneshot"
-            )
+            mock_gw.return_value = MagicMock(tier="flash", domain="general", mode="oneshot")
             mock_conv.return_value = MagicMock(
                 decision="CONVERGED", coverage=1.0, novelty=0.0, gap_questions=[]
             )

@@ -45,7 +45,12 @@ class WindsurfAdapter:
                     if result.returncode == 0:
                         logger.info("✅ Windsurf trovato: %s", path)
                         return path
-                except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError):
+                except (
+                    FileNotFoundError,
+                    subprocess.TimeoutExpired,
+                    subprocess.SubprocessError,
+                    OSError,
+                ):
                     continue
         return self.windsurf_paths[0]  # Default al primo path
 
@@ -62,7 +67,12 @@ class WindsurfAdapter:
                 logger.info("✅ Windsurf disponibile: %s", version)
                 return True
             return False
-        except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
+        except (
+            FileNotFoundError,
+            subprocess.TimeoutExpired,
+            subprocess.SubprocessError,
+            OSError,
+        ) as e:
             logger.debug("Windsurf non disponibile: %s", e)
             return False
 
@@ -76,7 +86,12 @@ class WindsurfAdapter:
                 timeout=10.0,
             )
             return result.returncode == 0
-        except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
+        except (
+            FileNotFoundError,
+            subprocess.TimeoutExpired,
+            subprocess.SubprocessError,
+            OSError,
+        ) as e:
             logger.warning("⚠️ Could not open file in Windsurf: %s", e)
             return False
 
@@ -89,7 +104,12 @@ class WindsurfAdapter:
                 timeout=10.0,
             )
             return result.returncode == 0
-        except (FileNotFoundError, subprocess.TimeoutExpired, subprocess.SubprocessError, OSError) as e:
+        except (
+            FileNotFoundError,
+            subprocess.TimeoutExpired,
+            subprocess.SubprocessError,
+            OSError,
+        ) as e:
             logger.warning("⚠️ Could not open folder in Windsurf: %s", e)
             return False
 

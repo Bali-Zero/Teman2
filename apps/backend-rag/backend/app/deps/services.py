@@ -74,6 +74,7 @@ def get_search_service(request: Request) -> Any:
         )
     # Lazy import for type cast only — zero cost after first import
     from backend.services.search.search_service import SearchService
+
     return cast(SearchService, service)
 
 
@@ -104,6 +105,7 @@ def get_ai_client(request: Request) -> Any:
             },
         )
     from backend.llm.zantara_ai_client import ZantaraAIClient
+
     return cast(ZantaraAIClient, ai_client)
 
 
@@ -130,6 +132,7 @@ def get_intelligent_router(request: Request) -> Any:
             },
         )
     from backend.services.routing.intelligent_router import IntelligentRouter
+
     return cast(IntelligentRouter, router)
 
 
@@ -157,6 +160,7 @@ def get_memory_service(request: Request) -> Any:
             },
         )
     from backend.services.memory import MemoryServicePostgres
+
     return cast(MemoryServicePostgres, memory_service)
 
 
@@ -177,7 +181,6 @@ def get_cache(request: Request) -> Any:
 
     # Fallback to singleton (for backward compatibility)
     return get_cache_service()
-
 
 
 def get_channel_router(request: Request) -> Any:

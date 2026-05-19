@@ -1,4 +1,5 @@
 """Migration 075: PostgreSQL triggers for practice status + payment notifications."""
+
 import logging
 
 import asyncpg

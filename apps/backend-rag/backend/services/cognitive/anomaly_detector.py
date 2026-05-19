@@ -157,7 +157,8 @@ class AnomalyDetector:
         prompt = _render_prompt(reference, candidates)
 
         parsed, runner_result = await self.runner.run_json(
-            prompt, timeout=self.timeout,
+            prompt,
+            timeout=self.timeout,
         )
         if not runner_result.ok or parsed is None:
             result.errors.append(
@@ -216,7 +217,9 @@ class AnomalyDetector:
 
         try:
             exists = await self.cognitive_repo.alert_exists_for_pair(
-                reference.id, other_id, days=PAIR_IDEMPOTENCY_DAYS,
+                reference.id,
+                other_id,
+                days=PAIR_IDEMPOTENCY_DAYS,
             )
         except Exception as exc:  # noqa: BLE001
             self.logger.debug("alert_exists_for_pair failed: %s", exc)
@@ -268,11 +271,7 @@ def _render_prompt(
     return _ANOMALY_PROMPT_TEMPLATE.format(
         ref_id=reference.id,
         ref_title=reference.title,
-        ref_summary=(
-            reference.summary_medium
-            or reference.summary_short
-            or reference.title
-        )[:600],
+        ref_summary=(reference.summary_medium or reference.summary_short or reference.title)[:600],
         candidates_block="\n".join(cand_lines),
     )
 

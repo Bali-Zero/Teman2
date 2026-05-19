@@ -275,7 +275,10 @@ class TestIngestIntelToQdrant:
             patch("backend.app.routers.intel_scraper.staging_service") as mock_svc,
             patch("backend.app.routers.intel_scraper.INTEL_COLLECTIONS", {"news": "intel_news"}),
             patch("backend.app.routers.intel_scraper.get_embedder", return_value=mock_embedder),
-            patch("backend.app.routers.intel_scraper.QdrantClient", side_effect=Exception("Qdrant down")),
+            patch(
+                "backend.app.routers.intel_scraper.QdrantClient",
+                side_effect=Exception("Qdrant down"),
+            ),
         ):
             mock_svc.load_staging_item.return_value = {"title": "T", "content": "C"}
             result = await ingest_intel_to_qdrant("item-1", "news")
@@ -298,8 +301,10 @@ class TestRegisterNotification:
 
         with patch("backend.services.intel.intel_cover_handler.intel_cover_handler", mock_handler):
             req = RegisterNotificationRequest(
-                telegram_message_id=123, chat_id=456,
-                intel_type="news", item_id="news-2026-01",
+                telegram_message_id=123,
+                chat_id=456,
+                intel_type="news",
+                item_id="news-2026-01",
                 title="Test",
             )
             result = await register_notification(request=req, _api_key_verified=None)
@@ -368,10 +373,14 @@ class TestSubmitFromScraper:
             mock_latency.labels.return_value.observe = MagicMock()
 
             submission = ScraperSubmission(
-                title="Duplicate", content="Content",
+                title="Duplicate",
+                content="Content",
                 source_url="https://example.com/dup",
-                source_name="scraper", category="news",
-                relevance_score=50, extraction_method="auto", tier="tier1",
+                source_name="scraper",
+                category="news",
+                relevance_score=50,
+                extraction_method="auto",
+                tier="tier1",
             )
             result = await submit_from_scraper(submission=submission, _api_key_verified=None)
 
@@ -389,10 +398,14 @@ class TestSubmitFromScraper:
             mock_cls.classify_intel_type.side_effect = Exception("Classification error")
 
             submission = ScraperSubmission(
-                title="Err", content="Content",
+                title="Err",
+                content="Content",
                 source_url="https://example.com/err",
-                source_name="scraper", category="news",
-                relevance_score=50, extraction_method="auto", tier="tier1",
+                source_name="scraper",
+                category="news",
+                relevance_score=50,
+                extraction_method="auto",
+                tier="tier1",
             )
             with pytest.raises(HTTPException) as exc_info:
                 await submit_from_scraper(submission=submission, _api_key_verified=None)
@@ -465,9 +478,16 @@ class TestPublishStagingItem:
         with (
             patch("backend.app.routers.intel_scraper.staging_service") as mock_stg,
             patch("backend.app.routers.intel_scraper.intel_user_actions_total") as mock_metric,
-            patch("backend.app.routers.intel_scraper.ingest_intel_to_qdrant", new=AsyncMock(return_value=False)),
+            patch(
+                "backend.app.routers.intel_scraper.ingest_intel_to_qdrant",
+                new=AsyncMock(return_value=False),
+            ),
         ):
-            mock_stg.load_staging_item.return_value = {"title": "T", "content": "C", "category": "news"}
+            mock_stg.load_staging_item.return_value = {
+                "title": "T",
+                "content": "C",
+                "category": "news",
+            }
             mock_metric.labels.return_value.inc = MagicMock()
 
             with pytest.raises(HTTPException) as exc_info:

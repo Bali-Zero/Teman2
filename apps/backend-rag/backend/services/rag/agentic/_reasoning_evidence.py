@@ -87,8 +87,7 @@ def detect_trusted_tool_usage(
         )
         if has_content:
             logger.info(
-                "🔧 [%s] %s used successfully "
-                "(obs_len=%d), bypassing keyword evidence check",
+                "🔧 [%s] %s used successfully (obs_len=%d), bypassing keyword evidence check",
                 log_prefix,
                 tool_name,
                 len(observation),
@@ -116,8 +115,7 @@ def detect_trusted_context_markers(
         return True, "team"
     if any(marker in context_text for marker in _KG_MARKERS):
         logger.info(
-            "🔍 [Trusted Tools] KG data found in context_gathered, "
-            "bypassing evidence check",
+            "🔍 [Trusted Tools] KG data found in context_gathered, bypassing evidence check",
         )
         return True, "kg"
     return False, None
@@ -193,6 +191,7 @@ async def emit_low_confidence_event(
         from backend.services.bridge.low_confidence_emitter import (
             maybe_emit_low_confidence,
         )
+
         await maybe_emit_low_confidence(pool, query, evidence_score)
     except Exception as exc:
         suffix = f" ({log_context})" if log_context else ""

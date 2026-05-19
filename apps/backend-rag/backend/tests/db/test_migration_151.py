@@ -7,13 +7,11 @@ Round-2 cross-LLM review (4-LLM, PR #426) requested this contract test
 to mirror the 150_renewal_alert_outcomes pattern. Verifies forward DDL
 + ROLLBACK marker + Squawk-ignore directives present.
 """
+
 from pathlib import Path
 
 MIGRATION_FILE = (
-    Path(__file__).resolve().parents[2]
-    / "db"
-    / "migrations_v2"
-    / "151_observed_shell_events.sql"
+    Path(__file__).resolve().parents[2] / "db" / "migrations_v2" / "151_observed_shell_events.sql"
 )
 
 
@@ -70,8 +68,7 @@ def test_migration_documents_squawk_workflow_exclusions():
     forward_section = sql.split("-- === ROLLBACK ===")[0]
     # The migration cites the workflow exclusion strategy in its comment.
     assert "migration-lint.yml" in forward_section, (
-        "Migration must document where Squawk rule exclusions live "
-        "(workflow level, not inline)"
+        "Migration must document where Squawk rule exclusions live (workflow level, not inline)"
     )
 
 

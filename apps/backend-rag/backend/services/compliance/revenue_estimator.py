@@ -83,7 +83,8 @@ def estimate_renewal_revenue(
             continue
         # 2026 ``tax_accounting`` is one level deeper.
         nested_subblocks = [
-            v for v in category_dict.values()
+            v
+            for v in category_dict.values()
             if isinstance(v, dict)
             and v
             and all(
@@ -99,7 +100,9 @@ def estimate_renewal_revenue(
                     if result is not None:
                         logger.debug(
                             "Revenue for rule '%s': %d IDR (key='%s', nested)",
-                            rule.rule_id, result, rule.renewal_pricing_key,
+                            rule.rule_id,
+                            result,
+                            rule.renewal_pricing_key,
                         )
                     return result
             continue
@@ -219,14 +222,17 @@ async def classify_client_risk(
 
     # Derive worst band from overdue practices (table may be absent locally)
     try:
-        overdue_days: int = await conn.fetchval(
-            """
+        overdue_days: int = (
+            await conn.fetchval(
+                """
             SELECT COALESCE(MAX(EXTRACT(DAY FROM (NOW() - due_at))), 0)::int
             FROM practices
             WHERE client_id = $1 AND status != 'completed' AND due_at < NOW()
             """,
-            client_id,
-        ) or 0
+                client_id,
+            )
+            or 0
+        )
     except asyncpg.PostgresError:
         overdue_days = 0
 
@@ -267,9 +273,7 @@ async def clients_at_revenue_risk(
     Designed for the admin dashboard top-N at-risk query.
     """
     min_rank = _band_rank(min_band)
-    severities = [
-        s for s, b in _SEVERITY_TO_BAND.items() if _band_rank(b) >= min_rank
-    ]
+    severities = [s for s, b in _SEVERITY_TO_BAND.items() if _band_rank(b) >= min_rank]
     if not severities:
         return []
     rows = await conn.fetch(

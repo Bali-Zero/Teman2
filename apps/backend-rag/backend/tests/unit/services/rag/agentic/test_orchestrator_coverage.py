@@ -522,7 +522,8 @@ class TestProcessQueryGates:
                     trim_result.get("context_summary", ""),
                 )
                 optimized_history = mocks["context_window"].inject_summary_into_history(
-                    trim_result.get("trimmed_messages", []), "Summary of old messages",
+                    trim_result.get("trimmed_messages", []),
+                    "Summary of old messages",
                 )
             else:
                 optimized_history = history
@@ -1082,7 +1083,9 @@ class TestStreamQueryGates:
             # Should not raise error with images
             events = []
             async for event in orch.stream_query(
-                "What's in this image?", "user@test.com", images=images,
+                "What's in this image?",
+                "user@test.com",
+                images=images,
             ):
                 events.append(event)
                 if len(events) > 10:  # Limit to avoid infinite loops
@@ -1158,7 +1161,9 @@ class TestStreamQueryGates:
 
             events = []
             async for event in orch.stream_query(
-                "Ti ricordi di Marco?", "user@test.com", conversation_history=history,
+                "Ti ricordi di Marco?",
+                "user@test.com",
+                conversation_history=history,
             ):
                 events.append(event)
                 if len(events) > 20:
@@ -1206,7 +1211,8 @@ class TestStreamQueryGates:
                     trim_result.get("context_summary", ""),
                 )
                 optimized_history = mocks["context_window"].inject_summary_into_history(
-                    trim_result.get("trimmed_messages", []), "Summary",
+                    trim_result.get("trimmed_messages", []),
+                    "Summary",
                 )
             else:
                 optimized_history = history

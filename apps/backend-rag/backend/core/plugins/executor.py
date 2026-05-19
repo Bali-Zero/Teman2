@@ -136,7 +136,9 @@ class PluginExecutor:
 
         # Check rate limit
         if plugin.metadata.rate_limit and not await self._check_rate_limit(
-            plugin_name, plugin.metadata.rate_limit, user_id,
+            plugin_name,
+            plugin.metadata.rate_limit,
+            user_id,
         ):
             logger.warning(
                 f"Rate limit exceeded for {plugin_name} (limit: {plugin.metadata.rate_limit}/min)",
@@ -218,7 +220,10 @@ class PluginExecutor:
                     )
 
     async def _execute_with_monitoring(
-        self, plugin: Plugin, input_data: PluginInput, timeout: float | None = None,
+        self,
+        plugin: Plugin,
+        input_data: PluginInput,
+        timeout: float | None = None,
     ) -> PluginOutput:
         """
         Execute plugin with monitoring
@@ -276,7 +281,10 @@ class PluginExecutor:
             raise
 
     async def _check_rate_limit(
-        self, plugin_name: str, limit: int, user_id: str | None = None,
+        self,
+        plugin_name: str,
+        limit: int,
+        user_id: str | None = None,
     ) -> bool:
         """
         Check if plugin has exceeded rate limit.
@@ -333,7 +341,9 @@ class PluginExecutor:
         return True
 
     async def _get_cached(
-        self, plugin_name: str, input_data: dict[str, Any],
+        self,
+        plugin_name: str,
+        input_data: dict[str, Any],
     ) -> PluginOutput | None:
         """
         Get cached result if exists
@@ -360,7 +370,10 @@ class PluginExecutor:
         return None
 
     async def _cache_result(
-        self, plugin_name: str, input_data: dict[str, Any], output: PluginOutput,
+        self,
+        plugin_name: str,
+        input_data: dict[str, Any],
+        output: PluginOutput,
     ):
         """
         Cache execution result

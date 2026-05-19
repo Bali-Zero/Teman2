@@ -132,7 +132,9 @@ class LegalStructureParser:
                 if "MEMUTUSKAN" in marker.upper() or "MEMUTUSKAN" in match.group(0).upper():
                     # Look for "Menetapkan" after this
                     menetapkan_match = re.search(
-                        r"Menetapkan\s*:", text[konsiderans_start + match.start() :], re.IGNORECASE,
+                        r"Menetapkan\s*:",
+                        text[konsiderans_start + match.start() :],
+                        re.IGNORECASE,
                     )
                     if menetapkan_match:
                         # The body usually starts after the title of the law in Menetapkan.

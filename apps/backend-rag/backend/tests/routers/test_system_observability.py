@@ -15,7 +15,10 @@ import backend.app.routers.system_observability as system_observability_module
 def app() -> FastAPI:
     application = FastAPI()
     application.include_router(system_observability_module.router)
-    application.dependency_overrides[system_observability_module.get_admin_user] = lambda: {"id": "1", "role": "admin"}
+    application.dependency_overrides[system_observability_module.get_admin_user] = lambda: {
+        "id": "1",
+        "role": "admin",
+    }
     return application
 
 
@@ -30,7 +33,9 @@ class TestSystemObservability:
         service = MagicMock()
         service.http_client = object()
         service.run_all_checks = AsyncMock(return_value={"status": "ok"})
-        app.dependency_overrides[system_observability_module.get_unified_health_service] = lambda: service
+        app.dependency_overrides[system_observability_module.get_unified_health_service] = lambda: (
+            service
+        )
 
         response = client.get("/api/admin/system-health")
 
@@ -40,7 +45,9 @@ class TestSystemObservability:
     @pytest.mark.integration
     def test_postgres_tables_returns_names(self, client: TestClient) -> None:
         conn = MagicMock()
-        conn.fetch = AsyncMock(return_value=[{"table_name": "clients"}, {"table_name": "practices"}])
+        conn.fetch = AsyncMock(
+            return_value=[{"table_name": "clients"}, {"table_name": "practices"}]
+        )
         conn.close = AsyncMock()
 
         with patch("asyncpg.connect", AsyncMock(return_value=conn)):
@@ -59,10 +66,12 @@ class TestSystemObservability:
         http_client = MagicMock()
         http_client.__aenter__ = AsyncMock(return_value=http_client)
         http_client.__aexit__ = AsyncMock(return_value=None)
-        http_client.get = AsyncMock(return_value=MagicMock(
-            raise_for_status=MagicMock(),
-            json=MagicMock(return_value={"result": {"collections": [{"name": "kbli"}]}}),
-        ))
+        http_client.get = AsyncMock(
+            return_value=MagicMock(
+                raise_for_status=MagicMock(),
+                json=MagicMock(return_value={"result": {"collections": [{"name": "kbli"}]}}),
+            )
+        )
 
         with (
             patch("backend.core.qdrant_db.QdrantClient", MagicMock()),

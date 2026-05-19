@@ -38,7 +38,9 @@ if "backend.services.integrations.telegram_bot_service" not in sys.modules:
     if "backend.services.integrations" not in sys.modules:
         _mock_integrations = ModuleType("backend.services.integrations")
         sys.modules["backend.services.integrations"] = _mock_integrations
-    sys.modules["backend.services.integrations.telegram_bot_service"] = _mock_telegram_bot_service_module
+    sys.modules["backend.services.integrations.telegram_bot_service"] = (
+        _mock_telegram_bot_service_module
+    )
 
 # Now we can safely import - the __init__.py will trigger adapter import
 # which will find our mocked TelegramBotService
@@ -210,9 +212,7 @@ class TestTelegramFormatter:
     def test_format_sources_max_five(self) -> None:
         response = ChannelResponse(
             text="Answer",
-            sources=[
-                {"title": f"S{i}", "url": f"https://x.com/{i}"} for i in range(10)
-            ],
+            sources=[{"title": f"S{i}", "url": f"https://x.com/{i}"} for i in range(10)],
             metadata={},
         )
         result = TelegramMessageFormatter.format_response(response)
@@ -227,9 +227,7 @@ class TestTelegramFormatter:
         assert "1. Prepare documents" in result
 
     def test_format_workflow_no_steps(self) -> None:
-        result = TelegramMessageFormatter._format_workflow(
-            {"name": "Empty Plan", "steps": []}
-        )
+        result = TelegramMessageFormatter._format_workflow({"name": "Empty Plan", "steps": []})
         assert result == "*Empty Plan*"
 
     def test_format_workflow_dict_steps(self) -> None:
@@ -273,7 +271,8 @@ class TestTelegramFormatter:
 
     def test_format_tool_call_with_args(self) -> None:
         result = TelegramMessageFormatter.format_tool_call(
-            "search_qdrant", {"query": "visa", "limit": 5},
+            "search_qdrant",
+            {"query": "visa", "limit": 5},
         )
         assert result == "🔧 `search_qdrant(query=visa, limit=5)`"
 
@@ -302,7 +301,9 @@ class TestTelegramFormatter:
 
 class TestTelegramAdapter:
     async def test_receive_message_text(
-        self, adapter: TelegramChannelAdapter, sample_update: dict,
+        self,
+        adapter: TelegramChannelAdapter,
+        sample_update: dict,
     ) -> None:
         msg = await adapter.receive_message(sample_update)
 
@@ -318,7 +319,9 @@ class TestTelegramAdapter:
         assert msg.media is None
 
     async def test_receive_message_photo(
-        self, adapter: TelegramChannelAdapter, update_with_photo: dict,
+        self,
+        adapter: TelegramChannelAdapter,
+        update_with_photo: dict,
     ) -> None:
         msg = await adapter.receive_message(update_with_photo)
 
@@ -328,7 +331,9 @@ class TestTelegramAdapter:
         assert msg.media[0] == "telegram://photo/large_id"
 
     async def test_receive_message_document(
-        self, adapter: TelegramChannelAdapter, update_with_document: dict,
+        self,
+        adapter: TelegramChannelAdapter,
+        update_with_document: dict,
     ) -> None:
         msg = await adapter.receive_message(update_with_document)
 
@@ -337,7 +342,9 @@ class TestTelegramAdapter:
         assert msg.media[0] == "telegram://document/doc_file_id_123"
 
     async def test_receive_message_no_message_field(
-        self, adapter: TelegramChannelAdapter, update_no_message: dict,
+        self,
+        adapter: TelegramChannelAdapter,
+        update_no_message: dict,
     ) -> None:
         msg = await adapter.receive_message(update_no_message)
 
@@ -346,7 +353,9 @@ class TestTelegramAdapter:
         assert msg.metadata.get("raw_event") is not None
 
     async def test_receive_message_agent_context(
-        self, adapter: TelegramChannelAdapter, sample_update: dict,
+        self,
+        adapter: TelegramChannelAdapter,
+        sample_update: dict,
     ) -> None:
         sample_update["_agent_context"] = {"team_member": "lead@balizero.com"}
         msg = await adapter.receive_message(sample_update)
@@ -360,7 +369,9 @@ class TestTelegramAdapter:
         assert adapter.max_message_length == 4096
 
     async def test_send_response_success(
-        self, adapter: TelegramChannelAdapter, simple_response: ChannelResponse,
+        self,
+        adapter: TelegramChannelAdapter,
+        simple_response: ChannelResponse,
     ) -> None:
         await adapter.send_response("413539912", simple_response)
 
@@ -374,7 +385,9 @@ class TestTelegramAdapter:
         assert adapter._last_message_id == 100
 
     async def test_send_response_api_failure(
-        self, adapter: TelegramChannelAdapter, simple_response: ChannelResponse,
+        self,
+        adapter: TelegramChannelAdapter,
+        simple_response: ChannelResponse,
     ) -> None:
         adapter.bot_service.send_message = AsyncMock(
             return_value={"ok": False, "error_code": 403, "description": "Forbidden"},
@@ -385,7 +398,9 @@ class TestTelegramAdapter:
         assert adapter._last_message_id is None
 
     async def test_send_response_exception(
-        self, adapter: TelegramChannelAdapter, simple_response: ChannelResponse,
+        self,
+        adapter: TelegramChannelAdapter,
+        simple_response: ChannelResponse,
     ) -> None:
         adapter.bot_service.send_message = AsyncMock(side_effect=Exception("Network down"))
 
@@ -394,7 +409,9 @@ class TestTelegramAdapter:
             await adapter.send_response("123", simple_response)
 
     async def test_send_response_truncates(
-        self, adapter: TelegramChannelAdapter, long_response: ChannelResponse,
+        self,
+        adapter: TelegramChannelAdapter,
+        long_response: ChannelResponse,
     ) -> None:
         await adapter.send_response("123", long_response)
 
@@ -402,25 +419,30 @@ class TestTelegramAdapter:
         assert len(sent_text) <= 4096
 
     async def test_send_status_update_typing(
-        self, adapter: TelegramChannelAdapter,
+        self,
+        adapter: TelegramChannelAdapter,
     ) -> None:
         await adapter.send_status_update("123", "processing")
 
         adapter.bot_service.send_chat_action.assert_called_once_with(
-            chat_id="123", action="typing",
+            chat_id="123",
+            action="typing",
         )
 
     async def test_send_status_update_uploading(
-        self, adapter: TelegramChannelAdapter,
+        self,
+        adapter: TelegramChannelAdapter,
     ) -> None:
         await adapter.send_status_update("123", "uploading")
 
         adapter.bot_service.send_chat_action.assert_called_once_with(
-            chat_id="123", action="upload_document",
+            chat_id="123",
+            action="upload_document",
         )
 
     async def test_send_status_update_failure_noncritical(
-        self, adapter: TelegramChannelAdapter,
+        self,
+        adapter: TelegramChannelAdapter,
     ) -> None:
         adapter.bot_service.send_chat_action = AsyncMock(
             side_effect=Exception("API error"),
@@ -430,7 +452,8 @@ class TestTelegramAdapter:
         await adapter.send_status_update("123", "thinking")
 
     async def test_stream_response_sends_initial_and_final(
-        self, adapter: TelegramChannelAdapter,
+        self,
+        adapter: TelegramChannelAdapter,
     ) -> None:
         async def mock_stream():
             yield ChannelResponse(text="Hello world!", metadata={})
@@ -446,7 +469,8 @@ class TestTelegramAdapter:
         assert adapter.bot_service.edit_message_text.call_count >= 1
 
     async def test_stream_response_error_sends_error_edit(
-        self, adapter: TelegramChannelAdapter,
+        self,
+        adapter: TelegramChannelAdapter,
     ) -> None:
         async def failing_stream():
             yield ChannelResponse(text="Start", metadata={})

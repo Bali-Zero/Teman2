@@ -27,7 +27,10 @@ class TokenRevocationService:
         self._redis = redis_client
 
     async def revoke_token(
-        self, jti: str, ttl_seconds: int, reason: str = "manual",
+        self,
+        jti: str,
+        ttl_seconds: int,
+        reason: str = "manual",
     ) -> bool:
         if not self._redis:
             logger.warning("S03: Token revocation skipped — Redis unavailable")
@@ -57,7 +60,9 @@ class TokenRevocationService:
             return False
 
     async def revoke_all_user_tokens(
-        self, user_email: str, reason: str = "bulk_revoke",
+        self,
+        user_email: str,
+        reason: str = "bulk_revoke",
     ) -> bool:
         if not self._redis:
             logger.warning("S03: User revocation skipped — Redis unavailable")

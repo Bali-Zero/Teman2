@@ -101,9 +101,7 @@ def evidence_map() -> dict:
 class TestFlashReport:
     """Flash report must be short (1-3 paragraphs, under 2000 chars)."""
 
-    def test_flash_report_short(
-        self, mixed_claims: list[ClaimRecord], evidence_map: dict
-    ) -> None:
+    def test_flash_report_short(self, mixed_claims: list[ClaimRecord], evidence_map: dict) -> None:
         report = generate_report(
             query="KITAS requirements 2026",
             tier="flash",
@@ -125,9 +123,7 @@ class TestFlashReport:
         assert "Indonesia requires KITAS for work permits" in report
         assert "Processing time for E33A reduced to 5 days" in report
 
-    def test_flash_report_notes_contested(
-        self, low_claim: ClaimRecord
-    ) -> None:
+    def test_flash_report_notes_contested(self, low_claim: ClaimRecord) -> None:
         report = generate_report(
             query="Fee waiver",
             tier="flash",
@@ -251,9 +247,7 @@ class TestEdgeCases:
         assert report  # not empty
         assert "no verifiable claims" in report.lower() or "no claims" in report.lower()
 
-    def test_report_includes_gaps(
-        self, verified_claim: ClaimRecord
-    ) -> None:
+    def test_report_includes_gaps(self, verified_claim: ClaimRecord) -> None:
         gaps = ["No primary source for fee data", "Regulatory gazette not yet published"]
         report = generate_report(
             query="Fee analysis",
@@ -286,9 +280,7 @@ class TestEdgeCases:
 class TestHelpers:
     """Unit tests for _evidence_status_bar and _format_claim."""
 
-    def test_evidence_status_bar_counts(
-        self, mixed_claims: list[ClaimRecord]
-    ) -> None:
+    def test_evidence_status_bar_counts(self, mixed_claims: list[ClaimRecord]) -> None:
         bar = _evidence_status_bar(mixed_claims)
         assert "VERIFIED: 1" in bar
         assert "PROVISIONAL: 1" in bar
@@ -300,9 +292,7 @@ class TestHelpers:
         assert "PROVISIONAL: 0" in bar
         assert "LOW: 0" in bar
 
-    def test_format_claim_includes_fields(
-        self, verified_claim: ClaimRecord
-    ) -> None:
+    def test_format_claim_includes_fields(self, verified_claim: ClaimRecord) -> None:
         line = _format_claim(verified_claim, index=1)
         assert "1." in line or "[1]" in line
         assert "VERIFIED" in line

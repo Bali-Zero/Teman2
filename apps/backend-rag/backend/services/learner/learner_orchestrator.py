@@ -69,7 +69,7 @@ REJECTED_SCAR_PRECONDITION_PREFIX = "zero_rejected"
 class LearningDecision(str, Enum):
     SKILL = "skill"
     SCAR = "scar"
-    OBSERVED = "observed"      # score computed but didn't cross thresholds
+    OBSERVED = "observed"  # score computed but didn't cross thresholds
     INCOMPLETE = "incomplete"  # missing metrics → cannot classify
     SKIPPED = "skipped"
 
@@ -105,7 +105,7 @@ class LearnerOrchestrator:
         skill_threshold: float = DEFAULT_SKILL_THRESHOLD_P,
         scar_threshold: float = DEFAULT_SCAR_THRESHOLD_P,
         min_age_hours: int = 72,
-        max_age_hours: int = 168,          # 7d
+        max_age_hours: int = 168,  # 7d
         reach_history_days: int = 90,
     ) -> None:
         self.repo = repo
@@ -132,9 +132,7 @@ class LearnerOrchestrator:
         try:
             posts = await self._eligible_posts(now=now)
         except Exception as exc:  # noqa: BLE001
-            result.errors.append(
-                f"eligible_posts: {type(exc).__name__}: {exc}"
-            )
+            result.errors.append(f"eligible_posts: {type(exc).__name__}: {exc}")
             return result
 
         result.posts_considered = len(posts)
@@ -145,19 +143,19 @@ class LearnerOrchestrator:
             if post.platform not in reach_cache:
                 try:
                     reach_cache[post.platform] = await self._reach_history(
-                        platform=post.platform, days=self.reach_history_days,
+                        platform=post.platform,
+                        days=self.reach_history_days,
                     )
                 except Exception as exc:  # noqa: BLE001
                     reach_cache[post.platform] = []
-                    result.errors.append(
-                        f"reach_history {post.platform.value}: {exc}"
-                    )
+                    result.errors.append(f"reach_history {post.platform.value}: {exc}")
 
         # 3. process each post
         for post in posts:
             try:
                 pl = await self._learn_from_post(
-                    post, reach_distribution=reach_cache.get(post.platform, []),
+                    post,
+                    reach_distribution=reach_cache.get(post.platform, []),
                 )
                 result.per_post.append(pl)
                 if pl.decision == LearningDecision.SKILL:
@@ -167,9 +165,7 @@ class LearnerOrchestrator:
                 elif pl.decision == LearningDecision.INCOMPLETE:
                     result.incomplete += 1
             except Exception as exc:  # noqa: BLE001
-                result.errors.append(
-                    f"learn post {post.id}: {type(exc).__name__}: {exc}"
-                )
+                result.errors.append(f"learn post {post.id}: {type(exc).__name__}: {exc}")
 
         return result
 
@@ -299,13 +295,11 @@ class LearnerOrchestrator:
     ) -> None:
         register = post.tone_register.value if post.tone_register else "unknown"
         rejection_reason = (
-            draft.rejection_reason if draft and getattr(draft, "rejection_reason", None)
+            draft.rejection_reason
+            if draft and getattr(draft, "rejection_reason", None)
             else "unspecified"
         )
-        scar_id = (
-            f"war_room_scar:{REJECTED_SCAR_PRECONDITION_PREFIX}:"
-            f"{rejection_reason}:{post.id}"
-        )
+        scar_id = f"war_room_scar:{REJECTED_SCAR_PRECONDITION_PREFIX}:{rejection_reason}:{post.id}"
         procedure = (
             f"Zero rejected draft {post.draft_id} "
             f"(topic delivered on {post.platform.value}, register '{register}'). "
@@ -323,7 +317,9 @@ class LearnerOrchestrator:
     # ── DB helpers ───────────────────────────────────────────────
 
     async def _eligible_posts(
-        self, *, now: datetime,
+        self,
+        *,
+        now: datetime,
     ) -> list[WarRoomPost]:
         upper = now - timedelta(hours=self.min_age_hours)
         lower = now - timedelta(hours=self.max_age_hours)
@@ -342,7 +338,8 @@ class LearnerOrchestrator:
         return [_row_to_post(row) for row in rows]
 
     async def _latest_metrics(
-        self, post_id: UUID,
+        self,
+        post_id: UUID,
     ) -> dict[str, float]:
         """Return metric_name → latest value. If multiple rows per name, pick
         the most recent non-partial; fall back to any."""
@@ -365,7 +362,10 @@ class LearnerOrchestrator:
         return out
 
     async def _reach_history(
-        self, *, platform: Platform, days: int,
+        self,
+        *,
+        platform: Platform,
+        days: int,
     ) -> list[float]:
         rows = await self.repo.fetch_safe(
             """

@@ -36,7 +36,18 @@ def mock_llm_gateway():
     """Mock LLM gateway for send_message calls."""
     gw = AsyncMock()
     gw.send_message = AsyncMock(
-        return_value=("Final Answer: This is a test", "gemini-2.0-flash", MagicMock(), MagicMock(prompt_tokens=10, completion_tokens=20, total_tokens=30, cost_usd=0.0001, __add__=lambda s, o: s)),
+        return_value=(
+            "Final Answer: This is a test",
+            "gemini-2.0-flash",
+            MagicMock(),
+            MagicMock(
+                prompt_tokens=10,
+                completion_tokens=20,
+                total_tokens=30,
+                cost_usd=0.0001,
+                __add__=lambda s, o: s,
+            ),
+        ),
     )
     gw._gemini_tools = []
     return gw
@@ -362,7 +373,15 @@ class TestExecuteReactLoop:
     @patch("backend.services.rag.agentic.reasoning.calculate_evidence_score", return_value=0.8)
     @patch("backend.services.rag.agentic.reasoning.is_critical_domain", return_value=False)
     async def test_react_loop_final_answer_direct(
-        self, mock_is_crit, mock_calc, mock_detect, mock_add_event, mock_status, mock_attr, mock_span, engine,
+        self,
+        mock_is_crit,
+        mock_calc,
+        mock_detect,
+        mock_add_event,
+        mock_status,
+        mock_attr,
+        mock_span,
+        engine,
     ):
         """ReAct loop returns when LLM provides final answer directly."""
         mock_span.return_value.__enter__ = MagicMock(return_value=MagicMock())
@@ -376,7 +395,12 @@ class TestExecuteReactLoop:
         response_obj = MagicMock()
         response_obj.candidates = []
         llm_gw.send_message = AsyncMock(
-            return_value=("Final Answer: Indonesia requires KITAS for work.", "gemini-flash", response_obj, mock_usage),
+            return_value=(
+                "Final Answer: Indonesia requires KITAS for work.",
+                "gemini-flash",
+                response_obj,
+                mock_usage,
+            ),
         )
         llm_gw._gemini_tools = []
 

@@ -12,6 +12,7 @@ CRIT-7: _WITHHOLDING_RATES dict removed. Rates now resolved from system_settings
 at accrual time via _get_withholding_rate() / _system_setting_decimal().
 conftest _SCHEMA_SQL seeds the 3 new keys (pph21=2.5, pph23=2.0, surcharge=20).
 """
+
 from decimal import Decimal
 
 import pytest
@@ -28,6 +29,7 @@ async def engine(db_conn):
 # 1. Accrual creates row with correct math and cooling-off timestamp
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_accrue_creates_accrued_row_with_cooling_off(
     engine, partner_factory, practice_factory, referral_factory, db_conn
@@ -38,9 +40,7 @@ async def test_accrue_creates_accrued_row_with_cooling_off(
         default_commission_value=Decimal("10.0"),
         tax_withholding_category="pph23",
     )
-    await db_conn.execute(
-        "UPDATE partners SET npwp = '01.234.567.8-901.000' WHERE id = $1", p.id
-    )
+    await db_conn.execute("UPDATE partners SET npwp = '01.234.567.8-901.000' WHERE id = $1", p.id)
     proc = await practice_factory(
         total_invoiced_idr=Decimal("10000000"),
         status="completed",
@@ -67,6 +67,7 @@ async def test_accrue_creates_accrued_row_with_cooling_off(
 # 2. Accrual is idempotent via idempotency_key
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_accrue_is_idempotent_via_key(
     engine, partner_factory, practice_factory, referral_factory
@@ -86,6 +87,7 @@ async def test_accrue_is_idempotent_via_key(
 # 3. approve() is blocked before cooling-off window expires
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
 async def test_approve_blocked_before_cooling_off(
     engine, partner_factory, practice_factory, referral_factory, admin
@@ -104,6 +106,7 @@ async def test_approve_blocked_before_cooling_off(
 # ---------------------------------------------------------------------------
 # 4. approve() is blocked when withholding_category is 'tbd'
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_approve_blocked_when_withholding_tbd(
@@ -130,10 +133,9 @@ async def test_approve_blocked_when_withholding_tbd(
 # 5. Flat commission type: gross = fixed amount, no percentage of base
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
-async def test_flat_commission_type(
-    engine, partner_factory, practice_factory, referral_factory
-):
+async def test_flat_commission_type(engine, partner_factory, practice_factory, referral_factory):
     p = await partner_factory(
         default_commission_type="flat",
         default_commission_value=Decimal("500000"),
@@ -157,6 +159,7 @@ async def test_flat_commission_type(
 # ---------------------------------------------------------------------------
 # 6. clawback() inserts negative row with FK to original
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_clawback_inserts_negative_row_with_fk(engine, partner_factory, admin):
@@ -184,6 +187,7 @@ async def test_clawback_inserts_negative_row_with_fk(engine, partner_factory, ad
 # ---------------------------------------------------------------------------
 # 7. clawback() auto-waives when amount < auto-writeoff threshold
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_clawback_auto_writeoff_threshold(engine, partner_factory, admin, db_conn):
@@ -213,10 +217,9 @@ async def test_clawback_auto_writeoff_threshold(engine, partner_factory, admin, 
 # 8. approve() offsets oldest pending clawback and reduces net
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
-async def test_approve_offsets_oldest_pending_clawback(
-    engine, partner_factory, admin, db_conn
-):
+async def test_approve_offsets_oldest_pending_clawback(engine, partner_factory, admin, db_conn):
     p = await partner_factory(tax_withholding_category="exempt")
 
     # 1) Existing pending clawback: -300k
@@ -267,10 +270,9 @@ async def test_approve_offsets_oldest_pending_clawback(
 # 9. update_commission_status detects concurrent change (CRIT-1)
 # ---------------------------------------------------------------------------
 
+
 @pytest.mark.asyncio
-async def test_update_commission_status_detects_concurrent_change(
-    engine, partner_factory, db_conn
-):
+async def test_update_commission_status_detects_concurrent_change(engine, partner_factory, db_conn):
     """CRIT-1: update_commission_status raises RuntimeError when a concurrent
     writer transitions the commission between our read and our UPDATE.
 
@@ -293,8 +295,7 @@ async def test_update_commission_status_detects_concurrent_change(
     # We bypass update_commission_status to do a raw UPDATE (simulating another
     # connection that won the race).
     await db_conn.execute(
-        "UPDATE partner_commissions SET status = 'approved', approved_at = now() "
-        "WHERE id = $1",
+        "UPDATE partner_commissions SET status = 'approved', approved_at = now() WHERE id = $1",
         cid,
     )
     # Now call update_commission_status with the stale old status ('accrued').
@@ -308,6 +309,7 @@ async def test_update_commission_status_detects_concurrent_change(
 # ---------------------------------------------------------------------------
 # CRIT-7: Withholding rates from system_settings + no-NPWP surcharge
 # ---------------------------------------------------------------------------
+
 
 @pytest.mark.asyncio
 async def test_accrue_uses_pph23_rate_from_system_settings(
@@ -349,9 +351,7 @@ async def test_accrue_applies_no_npwp_surcharge_on_pph21(
         default_commission_value=Decimal("10.0"),
     )
     # Explicitly ensure npwp is NULL (factory default; just making the intent clear).
-    await engine.repo.conn.execute(
-        "UPDATE partners SET npwp = NULL WHERE id = $1", p.id
-    )
+    await engine.repo.conn.execute("UPDATE partners SET npwp = NULL WHERE id = $1", p.id)
     proc = await practice_factory(
         total_invoiced_idr=Decimal("10000000"),
         status="completed",
@@ -376,17 +376,14 @@ async def test_accrue_reads_rate_from_updated_system_setting(
     """Admin changes pph23 rate mid-flight — next accrual picks up the new rate."""
     # Change pph23 rate from 2.0 to 1.5
     await db_conn.execute(
-        "UPDATE system_settings SET value = '1.5' "
-        "WHERE key = 'partner_withholding_rate_pph23'"
+        "UPDATE system_settings SET value = '1.5' WHERE key = 'partner_withholding_rate_pph23'"
     )
     p = await partner_factory(
         tax_withholding_category="pph23",
         default_commission_value=Decimal("10.0"),
     )
     # Partner has NPWP → no surcharge
-    await db_conn.execute(
-        "UPDATE partners SET npwp = '99.999.999.9-999.000' WHERE id = $1", p.id
-    )
+    await db_conn.execute("UPDATE partners SET npwp = '99.999.999.9-999.000' WHERE id = $1", p.id)
     proc = await practice_factory(
         total_invoiced_idr=Decimal("10000000"),
         status="completed",

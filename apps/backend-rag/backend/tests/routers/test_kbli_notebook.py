@@ -39,20 +39,28 @@ class TestRouterStructure:
 class TestSearchEndpoint:
     @pytest.mark.integration
     def test_search_kbli_returns_results(self, client: TestClient) -> None:
-        results = [{
-            "payload": {
-                "kode_kbli": "56101",
-                "judul": "Restaurant Services",
-                "content": "Restaurant activities in fixed buildings",
-                "pma_status": "TERBUKA",
-                "kategori_risiko": "Menengah Rendah",
-            },
-            "score": 0.98,
-        }]
+        results = [
+            {
+                "payload": {
+                    "kode_kbli": "56101",
+                    "judul": "Restaurant Services",
+                    "content": "Restaurant activities in fixed buildings",
+                    "pma_status": "TERBUKA",
+                    "kategori_risiko": "Menengah Rendah",
+                },
+                "score": 0.98,
+            }
+        ]
 
         with (
-            patch("backend.app.routers.kbli_notebook._resolve_embedding", AsyncMock(return_value=[0.1, 0.2])),
-            patch("backend.app.routers.kbli_notebook._search_kbli_qdrant", AsyncMock(return_value=results)),
+            patch(
+                "backend.app.routers.kbli_notebook._resolve_embedding",
+                AsyncMock(return_value=[0.1, 0.2]),
+            ),
+            patch(
+                "backend.app.routers.kbli_notebook._search_kbli_qdrant",
+                AsyncMock(return_value=results),
+            ),
         ):
             response = client.get("/kbli-notebook/search?query=restaurant")
 
@@ -64,7 +72,10 @@ class TestSearchEndpoint:
     @pytest.mark.integration
     def test_search_kbli_returns_503_on_timeout(self, client: TestClient) -> None:
         with (
-            patch("backend.app.routers.kbli_notebook._resolve_embedding", AsyncMock(return_value=[0.1, 0.2])),
+            patch(
+                "backend.app.routers.kbli_notebook._resolve_embedding",
+                AsyncMock(return_value=[0.1, 0.2]),
+            ),
             patch(
                 "backend.app.routers.kbli_notebook._search_kbli_qdrant",
                 AsyncMock(side_effect=httpx.TimeoutException("timeout")),
@@ -78,29 +89,48 @@ class TestSearchEndpoint:
 class TestChatEndpoint:
     @pytest.mark.integration
     def test_chat_kbli_returns_answer(self, client: TestClient) -> None:
-        results = [{
-            "payload": {
-                "kode_kbli": "56101",
-                "judul": "Restaurant Services",
-                "content": "Restaurant activities in fixed buildings",
-                "pma_status": "TERBUKA",
-                "kategori_risiko": "Menengah Rendah",
-            },
-            "score": 0.98,
-        }]
+        results = [
+            {
+                "payload": {
+                    "kode_kbli": "56101",
+                    "judul": "Restaurant Services",
+                    "content": "Restaurant activities in fixed buildings",
+                    "pma_status": "TERBUKA",
+                    "kategori_risiko": "Menengah Rendah",
+                },
+                "score": 0.98,
+            }
+        ]
 
         gateway = MagicMock()
         gateway._available = True
 
         with (
             patch("backend.app.routers.kbli_notebook_chat._get_llm_gateway", return_value=gateway),
-            patch("backend.app.routers.kbli_notebook_chat._translate_query_for_kbli", AsyncMock(return_value="restoran")),
-            patch("backend.app.routers.kbli_notebook_chat._resolve_embedding", AsyncMock(return_value=[0.1, 0.2])),
-            patch("backend.app.routers.kbli_notebook_chat._search_kbli_qdrant", AsyncMock(return_value=results)),
-            patch("backend.app.routers.kbli_notebook_chat._fetch_parent_documents_from_kbli_table", AsyncMock(return_value={"56101": "full content"})),
-            patch("backend.app.routers.kbli_notebook_chat._generate_kbli_explanation_gemini", AsyncMock(return_value="KBLI 56101 is open to PMA.")),
+            patch(
+                "backend.app.routers.kbli_notebook_chat._translate_query_for_kbli",
+                AsyncMock(return_value="restoran"),
+            ),
+            patch(
+                "backend.app.routers.kbli_notebook_chat._resolve_embedding",
+                AsyncMock(return_value=[0.1, 0.2]),
+            ),
+            patch(
+                "backend.app.routers.kbli_notebook_chat._search_kbli_qdrant",
+                AsyncMock(return_value=results),
+            ),
+            patch(
+                "backend.app.routers.kbli_notebook_chat._fetch_parent_documents_from_kbli_table",
+                AsyncMock(return_value={"56101": "full content"}),
+            ),
+            patch(
+                "backend.app.routers.kbli_notebook_chat._generate_kbli_explanation_gemini",
+                AsyncMock(return_value="KBLI 56101 is open to PMA."),
+            ),
         ):
-            response = client.post("/kbli-notebook/chat", json={"query": "Can a foreigner own a restaurant?"})
+            response = client.post(
+                "/kbli-notebook/chat", json={"query": "Can a foreigner own a restaurant?"}
+            )
 
         assert response.status_code == 200
         payload = response.json()
@@ -114,12 +144,25 @@ class TestChatEndpoint:
 
         with (
             patch("backend.app.routers.kbli_notebook_chat._get_llm_gateway", return_value=gateway),
-            patch("backend.app.routers.kbli_notebook_chat._translate_query_for_kbli", AsyncMock(return_value="restoran")),
-            patch("backend.app.routers.kbli_notebook_chat._resolve_embedding", AsyncMock(return_value=[0.1, 0.2])),
-            patch("backend.app.routers.kbli_notebook_chat._search_kbli_qdrant", AsyncMock(return_value=[])),
-            patch("backend.app.routers.kbli_notebook_chat._generate_kbli_explanation_gemini", AsyncMock(side_effect=RuntimeError("boom"))),
+            patch(
+                "backend.app.routers.kbli_notebook_chat._translate_query_for_kbli",
+                AsyncMock(return_value="restoran"),
+            ),
+            patch(
+                "backend.app.routers.kbli_notebook_chat._resolve_embedding",
+                AsyncMock(return_value=[0.1, 0.2]),
+            ),
+            patch(
+                "backend.app.routers.kbli_notebook_chat._search_kbli_qdrant",
+                AsyncMock(return_value=[]),
+            ),
+            patch(
+                "backend.app.routers.kbli_notebook_chat._generate_kbli_explanation_gemini",
+                AsyncMock(side_effect=RuntimeError("boom")),
+            ),
         ):
-            response = client.post("/kbli-notebook/chat", json={"query": "Tell me about restaurants"})
+            response = client.post(
+                "/kbli-notebook/chat", json={"query": "Tell me about restaurants"}
+            )
 
         assert response.status_code == 500
-

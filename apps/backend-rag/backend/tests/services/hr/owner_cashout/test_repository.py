@@ -1,4 +1,5 @@
 """Tests for owner cashout read-side repository."""
+
 import os
 from datetime import date
 
@@ -44,23 +45,41 @@ async def populated_pool():
 
     def bz(name, process, mbz, ti):
         return CashoutRow(
-            entity="BZ", row_index=_next_idx(), client_name=name, process=process,
-            pnbp_idr=1_000_000, urgent_idr=0, rptka_imta_idr=0,
-            total_income_idr=ti, margin_bs_idr=600_000, margin_bz_idr=mbz,
-            final_price_idr=0, note=None,
+            entity="BZ",
+            row_index=_next_idx(),
+            client_name=name,
+            process=process,
+            pnbp_idr=1_000_000,
+            urgent_idr=0,
+            rptka_imta_idr=0,
+            total_income_idr=ti,
+            margin_bs_idr=600_000,
+            margin_bz_idr=mbz,
+            final_price_idr=0,
+            note=None,
         )
 
     def bs(name, mbs, fp):
         return CashoutRow(
-            entity="BS", row_index=_next_idx(), client_name=name, process="C1",
-            pnbp_idr=1_000_000, urgent_idr=0, rptka_imta_idr=0,
-            total_income_idr=0, margin_bs_idr=mbs, margin_bz_idr=0,
-            final_price_idr=fp, note=None,
+            entity="BS",
+            row_index=_next_idx(),
+            client_name=name,
+            process="C1",
+            pnbp_idr=1_000_000,
+            urgent_idr=0,
+            rptka_imta_idr=0,
+            total_income_idr=0,
+            margin_bs_idr=mbs,
+            margin_bz_idr=0,
+            final_price_idr=fp,
+            note=None,
         )
 
     await upsert_week(
-        pool, week_start=date(2025, 8, 22),
-        tab_bz="BZ 22 AUG", tab_bs="BS 22 AUG",
+        pool,
+        week_start=date(2025, 8, 22),
+        tab_bz="BZ 22 AUG",
+        tab_bs="BS 22 AUG",
         rows=[
             bz("A", "C1", 1_100_000, 2_700_000),
             bz("B", "C1", 1_100_000, 2_700_000),
@@ -69,8 +88,10 @@ async def populated_pool():
         ],
     )
     await upsert_week(
-        pool, week_start=date(2025, 8, 29),
-        tab_bz="BZ 29 AUG", tab_bs="BS 29 AUG",
+        pool,
+        week_start=date(2025, 8, 29),
+        tab_bz="BZ 29 AUG",
+        tab_bs="BS 29 AUG",
         rows=[
             bz("D", "C1", 1_100_000, 2_700_000),
             bz("E", "D12 1 YEAR", 1_700_000, 7_500_000),

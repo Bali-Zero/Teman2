@@ -67,7 +67,9 @@ class MemoryOrchestrator:
     Thread-safe and designed for concurrent access.
     """
 
-    def __init__(self, db_pool: asyncpg.Pool | None = None, database_url: str | None = None) -> None:
+    def __init__(
+        self, db_pool: asyncpg.Pool | None = None, database_url: str | None = None
+    ) -> None:
         """
         Initialize MemoryOrchestrator.
 
@@ -191,7 +193,8 @@ class MemoryOrchestrator:
         except Exception as e:
             critical_failures.append(("memory_service", str(e)))
             logger.error(
-                "❌ CRITICAL: Memory service initialization failed: %s", e,
+                "❌ CRITICAL: Memory service initialization failed: %s",
+                e,
                 extra={"error_type": type(e).__name__},
             )
 
@@ -484,7 +487,9 @@ class MemoryOrchestrator:
                 return context
 
         except Exception as e:
-            logger.exception("Failed to get user context", extra={"user_email": user_email, "error": str(e)})
+            logger.exception(
+                "Failed to get user context", extra={"user_email": user_email, "error": str(e)}
+            )
             try:
                 from backend.app.metrics import memory_context_failed_total
 

@@ -34,7 +34,9 @@ class TestTrimodalRRF:
         ]
 
         result = self.service.reciprocal_rank_fusion_trimodal(
-            dense, sparse, graph,
+            dense,
+            sparse,
+            graph,
             weights=(0.4, 0.3, 0.3),
         )
 
@@ -49,7 +51,9 @@ class TestTrimodalRRF:
         graph = [{"id": "3", "score": 1.0}]  # doc3 only in graph
 
         result = self.service.reciprocal_rank_fusion_trimodal(
-            dense, sparse, graph,
+            dense,
+            sparse,
+            graph,
             weights=(0.4, 0.3, 0.3),
         )
 
@@ -66,13 +70,17 @@ class TestTrimodalRRF:
 
         # Graph-heavy weights
         result_graph_heavy = self.service.reciprocal_rank_fusion_trimodal(
-            dense, sparse, graph,
+            dense,
+            sparse,
+            graph,
             weights=(0.1, 0.1, 0.8),
         )
 
         # Dense-heavy weights
         result_dense_heavy = self.service.reciprocal_rank_fusion_trimodal(
-            dense, sparse, graph,
+            dense,
+            sparse,
+            graph,
             weights=(0.8, 0.1, 0.1),
         )
 
@@ -87,7 +95,9 @@ class TestTrimodalRRF:
         sparse = [{"id": "1", "score": 0.8}]
 
         result = self.service.reciprocal_rank_fusion_trimodal(
-            dense, sparse, [],
+            dense,
+            sparse,
+            [],
             weights=(0.4, 0.3, 0.3),
         )
 
@@ -100,7 +110,9 @@ class TestTrimodalRRF:
         graph = [{"id": "1", "score": 0.5}]
 
         result = self.service.reciprocal_rank_fusion_trimodal(
-            dense, [], graph,
+            dense,
+            [],
+            graph,
         )
 
         assert "graph_rank" in result[0]
@@ -112,7 +124,9 @@ class TestTrimodalRRF:
 
         # With k=60 (default), rank 1 vs rank 3 difference is small
         result = self.service.reciprocal_rank_fusion_trimodal(
-            dense, [], [],
+            dense,
+            [],
+            [],
         )
 
         scores = [r["fusion_score"] for r in result]

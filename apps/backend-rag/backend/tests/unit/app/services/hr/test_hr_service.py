@@ -67,9 +67,11 @@ def _make_row(data: dict):
 class TestListEmployees:
     @pytest.mark.asyncio
     async def test_list_employees(self, hr_service, mock_db_pool):
-        mock_db_pool._mock_conn.fetch = AsyncMock(return_value=[
-            {"id": 1, "full_name": "Alice", "email": "alice@test.com", "role": "agent"},
-        ])
+        mock_db_pool._mock_conn.fetch = AsyncMock(
+            return_value=[
+                {"id": 1, "full_name": "Alice", "email": "alice@test.com", "role": "agent"},
+            ]
+        )
         result = await hr_service.list_employees()
         assert len(result) == 1
         assert result[0]["full_name"] == "Alice"
@@ -112,12 +114,18 @@ class TestGetEmployeeByEmail:
 class TestUpsertEmployee:
     @pytest.mark.asyncio
     async def test_upsert(self, hr_service, mock_db_pool):
-        mock_db_pool._mock_conn.fetchrow = AsyncMock(return_value={
-            "id": 1, "team_member_id": 10, "base_salary_idr": 5000000,
-        })
+        mock_db_pool._mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "id": 1,
+                "team_member_id": 10,
+                "base_salary_idr": 5000000,
+            }
+        )
         data = {
-            "team_member_id": 10, "hire_date": date(2024, 1, 1),
-            "base_salary_idr": 5000000, "ptkp_status": "TK/0",
+            "team_member_id": 10,
+            "hire_date": date(2024, 1, 1),
+            "base_salary_idr": 5000000,
+            "ptkp_status": "TK/0",
         }
         result = await hr_service.upsert_employee(data)
         assert result["team_member_id"] == 10
@@ -131,17 +139,23 @@ class TestUpsertEmployee:
 class TestBonusRates:
     @pytest.mark.asyncio
     async def test_list(self, hr_service, mock_db_pool):
-        mock_db_pool._mock_conn.fetch = AsyncMock(return_value=[
-            {"id": 1, "practice_type_code": "visa", "amount_idr": 100000},
-        ])
+        mock_db_pool._mock_conn.fetch = AsyncMock(
+            return_value=[
+                {"id": 1, "practice_type_code": "visa", "amount_idr": 100000},
+            ]
+        )
         result = await hr_service.list_bonus_rates()
         assert len(result) == 1
 
     @pytest.mark.asyncio
     async def test_upsert(self, hr_service, mock_db_pool):
-        mock_db_pool._mock_conn.fetchrow = AsyncMock(return_value={
-            "id": 1, "practice_type_code": "visa", "amount_idr": 150000,
-        })
+        mock_db_pool._mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "id": 1,
+                "practice_type_code": "visa",
+                "amount_idr": 150000,
+            }
+        )
         data = {"practice_type_code": "visa", "amount_idr": 150000}
         result = await hr_service.upsert_bonus_rate(data)
         assert result["amount_idr"] == 150000
@@ -155,9 +169,11 @@ class TestBonusRates:
 class TestBonuses:
     @pytest.mark.asyncio
     async def test_list_bonuses_no_filter(self, hr_service, mock_db_pool):
-        mock_db_pool._mock_conn.fetch = AsyncMock(return_value=[
-            {"id": 1, "employee_id": 1, "amount_idr": 100000, "status": "pending"},
-        ])
+        mock_db_pool._mock_conn.fetch = AsyncMock(
+            return_value=[
+                {"id": 1, "employee_id": 1, "amount_idr": 100000, "status": "pending"},
+            ]
+        )
         result = await hr_service.list_bonuses()
         assert len(result) == 1
 
@@ -169,9 +185,13 @@ class TestBonuses:
 
     @pytest.mark.asyncio
     async def test_approve_bonus(self, hr_service, mock_db_pool):
-        mock_db_pool._mock_conn.fetchrow = AsyncMock(return_value={
-            "id": 1, "status": "approved", "approved_by": "admin@test.com",
-        })
+        mock_db_pool._mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "id": 1,
+                "status": "approved",
+                "approved_by": "admin@test.com",
+            }
+        )
         result = await hr_service.approve_bonus(1, "admin@test.com")
         assert result["status"] == "approved"
 
@@ -183,9 +203,14 @@ class TestBonuses:
 
     @pytest.mark.asyncio
     async def test_get_bonus_summary(self, hr_service, mock_db_pool):
-        mock_db_pool._mock_conn.fetchrow = AsyncMock(return_value={
-            "bonus_count": 3, "approved_total": 300000, "pending_total": 100000, "grand_total": 400000,
-        })
+        mock_db_pool._mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "bonus_count": 3,
+                "approved_total": 300000,
+                "pending_total": 100000,
+                "grand_total": 400000,
+            }
+        )
         result = await hr_service.get_bonus_summary(1, 4, 2026)
         assert result["bonus_count"] == 3
 
@@ -210,15 +235,24 @@ class TestPayroll:
         mock_pph.return_value = 150000
 
         conn = mock_db_pool._mock_conn
-        conn.fetchrow = AsyncMock(side_effect=[
-            {"id": 1},  # period
-            {"total": 200000},  # bonus sum
-            {"id": 10},  # payslip
-        ])
-        conn.fetch = AsyncMock(return_value=[{
-            "id": 1, "base_salary_idr": 5000000, "ptkp_status": "TK/0",
-            "full_name": "Alice", "email": "alice@t.com",
-        }])
+        conn.fetchrow = AsyncMock(
+            side_effect=[
+                {"id": 1},  # period
+                {"total": 200000},  # bonus sum
+                {"id": 10},  # payslip
+            ]
+        )
+        conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    "id": 1,
+                    "base_salary_idr": 5000000,
+                    "ptkp_status": "TK/0",
+                    "full_name": "Alice",
+                    "email": "alice@t.com",
+                }
+            ]
+        )
         conn.execute = AsyncMock()
 
         result = await hr_service.calculate_payroll(4, 2026, "admin@test.com")
@@ -228,9 +262,11 @@ class TestPayroll:
 
     @pytest.mark.asyncio
     async def test_list_payroll_periods(self, hr_service, mock_db_pool):
-        mock_db_pool._mock_conn.fetch = AsyncMock(return_value=[
-            {"id": 1, "payroll_month": 4, "payroll_year": 2026, "status": "calculated"},
-        ])
+        mock_db_pool._mock_conn.fetch = AsyncMock(
+            return_value=[
+                {"id": 1, "payroll_month": 4, "payroll_year": 2026, "status": "calculated"},
+            ]
+        )
         result = await hr_service.list_payroll_periods()
         assert len(result) == 1
 
@@ -249,12 +285,18 @@ class TestPayroll:
     @pytest.mark.asyncio
     async def test_get_payslip_detail_found(self, hr_service, mock_db_pool):
         conn = mock_db_pool._mock_conn
-        conn.fetchrow = AsyncMock(return_value={
-            "id": 1, "base_salary_idr": 5000000, "net_salary_idr": 4500000,
-        })
-        conn.fetch = AsyncMock(return_value=[
-            {"deduction_type": "pph21", "amount_idr": 150000, "is_employer": False},
-        ])
+        conn.fetchrow = AsyncMock(
+            return_value={
+                "id": 1,
+                "base_salary_idr": 5000000,
+                "net_salary_idr": 4500000,
+            }
+        )
+        conn.fetch = AsyncMock(
+            return_value=[
+                {"deduction_type": "pph21", "amount_idr": 150000, "is_employer": False},
+            ]
+        )
         result = await hr_service.get_payslip_detail(1)
         assert result is not None
         assert "deductions" in result
@@ -267,9 +309,13 @@ class TestPayroll:
 
     @pytest.mark.asyncio
     async def test_approve_payroll(self, hr_service, mock_db_pool):
-        mock_db_pool._mock_conn.fetchrow = AsyncMock(return_value={
-            "id": 1, "status": "approved", "approved_by": "admin",
-        })
+        mock_db_pool._mock_conn.fetchrow = AsyncMock(
+            return_value={
+                "id": 1,
+                "status": "approved",
+                "approved_by": "admin",
+            }
+        )
         result = await hr_service.approve_payroll(1, "admin")
         assert result["status"] == "approved"
 
@@ -303,16 +349,26 @@ class TestLeave:
     @pytest.mark.asyncio
     async def test_request_leave(self, hr_service, mock_db_pool):
         conn = mock_db_pool._mock_conn
-        conn.fetchrow = AsyncMock(side_effect=[
-            {"id": 1},  # leave_type check
-            {"allocated_days": 12, "carried_over": 0, "used_days": 2, "pending_days": 0, "id": 1},  # balance
-            {"id": 1, "employee_id": 1, "status": "pending"},  # insert
-        ])
+        conn.fetchrow = AsyncMock(
+            side_effect=[
+                {"id": 1},  # leave_type check
+                {
+                    "allocated_days": 12,
+                    "carried_over": 0,
+                    "used_days": 2,
+                    "pending_days": 0,
+                    "id": 1,
+                },  # balance
+                {"id": 1, "employee_id": 1, "status": "pending"},  # insert
+            ]
+        )
         conn.execute = AsyncMock()
 
         data = {
-            "employee_id": 1, "leave_type_id": 1,
-            "start_date": date(2026, 5, 1), "end_date": date(2026, 5, 3),
+            "employee_id": 1,
+            "leave_type_id": 1,
+            "start_date": date(2026, 5, 1),
+            "end_date": date(2026, 5, 3),
             "total_days": 3,
         }
         result = await hr_service.request_leave(data)
@@ -321,13 +377,23 @@ class TestLeave:
     @pytest.mark.asyncio
     async def test_request_leave_insufficient_balance(self, hr_service, mock_db_pool):
         conn = mock_db_pool._mock_conn
-        conn.fetchrow = AsyncMock(side_effect=[
-            {"id": 1},  # leave type
-            {"allocated_days": 5, "carried_over": 0, "used_days": 4, "pending_days": 0, "id": 1},
-        ])
+        conn.fetchrow = AsyncMock(
+            side_effect=[
+                {"id": 1},  # leave type
+                {
+                    "allocated_days": 5,
+                    "carried_over": 0,
+                    "used_days": 4,
+                    "pending_days": 0,
+                    "id": 1,
+                },
+            ]
+        )
         data = {
-            "employee_id": 1, "leave_type_id": 1,
-            "start_date": date(2026, 5, 1), "end_date": date(2026, 5, 5),
+            "employee_id": 1,
+            "leave_type_id": 1,
+            "start_date": date(2026, 5, 1),
+            "end_date": date(2026, 5, 5),
             "total_days": 5,
         }
         with pytest.raises(ValueError, match="Insufficient leave balance"):
@@ -337,8 +403,10 @@ class TestLeave:
     async def test_request_leave_invalid_type(self, hr_service, mock_db_pool):
         mock_db_pool._mock_conn.fetchrow = AsyncMock(return_value=None)
         data = {
-            "employee_id": 1, "leave_type_id": 999,
-            "start_date": date(2026, 5, 1), "end_date": date(2026, 5, 2),
+            "employee_id": 1,
+            "leave_type_id": 999,
+            "start_date": date(2026, 5, 1),
+            "end_date": date(2026, 5, 2),
             "total_days": 2,
         }
         with pytest.raises(ValueError, match="not found or inactive"):
@@ -348,8 +416,12 @@ class TestLeave:
     async def test_approve_leave(self, hr_service, mock_db_pool):
         conn = mock_db_pool._mock_conn
         row = {
-            "id": 1, "status": "approved", "total_days": 2,
-            "employee_id": 1, "leave_type_id": 1, "start_date": date(2026, 5, 1),
+            "id": 1,
+            "status": "approved",
+            "total_days": 2,
+            "employee_id": 1,
+            "leave_type_id": 1,
+            "start_date": date(2026, 5, 1),
         }
         conn.fetchrow = AsyncMock(return_value=row)
         conn.execute = AsyncMock()
@@ -366,8 +438,12 @@ class TestLeave:
     async def test_reject_leave(self, hr_service, mock_db_pool):
         conn = mock_db_pool._mock_conn
         row = {
-            "id": 1, "status": "rejected", "total_days": 2,
-            "employee_id": 1, "leave_type_id": 1, "start_date": date(2026, 5, 1),
+            "id": 1,
+            "status": "rejected",
+            "total_days": 2,
+            "employee_id": 1,
+            "leave_type_id": 1,
+            "start_date": date(2026, 5, 1),
         }
         conn.fetchrow = AsyncMock(return_value=row)
         conn.execute = AsyncMock()
@@ -406,9 +482,11 @@ class TestLeave:
 
     @pytest.mark.asyncio
     async def test_get_leave_balance(self, hr_service, mock_db_pool):
-        mock_db_pool._mock_conn.fetch = AsyncMock(return_value=[
-            {"leave_type_name": "Annual", "allocated_days": 12, "used_days": 3},
-        ])
+        mock_db_pool._mock_conn.fetch = AsyncMock(
+            return_value=[
+                {"leave_type_name": "Annual", "allocated_days": 12, "used_days": 3},
+            ]
+        )
         result = await hr_service.get_leave_balance(1, 2026)
         assert len(result) == 1
 
@@ -441,10 +519,12 @@ class TestDashboard:
     async def test_admin_dashboard(self, hr_service, mock_db_pool):
         conn = mock_db_pool._mock_conn
         conn.fetchval = AsyncMock(side_effect=[10, 0, 5, 2])
-        conn.fetchrow = AsyncMock(side_effect=[
-            {"count": 3, "total": 500000},  # pending bonuses
-            {"id": 1, "payroll_month": 4},  # current period
-        ])
+        conn.fetchrow = AsyncMock(
+            side_effect=[
+                {"count": 3, "total": 500000},  # pending bonuses
+                {"id": 1, "payroll_month": 4},  # current period
+            ]
+        )
         result = await hr_service.get_admin_dashboard()
         assert result["employee_count"] == 10
         assert "pending_bonuses" in result
@@ -453,20 +533,24 @@ class TestDashboard:
     async def test_admin_dashboard_no_period(self, hr_service, mock_db_pool):
         conn = mock_db_pool._mock_conn
         conn.fetchval = AsyncMock(return_value=0)
-        conn.fetchrow = AsyncMock(side_effect=[
-            {"count": 0, "total": 0},
-            None,  # no current period
-        ])
+        conn.fetchrow = AsyncMock(
+            side_effect=[
+                {"count": 0, "total": 0},
+                None,  # no current period
+            ]
+        )
         result = await hr_service.get_admin_dashboard()
         assert result["current_period"] is None
 
     @pytest.mark.asyncio
     async def test_my_dashboard(self, hr_service, mock_db_pool):
         conn = mock_db_pool._mock_conn
-        conn.fetchrow = AsyncMock(side_effect=[
-            {"count": 2, "total": 200000},  # bonuses
-            {"id": 1, "payroll_month": 3, "payroll_year": 2026},  # latest payslip
-        ])
+        conn.fetchrow = AsyncMock(
+            side_effect=[
+                {"count": 2, "total": 200000},  # bonuses
+                {"id": 1, "payroll_month": 3, "payroll_year": 2026},  # latest payslip
+            ]
+        )
         conn.fetch = AsyncMock(return_value=[])  # leave balances
         result = await hr_service.get_my_dashboard(1)
         assert "month_bonuses" in result

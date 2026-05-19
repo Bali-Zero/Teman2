@@ -50,7 +50,5 @@ class ConfidenceScores(BaseModel):
             "completeness": 0.15,
             "pricing_accuracy": 0.10,
         }
-        total = sum(
-            getattr(self, k) * w for k, w in weights.items()
-        )
+        total = sum(getattr(self, k) * w for k, w in weights.items())
         return min(1.0, max(0.0, total))

@@ -1,4 +1,5 @@
 """Tests for WindsurfAdapter (S11 solidification)."""
+
 from __future__ import annotations
 
 import subprocess
@@ -21,32 +22,44 @@ def _ok_run(stdout: bytes = b"windsurf 1.0\n"):
 
 class TestWindsurfDiscovery:
     def test_find_windsurf_returns_first_working_path(self) -> None:
-        with patch(
-            "backend.agents.services.windsurf_adapter.os.path.exists", return_value=True,
-        ), patch(
-            "backend.agents.services.windsurf_adapter.subprocess.run",
-            return_value=_ok_run(),
+        with (
+            patch(
+                "backend.agents.services.windsurf_adapter.os.path.exists",
+                return_value=True,
+            ),
+            patch(
+                "backend.agents.services.windsurf_adapter.subprocess.run",
+                return_value=_ok_run(),
+            ),
         ):
             adapter = WindsurfAdapter()
             assert adapter.windsurf_cmd.endswith("/windsurf") or adapter.windsurf_cmd == "windsurf"
             assert adapter.available is True
 
     def test_find_windsurf_tolerates_file_not_found(self) -> None:
-        with patch(
-            "backend.agents.services.windsurf_adapter.os.path.exists", return_value=False,
-        ), patch(
-            "backend.agents.services.windsurf_adapter.subprocess.run",
-            side_effect=FileNotFoundError(),
+        with (
+            patch(
+                "backend.agents.services.windsurf_adapter.os.path.exists",
+                return_value=False,
+            ),
+            patch(
+                "backend.agents.services.windsurf_adapter.subprocess.run",
+                side_effect=FileNotFoundError(),
+            ),
         ):
             adapter = WindsurfAdapter()
             assert adapter.available is False
 
     def test_find_windsurf_tolerates_timeout(self) -> None:
-        with patch(
-            "backend.agents.services.windsurf_adapter.os.path.exists", return_value=True,
-        ), patch(
-            "backend.agents.services.windsurf_adapter.subprocess.run",
-            side_effect=subprocess.TimeoutExpired(cmd="windsurf", timeout=5),
+        with (
+            patch(
+                "backend.agents.services.windsurf_adapter.os.path.exists",
+                return_value=True,
+            ),
+            patch(
+                "backend.agents.services.windsurf_adapter.subprocess.run",
+                side_effect=subprocess.TimeoutExpired(cmd="windsurf", timeout=5),
+            ),
         ):
             adapter = WindsurfAdapter()
             assert adapter.available is False
@@ -54,10 +67,15 @@ class TestWindsurfDiscovery:
 
 class TestWindsurfOpenOps:
     def _make(self) -> WindsurfAdapter:
-        with patch(
-            "backend.agents.services.windsurf_adapter.os.path.exists", return_value=True,
-        ), patch(
-            "backend.agents.services.windsurf_adapter.subprocess.run", return_value=_ok_run(),
+        with (
+            patch(
+                "backend.agents.services.windsurf_adapter.os.path.exists",
+                return_value=True,
+            ),
+            patch(
+                "backend.agents.services.windsurf_adapter.subprocess.run",
+                return_value=_ok_run(),
+            ),
         ):
             return WindsurfAdapter()
 
@@ -90,11 +108,15 @@ class TestWindsurfOpenOps:
 @pytest.mark.asyncio
 class TestGenerate:
     async def test_generate_raises_when_unavailable(self) -> None:
-        with patch(
-            "backend.agents.services.windsurf_adapter.os.path.exists", return_value=False,
-        ), patch(
-            "backend.agents.services.windsurf_adapter.subprocess.run",
-            side_effect=FileNotFoundError(),
+        with (
+            patch(
+                "backend.agents.services.windsurf_adapter.os.path.exists",
+                return_value=False,
+            ),
+            patch(
+                "backend.agents.services.windsurf_adapter.subprocess.run",
+                side_effect=FileNotFoundError(),
+            ),
         ):
             adapter = WindsurfAdapter()
         with pytest.raises(RuntimeError, match="Windsurf not available"):

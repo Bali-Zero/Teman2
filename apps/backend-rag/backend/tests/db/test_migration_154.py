@@ -19,13 +19,11 @@ The migration must:
 
 Mirrors test_migration_152.py contract-test pattern.
 """
+
 from pathlib import Path
 
 MIGRATION_FILE = (
-    Path(__file__).resolve().parents[2]
-    / "db"
-    / "migrations_v2"
-    / "154_asset_provenance.sql"
+    Path(__file__).resolve().parents[2] / "db" / "migrations_v2" / "154_asset_provenance.sql"
 )
 
 
@@ -51,10 +49,18 @@ def test_asset_kind_enum_pinned_to_12_canonical_values():
     sql = MIGRATION_FILE.read_text()
     forward_section = sql.split("-- === ROLLBACK ===")[0]
     canonical = {
-        "war_room_draft", "war_room_post", "intel_finding",
-        "research_dossier", "cross_dossier_thesis", "weekly_strategic_brief",
-        "ultra_move", "kg_entity", "kg_proposal", "crm_enrichment_lookup",
-        "compliance_alert", "measurer_metric",
+        "war_room_draft",
+        "war_room_post",
+        "intel_finding",
+        "research_dossier",
+        "cross_dossier_thesis",
+        "weekly_strategic_brief",
+        "ultra_move",
+        "kg_entity",
+        "kg_proposal",
+        "crm_enrichment_lookup",
+        "compliance_alert",
+        "measurer_metric",
     }
     for value in canonical:
         assert f"'{value}'" in forward_section, (
@@ -62,9 +68,17 @@ def test_asset_kind_enum_pinned_to_12_canonical_values():
         )
     # Forbidden values from the alternate "OSINT-generic" handover list
     forbidden = {
-        "news_article", "regulation", "kbli_code", "telegram_post",
-        "kg_node", "kg_edge", "contradiction", "entity_link",
-        "document_hash", "visa_type", "query_result",
+        "news_article",
+        "regulation",
+        "kbli_code",
+        "telegram_post",
+        "kg_node",
+        "kg_edge",
+        "contradiction",
+        "entity_link",
+        "document_hash",
+        "visa_type",
+        "query_result",
     }
     for value in forbidden:
         assert f"'{value}'" not in forward_section, (
@@ -78,12 +92,16 @@ def test_admiralty_2_axis_confidence_columns():
     sql = MIGRATION_FILE.read_text()
     forward_section = sql.split("-- === ROLLBACK ===")[0]
     # Reliability A-F
-    assert "reliability  CHAR(1)  NOT NULL" in forward_section or \
-           "reliability CHAR(1) NOT NULL" in forward_section
+    assert (
+        "reliability  CHAR(1)  NOT NULL" in forward_section
+        or "reliability CHAR(1) NOT NULL" in forward_section
+    )
     assert "reliability IN ('A','B','C','D','E','F')" in forward_section
     # Credibility 1-6
-    assert "credibility  SMALLINT NOT NULL" in forward_section or \
-           "credibility SMALLINT NOT NULL" in forward_section
+    assert (
+        "credibility  SMALLINT NOT NULL" in forward_section
+        or "credibility SMALLINT NOT NULL" in forward_section
+    )
     assert "credibility BETWEEN 1 AND 6" in forward_section
     # Original confidence column SHOULD NOT exist
     assert "confidence DOUBLE PRECISION" not in forward_section, (
@@ -105,8 +123,7 @@ def test_invalidation_uses_3_typed_columns_not_dsl():
     # explanatory comments referencing the rejected design — strip comments
     # before asserting.
     code_only = "\n".join(
-        line for line in forward_section.splitlines()
-        if not line.strip().startswith("--")
+        line for line in forward_section.splitlines() if not line.strip().startswith("--")
     )
     # The rejected pattern was a NOT NULL column on its own line. Make sure
     # no such column declaration survived.
@@ -164,7 +181,7 @@ def test_partial_index_on_valid_until_excludes_invalidated():
     # The partial-index WHERE clause must require both:
     # valid_until IS NOT NULL AND invalidated_at IS NULL
     idx_block_start = forward_section.find("ix_asset_provenance_valid_until")
-    idx_block = forward_section[idx_block_start:idx_block_start + 300]
+    idx_block = forward_section[idx_block_start : idx_block_start + 300]
     assert "valid_until IS NOT NULL" in idx_block
     assert "invalidated_at IS NULL" in idx_block
 
@@ -185,12 +202,7 @@ def test_rollback_drops_indexes_then_table():
 def test_pg_channel_map_registers_asset_provenance():
     """Although the trigger ships in mig 155, PG_CHANNEL_MAP registration
     happens once (in the same PR as mig 153/154/155). Assert it's present."""
-    event_bus_path = (
-        Path(__file__).resolve().parents[2]
-        / "services"
-        / "events"
-        / "event_bus.py"
-    )
+    event_bus_path = Path(__file__).resolve().parents[2] / "services" / "events" / "event_bus.py"
     src = event_bus_path.read_text()
     assert '"asset_provenance": "mata_garuda.asset_provenance"' in src
 
@@ -230,7 +242,9 @@ def test_migration_set_updated_at_is_conditional():
     sql = MIGRATION_FILE.read_text()
     forward_section = sql.split("-- === ROLLBACK ===")[0]
     # Locate the function body
-    func_start = forward_section.find("CREATE OR REPLACE FUNCTION set_updated_at_asset_provenance()")
+    func_start = forward_section.find(
+        "CREATE OR REPLACE FUNCTION set_updated_at_asset_provenance()"
+    )
     assert func_start != -1
     func_end = forward_section.find("$$ LANGUAGE plpgsql;", func_start)
     func_body = forward_section[func_start:func_end]

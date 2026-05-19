@@ -224,12 +224,8 @@ def test_recommend_visas_family_match_adds_spouse_bonus(service: VisaOracleServi
         family=False,
     )
     # The spouse option should score higher when family=True
-    spouse_with = next(
-        (r for r in result_with_family if "Spouse" in r["visa_name"]), None
-    )
-    spouse_without = next(
-        (r for r in result_without_family if "Spouse" in r["visa_name"]), None
-    )
+    spouse_with = next((r for r in result_with_family if "Spouse" in r["visa_name"]), None)
+    spouse_without = next((r for r in result_without_family if "Spouse" in r["visa_name"]), None)
     if spouse_with and spouse_without:
         assert spouse_with["score"] > spouse_without["score"]
 

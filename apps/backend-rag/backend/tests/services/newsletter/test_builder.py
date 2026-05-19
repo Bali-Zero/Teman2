@@ -125,10 +125,12 @@ async def test_build_only_public_safe_dossiers(repos):
     intel, cognitive = repos
     # Return two rows — but the SQL already filters public_safe=TRUE so we
     # feed only public rows to confirm they pass through.
-    intel.fetch_safe = AsyncMock(return_value=[
-        _dossier_row(title="public A", public_safe=True),
-        _dossier_row(title="public B", public_safe=True),
-    ])
+    intel.fetch_safe = AsyncMock(
+        return_value=[
+            _dossier_row(title="public A", public_safe=True),
+            _dossier_row(title="public B", public_safe=True),
+        ]
+    )
     builder = WeeklyRoundupBuilder(intel_repo=intel, cognitive_repo=cognitive)
     content = await builder.build(now=_now())
     assert len(content.dossiers) == 2
@@ -158,9 +160,7 @@ async def test_dossiers_respect_default_cap(repos):
 @pytest.mark.asyncio
 async def test_theses_capped_to_three(repos):
     intel, cognitive = repos
-    cognitive.recent_theses = AsyncMock(return_value=[
-        _thesis(f"t{i}") for i in range(10)
-    ])
+    cognitive.recent_theses = AsyncMock(return_value=[_thesis(f"t{i}") for i in range(10)])
     builder = WeeklyRoundupBuilder(intel_repo=intel, cognitive_repo=cognitive)
     content = await builder.build(now=_now())
     assert len(content.theses) == DEFAULT_THESES_MAX

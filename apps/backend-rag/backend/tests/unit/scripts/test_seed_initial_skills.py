@@ -6,6 +6,7 @@ knowledge the Bali Zero platform has accumulated. Unlike
 ``catalog_initial_skills`` (AST scan, discovery), the seed is curated and
 intended for ``--apply`` in the Week 3-4 PR.
 """
+
 from __future__ import annotations
 
 from backend.scripts.seed_initial_skills import (

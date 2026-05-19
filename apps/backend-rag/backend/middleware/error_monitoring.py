@@ -49,6 +49,7 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
         stack). We only generate a new UUID when this middleware is used in
         isolation (e.g., a minimal test harness without the tracing layer).
         """
+
         def _as_id(value: Any) -> str | None:
             return value if isinstance(value, str) and value else None
 
@@ -150,7 +151,11 @@ class ErrorMonitoringMiddleware(BaseHTTPMiddleware):
             )
 
     async def _handle_error_response(
-        self, request: Request, response: Response, request_id: str, duration_ms: float,
+        self,
+        request: Request,
+        response: Response,
+        request_id: str,
+        duration_ms: float,
     ):
         """
         Handle error response (4xx/5xx)

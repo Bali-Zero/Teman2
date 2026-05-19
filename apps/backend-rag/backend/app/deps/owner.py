@@ -3,6 +3,7 @@
 Only zero@balizero.com and antonellosiano@balizero.com (alias of zero)
 are allowed. All other admins (asya, adit, etc.) receive 403.
 """
+
 from __future__ import annotations
 
 import logging
@@ -14,10 +15,12 @@ from backend.app.deps.auth import get_current_user
 
 logger = logging.getLogger(__name__)
 
-OWNER_EMAILS: frozenset[str] = frozenset({
-    "zero@balizero.com",
-    "antonellosiano@balizero.com",
-})
+OWNER_EMAILS: frozenset[str] = frozenset(
+    {
+        "zero@balizero.com",
+        "antonellosiano@balizero.com",
+    }
+)
 
 
 async def require_owner(

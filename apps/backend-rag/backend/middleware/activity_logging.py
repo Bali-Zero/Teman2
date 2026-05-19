@@ -127,6 +127,7 @@ class ActivityLoggingMiddleware(BaseHTTPMiddleware):
         session_id = self._get_session_id(request)
         ip_address = self._get_ip_address(request)
         user_agent = request.headers.get("User-Agent", "")
+
         # Correlation ID: state (set by RequestTracingMiddleware) → inbound
         # header → contextvar. Covers every composition order the app uses.
         # Accept only strings: test harnesses hand us MagicMock instances for

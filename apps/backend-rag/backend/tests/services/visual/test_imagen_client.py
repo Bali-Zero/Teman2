@@ -42,6 +42,7 @@ def _err_response(status: int, text: str = "error") -> MagicMock:
 
 # ── Configuration ─────────────────────────────────────────────────────
 
+
 def test_requires_api_key(monkeypatch):
     monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
@@ -65,6 +66,7 @@ def test_google_api_key_takes_precedence(monkeypatch):
 
 # ── Quality routing ───────────────────────────────────────────────────
 
+
 def test_quality_cost_mapping():
     assert ImagenQuality.ULTRA.cost_usd == Decimal("0.06")
     assert ImagenQuality.STANDARD.cost_usd == Decimal("0.04")
@@ -77,6 +79,7 @@ def test_quality_model_ids():
 
 
 # ── _parse_response ──────────────────────────────────────────────────
+
 
 def test_parse_response_happy_path():
     body = {
@@ -108,9 +111,7 @@ def test_parse_response_alt_imageBytes_field():
 
 def test_parse_response_nested_image_dict():
     body = {
-        "predictions": [
-            {"image": {"bytesBase64Encoded": _fake_b64_image()}}
-        ],
+        "predictions": [{"image": {"bytesBase64Encoded": _fake_b64_image()}}],
     }
     raw, _, err = _parse_response(body)
     assert err is None
@@ -130,6 +131,7 @@ def test_parse_response_bad_base64():
 
 
 # ── Generate with mock httpx ─────────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_generate_success_fast_quality():

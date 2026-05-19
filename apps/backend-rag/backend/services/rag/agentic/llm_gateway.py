@@ -391,7 +391,8 @@ class LLMGateway:
         # Record metrics if circuit opened
         if circuit.is_open():
             llm_circuit_breaker_opened_total.labels(
-                model=model_name, error_type=error_type,
+                model=model_name,
+                error_type=error_type,
             ).inc()
 
     def _get_fallback_chain(self, model_tier: int) -> list[str]:
@@ -536,7 +537,8 @@ class LLMGateway:
             openrouter_messages = conversation_messages or [{"role": "user", "content": message}]
 
             openrouter_response, token_usage = await self._call_openrouter(
-                openrouter_messages, system_prompt,
+                openrouter_messages,
+                system_prompt,
             )
 
             # Record cost
@@ -726,7 +728,9 @@ class LLMGateway:
                 if hasattr(response, "candidates") and response.candidates:
                     finish_reason = getattr(response.candidates[0], "finish_reason", None)
                 logger.warning(
-                    "⚠️ LLMGateway: Empty response from %s. Finish reason: %s. Possible safety block or content filter.", model_name, finish_reason,
+                    "⚠️ LLMGateway: Empty response from %s. Finish reason: %s. Possible safety block or content filter.",
+                    model_name,
+                    finish_reason,
                 )
 
             # Add user message to history
@@ -851,7 +855,9 @@ class LLMGateway:
                             else None
                         )
                         logger.warning(
-                            "⚠️ LLMGateway: Empty text response from %s. Finish reason: %s. Possible safety block.", model_name, finish_reason,
+                            "⚠️ LLMGateway: Empty text response from %s. Finish reason: %s. Possible safety block.",
+                            model_name,
+                            finish_reason,
                         )
                 else:
                     set_span_attribute("has_function_call", "false")
@@ -868,7 +874,9 @@ class LLMGateway:
             return text_content, response, token_usage
 
     async def _call_openrouter(
-        self, messages: list[dict], system_prompt: str,
+        self,
+        messages: list[dict],
+        system_prompt: str,
     ) -> tuple[str, TokenUsage]:
         """Call OpenRouter as final fallback when Gemini models are unavailable.
 

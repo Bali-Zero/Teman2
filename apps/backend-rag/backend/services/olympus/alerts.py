@@ -26,6 +26,7 @@ class OlympusAlerts:
             logger.info("[OLIMPO] (no alert_service) %s", message)
             return
         from backend.services.monitoring.alert_service import AlertLevel as AL
+
         await self._service.send_alert(
             title="Olympus DB Guardian",
             message=f"[OLIMPO] {message}",

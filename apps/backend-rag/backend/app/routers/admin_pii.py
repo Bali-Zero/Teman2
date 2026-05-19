@@ -33,13 +33,12 @@ async def list_violations(
     since: datetime | None = Query(
         default=None,
         description="Return violations with created_at >= since (ISO8601). "
-                    "Defaults to 24 hours ago.",
+        "Defaults to 24 hours ago.",
     ),
     limit: int = Query(default=100, ge=1, le=1000),
     cursor: int | None = Query(
         default=None,
-        description="Cursor from a previous page's `next_cursor`. "
-                    "Omit for the first page.",
+        description="Cursor from a previous page's `next_cursor`. Omit for the first page.",
     ),
     pattern: str | None = Query(
         default=None,

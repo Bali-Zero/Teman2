@@ -73,7 +73,8 @@ def orchestrator(mock_llm_gateway, mock_reasoning_engine):
         patch("backend.services.rag.agentic.orchestrator.SystemPromptBuilder"),
         patch("backend.services.rag.agentic.orchestrator.create_default_pipeline"),
         patch(
-            "backend.services.rag.agentic.orchestrator.LLMGateway", return_value=mock_llm_gateway,
+            "backend.services.rag.agentic.orchestrator.LLMGateway",
+            return_value=mock_llm_gateway,
         ),
         patch(
             "backend.services.rag.agentic.orchestrator.ReasoningEngine",
@@ -313,7 +314,8 @@ async def test_stream_query_team_early_route(orchestrator, mock_llm_gateway):
     ):
         # Mock tool execution for team_knowledge
         with patch(
-            "backend.services.rag.agentic.orchestrator.execute_tool", new_callable=AsyncMock,
+            "backend.services.rag.agentic.orchestrator.execute_tool",
+            new_callable=AsyncMock,
         ) as mock_exec:
             mock_exec.return_value = (
                 "Zainal info found and it is definitely longer than twenty characters now.",
@@ -369,7 +371,9 @@ async def test_stream_query_recall_gate(orchestrator, mock_llm_gateway):
 
     events = []
     async for event in orchestrator.stream_query(
-        query, user_id="test_user", conversation_history=history,
+        query,
+        user_id="test_user",
+        conversation_history=history,
     ):
         events.append(event)
 

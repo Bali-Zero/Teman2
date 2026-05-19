@@ -21,17 +21,19 @@ METRIC_CLICKS = "clicks"
 METRIC_LEADS_ATTRIBUTED = "leads_attributed"
 METRIC_VIDEO_VIEWS = "video_views"
 
-ALL_METRIC_NAMES: frozenset[str] = frozenset({
-    METRIC_REACH,
-    METRIC_IMPRESSIONS,
-    METRIC_SAVES,
-    METRIC_SHARES,
-    METRIC_LIKES,
-    METRIC_COMMENTS,
-    METRIC_CLICKS,
-    METRIC_LEADS_ATTRIBUTED,
-    METRIC_VIDEO_VIEWS,
-})
+ALL_METRIC_NAMES: frozenset[str] = frozenset(
+    {
+        METRIC_REACH,
+        METRIC_IMPRESSIONS,
+        METRIC_SAVES,
+        METRIC_SHARES,
+        METRIC_LIKES,
+        METRIC_COMMENTS,
+        METRIC_CLICKS,
+        METRIC_LEADS_ATTRIBUTED,
+        METRIC_VIDEO_VIEWS,
+    }
+)
 
 
 class SamplerError(RuntimeError):
@@ -57,7 +59,8 @@ class MetricDatum:
             import logging
 
             logging.getLogger(__name__).debug(
-                "non-canonical metric name: %s", self.metric_name,
+                "non-canonical metric name: %s",
+                self.metric_name,
             )
 
 
@@ -87,5 +90,4 @@ class MetricSampler(ABC):
         return platform in self.platforms
 
     @abstractmethod
-    async def sample(self, post: WarRoomPost) -> SamplerResult:
-        ...
+    async def sample(self, post: WarRoomPost) -> SamplerResult: ...

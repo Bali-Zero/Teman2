@@ -53,7 +53,9 @@ class SemanticCache:
         self.embedding_prefix = "embedding:"
 
     async def get_cached_result(
-        self, query: str, query_embedding: np.ndarray | None = None,
+        self,
+        query: str,
+        query_embedding: np.ndarray | None = None,
     ) -> dict[str, Any] | None:
         """
         Get cached result for query
@@ -132,7 +134,8 @@ class SemanticCache:
 
             # Add to embeddings index (sorted set by timestamp for LRU)
             await self.redis.zadd(
-                f"{self.cache_prefix}index", {embedding_key: datetime.now(tz=timezone.utc).timestamp()},
+                f"{self.cache_prefix}index",
+                {embedding_key: datetime.now(tz=timezone.utc).timestamp()},
             )
 
             # Enforce max cache size (LRU eviction)
@@ -225,7 +228,9 @@ class SemanticCache:
             if cache_size > self.max_cache_size:
                 num_to_remove = cache_size - self.max_cache_size
                 oldest_keys = await self.redis.zrange(
-                    f"{self.cache_prefix}index", 0, num_to_remove - 1,
+                    f"{self.cache_prefix}index",
+                    0,
+                    num_to_remove - 1,
                 )
 
                 # Remove oldest entries

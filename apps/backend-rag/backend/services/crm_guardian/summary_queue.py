@@ -24,6 +24,7 @@ for invariant 'I10b_summary_queue'. This lets Phase 1 ship the cascading
 trigger in drive_poll_service.py without inflating the queue before the
 worker LaunchAgent is deployed at Day 7.
 """
+
 from __future__ import annotations
 
 import logging
@@ -171,7 +172,10 @@ async def enqueue_client(
 
     logger.info(
         "enqueue_client: client %d → queue_id %d priority %d (%s)",
-        client_id, row["id"], priority, enqueued_by,
+        client_id,
+        row["id"],
+        priority,
+        enqueued_by,
     )
     return {
         "client_id": client_id,
@@ -215,7 +219,8 @@ async def enqueue_clients_for_company_folder(
     )
     if not company_row:
         logger.debug(
-            "enqueue cascade: folder %s not mapped to any company", drive_folder_id,
+            "enqueue cascade: folder %s not mapped to any company",
+            drive_folder_id,
         )
         return []
 
@@ -232,20 +237,26 @@ async def enqueue_clients_for_company_folder(
     if not client_rows:
         logger.info(
             "enqueue cascade: company %d (%s) has no active client links",
-            company_row["id"], company_row["company_name"],
+            company_row["id"],
+            company_row["company_name"],
         )
         return []
 
     logger.info(
         "enqueue cascade: folder %s → company %d (%s) → %d active clients",
-        drive_folder_id, company_row["id"], company_row["company_name"],
+        drive_folder_id,
+        company_row["id"],
+        company_row["company_name"],
         len(client_rows),
     )
 
     results: list[dict[str, Any]] = []
     for r in client_rows:
         result = await enqueue_client(
-            conn, r["client_id"], enqueued_by=enqueued_by, force=force,
+            conn,
+            r["client_id"],
+            enqueued_by=enqueued_by,
+            force=force,
         )
         results.append(result)
     return results

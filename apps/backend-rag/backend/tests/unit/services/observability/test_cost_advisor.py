@@ -39,19 +39,21 @@ def _make_pool_with_rows(rows):
 
 @pytest.mark.asyncio
 async def test_analyze_last_window_aggregates_by_endpoint_and_model():
-    pool, conn = _make_pool_with_rows([
-        {
-            "endpoint": "article_composer",
-            "model": "deepseek-chat",
-            "provider": "deepseek",
-            "call_count": 10,
-            "total_cost_usd": Decimal("0.50"),
-            "avg_cost_per_call_usd": Decimal("0.05"),
-            "p50_latency_ms": 400,
-            "p95_latency_ms": 800,
-            "success_rate": 0.95,
-        },
-    ])
+    pool, conn = _make_pool_with_rows(
+        [
+            {
+                "endpoint": "article_composer",
+                "model": "deepseek-chat",
+                "provider": "deepseek",
+                "call_count": 10,
+                "total_cost_usd": Decimal("0.50"),
+                "avg_cost_per_call_usd": Decimal("0.05"),
+                "p50_latency_ms": 400,
+                "p95_latency_ms": 800,
+                "success_rate": 0.95,
+            },
+        ]
+    )
 
     advisor = CostAdvisor(pg_pool=pool, oauth_client=MagicMock())
     summaries = await advisor.analyze_last_window(days=7)
@@ -162,31 +164,37 @@ async def test_propose_substitutions_returns_parsed_recommendations():
     pool, _ = _make_pool_with_rows([])
 
     mock_oauth = MagicMock()
-    mock_oauth.complete = AsyncMock(return_value=json.dumps([
-        {
-            "endpoint": "hot",
-            "current_model": "claude-sonnet-4-6",
-            "proposed_model": "deepseek-chat",
-            "estimated_monthly_saving_usd": "100.0",
-            "quality_tradeoff": "Lower writing quality",
-            "confidence": "medium",
-        },
-    ]))
+    mock_oauth.complete = AsyncMock(
+        return_value=json.dumps(
+            [
+                {
+                    "endpoint": "hot",
+                    "current_model": "claude-sonnet-4-6",
+                    "proposed_model": "deepseek-chat",
+                    "estimated_monthly_saving_usd": "100.0",
+                    "quality_tradeoff": "Lower writing quality",
+                    "confidence": "medium",
+                },
+            ]
+        )
+    )
 
     advisor = CostAdvisor(pg_pool=pool, oauth_client=mock_oauth)
-    advisor.analyze_last_window = AsyncMock(return_value=[
-        EndpointCostSummary(
-            endpoint="hot",
-            model="claude-sonnet-4-6",
-            provider="claude_oauth",
-            call_count=100,
-            total_cost_usd=Decimal("50"),
-            avg_cost_per_call_usd=Decimal("0.50"),
-            p50_latency_ms=500,
-            p95_latency_ms=1000,
-            success_rate=0.98,
-        ),
-    ])
+    advisor.analyze_last_window = AsyncMock(
+        return_value=[
+            EndpointCostSummary(
+                endpoint="hot",
+                model="claude-sonnet-4-6",
+                provider="claude_oauth",
+                call_count=100,
+                total_cost_usd=Decimal("50"),
+                avg_cost_per_call_usd=Decimal("0.50"),
+                p50_latency_ms=500,
+                p95_latency_ms=1000,
+                success_rate=0.98,
+            ),
+        ]
+    )
     advisor.detect_spikes = AsyncMock(return_value=set())
 
     recs = await advisor.propose_substitutions(top_n=5)
@@ -205,20 +213,29 @@ async def test_propose_substitutions_retries_once_on_malformed_json():
     pool, _ = _make_pool_with_rows([])
 
     mock_oauth = MagicMock()
-    mock_oauth.complete = AsyncMock(side_effect=[
-        "not json {",  # first call malformed
-        json.dumps([]),  # second call valid (empty array)
-    ])
+    mock_oauth.complete = AsyncMock(
+        side_effect=[
+            "not json {",  # first call malformed
+            json.dumps([]),  # second call valid (empty array)
+        ]
+    )
 
     advisor = CostAdvisor(pg_pool=pool, oauth_client=mock_oauth)
-    advisor.analyze_last_window = AsyncMock(return_value=[
-        EndpointCostSummary(
-            endpoint="x", model="m", provider="p",
-            call_count=1, total_cost_usd=Decimal("1"),
-            avg_cost_per_call_usd=Decimal("1"),
-            p50_latency_ms=1, p95_latency_ms=1, success_rate=1.0,
-        ),
-    ])
+    advisor.analyze_last_window = AsyncMock(
+        return_value=[
+            EndpointCostSummary(
+                endpoint="x",
+                model="m",
+                provider="p",
+                call_count=1,
+                total_cost_usd=Decimal("1"),
+                avg_cost_per_call_usd=Decimal("1"),
+                p50_latency_ms=1,
+                p95_latency_ms=1,
+                success_rate=1.0,
+            ),
+        ]
+    )
     advisor.detect_spikes = AsyncMock(return_value=set())
 
     recs = await advisor.propose_substitutions(top_n=5)
@@ -231,26 +248,37 @@ async def test_propose_substitutions_pins_confidence_high_on_spike():
     pool, _ = _make_pool_with_rows([])
 
     mock_oauth = MagicMock()
-    mock_oauth.complete = AsyncMock(return_value=json.dumps([
-        {
-            "endpoint": "spiky_ep",
-            "current_model": "x",
-            "proposed_model": "y",
-            "estimated_monthly_saving_usd": "10.0",
-            "quality_tradeoff": "ok",
-            "confidence": "low",  # will be overridden to 'high' because it's a spike
-        },
-    ]))
+    mock_oauth.complete = AsyncMock(
+        return_value=json.dumps(
+            [
+                {
+                    "endpoint": "spiky_ep",
+                    "current_model": "x",
+                    "proposed_model": "y",
+                    "estimated_monthly_saving_usd": "10.0",
+                    "quality_tradeoff": "ok",
+                    "confidence": "low",  # will be overridden to 'high' because it's a spike
+                },
+            ]
+        )
+    )
 
     advisor = CostAdvisor(pg_pool=pool, oauth_client=mock_oauth)
-    advisor.analyze_last_window = AsyncMock(return_value=[
-        EndpointCostSummary(
-            endpoint="spiky_ep", model="x", provider="p",
-            call_count=1, total_cost_usd=Decimal("30"),
-            avg_cost_per_call_usd=Decimal("30"),
-            p50_latency_ms=1, p95_latency_ms=1, success_rate=1.0,
-        ),
-    ])
+    advisor.analyze_last_window = AsyncMock(
+        return_value=[
+            EndpointCostSummary(
+                endpoint="spiky_ep",
+                model="x",
+                provider="p",
+                call_count=1,
+                total_cost_usd=Decimal("30"),
+                avg_cost_per_call_usd=Decimal("30"),
+                p50_latency_ms=1,
+                p95_latency_ms=1,
+                success_rate=1.0,
+            ),
+        ]
+    )
     advisor.detect_spikes = AsyncMock(return_value={"spiky_ep"})
 
     recs = await advisor.propose_substitutions(top_n=5)

@@ -17,7 +17,8 @@ from contextvars import ContextVar
 UNKNOWN_CORRELATION_ID = "-"
 
 _correlation_id: ContextVar[str] = ContextVar(
-    "nuzantara_correlation_id", default=UNKNOWN_CORRELATION_ID,
+    "nuzantara_correlation_id",
+    default=UNKNOWN_CORRELATION_ID,
 )
 
 

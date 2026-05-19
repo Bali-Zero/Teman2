@@ -53,7 +53,10 @@ async def run() -> int:
 
     try:
         pool = await asyncpg.create_pool(
-            dsn, min_size=1, max_size=2, command_timeout=60,
+            dsn,
+            min_size=1,
+            max_size=2,
+            command_timeout=60,
         )
     except Exception as exc:  # noqa: BLE001
         logger.error("pool init failed: %s", exc, exc_info=True)
@@ -63,7 +66,9 @@ async def run() -> int:
         repo = WarRoomRepository(db_pool=pool)
         telegram = TelegramReviewAdapter()
         alerter = MissedRunsAlerter(
-            repo=repo, telegram=telegram, owner_chat_id=owner_chat_id,
+            repo=repo,
+            telegram=telegram,
+            owner_chat_id=owner_chat_id,
         )
         result = await alerter.sweep_once()
         sys.stdout.write(

@@ -21,7 +21,9 @@ class MockRunner(CLIRunner):
     fail: bool = False
 
     async def run(
-        self, prompt: str, timeout: int | None = None,
+        self,
+        prompt: str,
+        timeout: int | None = None,
     ) -> RunnerResult:
         idx = self.call_count
         self.call_count += 1
@@ -65,10 +67,14 @@ def _patch_json(css: str, rationale: str = "ok") -> str:
 
 @pytest.mark.asyncio
 async def test_propose_patch_happy_path():
-    runner = MockRunner(scripted=[_patch_json(
-        ".headline { font-size: 42px; /* reason: overflow */ }",
-        "reduced headline size",
-    )])
+    runner = MockRunner(
+        scripted=[
+            _patch_json(
+                ".headline { font-size: 42px; /* reason: overflow */ }",
+                "reduced headline size",
+            )
+        ]
+    )
     patcher = LayoutPatcher(runner=runner)
     patch = await patcher.propose_patch(
         html_source="<html><head><style>.headline{font-size:64px}</style></head></html>",
@@ -133,10 +139,14 @@ async def test_propose_patch_bad_json_rejected():
 async def test_propose_patch_trims_long_html():
     """5000-char cap shouldn't crash even if html_source is massive."""
     huge_html = "<html>" + ("a" * 100_000) + "</html>"
-    runner = MockRunner(scripted=[_patch_json(
-        ".x { padding: 10px; }",
-        "minor tweak",
-    )])
+    runner = MockRunner(
+        scripted=[
+            _patch_json(
+                ".x { padding: 10px; }",
+                "minor tweak",
+            )
+        ]
+    )
     patcher = LayoutPatcher(runner=runner)
     patch = await patcher.propose_patch(
         html_source=huge_html,

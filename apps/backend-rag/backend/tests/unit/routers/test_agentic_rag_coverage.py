@@ -146,8 +146,11 @@ class TestModels:
 
     def test_agentic_query_response(self):
         resp = AgenticQueryResponse(
-            answer="test", sources=[], context_length=0,
-            execution_time=0.1, route_used="test",
+            answer="test",
+            sources=[],
+            context_length=0,
+            execution_time=0.1,
+            route_used="test",
         )
         assert resp.abstain is False
         assert resp.evidence_score == 0.0
@@ -155,13 +158,21 @@ class TestModels:
 
     def test_agentic_query_response_with_all_fields(self):
         resp = AgenticQueryResponse(
-            answer="test", sources=[{"s": "1"}], context_length=5,
-            execution_time=1.2, route_used="rag",
-            tools_called=3, total_steps=4,
-            debug_info={"model": "test"}, ab_test={"id": "1"},
-            abstain=True, abstain_reason="low confidence",
-            evidence_score=0.05, workflow={"steps": []},
-            reasoning="chain", detected_entities=[{"type": "kbli", "value": "56101"}],
+            answer="test",
+            sources=[{"s": "1"}],
+            context_length=5,
+            execution_time=1.2,
+            route_used="rag",
+            tools_called=3,
+            total_steps=4,
+            debug_info={"model": "test"},
+            ab_test={"id": "1"},
+            abstain=True,
+            abstain_reason="low confidence",
+            evidence_score=0.05,
+            workflow={"steps": []},
+            reasoning="chain",
+            detected_entities=[{"type": "kbli", "value": "56101"}],
         )
         assert resp.abstain is True
         assert resp.abstain_reason == "low confidence"
@@ -177,14 +188,20 @@ class TestGetConversationHistory:
     @pytest.mark.asyncio
     async def test_no_db_pool(self):
         result = await get_conversation_history_for_agentic(
-            conversation_id=1, session_id="s1", user_id="u1", db_pool=None,
+            conversation_id=1,
+            session_id="s1",
+            user_id="u1",
+            db_pool=None,
         )
         assert result == []
 
     @pytest.mark.asyncio
     async def test_no_user_id(self):
         result = await get_conversation_history_for_agentic(
-            conversation_id=1, session_id="s1", user_id=None, db_pool=MagicMock(),
+            conversation_id=1,
+            session_id="s1",
+            user_id=None,
+            db_pool=MagicMock(),
         )
         assert result == []
 
@@ -204,7 +221,10 @@ class TestGetConversationHistory:
         pool.acquire = MagicMock(return_value=acq)
 
         result = await get_conversation_history_for_agentic(
-            conversation_id=1, session_id=None, user_id="test@test.com", db_pool=pool,
+            conversation_id=1,
+            session_id=None,
+            user_id="test@test.com",
+            db_pool=pool,
         )
         assert len(result) == 2
 
@@ -220,7 +240,10 @@ class TestGetConversationHistory:
         pool.acquire = MagicMock(return_value=acq)
 
         result = await get_conversation_history_for_agentic(
-            conversation_id=None, session_id="sess1", user_id="test@test.com", db_pool=pool,
+            conversation_id=None,
+            session_id="sess1",
+            user_id="test@test.com",
+            db_pool=pool,
         )
         assert result == []
 
@@ -239,7 +262,10 @@ class TestGetConversationHistory:
         pool.acquire = MagicMock(return_value=acq)
 
         result = await get_conversation_history_for_agentic(
-            conversation_id=None, session_id=None, user_id="12345", db_pool=pool,
+            conversation_id=None,
+            session_id=None,
+            user_id="12345",
+            db_pool=pool,
         )
         assert result == []
 
@@ -260,7 +286,10 @@ class TestGetConversationHistory:
         pool.acquire = MagicMock(return_value=acq)
 
         result = await get_conversation_history_for_agentic(
-            conversation_id=1, session_id=None, user_id="test@test.com", db_pool=pool,
+            conversation_id=1,
+            session_id=None,
+            user_id="test@test.com",
+            db_pool=pool,
         )
         # The function parses the JSON string correctly
         assert isinstance(result, list)
@@ -275,6 +304,9 @@ class TestGetConversationHistory:
         pool.acquire = MagicMock(return_value=acq)
 
         result = await get_conversation_history_for_agentic(
-            conversation_id=1, session_id=None, user_id="test@test.com", db_pool=pool,
+            conversation_id=1,
+            session_id=None,
+            user_id="test@test.com",
+            db_pool=pool,
         )
         assert result == []

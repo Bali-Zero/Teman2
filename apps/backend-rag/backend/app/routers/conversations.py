@@ -40,7 +40,9 @@ SUMMARY_MAX_LENGTH = 200  # Max length for auto-generated summaries
 
 
 async def _generate_and_update_title(
-    conversation_id: int, first_user_message: str, db_pool: asyncpg.Pool,
+    conversation_id: int,
+    first_user_message: str,
+    db_pool: asyncpg.Pool,
 ) -> None:
     """
     Background task to generate and store conversation title.
@@ -59,7 +61,8 @@ async def _generate_and_update_title(
     try:
         # Generate title using LLM
         title = await generate_conversation_title(
-            conversation_id=str(conversation_id), first_user_message=first_user_message,
+            conversation_id=str(conversation_id),
+            first_user_message=first_user_message,
         )
 
         if title:
@@ -84,13 +87,17 @@ async def _generate_and_update_title(
             )
         else:
             logger.info(
-                "Title generation returned None for conversation %s, using fallback", conversation_id,
+                "Title generation returned None for conversation %s, using fallback",
+                conversation_id,
             )
 
     except Exception as e:
         # Don't fail conversation save if title generation fails
         log_warning(
-            logger, "Title generation failed", conversation_id=conversation_id, error=str(e),
+            logger,
+            "Title generation failed",
+            conversation_id=conversation_id,
+            error=str(e),
         )
 
 
@@ -217,7 +224,9 @@ async def save_conversation(
     user_email = current_user["email"]
 
     # Generate session_id if not provided
-    session_id = request.session_id or f"session-{datetime.now(tz=timezone.utc).strftime('%Y%m%d-%H%M%S')}"
+    session_id = (
+        request.session_id or f"session-{datetime.now(tz=timezone.utc).strftime('%Y%m%d-%H%M%S')}"
+    )
 
     # RACE CONDITION PROTECTION: Two-phase commit pattern
     # Phase 1: Save to cache (fast, always succeeds)
@@ -300,7 +309,8 @@ async def save_conversation(
                                         name=f"conv_title:{conversation_id}",
                                     )
                                     logger.info(
-                                        "🎯 Triggered async title generation for conversation %s", conversation_id,
+                                        "🎯 Triggered async title generation for conversation %s",
+                                        conversation_id,
                                     )
 
                             break  # Success - exit retry loop

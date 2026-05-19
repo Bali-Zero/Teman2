@@ -33,6 +33,7 @@ Symbiosis Law 2 enforcement note:
   Symbiosis Law 2 boundary. The X1 finding from the multi-LLM review is
   honored — DDL claim downgraded to "safe default".
 """
+
 from __future__ import annotations
 
 import logging
@@ -139,7 +140,9 @@ def _validate_inputs(
     if credibility not in CREDIBILITY_VALUES:
         raise ValueError(f"credibility={credibility!r} not in {sorted(CREDIBILITY_VALUES)!r}")
     if invalidation_mode not in INVALIDATION_MODES:
-        raise ValueError(f"invalidation_mode={invalidation_mode!r} not in {sorted(INVALIDATION_MODES)!r}")
+        raise ValueError(
+            f"invalidation_mode={invalidation_mode!r} not in {sorted(INVALIDATION_MODES)!r}"
+        )
     if tlp not in TLP_VALUES:
         raise ValueError(f"tlp={tlp!r} not in {sorted(TLP_VALUES)!r}")
 
@@ -210,16 +213,26 @@ async def tag_provenance(
     async with pool.acquire() as conn:
         row_id: int = await conn.fetchval(
             sql,
-            asset_kind, asset_id, source,
-            reliability, credibility,
+            asset_kind,
+            asset_id,
+            source,
+            reliability,
+            credibility,
             owner,
-            valid_until, invalidation_event_topic, invalidation_mode,
+            valid_until,
+            invalidation_event_topic,
+            invalidation_mode,
             tlp,
             metadata or {},
         )
     logger.debug(
         "provenance tagged: kind=%s id=%s reliability=%s credibility=%s tlp=%s row_id=%s",
-        asset_kind, asset_id, reliability, credibility, tlp, row_id,
+        asset_kind,
+        asset_id,
+        reliability,
+        credibility,
+        tlp,
+        row_id,
     )
     return row_id
 
@@ -232,9 +245,7 @@ async def get_provenance(
 ) -> ProvenanceRow | None:
     """Fetch the current provenance row for an asset, or None if not tagged."""
     if asset_kind not in ASSET_KIND_AUTHORITATIVE:
-        raise ValueError(
-            f"asset_kind={asset_kind!r} not in canonical 12-value set"
-        )
+        raise ValueError(f"asset_kind={asset_kind!r} not in canonical 12-value set")
     sql = """
         SELECT
             id, asset_kind, asset_id, source,
@@ -285,14 +296,8 @@ async def list_expired_assets(
     asset_invalidated events for.
     """
     if asset_kind is not None and asset_kind not in ASSET_KIND_AUTHORITATIVE:
-        raise ValueError(
-            f"asset_kind={asset_kind!r} not in canonical 12-value set"
-        )
-    where = (
-        "valid_until < NOW() "
-        "AND invalidated_at IS NULL "
-        "AND invalidation_mode = 'auto'"
-    )
+        raise ValueError(f"asset_kind={asset_kind!r} not in canonical 12-value set")
+    where = "valid_until < NOW() AND invalidated_at IS NULL AND invalidation_mode = 'auto'"
     args: list[Any] = []
     if asset_kind is not None:
         where += " AND asset_kind = $1"

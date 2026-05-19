@@ -17,7 +17,9 @@ class DriveOperationsManager:
     di googleapiclient.discovery (basato su httplib2 sincrono).
     """
 
-    def __init__(self, auth_manager: Any, http_client: httpx.AsyncClient, audit: Any | None = None) -> None:
+    def __init__(
+        self, auth_manager: Any, http_client: httpx.AsyncClient, audit: Any | None = None
+    ) -> None:
         self.auth_manager = auth_manager
         self.http_client = http_client
         self.audit = audit  # Permette al decoratore @drive_operation di usare l'istanza corretta
@@ -59,7 +61,9 @@ class DriveOperationsManager:
 
         # 4. Chiamata HTTPX puramente asincrona
         response = await self.http_client.get(
-            "https://www.googleapis.com/drive/v3/files", headers=headers, params=params,
+            "https://www.googleapis.com/drive/v3/files",
+            headers=headers,
+            params=params,
         )
 
         # Propaga l'errore HTTP (che verrà catturato dal decoratore @drive_operation per i log)
@@ -100,7 +104,9 @@ class DriveOperationsManager:
         }
 
         response = await self.http_client.get(
-            "https://www.googleapis.com/drive/v3/files", headers=headers, params=params,
+            "https://www.googleapis.com/drive/v3/files",
+            headers=headers,
+            params=params,
         )
         response.raise_for_status()
         return response.json().get("files", [])
@@ -118,7 +124,9 @@ class DriveOperationsManager:
         params = {"fields": "id, name, mimeType, size, modifiedTime, webViewLink, thumbnailLink"}
 
         response = await self.http_client.get(
-            f"https://www.googleapis.com/drive/v3/files/{file_id}", headers=headers, params=params,
+            f"https://www.googleapis.com/drive/v3/files/{file_id}",
+            headers=headers,
+            params=params,
         )
         response.raise_for_status()
 

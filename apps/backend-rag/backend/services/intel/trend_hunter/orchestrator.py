@@ -93,11 +93,7 @@ class TrendHunterOrchestrator:
         default_half_life_hours: int = 48,
     ) -> None:
         self.repo = repo
-        self.degraded = (
-            force_degraded
-            if force_degraded is not None
-            else not _is_pro_host()
-        )
+        self.degraded = force_degraded if force_degraded is not None else not _is_pro_host()
         if adapters is None:
             adapters = self._default_adapters(degraded=self.degraded)
         self.adapters = adapters
@@ -200,7 +196,8 @@ class TrendHunterOrchestrator:
         return None
 
     async def _link_entities(
-        self, sig: NormalizedSignal,
+        self,
+        sig: NormalizedSignal,
     ) -> list[dict[str, str]] | None:
         """KG entity linking — deferred.
 

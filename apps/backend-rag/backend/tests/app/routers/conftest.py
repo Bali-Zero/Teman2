@@ -8,6 +8,7 @@ Provides:
 Tests skip cleanly when the test DB is unreachable or lacks the schema
 they need (e.g. CI's empty postgres:15 service container).
 """
+
 from __future__ import annotations
 
 import os

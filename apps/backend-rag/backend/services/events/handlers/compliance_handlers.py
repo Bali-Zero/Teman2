@@ -3,6 +3,7 @@
 These handlers subscribe to EventBus event types, not raw PG channel names.
 The raw channel mapping lives in ``backend.services.events.event_bus``.
 """
+
 from __future__ import annotations
 
 import logging
@@ -18,6 +19,7 @@ async def on_compliance_alert_created(payload: dict[str, Any]) -> None:
         return
     try:
         from backend.core.cache import invalidate_cache
+
         await invalidate_cache(f"zantara:compliance_alerts:{client_id}:*")
         await invalidate_cache("zantara:compliance_metrics:*")
     except Exception as exc:
@@ -29,6 +31,7 @@ async def on_compliance_alert_outcome(payload: dict[str, Any]) -> None:
     logger.info("outcome recorded for alert %s: %s", alert_id, payload.get("outcome"))
     try:
         from backend.core.cache import invalidate_cache
+
         await invalidate_cache("zantara:compliance_metrics:*")
     except Exception as exc:
         logger.debug("compliance outcome cache invalidation skipped: %s", exc)
@@ -40,6 +43,7 @@ async def on_intel_validation_complete(payload: dict[str, Any]) -> None:
         return
     try:
         from backend.core.cache import invalidate_cache
+
         await invalidate_cache(f"zantara:intel_validation:{staging_id}:*")
     except Exception as exc:
         logger.debug("intel validation cache invalidation skipped: %s", exc)
@@ -48,7 +52,9 @@ async def on_intel_validation_complete(payload: dict[str, Any]) -> None:
 async def on_lkpm_readypack_generated(payload: dict[str, Any]) -> None:
     logger.info(
         "lkpm_readypack_generated: client=%s period=%s drive=%s",
-        payload.get("client_id"), payload.get("period"), payload.get("drive_url"),
+        payload.get("client_id"),
+        payload.get("period"),
+        payload.get("drive_url"),
     )
 
 

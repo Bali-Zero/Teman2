@@ -25,6 +25,7 @@ def png() -> bytes:
 
 # ── LayoutFlags.requires_patch ─────────────────────────────────────
 
+
 def test_requires_patch_true_on_overflow():
     f = LayoutFlags(
         text_overflow=True,
@@ -99,17 +100,22 @@ def test_requires_patch_false_on_clean():
 
 # ── LayoutQAClient ─────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_layout_qa_parses_flags(png):
     mock_client = AsyncMock(spec=httpx.AsyncClient)
-    mock_client.post = AsyncMock(return_value=_ok_resp({
-        "text_overflow": False,
-        "low_contrast_regions": [],
-        "element_overlap": False,
-        "logo_visible": True,
-        "logo_position_ok": True,
-        "readability_score_0_10": 9,
-    }))
+    mock_client.post = AsyncMock(
+        return_value=_ok_resp(
+            {
+                "text_overflow": False,
+                "low_contrast_regions": [],
+                "element_overlap": False,
+                "logo_visible": True,
+                "logo_position_ok": True,
+                "readability_score_0_10": 9,
+            }
+        )
+    )
     client = LayoutQAClient(http_client=mock_client)
 
     flags = await client.analyze(png)
@@ -121,14 +127,18 @@ async def test_layout_qa_parses_flags(png):
 @pytest.mark.asyncio
 async def test_layout_qa_detects_problems(png):
     mock_client = AsyncMock(spec=httpx.AsyncClient)
-    mock_client.post = AsyncMock(return_value=_ok_resp({
-        "text_overflow": True,
-        "low_contrast_regions": ["body paragraph"],
-        "element_overlap": False,
-        "logo_visible": True,
-        "logo_position_ok": True,
-        "readability_score_0_10": 5,
-    }))
+    mock_client.post = AsyncMock(
+        return_value=_ok_resp(
+            {
+                "text_overflow": True,
+                "low_contrast_regions": ["body paragraph"],
+                "element_overlap": False,
+                "logo_visible": True,
+                "logo_position_ok": True,
+                "readability_score_0_10": 5,
+            }
+        )
+    )
     client = LayoutQAClient(http_client=mock_client)
 
     flags = await client.analyze(png)
@@ -178,14 +188,18 @@ async def test_layout_qa_connect_error(png):
 @pytest.mark.asyncio
 async def test_layout_qa_payload_shape(png):
     mock_client = AsyncMock(spec=httpx.AsyncClient)
-    mock_client.post = AsyncMock(return_value=_ok_resp({
-        "text_overflow": False,
-        "low_contrast_regions": [],
-        "element_overlap": False,
-        "logo_visible": True,
-        "logo_position_ok": True,
-        "readability_score_0_10": 8,
-    }))
+    mock_client.post = AsyncMock(
+        return_value=_ok_resp(
+            {
+                "text_overflow": False,
+                "low_contrast_regions": [],
+                "element_overlap": False,
+                "logo_visible": True,
+                "logo_position_ok": True,
+                "readability_score_0_10": 8,
+            }
+        )
+    )
     client = LayoutQAClient(http_client=mock_client)
 
     await client.analyze(png)

@@ -108,9 +108,7 @@ def _load_full_pricing(lang: str = "en") -> str:
     longer surface ``code = name`` keys; the entry's own ``name`` field
     is the human label.
     """
-    pricing_file = (
-        Path(__file__).parent.parent / "data" / "bali_zero_official_prices_2026.json"
-    )
+    pricing_file = Path(__file__).parent.parent / "data" / "bali_zero_official_prices_2026.json"
     try:
         if not pricing_file.exists():
             return ""
@@ -119,10 +117,12 @@ def _load_full_pricing(lang: str = "en") -> str:
         services = data.get("services", {})
 
         category_labels = _CATEGORY_LABELS_BY_LANG.get(
-            lang, _CATEGORY_LABELS_BY_LANG["en"],
+            lang,
+            _CATEGORY_LABELS_BY_LANG["en"],
         )
         intro = _EXCHANGE_RATE_INTRO_BY_LANG.get(
-            lang, _EXCHANGE_RATE_INTRO_BY_LANG["en"],
+            lang,
+            _EXCHANGE_RATE_INTRO_BY_LANG["en"],
         )
         approx = _APPROX_BY_LANG.get(lang, _APPROX_BY_LANG["en"])
 
@@ -273,37 +273,37 @@ def build_system_prompt(
     # client never sees Italian instructions in their system context.
     expert_rules: dict[str, str] = {
         "en": (
-            "CRITICAL RULE: NEVER tell the client \"I don't have access\", "
-            "\"I have no info in the system\", \"the data isn't loaded\", or "
-            "\"I can't search\". You are an expert consultant, not a piece of "
+            'CRITICAL RULE: NEVER tell the client "I don\'t have access", '
+            '"I have no info in the system", "the data isn\'t loaded", or '
+            '"I can\'t search". You are an expert consultant, not a piece of '
             "software. If you don't know something, say \"let me check with "
-            "the team and get back to you\" or answer with what you know. "
+            'the team and get back to you" or answer with what you know. '
             "NEVER ask the client to give you information about regulations — "
             "you are the expert."
         ),
         "it": (
-            "REGOLA CRITICA: Non dire MAI al cliente che \"non hai accesso\", "
-            "\"non hai info nel sistema\", \"non ti sono stati caricati i dati\", "
-            "\"non posso cercare\". Tu sei un consulente esperto, non un software. "
-            "Se non conosci qualcosa, dì \"verifico col team e ti faccio sapere\" "
+            'REGOLA CRITICA: Non dire MAI al cliente che "non hai accesso", '
+            '"non hai info nel sistema", "non ti sono stati caricati i dati", '
+            '"non posso cercare". Tu sei un consulente esperto, non un software. '
+            'Se non conosci qualcosa, dì "verifico col team e ti faccio sapere" '
             "oppure rispondi con quello che sai sull'argomento. Non chiedere MAI "
             "al cliente di darti informazioni su regolamenti — sei tu l'esperto."
         ),
         "id": (
-            "ATURAN KRITIS: JANGAN PERNAH bilang ke klien \"saya tidak punya "
-            "akses\", \"tidak ada info di sistem\", \"data belum dimuat\", atau "
-            "\"saya tidak bisa mencari\". Anda adalah konsultan ahli, bukan "
-            "perangkat lunak. Jika tidak tahu sesuatu, katakan \"saya cek dengan "
-            "tim dan akan kabari Anda\" atau jawab dengan yang Anda ketahui. "
+            'ATURAN KRITIS: JANGAN PERNAH bilang ke klien "saya tidak punya '
+            'akses", "tidak ada info di sistem", "data belum dimuat", atau '
+            '"saya tidak bisa mencari". Anda adalah konsultan ahli, bukan '
+            'perangkat lunak. Jika tidak tahu sesuatu, katakan "saya cek dengan '
+            'tim dan akan kabari Anda" atau jawab dengan yang Anda ketahui. '
             "JANGAN PERNAH minta klien memberikan informasi tentang regulasi — "
             "Anda yang ahlinya."
         ),
         "de": (
-            "KRITISCHE REGEL: Sagen Sie dem Kunden NIEMALS \"ich habe keinen "
-            "Zugriff\", \"ich habe keine Infos im System\", \"die Daten sind "
-            "nicht geladen\" oder \"ich kann nicht suchen\". Sie sind ein "
+            'KRITISCHE REGEL: Sagen Sie dem Kunden NIEMALS "ich habe keinen '
+            'Zugriff", "ich habe keine Infos im System", "die Daten sind '
+            'nicht geladen" oder "ich kann nicht suchen". Sie sind ein '
             "Experte, keine Software. Wenn Sie etwas nicht wissen, sagen Sie "
-            "\"ich kläre das mit dem Team und melde mich\" oder antworten mit "
+            '"ich kläre das mit dem Team und melde mich" oder antworten mit '
             "dem, was Sie wissen."
         ),
     }

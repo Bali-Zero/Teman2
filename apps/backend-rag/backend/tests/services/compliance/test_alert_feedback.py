@@ -9,6 +9,7 @@ Rules (decision #2):
 
 Kill-switch: system_settings.compliance_alert_autotune_enabled must be 'true'.
 """
+
 from __future__ import annotations
 
 from datetime import date, timedelta
@@ -103,7 +104,9 @@ async def test_retrain_disabled_by_default(db_tx: asyncpg.Connection, sample_cli
 
 
 @pytest.mark.asyncio
-async def test_low_precision_widens_threshold(db_tx: asyncpg.Connection, sample_client: dict) -> None:
+async def test_low_precision_widens_threshold(
+    db_tx: asyncpg.Connection, sample_client: dict
+) -> None:
     """p < 0.6 and n >= 20 → threshold += 1."""
     await _enable_autotune(db_tx)
     await db_tx.execute(
@@ -119,9 +122,7 @@ async def test_low_precision_widens_threshold(db_tx: asyncpg.Connection, sample_
         "SELECT value FROM system_settings WHERE key='compliance_alert_threshold_urgent_visa_expiry'",
     )
     assert int(new) == 8  # 7 + 1
-    assert ("visa_expiry", 7, 8) in [
-        (c["category"], c["old"], c["new"]) for c in result["changed"]
-    ]
+    assert ("visa_expiry", 7, 8) in [(c["category"], c["old"], c["new"]) for c in result["changed"]]
 
 
 @pytest.mark.asyncio

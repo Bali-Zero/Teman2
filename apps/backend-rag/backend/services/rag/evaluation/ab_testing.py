@@ -290,7 +290,11 @@ class ABTestManager:
                 metadata=metadata,
             )
             logger.debug(
-                "Recorded metric '%s=%s' for experiment '%s' variant '%s'", metric, value, experiment, variant,
+                "Recorded metric '%s=%s' for experiment '%s' variant '%s'",
+                metric,
+                value,
+                experiment,
+                variant,
             )
         except Exception as e:
             logger.error("Failed to record metric: %s", e)
@@ -340,7 +344,9 @@ class ABTestManager:
                     and len(treatment_data) >= config.min_sample_size
                 ):
                     significance_results[metric_name] = self._calculate_significance(
-                        control_data, treatment_data, config.confidence_level,
+                        control_data,
+                        treatment_data,
+                        config.confidence_level,
                     )
                 else:
                     significance_results[metric_name] = {
@@ -425,10 +431,12 @@ class ABTestManager:
         treatment_mean = sum(treatment_data) / len(treatment_data)
 
         control_var = sum((x - control_mean) ** 2 for x in control_data) / max(
-            len(control_data) - 1, 1,
+            len(control_data) - 1,
+            1,
         )
         treatment_var = sum((x - treatment_mean) ** 2 for x in treatment_data) / max(
-            len(treatment_data) - 1, 1,
+            len(treatment_data) - 1,
+            1,
         )
 
         # Standard error of the difference

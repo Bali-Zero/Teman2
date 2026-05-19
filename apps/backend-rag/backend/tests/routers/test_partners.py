@@ -11,6 +11,7 @@ Fixture layout:
   - app(role): parameterisable FastAPI app with dependency overrides
   - client_for(role): TestClient helper
 """
+
 from __future__ import annotations
 
 import uuid
@@ -84,24 +85,41 @@ def _partner_dict(**overrides: Any) -> dict[str, Any]:
 
 # ── User fixtures ────────────────────────────────────────────────────────────
 
+
 @pytest.fixture
 def fake_admin() -> dict[str, Any]:
     # CRIT-3: finance.mark_paid is now load-bearing — admin role alone is
     # insufficient. Admin users that perform finance actions must hold the perm.
-    return {"user_id": str(_USER_ID), "email": "admin@balizero.com", "role": "admin", "permissions": ["finance.mark_paid"]}
+    return {
+        "user_id": str(_USER_ID),
+        "email": "admin@balizero.com",
+        "role": "admin",
+        "permissions": ["finance.mark_paid"],
+    }
 
 
 @pytest.fixture
 def fake_team() -> dict[str, Any]:
-    return {"user_id": str(_TEAM_ID), "email": "team@balizero.com", "role": "team", "permissions": []}
+    return {
+        "user_id": str(_TEAM_ID),
+        "email": "team@balizero.com",
+        "role": "team",
+        "permissions": [],
+    }
 
 
 @pytest.fixture
 def fake_partner_user() -> dict[str, Any]:
-    return {"user_id": str(_USER_ID), "email": "partner@balizero.com", "role": "partner", "permissions": []}
+    return {
+        "user_id": str(_USER_ID),
+        "email": "partner@balizero.com",
+        "role": "partner",
+        "permissions": [],
+    }
 
 
 # ── App factories ────────────────────────────────────────────────────────────
+
 
 def _make_app(user: dict[str, Any], pool: MagicMock) -> FastAPI:
     application = FastAPI()
@@ -126,13 +144,16 @@ def team_app(fake_team, mock_db_pool) -> tuple[FastAPI, TestClient, MagicMock, A
 
 
 @pytest.fixture
-def partner_app(fake_partner_user, mock_db_pool) -> tuple[FastAPI, TestClient, MagicMock, AsyncMock]:
+def partner_app(
+    fake_partner_user, mock_db_pool
+) -> tuple[FastAPI, TestClient, MagicMock, AsyncMock]:
     pool, conn = mock_db_pool
     app = _make_app(fake_partner_user, pool)
     return app, TestClient(app, raise_server_exceptions=False), pool, conn
 
 
 # ── 1. create_partner — team auto-assigns self ───────────────────────────────
+
 
 class TestCreatePartner:
     @pytest.mark.unit
@@ -144,11 +165,13 @@ class TestCreatePartner:
 
     @pytest.mark.unit
     def test_partner_create_model_validation(self) -> None:
-        payload = partners_module.PartnerCreate.model_validate({
-            "full_name": "Hotel Kama",
-            "email": "h@k.io",
-            "entity_type": "corporate_pt",
-        })
+        payload = partners_module.PartnerCreate.model_validate(
+            {
+                "full_name": "Hotel Kama",
+                "email": "h@k.io",
+                "entity_type": "corporate_pt",
+            }
+        )
         assert payload.full_name == "Hotel Kama"
         assert payload.default_commission_type == "percentage"
         assert payload.default_commission_value == Decimal("10.0")
@@ -185,6 +208,7 @@ class TestCreatePartner:
     def test_create_partner_conflict_409(self, admin_app) -> None:
         _, client, pool, conn = admin_app
         from backend.services.crm.partners.service import ConflictError
+
         with patch("backend.app.routers.partners.PartnersService") as MockSvc:
             svc_instance = MockSvc.return_value
             svc_instance.create_partner = AsyncMock(
@@ -200,10 +224,13 @@ class TestCreatePartner:
     def test_create_partner_collision_with_internal_email_409(self, admin_app) -> None:
         _, client, pool, conn = admin_app
         from backend.services.crm.partners.service import ConflictError
+
         with patch("backend.app.routers.partners.PartnersService") as MockSvc:
             svc_instance = MockSvc.return_value
             svc_instance.create_partner = AsyncMock(
-                side_effect=ConflictError("email is already a team/admin user: 'admin@balizero.com'")
+                side_effect=ConflictError(
+                    "email is already a team/admin user: 'admin@balizero.com'"
+                )
             )
             resp = client.post(
                 "/api/partners",
@@ -213,6 +240,7 @@ class TestCreatePartner:
 
 
 # ── 2. list_partners ─────────────────────────────────────────────────────────
+
 
 class TestListPartners:
     @pytest.mark.integration
@@ -281,12 +309,14 @@ class TestListPartners:
 
 # ── 2b. CATA-2: role gate + DTO stripping ────────────────────────────────────
 
+
 class TestListPartnersCata2:
     """CATA-2: Router-level role gate and list DTO PII stripping."""
 
     @pytest.mark.unit
     def test_require_team_or_admin_blocks_partner_role(self) -> None:
         from fastapi import HTTPException
+
         user = {"role": "partner", "permissions": []}
         with pytest.raises(HTTPException) as exc_info:
             partners_module._require_team_or_admin(user)
@@ -296,6 +326,7 @@ class TestListPartnersCata2:
     @pytest.mark.unit
     def test_require_team_or_admin_blocks_unknown_role(self) -> None:
         from fastapi import HTTPException
+
         user = {"role": "finance", "permissions": []}
         with pytest.raises(HTTPException) as exc_info:
             partners_module._require_team_or_admin(user)
@@ -389,8 +420,10 @@ class TestListPartnersCata2:
             bank_account_number="1234567890",
         )
         with patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify:
+
             async def _verify(*a, **kw):
                 return partner
+
             mock_verify.side_effect = _verify
             resp = client.get(f"/api/partners/{_PARTNER_ID}")
         assert resp.status_code == 200
@@ -402,14 +435,17 @@ class TestListPartnersCata2:
 
 # ── 3. get_partner ────────────────────────────────────────────────────────────
 
+
 class TestGetPartner:
     @pytest.mark.integration
     def test_get_partner_admin_sees_any(self, admin_app) -> None:
         _, client, _, _ = admin_app
         partner = _make_partner()
         with patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify:
+
             async def _verify(*args, **kwargs):
                 return partner
+
             mock_verify.side_effect = _verify
             resp = client.get(f"/api/partners/{_PARTNER_ID}")
         assert resp.status_code == 200
@@ -417,16 +453,20 @@ class TestGetPartner:
     @pytest.mark.integration
     def test_get_partner_not_found_returns_404(self, admin_app) -> None:
         from fastapi import HTTPException
+
         _, client, _, _ = admin_app
         with patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify:
+
             async def _raise(*args, **kwargs):
                 raise HTTPException(status_code=404, detail="partner not found")
+
             mock_verify.side_effect = _raise
             resp = client.get(f"/api/partners/{_PARTNER_ID}")
         assert resp.status_code == 404
 
 
 # ── 4. update_partner ─────────────────────────────────────────────────────────
+
 
 class TestUpdatePartner:
     @pytest.mark.integration
@@ -448,6 +488,7 @@ class TestUpdatePartner:
     @pytest.mark.integration
     def test_patch_partner_team_forbidden_on_other(self, team_app) -> None:
         from fastapi import HTTPException
+
         _, client, _, _ = team_app
         with patch("backend.app.routers.partners.PartnersService") as MockSvc:
             svc_instance = MockSvc.return_value
@@ -463,6 +504,7 @@ class TestUpdatePartner:
 
 # ── 5. activate / deactivate ──────────────────────────────────────────────────
 
+
 class TestActivateDeactivate:
     @pytest.mark.integration
     def test_activate_requires_admin_team_gets_403(self, team_app) -> None:
@@ -474,8 +516,10 @@ class TestActivateDeactivate:
     @pytest.mark.integration
     def test_activate_admin_succeeds_204(self, admin_app) -> None:
         _, client, _, _ = admin_app
-        with patch("backend.app.routers.partners.PartnersService") as MockSvc, \
-             patch("backend.services.crm.partners.emails.enqueue_welcome", new=AsyncMock()):
+        with (
+            patch("backend.app.routers.partners.PartnersService") as MockSvc,
+            patch("backend.services.crm.partners.emails.enqueue_welcome", new=AsyncMock()),
+        ):
             svc_instance = MockSvc.return_value
             svc_instance.activate_partner = AsyncMock()
             resp = client.post(f"/api/partners/{_PARTNER_ID}/activate")
@@ -499,6 +543,7 @@ class TestActivateDeactivate:
 
 
 # ── 6. reassign / bulk-reassign ───────────────────────────────────────────────
+
 
 class TestReassign:
     @pytest.mark.integration
@@ -570,6 +615,7 @@ class TestReassign:
 
 # ── 7. referrals ──────────────────────────────────────────────────────────────
 
+
 class TestReferrals:
     def _make_referral(self) -> MagicMock:
         r = MagicMock()
@@ -590,8 +636,10 @@ class TestReferrals:
             patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify,
             patch("backend.app.routers.partners.PartnersService") as MockSvc,
         ):
+
             async def _verify(*a, **kw):
                 return _make_partner()
+
             mock_verify.side_effect = _verify
             svc_instance = MockSvc.return_value
             svc_instance.repo = MagicMock()
@@ -630,7 +678,9 @@ class TestReferrals:
             svc_instance.repo = MagicMock()
             svc_instance.repo.get_partner = AsyncMock(return_value=partner)
             svc_instance.repo.insert_referral = AsyncMock(
-                side_effect=Exception("unique constraint violation on partner_referrals_practice_unique_v1")
+                side_effect=Exception(
+                    "unique constraint violation on partner_referrals_practice_unique_v1"
+                )
             )
             resp = client.post(
                 f"/api/partners/{_PARTNER_ID}/referrals",
@@ -693,6 +743,7 @@ class TestReferrals:
 
 # ── 7b. CATA-3: Forbid partner self-assignment to referrals ──────────────────
 
+
 class TestCreateReferralCata3:
     """CATA-3: partner role cannot self-assign to referrals; team must own partner."""
 
@@ -722,10 +773,14 @@ class TestCreateReferralCata3:
                 json={"practice_id": 1},
             )
         assert resp.status_code == 403
-        assert "team members may only create referrals for partners they own" in resp.json()["detail"]
+        assert (
+            "team members may only create referrals for partners they own" in resp.json()["detail"]
+        )
 
     @pytest.mark.integration
-    def test_create_referral_team_own_partner_no_practice_client_passes(self, team_app, fake_team) -> None:
+    def test_create_referral_team_own_partner_no_practice_client_passes(
+        self, team_app, fake_team
+    ) -> None:
         """Team member can create referral when they own the partner and practice has no client."""
         _, client, pool, conn = team_app
         # Partner is owned by the team member
@@ -765,6 +820,7 @@ class TestCreateReferralCata3:
 
 # ── 8. commissions ────────────────────────────────────────────────────────────
 
+
 class TestCommissions:
     @pytest.mark.integration
     def test_list_commissions_scoped(self, admin_app) -> None:
@@ -773,8 +829,10 @@ class TestCommissions:
             patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify,
             patch("backend.app.routers.partners.PartnersService") as MockSvc,
         ):
+
             async def _verify(*a, **kw):
                 return _make_partner()
+
             mock_verify.side_effect = _verify
             svc_instance = MockSvc.return_value
             svc_instance.repo = MagicMock()
@@ -801,8 +859,12 @@ class TestCommissions:
     @pytest.mark.integration
     def test_mark_paid_admin_succeeds_204(self, admin_app) -> None:
         _, client, _, _ = admin_app
-        with patch("backend.app.routers.partners.CommissionEngine") as MockEngine, \
-             patch("backend.services.crm.partners.emails.enqueue_commission_earned", new=AsyncMock()):
+        with (
+            patch("backend.app.routers.partners.CommissionEngine") as MockEngine,
+            patch(
+                "backend.services.crm.partners.emails.enqueue_commission_earned", new=AsyncMock()
+            ),
+        ):
             engine_instance = MockEngine.return_value
             engine_instance.mark_paid = AsyncMock()
             resp = client.post(
@@ -868,6 +930,7 @@ class TestCommissions:
 
 # ── 9. /me endpoints ──────────────────────────────────────────────────────────
 
+
 class TestMeEndpoints:
     @pytest.mark.integration
     def test_me_team_role_forbidden(self, team_app) -> None:
@@ -910,14 +973,16 @@ class TestMeEndpoints:
         conn.fetchrow = AsyncMock(return_value={"partner_id": _PARTNER_ID})
         # fetch: single-JOIN referrals result
         mock_row = MagicMock()
-        mock_row.__getitem__ = MagicMock(side_effect=lambda k: {
-            "id": _REFERRAL_ID,
-            "practice_id": _PROCESS_ID,
-            "referred_at": _NOW,
-            "process_status": "in_progress",
-            "service_type": "pt_pma",
-            "client_name": "Mario Rossi",
-        }[k])
+        mock_row.__getitem__ = MagicMock(
+            side_effect=lambda k: {
+                "id": _REFERRAL_ID,
+                "practice_id": _PROCESS_ID,
+                "referred_at": _NOW,
+                "process_status": "in_progress",
+                "service_type": "pt_pma",
+                "client_name": "Mario Rossi",
+            }[k]
+        )
         conn.fetch = AsyncMock(return_value=[mock_row])
         resp = client.get("/api/partners/me/referrals")
         assert resp.status_code == 200
@@ -938,32 +1003,47 @@ class TestMeEndpoints:
 
 # ── 10. finance export ────────────────────────────────────────────────────────
 
+
 class TestFinanceExport:
     @pytest.mark.integration
     def test_finance_export_admin_only_returns_csv(self, admin_app) -> None:
         _, client, pool, conn = admin_app
         # conn.fetch should return list of records
         mock_row = MagicMock()
-        mock_row.keys = MagicMock(return_value=[
-            "id", "full_name", "npwp", "entity_type", "entry_type",
-            "gross_amount_idr", "withholding_category", "withholding_amount_idr",
-            "net_amount_idr", "status", "paid_at", "paid_via", "payment_reference",
-        ])
-        mock_row.__getitem__ = MagicMock(side_effect=lambda k: {
-            "id": str(_COMMISSION_ID),
-            "full_name": "Test Partner",
-            "npwp": None,
-            "entity_type": "individual",
-            "entry_type": "accrual",
-            "gross_amount_idr": Decimal("1000000"),
-            "withholding_category": "tbd",
-            "withholding_amount_idr": Decimal("0"),
-            "net_amount_idr": Decimal("1000000"),
-            "status": "approved",
-            "paid_at": None,
-            "paid_via": None,
-            "payment_reference": None,
-        }[k])
+        mock_row.keys = MagicMock(
+            return_value=[
+                "id",
+                "full_name",
+                "npwp",
+                "entity_type",
+                "entry_type",
+                "gross_amount_idr",
+                "withholding_category",
+                "withholding_amount_idr",
+                "net_amount_idr",
+                "status",
+                "paid_at",
+                "paid_via",
+                "payment_reference",
+            ]
+        )
+        mock_row.__getitem__ = MagicMock(
+            side_effect=lambda k: {
+                "id": str(_COMMISSION_ID),
+                "full_name": "Test Partner",
+                "npwp": None,
+                "entity_type": "individual",
+                "entry_type": "accrual",
+                "gross_amount_idr": Decimal("1000000"),
+                "withholding_category": "tbd",
+                "withholding_amount_idr": Decimal("0"),
+                "net_amount_idr": Decimal("1000000"),
+                "status": "approved",
+                "paid_at": None,
+                "paid_via": None,
+                "payment_reference": None,
+            }[k]
+        )
         conn.fetch = AsyncMock(return_value=[mock_row])
         resp = client.get("/api/partners/finance/export?from=2026-01-01&to=2026-04-30")
         assert resp.status_code == 200
@@ -1006,52 +1086,62 @@ class TestFinanceExport:
 
 # ── 11. sterilize helpers ─────────────────────────────────────────────────────
 
+
 class TestSterilizeServiceTypeForPartner:
     """Unit tests for _sterilize_service_type_for_partner (CRIT-6)."""
 
     @pytest.mark.unit
     def test_kitas_e33g(self) -> None:
         from backend.app.routers.partners import _sterilize_service_type_for_partner as st
+
         assert st("KITAS E33G") == "Visa / KITAS service"
 
     @pytest.mark.unit
     def test_visa_keyword(self) -> None:
         from backend.app.routers.partners import _sterilize_service_type_for_partner as st
+
         assert st("B211 Visa Extension") == "Visa / KITAS service"
 
     @pytest.mark.unit
     def test_kitap_service(self) -> None:
         from backend.app.routers.partners import _sterilize_service_type_for_partner as st
+
         assert st("KITAP application") == "KITAP service"
 
     @pytest.mark.unit
     def test_pt_pma_setup(self) -> None:
         from backend.app.routers.partners import _sterilize_service_type_for_partner as st
+
         assert st("PT PMA setup") == "Company setup"
 
     @pytest.mark.unit
     def test_tax_pph21(self) -> None:
         from backend.app.routers.partners import _sterilize_service_type_for_partner as st
+
         assert st("Tax PPh21 filing") == "Tax service"
 
     @pytest.mark.unit
     def test_property_sertifikat(self) -> None:
         from backend.app.routers.partners import _sterilize_service_type_for_partner as st
+
         assert st("Property sertifikat") == "Property service"
 
     @pytest.mark.unit
     def test_none_returns_generic(self) -> None:
         from backend.app.routers.partners import _sterilize_service_type_for_partner as st
+
         assert st(None) == "Service"
 
     @pytest.mark.unit
     def test_empty_string_returns_generic(self) -> None:
         from backend.app.routers.partners import _sterilize_service_type_for_partner as st
+
         assert st("") == "Service"
 
     @pytest.mark.unit
     def test_unknown_type_returns_other(self) -> None:
         from backend.app.routers.partners import _sterilize_service_type_for_partner as st
+
         assert st("something completely new v99") == "Other service"
 
 
@@ -1075,6 +1165,7 @@ class TestSterilizeClientName:
 
 
 # ── 12. audit log endpoint ───────────────────────────────────────────────────
+
 
 class TestAuditLog:
     @pytest.mark.integration
@@ -1102,8 +1193,10 @@ class TestAuditLog:
             patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify,
             patch("backend.app.routers.partners.PartnersService") as MockSvc,
         ):
+
             async def _verify(*a, **kw):
                 return _make_partner()
+
             mock_verify.side_effect = _verify
             svc_instance = MockSvc.return_value
             svc_instance.list_audit = AsyncMock(return_value=[entry1, entry2])
@@ -1115,19 +1208,23 @@ class TestAuditLog:
     @pytest.mark.integration
     def test_list_audit_log_team_forbidden_for_other_partner(self, team_app) -> None:
         from fastapi import HTTPException
+
         _, client, _, _ = team_app
         with (
             patch("backend.app.routers.partners.verify_partner_access_with_role") as mock_verify,
             patch("backend.app.routers.partners.PartnersService"),
         ):
+
             async def _raise(*a, **kw):
                 raise HTTPException(status_code=403, detail="forbidden")
+
             mock_verify.side_effect = _raise
             resp = client.get(f"/api/partners/{_PARTNER_ID}/audit-log")
         assert resp.status_code == 403
 
 
 # ── 13. require_finance helper ────────────────────────────────────────────────
+
 
 class TestRequireFinance:
     @pytest.mark.unit
@@ -1140,6 +1237,7 @@ class TestRequireFinance:
     def test_admin_without_finance_perm_raises_403(self) -> None:
         # CRIT-3: admin without the perm must be rejected (this was the broken fallback).
         from fastapi import HTTPException
+
         user = {"role": "admin", "permissions": []}
         with pytest.raises(HTTPException) as exc_info:
             partners_module._require_finance(user)
@@ -1153,6 +1251,7 @@ class TestRequireFinance:
     @pytest.mark.unit
     def test_non_admin_without_finance_perm_raises_403(self) -> None:
         from fastapi import HTTPException
+
         user = {"role": "team", "permissions": []}
         with pytest.raises(HTTPException) as exc_info:
             partners_module._require_finance(user)
@@ -1169,6 +1268,7 @@ class TestRequireFinance:
     def test_perm_check_tolerates_missing_permissions_key(self) -> None:
         # Defensive: JWT without 'permissions' key at all → reject.
         from fastapi import HTTPException
+
         user = {"role": "admin"}
         with pytest.raises(HTTPException) as exc_info:
             partners_module._require_finance(user)
@@ -1178,6 +1278,7 @@ class TestRequireFinance:
     def test_perm_check_tolerates_none_permissions(self) -> None:
         # Defensive: JWT with permissions=None → reject (not crash).
         from fastapi import HTTPException
+
         user = {"role": "admin", "permissions": None}
         with pytest.raises(HTTPException) as exc_info:
             partners_module._require_finance(user)

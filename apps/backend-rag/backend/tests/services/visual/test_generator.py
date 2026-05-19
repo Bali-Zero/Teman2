@@ -124,6 +124,7 @@ def _imagen_fail(quality: ImagenQuality = ImagenQuality.FAST) -> ImagenResult:
 
 # ── Cost type routing ────────────────────────────────────────────
 
+
 def test_cost_type_mapping_covers_three_qualities():
     assert _COST_TYPE_BY_QUALITY[ImagenQuality.ULTRA] == CostType.IMAGEN_ULTRA
     assert _COST_TYPE_BY_QUALITY[ImagenQuality.FAST] == CostType.IMAGEN_FAST
@@ -132,6 +133,7 @@ def test_cost_type_mapping_covers_three_qualities():
 
 # ── Single-slide happy path ──────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_cover_uses_ultra_quality():
     imagen = _MockImagen([_imagen_ok(ImagenQuality.ULTRA)])
@@ -139,7 +141,10 @@ async def test_cover_uses_ultra_quality():
     judge = _MockJudge([_pass_decision()])
     repo = _MockRepo()
     gen = VisualGenerator(
-        imagen=imagen, vision=vision, judge=judge, cost_repo=repo,
+        imagen=imagen,
+        vision=vision,
+        judge=judge,
+        cost_repo=repo,
     )
     result = await gen.generate_slide(
         SlideSpec(slide_number=1, image_prompt="hero shot", is_cover=True),
@@ -161,7 +166,10 @@ async def test_slide_uses_fast_quality():
     judge = _MockJudge([_pass_decision()])
     repo = _MockRepo()
     gen = VisualGenerator(
-        imagen=imagen, vision=vision, judge=judge, cost_repo=repo,
+        imagen=imagen,
+        vision=vision,
+        judge=judge,
+        cost_repo=repo,
     )
     result = await gen.generate_slide(
         SlideSpec(slide_number=2, image_prompt="body slide"),
@@ -173,20 +181,29 @@ async def test_slide_uses_fast_quality():
 
 # ── QA retry loop ────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_retry_with_prompt_modification_eventually_passes():
-    imagen = _MockImagen([
-        _imagen_ok(ImagenQuality.FAST),
-        _imagen_ok(ImagenQuality.FAST),
-    ])
+    imagen = _MockImagen(
+        [
+            _imagen_ok(ImagenQuality.FAST),
+            _imagen_ok(ImagenQuality.FAST),
+        ]
+    )
     vision = _MockVision([_good_flags(), _good_flags()])
-    judge = _MockJudge([
-        _retry_decision("scene without hands"),
-        _pass_decision(),
-    ])
+    judge = _MockJudge(
+        [
+            _retry_decision("scene without hands"),
+            _pass_decision(),
+        ]
+    )
     repo = _MockRepo()
     gen = VisualGenerator(
-        imagen=imagen, vision=vision, judge=judge, cost_repo=repo, max_retries=3,
+        imagen=imagen,
+        vision=vision,
+        judge=judge,
+        cost_repo=repo,
+        max_retries=3,
     )
     result = await gen.generate_slide(
         SlideSpec(slide_number=2, image_prompt="scene with hands"),
@@ -206,7 +223,11 @@ async def test_max_retries_exhausted_flags_escalation():
     judge = _MockJudge([_retry_decision()] * 3)
     repo = _MockRepo()
     gen = VisualGenerator(
-        imagen=imagen, vision=vision, judge=judge, cost_repo=repo, max_retries=3,
+        imagen=imagen,
+        vision=vision,
+        judge=judge,
+        cost_repo=repo,
+        max_retries=3,
     )
     result = await gen.generate_slide(
         SlideSpec(slide_number=3, image_prompt="tough slide"),
@@ -226,7 +247,10 @@ async def test_hard_reject_stops_immediately():
     judge = _MockJudge([_reject_decision()])
     repo = _MockRepo()
     gen = VisualGenerator(
-        imagen=imagen, vision=vision, judge=judge, cost_repo=repo,
+        imagen=imagen,
+        vision=vision,
+        judge=judge,
+        cost_repo=repo,
     )
     result = await gen.generate_slide(
         SlideSpec(slide_number=1, image_prompt="x", is_cover=True),
@@ -238,20 +262,27 @@ async def test_hard_reject_stops_immediately():
 
 # ── Imagen failure + Fireworks fallback ──────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_imagen_fails_all_retries_fallback_fireworks_succeeds():
     imagen = _MockImagen([_imagen_fail()] * 3)
     vision = _MockVision([_good_flags()])  # not used if no imagen image
     judge = _MockJudge([_pass_decision()])  # not used
-    fireworks = _MockFireworks(FireworksResult(
-        ok=True,
-        image_bytes=b"flux_bytes",
-        cost_usd=Decimal("0.03"),
-    ))
+    fireworks = _MockFireworks(
+        FireworksResult(
+            ok=True,
+            image_bytes=b"flux_bytes",
+            cost_usd=Decimal("0.03"),
+        )
+    )
     repo = _MockRepo()
     gen = VisualGenerator(
-        imagen=imagen, vision=vision, judge=judge,
-        fireworks=fireworks, cost_repo=repo, max_retries=3,
+        imagen=imagen,
+        vision=vision,
+        judge=judge,
+        fireworks=fireworks,
+        cost_repo=repo,
+        max_retries=3,
     )
     result = await gen.generate_slide(
         SlideSpec(slide_number=4, image_prompt="tough"),
@@ -272,8 +303,12 @@ async def test_imagen_fails_no_fireworks_configured_escalates():
     judge = _MockJudge([])
     repo = _MockRepo()
     gen = VisualGenerator(
-        imagen=imagen, vision=vision, judge=judge,
-        fireworks=None, cost_repo=repo, max_retries=3,
+        imagen=imagen,
+        vision=vision,
+        judge=judge,
+        fireworks=None,
+        cost_repo=repo,
+        max_retries=3,
     )
     result = await gen.generate_slide(
         SlideSpec(slide_number=5, image_prompt="hard"),
@@ -287,13 +322,20 @@ async def test_imagen_fails_fireworks_also_fails():
     imagen = _MockImagen([_imagen_fail()] * 3)
     vision = _MockVision([])
     judge = _MockJudge([])
-    fireworks = _MockFireworks(FireworksResult(
-        ok=False, error="fireworks down",
-    ))
+    fireworks = _MockFireworks(
+        FireworksResult(
+            ok=False,
+            error="fireworks down",
+        )
+    )
     repo = _MockRepo()
     gen = VisualGenerator(
-        imagen=imagen, vision=vision, judge=judge,
-        fireworks=fireworks, cost_repo=repo, max_retries=3,
+        imagen=imagen,
+        vision=vision,
+        judge=judge,
+        fireworks=fireworks,
+        cost_repo=repo,
+        max_retries=3,
     )
     result = await gen.generate_slide(
         SlideSpec(slide_number=5, image_prompt="hard"),
@@ -301,27 +343,31 @@ async def test_imagen_fails_fireworks_also_fails():
     assert result.ok is False
     assert result.needs_escalation is True
     # failure marker cost recorded with cost_usd=0
-    failure_records = [
-        r for r in repo.recorded if r[1] == CostType.FIREWORKS_FLUX
-    ]
+    failure_records = [r for r in repo.recorded if r[1] == CostType.FIREWORKS_FLUX]
     assert failure_records
     assert failure_records[0][2] == Decimal("0")
 
 
 # ── Carousel end-to-end ──────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_carousel_mixes_cover_and_slides():
-    imagen = _MockImagen([
-        _imagen_ok(ImagenQuality.ULTRA),  # cover
-        _imagen_ok(ImagenQuality.FAST),
-        _imagen_ok(ImagenQuality.FAST),
-    ])
+    imagen = _MockImagen(
+        [
+            _imagen_ok(ImagenQuality.ULTRA),  # cover
+            _imagen_ok(ImagenQuality.FAST),
+            _imagen_ok(ImagenQuality.FAST),
+        ]
+    )
     vision = _MockVision([_good_flags()] * 3)
     judge = _MockJudge([_pass_decision()] * 3)
     repo = _MockRepo()
     gen = VisualGenerator(
-        imagen=imagen, vision=vision, judge=judge, cost_repo=repo,
+        imagen=imagen,
+        vision=vision,
+        judge=judge,
+        cost_repo=repo,
     )
     draft_id = uuid4()
     result = await gen.generate_carousel(
@@ -343,18 +389,24 @@ async def test_carousel_mixes_cover_and_slides():
 
 @pytest.mark.asyncio
 async def test_carousel_escalation_count_accurate():
-    imagen = _MockImagen([
-        _imagen_ok(ImagenQuality.ULTRA),
-        _imagen_fail(),
-        _imagen_fail(),
-        _imagen_fail(),
-    ])
+    imagen = _MockImagen(
+        [
+            _imagen_ok(ImagenQuality.ULTRA),
+            _imagen_fail(),
+            _imagen_fail(),
+            _imagen_fail(),
+        ]
+    )
     vision = _MockVision([_good_flags()])
     judge = _MockJudge([_pass_decision()])
     repo = _MockRepo()
     gen = VisualGenerator(
-        imagen=imagen, vision=vision, judge=judge,
-        fireworks=None, cost_repo=repo, max_retries=3,
+        imagen=imagen,
+        vision=vision,
+        judge=judge,
+        fireworks=None,
+        cost_repo=repo,
+        max_retries=3,
     )
     result = await gen.generate_carousel(
         [

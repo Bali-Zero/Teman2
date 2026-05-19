@@ -223,15 +223,19 @@ async def get_tax_obligations_node(state: TaxState, db_pool: asyncpg.Pool) -> Ta
                 if not state.get("vat_applicable", False):
                     obligations.pop("ppn", None)
 
-                state.setdefault("tax_obligations", []).append({
-                    "obligation_type": "tax_overview",
-                    "entity_type": entity_type,
-                    "details": obligations,
-                    "source": "knowledge_graph",
-                })
+                state.setdefault("tax_obligations", []).append(
+                    {
+                        "obligation_type": "tax_overview",
+                        "entity_type": entity_type,
+                        "details": obligations,
+                        "source": "knowledge_graph",
+                    }
+                )
                 kg_sources = len(rows)
                 logger.info(
-                    "✅ [Tax Subgraph] Got %s tax obligations from KG for %s", kg_sources, entity_type,
+                    "✅ [Tax Subgraph] Got %s tax obligations from KG for %s",
+                    kg_sources,
+                    entity_type,
                 )
     except Exception as e:
         logger.warning("⚠️ [Tax Subgraph] KG tax query failed, using fallback: %s", e)
@@ -241,16 +245,20 @@ async def get_tax_obligations_node(state: TaxState, db_pool: asyncpg.Pool) -> Ta
         obligations = tax_obligations_db.get(entity_type, {})
         if not state.get("vat_applicable", False):
             obligations.pop("ppn", None)
-        state.setdefault("tax_obligations", []).append({
-            "obligation_type": "tax_overview",
-            "entity_type": entity_type,
-            "details": obligations,
-            "source": "hardcoded_fallback",
-        })
+        state.setdefault("tax_obligations", []).append(
+            {
+                "obligation_type": "tax_overview",
+                "entity_type": entity_type,
+                "details": obligations,
+                "source": "hardcoded_fallback",
+            }
+        )
         logger.info("📌 [Tax Subgraph] Using fallback tax obligations for %s", entity_type)
 
     state["kg_sources_used"] = state.get("kg_sources_used", 0) + kg_sources
-    logger.info("✅ [Tax Subgraph] Added tax obligations for %s (KG sources: %s)", entity_type, kg_sources)
+    logger.info(
+        "✅ [Tax Subgraph] Added tax obligations for %s (KG sources: %s)", entity_type, kg_sources
+    )
 
     return state
 

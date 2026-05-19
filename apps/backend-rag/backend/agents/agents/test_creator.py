@@ -59,7 +59,8 @@ class CodeChangeDetector:
         try:
             # Get git diff for new/modified files
             diff_output = safe_git_diff(
-                ["--name-only", "--diff-filter=ACM", "*.py"], cwd=self.repo_path,
+                ["--name-only", "--diff-filter=ACM", "*.py"],
+                cwd=self.repo_path,
             )
 
             if diff_output:
@@ -96,7 +97,8 @@ class CodeChangeDetector:
         try:
             if safe_git_diff:
                 diff_output = safe_git_diff(
-                    ["--unified=0", str(file_path.relative_to(self.repo_path))], cwd=self.repo_path,
+                    ["--unified=0", str(file_path.relative_to(self.repo_path))],
+                    cwd=self.repo_path,
                 )
             else:
                 result = subprocess.run(
@@ -250,7 +252,9 @@ class TestCreatorAgent:
             logger.error("❌ %s", error_msg)
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
-                    time.time() - start_time, success=False, error=error_msg,
+                    time.time() - start_time,
+                    success=False,
+                    error=error_msg,
                 )
             return {"success": False, "error": error_msg}
 
@@ -328,7 +332,9 @@ class TestCreatorAgent:
             logger.error("❌ %s", error_msg)
             if self.agent_metrics:
                 self.agent_metrics.record_operation(
-                    time.time() - start_time, success=False, error=error_msg,
+                    time.time() - start_time,
+                    success=False,
+                    error=error_msg,
                 )
             return {"file": str(file_path), "success": False, "error": error_msg}
 
@@ -377,7 +383,10 @@ class TestCreatorAgent:
             }
 
     async def _generate_tests(
-        self, file_path: Path, context: dict[str, Any], changes: dict[str, Any],
+        self,
+        file_path: Path,
+        context: dict[str, Any],
+        changes: dict[str, Any],
     ) -> str:
         """Generate comprehensive tests using LLM."""
 
@@ -569,7 +578,11 @@ class Test{context["module_name"].title()}:
             cmd = ["python", "-m", "pytest", str(test_file), "-v", "--tb=short"]
 
             result = subprocess.run(
-                cmd, cwd=self.repo_path, capture_output=True, text=True, timeout=60.0,
+                cmd,
+                cwd=self.repo_path,
+                capture_output=True,
+                text=True,
+                timeout=60.0,
             )
 
             success = result.returncode == 0
@@ -626,19 +639,25 @@ async def main():
         help="LLM Provider (local=Qwen, mock=Mock)",
     )
     parser.add_argument(
-        "--coverage-target", type=float, default=99.0, help="Coverage target percentage",
+        "--coverage-target",
+        type=float,
+        default=99.0,
+        help="Coverage target percentage",
     )
 
     args = parser.parse_args()
 
     # Configure logging
     logging.basicConfig(
-        level=logging.INFO, format="%(asctime)s [%(levelname)s] 🎯 TestCreator: %(message)s",
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] 🎯 TestCreator: %(message)s",
     )
 
     # Create and run agent
     agent = TestCreatorAgent(
-        repo_path=Path(args.repo), llm_provider=args.provider, coverage_target=args.coverage_target,
+        repo_path=Path(args.repo),
+        llm_provider=args.provider,
+        coverage_target=args.coverage_target,
     )
 
     try:

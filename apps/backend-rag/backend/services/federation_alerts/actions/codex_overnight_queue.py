@@ -14,6 +14,7 @@ to a deterministic filename so repeated triggers don't duplicate.
 dry_run=True → returns the path it would write to + the spec content,
 without touching the filesystem.
 """
+
 from __future__ import annotations
 
 import logging

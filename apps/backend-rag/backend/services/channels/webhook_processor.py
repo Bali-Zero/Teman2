@@ -14,6 +14,7 @@ Retry policy: 5 attempts with linear backoff (5min × attempt number).
 After the 5th failure the row is marked processed with a "GIVING UP"
 error message so it does not pollute the pending queue.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -34,8 +35,8 @@ MAX_ATTEMPTS = 5
 _BACKOFF_BASE_SECONDS = 300  # 5 minutes per attempt (linear)
 
 # Worker tuning.
-_POLL_FALLBACK_SECONDS = 5    # Drain pending if no NOTIFY for 5s.
-_DRAIN_BATCH_SIZE = 50        # Rows fetched per drain pass.
+_POLL_FALLBACK_SECONDS = 5  # Drain pending if no NOTIFY for 5s.
+_DRAIN_BATCH_SIZE = 50  # Rows fetched per drain pass.
 
 # Type alias for per-channel handlers.
 ChannelHandler = Callable[[dict[str, Any]], Awaitable[None]]
@@ -66,12 +67,14 @@ def _coerce_payload_to_dict(raw: Any, *, row_id: int) -> dict[str, Any] | None:
         except json.JSONDecodeError as exc:
             logger.error(
                 "WebhookProcessor: invalid JSON in row id=%d: %s",
-                row_id, exc,
+                row_id,
+                exc,
             )
             return None
     logger.error(
         "WebhookProcessor: unexpected payload type %s for id=%d",
-        type(raw).__name__, row_id,
+        type(raw).__name__,
+        row_id,
     )
     return None
 
@@ -114,7 +117,8 @@ class WebhookProcessor:
         self._wake_event = asyncio.Event()
         if self._run_task is None or self._run_task.done():
             self._run_task = asyncio.create_task(
-                self.run(), name="webhook-processor-run",
+                self.run(),
+                name="webhook-processor-run",
             )
             logger.info("WebhookProcessor: started")
 
@@ -137,7 +141,8 @@ class WebhookProcessor:
         """Main loop: drain pending, then wait for NOTIFY or 5s timeout."""
         # Spawn the listener concurrently — it pings _wake_event on NOTIFY.
         self._listen_task = asyncio.create_task(
-            self._listener_loop(), name="webhook-processor-listen",
+            self._listener_loop(),
+            name="webhook-processor-listen",
         )
 
         try:
@@ -146,7 +151,8 @@ class WebhookProcessor:
                     await self.drain_pending()
                 except Exception as exc:  # noqa: BLE001
                     logger.exception(
-                        "WebhookProcessor: drain_pending crashed: %s", exc,
+                        "WebhookProcessor: drain_pending crashed: %s",
+                        exc,
                     )
 
                 # Wait for either NOTIFY (wake_event) or 5s timeout.
@@ -176,10 +182,12 @@ class WebhookProcessor:
         while not self._stopped:
             try:
                 async with self._pool.acquire() as conn:
+
                     def _on_notify(_conn, _pid, channel, payload):  # noqa: ANN001
                         logger.debug(
                             "WebhookProcessor: NOTIFY on %s payload=%s",
-                            channel, payload[:80] if payload else "",
+                            channel,
+                            payload[:80] if payload else "",
                         )
                         self._wake_event.set()
 
@@ -195,8 +203,8 @@ class WebhookProcessor:
                 raise
             except Exception as exc:  # noqa: BLE001
                 logger.warning(
-                    "WebhookProcessor: listener loop crashed (%s); "
-                    "reconnect in 5s", exc,
+                    "WebhookProcessor: listener loop crashed (%s); reconnect in 5s",
+                    exc,
                 )
                 try:
                     await asyncio.sleep(5)
@@ -253,9 +261,9 @@ class WebhookProcessor:
                 f"no handler registered for channel={channel}",
             )
             logger.warning(
-                "WebhookProcessor: no handler for channel=%s id=%d "
-                "(marked terminal)",
-                channel, row_id,
+                "WebhookProcessor: no handler for channel=%s id=%d (marked terminal)",
+                channel,
+                row_id,
             )
             return
 
@@ -278,7 +286,9 @@ class WebhookProcessor:
         except Exception as exc:  # noqa: BLE001 — every channel exception is retryable
             logger.exception(
                 "WebhookProcessor: handler crashed for id=%d channel=%s: %s",
-                row_id, channel, exc,
+                row_id,
+                channel,
+                exc,
             )
             new_attempts = await conn.fetchval(
                 """
@@ -306,8 +316,10 @@ class WebhookProcessor:
                     f"GIVING UP after {MAX_ATTEMPTS} attempts: {str(exc)[:300]}",
                 )
                 logger.error(
-                    "WebhookProcessor: GIVING UP id=%d channel=%s after %d "
-                    "attempts", row_id, channel, MAX_ATTEMPTS,
+                    "WebhookProcessor: GIVING UP id=%d channel=%s after %d attempts",
+                    row_id,
+                    channel,
+                    MAX_ATTEMPTS,
                 )
             return
 
@@ -317,7 +329,9 @@ class WebhookProcessor:
             row_id,
         )
         logger.debug(
-            "WebhookProcessor: processed id=%d channel=%s", row_id, channel,
+            "WebhookProcessor: processed id=%d channel=%s",
+            row_id,
+            channel,
         )
 
 

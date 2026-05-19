@@ -9,6 +9,7 @@ Testing strategy:
   the text. Real OpenAI calls are out of scope.
 - Compute cosine similarity in-process so the job runs offline.
 """
+
 from __future__ import annotations
 
 import json
@@ -89,13 +90,17 @@ def test_find_candidates_returns_pair_below_threshold():
         _skill("b", "hybrid rrf retrieval"),  # near duplicate
         _skill("c", "ocr indonesian akta"),
     ]
-    embedder = StubEmbedder({
-        "a": [1.0, 0.0, 0.0],
-        "b": [0.99, 0.01, 0.0],   # cosine ~0 with a
-        "c": [0.0, 1.0, 0.0],     # orthogonal
-    })
+    embedder = StubEmbedder(
+        {
+            "a": [1.0, 0.0, 0.0],
+            "b": [0.99, 0.01, 0.0],  # cosine ~0 with a
+            "c": [0.0, 1.0, 0.0],  # orthogonal
+        }
+    )
     candidates = find_merge_candidates(
-        skills, embedder=embedder, threshold=0.15,
+        skills,
+        embedder=embedder,
+        threshold=0.15,
     )
     pairs = {frozenset(c["pair"]) for c in candidates}
     assert frozenset({"a", "b"}) in pairs
@@ -105,10 +110,12 @@ def test_find_candidates_returns_pair_below_threshold():
 
 def test_find_candidates_respects_threshold():
     skills = [_skill("a"), _skill("b")]
-    embedder = StubEmbedder({
-        "a": [1.0, 0.0],
-        "b": [0.0, 1.0],  # cosine distance = 1.0, above 0.15
-    })
+    embedder = StubEmbedder(
+        {
+            "a": [1.0, 0.0],
+            "b": [0.0, 1.0],  # cosine distance = 1.0, above 0.15
+        }
+    )
     candidates = find_merge_candidates(skills, embedder=embedder, threshold=0.15)
     assert candidates == []
 
@@ -123,9 +130,12 @@ def test_find_candidates_includes_rationale_and_distance():
         _skill("a", "hybrid rrf retrieval"),
         _skill("b", "hybrid rrf retrieval"),
     ]
-    embedder = StubEmbedder({
-        "a": [1.0, 0.0], "b": [0.999, 0.001],
-    })
+    embedder = StubEmbedder(
+        {
+            "a": [1.0, 0.0],
+            "b": [0.999, 0.001],
+        }
+    )
     candidates = find_merge_candidates(skills, embedder=embedder, threshold=0.15)
     assert len(candidates) == 1
     c = candidates[0]
@@ -143,11 +153,17 @@ def test_find_candidates_does_not_include_self_pair():
 
 def test_find_candidates_each_pair_emitted_once():
     skills = [
-        _skill("a"), _skill("b"), _skill("c"),
+        _skill("a"),
+        _skill("b"),
+        _skill("c"),
     ]
-    embedder = StubEmbedder({
-        "a": [1.0, 0.0], "b": [1.0, 0.0], "c": [1.0, 0.0],  # all identical
-    })
+    embedder = StubEmbedder(
+        {
+            "a": [1.0, 0.0],
+            "b": [1.0, 0.0],
+            "c": [1.0, 0.0],  # all identical
+        }
+    )
     candidates = find_merge_candidates(skills, embedder=embedder, threshold=0.15)
     pairs = {frozenset(c["pair"]) for c in candidates}
     assert pairs == {
@@ -272,14 +288,24 @@ def test_main_writes_proposals_jsonl(tmp_path, monkeypatch):
     db = tmp_path / "skills.db"
     svc = SkillService(db_path=str(db))
 
-    svc.record(SkillRecord(
-        cell="c", skill_id="m1", procedure="hybrid rrf retrieval",
-        precondition="pc", success_criterion="sc",
-    ))
-    svc.record(SkillRecord(
-        cell="c", skill_id="m2", procedure="hybrid rrf retrieval",
-        precondition="pc", success_criterion="sc",
-    ))
+    svc.record(
+        SkillRecord(
+            cell="c",
+            skill_id="m1",
+            procedure="hybrid rrf retrieval",
+            precondition="pc",
+            success_criterion="sc",
+        )
+    )
+    svc.record(
+        SkillRecord(
+            cell="c",
+            skill_id="m2",
+            procedure="hybrid rrf retrieval",
+            precondition="pc",
+            success_criterion="sc",
+        )
+    )
 
     proposals_path = tmp_path / "proposals.jsonl"
 
@@ -290,11 +316,16 @@ def test_main_writes_proposals_jsonl(tmp_path, monkeypatch):
 
     monkeypatch.setattr(mod, "_default_embedder", _factory)
 
-    rc = main([
-        "--db-path", str(db),
-        "--out", str(proposals_path),
-        "--threshold", "0.15",
-    ])
+    rc = main(
+        [
+            "--db-path",
+            str(db),
+            "--out",
+            str(proposals_path),
+            "--threshold",
+            "0.15",
+        ]
+    )
     assert rc == 0
     assert proposals_path.exists()
 
@@ -315,9 +346,16 @@ def test_main_with_empty_genome_writes_no_proposals(tmp_path, monkeypatch):
 
     db = tmp_path / "empty.db"
     proposals = tmp_path / "p.jsonl"
-    rc = main([
-        "--db-path", str(db), "--out", str(proposals), "--threshold", "0.15",
-    ])
+    rc = main(
+        [
+            "--db-path",
+            str(db),
+            "--out",
+            str(proposals),
+            "--threshold",
+            "0.15",
+        ]
+    )
     assert rc == 0
     # File either does not exist or is empty.
     if proposals.exists():

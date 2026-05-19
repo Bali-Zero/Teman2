@@ -130,9 +130,7 @@ def _render(pending: list[WarRoomMissedRun]) -> str:
     lines.append("<i>Ultime occorrenze:</i>")
     for run in pending[:MAX_DETAIL_LINES]:
         ts = run.scheduled_at.astimezone(timezone.utc).strftime("%Y-%m-%d %H:%M")
-        lines.append(
-            f"• <code>{ts}Z</code> — {_escape_html(run.skipped_reason.value)}"
-        )
+        lines.append(f"• <code>{ts}Z</code> — {_escape_html(run.skipped_reason.value)}")
     if total > MAX_DETAIL_LINES:
         lines.append(f"• … e altri {total - MAX_DETAIL_LINES}")
 
@@ -142,9 +140,4 @@ def _render(pending: list[WarRoomMissedRun]) -> str:
 def _escape_html(value: str) -> str:
     if value is None:
         return ""
-    return (
-        str(value)
-        .replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+    return str(value).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")

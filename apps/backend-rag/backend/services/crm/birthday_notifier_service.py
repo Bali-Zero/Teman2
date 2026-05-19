@@ -25,7 +25,8 @@ logger = logging.getLogger(__name__)
 
 # Internal email API — uses Brevo, from=zantara@balizero.com
 _EMAIL_API_URL = os.getenv(
-    "INTERNAL_EMAIL_API_URL", "https://nuzantara-rag.fly.dev/api/notifications/send-email",
+    "INTERNAL_EMAIL_API_URL",
+    "https://nuzantara-rag.fly.dev/api/notifications/send-email",
 )
 _EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", "")
 
@@ -335,7 +336,9 @@ class BirthdayNotifierService:
                 sent_via_brevo = True
                 logger.info(f"Birthday email sent to {client['email']} via Brevo ({language})")
             except Exception as brevo_err:
-                logger.warning(f"Brevo failed for birthday {client['email']}, trying Zoho: {brevo_err}")
+                logger.warning(
+                    f"Brevo failed for birthday {client['email']}, trying Zoho: {brevo_err}"
+                )
 
             # Fallback: Zoho
             if not sent_via_brevo:

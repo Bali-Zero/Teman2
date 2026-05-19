@@ -73,7 +73,8 @@ class TestSystemChecks:
         usage = MagicMock()
         usage.percent = 50.0
         with patch(
-            "backend.self_healing.checks.system.psutil.disk_usage", return_value=usage,
+            "backend.self_healing.checks.system.psutil.disk_usage",
+            return_value=usage,
         ):
             result = await DiskCheck(path="/data").run()
         assert result.detail["path"] == "/data"

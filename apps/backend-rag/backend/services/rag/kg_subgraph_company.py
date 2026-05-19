@@ -54,7 +54,9 @@ class CompanyState(TypedDict, total=False):
 
 
 async def identify_company_type_node(
-    state: CompanyState, llm, db_pool: asyncpg.Pool | None = None,
+    state: CompanyState,
+    llm,
+    db_pool: asyncpg.Pool | None = None,
 ) -> CompanyState:
     """
     Identify company type from query and user context.
@@ -128,7 +130,8 @@ async def identify_company_type_node(
                         company_type = "pt_pma"
                         is_foreign = True  # PT PMA implies foreign investor
                         logger.info(
-                            "✅ [Company Subgraph] KBLI %s requires PT PMA (from KG)", kbli_codes,
+                            "✅ [Company Subgraph] KBLI %s requires PT PMA (from KG)",
+                            kbli_codes,
                         )
             except Exception as e:
                 logger.warning("⚠️ [Company Subgraph] KG lookup failed: %s", e)

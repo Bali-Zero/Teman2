@@ -124,8 +124,12 @@ class IGGraphSensor:
             logger.warning("insights error for %s: %s", media_id, response["error"])
             return {"likes": 0, "comments": 0, "saves": 0, "reach": 0}
         parsed: dict[str, int] = {
-            "likes": 0, "comments": 0, "saves": 0,
-            "reach": 0, "impressions": 0, "video_views": 0,
+            "likes": 0,
+            "comments": 0,
+            "saves": 0,
+            "reach": 0,
+            "impressions": 0,
+            "video_views": 0,
         }
         for entry in response.get("data", []):
             name = entry.get("name")

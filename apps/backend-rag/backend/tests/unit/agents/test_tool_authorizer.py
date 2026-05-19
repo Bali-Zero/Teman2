@@ -128,7 +128,8 @@ class TestAuthorizeDecisions:
 
     @pytest.mark.asyncio
     async def test_admin_empty_allowlist_allows_all(
-        self, authorizer: ToolAuthorizer,
+        self,
+        authorizer: ToolAuthorizer,
     ) -> None:
         """ADMIN has empty allowed_* lists → is_tool_allowed returns True for all."""
         for tool in (
@@ -147,7 +148,8 @@ class TestAuthorizeDecisions:
 
     @pytest.mark.asyncio
     async def test_visa_specialist_allowed_runtime_tools(
-        self, authorizer: ToolAuthorizer,
+        self,
+        authorizer: ToolAuthorizer,
     ) -> None:
         """Phase 2 v8 allowlist additions for runtime tools must be in effect.
 
@@ -177,9 +179,7 @@ class TestAuthorizeDecisions:
                 tool_name=tool,
                 args={},
             )
-            assert r.is_allowed, (
-                f"visa specialist must allow runtime tool {tool} (Phase 2 v8)"
-            )
+            assert r.is_allowed, f"visa specialist must allow runtime tool {tool} (Phase 2 v8)"
 
         # image_generation is in the allowlist but gated in Phase 3.
         r = await authorizer.authorize(
@@ -198,7 +198,8 @@ class TestAuthorizeDecisions:
 
     @pytest.mark.asyncio
     async def test_visa_specialist_blocked_tool_denied(
-        self, authorizer: ToolAuthorizer,
+        self,
+        authorizer: ToolAuthorizer,
     ) -> None:
         """blocked_tools precedence — even if added to allowed_* by mistake."""
         r = await authorizer.authorize(
@@ -213,7 +214,8 @@ class TestAuthorizeDecisions:
 
     @pytest.mark.asyncio
     async def test_visa_specialist_timesheet_denied(
-        self, authorizer: ToolAuthorizer,
+        self,
+        authorizer: ToolAuthorizer,
     ) -> None:
         """Config updated: timesheet IS in visa_specialist.allowed_write_tools.
 
@@ -231,7 +233,8 @@ class TestAuthorizeDecisions:
 
     @pytest.mark.asyncio
     async def test_executive_consultant_timesheet_allowed(
-        self, authorizer: ToolAuthorizer,
+        self,
+        authorizer: ToolAuthorizer,
     ) -> None:
         """Per Phase 2 v8 brief: timesheet IS in executive_consultant write allowlist."""
         r = await authorizer.authorize(
@@ -244,7 +247,8 @@ class TestAuthorizeDecisions:
 
     @pytest.mark.asyncio
     async def test_executive_consultant_publish_article_denied(
-        self, authorizer: ToolAuthorizer,
+        self,
+        authorizer: ToolAuthorizer,
     ) -> None:
         """publish_article in blocked_tools for executive_consultant."""
         r = await authorizer.authorize(
@@ -258,7 +262,8 @@ class TestAuthorizeDecisions:
 
     @pytest.mark.asyncio
     async def test_unknown_tool_for_role_denied(
-        self, authorizer: ToolAuthorizer,
+        self,
+        authorizer: ToolAuthorizer,
     ) -> None:
         """Tool not in any allowlist for the role → default-deny."""
         r = await authorizer.authorize(
@@ -272,7 +277,8 @@ class TestAuthorizeDecisions:
 
     @pytest.mark.asyncio
     async def test_args_passthrough_unchanged(
-        self, authorizer: ToolAuthorizer,
+        self,
+        authorizer: ToolAuthorizer,
     ) -> None:
         """Phase 2 returns args unchanged. Phase 3+ may inject server fields."""
         original = {"query": "test", "limit": 10}
@@ -293,7 +299,8 @@ class TestAuthorizeDecisions:
 
 class TestScaffoldingNoOps:
     def test_check_client_scope_returns_none(
-        self, authorizer: ToolAuthorizer,
+        self,
+        authorizer: ToolAuthorizer,
     ) -> None:
         """Phase 2: client_scope check is a hook for Strada A, returns None."""
         result = authorizer._check_client_scope(
@@ -305,7 +312,8 @@ class TestScaffoldingNoOps:
         assert result is None
 
     def test_check_requires_confirmation_returns_none(
-        self, authorizer: ToolAuthorizer,
+        self,
+        authorizer: ToolAuthorizer,
     ) -> None:
         """Phase 2: requires_confirmation hook is no-op until Phase 3."""
         result = authorizer._check_requires_confirmation(
@@ -324,9 +332,7 @@ class TestScaffoldingNoOps:
 
 class TestAuditLog:
     @pytest.mark.asyncio
-    async def test_allow_decision_logs_info(
-        self, authorizer: ToolAuthorizer, caplog
-    ) -> None:
+    async def test_allow_decision_logs_info(self, authorizer: ToolAuthorizer, caplog) -> None:
         with caplog.at_level("INFO", logger="backend.services.agents.tool_authorizer"):
             await authorizer.authorize(
                 user_email="damar@balizero.com",
@@ -344,9 +350,7 @@ class TestAuditLog:
         assert "tool=vector_search" in msg
 
     @pytest.mark.asyncio
-    async def test_deny_decision_logs_warning(
-        self, authorizer: ToolAuthorizer, caplog
-    ) -> None:
+    async def test_deny_decision_logs_warning(self, authorizer: ToolAuthorizer, caplog) -> None:
         with caplog.at_level("WARNING", logger="backend.services.agents.tool_authorizer"):
             await authorizer.authorize(
                 user_email="damar@balizero.com",
@@ -419,9 +423,7 @@ class TestExecuteToolIntegration:
         )
         assert "denied" in result.lower()
         assert "execute_plan" in result
-        assert tool.execute_called is False, (
-            "denied tool must not reach tool.execute()"
-        )
+        assert tool.execute_called is False, "denied tool must not reach tool.execute()"
 
     @pytest.mark.asyncio
     async def test_legacy_caller_bypasses_enforcement(self) -> None:

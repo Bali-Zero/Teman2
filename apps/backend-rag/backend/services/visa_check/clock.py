@@ -19,10 +19,10 @@ from backend.services.visa_check.catalogue import (
 
 @dataclass(frozen=True)
 class Checkpoint:
-    label: str            # "D-60"
-    at: date              # absolute calendar date
-    title: str            # "Start paperwork"
-    body: str             # short human description
+    label: str  # "D-60"
+    at: date  # absolute calendar date
+    title: str  # "Start paperwork"
+    body: str  # short human description
 
 
 @dataclass(frozen=True)

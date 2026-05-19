@@ -15,6 +15,7 @@ from backend.services.knowledge_graph.incremental_builder import (
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 def _make_pool() -> MagicMock:
     conn = AsyncMock()
     conn.fetch = AsyncMock(return_value=[])
@@ -40,6 +41,7 @@ def builder(pool: MagicMock) -> KGIncrementalBuilder:
 # __init__
 # ---------------------------------------------------------------------------
 
+
 class TestInit:
     def test_with_pool(self, pool: MagicMock) -> None:
         b = KGIncrementalBuilder(db_pool=pool)
@@ -59,6 +61,7 @@ class TestInit:
 # ---------------------------------------------------------------------------
 # _get_gemini_client
 # ---------------------------------------------------------------------------
+
 
 class TestGetGeminiClient:
     @patch("backend.services.knowledge_graph.incremental_builder.settings")
@@ -91,8 +94,12 @@ class TestGetGeminiClient:
         mock_genai.Client.return_value = mock_client_instance
 
         b = KGIncrementalBuilder()
-        with patch.dict("sys.modules", {"google": MagicMock(genai=mock_genai), "google.genai": mock_genai}):
-            with patch("backend.services.knowledge_graph.incremental_builder.settings", mock_settings):
+        with patch.dict(
+            "sys.modules", {"google": MagicMock(genai=mock_genai), "google.genai": mock_genai}
+        ):
+            with patch(
+                "backend.services.knowledge_graph.incremental_builder.settings", mock_settings
+            ):
                 result1 = b._get_gemini_client()
                 result2 = b._get_gemini_client()
 
@@ -103,6 +110,7 @@ class TestGetGeminiClient:
 # ---------------------------------------------------------------------------
 # get_processed_chunk_ids
 # ---------------------------------------------------------------------------
+
 
 class TestGetProcessedChunkIds:
     @pytest.mark.asyncio
@@ -137,6 +145,7 @@ class TestGetProcessedChunkIds:
 # run_incremental_extraction
 # ---------------------------------------------------------------------------
 
+
 class TestRunIncrementalExtraction:
     @pytest.mark.asyncio
     async def test_no_pool_returns_skipped(self) -> None:
@@ -165,11 +174,13 @@ class TestRunIncrementalExtraction:
             # Mock the extractor import and instantiation
             mock_extractor_cls = MagicMock()
             mock_extractor_instance = MagicMock()
-            mock_extractor_instance.run = AsyncMock(return_value={
-                "chunks_processed": 10,
-                "entities_extracted": 5,
-                "relationships_extracted": 3,
-            })
+            mock_extractor_instance.run = AsyncMock(
+                return_value={
+                    "chunks_processed": 10,
+                    "entities_extracted": 5,
+                    "relationships_extracted": 3,
+                }
+            )
             mock_extractor_cls.return_value = mock_extractor_instance
 
             mock_module = MagicMock()
@@ -195,11 +206,13 @@ class TestRunIncrementalExtraction:
         with patch.object(builder, "_get_gemini_client", return_value=MagicMock()):
             mock_extractor_cls = MagicMock()
             mock_extractor_instance = MagicMock()
-            mock_extractor_instance.run = AsyncMock(return_value={
-                "chunks_processed": 5,
-                "entities_extracted": 2,
-                "relationships_extracted": 1,
-            })
+            mock_extractor_instance.run = AsyncMock(
+                return_value={
+                    "chunks_processed": 5,
+                    "entities_extracted": 2,
+                    "relationships_extracted": 1,
+                }
+            )
             mock_extractor_cls.return_value = mock_extractor_instance
 
             mock_module = MagicMock()
@@ -229,11 +242,13 @@ class TestRunIncrementalExtraction:
             mock_extractor_cls = MagicMock()
             mock_extractor_instance = MagicMock()
             # Each collection consumes 15 chunks
-            mock_extractor_instance.run = AsyncMock(return_value={
-                "chunks_processed": 15,
-                "entities_extracted": 5,
-                "relationships_extracted": 2,
-            })
+            mock_extractor_instance.run = AsyncMock(
+                return_value={
+                    "chunks_processed": 15,
+                    "entities_extracted": 5,
+                    "relationships_extracted": 2,
+                }
+            )
             mock_extractor_cls.return_value = mock_extractor_instance
 
             mock_module = MagicMock()
@@ -364,6 +379,7 @@ class TestRunIncrementalExtraction:
                         with patch.dict("os.environ", {}, clear=False):
                             # Remove QDRANT_URL from env too
                             import os
+
                             orig = os.environ.pop("QDRANT_URL", None)
                             try:
                                 result = await builder.run_incremental_extraction(
@@ -380,6 +396,7 @@ class TestRunIncrementalExtraction:
 # ---------------------------------------------------------------------------
 # run_knowledge_graph_incremental_build (module-level entry point)
 # ---------------------------------------------------------------------------
+
 
 class TestEntryPoint:
     @pytest.mark.asyncio

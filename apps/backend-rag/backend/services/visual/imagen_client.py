@@ -133,9 +133,7 @@ class ImagenClient:
         timeout: float | None = None,
     ) -> None:
         resolved_key = (
-            api_key
-            or os.environ.get("GOOGLE_API_KEY")
-            or os.environ.get("GEMINI_API_KEY")
+            api_key or os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
         )
         if not resolved_key:
             raise ImagenError(

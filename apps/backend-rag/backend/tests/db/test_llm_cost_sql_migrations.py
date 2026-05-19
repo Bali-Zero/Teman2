@@ -78,9 +78,7 @@ def test_119_creates_llm_cost_recommendations_table():
 def test_119_enforces_status_and_confidence_check_constraints():
     sql = _read("119_llm_cost_recommendations.sql")
     assert "CHECK (confidence IN ('low','medium','high'))" in sql
-    assert (
-        "CHECK (status IN ('pending','reviewed','applied','rejected'))" in sql
-    )
+    assert "CHECK (status IN ('pending','reviewed','applied','rejected'))" in sql
 
 
 def test_119_creates_two_indexes():

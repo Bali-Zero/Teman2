@@ -41,10 +41,12 @@ class TestGetCachedResult:
 
     @pytest.mark.asyncio
     async def test_exact_match_found(self, cache, mock_redis):
-        cached_data = json.dumps({
-            "query": "test query",
-            "result": {"answer": "cached answer"},
-        })
+        cached_data = json.dumps(
+            {
+                "query": "test query",
+                "result": {"answer": "cached answer"},
+            }
+        )
         mock_redis.get = AsyncMock(return_value=cached_data)
 
         result = await cache.get_cached_result("test query")
@@ -190,6 +192,7 @@ class TestGetSemanticCache:
 
     def test_creates_instance(self, mock_redis):
         import backend.services.search.semantic_cache as module
+
         module._semantic_cache = None  # Reset singleton
         cache = get_semantic_cache(mock_redis)
         assert isinstance(cache, SemanticCache)

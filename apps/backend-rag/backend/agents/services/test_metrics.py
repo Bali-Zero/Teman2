@@ -162,7 +162,10 @@ class TestMetricsCollector:
         return self.agents[agent_name]
 
     def record_test_generation(
-        self, duration: float, success: bool = True, coverage_delta: float = 0.0,
+        self,
+        duration: float,
+        success: bool = True,
+        coverage_delta: float = 0.0,
     ):
         """Record test generation operation"""
         self.test_generation.tests_generated += 1
@@ -311,7 +314,9 @@ class TestMetricsCollector:
     def save_snapshot(self, filename: str | None = None):
         """Save current metrics snapshot to file"""
         if filename is None:
-            filename = f"metrics_snapshot_{datetime.now(tz=timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
+            filename = (
+                f"metrics_snapshot_{datetime.now(tz=timezone.utc).strftime('%Y%m%d_%H%M%S')}.json"
+            )
 
         snapshot = self.get_summary()
         snapshot["alerts"] = self.check_alerts()
@@ -421,7 +426,9 @@ class TestMetricsCollector:
         return html
 
     def _generate_markdown_report(
-        self, summary: dict[str, Any], alerts: list[dict[str, Any]],
+        self,
+        summary: dict[str, Any],
+        alerts: list[dict[str, Any]],
     ) -> str:
         """Generate Markdown report"""
         md = f"""# 🤖 Test Force Metrics Report

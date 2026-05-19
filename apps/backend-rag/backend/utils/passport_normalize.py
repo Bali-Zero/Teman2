@@ -18,26 +18,26 @@ from datetime import datetime
 # ---------------------------------------------------------------------------
 
 _NATIONALITIES: list[tuple[str, list[str]]] = [
-    ("Australian",   ["AUS", "AUSTRALIA"]),
-    ("American",     ["USA", "UNITED STATES", "UNITED STATES OF AMERICA", "US", "AMERIKA"]),
-    ("British",      ["GBR", "UNITED KINGDOM", "GREAT BRITAIN", "UK", "INGGRIS"]),
-    ("Canadian",     ["CAN", "CANADA", "KANADA"]),
-    ("Chinese",      ["CHN", "CHINA", "TIONGKOK", "CINA"]),
-    ("Dutch",        ["NLD", "NETHERLANDS", "HOLLAND", "BELANDA"]),
-    ("French",       ["FRA", "FRANCE", "PERANCIS", "PRANCIS"]),
-    ("German",       ["DEU", "GERMANY", "JERMAN", "D"]),
-    ("Indian",       ["IND", "INDIA"]),
-    ("Indonesian",   ["IDN", "INDONESIA"]),
-    ("Italian",      ["ITA", "ITALY", "ITALIA"]),
-    ("Japanese",     ["JPN", "JAPAN", "JEPANG"]),
-    ("Korean",       ["KOR", "KOREA", "SOUTH KOREA", "REPUBLIC OF KOREA"]),
-    ("Malaysian",    ["MYS", "MALAYSIA"]),
-    ("Russian",      ["RUS", "RUSSIA", "RUSSIAN FEDERATION", "RUSIA"]),
-    ("Singaporean",  ["SGP", "SINGAPORE", "SINGAPURA"]),
-    ("Spanish",      ["ESP", "SPAIN", "SPANYOL"]),
-    ("Swedish",      ["SWE", "SWEDEN", "SWEDIA"]),
-    ("Swiss",        ["CHE", "SWITZERLAND", "SWISS"]),
-    ("Ukrainian",    ["UKR", "UKRAINE", "UKRAINA"]),
+    ("Australian", ["AUS", "AUSTRALIA"]),
+    ("American", ["USA", "UNITED STATES", "UNITED STATES OF AMERICA", "US", "AMERIKA"]),
+    ("British", ["GBR", "UNITED KINGDOM", "GREAT BRITAIN", "UK", "INGGRIS"]),
+    ("Canadian", ["CAN", "CANADA", "KANADA"]),
+    ("Chinese", ["CHN", "CHINA", "TIONGKOK", "CINA"]),
+    ("Dutch", ["NLD", "NETHERLANDS", "HOLLAND", "BELANDA"]),
+    ("French", ["FRA", "FRANCE", "PERANCIS", "PRANCIS"]),
+    ("German", ["DEU", "GERMANY", "JERMAN", "D"]),
+    ("Indian", ["IND", "INDIA"]),
+    ("Indonesian", ["IDN", "INDONESIA"]),
+    ("Italian", ["ITA", "ITALY", "ITALIA"]),
+    ("Japanese", ["JPN", "JAPAN", "JEPANG"]),
+    ("Korean", ["KOR", "KOREA", "SOUTH KOREA", "REPUBLIC OF KOREA"]),
+    ("Malaysian", ["MYS", "MALAYSIA"]),
+    ("Russian", ["RUS", "RUSSIA", "RUSSIAN FEDERATION", "RUSIA"]),
+    ("Singaporean", ["SGP", "SINGAPORE", "SINGAPURA"]),
+    ("Spanish", ["ESP", "SPAIN", "SPANYOL"]),
+    ("Swedish", ["SWE", "SWEDEN", "SWEDIA"]),
+    ("Swiss", ["CHE", "SWITZERLAND", "SWISS"]),
+    ("Ukrainian", ["UKR", "UKRAINE", "UKRAINA"]),
 ]
 
 NATIONALITY_MAP: dict[str, str] = {}
@@ -53,18 +53,29 @@ for _adj, _keys in _NATIONALITIES:
 # ---------------------------------------------------------------------------
 
 _MONTH_NAMES: dict[str, int] = {
-    "JAN": 1, "JANUARY": 1,
-    "FEB": 2, "FEBRUARY": 2,
-    "MAR": 3, "MARCH": 3,
-    "APR": 4, "APRIL": 4,
+    "JAN": 1,
+    "JANUARY": 1,
+    "FEB": 2,
+    "FEBRUARY": 2,
+    "MAR": 3,
+    "MARCH": 3,
+    "APR": 4,
+    "APRIL": 4,
     "MAY": 5,
-    "JUN": 6, "JUNE": 6,
-    "JUL": 7, "JULY": 7,
-    "AUG": 8, "AUGUST": 8,
-    "SEP": 9, "SEPTEMBER": 9,
-    "OCT": 10, "OCTOBER": 10,
-    "NOV": 11, "NOVEMBER": 11,
-    "DEC": 12, "DECEMBER": 12,
+    "JUN": 6,
+    "JUNE": 6,
+    "JUL": 7,
+    "JULY": 7,
+    "AUG": 8,
+    "AUGUST": 8,
+    "SEP": 9,
+    "SEPTEMBER": 9,
+    "OCT": 10,
+    "OCTOBER": 10,
+    "NOV": 11,
+    "NOVEMBER": 11,
+    "DEC": 12,
+    "DECEMBER": 12,
 }
 
 
@@ -100,9 +111,7 @@ def title_case_name(name: str | None) -> str | None:
         for seg in segments:
             # Split on apostrophes
             apo_parts = seg.split("'")
-            titled_segments.append(
-                "'".join(p.capitalize() for p in apo_parts)
-            )
+            titled_segments.append("'".join(p.capitalize() for p in apo_parts))
         return "-".join(titled_segments)
 
     return " ".join(_title_part(p) for p in cleaned.split())

@@ -174,8 +174,7 @@ async def _send_practice_kickoff_impl(
     }
     if not success:
         metadata["failed_channels"] = [
-            ch for ch, ok in (("whatsapp", wa_ok), ("email", email_ok))
-            if not ok
+            ch for ch, ok in (("whatsapp", wa_ok), ("email", email_ok)) if not ok
         ]
     await _record_welcome_run(
         db_pool=db_pool,
@@ -242,12 +241,16 @@ async def _record_welcome_run(
         logger.info(
             "PracticeKickoff: crm_welcome_runs UPSERT for client=%d practice=%d "
             "success=%s channels=%s",
-            client_id, practice_id, success, channels_sent,
+            client_id,
+            practice_id,
+            success,
+            channels_sent,
         )
     except Exception:
         logger.error(
             "PracticeKickoff: crm_welcome_runs UPSERT failed for client=%d practice=%d",
-            client_id, practice_id,
+            client_id,
+            practice_id,
             exc_info=True,
         )
 

@@ -57,7 +57,9 @@ def calculate_property_tax(
     acquisition_bphtb = bphtb_base * 0.05
 
     if kab_key and kab_key not in _NPOPTKP_BY_KABUPATEN:
-        notes.append(f"Kabupaten '{kabupaten}' non riconosciuto — usato NPOPTKP default {_DEFAULT_NPOPTKP:,.0f} IDR")
+        notes.append(
+            f"Kabupaten '{kabupaten}' non riconosciuto — usato NPOPTKP default {_DEFAULT_NPOPTKP:,.0f} IDR"
+        )
 
     return {
         "annual_pbb": round(annual_pbb),

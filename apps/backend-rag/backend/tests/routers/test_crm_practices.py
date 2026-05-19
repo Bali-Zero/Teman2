@@ -90,7 +90,12 @@ class TestCreatePractice:
         _pool, conn = mock_db_pool
         conn.fetchrow = AsyncMock(
             side_effect=[
-                {"id": 5, "base_price": Decimal("1000000"), "category": "visa", "name": "Investor KITAS"},
+                {
+                    "id": 5,
+                    "base_price": Decimal("1000000"),
+                    "category": "visa",
+                    "name": "Investor KITAS",
+                },
                 _practice_row(),
             ],
         )
@@ -98,11 +103,18 @@ class TestCreatePractice:
 
         with (
             patch("backend.app.routers.crm_practices.invalidate_cache", AsyncMock()),
-            patch("backend.services.crm.welcome.welcome_practice_service.send_practice_kickoff", new=_noop_async),
+            patch(
+                "backend.services.crm.welcome.welcome_practice_service.send_practice_kickoff",
+                new=_noop_async,
+            ),
         ):
             response = client.post(
                 "/api/crm/practices/",
-                json={"client_id": 1, "practice_type_code": "kitas_investor", "assigned_to": "test@balizero.com"},
+                json={
+                    "client_id": 1,
+                    "practice_type_code": "kitas_investor",
+                    "assigned_to": "test@balizero.com",
+                },
             )
 
         assert response.status_code == 200
@@ -119,18 +131,24 @@ class TestListPractices:
         mock_db_pool,
     ) -> None:
         _pool, conn = mock_db_pool
-        conn.fetch = AsyncMock(return_value=[{
-            **_practice_row(),
-            "client_name": "Alice Example",
-            "client_email": "alice@example.com",
-            "client_phone": "+628123456789",
-            "client_lead": "test@balizero.com",
-            "practice_type_name": "Investor KITAS",
-            "practice_type_code": "kitas_investor",
-            "practice_category": "visa",
-        }])
+        conn.fetch = AsyncMock(
+            return_value=[
+                {
+                    **_practice_row(),
+                    "client_name": "Alice Example",
+                    "client_email": "alice@example.com",
+                    "client_phone": "+628123456789",
+                    "client_lead": "test@balizero.com",
+                    "practice_type_name": "Investor KITAS",
+                    "practice_type_code": "kitas_investor",
+                    "practice_category": "visa",
+                }
+            ]
+        )
 
-        with patch("backend.app.routers.crm_practices.get_practices_user_filter", return_value=None):
+        with patch(
+            "backend.app.routers.crm_practices.get_practices_user_filter", return_value=None
+        ):
             response = client.get("/api/crm/practices/")
 
         assert response.status_code == 200
@@ -147,19 +165,23 @@ class TestGetPractice:
         mock_db_pool,
     ) -> None:
         _pool, conn = mock_db_pool
-        conn.fetchrow = AsyncMock(return_value={
-            **_practice_row(),
-            "client_name": "Alice Example",
-            "client_email": "alice@example.com",
-            "client_phone": "+628123456789",
-            "client_lead": "test@balizero.com",
-            "practice_type_name": "Investor KITAS",
-            "practice_type_code": "kitas_investor",
-            "practice_category": "visa",
-            "required_documents": [],
-        })
+        conn.fetchrow = AsyncMock(
+            return_value={
+                **_practice_row(),
+                "client_name": "Alice Example",
+                "client_email": "alice@example.com",
+                "client_phone": "+628123456789",
+                "client_lead": "test@balizero.com",
+                "practice_type_name": "Investor KITAS",
+                "practice_type_code": "kitas_investor",
+                "practice_category": "visa",
+                "required_documents": [],
+            }
+        )
 
-        with patch("backend.app.routers.crm_practices.get_practices_user_filter", return_value=None):
+        with patch(
+            "backend.app.routers.crm_practices.get_practices_user_filter", return_value=None
+        ):
             response = client.get("/api/crm/practices/10")
 
         assert response.status_code == 200
@@ -176,7 +198,13 @@ class TestUpdatePractice:
         _pool, conn = mock_db_pool
         conn.fetchrow = AsyncMock(
             side_effect=[
-                {"status": "inquiry", "client_id": 1, "client_visible": True, "created_by": "test@balizero.com", "assigned_to": "test@balizero.com"},
+                {
+                    "status": "inquiry",
+                    "client_id": 1,
+                    "client_visible": True,
+                    "created_by": "test@balizero.com",
+                    "assigned_to": "test@balizero.com",
+                },
                 _practice_row(status="on_process"),
                 {"code": "kitas_investor"},
             ],
@@ -190,7 +218,10 @@ class TestUpdatePractice:
             patch("backend.app.routers.crm_practices.is_crm_admin", return_value=True),
             patch("backend.app.routers.crm_practices.validate_transition", return_value=None),
             patch("backend.app.routers.crm_practices.invalidate_cache", AsyncMock()),
-            patch("backend.services.portal.portal_notification_service.PortalNotificationService", return_value=notification_service),
+            patch(
+                "backend.services.portal.portal_notification_service.PortalNotificationService",
+                return_value=notification_service,
+            ),
             patch("backend.app.routers.crm_practices.spawn", MagicMock()),
         ):
             response = client.patch("/api/crm/practices/10", json={"status": "on_process"})
@@ -236,7 +267,13 @@ class TestUpdatePractice:
         _pool, conn = mock_db_pool
         conn.fetchrow = AsyncMock(
             side_effect=[
-                {"status": "inquiry", "client_id": 1, "client_visible": True, "created_by": "test@balizero.com", "assigned_to": "test@balizero.com"},
+                {
+                    "status": "inquiry",
+                    "client_id": 1,
+                    "client_visible": True,
+                    "created_by": "test@balizero.com",
+                    "assigned_to": "test@balizero.com",
+                },
                 None,
             ],
         )

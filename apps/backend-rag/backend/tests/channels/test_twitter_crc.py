@@ -10,6 +10,7 @@ These tests verify:
 2. The router is now actively registered in router_manifest.py.
 3. The consumer-secret env var is read from settings (not hardcoded).
 """
+
 from __future__ import annotations
 
 import base64
@@ -65,7 +66,8 @@ def test_crc_uses_consumer_secret_from_env(monkeypatch: pytest.MonkeyPatch):
     resp = client.get("/webhook/twitter", params={"crc_token": CRC_TOKEN})
     assert resp.status_code == 200
     assert resp.json()["response_token"] == _expected_response_token(
-        CRC_TOKEN, CONSUMER_SECRET,
+        CRC_TOKEN,
+        CONSUMER_SECRET,
     )
 
 
@@ -100,9 +102,5 @@ def test_twitter_router_listed_in_manifest():
     )
 
     # The webhook_router attribute should also be present
-    has_webhook = any(
-        r.attr == "webhook_router" for r in twitter_entries
-    )
-    assert has_webhook, (
-        "twitter.webhook_router must be registered (CRC + ack-first endpoint)"
-    )
+    has_webhook = any(r.attr == "webhook_router" for r in twitter_entries)
+    assert has_webhook, "twitter.webhook_router must be registered (CRC + ack-first endpoint)"

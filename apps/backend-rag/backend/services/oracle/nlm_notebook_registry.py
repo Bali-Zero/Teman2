@@ -162,10 +162,7 @@ def _default_freshness_state_path() -> Path | None:
         repo_root = Path(__file__).resolve().parents[5]
     except IndexError:
         return None
-    return (
-        repo_root / "apps" / "evaluator" / "nlm_deep_research"
-        / "freshness_monitor_state.json"
-    )
+    return repo_root / "apps" / "evaluator" / "nlm_deep_research" / "freshness_monitor_state.json"
 
 
 _DEFAULT_MAX_STALE_HOURS = 24
@@ -302,9 +299,7 @@ def check_ingestion_freshness(
 
     if age_hours > threshold:
         verdict["status"] = "stale"
-        verdict["reason"] = (
-            f"last canary {age_hours:.1f}h ago > threshold {threshold}h"
-        )
+        verdict["reason"] = f"last canary {age_hours:.1f}h ago > threshold {threshold}h"
         return verdict
 
     verdict["status"] = "fresh"
@@ -413,7 +408,10 @@ def resolve_notebook(
     # Resolve enforce_freshness: explicit arg > env var > False (legacy default)
     if enforce_freshness is None:
         enforce_freshness = os.environ.get("NLM_ENFORCE_FRESHNESS", "").lower() in (
-            "1", "true", "yes", "on",
+            "1",
+            "true",
+            "yes",
+            "on",
         )
 
     result: dict[str, object] = {

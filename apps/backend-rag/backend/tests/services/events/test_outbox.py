@@ -7,6 +7,7 @@ Foundation for the P0-2 EventBus replay-on-reconnect pattern. See
 Tests use mocked asyncpg connection (AsyncMock) — same pattern as
 ``backend/tests/services/test_outbox.py`` for the bridge outbox.
 """
+
 from __future__ import annotations
 
 import json

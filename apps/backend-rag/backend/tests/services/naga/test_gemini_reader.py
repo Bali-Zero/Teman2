@@ -165,7 +165,9 @@ async def test_gemini_bulk_read_handles_json_error() -> None:
     assert evidence_map["sub_q_1"]["facts"] == []
     assert evidence_map["sub_q_2"]["facts"] == []
     # Gaps should note the parse error
-    assert any("parse" in g.lower() or "error" in g.lower() for g in evidence_map["sub_q_1"]["gaps"])
+    assert any(
+        "parse" in g.lower() or "error" in g.lower() for g in evidence_map["sub_q_1"]["gaps"]
+    )
 
 
 @pytest.mark.asyncio

@@ -12,6 +12,7 @@ Shared helpers (fetch_linked_companies, queue_mark_*, fingerprint, context
 block, aggregate_cross_folder_files, extract_json_block) are tested in
 test_worker_helpers.py and re-imported here only for sanity.
 """
+
 from __future__ import annotations
 
 import importlib.util
@@ -26,13 +27,12 @@ import pytest
 def _import_cli_worker():
     """Dynamic import of scripts/crm_guardian_gemini_cli_worker.py."""
     worker_path = (
-        Path(__file__).resolve().parents[7]
-        / "scripts"
-        / "crm_guardian_gemini_cli_worker.py"
+        Path(__file__).resolve().parents[7] / "scripts" / "crm_guardian_gemini_cli_worker.py"
     )
     assert worker_path.exists(), f"worker not found at {worker_path}"
     spec = importlib.util.spec_from_file_location(
-        "crm_guardian_gemini_cli_worker", worker_path,
+        "crm_guardian_gemini_cli_worker",
+        worker_path,
     )
     assert spec is not None and spec.loader is not None
     module = importlib.util.module_from_spec(spec)
@@ -59,24 +59,36 @@ class TestFileInventoryBlock:
         assert "Total files: 0" in block
 
     def test_single_file_rendered(self, worker) -> None:
-        files = [{
-            "id": "file_abc",
-            "name": "passport.pdf",
-            "mimeType": "application/pdf",
-            "size": "2048576",
-            "modifiedTime": "2026-05-16T10:00:00Z",
-            "source_folder_id": "folder_xyz",
-        }]
+        files = [
+            {
+                "id": "file_abc",
+                "name": "passport.pdf",
+                "mimeType": "application/pdf",
+                "size": "2048576",
+                "modifiedTime": "2026-05-16T10:00:00Z",
+                "source_folder_id": "folder_xyz",
+            }
+        ]
         block = worker.build_file_inventory_block(files, {"folder_xyz": "Mario Rossi"})
         assert "Mario Rossi | file_abc | passport.pdf | application/pdf | 2048576" in block
         assert "Total files: 1" in block
 
     def test_multi_folder_provenance(self, worker) -> None:
         files = [
-            {"id": "f1", "name": "akta.pdf", "mimeType": "application/pdf",
-             "modifiedTime": "t1", "source_folder_id": "co_folder"},
-            {"id": "f2", "name": "spt.pdf", "mimeType": "application/pdf",
-             "modifiedTime": "t2", "source_folder_id": "client_folder"},
+            {
+                "id": "f1",
+                "name": "akta.pdf",
+                "mimeType": "application/pdf",
+                "modifiedTime": "t1",
+                "source_folder_id": "co_folder",
+            },
+            {
+                "id": "f2",
+                "name": "spt.pdf",
+                "mimeType": "application/pdf",
+                "modifiedTime": "t2",
+                "source_folder_id": "client_folder",
+            },
         ]
         name_map = {"co_folder": "PT Sample Bali", "client_folder": "Mario Rossi"}
         block = worker.build_file_inventory_block(files, name_map)
@@ -85,14 +97,28 @@ class TestFileInventoryBlock:
         assert "Mario Rossi | f2 | spt.pdf" in block
 
     def test_unknown_source_folder_shows_qmark(self, worker) -> None:
-        files = [{"id": "x", "name": "y", "mimeType": "z",
-                  "modifiedTime": "t", "source_folder_id": "unmapped"}]
+        files = [
+            {
+                "id": "x",
+                "name": "y",
+                "mimeType": "z",
+                "modifiedTime": "t",
+                "source_folder_id": "unmapped",
+            }
+        ]
         block = worker.build_file_inventory_block(files, {})
         assert "? | x | y" in block
 
     def test_missing_size_handled(self, worker) -> None:
-        files = [{"id": "g", "name": "gdoc", "mimeType": "application/vnd.google-apps.document",
-                  "modifiedTime": "t", "source_folder_id": "f"}]
+        files = [
+            {
+                "id": "g",
+                "name": "gdoc",
+                "mimeType": "application/vnd.google-apps.document",
+                "modifiedTime": "t",
+                "source_folder_id": "f",
+            }
+        ]
         block = worker.build_file_inventory_block(files, {"f": "Folder"})
         # No "size" key in Google Docs files — should render empty without KeyError
         assert "Folder | g | gdoc | application/vnd.google-apps.document |  |" in block
@@ -134,11 +160,13 @@ class TestCallGeminiCli:
         mock_result = subprocess.CompletedProcess(
             args=["gemini", "-p", "test"],
             returncode=0,
-            stdout="```json\n{\"ok\": true}\n```\n",
+            stdout='```json\n{"ok": true}\n```\n',
             stderr="",
         )
-        with patch.object(worker.subprocess, "run", return_value=mock_result) as mock_run, \
-             patch.object(worker.shutil, "which", return_value="/opt/homebrew/bin/gemini"):
+        with (
+            patch.object(worker.subprocess, "run", return_value=mock_result) as mock_run,
+            patch.object(worker.shutil, "which", return_value="/opt/homebrew/bin/gemini"),
+        ):
             out = worker.call_gemini_cli("hello prompt")
             assert "```json" in out
             mock_run.assert_called_once()
@@ -149,8 +177,10 @@ class TestCallGeminiCli:
 
     def test_model_override(self, worker) -> None:
         mock_result = subprocess.CompletedProcess(args=[], returncode=0, stdout="x", stderr="")
-        with patch.object(worker.subprocess, "run", return_value=mock_result) as mock_run, \
-             patch.object(worker.shutil, "which", return_value="/opt/homebrew/bin/gemini"):
+        with (
+            patch.object(worker.subprocess, "run", return_value=mock_result) as mock_run,
+            patch.object(worker.shutil, "which", return_value="/opt/homebrew/bin/gemini"),
+        ):
             worker.call_gemini_cli("p", model="gemini-2.5-pro")
             args = mock_run.call_args[0][0]
             assert "-m" in args
@@ -159,19 +189,28 @@ class TestCallGeminiCli:
             assert args.index("-m") > args.index("-p")
 
     def test_timeout_propagates(self, worker) -> None:
-        with patch.object(
-            worker.subprocess, "run",
-            side_effect=subprocess.TimeoutExpired(cmd=["gemini"], timeout=240),
-        ), patch.object(worker.shutil, "which", return_value="/opt/homebrew/bin/gemini"):
+        with (
+            patch.object(
+                worker.subprocess,
+                "run",
+                side_effect=subprocess.TimeoutExpired(cmd=["gemini"], timeout=240),
+            ),
+            patch.object(worker.shutil, "which", return_value="/opt/homebrew/bin/gemini"),
+        ):
             with pytest.raises(subprocess.TimeoutExpired):
                 worker.call_gemini_cli("p", timeout_seconds=240)
 
     def test_nonzero_exit_raises(self, worker) -> None:
         mock_result = subprocess.CompletedProcess(
-            args=[], returncode=1, stdout="", stderr="auth required",
+            args=[],
+            returncode=1,
+            stdout="",
+            stderr="auth required",
         )
-        with patch.object(worker.subprocess, "run", return_value=mock_result), \
-             patch.object(worker.shutil, "which", return_value="/opt/homebrew/bin/gemini"):
+        with (
+            patch.object(worker.subprocess, "run", return_value=mock_result),
+            patch.object(worker.shutil, "which", return_value="/opt/homebrew/bin/gemini"),
+        ):
             with pytest.raises(RuntimeError, match="gemini CLI returncode=1"):
                 worker.call_gemini_cli("p")
 
@@ -188,11 +227,11 @@ class TestCallGeminiCli:
 
 class TestExtractJsonBlock:
     def test_fenced_json(self, worker) -> None:
-        text = "Some intro\n```json\n{\"foo\": 1}\n```\nTrailing prose"
+        text = 'Some intro\n```json\n{"foo": 1}\n```\nTrailing prose'
         assert worker.extract_json_block(text) == {"foo": 1}
 
     def test_unfenced_fallback(self, worker) -> None:
-        text = "no fence but {\"k\": 2} is here"
+        text = 'no fence but {"k": 2} is here'
         assert worker.extract_json_block(text) == {"k": 2}
 
     def test_no_json_returns_none(self, worker) -> None:
@@ -219,12 +258,16 @@ class TestSharedHelpersExist:
 
     def test_compute_cross_folder_fingerprint_exists(self, worker) -> None:
         # Reuse identical hash from playwright worker
-        fp1 = worker.compute_cross_folder_fingerprint([
-            {"id": "a", "modifiedTime": "t", "source_folder_id": "F"},
-        ])
-        fp2 = worker.compute_cross_folder_fingerprint([
-            {"id": "a", "modifiedTime": "t", "source_folder_id": "F"},
-        ])
+        fp1 = worker.compute_cross_folder_fingerprint(
+            [
+                {"id": "a", "modifiedTime": "t", "source_folder_id": "F"},
+            ]
+        )
+        fp2 = worker.compute_cross_folder_fingerprint(
+            [
+                {"id": "a", "modifiedTime": "t", "source_folder_id": "F"},
+            ]
+        )
         assert fp1 == fp2
         assert len(fp1) == 64
 

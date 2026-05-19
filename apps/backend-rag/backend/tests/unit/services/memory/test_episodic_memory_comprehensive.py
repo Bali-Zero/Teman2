@@ -274,7 +274,9 @@ class TestEpisodicMemoryService:
         conn.fetchrow = AsyncMock(return_value={"id": "event-123", "created_at": dt})
 
         result = await episodic_service.add_event(
-            user_id="user-123", title="Test Event", occurred_at=dt,
+            user_id="user-123",
+            title="Test Event",
+            occurred_at=dt,
         )
 
         assert result["status"] == "created"
@@ -361,7 +363,8 @@ class TestEpisodicMemoryService:
         )
 
         result = await episodic_service.extract_and_save_event(
-            user_id="user-123", message="Ho completato il processo KITAS oggi. Sono molto felice!",
+            user_id="user-123",
+            message="Ho completato il processo KITAS oggi. Sono molto felice!",
         )
 
         assert result is not None
@@ -370,13 +373,16 @@ class TestEpisodicMemoryService:
 
     @pytest.mark.asyncio
     async def test_extract_and_save_event_no_temporal_reference(
-        self, episodic_service, mock_db_pool,
+        self,
+        episodic_service,
+        mock_db_pool,
     ):
         """Test extracting event when no temporal reference found"""
         _, _ = mock_db_pool
 
         result = await episodic_service.extract_and_save_event(
-            user_id="user-123", message="Some random text without temporal reference",
+            user_id="user-123",
+            message="Some random text without temporal reference",
         )
 
         assert result is None
@@ -390,14 +396,18 @@ class TestEpisodicMemoryService:
         )
 
         result = await episodic_service.extract_and_save_event(
-            user_id="user-123", message="Ho fatto questo", ai_response="Questo è successo ieri",
+            user_id="user-123",
+            message="Ho fatto questo",
+            ai_response="Questo è successo ieri",
         )
 
         assert result is not None
 
     @pytest.mark.asyncio
     async def test_extract_and_save_event_with_conversation_id(
-        self, episodic_service, mock_db_pool,
+        self,
+        episodic_service,
+        mock_db_pool,
     ):
         """Test extracting event with conversation ID"""
         _, conn = mock_db_pool
@@ -406,7 +416,9 @@ class TestEpisodicMemoryService:
         )
 
         result = await episodic_service.extract_and_save_event(
-            user_id="user-123", message="Ho completato questo oggi", conversation_id=123,
+            user_id="user-123",
+            message="Ho completato questo oggi",
+            conversation_id=123,
         )
 
         assert result is not None
@@ -563,7 +575,9 @@ class TestEpisodicMemoryService:
         conn.fetch = AsyncMock(return_value=[])
 
         events = await episodic_service.get_timeline(
-            user_id="user-123", emotion="positive", limit=10,
+            user_id="user-123",
+            emotion="positive",
+            limit=10,
         )
 
         assert isinstance(events, list)

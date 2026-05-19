@@ -15,6 +15,7 @@ https://github.com/robusta-dev/robusta):
     async def cleanup_log(proposal: ProposalRow, dry_run: bool) -> ActionResult:
         ...
 """
+
 from __future__ import annotations
 
 # Importing the action modules registers them via @register_action decorator

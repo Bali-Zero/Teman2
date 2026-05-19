@@ -150,11 +150,13 @@ class DeepResearchDispatcher:
             result_key = f"{RESULT_PREFIX}{job_id}"
             await self._redis.set(
                 result_key,
-                json.dumps({
-                    "status": status,
-                    "job_id": job_id,
-                    "result": result,
-                }),
+                json.dumps(
+                    {
+                        "status": status,
+                        "job_id": job_id,
+                        "result": result,
+                    }
+                ),
                 ex=RESULT_TTL,
             )
             return True

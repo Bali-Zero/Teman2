@@ -57,7 +57,9 @@ async def run() -> int:
     probes = _build_probes()
     telegram = TelegramReviewAdapter()
     watchdog = TokenWatchdog(
-        probes=probes, telegram=telegram, owner_chat_id=owner_chat_id,
+        probes=probes,
+        telegram=telegram,
+        owner_chat_id=owner_chat_id,
     )
     result = await watchdog.sweep_once()
     sys.stdout.write(

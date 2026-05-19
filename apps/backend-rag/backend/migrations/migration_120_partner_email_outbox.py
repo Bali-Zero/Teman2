@@ -14,6 +14,7 @@ polls outbox rows and sends, with exponential backoff.
 Author: Claude Opus 4.7 (1M context)
 Date: 2026-04-21
 """
+
 from __future__ import annotations
 
 import logging

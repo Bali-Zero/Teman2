@@ -5,7 +5,6 @@ Validates that schema_validator correctly enforces ontology constraints
 and quarantines invalid edges.
 """
 
-
 from backend.services.knowledge_graph.schema_validator import (
     SchemaValidator,
     ValidationResult,

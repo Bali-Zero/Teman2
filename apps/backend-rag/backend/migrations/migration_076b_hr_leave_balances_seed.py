@@ -5,6 +5,7 @@
     - Veronika: 18 days
     - Everyone else: 12 days (default per hr_leave_types.default_days)
 """
+
 import logging
 
 import asyncpg
@@ -20,18 +21,18 @@ DESCRIPTION = (
 # Active balizero.com team members that should have HR records.
 # Format: (email, full_name)  — only @balizero.com staff
 BALIZERO_TEAM: list[tuple[str, str]] = [
-    ("adit@balizero.com",       "Adit"),
-    ("ari.firda@balizero.com",  "Ari"),
-    ("surya@balizero.com",      "Surya"),
-    ("krisna@balizero.com",     "Krishna"),
-    ("sahira@balizero.com",     "Sahira"),
-    ("vino@balizero.com",       "Vino"),
-    ("damar@balizero.com",      "Damar"),
-    ("asya@balizero.com",       "Asya Nadia Firdauzi"),
-    ("ruslana@balizero.com",    "Ruslana"),
-    ("zero@balizero.com",       "Zero"),
-    ("dea@balizero.com",        "Dea"),
-    ("veronika@balizero.com",   "Veronika"),
+    ("adit@balizero.com", "Adit"),
+    ("ari.firda@balizero.com", "Ari"),
+    ("surya@balizero.com", "Surya"),
+    ("krisna@balizero.com", "Krishna"),
+    ("sahira@balizero.com", "Sahira"),
+    ("vino@balizero.com", "Vino"),
+    ("damar@balizero.com", "Damar"),
+    ("asya@balizero.com", "Asya Nadia Firdauzi"),
+    ("ruslana@balizero.com", "Ruslana"),
+    ("zero@balizero.com", "Zero"),
+    ("dea@balizero.com", "Dea"),
+    ("veronika@balizero.com", "Veronika"),
 ]
 
 # Veronika gets 18 days, everyone else 12
@@ -44,9 +45,7 @@ async def up(conn: asyncpg.Connection) -> None:
     # ── 1. Ensure every team member has an hr_employee record ───────────────
     for email, _full_name in BALIZERO_TEAM:
         # Find team_member id
-        tm = await conn.fetchrow(
-            "SELECT id FROM team_members WHERE email = $1 LIMIT 1", email
-        )
+        tm = await conn.fetchrow("SELECT id FROM team_members WHERE email = $1 LIMIT 1", email)
         if not tm:
             logger.warning("Migration 076: team_member not found for %s — skipping", email)
             continue
@@ -72,9 +71,7 @@ async def up(conn: asyncpg.Connection) -> None:
         return
 
     for email, _ in BALIZERO_TEAM:
-        tm = await conn.fetchrow(
-            "SELECT id FROM team_members WHERE email = $1 LIMIT 1", email
-        )
+        tm = await conn.fetchrow("SELECT id FROM team_members WHERE email = $1 LIMIT 1", email)
         if not tm:
             continue
 
@@ -82,7 +79,9 @@ async def up(conn: asyncpg.Connection) -> None:
             "SELECT id FROM hr_employees WHERE team_member_id = $1 LIMIT 1", tm["id"]
         )
         if not emp:
-            logger.warning("Migration 076: hr_employee still missing for %s — skipping balance", email)
+            logger.warning(
+                "Migration 076: hr_employee still missing for %s — skipping balance", email
+            )
             continue
 
         emp_id = emp["id"]

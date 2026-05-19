@@ -6,6 +6,7 @@ Fallback chain: requested_lang → 'en' → 'it' → raise KeyError.
 
 Lang codes: 'it' (Italian), 'en' (English), 'id' (Indonesian).
 """
+
 from __future__ import annotations
 
 from typing import Any
@@ -13,8 +14,8 @@ from typing import Any
 import jinja2
 
 TemplateCategory = str  # "visa_expiry", "lkpm", "tax_filing", ...
-TemplateField = str     # "title", "body", "action", "subject"
-LangCode = str          # "it", "en", "id"
+TemplateField = str  # "title", "body", "action", "subject"
+LangCode = str  # "it", "en", "id"
 
 
 TEMPLATE_REGISTRY: dict[TemplateCategory, dict[TemplateField, dict[LangCode, str]]] = {

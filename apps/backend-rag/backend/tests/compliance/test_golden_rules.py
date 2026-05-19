@@ -226,9 +226,7 @@ def _noqa_print_lines(file_path: Path) -> frozenset[int]:
         lines = file_path.read_text(encoding="utf-8").splitlines()
     except OSError:
         return frozenset()
-    return frozenset(
-        idx + 1 for idx, line in enumerate(lines) if "noqa: T201" in line
-    )
+    return frozenset(idx + 1 for idx, line in enumerate(lines) if "noqa: T201" in line)
 
 
 def test_golden_rule_8_no_print_statements():

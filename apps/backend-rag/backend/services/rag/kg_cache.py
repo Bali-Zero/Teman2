@@ -56,9 +56,9 @@ _DEFAULT_INVALIDATE_PATTERNS: tuple[str, ...] = (
 _PUBLISH_DEBOUNCE_SEC = 0.05
 
 _publish_state: dict[str, Any] = {
-    "pending": False,           # there is a scheduled publish not yet fired
-    "last_version": 0,          # last published version (stops duplicate publishes)
-    "task": None,               # asyncio.Task for the in-flight debounced publish
+    "pending": False,  # there is a scheduled publish not yet fired
+    "last_version": 0,  # last published version (stops duplicate publishes)
+    "task": None,  # asyncio.Task for the in-flight debounced publish
 }
 _publish_state_lock = threading.Lock()
 
@@ -138,13 +138,17 @@ async def _publish_invalidate(version: int) -> None:
         return
 
     try:
-        payload = json.dumps({
-            "version": version,
-            "keys": list(_DEFAULT_INVALIDATE_PATTERNS),
-        })
+        payload = json.dumps(
+            {
+                "version": version,
+                "keys": list(_DEFAULT_INVALIDATE_PATTERNS),
+            }
+        )
         subscribers = await redis_client.publish(KG_INVALIDATE_CHANNEL, payload)
         logger.debug(
-            "Published KG invalidate v=%d → %s subscribers", version, subscribers,
+            "Published KG invalidate v=%d → %s subscribers",
+            version,
+            subscribers,
         )
     except Exception as exc:
         logger.warning("KG invalidate publish failed (v=%d): %s", version, exc)
@@ -260,7 +264,10 @@ class KGCache:
         return None
 
     async def set_traversal(
-        self, entity_ids: list[str], max_depth: int, chains: list[list[dict]],
+        self,
+        entity_ids: list[str],
+        max_depth: int,
+        chains: list[list[dict]],
     ) -> None:
         """Cache BFS traversal result."""
         cache = self._get_cache()
@@ -444,7 +451,8 @@ class KGCacheInvalidationListener:
             while not self._stop_event.is_set():
                 try:
                     msg = await pubsub.get_message(
-                        ignore_subscribe_messages=True, timeout=1.0,
+                        ignore_subscribe_messages=True,
+                        timeout=1.0,
                     )
                 except asyncio.CancelledError:
                     raise
@@ -490,7 +498,9 @@ class KGCacheInvalidationListener:
                 total_cleared += await cache.clear_pattern(pattern)
             except Exception as exc:
                 logger.warning(
-                    "KG invalidate listener: clear_pattern %s failed: %s", pattern, exc,
+                    "KG invalidate listener: clear_pattern %s failed: %s",
+                    pattern,
+                    exc,
                 )
         logger.info(
             "KG invalidate listener: version=%s cleared=%d patterns=%d",

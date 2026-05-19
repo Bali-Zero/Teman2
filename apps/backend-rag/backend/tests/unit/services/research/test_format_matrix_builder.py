@@ -37,9 +37,15 @@ def test_cell_has_required_shape():
     cells = b.build_empty_matrix()
     sample = cells[0]
     required = {
-        "cell_key", "channel", "objective", "register",
-        "recommended_format", "hook_pattern", "cadence_note",
-        "expected_engagement_rate_range", "confidence",
+        "cell_key",
+        "channel",
+        "objective",
+        "register",
+        "recommended_format",
+        "hook_pattern",
+        "cadence_note",
+        "expected_engagement_rate_range",
+        "confidence",
     }
     assert set(sample.keys()) >= required
 

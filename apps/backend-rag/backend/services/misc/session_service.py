@@ -31,7 +31,10 @@ class SessionService:
     """
 
     def __init__(
-        self, redis_url: str | None = None, ttl_hours: int = 24, redis_client: Any | None = None,
+        self,
+        redis_url: str | None = None,
+        ttl_hours: int = 24,
+        redis_client: Any | None = None,
     ) -> None:
         """
         Initialize SessionService
@@ -341,7 +344,10 @@ class SessionService:
             }
 
     async def update_history_with_ttl(
-        self, session_id: str, history: list[dict], ttl_hours: int | None = None,
+        self,
+        session_id: str,
+        history: list[dict],
+        ttl_hours: int | None = None,
     ) -> bool:
         """
         Update conversation history with custom TTL

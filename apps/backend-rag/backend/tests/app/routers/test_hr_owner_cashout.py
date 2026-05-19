@@ -1,4 +1,5 @@
 """Integration tests for owner cashout router with auth gating."""
+
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -37,9 +38,16 @@ async def test_overview_denies_non_owner():
 async def test_overview_allows_owner():
     app = make_app("zero@balizero.com")
     fake_result = {
-        "total_weeks": 22, "first_week": None, "last_week": None,
-        "kpi": {"margin_bz_total_idr": 0, "margin_bz_last_week_idr": 0,
-                "margin_bs_total_idr": 0, "practices_total": 0, "practices_last_week": 0},
+        "total_weeks": 22,
+        "first_week": None,
+        "last_week": None,
+        "kpi": {
+            "margin_bz_total_idr": 0,
+            "margin_bz_last_week_idr": 0,
+            "margin_bs_total_idr": 0,
+            "practices_total": 0,
+            "practices_last_week": 0,
+        },
         "trend": [],
     }
     with patch(
@@ -57,8 +65,15 @@ async def test_overview_allows_alias_owner():
     app = make_app("antonellosiano@balizero.com")
     with patch(
         "backend.services.hr.owner_cashout.repository.get_overview",
-        new=AsyncMock(return_value={"total_weeks": 0, "first_week": None,
-                                    "last_week": None, "kpi": {}, "trend": []}),
+        new=AsyncMock(
+            return_value={
+                "total_weeks": 0,
+                "first_week": None,
+                "last_week": None,
+                "kpi": {},
+                "trend": [],
+            }
+        ),
     ):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             r = await client.get("/api/hr/owner/cashout/overview")

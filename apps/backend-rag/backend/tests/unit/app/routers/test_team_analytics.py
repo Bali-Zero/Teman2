@@ -45,7 +45,10 @@ def app(mock_db_pool, mock_team_analytics_service):
     app.include_router(router)
     app.dependency_overrides[get_database_pool] = lambda: mock_db_pool
     app.dependency_overrides[get_team_analytics_service] = lambda: mock_team_analytics_service
-    app.dependency_overrides[get_current_user] = lambda: {"email": "zero@balizero.com", "role": "Founder"}
+    app.dependency_overrides[get_current_user] = lambda: {
+        "email": "zero@balizero.com",
+        "role": "Founder",
+    }
     return app
 
 
@@ -141,7 +144,8 @@ class TestTeamAnalyticsRouter:
         assert data["success"] is True
         assert "trends" in data
         mock_team_analytics_service.analyze_performance_trends.assert_called_once_with(
-            "test@example.com", 4,
+            "test@example.com",
+            4,
         )
 
     def test_get_performance_trends_with_weeks(self, client, mock_team_analytics_service):
@@ -149,7 +153,8 @@ class TestTeamAnalyticsRouter:
         response = client.get("/api/team-analytics/trends/test@example.com?weeks=8")
         assert response.status_code == 200
         mock_team_analytics_service.analyze_performance_trends.assert_called_with(
-            "test@example.com", 8,
+            "test@example.com",
+            8,
         )
 
     def test_get_performance_trends_error(self, client, mock_team_analytics_service):

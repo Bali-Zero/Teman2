@@ -116,10 +116,22 @@ class TestCreateClient:
 
         with (
             patch("backend.app.routers.crm_clients.invalidate_cache", AsyncMock()),
-            patch("backend.services.integrations.service_account_drive_service.ServiceAccountDriveService", return_value=drive_service),
-            patch("backend.services.crm.welcome.welcome_whatsapp_service.send_client_welcome", AsyncMock()),
-            patch("backend.services.crm.welcome.welcome_email_service.schedule_client_welcome_email", AsyncMock()),
-            patch("backend.services.portal.portal_profile_service.PortalProfileService", return_value=portal_profile_service),
+            patch(
+                "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+                return_value=drive_service,
+            ),
+            patch(
+                "backend.services.crm.welcome.welcome_whatsapp_service.send_client_welcome",
+                AsyncMock(),
+            ),
+            patch(
+                "backend.services.crm.welcome.welcome_email_service.schedule_client_welcome_email",
+                AsyncMock(),
+            ),
+            patch(
+                "backend.services.portal.portal_profile_service.PortalProfileService",
+                return_value=portal_profile_service,
+            ),
         ):
             response = client.post(
                 "/api/crm/clients/",
@@ -215,7 +227,10 @@ class TestUpdateClient:
 
         with (
             patch("backend.app.routers.crm_clients.verify_client_access", AsyncMock()),
-            patch("backend.services.portal.portal_notification_service.PortalNotificationService", return_value=notification_service),
+            patch(
+                "backend.services.portal.portal_notification_service.PortalNotificationService",
+                return_value=notification_service,
+            ),
             patch("backend.app.routers.crm_clients.spawn", MagicMock()),
         ):
             response = client.patch("/api/crm/clients/1", json={"full_name": "Updated Name"})

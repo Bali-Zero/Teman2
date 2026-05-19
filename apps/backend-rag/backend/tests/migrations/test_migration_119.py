@@ -12,6 +12,7 @@ idx_team_members_partner_id (not idx_users_partner_id).
 Spec: docs/superpowers/specs/2026-04-20-crm-partners-module.md §3
 Plan: docs/superpowers/plans/2026-04-20-crm-partners-module.md Task 1 (lines 98-318)
 """
+
 from __future__ import annotations
 
 import re
@@ -176,8 +177,9 @@ async def test_migration_119_rollback_fk_order():
     # CATA-5: was users.partner_id — production uses team_members.partner_id
     pos_team_members_partner_id = sql.find("DROP COLUMN IF EXISTS partner_id")
     assert pos_team_members_partner_id != -1, "rollback must drop team_members.partner_id column"
-    assert pos_team_members_partner_id < pos_partners, \
+    assert pos_team_members_partner_id < pos_partners, (
         "team_members.partner_id must be dropped before DROP TABLE partners"
+    )
 
     # Children must be dropped before parent
     assert pos_audit < pos_partners, "partner_audit_log must be dropped before partners"

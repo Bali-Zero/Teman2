@@ -41,29 +41,35 @@ class _MockRunner(CLIRunner):
 
 
 def _propose(register: str) -> str:
-    return json.dumps({
-        "register": register,
-        "rationale": f"because {register} fits",
-        "risk": "low",
-        "example_headline": "x",
-    })
+    return json.dumps(
+        {
+            "register": register,
+            "rationale": f"because {register} fits",
+            "risk": "low",
+            "example_headline": "x",
+        }
+    )
 
 
 def _challenge(best: str, worst: str) -> str:
-    return json.dumps({
-        "best_not_mine": {"author": best, "motivation": "good fit"},
-        "worst": {"author": worst, "critique": "off tone"},
-    })
+    return json.dumps(
+        {
+            "best_not_mine": {"author": best, "motivation": "good fit"},
+            "worst": {"author": worst, "critique": "off tone"},
+        }
+    )
 
 
 def _judge(register: str) -> str:
-    return json.dumps({
-        "chosen_register": register,
-        "rationale": "judge says so",
-        "rejected_registers": [],
-        "hard_rules_triggered": [],
-        "groupthink_detected": False,
-    })
+    return json.dumps(
+        {
+            "chosen_register": register,
+            "rationale": "judge says so",
+            "rejected_registers": [],
+            "hard_rules_triggered": [],
+            "groupthink_detected": False,
+        }
+    )
 
 
 def _make_council() -> ToneCouncil:

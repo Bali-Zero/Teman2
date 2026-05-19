@@ -143,7 +143,9 @@ async def get_client_overview(
             total_clients = await conn.fetchval(total_query, *params) or 0
 
             # New this month
-            month_start = datetime.now(tz=timezone.utc).replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+            month_start = datetime.now(tz=timezone.utc).replace(
+                day=1, hour=0, minute=0, second=0, microsecond=0
+            )
             new_month_query = f"""
                 SELECT COUNT(*) FROM clients
                 {where_clause}
@@ -153,7 +155,9 @@ async def get_client_overview(
             new_this_month = await conn.fetchval(new_month_query, *month_params) or 0
 
             # New this week
-            week_start = datetime.now(tz=timezone.utc) - timedelta(days=datetime.now(tz=timezone.utc).weekday())
+            week_start = datetime.now(tz=timezone.utc) - timedelta(
+                days=datetime.now(tz=timezone.utc).weekday()
+            )
             week_start = week_start.replace(hour=0, minute=0, second=0, microsecond=0)
             new_week_query = f"""
                 SELECT COUNT(*) FROM clients

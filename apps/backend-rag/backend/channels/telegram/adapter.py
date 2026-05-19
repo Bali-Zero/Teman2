@@ -172,7 +172,8 @@ class TelegramChannelAdapter(BaseChannel):
             # Truncate if too long
             if len(formatted_text) > self.telegram_config.max_message_length:
                 formatted_text = self.truncate_message(
-                    formatted_text, self.telegram_config.max_message_length,
+                    formatted_text,
+                    self.telegram_config.max_message_length,
                 )
 
             # Send message
@@ -227,7 +228,9 @@ class TelegramChannelAdapter(BaseChannel):
             logger.warning("Failed to send Telegram status update: %s", e)
 
     async def stream_response(
-        self, channel_id: str, response_stream: AsyncIterator[ChannelResponse],
+        self,
+        channel_id: str,
+        response_stream: AsyncIterator[ChannelResponse],
     ) -> None:
         """
         Stream response to Telegram using progressive message edits.
@@ -262,7 +265,9 @@ class TelegramChannelAdapter(BaseChannel):
                 message = initial_result.get("result", {})
                 message_id = message.get("message_id")
                 logger.info(
-                    "📝 Created initial Telegram message %s in chat %s", message_id, channel_id,
+                    "📝 Created initial Telegram message %s in chat %s",
+                    message_id,
+                    channel_id,
                 )
 
             # Process stream events
@@ -298,7 +303,8 @@ class TelegramChannelAdapter(BaseChannel):
                     formatted_text = self.formatter.format_response(current_response)
                     if len(formatted_text) > self.telegram_config.max_message_length:
                         formatted_text = self.truncate_message(
-                            formatted_text, self.telegram_config.max_message_length,
+                            formatted_text,
+                            self.telegram_config.max_message_length,
                         )
 
                     # Edit message
@@ -331,7 +337,8 @@ class TelegramChannelAdapter(BaseChannel):
                 formatted_text = self.formatter.format_response(final_response)
                 if len(formatted_text) > self.telegram_config.max_message_length:
                     formatted_text = self.truncate_message(
-                        formatted_text, self.telegram_config.max_message_length,
+                        formatted_text,
+                        self.telegram_config.max_message_length,
                     )
 
                 # Final edit

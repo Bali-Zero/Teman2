@@ -575,6 +575,8 @@ class KeywordMatcherService:
         if len(active_domains) > 1:
             active_scores = {k: v for k, v in scores.items() if v > 0}
             logger.info(
-                "🔀 [KeywordMatcher] Multi-domain query detected: %s (scores: %s)", active_domains, active_scores,
+                "🔀 [KeywordMatcher] Multi-domain query detected: %s (scores: %s)",
+                active_domains,
+                active_scores,
             )
         return active_domains

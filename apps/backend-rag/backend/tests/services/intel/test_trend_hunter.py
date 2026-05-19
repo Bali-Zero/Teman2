@@ -22,6 +22,7 @@ from backend.services.intel.trend_hunter.types import NormalizedSignal
 
 # ── Adapter helpers ────────────────────────────────────────────────────
 
+
 def test_heuristic_urgency_default_baseline():
     assert _heuristic_urgency("something neutral") == 40.0
 
@@ -33,10 +34,18 @@ def test_heuristic_urgency_boosts_on_markers():
 
 
 def test_heuristic_urgency_caps_at_100():
-    many = " ".join([
-        "breaking", "urgent", "deadline", "effective",
-        "enforcement", "sanction", "deportation", "audit",
-    ])
+    many = " ".join(
+        [
+            "breaking",
+            "urgent",
+            "deadline",
+            "effective",
+            "enforcement",
+            "sanction",
+            "deportation",
+            "audit",
+        ]
+    )
     assert _heuristic_urgency(many) == 100.0
 
 
@@ -78,9 +87,9 @@ def test_rss_adapter_triages_by_keywords():
     adapter = RSSAdapter(feeds=[])  # no fetch; we triage manually via attrs
     # Apply same triage logic as adapter.fetch()
     surviving = [
-        i for i in items
-        if any(kw in (i["title"] + i["description"]).lower()
-               for kw in adapter.triage_keywords)
+        i
+        for i in items
+        if any(kw in (i["title"] + i["description"]).lower() for kw in adapter.triage_keywords)
     ]
     assert len(surviving) == 1
     assert "KBLI" in surviving[0]["title"]
@@ -88,8 +97,10 @@ def test_rss_adapter_triages_by_keywords():
 
 # ── Dedup + fingerprint ───────────────────────────────────────────────
 
-def _mk_signal(topic: str, source: TrendSource = TrendSource.RSS,
-               url: str | None = None) -> NormalizedSignal:
+
+def _mk_signal(
+    topic: str, source: TrendSource = TrendSource.RSS, url: str | None = None
+) -> NormalizedSignal:
     return NormalizedSignal(
         source=source,
         topic=topic,
@@ -140,6 +151,7 @@ class _StaticAdapter:
 
     async def run(self):
         from backend.services.intel.trend_hunter.types import SourceAdapterResult
+
         return SourceAdapterResult(
             adapter_name=self.name,
             signals=self._signals,

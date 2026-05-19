@@ -105,8 +105,8 @@ def test_empty_string_optionals_become_none_on_rehydrate():
         "extracted_at": datetime.now(tz=timezone.utc).isoformat(),
         "deepseek_validated": False,
         "deepseek_confidence": 0.0,
-        "deepseek_notes": "",          # empty string in storage
-        "nlm_source_id": "",           # empty string in storage
+        "deepseek_notes": "",  # empty string in storage
+        "nlm_source_id": "",  # empty string in storage
         "source": "nlm_shadow",
         "ttl_hours": 72,
     }

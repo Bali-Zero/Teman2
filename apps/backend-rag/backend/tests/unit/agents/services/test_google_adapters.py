@@ -1,4 +1,5 @@
 """Tests for GoogleColabAdapter and GoogleCloudShellAdapter (S11)."""
+
 from __future__ import annotations
 
 import subprocess

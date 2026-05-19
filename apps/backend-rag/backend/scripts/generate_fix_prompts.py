@@ -170,7 +170,9 @@ def build_fix_prompt(
 
     # Detect if this is a test-mock import error (fix goes in test file, not source)
     is_mock_fix = _is_test_mock_import_error(
-        error_type, first.get("error_message", ""), first["test_file"],
+        error_type,
+        first.get("error_message", ""),
+        first["test_file"],
     )
 
     # Extract test function name from nodeid
@@ -307,10 +309,15 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Generate fix prompts from failure queue")
     parser.add_argument("queue", help="Path to classified failure queue JSON")
     parser.add_argument(
-        "--max-fixes", type=int, default=30, help="Max number of fix prompts to generate",
+        "--max-fixes",
+        type=int,
+        default=30,
+        help="Max number of fix prompts to generate",
     )
     parser.add_argument(
-        "--output-dir", default="/tmp/nuz-fix-prompts", help="Output directory for prompt files",
+        "--output-dir",
+        default="/tmp/nuz-fix-prompts",
+        help="Output directory for prompt files",
     )
     parser.add_argument(
         "--types",

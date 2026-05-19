@@ -208,15 +208,18 @@ async def test_extract_passport_enhanced_preview_success(mock_db_pool, mock_curr
         patch("backend.utils.passport_normalize.normalize_date", side_effect=lambda x: x),
         patch("backend.utils.passport_normalize.normalize_nationality", side_effect=lambda x: x),
         patch("backend.utils.passport_normalize.title_case_name", side_effect=lambda x: x),
-        patch("backend.app.routers.crm_clients_documents.extract_json_from_llm_response", return_value={
-            "passport_number": "AB123456",
-            "expiry_date": "2030-01-01",
-            "full_name": "JOHN DOE",
-            "gender": "M",
-            "date_of_birth": "1990-05-15",
-            "nationality": "AUS",
-            "confidence": 0.95,
-        }),
+        patch(
+            "backend.app.routers.crm_clients_documents.extract_json_from_llm_response",
+            return_value={
+                "passport_number": "AB123456",
+                "expiry_date": "2030-01-01",
+                "full_name": "JOHN DOE",
+                "gender": "M",
+                "date_of_birth": "1990-05-15",
+                "nationality": "AUS",
+                "confidence": 0.95,
+            },
+        ),
     ):
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(return_value=mock_ollama_resp)
@@ -314,7 +317,10 @@ async def test_extract_passport_enhanced_json_parse_fail(mock_db_pool, mock_curr
 
     with (
         patch("httpx.AsyncClient") as mock_cls,
-        patch("backend.app.routers.crm_clients_documents.extract_json_from_llm_response", return_value=None),
+        patch(
+            "backend.app.routers.crm_clients_documents.extract_json_from_llm_response",
+            return_value=None,
+        ),
     ):
         mock_client = AsyncMock()
         mock_client.post = AsyncMock(return_value=mock_resp)
@@ -466,12 +472,15 @@ async def test_extract_npwp_success(mock_db_pool, mock_current_user):
 
     with (
         patch("backend.app.routers.crm_clients_documents.verify_client_access", new=AsyncMock()),
-        patch("backend.app.routers.crm_clients_documents.extract_json_from_llm_response", return_value={
-            "npwp": "123456789012345",
-            "address": "Jl Test",
-            "city": "Denpasar",
-            "confidence": 0.9,
-        }),
+        patch(
+            "backend.app.routers.crm_clients_documents.extract_json_from_llm_response",
+            return_value={
+                "npwp": "123456789012345",
+                "address": "Jl Test",
+                "city": "Denpasar",
+                "confidence": 0.9,
+            },
+        ),
         patch("httpx.AsyncClient") as mock_cls,
     ):
         mock_client = AsyncMock()
@@ -549,7 +558,10 @@ async def test_extract_npwp_json_parse_fail(mock_db_pool, mock_current_user):
 
     with (
         patch("backend.app.routers.crm_clients_documents.verify_client_access", new=AsyncMock()),
-        patch("backend.app.routers.crm_clients_documents.extract_json_from_llm_response", return_value=None),
+        patch(
+            "backend.app.routers.crm_clients_documents.extract_json_from_llm_response",
+            return_value=None,
+        ),
         patch("httpx.AsyncClient") as mock_cls,
     ):
         mock_client = AsyncMock()
@@ -581,12 +593,15 @@ async def test_extract_npwp_wrong_digit_count(mock_db_pool, mock_current_user):
 
     with (
         patch("backend.app.routers.crm_clients_documents.verify_client_access", new=AsyncMock()),
-        patch("backend.app.routers.crm_clients_documents.extract_json_from_llm_response", return_value={
-            "npwp": "123",
-            "address": None,
-            "city": None,
-            "confidence": 0.5,
-        }),
+        patch(
+            "backend.app.routers.crm_clients_documents.extract_json_from_llm_response",
+            return_value={
+                "npwp": "123",
+                "address": None,
+                "city": None,
+                "confidence": 0.5,
+            },
+        ),
         patch("httpx.AsyncClient") as mock_cls,
     ):
         mock_client = AsyncMock()
@@ -622,12 +637,15 @@ async def test_extract_nib_success(mock_db_pool, mock_current_user):
 
     with (
         patch("backend.app.routers.crm_clients_documents.verify_client_access", new=AsyncMock()),
-        patch("backend.app.routers.crm_clients_documents.extract_json_from_llm_response", return_value={
-            "nib": "1234567890123",
-            "company_name": "PT Test",
-            "kbli_code": "56101",
-            "confidence": 0.9,
-        }),
+        patch(
+            "backend.app.routers.crm_clients_documents.extract_json_from_llm_response",
+            return_value={
+                "nib": "1234567890123",
+                "company_name": "PT Test",
+                "kbli_code": "56101",
+                "confidence": 0.9,
+            },
+        ),
         patch("httpx.AsyncClient") as mock_cls,
     ):
         mock_client = AsyncMock()
@@ -704,12 +722,15 @@ async def test_extract_nib_wrong_digit_count(mock_db_pool, mock_current_user):
 
     with (
         patch("backend.app.routers.crm_clients_documents.verify_client_access", new=AsyncMock()),
-        patch("backend.app.routers.crm_clients_documents.extract_json_from_llm_response", return_value={
-            "nib": "12345",
-            "company_name": None,
-            "kbli_code": None,
-            "confidence": 0.5,
-        }),
+        patch(
+            "backend.app.routers.crm_clients_documents.extract_json_from_llm_response",
+            return_value={
+                "nib": "12345",
+                "company_name": None,
+                "kbli_code": None,
+                "confidence": 0.5,
+            },
+        ),
         patch("httpx.AsyncClient") as mock_cls,
     ):
         mock_client = AsyncMock()

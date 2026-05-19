@@ -11,6 +11,7 @@ Safety policy machinery (B3+B4):
 The classify_action() function is the single source of truth for what
 runs autonomously. Daemon code must never short-circuit it.
 """
+
 from __future__ import annotations
 
 import logging
@@ -21,32 +22,38 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 # Safety policy — keep these in sync with RequestedAction enum in models.py.
-BLOCKED_ACTIONS: frozenset[str] = frozenset({
-    # P0-3 threat model unresolved (51/54 plist corruption 2026-04-29).
-    "cleanup_zombie_plist",
-})
+BLOCKED_ACTIONS: frozenset[str] = frozenset(
+    {
+        # P0-3 threat model unresolved (51/54 plist corruption 2026-04-29).
+        "cleanup_zombie_plist",
+    }
+)
 
-HITL_ONLY_ACTIONS: frozenset[str] = frozenset({
-    # Organism restart loop amplification risk — Telegram approval mandatory.
-    "restart_agent",
-    # Codex 5.5 deep agentic edit — broad blast radius, approval mandatory.
-    "codex_xhigh_fix",
-    # Codex image gen — public-facing, editorial review gate.
-    "codex_image_gen",
-    # Codex visual dispatch (15 assets) — public-facing bundle, editorial gate.
-    "codex_visual_dispatch",
-})
+HITL_ONLY_ACTIONS: frozenset[str] = frozenset(
+    {
+        # Organism restart loop amplification risk — Telegram approval mandatory.
+        "restart_agent",
+        # Codex 5.5 deep agentic edit — broad blast radius, approval mandatory.
+        "codex_xhigh_fix",
+        # Codex image gen — public-facing, editorial review gate.
+        "codex_image_gen",
+        # Codex visual dispatch (15 assets) — public-facing bundle, editorial gate.
+        "codex_visual_dispatch",
+    }
+)
 
-ALLOWED_L2_ACTIONS: frozenset[str] = frozenset({
-    "cleanup_log",
-    "ack_outbox_event",
-    "quarantine_alert",
-    "prune_consumed_outbox",
-    # Whitelist V2: enqueue is non-destructive (queue write only; runner
-    # processes at 22:00 with its own safeguards: 8h timeout, sandbox
-    # workspace-write, branch-isolated, no auto-merge).
-    "codex_overnight_queue",
-})
+ALLOWED_L2_ACTIONS: frozenset[str] = frozenset(
+    {
+        "cleanup_log",
+        "ack_outbox_event",
+        "quarantine_alert",
+        "prune_consumed_outbox",
+        # Whitelist V2: enqueue is non-destructive (queue write only; runner
+        # processes at 22:00 with its own safeguards: 8h timeout, sandbox
+        # workspace-write, branch-isolated, no auto-merge).
+        "codex_overnight_queue",
+    }
+)
 
 
 @dataclass(frozen=True)

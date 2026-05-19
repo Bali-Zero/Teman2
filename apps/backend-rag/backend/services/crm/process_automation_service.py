@@ -19,7 +19,8 @@ from backend.services.notifications.email_branding import logo_header_html, team
 
 # Internal email API — uses Brevo, from=zantara@balizero.com
 _EMAIL_API_URL = os.getenv(
-    "INTERNAL_EMAIL_API_URL", "https://nuzantara-rag.fly.dev/api/notifications/send-email",
+    "INTERNAL_EMAIL_API_URL",
+    "https://nuzantara-rag.fly.dev/api/notifications/send-email",
 )
 _EMAIL_API_KEY = os.getenv("NUZANTARA_API_KEY", "")
 
@@ -33,11 +34,13 @@ class ProcessAutomationService:
         self.db_pool = db_pool
         self.zoho_email_service = ZohoEmailService(db_pool)
 
-    @cache_invalidating([
-        lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
-        "zantara:crm_practices:*",
-        "zantara:crm_activity:*",
-    ])
+    @cache_invalidating(
+        [
+            lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
+            "zantara:crm_practices:*",
+            "zantara:crm_activity:*",
+        ]
+    )
     async def trigger_on_process_start(
         self,
         practice_id: int,
@@ -111,7 +114,8 @@ class ProcessAutomationService:
                     )
                     results["team_leader_notified"] = True
                     logger.info(
-                        "Process start notification sent to team leader %s", team_leader_email,
+                        "Process start notification sent to team leader %s",
+                        team_leader_email,
                     )
                 except Exception as e:
                     logger.error("Failed to send notification to team leader: %s", e)
@@ -132,7 +136,9 @@ class ProcessAutomationService:
 
         except Exception as error:
             logger.error(
-                "Process start automation failed for practice %s: %s", practice_id, error,
+                "Process start automation failed for practice %s: %s",
+                practice_id,
+                error,
                 exc_info=True,
             )
             return {"success": False, "error": str(error)}
@@ -191,8 +197,12 @@ P.S. Keep an eye on your WhatsApp—we'll be sending you updates there too! 😊
 """
 
         await self._send_with_brevo_fallback(
-            client_email, subject, body,
-            cc=team_member_email if team_member_email and team_member_email != client_email else None,
+            client_email,
+            subject,
+            body,
+            cc=team_member_email
+            if team_member_email and team_member_email != client_email
+            else None,
             include_logo=True,
         )
 
@@ -234,7 +244,10 @@ P.S. Keep an eye on your WhatsApp—we'll be sending you updates there too! 😊
         await self._send_with_brevo_fallback(team_leader_email, subject, body, prebuilt_html=True)
 
     async def _send_with_brevo_fallback(
-        self, to_email: str, subject: str, body: str,
+        self,
+        to_email: str,
+        subject: str,
+        body: str,
         *,
         cc: str | None = None,
         include_logo: bool = False,

@@ -3,6 +3,7 @@
 Exercises the HTTP contract of /api/experience/* against a FastAPI TestClient
 with a real ExperienceService backed by a temp SQLite path.
 """
+
 from __future__ import annotations
 
 import pytest
@@ -25,7 +26,8 @@ def app(service: ExperienceService) -> FastAPI:
     app.include_router(router)
     app.dependency_overrides[get_experience_service] = lambda: service
     app.dependency_overrides[get_current_user] = lambda: {
-        "email": "zero@balizero.com", "role": "admin",
+        "email": "zero@balizero.com",
+        "role": "admin",
     }
     return app
 
@@ -94,15 +96,21 @@ def test_record_rejects_empty_procedure(client):
 def test_record_requires_auth(service):
     """Without the get_current_user override, the endpoint returns 401/403."""
     from backend.app.routers.experience import router as exp_router
+
     app = FastAPI()
     app.include_router(exp_router)
     app.dependency_overrides[get_experience_service] = lambda: service
     # Deliberately no override for get_current_user — use the real dependency
     client = TestClient(app)
-    resp = client.post("/api/experience/record", json={
-        "trajectory_id": "x", "cell": "c",
-        "outcome": "success", "procedure": "x",
-    })
+    resp = client.post(
+        "/api/experience/record",
+        json={
+            "trajectory_id": "x",
+            "cell": "c",
+            "outcome": "success",
+            "procedure": "x",
+        },
+    )
     assert resp.status_code in (401, 403)
 
 
@@ -110,14 +118,24 @@ def test_record_requires_auth(service):
 
 
 def test_query_returns_matching_trajectories(client):
-    client.post("/api/experience/record", json={
-        "trajectory_id": "t1", "cell": "c1", "outcome": "success",
-        "procedure": "DLP scan blocked the draft caption.",
-    })
-    client.post("/api/experience/record", json={
-        "trajectory_id": "t2", "cell": "c1", "outcome": "success",
-        "procedure": "Morning photo selected from GARUDA.",
-    })
+    client.post(
+        "/api/experience/record",
+        json={
+            "trajectory_id": "t1",
+            "cell": "c1",
+            "outcome": "success",
+            "procedure": "DLP scan blocked the draft caption.",
+        },
+    )
+    client.post(
+        "/api/experience/record",
+        json={
+            "trajectory_id": "t2",
+            "cell": "c1",
+            "outcome": "success",
+            "procedure": "Morning photo selected from GARUDA.",
+        },
+    )
     resp = client.post("/api/experience/query", json={"query": "DLP"})
     assert resp.status_code == 200
     body = resp.json()
@@ -126,17 +144,31 @@ def test_query_returns_matching_trajectories(client):
 
 
 def test_query_filter_by_outcome(client):
-    client.post("/api/experience/record", json={
-        "trajectory_id": "ok", "cell": "c", "outcome": "success",
-        "procedure": "published prose",
-    })
-    client.post("/api/experience/record", json={
-        "trajectory_id": "ko", "cell": "c", "outcome": "failure",
-        "procedure": "published prose",
-    })
-    resp = client.post("/api/experience/query", json={
-        "query": "published", "outcome": "failure",
-    })
+    client.post(
+        "/api/experience/record",
+        json={
+            "trajectory_id": "ok",
+            "cell": "c",
+            "outcome": "success",
+            "procedure": "published prose",
+        },
+    )
+    client.post(
+        "/api/experience/record",
+        json={
+            "trajectory_id": "ko",
+            "cell": "c",
+            "outcome": "failure",
+            "procedure": "published prose",
+        },
+    )
+    resp = client.post(
+        "/api/experience/query",
+        json={
+            "query": "published",
+            "outcome": "failure",
+        },
+    )
     assert resp.status_code == 200
     results = resp.json()["results"]
     assert len(results) == 1
@@ -153,13 +185,16 @@ def test_query_limit_cap(client):
 
 
 def test_get_trajectory_by_id(client):
-    client.post("/api/experience/record", json={
-        "trajectory_id": "lookup",
-        "cell": "c",
-        "outcome": "success",
-        "procedure": "find me",
-        "tokens": 42,
-    })
+    client.post(
+        "/api/experience/record",
+        json={
+            "trajectory_id": "lookup",
+            "cell": "c",
+            "outcome": "success",
+            "procedure": "find me",
+            "tokens": 42,
+        },
+    )
     resp = client.get("/api/experience/lookup")
     assert resp.status_code == 200
     body = resp.json()
@@ -177,12 +212,15 @@ def test_get_trajectory_404_when_missing(client):
 
 def test_stats_endpoint(client):
     for i, oc in enumerate(("success", "success", "failure")):
-        client.post("/api/experience/record", json={
-            "trajectory_id": f"t_{i}",
-            "cell": "c",
-            "outcome": oc,
-            "procedure": "p",
-        })
+        client.post(
+            "/api/experience/record",
+            json={
+                "trajectory_id": f"t_{i}",
+                "cell": "c",
+                "outcome": oc,
+                "procedure": "p",
+            },
+        )
     resp = client.get("/api/experience/stats?cell=c")
     assert resp.status_code == 200
     data = resp.json()

@@ -100,6 +100,7 @@ def degraded_safe(service_name: str) -> Callable[..., Any]:
     endpoint (and downstream routers) can read ``degraded_services`` to
     report granular status.
     """
+
     def decorator(fn: Callable[..., Any]) -> Callable[..., Any]:
         @functools.wraps(fn)
         async def wrapper(app: FastAPI, *args: Any, **kwargs: Any) -> Any:
@@ -118,7 +119,9 @@ def degraded_safe(service_name: str) -> Callable[..., Any]:
                 app.state.degraded_services.add(service_name)
                 _record_genome_scar(service_name, exc)
                 return None
+
         return wrapper
+
     return decorator
 
 
@@ -158,7 +161,8 @@ async def _init_search_service(app: FastAPI) -> Any:
 
     embedder = create_embeddings_generator()
     cultural_insights = CulturalInsightsService(
-        collection_manager=collection_manager, embedder=embedder,
+        collection_manager=collection_manager,
+        embedder=embedder,
     )
 
     # Create SearchService with dependencies
@@ -202,7 +206,9 @@ async def _init_search_service(app: FastAPI) -> Any:
         if settings.qdrant_api_key:
             _headers["api-key"] = settings.qdrant_api_key
         async with _httpx.AsyncClient(
-            base_url=settings.qdrant_url, headers=_headers, timeout=5.0,
+            base_url=settings.qdrant_url,
+            headers=_headers,
+            timeout=5.0,
         ) as _qdrant_check:
             _resp = await _qdrant_check.get("/collections")
             _resp.raise_for_status()
@@ -210,11 +216,13 @@ async def _init_search_service(app: FastAPI) -> Any:
         logger.info("✅ SearchService initialized (Qdrant verified)")
     except Exception as qdrant_err:
         service_registry.register(
-            "search", ServiceStatus.UNAVAILABLE,
+            "search",
+            ServiceStatus.UNAVAILABLE,
             error=f"SearchService created but Qdrant unreachable: {qdrant_err}",
         )
         logger.error(
-            "❌ SearchService created but Qdrant unreachable — marking UNAVAILABLE: %s", qdrant_err,
+            "❌ SearchService created but Qdrant unreachable — marking UNAVAILABLE: %s",
+            qdrant_err,
         )
 
     return search_service
@@ -390,18 +398,21 @@ async def _init_specialized_agents(
     except Exception as e:
         # Exception contains service init error, not credentials
         logger.error(
-            "❌ Failed to initialize AutonomousResearchService: %s", e,
+            "❌ Failed to initialize AutonomousResearchService: %s",
+            e,
         )  # nosemgrep: python-logger-credential-disclosure
 
     try:
         cross_oracle_synthesis_service = CrossOracleSynthesisService(
-            search_service=search_service, zantara_ai_client=ai_client,
+            search_service=search_service,
+            zantara_ai_client=ai_client,
         )
         logger.info("✅ CrossOracleSynthesisService initialized")
     except Exception as e:
         # Exception contains service init error, not credentials
         logger.error(
-            "❌ Failed to initialize CrossOracleSynthesisService: %s", e,
+            "❌ Failed to initialize CrossOracleSynthesisService: %s",
+            e,
         )  # nosemgrep: python-logger-credential-disclosure
 
     try:
@@ -578,7 +589,8 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 from backend.app.metrics import database_init_failed_total
 
                 database_init_failed_total.labels(
-                    error_type=error_type, is_transient=str(is_transient),
+                    error_type=error_type,
+                    is_transient=str(is_transient),
                 ).inc()
             except ImportError:
                 pass
@@ -625,7 +637,8 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 from backend.app.metrics import database_init_failed_total
 
                 database_init_failed_total.labels(
-                    error_type=error_type, is_transient=str(is_transient),
+                    error_type=error_type,
+                    is_transient=str(is_transient),
                 ).inc()
             except ImportError:
                 pass
@@ -636,7 +649,10 @@ async def initialize_database_services(app: FastAPI) -> asyncpg.Pool | None:
                 await asyncio.sleep(delay)
             else:
                 service_registry.register(
-                    "database", ServiceStatus.UNAVAILABLE, error=str(e), critical=False,
+                    "database",
+                    ServiceStatus.UNAVAILABLE,
+                    error=str(e),
+                    critical=False,
                 )
                 logger.error("❌ Unexpected error initializing database: %s", e)
                 app.state.ts_service = None
@@ -762,7 +778,9 @@ async def initialize_faq_cache_service(app: FastAPI) -> None:
 
 
 async def initialize_crm_and_memory_services(
-    app: FastAPI, ai_client: Any, db_pool: asyncpg.Pool | None,
+    app: FastAPI,
+    ai_client: Any,
+    db_pool: asyncpg.Pool | None,
 ) -> None:
     """
     Initialize CRM and Memory services: MemoryService, ConversationService.
@@ -891,7 +909,9 @@ async def initialize_intelligent_router(
         )
         app.state.specialized_router = specialized_router
         service_registry.register("specialized_router", ServiceStatus.HEALTHY, critical=False)
-        logger.info("✅ SpecializedServiceRouter initialized (AutonomousResearch + CrossOracle + ClientJourney)")
+        logger.info(
+            "✅ SpecializedServiceRouter initialized (AutonomousResearch + CrossOracle + ClientJourney)"
+        )
     except Exception as e:
         logger.warning("⚠️ SpecializedServiceRouter initialization failed (non-critical): %s", e)
         app.state.specialized_router = None
@@ -946,7 +966,10 @@ async def _init_background_services(
         logger.info("✅ Health Monitor: Active (check_interval=60s)")
     except Exception as e:
         service_registry.register(
-            "health_monitor", ServiceStatus.DEGRADED, error=str(e), critical=False,
+            "health_monitor",
+            ServiceStatus.DEGRADED,
+            error=str(e),
+            critical=False,
         )
         logger.error("❌ Failed to initialize Health Monitor: %s", e)
 
@@ -973,7 +996,10 @@ async def _init_background_services(
         logger.info("✅ Proactive Compliance Monitor: Active")
     except Exception as e:
         service_registry.register(
-            "compliance", ServiceStatus.DEGRADED, error=str(e), critical=False,
+            "compliance",
+            ServiceStatus.DEGRADED,
+            error=str(e),
+            critical=False,
         )
         logger.error("❌ Failed to initialize Compliance Monitor: %s", e)
 
@@ -993,10 +1019,12 @@ async def _init_background_services(
         logger.info("✅ Autonomous Scheduler: Active")
     except Exception as e:
         service_registry.register(
-            "autonomous_scheduler", ServiceStatus.DEGRADED, error=str(e), critical=False,
+            "autonomous_scheduler",
+            ServiceStatus.DEGRADED,
+            error=str(e),
+            critical=False,
         )
         logger.error("❌ Failed to initialize Autonomous Scheduler: %s", e)
-
 
 
 # NOTE: The Generals (CodingGeneral, IntelligenceGeneral) were removed 2026-04-03.
@@ -1005,7 +1033,6 @@ async def _init_background_services(
 #   - CodingGeneral → Core Guardian V3 (external, runs every 3h)
 #   - IntelligenceGeneral → Intel Pipeline (Chain 4) + War Room
 # See: docs/superpowers/specs/2026-04-03-agent-mesh-vision.md §8
-
 
 
 async def initialize_channel_router(
@@ -1163,7 +1190,10 @@ async def initialize_channel_router(
 
     except Exception as e:
         service_registry.register(
-            "channel_router", ServiceStatus.DEGRADED, error=str(e), critical=False,
+            "channel_router",
+            ServiceStatus.DEGRADED,
+            error=str(e),
+            critical=False,
         )
         logger.error("❌ Failed to initialize Channel Router: %s", e, exc_info=True)
         app.state.channel_router_init_error = str(e)
@@ -1235,8 +1265,7 @@ async def initialize_services(app: FastAPI) -> None:
             confirmation_service=confirmation_service,
         )
         logger.info(
-            "✅ VASSAL Phase 3: ConfirmationService + ToolAuthorizer wired "
-            "(Redis available=%s)",
+            "✅ VASSAL Phase 3: ConfirmationService + ToolAuthorizer wired (Redis available=%s)",
             getattr(redis_mgr, "available", False),
         )
     except Exception as e:
@@ -1334,7 +1363,10 @@ async def initialize_services(app: FastAPI) -> None:
         logger.info("✅ Health Monitor: Active (check_interval=60s)")
     except Exception as e:
         service_registry.register(
-            "health_monitor", ServiceStatus.DEGRADED, error=str(e), critical=False,
+            "health_monitor",
+            ServiceStatus.DEGRADED,
+            error=str(e),
+            critical=False,
         )
         logger.error("❌ Failed to initialize Health Monitor: %s", e)
 
@@ -1357,7 +1389,10 @@ async def initialize_services(app: FastAPI) -> None:
             logger.info("✅ Olympus DB Guardian: Active (heartbeat + pulse)")
         except Exception as e:
             service_registry.register(
-                "olympus", ServiceStatus.DEGRADED, error=str(e), critical=False,
+                "olympus",
+                ServiceStatus.DEGRADED,
+                error=str(e),
+                critical=False,
             )
             logger.error("❌ Failed to initialize Olympus: %s", e)
     else:
@@ -1411,7 +1446,6 @@ async def initialize_services(app: FastAPI) -> None:
     logger.info(f"📊 Service Status: {service_registry.get_status()['overall']}")
 
 
-
 def _clean_database_dsn(dsn: str) -> tuple[str, bool | None]:
     """
     Clean DATABASE_URL for asyncpg compatibility.
@@ -1432,6 +1466,7 @@ def _clean_database_dsn(dsn: str) -> tuple[str, bool | None]:
     cleaned_dsn = urlunparse(parsed._replace(query=clean_query))
     return cleaned_dsn, ssl_context
 
+
 async def initialize_services_light(app: FastAPI) -> None:
     """
     Light initialization for the 'api' process group.
@@ -1447,6 +1482,7 @@ async def initialize_services_light(app: FastAPI) -> None:
     # 1. Database pool (CRITICAL)
     try:
         dsn, ssl_ctx = _clean_database_dsn(settings.database_url)
+
         async def _light_init_connection(conn):
             """Set statement timeout + register jsonb codec on every connection.
 
@@ -1505,6 +1541,7 @@ async def initialize_services_light(app: FastAPI) -> None:
     # 2. Redis cache (non-critical)
     try:
         from backend.core.cache import CacheService
+
         cache = CacheService()
         app.state.cache = cache
         service_registry.register("cache", ServiceStatus.HEALTHY, critical=False)
@@ -1531,6 +1568,7 @@ async def initialize_services_light(app: FastAPI) -> None:
         try:
             from backend.services.analytics.attendance_monitor import AttendanceMonitor
             from backend.services.analytics.team_timesheet_service import init_timesheet_service
+
             attendance_monitor = AttendanceMonitor(db_pool)
             await attendance_monitor.start_schedulers()
             app.state.attendance_monitor = attendance_monitor

@@ -33,7 +33,8 @@ class IntelAnalyticsService:
         self.staging_service = staging_service
 
     def get_intelligence_analytics(
-        self, days: int = IntelConstants.TRENDS_ANALYSIS_DAYS,
+        self,
+        days: int = IntelConstants.TRENDS_ANALYSIS_DAYS,
     ) -> dict[str, Any]:
         """
         Get historical analytics and trends for Intelligence Center.
@@ -212,7 +213,9 @@ class IntelAnalyticsService:
                                                 daily["rejected"] += 1
                             except Exception as e:
                                 logger.warning(
-                                    "Failed to process daily trend file %s: %s", file_path, e,
+                                    "Failed to process daily trend file %s: %s",
+                                    file_path,
+                                    e,
                                 )
                                 continue
 
@@ -233,7 +236,9 @@ class IntelAnalyticsService:
                                             daily["published"] += 1
                             except Exception as e:
                                 logger.warning(
-                                    "Failed to process daily published file %s: %s", file_path, e,
+                                    "Failed to process daily published file %s: %s",
+                                    file_path,
+                                    e,
                                 )
                                 continue
 

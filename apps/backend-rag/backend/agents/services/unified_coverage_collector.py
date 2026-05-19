@@ -82,7 +82,9 @@ class UnifiedCoverageCollector:
         self.components = {}
 
     def collect_backend_coverage(
-        self, component_path: Path, component_name: str,
+        self,
+        component_path: Path,
+        component_name: str,
     ) -> ComponentCoverage | None:
         """Collect coverage from Python/pytest backend"""
         try:
@@ -153,7 +155,8 @@ class UnifiedCoverageCollector:
 
         except subprocess.TimeoutExpired:
             logger.warning(
-                "⏱️ Coverage generation timeout for %s - using existing coverage.json if available", component_name,
+                "⏱️ Coverage generation timeout for %s - using existing coverage.json if available",
+                component_name,
             )
             # Try to use existing coverage.json even if generation timed out
             if coverage_json.exists():
@@ -185,7 +188,9 @@ class UnifiedCoverageCollector:
             return None
 
     def collect_frontend_coverage(
-        self, component_path: Path, component_name: str,
+        self,
+        component_path: Path,
+        component_name: str,
     ) -> ComponentCoverage | None:
         """Collect coverage from TypeScript/JS frontend"""
         try:
@@ -204,7 +209,8 @@ class UnifiedCoverageCollector:
                     with open(package_json) as f:
                         pkg = json.load(f)
                         test_script = pkg.get("scripts", {}).get("test:coverage") or pkg.get(
-                            "scripts", {},
+                            "scripts",
+                            {},
                         ).get("test:ci")
                         if test_script:
                             # Longer timeout for large frontend projects (20 minutes)
@@ -221,7 +227,8 @@ class UnifiedCoverageCollector:
                                     logger.warning("   ⚠️ Coverage generation had issues")
                             except subprocess.TimeoutExpired:
                                 logger.warning(
-                                    "⏱️ Coverage generation timeout for %s - skipping generation, will use existing if available", component_name,
+                                    "⏱️ Coverage generation timeout for %s - skipping generation, will use existing if available",
+                                    component_name,
                                 )
 
             # Parse LCOV format (preferred)
@@ -241,7 +248,10 @@ class UnifiedCoverageCollector:
             return None
 
     def _parse_lcov(
-        self, lcov_file: Path, component_name: str, _component_path: Path,
+        self,
+        lcov_file: Path,
+        component_name: str,
+        _component_path: Path,
     ) -> ComponentCoverage:
         """Parse LCOV format"""
         total_lines = 0
@@ -309,7 +319,10 @@ class UnifiedCoverageCollector:
         )
 
     def _parse_vitest_json(
-        self, coverage_json: Path, component_name: str, _component_path: Path,
+        self,
+        coverage_json: Path,
+        component_name: str,
+        _component_path: Path,
     ) -> ComponentCoverage:
         """Parse Vitest JSON coverage format"""
         with open(coverage_json) as f:

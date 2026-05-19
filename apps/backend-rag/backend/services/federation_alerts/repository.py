@@ -22,6 +22,7 @@ Status transitions:
     status; it validates the transition against TERMINAL_STATUSES and
     refuses backward moves.
 """
+
 from __future__ import annotations
 
 import json
@@ -184,20 +185,11 @@ class FederationAlertRepo:
                 alert.source_ref,
                 alert.mode if isinstance(alert.mode, str) else alert.mode.value,
                 alert.alert_type,
-                (
-                    alert.severity
-                    if isinstance(alert.severity, str)
-                    else alert.severity.value
-                ),
-                (
-                    alert.risk_level
-                    if isinstance(alert.risk_level, str)
-                    else alert.risk_level.value
-                ),
+                (alert.severity if isinstance(alert.severity, str) else alert.severity.value),
+                (alert.risk_level if isinstance(alert.risk_level, str) else alert.risk_level.value),
                 (
                     alert.requested_action
-                    if isinstance(alert.requested_action, str)
-                    or alert.requested_action is None
+                    if isinstance(alert.requested_action, str) or alert.requested_action is None
                     else alert.requested_action.value
                 ),
                 alert.target_file,
@@ -207,8 +199,7 @@ class FederationAlertRepo:
             )
         if row is None:
             raise RuntimeError(
-                f"create_from_alert returned no row for "
-                f"idempotency_key={alert.idempotency_key}"
+                f"create_from_alert returned no row for idempotency_key={alert.idempotency_key}"
             )
         return _row_to_proposal(row)
 
@@ -222,9 +213,7 @@ class FederationAlertRepo:
             row = await conn.fetchrow(sql, proposal_id)
         return _row_to_proposal(row) if row else None
 
-    async def get_by_idempotency_key(
-        self, idempotency_key: str
-    ) -> ProposalRow | None:
+    async def get_by_idempotency_key(self, idempotency_key: str) -> ProposalRow | None:
         sql = "SELECT * FROM federation_alert_proposals WHERE idempotency_key = $1"
         async with self._acquire() as conn:
             row = await conn.fetchrow(sql, idempotency_key)
@@ -262,16 +251,14 @@ class FederationAlertRepo:
 
         async with self._acquire() as conn:
             current = await conn.fetchrow(
-                "SELECT status FROM federation_alert_proposals "
-                "WHERE proposal_id = $1",
+                "SELECT status FROM federation_alert_proposals WHERE proposal_id = $1",
                 proposal_id,
             )
             if current is None:
                 raise LookupError(f"proposal not found: {proposal_id}")
             if is_terminal_status(current["status"]):
                 raise ValueError(
-                    f"cannot transition terminal status "
-                    f"{current['status']} → {new_status}"
+                    f"cannot transition terminal status {current['status']} → {new_status}"
                 )
 
             mark_completed = is_terminal_status(new_status)
@@ -296,9 +283,7 @@ class FederationAlertRepo:
                 mark_completed,
             )
         if row is None:
-            raise RuntimeError(
-                f"advance_status returned no row for {proposal_id}"
-            )
+            raise RuntimeError(f"advance_status returned no row for {proposal_id}")
         return _row_to_proposal(row)
 
     # ------------------------------------------------------------------
@@ -418,10 +403,7 @@ class FederationAlertRepo:
                 approved_by,
             )
         if row is None:
-            raise LookupError(
-                f"record_approval: proposal {proposal_id} not in "
-                "awaiting_approval"
-            )
+            raise LookupError(f"record_approval: proposal {proposal_id} not in awaiting_approval")
         return _row_to_proposal(row)
 
     async def record_rejection(
@@ -452,10 +434,7 @@ class FederationAlertRepo:
                 reason[:500],
             )
         if row is None:
-            raise LookupError(
-                f"record_rejection: proposal {proposal_id} not in "
-                "awaiting_approval"
-            )
+            raise LookupError(f"record_rejection: proposal {proposal_id} not in awaiting_approval")
         return _row_to_proposal(row)
 
     # ------------------------------------------------------------------
@@ -464,10 +443,7 @@ class FederationAlertRepo:
 
     async def get_db_mode(self) -> str:
         """Read the federation_alert_mode from system_settings (seeded by m147)."""
-        sql = (
-            "SELECT value FROM system_settings "
-            "WHERE key = 'federation_alert_mode'"
-        )
+        sql = "SELECT value FROM system_settings WHERE key = 'federation_alert_mode'"
         async with self._acquire() as conn:
             row = await conn.fetchrow(sql)
         if row is None:
@@ -475,9 +451,7 @@ class FederationAlertRepo:
             return FederationAlertMode.OBSERVE.value
         return row["value"]
 
-    async def set_db_mode(
-        self, new_mode: str, *, changed_by: str | None = None
-    ) -> None:
+    async def set_db_mode(self, new_mode: str, *, changed_by: str | None = None) -> None:
         """Update federation_alert_mode in system_settings.
 
         Validation: caller must have pre-validated against

@@ -4,6 +4,7 @@ Bucket: nuzantara-warroom-images (public-read prefix wr2-pdf/).
 Endpoint: https://fly.storage.tigris.dev
 Credentials: AWS_ACCESS_KEY_ID + AWS_SECRET_ACCESS_KEY env (Tigris-compat).
 """
+
 from __future__ import annotations
 
 import logging
@@ -45,9 +46,14 @@ def _is_transient(exc: Exception) -> bool:
     return isinstance(exc, BotoCoreError)
 
 
-def upload_pdf(s3: Any, pdf_path: Path, *, draft_id: str,
-               prefix: str = "wr2-pdf",
-               content_addressed: bool = True) -> tuple[str, str]:
+def upload_pdf(
+    s3: Any,
+    pdf_path: Path,
+    *,
+    draft_id: str,
+    prefix: str = "wr2-pdf",
+    content_addressed: bool = True,
+) -> tuple[str, str]:
     """Upload PDF to Tigris S3, return (public_url, s3_key).
 
     Fix 2026-05-15 [Codex find]: previously key was hardcoded as
@@ -62,6 +68,7 @@ def upload_pdf(s3: Any, pdf_path: Path, *, draft_id: str,
     orphaned S3 objects when Canva import fails.
     """
     import hashlib as _hl
+
     body = pdf_path.read_bytes()
     if content_addressed:
         sha8 = _hl.sha256(body).hexdigest()[:8]
@@ -79,14 +86,20 @@ def upload_pdf(s3: Any, pdf_path: Path, *, draft_id: str,
                 ContentType="application/pdf",
                 ACL="public-read",
             )
-            logger.info("Tigris upload OK: %s (attempt %d, sha256=%s)",
-                        key, attempt,
-                        _hl.sha256(body).hexdigest()[:12])
+            logger.info(
+                "Tigris upload OK: %s (attempt %d, sha256=%s)",
+                key,
+                attempt,
+                _hl.sha256(body).hexdigest()[:12],
+            )
             # Best-effort: verify Tigris HEAD before returning URL
             try:
                 head = s3.head_object(Bucket=BUCKET, Key=key)
-                logger.info("Tigris HEAD ok: ETag=%s, len=%s",
-                            head.get("ETag", "?"), head.get("ContentLength", "?"))
+                logger.info(
+                    "Tigris HEAD ok: ETag=%s, len=%s",
+                    head.get("ETag", "?"),
+                    head.get("ContentLength", "?"),
+                )
             except Exception as e:  # noqa: BLE001
                 logger.warning("Tigris HEAD verify failed (non-fatal): %s", e)
             return f"https://{PUBLIC_HOST}/{key}", key
@@ -98,7 +111,10 @@ def upload_pdf(s3: Any, pdf_path: Path, *, draft_id: str,
                 delay = BACKOFF_BASE_S * (2 ** (attempt - 1))
                 logger.warning(
                     "Tigris transient error attempt %d/%d: %s — sleep %.1fs",
-                    attempt, MAX_RETRIES, e, delay,
+                    attempt,
+                    MAX_RETRIES,
+                    e,
+                    delay,
                 )
                 time.sleep(delay)
     raise TigrisError(f"Tigris exhausted retries for {key}: {last_exc}") from last_exc

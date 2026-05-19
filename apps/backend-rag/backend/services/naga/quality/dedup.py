@@ -205,12 +205,15 @@ async def batch_dedup(
             domain = domain_row["domain"]
 
             # Fetch all active claims in this domain, oldest first
-            claims = await conn.fetch("""
+            claims = await conn.fetch(
+                """
                 SELECT id, claim_text, created_at
                 FROM naga_claims
                 WHERE domain = $1 AND claim_status = 'active'
                 ORDER BY created_at ASC
-            """, domain)
+            """,
+                domain,
+            )
 
             # Compare each claim against all earlier claims
             canonical: list[dict] = []
@@ -229,7 +232,10 @@ async def batch_dedup(
 
                 if best_match:
                     await mark_as_duplicate(
-                        conn, claim_id, best_match["id"], best_sim,
+                        conn,
+                        claim_id,
+                        best_match["id"],
+                        best_sim,
                     )
                     marked += 1
                 else:

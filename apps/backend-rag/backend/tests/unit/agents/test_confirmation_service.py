@@ -83,7 +83,8 @@ class TestRedisDown:
 class TestApproveReject:
     @pytest.mark.asyncio
     async def test_approve_path_returns_true(
-        self, service: ConfirmationService,
+        self,
+        service: ConfirmationService,
     ) -> None:
         """Concurrent resolve(approve) → request_and_wait returns True."""
 
@@ -120,7 +121,8 @@ class TestApproveReject:
 
     @pytest.mark.asyncio
     async def test_reject_path_returns_false(
-        self, service: ConfirmationService,
+        self,
+        service: ConfirmationService,
     ) -> None:
         """Concurrent resolve(reject) → request_and_wait returns False."""
         emitter = AsyncMock()
@@ -157,7 +159,8 @@ class TestApproveReject:
 class TestTimeout:
     @pytest.mark.asyncio
     async def test_timeout_raises_confirmation_timeout(
-        self, service: ConfirmationService,
+        self,
+        service: ConfirmationService,
     ) -> None:
         """No resolution within timeout → ConfirmationTimeout."""
         with pytest.raises(ConfirmationTimeout):
@@ -178,7 +181,8 @@ class TestTimeout:
 class TestResolveEdgeCases:
     @pytest.mark.asyncio
     async def test_unknown_request_id_returns_false(
-        self, service: ConfirmationService,
+        self,
+        service: ConfirmationService,
     ) -> None:
         result = await service.resolve_confirmation(
             request_id="nonexistent-uuid",
@@ -189,7 +193,8 @@ class TestResolveEdgeCases:
 
     @pytest.mark.asyncio
     async def test_wrong_user_email_returns_false(
-        self, service: ConfirmationService,
+        self,
+        service: ConfirmationService,
         redis_manager: _FakeRedisManager,
     ) -> None:
         """Only the original requester's email may resolve."""
@@ -226,7 +231,8 @@ class TestResolveEdgeCases:
 
     @pytest.mark.asyncio
     async def test_invalid_decision_string_returns_false(
-        self, service: ConfirmationService,
+        self,
+        service: ConfirmationService,
     ) -> None:
         result = await service.resolve_confirmation(
             request_id="anything",
@@ -244,7 +250,8 @@ class TestResolveEdgeCases:
 class TestRedisPersistence:
     @pytest.mark.asyncio
     async def test_request_persists_under_correct_key(
-        self, service: ConfirmationService,
+        self,
+        service: ConfirmationService,
         redis_manager: _FakeRedisManager,
     ) -> None:
         """The pending request must be stored in Redis during the wait."""
@@ -287,7 +294,8 @@ class TestRedisPersistence:
 class TestEmitterCallback:
     @pytest.mark.asyncio
     async def test_emitter_receives_correct_sse_event(
-        self, service: ConfirmationService,
+        self,
+        service: ConfirmationService,
     ) -> None:
         emitter = AsyncMock()
 
@@ -322,7 +330,8 @@ class TestEmitterCallback:
 
     @pytest.mark.asyncio
     async def test_no_emitter_still_works(
-        self, service: ConfirmationService,
+        self,
+        service: ConfirmationService,
     ) -> None:
         """emitter=None → no SSE event, but request_and_wait still works."""
 
@@ -363,7 +372,8 @@ class TestEmitterCallback:
 class TestPubSubCrossProcess:
     @pytest.mark.asyncio
     async def test_pubsub_resolves_local_future(
-        self, redis_manager: _FakeRedisManager,
+        self,
+        redis_manager: _FakeRedisManager,
     ) -> None:
         """
         Simulate cross-process: the listener receives a pub/sub message

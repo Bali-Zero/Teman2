@@ -17,42 +17,195 @@ logger = logging.getLogger(__name__)
 # Indonesian common first names (Balinese + Javanese + general)
 _INDONESIAN_NAMES: set[str] = {
     # Balinese birth-order names
-    "wayan", "made", "nyoman", "ketut", "putu", "kadek", "komang", "iluh", "gede", "luh",
+    "wayan",
+    "made",
+    "nyoman",
+    "ketut",
+    "putu",
+    "kadek",
+    "komang",
+    "iluh",
+    "gede",
+    "luh",
     # Common Indonesian names
-    "agung", "sari", "dewi", "adi", "budi", "rizki", "rizky", "putri", "ayu", "dewa",
-    "bagus", "surya", "indra", "arya", "hendra", "eka", "dwi", "tri", "catur",
-    "yoga", "dian", "rina", "sinta", "wahyu", "andi", "rudi", "yudi", "joko",
-    "bambang", "widya", "widi", "febri", "nurul", "fajar", "bayu", "agus", "iwan",
-    "dedi", "hari", "yanto", "tono", "wati", "yuni", "mega", "lina", "fitri",
-    "nanda", "cahya", "ratna", "kusuma", "wisnu", "rama", "krisna", "dharma",
+    "agung",
+    "sari",
+    "dewi",
+    "adi",
+    "budi",
+    "rizki",
+    "rizky",
+    "putri",
+    "ayu",
+    "dewa",
+    "bagus",
+    "surya",
+    "indra",
+    "arya",
+    "hendra",
+    "eka",
+    "dwi",
+    "tri",
+    "catur",
+    "yoga",
+    "dian",
+    "rina",
+    "sinta",
+    "wahyu",
+    "andi",
+    "rudi",
+    "yudi",
+    "joko",
+    "bambang",
+    "widya",
+    "widi",
+    "febri",
+    "nurul",
+    "fajar",
+    "bayu",
+    "agus",
+    "iwan",
+    "dedi",
+    "hari",
+    "yanto",
+    "tono",
+    "wati",
+    "yuni",
+    "mega",
+    "lina",
+    "fitri",
+    "nanda",
+    "cahya",
+    "ratna",
+    "kusuma",
+    "wisnu",
+    "rama",
+    "krisna",
+    "dharma",
 }
 
 # Italian common first names
 _ITALIAN_NAMES: set[str] = {
-    "antonello", "maria", "giovanni", "luca", "sara", "marco", "giuseppe", "paolo",
-    "anna", "francesca", "alessandro", "matteo", "andrea", "lorenzo", "chiara",
-    "valentina", "simone", "davide", "federica", "roberto", "stefano", "cristina",
-    "mario", "giulia", "elena", "fabio", "silvia", "carlo", "daniela", "claudio",
-    "enrico", "barbara", "massimo", "laura", "giorgio", "angela", "vincenzo",
-    "rosa", "pietro", "patrizia", "emanuele", "teresa", "alberto", "michela",
-    "nicola", "lucia", "filippo", "monica", "riccardo", "serena",
+    "antonello",
+    "maria",
+    "giovanni",
+    "luca",
+    "sara",
+    "marco",
+    "giuseppe",
+    "paolo",
+    "anna",
+    "francesca",
+    "alessandro",
+    "matteo",
+    "andrea",
+    "lorenzo",
+    "chiara",
+    "valentina",
+    "simone",
+    "davide",
+    "federica",
+    "roberto",
+    "stefano",
+    "cristina",
+    "mario",
+    "giulia",
+    "elena",
+    "fabio",
+    "silvia",
+    "carlo",
+    "daniela",
+    "claudio",
+    "enrico",
+    "barbara",
+    "massimo",
+    "laura",
+    "giorgio",
+    "angela",
+    "vincenzo",
+    "rosa",
+    "pietro",
+    "patrizia",
+    "emanuele",
+    "teresa",
+    "alberto",
+    "michela",
+    "nicola",
+    "lucia",
+    "filippo",
+    "monica",
+    "riccardo",
+    "serena",
 }
 
 # International common first names (English + common global)
 _INTERNATIONAL_NAMES: set[str] = {
-    "james", "john", "robert", "michael", "david", "william", "richard", "thomas",
-    "mary", "jennifer", "linda", "elizabeth", "sarah", "jessica", "karen",
-    "daniel", "matthew", "anthony", "mark", "paul", "steven", "andrew", "peter",
-    "alex", "chris", "sam", "max", "ben", "nick", "tom", "jack", "kate", "emma",
-    "sophie", "alice", "oliver", "henry", "grace", "lily", "leo", "mia", "noah",
-    "muhammad", "ahmed", "ali", "omar", "hassan", "fatima", "aisha",
-    "chen", "wei", "ming", "jin", "yuki", "kenji", "sakura", "kim", "lee",
+    "james",
+    "john",
+    "robert",
+    "michael",
+    "david",
+    "william",
+    "richard",
+    "thomas",
+    "mary",
+    "jennifer",
+    "linda",
+    "elizabeth",
+    "sarah",
+    "jessica",
+    "karen",
+    "daniel",
+    "matthew",
+    "anthony",
+    "mark",
+    "paul",
+    "steven",
+    "andrew",
+    "peter",
+    "alex",
+    "chris",
+    "sam",
+    "max",
+    "ben",
+    "nick",
+    "tom",
+    "jack",
+    "kate",
+    "emma",
+    "sophie",
+    "alice",
+    "oliver",
+    "henry",
+    "grace",
+    "lily",
+    "leo",
+    "mia",
+    "noah",
+    "muhammad",
+    "ahmed",
+    "ali",
+    "omar",
+    "hassan",
+    "fatima",
+    "aisha",
+    "chen",
+    "wei",
+    "ming",
+    "jin",
+    "yuki",
+    "kenji",
+    "sakura",
+    "kim",
+    "lee",
 }
 
 _ALL_KNOWN_NAMES: set[str] = _INDONESIAN_NAMES | _ITALIAN_NAMES | _INTERNATIONAL_NAMES
 
 # Titles and honorifics that precede names
-_TITLE_PATTERN = r"(?:mr\.?|mrs\.?|ms\.?|dr\.?|prof\.?|pak|bu|ibu|bapak|mas|mbak|sig\.?|signor[ae]?)"
+_TITLE_PATTERN = (
+    r"(?:mr\.?|mrs\.?|ms\.?|dr\.?|prof\.?|pak|bu|ibu|bapak|mas|mbak|sig\.?|signor[ae]?)"
+)
 
 # Compiled regex: title-case words that could be names (2+ chars, not sentence-start common words)
 _TITLECASE_RE = re.compile(
@@ -61,12 +214,52 @@ _TITLECASE_RE = re.compile(
 
 # Words that are title-case but NOT names (common sentence starters, places, etc.)
 _NON_NAME_WORDS: set[str] = {
-    "the", "this", "that", "these", "those", "here", "there", "when", "where",
-    "what", "which", "who", "how", "why", "today", "tomorrow", "yesterday",
-    "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday",
-    "january", "february", "march", "april", "may", "june", "july", "august",
-    "september", "october", "november", "december", "bali", "jakarta", "indonesia",
-    "italy", "roma", "milano", "none", "true", "false", "null",
+    "the",
+    "this",
+    "that",
+    "these",
+    "those",
+    "here",
+    "there",
+    "when",
+    "where",
+    "what",
+    "which",
+    "who",
+    "how",
+    "why",
+    "today",
+    "tomorrow",
+    "yesterday",
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december",
+    "bali",
+    "jakarta",
+    "indonesia",
+    "italy",
+    "roma",
+    "milano",
+    "none",
+    "true",
+    "false",
+    "null",
 }
 
 
@@ -215,12 +408,17 @@ def detect_conflicts(existing: list[dict], new_content: str) -> list[str]:
     # Each tuple is (word_a, word_b) — if existing has word_a and new has word_b
     # (or vice versa), it's a contradiction.
     antonym_pairs = [
-        ("piace", "non.*piace"), ("preferisco", "non.*preferisco"),
-        ("amo", "odio"), ("voglio", "non.*voglio"),
-        ("likes", "dislikes"), ("prefer", "don't prefer"),
-        ("loves", "hates"), ("wants", "doesn't want"),
+        ("piace", "non.*piace"),
+        ("preferisco", "non.*preferisco"),
+        ("amo", "odio"),
+        ("voglio", "non.*voglio"),
+        ("likes", "dislikes"),
+        ("prefer", "don't prefer"),
+        ("loves", "hates"),
+        ("wants", "doesn't want"),
         ("always", "never"),
-        ("suka", "tidak.*suka"), ("mau", "tidak.*mau"),  # Indonesian
+        ("suka", "tidak.*suka"),
+        ("mau", "tidak.*mau"),  # Indonesian
     ]
 
     for mem in existing:
@@ -234,6 +432,7 @@ def detect_conflicts(existing: list[dict], new_content: str) -> list[str]:
         if mem_key and existing_lower != new_lower:
             # Same key, different value — likely an update/conflict
             from difflib import SequenceMatcher
+
             similarity = SequenceMatcher(None, existing_lower, new_lower).ratio()
             if 0.3 < similarity < 0.85:
                 conflicts.append(
@@ -255,7 +454,9 @@ def detect_conflicts(existing: list[dict], new_content: str) -> list[str]:
                 break
 
         # Check 3: Temporal contradiction ("now X" vs "used to X")
-        temporal_new = any(w in new_lower for w in ["adesso", "ora", "now", "currently", "sekarang"])
+        temporal_new = any(
+            w in new_lower for w in ["adesso", "ora", "now", "currently", "sekarang"]
+        )
         temporal_old = any(
             w in existing_lower for w in ["prima", "una volta", "used to", "formerly", "dulu"]
         )
@@ -263,7 +464,18 @@ def detect_conflicts(existing: list[dict], new_content: str) -> list[str]:
             # Both talk about time — check if they share key nouns
             new_words = set(new_lower.split())
             old_words = set(existing_lower.split())
-            shared = new_words & old_words - {"a", "the", "di", "da", "in", "e", "il", "la", "yang", "dan"}
+            shared = new_words & old_words - {
+                "a",
+                "the",
+                "di",
+                "da",
+                "in",
+                "e",
+                "il",
+                "la",
+                "yang",
+                "dan",
+            }
             if len(shared) >= 2:
                 conflicts.append(
                     f"Temporal conflict: past='{existing_content[:60]}' "
@@ -297,10 +509,29 @@ def extract_preferences(text: str) -> dict[str, str]:
     has_preference = any(
         w in text_lower
         for w in [
-            "preferisco", "preferisce", "mi piace", "gli piace", "le piace",
-            "amo", "adoro", "odio", "detesto", "meglio",
-            "prefer", "like", "love", "hate", "enjoy", "rather", "favorite", "favourite",
-            "suka", "lebih suka", "senang", "benci", "favorit",
+            "preferisco",
+            "preferisce",
+            "mi piace",
+            "gli piace",
+            "le piace",
+            "amo",
+            "adoro",
+            "odio",
+            "detesto",
+            "meglio",
+            "prefer",
+            "like",
+            "love",
+            "hate",
+            "enjoy",
+            "rather",
+            "favorite",
+            "favourite",
+            "suka",
+            "lebih suka",
+            "senang",
+            "benci",
+            "favorit",
         ]
     )
 
@@ -309,9 +540,17 @@ def extract_preferences(text: str) -> dict[str, str]:
 
     # --- Food & Drink ---
     drink_map = {
-        "espresso": "espresso", "americano": "americano", "cappuccino": "cappuccino",
-        "latte": "latte", "macchiato": "macchiato", "tè": "tea", "tea": "tea",
-        "kopi": "coffee", "coffee": "coffee", "matcha": "matcha", "jus": "juice",
+        "espresso": "espresso",
+        "americano": "americano",
+        "cappuccino": "cappuccino",
+        "latte": "latte",
+        "macchiato": "macchiato",
+        "tè": "tea",
+        "tea": "tea",
+        "kopi": "coffee",
+        "coffee": "coffee",
+        "matcha": "matcha",
+        "jus": "juice",
     }
     for keyword, value in drink_map.items():
         if keyword in text_lower:
@@ -319,11 +558,21 @@ def extract_preferences(text: str) -> dict[str, str]:
             break
 
     food_map = {
-        "vegetariano": "vegetarian", "vegetarian": "vegetarian", "vegan": "vegan",
-        "halal": "halal", "kosher": "kosher", "pesce": "pescatarian",
-        "pizza": "pizza", "pasta": "pasta", "nasi": "rice-based",
-        "sushi": "sushi", "spicy": "spicy food", "piccante": "spicy food",
-        "pedas": "spicy food", "dolce": "sweet food", "manis": "sweet food",
+        "vegetariano": "vegetarian",
+        "vegetarian": "vegetarian",
+        "vegan": "vegan",
+        "halal": "halal",
+        "kosher": "kosher",
+        "pesce": "pescatarian",
+        "pizza": "pizza",
+        "pasta": "pasta",
+        "nasi": "rice-based",
+        "sushi": "sushi",
+        "spicy": "spicy food",
+        "piccante": "spicy food",
+        "pedas": "spicy food",
+        "dolce": "sweet food",
+        "manis": "sweet food",
     }
     for keyword, value in food_map.items():
         if keyword in text_lower:
@@ -409,7 +658,8 @@ async def analyze_content_intent(state: CollectiveMemoryState) -> CollectiveMemo
     elif _has_word(query, ["compleanno", "anniversario", "festa", "celebrazione"]):
         state["detected_category"] = MemoryCategory.MILESTONE
     elif _has_word(
-        query, ["amicizia", "conosco", "incontri", "incontrato", "social", "amico"],
+        query,
+        ["amicizia", "conosco", "incontri", "incontrato", "social", "amico"],
     ):
         state["detected_category"] = MemoryCategory.RELATIONSHIP
     elif _has_word(query, ["cultura", "tradizione", "costume", "locale"]):
@@ -505,13 +755,15 @@ async def extract_entities_and_relationships(state: CollectiveMemoryState) -> Co
     person_entities = [e for e in state["extracted_entities"] if e["type"] == "person"]
     new_relationships: list[dict[str, Any]] = []
     for i, ent_a in enumerate(person_entities):
-        for ent_b in person_entities[i + 1:]:
-            new_relationships.append({
-                "entity_a": ent_a["name"],
-                "entity_b": ent_b["name"],
-                "relationship_type": "co_mentioned",
-                "context": query[:120],
-            })
+        for ent_b in person_entities[i + 1 :]:
+            new_relationships.append(
+                {
+                    "entity_a": ent_a["name"],
+                    "entity_b": ent_b["name"],
+                    "relationship_type": "co_mentioned",
+                    "context": query[:120],
+                }
+            )
     state["new_relationships"] = new_relationships
 
     return state
@@ -566,20 +818,18 @@ async def check_existing_memories(
                 for fact in user_memory.profile_facts:
                     fact_lower = fact.lower()
                     # Check for keyword overlap (shared meaningful words)
-                    query_words = {
-                        w for w in query_lower.split() if len(w) > 3
-                    }
-                    fact_words = {
-                        w for w in fact_lower.split() if len(w) > 3
-                    }
+                    query_words = {w for w in query_lower.split() if len(w) > 3}
+                    fact_words = {w for w in fact_lower.split() if len(w) > 3}
                     overlap = query_words & fact_words
                     if len(overlap) >= 2:
-                        state["existing_memories"].append({
-                            "content": fact,
-                            "user_id": user_id,
-                            "confidence": 0.7,
-                            "memory_key": "profile_fact",
-                        })
+                        state["existing_memories"].append(
+                            {
+                                "content": fact,
+                                "user_id": user_id,
+                                "confidence": 0.7,
+                                "memory_key": "profile_fact",
+                            }
+                        )
 
         # Flag consolidation if we found overlapping memories
         if state["existing_memories"]:
@@ -705,7 +955,8 @@ async def update_member_profiles(state: CollectiveMemoryState) -> CollectiveMemo
 
 
 async def store_collective_memory(
-    state: CollectiveMemoryState, memory_service,
+    state: CollectiveMemoryState,
+    memory_service,
 ) -> CollectiveMemoryState:
     """Salva memoria collettiva"""
     if state["memory_to_store"] and memory_service:

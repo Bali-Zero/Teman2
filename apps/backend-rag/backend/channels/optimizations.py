@@ -287,9 +287,11 @@ class ConnectionPool:
             if channel not in self.clients:
                 import httpx
 
-                self.clients[channel] = httpx.AsyncClient(  # golden-rule-10-exempt: ConnectionPool owns lifecycle (close_all wired in shutdown)
-                    timeout=self.timeout,
-                    limits=httpx.Limits(max_connections=self.max_connections),
+                self.clients[channel] = (
+                    httpx.AsyncClient(  # golden-rule-10-exempt: ConnectionPool owns lifecycle (close_all wired in shutdown)
+                        timeout=self.timeout,
+                        limits=httpx.Limits(max_connections=self.max_connections),
+                    )
                 )
                 logger.info("Created HTTP client pool for %s", channel)
 
@@ -376,7 +378,9 @@ class DeliveryManager:
                 self.MAX_ATTEMPTS,
                 next_retry,
             )
-            logger.info(f"DLQ: persisted failed message to PG ({record['channel']}:{record['channel_id']})")
+            logger.info(
+                f"DLQ: persisted failed message to PG ({record['channel']}:{record['channel_id']})"
+            )
             return True
         except Exception as e:
             logger.warning("DLQ: PG write failed, trying Redis fallback: %s", e)
@@ -386,12 +390,16 @@ class DeliveryManager:
         """Push failed message to Redis list as JSON. Returns True on success."""
         redis = _get_redis_client()
         if redis is None:
-            logger.error(f"DLQ: BOTH PG and Redis unavailable — message LOST: {record['channel']}:{record['channel_id']}")
+            logger.error(
+                f"DLQ: BOTH PG and Redis unavailable — message LOST: {record['channel']}:{record['channel_id']}"
+            )
             return False
         try:
             payload = json.dumps({**record, "queued_at": time.time()})
             await redis.lpush(self.REDIS_DLQ_KEY, payload)
-            logger.info(f"DLQ: persisted to Redis fallback ({record['channel']}:{record['channel_id']})")
+            logger.info(
+                f"DLQ: persisted to Redis fallback ({record['channel']}:{record['channel_id']})"
+            )
             return True
         except Exception as e:
             logger.error("DLQ: Redis LPUSH also failed — message LOST: %s", e)
@@ -477,7 +485,8 @@ class DeliveryManager:
                         # Success — mark delivered
                         await self._db_pool.execute(
                             "UPDATE failed_messages SET status='delivered', attempt_count=$1, updated_at=NOW() WHERE id=$2",
-                            attempt, row["id"],
+                            attempt,
+                            row["id"],
                         )
                         logger.info(f"DLQ: delivered message {row['id']} on attempt {attempt}")
 
@@ -497,7 +506,11 @@ class DeliveryManager:
                                 error_message=$4, updated_at=NOW()
                             WHERE id=$5
                             """,
-                            new_status, attempt, next_retry, str(e), row["id"],
+                            new_status,
+                            attempt,
+                            next_retry,
+                            str(e),
+                            row["id"],
                         )
                         logger.debug(f"DLQ: retry {attempt} failed for {row['id']}: {e}")
 
@@ -517,6 +530,7 @@ class DeliveryManager:
         """Get or create persistent httpx client for Telegram alerts."""
         if self._alert_client is None or self._alert_client.is_closed:
             import httpx
+
             self._alert_client = httpx.AsyncClient(timeout=10.0)
         return self._alert_client
 
@@ -546,11 +560,14 @@ class DeliveryManager:
             )
             url = f"https://api.telegram.org/bot{bot_token}/sendMessage"
             client = await self._get_alert_client()
-            await client.post(url, json={
-                "chat_id": owner_chat,
-                "text": text,
-                "parse_mode": "Markdown",
-            })
+            await client.post(
+                url,
+                json={
+                    "chat_id": owner_chat,
+                    "text": text,
+                    "parse_mode": "Markdown",
+                },
+            )
             logger.info(f"DLQ: sent exhaustion alert for message {row['id']}")
         except Exception as alert_err:
             logger.warning("DLQ: failed to send exhaustion alert: %s", alert_err)

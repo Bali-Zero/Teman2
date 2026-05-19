@@ -30,6 +30,7 @@ would require docker-compose orchestration that's out of scope for the
 PR-check pipeline (the existing ``test_outbox.py`` already exercises
 the SQL strings against a mocked connection).
 """
+
 from __future__ import annotations
 
 import json
@@ -111,8 +112,7 @@ async def test_emit_pg_does_not_call_raw_pg_notify():
     # called from emit_pg itself — that work is now inside outbox.publish
     # (which is patched here, so the mock conn never sees it).
     direct_pg_notify_calls = [
-        c for c in conn.execute.await_args_list
-        if c.args and "pg_notify" in str(c.args[0]).lower()
+        c for c in conn.execute.await_args_list if c.args and "pg_notify" in str(c.args[0]).lower()
     ]
     assert direct_pg_notify_calls == [], (
         "emit_pg must delegate to outbox.publish, not call pg_notify directly"
@@ -259,9 +259,7 @@ async def test_replayed_event_is_marked_with_replay_flag():
 
     async def fake_replay(conn_arg, dispatch_fn, *, channel, **_kwargs):
         if channel == "intel_event":
-            await dispatch_fn(
-                {"_outbox_id": 7, "_replay": True, "signal_id": "abc"}
-            )
+            await dispatch_fn({"_outbox_id": 7, "_replay": True, "signal_id": "abc"})
             return 1
         return 0
 
@@ -288,9 +286,7 @@ _MIGRATION_146_PATH = (
 
 
 def _read_migration_146() -> str:
-    assert _MIGRATION_146_PATH.exists(), (
-        f"migration 146 not found at {_MIGRATION_146_PATH}"
-    )
+    assert _MIGRATION_146_PATH.exists(), f"migration 146 not found at {_MIGRATION_146_PATH}"
     return _MIGRATION_146_PATH.read_text(encoding="utf-8")
 
 
@@ -309,27 +305,29 @@ def _read_migration_146() -> str:
 #
 # The remaining channels DO have DB triggers (migrations 075/076/112/113/114)
 # and migration 146 must wrap each one in an events_outbox INSERT.
-_PG_NOTIFY_ONLY_CHANNELS = frozenset({
-    "lkpm_ingest_completed",
-    "federation_alert",
-    # cell_pulse_observed: emitted by cell_core.observatory.emit_pulse_observed
-    # (Python direct asyncpg INSERT to events_outbox + pg_notify) inside the
-    # cell process itself, NOT via DB trigger. The events_outbox row IS
-    # written, but the path is Python-callsite, not migration-146-trigger.
-    # Track A 2026-05-02 — see PR #411 + #416 + #425.
-    "cell_pulse_observed",
-    # partner_commission_changed: emitted by services/crm/partners/events.py
-    # `_publish_changed` after CommissionEngine.accrue_from_practice. Python-
-    # only callsite via outbox.publish (no DB trigger). Renamed 2026-05-09
-    # from legacy "partner.commission_changed" so it passes validate_channel
-    # and gets durable replay-on-reconnect via PG_CHANNEL_MAP registration.
-    "partner_commission_changed",
-    # whatsapp_message_received: emitted by the external Node wa-mirror bridge
-    # after writing whatsapp_message_context. The bridge writes events_outbox
-    # directly, then sends pg_notify; no DB trigger or migration-146 function
-    # owns this channel.
-    "whatsapp_message_received",
-})
+_PG_NOTIFY_ONLY_CHANNELS = frozenset(
+    {
+        "lkpm_ingest_completed",
+        "federation_alert",
+        # cell_pulse_observed: emitted by cell_core.observatory.emit_pulse_observed
+        # (Python direct asyncpg INSERT to events_outbox + pg_notify) inside the
+        # cell process itself, NOT via DB trigger. The events_outbox row IS
+        # written, but the path is Python-callsite, not migration-146-trigger.
+        # Track A 2026-05-02 — see PR #411 + #416 + #425.
+        "cell_pulse_observed",
+        # partner_commission_changed: emitted by services/crm/partners/events.py
+        # `_publish_changed` after CommissionEngine.accrue_from_practice. Python-
+        # only callsite via outbox.publish (no DB trigger). Renamed 2026-05-09
+        # from legacy "partner.commission_changed" so it passes validate_channel
+        # and gets durable replay-on-reconnect via PG_CHANNEL_MAP registration.
+        "partner_commission_changed",
+        # whatsapp_message_received: emitted by the external Node wa-mirror bridge
+        # after writing whatsapp_message_context. The bridge writes events_outbox
+        # directly, then sends pg_notify; no DB trigger or migration-146 function
+        # owns this channel.
+        "whatsapp_message_received",
+    }
+)
 # Channels that DO have DB triggers but whose triggers live in migrations
 # OTHER than 146. Migration 146 was the bulk refactor of the original 6
 # trigger-backed channels (075/076/112/113/114); newer trigger-backed
@@ -355,22 +353,23 @@ _PG_NOTIFY_ONLY_CHANNELS = frozenset({
 #     split into AFTER INSERT + AFTER UPDATE WHEN OLD.* IS DISTINCT FROM
 #     NEW.* triggers). See migration 155_asset_provenance_trigger.sql and
 #     backend/tests/db/test_migration_155.py for contract tests.
-_TRIGGER_BACKED_CHANNELS_IN_OTHER_MIGRATIONS = frozenset({
-    "measurer_event",
-    "crm_welcome_completed",
-    "asset_provenance",
-    # Wave 1 Intel Lake (2026-05-12). Trigger ``notify_intel_lake_event``
-    # lives in migration 168_intel_lake_schema.sql, dispatching ONLY on
-    # AFTER INSERT (no UPDATE — last_seen_at refresh must not re-fire).
-    # See migration 168 + backend/tests/db/test_migration_168_intel_lake.py
-    # for per-migration contract (outbox-before-notify + _outbox_id injection).
-    "intel_lake_event",
-})
+_TRIGGER_BACKED_CHANNELS_IN_OTHER_MIGRATIONS = frozenset(
+    {
+        "measurer_event",
+        "crm_welcome_completed",
+        "asset_provenance",
+        # Wave 1 Intel Lake (2026-05-12). Trigger ``notify_intel_lake_event``
+        # lives in migration 168_intel_lake_schema.sql, dispatching ONLY on
+        # AFTER INSERT (no UPDATE — last_seen_at refresh must not re-fire).
+        # See migration 168 + backend/tests/db/test_migration_168_intel_lake.py
+        # for per-migration contract (outbox-before-notify + _outbox_id injection).
+        "intel_lake_event",
+    }
+)
 _TRIGGER_BACKED_CHANNELS = frozenset(
     ch
     for ch in PG_CHANNEL_MAP
-    if ch not in _PG_NOTIFY_ONLY_CHANNELS
-    and ch not in _TRIGGER_BACKED_CHANNELS_IN_OTHER_MIGRATIONS
+    if ch not in _PG_NOTIFY_ONLY_CHANNELS and ch not in _TRIGGER_BACKED_CHANNELS_IN_OTHER_MIGRATIONS
 )
 
 
@@ -389,8 +388,7 @@ def test_migration_146_exists_and_targets_every_trigger_backed_channel():
         # events_outbox (channel, payload) VALUES ('<channel>', ...).
         marker = f"VALUES ('{channel}', payload)"
         assert marker in sql, (
-            f"migration 146 missing outbox INSERT for channel '{channel}' "
-            f"(searched for {marker!r})"
+            f"migration 146 missing outbox INSERT for channel '{channel}' (searched for {marker!r})"
         )
 
 
@@ -417,9 +415,7 @@ def test_migration_146_has_rollback_section():
     fix 2026-04-19). The rollback restores the pre-146 trigger function
     bodies."""
     sql = _read_migration_146()
-    assert "-- === ROLLBACK ===" in sql, (
-        "migration 146 must have a rollback marker"
-    )
+    assert "-- === ROLLBACK ===" in sql, "migration 146 must have a rollback marker"
     # Rollback section restores notify_practice_change without outbox INSERT.
     rollback_idx = sql.index("-- === ROLLBACK ===")
     rollback_sql = sql[rollback_idx:]
@@ -441,12 +437,12 @@ def test_migration_146_does_not_touch_out_of_scope_channels():
     forward_sql = sql.split("-- === ROLLBACK ===")[0]
     # Allowed: comments mentioning the channel as "out of scope".
     # Forbidden: an INSERT INTO events_outbox VALUES ('wr2_status_change', ...).
-    assert (
-        "VALUES ('wr2_status_change'" not in forward_sql
-    ), "wr2_status_change must NOT be added to outbox in this migration"
-    assert (
-        "VALUES ('partner.commission_changed'" not in forward_sql
-    ), "partner.commission_changed must NOT be added to outbox here"
+    assert "VALUES ('wr2_status_change'" not in forward_sql, (
+        "wr2_status_change must NOT be added to outbox in this migration"
+    )
+    assert "VALUES ('partner.commission_changed'" not in forward_sql, (
+        "partner.commission_changed must NOT be added to outbox here"
+    )
 
 
 # ── 4. Smoke: payload shape preserved across the refactor ─────────────
@@ -461,9 +457,7 @@ def test_migration_146_war_room_payload_keeps_event_type_and_occurred_at():
 
     sql = _read_migration_146()
     forward = sql.split("-- === ROLLBACK ===")[0]
-    war_room_section_start = forward.index(
-        "CREATE OR REPLACE FUNCTION notify_war_room_event"
-    )
+    war_room_section_start = forward.index("CREATE OR REPLACE FUNCTION notify_war_room_event")
     war_room_section_end = forward.index(
         "CREATE OR REPLACE FUNCTION notify_intel_event", war_room_section_start
     )

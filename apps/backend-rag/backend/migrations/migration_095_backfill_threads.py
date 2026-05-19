@@ -43,7 +43,8 @@ async def apply(conn) -> None:
     threaded = 0
     for group in client_groups:
         channels = group["channels"] or []
-        thread_id = await conn.fetchval("""
+        thread_id = await conn.fetchval(
+            """
             INSERT INTO conversation_threads (client_id, channels, last_activity_at, created_at, subject)
             VALUES ($1, $2, $3, $4, $5)
             RETURNING id
@@ -55,10 +56,14 @@ async def apply(conn) -> None:
             f"Backfilled thread ({group['msg_count']} messages)",
         )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             UPDATE conversation_messages SET thread_id = $1
             WHERE client_id = $2 AND thread_id IS NULL
-        """, thread_id, group["client_id"])
+        """,
+            thread_id,
+            group["client_id"],
+        )
         threaded += 1
 
     # Group by sender_id (unidentified users)
@@ -73,7 +78,8 @@ async def apply(conn) -> None:
 
     for group in sender_groups:
         channels = group["channels"] or []
-        thread_id = await conn.fetchval("""
+        thread_id = await conn.fetchval(
+            """
             INSERT INTO conversation_threads (channels, last_activity_at, created_at, subject,
                                               metadata)
             VALUES ($1, $2, $3, $4, $5::jsonb)
@@ -86,10 +92,14 @@ async def apply(conn) -> None:
             json.dumps({"sender_id": group["sender_id"]}),
         )
 
-        await conn.execute("""
+        await conn.execute(
+            """
             UPDATE conversation_messages SET thread_id = $1
             WHERE sender_id = $2 AND client_id IS NULL AND thread_id IS NULL
-        """, thread_id, group["sender_id"])
+        """,
+            thread_id,
+            group["sender_id"],
+        )
         threaded += 1
 
     logger.info(f"Migration {MIGRATION_ID}: backfilled {threaded} threads")

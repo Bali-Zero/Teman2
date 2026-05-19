@@ -1,4 +1,5 @@
 """Tests for EventBus handlers writing to bridge_outbox."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
@@ -8,6 +9,7 @@ import pytest
 
 class _AcquireCM:
     """Async context manager wrapper for pool.acquire() mocking."""
+
     def __init__(self, conn):
         self.conn = conn
 
@@ -52,12 +54,14 @@ async def test_on_client_changed_insert_writes_outbox(monkeypatch):
     on_client = _get_handler(bus_stub, "client.changed")
 
     h._recent_events.clear()
-    await on_client({
-        "client_id": 7,
-        "operation": "INSERT",
-        "email": "a@b",
-        "sector": "PMA-Tax",
-    })
+    await on_client(
+        {
+            "client_id": 7,
+            "operation": "INSERT",
+            "email": "a@b",
+            "sector": "PMA-Tax",
+        }
+    )
 
     insert_mock.assert_called_once()
     # signature: insert_outbox_event(conn, event_type=..., payload=...)
@@ -81,14 +85,16 @@ async def test_on_client_changed_sector_update_writes_outbox(monkeypatch):
     on_client = _get_handler(bus_stub, "client.changed")
 
     h._recent_events.clear()
-    await on_client({
-        "client_id": 7,
-        "operation": "UPDATE",
-        "email": "a@b",
-        "changed_fields": ["sector"],
-        "sector": "Tax",
-        "old_sector": "Visa",
-    })
+    await on_client(
+        {
+            "client_id": 7,
+            "operation": "UPDATE",
+            "email": "a@b",
+            "changed_fields": ["sector"],
+            "sector": "Tax",
+            "old_sector": "Visa",
+        }
+    )
 
     insert_mock.assert_called_once()
     call_kwargs = insert_mock.call_args.kwargs
@@ -110,12 +116,14 @@ async def test_on_client_changed_update_without_sector_no_outbox(monkeypatch):
     on_client = _get_handler(bus_stub, "client.changed")
 
     h._recent_events.clear()
-    await on_client({
-        "client_id": 7,
-        "operation": "UPDATE",
-        "email": "a@b",
-        "changed_fields": ["phone"],  # not sector
-    })
+    await on_client(
+        {
+            "client_id": 7,
+            "operation": "UPDATE",
+            "email": "a@b",
+            "changed_fields": ["phone"],  # not sector
+        }
+    )
 
     insert_mock.assert_not_called()
 
@@ -133,13 +141,15 @@ async def test_on_practice_status_changed_completed_writes_outbox(monkeypatch):
     on_practice = _get_handler(bus_stub, "practice.status_changed")
 
     h._recent_events.clear()
-    await on_practice({
-        "practice_id": 100,
-        "client_id": 7,
-        "old_status": "in_progress",
-        "new_status": "completed",
-        "completed_at": "2026-04-14T10:00:00",
-    })
+    await on_practice(
+        {
+            "practice_id": 100,
+            "client_id": 7,
+            "old_status": "in_progress",
+            "new_status": "completed",
+            "completed_at": "2026-04-14T10:00:00",
+        }
+    )
 
     insert_mock.assert_called_once()
     call_kwargs = insert_mock.call_args.kwargs
@@ -160,13 +170,15 @@ async def test_on_practice_status_changed_created_writes_outbox(monkeypatch):
     on_practice = _get_handler(bus_stub, "practice.status_changed")
 
     h._recent_events.clear()
-    await on_practice({
-        "practice_id": 100,
-        "client_id": 7,
-        "old_status": None,
-        "new_status": "created",
-        "practice_type": "VISA",
-    })
+    await on_practice(
+        {
+            "practice_id": 100,
+            "client_id": 7,
+            "old_status": None,
+            "new_status": "created",
+            "practice_type": "VISA",
+        }
+    )
 
     insert_mock.assert_called_once()
     call_kwargs = insert_mock.call_args.kwargs
@@ -187,16 +199,18 @@ async def test_on_compliance_alert_critical_within_7d_writes_outbox(monkeypatch)
     on_compliance = _get_handler(bus_stub, "compliance.alert")
 
     h._recent_events.clear()
-    await on_compliance({
-        "alert_id": "alert-1",
-        "client_id": 7,
-        "severity": "critical",
-        "alert_type": "visa_expiry",
-        "message": "Visa expires soon",
-        "document_type": "VITAS",
-        "days_until_expiry": 3,
-        "expires_at": "2026-04-17",
-    })
+    await on_compliance(
+        {
+            "alert_id": "alert-1",
+            "client_id": 7,
+            "severity": "critical",
+            "alert_type": "visa_expiry",
+            "message": "Visa expires soon",
+            "document_type": "VITAS",
+            "days_until_expiry": 3,
+            "expires_at": "2026-04-17",
+        }
+    )
 
     insert_mock.assert_called_once()
     call_kwargs = insert_mock.call_args.kwargs
@@ -217,13 +231,15 @@ async def test_on_compliance_alert_high_does_not_write(monkeypatch):
     on_compliance = _get_handler(bus_stub, "compliance.alert")
 
     h._recent_events.clear()
-    await on_compliance({
-        "alert_id": "alert-2",
-        "client_id": 7,
-        "severity": "high",
-        "alert_type": "visa_expiry",
-        "days_until_expiry": 3,
-    })
+    await on_compliance(
+        {
+            "alert_id": "alert-2",
+            "client_id": 7,
+            "severity": "high",
+            "alert_type": "visa_expiry",
+            "days_until_expiry": 3,
+        }
+    )
 
     insert_mock.assert_not_called()
 
@@ -241,13 +257,15 @@ async def test_on_compliance_alert_critical_far_future_does_not_write(monkeypatc
     on_compliance = _get_handler(bus_stub, "compliance.alert")
 
     h._recent_events.clear()
-    await on_compliance({
-        "alert_id": "alert-3",
-        "client_id": 7,
-        "severity": "critical",
-        "alert_type": "visa_expiry",
-        "days_until_expiry": 30,
-    })
+    await on_compliance(
+        {
+            "alert_id": "alert-3",
+            "client_id": 7,
+            "severity": "critical",
+            "alert_type": "visa_expiry",
+            "days_until_expiry": 30,
+        }
+    )
 
     insert_mock.assert_not_called()
 
@@ -282,13 +300,15 @@ async def test_on_compliance_alert_critical_zero_days_writes_outbox(monkeypatch)
     on_compliance = _get_handler(bus_stub, "compliance.alert")
 
     h._recent_events.clear()
-    await on_compliance({
-        "alert_id": "alert-zero",
-        "client_id": 7,
-        "severity": "critical",
-        "alert_type": "visa_expiry",
-        "days_until_expiry": 0,
-    })
+    await on_compliance(
+        {
+            "alert_id": "alert-zero",
+            "client_id": 7,
+            "severity": "critical",
+            "alert_type": "visa_expiry",
+            "days_until_expiry": 0,
+        }
+    )
 
     insert_mock.assert_called_once()
     call_kwargs = insert_mock.call_args.kwargs
@@ -309,12 +329,14 @@ async def test_on_compliance_alert_critical_no_days_field_does_not_write(monkeyp
     on_compliance = _get_handler(bus_stub, "compliance.alert")
 
     h._recent_events.clear()
-    await on_compliance({
-        "alert_id": "alert-no-days",
-        "client_id": 7,
-        "severity": "critical",
-        "alert_type": "general",
-        # NO days_until_expiry
-    })
+    await on_compliance(
+        {
+            "alert_id": "alert-no-days",
+            "client_id": 7,
+            "severity": "critical",
+            "alert_type": "general",
+            # NO days_until_expiry
+        }
+    )
 
     insert_mock.assert_not_called()

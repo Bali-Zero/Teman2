@@ -26,24 +26,39 @@ class ChannelCapabilities:
 # Pre-defined capabilities per channel
 CHANNEL_CAPS: dict[str, ChannelCapabilities] = {
     "telegram": ChannelCapabilities(
-        name="telegram", supports_markdown=True, supports_buttons=True,
-        supports_images=True, max_length=4096,
+        name="telegram",
+        supports_markdown=True,
+        supports_buttons=True,
+        supports_images=True,
+        max_length=4096,
     ),
     "whatsapp": ChannelCapabilities(
-        name="whatsapp", supports_markdown=True, supports_buttons=True,
-        supports_images=True, max_length=1600,
+        name="whatsapp",
+        supports_markdown=True,
+        supports_buttons=True,
+        supports_images=True,
+        max_length=1600,
     ),
     "instagram": ChannelCapabilities(
-        name="instagram", supports_markdown=False, supports_buttons=False,
-        supports_images=True, max_length=1000,
+        name="instagram",
+        supports_markdown=False,
+        supports_buttons=False,
+        supports_images=True,
+        max_length=1000,
     ),
     "twitter": ChannelCapabilities(
-        name="twitter", supports_markdown=False, supports_buttons=False,
-        supports_images=True, max_length=10000,
+        name="twitter",
+        supports_markdown=False,
+        supports_buttons=False,
+        supports_images=True,
+        max_length=10000,
     ),
     "web": ChannelCapabilities(
-        name="web", supports_markdown=True, supports_buttons=True,
-        supports_images=True, max_length=100000,
+        name="web",
+        supports_markdown=True,
+        supports_buttons=True,
+        supports_images=True,
+        max_length=100000,
     ),
 }
 
@@ -98,7 +113,8 @@ def format_rich_text(text: str, channel: str) -> str:
 
 
 def format_buttons(
-    buttons: list[dict[str, str]], channel: str,
+    buttons: list[dict[str, str]],
+    channel: str,
 ) -> dict[str, Any] | None:
     """Convert button list to channel-specific format.
 
@@ -132,13 +148,15 @@ def format_buttons(
         # WhatsApp interactive buttons (max 3)
         wa_buttons = []
         for btn in buttons[:3]:
-            wa_buttons.append({
-                "type": "reply",
-                "reply": {
-                    "id": btn.get("callback_data", btn["text"][:20]),
-                    "title": btn["text"][:20],
-                },
-            })
+            wa_buttons.append(
+                {
+                    "type": "reply",
+                    "reply": {
+                        "id": btn.get("callback_data", btn["text"][:20]),
+                        "title": btn["text"][:20],
+                    },
+                }
+            )
         return {"type": "button", "buttons": wa_buttons}
 
     if channel == "web":

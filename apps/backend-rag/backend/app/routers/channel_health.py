@@ -12,6 +12,7 @@ Status thresholds (mirror of ChannelSensor):
 - degraded:  21 <= queue_depth <= 100
 - fail:      queue_depth > 100
 """
+
 from __future__ import annotations
 
 import time
@@ -23,9 +24,7 @@ from backend.app.dependencies import get_optional_database_pool
 
 router = APIRouter(prefix="/api/channels", tags=["channels", "health"])
 
-KNOWN_CHANNELS: frozenset[str] = frozenset(
-    {"whatsapp", "telegram", "instagram", "web"}
-)
+KNOWN_CHANNELS: frozenset[str] = frozenset({"whatsapp", "telegram", "instagram", "web"})
 
 _OK_CEILING = 20
 _DEGRADED_CEILING = 100
@@ -75,9 +74,7 @@ async def channel_health(
             )
             if row is not None:
                 queue_depth = int(row["pending"] or 0)
-                last_event_seen_at = (
-                    float(row["last_ts"]) if row["last_ts"] is not None else None
-                )
+                last_event_seen_at = float(row["last_ts"]) if row["last_ts"] is not None else None
 
     return {
         "status": _classify(queue_depth),

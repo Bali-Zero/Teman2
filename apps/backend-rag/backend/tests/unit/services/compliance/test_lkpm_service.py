@@ -49,11 +49,10 @@ def mock_db_pool():
 def service(mock_db_pool):
     """Create LKPMService with mocked deps."""
     pool, _ = mock_db_pool
-    with patch(
-        "backend.services.compliance.lkpm_service.LKPMValidator"
-    ) as mock_val_cls, patch(
-        "backend.services.compliance.lkpm_service.LKPMDataCollector"
-    ) as mock_dc_cls:
+    with (
+        patch("backend.services.compliance.lkpm_service.LKPMValidator") as mock_val_cls,
+        patch("backend.services.compliance.lkpm_service.LKPMDataCollector") as mock_dc_cls,
+    ):
         mock_validator = AsyncMock()
         mock_val_cls.return_value = mock_validator
         mock_collector = MagicMock()
@@ -257,8 +256,15 @@ class TestGenerateDraft:
         ]
         conn.fetch.return_value = [
             {
-                "eq_d": 0, "eq_i": 0, "bd_d": 0, "bd_i": 0,
-                "vh_d": 0, "vh_i": 0, "land": 0, "wc": 0, "other": 0,
+                "eq_d": 0,
+                "eq_i": 0,
+                "bd_d": 0,
+                "bd_i": 0,
+                "vh_d": 0,
+                "vh_i": 0,
+                "land": 0,
+                "wc": 0,
+                "other": 0,
             }
         ]
 
@@ -270,8 +276,15 @@ class TestGenerateDraft:
         ]
         conn.fetch.return_value = [
             {
-                "eq_d": 0, "eq_i": 0, "bd_d": 0, "bd_i": 0,
-                "vh_d": 0, "vh_i": 0, "land": 0, "wc": 0, "other": 0,
+                "eq_d": 0,
+                "eq_i": 0,
+                "bd_d": 0,
+                "bd_i": 0,
+                "vh_d": 0,
+                "vh_i": 0,
+                "land": 0,
+                "wc": 0,
+                "other": 0,
             }
         ]
 
@@ -373,10 +386,12 @@ class TestQueries:
                 "company_name": "PT Test",
                 "quarter": "Q1",
                 "year": 2026,
-                "validation_alerts": json.dumps([
-                    {"severity": "red", "message": "Missing data"},
-                    {"severity": "yellow", "message": "Low value"},
-                ]),
+                "validation_alerts": json.dumps(
+                    [
+                        {"severity": "red", "message": "Missing data"},
+                        {"severity": "yellow", "message": "Low value"},
+                    ]
+                ),
                 "status": "draft",
             }
         ]
@@ -484,9 +499,9 @@ class TestRowToDraft:
 
         row = _make_draft_row(
             validation_status="invalid",
-            validation_alerts=json.dumps([
-                {"field": "tki", "severity": "red", "message": "Too low"}
-            ]),
+            validation_alerts=json.dumps(
+                [{"field": "tki", "severity": "red", "message": "Too low"}]
+            ),
         )
         from backend.services.compliance.lkpm_service import LKPMService
 

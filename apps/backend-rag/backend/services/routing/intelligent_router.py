@@ -37,8 +37,6 @@ class IntelligentRouter:
         self.collaborator_service = collaborator_service
         self.db_pool = db_pool
 
-
-
         # Initialize Clarification Service
         from backend.services.misc.clarification_service import ClarificationService
 
@@ -140,8 +138,6 @@ class IntelligentRouter:
             }
             if routing_stats:
                 response_data["routing_stats"] = routing_stats
-
-
 
             return response_data
 

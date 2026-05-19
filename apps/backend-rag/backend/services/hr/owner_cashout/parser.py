@@ -3,6 +3,7 @@
 BZ schema (9 cols): NAME | PROCESS | PNBP | URGENT | RPTKA/IMTA | TOTAL_INCOME | MARGIN_BS | MARGIN_BZ | NOTE
 BS schema (7 cols): NAME | PROCESS | PNBP | URGENT | RPTKA/IMTA | MARGIN_BS | FINAL_PRICE
 """
+
 from __future__ import annotations
 
 import logging
@@ -23,8 +24,8 @@ class CashoutRow:
     rptka_imta_idr: int
     total_income_idr: int  # only BZ, 0 for BS
     margin_bs_idr: int
-    margin_bz_idr: int     # only BZ, 0 for BS
-    final_price_idr: int   # only BS, 0 for BZ
+    margin_bz_idr: int  # only BZ, 0 for BS
+    final_price_idr: int  # only BS, 0 for BZ
     note: str | None
 
 

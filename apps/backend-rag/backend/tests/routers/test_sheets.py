@@ -53,7 +53,11 @@ class TestSheetsEndpoints:
         with patch("backend.app.routers.sheets._get_sheets_service", return_value=service):
             response = client.post(
                 "/api/sheets/write",
-                json={"spreadsheet_id": "sheet-1", "range": "Sheet1!A1:B2", "values": [["a", "b"], ["c", "d"]]},
+                json={
+                    "spreadsheet_id": "sheet-1",
+                    "range": "Sheet1!A1:B2",
+                    "values": [["a", "b"], ["c", "d"]],
+                },
             )
 
         assert response.status_code == 200
@@ -78,7 +82,9 @@ class TestSheetsEndpoints:
 
         assert response.status_code == 200
         assert response.json()["range"] == "Company!D5:F5"
-        service.write_range.assert_awaited_once_with("sheet-1", "Company!D5:F5", [["addr", "nib", "npwp"]])
+        service.write_range.assert_awaited_once_with(
+            "sheet-1", "Company!D5:F5", [["addr", "nib", "npwp"]]
+        )
 
     @pytest.mark.integration
     def test_read_range_surfaces_service_errors(self, client: TestClient) -> None:
@@ -92,4 +98,3 @@ class TestSheetsEndpoints:
             )
 
         assert response.status_code == 500
-

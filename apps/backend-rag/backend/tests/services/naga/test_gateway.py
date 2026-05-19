@@ -107,9 +107,7 @@ class TestDomainClassification:
         assert result.domain == "general"
 
     def test_hybrid_domain(self) -> None:
-        result = classify_query(
-            "confronto golden visa Indonesia vs Portogallo"
-        )
+        result = classify_query("confronto golden visa Indonesia vs Portogallo")
         assert result.domain == "hybrid"
 
     def test_hybrid_domain_compare_countries(self) -> None:
@@ -296,9 +294,7 @@ class TestForceOverrides:
         assert result.tier == "exhaustive"
 
     def test_force_domain_overrides_classification(self) -> None:
-        result = classify_query(
-            "explain quantum computing", force_domain="indonesia"
-        )
+        result = classify_query("explain quantum computing", force_domain="indonesia")
         assert result.domain == "indonesia"
 
     def test_force_tier_and_domain_together(self) -> None:
@@ -335,8 +331,6 @@ class TestPerformance:
 
         start = time.perf_counter()
         for _ in range(1000):
-            classify_query(
-                "comprehensive analysis of KITAS requirements and trade-offs"
-            )
+            classify_query("comprehensive analysis of KITAS requirements and trade-offs")
         elapsed = time.perf_counter() - start
         assert elapsed < 1.0, f"1000 classifications took {elapsed:.3f}s (expected <1s)"

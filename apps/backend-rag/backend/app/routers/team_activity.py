@@ -148,7 +148,9 @@ async def clock_in(request: ClockInRequest) -> ClockResponse:
 
     try:
         result = await service.clock_in(
-            user_id=request.user_id, email=request.email, metadata=request.metadata,
+            user_id=request.user_id,
+            email=request.email,
+            metadata=request.metadata,
         )
         return ClockResponse(**result)
     except Exception as e:
@@ -172,7 +174,9 @@ async def clock_out(request: ClockOutRequest) -> ClockResponse:
 
     try:
         result = await service.clock_out(
-            user_id=request.user_id, email=request.email, metadata=request.metadata,
+            user_id=request.user_id,
+            email=request.email,
+            metadata=request.metadata,
         )
         return ClockResponse(**result)
     except Exception as e:

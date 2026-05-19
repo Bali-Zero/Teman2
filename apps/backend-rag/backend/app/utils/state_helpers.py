@@ -9,7 +9,10 @@ T = TypeVar("T")
 
 
 def get_app_state(
-    app_state: Any, attr_name: str, default: T | None = None, expected_type: type[T] | None = None,
+    app_state: Any,
+    attr_name: str,
+    default: T | None = None,
+    expected_type: type[T] | None = None,
 ) -> T | None:
     """
     Type-safe getattr for app.state attributes.

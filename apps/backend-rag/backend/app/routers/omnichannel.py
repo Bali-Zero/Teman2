@@ -27,6 +27,7 @@ router = APIRouter(prefix="/api/omnichannel", tags=["omnichannel"])
 # Request/Response models
 # ---------------------------------------------------------------------------
 
+
 class ThreadUpdateRequest(BaseModel):
     status: str | None = None
     priority: str | None = None
@@ -43,6 +44,7 @@ class SendMessageRequest(BaseModel):
 # Helpers
 # ---------------------------------------------------------------------------
 
+
 def _get_db(request: Request) -> Any:
     db_pool = getattr(request.app.state, "db_pool", None)
     if not db_pool:
@@ -52,6 +54,7 @@ def _get_db(request: Request) -> Any:
 
 def _get_thread_manager(db_pool: Any):
     from backend.services.communication.thread_manager import ThreadManager
+
     return ThreadManager(db_pool)
 
 
@@ -59,11 +62,14 @@ def _get_thread_manager(db_pool: Any):
 # Endpoints
 # ---------------------------------------------------------------------------
 
+
 @router.get("/threads")
 async def list_threads(
     request: Request,
     user: dict = Depends(get_current_user),
-    status: str | None = Query(None, description="Filter: open, assigned, waiting, resolved, closed"),
+    status: str | None = Query(
+        None, description="Filter: open, assigned, waiting, resolved, closed"
+    ),
     priority: str | None = Query(None, description="Filter: low, normal, high, urgent"),
     assigned_to: str | None = Query(None, description="Filter by assignee email"),
     channel: str | None = Query(None, description="Filter by channel"),
@@ -91,7 +97,9 @@ async def list_threads(
     user_email = user.get("email", "").lower()
 
     threads, total = await tm.get_threads(
-        filters, user_email=user_email, is_admin=is_admin,
+        filters,
+        user_email=user_email,
+        is_admin=is_admin,
     )
 
     return {"threads": threads, "total": total, "limit": limit, "offset": offset}
@@ -152,7 +160,9 @@ async def get_thread(
             "intent": row["intent"],
             "unread_count": 0,  # Just marked read
             "last_message_preview": row["last_message_preview"],
-            "last_activity_at": row["last_activity_at"].isoformat() if row["last_activity_at"] else None,
+            "last_activity_at": row["last_activity_at"].isoformat()
+            if row["last_activity_at"]
+            else None,
             "created_at": row["created_at"].isoformat() if row["created_at"] else None,
             "metadata": meta or {},
         },
@@ -184,7 +194,8 @@ async def update_thread(
     # RBAC: admin or current assignee can update
     if not can_view_all_clients(user):
         row = await db_pool.fetchrow(
-            "SELECT assigned_to FROM conversation_threads WHERE id = $1", thread_id,
+            "SELECT assigned_to FROM conversation_threads WHERE id = $1",
+            thread_id,
         )
         if not row:
             raise HTTPException(status_code=404, detail="Thread not found")
@@ -205,7 +216,9 @@ async def update_thread(
     if not found:
         raise HTTPException(status_code=404, detail="Thread not found")
 
-    logger.info(f"Thread {thread_id} updated by {user.get('email')}: {body.model_dump(exclude_none=True)}")
+    logger.info(
+        f"Thread {thread_id} updated by {user.get('email')}: {body.model_dump(exclude_none=True)}"
+    )
 
     # Emit WebSocket event for real-time updates
     await _emit_thread_event(request, thread_id, "thread_updated", user)
@@ -248,17 +261,23 @@ async def send_thread_message(
         direction,
         user.get("email", "system"),
         body.content,
-        json.dumps({
-            "sender_name": user.get("full_name", user.get("email")),
-            "is_internal_note": body.is_internal_note,
-        }),
+        json.dumps(
+            {
+                "sender_name": user.get("full_name", user.get("email")),
+                "is_internal_note": body.is_internal_note,
+            }
+        ),
         thread_id,
     )
 
     # Update thread activity
     tm = _get_thread_manager(db_pool)
     await tm.add_message_to_thread(
-        thread_id, msg_id, channel, preview=body.content[:200], direction=direction,
+        thread_id,
+        msg_id,
+        channel,
+        preview=body.content[:200],
+        direction=direction,
     )
 
     # If outbound reply (not internal note), send via channel adapter
@@ -327,7 +346,8 @@ async def get_thread_context(
 
     # Get thread with client
     thread_row = await db_pool.fetchrow(
-        "SELECT client_id FROM conversation_threads WHERE id = $1", thread_id,
+        "SELECT client_id FROM conversation_threads WHERE id = $1",
+        thread_id,
     )
     if not thread_row:
         raise HTTPException(status_code=404, detail="Thread not found")
@@ -441,28 +461,40 @@ async def omnichannel_stats(
 # Internal helpers
 # ---------------------------------------------------------------------------
 
+
 async def _emit_thread_event(
-    request: Request, thread_id: UUID, event_type: str, user: dict,
+    request: Request,
+    thread_id: UUID,
+    event_type: str,
+    user: dict,
 ) -> None:
     """Emit WebSocket event for real-time inbox updates."""
     try:
         ws_manager = getattr(request.app.state, "ws_manager", None)
         if ws_manager:
             import json as json_mod
-            await ws_manager.broadcast(json_mod.dumps({
-                "type": "CHAT_MESSAGES",
-                "data": {
-                    "event": event_type,
-                    "thread_id": str(thread_id),
-                    "user": user.get("email"),
-                },
-            }))
+
+            await ws_manager.broadcast(
+                json_mod.dumps(
+                    {
+                        "type": "CHAT_MESSAGES",
+                        "data": {
+                            "event": event_type,
+                            "thread_id": str(thread_id),
+                            "user": user.get("email"),
+                        },
+                    }
+                )
+            )
     except Exception as e:
         logger.debug("WebSocket emit failed (non-fatal): %s", e)
 
 
 async def _send_via_channel(
-    request: Request, thread_row: Any, channel: str, content: str,
+    request: Request,
+    thread_row: Any,
+    channel: str,
+    content: str,
 ) -> None:
     """Send outbound message via the appropriate channel adapter."""
     try:

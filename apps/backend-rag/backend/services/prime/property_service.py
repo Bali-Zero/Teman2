@@ -11,49 +11,200 @@ from backend.services.prime.geo_service import NON_BUILDABLE_ZONES, _zone_matche
 # ACTIVITY CLASSIFICATION (extracted from prime.py)
 # =============================================================================
 _SKIP_PATTERNS = [
-    "local resident", "employee", "official residence", "boarding house",
-    "single house", "cluster house", "coupled house", "dormitory", "townhouse",
-    "septic tank", "wastewater", "irrigation", "cleanwater", "trash can",
-    "toilet facility", "parking area", "pedestrian lane", "disability access",
-    "loading unloading", "road network", "road complete", "bike lane",
-    "public road access", "pavement area", "lot area", "building height",
-    "minimum gsb", "minimum kdh", "maximum kdb", "maximum klb", "maximum ktb",
-    "road dimension", "road equipment", "trash", "zone_requirement",
-    "car trading", "car spare parts", "motorcycle trade", "motorcycle maintenance",
-    "wholesale trade of fishery", "wholesale of motor vehicle",
-    "wholesale trade of food", "wholesale of household",
-    "wholesale of machinery", "wholesale of building material",
-    "wholesale of agricultural", "wholesale of fuel",
-    "village government", "government service", "public service office",
-    "fire station", "police", "military", "cemetery", "funeral",
-    "religious", "worship", "mosque", "temple", "church",
+    "local resident",
+    "employee",
+    "official residence",
+    "boarding house",
+    "single house",
+    "cluster house",
+    "coupled house",
+    "dormitory",
+    "townhouse",
+    "septic tank",
+    "wastewater",
+    "irrigation",
+    "cleanwater",
+    "trash can",
+    "toilet facility",
+    "parking area",
+    "pedestrian lane",
+    "disability access",
+    "loading unloading",
+    "road network",
+    "road complete",
+    "bike lane",
+    "public road access",
+    "pavement area",
+    "lot area",
+    "building height",
+    "minimum gsb",
+    "minimum kdh",
+    "maximum kdb",
+    "maximum klb",
+    "maximum ktb",
+    "road dimension",
+    "road equipment",
+    "trash",
+    "zone_requirement",
+    "car trading",
+    "car spare parts",
+    "motorcycle trade",
+    "motorcycle maintenance",
+    "wholesale trade of fishery",
+    "wholesale of motor vehicle",
+    "wholesale trade of food",
+    "wholesale of household",
+    "wholesale of machinery",
+    "wholesale of building material",
+    "wholesale of agricultural",
+    "wholesale of fuel",
+    "village government",
+    "government service",
+    "public service office",
+    "fire station",
+    "police",
+    "military",
+    "cemetery",
+    "funeral",
+    "religious",
+    "worship",
+    "mosque",
+    "temple",
+    "church",
     "television broadcasting",
 ]
 
 _ACTIVITY_CATEGORIES: list[tuple[list[str], str]] = [
-    (["hotel", "resort", "villa", "guesthouse", "penginapan", "lodging (≥", "lodging (<"], "Hospitality"),
-    (["restaurant", "café", "cafe", " bar ", "bakery", "catering", "food court",
-      "food, beverage, and tobacco trade in shop", "trade of various goods in a store"], "F&B"),
-    (["spa ", "beauty salon", "beauty center", "beauty treatment",
-      "wellness center", "yoga", "fitness center", "gym", "massage"], "Wellness"),
-    (["boutique ", "retail of", "specialty store", "fashion", "jewelry",
-      "artisan craft", "souvenir", "art gallery", "gallery"], "Retail"),
-    (["consulting", "consultant", "law firm", "notary", "accounting firm",
-      "financial advisor", "professional service"], "Services"),
-    (["real estate", "property development", "land development",
-      "co-working space", "serviced apartment"], "Property"),
-    (["software", "information technology", "it service", "digital",
-      "programming", "data center", "startup"], "Technology"),
-    (["school", "international school", "university", "college",
-      "training center", "language course", "vocational"], "Education"),
-    (["hospital", "clinic", "medical center", "dental",
-      "healthcare facility", "pharmaceutical"], "Healthcare"),
-    (["food processing", "garment", "handicraft", "artisan manufacturing",
-      "waste management", "recycling"], "Industry"),
-    (["design studio", "creative agency", "photography studio",
-      "film production", "music studio", "architecture"], "Creative"),
-    (["restaurant and café", "café and restaurant", "coffee shop",
-      "juice bar", "fine dining", "bistro", "lounge"], "F&B"),
+    (
+        ["hotel", "resort", "villa", "guesthouse", "penginapan", "lodging (≥", "lodging (<"],
+        "Hospitality",
+    ),
+    (
+        [
+            "restaurant",
+            "café",
+            "cafe",
+            " bar ",
+            "bakery",
+            "catering",
+            "food court",
+            "food, beverage, and tobacco trade in shop",
+            "trade of various goods in a store",
+        ],
+        "F&B",
+    ),
+    (
+        [
+            "spa ",
+            "beauty salon",
+            "beauty center",
+            "beauty treatment",
+            "wellness center",
+            "yoga",
+            "fitness center",
+            "gym",
+            "massage",
+        ],
+        "Wellness",
+    ),
+    (
+        [
+            "boutique ",
+            "retail of",
+            "specialty store",
+            "fashion",
+            "jewelry",
+            "artisan craft",
+            "souvenir",
+            "art gallery",
+            "gallery",
+        ],
+        "Retail",
+    ),
+    (
+        [
+            "consulting",
+            "consultant",
+            "law firm",
+            "notary",
+            "accounting firm",
+            "financial advisor",
+            "professional service",
+        ],
+        "Services",
+    ),
+    (
+        [
+            "real estate",
+            "property development",
+            "land development",
+            "co-working space",
+            "serviced apartment",
+        ],
+        "Property",
+    ),
+    (
+        [
+            "software",
+            "information technology",
+            "it service",
+            "digital",
+            "programming",
+            "data center",
+            "startup",
+        ],
+        "Technology",
+    ),
+    (
+        [
+            "school",
+            "international school",
+            "university",
+            "college",
+            "training center",
+            "language course",
+            "vocational",
+        ],
+        "Education",
+    ),
+    (
+        ["hospital", "clinic", "medical center", "dental", "healthcare facility", "pharmaceutical"],
+        "Healthcare",
+    ),
+    (
+        [
+            "food processing",
+            "garment",
+            "handicraft",
+            "artisan manufacturing",
+            "waste management",
+            "recycling",
+        ],
+        "Industry",
+    ),
+    (
+        [
+            "design studio",
+            "creative agency",
+            "photography studio",
+            "film production",
+            "music studio",
+            "architecture",
+        ],
+        "Creative",
+    ),
+    (
+        [
+            "restaurant and café",
+            "café and restaurant",
+            "coffee shop",
+            "juice bar",
+            "fine dining",
+            "bistro",
+            "lounge",
+        ],
+        "F&B",
+    ),
 ]
 
 
@@ -73,7 +224,14 @@ def is_investor_relevant(name: str) -> bool:
         return False
     if lower.startswith("wholesale") and "fuel" not in lower:
         return False
-    infra_kw = ["road network", "road dimension", "pavement", "minimum jb", "minimum jbs", "minimum gsb"]
+    infra_kw = [
+        "road network",
+        "road dimension",
+        "pavement",
+        "minimum jb",
+        "minimum jbs",
+        "minimum gsb",
+    ]
     return not any(kw in lower for kw in infra_kw)
 
 
@@ -81,20 +239,33 @@ def is_investor_relevant(name: str) -> bool:
 # ZONE-KBLI COMPATIBILITY (extracted from dashboard.py)
 # =============================================================================
 _ZONE_KBLI_IDEAL: dict[str, set[str]] = {
-    "55": {"W-", "C-"}, "56": {"K-", "C-"}, "47": {"K-", "C-"},
-    "68": {"R-", "K-", "C-"}, "70": {"KT", "K-", "C-"},
-    "62": {"KT", "K-", "C-"}, "77": {"K-", "C-"},
-    "79": {"W-", "K-", "C-"}, "96": {"W-", "K-", "C-"},
-    "90": {"W-", "C-", "SPU"}, "91": {"W-", "SPU", "C-"},
-    "85": {"SPU", "C-"}, "93": {"W-", "SPU", "C-"},
+    "55": {"W-", "C-"},
+    "56": {"K-", "C-"},
+    "47": {"K-", "C-"},
+    "68": {"R-", "K-", "C-"},
+    "70": {"KT", "K-", "C-"},
+    "62": {"KT", "K-", "C-"},
+    "77": {"K-", "C-"},
+    "79": {"W-", "K-", "C-"},
+    "96": {"W-", "K-", "C-"},
+    "90": {"W-", "C-", "SPU"},
+    "91": {"W-", "SPU", "C-"},
+    "85": {"SPU", "C-"},
+    "93": {"W-", "SPU", "C-"},
 }
 
 _ZONE_KBLI_TOLERATED: dict[str, set[str]] = {
-    "55": {"R-"}, "56": {"W-"}, "47": {"R-"},
+    "55": {"R-"},
+    "56": {"W-"},
+    "47": {"R-"},
 }
 
 _ZONE_KBLI_ACCEPTABLE: dict[str, set[str]] = {
-    "55": {"K-"}, "56": {"R-"}, "68": {"W-"}, "77": {"W-"}, "79": {"R-"},
+    "55": {"K-"},
+    "56": {"R-"},
+    "68": {"W-"},
+    "77": {"W-"},
+    "79": {"R-"},
 }
 
 _NIGHTLIFE_CODES: set[str] = {"56301", "56302"}
@@ -169,8 +340,12 @@ def calculate_investment_score(
 
     if hard_blocks:
         return {
-            "verdict": "RED", "can_invest": False, "score": 0,
-            "breakdown": {}, "modifiers": [], "hard_blocks": hard_blocks,
+            "verdict": "RED",
+            "can_invest": False,
+            "score": 0,
+            "breakdown": {},
+            "modifiers": [],
+            "hard_blocks": hard_blocks,
         }
 
     # Layer 2: Composite Score (0-100)
@@ -190,7 +365,17 @@ def calculate_investment_score(
 
     klb_score: int | None = None
     if klb_val is not None:
-        klb_score = 10 if klb_val >= 2.0 else 8 if klb_val >= 1.2 else 5 if klb_val >= 0.6 else 2 if klb_val >= 0.2 else 0
+        klb_score = (
+            10
+            if klb_val >= 2.0
+            else 8
+            if klb_val >= 1.2
+            else 5
+            if klb_val >= 0.6
+            else 2
+            if klb_val >= 0.2
+            else 0
+        )
     breakdown["building_capacity"] = {"score": klb_score, "max": 10, "klb": klb_val}
 
     bey_val: float | None = None
@@ -205,7 +390,17 @@ def calculate_investment_score(
     risk_val = geo_data.get("risk_score") if geo_data else None
     flood = geo_data.get("flood_risk") if geo_data else None
     if risk_val is not None:
-        risk_points = 10 if risk_val < 0.2 else 8 if risk_val < 0.4 else 5 if risk_val < 0.6 else 2 if risk_val < 0.8 else 0
+        risk_points = (
+            10
+            if risk_val < 0.2
+            else 8
+            if risk_val < 0.4
+            else 5
+            if risk_val < 0.6
+            else 2
+            if risk_val < 0.8
+            else 0
+        )
     elif flood is not None:
         risk_points = {"safe": 10, "check": 5, "high": 0}.get(str(flood), 7)
     else:
@@ -229,13 +424,35 @@ def calculate_investment_score(
         reg_base = 0
     oss_penalty = 3 if oss_risk == "Tinggi" else 2 if oss_risk == "Menengah Tinggi" else 0
     reg_score = max(0, reg_base - oss_penalty)
-    breakdown["regulatory"] = {"score": reg_score, "max": 10, "state": kbli_state, "oss_risk": oss_risk}
+    breakdown["regulatory"] = {
+        "score": reg_score,
+        "max": 10,
+        "state": kbli_state,
+        "oss_risk": oss_risk,
+    }
 
     ws = geo_data.get("walk_score") if geo_data else None
-    ws_score = 5 if ws is not None and ws >= 65 else 3 if ws is not None and ws >= 35 else 1 if ws is not None else 2
+    ws_score = (
+        5
+        if ws is not None and ws >= 65
+        else 3
+        if ws is not None and ws >= 35
+        else 1
+        if ws is not None
+        else 2
+    )
     breakdown["amenity"] = {"score": ws_score, "max": 5, "value": ws}
 
-    _all_scores = [roi_score, zone_kbli_score, klb_score, bey_score, risk_points, market_score, reg_score, ws_score]
+    _all_scores = [
+        roi_score,
+        zone_kbli_score,
+        klb_score,
+        bey_score,
+        risk_points,
+        market_score,
+        reg_score,
+        ws_score,
+    ]
     _all_maxes = [30, 15, 10, 15, 10, 10, 10, 5]
     earned = sum(s for s in _all_scores if s is not None)
     available = sum(m for s, m in zip(_all_scores, _all_maxes, strict=True) if s is not None)
@@ -272,10 +489,14 @@ def calculate_investment_score(
         score -= min(overlay_penalty_total, 25)
 
     if zone_kbli_tier == "tolerated":
-        modifiers.append("⚠️ Gray zone: attività comune ma non normativamente ideale. Verificare IMB/PBG.")
+        modifiers.append(
+            "⚠️ Gray zone: attività comune ma non normativamente ideale. Verificare IMB/PBG."
+        )
     if zone_code and zone_code.startswith("W-2") and kbli_code and kbli_code.startswith("55"):
         tb_raw = zone_data.get("tb", "N/A") if zone_data else "N/A"
-        modifiers.append(f"⚠️ W-2: villa limitata a 8m/2 piani (hotel fino a 15m/4 piani). TB: {tb_raw}")
+        modifiers.append(
+            f"⚠️ W-2: villa limitata a 8m/2 piani (hotel fino a 15m/4 piani). TB: {tb_raw}"
+        )
         score -= 3
 
     # Sea distance modifiers (replaces boolean sea_view)
@@ -310,6 +531,10 @@ def calculate_investment_score(
         verdict = "RED"
 
     return {
-        "verdict": verdict, "can_invest": verdict != "RED", "score": score,
-        "breakdown": breakdown, "modifiers": modifiers, "hard_blocks": [],
+        "verdict": verdict,
+        "can_invest": verdict != "RED",
+        "score": score,
+        "breakdown": breakdown,
+        "modifiers": modifiers,
+        "hard_blocks": [],
     }

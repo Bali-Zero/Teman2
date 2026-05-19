@@ -16,13 +16,11 @@ The migration must:
 
 Mirrors test_migration_152.py contract-test pattern.
 """
+
 from pathlib import Path
 
 MIGRATION_FILE = (
-    Path(__file__).resolve().parents[2]
-    / "db"
-    / "migrations_v2"
-    / "153_crm_welcome_runs.sql"
+    Path(__file__).resolve().parents[2] / "db" / "migrations_v2" / "153_crm_welcome_runs.sql"
 )
 
 
@@ -172,9 +170,7 @@ def test_migration_attaches_separate_insert_and_update_triggers():
         stripped = line.strip()
         if stripped.startswith("--"):
             continue
-        assert "WHEN (TG_OP" not in stripped, (
-            f"non-comment line uses TG_OP in WHEN: {line!r}"
-        )
+        assert "WHEN (TG_OP" not in stripped, f"non-comment line uses TG_OP in WHEN: {line!r}"
 
 
 def test_migration_is_idempotent():
@@ -194,12 +190,7 @@ def test_pg_channel_map_registers_crm_welcome_completed():
     """The Python-side PG_CHANNEL_MAP must include crm_welcome_completed so
     the EventBus listener picks up the new channel and the events_outbox
     replay-on-reconnect hook covers it (mig 146 contract)."""
-    event_bus_path = (
-        Path(__file__).resolve().parents[2]
-        / "services"
-        / "events"
-        / "event_bus.py"
-    )
+    event_bus_path = Path(__file__).resolve().parents[2] / "services" / "events" / "event_bus.py"
     src = event_bus_path.read_text()
     assert '"crm_welcome_completed": "crm.welcome_completed"' in src, (
         "PG_CHANNEL_MAP must register crm_welcome_completed → crm.welcome_completed "
@@ -219,18 +210,12 @@ def test_rollback_drops_triggers_then_function_then_table():
     """
     sql = MIGRATION_FILE.read_text()
     rollback_section = sql.split("-- === ROLLBACK ===")[1]
-    drop_insert_pos = rollback_section.find(
-        "DROP TRIGGER IF EXISTS crm_welcome_runs_notify_insert"
-    )
-    drop_update_pos = rollback_section.find(
-        "DROP TRIGGER IF EXISTS crm_welcome_runs_notify_update"
-    )
+    drop_insert_pos = rollback_section.find("DROP TRIGGER IF EXISTS crm_welcome_runs_notify_insert")
+    drop_update_pos = rollback_section.find("DROP TRIGGER IF EXISTS crm_welcome_runs_notify_update")
     drop_function_pos = rollback_section.find(
         "DROP FUNCTION IF EXISTS notify_crm_welcome_completed"
     )
-    drop_table_pos = rollback_section.find(
-        "DROP TABLE IF EXISTS crm_welcome_runs"
-    )
+    drop_table_pos = rollback_section.find("DROP TABLE IF EXISTS crm_welcome_runs")
     assert drop_insert_pos != -1
     assert drop_update_pos != -1
     assert drop_function_pos != -1

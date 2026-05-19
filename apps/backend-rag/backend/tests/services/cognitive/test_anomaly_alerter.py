@@ -119,10 +119,12 @@ async def test_handle_missing_alert_id(repo_tg):
 async def test_handle_bad_alert_id(repo_tg):
     repo, tg = repo_tg
     alerter = AnomalyAlerter(repo=repo, telegram=tg, owner_chat_id="999")
-    result = await alerter.handle_event({
-        "event_type": "alert_INSERT",
-        "alert_id": "not-a-uuid",
-    })
+    result = await alerter.handle_event(
+        {
+            "event_type": "alert_INSERT",
+            "alert_id": "not-a-uuid",
+        }
+    )
     assert result.skip_reason == "bad_alert_id"
 
 
@@ -131,10 +133,12 @@ async def test_handle_alert_not_found(repo_tg):
     repo, tg = repo_tg
     repo.fetch_safe = AsyncMock(return_value=[])
     alerter = AnomalyAlerter(repo=repo, telegram=tg, owner_chat_id="999")
-    result = await alerter.handle_event({
-        "event_type": "alert_INSERT",
-        "alert_id": str(uuid4()),
-    })
+    result = await alerter.handle_event(
+        {
+            "event_type": "alert_INSERT",
+            "alert_id": str(uuid4()),
+        }
+    )
     assert result.skip_reason == "alert_not_found"
 
 
@@ -147,13 +151,17 @@ async def test_below_min_severity_skipped(repo_tg):
     a = _alert(AlertSeverity.MEDIUM)
     repo.fetch_safe = AsyncMock(return_value=[_alert_row_from(a)])
     alerter = AnomalyAlerter(
-        repo=repo, telegram=tg, owner_chat_id="999",
+        repo=repo,
+        telegram=tg,
+        owner_chat_id="999",
         min_severity=AlertSeverity.HIGH,
     )
-    result = await alerter.handle_event({
-        "event_type": "alert_INSERT",
-        "alert_id": str(a.id),
-    })
+    result = await alerter.handle_event(
+        {
+            "event_type": "alert_INSERT",
+            "alert_id": str(a.id),
+        }
+    )
     assert result.skipped
     assert result.skip_reason == "below_min_severity"
     tg.send_message.assert_not_called()
@@ -165,10 +173,12 @@ async def test_high_severity_sends_telegram_and_marks_notified(repo_tg):
     a = _alert(AlertSeverity.HIGH)
     repo.fetch_safe = AsyncMock(return_value=[_alert_row_from(a)])
     alerter = AnomalyAlerter(repo=repo, telegram=tg, owner_chat_id="999")
-    result = await alerter.handle_event({
-        "event_type": "alert_INSERT",
-        "alert_id": str(a.id),
-    })
+    result = await alerter.handle_event(
+        {
+            "event_type": "alert_INSERT",
+            "alert_id": str(a.id),
+        }
+    )
     assert result.sent is True
     assert result.severity == AlertSeverity.HIGH
     tg.send_message.assert_awaited_once()
@@ -181,10 +191,12 @@ async def test_critical_severity_sends_telegram(repo_tg):
     a = _alert(AlertSeverity.CRITICAL)
     repo.fetch_safe = AsyncMock(return_value=[_alert_row_from(a)])
     alerter = AnomalyAlerter(repo=repo, telegram=tg, owner_chat_id="999")
-    result = await alerter.handle_event({
-        "event_type": "alert_INSERT",
-        "alert_id": str(a.id),
-    })
+    result = await alerter.handle_event(
+        {
+            "event_type": "alert_INSERT",
+            "alert_id": str(a.id),
+        }
+    )
     assert result.sent is True
     assert result.severity == AlertSeverity.CRITICAL
 
@@ -198,10 +210,12 @@ async def test_already_notified_skipped(repo_tg):
     a = _alert(AlertSeverity.HIGH, notified=True)
     repo.fetch_safe = AsyncMock(return_value=[_alert_row_from(a)])
     alerter = AnomalyAlerter(repo=repo, telegram=tg, owner_chat_id="999")
-    result = await alerter.handle_event({
-        "event_type": "alert_INSERT",
-        "alert_id": str(a.id),
-    })
+    result = await alerter.handle_event(
+        {
+            "event_type": "alert_INSERT",
+            "alert_id": str(a.id),
+        }
+    )
     assert result.skipped
     assert result.skip_reason == "already_notified"
     tg.send_message.assert_not_called()
@@ -220,10 +234,12 @@ async def test_telegram_fail_does_not_mark_notified(repo_tg):
         return_value=SendResult(ok=False, error="chat not found"),
     )
     alerter = AnomalyAlerter(repo=repo, telegram=tg, owner_chat_id="999")
-    result = await alerter.handle_event({
-        "event_type": "alert_INSERT",
-        "alert_id": str(a.id),
-    })
+    result = await alerter.handle_event(
+        {
+            "event_type": "alert_INSERT",
+            "alert_id": str(a.id),
+        }
+    )
     assert result.sent is False
     assert "chat not found" in (result.error or "")
     repo.mark_alert_notified.assert_not_called()
@@ -236,9 +252,11 @@ async def test_mark_notified_failure_still_sent(repo_tg):
     repo.fetch_safe = AsyncMock(return_value=[_alert_row_from(a)])
     repo.mark_alert_notified = AsyncMock(side_effect=RuntimeError("pg"))
     alerter = AnomalyAlerter(repo=repo, telegram=tg, owner_chat_id="999")
-    result = await alerter.handle_event({
-        "event_type": "alert_INSERT",
-        "alert_id": str(a.id),
-    })
+    result = await alerter.handle_event(
+        {
+            "event_type": "alert_INSERT",
+            "alert_id": str(a.id),
+        }
+    )
     assert result.sent is True
     assert "mark_notified" in (result.error or "")

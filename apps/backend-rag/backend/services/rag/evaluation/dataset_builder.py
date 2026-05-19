@@ -26,6 +26,7 @@ def create_default_client() -> Any:  # type: ignore[misc]
     """Placeholder — backend.llm.client was removed."""
     raise NotImplementedError("UnifiedLLMClient not available; pass llm_client explicitly")
 
+
 logger = logging.getLogger(__name__)
 
 # Domain-specific question templates for synthetic generation

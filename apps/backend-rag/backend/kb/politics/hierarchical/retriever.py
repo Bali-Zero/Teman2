@@ -103,11 +103,16 @@ class HierarchicalRetriever:
         # Search children
         if sparse_vec and sparse_vec.get("indices"):
             children = self._search_children_hybrid(
-                dense_vec, sparse_vec, c_limit, filter_record_type,
+                dense_vec,
+                sparse_vec,
+                c_limit,
+                filter_record_type,
             )
         else:
             children = self._search_children_dense(
-                dense_vec, c_limit, filter_record_type,
+                dense_vec,
+                c_limit,
+                filter_record_type,
             )
 
         if not children:
@@ -127,15 +132,17 @@ class HierarchicalRetriever:
             parent_doc = parent_docs.get(pid, {})
             agg_score = sum(c["score"] for c in group)
 
-            results.append(RetrievalResult(
-                parent_id=pid,
-                parent_text=parent_doc.get("text", ""),
-                score=agg_score,
-                record_id=parent_doc.get("record_id", ""),
-                record_type=parent_doc.get("record_type", ""),
-                children=group,
-                metadata={k: v for k, v in parent_doc.items() if k != "text"},
-            ))
+            results.append(
+                RetrievalResult(
+                    parent_id=pid,
+                    parent_text=parent_doc.get("text", ""),
+                    score=agg_score,
+                    record_id=parent_doc.get("record_id", ""),
+                    record_type=parent_doc.get("record_type", ""),
+                    children=group,
+                    metadata={k: v for k, v in parent_doc.items() if k != "text"},
+                )
+            )
 
         results.sort(key=lambda r: r.score, reverse=True)
         return results[:p_limit]
@@ -225,18 +232,21 @@ class HierarchicalRetriever:
         results = []
         for hit in data.get("result", data.get("points", [])):
             p = hit.get("payload", {})
-            results.append({
-                "id": hit.get("id"),
-                "score": hit.get("score", 0.0),
-                "text": p.get("text", ""),
-                "parent_id": p.get("parent_id"),
-                "record_id": p.get("record_id", ""),
-                "record_type": p.get("record_type", ""),
-            })
+            results.append(
+                {
+                    "id": hit.get("id"),
+                    "score": hit.get("score", 0.0),
+                    "text": p.get("text", ""),
+                    "parent_id": p.get("parent_id"),
+                    "record_id": p.get("record_id", ""),
+                    "record_type": p.get("record_type", ""),
+                }
+            )
         return results
 
     def _aggregate_by_parent(
-        self, children: list[dict[str, Any]],
+        self,
+        children: list[dict[str, Any]],
     ) -> dict[str, list[dict[str, Any]]]:
         """Group children by parent_id."""
         groups: dict[str, list[dict[str, Any]]] = {}

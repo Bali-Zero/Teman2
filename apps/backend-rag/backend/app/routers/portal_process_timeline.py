@@ -79,7 +79,8 @@ async def _build_timeline(
         history_rows: list[dict] = []
         try:
             history_rows = [
-                dict(r) for r in await conn.fetch(
+                dict(r)
+                for r in await conn.fetch(
                     """
                     SELECT old_status, new_status, changed_at, changed_by
                     FROM practice_status_log
@@ -99,24 +100,30 @@ async def _build_timeline(
             steps = []
             for i, row in enumerate(history_rows):
                 status = row["new_status"]
-                is_current = (status == current_status and i == len(history_rows) - 1)
-                steps.append({
-                    "status": status,
-                    "label": STATUS_LABELS.get(status, status.replace("_", " ").title()),
-                    "completed": not is_current,
-                    "is_current": is_current,
-                    "changed_at": str(row["changed_at"]) if row["changed_at"] else None,
-                    "changed_by": row.get("changed_by"),
-                })
+                is_current = status == current_status and i == len(history_rows) - 1
+                steps.append(
+                    {
+                        "status": status,
+                        "label": STATUS_LABELS.get(status, status.replace("_", " ").title()),
+                        "completed": not is_current,
+                        "is_current": is_current,
+                        "changed_at": str(row["changed_at"]) if row["changed_at"] else None,
+                        "changed_by": row.get("changed_by"),
+                    }
+                )
         else:
-            steps = [{
-                "status": current_status,
-                "label": STATUS_LABELS.get(current_status, current_status.replace("_", " ").title()),
-                "completed": current_status in ("completed", "approved"),
-                "is_current": current_status not in ("completed", "approved", "cancelled"),
-                "changed_at": str(practice["start_date"]) if practice["start_date"] else None,
-                "changed_by": None,
-            }]
+            steps = [
+                {
+                    "status": current_status,
+                    "label": STATUS_LABELS.get(
+                        current_status, current_status.replace("_", " ").title()
+                    ),
+                    "completed": current_status in ("completed", "approved"),
+                    "is_current": current_status not in ("completed", "approved", "cancelled"),
+                    "changed_at": str(practice["start_date"]) if practice["start_date"] else None,
+                    "changed_by": None,
+                }
+            ]
 
         return {
             "practice_id": practice["id"],
@@ -125,7 +132,9 @@ async def _build_timeline(
             "current_status": current_status,
             "assigned_to": practice["assigned_to"],
             "start_date": str(practice["start_date"]) if practice["start_date"] else None,
-            "completion_date": str(practice["completion_date"]) if practice["completion_date"] else None,
+            "completion_date": str(practice["completion_date"])
+            if practice["completion_date"]
+            else None,
             "expiry_date": str(practice["expiry_date"]) if practice["expiry_date"] else None,
             "steps": steps,
         }

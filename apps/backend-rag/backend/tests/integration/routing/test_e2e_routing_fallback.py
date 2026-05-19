@@ -97,7 +97,11 @@ class TestE2ERoutingFallback:
 
     @pytest.mark.asyncio
     async def test_complete_routing_flow_with_primary_collection(
-        self, query_router, specialized_router, routing_stats, mock_search_service,
+        self,
+        query_router,
+        specialized_router,
+        routing_stats,
+        mock_search_service,
     ):
         """Test complete flow: Query → Router → Primary Collection → Success"""
         query = "Quanto costa E33G KITAS?"
@@ -108,7 +112,8 @@ class TestE2ERoutingFallback:
 
             # Mock specialized router (should not trigger)
             with patch.object(
-                specialized_router, "should_route_to_specialized",
+                specialized_router,
+                "should_route_to_specialized",
             ) as mock_specialized:
                 mock_specialized.return_value = False
 
@@ -127,7 +132,11 @@ class TestE2ERoutingFallback:
 
     @pytest.mark.asyncio
     async def test_routing_fallback_chain(
-        self, query_router, fallback_manager, routing_stats, mock_search_service,
+        self,
+        query_router,
+        fallback_manager,
+        routing_stats,
+        mock_search_service,
     ):
         """Test fallback chain: Primary → Fallback 1 → Fallback 2"""
         query = "Informazioni su visto"
@@ -148,7 +157,9 @@ class TestE2ERoutingFallback:
         for collection in fallback_chain:
             try:
                 result = await mock_search_service.search(
-                    query=query, collection=collection, limit=5,
+                    query=query,
+                    collection=collection,
+                    limit=5,
                 )
                 if result:
                     break
@@ -169,14 +180,19 @@ class TestE2ERoutingFallback:
 
     @pytest.mark.asyncio
     async def test_specialized_service_routing(
-        self, specialized_router, routing_stats, mock_search_service, mock_db_pool,
+        self,
+        specialized_router,
+        routing_stats,
+        mock_search_service,
+        mock_db_pool,
     ):
         """Test routing to specialized services (Autonomous Research, Cross-Oracle)"""
         query = "Analizza le ultime modifiche alle leggi sull'immigrazione"
 
         # Mock specialized service detection
         with patch.object(
-            specialized_router, "should_route_to_autonomous_research",
+            specialized_router,
+            "should_route_to_autonomous_research",
         ) as mock_autonomous:
             mock_autonomous.return_value = True
 
@@ -198,7 +214,9 @@ class TestE2ERoutingFallback:
 
                 # Record specialized routing stats
                 routing_stats.record_routing(
-                    query=query, collection="autonomous_research", success=True,
+                    query=query,
+                    collection="autonomous_research",
+                    success=True,
                 )
 
     @pytest.mark.asyncio
@@ -225,12 +243,18 @@ class TestE2ERoutingFallback:
 
             # Record confidence-based routing
             routing_stats.record_routing(
-                query=query, collection=collection, confidence=confidence, success=True,
+                query=query,
+                collection=collection,
+                confidence=confidence,
+                success=True,
             )
 
     @pytest.mark.asyncio
     async def test_routing_statistics_tracking(
-        self, routing_stats, query_router, mock_search_service,
+        self,
+        routing_stats,
+        query_router,
+        mock_search_service,
     ):
         """Test that routing statistics are properly tracked"""
         queries = [
@@ -254,7 +278,10 @@ class TestE2ERoutingFallback:
 
     @pytest.mark.asyncio
     async def test_priority_override_routing(
-        self, query_router, routing_stats, mock_search_service,
+        self,
+        query_router,
+        routing_stats,
+        mock_search_service,
     ):
         """Test priority override for specific queries"""
         query = "URGENTE: Informazioni su visto"
@@ -277,12 +304,19 @@ class TestE2ERoutingFallback:
 
             # Record priority routing
             routing_stats.record_routing(
-                query=query, collection=collection, priority_override=True, success=True,
+                query=query,
+                collection=collection,
+                priority_override=True,
+                success=True,
             )
 
     @pytest.mark.asyncio
     async def test_routing_error_handling(
-        self, query_router, fallback_manager, routing_stats, mock_search_service,
+        self,
+        query_router,
+        fallback_manager,
+        routing_stats,
+        mock_search_service,
     ):
         """Test error handling when all routing attempts fail"""
         query = "Test query"
@@ -297,7 +331,9 @@ class TestE2ERoutingFallback:
         for collection in fallback_chain:
             try:
                 result = await mock_search_service.search(
-                    query=query, collection=collection, limit=5,
+                    query=query,
+                    collection=collection,
+                    limit=5,
                 )
                 if result:
                     success = True

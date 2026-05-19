@@ -28,8 +28,9 @@ async def test_complete_records_cost_with_dynamic_model():
     fake_http = AsyncMock()
     fake_http.post = AsyncMock(return_value=fake_resp)
 
-    with patch("backend.services.observability.tracking_decorator.record_llm_call",
-               new=AsyncMock()) as mock_rec:
+    with patch(
+        "backend.services.observability.tracking_decorator.record_llm_call", new=AsyncMock()
+    ) as mock_rec:
         with patch.object(client, "_get_client", return_value=fake_http):
             await client.complete(messages=[{"role": "user", "content": "hi"}])
 
@@ -48,8 +49,9 @@ async def test_complete_records_on_failure():
     fake_http = AsyncMock()
     fake_http.post = AsyncMock(side_effect=RuntimeError("rate limit"))
 
-    with patch("backend.services.observability.tracking_decorator.record_llm_call",
-               new=AsyncMock()) as mock_rec:
+    with patch(
+        "backend.services.observability.tracking_decorator.record_llm_call", new=AsyncMock()
+    ) as mock_rec:
         with patch.object(client, "_get_client", return_value=fake_http):
             with pytest.raises(RuntimeError):
                 await client.complete(messages=[{"role": "user", "content": "hi"}])

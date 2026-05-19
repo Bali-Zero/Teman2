@@ -105,15 +105,17 @@ IMAGE_ELEMENT_IDS: dict[int, str | None] = {
 
 # WR2 Council register set (design doc §3.2). WR1 toni legacy
 # ("cinico", "istituzionale_severo") are rejected — see Council hard rules.
-VALID_TONES = frozenset({
-    "rituale",
-    "analitico",
-    "ironico",
-    "militante",
-    "pedagogico",
-    "poetico",
-    "tecnico",
-})
+VALID_TONES = frozenset(
+    {
+        "rituale",
+        "analitico",
+        "ironico",
+        "militante",
+        "pedagogico",
+        "poetico",
+        "tecnico",
+    }
+)
 
 # Master template has at least 11 pages used by the renderer. Carousels SHORTER than 11 use the
 # first N pages; the apply skill resets (wipes) the unused pages to blank so
@@ -153,12 +155,14 @@ def slides_to_operations(slides: list[dict[str, Any]]) -> list[dict[str, Any]]:
         # Heading always goes on its dedicated element
         headline = slide.get("headline", "").strip()
         if headline:
-            operations.append({
-                "type": "replace_text",
-                "element_id": heading_eid,
-                "text": headline,
-                "page_index": page_index,
-            })
+            operations.append(
+                {
+                    "type": "replace_text",
+                    "element_id": heading_eid,
+                    "text": headline,
+                    "page_index": page_index,
+                }
+            )
 
         # Body op whenever the slide carries body text. element_id is
         # ALWAYS None — TEMPLATE_SLOTS was deliberately None-filled
@@ -173,12 +177,14 @@ def slides_to_operations(slides: list[dict[str, Any]]) -> list[dict[str, Any]]:
         # DAHJDtWApaw / DAHJCzTzn1I PDFs (2026-05-08).
         body = (slide.get("body") or "").strip()
         if body:
-            operations.append({
-                "type": "replace_text",
-                "element_id": body_eid,
-                "text": body,
-                "page_index": page_index,
-            })
+            operations.append(
+                {
+                    "type": "replace_text",
+                    "element_id": body_eid,
+                    "text": body,
+                    "page_index": page_index,
+                }
+            )
 
         # Image upload ONLY for hero slides with a real URL. Non-hero slides
         # keep the template's Text-as-Art design (no image, just typography).
@@ -208,20 +214,22 @@ def slides_to_operations(slides: list[dict[str, Any]]) -> list[dict[str, Any]]:
             # a NEW fill on top of the hero image (not replacing an existing
             # element) — positioned to cover the full page, BELOW the text
             # boxes but ABOVE the image placeholder. Opacity baked into the PNG.
-            operations.append({
-                "type": "insert-overlay-from-url",
-                "url": LEGIBILITY_ARMOR_URL,
-                "page_index": page_index,
-                "z_order": "above_image_below_text",
-                "opacity": 1.0,
-                "placement": "full_bleed",
-                "_note": (
-                    "Legibility armor gradient — ensures white text on dark "
-                    "top/bottom zones regardless of hero image luminance. "
-                    "Apply skill should insert_fill on page with this asset "
-                    "at 0<left<page_width, 0<top<page_height, spanning full."
-                ),
-            })
+            operations.append(
+                {
+                    "type": "insert-overlay-from-url",
+                    "url": LEGIBILITY_ARMOR_URL,
+                    "page_index": page_index,
+                    "z_order": "above_image_below_text",
+                    "opacity": 1.0,
+                    "placement": "full_bleed",
+                    "_note": (
+                        "Legibility armor gradient — ensures white text on dark "
+                        "top/bottom zones regardless of hero image luminance. "
+                        "Apply skill should insert_fill on page with this asset "
+                        "at 0<left<page_width, 0<top<page_height, spanning full."
+                    ),
+                }
+            )
 
     return operations
 

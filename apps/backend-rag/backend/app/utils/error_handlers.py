@@ -59,7 +59,8 @@ def handle_database_error(e: Exception) -> HTTPException:
     if isinstance(e, asyncpg.UniqueViolationError):
         logger.warning("Unique constraint violation: %s", e)
         return HTTPException(
-            status_code=400, detail="A record with this information already exists",
+            status_code=400,
+            detail="A record with this information already exists",
         )
 
     if isinstance(e, asyncpg.ForeignKeyViolationError):

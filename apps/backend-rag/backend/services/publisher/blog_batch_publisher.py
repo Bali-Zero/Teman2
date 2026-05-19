@@ -130,9 +130,7 @@ class BlogBatchPublisher:
                     staged_files=staged_files,
                 )
             except Exception as exc:  # noqa: BLE001
-                result.errors.append(
-                    f"draft {draft.draft_id}: {type(exc).__name__}: {exc}"
-                )
+                result.errors.append(f"draft {draft.draft_id}: {type(exc).__name__}: {exc}")
                 continue
 
             if publish_result.meta.get("idempotent_skip"):
@@ -148,9 +146,7 @@ class BlogBatchPublisher:
                     published=result.published,
                 )
             except Exception as exc:  # noqa: BLE001
-                result.errors.append(
-                    f"commit: {type(exc).__name__}: {exc}"
-                )
+                result.errors.append(f"commit: {type(exc).__name__}: {exc}")
         else:
             # nothing new to commit; still pushed=True trivially
             result.commit_ok = True
@@ -204,9 +200,7 @@ class BlogBatchPublisher:
                     ok=True,
                     platform=Platform.BLOG,
                     draft_id=draft.draft_id,
-                    post_external_id=str(
-                        file_path.relative_to(self.blog_publisher.repo_root)
-                    ),
+                    post_external_id=str(file_path.relative_to(self.blog_publisher.repo_root)),
                     post_url=self.blog_publisher._public_url(slug),
                     final_text=draft.main_caption,
                     meta={
@@ -230,9 +224,7 @@ class BlogBatchPublisher:
             ok=True,
             platform=Platform.BLOG,
             draft_id=draft.draft_id,
-            post_external_id=str(
-                file_path.relative_to(self.blog_publisher.repo_root)
-            ),
+            post_external_id=str(file_path.relative_to(self.blog_publisher.repo_root)),
             post_url=self.blog_publisher._public_url(slug),
             final_text=draft.main_caption,
             meta={"slug": slug, "file_path": str(file_path)},
@@ -246,24 +238,22 @@ class BlogBatchPublisher:
     ) -> tuple[bool, bool]:
         """Run ``git add`` across files + one commit + optional push."""
         repo_root = self.blog_publisher.repo_root
-        add_args = ["add"] + [
-            str(p.relative_to(repo_root)) for p in staged_files
-        ]
+        add_args = ["add"] + [str(p.relative_to(repo_root)) for p in staged_files]
         add_rc, add_err = await self.blog_publisher._git(
-            add_args, cwd=repo_root,
+            add_args,
+            cwd=repo_root,
         )
         if add_rc != 0:
             raise RuntimeError(f"git add failed: {add_err}")
 
-        slugs = [
-            (r.meta.get("slug") or "?") for r in published if r.ok
-        ]
+        slugs = [(r.meta.get("slug") or "?") for r in published if r.ok]
         commit_msg = (
             f"content(war-room): batch of {len(slugs)} articles "
             f"[{', '.join(slugs[:5])}{'…' if len(slugs) > 5 else ''}]"
         )
         commit_rc, commit_err = await self.blog_publisher._git(
-            ["commit", "-m", commit_msg], cwd=repo_root,
+            ["commit", "-m", commit_msg],
+            cwd=repo_root,
         )
         commit_ok = commit_rc == 0 or "nothing to commit" in (commit_err or "")
         if not commit_ok:
@@ -272,7 +262,8 @@ class BlogBatchPublisher:
         pushed = False
         if not self.blog_publisher.skip_push:
             push_rc, push_err = await self.blog_publisher._git(
-                ["push"], cwd=repo_root,
+                ["push"],
+                cwd=repo_root,
             )
             if push_rc != 0:
                 raise RuntimeError(f"git push failed: {push_err}")

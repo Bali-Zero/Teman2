@@ -77,12 +77,18 @@ class ClientScoringService:
 
         except asyncpg.PostgresError as e:
             logger.error(
-                "Database error calculating score for client %s: %s", client_id, e, exc_info=True,
+                "Database error calculating score for client %s: %s",
+                client_id,
+                e,
+                exc_info=True,
             )
             return None
         except Exception as e:
             logger.error(
-                "Unexpected error calculating score for client %s: %s", client_id, e, exc_info=True,
+                "Unexpected error calculating score for client %s: %s",
+                client_id,
+                e,
+                exc_info=True,
             )
             return None
 
@@ -170,7 +176,11 @@ class ClientScoringService:
 
         # Days since last interaction (handle both aware and naive datetimes from DB)
         if last_interaction:
-            last_naive = last_interaction.replace(tzinfo=None) if last_interaction.tzinfo else last_interaction
+            last_naive = (
+                last_interaction.replace(tzinfo=None)
+                if last_interaction.tzinfo
+                else last_interaction
+            )
             days_since_last = (datetime.now(tz=timezone.utc).replace(tzinfo=None) - last_naive).days
         else:
             days_since_last = 999

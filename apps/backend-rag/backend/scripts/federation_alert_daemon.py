@@ -11,6 +11,7 @@ Configuration is read from environment variables (see
 ``backend/services/federation_alerts/config.py``). Defaults are safe:
 mode=observe, dispatch unavailable → no actions, replay on boot.
 """
+
 from __future__ import annotations
 
 import asyncio

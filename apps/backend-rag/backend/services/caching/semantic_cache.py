@@ -37,27 +37,36 @@ DOMAIN_GENERAL = "general"
 
 # Domain-specific TTL (seconds). Shorter TTL = faster refresh after KB update.
 DOMAIN_TTL: dict[str, int] = {
-    DOMAIN_PRICING: 3600,        # 1h — pricebook changes trigger invalidate_by_domain("pricing")
-    DOMAIN_LEGAL: 14400,         # 4h — legal/regulation
-    DOMAIN_VISA: 7200,           # 2h — visa guidance
-    DOMAIN_GENERAL: 21600,       # 6h — chit-chat, default
+    DOMAIN_PRICING: 3600,  # 1h — pricebook changes trigger invalidate_by_domain("pricing")
+    DOMAIN_LEGAL: 14400,  # 4h — legal/regulation
+    DOMAIN_VISA: 7200,  # 2h — visa guidance
+    DOMAIN_GENERAL: 21600,  # 6h — chit-chat, default
 }
 
 # Keyword heuristics for domain classification. Kept intentionally simple:
 # anything heavier would cost more than the cache saves. The regex patterns
 # are evaluated against the lowercased query and picked in priority order.
 _DOMAIN_PATTERNS: list[tuple[str, re.Pattern[str]]] = [
-    (DOMAIN_PRICING, re.compile(
-        r"\b(price|prices|cost|costs|fee|fees|prezzo|prezzi|tarif|biaya|idr|rp|usd|quote|pricelist)\b",
-    )),
-    (DOMAIN_LEGAL, re.compile(
-        r"\b(law|legal|regulation|regolament|uu\s*pdp|legge|peraturan|perpres|kepmen|perda|"
-        r"compliance|compliant|undang|statute|decree|circular|ministerial)\b",
-    )),
-    (DOMAIN_VISA, re.compile(
-        r"\b(visa|kitap|kitas|passport|passport|imigrasi|stay|residence|permit|"
-        r"c1|c2|c6|c7|c7a|c7b|b211|b213|d1|d2|working\s*visa|investor\s*visa)\b",
-    )),
+    (
+        DOMAIN_PRICING,
+        re.compile(
+            r"\b(price|prices|cost|costs|fee|fees|prezzo|prezzi|tarif|biaya|idr|rp|usd|quote|pricelist)\b",
+        ),
+    ),
+    (
+        DOMAIN_LEGAL,
+        re.compile(
+            r"\b(law|legal|regulation|regolament|uu\s*pdp|legge|peraturan|perpres|kepmen|perda|"
+            r"compliance|compliant|undang|statute|decree|circular|ministerial)\b",
+        ),
+    ),
+    (
+        DOMAIN_VISA,
+        re.compile(
+            r"\b(visa|kitap|kitas|passport|passport|imigrasi|stay|residence|permit|"
+            r"c1|c2|c6|c7|c7a|c7b|b211|b213|d1|d2|working\s*visa|investor\s*visa)\b",
+        ),
+    ),
 ]
 
 
@@ -278,12 +287,14 @@ async def cache_response_async(
     redis = _get_redis_client()
     if redis is not None:
         try:
-            payload = json.dumps({
-                "response": response,
-                "query": query[:100],
-                "cached_at": now,
-                "domain": resolved_domain,
-            })
+            payload = json.dumps(
+                {
+                    "response": response,
+                    "query": query[:100],
+                    "cached_at": now,
+                    "domain": resolved_domain,
+                }
+            )
             await redis.setex(_redis_key_for_domain(resolved_domain, key), resolved_ttl, payload)
             logger.debug(
                 f"Cache STORE (L2 Redis): {query[:50]}... "
@@ -311,10 +322,7 @@ def invalidate_semantic_cache(pattern: str | None = None) -> int:
         return count
 
     # Pattern match
-    to_delete = [
-        k for k, v in _L1_CACHE.items()
-        if pattern.lower() in v.get("query", "").lower()
-    ]
+    to_delete = [k for k, v in _L1_CACHE.items() if pattern.lower() in v.get("query", "").lower()]
     for k in to_delete:
         del _L1_CACHE[k]
 
@@ -384,7 +392,9 @@ async def invalidate_by_domain(domain: str) -> int:
             if keys:
                 l2_count = await redis.delete(*keys)
             logger.info(
-                "Semantic cache INVALIDATE (L2 Redis) domain=%s: %s entries", domain, l2_count,
+                "Semantic cache INVALIDATE (L2 Redis) domain=%s: %s entries",
+                domain,
+                l2_count,
             )
         except Exception as e:
             logger.warning("Semantic cache L2 domain-invalidate failed: %s", e)

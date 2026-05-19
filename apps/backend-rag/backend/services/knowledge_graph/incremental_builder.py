@@ -221,7 +221,9 @@ class KGIncrementalBuilder:
                 break
 
             logger.info(
-                "🕸️ Processing collection: %s (remaining daily quota: %s chunks)", collection, max_chunks_remaining,
+                "🕸️ Processing collection: %s (remaining daily quota: %s chunks)",
+                collection,
+                max_chunks_remaining,
             )
 
             for attempt in range(max_retries):
@@ -259,7 +261,9 @@ class KGIncrementalBuilder:
                         total_stats["collections_failed"] += 1
                         total_stats["errors"].append(error_msg)
                         logger.error(
-                            "❌ Failed to process %s after %s attempts", collection, max_retries,
+                            "❌ Failed to process %s after %s attempts",
+                            collection,
+                            max_retries,
                         )
                     else:
                         # Retry with exponential backoff

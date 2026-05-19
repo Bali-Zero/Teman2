@@ -9,6 +9,7 @@ Covers:
 - invalidate_by_domain wipes only L1 entries tagged with that domain
 - invalidate_by_domain wipes only L2 Redis keys under the domain prefix
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
@@ -31,6 +32,7 @@ def _reset_semantic_cache() -> None:
 
 
 # ── Domain classifier ──────────────────────────────────────────────────────
+
 
 @pytest.mark.parametrize(
     ("query", "expected"),
@@ -59,6 +61,7 @@ def test_ttl_for_domain_table() -> None:
 
 
 # ── Domain-aware put uses the right TTL ────────────────────────────────────
+
 
 @pytest.mark.asyncio
 async def test_cache_response_async_uses_domain_ttl(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -95,7 +98,9 @@ async def test_cache_response_async_uses_domain_ttl(monkeypatch: pytest.MonkeyPa
 
 
 @pytest.mark.asyncio
-async def test_cache_response_async_honours_explicit_domain(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_cache_response_async_honours_explicit_domain(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     fake_redis = MagicMock()
     fake_redis.setex = AsyncMock()
     monkeypatch.setattr(sc, "_get_redis_client", lambda: fake_redis)
@@ -120,6 +125,7 @@ async def test_cache_response_async_ttl_override_wins(monkeypatch: pytest.Monkey
 
 # ── L1 TTL expiry ──────────────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_l1_entry_expires_after_ttl(monkeypatch: pytest.MonkeyPatch) -> None:
     # Redis absent → L1-only mode.
@@ -139,15 +145,16 @@ async def test_l1_entry_expires_after_ttl(monkeypatch: pytest.MonkeyPatch) -> No
 
 # ── invalidate_by_domain ───────────────────────────────────────────────────
 
+
 @pytest.mark.asyncio
 async def test_invalidate_by_domain_clears_only_target_l1(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     monkeypatch.setattr(sc, "_get_redis_client", lambda: None)
 
-    await sc.cache_response_async("price list", {"r": 1})           # pricing
-    await sc.cache_response_async("new UU PDP article", {"r": 2})   # legal
-    await sc.cache_response_async("hello there", {"r": 3})          # general
+    await sc.cache_response_async("price list", {"r": 1})  # pricing
+    await sc.cache_response_async("new UU PDP article", {"r": 2})  # legal
+    await sc.cache_response_async("hello there", {"r": 3})  # general
 
     assert len(sc._L1_CACHE) == 3
     cleared = await sc.invalidate_by_domain(sc.DOMAIN_LEGAL)

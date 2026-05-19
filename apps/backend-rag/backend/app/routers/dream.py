@@ -132,6 +132,7 @@ async def scrape_url(request: ScrapingRequest) -> dict[str, Any]:
     except ValueError as e:
         # Invalid URL scheme — let FastAPI map this to a 400.
         from fastapi import HTTPException
+
         raise HTTPException(status_code=400, detail=str(e)) from e
 
     return {

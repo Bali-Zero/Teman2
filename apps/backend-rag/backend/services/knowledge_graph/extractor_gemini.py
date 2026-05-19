@@ -164,7 +164,10 @@ Return a JSON object with this exact structure:
 Extract entities and relations now (ensure every entity has at least one relationship):"""
 
     async def extract(
-        self, text: str, chunk_id: str = "", two_stage: bool = False,
+        self,
+        text: str,
+        chunk_id: str = "",
+        two_stage: bool = False,
     ) -> ExtractionResult:
         """
         Extract entities and relations from text

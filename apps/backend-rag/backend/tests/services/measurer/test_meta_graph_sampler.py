@@ -94,8 +94,12 @@ def test_parse_insights_full_payload():
     names = {d.metric_name for d in out}
     # 'saved' maps to saves canonical name
     assert names == {
-        METRIC_REACH, METRIC_IMPRESSIONS, METRIC_SAVES,
-        METRIC_SHARES, METRIC_LIKES, METRIC_COMMENTS,
+        METRIC_REACH,
+        METRIC_IMPRESSIONS,
+        METRIC_SAVES,
+        METRIC_SHARES,
+        METRIC_LIKES,
+        METRIC_COMMENTS,
     }
     reach = next(d for d in out if d.metric_name == METRIC_REACH)
     assert reach.value == 12000.0
@@ -129,8 +133,8 @@ def test_parse_insights_skips_non_numeric():
 def test_parse_insights_skips_malformed_entry():
     data = [
         "not a dict",
-        {"name": "likes"},                         # no values
-        {"name": "likes", "values": []},          # empty values
+        {"name": "likes"},  # no values
+        {"name": "likes", "values": []},  # empty values
         {"name": "likes", "values": [{"value": 1}]},
     ]
     out = _parse_insights({"data": data})
@@ -143,14 +147,18 @@ def test_parse_insights_skips_malformed_entry():
 @pytest.mark.asyncio
 async def test_sample_happy_path():
     client = AsyncMock(spec=httpx.AsyncClient)
-    client.get = AsyncMock(return_value=_ok([
-        {"name": "reach", "values": [{"value": 1200}]},
-        {"name": "impressions", "values": [{"value": 1500}]},
-        {"name": "saved", "values": [{"value": 45}]},
-        {"name": "shares", "values": [{"value": 20}]},
-        {"name": "likes", "values": [{"value": 120}]},
-        {"name": "comments", "values": [{"value": 18}]},
-    ]))
+    client.get = AsyncMock(
+        return_value=_ok(
+            [
+                {"name": "reach", "values": [{"value": 1200}]},
+                {"name": "impressions", "values": [{"value": 1500}]},
+                {"name": "saved", "values": [{"value": 45}]},
+                {"name": "shares", "values": [{"value": 20}]},
+                {"name": "likes", "values": [{"value": 120}]},
+                {"name": "comments", "values": [{"value": 18}]},
+            ]
+        )
+    )
     s = MetaGraphSampler(access_token="t", http_client=client)
     result = await s.sample(_post())
     assert result.ok is True
@@ -161,9 +169,13 @@ async def test_sample_happy_path():
 @pytest.mark.asyncio
 async def test_sample_partial_when_fewer_metrics_returned():
     client = AsyncMock(spec=httpx.AsyncClient)
-    client.get = AsyncMock(return_value=_ok([
-        {"name": "reach", "values": [{"value": 1000}]},
-    ]))
+    client.get = AsyncMock(
+        return_value=_ok(
+            [
+                {"name": "reach", "values": [{"value": 1000}]},
+            ]
+        )
+    )
     s = MetaGraphSampler(access_token="t", http_client=client)
     result = await s.sample(_post())
     assert result.ok is True

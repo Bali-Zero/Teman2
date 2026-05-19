@@ -70,9 +70,7 @@ class XPublisher(Publisher):
         http_client: httpx.AsyncClient | None = None,
         timeout: float | None = None,
     ) -> None:
-        self.bearer_token = (
-            bearer_token or os.environ.get("X_BEARER_TOKEN", "")
-        )
+        self.bearer_token = bearer_token or os.environ.get("X_BEARER_TOKEN", "")
         if not self.bearer_token:
             raise PublisherError(
                 "XPublisher requires X_BEARER_TOKEN",
@@ -113,7 +111,9 @@ class XPublisher(Publisher):
 
             # first tweet
             first_id = await self._post_tweet(
-                client, text=tweets[0], reply_to=None,
+                client,
+                text=tweets[0],
+                reply_to=None,
             )
             if not first_id:
                 return PublishResult(
@@ -128,7 +128,9 @@ class XPublisher(Publisher):
             parent = first_id
             for text in tweets[1:]:
                 tid = await self._post_tweet(
-                    client, text=text, reply_to=parent,
+                    client,
+                    text=text,
+                    reply_to=parent,
                 )
                 if not tid:
                     logger.info(

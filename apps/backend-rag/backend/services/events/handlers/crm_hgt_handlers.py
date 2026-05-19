@@ -29,6 +29,7 @@ Reference:
 - Canonical pattern: ``services/events/handlers/compliance_handlers.py``
 - Parent Phase 3 spec v2: ``docs/superpowers/specs/2026-05-12-phase3-hgt-execution-spec.md``
 """
+
 from __future__ import annotations
 
 import logging
@@ -63,12 +64,8 @@ async def _get_bridge() -> Any:
 
             redis_url = os.environ.get("REDIS_URL", "redis://localhost:6379")
             client = redis_async.from_url(redis_url, decode_responses=False)
-            _bridge = CrmHGTBridge.from_redis(
-                redis_client=client, cell_name="crm-cell"
-            )
-            logger.info(
-                "crm_hgt_handlers: bridge initialized url=%s", redis_url
-            )
+            _bridge = CrmHGTBridge.from_redis(redis_client=client, cell_name="crm-cell")
+            logger.info("crm_hgt_handlers: bridge initialized url=%s", redis_url)
         except Exception as exc:  # noqa: BLE001 — defense in depth
             logger.warning(
                 "crm_hgt_handlers: bridge init failed: %r — patterns disabled this process",
@@ -175,9 +172,7 @@ async def on_practice_status_changed(payload: dict[str, Any]) -> None:
     try:
         from crm_cell.hgt_publisher import StructuralPattern
     except Exception as exc:  # noqa: BLE001
-        logger.warning(
-            "crm_hgt: StructuralPattern import failed: %r", exc
-        )
+        logger.warning("crm_hgt: StructuralPattern import failed: %r", exc)
         return
 
     pattern = StructuralPattern(
@@ -186,9 +181,7 @@ async def on_practice_status_changed(payload: dict[str, Any]) -> None:
             f"Practice transitions to status {new_status} sustained at "
             f"{count} events in 7d rolling window"
         ),
-        precondition=(
-            "active practice pipeline with ongoing status transitions"
-        ),
+        precondition=("active practice pipeline with ongoing status transitions"),
         success_criterion=(
             f"practice_transition_{new_status} replicates above "
             f"{_PRACTICE_THRESHOLD_N} events in next 7d window"
@@ -252,16 +245,13 @@ async def on_lkpm_ingest_completed(payload: dict[str, Any]) -> None:
     try:
         from crm_cell.hgt_publisher import StructuralPattern
     except Exception as exc:  # noqa: BLE001
-        logger.warning(
-            "crm_hgt: StructuralPattern import failed: %r", exc
-        )
+        logger.warning("crm_hgt: StructuralPattern import failed: %r", exc)
         return
 
     pattern = StructuralPattern(
         pattern_id="lkpm_ingestion_success_rate",
         procedure=(
-            f"LKPM bulk ingest sustains {count} successful completions "
-            f"in 90d rolling window"
+            f"LKPM bulk ingest sustains {count} successful completions in 90d rolling window"
         ),
         precondition="active PT segment with periodic LKPM submissions",
         success_criterion=(

@@ -111,7 +111,7 @@ def test_parse_json_none():
 
 
 def test_parse_json_string():
-    assert _parse_json('[1,2,3]') == [1, 2, 3]
+    assert _parse_json("[1,2,3]") == [1, 2, 3]
 
 
 def test_parse_json_passthrough_dict():
@@ -129,12 +129,14 @@ def test_parse_json_invalid_returns_none():
 async def test_insert_thesis(repo_conn):
     repo, conn = repo_conn
     conn.fetchrow = AsyncMock(return_value=_thesis_row())
-    t = await repo.insert_thesis(CrossDossierThesisCreate(
-        title="Digital convergence",
-        narrative="BI + DJP + OJK align",
-        source_dossier_ids=[uuid4(), uuid4()],
-        confidence=0.78,
-    ))
+    t = await repo.insert_thesis(
+        CrossDossierThesisCreate(
+            title="Digital convergence",
+            narrative="BI + DJP + OJK align",
+            source_dossier_ids=[uuid4(), uuid4()],
+            confidence=0.78,
+        )
+    )
     assert t.status == ThesisStatus.ACTIVE
     assert len(t.source_dossier_ids) == 2
 
@@ -154,7 +156,8 @@ async def test_thesis_exists_for_sources_true(repo_conn):
     repo, conn = repo_conn
     conn.fetchrow = AsyncMock(return_value={"exists": 1})
     exists = await repo.thesis_exists_for_sources(
-        [uuid4(), uuid4()], days=7,
+        [uuid4(), uuid4()],
+        days=7,
     )
     assert exists is True
 
@@ -183,12 +186,14 @@ async def test_archive_thesis(repo_conn):
 async def test_insert_alert(repo_conn):
     repo, conn = repo_conn
     conn.fetchrow = AsyncMock(return_value=_alert_row(severity="high"))
-    alert = await repo.insert_alert(ComplianceAlertCreate(
-        dossier_a_id=uuid4(),
-        dossier_b_id=uuid4(),
-        contradiction_type="grace_vs_enforcement",
-        severity=AlertSeverity.HIGH,
-    ))
+    alert = await repo.insert_alert(
+        ComplianceAlertCreate(
+            dossier_a_id=uuid4(),
+            dossier_b_id=uuid4(),
+            contradiction_type="grace_vs_enforcement",
+            severity=AlertSeverity.HIGH,
+        )
+    )
     assert alert.severity == AlertSeverity.HIGH
 
 
@@ -207,13 +212,17 @@ async def test_unresolved_alerts_with_severity_filter(repo_conn):
 @pytest.mark.asyncio
 async def test_insert_brief_with_jsonb(repo_conn):
     repo, conn = repo_conn
-    conn.fetchrow = AsyncMock(return_value=_brief_row(
-        top_themes=json.dumps([{"x": 1}]),
-    ))
-    brief = await repo.insert_brief(WeeklyStrategicBriefCreate(
-        week_of=date(2026, 4, 20),
-        top_themes=[{"x": 1}],
-    ))
+    conn.fetchrow = AsyncMock(
+        return_value=_brief_row(
+            top_themes=json.dumps([{"x": 1}]),
+        )
+    )
+    brief = await repo.insert_brief(
+        WeeklyStrategicBriefCreate(
+            week_of=date(2026, 4, 20),
+            top_themes=[{"x": 1}],
+        )
+    )
     assert brief.week_of == date(2026, 4, 20)
     assert brief.top_themes == [{"x": 1}]
 
@@ -251,22 +260,30 @@ async def test_latest_weekly_brief_narrative_none_when_empty(repo_conn):
 async def test_insert_ultra_move_pending_default(repo_conn):
     repo, conn = repo_conn
     conn.fetchrow = AsyncMock(return_value=_move_row())
-    move = await repo.insert_ultra_move(UltraMoveCreate(
-        thesis="t", narrative="n", recommended_tone_register="analitico",
-    ))
+    move = await repo.insert_ultra_move(
+        UltraMoveCreate(
+            thesis="t",
+            narrative="n",
+            recommended_tone_register="analitico",
+        )
+    )
     assert move.zero_decision == UltraMoveDecision.PENDING
 
 
 @pytest.mark.asyncio
 async def test_update_ultra_move_decision(repo_conn):
     repo, conn = repo_conn
-    conn.fetchrow = AsyncMock(return_value=_move_row(
-        zero_decision="approved",
-        decided_at=_now(),
-        notes="good call",
-    ))
+    conn.fetchrow = AsyncMock(
+        return_value=_move_row(
+            zero_decision="approved",
+            decided_at=_now(),
+            notes="good call",
+        )
+    )
     move = await repo.update_ultra_move_decision(
-        uuid4(), UltraMoveDecision.APPROVED, notes="good call",
+        uuid4(),
+        UltraMoveDecision.APPROVED,
+        notes="good call",
     )
     assert move is not None
     assert move.zero_decision == UltraMoveDecision.APPROVED

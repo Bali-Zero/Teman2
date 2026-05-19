@@ -99,7 +99,13 @@ class DebugContext:
                     "url": url,
                     "timestamp": logging.Formatter().formatTime(
                         logging.LogRecord(
-                            name="", level=0, pathname="", lineno=0, msg="", args=(), exc_info=None,
+                            name="",
+                            level=0,
+                            pathname="",
+                            lineno=0,
+                            msg="",
+                            args=(),
+                            exc_info=None,
                         ),
                         datefmt=None,
                     ),

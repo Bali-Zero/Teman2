@@ -44,7 +44,9 @@ def test_classify_document_category_keywords() -> None:
     assert PortalService._classify_document_category("passport", "scan.pdf") == "personal"
     assert PortalService._classify_document_category("company", "akta pendirian.pdf") == "pma"
     assert PortalService._classify_document_category("tax", "spt tahunan.pdf") == "tax"
-    assert PortalService._classify_document_category("family", "marriage certificate.pdf") == "family"
+    assert (
+        PortalService._classify_document_category("family", "marriage certificate.pdf") == "family"
+    )
     assert PortalService._classify_document_category("misc", "notes.txt") == "other"
 
 
@@ -64,7 +66,10 @@ def test_extract_drive_file_id_variants() -> None:
         PortalService._extract_drive_file_id("https://drive.google.com/file/d/file_123/view")
         == "file_123"
     )
-    assert PortalService._extract_drive_file_id("https://drive.google.com/open?id=file_456") == "file_456"
+    assert (
+        PortalService._extract_drive_file_id("https://drive.google.com/open?id=file_456")
+        == "file_456"
+    )
     assert PortalService._extract_drive_file_id("https://example.com/no-drive-id") is None
 
 
@@ -125,7 +130,11 @@ async def test_upload_document_success_stores_processed_document() -> None:
     extracted_text = "Extracted passport text. " * 20
     mock_conn.fetchrow.side_effect = [
         None,
-        {"email": "client@example.com", "full_name": "Client One", "assigned_to": "lead@example.com"},
+        {
+            "email": "client@example.com",
+            "full_name": "Client One",
+            "assigned_to": "lead@example.com",
+        },
         {
             "id": 88,
             "document_type": "passport",
@@ -135,12 +144,14 @@ async def test_upload_document_success_stores_processed_document() -> None:
             "expiry_date": None,
         },
     ]
-    service._upload_to_drive = AsyncMock(return_value={
-        "success": True,
-        "file_id": "drive_file_88",
-        "file_url": "https://drive.google.com/file/d/drive_file_88/view",
-        "folder_path": "Zantara Portal Uploads/1_Client One/Passport",
-    })
+    service._upload_to_drive = AsyncMock(
+        return_value={
+            "success": True,
+            "file_id": "drive_file_88",
+            "file_url": "https://drive.google.com/file/d/drive_file_88/view",
+            "folder_path": "Zantara Portal Uploads/1_Client One/Passport",
+        }
+    )
 
     with (
         patch(
@@ -155,7 +166,9 @@ async def test_upload_document_success_stores_processed_document() -> None:
             "backend.services.documents.ocr_dispatcher_service.dispatch_ocr_by_folder",
             return_value=object(),
         ),
-        patch("backend.services.portal._mixins.documents.spawn", side_effect=_close_spawn) as spawn_mock,
+        patch(
+            "backend.services.portal._mixins.documents.spawn", side_effect=_close_spawn
+        ) as spawn_mock,
     ):
         result = await service.upload_document(
             client_id=1,
@@ -185,11 +198,13 @@ async def test_upload_document_success_stores_processed_document() -> None:
 
 @pytest.mark.asyncio
 async def test_upload_document_rejects_recent_duplicate() -> None:
-    service, mock_conn = _make_service_with_fetchrow({
-        "id": 10,
-        "file_name": "passport.pdf",
-        "created_at": datetime(2026, 5, 10, 10, 0, tzinfo=timezone.utc),
-    })
+    service, mock_conn = _make_service_with_fetchrow(
+        {
+            "id": 10,
+            "file_name": "passport.pdf",
+            "created_at": datetime(2026, 5, 10, 10, 0, tzinfo=timezone.utc),
+        }
+    )
 
     with pytest.raises(ValueError, match="File already uploaded recently"):
         await service.upload_document(
@@ -254,17 +269,21 @@ async def test_upload_document_falls_back_when_insert_columns_are_missing() -> N
             "expiry_date": None,
         },
     ]
-    service._upload_to_drive = AsyncMock(return_value={
-        "success": False,
-        "file_id": None,
-        "file_url": None,
-        "folder_path": "",
-    })
+    service._upload_to_drive = AsyncMock(
+        return_value={
+            "success": False,
+            "file_id": None,
+            "file_url": None,
+            "folder_path": "",
+        }
+    )
 
     with (
         patch(
             "backend.services.portal._mixins.documents.DocumentOCR.extract_text",
-            new=AsyncMock(return_value={"success": False, "text": "", "pages": 0, "error": "OCR disabled"}),
+            new=AsyncMock(
+                return_value={"success": False, "text": "", "pages": 0, "error": "OCR disabled"}
+            ),
         ),
         patch(
             "backend.services.portal._mixins.documents.ExpiryDetector.detect_expiry",
@@ -303,14 +322,16 @@ async def test_download_document_returns_none_when_missing() -> None:
 
 @pytest.mark.asyncio
 async def test_download_document_returns_none_without_drive_file_id() -> None:
-    service, _mock_conn = _make_service_with_fetchrow({
-        "id": 10,
-        "file_name": "passport.pdf",
-        "file_id": None,
-        "file_url": "https://example.com/no-drive-id",
-        "mime_type": "application/pdf",
-        "status": "received",
-    })
+    service, _mock_conn = _make_service_with_fetchrow(
+        {
+            "id": 10,
+            "file_name": "passport.pdf",
+            "file_id": None,
+            "file_url": "https://example.com/no-drive-id",
+            "mime_type": "application/pdf",
+            "status": "received",
+        }
+    )
 
     result = await service.download_document(
         client_id=1,
@@ -323,16 +344,20 @@ async def test_download_document_returns_none_without_drive_file_id() -> None:
 
 @pytest.mark.asyncio
 async def test_download_document_raises_when_drive_not_connected() -> None:
-    service, _mock_conn = _make_service_with_fetchrow({
-        "id": 10,
-        "file_name": "passport.pdf",
-        "file_id": "drive_file_10",
-        "file_url": None,
-        "mime_type": "application/pdf",
-        "status": "received",
-    })
+    service, _mock_conn = _make_service_with_fetchrow(
+        {
+            "id": 10,
+            "file_name": "passport.pdf",
+            "file_id": "drive_file_10",
+            "file_url": None,
+            "mime_type": "application/pdf",
+            "status": "received",
+        }
+    )
 
-    with patch("backend.services.integrations.google_drive_service.GoogleDriveService") as drive_cls:
+    with patch(
+        "backend.services.integrations.google_drive_service.GoogleDriveService"
+    ) as drive_cls:
         drive_cls.SYSTEM_USER_ID = "SYSTEM"
         drive_cls.return_value.get_valid_token = AsyncMock(return_value=None)
 
@@ -346,16 +371,21 @@ async def test_download_document_raises_when_drive_not_connected() -> None:
 
 @pytest.mark.asyncio
 async def test_download_document_streams_drive_file() -> None:
-    service, _mock_conn = _make_service_with_fetchrow({
-        "id": 10,
-        "file_name": "passport.pdf",
-        "file_id": "drive_file_10",
-        "file_url": None,
-        "mime_type": "application/pdf",
-        "status": "received",
-    })
+    service, _mock_conn = _make_service_with_fetchrow(
+        {
+            "id": 10,
+            "file_name": "passport.pdf",
+            "file_id": "drive_file_10",
+            "file_url": None,
+            "mime_type": "application/pdf",
+            "status": "received",
+        }
+    )
     meta_response = MagicMock(status_code=200)
-    meta_response.json.return_value = {"name": "passport-renamed.pdf", "mimeType": "application/pdf"}
+    meta_response.json.return_value = {
+        "name": "passport-renamed.pdf",
+        "mimeType": "application/pdf",
+    }
     download_response = MagicMock(status_code=200, content=b"PDF_BYTES")
     async_http = MagicMock()
     async_http.get = AsyncMock(side_effect=[meta_response, download_response])
@@ -397,14 +427,16 @@ async def test_download_document_handles_drive_failures(
     download_status: int | None,
     expected_error: str | None,
 ) -> None:
-    service, _mock_conn = _make_service_with_fetchrow({
-        "id": 10,
-        "file_name": "passport.pdf",
-        "file_id": "drive_file_10",
-        "file_url": None,
-        "mime_type": "application/pdf",
-        "status": "received",
-    })
+    service, _mock_conn = _make_service_with_fetchrow(
+        {
+            "id": 10,
+            "file_name": "passport.pdf",
+            "file_id": "drive_file_10",
+            "file_url": None,
+            "mime_type": "application/pdf",
+            "status": "received",
+        }
+    )
     meta_response = MagicMock(status_code=meta_status)
     meta_response.json.return_value = {"name": "passport.pdf", "mimeType": "application/pdf"}
     responses = [meta_response]
@@ -442,15 +474,17 @@ async def test_download_document_handles_drive_failures(
 async def test_get_or_create_drive_folder_returns_existing_folder() -> None:
     service, _mock_conn = _make_service_with_fetchrow(row=None)
     drive_service = MagicMock()
-    drive_service.list_files = AsyncMock(return_value={
-        "files": [
-            {
-                "id": "folder_1",
-                "name": "Client Folder",
-                "mimeType": "application/vnd.google-apps.folder",
-            },
-        ],
-    })
+    drive_service.list_files = AsyncMock(
+        return_value={
+            "files": [
+                {
+                    "id": "folder_1",
+                    "name": "Client Folder",
+                    "mimeType": "application/vnd.google-apps.folder",
+                },
+            ],
+        }
+    )
 
     result = await service._get_or_create_drive_folder(
         drive_service,
@@ -586,15 +620,19 @@ async def test_upload_to_drive_oauth_success() -> None:
     drive_service = MagicMock()
     drive_service.is_configured.return_value = True
     drive_service.get_valid_token = AsyncMock(return_value="access-token")
-    drive_service.upload_file_to_folder = AsyncMock(return_value={
-        "id": "drive_file_10",
-        "webViewLink": "https://drive.google.com/file/d/drive_file_10/view",
-    })
+    drive_service.upload_file_to_folder = AsyncMock(
+        return_value={
+            "id": "drive_file_10",
+            "webViewLink": "https://drive.google.com/file/d/drive_file_10/view",
+        }
+    )
     service._get_or_create_drive_folder = AsyncMock(
         side_effect=["root_folder", "client_folder", "type_folder"],
     )
 
-    with patch("backend.services.integrations.google_drive_service.GoogleDriveService") as drive_cls:
+    with patch(
+        "backend.services.integrations.google_drive_service.GoogleDriveService"
+    ) as drive_cls:
         drive_cls.return_value = drive_service
 
         result = await service._upload_to_drive(
@@ -613,4 +651,6 @@ async def test_upload_to_drive_oauth_success() -> None:
     assert result["folder_path"] == "Zantara Portal Uploads/1_Client One/Passport Scan"
     drive_service.upload_file_to_folder.assert_awaited_once()
     assert drive_service.upload_file_to_folder.call_args.kwargs["folder_id"] == "type_folder"
-    assert drive_service.upload_file_to_folder.call_args.kwargs["file_name"].endswith("_passport.pdf")
+    assert drive_service.upload_file_to_folder.call_args.kwargs["file_name"].endswith(
+        "_passport.pdf"
+    )

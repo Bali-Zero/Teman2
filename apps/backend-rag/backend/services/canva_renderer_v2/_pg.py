@@ -10,6 +10,7 @@ Functions:
 - release_lease_permanent(conn, ..., status=...) — set terminal status
 - reset_stale_leases(conn, stale_after_minutes) — watchdog recovery
 """
+
 from __future__ import annotations
 
 import logging
@@ -28,9 +29,7 @@ async def is_kill_switch_enabled(conn: asyncpg.Connection) -> bool:
     return value == "true"
 
 
-async def fetch_pending_draft_ids(
-    conn: asyncpg.Connection, limit: int = 3
-) -> list[UUID]:
+async def fetch_pending_draft_ids(conn: asyncpg.Connection, limit: int = 3) -> list[UUID]:
     rows = await conn.fetch(
         """
         SELECT id FROM war_room_drafts
@@ -46,7 +45,10 @@ async def fetch_pending_draft_ids(
 
 
 async def acquire_lease_and_fetch(
-    conn: asyncpg.Connection, *, draft_id: UUID | str, lease_owner: str,
+    conn: asyncpg.Connection,
+    *,
+    draft_id: UUID | str,
+    lease_owner: str,
 ) -> dict[str, Any] | None:
     """CAS lease + return row payload, or None if another process won."""
     row = await conn.fetchrow(
@@ -62,7 +64,8 @@ async def acquire_lease_and_fetch(
            AND lease_owner IS NULL
         RETURNING id, topic, register AS tone, slides_json
         """,
-        lease_owner, draft_id,
+        lease_owner,
+        draft_id,
     )
     if row is None:
         logger.info("Draft %s lease lost to another process", draft_id)
@@ -70,7 +73,8 @@ async def acquire_lease_and_fetch(
 
 
 async def inject_hero_paths(
-    conn: asyncpg.Connection, *,
+    conn: asyncpg.Connection,
+    *,
     draft_id: UUID | str,
     slides_json: dict[str, Any],
 ) -> None:
@@ -83,6 +87,7 @@ async def inject_hero_paths(
     Idempotent: safe to call multiple times (last write wins).
     """
     import json as _json
+
     await conn.execute(
         """
         UPDATE war_room_drafts
@@ -91,13 +96,15 @@ async def inject_hero_paths(
          WHERE id = $1
            AND status NOT IN ('rendering', 'rendered')
         """,
-        draft_id, _json.dumps(slides_json),
+        draft_id,
+        _json.dumps(slides_json),
     )
     logger.info("Draft %s slides_json updated with hero_image_path fields", draft_id)
 
 
 async def persist_canva_result(
-    conn: asyncpg.Connection, *,
+    conn: asyncpg.Connection,
+    *,
     draft_id: UUID | str,
     canva_design_id: str,
     canva_edit_url: str,
@@ -116,12 +123,18 @@ async def persist_canva_result(
                updated_at = NOW()
          WHERE id = $1
         """,
-        draft_id, canva_design_id, canva_edit_url, canva_view_url,
+        draft_id,
+        canva_design_id,
+        canva_edit_url,
+        canva_view_url,
     )
 
 
 async def release_lease_transient(
-    conn: asyncpg.Connection, *, draft_id: UUID | str, reason: str,
+    conn: asyncpg.Connection,
+    *,
+    draft_id: UUID | str,
+    reason: str,
 ) -> None:
     """Revert to drafts_imaged_checked for natural retry on next tick."""
     logger.info("Draft %s released as transient: %s", draft_id, reason)
@@ -139,7 +152,11 @@ async def release_lease_transient(
 
 
 async def release_lease_permanent(
-    conn: asyncpg.Connection, *, draft_id: UUID | str, status: str, reason: str,
+    conn: asyncpg.Connection,
+    *,
+    draft_id: UUID | str,
+    status: str,
+    reason: str,
 ) -> None:
     """Mark terminal failure status. Not picked up by next tick."""
     logger.warning("Draft %s permanent failure (%s): %s", draft_id, status, reason)
@@ -152,12 +169,15 @@ async def release_lease_permanent(
                updated_at = NOW()
          WHERE id = $1
         """,
-        draft_id, status,
+        draft_id,
+        status,
     )
 
 
 async def reset_stale_leases(
-    conn: asyncpg.Connection, *, stale_after_minutes: int = 15,
+    conn: asyncpg.Connection,
+    *,
+    stale_after_minutes: int = 15,
 ) -> list[UUID]:
     """Watchdog: revert status='rendering' rows with old lease_acquired_at."""
     rows = await conn.fetch(

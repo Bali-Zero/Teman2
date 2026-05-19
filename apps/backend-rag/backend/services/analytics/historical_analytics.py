@@ -32,7 +32,9 @@ logger = structlog.get_logger(__name__)
 
 # Metrics
 completion_rate = Gauge(
-    "analytics_completion_rate", "Practice completion rate", ["practice_type", "period"],
+    "analytics_completion_rate",
+    "Practice completion rate",
+    ["practice_type", "period"],
 )
 avg_completion_days = Gauge(
     "analytics_avg_completion_days",
@@ -45,7 +47,9 @@ avg_response_days = Gauge(
     ["practice_type", "period"],
 )
 sla_compliance_rate = Gauge(
-    "analytics_sla_compliance", "SLA compliance rate", ["practice_type", "period"],
+    "analytics_sla_compliance",
+    "SLA compliance rate",
+    ["practice_type", "period"],
 )
 revenue_total = Gauge("analytics_revenue_total", "Total revenue", ["practice_type", "period"])
 
@@ -290,7 +294,9 @@ async def calculate_sla_compliance(
             query += f" AND p.inquiry_date <= ${len(params) + 1}"
             params.append(end_date)
 
-        query += " GROUP BY pt.code, pt.name, pt.typical_duration_days ORDER BY sla_compliance_pct DESC"
+        query += (
+            " GROUP BY pt.code, pt.name, pt.typical_duration_days ORDER BY sla_compliance_pct DESC"
+        )
 
         rows = await conn.fetch(query, *params)
 

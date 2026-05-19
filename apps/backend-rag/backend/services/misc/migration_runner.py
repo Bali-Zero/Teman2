@@ -153,7 +153,9 @@ class MigrationRunner:
                     if dep in migrations:
                         graph[num].add(dep)
                     else:
-                        logger.warning("Migration %s depends on %s, but migration not found", num, dep)
+                        logger.warning(
+                            "Migration %s depends on %s, but migration not found", num, dep
+                        )
 
         # Topological sort
         ordered: list[int] = []
@@ -189,7 +191,8 @@ class MigrationRunner:
         return {m["migration_number"] for m in applied if m.get("migration_number")}
 
     async def get_pending_migrations(
-        self, dry_run: bool = False,
+        self,
+        dry_run: bool = False,
     ) -> list[tuple[int, type[BaseMigration]]]:
         """
         Get list of pending migrations in correct order.
@@ -218,7 +221,6 @@ class MigrationRunner:
 
         # Filter to pending only
         return [(num, all_migrations[num]) for num in ordered_numbers if num not in applied]
-
 
     async def apply_all(self, dry_run: bool = False, stop_on_error: bool = True) -> dict[str, Any]:
         """

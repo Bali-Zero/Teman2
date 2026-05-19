@@ -171,7 +171,9 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(episodic_memory.router)
     api.include_router(experience.router)  # [EXP] Experience Library
     api.include_router(skill.router)  # [SKILL] Skill Registry
-    api.include_router(metabolic_health.router)  # [METABOLIC] SYMBIOSIS Pillar 7 — read-only metrics
+    api.include_router(
+        metabolic_health.router
+    )  # [METABOLIC] SYMBIOSIS Pillar 7 — read-only metrics
     api.include_router(federation.router)
     api.include_router(feedback.router)
     api.include_router(funnel.router)  # [FUNNEL] Cross-funnel lead tracking (v2-foundation)
@@ -246,10 +248,12 @@ def include_routers(api: FastAPI) -> None:
 
     api.include_router(oracle_universal.router)
     api.include_router(
-        kbli_notebook.router, prefix=settings.API_V1_STR,
+        kbli_notebook.router,
+        prefix=settings.API_V1_STR,
     )  # [NEW] KBLI 2025 Notebook Explorer
     api.include_router(
-        kbli_notebook_chat.router, prefix=settings.API_V1_STR,
+        kbli_notebook_chat.router,
+        prefix=settings.API_V1_STR,
     )
 
     # Preview router (for Telegram article previews)
@@ -755,7 +759,9 @@ def include_heavy_routers(api: FastAPI) -> None:
     api.include_router(episodic_memory.router)
     api.include_router(experience.router)  # [EXP] Experience Library
     api.include_router(skill.router)  # [SKILL] Skill Registry
-    api.include_router(metabolic_health.router)  # [METABOLIC] SYMBIOSIS Pillar 7 — read-only metrics
+    api.include_router(
+        metabolic_health.router
+    )  # [METABOLIC] SYMBIOSIS Pillar 7 — read-only metrics
 
     # CRM routers (RAG-heavy)
     api.include_router(crm_clients.router)
@@ -781,10 +787,12 @@ def include_heavy_routers(api: FastAPI) -> None:
     from backend.app.core.config import settings
 
     api.include_router(
-        kbli_notebook.router, prefix=settings.API_V1_STR,
+        kbli_notebook.router,
+        prefix=settings.API_V1_STR,
     )
     api.include_router(
-        kbli_notebook_chat.router, prefix=settings.API_V1_STR,
+        kbli_notebook_chat.router,
+        prefix=settings.API_V1_STR,
     )
 
     # Blog routers (RAG-heavy)

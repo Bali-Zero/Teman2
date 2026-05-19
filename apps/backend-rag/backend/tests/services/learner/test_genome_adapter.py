@@ -43,9 +43,12 @@ async def test_available_false_when_no_genome():
 @pytest.mark.asyncio
 async def test_skill_skipped_when_no_genome():
     g = GenomeAdapter(genome=None)
-    out = await g.record_skill(SkillEntry(
-        skill_id="x", procedure="p",
-    ))
+    out = await g.record_skill(
+        SkillEntry(
+            skill_id="x",
+            procedure="p",
+        )
+    )
     assert out == "skipped"
 
 
@@ -60,15 +63,17 @@ async def test_scar_skipped_when_no_genome():
 async def test_skill_forwards_to_genome():
     fake = _FakeGenome(return_value="inserted")
     g = GenomeAdapter(genome=fake)
-    out = await g.record_skill(SkillEntry(
-        skill_id="war_room:analitico:ig:abc",
-        procedure="procedure text",
-        precondition="reg=analitico",
-        success_criterion="composite > 0.7",
-        confidence=0.82,
-        domain="war_room",
-        scope="Project",
-    ))
+    out = await g.record_skill(
+        SkillEntry(
+            skill_id="war_room:analitico:ig:abc",
+            procedure="procedure text",
+            precondition="reg=analitico",
+            success_criterion="composite > 0.7",
+            confidence=0.82,
+            domain="war_room",
+            scope="Project",
+        )
+    )
     assert out == "inserted"
     assert len(fake.calls) == 1
     kind, args, kwargs = fake.calls[0]
@@ -86,11 +91,13 @@ async def test_skill_forwards_to_genome():
 async def test_scar_forwards_to_genome():
     fake = _FakeGenome(return_value="inserted")
     g = GenomeAdapter(genome=fake)
-    out = await g.record_scar(ScarEntry(
-        scar_id="war_room_scar:low_score:ig:abc",
-        procedure="avoid",
-        precondition="reason=low_score",
-    ))
+    out = await g.record_scar(
+        ScarEntry(
+            scar_id="war_room_scar:low_score:ig:abc",
+            procedure="avoid",
+            precondition="reason=low_score",
+        )
+    )
     assert out == "inserted"
     kind, args, kwargs = fake.calls[0]
     assert kind == "record_scar"

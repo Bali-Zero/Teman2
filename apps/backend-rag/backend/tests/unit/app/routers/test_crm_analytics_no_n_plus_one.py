@@ -9,13 +9,7 @@ import ast
 import re
 from pathlib import Path
 
-ROUTER_PATH = (
-    Path(__file__).parents[5]
-    / "backend"
-    / "app"
-    / "routers"
-    / "crm_analytics.py"
-)
+ROUTER_PATH = Path(__file__).parents[5] / "backend" / "app" / "routers" / "crm_analytics.py"
 
 
 def _source() -> str:
@@ -39,6 +33,7 @@ def _get_function_source(func_name: str) -> str:
 # ---------------------------------------------------------------------------
 # Test 1 — the N+1 loop pattern must NOT be present inside get_team_performance
 # ---------------------------------------------------------------------------
+
 
 def test_no_for_member_loop_in_get_team_performance() -> None:
     """Assert get_team_performance does NOT contain a per-member for-loop.
@@ -65,6 +60,7 @@ def test_no_for_member_loop_in_get_team_performance() -> None:
 # Test 2 — the single aggregate query keywords must be present
 # ---------------------------------------------------------------------------
 
+
 def test_group_by_aggregate_query_present() -> None:
     """Assert get_team_performance uses GROUP BY (single aggregate query)."""
     func_src = _get_function_source("get_team_performance")
@@ -79,6 +75,7 @@ def test_group_by_aggregate_query_present() -> None:
 # ---------------------------------------------------------------------------
 # Test 3 — the function must still respect RBAC (admin vs non-admin)
 # ---------------------------------------------------------------------------
+
 
 def test_rbac_logic_preserved() -> None:
     """Assert RBAC check is still present in get_team_performance.

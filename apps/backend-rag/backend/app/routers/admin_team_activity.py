@@ -80,7 +80,8 @@ class OverviewStats(BaseModel):
 @router.get("/overview")
 async def get_overview(
     start_date: str | None = Query(
-        None, description="Start date (YYYY-MM-DD), defaults to 30 days ago",
+        None,
+        description="Start date (YYYY-MM-DD), defaults to 30 days ago",
     ),
     _admin: dict = Depends(verify_admin),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -242,7 +243,8 @@ async def get_messages(
 async def get_team_stats(
     days: int = Query(30, ge=1, le=365, description="Number of days to analyze"),
     start_date: str | None = Query(
-        None, description="Start date (YYYY-MM-DD), overrides days if provided",
+        None,
+        description="Start date (YYYY-MM-DD), overrides days if provided",
     ),
     _admin: dict = Depends(verify_admin),
     db_pool: asyncpg.Pool = Depends(get_database_pool),
@@ -717,7 +719,8 @@ async def get_crm_activity(
 
         async with db_pool.acquire() as conn:
             total: int = await conn.fetchval(
-                f"SELECT COUNT(*) FROM api_audit_trail WHERE {where}", *params,
+                f"SELECT COUNT(*) FROM api_audit_trail WHERE {where}",
+                *params,
             )
 
             rows = await conn.fetch(

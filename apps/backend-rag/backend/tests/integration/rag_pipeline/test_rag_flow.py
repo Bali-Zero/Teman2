@@ -8,7 +8,6 @@ Updated 2026-04-10: IntentClassifier now returns fine-grained sub-categories
 (business_complex, business_simple, general_task) instead of generic 'business'.
 """
 
-
 import pytest
 
 from backend.services.classification.intent_classifier import IntentClassifier
@@ -27,9 +26,7 @@ class TestRAGPipelineFlow:
     @pytest.mark.asyncio
     async def test_business_query_classified_for_rag(self, intent_classifier):
         """Business queries should be classified as needing RAG."""
-        result = await intent_classifier.classify_intent(
-            "What documents do I need for a KITAS?"
-        )
+        result = await intent_classifier.classify_intent("What documents do I need for a KITAS?")
         assert result["category"] in BUSINESS_CATEGORIES, (
             f"Expected business category, got '{result['category']}'"
         )
@@ -58,9 +55,7 @@ class TestRAGPipelineFlow:
     @pytest.mark.asyncio
     async def test_tax_query_classified_as_business(self, intent_classifier):
         """Tax queries with Indonesian terms should be classified correctly."""
-        result = await intent_classifier.classify_intent(
-            "Bagaimana cara menghitung PPh 21?"
-        )
+        result = await intent_classifier.classify_intent("Bagaimana cara menghitung PPh 21?")
         assert result["category"] in BUSINESS_CATEGORIES, (
             f"Tax query classified as '{result['category']}', expected business category"
         )
@@ -102,7 +97,13 @@ class TestRAGClassificationPriority:
         # The classifier may classify as emotional or casual — either is acceptable
         # The critical constraint is: NOT a pure business response without skip_rag
         # (i.e., if it's classified as business, that's also fine)
-        assert result["category"] in {"emotional", "casual", "business", "business_complex", "business_simple"}
+        assert result["category"] in {
+            "emotional",
+            "casual",
+            "business",
+            "business_complex",
+            "business_simple",
+        }
 
     @pytest.mark.asyncio
     async def test_new_client_is_casual(self, classifier):

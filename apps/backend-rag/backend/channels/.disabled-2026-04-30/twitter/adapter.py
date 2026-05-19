@@ -109,7 +109,10 @@ class TwitterChannelAdapter(BaseChannel):
             dm_events = raw_event.get("direct_message_events", [])
             if not dm_events:
                 return ChannelMessage(
-                    user_id="unknown", session_id="unknown", text="", channel="twitter",
+                    user_id="unknown",
+                    session_id="unknown",
+                    text="",
+                    channel="twitter",
                 )
 
             dm = dm_events[0]
@@ -135,7 +138,8 @@ class TwitterChannelAdapter(BaseChannel):
         formatted_text = self.formatter.format_response(response)
         if len(formatted_text) > self.twitter_config.max_message_length:
             formatted_text = self.truncate_message(
-                formatted_text, self.twitter_config.max_message_length,
+                formatted_text,
+                self.twitter_config.max_message_length,
             )
 
         url = f"https://api.x.com/2/dm_conversations/with/{channel_id}/messages"
@@ -164,7 +168,9 @@ class TwitterChannelAdapter(BaseChannel):
         pass
 
     async def stream_response(
-        self, channel_id: str, response_stream: AsyncIterator[ChannelResponse],
+        self,
+        channel_id: str,
+        response_stream: AsyncIterator[ChannelResponse],
     ) -> None:
         """Accumulate and send complete message."""
         text = ""

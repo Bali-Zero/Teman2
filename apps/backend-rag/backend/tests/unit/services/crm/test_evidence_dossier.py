@@ -242,9 +242,7 @@ async def test_build_evidence_dossiers_flags_operational_next_actions() -> None:
         "missing_tax_trail",
         "missing_kg_edges",
     }.issubset(gap_codes)
-    assert [
-        action.label for action in dossier.next_best_actions[:2]
-    ] == [
+    assert [action.label for action in dossier.next_best_actions[:2]] == [
         "Assign tax owner before using this story operationally.",
         "Connect the canonical person Drive folder.",
     ]

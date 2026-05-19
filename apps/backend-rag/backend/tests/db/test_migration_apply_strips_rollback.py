@@ -15,6 +15,7 @@ no migration in the tree currently exercises the marker convention.
 
 Skipped when no test Postgres URL is reachable.
 """
+
 from __future__ import annotations
 
 import os
@@ -56,9 +57,7 @@ async def test_apply_does_not_execute_rollback_section(tmp_path: Path) -> None:
     table = "mig_strip_rollback_probe"
     sql_file = tmp_path / "200_strip_rollback_probe.sql"
     sql_file.write_text(
-        f"CREATE TABLE {table} (id INT);\n"
-        "-- === ROLLBACK ===\n"
-        f"DROP TABLE {table};\n",
+        f"CREATE TABLE {table} (id INT);\n-- === ROLLBACK ===\nDROP TABLE {table};\n",
         encoding="utf-8",
     )
 
@@ -75,8 +74,7 @@ async def test_apply_does_not_execute_rollback_section(tmp_path: Path) -> None:
             "  execution_time_ms INTEGER, rollback_sql TEXT)"
         )
         await probe.execute(
-            "DELETE FROM schema_migrations WHERE migration_name = "
-            "'200_strip_rollback_probe'"
+            "DELETE FROM schema_migrations WHERE migration_name = '200_strip_rollback_probe'"
         )
 
         migration = BaseMigration(
@@ -91,6 +89,7 @@ async def test_apply_does_not_execute_rollback_section(tmp_path: Path) -> None:
         # the apply() opens a connection to the test DB even if global config
         # is pointing at something else.
         from backend.db import migration_base as mb
+
         original_url = mb.settings.database_url
         mb.settings.database_url = _TEST_DB_URL  # type: ignore[misc]
         try:
@@ -108,7 +107,6 @@ async def test_apply_does_not_execute_rollback_section(tmp_path: Path) -> None:
     finally:
         await probe.execute(f"DROP TABLE IF EXISTS {table}")
         await probe.execute(
-            "DELETE FROM schema_migrations WHERE migration_name = "
-            "'200_strip_rollback_probe'"
+            "DELETE FROM schema_migrations WHERE migration_name = '200_strip_rollback_probe'"
         )
         await probe.close()

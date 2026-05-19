@@ -58,7 +58,10 @@ class TestQueryPerformance:
     def test_init(self):
         """Test QueryPerformance initialization"""
         perf = QueryPerformance(
-            collection="test_collection", query="test query", duration_ms=10.5, results_count=5,
+            collection="test_collection",
+            query="test query",
+            duration_ms=10.5,
+            results_count=5,
         )
         assert perf.collection == "test_collection"
         assert perf.query == "test query"
@@ -69,7 +72,11 @@ class TestQueryPerformance:
     def test_init_with_error(self):
         """Test QueryPerformance with error"""
         perf = QueryPerformance(
-            collection="test", query="test", duration_ms=0.0, results_count=0, error="Query failed",
+            collection="test",
+            query="test",
+            duration_ms=0.0,
+            results_count=0,
+            error="Query failed",
         )
         assert perf.error == "Query failed"
 
@@ -195,7 +202,9 @@ class TestQdrantDebugger:
             mock_client.return_value = mock_client_instance
 
             perf = await debugger.analyze_query_performance(
-                collection="test", query_vector=[0.1] * 1536, limit=10,
+                collection="test",
+                query_vector=[0.1] * 1536,
+                limit=10,
             )
 
             assert perf.collection == "test"

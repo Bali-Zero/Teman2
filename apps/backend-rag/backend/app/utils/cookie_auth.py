@@ -113,7 +113,11 @@ def set_auth_cookies(
     )
 
     logger.debug(
-        "Auth cookies set: domain=%s, secure=%s, samesite=%s, max_age=%ss", domain, secure, samesite, max_age,
+        "Auth cookies set: domain=%s, secure=%s, samesite=%s, max_age=%ss",
+        domain,
+        secure,
+        samesite,
+        max_age,
     )
 
     return csrf_token

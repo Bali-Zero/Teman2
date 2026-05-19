@@ -46,7 +46,9 @@ async def test_run_dry_run_does_not_send(monkeypatch) -> None:
             "due_date": datetime.now(timezone.utc) + timedelta(days=5),
         },
     ]
-    with patch("scripts.portal_deadline_watchdog.asyncpg.connect", new=AsyncMock(return_value=mock_conn)):
+    with patch(
+        "scripts.portal_deadline_watchdog.asyncpg.connect", new=AsyncMock(return_value=mock_conn)
+    ):
         code = await run(dry_run=True)
     assert code == 0
     # No send path should have been taken in dry-run, so execute is only for log?

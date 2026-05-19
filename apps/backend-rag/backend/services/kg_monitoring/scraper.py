@@ -234,8 +234,7 @@ class LegalScraper:
                 )
             except ImportError:
                 logger.warning(
-                    "httpx http2=True failed (install httpx[http2] / h2); "
-                    "falling back to HTTP/1.1",
+                    "httpx http2=True failed (install httpx[http2] / h2); falling back to HTTP/1.1",
                 )
                 self._client = httpx.AsyncClient(  # golden-rule-10-exempt: HTTP/2 fallback inside is_closed guard
                     follow_redirects=True,
@@ -429,7 +428,8 @@ class LegalScraper:
         # ~10–100× slower than httpx and we don't want it on every timeout.
         if source.use_playwright_fallback and saw_block_status:
             logger.info(
-                "   httpx exhausted retries with block statuses for %s; trying Playwright fallback.", url,
+                "   httpx exhausted retries with block statuses for %s; trying Playwright fallback.",
+                url,
             )
             pw_response = await self._fetch_with_playwright(url, source)
             if pw_response is not None:
@@ -462,9 +462,13 @@ class LegalScraper:
             )
             return None
 
-        ua = self._ua_rotator.next() if source.rotate_user_agent else source.headers.get(
-            "User-Agent",
-            REALISTIC_USER_AGENTS[0],
+        ua = (
+            self._ua_rotator.next()
+            if source.rotate_user_agent
+            else source.headers.get(
+                "User-Agent",
+                REALISTIC_USER_AGENTS[0],
+            )
         )
 
         try:

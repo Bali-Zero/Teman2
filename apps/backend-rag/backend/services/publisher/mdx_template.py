@@ -109,9 +109,7 @@ def render_frontmatter(
         if extras.dossier_id:
             lines.append(f'dossier_id: "{_yaml_escape(extras.dossier_id)}"')
         if extras.source_theses:
-            quoted = ", ".join(
-                f'"{_yaml_escape(t)}"' for t in extras.source_theses[:10]
-            )
+            quoted = ", ".join(f'"{_yaml_escape(t)}"' for t in extras.source_theses[:10])
             lines.append(f"source_theses: [{quoted}]")
         if extras.composite_score is not None:
             clamped = max(0.0, min(1.0, float(extras.composite_score)))
@@ -152,9 +150,7 @@ def render_body(draft: DraftPayload) -> str:
     # Footer: hashtags line (plain, no JSX)
     if draft.hashtags:
         parts.append("")
-        parts.append(
-            " ".join(f"#{_mdx_escape(h.lstrip('#'))}" for h in draft.hashtags)
-        )
+        parts.append(" ".join(f"#{_mdx_escape(h.lstrip('#'))}" for h in draft.hashtags))
     return "\n".join(parts).rstrip() + "\n"
 
 

@@ -15,6 +15,7 @@ The handler must:
   5. Never raise on any path — internal try/except wraps everything
      so a buggy patch_draft_metadata doesn't crash the EventBus loop.
 """
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, MagicMock
@@ -37,12 +38,14 @@ async def test_handler_skips_non_provenance_updated_event():
     pool = MagicMock()
     pool.acquire = MagicMock()
     sub = AssetInvalidatedSubscriber(db_pool=pool)
-    await sub.handle({
-        "event_type": "provenance_recorded",
-        "asset_kind": "war_room_draft",
-        "asset_id": "00000000-0000-0000-0000-000000000001",
-        "invalidated_at": "2026-05-04T04:13:00Z",
-    })
+    await sub.handle(
+        {
+            "event_type": "provenance_recorded",
+            "asset_kind": "war_room_draft",
+            "asset_id": "00000000-0000-0000-0000-000000000001",
+            "invalidated_at": "2026-05-04T04:13:00Z",
+        }
+    )
     pool.acquire.assert_not_called()
 
 
@@ -53,12 +56,14 @@ async def test_handler_skips_non_war_room_asset_kind():
     pool = MagicMock()
     pool.acquire = MagicMock()
     sub = AssetInvalidatedSubscriber(db_pool=pool)
-    await sub.handle({
-        "event_type": "provenance_updated",
-        "asset_kind": "intel_finding",
-        "asset_id": "abc-123",
-        "invalidated_at": "2026-05-04T04:13:00Z",
-    })
+    await sub.handle(
+        {
+            "event_type": "provenance_updated",
+            "asset_kind": "intel_finding",
+            "asset_id": "abc-123",
+            "invalidated_at": "2026-05-04T04:13:00Z",
+        }
+    )
     pool.acquire.assert_not_called()
 
 
@@ -68,12 +73,14 @@ async def test_handler_skips_when_invalidated_at_is_none():
     pool = MagicMock()
     pool.acquire = MagicMock()
     sub = AssetInvalidatedSubscriber(db_pool=pool)
-    await sub.handle({
-        "event_type": "provenance_updated",
-        "asset_kind": "war_room_draft",
-        "asset_id": "00000000-0000-0000-0000-000000000001",
-        "invalidated_at": None,
-    })
+    await sub.handle(
+        {
+            "event_type": "provenance_updated",
+            "asset_kind": "war_room_draft",
+            "asset_id": "00000000-0000-0000-0000-000000000001",
+            "invalidated_at": None,
+        }
+    )
     pool.acquire.assert_not_called()
 
 
@@ -82,12 +89,14 @@ async def test_handler_skips_when_asset_id_missing():
     pool = MagicMock()
     pool.acquire = MagicMock()
     sub = AssetInvalidatedSubscriber(db_pool=pool)
-    await sub.handle({
-        "event_type": "provenance_updated",
-        "asset_kind": "war_room_draft",
-        "asset_id": None,
-        "invalidated_at": "2026-05-04T04:13:00Z",
-    })
+    await sub.handle(
+        {
+            "event_type": "provenance_updated",
+            "asset_kind": "war_room_draft",
+            "asset_id": None,
+            "invalidated_at": "2026-05-04T04:13:00Z",
+        }
+    )
     pool.acquire.assert_not_called()
 
 
@@ -96,12 +105,14 @@ async def test_handler_skips_when_asset_id_not_uuid():
     pool = MagicMock()
     pool.acquire = MagicMock()
     sub = AssetInvalidatedSubscriber(db_pool=pool)
-    await sub.handle({
-        "event_type": "provenance_updated",
-        "asset_kind": "war_room_draft",
-        "asset_id": "not-a-uuid",
-        "invalidated_at": "2026-05-04T04:13:00Z",
-    })
+    await sub.handle(
+        {
+            "event_type": "provenance_updated",
+            "asset_kind": "war_room_draft",
+            "asset_id": "not-a-uuid",
+            "invalidated_at": "2026-05-04T04:13:00Z",
+        }
+    )
     pool.acquire.assert_not_called()
 
 
@@ -131,15 +142,17 @@ async def test_handler_patches_draft_brief_json_on_invalidation():
     pool.acquire = MagicMock(return_value=_AcquireCtx())
 
     sub = AssetInvalidatedSubscriber(db_pool=pool)
-    await sub.handle({
-        "event_type": "provenance_updated",
-        "asset_kind": "war_room_draft",
-        "asset_id": "00000000-0000-0000-0000-000000000001",
-        "invalidated_at": "2026-05-04T04:13:00Z",
-        "invalidated_by": "ttl_sweeper",
-        "provenance_id": 42,
-        "_outbox_id": 100,
-    })
+    await sub.handle(
+        {
+            "event_type": "provenance_updated",
+            "asset_kind": "war_room_draft",
+            "asset_id": "00000000-0000-0000-0000-000000000001",
+            "invalidated_at": "2026-05-04T04:13:00Z",
+            "invalidated_by": "ttl_sweeper",
+            "provenance_id": 42,
+            "_outbox_id": 100,
+        }
+    )
     conn.execute.assert_awaited_once()
     args = conn.execute.await_args.args
     sql = args[0]
@@ -156,13 +169,15 @@ async def test_handler_does_not_patch_draft_metadata_for_war_room_post():
     pool = MagicMock()
     pool.acquire = MagicMock()
     sub = AssetInvalidatedSubscriber(db_pool=pool)
-    await sub.handle({
-        "event_type": "provenance_updated",
-        "asset_kind": "war_room_post",
-        "asset_id": "00000000-0000-0000-0000-000000000002",
-        "invalidated_at": "2026-05-04T04:13:00Z",
-        "invalidated_by": "ttl_sweeper",
-    })
+    await sub.handle(
+        {
+            "event_type": "provenance_updated",
+            "asset_kind": "war_room_post",
+            "asset_id": "00000000-0000-0000-0000-000000000002",
+            "invalidated_at": "2026-05-04T04:13:00Z",
+            "invalidated_by": "ttl_sweeper",
+        }
+    )
     # No DB update for posts — only logging.
     pool.acquire.assert_not_called()
 
@@ -191,13 +206,15 @@ async def test_handler_swallows_db_error_and_returns_none():
 
     sub = AssetInvalidatedSubscriber(db_pool=pool)
     # Must NOT raise
-    result = await sub.handle({
-        "event_type": "provenance_updated",
-        "asset_kind": "war_room_draft",
-        "asset_id": "00000000-0000-0000-0000-000000000003",
-        "invalidated_at": "2026-05-04T04:13:00Z",
-        "invalidated_by": "ttl_sweeper",
-    })
+    result = await sub.handle(
+        {
+            "event_type": "provenance_updated",
+            "asset_kind": "war_room_draft",
+            "asset_id": "00000000-0000-0000-0000-000000000003",
+            "invalidated_at": "2026-05-04T04:13:00Z",
+            "invalidated_by": "ttl_sweeper",
+        }
+    )
     assert result is None
 
 
@@ -212,10 +229,12 @@ async def test_handler_swallows_unexpected_exception_in_outer_handler():
     sub = AssetInvalidatedSubscriber(db_pool=pool)
     # asset_id = 12345 (int) — int(str(12345)) won't be a UUID, but
     # the early validation should catch that.
-    result = await sub.handle({
-        "event_type": "provenance_updated",
-        "asset_kind": "war_room_draft",
-        "asset_id": 12345,  # not a string-UUID
-        "invalidated_at": "2026-05-04T04:13:00Z",
-    })
+    result = await sub.handle(
+        {
+            "event_type": "provenance_updated",
+            "asset_kind": "war_room_draft",
+            "asset_id": 12345,  # not a string-UUID
+            "invalidated_at": "2026-05-04T04:13:00Z",
+        }
+    )
     assert result is None

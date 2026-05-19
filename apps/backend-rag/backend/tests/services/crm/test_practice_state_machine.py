@@ -79,7 +79,9 @@ class TestCancelledTransitions:
 
     def test_reopen_cancelled_as_client_raises(self) -> None:
         # Error message is "Admin-only transition: ..." for non-admin users
-        with pytest.raises(InvalidTransitionError, match="Admin-only transition|requires admin role"):
+        with pytest.raises(
+            InvalidTransitionError, match="Admin-only transition|requires admin role"
+        ):
             validate_transition("cancelled", "inquiry", {"role": "client"})
 
 

@@ -103,7 +103,9 @@ class PluginRegistry:
             return plugin
 
     async def register_batch(
-        self, plugin_classes: list[type[Plugin]], config: dict | None = None,
+        self,
+        plugin_classes: list[type[Plugin]],
+        config: dict | None = None,
     ) -> list[Plugin]:
         """
         Register multiple plugins in batch
@@ -217,7 +219,10 @@ class PluginRegistry:
         return result
 
     async def discover_plugins(
-        self, plugins_dir: Path, package_prefix: str = "", strict: bool = False,
+        self,
+        plugins_dir: Path,
+        package_prefix: str = "",
+        strict: bool = False,
     ):
         """
         Auto-discover plugins in directory

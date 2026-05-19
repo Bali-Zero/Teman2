@@ -276,9 +276,7 @@ async def test_get_client_success(mock_db_pool, mock_current_user, sample_client
 
     mock_db_pool._mock_conn.fetchrow.return_value = sample_client_row
 
-    with patch(
-        "backend.app.routers.crm_clients.verify_client_access", new=AsyncMock()
-    ):
+    with patch("backend.app.routers.crm_clients.verify_client_access", new=AsyncMock()):
         result = await get_client(
             client_id=1,
             db_pool=mock_db_pool,
@@ -317,9 +315,7 @@ async def test_get_client_by_email_success(mock_db_pool, mock_current_user, samp
 
     mock_db_pool._mock_conn.fetchrow.return_value = sample_client_row
 
-    with patch(
-        "backend.app.routers.crm_clients.verify_client_access", new=AsyncMock()
-    ):
+    with patch("backend.app.routers.crm_clients.verify_client_access", new=AsyncMock()):
         result = await get_client_by_email(
             email="john@example.com",
             db_pool=mock_db_pool,
@@ -403,7 +399,9 @@ async def test_list_clients_with_filters(mock_db_pool, mock_current_user, sample
 
 
 @pytest.mark.asyncio
-async def test_list_clients_expired_passport_filter(mock_db_pool, mock_current_user, sample_client_row):
+async def test_list_clients_expired_passport_filter(
+    mock_db_pool, mock_current_user, sample_client_row
+):
     from backend.app.routers.crm_clients import list_clients
 
     mock_db_pool._mock_conn.fetch.return_value = [sample_client_row]
@@ -427,7 +425,9 @@ async def test_list_clients_rbac_team_user(mock_db_pool, mock_team_user, sample_
     mock_db_pool._mock_conn.fetch.return_value = [sample_client_row]
 
     with (
-        patch("backend.app.routers.crm_clients.get_crm_user_filter", return_value="team@balizero.com"),
+        patch(
+            "backend.app.routers.crm_clients.get_crm_user_filter", return_value="team@balizero.com"
+        ),
         patch("backend.app.routers.crm_clients.is_crm_admin", return_value=False),
     ):
         result = await list_clients(
@@ -505,7 +505,10 @@ async def test_create_client_success(mock_db_pool, mock_current_user, sample_cli
 
     with (
         patch("backend.app.routers.crm_clients.invalidate_cache", new=AsyncMock()),
-        patch("backend.services.integrations.service_account_drive_service.ServiceAccountDriveService", side_effect=Exception("skip")),
+        patch(
+            "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+            side_effect=Exception("skip"),
+        ),
     ):
         result = await create_client(
             client=client_data,
@@ -537,7 +540,9 @@ async def test_create_client_no_email_in_user(mock_db_pool):
 
 
 @pytest.mark.asyncio
-async def test_create_client_with_company_and_nib(mock_db_pool, mock_current_user, sample_client_row):
+async def test_create_client_with_company_and_nib(
+    mock_db_pool, mock_current_user, sample_client_row
+):
     from backend.app.routers.crm_clients import ClientCreate, create_client
 
     client_data = ClientCreate(
@@ -556,7 +561,10 @@ async def test_create_client_with_company_and_nib(mock_db_pool, mock_current_use
 
     with (
         patch("backend.app.routers.crm_clients.invalidate_cache", new=AsyncMock()),
-        patch("backend.services.integrations.service_account_drive_service.ServiceAccountDriveService", side_effect=Exception("skip")),
+        patch(
+            "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+            side_effect=Exception("skip"),
+        ),
     ):
         result = await create_client(
             client=client_data,
@@ -584,7 +592,10 @@ async def test_update_client_success(mock_db_pool, mock_current_user, sample_cli
     with (
         patch("backend.app.routers.crm_clients.verify_client_access", new=AsyncMock()),
         patch("backend.app.routers.crm_clients.invalidate_cache", new=AsyncMock()),
-        patch("backend.services.portal.portal_notification_service.PortalNotificationService", side_effect=Exception("skip")),
+        patch(
+            "backend.services.portal.portal_notification_service.PortalNotificationService",
+            side_effect=Exception("skip"),
+        ),
     ):
         result = await update_client(
             updates=updates,
@@ -618,7 +629,9 @@ async def test_update_client_not_found(mock_db_pool, mock_current_user):
 
 
 @pytest.mark.asyncio
-async def test_update_client_date_field_conversion(mock_db_pool, mock_current_user, sample_client_row):
+async def test_update_client_date_field_conversion(
+    mock_db_pool, mock_current_user, sample_client_row
+):
     from backend.app.routers.crm_clients import ClientUpdate, update_client
 
     updates = ClientUpdate(passport_expiry="2030-06-15", date_of_birth="1990-01-01")
@@ -628,7 +641,10 @@ async def test_update_client_date_field_conversion(mock_db_pool, mock_current_us
     with (
         patch("backend.app.routers.crm_clients.verify_client_access", new=AsyncMock()),
         patch("backend.app.routers.crm_clients.invalidate_cache", new=AsyncMock()),
-        patch("backend.services.portal.portal_notification_service.PortalNotificationService", side_effect=Exception("skip")),
+        patch(
+            "backend.services.portal.portal_notification_service.PortalNotificationService",
+            side_effect=Exception("skip"),
+        ),
     ):
         result = await update_client(
             updates=updates,
@@ -650,7 +666,10 @@ async def test_update_client_nullable_field(mock_db_pool, mock_current_user, sam
     with (
         patch("backend.app.routers.crm_clients.verify_client_access", new=AsyncMock()),
         patch("backend.app.routers.crm_clients.invalidate_cache", new=AsyncMock()),
-        patch("backend.services.portal.portal_notification_service.PortalNotificationService", side_effect=Exception("skip")),
+        patch(
+            "backend.services.portal.portal_notification_service.PortalNotificationService",
+            side_effect=Exception("skip"),
+        ),
     ):
         result = await update_client(
             updates=updates,
@@ -692,9 +711,7 @@ async def test_get_client_summary_success(mock_db_pool, mock_current_user):
     mock_db_pool._mock_conn.fetchrow.return_value = client_row
     mock_db_pool._mock_conn.fetch.return_value = []
 
-    with patch(
-        "backend.app.routers.crm_clients.verify_client_access", new=AsyncMock()
-    ):
+    with patch("backend.app.routers.crm_clients.verify_client_access", new=AsyncMock()):
         result = await get_client_summary(
             client_id=1,
             db_pool=mock_db_pool,
@@ -732,4 +749,5 @@ def test_get_client_service_returns_service():
     pool = MagicMock()
     svc = get_client_service(db_pool=pool)
     from backend.services.crm.client_service import ClientService
+
     assert isinstance(svc, ClientService)

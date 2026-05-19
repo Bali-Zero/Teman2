@@ -227,14 +227,22 @@ async def upsert_to_qdrant(points: list[dict], qdrant_url: str, api_key: str | N
 async def main():
     parser = argparse.ArgumentParser(description="Index MDX articles into balizero_news")
     parser.add_argument(
-        "--dry-run", action="store_true", help="Parse and chunk but don't embed or upsert",
+        "--dry-run",
+        action="store_true",
+        help="Parse and chunk but don't embed or upsert",
     )
     parser.add_argument("--limit", type=int, default=0, help="Limit number of articles (0=all)")
     parser.add_argument(
-        "--category", type=str, default="", help="Only index articles in this category",
+        "--category",
+        type=str,
+        default="",
+        help="Only index articles in this category",
     )
     parser.add_argument(
-        "--qdrant-url", type=str, default="", help="Qdrant URL (default: from env or localhost)",
+        "--qdrant-url",
+        type=str,
+        default="",
+        help="Qdrant URL (default: from env or localhost)",
     )
     args = parser.parse_args()
 

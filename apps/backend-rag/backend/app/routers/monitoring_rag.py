@@ -41,10 +41,16 @@ class AlertThresholdsRequest(BaseModel):
     """Request model for updating alert thresholds."""
 
     min_score: float = Field(
-        default=0.3, ge=0.0, le=1.0, description="Minimum acceptable retrieval score (0.0-1.0)",
+        default=0.3,
+        ge=0.0,
+        le=1.0,
+        description="Minimum acceptable retrieval score (0.0-1.0)",
     )
     max_abstain_rate: float = Field(
-        default=0.2, ge=0.0, le=1.0, description="Maximum acceptable abstain rate (0.0-1.0)",
+        default=0.2,
+        ge=0.0,
+        le=1.0,
+        description="Maximum acceptable abstain rate (0.0-1.0)",
     )
     max_latency_ms: float = Field(
         default=5000.0,
@@ -53,7 +59,10 @@ class AlertThresholdsRequest(BaseModel):
         description="Maximum acceptable latency in milliseconds",
     )
     min_cache_hit_rate: float = Field(
-        default=0.5, ge=0.0, le=1.0, description="Minimum acceptable cache hit rate (0.0-1.0)",
+        default=0.5,
+        ge=0.0,
+        le=1.0,
+        description="Minimum acceptable cache hit rate (0.0-1.0)",
     )
 
 

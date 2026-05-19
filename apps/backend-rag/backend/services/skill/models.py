@@ -5,6 +5,7 @@ precondition + procedure + success_criterion (germline) whereas trajectories
 carry outcome + tokens + duration (episodic). They live in the same Genome
 table, keyed by ``type``.
 """
+
 from __future__ import annotations
 
 from enum import Enum

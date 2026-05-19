@@ -30,10 +30,12 @@ from backend.services.tools.definitions import AgentState, ToolCall
 
 @pytest.fixture(autouse=True)
 def _patch_tracing():
-    with patch("backend.services.rag.agentic.reasoning.trace_span") as ts, \
-         patch("backend.services.rag.agentic.reasoning.set_span_attribute"), \
-         patch("backend.services.rag.agentic.reasoning.set_span_status"), \
-         patch("backend.services.rag.agentic.reasoning.add_span_event"):
+    with (
+        patch("backend.services.rag.agentic.reasoning.trace_span") as ts,
+        patch("backend.services.rag.agentic.reasoning.set_span_attribute"),
+        patch("backend.services.rag.agentic.reasoning.set_span_status"),
+        patch("backend.services.rag.agentic.reasoning.add_span_event"),
+    ):
         ts.return_value.__enter__ = MagicMock()
         ts.return_value.__exit__ = MagicMock(return_value=False)
         yield
@@ -80,6 +82,7 @@ def _patch_emit_low_confidence():
 def engine():
     """ReasoningEngine with empty tool_map + no pipeline (keeps loop pure)."""
     from backend.services.rag.agentic.reasoning import ReasoningEngine
+
     return ReasoningEngine(tool_map={}, response_pipeline=None)
 
 
@@ -159,18 +162,23 @@ class TestStreamYieldProtocol:
             ),
         )
 
-        with patch(
-            "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
-            return_value=([], "none"),
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_query_language",
-            return_value="ENGLISH",
-        ), patch(
-            "backend.services.rag.agentic.reasoning.compute_evidence_score",
-            return_value=0.8,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.is_critical_domain",
-            return_value=False,
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
+                return_value=([], "none"),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.compute_evidence_score",
+                return_value=0.8,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.is_critical_domain",
+                return_value=False,
+            ),
         ):
             events = await _run_stream(engine, gateway, state)
 
@@ -200,29 +208,36 @@ class TestStreamYieldProtocol:
             send_message_side_effect=lambda *a, **k: _llm_response(long_answer),
         )
 
-        with patch(
-            "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
-            return_value=([], "none"),
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_query_language",
-            return_value="ENGLISH",
-        ), patch(
-            "backend.services.rag.agentic.reasoning.compute_evidence_score",
-            return_value=0.8,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.is_critical_domain",
-            return_value=False,
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
+                return_value=([], "none"),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.compute_evidence_score",
+                return_value=0.8,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.is_critical_domain",
+                return_value=False,
+            ),
         ):
             events = await _run_stream(engine, gateway, state)
 
         token_events = [e for e in events if e.get("type") == "token"]
         # Each chunk is at most 20 chars
-        assert all(len(e["data"]) <= 20 for e in token_events), \
+        assert all(len(e["data"]) <= 20 for e in token_events), (
             f"token chunks exceeded 20 chars: {[len(e['data']) for e in token_events]}"
+        )
         # Final answer "X" * 31 → 2 chunks (20 + 11). extract_final_answer_text
         # strips "Final Answer: " prefix.
-        assert len(token_events) in (2, 3), \
+        assert len(token_events) in (2, 3), (
             f"expected 2-3 chunks for 31 char answer, got {len(token_events)}"
+        )
         # Concatenation of token chunks == final_answer
         assert "".join(e["data"] for e in token_events) == state.final_answer
 
@@ -248,26 +263,33 @@ class TestStreamToolExecution:
 
         gateway = _mk_gateway(
             send_message_side_effect=lambda *a, **k: _llm_response(
-                "try two tools", candidates=[MagicMock()],
+                "try two tools",
+                candidates=[MagicMock()],
             ),
         )
         execute_tool_mock = AsyncMock(return_value=("tool result A", 0.01))
 
-        with patch(
-            "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
-            return_value=([tc_a, tc_b], "native"),
-        ), patch(
-            "backend.services.rag.agentic.reasoning.execute_tool",
-            execute_tool_mock,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_query_language",
-            return_value="ENGLISH",
-        ), patch(
-            "backend.services.rag.agentic.reasoning.compute_evidence_score",
-            return_value=0.8,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.is_critical_domain",
-            return_value=False,
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
+                return_value=([tc_a, tc_b], "native"),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.execute_tool",
+                execute_tool_mock,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.compute_evidence_score",
+                return_value=0.8,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.is_critical_domain",
+                return_value=False,
+            ),
         ):
             events = await _run_stream(engine, gateway, state)
 
@@ -297,7 +319,8 @@ class TestStreamToolExecution:
 
         gateway = _mk_gateway(
             send_message_side_effect=lambda *a, **k: _llm_response(
-                "call tool", candidates=[MagicMock()],
+                "call tool",
+                candidates=[MagicMock()],
             ),
         )
 
@@ -305,15 +328,19 @@ class TestStreamToolExecution:
             raise RuntimeError("tool impl exploded")
 
         events_collected: list[dict] = []
-        with patch(
-            "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
-            return_value=([tc], "native"),
-        ), patch(
-            "backend.services.rag.agentic.reasoning.execute_tool",
-            side_effect=_boom,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_query_language",
-            return_value="ENGLISH",
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
+                return_value=([tc], "native"),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.execute_tool",
+                side_effect=_boom,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
         ):
             with pytest.raises(RuntimeError, match="tool impl exploded"):
                 async for ev in engine.execute_react_loop_stream(
@@ -363,7 +390,8 @@ class TestStreamCRMEarlyExit:
 
         gateway = _mk_gateway(
             send_message_side_effect=lambda *a, **k: _llm_response(
-                "calling crm", candidates=[MagicMock()],
+                "calling crm",
+                candidates=[MagicMock()],
             ),
         )
         # A >10 char result
@@ -371,22 +399,28 @@ class TestStreamCRMEarlyExit:
             return_value=("CRM: found 3 clients named X with full profile", 0.01),
         )
 
-        with patch(
-            "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
-            return_value=([tc], "native"),
-        ), patch(
-            "backend.services.rag.agentic.reasoning.execute_tool",
-            execute_tool_mock,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_query_language",
-            return_value="ENGLISH",
-        ), patch(
-            "backend.services.rag.agentic.reasoning.compute_evidence_score",
-            # evidence_score irrelevant because trusted=True bypasses gate
-            return_value=0.0,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.is_critical_domain",
-            return_value=False,
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
+                return_value=([tc], "native"),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.execute_tool",
+                execute_tool_mock,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.compute_evidence_score",
+                # evidence_score irrelevant because trusted=True bypasses gate
+                return_value=0.0,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.is_critical_domain",
+                return_value=False,
+            ),
         ):
             events = await _run_stream(engine, gateway, state)
 
@@ -433,21 +467,27 @@ class TestStreamCRMEarlyExit:
 
         execute_tool_mock = AsyncMock(return_value=("none", 0.01))  # <=10 chars
 
-        with patch(
-            "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
-            side_effect=_parse,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.execute_tool",
-            execute_tool_mock,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_query_language",
-            return_value="ENGLISH",
-        ), patch(
-            "backend.services.rag.agentic.reasoning.compute_evidence_score",
-            return_value=0.8,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.is_critical_domain",
-            return_value=False,
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
+                side_effect=_parse,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.execute_tool",
+                execute_tool_mock,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.compute_evidence_score",
+                return_value=0.8,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.is_critical_domain",
+                return_value=False,
+            ),
         ):
             await _run_stream(engine, gateway, state)
 
@@ -493,18 +533,23 @@ class TestStreamErrorEvents:
 
         gateway = _mk_gateway(send_message_side_effect=_raise_then_raise)
 
-        with patch(
-            "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
-            return_value=([], "none"),
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_query_language",
-            return_value="ENGLISH",
-        ), patch(
-            "backend.services.rag.agentic.reasoning.compute_evidence_score",
-            return_value=0.0,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.is_critical_domain",
-            return_value=False,
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
+                return_value=([], "none"),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.compute_evidence_score",
+                return_value=0.0,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.is_critical_domain",
+                return_value=False,
+            ),
         ):
             events = await _run_stream(engine, gateway, state)
 
@@ -554,27 +599,35 @@ class TestStreamContextWidening:
             ),
         )
 
-        with patch(
-            "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
-            return_value=([], "none"),
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_query_language",
-            return_value="ENGLISH",
-        ), patch(
-            "backend.services.rag.agentic.reasoning.compute_evidence_score",
-            return_value=0.05,  # below ABSTAIN_THRESHOLD
-        ), patch(
-            "backend.services.rag.agentic.reasoning.is_critical_domain",
-            return_value=False,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_trusted_tool_usage",
-            return_value=False,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_trusted_context_markers",
-            return_value=(True, ["pricing_marker"]),
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_substantial_context",
-            return_value=False,
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
+                return_value=([], "none"),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.compute_evidence_score",
+                return_value=0.05,  # below ABSTAIN_THRESHOLD
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.is_critical_domain",
+                return_value=False,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_trusted_tool_usage",
+                return_value=False,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_trusted_context_markers",
+                return_value=(True, ["pricing_marker"]),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_substantial_context",
+                return_value=False,
+            ),
         ):
             await _run_stream(engine, gateway, state)
 
@@ -601,27 +654,35 @@ class TestStreamContextWidening:
             ),
         )
 
-        with patch(
-            "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
-            return_value=([], "none"),
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_query_language",
-            return_value="ENGLISH",
-        ), patch(
-            "backend.services.rag.agentic.reasoning.compute_evidence_score",
-            return_value=0.05,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.is_critical_domain",
-            return_value=False,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_trusted_tool_usage",
-            return_value=False,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_trusted_context_markers",
-            return_value=(False, []),  # markers miss
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_substantial_context",
-            return_value=True,  # substantial context hit
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
+                return_value=([], "none"),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.compute_evidence_score",
+                return_value=0.05,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.is_critical_domain",
+                return_value=False,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_trusted_tool_usage",
+                return_value=False,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_trusted_context_markers",
+                return_value=(False, []),  # markers miss
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_substantial_context",
+                return_value=True,  # substantial context hit
+            ),
         ):
             await _run_stream(engine, gateway, state)
 
@@ -650,7 +711,10 @@ class TestStreamStubKeyDrift:
         which key was requested.
         """
         state = AgentState(
-            query="visto KITAS requirements?", max_steps=1, current_step=0, intent_type="simple",
+            query="visto KITAS requirements?",
+            max_steps=1,
+            current_step=0,
+            intent_type="simple",
         )
         state.skip_rag = False
         state.final_answer = "weak pre-regen answer"
@@ -667,42 +731,54 @@ class TestStreamStubKeyDrift:
             stub_calls.append((key, language))
             return f"[STUB:{key}:{language}]"
 
-        with patch(
-            "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
-            return_value=([], "none"),
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_query_language",
-            return_value="ENGLISH",
-        ), patch(
-            "backend.services.rag.agentic.reasoning.compute_evidence_score",
-            return_value=0.05,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.is_critical_domain",
-            return_value=True,  # critical domain
-        ), patch(
-            "backend.services.rag.agentic.reasoning.get_critical_domain_type",
-            return_value="immigration",
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_trusted_tool_usage",
-            return_value=False,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_trusted_context_markers",
-            return_value=(False, []),
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_substantial_context",
-            return_value=False,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.get_localized_stub",
-            side_effect=_stub_spy,
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
+                return_value=([], "none"),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.compute_evidence_score",
+                return_value=0.05,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.is_critical_domain",
+                return_value=True,  # critical domain
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.get_critical_domain_type",
+                return_value="immigration",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_trusted_tool_usage",
+                return_value=False,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_trusted_context_markers",
+                return_value=(False, []),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_substantial_context",
+                return_value=False,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.get_localized_stub",
+                side_effect=_stub_spy,
+            ),
         ):
             await _run_stream(engine, gateway, state)
 
         # The stub was invoked with key="abstain" (not "abstain_detailed")
         keys_used = [k for k, _ in stub_calls]
-        assert "abstain" in keys_used, \
+        assert "abstain" in keys_used, (
             f"Expected 'abstain' stub key in streaming override branch, got {keys_used}"
-        assert "abstain_detailed" not in keys_used, \
+        )
+        assert "abstain_detailed" not in keys_used, (
             "Streaming should NOT use sync's 'abstain_detailed' key — lock the drift"
+        )
         # final_answer replaced with the stub
         assert state.final_answer.startswith("[STUB:abstain:ENGLISH]")
 
@@ -738,27 +814,34 @@ class TestStreamStubFilter:
             stub_calls.append((key, language))
             return f"[CONFUSED:{key}:{language}]"
 
-        with patch(
-            "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
-            return_value=([], "none"),
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_query_language",
-            return_value="ENGLISH",
-        ), patch(
-            "backend.services.rag.agentic.reasoning.compute_evidence_score",
-            return_value=0.8,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.is_critical_domain",
-            return_value=False,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.get_localized_stub",
-            side_effect=_stub_spy,
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
+                return_value=([], "none"),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.compute_evidence_score",
+                return_value=0.8,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.is_critical_domain",
+                return_value=False,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.get_localized_stub",
+                side_effect=_stub_spy,
+            ),
         ):
             await _run_stream(engine, gateway, state)
 
         # Stub filter triggered — "confused" key was requested
-        assert any(k == "confused" for k, _ in stub_calls), \
+        assert any(k == "confused" for k, _ in stub_calls), (
             f"Stub 'confused' not invoked; calls={stub_calls}"
+        )
         assert state.final_answer.startswith("[CONFUSED:confused:")
 
 
@@ -778,7 +861,9 @@ class TestStreamStepPromptPrefix:
         """S2: step 1 runs a tool; step 2's send_message receives a message
         containing 'Original user query: ' prefix (streaming-only).
         """
-        state = AgentState(query="what about KITAS?", max_steps=2, current_step=0, intent_type="simple")
+        state = AgentState(
+            query="what about KITAS?", max_steps=2, current_step=0, intent_type="simple"
+        )
         state.skip_rag = True
         tc = ToolCall(tool_name="calculator", arguments={})
 
@@ -800,22 +885,28 @@ class TestStreamStepPromptPrefix:
                 return ([tc], "native")
             return ([], "none")
 
-        with patch(
-            "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
-            side_effect=_parse,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.execute_tool",
-            new_callable=AsyncMock,
-            return_value=("calc result: 42", 0.01),
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_query_language",
-            return_value="ENGLISH",
-        ), patch(
-            "backend.services.rag.agentic.reasoning.compute_evidence_score",
-            return_value=0.8,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.is_critical_domain",
-            return_value=False,
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
+                side_effect=_parse,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.execute_tool",
+                new_callable=AsyncMock,
+                return_value=("calc result: 42", 0.01),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.compute_evidence_score",
+                return_value=0.8,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.is_critical_domain",
+                return_value=False,
+            ),
         ):
             await _run_stream(engine, gateway, state, query="what about KITAS?")
 
@@ -870,22 +961,28 @@ class TestStreamImagesStep1Only:
 
         test_images = [{"base64": "AAAA", "name": "test.png"}]
 
-        with patch(
-            "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
-            side_effect=_parse,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.execute_tool",
-            new_callable=AsyncMock,
-            return_value=("calc result: 42", 0.01),
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_query_language",
-            return_value="ENGLISH",
-        ), patch(
-            "backend.services.rag.agentic.reasoning.compute_evidence_score",
-            return_value=0.8,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.is_critical_domain",
-            return_value=False,
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
+                side_effect=_parse,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.execute_tool",
+                new_callable=AsyncMock,
+                return_value=("calc result: 42", 0.01),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.compute_evidence_score",
+                return_value=0.8,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.is_critical_domain",
+                return_value=False,
+            ),
         ):
             await _run_stream(engine, gateway, state, images=test_images)
 
@@ -935,38 +1032,48 @@ class TestStreamTier1StubFallback:
             stub_calls.append((key, language))
             return f"[TIER1-ABSTAIN:{key}:{language}]"
 
-        with patch(
-            "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
-            return_value=([], "none"),
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_query_language",
-            return_value="ENGLISH",
-        ), patch(
-            "backend.services.rag.agentic.reasoning.compute_evidence_score",
-            return_value=0.05,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.is_critical_domain",
-            return_value=False,  # non-critical → Tier1 path
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_trusted_tool_usage",
-            return_value=False,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_trusted_context_markers",
-            return_value=(False, []),
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_substantial_context",
-            return_value=False,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.get_localized_stub",
-            side_effect=_stub_spy,
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
+                return_value=([], "none"),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.compute_evidence_score",
+                return_value=0.05,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.is_critical_domain",
+                return_value=False,  # non-critical → Tier1 path
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_trusted_tool_usage",
+                return_value=False,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_trusted_context_markers",
+                return_value=(False, []),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_substantial_context",
+                return_value=False,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.get_localized_stub",
+                side_effect=_stub_spy,
+            ),
         ):
             await _run_stream(engine, gateway, state)
 
         # Tier1 regen was attempted (2nd send_message call) and failed
         assert call_count["i"] == 2
         # Stub "abstain" requested as final fallback
-        assert any(k == "abstain" for k, _ in stub_calls), \
+        assert any(k == "abstain" for k, _ in stub_calls), (
             f"abstain stub not invoked after Tier1 regen raise; got {stub_calls}"
+        )
         # Final answer replaced with the stub
         assert state.final_answer.startswith("[TIER1-ABSTAIN:abstain:")
 
@@ -1002,21 +1109,27 @@ class TestStreamPipelineFallback:
             ),
         )
 
-        with patch(
-            "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
-            return_value=([], "none"),
-        ), patch(
-            "backend.services.rag.agentic.reasoning.detect_query_language",
-            return_value="ENGLISH",
-        ), patch(
-            "backend.services.rag.agentic.reasoning.compute_evidence_score",
-            return_value=0.8,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.is_critical_domain",
-            return_value=False,
-        ), patch(
-            "backend.services.rag.agentic.reasoning.post_process_response",
-            return_value="FALLBACK POST-PROCESSED",
+        with (
+            patch(
+                "backend.services.rag.agentic.reasoning.parse_tool_calls_from_response",
+                return_value=([], "none"),
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.detect_query_language",
+                return_value="ENGLISH",
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.compute_evidence_score",
+                return_value=0.8,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.is_critical_domain",
+                return_value=False,
+            ),
+            patch(
+                "backend.services.rag.agentic.reasoning.post_process_response",
+                return_value="FALLBACK POST-PROCESSED",
+            ),
         ):
             events = await _run_stream(engine, gateway, state)
 

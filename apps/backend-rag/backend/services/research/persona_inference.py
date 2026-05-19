@@ -81,8 +81,7 @@ class Persona:
         attrs = self.count_populated_attrs()
         if attrs < 15:
             raise PersonaValidationError(
-                f"persona {self.slug!r} needs at least 15 attribute "
-                f"fields populated, got {attrs}"
+                f"persona {self.slug!r} needs at least 15 attribute fields populated, got {attrs}"
             )
         if len(self.verbatim_quotes) < 3:
             raise PersonaValidationError(

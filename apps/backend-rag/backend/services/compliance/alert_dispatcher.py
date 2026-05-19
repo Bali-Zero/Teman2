@@ -14,6 +14,7 @@ Client channels (notification_prefs m110, severity >= warning only):
 Dedup via notification_log m111: ref = f"compliance_alert:{alert_id}:{channel}".
 24h rolling window enforced via timestamp filter.
 """
+
 from __future__ import annotations
 
 import logging
@@ -33,9 +34,9 @@ SYSTEM_TEAM_UUID = uuid.UUID("00000000-0000-0000-0000-0000000000aa")
 
 _TEAM_CHANNELS_BY_SEVERITY: dict[str, list[str]] = {
     "critical": ["telegram_owner", "inapp_team"],
-    "urgent":   ["telegram_team",  "inapp_team"],
-    "warning":  ["inapp_team"],
-    "info":     ["inapp_team"],
+    "urgent": ["telegram_team", "inapp_team"],
+    "warning": ["inapp_team"],
+    "info": ["inapp_team"],
 }
 
 _CLIENT_SEVERITIES = {"warning", "urgent", "critical"}
@@ -95,7 +96,8 @@ class AlertDispatcher:
         if team_channels is None:
             logger.warning(
                 "unrecognized severity %r for alert %s; no team channels will fire",
-                alert.severity, alert.alert_id,
+                alert.severity,
+                alert.alert_id,
             )
             team_channels = []
         client_channels: list[str] = []
@@ -122,7 +124,9 @@ class AlertDispatcher:
             except Exception as exc:  # noqa: BLE001  -- per-channel isolation (decision #11)
                 logger.warning(
                     "channel %s failed for alert %s: %s",
-                    channel, alert.alert_id, exc,
+                    channel,
+                    alert.alert_id,
+                    exc,
                 )
                 continue
 
@@ -133,7 +137,8 @@ class AlertDispatcher:
             except Exception as exc:  # noqa: BLE001
                 logger.error(
                     "notification_log insert failed for %s (send already completed): %s",
-                    ref, exc,
+                    ref,
+                    exc,
                 )
             any_success = True
 
@@ -213,7 +218,9 @@ class AlertDispatcher:
         # abort it.
         if self._conn is not None:
             try:
-                async with self._conn.transaction():  # savepoint — isolation inherited from outer TX
+                async with (
+                    self._conn.transaction()
+                ):  # savepoint — isolation inherited from outer TX
                     return await self._conn.fetchval(
                         "SELECT portal_user_id::text FROM clients WHERE id = $1",
                         client_id,
@@ -260,8 +267,7 @@ class AlertDispatcher:
     async def _load_prefs(self, portal_user_id: str) -> _Prefs:
         row = await self._conn_execute(
             "fetchrow",
-            "SELECT email_enabled, wa_enabled FROM notification_prefs "
-            "WHERE user_id = $1::uuid",
+            "SELECT email_enabled, wa_enabled FROM notification_prefs WHERE user_id = $1::uuid",
             portal_user_id,
         )
         if row is None:
@@ -291,8 +297,7 @@ class AlertDispatcher:
     async def _log_sent(self, user_id: str, channel: str, ref: str) -> None:
         await self._conn_execute(
             "execute",
-            "INSERT INTO notification_log (user_id, channel, ref) "
-            "VALUES ($1::uuid, $2, $3)",
+            "INSERT INTO notification_log (user_id, channel, ref) VALUES ($1::uuid, $2, $3)",
             user_id,
             channel,
             ref,

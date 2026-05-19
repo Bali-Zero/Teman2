@@ -1,4 +1,5 @@
 """Tests for owner-only dependency."""
+
 import pytest
 from fastapi import HTTPException
 

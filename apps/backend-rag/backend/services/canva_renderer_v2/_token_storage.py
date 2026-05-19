@@ -15,6 +15,7 @@ Features:
 Public API matches mcp.client.auth.TokenStorage (async). Sync helpers
 exposed for bootstrap script + tests.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -115,13 +116,9 @@ class OrchestratorTokenStorage:
             existing = {}
             if self.path.exists():
                 try:
-                    existing = verify_payload(
-                        json.loads(self.path.read_text()), key=self.hmac_key
-                    )
+                    existing = verify_payload(json.loads(self.path.read_text()), key=self.hmac_key)
                 except TokenStorageError:
-                    logger.warning(
-                        "Existing token file unverifiable; backup + replace"
-                    )
+                    logger.warning("Existing token file unverifiable; backup + replace")
                     backup = self.path.with_suffix(
                         f".broken-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
                     )
@@ -160,6 +157,7 @@ class OrchestratorTokenStorage:
 
     def _load_for_sdk(self):
         from mcp.shared.auth import OAuthToken
+
         if self.needs_refresh():
             return None  # mcp SDK will trigger refresh
         data = self.load_sync()
@@ -172,16 +170,19 @@ class OrchestratorTokenStorage:
         )
 
     def _save_from_sdk(self, tokens):
-        self.save_sync({
-            "access_token": tokens.access_token,
-            "token_type": tokens.token_type,
-            "expires_in": tokens.expires_in,
-            "refresh_token": tokens.refresh_token,
-            "scope": tokens.scope,
-        })
+        self.save_sync(
+            {
+                "access_token": tokens.access_token,
+                "token_type": tokens.token_type,
+                "expires_in": tokens.expires_in,
+                "refresh_token": tokens.refresh_token,
+                "scope": tokens.scope,
+            }
+        )
 
     def _load_client_info(self):
         from mcp.shared.auth import OAuthClientInformationFull
+
         data = self.load_sync()
         return OAuthClientInformationFull(
             client_id=data["client_id"],

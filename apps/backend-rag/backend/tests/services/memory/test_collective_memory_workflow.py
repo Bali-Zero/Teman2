@@ -30,6 +30,7 @@ from backend.services.memory.collective_memory_workflow import (
 
 # ── Helpers ──────────────────────────────────────────────────────
 
+
 def _make_state(**overrides) -> CollectiveMemoryState:
     """Create a minimal valid CollectiveMemoryState for testing."""
     base: CollectiveMemoryState = {

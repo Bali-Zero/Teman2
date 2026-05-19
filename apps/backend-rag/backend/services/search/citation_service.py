@@ -38,7 +38,8 @@ class CitationService:
         logger.info("✅ CitationService initialized")
 
     async def generate_citations(
-        self, search_results: list[dict[str, Any]],
+        self,
+        search_results: list[dict[str, Any]],
     ) -> list[dict[str, Any]]:
         """
         Generate citations from search results (for test compatibility).
@@ -171,7 +172,9 @@ Sources:
         return "\n".join(lines)
 
     def inject_citation_context_into_prompt(
-        self, system_prompt: str, sources: list[dict[str, Any]],
+        self,
+        system_prompt: str,
+        sources: list[dict[str, Any]],
     ) -> str:
         """
         Inject citation instructions and source context into system prompt
@@ -203,7 +206,9 @@ Sources:
         return enhanced_prompt
 
     def validate_citations_in_response(
-        self, response_text: str, sources: list[dict],
+        self,
+        response_text: str,
+        sources: list[dict],
     ) -> dict[str, Any]:
         """
         Validate that citations in response match available sources
@@ -296,7 +301,10 @@ Sources:
         return enhanced_response
 
     def process_response_with_citations(
-        self, response_text: str, rag_results: list[dict] | None = None, auto_append: bool = True,
+        self,
+        response_text: str,
+        rag_results: list[dict] | None = None,
+        auto_append: bool = True,
     ) -> dict[str, Any]:
         """
         Complete citation processing workflow

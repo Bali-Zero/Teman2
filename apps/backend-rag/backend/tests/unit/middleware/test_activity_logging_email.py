@@ -63,7 +63,9 @@ def test_get_user_email_header_fallback(middleware: ActivityLoggingMiddleware) -
     assert result == "debug@balizero.com"
 
 
-def test_get_user_email_state_takes_priority_over_header(middleware: ActivityLoggingMiddleware) -> None:
+def test_get_user_email_state_takes_priority_over_header(
+    middleware: ActivityLoggingMiddleware,
+) -> None:
     """state.user email takes priority over X-User-Email header."""
     request = _make_request(
         user={"email": "real@balizero.com"},

@@ -14,6 +14,7 @@ google-genai, qdrant-client, etc.). We pre-populate sys.modules with bare
 namespace packages BEFORE any backend import fires, so Python skips executing
 that heavy __init__ when we import the partners sub-package.
 """
+
 import os
 import sys
 import types as _types
@@ -47,6 +48,7 @@ class _UUIDWithId(uuid.UUID):
     def id(self) -> "_UUIDWithId":
         return self
 
+
 class _IntWithId(int):
     """int subclass with an `.id` property for factory pattern compat.
     Used for the live clients table which has INTEGER primary key."""
@@ -54,6 +56,7 @@ class _IntWithId(int):
     @property
     def id(self) -> "_IntWithId":
         return self
+
 
 import asyncpg
 import pytest_asyncio
@@ -102,8 +105,8 @@ _BACKEND_RAG_DIR = os.path.dirname(
 # __path__ must point to the actual directory so sub-package discovery works;
 # the __init__.py in each directory is NOT executed (we bypass it entirely by
 # pre-populating sys.modules before any import statement fires).
-_shield("backend",              [os.path.join(_BACKEND_RAG_DIR, "backend")])
-_shield("backend.services",     [os.path.join(_BACKEND_RAG_DIR, "backend", "services")])
+_shield("backend", [os.path.join(_BACKEND_RAG_DIR, "backend")])
+_shield("backend.services", [os.path.join(_BACKEND_RAG_DIR, "backend", "services")])
 _shield("backend.services.crm", [os.path.join(_BACKEND_RAG_DIR, "backend", "services", "crm")])
 
 
@@ -363,9 +366,7 @@ async def db_conn() -> asyncpg.Connection:
     conn = await asyncpg.connect(_DEFAULT_DB_URL)
     # Teardown from any previous failed run first (drops partner tables + clears stray test members)
     await conn.execute(_TEARDOWN_SQL)
-    await conn.execute(
-        "DELETE FROM team_members WHERE email LIKE '%@test.invalid'"
-    )
+    await conn.execute("DELETE FROM team_members WHERE email LIKE '%@test.invalid'")
     # Create fresh schema
     await conn.execute(_SCHEMA_SQL)
     try:
@@ -373,9 +374,7 @@ async def db_conn() -> asyncpg.Connection:
     finally:
         await conn.execute(_TEARDOWN_SQL)
         # Clean up any team_members rows inserted directly by tests (not via user_factory)
-        await conn.execute(
-            "DELETE FROM team_members WHERE email LIKE '%@test.invalid'"
-        )
+        await conn.execute("DELETE FROM team_members WHERE email LIKE '%@test.invalid'")
         await conn.close()
 
 
@@ -383,8 +382,11 @@ async def db_conn() -> asyncpg.Connection:
 # Factories
 # --------------------------------------------------------------------------
 
+
 @pytest_asyncio.fixture(scope="function")
-async def user_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any, Any, "_StrWithId"]]:
+async def user_factory(
+    db_conn: asyncpg.Connection,
+) -> Callable[..., Coroutine[Any, Any, "_StrWithId"]]:
     """Returns an async callable that inserts a team_members row and returns its string ID.
 
     CATA-5: team_members.id is VARCHAR (email-like string), not UUID.
@@ -411,7 +413,11 @@ async def user_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[A
         _pin_hash = f"test-pin-hash-{short}"  # placeholder, not a real bcrypt hash
         await db_conn.execute(
             "INSERT INTO team_members (id, name, email, pin_hash, role) VALUES ($1, $2, $3, $4, $5)",
-            str(sid), _name, _email, _pin_hash, role,
+            str(sid),
+            _name,
+            _email,
+            _pin_hash,
+            role,
         )
         _inserted_ids.append(str(sid))
         return sid
@@ -438,6 +444,7 @@ def practice_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any
     - payment_status: TEXT, default 'pending'
     - completed_at: TIMESTAMPTZ, default None (NULL → engine falls back to now())
     """
+
     async def _create(
         *,
         total_invoiced_idr: Decimal = Decimal("0"),
@@ -455,7 +462,10 @@ def practice_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any
             VALUES ($1, $2, $3, $4)
             RETURNING id
             """,
-            total_invoiced_idr, status, payment_status, _completed_at,
+            total_invoiced_idr,
+            status,
+            payment_status,
+            _completed_at,
         )
         return _IntWithId(row["id"])
 
@@ -501,9 +511,14 @@ def partner_factory(db_conn: asyncpg.Connection) -> Callable[..., Coroutine[Any,
             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
             RETURNING id
             """,
-            _full_name, _email, entity_type, _assigned_to,
-            default_commission_type, default_commission_value,
-            tax_withholding_category, preferred_language,
+            _full_name,
+            _email,
+            entity_type,
+            _assigned_to,
+            default_commission_type,
+            default_commission_value,
+            tax_withholding_category,
+            preferred_language,
         )
         return _UUIDWithId(bytes=row["id"].bytes)
 
@@ -516,6 +531,7 @@ def referral_factory(
     practice_factory: Callable[..., Coroutine[Any, Any, _UUIDWithId]],
 ) -> Callable[..., Coroutine[Any, Any, _UUIDWithId]]:
     """Returns an async callable that inserts a partner_referral and returns its UUID."""
+
     async def _create(
         *,
         partner_id: uuid.UUID,
@@ -529,7 +545,9 @@ def referral_factory(
             VALUES ($1, $2, $3)
             RETURNING id
             """,
-            partner_id, _practice_id, share_percent,
+            partner_id,
+            _practice_id,
+            share_percent,
         )
         return _UUIDWithId(bytes=row["id"].bytes)
 
@@ -565,7 +583,8 @@ async def client_factory(db_conn: asyncpg.Connection):
         _email = email or f"client-{_counter[0]}-{uuid.uuid4().hex[:6]}@test.invalid"
         row = await db_conn.fetchrow(
             "INSERT INTO clients (full_name, email) VALUES ($1, $2) RETURNING id",
-            _full_name, _email,
+            _full_name,
+            _email,
         )
         cid = _IntWithId(row["id"])
         _inserted_ids.append(int(cid))
@@ -600,6 +619,7 @@ def commission_factory(
     - payment_reference: str | None
     - receipt_file_url: str | None
     """
+
     async def _create(
         *,
         partner_id: uuid.UUID,
@@ -625,10 +645,12 @@ def commission_factory(
         if practice_client_id is not None:
             await db_conn.execute(
                 "UPDATE practices SET client_id = $1, service_type = 'KITAS E33G' WHERE id = $2",
-                int(practice_client_id), int(prac_id),
+                int(practice_client_id),
+                int(prac_id),
             )
 
         from datetime import datetime, timezone
+
         now = datetime.now(timezone.utc)
         paid_at = now if status == "paid" else None
 
@@ -657,8 +679,8 @@ def commission_factory(
             """,
             uuid.UUID(int=partner_id.int),
             int(prac_id),
-            _gross,        # base_amount_idr
-            _gross,        # gross_amount_idr
+            _gross,  # base_amount_idr
+            _gross,  # gross_amount_idr
             withholding_category,
             withholding_amount_idr,
             net_amount_idr,

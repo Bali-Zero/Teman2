@@ -54,7 +54,11 @@ class TestScanText:
     def test_no_pii_in_clean_text(self):
         entities = scan_text("The weather is nice today in the office")
         # spaCy may detect PERSON in some texts, so we check for Indonesian PII specifically
-        indonesian_pii = [e for e in entities if e["entity_type"] in ("ID_KTP", "ID_NPWP", "ID_PASSPORT", "PHONE_ID")]
+        indonesian_pii = [
+            e
+            for e in entities
+            if e["entity_type"] in ("ID_KTP", "ID_NPWP", "ID_PASSPORT", "PHONE_ID")
+        ]
         assert len(indonesian_pii) == 0
 
     def test_multiple_pii_in_one_text(self):

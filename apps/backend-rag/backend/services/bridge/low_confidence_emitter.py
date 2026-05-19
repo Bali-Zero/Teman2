@@ -9,6 +9,7 @@ Defensive: any failure is swallowed (logger.error) — must never break the RAG.
 
 Reference: docs/superpowers/specs/2026-04-14-organism-nervous-system-design.md §4
 """
+
 from __future__ import annotations
 
 import hashlib

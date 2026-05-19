@@ -310,11 +310,7 @@ class EmailHealthMonitor:
         for r in rows[:15]:  # hard cap to avoid oversized Telegram message
             subj = (r["subject"] or "").strip()[:60]
             err = (r["error_message"] or "").strip()[:80]
-            lines.append(
-                f"• `{r['email_type']}` → `{r['to_email']}`\n"
-                f"  _{subj}_\n"
-                f"  error: `{err}`"
-            )
+            lines.append(f"• `{r['email_type']}` → `{r['to_email']}`\n  _{subj}_\n  error: `{err}`")
         if len(rows) > 15:
             lines.append(f"\n_...and {len(rows) - 15} more (see email_send_log)_")
         lines.append(

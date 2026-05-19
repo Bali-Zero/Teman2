@@ -21,6 +21,7 @@ Usage:
 Idempotent: skill_ids are stable; re-running updates the procedure while
 ``Genome.record_skill`` keeps the max(confidence).
 """
+
 from __future__ import annotations
 
 import argparse
@@ -62,7 +63,6 @@ SEED_SKILLS: list[dict[str, Any]] = [
         "success_criterion": "Row appears in genome with type='trajectory' and correct scope.",
         "confidence": 0.7,
     },
-
     # ─── RAG / retrieval cell ─────────────────────────────────────
     {
         "cell": "rag",
@@ -99,7 +99,6 @@ SEED_SKILLS: list[dict[str, Any]] = [
         "success_criterion": "No chunk loses context needed for its neighbour's question.",
         "confidence": 0.8,
     },
-
     # ─── KBLI cell ────────────────────────────────────────────────
     {
         "cell": "kbli",
@@ -124,7 +123,6 @@ SEED_SKILLS: list[dict[str, Any]] = [
         "success_criterion": "Grounded answer with source URL from imigrasi/BKPM.",
         "confidence": 0.8,
     },
-
     # ─── Pricing cell ─────────────────────────────────────────────
     {
         "cell": "pricing",
@@ -138,7 +136,6 @@ SEED_SKILLS: list[dict[str, Any]] = [
         "success_criterion": "No invented numbers; all quoted prices traceable to bali_zero_official_prices_2026.json.",
         "confidence": 0.9,
     },
-
     # ─── akta / document parsing cell ─────────────────────────────
     {
         "cell": "akta",
@@ -164,7 +161,6 @@ SEED_SKILLS: list[dict[str, Any]] = [
         "success_criterion": "Directors array populated even when page 1 is cover/seal.",
         "confidence": 0.9,
     },
-
     # ─── DLP / safety cell ────────────────────────────────────────
     {
         "cell": "safety",
@@ -178,7 +174,6 @@ SEED_SKILLS: list[dict[str, Any]] = [
         "success_criterion": "No PII egress; operator sees which rule triggered.",
         "confidence": 0.9,
     },
-
     # ─── ingestion / chunk pipeline ───────────────────────────────
     {
         "cell": "ingestion",
@@ -192,7 +187,6 @@ SEED_SKILLS: list[dict[str, Any]] = [
         "success_criterion": "Idempotent upsert; same source file maps to same point.",
         "confidence": 0.85,
     },
-
     # ─── CRM cell ─────────────────────────────────────────────────
     {
         "cell": "crm",
@@ -230,7 +224,6 @@ SEED_SKILLS: list[dict[str, Any]] = [
         "success_criterion": "No orphan minor folders in Drive CRM root.",
         "confidence": 0.85,
     },
-
     # ─── crm cell — renewals domain (Sprint 1.A 2026-05-02) ───────
     {
         "cell": "crm",
@@ -301,7 +294,6 @@ SEED_SKILLS: list[dict[str, Any]] = [
         "confidence": 0.6,
         "domain": "crm",
     },
-
     # ─── visa / oracle cell ───────────────────────────────────────
     {
         "cell": "visa_oracle",
@@ -315,7 +307,6 @@ SEED_SKILLS: list[dict[str, Any]] = [
         "success_criterion": "Answer includes imigrasi.go.id or official source URL.",
         "confidence": 0.85,
     },
-
     # ─── article_composer / curator cell ──────────────────────────
     {
         "cell": "article_composer",
@@ -340,7 +331,6 @@ SEED_SKILLS: list[dict[str, Any]] = [
         "success_criterion": "Publish API never 422s on length.",
         "confidence": 0.9,
     },
-
     # ─── routing / intent classifier ──────────────────────────────
     {
         "cell": "routing",
@@ -366,7 +356,6 @@ SEED_SKILLS: list[dict[str, Any]] = [
         "success_criterion": "Language matches user expectation 100% on sample review.",
         "confidence": 0.9,
     },
-
     # ─── knowledge_graph cell ─────────────────────────────────────
     {
         "cell": "knowledge_graph",
@@ -380,7 +369,6 @@ SEED_SKILLS: list[dict[str, Any]] = [
         "success_criterion": "p99 KG latency < 400ms on subgraph hit.",
         "confidence": 0.8,
     },
-
     # ─── llm / orchestration cell ─────────────────────────────────
     {
         "cell": "llm_clients",
@@ -405,7 +393,6 @@ SEED_SKILLS: list[dict[str, Any]] = [
         "success_criterion": "open_fds count stable under load.",
         "confidence": 0.85,
     },
-
     # ─── prompts / zantara_core ───────────────────────────────────
     {
         "cell": "prompts",
@@ -419,7 +406,6 @@ SEED_SKILLS: list[dict[str, Any]] = [
         "success_criterion": "grep -r 'SECURITY_BOUNDARY' returns only zantara_core.py as SSoT.",
         "confidence": 0.9,
     },
-
     # ─── auth / security cell ─────────────────────────────────────
     {
         "cell": "security",
@@ -433,7 +419,6 @@ SEED_SKILLS: list[dict[str, Any]] = [
         "success_criterion": "OpenClaw → backend-rag bridge calls succeed with 200.",
         "confidence": 0.85,
     },
-
     # ─── database / migration cell ────────────────────────────────
     {
         "cell": "database",
@@ -460,7 +445,6 @@ SEED_SKILLS: list[dict[str, Any]] = [
         "success_criterion": "No 'database is locked' errors under 10-thread stress test.",
         "confidence": 0.95,
     },
-
     # ─── drive / integrations cell ────────────────────────────────
     {
         "cell": "integrations",
@@ -486,7 +470,6 @@ SEED_SKILLS: list[dict[str, Any]] = [
         "success_criterion": "Cold boot reads sheet under 2s.",
         "confidence": 0.9,
     },
-
     # ─── caching cell ─────────────────────────────────────────────
     {
         "cell": "caching",
@@ -500,7 +483,6 @@ SEED_SKILLS: list[dict[str, Any]] = [
         "success_criterion": "Cache invalidation affects only owning namespace.",
         "confidence": 0.85,
     },
-
     # ─── federation / mata-garuda cell ────────────────────────────
     {
         "cell": "mata_garuda",
@@ -514,7 +496,6 @@ SEED_SKILLS: list[dict[str, Any]] = [
         "success_criterion": "Escalation reaches Pro within next session start.",
         "confidence": 0.85,
     },
-
     # ─── test / guardian cell ─────────────────────────────────────
     {
         "cell": "guardian",
@@ -563,11 +544,13 @@ def _default_db_path() -> str:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument(
-        "--db-path", default=_default_db_path(),
+        "--db-path",
+        default=_default_db_path(),
         help="Genome SQLite path (default: $EXPERIENCE_DB_PATH or ~/.nuzantara/experience.db).",
     )
     parser.add_argument(
-        "--apply", action="store_true",
+        "--apply",
+        action="store_true",
         help="Actually write the seed (default: dry-run).",
     )
     args = parser.parse_args(argv)

@@ -243,15 +243,18 @@ async def unified_conversations(
             if isinstance(meta, str):
                 meta = json.loads(meta)
 
-            conversations.append({
-                "id": row["id"],
-                "channel": row["channel"],
-                "direction": row["direction"],
-                "sender_id": row["sender_id"],
-                "content_preview": row["content_preview"],
-                "sender_name": (meta or {}).get("sender_name") or (meta or {}).get("first_name"),
-                "created_at": row["created_at"].isoformat() if row["created_at"] else None,
-            })
+            conversations.append(
+                {
+                    "id": row["id"],
+                    "channel": row["channel"],
+                    "direction": row["direction"],
+                    "sender_id": row["sender_id"],
+                    "content_preview": row["content_preview"],
+                    "sender_name": (meta or {}).get("sender_name")
+                    or (meta or {}).get("first_name"),
+                    "created_at": row["created_at"].isoformat() if row["created_at"] else None,
+                }
+            )
 
         return {
             "conversations": conversations,
@@ -269,7 +272,9 @@ async def unified_conversations(
 async def dlq_messages(
     request: Request,
     _user: dict = Depends(get_current_user),
-    status: str = Query("pending", description="Filter by status: pending, retrying, exhausted, delivered"),
+    status: str = Query(
+        "pending", description="Filter by status: pending, retrying, exhausted, delivered"
+    ),
     limit: int = Query(20, ge=1, le=100),
 ) -> dict[str, Any]:
     """View Dead Letter Queue messages for debugging failed deliveries."""
@@ -287,7 +292,8 @@ async def dlq_messages(
             ORDER BY created_at DESC
             LIMIT $2
             """,
-            status, limit,
+            status,
+            limit,
         )
 
         messages = [
@@ -335,7 +341,8 @@ async def dlq_retry_message(
     )
     if not result:
         exists = await db_pool.fetchval(
-            "SELECT status FROM failed_messages WHERE id = $1", message_id,
+            "SELECT status FROM failed_messages WHERE id = $1",
+            message_id,
         )
         if not exists:
             raise HTTPException(status_code=404, detail="Message not found")
@@ -349,7 +356,9 @@ async def dlq_retry_message(
 async def dlq_purge(
     request: Request,
     _user: dict = Depends(get_current_user),
-    older_than_days: int = Query(7, ge=1, le=90, description="Purge exhausted messages older than N days"),
+    older_than_days: int = Query(
+        7, ge=1, le=90, description="Purge exhausted messages older than N days"
+    ),
 ) -> dict[str, Any]:
     """Purge exhausted DLQ messages older than N days. Admin-only."""
     from backend.app.deps.crm_access import can_view_all_clients

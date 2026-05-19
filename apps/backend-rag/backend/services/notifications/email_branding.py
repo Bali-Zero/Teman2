@@ -7,7 +7,6 @@ Mail, iOS, Outlook). The asset itself lives in `apps/mouth/public/static/email/`
 and ships with every Mouth/Vercel deploy.
 """
 
-
 LOGO_URL = "https://kita.balizero.com/static/email/balizero-logo-email.png"
 
 # Bali Zero standard-doc palette (matches Tax Report cover + invoice PDF)
@@ -49,14 +48,14 @@ def team_email_html(
     rows_html = ""
     if meta_rows:
         cells = "".join(
-            f'<tr>'
+            f"<tr>"
             f'<td style="padding:6px 12px 6px 0;font-size:12px;color:{COLOR_MUTED};'
             f'font-family:Helvetica,Arial,sans-serif;white-space:nowrap;width:140px;">'
-            f'{label}</td>'
+            f"{label}</td>"
             f'<td style="padding:6px 0;font-size:13px;color:{COLOR_TEXT};'
             f'font-family:Helvetica,Arial,sans-serif;font-weight:600;">'
-            f'{value}</td>'
-            f'</tr>'
+            f"{value}</td>"
+            f"</tr>"
             for label, value in meta_rows
         )
         rows_html = (
@@ -65,7 +64,7 @@ def team_email_html(
             f'border-radius:6px;margin:0 0 20px;">'
             f'<tr><td style="padding:10px 16px;">'
             f'<table cellspacing="0" cellpadding="0" border="0">{cells}</table>'
-            f'</td></tr></table>'
+            f"</td></tr></table>"
         )
 
     cta_html = ""
@@ -74,10 +73,10 @@ def team_email_html(
             f'<div style="margin:8px 0 24px;">'
             f'<a href="{cta_url}" '
             f'style="display:inline-block;background:{COLOR_GOLD};color:{COLOR_NAVY};'
-            f'font-family:Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;'
+            f"font-family:Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;"
             f'padding:10px 20px;border-radius:6px;text-decoration:none;">'
-            f'{cta_label}</a>'
-            f'</div>'
+            f"{cta_label}</a>"
+            f"</div>"
         )
 
     return f"""<!doctype html>

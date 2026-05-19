@@ -251,14 +251,16 @@ def log_function_call(logger: logging.Logger) -> Callable[[T], T]:
                 result = await func(*args, **kwargs)
                 duration_ms = (time.perf_counter() - start_time) * 1000
                 logger.debug(
-                    "%s completed", func_name,
+                    "%s completed",
+                    func_name,
                     extra={"duration_ms": duration_ms, "context": {"success": True}},
                 )
                 return result
             except Exception as e:
                 duration_ms = (time.perf_counter() - start_time) * 1000
                 logger.error(
-                    "%s failed", func_name,
+                    "%s failed",
+                    func_name,
                     exc_info=True,
                     extra={
                         "duration_ms": duration_ms,
@@ -277,14 +279,16 @@ def log_function_call(logger: logging.Logger) -> Callable[[T], T]:
                 result = func(*args, **kwargs)
                 duration_ms = (time.perf_counter() - start_time) * 1000
                 logger.debug(
-                    "%s completed", func_name,
+                    "%s completed",
+                    func_name,
                     extra={"duration_ms": duration_ms, "context": {"success": True}},
                 )
                 return result
             except Exception as e:
                 duration_ms = (time.perf_counter() - start_time) * 1000
                 logger.error(
-                    "%s failed", func_name,
+                    "%s failed",
+                    func_name,
                     exc_info=True,
                     extra={
                         "duration_ms": duration_ms,

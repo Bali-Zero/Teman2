@@ -11,6 +11,7 @@ Gated by system_settings.compliance_alert_autotune_enabled == 'true'.
 Audit log to guardian_decisions (m098b) when changes are applied;
 gracefully skipped if the table does not exist (local dev).
 """
+
 from __future__ import annotations
 
 import logging

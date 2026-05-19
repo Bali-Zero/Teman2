@@ -9,6 +9,7 @@ Outputs:
 - research/sota-social-2026-v1/retrain_log.jsonl (append if retrained)
 - Telegram digest to Zero
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -25,9 +26,7 @@ import asyncpg
 
 from backend.services.measurer.m13_feedback_loop import M13FeedbackLoop
 
-logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("sota.m13.weekly")
 
 
@@ -69,9 +68,7 @@ async def main() -> int:
         for ch in channels:
             deltas[ch] = {}
             for p in pillars:
-                deltas[ch][p] = await m13.compute_delta_vs_baseline(
-                    channel=ch, pillar=p
-                )
+                deltas[ch][p] = await m13.compute_delta_vs_baseline(channel=ch, pillar=p)
 
         today = datetime.now(timezone.utc).date().isoformat()
         kpi_csv.parent.mkdir(parents=True, exist_ok=True)
@@ -106,9 +103,7 @@ async def main() -> int:
                 timeout=1800,
                 check=False,
             )
-            retrain_result = (
-                "OK" if result.returncode == 0 else f"FAIL rc={result.returncode}"
-            )
+            retrain_result = "OK" if result.returncode == 0 else f"FAIL rc={result.returncode}"
             with retrain_log.open("a") as f:
                 f.write(
                     json.dumps(
@@ -197,9 +192,7 @@ def _notify_telegram(
     try:
         urllib.request.urlopen(
             f"https://api.telegram.org/bot{token}/sendMessage",
-            urllib.parse.urlencode(
-                {"chat_id": chat, "text": "\n".join(summary)}
-            ).encode(),
+            urllib.parse.urlencode({"chat_id": chat, "text": "\n".join(summary)}).encode(),
             timeout=10,
         )
     except Exception:
