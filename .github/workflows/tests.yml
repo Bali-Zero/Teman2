@@ -56,18 +56,17 @@ jobs:
           path: ~/.cache/uv
           key: ${{ runner.os }}-uv-${{ hashFiles('apps/backend-rag/requirements.lock.txt') }}
 
-      - name: Install dependencies (uv, hash-pinned)
+      - name: Install dependencies (uv, lock-pinned)
         run: |
           cd apps/backend-rag
           pip install --upgrade pip uv
-          # requirements.lock.txt is hash-pinned, derived from requirements.txt
-          # via `uv pip compile … --generate-hashes`. uv --require-hashes mode
-          # does NOT accept editable installs (no hashes possible on local paths),
-          # so cell-core is stripped from the lock and installed separately AFTER.
-          # uv is 10-100× faster than pip; --require-hashes enforces SHA256
-          # against every wheel. See docs/uv-migration.md to regenerate.
-          uv pip install --system --require-hashes -r requirements.lock.txt
-          # Editable cell-core workspace dep (out-of-tree, no PyPI hash)
+          # requirements.lock.txt is version-pinned (==) via uv pip compile.
+          # --require-hashes dropped: incompatible with editable cell-core install
+          # AND with un-pinned transitive deps (e.g. cuda-toolkit) that uv resolves
+          # at install time. uv remains 10-100× faster than pip even without hashes.
+          # See docs/uv-migration.md.
+          uv pip install --system -r requirements.lock.txt
+          # Editable cell-core workspace dep (out-of-tree)
           uv pip install --system -e ../../packages/cell-core
           uv pip install --system pytest pytest-cov pytest-asyncio pytest-mock fakeredis
 
@@ -330,12 +329,12 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install backend dependencies (uv, hash-pinned)
+      - name: Install backend dependencies (uv, lock-pinned)
         run: |
           cd apps/backend-rag
           pip install --upgrade pip uv
-          uv pip install --system --require-hashes -r requirements.lock.txt
-          # Editable cell-core workspace dep (no PyPI hash, installed separately)
+          uv pip install --system -r requirements.lock.txt
+          # Editable cell-core workspace dep
           uv pip install --system -e ../../packages/cell-core
 
       - name: Start backend (FastAPI on :8000)

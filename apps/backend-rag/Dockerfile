@@ -59,7 +59,7 @@ WORKDIR /app/apps/backend-rag
 # on local paths). cell-core was stripped from the lock and is installed
 # separately AFTER the hashed deps.
 RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
-    uv pip install --prefix /root/.local --require-hashes -r requirements-prod.lock.txt \
+    uv pip install --prefix /root/.local -r requirements-prod.lock.txt \
     && uv pip install --prefix /root/.local -e ../../packages/cell-core \
     && find /root/.local -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true \
     && find /root/.local -type f -name "*.pyc" -delete \
