@@ -366,24 +366,56 @@ async def _download_video_media(
     *,
     media_id: str,
     dest: Path,
-    timeout_s: int = 120,
+    timeout_s: int = 240,
+    poll_interval_s: int = 10,
 ) -> None:
-    """GET /api/flow/media/<media_id> → JSON {video:{encodedVideo: base64}} → MP4."""
+    """GET /api/flow/media/<media_id> with poll until ready → MP4.
+
+    Empirical 2026-05-20: generate-video returns media_id immediately but the
+    backing Veo render is async. The media endpoint returns:
+      - {"detail": {"error": {"code": 404, "status": "NOT_FOUND"}}} while pending
+      - {"name": ..., "video": {"encodedVideo": "<base64>"}} once ready
+
+    Polls every poll_interval_s up to timeout_s total. Veo 3.1 fast portrait
+    typically ready in 30-90s.
+    """
     url = urljoin(ctx.endpoint + "/", f"api/flow/media/{media_id}")
-    try:
-        payload = await asyncio.wait_for(
-            _http_get_json(url, timeout_s=timeout_s),
-            timeout=timeout_s,
-        )
-    except asyncio.TimeoutError as e:
-        raise FlowkitTimeoutError(f"media download timeout {media_id[:8]}") from e
+    deadline = asyncio.get_event_loop().time() + timeout_s
+
+    payload: dict[str, Any] = {}
+    while asyncio.get_event_loop().time() < deadline:
+        try:
+            payload = await asyncio.wait_for(
+                _http_get_json(url, timeout_s=30),
+                timeout=30,
+            )
+        except asyncio.TimeoutError:
+            payload = {}
+        # Two known non-ready shapes:
+        # (a) 404 NOT_FOUND envelope (Veo upstream still rendering)
+        # (b) ok response but encodedVideo empty (rare transitional)
+        if "detail" in payload and "error" in (payload.get("detail") or {}):
+            err = payload["detail"]["error"]
+            code = err.get("code")
+            if code in (404, "404", "NOT_FOUND"):
+                # Still pending — sleep and retry.
+                await asyncio.sleep(poll_interval_s)
+                continue
+            # Other error → fail loud
+            raise FlowkitError(f"media {media_id[:8]} download error: {err}")
+        video = payload.get("video") or {}
+        encoded = video.get("encodedVideo")
+        if encoded:
+            break
+        # Empty encodedVideo + no error → also pending
+        await asyncio.sleep(poll_interval_s)
 
     video = payload.get("video") or {}
     encoded = video.get("encodedVideo")
     if not encoded:
-        raise FlowkitError(
-            f"media {media_id[:8]} has no encodedVideo. "
-            f"Keys present: {list(payload.keys())}, video keys: {list(video.keys())}"
+        raise FlowkitTimeoutError(
+            f"media {media_id[:8]} not ready after {timeout_s}s polling. "
+            f"Last payload keys: {list(payload.keys())}"
         )
 
     try:
