@@ -3,7 +3,8 @@
 Drives a single fixture observation through every layer of the Intel Lake
 pipeline and asserts each hop. Probe data is hard-isolated via migration
 187 (is_probe_sandbox boolean + CHECK constraint) and NB-PROBE-SANDBOX-2026-05
-NotebookLM notebook UUID 7e6ae978-136c-4c96-bed5-9fab6f39176f.
+NotebookLM notebook UUID 1e33e107-4064-48cd-b09d-f7f0a52b31ea (profile=zero,
+recreated 2026-05-20 Phase F.4 after pusher profile-mismatch discovery).
 
 Pipeline hops verified:
     1. POST /api/intel/lake/observations-batch  → outbox row inserted
@@ -47,7 +48,7 @@ import httpx
 logger = logging.getLogger("intel-lake.probe")
 
 PROBE_PRODUCER = f"probe-sandbox-{time.strftime('%Y-%m-%d')}"
-NB_SANDBOX_UUID = "7e6ae978-136c-4c96-bed5-9fab6f39176f"
+NB_SANDBOX_UUID = "1e33e107-4064-48cd-b09d-f7f0a52b31ea"
 
 
 @dataclass

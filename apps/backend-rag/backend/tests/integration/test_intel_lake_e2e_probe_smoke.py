@@ -43,7 +43,7 @@ def test_probe_fixture_schema_stable(probe_module):
 
 
 def test_probe_constants(probe_module):
-    assert probe_module.NB_SANDBOX_UUID == "7e6ae978-136c-4c96-bed5-9fab6f39176f"
+    assert probe_module.NB_SANDBOX_UUID == "1e33e107-4064-48cd-b09d-f7f0a52b31ea"
     assert probe_module.PROBE_PRODUCER.startswith("probe-sandbox-")
 
 
