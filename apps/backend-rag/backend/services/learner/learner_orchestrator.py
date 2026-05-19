@@ -131,7 +131,7 @@ class LearnerOrchestrator:
         # 1. find eligible posts (72h-168h old, published)
         try:
             posts = await self._eligible_posts(now=now)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             result.errors.append(f"eligible_posts: {type(exc).__name__}: {exc}")
             return result
 
@@ -146,7 +146,7 @@ class LearnerOrchestrator:
                         platform=post.platform,
                         days=self.reach_history_days,
                     )
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     reach_cache[post.platform] = []
                     result.errors.append(f"reach_history {post.platform.value}: {exc}")
 
@@ -164,7 +164,7 @@ class LearnerOrchestrator:
                     result.scars_recorded += 1
                 elif pl.decision == LearningDecision.INCOMPLETE:
                     result.incomplete += 1
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 result.errors.append(f"learn post {post.id}: {type(exc).__name__}: {exc}")
 
         return result

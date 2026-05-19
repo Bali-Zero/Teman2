@@ -22,7 +22,6 @@ import pytest
 from backend.db import schema_audit
 from backend.db.schema_audit import AuditReport, Finding, run_audit
 
-
 # ---------------------------------------------------------------------------
 # Fakes
 # ---------------------------------------------------------------------------

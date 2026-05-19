@@ -11,17 +11,17 @@ from .pipeline import KGPipeline, PipelineConfig
 from .quality_filter import KGQualityFilter, apply_quality_filter_to_batch
 
 __all__ = [
-    "EntityType",
-    "RelationType",
     "ENTITY_SCHEMAS",
     "RELATION_SCHEMAS",
+    "CoreferenceResolver",
+    "EntityType",
     "ExtractedEntity",
     "ExtractedRelation",
     "ExtractionResult",
     "GeminiKGExtractor",
-    "CoreferenceResolver",
     "KGPipeline",
-    "PipelineConfig",
     "KGQualityFilter",
+    "PipelineConfig",
+    "RelationType",
     "apply_quality_filter_to_batch",
 ]

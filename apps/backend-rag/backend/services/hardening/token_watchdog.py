@@ -76,7 +76,7 @@ class TokenWatchdog:
         for label, probe in self.probes:
             try:
                 report = await probe()
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 result.errors.append(f"probe {label}: {type(exc).__name__}: {exc}")
                 continue
             # attach days_remaining from the provided expires_at
@@ -177,7 +177,7 @@ async def probe_meta_graph_token(
             ok=True,
             expires_at=datetime.fromtimestamp(int(expires_at), tz=timezone.utc),
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         return TokenExpiryReport(
             provider=provider,
             ok=False,

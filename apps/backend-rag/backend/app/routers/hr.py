@@ -17,7 +17,6 @@ from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from pydantic import BaseModel, Field, model_validator
 
 from backend.app.dependencies import get_current_user, get_database_pool
-from backend.core.cache import invalidate_cache
 from backend.app.services.hr.hr_leave_notifier import (
     notify_leave_request_pending,
     notify_leave_request_reviewed,
@@ -25,6 +24,7 @@ from backend.app.services.hr.hr_leave_notifier import (
 from backend.app.services.hr.hr_leave_routing import resolve_approver
 from backend.app.services.hr.hr_service import HRService
 from backend.app.utils.hr_utils import is_hr_admin
+from backend.core.cache import invalidate_cache
 
 logger = logging.getLogger(__name__)
 

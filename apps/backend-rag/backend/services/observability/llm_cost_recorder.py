@@ -249,7 +249,7 @@ class LLMCostRecorder:
         try:
             self._write_prometheus(event)
             results["prometheus"] = True
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("prometheus write failed for llm_cost event: %s", exc)
 
         # Postgres + JSONL run in parallel.
@@ -261,12 +261,12 @@ class LLMCostRecorder:
         try:
             await pg_task
             results["postgres"] = True
-        except BaseException as exc:  # noqa: BLE001 — catch every failure mode
+        except BaseException as exc:
             pg_err = exc
         try:
             await jsonl_task
             results["jsonl"] = True
-        except BaseException as exc:  # noqa: BLE001
+        except BaseException as exc:
             jsonl_err = exc
 
         if pg_err is not None:

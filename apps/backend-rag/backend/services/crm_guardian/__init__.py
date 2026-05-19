@@ -23,9 +23,9 @@ from .base import (
     GuardianConfig,
     GuardianEvent,
     GuardianRunContext,
+    Rule,
     build_drive_service,
     compute_rule,
-    Rule,
     record_event,
 )
 

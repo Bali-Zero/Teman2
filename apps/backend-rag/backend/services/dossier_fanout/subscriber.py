@@ -73,7 +73,7 @@ class IntelEventSubscriber:
 
         try:
             dossier = await self.repo.get_dossier(dossier_id)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self.logger.warning(
                 "intel.event get_dossier failed %s: %s",
                 dossier_id,
@@ -90,7 +90,7 @@ class IntelEventSubscriber:
 
         try:
             return await self.dispatcher.dispatch(dossier)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self.logger.warning(
                 "intel.event dispatch failed %s: %s",
                 dossier_id,

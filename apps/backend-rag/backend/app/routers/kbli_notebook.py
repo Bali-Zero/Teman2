@@ -173,7 +173,7 @@ async def kbli_llm_health() -> Any:
             )
 
     except Exception as e:
-        health_status["error"] = f"Health check failed: {str(e)}"
+        health_status["error"] = f"Health check failed: {e!s}"
         logger.error("❌ LLM health check error: %s", e, exc_info=True)
 
     return health_status
@@ -278,7 +278,7 @@ async def search_kbli(
         logger.warning("⚠️ KBLI Search timeout: %s", e)
         raise HTTPException(status_code=503, detail="Search engine temporarily unavailable") from e
     except Exception as e:
-        logger.error(f"❌ KBLI Search Failed: {str(e)}", exc_info=True)
+        logger.error(f"❌ KBLI Search Failed: {e!s}", exc_info=True)
         raise HTTPException(status_code=500, detail="Search engine unavailable") from e
 
 

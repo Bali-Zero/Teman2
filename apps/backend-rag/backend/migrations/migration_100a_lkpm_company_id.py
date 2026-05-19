@@ -92,7 +92,6 @@ async def apply(conn: Any) -> None:
     """)
     logger.info("✅ Created company_id indexes")
 
-    print("✅ Applied migration 100: LKPM company_id support")
 
 
 async def rollback(conn: Any) -> None:
@@ -118,4 +117,3 @@ async def rollback(conn: Any) -> None:
     await conn.execute("ALTER TABLE lkpm_reports DROP COLUMN IF EXISTS company_id;")
     await conn.execute("ALTER TABLE lkpm_client_config DROP COLUMN IF EXISTS company_id;")
 
-    print("✅ Rolled back migration 100: LKPM company_id support")

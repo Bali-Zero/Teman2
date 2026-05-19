@@ -46,5 +46,5 @@ class OrchestratorReporter:
                 json=payload,
                 timeout=5.0,
             )
-        except Exception as exc:  # noqa: BLE001 — never crash on reporting
+        except Exception as exc:
             logger.debug("Failed to report to orchestrator: %s", exc)

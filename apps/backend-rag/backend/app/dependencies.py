@@ -30,7 +30,7 @@ See: app.setup.service_initializer::initialize_services() for initialization log
 # We expose it as a module-level __getattr__ so that consumers like health.py
 # who do `from backend.app.dependencies import _agentic_rag_orchestrator`
 # always get the current value from the source module (not a stale snapshot).
-import backend.app.deps.orchestrator as _orch_mod  # noqa: E402
+import backend.app.deps.orchestrator as _orch_mod
 from backend.app.deps.auth import (
     get_current_portal_client,
     get_current_user,
@@ -76,28 +76,28 @@ def __getattr__(name: str):
 
 
 __all__ = [
-    # auth
-    "security",
-    "get_current_user",
-    "get_current_user_optional",
-    "get_current_user_email",
-    "require_team_member",
-    "require_owner",
     "OWNER_EMAILS",
-    "get_current_portal_client",
-    # database
-    "get_database_pool",
-    "get_database",
-    "get_db",
-    "get_optional_database_pool",
-    # services
-    "get_search_service",
+    "_agentic_rag_orchestrator",  # noqa: F822  (resolved via module __getattr__ above)
     "get_ai_client",
-    "get_intelligent_router",
-    "get_memory_service",
     "get_cache",
     "get_channel_router",
+    "get_current_portal_client",
+    "get_current_user",
+    "get_current_user_email",
+    "get_current_user_optional",
+    "get_database",
+    # database
+    "get_database_pool",
+    "get_db",
+    "get_intelligent_router",
+    "get_memory_service",
+    "get_optional_database_pool",
     # orchestrator
     "get_orchestrator",
-    "_agentic_rag_orchestrator",  # noqa: F822  (resolved via module __getattr__ above)
+    # services
+    "get_search_service",
+    "require_owner",
+    "require_team_member",
+    # auth
+    "security",
 ]

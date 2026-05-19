@@ -37,7 +37,7 @@ from backend.services.visa_check.catalogue import FitTag, VisaMeta, VisaType
 # The lazy import is safe because _rank_for_purpose() is only called after
 # both modules have fully initialised.
 def _get_visa_meta() -> dict[VisaType, VisaMeta]:
-    from backend.services.visa_check.catalogue import VISA_META  # noqa: PLC0415
+    from backend.services.visa_check.catalogue import VISA_META
 
     return VISA_META
 

@@ -125,7 +125,7 @@ async def run_crm_drive_autowatch(
                 continue
             await create_workspace_ai_snapshot(pool, payload, created_by=created_by)
             summary["snapshots_created"] += 1
-        except Exception as exc:  # noqa: BLE001 - batch must continue
+        except Exception as exc:
             logger.error(
                 "CRM Drive autowatcher failed creating snapshot for company %s: %s",
                 evidence.company_id,

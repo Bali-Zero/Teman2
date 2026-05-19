@@ -162,7 +162,7 @@ class IntelCoverHandler:
         if caption.strip().lower().startswith("/cover "):
             item_id = caption.strip().split(maxsplit=1)[1].strip()
             # Find in map by item_id
-            for _msg_id, mapping in self._notification_map.items():
+            for mapping in self._notification_map.values():
                 if mapping["item_id"] == item_id:
                     return (
                         mapping["intel_type"],
@@ -244,7 +244,7 @@ class IntelCoverHandler:
         """Send help message when photo cannot be matched to an article."""
         # List articles without covers
         pending = []
-        for _msg_id, mapping in self._notification_map.items():
+        for mapping in self._notification_map.values():
             item_id = mapping["item_id"]
             title = mapping.get("title", item_id)
             # Check if cover already exists

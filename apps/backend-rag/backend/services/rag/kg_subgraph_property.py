@@ -97,7 +97,7 @@ async def _resolve_desa_code_from_latlng(lat: float, lng: float, gmaps_api_key: 
     except (httpx.HTTPError, ValueError, KeyError) as e:
         logger.warning("⚠️ [Zoning] Google Maps geocoding failed: %s", e)
         return None
-    except Exception as e:  # noqa: BLE001 — geocoding is optional; fall through to next provider
+    except Exception as e:
         logger.warning("⚠️ [Zoning] Google Maps geocoding failed unexpectedly: %s", e, exc_info=True)
         return None
 
@@ -127,7 +127,7 @@ async def _fetch_badung_provider(desa_code: str, db_pool: asyncpg.Pool) -> int:
     except (httpx.HTTPError, ValueError) as e:
         logger.warning("⚠️ [Zoning] Badung fetch failed: %s", e)
         return 0
-    except Exception as e:  # noqa: BLE001 — provider outage must not crash ingestion caller
+    except Exception as e:
         logger.warning("⚠️ [Zoning] Badung fetch failed unexpectedly: %s", e, exc_info=True)
         return 0
 
@@ -185,7 +185,7 @@ async def _fetch_gistaru_provider(desa_code: str, db_pool: asyncpg.Pool) -> int:
     except (httpx.HTTPError, ValueError) as e:
         logger.warning("⚠️ [Zoning] GISTARU fetch failed: %s", e)
         return 0
-    except Exception as e:  # noqa: BLE001 — provider outage must not crash ingestion caller
+    except Exception as e:
         logger.warning("⚠️ [Zoning] GISTARU fetch failed unexpectedly: %s", e, exc_info=True)
         return 0
 
@@ -253,7 +253,7 @@ async def _execute_batch_insert(rows: list[tuple[Any, ...]], db_pool: asyncpg.Po
     except asyncpg.PostgresError as e:
         logger.error("❌ [Zoning] Batch insert failed (DB): %s", e)
         return 0
-    except Exception as e:  # noqa: BLE001 — insert failure must not crash ingestion job
+    except Exception as e:
         logger.error("❌ [Zoning] Batch insert failed (unexpected): %s", e, exc_info=True)
         return 0
 
@@ -282,7 +282,7 @@ async def _check_existing_zoning(
     except asyncpg.PostgresError as e:
         logger.error("❌ [Zoning] DB check failed: %s", e)
         return None
-    except Exception as e:  # noqa: BLE001 — cache-lookup failure must fall through to live providers
+    except Exception as e:
         logger.error("❌ [Zoning] DB check failed unexpectedly: %s", e, exc_info=True)
         return None
 
@@ -547,7 +547,7 @@ async def get_property_requirements_node(state: Any, db_pool: Any = None) -> dic
                     )
         except asyncpg.PostgresError as e:
             logger.warning("[Property/legacy] KG query failed (DB), using fallback: %s", e)
-        except Exception as e:  # noqa: BLE001 — fallback below runs on any KG failure
+        except Exception as e:
             logger.warning(
                 "[Property/legacy] KG query failed unexpectedly, using fallback: %s",
                 e,

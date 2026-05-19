@@ -11,6 +11,6 @@ from backend.app.auth.validation import (
 
 __all__ = [
     "validate_api_key",
-    "validate_auth_token",
     "validate_auth_mixed",
+    "validate_auth_token",
 ]

@@ -1147,7 +1147,7 @@ class ZohoEmailService:
                 f"filename={filename!r}: {e}",
                 exc_info=True,
             )
-            raise ValueError(f"Network error uploading '{original_filename}': {str(e)}")
+            raise ValueError(f"Network error uploading '{original_filename}': {e!s}")
 
     # ═══════════════════════════════════════════
     # DRAFT OPERATIONS

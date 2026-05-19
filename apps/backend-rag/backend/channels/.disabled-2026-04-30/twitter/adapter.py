@@ -10,10 +10,10 @@ from collections.abc import AsyncIterator
 from typing import Any
 
 import httpx
-
-from backend.channels.base import BaseChannel, ChannelMessage, ChannelResponse
 from backend.channels.twitter.config import TwitterChannelConfig
 from backend.channels.twitter.formatter import TwitterMessageFormatter
+
+from backend.channels.base import BaseChannel, ChannelMessage, ChannelResponse
 
 logger = logging.getLogger(__name__)
 

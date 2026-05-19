@@ -32,9 +32,7 @@ async def apply(conn: Any) -> None:
         "INSERT INTO migrations (migration_name) VALUES ('035_kbli_blueprints') ON CONFLICT DO NOTHING;",
     )
 
-    print("✅ Applied migration 035: KBLI Blueprints table created")
 
 
 async def rollback(conn: Any) -> None:
     await conn.execute("DROP TABLE IF EXISTS kbli_blueprints;")
-    print("Rollback migration 035: KBLI Blueprints table dropped")

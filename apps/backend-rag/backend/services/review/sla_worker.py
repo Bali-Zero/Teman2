@@ -113,7 +113,7 @@ class SLAWorker:
                         await self._send_alert(draft, age, kind="soft")
                         result.soft_alerts_sent += 1
                     continue
-            except Exception as exc:  # noqa: BLE001 — never abort the sweep
+            except Exception as exc:
                 msg = f"sla sweep failed for draft {draft.draft_id}: {exc}"
                 self.logger.warning(msg, exc_info=True)
                 result.errors.append(msg)

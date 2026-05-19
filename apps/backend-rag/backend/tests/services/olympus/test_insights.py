@@ -1,7 +1,9 @@
 """Tests for Olympus v3 InsightsCollector."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
 from backend.services.olympus.insights import InsightsCollector
 
 

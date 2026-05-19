@@ -83,7 +83,7 @@ class AlertRepository(BaseRepository):
         self._conn: asyncpg.Connection | None = None
 
     @classmethod
-    def with_connection(cls, conn: asyncpg.Connection) -> "AlertRepository":
+    def with_connection(cls, conn: asyncpg.Connection) -> AlertRepository:
         """Bind the repo to a single pre-acquired connection (tests)."""
         inst = cls.__new__(cls)
         inst.db_pool = None  # type: ignore[assignment]

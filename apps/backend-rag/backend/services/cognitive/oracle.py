@@ -312,7 +312,7 @@ class OracleOrchestrator:
         result = OracleResult(ran_at=datetime.now(timezone.utc))
         try:
             context = await self.context_fn()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             result.errors.append(f"context: {type(exc).__name__}: {exc}")
             return result
         result.context_chars = len(context)
@@ -321,7 +321,7 @@ class OracleOrchestrator:
             proposals, final_moves = await self.council.deliberate(
                 context=context,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             result.errors.append(f"council: {type(exc).__name__}: {exc}")
             return result
         result.proposals = proposals
@@ -331,7 +331,7 @@ class OracleOrchestrator:
             try:
                 inserted = await self.cognitive_repo.insert_ultra_move(move)
                 result.inserted.append(inserted)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 result.errors.append(f"insert {move.thesis[:50]}: {type(exc).__name__}: {exc}")
 
         return result
@@ -369,7 +369,7 @@ def _coerce_move(raw: Any) -> UltraMoveCreate | None:
             ),
             source_inputs=source_inputs,
         )
-    except Exception as exc:  # noqa: BLE001 — Pydantic validation errors
+    except Exception as exc:
         logger.debug("coerce_move failed: %s", exc)
         return None
 

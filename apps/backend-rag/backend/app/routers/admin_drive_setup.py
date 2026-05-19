@@ -58,7 +58,7 @@ async def use_service_account(request: Request) -> dict[str, Any]:
         }
 
     except Exception as e:
-        return {"status": "error", "message": f"Service Account test failed: {str(e)}"}
+        return {"status": "error", "message": f"Service Account test failed: {e!s}"}
 
 
 @router.get("/service-account-status")

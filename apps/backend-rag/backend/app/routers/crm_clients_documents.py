@@ -560,7 +560,7 @@ async def delete_client_document(
         raise
     except Exception as e:
         logger.error("Document deletion failed: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Deletion failed: {e!s}") from e
 
 
 # ================================================
@@ -695,7 +695,7 @@ Rules:
         raise
     except Exception as e:
         logger.error("NPWP extraction failed: %s", e, exc_info=True)
-        return NpwpExtractResponse(success=False, message=f"Extraction failed: {str(e)}")
+        return NpwpExtractResponse(success=False, message=f"Extraction failed: {e!s}")
 
 
 # ================================================
@@ -830,7 +830,7 @@ Rules:
         raise
     except Exception as e:
         logger.error("NIB extraction failed: %s", e, exc_info=True)
-        return NibExtractResponse(success=False, message=f"Extraction failed: {str(e)}")
+        return NibExtractResponse(success=False, message=f"Extraction failed: {e!s}")
 
 
 # ================================================
@@ -885,4 +885,4 @@ async def get_client_required_documents(
         raise
     except Exception as e:
         logger.error("Failed to get client required documents: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to get documents: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Failed to get documents: {e!s}") from e

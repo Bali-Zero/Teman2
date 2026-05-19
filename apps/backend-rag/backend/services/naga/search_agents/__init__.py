@@ -13,11 +13,11 @@ from backend.services.naga.search_agents.domain_agent import (
 from backend.services.naga.search_agents.exa_agent import ExaSearchAgent
 
 __all__ = [
+    "GOV_DOMAINS",
     "AgentResponse",
     "BaseSearchAgent",
     "BraveSearchAgent",
     "ExaSearchAgent",
-    "GOV_DOMAINS",
     "IndonesiaDomainAgent",
     "SearchResult",
 ]

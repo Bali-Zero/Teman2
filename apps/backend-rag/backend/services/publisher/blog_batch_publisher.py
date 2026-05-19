@@ -99,7 +99,7 @@ class BlogBatchPublisher:
                 already_today = await self.repo.count_posts_published_today(
                     Platform.BLOG,
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 result.errors.append(
                     f"daily_count: {type(exc).__name__}: {exc}",
                 )
@@ -129,7 +129,7 @@ class BlogBatchPublisher:
                     clock=now_fn,
                     staged_files=staged_files,
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 result.errors.append(f"draft {draft.draft_id}: {type(exc).__name__}: {exc}")
                 continue
 
@@ -145,7 +145,7 @@ class BlogBatchPublisher:
                     staged_files=staged_files,
                     published=result.published,
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 result.errors.append(f"commit: {type(exc).__name__}: {exc}")
         else:
             # nothing new to commit; still pushed=True trivially
@@ -188,7 +188,7 @@ class BlogBatchPublisher:
         if file_path.exists():
             try:
                 existing = file_path.read_text(encoding="utf-8")
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 return PublishResult(
                     ok=False,
                     platform=Platform.BLOG,

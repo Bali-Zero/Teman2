@@ -154,10 +154,8 @@ async def run_migration():
     """Run the migration."""
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
-        print("ERROR: DATABASE_URL environment variable not set")
         sys.exit(1)
 
-    print("Connecting to database...")
     conn = await asyncpg.connect(database_url)
 
     try:
@@ -170,30 +168,20 @@ async def run_migration():
         """)
 
         if exists:
-            print("Table folder_access_rules already exists")
             count = await conn.fetchval("SELECT COUNT(*) FROM folder_access_rules")
-            print(f"Current rule count: {count}")
 
             if count == 0:
-                print("Table is empty, seeding data...")
                 await conn.execute(SEED_SQL)
                 count = await conn.fetchval("SELECT COUNT(*) FROM folder_access_rules")
-                print(f"Seeded {count} rules")
             else:
-                print("Skipping seed (table has data). To re-seed, run:")
-                print("  DELETE FROM folder_access_rules; then re-run this script")
+                pass
         else:
-            print("Creating folder_access_rules table...")
             await conn.execute(MIGRATION_SQL)
-            print("Table created successfully")
 
-            print("Seeding initial access rules...")
             await conn.execute(SEED_SQL)
             count = await conn.fetchval("SELECT COUNT(*) FROM folder_access_rules")
-            print(f"Seeded {count} rules")
 
         # Show summary
-        print("\n=== Migration 037 Complete ===")
         rules = await conn.fetch("""
             SELECT context_folder, COUNT(*) as count
             FROM folder_access_rules
@@ -201,8 +189,7 @@ async def run_migration():
             ORDER BY context_folder NULLS FIRST
         """)
         for rule in rules:
-            ctx = rule["context_folder"] or "ROOT"
-            print(f"  {ctx}: {rule['count']} rules")
+            rule["context_folder"] or "ROOT"
 
     finally:
         await conn.close()

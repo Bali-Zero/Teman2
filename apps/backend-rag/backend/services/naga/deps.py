@@ -184,7 +184,7 @@ async def _gemini_generate(prompt: str = "", **kwargs: Any) -> dict:  # noqa: AR
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout, stderr = await asyncio.wait_for(
+        stdout, _stderr = await asyncio.wait_for(
             proc.communicate(input=prompt.encode("utf-8")),
             timeout=120.0,
         )

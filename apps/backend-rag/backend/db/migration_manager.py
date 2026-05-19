@@ -24,8 +24,8 @@ logger = logging.getLogger(__name__)
 # as dead code (CodeQL: py/unused-global-variable).
 _ROLLBACK_MARKER_RE = ROLLBACK_MARKER_RE
 __all__ = [
-    "MigrationManager",
     "_ROLLBACK_MARKER_RE",
+    "MigrationManager",
     "_assert_unique_migration_numbers",
     "_extract_rollback_sql",
 ]

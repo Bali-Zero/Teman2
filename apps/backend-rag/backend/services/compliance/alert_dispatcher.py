@@ -19,8 +19,9 @@ from __future__ import annotations
 
 import logging
 import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, Callable
+from typing import Any
 
 import asyncpg
 
@@ -83,7 +84,7 @@ class AlertDispatcher:
         cls,
         conn: asyncpg.Connection,
         **svc: Any,
-    ) -> "AlertDispatcher":
+    ) -> AlertDispatcher:
         """Bind the dispatcher to a single pre-acquired connection (tests / TXN scope)."""
         return cls(db_pool=None, connection=conn, **svc)
 
@@ -121,7 +122,7 @@ class AlertDispatcher:
 
             try:
                 await self._send_one(channel, alert, portal_user_id)
-            except Exception as exc:  # noqa: BLE001  -- per-channel isolation (decision #11)
+            except Exception as exc:
                 logger.warning(
                     "channel %s failed for alert %s: %s",
                     channel,
@@ -134,7 +135,7 @@ class AlertDispatcher:
             # retract the send.
             try:
                 await self._log_sent(user_id, channel, ref)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.error(
                     "notification_log insert failed for %s (send already completed): %s",
                     ref,
@@ -304,4 +305,4 @@ class AlertDispatcher:
         )
 
 
-__all__ = ["AlertDispatcher", "SYSTEM_TEAM_UUID"]
+__all__ = ["SYSTEM_TEAM_UUID", "AlertDispatcher"]

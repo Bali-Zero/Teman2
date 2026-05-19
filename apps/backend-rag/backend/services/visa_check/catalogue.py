@@ -341,10 +341,10 @@ EXTENSION_POLICY: dict[VisaType, tuple[int, int]] = {
 
 
 __all__ = [
-    "VisaType",
-    "VisaMeta",
-    "FitTag",
-    "VISA_META",
     "DEFAULT_DURATION_DAYS",
     "EXTENSION_POLICY",
+    "VISA_META",
+    "FitTag",
+    "VisaMeta",
+    "VisaType",
 ]

@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock
 from uuid import uuid4
 
+import pytest
+
 from backend.services.measurer.m13_feedback_loop import (
-    M13FeedbackLoop,
     M13CollectionHorizon,
+    M13FeedbackLoop,
 )
 
 

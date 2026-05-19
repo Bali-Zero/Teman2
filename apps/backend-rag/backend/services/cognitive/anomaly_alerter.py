@@ -170,7 +170,7 @@ class AnomalyAlerter:
 
         try:
             await self.repo.mark_alert_notified(alert.id)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             # Telegram already sent. Log, but don't flip the flag.
             self.logger.warning(
                 "mark_alert_notified failed alert=%s: %s",

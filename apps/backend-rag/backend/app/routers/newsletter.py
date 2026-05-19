@@ -88,7 +88,7 @@ async def send_confirmation_email(
             body=body,
             log_context=f"newsletter-double-optin email={email}",
         )
-    except Exception as e:  # noqa: BLE001 — fire-and-forget; never block subscribe()
+    except Exception as e:
         logger.warning(
             "Newsletter confirmation email failed (swallowed): %s",
             e,

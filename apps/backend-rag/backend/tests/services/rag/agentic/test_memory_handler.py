@@ -10,7 +10,6 @@ import pytest
 
 from backend.services.rag.agentic.memory_handler import MemoryHandler
 
-
 # ============================================================
 # Fixtures
 # ============================================================

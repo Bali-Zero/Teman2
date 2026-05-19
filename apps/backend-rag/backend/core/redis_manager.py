@@ -394,10 +394,7 @@ class RedisManager:
         Returns:
             Number of keys deleted
         """
-        if session_id:
-            pattern = f"zantara:session:{session_id}:*"
-        else:
-            pattern = "zantara:session:*"
+        pattern = f"zantara:session:{session_id}:*" if session_id else "zantara:session:*"
         return await self.invalidate_by_pattern(pattern)
 
     async def invalidate_faq_cache(self) -> int:

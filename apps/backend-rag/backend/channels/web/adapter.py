@@ -195,7 +195,7 @@ class WebChannelAdapter(BaseChannel):
                 "type": "error",
                 "data": {
                     "error_type": "fatal_error",
-                    "message": f"Stream failed: {str(e)}",
+                    "message": f"Stream failed: {e!s}",
                     "fatal": True,
                     "correlation_id": channel_id,
                 },

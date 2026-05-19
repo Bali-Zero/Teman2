@@ -111,7 +111,7 @@ class TestMapper:
 
         # Look for tests in corresponding test directories
         for depth in range(len(module_parts)):
-            test_module_parts = ["tests"] + module_parts[depth:]
+            test_module_parts = ["tests", *module_parts[depth:]]
             test_pattern = self.repo_path / Path(*test_module_parts) / f"test_{module_parts[-1]}.py"
 
             if test_pattern.exists():

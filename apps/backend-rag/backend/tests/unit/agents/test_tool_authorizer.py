@@ -32,7 +32,6 @@ from backend.services.agents.tool_authorizer import (
 from backend.services.rag.agentic.tool_executor import execute_tool
 from backend.services.tools.definitions import BaseTool
 
-
 # ─────────────────────────────────────────────────────────────────────────
 # Test fixtures
 # ─────────────────────────────────────────────────────────────────────────

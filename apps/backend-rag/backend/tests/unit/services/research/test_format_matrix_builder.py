@@ -3,10 +3,10 @@
 from __future__ import annotations
 
 from backend.services.research.format_matrix_builder import (
-    FormatMatrixBuilder,
     CHANNELS,
     OBJECTIVES,
     REGISTERS,
+    FormatMatrixBuilder,
 )
 
 

@@ -259,8 +259,7 @@ async def run_migration():
         await conn.close()
         return True
 
-    except Exception as e:
-        print(f"❌ Migration failed: {e}")
+    except Exception:
         import traceback
 
         traceback.print_exc()

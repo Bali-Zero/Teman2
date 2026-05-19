@@ -23,8 +23,8 @@ __all__ = [
     "get_client_assigned_to",
     "get_client_by_id",
     "get_client_email",
-    "verify_client_access",
     "get_practice_by_id",
     "get_practices_by_client",
     "get_practices_with_client",
+    "verify_client_access",
 ]

@@ -98,7 +98,7 @@ class WeeklyRoundupBuilder:
             from backend.services.intel.dossier_repository import _row_to_dossier
 
             content.dossiers = [_row_to_dossier(row) for row in rows]
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug("newsletter dossiers fetch failed: %s", exc)
 
         # 2. theses (L1 Connector)
@@ -108,13 +108,13 @@ class WeeklyRoundupBuilder:
                 active_only=True,
             )
             content.theses = theses[: self.theses_max]
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug("newsletter theses fetch failed: %s", exc)
 
         # 3. Strategos brief (optional)
         try:
             content.brief = await self.cognitive_repo.latest_brief()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug("newsletter brief fetch failed: %s", exc)
 
         return content

@@ -200,7 +200,6 @@ def main() -> None:
     args = parser.parse_args()
 
     if not Path(args.coverage_report).exists():
-        print(f"ERROR: Coverage report not found: {args.coverage_report}", file=sys.stderr)
         sys.exit(1)
 
     result = analyze(
@@ -215,12 +214,6 @@ def main() -> None:
         json.dump(result, f, indent=2)
 
     # Print summary
-    print("=== Coverage Gap Analysis ===")
-    print(f"Total coverage: {result['total_coverage_pct']}%")
-    print(f"Files analyzed: {result['total_files_analyzed']}")
-    print(f"Files below 80%: {result['gap_count']}")
-    print(f"Severity: {json.dumps(result['severity_breakdown'])}")
-    print(f"\nTop {args.top} priority gaps:")
     for g in result["top_gaps"]:
         flags = []
         if g["is_recent"]:
@@ -229,9 +222,7 @@ def main() -> None:
             flags.append("ROUTER")
         if g["is_service"]:
             flags.append("SERVICE")
-        flag_str = f" [{','.join(flags)}]" if flags else ""
-        print(f"  {g['coverage_pct']:5.1f}%  {g['file']}{flag_str}")
-    print(f"\nOutput written to: {args.output}")
+        f" [{','.join(flags)}]" if flags else ""
 
 
 if __name__ == "__main__":

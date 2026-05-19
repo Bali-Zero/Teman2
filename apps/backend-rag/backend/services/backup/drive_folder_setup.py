@@ -144,9 +144,9 @@ def _exchange_refresh_token(creds: dict[str, str]) -> str:
         },
     ).encode("utf-8")
 
-    req = urllib.request.Request(TOKEN_URL, data=data, method="POST")  # noqa: S310 — explicit https URL
+    req = urllib.request.Request(TOKEN_URL, data=data, method="POST")
     try:
-        with urllib.request.urlopen(req, timeout=15) as resp:  # noqa: S310
+        with urllib.request.urlopen(req, timeout=15) as resp:
             body = json.loads(resp.read())
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")
@@ -186,9 +186,9 @@ def _drive_api_call(
         headers["Content-Type"] = "application/json"
         payload = json.dumps(body).encode("utf-8")
 
-    req = urllib.request.Request(url, data=payload, method=method, headers=headers)  # noqa: S310
+    req = urllib.request.Request(url, data=payload, method=method, headers=headers)
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:  # noqa: S310
+        with urllib.request.urlopen(req, timeout=30) as resp:
             return json.loads(resp.read())
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")

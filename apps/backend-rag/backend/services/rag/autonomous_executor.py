@@ -244,7 +244,7 @@ def _backoff_delay(attempt: int, base_delay_s: int = 2) -> float:
     import random
 
     delay = base_delay_s * (2**attempt)
-    jitter = random.uniform(0, delay * 0.3)  # noqa: S311
+    jitter = random.uniform(0, delay * 0.3)
     return min(delay + jitter, 300)  # Cap at 5 minutes
 
 

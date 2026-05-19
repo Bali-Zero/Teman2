@@ -23,7 +23,6 @@ import sys
 
 import asyncpg
 
-
 # (table, column, required: bool)
 # required=True → NOT NULL + CHECK col <> ''
 # required=False → CHECK col IS NULL OR col <> ''
@@ -56,7 +55,7 @@ async def upgrade(conn: asyncpg.Connection) -> None:
             f"UPDATE {table} SET {column} = NULL WHERE {column} = ''",
         )
         if fixed != "UPDATE 0":
-            print(f"  Fixed {fixed} empty strings in {table}.{column}")
+            pass
 
         # 2. Check if constraint already exists
         exists = await conn.fetchval(
@@ -68,21 +67,15 @@ async def upgrade(conn: asyncpg.Connection) -> None:
             cname,
         )
         if exists:
-            print(f"  {cname} already exists — skip")
             continue
 
         # 3. Add CHECK constraint
-        if required:
-            check_expr = f"{column} <> ''"
-        else:
-            check_expr = f"{column} IS NULL OR {column} <> ''"
+        check_expr = f"{column} <> ''" if required else f"{column} IS NULL OR {column} <> ''"
 
         await conn.execute(
             f"ALTER TABLE {table} ADD CONSTRAINT {cname} CHECK ({check_expr})",
         )
-        print(f"  Added {cname}")
 
-    print("Migration 085 complete.")
 
 
 async def downgrade(conn: asyncpg.Connection) -> None:
@@ -92,15 +85,12 @@ async def downgrade(conn: asyncpg.Connection) -> None:
         await conn.execute(
             f"ALTER TABLE {table} DROP CONSTRAINT IF EXISTS {cname}",
         )
-        print(f"  Dropped {cname}")
 
-    print("Migration 085 rollback complete.")
 
 
 async def main() -> None:
     db_url = os.environ.get("DATABASE_URL")
     if not db_url:
-        print("ERROR: DATABASE_URL not set")
         sys.exit(1)
 
     conn = await asyncpg.connect(db_url)

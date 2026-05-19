@@ -70,11 +70,9 @@ async def apply(conn: Any) -> None:
             ADD COLUMN IF NOT EXISTS source_collection_previous TEXT;
     """)
 
-    print("✅ Applied migration 077: KG staging tables + source_collection_previous")
 
 
 async def rollback(conn: Any) -> None:
     await conn.execute("DROP TABLE IF EXISTS kg_edges_staging;")
     await conn.execute("DROP TABLE IF EXISTS kg_nodes_staging;")
     await conn.execute("ALTER TABLE kg_nodes DROP COLUMN IF EXISTS source_collection_previous;")
-    print("Rollback migration 077: KG staging tables dropped")

@@ -170,7 +170,7 @@ class HierarchicalIngestor:
 
         # Build points
         points: list[dict[str, Any]] = []
-        for i, (chunk, dvec) in enumerate(zip(chunks, dense_vecs)):
+        for i, (chunk, dvec) in enumerate(zip(chunks, dense_vecs, strict=False)):
             svec = sparse_vecs[i] if sparse_vecs else None
             points.append(self._chunk_to_point(chunk, dvec, svec))
 
@@ -218,7 +218,7 @@ class HierarchicalIngestor:
         self._ensure_collection()
 
         points: list[dict[str, Any]] = []
-        for i, (chunk, dvec) in enumerate(zip(chunks, dense_vecs)):
+        for i, (chunk, dvec) in enumerate(zip(chunks, dense_vecs, strict=False)):
             svec = sparse_vecs[i] if sparse_vecs else None
             points.append(self._chunk_to_point(chunk, dvec, svec))
 

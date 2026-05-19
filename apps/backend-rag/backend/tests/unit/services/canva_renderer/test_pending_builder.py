@@ -20,7 +20,6 @@ from backend.services.canva_renderer.pending_builder import (
     slides_to_operations,
 )
 
-
 # Canva design ID format: 11 chars, starts with "DAH", URL-safe alphabet.
 # Folder ID format: same shape but starts with "FAH".
 _DESIGN_ID_RE = re.compile(r"^DAH[A-Za-z0-9_-]{8}$")

@@ -71,7 +71,7 @@ class TestImportChain:
         """
         import inspect
 
-        from backend.app.deps import services, orchestrator
+        from backend.app.deps import orchestrator, services
 
         svc_source = inspect.getsource(services)
         assert "from typing import" in svc_source, "deps/services.py missing typing import"

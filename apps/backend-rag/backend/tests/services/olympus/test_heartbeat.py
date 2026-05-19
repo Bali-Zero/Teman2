@@ -1,7 +1,9 @@
 """Tests for Olympus v2 Heartbeat."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
 from backend.services.olympus.heartbeat import Heartbeat
 from backend.services.olympus.models import HeartbeatSnapshot
 

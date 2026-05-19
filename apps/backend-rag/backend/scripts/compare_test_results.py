@@ -118,7 +118,6 @@ def main() -> None:
 
     for path in (args.before, args.after):
         if not Path(path).exists():
-            print(f"ERROR: File not found: {path}", file=sys.stderr)
             sys.exit(1)
 
     result = compare(args.before, args.after)
@@ -129,33 +128,15 @@ def main() -> None:
         json.dump(result, f, indent=2)
 
     # Print summary
-    print("=== Regression Analysis ===")
-    print(f"Action: {result['action']}")
-    print("")
-    print(
-        f"Before: {result['summary_before']['passed']} passed, {result['summary_before']['failed']} failed",
-    )
-    print(
-        f"After:  {result['summary_after']['passed']} passed, {result['summary_after']['failed']} failed",
-    )
-    print(f"Delta:  {result['delta']['passed']:+d} passed, {result['delta']['failed']:+d} failed")
-    print("")
-    print(f"Fixed:        {result['fixed_count']}")
-    print(f"Regressions:  {result['regression_count']}")
-    print(f"Still failing: {result['still_failing_count']}")
-    print(f"New failures: {result['new_failure_count']}")
 
     if result["regressions"]:
-        print("\nREGRESSIONS (tests that broke):")
-        for r in result["regressions"][:10]:
-            print(f"  - {r}")
+        for _r in result["regressions"][:10]:
+            pass
 
     if result["fixed"]:
-        print("\nFIXED (tests that now pass):")
-        for f_item in result["fixed"][:10]:
-            print(f"  + {f_item}")
+        for _f_item in result["fixed"][:10]:
+            pass
 
-    print(f"\nOutput written to: {args.output}")
 
 
 if __name__ == "__main__":

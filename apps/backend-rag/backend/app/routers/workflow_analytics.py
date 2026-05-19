@@ -52,7 +52,7 @@ async def get_workflow_dashboard(
         return await repo.get_dashboard_summary(days=days)
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to load workflow dashboard: {str(e)}"
+            status_code=500, detail=f"Failed to load workflow dashboard: {e!s}"
         ) from e
 
 
@@ -67,7 +67,7 @@ async def get_top_workflows(
     try:
         return await repo.get_top_workflows(limit=limit, days=days)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get top workflows: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Failed to get top workflows: {e!s}") from e
 
 
 @router.get("/workflow-dashboard/volume")
@@ -82,7 +82,7 @@ async def get_workflow_volume(
         return await repo.get_workflow_volume(granularity=granularity, days=days)
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to get workflow volume: {str(e)}"
+            status_code=500, detail=f"Failed to get workflow volume: {e!s}"
         ) from e
 
 

@@ -101,7 +101,7 @@ class MeasurementScheduler:
                     published_after=published_after,
                     published_before=published_before,
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 result.errors.append(f"fetch {window.value}: {type(exc).__name__}: {exc}")
                 continue
 
@@ -114,7 +114,7 @@ class MeasurementScheduler:
                     measurement = await self.orchestrator.measure(post)
                     result.per_post.append(measurement)
                     result.posts_measured += 1
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     result.errors.append(f"measure {post.id}: {type(exc).__name__}: {exc}")
         return result
 

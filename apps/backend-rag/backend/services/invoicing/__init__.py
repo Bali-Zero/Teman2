@@ -7,4 +7,4 @@ Automatically generates and sends invoices when practice status changes to sendi
 from .invoice_generator import InvoiceGenerator
 from .invoice_service import InvoiceAutomationService
 
-__all__ = ["InvoiceGenerator", "InvoiceAutomationService"]
+__all__ = ["InvoiceAutomationService", "InvoiceGenerator"]

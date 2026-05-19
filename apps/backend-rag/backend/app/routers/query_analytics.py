@@ -54,7 +54,7 @@ async def get_query_insights_dashboard(
         return await repo.get_dashboard_summary(days=days)
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to load query insights: {str(e)}"
+            status_code=500, detail=f"Failed to load query insights: {e!s}"
         ) from e
 
 
@@ -70,7 +70,7 @@ async def get_failed_queries(
         return await repo.get_failed_queries(limit=limit, days=days)
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to get failed queries: {str(e)}"
+            status_code=500, detail=f"Failed to get failed queries: {e!s}"
         ) from e
 
 
@@ -85,7 +85,7 @@ async def get_collection_hit_rates(
         return await repo.get_collection_hit_rates(days=days)
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to get collection hit rates: {str(e)}"
+            status_code=500, detail=f"Failed to get collection hit rates: {e!s}"
         ) from e
 
 
@@ -100,7 +100,7 @@ async def get_query_volume(
     try:
         return await repo.get_query_volume(granularity=granularity, days=days)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to get query volume: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Failed to get query volume: {e!s}") from e
 
 
 @router.get("/satisfaction")
@@ -114,7 +114,7 @@ async def get_satisfaction_score(
         return await repo.get_satisfaction_score(days=days)
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to get satisfaction score: {str(e)}"
+            status_code=500, detail=f"Failed to get satisfaction score: {e!s}"
         ) from e
 
 

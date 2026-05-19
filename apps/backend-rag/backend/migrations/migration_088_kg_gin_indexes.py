@@ -24,7 +24,6 @@ async def apply(conn: Any) -> None:
             END IF;
         END $$;
     """)
-    print("Applied migration 088: KG GIN indexes")
 
 
 async def rollback(conn: Any) -> None:
@@ -32,4 +31,3 @@ async def rollback(conn: Any) -> None:
     await conn.execute("DROP INDEX IF EXISTS idx_kg_edges_properties_gin;")
     await conn.execute("DROP INDEX IF EXISTS idx_kg_nodes_chunk_ids_gin;")
     await conn.execute("DROP INDEX IF EXISTS idx_kg_edges_chunk_ids_gin;")
-    print("Rollback migration 088")

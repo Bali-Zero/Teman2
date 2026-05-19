@@ -380,7 +380,7 @@ class QueryPlanner:
             return QueryDomain.COMPANY
 
         # Keyword-based classification
-        scores: dict[QueryDomain, int] = {d: 0 for d in QueryDomain}
+        scores: dict[QueryDomain, int] = dict.fromkeys(QueryDomain, 0)
 
         for kw in _GREETING_KEYWORDS:
             if kw in query_lower:

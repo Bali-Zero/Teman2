@@ -57,7 +57,7 @@ class AnomalyEventSubscriber:
 
         try:
             dossier = await self.intel_repo.get_dossier(dossier_id)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self.logger.warning(
                 "anomaly subscriber get_dossier failed %s: %s",
                 dossier_id,
@@ -73,7 +73,7 @@ class AnomalyEventSubscriber:
 
         try:
             return await self.detector.analyze_dossier(dossier)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self.logger.warning(
                 "anomaly subscriber analyze failed %s: %s",
                 dossier_id,

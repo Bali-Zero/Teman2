@@ -35,11 +35,9 @@ os.environ.setdefault("EMBEDDING_MODEL", "text-embedding-3-small")
 # portal/multimodal services through router imports.
 import pydantic.root_model  # noqa: E402,F401
 
-
 # ============================================================================
 # Shared fixtures
 # ============================================================================
-
 import pytest  # noqa: E402 — must come after env setup
 
 

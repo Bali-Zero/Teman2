@@ -319,7 +319,7 @@ class SearchService:
                 "surface": decision.surface,
                 "surface_layer": decision.layer_used,
             }
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning(
                 "SurfaceRouter routing failed; falling back to QueryRouterIntegration: %s",
                 exc,
@@ -839,7 +839,7 @@ class SearchService:
             collection_name,
             vector_db,
             chroma_filter,
-            tier_values,
+            _tier_values,
         ) = await self._prepare_search_context(query, user_level, tier_filter, None, apply_filters)
         if METRICS_AVAILABLE and embedding_start:
             rag_embedding_duration.observe(time.time() - embedding_start)
@@ -1064,7 +1064,7 @@ class SearchService:
                 collection_name,
                 vector_db,
                 chroma_filter,
-                tier_values,
+                _tier_values,
             ) = await self._prepare_search_context(
                 query,
                 user_level,

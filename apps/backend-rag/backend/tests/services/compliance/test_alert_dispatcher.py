@@ -20,29 +20,28 @@ import pytest
 from backend.services.compliance.alert_dispatcher import AlertDispatcher
 from backend.services.compliance.alert_repository import AlertRow
 
-
 pytestmark = pytest.mark.integration
 
 
 def _alert(**overrides) -> AlertRow:
-    base = dict(
-        alert_id=f"alert_test_{uuid.uuid4().hex[:6]}",
-        client_id=1,
-        category="visa_expiry",
-        severity="urgent",
-        status="pending",
-        deadline=date.today() + timedelta(days=7),
-        days_until=7,
-        compliance_item_ref="doc_1",
-        dedup_key="visa:1:doc_1",
-        message_it="messaggio IT",
-        message_en="message EN",
-        message_id="pesan ID",
-        suggested_action="renew",
-        estimated_cost_idr=None,
-        evidence_refs=[],
-        nb2_ref=None,
-    )
+    base = {
+        "alert_id": f"alert_test_{uuid.uuid4().hex[:6]}",
+        "client_id": 1,
+        "category": "visa_expiry",
+        "severity": "urgent",
+        "status": "pending",
+        "deadline": date.today() + timedelta(days=7),
+        "days_until": 7,
+        "compliance_item_ref": "doc_1",
+        "dedup_key": "visa:1:doc_1",
+        "message_it": "messaggio IT",
+        "message_en": "message EN",
+        "message_id": "pesan ID",
+        "suggested_action": "renew",
+        "estimated_cost_idr": None,
+        "evidence_refs": [],
+        "nb2_ref": None,
+    }
     base.update(overrides)
     return AlertRow(**base)
 

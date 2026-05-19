@@ -5,8 +5,9 @@ Task 4 — TDD: ensure GeminiKGExtractor delegates to the genai_client
 facade rather than importing the raw google-genai SDK directly.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 
 def test_extractor_no_longer_imports_genai_directly():

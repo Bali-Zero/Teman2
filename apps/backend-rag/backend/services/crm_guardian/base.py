@@ -184,7 +184,7 @@ async def record_event(conn: asyncpg.Connection, event: GuardianEvent) -> None:
             event.notes,
             event.error_message,
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.error("failed to record guardian event: %s", exc)
 
 
@@ -208,7 +208,7 @@ def build_drive_service(prefer_user_oauth: bool = True) -> Any:
     if prefer_user_oauth:
         try:
             return _build_oauth_user_drive()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             # Log and fall through to SA fallback.
             import logging
 

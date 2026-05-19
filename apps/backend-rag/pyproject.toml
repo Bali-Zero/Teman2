@@ -314,8 +314,14 @@ select = [
     "UP",  # pyupgrade
     "ARG", # flake8-unused-arguments
     "SIM", # flake8-simplify
-    "G",   # flake8-logging-format (G001..G202 — lazy-eval logging)
-    "LOG", # flake8-logging (LOG001..LOG015 — logger usage correctness)
+    "G",     # flake8-logging-format (G001..G202 — lazy-eval logging)
+    "LOG",   # flake8-logging (LOG001..LOG015 — logger usage correctness)
+    "ASYNC", # flake8-async (blocking calls in async, cancel scope misuse) — scar prevention for httpx.AsyncClient golden-rule-10
+    "PERF",  # perflint (list-in-loop, append-loop, etc.)
+    "RUF",   # Ruff-specific best practices
+    "PTH",   # flake8-use-pathlib (prefer pathlib over os.path)
+    "T20",   # flake8-print (no print() in production code)
+    "TID",   # flake8-tidy-imports (banned-api, relative-imports)
 ]
 
 # Ignore specific rules
@@ -330,6 +336,31 @@ ignore = [
     "G004",  # logging-f-string — 1389 residual; track in follow-up PR
     "G201",  # logging-exc-info → use logger.exception() — 400 residual, no autofix
     "G003",  # logging-string-concat — 13 residual, mostly verify_fluidity.py separators
+    # ---- TEMPORARY: residuals from Wave 3 rule-set extend (chore/ruff-rule-set-extend-2026-05-19) ----
+    # Rule sets newly added: ASYNC (89), PERF (324), RUF (1074). Re-enable rule-by-rule as cleared.
+    "PERF203", # try-except in loop — pre-existing pattern, 200+ sites; standalone PR planned
+    "PERF401", # manual-list-comprehension — autofix risk on async generators; standalone PR planned
+    "RUF001",  # ambiguous unicode (Greek/Cyrillic in i18n strings); legitimate domain usage
+    "RUF012",  # mutable-class-defaults — pre-existing patterns in service classes
+    "RUF013",  # implicit-optional — pre-existing patterns; pydantic v1 residue
+    "RUF052",  # used-dummy-variable — pre-existing
+    "ASYNC230", # blocking-open-call-in-async (open in async funcs); audit before fix
+    "ASYNC210", # blocking-http-call-in-async (3 sites); audit-required, follow-up PR
+    "ASYNC220", # create-subprocess-in-async (1 site); audit-required
+    "ASYNC221", # run-process-in-async (9 sites); audit-required
+    "ASYNC110", # async-busy-wait (1 site); audit-required
+    "PTH",      # pathlib migration (75 sites): pre-existing os.path patterns; large rewrites; standalone PR
+    "PERF402",  # manual-list-copy (1 site)
+    "RUF005",   # collection-literal-concatenation (1 site)
+    "RUF006",   # asyncio-dangling-task (3 sites) — already on the modernization radar (audit #7 TaskGroup migration)
+    "RUF019",   # unnecessary-key-check (autofix unsafe)
+    "RUF046",   # unnecessary-cast-to-int (1 site)
+    "B015",     # useless-comparison (1 site, pre-existing)
+    "B017",     # assert-raises-exception (1 site in non-test)
+    "RUF002",   # ambiguous-unicode-docstring (67 sites — IT/ID legitimate)
+    "RUF003",   # ambiguous-unicode-comment (26 sites — IT/ID legitimate)
+    "ASYNC240", # blocking-pathlib-in-async (51 sites; intersects PTH refactor — defer)
+    "ARG005",   # unused-lambda-argument (45 sites; mostly callback signatures)
 ]
 
 # Exclude directories
@@ -346,11 +377,11 @@ exclude = [
 
 [tool.ruff.lint.per-file-ignores]
 "__init__.py" = ["F401"]  # Allow unused imports
-"tests/*" = ["S101", "ARG", "SIM", "B", "UP", "F403", "F811", "E402", "G", "LOG"]  # Allow assert, unused args, simplifications, star imports, redefinitions, late imports, f-string logging in tests
-"tests/**/*" = ["S101", "ARG", "SIM", "B", "UP", "F403", "F811", "E402", "G", "LOG"]  # Same for nested test dirs
-"backend/tests/**/*" = ["F403", "F811", "SIM", "ARG", "E402", "B017", "G", "LOG"]  # Allow star imports, redefinitions, simplifications, unused args, late imports, assert exceptions, f-string logging in backend tests
-"scripts/*.py" = ["E402", "SIM", "B007", "B904", "ARG001", "ARG002", "B005", "G", "LOG"]  # Scripts may have non-standard patterns; f-string logging OK in CLI one-shots
-"backend/migrations/scripts/*.py" = ["G", "LOG"]  # Migration CLI one-shots — f-string OK
+"tests/*" = ["S101", "ARG", "SIM", "B", "UP", "F403", "F811", "E402", "G", "LOG", "T20", "PERF", "RUF", "PTH", "ASYNC"]  # Allow assert, unused args, simplifications, star imports, redefinitions, late imports, f-string logging, print, perf hints, ruff-specific, pathlib, async patterns in tests
+"tests/**/*" = ["S101", "ARG", "SIM", "B", "UP", "F403", "F811", "E402", "G", "LOG", "T20", "PERF", "RUF", "PTH", "ASYNC"]  # Same for nested test dirs
+"backend/tests/**/*" = ["F403", "F811", "SIM", "ARG", "E402", "B017", "G", "LOG", "T20", "PERF", "RUF", "PTH", "ASYNC"]  # Same allowance for backend tests
+"scripts/*.py" = ["E402", "SIM", "B007", "B904", "ARG001", "ARG002", "B005", "G", "LOG", "T20", "PERF", "PTH"]  # CLI one-shots: f-string logging, print, perf hints, pathlib OK
+"backend/migrations/scripts/*.py" = ["G", "LOG", "T20", "PERF", "PTH"]  # Migration CLI one-shots — f-string + print + perf OK
 "backend/app/routers/*.py" = ["ARG001", "B904", "SIM"]  # FastAPI routers: dependency injection + error handling + cosmetic simplifications
 "backend/app/**/*.py" = ["SIM"]  # App modules - cosmetic simplifications
 "backend/app/modules/**/router*.py" = ["ARG001", "B904"]  # Same for module routers

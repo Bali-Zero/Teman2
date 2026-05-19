@@ -13,15 +13,14 @@ from __future__ import annotations
 from datetime import date, timedelta
 from uuid import uuid4
 
-import pytest
 import asyncpg
+import pytest
 
 from backend.services.compliance.revenue_estimator import (
+    RiskBand,
     classify_client_risk,
     get_weighted_revenue,
-    RiskBand,
 )
-
 
 pytestmark = pytest.mark.integration
 

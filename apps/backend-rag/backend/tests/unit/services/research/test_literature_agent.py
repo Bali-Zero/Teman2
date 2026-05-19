@@ -4,10 +4,11 @@ from __future__ import annotations
 
 from pathlib import Path
 from unittest.mock import patch
+
 from backend.services.research.literature_agent import (
+    TOPICS,
     LiteratureAgent,
     ResearchTopic,
-    TOPICS,
 )
 
 

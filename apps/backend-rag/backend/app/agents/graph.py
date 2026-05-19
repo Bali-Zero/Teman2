@@ -128,8 +128,8 @@ async def retrieve_node(state: WorkflowState) -> WorkflowState:
             mock_scores = [0.95, 0.87, 0.72]
             if conversation_history:
                 history_block = "=== Conversation History ===\n" + "\n".join(conversation_history)
-                mock_documents = [history_block] + mock_documents
-                mock_scores = [1.0] + mock_scores
+                mock_documents = [history_block, *mock_documents]
+                mock_scores = [1.0, *mock_scores]
             execution_path = state.get("execution_path", [])
             execution_path.append("retrieve_mock")
             return {
@@ -180,8 +180,8 @@ async def retrieve_node(state: WorkflowState) -> WorkflowState:
         # Prepend conversation history as context documents (score 1.0 = always keep)
         if conversation_history:
             history_block = "=== Conversation History ===\n" + "\n".join(conversation_history)
-            documents = [history_block] + documents
-            scores = [1.0] + scores
+            documents = [history_block, *documents]
+            scores = [1.0, *scores]
 
         # Update execution tracking
         execution_path = state.get("execution_path", [])
@@ -199,7 +199,7 @@ async def retrieve_node(state: WorkflowState) -> WorkflowState:
         logger.error("[RETRIEVE_NODE] Error: %s", e, exc_info=True)
         # Add error to state but don't fail the workflow
         errors = state.get("errors", [])
-        errors.append(f"Retrieval error: {str(e)}")
+        errors.append(f"Retrieval error: {e!s}")
 
         execution_path = state.get("execution_path", [])
         execution_path.append("retrieve_error")
@@ -352,7 +352,7 @@ Your response (JSON array only):"""
         logger.error("[GRADE_NODE] Error: %s", e, exc_info=True)
         # On error, pass through all documents (safe fallback)
         errors = state.get("errors", [])
-        errors.append(f"Grading error: {str(e)}")
+        errors.append(f"Grading error: {e!s}")
 
         execution_path = state.get("execution_path", [])
         execution_path.append("grade_error")
@@ -460,12 +460,12 @@ Your answer:"""
         logger.error("[GENERATE_NODE] Error: %s", e, exc_info=True)
         # Return error message as generation
         errors = state.get("errors", [])
-        errors.append(f"Generation error: {str(e)}")
+        errors.append(f"Generation error: {e!s}")
 
         execution_path = state.get("execution_path", [])
         execution_path.append("generate_error")
 
-        error_message = f"I apologize, but I encountered an error generating the answer: {str(e)}"
+        error_message = f"I apologize, but I encountered an error generating the answer: {e!s}"
 
         return {
             **state,
@@ -500,7 +500,7 @@ async def check_hallucination_node(state: WorkflowState) -> WorkflowState:
     filtered_docs = state.get("filtered_documents", [])
     retries = state.get("reflection_retries", 0)
 
-    state["execution_path"] = state.get("execution_path", []) + ["check_hallucination"]
+    state["execution_path"] = [*state.get("execution_path", []), "check_hallucination"]
 
     # Skip reflection if no generation or max retries reached
     if not generation or retries >= MAX_REFLECTION_RETRIES:
@@ -548,7 +548,7 @@ async def transform_query_node(state: WorkflowState) -> WorkflowState:
     original_query = state.get("question", "")
     retries = state.get("reflection_retries", 0)
 
-    state["execution_path"] = state.get("execution_path", []) + ["transform_query"]
+    state["execution_path"] = [*state.get("execution_path", []), "transform_query"]
     state["reflection_retries"] = retries + 1
 
     # Simple query transformation: add context from what we know
@@ -712,5 +712,5 @@ async def invoke_rag_workflow(question: str, metadata: dict[str, Any] = None) ->
         return {
             **initial_state,
             "errors": [str(e)],
-            "generation": f"Error: {str(e)}",
+            "generation": f"Error: {e!s}",
         }

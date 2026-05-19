@@ -509,7 +509,7 @@ async def _save_conversation(
     message_text: str,
     response_text: str,
     client_profile: dict,
-    sender_name: str | None,  # noqa: ARG001
+    sender_name: str | None,
     phone: str,
 ) -> Any:
     """Save conversation messages and updated profile to PostgreSQL."""
@@ -685,7 +685,7 @@ async def whatsapp_webhook(
                             dedup_key=msg_id,
                             payload=raw_payload,
                         )
-                    except Exception as exc:  # noqa: BLE001 — never block ack
+                    except Exception as exc:
                         logger.warning(
                             "WhatsApp webhook: persist failed "
                             "(message_id=%s): %s — falling back to "

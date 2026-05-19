@@ -137,13 +137,13 @@ def list_actions() -> list[str]:
 
 
 __all__ = [
-    "ActionPolicy",
-    "ActionResult",
+    "ALLOWED_L2_ACTIONS",
     "BLOCKED_ACTIONS",
     "HITL_ONLY_ACTIONS",
-    "ALLOWED_L2_ACTIONS",
+    "ActionPolicy",
+    "ActionResult",
     "classify_action",
-    "register_action",
     "get_action",
     "list_actions",
+    "register_action",
 ]

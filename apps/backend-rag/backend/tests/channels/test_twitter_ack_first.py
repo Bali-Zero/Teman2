@@ -17,7 +17,6 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-
 CONSUMER_SECRET = "test_consumer_secret_abc123"
 
 

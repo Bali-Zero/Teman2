@@ -65,7 +65,6 @@ async def apply(conn: Any) -> None:
     """)
 
     logger.info("Migration 051 applied successfully: Client-Messaging Link created")
-    print("✅ Applied migration 051: Client-Messaging Cross-Channel Link")
 
 
 async def rollback(conn: Any) -> None:
@@ -80,4 +79,3 @@ async def rollback(conn: Any) -> None:
     await conn.execute("ALTER TABLE messaging_users DROP COLUMN IF EXISTS client_id;")
 
     logger.info("Migration 051 rolled back successfully")
-    print("⏪ Rolled back migration 051: Client-Messaging Cross-Channel Link")

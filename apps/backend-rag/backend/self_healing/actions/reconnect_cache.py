@@ -22,5 +22,5 @@ class ReconnectCacheAction:
             self.redis_client = redis.from_url(self.redis_url)
             self.redis_client.ping()
             return ActionResult(success=True, detail="reconnected")
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return ActionResult(success=False, error=f"{type(exc).__name__}: {exc}")

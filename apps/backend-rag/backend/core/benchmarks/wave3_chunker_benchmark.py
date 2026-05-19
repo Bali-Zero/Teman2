@@ -151,40 +151,26 @@ def main() -> int:
 
     paths = args.paths or [p for p in _DEFAULT_CANDIDATES if p.exists()]
     if not paths:
-        print("ERROR: no PDF candidates available. Pass paths explicitly.")
         return 2
 
-    print(f"Benchmarking {len(paths)} PDF(s)...")
     rows: list[dict] = []
     for p in paths:
         if not p.exists():
-            print(f"  SKIP {p} (not found)")
             continue
         try:
             row = benchmark_pdf(p)
             rows.append(row)
-            print(
-                f"  {p.name}: baseline={row['baseline_ms']:.1f}ms "
-                f"page-aware={row['page_aware_ms']:.1f}ms "
-                f"ratio={row['ratio']:.2f}×",
-            )
-        except Exception as e:
-            print(f"  ERROR {p.name}: {e}")
+        except Exception:
+            pass
 
     if not rows:
-        print("ERROR: no successful benchmark rows.")
         return 2
 
     args.output.write_text(render_markdown(rows, args.threshold), encoding="utf-8")
-    print(f"\nReport written to: {args.output}")
 
     max_ratio = max(r["ratio"] for r in rows)
     if max_ratio > args.threshold:
-        print(
-            f"FAIL: max ratio {max_ratio:.2f}× exceeds threshold {args.threshold:.1f}×",
-        )
         return 1
-    print(f"PASS: max ratio {max_ratio:.2f}× ≤ {args.threshold:.1f}×")
     return 0
 
 

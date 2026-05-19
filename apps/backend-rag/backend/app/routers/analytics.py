@@ -264,7 +264,7 @@ async def get_analytics_dashboard(
 
     except Exception as e:
         logger.error("Dashboard query error: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Dashboard error: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Dashboard error: {e!s}") from e
 
     dashboard["generated_at"] = datetime.now(tz=timezone.utc).isoformat()
     dashboard["query_time_ms"] = int((time.time() - start_time) * 1000)
@@ -305,7 +305,7 @@ async def get_completion_rates(
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to calculate completion rates: {str(e)}",
+            detail=f"Failed to calculate completion rates: {e!s}",
         ) from e
 
 
@@ -328,7 +328,7 @@ async def get_response_times(
         return await calculate_response_times(db_pool, practice_type, start_date, end_date)
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to calculate response times: {str(e)}"
+            status_code=500, detail=f"Failed to calculate response times: {e!s}"
         ) from e
 
 
@@ -351,7 +351,7 @@ async def get_sla_compliance(
         return await calculate_sla_compliance(db_pool, practice_type, start_date, end_date)
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to calculate SLA compliance: {str(e)}"
+            status_code=500, detail=f"Failed to calculate SLA compliance: {e!s}"
         ) from e
 
 
@@ -375,7 +375,7 @@ async def get_revenue_metrics(
     except Exception as e:
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to calculate revenue metrics: {str(e)}",
+            detail=f"Failed to calculate revenue metrics: {e!s}",
         ) from e
 
 
@@ -402,5 +402,5 @@ async def get_monthly_report(
         return await generate_monthly_report(db_pool, year, month)
     except Exception as e:
         raise HTTPException(
-            status_code=500, detail=f"Failed to generate monthly report: {str(e)}"
+            status_code=500, detail=f"Failed to generate monthly report: {e!s}"
         ) from e

@@ -8,12 +8,13 @@ Note: intel_scraper router is only included via include_heavy_routers (RAG proce
 We mount it directly in a minimal FastAPI app for testing.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
-from fastapi import FastAPI
-from httpx import AsyncClient, ASGITransport
-from backend.app.dependencies import get_current_user, get_database_pool
 
+import pytest
+from fastapi import FastAPI
+from httpx import ASGITransport, AsyncClient
+
+from backend.app.dependencies import get_current_user, get_database_pool
 
 # ---------------------------------------------------------------------------
 # Build a minimal test app that includes the intel_scraper router directly

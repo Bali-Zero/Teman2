@@ -22,7 +22,6 @@ from backend.services.intel.intel_validators import (
     validate,
 )
 
-
 # ── Tier 1: regex_schema ─────────────────────────────────────────────────
 
 

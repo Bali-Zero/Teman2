@@ -20,5 +20,5 @@ class DBCheck:
         try:
             await self._probe()
             return CheckResult(healthy=True, detail={"probe": "configured"})
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return CheckResult(healthy=False, error=f"{type(exc).__name__}: {exc}")

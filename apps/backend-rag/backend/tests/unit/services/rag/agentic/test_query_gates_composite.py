@@ -16,7 +16,6 @@ import pytest
 
 from backend.services.rag.agentic.query_gates import GateResult, QueryGates
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

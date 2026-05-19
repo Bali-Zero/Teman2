@@ -119,8 +119,6 @@ async def main():
         database_url = os.getenv("DATABASE_URL")
 
     if not database_url:
-        print("ERROR: DATABASE_URL environment variable not set.")
-        print("Set DATABASE_URL or ensure app.core.config.settings.database_url is configured.")
         return False
 
     migration = Migration026()

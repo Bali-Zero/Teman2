@@ -143,7 +143,7 @@ class IntelligentRouter:
 
         except Exception as e:
             logger.error("❌ [Router] Routing error: %s", e)
-            raise Exception(f"Routing failed: {str(e)}") from e
+            raise Exception(f"Routing failed: {e!s}") from e
 
     async def stream_chat(
         self,
@@ -180,7 +180,7 @@ class IntelligentRouter:
 
         except Exception as e:
             logger.error("❌ [Router Stream] Error: %s", e)
-            raise Exception(f"Streaming failed: {str(e)}") from e
+            raise Exception(f"Streaming failed: {e!s}") from e
 
     def get_stats(self) -> dict:
         """Get stats."""

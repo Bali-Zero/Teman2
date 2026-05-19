@@ -328,7 +328,6 @@ def main() -> None:
     args = parser.parse_args()
 
     if not Path(args.queue).exists():
-        print(f"ERROR: Queue file not found: {args.queue}", file=sys.stderr)
         sys.exit(1)
 
     with open(args.queue) as f:
@@ -390,16 +389,8 @@ def main() -> None:
     # Write manifest
     (output_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
 
-    print("=== Fix Prompt Generation ===")
-    print(f"Total failure groups: {len(groups)}")
-    print(f"Prompts generated: {generated}")
-    print(f"Skipped (protected files): {skipped}")
-    print(f"Output directory: {output_dir}")
-    print("\nGenerated prompts:")
-    for item in manifest:
-        print(
-            f"  {item['file']}  [{item['error_type']}]  {item['failure_count']}x  {item['group_key']}",
-        )
+    for _item in manifest:
+        pass
 
 
 if __name__ == "__main__":

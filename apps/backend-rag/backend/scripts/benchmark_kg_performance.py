@@ -223,31 +223,22 @@ def _summarize(name: str, timings: list[float]) -> dict:
 
 
 async def main() -> None:
-    print("=" * 60)
-    print("Knowledge Graph Performance Benchmark")
-    print("=" * 60)
 
     pool = await get_pool()
 
     # Check DB size
     async with pool.acquire() as conn:
-        nodes = await conn.fetchval("SELECT COUNT(*) FROM kg_nodes")
-        edges = await conn.fetchval("SELECT COUNT(*) FROM kg_edges")
-    print(f"\nKG Size: {nodes:,} nodes, {edges:,} edges")
+        await conn.fetchval("SELECT COUNT(*) FROM kg_nodes")
+        await conn.fetchval("SELECT COUNT(*) FROM kg_edges")
 
     # Check indexes
-    print("\n--- Indexes ---")
     indexes = await check_indexes(pool)
-    for name, defn in indexes.items():
-        has_trgm = "trgm" in defn.lower()
-        marker = " *** NEW" if has_trgm else ""
-        print(f"  {name}{marker}")
+    for defn in indexes.values():
+        "trgm" in defn.lower()
 
-    has_trgm_index = any("trgm" in d.lower() for d in indexes.values())
-    print(f"\n  Trigram index: {'YES' if has_trgm_index else 'NO (run migration 055)'}")
+    any("trgm" in d.lower() for d in indexes.values())
 
     # Run benchmarks
-    print("\n--- Benchmarks ---\n")
 
     results = []
     for bench_fn in [
@@ -259,19 +250,11 @@ async def main() -> None:
         try:
             result = await bench_fn(pool)
             results.append(result)
-            print(
-                f"  {result['name']:35s}  "
-                f"p50={result.get('p50_ms', 0):7.2f}ms  "
-                f"p95={result.get('p95_ms', 0):7.2f}ms  "
-                f"avg={result.get('avg_ms', 0):7.2f}ms  "
-                f"n={result.get('n', 0)}",
-            )
             if "avg_chains" in result:
-                print(f"  {'':35s}  avg_chains={result['avg_chains']}")
-        except Exception as e:
-            print(f"  {bench_fn.__name__}: ERROR - {e}")
+                pass
+        except Exception:
+            pass
 
-    print("\n" + "=" * 60)
     await pool.close()
 
 

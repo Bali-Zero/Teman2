@@ -40,7 +40,7 @@ async def get_email_client() -> httpx.AsyncClient:
     Safe to call from any coroutine on the same event loop. The client
     auto-recovers if closed externally.
     """
-    global _client  # noqa: PLW0603 — singleton by design
+    global _client
     if _client is None or _client.is_closed:
         _client = httpx.AsyncClient(timeout=_EMAIL_HTTPX_TIMEOUT)
         logger.debug("email_http: created persistent AsyncClient")
@@ -49,7 +49,7 @@ async def get_email_client() -> httpx.AsyncClient:
 
 async def close_email_client() -> None:
     """Release the shared client — test hook + graceful shutdown."""
-    global _client  # noqa: PLW0603
+    global _client
     if _client is not None and not _client.is_closed:
         await _client.aclose()
     _client = None

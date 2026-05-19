@@ -328,7 +328,7 @@ async def _upsert_node(
     clean_props = {k: v for k, v in properties.items() if v is not None}
 
     existing = await conn.fetchrow(
-        f"SELECT entity_id, properties FROM crm_kg_nodes "  # noqa: S608
+        f"SELECT entity_id, properties FROM crm_kg_nodes "
         f"WHERE {lookup_col} = $1 AND deleted_at IS NULL",
         lookup_val,
     )
@@ -351,7 +351,7 @@ async def _upsert_node(
     values: list[Any] = [entity_type, name, clean_props, lookup_val]
 
     row = await conn.fetchrow(
-        f"INSERT INTO crm_kg_nodes ({', '.join(columns)}) "  # noqa: S608
+        f"INSERT INTO crm_kg_nodes ({', '.join(columns)}) "
         f"VALUES ({', '.join(placeholders)}) "
         f"RETURNING entity_id",
         *values,
@@ -407,7 +407,7 @@ async def _practice_name(conn: asyncpg.Connection, practice_id: int) -> str | No
     for col in ("name", "title", "practice_type_code"):
         try:
             row = await conn.fetchrow(
-                f"SELECT {col} FROM practices WHERE id = $1",  # noqa: S608
+                f"SELECT {col} FROM practices WHERE id = $1",
                 practice_id,
             )
             if row and row[col]:

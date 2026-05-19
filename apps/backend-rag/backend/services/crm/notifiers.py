@@ -264,7 +264,7 @@ class BirthdayNotifierService:
                 e,
             )
             return False
-        except Exception as e:
+        except Exception:
             logger.exception("Failed to send birthday email to %s", client.get("email"))
             return False
 

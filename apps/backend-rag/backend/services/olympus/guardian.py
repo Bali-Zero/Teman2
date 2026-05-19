@@ -15,8 +15,8 @@ from typing import Any
 import asyncpg
 
 from backend.services.olympus.alerts import OlympusAlerts
-from backend.services.olympus.insights import InsightsCollector
 from backend.services.olympus.heartbeat import Heartbeat
+from backend.services.olympus.insights import InsightsCollector
 from backend.services.olympus.models import PulseAction
 from backend.services.olympus.pulse import Pulse
 from backend.services.olympus.rules_engine import RulesEngine

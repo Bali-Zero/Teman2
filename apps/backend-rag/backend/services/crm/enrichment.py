@@ -54,7 +54,7 @@ class AICRMExtractor:
                 "❌ Failed to initialize ZANTARA AI (import/runtime): %s", e, exc_info=True
             )
             raise
-        except Exception as e:  # noqa: BLE001 — unknown failure modes in LLM client init must surface
+        except Exception as e:
             logger.error("❌ Failed to initialize ZANTARA AI (unexpected): %s", e, exc_info=True)
             raise
 
@@ -127,7 +127,7 @@ Extract the following information and return ONLY valid JSON (no markdown, no ex
         except (httpx.HTTPError, KeyError, ValueError) as e:
             logger.error("❌ Extraction failed (LLM/data): %s", e, exc_info=True)
             return self._get_empty_extraction()
-        except Exception as e:  # noqa: BLE001 — fallback so extraction never crashes caller
+        except Exception as e:
             logger.error("❌ Extraction failed (unexpected): %s", e, exc_info=True)
             return self._get_empty_extraction()
 
@@ -195,7 +195,7 @@ def get_extractor(ai_client: Any = None) -> AICRMExtractor:
         except (ImportError, RuntimeError, AttributeError) as e:
             logger.warning("⚠️  AI CRM Extractor not available (import/runtime): %s", e)
             raise
-        except Exception as e:  # noqa: BLE001 — unknown init failures must still surface to caller
+        except Exception as e:
             logger.warning("⚠️  AI CRM Extractor not available (unexpected): %s", e)
             raise
     return _extractor_instance
@@ -268,7 +268,7 @@ class BirthplaceEnrichmentService:
         except httpx.HTTPError as e:
             logger.error("Ollama request failed (HTTP): %s", e)
             return None
-        except Exception as e:  # noqa: BLE001 — enrichment is best-effort, never crash cron caller
+        except Exception as e:
             logger.error("Ollama request failed (unexpected): %s", e, exc_info=True)
             return None
 
@@ -348,7 +348,7 @@ Return ONLY the JSON object, no additional text."""
                 "Failed to update client %s (DB/serialization): %s", client_id, e, exc_info=True
             )
             return False
-        except Exception as e:  # noqa: BLE001 — enrichment never crashes the batch loop
+        except Exception as e:
             logger.error("Failed to update client %s (unexpected): %s", client_id, e, exc_info=True)
             return False
 
@@ -370,7 +370,7 @@ Return ONLY the JSON object, no additional text."""
             logger.warning("⚠️ Birthplace Enrichment skipped: Cannot connect to Ollama (%s).", e)
             stats["error"] = f"Cannot connect to Ollama: {e}"
             return stats
-        except Exception as e:  # noqa: BLE001 — availability probe must never propagate to scheduler
+        except Exception as e:
             logger.warning(
                 "⚠️ Birthplace Enrichment skipped: unexpected error probing Ollama (%s).",
                 e,
@@ -473,7 +473,7 @@ async def _generate_title_via_ollama(
     except (httpx.HTTPError, ValueError, KeyError) as e:
         logger.warning("Ollama title generation error for conv %s: %s", conversation_id, e)
         return None
-    except Exception as e:  # noqa: BLE001 — title generation is best-effort; Gemini fallback follows
+    except Exception as e:
         logger.warning(
             "Ollama title generation unexpected error for conv %s: %s",
             conversation_id,
@@ -508,7 +508,7 @@ async def _generate_title_via_gemini(
     except (httpx.HTTPError, ValueError, KeyError) as e:
         logger.warning("Gemini title generation error for conv %s: %s", conversation_id, e)
         return None
-    except Exception as e:  # noqa: BLE001 — title generation is best-effort and must never crash caller
+    except Exception as e:
         logger.warning(
             "Gemini title generation unexpected error for conv %s: %s",
             conversation_id,

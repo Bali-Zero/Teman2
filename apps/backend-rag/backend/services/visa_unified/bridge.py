@@ -129,6 +129,6 @@ def augment_chat_system_prompt(context: FunnelContext, base_prompt: str) -> str:
 
 __all__ = [
     "FunnelContext",
-    "get_funnel_context",
     "augment_chat_system_prompt",
+    "get_funnel_context",
 ]

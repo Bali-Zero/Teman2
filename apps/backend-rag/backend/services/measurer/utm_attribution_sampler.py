@@ -98,7 +98,7 @@ class UTMAttributionSampler(MetricSampler):
         since_at = post.published_at
         try:
             leads = await self.lead_lookup_fn(post, since_at)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return SamplerResult(
                 sampler_name=self.name,
                 post_id=post.id,
@@ -120,7 +120,7 @@ class UTMAttributionSampler(MetricSampler):
                         conversion_stage=lead.conversion_stage,
                         revenue_idr=lead.revenue_idr,
                     )
-                except Exception as exc:  # noqa: BLE001 — persistence must not abort sampling
+                except Exception as exc:
                     logger.warning(
                         "attribute_lead failed for post=%s: %s",
                         post.id,

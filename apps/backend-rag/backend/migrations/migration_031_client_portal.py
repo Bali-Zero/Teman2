@@ -174,7 +174,6 @@ async def apply(conn: Any) -> None:
     """)
 
     logger.info("Migration 031 applied successfully: Client Portal Schema created")
-    print("✅ Applied migration 031: Client Portal Schema")
 
 
 async def rollback(conn: Any) -> None:
@@ -209,4 +208,3 @@ async def rollback(conn: Any) -> None:
     """)
 
     logger.info("Migration 031 rolled back successfully")
-    print("⏪ Rolled back migration 031: Client Portal Schema")

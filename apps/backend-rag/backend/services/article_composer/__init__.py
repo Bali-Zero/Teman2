@@ -29,20 +29,20 @@ from backend.services.article_composer.validators import (
 )
 
 __all__ = [
-    # Client
-    "get_anthropic_client",
-    "call_claude_with_retry",
-    # Cache
-    "cache_service",
     # Error handling
     "APIError",
+    # Validation
+    "ComposeRequestValidator",
     "ErrorCode",
+    # Cache
+    "cache_service",
+    "call_claude_with_retry",
+    # Client
+    "get_anthropic_client",
     "handle_anthropic_error",
     "handle_json_error",
     "handle_validation_error",
     "log_error_with_context",
-    # Validation
-    "ComposeRequestValidator",
     "sanitize_content",
     "validate_category",
 ]

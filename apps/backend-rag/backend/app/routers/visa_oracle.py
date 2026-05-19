@@ -578,10 +578,14 @@ async def chat(
     # Backwards compatible: when check_hash is absent, validation is skipped.
     system_prompt_prefix = ""
     if body.check_hash:
-        from jose import JWTError, jwt as _jose_jwt
+        from jose import JWTError
+        from jose import jwt as _jose_jwt
+
         from backend.app.core.config import settings as _settings
         from backend.services.visa_unified.bridge import (
             augment_chat_system_prompt as _augment,
+        )
+        from backend.services.visa_unified.bridge import (
             get_funnel_context as _get_ctx,
         )
 

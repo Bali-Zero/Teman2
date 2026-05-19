@@ -22,12 +22,12 @@ from __future__ import annotations
 _active_agent = None  # type: ignore[assignment]
 
 
-def set_active_agent(agent) -> None:  # noqa: ANN001 — avoid import cycle
+def set_active_agent(agent) -> None:
     """Register the process-wide self-healing agent (called by the scheduler)."""
     global _active_agent
     _active_agent = agent
 
 
-def get_active_agent():  # noqa: ANN201
+def get_active_agent():
     """Return the registered agent, or None if the scheduler didn't wire one."""
     return _active_agent

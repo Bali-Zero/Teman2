@@ -367,8 +367,9 @@ class TestRouteAfterQueryUnderstanding:
         assert route_after_query_understanding(state) == "resolve_entities"
 
     def test_simple_query_fallback_to_end(self) -> None:
-        from backend.services.rag.kg_langgraph_orchestrator import route_after_query_understanding
         from langgraph.graph import END
+
+        from backend.services.rag.kg_langgraph_orchestrator import route_after_query_understanding
 
         state = self._make_state(query="hello world")
         assert route_after_query_understanding(state) == END
@@ -390,8 +391,9 @@ class TestRouteAfterTraversal:
         assert route_after_traversal(state) == "reason"
 
     def test_no_chains(self) -> None:
-        from backend.services.rag.kg_langgraph_orchestrator import route_after_traversal
         from langgraph.graph import END
+
+        from backend.services.rag.kg_langgraph_orchestrator import route_after_traversal
 
         state: dict[str, Any] = {"relationship_chains": []}
         assert route_after_traversal(state) == END

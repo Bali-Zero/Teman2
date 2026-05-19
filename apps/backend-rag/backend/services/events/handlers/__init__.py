@@ -20,7 +20,7 @@ keeps working without touching consumers:
     from backend.services.events.handlers import _is_duplicate  # tests
 """
 
-from ._core import (  # noqa: F401
+from ._core import (
     _CHAIN_CONTEXT_MAX,
     _DEDUP_WINDOW_S,
     _chain_context,

@@ -170,7 +170,7 @@ async def _send_with_brevo_fallback(
         return
     except (httpx.HTTPError, httpx.InvalidURL) as brevo_error:
         logger.warning("Brevo failed for %s, trying Zoho: %s", to_email, brevo_error)
-    except Exception as brevo_error:  # noqa: BLE001 — defensive fallback before Zoho retry
+    except Exception as brevo_error:
         logger.warning(
             "Brevo failed for %s (unexpected error), trying Zoho: %s",
             to_email,
@@ -225,7 +225,7 @@ class ProcessAutomationService:
 
     @cache_invalidating(
         [
-            lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
+            lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",
             "zantara:crm_practices:*",
             "zantara:crm_activity:*",
         ]
@@ -288,7 +288,7 @@ class ProcessAutomationService:
                     logger.error(
                         "Failed to send process start email to client: %s", e, exc_info=True
                     )
-                except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
+                except Exception as e:
                     logger.error(
                         "Unexpected error sending process start email to client: %s",
                         e,
@@ -311,7 +311,7 @@ class ProcessAutomationService:
                     )
                 except (httpx.HTTPError, ValueError) as e:
                     logger.error("Failed to send notification to team leader: %s", e, exc_info=True)
-                except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
+                except Exception as e:
                     logger.error(
                         "Unexpected error notifying team leader: %s",
                         e,
@@ -487,7 +487,7 @@ class CompletedProcessService:
 
     @cache_invalidating(
         [
-            lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
+            lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",
             "zantara:crm_practices:*",
             "zantara:crm_documents:*",
         ]
@@ -541,7 +541,7 @@ class CompletedProcessService:
                     client_notified = True
                 except (httpx.HTTPError, ValueError) as e:
                     logger.error("Failed to send completion email to client: %s", e, exc_info=True)
-                except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
+                except Exception as e:
                     logger.error(
                         "Unexpected error sending completion email to client: %s",
                         e,
@@ -560,7 +560,7 @@ class CompletedProcessService:
                     team_notified = True
                 except (httpx.HTTPError, ValueError) as e:
                     logger.error("Failed to notify team leader: %s", e, exc_info=True)
-                except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
+                except Exception as e:
                     logger.error(
                         "Unexpected error notifying team leader about completion: %s",
                         e,
@@ -629,7 +629,7 @@ class CompletedProcessService:
 
             except (httpx.HTTPError, ValueError) as e:
                 logger.error(f"Failed to upload {doc['filename']}: {e}")
-            except Exception as e:  # noqa: BLE001 — single-doc failure must not stop bulk upload
+            except Exception as e:
                 logger.error(
                     f"Unexpected error uploading {doc['filename']}: {e}",
                     exc_info=True,
@@ -765,7 +765,7 @@ class WaitingDocumentsService:
 
     @cache_invalidating(
         [
-            lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
+            lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",
             "zantara:crm_practices:*",
         ]
     )
@@ -821,7 +821,7 @@ class WaitingDocumentsService:
                     )
                 except (httpx.HTTPError, ValueError) as e:
                     logger.error("Failed to notify team leader: %s", e, exc_info=True)
-                except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
+                except Exception as e:
                     logger.error(
                         "Unexpected error notifying team leader (waiting docs): %s",
                         e,
@@ -841,7 +841,7 @@ class WaitingDocumentsService:
                     logger.info(f"Document request email sent to client {client_data['email']}")
                 except (httpx.HTTPError, ValueError) as e:
                     logger.error("Failed to send document request to client: %s", e, exc_info=True)
-                except Exception as e:  # noqa: BLE001 — notification must never crash automation flow
+                except Exception as e:
                     logger.error(
                         "Unexpected error sending document request to client: %s",
                         e,

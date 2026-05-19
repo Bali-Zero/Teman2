@@ -387,7 +387,7 @@ Jawaban (maksimal 3 paragraf, dalam Bahasa Indonesia):"""
             return response.content.strip()
         except Exception as e:
             logger.error("Failed to generate synthetic answer: %s", e)
-            return f"[Failed to generate answer: {str(e)}]"
+            return f"[Failed to generate answer: {e!s}]"
 
     def create_expert_samples(self) -> list[EvaluationSample]:
         """

@@ -196,14 +196,14 @@ class OracleDelivery:
         )
         try:
             moves = await self.repo.pending_ultra_moves()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             result.errors.append(f"fetch_pending: {exc}")
             return result
 
         for move in moves:
             try:
                 sr = await self._send_one(move)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 result.errors.append(f"send {move.id}: {exc}")
                 result.failed_count += 1
                 continue
@@ -259,7 +259,7 @@ class OracleDelivery:
                 decision,
                 notes=f"via_telegram by {username}",
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             await self._try_answer(
                 callback_query_id,
                 "Errore DB — riprova.",

@@ -185,7 +185,7 @@ class AnalyticsAggregator:
 
         except (asyncpg.PostgresError, OSError) as e:
             logger.warning("DB error fetching overview stats: %s", e)
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error fetching overview stats")
 
         return stats
@@ -253,7 +253,7 @@ class AnalyticsAggregator:
 
         except (asyncpg.PostgresError, OSError) as e:
             logger.warning("DB error fetching RAG stats: %s", e)
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error fetching RAG stats")
 
         return stats
@@ -343,7 +343,7 @@ class AnalyticsAggregator:
 
         except (asyncpg.PostgresError, OSError) as e:
             logger.warning("DB error fetching CRM stats: %s", e)
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error fetching CRM stats")
 
         return stats
@@ -413,7 +413,7 @@ class AnalyticsAggregator:
 
         except (asyncpg.PostgresError, OSError) as e:
             logger.warning("DB error fetching team stats: %s", e)
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error fetching team stats")
 
         return stats
@@ -457,7 +457,7 @@ class AnalyticsAggregator:
 
         except (asyncpg.PostgresError, OSError) as e:
             logger.warning("DB error fetching system stats: %s", e)
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error fetching system stats")
 
         return stats
@@ -516,7 +516,7 @@ class AnalyticsAggregator:
 
         except httpx.HTTPError as e:
             logger.warning("HTTP error fetching Qdrant stats: %s", e)
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error fetching Qdrant stats")
 
         return stats
@@ -597,7 +597,7 @@ class AnalyticsAggregator:
 
         except (asyncpg.PostgresError, OSError) as e:
             logger.warning("DB error fetching feedback stats: %s", e)
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error fetching feedback stats")
 
         return stats
@@ -659,7 +659,7 @@ class AnalyticsAggregator:
 
         except (asyncpg.PostgresError, OSError) as e:
             logger.warning("DB error fetching alert stats: %s", e)
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error fetching alert stats")
 
         return stats

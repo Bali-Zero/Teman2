@@ -19,9 +19,9 @@ from .models import AlertStatus, AlertType, ClientAlert
 from .service import NotificationService
 
 __all__ = [
-    "NotificationService",
-    "ExpiryChecker",
-    "AlertType",
     "AlertStatus",
+    "AlertType",
     "ClientAlert",
+    "ExpiryChecker",
+    "NotificationService",
 ]

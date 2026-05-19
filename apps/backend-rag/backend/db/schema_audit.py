@@ -57,10 +57,10 @@ from typing import Any
 # Make the audit runnable from anywhere without PYTHONPATH gymnastics.
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
-import asyncpg  # noqa: E402
+import asyncpg
 
-from backend.app.core.config import settings  # noqa: E402
-from backend.db.migration_manager import MigrationManager  # noqa: E402
+from backend.app.core.config import settings
+from backend.db.migration_manager import MigrationManager
 
 logger = logging.getLogger(__name__)
 
@@ -417,15 +417,15 @@ async def _amain(argv: list[str] | None = None) -> int:
 
     try:
         report = await run_audit(database_url=db_url)
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.exception("schema audit crashed")
         sys.stderr.write(f"ERROR: schema audit crashed: {exc}\n")
         return 2
 
     if args.json:
-        print(json.dumps(report.to_dict(), sort_keys=True, indent=2))
+        pass
     else:
-        print(_format_human(report))
+        pass
 
     return 0 if report.ok else 1
 

@@ -154,7 +154,7 @@ def handle_anthropic_error(
 
     api_error = APIError.create(
         code=ErrorCode.API_ERROR,
-        message=f"LLM API error: {str(error)}",
+        message=f"LLM API error: {error!s}",
         details={
             **error_context,
             "traceback": traceback.format_exc(),
@@ -196,7 +196,7 @@ def handle_json_error(
 
     return APIError.create(
         code=ErrorCode.JSON_PARSE_ERROR,
-        message=f"Failed to parse Claude response as JSON: {str(error)}",
+        message=f"Failed to parse Claude response as JSON: {error!s}",
         details=error_context,
         request_id=request_id,
     )
@@ -228,7 +228,7 @@ def handle_validation_error(
 
     return APIError.create(
         code=ErrorCode.VALIDATION_ERROR,
-        message=f"Validation failed: {str(error)}",
+        message=f"Validation failed: {error!s}",
         details=error_context,
         request_id=request_id,
     )

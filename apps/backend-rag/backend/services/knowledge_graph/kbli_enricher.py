@@ -49,7 +49,7 @@ class KBLIEnricher:
         )
 
         # Real logic: Scroll through collection
-        points, next_page = self.qdrant.scroll(
+        points, _next_page = self.qdrant.scroll(
             collection_name=self.collection_name,
             scroll_filter=models.Filter(
                 must=[

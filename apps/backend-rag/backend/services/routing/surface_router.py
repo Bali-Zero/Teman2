@@ -433,7 +433,7 @@ class SurfaceRouter:
         except (TimeoutError, asyncio.TimeoutError):
             logger.warning("SurfaceRouter: Haiku timeout on query '%s'", query[:60])
             raise
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("SurfaceRouter: Haiku error: %s", exc)
             return None
 

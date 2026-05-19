@@ -1,12 +1,12 @@
 """Tests for POST /api/admin/llm-costs/record endpoint."""
 
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
 from backend.app.routers.llm_costs import require_admin, router
-
 
 # ---------------------------------------------------------------------------
 # Shared app fixture — isolated FastAPI instance (no global middleware)

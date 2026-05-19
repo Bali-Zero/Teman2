@@ -55,7 +55,7 @@ def _record_genome_scar(service_name: str, exc: Exception) -> None:
     failure here — a missing/broken genome module must never block app
     startup.
     """
-    try:  # noqa: SIM105 — broad catch is intentional, see docstring
+    try:
         from backend.services.genome.client import (  # type: ignore[import-not-found]
             get_genome_client,
         )
@@ -106,7 +106,7 @@ def degraded_safe(service_name: str) -> Callable[..., Any]:
         async def wrapper(app: FastAPI, *args: Any, **kwargs: Any) -> Any:
             try:
                 return await fn(app, *args, **kwargs)
-            except Exception as exc:  # noqa: BLE001 — by design, see docstring
+            except Exception as exc:
                 logger.exception(
                     "❌ Critical service '%s' init failed; entering degraded mode",
                     service_name,

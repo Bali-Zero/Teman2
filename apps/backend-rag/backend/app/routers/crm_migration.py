@@ -10,8 +10,8 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from backend.app.deps.crm_access import require_crm_admin
 from backend.app.dependencies import get_database_pool
+from backend.app.deps.crm_access import require_crm_admin
 
 router = APIRouter()
 logger = logging.getLogger(__name__)

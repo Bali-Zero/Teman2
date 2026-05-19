@@ -27,7 +27,6 @@ from backend.services.rag.agentic._reasoning_loop_helpers import (
 )
 from backend.services.tools.definitions import ToolCall
 
-
 _VALID_TOOL_JSON = '{"tool_name": "vector_search", "tool_input": {"query": "bali kitas"}}'
 
 

@@ -117,7 +117,7 @@ class TestPageBreakMidChunk:
             assert c["page"] == idx
             # No chunk should contain text from another page.
             other_markers = ["one", "two", "three"]
-            expected = other_markers[idx - 1]
+            other_markers[idx - 1]
             for j, word in enumerate(other_markers):
                 if j == idx - 1:
                     assert word in c["text"]

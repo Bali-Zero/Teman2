@@ -1,4 +1,4 @@
-"""
+r"""
 Migration 092: Attendance late-incident state machine.
 
 ⚠️ NOT WIRED INTO THE LOADER. This file is kept only as historical reference,

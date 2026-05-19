@@ -222,7 +222,7 @@ class PIIScannerMiddleware:
         # from an ASGI-level middleware that does not own a Request.
         try:
             set_app(app)
-        except Exception:  # noqa: BLE001 — never fail construction
+        except Exception:
             logger.debug("pii_scanner.set_app_failed", exc_info=True)
 
     async def __call__(self, scope: dict, receive: Any, send: Any) -> None:

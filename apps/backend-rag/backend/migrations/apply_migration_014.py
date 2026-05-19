@@ -23,35 +23,28 @@ def apply_migration_014():
     )
 
     if not migration_file.exists():
-        print(f"❌ Migration file not found: {migration_file}")
         return False
 
-    print("🔄 Connecting to database...")
 
     try:
         # Connect to PostgreSQL
         db_url = settings.database_url or os.getenv("DATABASE_URL")
         if not db_url:
-            print("❌ DATABASE_URL not found in settings or environment")
             return False
 
         conn = psycopg2.connect(db_url)
         cursor = conn.cursor()
 
-        print("✅ Connected to database")
 
         # Read migration file
         with open(migration_file, encoding="utf-8") as f:
             migration_sql = f.read()
 
-        print(f"📄 Loaded migration from: {migration_file.name}")
-        print("🚀 Applying migration...")
 
         # Execute migration
         cursor.execute(migration_sql)
         conn.commit()
 
-        print("✅ Migration 014 applied successfully!")
 
         # Verify the tables
         tables_to_check = ["kg_entities", "kg_relationships"]
@@ -66,33 +59,26 @@ def apply_migration_014():
             )
             exists = cursor.fetchone()[0]
             if exists:
-                print(f"✅ Verified: table '{table}' exists")
+                pass
             else:
-                print(f"❌ Error: table '{table}' was not created")
+                pass
 
         cursor.close()
         conn.close()
 
         return True
 
-    except psycopg2.Error as e:
-        print(f"❌ Database error: {e}")
+    except psycopg2.Error:
         return False
-    except Exception as e:
-        print(f"❌ Unexpected error: {e}")
+    except Exception:
         return False
 
 
 if __name__ == "__main__":
-    print("=" * 60)
-    print("Migration 014: Knowledge Graph Tables")
-    print("=" * 60)
 
     success = apply_migration_014()
 
     if success:
-        print("\n🎉 Migration completed successfully!")
         sys.exit(0)
     else:
-        print("\n❌ Migration failed!")
         sys.exit(1)

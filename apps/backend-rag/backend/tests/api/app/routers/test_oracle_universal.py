@@ -24,7 +24,6 @@ from httpx import ASGITransport, AsyncClient
 from backend.app.dependencies import get_current_user, get_search_service
 from backend.app.routers.oracle_universal import router
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

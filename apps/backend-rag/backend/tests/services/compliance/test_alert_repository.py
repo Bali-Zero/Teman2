@@ -10,11 +10,10 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 
-import pytest
 import asyncpg
+import pytest
 
 from backend.services.compliance.alert_repository import AlertRepository, AlertRow
-
 
 pytestmark = pytest.mark.integration
 

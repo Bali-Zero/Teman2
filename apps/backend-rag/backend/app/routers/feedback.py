@@ -146,10 +146,10 @@ async def submit_feedback(
         raise
     except asyncpg.PostgresError as e:
         logger.error("Database error saving feedback: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Database error: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Database error: {e!s}") from e
     except Exception as e:
         logger.error("Unexpected error saving feedback: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e!s}") from e
 
 
 @router.get("/ratings/{session_id}", response_model=ConversationRatingResponse)
@@ -203,7 +203,7 @@ async def get_conversation_rating(
         raise
     except Exception as e:
         logger.error("Error retrieving rating: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e!s}") from e
 
 
 @router.get("/stats", response_model=ReviewQueueStatsResponse)
@@ -267,4 +267,4 @@ async def get_feedback_stats(
 
     except Exception as e:
         logger.error("Error retrieving feedback stats: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Internal server error: {e!s}") from e

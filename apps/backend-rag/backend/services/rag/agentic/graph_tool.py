@@ -78,4 +78,4 @@ class GraphTraversalTool(BaseTool):
 
         except Exception as e:
             logger.error("Graph traversal failed: %s", e, exc_info=True)
-            return f"Graph traversal error: {str(e)}"
+            return f"Graph traversal error: {e!s}"

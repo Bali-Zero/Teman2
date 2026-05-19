@@ -22,8 +22,10 @@ from pydantic import (
     BaseModel,
     EmailStr,
     Field,
-    ValidationError as PydanticValidationError,
     field_validator,
+)
+from pydantic import (
+    ValidationError as PydanticValidationError,
 )
 
 from backend.app.core.exceptions import (

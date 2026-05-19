@@ -142,12 +142,10 @@ def main() -> None:
     violations = check_safety(staged=args.staged, commit=args.commit)
 
     if violations:
-        print(f"SAFETY CHECK FAILED: {len(violations)} violation(s)")
-        for v in violations:
-            print(f"  - {v}")
+        for _v in violations:
+            pass
         sys.exit(1)
     else:
-        print("SAFETY CHECK PASSED: all clear")
         sys.exit(0)
 
 

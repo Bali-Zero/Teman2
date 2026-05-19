@@ -160,7 +160,7 @@ async def scrape_url(
     except httpx.HTTPError as e:
         logger.warning("Scrape failed (network) url=%s err=%s", url, e)
         return ScrapedContent(title="", keyPoints=[], quotes=[], success=False)
-    except Exception as e:  # noqa: BLE001 — last-resort fallback
+    except Exception as e:
         logger.warning("Scrape failed (unexpected) url=%s err=%s", url, e)
         return ScrapedContent(title="", keyPoints=[], quotes=[], success=False)
 
@@ -174,7 +174,7 @@ async def scrape_url(
 
     try:
         return _extract(text, fallback_url=url)
-    except Exception as e:  # noqa: BLE001 — never let parse errors crash the request
+    except Exception as e:
         logger.warning("Scrape parse failed url=%s err=%s", url, e)
         return ScrapedContent(title="", keyPoints=[], quotes=[], success=False)
 

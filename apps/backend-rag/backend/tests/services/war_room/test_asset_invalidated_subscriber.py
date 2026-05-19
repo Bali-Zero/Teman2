@@ -26,7 +26,6 @@ from backend.services.war_room.asset_invalidated_subscriber import (
     AssetInvalidatedSubscriber,
 )
 
-
 # ---------------------------------------------------------------------------
 # Filtering: handler must early-return on non-matching events
 # ---------------------------------------------------------------------------

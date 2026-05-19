@@ -25,7 +25,6 @@ async def apply():
                 updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
             );
         """)
-        print("✅ Table kbli_blueprints created.")
     finally:
         await conn.close()
 

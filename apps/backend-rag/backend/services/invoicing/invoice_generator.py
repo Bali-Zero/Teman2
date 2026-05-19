@@ -378,7 +378,7 @@ class InvoiceGenerator:
         ]
 
         totals_table = Table(
-            totals_data + [total_row],
+            [*totals_data, total_row],
             colWidths=[page_width - 4 * cm, 4 * cm],
             hAlign="RIGHT",
         )

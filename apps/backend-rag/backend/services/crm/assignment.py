@@ -666,7 +666,7 @@ async def send_telegram_notification(
             f"📨 Telegram notification sent to {state['assigned_lead']} (chat_id: {state['telegram_chat_id']})",
         )
     except Exception as e:
-        state["errors"].append(f"Telegram notification failed: {str(e)}")
+        state["errors"].append(f"Telegram notification failed: {e!s}")
         state["notification_sent"] = False
         logger.error(
             f"❌ Failed to send Telegram notification to {state['assigned_lead']}: {e}",
