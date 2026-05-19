@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Disk-watchdog — Hardening Team Wave 2 (2026-05-19).
+
+  Daily cron 09:00 WITA that checks root disk usage and Telegram-alerts
+  Zero if >85%. 15% headroom before any cron starts to truncate/fail/skip.
+
+  Why this exists: 2026-05-14 com.balizero.intel.nightly died mid-SEO
+  scrape because disk was 94% full (false launchd exit 0). With this
+  watchdog, MTTR drops from days to ~24h max (next cron tick).
+
+  Bootstrap:
+    cp infra/launchagents/com.balizero.nuzantara.disk-watchdog.plist \
+       ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) \
+       ~/Library/LaunchAgents/com.balizero.nuzantara.disk-watchdog.plist
+
+  Manual trigger:
+    launchctl kickstart -k gui/$(id -u)/com.balizero.nuzantara.disk-watchdog
+
+  Bootout:
+    launchctl bootout gui/$(id -u) \
+       ~/Library/LaunchAgents/com.balizero.nuzantara.disk-watchdog.plist
+
+  Reference:
+    cicatrix-scars.md (intel.nightly disk full 2026-05-14)
+-->
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.balizero.nuzantara.disk-watchdog</string>
+
+    <key>ProgramArguments</key>
+    <array>
+      <string>/bin/bash</string>
+      <string>/Users/nuzantara/Desktop/nuzantara/scripts/disk_watchdog.sh</string>
+    </array>
+
+    <!-- 09:00 WITA daily -->
+    <key>StartCalendarInterval</key>
+    <dict>
+      <key>Hour</key>
+      <integer>9</integer>
+      <key>Minute</key>
+      <integer>0</integer>
+    </dict>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/disk_watchdog.out.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/disk_watchdog.err.log</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>PATH</key>
+      <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+      <key>HOME</key>
+      <string>/Users/nuzantara</string>
+    </dict>
+
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara</string>
+  </dict>
+</plist>
