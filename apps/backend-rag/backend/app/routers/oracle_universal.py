@@ -247,7 +247,7 @@ async def submit_user_feedback(feedback: FeedbackRequest) -> dict[str, Any]:
     Submit user feedback for continuous learning and system improvement
     """
     try:
-        success = await oracle_service.submit_feedback(feedback.dict())
+        success = await oracle_service.submit_feedback(feedback.model_dump())
         return {"success": success}
     except Exception as e:
         logger.error("Feedback error: %s", e)

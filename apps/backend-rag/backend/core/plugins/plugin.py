@@ -9,7 +9,7 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Any
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 logger = logging.getLogger(__name__)
 
@@ -75,7 +75,10 @@ class PluginMetadata(BaseModel):
         description="Original handler key for backward compatibility (e.g., 'gmail.send')",
     )
 
-    @validator("version")
+    model_config = ConfigDict(use_enum_values=True)
+
+    @field_validator("version")
+    @classmethod
     def validate_version(cls, v: Any) -> Any:
         """Validate semantic versioning format"""
         parts = v.split(".")
@@ -86,15 +89,11 @@ class PluginMetadata(BaseModel):
                 raise ValueError("Version parts must be numeric")
         return v
 
-    class Config:
-        use_enum_values = True
-
 
 class PluginInput(BaseModel):
     """Base class for plugin inputs"""
 
-    class Config:
-        extra = "allow"  # Allow additional fields for flexibility
+    model_config = ConfigDict(extra="allow")  # Allow additional fields for flexibility
 
 
 class PluginOutput(BaseModel):
@@ -114,8 +113,7 @@ class PluginOutput(BaseModel):
         if self.ok is None:
             self.ok = self.success
 
-    class Config:
-        extra = "allow"
+    model_config = ConfigDict(extra="allow")
 
 
 class Plugin(ABC):

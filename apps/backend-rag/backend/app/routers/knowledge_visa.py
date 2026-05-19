@@ -11,7 +11,7 @@ Provides endpoints for:
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 from backend.app.dependencies import get_database_pool as get_db_pool
 from backend.app.routers.team_activity import get_admin_user
@@ -59,8 +59,7 @@ class VisaTypeResponse(VisaTypeBase):
     last_updated: datetime | None = None
     created_at: datetime | None = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class VisaTypeListResponse(BaseModel):
