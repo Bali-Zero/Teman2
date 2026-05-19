@@ -146,7 +146,16 @@ async def hop4_check_nb_push(conn: asyncpg.Connection, item_id: str, wait_second
     Schema (migration 171):
         item_id UUID, nb_uuid UUID, status TEXT IN
         ('pending','pushed','failed_transient','failed_permanent','quarantined')
+
+    SKIPPABLE: panel review 2026-05-20 (DeepSeek HIGH finding) — there is
+    currently no routing rule that pushes sandbox items to NB-PROBE-SANDBOX.
+    Until that rule is added, this hop is no-op (just logs).
+    Set INTEL_LAKE_PROBE_CHECK_NB_PUSH=1 to enforce.
     """
+    if os.environ.get("INTEL_LAKE_PROBE_CHECK_NB_PUSH", "0") != "1":
+        logger.info("hop4 SKIP — INTEL_LAKE_PROBE_CHECK_NB_PUSH != 1 (no sandbox routing rule yet)")
+        return
+
     deadline = time.monotonic() + wait_seconds
     while time.monotonic() < deadline:
         row = await conn.fetchrow(

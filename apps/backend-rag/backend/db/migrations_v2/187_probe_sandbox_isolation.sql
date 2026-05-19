@@ -33,18 +33,20 @@ ALTER TABLE intel_items
 COMMENT ON COLUMN intel_items.is_probe_sandbox IS
 'Phase C 2026-05-20: hard barrier flag for synthetic probe data. MUST be true iff producer_name LIKE ''probe-sandbox-%''. Enforced via CHECK constraint chk_probe_sandbox_consistency. See research/operations/2026-05-20-probe-sandbox-setup.md';
 
--- 2. CHECK constraint — biconditional sandbox flag <-> producer_name prefix
--- Producer name is on intel_observations, not intel_items directly.
--- Use deferred constraint via trigger if we needed observations cross-ref.
--- Simpler path: enforce on canonical_url (probe URLs use sandbox marker).
--- Even simpler: trust producers to set the flag; CHECK only that flag=true
--- rows are clearly labeled in canonical_url for audit reversibility.
+-- 2. CHECK constraint — STRICT prefix-only barrier
+-- Panel review 2026-05-20 (DeepSeek BLOCKER finding):
+-- The previous `LIKE '%probe-sandbox%'` could be matched by a legitimate
+-- producer URL containing the substring (e.g., a real article with slug
+-- "probe-sandbox-attack-explained"). That would corrupt isolation.
+-- Fix: anchor to the dedicated host `probe-sandbox.example.test` reserved
+-- by RFC 2606 (.test TLD never resolves on the public internet, so no
+-- real producer can ever legitimately use this hostname).
+-- Probe scripts MUST use canonical_url starting with this exact prefix.
 ALTER TABLE intel_items
     ADD CONSTRAINT chk_probe_sandbox_url
     CHECK (
         is_probe_sandbox = false
-        OR canonical_url LIKE '%probe-sandbox%'
-        OR canonical_url LIKE '%PROBE-SANDBOX%'
+        OR canonical_url LIKE 'https://probe-sandbox.example.test/%'
     );
 
 -- 3. Partial index for production-only queries
