@@ -1,0 +1,247 @@
+PATH=/opt/homebrew/bin:/opt/homebrew/opt/postgresql@17/bin:/usr/local/bin:/usr/bin:/bin
+
+# Conversation Trainer - ogni 6 ore
+# Drive Changes Poll - ogni 5 minuti
+# Knowledge Graph Builder - ogni 4 ore
+# NB-1 NotebookLM Daily Bundle Refresh — 04:30 WITA
+# OpenClaw Cron Jobs - Migrati da AutonomousScheduler (auto_stop su Fly.io)
+# fly-health-check.sh MIGRATED to fly-watcher (2026-04-14)
+# fly-health-check.sh MIGRATED to fly-watcher (2026-04-14)
+*/15 * * * * bash /Users/nuzantara/scripts/cron-agent-python/run.sh fly-watcher >> /Users/nuzantara/logs/cron-agent-python/fly-watcher.log 2>&1
+# DISABLED 2026-04-29 02:42 hotfix backend down: drive_poll satura PG. Restore: rimuovere "# DISABLED ..."
+# */5 * * * * /bin/bash /Users/nuzantara/scripts/openclaw-cron/drive-poll.sh >> /Users/nuzantara/logs/cron-tmp/drive-poll.log 2>&1
+*/5 * * * * /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/scripts/intel-scraper-sentinel-bridge.sh 2>/dev/null
+0 * * * * touch ~/.pro_heartbeat 2>/dev/null; ssh -o ConnectTimeout=3 -o BatchMode=yes air 'touch ~/.pro_heartbeat' 2>/dev/null || true
+# DISABLED 2026-05-16 (script missing): 0 0 * * 0 set -a; source /Users/nuzantara/.zshrc.secrets 2>/dev/null; set +a; cd /Users/nuzantara/Desktop/nuzantara/apps/backend-rag && source .venv/bin/activate && PYTHONPATH=. python scripts/legal_radar.py >> /Users/nuzantara/logs/cron-tmp/legal_radar.log 2>&1
+0 2 * * 0 /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/scripts/openclaw-cron/knowledge-graph-builder.sh >> /Users/nuzantara/logs/cron-tmp/kg-builder.log 2>&1
+0 3 * * 0 /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/scripts/openclaw-cron/conversation-trainer.sh >> /Users/nuzantara/logs/cron-tmp/conversation-trainer.log 2>&1
+*/5 * * * * ~/.pyenv/versions/3.11.11/bin/python3 ~/scripts/openclaw-state-bridge.py >> /Users/nuzantara/logs/cron-tmp/openclaw-bridge.log 2>&1
+0 3 * * * /Users/nuzantara/scripts/fly-backup.sh >> /Users/nuzantara/logs/fly-backup.log 2>&1
+30 */6 * * * /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_yt_monitor.sh >> /Users/nuzantara/logs/cron-tmp/yt-monitor.log 2>&1
+20 2 * * 1-6 /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_nb4_pipeline.sh >> /Users/nuzantara/logs/cron-tmp/nlm-nb4-pipeline.log 2>&1
+0 18 * * 2,4 /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_nb5_t4_monitor.sh >> /Users/nuzantara/logs/cron-tmp/nb5-t4-monitor.log 2>&1
+# Cache cleanup — ogni 2 settimane (1 e 15 del mese, ore 03:30)
+30 3 1,15 * * npm cache clean --force >> /Users/nuzantara/logs/cron-tmp/cache-cleanup.log 2>&1 && pip cache purge >> /Users/nuzantara/logs/cron-tmp/cache-cleanup.log 2>&1 && brew cleanup --prune=all >> /Users/nuzantara/logs/cron-tmp/cache-cleanup.log 2>&1 && echo "$(date): cache cleanup done" >> /Users/nuzantara/logs/cron-tmp/cache-cleanup.log
+30 21 * * 0 /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_peraturan_ingestion.sh >> /Users/nuzantara/logs/cron-tmp/peraturan-ingestion.log 2>&1
+30 2 * * 1-6 /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_nb6_pipeline.sh >> /Users/nuzantara/logs/cron-tmp/nlm-nb6-pipeline.log 2>&1
+40 2 * * 1-6 /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_nb8_pipeline.sh >> /Users/nuzantara/logs/cron-tmp/nlm-nb8-pipeline.log 2>&1
+50 2 * * 1-6 /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_nb10_pipeline.sh >> /Users/nuzantara/logs/cron-tmp/nlm-nb10-pipeline.log 2>&1
+25 2 * * 1-6 /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_nb5_pipeline.sh >> /Users/nuzantara/logs/cron-tmp/nlm-nb5-pipeline.log 2>&1
+35 2 * * 1-6 /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_nb7_pipeline.sh >> /Users/nuzantara/logs/cron-tmp/nlm-nb7-pipeline.log 2>&1
+45 2 * * 1-6 /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_nb3_pipeline.sh >> /Users/nuzantara/logs/cron-tmp/nlm-nb3-pipeline.log 2>&1
+0 * * * * /bin/bash /Users/nuzantara/Desktop/nuzantara/scripts/sync-damar.sh
+
+# MOS v3.1 — Memory Operating System
+0 4 * * * /Users/nuzantara/.claude/scripts/mos-maintenance.sh
+0 3 * * 0 NB_SESSION_ID=1e5f9b04-9485-4620-a775-801b7e6b0395 bash ~/.claude/scripts/sync-memory-to-nlm.sh >> /Users/nuzantara/logs/cron-tmp/mos-sync.log 2>&1
+
+# === ARCH NLM ELEVATION (aggiunto 2026-04-03) ===
+
+# NB-2 Immigration pipeline — Mon-Sat 02:10 WITA (18:10 UTC)
+10 2 * * 1-6 /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_nb2_pipeline.sh >> /Users/nuzantara/logs/cron-tmp/nlm-nb2-pipeline.log 2>&1
+
+# ARCH-5 Gap Scanner Layer A — daily 05:30 WITA (21:30 UTC)
+30 21 * * * /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_gap_scanner.sh --layer-a >> /Users/nuzantara/logs/cron-tmp/gap-scanner.log 2>&1
+
+# ARCH-5 Gap Scanner Layer B — Sunday 03:00 WITA (19:00 UTC Sat)
+0 19 * * 0 /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_gap_scanner.sh --layer-b >> /Users/nuzantara/logs/cron-tmp/gap-scanner.log 2>&1
+
+# ARCH-5 Gap Remediation — Sunday 04:30 WITA (20:30 UTC Sat)
+30 20  * * 0 /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_gap_scanner.sh --remediate >> /Users/nuzantara/logs/cron-tmp/gap-scanner.log 2>&1
+
+# ARCH-5 Freshness Monitor — daily 06:00 WITA (22:00 UTC)
+0 22 * * * /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_freshness_monitor.sh >> /Users/nuzantara/logs/cron-tmp/freshness-monitor.log 2>&1
+
+# ARCH-6 Multimodal — Mon-Fri + Sun 06:00 WITA (22:00 UTC prev day)
+0 22 * * 0-4,6 /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_multimodal.sh >> /Users/nuzantara/logs/cron-tmp/multimodal.log 2>&1
+
+# ARCH-9 Heartbeat check — every 6h (00:30, 06:30, 12:30, 18:30 WITA)
+30 */6 * * * /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_heartbeat_check.sh --check >> /Users/nuzantara/logs/cron-tmp/heartbeat.log 2>&1
+
+# ARCH-9 Heartbeat daily digest — 08:00 WITA (00:00 UTC)
+0 0 * * * /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_heartbeat_check.sh --digest >> /Users/nuzantara/logs/cron-tmp/heartbeat.log 2>&1
+
+# ARCH-10 Ops Intelligence briefing — Monday 08:00 WITA (00:00 UTC)
+0 0 * * 1 /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_ops_briefing.sh >> /Users/nuzantara/logs/cron-tmp/ops-briefing.log 2>&1
+
+# ARCH-2 Persona Validate — Sunday 09:00 WITA (01:00 UTC)
+0 1 * * 0 /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_persona_validate.sh >> /Users/nuzantara/logs/cron-tmp/persona-validate.log 2>&1
+
+# Cleanup: rimuovi queste righe dopo il run
+0 9 * * 1 /bin/bash /Users/nuzantara/scripts/fly-cost-alert.sh >> /Users/nuzantara/logs/cron-tmp/fly-cost.log 2>&1
+*/4 9-17 * * 1-6 ~/.zantara-gateway/warmup-vision.sh
+0 8 * * * ~/.claude/scripts/sync-memory-ruslana.sh >> ~/.claude/logs/sync-ruslana.log 2>&1
+0 7 * * * /Users/nuzantara/scripts/cert-monitor.sh
+
+# Bali Zero Akta — daily Drive sync (Mon-Sat 03:00 WITA / 19:00 UTC prev day)
+# DISABLED 2026-05-16 (script missing — bali-zero-akta not present): 0 19 * * 0-5 cd /Users/nuzantara/Desktop/bali-zero-akta && ./scripts/run_overnight.sh 50 >> logs/daily_cron.log 2>&1
+# Weekly Ollama restart (prevent memory fragmentation) + re-pin warm model
+0 5 * * 0 brew services restart ollama && sleep 15 && /Users/nuzantara/scripts/ollama-warm-pin.sh >> /Users/nuzantara/logs/ollama-warm-pin.log 2>&1
+# Coverage trend tracker (daily) — writes .last.json for Sentinel
+30 4 * * * /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python3 scripts/coverage_trend.py >> /Users/nuzantara/logs/coverage_trend.log 2>&1
+# Dependency audit (weekly Mon) — backup for OpenClaw weekly_dep_audit
+
+# ============================================================================
+# CRON-AGENT: OpenClaw migration (2026-04-14)
+# Tier exec = bash script, Tier agent = claude -p with 3-token OAuth fallback
+# Wrapper: ~/scripts/cron-agent.sh {exec|agent} <job-name> <script-or-prompt>
+# ============================================================================
+
+# --- Tier EXEC (missing from crontab) ---
+# nlm-deep-research: daily 01:10 WITA
+10 1 * * * /bin/bash ~/scripts/cron-agent.sh exec nlm-deep-research ~/Desktop/nuzantara/scripts/nlm_pipeline_run.sh --force >> ~/logs/cron-agent/nlm-deep-research.log 2>&1
+# cell-weekly-report: Sunday 08:00 WITA
+0 8 * * 0 /bin/bash ~/scripts/cron-agent.sh exec cell-weekly-report ~/Desktop/nuzantara/apps/cell/scripts/cell_weekly_report_cron.sh >> ~/logs/cron-agent/cell-weekly-report.log 2>&1
+# --- Tier AGENT (claude -p with 3-token fallback) ---
+# client-health-monitor: daily 14:00
+# Migrated to Python 2026-04-14 (was: cron-agent.sh agent client-health-monitor)
+0 14 * * * /bin/bash ~/scripts/cron-agent-python/run.sh client-health-monitor >> ~/logs/cron-agent-python/client-health-monitor.cron.log 2>&1
+# weekly-dep-audit: Monday 03:30
+30 3 * * 1 /bin/bash ~/scripts/cron-agent.sh agent weekly-dep-audit ~/scripts/cron-agent-prompts/weekly-dep-audit.txt >> ~/logs/cron-agent/weekly-dep-audit.log 2>&1
+# seo-guardian-weekly: Monday 08:00
+0 8 * * 1 /bin/bash ~/scripts/cron-agent.sh agent seo-guardian-weekly ~/scripts/cron-agent-prompts/seo-guardian-weekly.txt >> ~/logs/cron-agent/seo-guardian-weekly.log 2>&1
+# conversation-cleanup: daily 02:00
+0 2 * * * /bin/bash ~/scripts/cron-agent.sh agent conversation-cleanup ~/scripts/cron-agent-prompts/conversation-cleanup.txt >> ~/logs/cron-agent/conversation-cleanup.log 2>&1
+# tech-orchestrator: every 4h at :30 (staggered vs system-doctor at :00)
+# Migrated to Python SDK 2026-04-14 (was: cron-agent.sh agent tech-orchestrator)
+30 */4 * * * /bin/bash ~/scripts/cron-agent-python/run.sh tech-orchestrator >> ~/logs/cron-agent-python/tech-orchestrator.cron.log 2>&1
+# system-doctor: every 4h at :00
+# Migrated to Python SDK 2026-04-14 (was: cron-agent.sh agent system-doctor)
+0 */4 * * * /bin/bash ~/scripts/cron-agent-python/run.sh system-doctor >> ~/logs/cron-agent-python/system-doctor.cron.log 2>&1
+# compliance-ops: every 6h
+# Migrated to Python SDK 2026-04-14 (was: cron-agent.sh agent compliance-ops)
+0 */6 * * * /bin/bash ~/scripts/cron-agent-python/run.sh compliance-ops >> ~/logs/cron-agent-python/compliance-ops.cron.log 2>&1
+# daily-ops: daily 08:00
+# Migrated to Python SDK 2026-04-14 (was: cron-agent.sh agent daily-ops)
+0 8 * * * /bin/bash ~/scripts/cron-agent-python/run.sh daily-ops >> ~/logs/cron-agent-python/daily-ops.cron.log 2>&1
+# indexing-daily: daily 09:00
+0 9 * * * /bin/bash ~/scripts/cron-agent.sh agent indexing-daily ~/scripts/cron-agent-prompts/indexing-daily.txt >> ~/logs/cron-agent/indexing-daily.log 2>&1
+# learning-pipeline: Sunday 23:00
+0 23 * * 0 /bin/bash ~/scripts/cron-agent.sh agent learning-pipeline ~/scripts/cron-agent-prompts/learning-pipeline.txt >> ~/logs/cron-agent/learning-pipeline.log 2>&1
+# seo-guardian-observe: every 40min (reclassified: needs reasoning)
+*/40 * * * * /bin/bash ~/scripts/cron-agent.sh agent seo-guardian-observe ~/scripts/cron-agent-prompts/seo-guardian-observe.txt >> ~/logs/cron-agent/seo-guardian-observe.log 2>&1
+
+# nlm-nb1-daily-refresh: migrated from legacy cron to cron-agent.sh (2026-04-14)
+33 20  * * * /bin/bash ~/scripts/cron-agent.sh exec nlm-nb1-daily-refresh ~/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_nb1_refresh.sh >> ~/logs/cron-agent/nlm-nb1-daily-refresh.log 2>&1
+# bi-exchange-rate: daily 07:00 WITA
+0 7 * * * bash ~/scripts/cron-agent-python/run.sh bi-exchange-rate >> ~/logs/cron-agent-python/bi-exchange-rate.log 2>&1
+# oss-monitor: every 2h 08:00-22:00 WITA
+0 8,10,12,14,16,18,20,22 * * * bash ~/scripts/cron-agent-python/run.sh oss-monitor >> ~/logs/cron-agent-python/oss-monitor.log 2>&1
+# imigrasi-monitor: daily 06:00 WITA
+0 6 * * * bash ~/scripts/cron-agent-python/run.sh imigrasi-monitor >> ~/logs/cron-agent-python/imigrasi-monitor.log 2>&1
+# intel-radar: hourly (rotational queries for Bali Zero business intel)
+0 * * * * bash /Users/nuzantara/scripts/cron-agent-python/run.sh intel-radar >> /Users/nuzantara/logs/cron-agent-python/intel-radar.log 2>&1
+# intel-feed-processor: every 30min (processes items from browser scrapers)
+0 */2 * * * bash /Users/nuzantara/scripts/cron-agent-python/run.sh intel-feed-processor >> /Users/nuzantara/logs/cron-agent-python/intel-feed-processor.log 2>&1
+# log-anomaly-detector: every 5min (4.5min window, Monitor pattern)
+*/5 * * * * bash /Users/nuzantara/scripts/cron-agent-python/run.sh log-anomaly-detector >> /Users/nuzantara/logs/cron-agent-python/log-anomaly-detector.log 2>&1
+# fact-checker: every 30min (pre-publish validation for intel articles)
+15 */1 * * * bash /Users/nuzantara/scripts/cron-agent-python/run.sh fact-checker >> /Users/nuzantara/logs/cron-agent-python/fact-checker.log 2>&1
+# pajak-monitor: daily 08:00 WITA (= 00:00 UTC) — tax regulation monitor
+0 0 * * * bash /Users/nuzantara/scripts/cron-agent-python/run.sh pajak-monitor >> /Users/nuzantara/logs/cron-agent-python/pajak-monitor.log 2>&1
+# tdd-pipeline: weekly Monday 09:00 WITA (= Mon 01:00 UTC) — TDD for new backend services
+0 1 * * 1 bash /Users/nuzantara/scripts/cron-agent-python/run.sh tdd-pipeline >> /Users/nuzantara/logs/cron-agent-python/tdd-pipeline.log 2>&1
+
+# GARUDA Curator Agent - Layer 4.5 (Sprint 5.1)
+# Daily Drive indexer 04:30 WITA = 20:30 UTC
+36 20  * * * /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/scripts/openclaw-cron/garuda-indexer.sh >> /Users/nuzantara/logs/cron-tmp/garuda-indexer.log 2>&1
+# Weekly tombstone GC Sunday 05:00 WITA = Sunday 21:00 UTC
+0 21 * * 6 /bin/bash /Users/nuzantara/scripts/cron-runner.sh /Users/nuzantara/scripts/openclaw-cron/garuda-gc.sh >> /Users/nuzantara/logs/cron-tmp/garuda-gc.log 2>&1
+5 */6 * * * bash /Users/nuzantara/scripts/cron-agent-python/run.sh vision-doc-extractor >> /Users/nuzantara/logs/cron-agent-python/vision-doc-extractor.log 2>&1
+# Sprint 2 — Yajña Ledger weekly scan — Sunday 17:00 WITA
+# Sprint 3 — Hexagram Dashboard daily compute — 08:00 WITA (after heartbeat digest)
+
+# === AIR RETIREMENT PHASE 1 — Cat2 jobs ported from Air 2026-04-24 ===
+# Source: ~/air-retirement-2026-04-24/air-crontab-backup-2026-04-24.txt (captured 2026-04-24)
+# Dropped: C2.5 seo-guardian (references missing seo_guardian_agent.py on both Air and Pro)
+# Skipped: C2.8 cache cleanup (Pro crontab already has equivalent), C2.12 sync-damar (Pro uses its own direct version)
+
+# C2.1 kb-ingest (daily 05:00 WITA = 21:00 UTC prev day)
+0 21 * * * /Users/nuzantara/Desktop/nuzantara-deploy/scripts/cron-wrapper.sh kb-ingest /Users/nuzantara/Desktop/nuzantara-deploy/scripts/auto_kb_ingest.sh
+
+# C2.2 rag-canary (every 6h at :30 UTC)
+30 */6 * * * /Users/nuzantara/Desktop/nuzantara/scripts/cron-wrapper.sh rag-canary bash -c 'cd /Users/nuzantara/Desktop/nuzantara && /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python3 scripts/rag_canary.py'
+
+# C2.4 drive-watchdog (every 6h UTC)
+0 */6 * * * /Users/nuzantara/Desktop/nuzantara/scripts/cron-wrapper.sh drive-watchdog bash -c 'cd /Users/nuzantara/Desktop/nuzantara && /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python3 scripts/drive_token_watchdog.py'
+
+# C2.6 t4-monitor (every 6h UTC)
+0 */6 * * * /Users/nuzantara/Desktop/nuzantara/scripts/cron-wrapper.sh t4-monitor /bin/bash /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_t4_monitor.sh
+
+# C2.7 crm-automation (daily 23:00 UTC = 07:00 WITA)
+0 23 * * * /Users/nuzantara/Desktop/nuzantara/scripts/cron-wrapper.sh crm-automation bash -c 'cd /Users/nuzantara/Desktop/nuzantara/apps/backend-rag && /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python3 scripts/crm_automation_engine.py'
+
+# C2.9 fly-pg-backup (daily 03:20 UTC)
+20 3 * * * /Users/nuzantara/Desktop/nuzantara/scripts/cron-wrapper.sh fly-pg-backup /Users/nuzantara/scripts/fly-pg-backup.sh
+
+# C2.10 qdrant-snapshot (Sunday 04:00 UTC)
+0 4 * * 0 CRON_TIMEOUT=600 /Users/nuzantara/Desktop/nuzantara/scripts/cron-wrapper.sh qdrant-snapshot /Users/nuzantara/scripts/qdrant-snapshot.sh
+
+# C2.11 db-nlm-sync (daily 20:30 UTC = 04:30 WITA)
+39 20  * * * /Users/nuzantara/Desktop/nuzantara/scripts/cron-wrapper.sh db-nlm-sync /Users/nuzantara/Desktop/nuzantara/apps/evaluator/nlm_deep_research/scripts/run_db_nlm_sync.sh
+
+# C2.13 claude memory db backup (daily 04:00 UTC)
+0 4 * * * cp /Users/nuzantara/.claude/memory.db /Users/nuzantara/.claude/backups/memory_$(date +\%Y\%m\%d).db 2>/dev/null
+
+# C2.14 claude memory backup purge >30d (Sunday 05:00 UTC)
+0 5 * * 0 find /Users/nuzantara/.claude/backups -name "memory_*.db" -mtime +30 -delete 2>/dev/null
+
+# C2.15 claude memory ttl sweep (daily 05:00 UTC)
+0 5 * * * sqlite3 /Users/nuzantara/.claude/memory.db 'DELETE FROM memories WHERE ttl_days IS NOT NULL AND julianday("now") - julianday(created_at) > ttl_days;' 2>/dev/null
+
+# C2.16 memory→NLM sync — SKIPPED (Pro already runs `0 3 * * 0 .../sync-memory-to-nlm.sh`,
+# same script, same NB_SESSION_ID, 40 min earlier than Air's entry)
+
+# C2.17 audit trail cleanup (Sunday 02:00 UTC)
+0 2 * * 0 /Users/nuzantara/scripts/audit_trail_cleanup.sh >> /Users/nuzantara/logs/cron-tmp/audit-cleanup.log 2>&1
+
+# C2.18 job-health (daily 09:00 UTC)
+0 9 * * * set -a; [ -f /Users/nuzantara/.nuzantara-secrets.env ] && source /Users/nuzantara/.nuzantara-secrets.env; set +a; /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python3 /Users/nuzantara/Desktop/nuzantara/scripts/job_health.py --alert >> /Users/nuzantara/logs/cron/job-health.log 2>&1
+
+# C2.19 owner-cashout-sync (Monday 01:00 UTC)
+0 1 * * 1 /Users/nuzantara/Desktop/nuzantara/scripts/cron-wrapper.sh owner-cashout-sync /Users/nuzantara/Desktop/nuzantara/scripts/sync_owner_cashout_fly.sh
+
+# C2.20 sentry quota check (daily 09:00 UTC)
+0 9 * * * source /Users/nuzantara/.nuzantara-secrets.env && /Users/nuzantara/Desktop/nuzantara/scripts/sentry-quota-check.sh >> /Users/nuzantara/logs/sentry_quota_check.log 2>&1
+
+# === AIR RETIREMENT PHASE 1 — Cat3 Ollama jobs ported from Air 2026-04-24 ===
+# Ollama nightly window 01:00-06:00 WITA (17:00-22:00 UTC prev day).
+# Pro runs Ollama H24 via homebrew so ollama_cron_window.sh may be a no-op — kept for parity.
+#
+# Staggered from Air schedule to avoid Pro 17-22 UTC window collisions:
+# - C3.1 ollama_cron_window start: 17:00 → 17:10 UTC (avoid yajna_scan 17:00 Sun)
+# - C3.5 ragas_eval: Fri 22:00 → Fri 22:30 UTC (avoid freshness_monitor + multimodal 22:00)
+# - C3.6 ollama warm restart: SKIPPED (Pro already has `0 5 * * 0 brew services restart ollama ...`)
+
+# C3.1 ollama cron window START (daily 01:10 WITA ≈ 17:10 UTC prev day)
+10 17 * * * /Users/nuzantara/Desktop/nuzantara/scripts/ollama_cron_window.sh start >> /Users/nuzantara/logs/ollama_cron.log 2>&1
+
+# C3.2 auto-test (daily 02:15 WITA = 18:15 UTC)
+15 18 * * * /Users/nuzantara/Desktop/nuzantara/scripts/auto_test.sh >> /Users/nuzantara/logs/auto_test.log 2>&1
+
+# C3.3 auto-sentinel (daily 03:00 WITA = 19:00 UTC)
+0 19 * * * /Users/nuzantara/Desktop/nuzantara/scripts/auto_sentinel.sh >> /Users/nuzantara/logs/sentinel_nightly.log 2>&1
+
+# C3.4 auto-judgement day (Sunday 16:00 WITA = 08:00 UTC)
+0 8 * * 0 /Users/nuzantara/Desktop/nuzantara/scripts/auto_judgement_day.sh >> /Users/nuzantara/logs/judgement_day.log 2>&1
+
+# C3.5 ragas eval (Saturday 06:30 WITA ≈ Fri 22:30 UTC, staggered from 22:00)
+30 22 * * 5 cd /Users/nuzantara/Desktop/nuzantara && /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python3 scripts/ragas_eval.py >> /Users/nuzantara/logs/ragas_eval.log 2>&1
+
+# C3.7 ollama cron window STOP (daily 06:05 WITA ≈ 22:05 UTC prev day)
+5 22 * * * /Users/nuzantara/Desktop/nuzantara/scripts/ollama_cron_window.sh stop >> /Users/nuzantara/logs/ollama_cron.log 2>&1
+
+# === AIR RETIREMENT PHASE 1.5 — LaunchAgent schedules ported from Air 2026-04-24 ===
+# Source: Air's com.graph.curiosity-loop and com.cell.genome-decay LAs (both unloaded 2026-04-24)
+# Schedules in Air LA plists use local time (WITA = UTC+8); converted to UTC below.
+
+# LA.1 graph.curiosity-loop (Air was 04:30 WITA = 20:30 UTC prev day)
+42 20  * * * /bin/bash /Users/nuzantara/Desktop/nuzantara/scripts/curiosity_loop.sh >> /Users/nuzantara/logs/curiosity_loop.log 2>&1
+
+# LA.2 cell.genome-decay (Air was 02:30 WITA = 18:30 UTC prev day)
+30 18 * * * /bin/bash /Users/nuzantara/Desktop/nuzantara/scripts/genome_decay.sh >> /Users/nuzantara/logs/genome_decay.log 2>&1
+0 5 * * 0 /Users/nuzantara/Desktop/nuzantara/scripts/docs_guardian.sh >> $HOME/logs/docs-guardian.log 2>&1
+
+# NB-AGENTS daily adaptive Deep Research (07:30 WITA)
+30 7 * * * /Users/nuzantara/scripts/nb-agents-daily-dr.sh >> /Users/nuzantara/.cron-agent/logs/nb-agents-cron.log 2>&1
+55 0 * * 1 /Users/nuzantara/Desktop/nuzantara/scripts/nextdns-weekly-digest.sh >> /Users/nuzantara/logs/nextdns-digest.log 2>&1
