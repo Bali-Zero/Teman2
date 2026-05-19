@@ -60,7 +60,7 @@ NB_INTEL_AI_RESEARCH = "d48c4933-4d93-4d1e-8753-23b88145ba78"
 # Matching rule: source_domain == "probe-sandbox.example.test" (RFC 2606 .test
 # TLD never resolves on the public internet — only probe scripts use it).
 # Migration 187 CHECK constraint enforces canonical_url prefix at INSERT.
-NB_PROBE_SANDBOX = "7e6ae978-136c-4c96-bed5-9fab6f39176f"
+NB_PROBE_SANDBOX = "1e33e107-4064-48cd-b09d-f7f0a52b31ea"
 
 
 # ─── Routing rules (closed-set, applied top-to-bottom; first match wins) ────
