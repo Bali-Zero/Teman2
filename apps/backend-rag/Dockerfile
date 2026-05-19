@@ -5,45 +5,58 @@
 # BUILD CONTEXT: monorepo root (set by `flyctl deploy --dockerfile apps/backend-rag/Dockerfile --config apps/backend-rag/fly.toml` in .github/workflows/fly-deploy.yml).
 # Local: `docker build -f apps/backend-rag/Dockerfile -t rag-test .` FROM repo root, not from apps/backend-rag/.
 #
-# BuildKit cache mounts (added 2026-05-18): pip cache mounted at /root/.cache/pip
-# (default pip user-cache for root). Cache persists across builds, drastically
+# BuildKit cache mounts (added 2026-05-18, switched to uv 2026-05-19):
+# uv cache mounted at /root/.cache/uv. Cache persists across builds, drastically
 # reducing rebuild time for ML deps (torch + transformers + sentence-transformers).
-# `--no-cache-dir` flag is REMOVED — it instructs pip to NOT write to its cache,
-# which is counterproductive with cache mounts. The `--user` install target
-# (/root/.local) is separate from the pip cache (/root/.cache/pip).
+# uv is 10-100× faster than pip for resolution + install, and `--require-hashes`
+# against `requirements-prod.lock.txt` guarantees reproducible builds (hash-pinned).
+# See apps/backend-rag/docs/uv-migration.md for the full migration rationale.
 
 # ========================================
 # Stage 1: Build Stage
 # ========================================
 FROM python:3.11-slim as builder
 
-# Install build dependencies
+# Install build dependencies + uv (Astral's Rust-based pip replacement).
+# uv is installed via pip into the builder stage's system Python; it is
+# only used for installing dependencies into /root/.local and never ships
+# in the runtime image.
 RUN apt-get update && apt-get install -y \
     build-essential \
     curl \
     && rm -rf /var/lib/apt/lists/* \
-    && apt-get clean
+    && apt-get clean \
+    && pip install --no-cache-dir uv
 
 WORKDIR /app
 
 # Copy the cell-core workspace package (referenced as editable dep from
-# apps/backend-rag/requirements-prod.txt as `-e ../../packages/cell-core`).
-# Must be in place BEFORE pip install -r resolves that line.
+# apps/backend-rag/requirements-prod.lock.txt as `-e ../../packages/cell-core`).
+# Must be in place BEFORE uv pip install -r resolves that line.
 COPY packages/cell-core /app/packages/cell-core
 
 # Copy backend-rag directory (requirements files + any build-time helpers).
-# Keeping the whole dir lets `pip install -r requirements-prod.txt` run
-# from `/app/apps/backend-rag/` so the relative `-e ../../packages/cell-core`
-# in the requirements file resolves to `/app/packages/cell-core` — the same
-# path used by local dev and by CI (tests.yml, fly-deploy.yml). Single
-# declaration site for cell-core, no more duplicated workaround.
+# Keeping the whole dir lets `uv pip install -r requirements-prod.lock.txt`
+# run from `/app/apps/backend-rag/` so the relative
+# `-e ../../packages/cell-core` in the lock file resolves to
+# `/app/packages/cell-core` — the same path used by local dev and by CI
+# (tests.yml, fly-deploy.yml). Single declaration site for cell-core.
 COPY apps/backend-rag /app/apps/backend-rag
 
-# Install Python dependencies (skip Playwright browsers to save ~500MB)
+# Install Python dependencies via uv (skip Playwright browsers to save ~500MB).
+# `--require-hashes` enforces SHA256 verification of every wheel against the
+# hashes recorded in requirements-prod.lock.txt — any PyPI re-upload or MITM
+# fails the build. To regenerate the lock: see docs/uv-migration.md.
+#
+# Layout: uv `--prefix /root/.local` installs into the exact same shape that
+# `pip install --user` produced (uv has no `--user` flag): lib/python3.11/
+# site-packages + bin/. The runtime stage then COPYs /root/.local intact to
+# /home/nuzantara/.local — PATH and PYTHONPATH already point there. Drop-in
+# replacement for the previous `pip install --user` line.
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 WORKDIR /app/apps/backend-rag
-RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
-    pip install --user -r requirements-prod.txt \
+RUN --mount=type=cache,target=/root/.cache/uv,sharing=locked \
+    uv pip install --prefix /root/.local --require-hashes -r requirements-prod.lock.txt \
     && find /root/.local -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true \
     && find /root/.local -type f -name "*.pyc" -delete \
     && find /root/.local -type f -name "*.pyo" -delete

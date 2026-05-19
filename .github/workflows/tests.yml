@@ -50,21 +50,23 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Cache dependencies
+      - name: Cache dependencies (uv)
         uses: actions/cache@v5
         with:
-          path: ~/.cache/pip
-          key: ${{ runner.os }}-pip-${{ hashFiles('apps/backend-rag/requirements.txt') }}
+          path: ~/.cache/uv
+          key: ${{ runner.os }}-uv-${{ hashFiles('apps/backend-rag/requirements.lock.txt') }}
 
-      - name: Install dependencies
+      - name: Install dependencies (uv, hash-pinned)
         run: |
           cd apps/backend-rag
-          pip install --upgrade pip
-          # requirements.txt now declares cell-core as an editable workspace
-          # dep (`-e ../../packages/cell-core`); the separate install step
-          # that used to live here is gone.
-          pip install -r requirements.txt
-          pip install pytest pytest-cov pytest-asyncio pytest-mock fakeredis
+          pip install --upgrade pip uv
+          # requirements.lock.txt is hash-pinned, derived from requirements.txt
+          # via `uv pip compile … --generate-hashes`. The lock declares
+          # cell-core as an editable workspace dep (`-e ../../packages/cell-core`).
+          # uv is 10-100× faster than pip; --require-hashes enforces SHA256
+          # against every wheel. See docs/uv-migration.md to regenerate.
+          uv pip install --system --require-hashes -r requirements.lock.txt
+          uv pip install --system pytest pytest-cov pytest-asyncio pytest-mock fakeredis
 
       - name: pip-audit
         run: |
@@ -325,11 +327,11 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install backend dependencies
+      - name: Install backend dependencies (uv, hash-pinned)
         run: |
           cd apps/backend-rag
-          pip install --upgrade pip
-          pip install -r requirements.txt
+          pip install --upgrade pip uv
+          uv pip install --system --require-hashes -r requirements.lock.txt
 
       - name: Start backend (FastAPI on :8000)
         env:
