@@ -248,6 +248,32 @@ async def execute_query(options: dict[str, Any], query: str) -> list[Any]:
     response_format = _build_response_format(options.get("schema"))
     if response_format is not None:
         payload["response_format"] = response_format
+        # Phase 1.1D fix (2026-05-19 smoke #6): DeepSeek API rejects
+        # `response_format: {"type": "json_object"}` with HTTP 400 if
+        # the prompt does NOT contain the substring "json" (case
+        # insensitive). EvoSkill's system prompts are generic agent
+        # task descriptions that may not include the literal word.
+        # We unconditionally prepend a JSON-mode marker to the system
+        # message — the marker is informative ("Respond in JSON.") and
+        # cheap (~5 tokens), and it satisfies DeepSeek's guard.
+        #
+        # Verified failure mode pre-fix:
+        #   DeepSeek API 400 (non-retryable): "Prompt must contain
+        #   the word 'json' in some form to use 'response_format' of
+        #   type 'json_object'."
+        messages = payload["messages"]
+        has_json_word = any(
+            "json" in (m.get("content") or "").lower() for m in messages
+        )
+        if not has_json_word:
+            json_marker = "Respond in JSON format matching the requested schema."
+            # Prepend to system message if present, else inject a new one
+            if messages and messages[0].get("role") == "system":
+                messages[0]["content"] = (
+                    json_marker + "\n\n" + messages[0]["content"]
+                )
+            else:
+                messages.insert(0, {"role": "system", "content": json_marker})
 
     # `reasoning_effort` is a DeepSeek V4 Pro extension (low/high/max).
     # We forward it conditionally; if the API doesn't recognise it on a

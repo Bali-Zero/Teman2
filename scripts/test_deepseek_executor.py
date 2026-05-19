@@ -25,6 +25,7 @@ Run:
 from __future__ import annotations
 
 import asyncio
+import json
 import os
 import sys
 from pathlib import Path
@@ -400,6 +401,93 @@ def test_build_response_format_with_schema():
 def test_build_response_format_no_schema():
     assert _build_response_format(None) is None
     assert _build_response_format({}) is None
+
+
+# ─── Phase 1.1D fix: DeepSeek json-mode requires "json" in prompt ────
+
+
+def _capture_transport():
+    """MockTransport that captures every outgoing request body."""
+    captured = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = json.loads(request.content.decode("utf-8")) if request.content else {}
+        captured.append(body)
+        # Return a minimal valid response so execute_query completes
+        return httpx.Response(
+            200,
+            request=request,
+            json={
+                "id": "captured",
+                "model": "deepseek-v4-pro",
+                "choices": [{"message": {"content": "{}"}, "finish_reason": "stop"}],
+                "usage": {"prompt_tokens": 1, "completion_tokens": 1},
+            },
+        )
+
+    return httpx.MockTransport(handler), captured
+
+
+@pytest.mark.asyncio
+async def test_json_marker_injected_when_schema_set_and_system_lacks_json(
+    monkeypatch, set_api_key
+):
+    """Schema requested + system has no 'json' word → marker prepended."""
+    transport, captured = _capture_transport()
+    _patch_async_client(monkeypatch, transport)
+    options = {
+        "model": "deepseek-v4-pro",
+        "system": "You answer questions about the weather.",
+        "schema": {"type": "object", "properties": {"answer": {"type": "string"}}},
+    }
+    await execute_query(options, "What is the weather?")
+    assert len(captured) == 1
+    body = captured[0]
+    assert body.get("response_format") == {"type": "json_object"}
+    messages = body["messages"]
+    # System message should now contain "json" (case insensitive)
+    sys_msgs = [m for m in messages if m.get("role") == "system"]
+    assert any("json" in (m.get("content") or "").lower() for m in sys_msgs), (
+        f"Expected 'json' in some system message, got: {sys_msgs}"
+    )
+
+
+@pytest.mark.asyncio
+async def test_json_marker_NOT_injected_when_system_already_has_json(
+    monkeypatch, set_api_key
+):
+    """System already mentions JSON → no duplicate marker added."""
+    transport, captured = _capture_transport()
+    _patch_async_client(monkeypatch, transport)
+    options = {
+        "model": "deepseek-v4-pro",
+        "system": "Reply in JSON format only.",
+        "schema": {"type": "object"},
+    }
+    await execute_query(options, "test")
+    assert len(captured) == 1
+    messages = captured[0]["messages"]
+    sys_msgs = [m for m in messages if m.get("role") == "system"]
+    # The original system message is unchanged (no marker prepended)
+    assert sys_msgs[0]["content"] == "Reply in JSON format only."
+
+
+@pytest.mark.asyncio
+async def test_no_marker_when_no_schema(monkeypatch, set_api_key):
+    """No schema → no response_format → no marker injected."""
+    transport, captured = _capture_transport()
+    _patch_async_client(monkeypatch, transport)
+    options = {
+        "model": "deepseek-v4-pro",
+        "system": "You answer freely.",
+        # schema absent
+    }
+    await execute_query(options, "test")
+    body = captured[0]
+    assert "response_format" not in body
+    sys_msgs = [m for m in body["messages"] if m.get("role") == "system"]
+    # Original system message untouched (no JSON marker)
+    assert sys_msgs[0]["content"] == "You answer freely."
 
 
 # ─── Integration: execute_query + parse_response together ────────────
