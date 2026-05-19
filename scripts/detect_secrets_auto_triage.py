@@ -44,6 +44,14 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"\.(py|json|yml|yaml|toml|sh)\.example$"),
         "*.<ext>.example: documented placeholder, never a real secret",
     ),
+    # <prefix>.env.example — agent-library-evolver-secrets.env.example
+    # and other prefixed env-example templates under config/. The bare
+    # `^\.env\.example$` rule above only catches the dotfile at root;
+    # this rule supports the prefix convention.
+    (
+        re.compile(r"\.env\.example$"),
+        "<prefix>.env.example: documented secrets template, never a real secret",
+    ),
     # infra/eventbus/ schemas + examples (qdrant connection strings are placeholders)
     (
         re.compile(r"(^|/)infra/eventbus/.*\.(py|md|yaml|yml)$"),
