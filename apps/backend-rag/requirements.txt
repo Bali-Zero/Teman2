@@ -12,7 +12,7 @@ pydantic-settings>=2.5.2  # Compatible with pydantic 2.12+
 python-multipart>=0.0.22  # Security fix: arbitrary file write (CVE-2024-47874)
 
 # Vector Database
-qdrant-client>=1.12.0  # Upgraded to support urllib3>=2.0.0
+qdrant-client>=1.18.0  # Upgraded to support urllib3>=2.0.0
 
 # Google Cloud Integration (Core for v5.3 Hybrid) - Use compatible versions
 google-genai>=1.56.0  # Unified SDK with MCP support
