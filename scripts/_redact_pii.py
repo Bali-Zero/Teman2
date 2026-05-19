@@ -202,9 +202,16 @@ def _load_pg_names(query: str, pg_url: str | None = None) -> list[str]:
     rule no-ops with a warning. Operator MUST verify PG was reachable
     by checking the run telemetry.
     """
-    pg_url = pg_url or os.environ.get("PGURL")
+    # Read DATABASE_URL (canonical name used by wrapper + secrets template),
+    # PGURL as legacy fallback. Mismatch was caught by Codex panel R5
+    # BLOCKING #6 — wrapper sets DATABASE_URL but redactor was looking
+    # at PGURL, causing pass4 dynamic CRM names to silently no-op
+    # (CRM client/company names could leak to external LLMs).
+    pg_url = pg_url or os.environ.get("DATABASE_URL") or os.environ.get("PGURL")
     if not pg_url:
-        logger.warning("PGURL env not set — skipping dynamic name load.")
+        logger.warning(
+            "DATABASE_URL/PGURL env not set — skipping dynamic name load."
+        )
         return []
     try:
         result = subprocess.run(

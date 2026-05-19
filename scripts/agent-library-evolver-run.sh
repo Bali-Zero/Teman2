@@ -127,13 +127,63 @@ validate_secrets() {
         log "FATAL: DEEPSEEK_API_KEY not set after sourcing ${SECRETS_FILE}"
         exit 2
     fi
-    # Defensive: NEVER allow ANTHROPIC_API_KEY to be set in our process
-    # (CLAUDE.md hard rule — panel R3 BLOCKING #2). Unset it before
-    # spawning any LLM subprocess.
-    unset ANTHROPIC_API_KEY
-    log "secrets OK (DEEPSEEK_API_KEY set, ANTHROPIC_API_KEY unset defensively)"
+    # CLAUDE.md hard rule (panel R5 BLOCKING #8): the wrapper REJECTS a
+    # contaminated environment with ANTHROPIC_API_KEY set. Silently
+    # unset-ing would hide the violation upstream; failing loud surfaces
+    # the mistake so the operator can remove the bad config.
+    if [[ -n "${ANTHROPIC_API_KEY:-}" ]]; then
+        log "FATAL: ANTHROPIC_API_KEY is set in the environment — this is a"
+        log "CLAUDE.md hard rule violation (no Anthropic API anywhere). The"
+        log "wrapper refuses to run with the key exposed; please remove it"
+        log "from ${SECRETS_FILE} (or any parent env) and retry."
+        exit 2
+    fi
+    log "secrets OK (DEEPSEEK_API_KEY set, ANTHROPIC_API_KEY confirmed absent)"
 }
 validate_secrets
+
+# ─── 2b. Telegram alert helpers (defined early — bash doesn't hoist) ─
+
+telegram_alert() {
+    local msg="$1"
+    if [[ -z "${TELEGRAM_BOT_TOKEN:-}" ]] || [[ -z "${TELEGRAM_OWNER_CHAT_ID:-}" ]]; then
+        log "WARN: TELEGRAM_BOT_TOKEN/CHAT_ID not set — alert skipped: ${msg}"
+        return 0
+    fi
+    local payload
+    payload="$(python3 -c "
+import json, sys
+print(json.dumps({
+    'chat_id': '${TELEGRAM_OWNER_CHAT_ID}',
+    'text': sys.argv[1],
+    'parse_mode': 'Markdown'
+}))
+" "${msg}")"
+    curl -sS -X POST \
+        "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+        -H "Content-Type: application/json" \
+        -d "${payload}" >> "${LOG_FILE}" 2>&1 || \
+        log "WARN: Telegram alert send failed"
+}
+
+final_alert() {
+    local cost="(unknown)"
+    if [[ -f "${TELEMETRY_JSON:-}" ]]; then
+        cost="$(python3 -c "
+import json
+try:
+    with open('${TELEMETRY_JSON}') as f:
+        print(f\"\$\" + str(json.load(f).get('total_cost_usd', 0.0)))
+except Exception:
+    print('(parse error)')
+")"
+    fi
+    telegram_alert "🌱 agent-library-evolver ${RUN_DATE}
+proposals_passed=${PROPOSALS_PASSED:-0}
+cost=${cost}
+budget=\$${BUDGET_USD}
+log=${LOG_FILE}"
+}
 
 # ─── 3. PG advisory lock — single-flight ─────────────────────────────
 
@@ -253,24 +303,23 @@ fi
 
 run_evoskill() {
     log "invoking uv run evoskill run --config ${EVOSKILL_CONFIG}"
-    # Export BUDGET_USD + DEEPSEEK_API_KEY into the subprocess env.
-    # The DeepSeek executor (Task #23) reads DEEPSEEK_API_KEY directly.
-    # BUDGET_USD is informational here — actual gate is the post-run
-    # telemetry check below (L6 finding: bash cannot enforce mid-run
-    # cap because evoskill is one blocking command).
+    # Codex panel R5 BLOCKING #2 fix: evoskill CLI does NOT support
+    # `--output-telemetry`. Cost is reported via the post-run RunReport
+    # written as markdown to .evoskill/reports/run-<timestamp>.md (see
+    # vendor/evoskill/src/cli/report.py:save). The post-run budget
+    # check below scans that report instead. Wrapper exit 1 on
+    # evoskill failure — no fall-through that bypasses budget gate.
     if ! (
         cd "${EVOSKILL_DIR}" && \
         BUDGET_USD="${BUDGET_USD}" \
         DEEPSEEK_API_KEY="${DEEPSEEK_API_KEY}" \
         uv run evoskill run \
             --config "${EVOSKILL_CONFIG}" \
-            --output-telemetry "${TELEMETRY_JSON}" \
             >> "${LOG_FILE}" 2>&1
     ); then
-        log "evoskill run failed — see ${LOG_FILE}"
-        # Don't exit 1 immediately — telemetry.json may still have partial
-        # cost info we want to honour the budget against. Fall through to
-        # the parse step which will set is_error=true if missing.
+        log "FATAL: evoskill run failed — see ${LOG_FILE}"
+        telegram_alert "evolver ${RUN_DATE} FAIL: uv run evoskill run non-zero exit (see ${LOG_FILE})"
+        exit 1
     fi
     log "evoskill run completed"
 }
@@ -278,23 +327,59 @@ run_evoskill
 
 # ─── 7. Budget check (L6 fail-closed) ────────────────────────────────
 
+# Path to evoskill's own RunReport. After Codex panel R5 BLOCKING #2
+# we scan the most-recent run-*.md and parse `| Total cost | $X.XXXX |`
+# (see vendor/evoskill/src/cli/report.py:_render_markdown). Missing
+# report = fail-closed (we don't know the cost → can't honour budget).
+EVOSKILL_REPORTS_DIR="${REPO_ROOT}/agent-library/.evoskill/reports"
+
 enforce_budget() {
-    if [[ ! -f "${TELEMETRY_JSON}" ]]; then
-        log "WARN: telemetry.json missing — cannot verify budget. Treating as 0 cost (no proposals will ship)"
-        return 0
+    if [[ ! -d "${EVOSKILL_REPORTS_DIR}" ]]; then
+        log "FATAL: .evoskill/reports/ missing after evoskill run — cannot verify budget"
+        telegram_alert "evolver ${RUN_DATE} FAIL: missing .evoskill/reports/ → cannot enforce BUDGET_USD"
+        exit 5
     fi
+    # Pick the most-recently-modified run-*.md
+    local latest_report
+    latest_report="$(ls -t "${EVOSKILL_REPORTS_DIR}"/run-*.md 2>/dev/null | head -1)"
+    if [[ -z "${latest_report}" ]]; then
+        log "FATAL: no run-*.md found in ${EVOSKILL_REPORTS_DIR} — cannot verify budget"
+        telegram_alert "evolver ${RUN_DATE} FAIL: no evoskill report generated → cannot enforce BUDGET_USD"
+        exit 5
+    fi
+    log "parsing budget from ${latest_report}"
     local total_cost
     total_cost="$(python3 -c "
-import json, sys
+import re, sys
 try:
-    with open('${TELEMETRY_JSON}') as f:
-        data = json.load(f)
-    print(data.get('total_cost_usd', 0.0))
+    with open('${latest_report}') as f:
+        text = f.read()
+    m = re.search(r'\| Total cost \| \\\$([0-9]+\.[0-9]+) \|', text)
+    if not m:
+        print('PARSE_FAIL')
+    else:
+        print(m.group(1))
 except Exception as e:
-    print(f'ERROR: {e}', file=sys.stderr)
-    print('0.0')
+    print(f'PARSE_FAIL: {e}', file=sys.stderr)
+    print('PARSE_FAIL')
 " 2>>"${LOG_FILE}")"
-    log "telemetry.total_cost_usd=${total_cost} budget_usd=${BUDGET_USD}"
+    if [[ "${total_cost}" == "PARSE_FAIL" ]] || [[ "${total_cost}" == PARSE_FAIL* ]]; then
+        log "FATAL: could not parse Total cost from ${latest_report} — fail-closed"
+        telegram_alert "evolver ${RUN_DATE} FAIL: cost parse error from report → fail-closed"
+        exit 5
+    fi
+    log "report.total_cost_usd=${total_cost} budget_usd=${BUDGET_USD}"
+    # Persist a small JSON snapshot for final_alert + downstream tooling
+    TELEMETRY_JSON="${RUN_TELEMETRY_DIR}/telemetry.json"
+    python3 -c "
+import json
+with open('${TELEMETRY_JSON}', 'w') as f:
+    json.dump({
+        'total_cost_usd': float('${total_cost}'),
+        'budget_usd': float('${BUDGET_USD}'),
+        'source_report': '${latest_report}',
+    }, f, indent=2)
+" 2>>"${LOG_FILE}" || log "WARN: could not write telemetry.json snapshot"
     local over
     over="$(python3 -c "print(1 if float('${total_cost}') > float('${BUDGET_USD}') else 0)")"
     if [[ "${over}" == "1" ]]; then
@@ -318,20 +403,53 @@ run_evidence_gates() {
         log "no proposals directory at ${PROPOSALS_DIR} — evoskill produced 0 proposals"
         return 0
     fi
-    if [[ -f "${EVIDENCE_LINT}" ]]; then
-        log "running evidence linter on ${PROPOSALS_DIR}"
-        python3 "${EVIDENCE_LINT}" "${PROPOSALS_DIR}" >> "${LOG_FILE}" 2>&1 || \
-            log "evidence linter exited non-zero (some proposals rejected — see log)"
-    else
-        log "WARN: ${EVIDENCE_LINT} not yet implemented (Phase 1 Task #25) — skipping"
+    # Codex panel R5 BLOCKING #4: gate exit codes MUST be terminal.
+    # Previously `|| log "..."` swallowed every failure including
+    # _entailment_check.py exit 2 (Gemini quota exhaust) — wrapper
+    # would proceed to PR creation with stale/partial passed/ output.
+    # Now: linter exit 1 (fatal) + entailment exit 1 or 2 (quota or
+    # fatal) abort the run with Telegram alert; only exit 0 means
+    # "partition completed cleanly, some proposals may be in rejected/".
+    if [[ ! -f "${EVIDENCE_LINT}" ]]; then
+        log "FATAL: ${EVIDENCE_LINT} not found — Phase 1 evidence gate missing"
+        telegram_alert "evolver ${RUN_DATE} FAIL: evidence linter script missing"
+        exit 1
     fi
-    if [[ -f "${ENTAILMENT_CHECK}" ]]; then
-        log "running entailment check on ${PROPOSALS_DIR}/passed-existence/"
-        python3 "${ENTAILMENT_CHECK}" "${PROPOSALS_DIR}/passed-existence" >> "${LOG_FILE}" 2>&1 || \
-            log "entailment check exited non-zero (some proposals rejected — see log)"
-    else
-        log "WARN: ${ENTAILMENT_CHECK} not yet implemented (Phase 1 Task #25) — skipping"
+    log "running evidence linter on ${PROPOSALS_DIR}"
+    if ! python3 "${EVIDENCE_LINT}" "${PROPOSALS_DIR}" >> "${LOG_FILE}" 2>&1; then
+        log "FATAL: evidence linter exited non-zero — fail-closed"
+        telegram_alert "evolver ${RUN_DATE} FAIL: _evidence_lint.py crashed (see ${LOG_FILE})"
+        exit 1
     fi
+
+    # Skip entailment if evidence produced 0 passed-existence proposals
+    if [[ ! -d "${PROPOSALS_DIR}/passed-existence" ]] || \
+       [[ -z "$(ls -A "${PROPOSALS_DIR}/passed-existence" 2>/dev/null)" ]]; then
+        log "0 proposals passed evidence gate — skipping entailment check"
+        return 0
+    fi
+
+    if [[ ! -f "${ENTAILMENT_CHECK}" ]]; then
+        log "FATAL: ${ENTAILMENT_CHECK} not found — Phase 1 entailment gate missing"
+        telegram_alert "evolver ${RUN_DATE} FAIL: entailment checker script missing"
+        exit 1
+    fi
+    log "running entailment check on ${PROPOSALS_DIR}/passed-existence/"
+    set +e
+    python3 "${ENTAILMENT_CHECK}" "${PROPOSALS_DIR}/passed-existence" >> "${LOG_FILE}" 2>&1
+    local entailment_rc=$?
+    set -e
+    if [[ "${entailment_rc}" == "2" ]]; then
+        log "FATAL: entailment check exited 2 (Gemini quota exhausted) — fail-closed"
+        telegram_alert "evolver ${RUN_DATE} FAIL: Gemini quota exhausted, retry tomorrow"
+        exit 1
+    fi
+    if [[ "${entailment_rc}" != "0" ]]; then
+        log "FATAL: entailment check exited ${entailment_rc} — fail-closed"
+        telegram_alert "evolver ${RUN_DATE} FAIL: _entailment_check.py rc=${entailment_rc} (see ${LOG_FILE})"
+        exit 1
+    fi
+
     if [[ -d "${PROPOSALS_DIR}/passed" ]]; then
         PROPOSALS_PASSED="$(find "${PROPOSALS_DIR}/passed" -name 'SKILL.md' -type f | wc -l | tr -d ' ')"
     fi
@@ -378,48 +496,10 @@ Co-Authored-By: agent-library-evolver <noreply@balizero.com>" 2>>"${LOG_FILE}" |
 }
 open_pr_draft
 
-# ─── 10. Telegram alert ──────────────────────────────────────────────
+# ─── 10. Telegram final alert ────────────────────────────────────────
+# (telegram_alert + final_alert helpers defined earlier in §2b for use
+# in enforce_budget's overage path — bash doesn't hoist function defs)
 
-telegram_alert() {
-    local msg="$1"
-    if [[ -z "${TELEGRAM_BOT_TOKEN:-}" ]] || [[ -z "${TELEGRAM_OWNER_CHAT_ID:-}" ]]; then
-        log "WARN: TELEGRAM_BOT_TOKEN/CHAT_ID not set — alert skipped: ${msg}"
-        return 0
-    fi
-    local payload
-    payload="$(python3 -c "
-import json, sys
-print(json.dumps({
-    'chat_id': '${TELEGRAM_OWNER_CHAT_ID}',
-    'text': sys.argv[1],
-    'parse_mode': 'Markdown'
-}))
-" "${msg}")"
-    curl -sS -X POST \
-        "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
-        -H "Content-Type: application/json" \
-        -d "${payload}" >> "${LOG_FILE}" 2>&1 || \
-        log "WARN: Telegram alert send failed"
-}
-
-final_alert() {
-    local cost="(unknown)"
-    if [[ -f "${TELEMETRY_JSON}" ]]; then
-        cost="$(python3 -c "
-import json
-try:
-    with open('${TELEMETRY_JSON}') as f:
-        print(f\"\$\" + str(json.load(f).get('total_cost_usd', 0.0)))
-except Exception:
-    print('(parse error)')
-")"
-    fi
-    telegram_alert "🌱 agent-library-evolver ${RUN_DATE}
-proposals_passed=${PROPOSALS_PASSED}
-cost=${cost}
-budget=\$${BUDGET_USD}
-log=${LOG_FILE}"
-}
 final_alert
 
 log "DONE (proposals_passed=${PROPOSALS_PASSED}) — exit 0"
