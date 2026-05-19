@@ -41,9 +41,12 @@ from wr3_dispatch_agent import (  # noqa: E402
     CascadeExhaustedError,
     HardHaltException,
     OSINTLeakError,
-    dispatch_agent,
     telegram_p0,
 )
+# v2 dispatcher: `claude --print` direct, no SDK Task-tool overhead.
+# Empirically ~50× cheaper than v1 SDK setting_sources=["user"] path.
+# Cicatrix scar 2026-05-19 documents the v1 → v2 refactor reason.
+from wr3_dispatch_v2 import dispatch_agent_v2 as dispatch_agent  # noqa: E402
 from wr3_telemetry import emit as telemetry_emit  # noqa: E402
 
 
