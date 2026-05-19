@@ -149,11 +149,30 @@ async def _http_post_json(
 
 
 async def _http_get_json(url: str, timeout_s: int) -> dict[str, Any]:
+    """JSON GET that surfaces non-2xx responses as parsed JSON body (when available).
+
+    On HTTPError (4xx/5xx), reads the error body and tries to parse it as JSON
+    — Google Flow gateway returns `{"detail": {"error": {"code": N, ...}}}` for
+    both success and failure. Caller decides how to treat each shape (poll on
+    404, hard-fail on others).
+    """
+    import urllib.error
     import urllib.request
 
     def _do() -> dict[str, Any]:
-        with urllib.request.urlopen(url, timeout=timeout_s) as resp:
-            return json.loads(resp.read().decode("utf-8"))
+        try:
+            with urllib.request.urlopen(url, timeout=timeout_s) as resp:
+                return json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            # Read the error body — same JSON shape as success endpoints
+            try:
+                body = e.read().decode("utf-8")
+            except Exception:
+                body = ""
+            try:
+                return json.loads(body) if body else {"detail": {"error": {"code": e.code}}}
+            except json.JSONDecodeError:
+                return {"detail": {"error": {"code": e.code, "raw_body": body[:200]}}}
 
     return await asyncio.to_thread(_do)
 
