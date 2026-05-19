@@ -7,7 +7,7 @@ name: cron - sentry quota check (daily 09:00 WITA)
 
 on:
   schedule:
-    - cron: '0 1 * * *' # 01:00 UTC = 09:00 WITA
+    - cron: "0 1 * * *" # 01:00 UTC = 09:00 WITA
   workflow_dispatch: {}
 
 concurrency:
@@ -20,7 +20,7 @@ jobs:
     timeout-minutes: 5
     env:
       APP: nuzantara-rag
-      MAX_TRACES: '0.02'
+      MAX_TRACES: "0.02"
     steps:
       - uses: superfly/flyctl-actions/setup-flyctl@master
 

@@ -18,7 +18,7 @@ name: Sprint 2 W1 verify (measurer_event emission)
 on:
   schedule:
     # 13 1 10 5 *  =  01:13 UTC = 09:13 WITA on 2026-05-10
-    - cron: '13 1 10 5 *'
+    - cron: "13 1 10 5 *"
   workflow_dispatch: {}
 
 concurrency:

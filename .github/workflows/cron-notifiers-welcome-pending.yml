@@ -1,8 +1,12 @@
 name: cron - notifiers welcome-pending (every 15 min)
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: "*/15 * * * *"
   workflow_dispatch: {}
+
+concurrency:
+  group: cron-notifiers-welcome-pending-${{ github.ref }}
+  cancel-in-progress: false
 
 jobs:
   run:

@@ -28,6 +28,10 @@ on:
       - "scripts/wr2_validate_master.py"
       - ".github/workflows/wr2-master-template-guard.yml"
 
+concurrency:
+  group: wr2-master-template-guard-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   validate:
     runs-on: ubuntu-latest

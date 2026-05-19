@@ -6,7 +6,7 @@ name: cron - cert monitor (daily 07:00 WITA)
 
 on:
   schedule:
-    - cron: '0 23 * * *' # 23:00 UTC = 07:00 WITA next day
+    - cron: "0 23 * * *" # 23:00 UTC = 07:00 WITA next day
   workflow_dispatch: {}
 
 concurrency:
@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      THRESHOLD_DAYS: '30'
+      THRESHOLD_DAYS: "30"
     steps:
       - name: Check certs
         id: check

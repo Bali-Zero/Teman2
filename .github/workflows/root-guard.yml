@@ -7,6 +7,10 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: root-guard-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   root-guard:
     runs-on: ubuntu-latest

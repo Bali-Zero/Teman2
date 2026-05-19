@@ -20,6 +20,10 @@ on:
       - "apps/backend-rag/backend/tests/app/setup/test_no_httpx_violators.py"
       - ".github/workflows/lint-golden-rule-10.yml"
 
+concurrency:
+  group: lint-golden-rule-10-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint:
     name: Detect Golden Rule #10 violations
