@@ -786,7 +786,10 @@ class SearchService:
                 logger.warning("Multi-expansion sub-query failed: %s", e)
                 return []
 
-        sub_results = await asyncio.gather(*[_single_search(q) for q in alt_queries])
+        # Structured concurrency (Python 3.11+); _single_search swallows exceptions.
+        async with asyncio.TaskGroup() as tg:
+            sub_tasks = [tg.create_task(_single_search(q)) for q in alt_queries]
+        sub_results = [t.result() for t in sub_tasks]
         for sr in sub_results:
             if sr:
                 all_results.append(sr)

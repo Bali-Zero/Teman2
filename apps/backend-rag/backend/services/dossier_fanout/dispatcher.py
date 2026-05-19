@@ -94,9 +94,10 @@ class DomainFanoutDispatcher:
                     error=f"{type(exc).__name__}: {exc}",
                 )
 
-        result.per_consumer = await asyncio.gather(
-            *[_one(c) for c in self.consumers],
-        )
+        # Structured concurrency (Python 3.11+); _one() never raises (swallows internally).
+        async with asyncio.TaskGroup() as tg:
+            consumer_tasks = [tg.create_task(_one(c)) for c in self.consumers]
+        result.per_consumer = [t.result() for t in consumer_tasks]
 
         if self.record_reuse and self.repo is not None:
             for r in result.per_consumer:

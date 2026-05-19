@@ -59,9 +59,9 @@ class MeasurerOrchestrator:
             )
             return result
 
-        sampler_results: list[SamplerResult] = await asyncio.gather(
-            *[s.sample(post) for s in applicable],
-        )
+        async with asyncio.TaskGroup() as tg:
+            sampler_tasks = [tg.create_task(s.sample(post)) for s in applicable]
+        sampler_results: list[SamplerResult] = [t.result() for t in sampler_tasks]
         result.sampler_results = sampler_results
 
         # record each datum; failure to record one doesn't block others

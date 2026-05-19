@@ -678,20 +678,20 @@ class CrossNotebookCorrelator:
             ", ".join(domains),
         )
 
-        # Parallel async queries
-        tasks = []
-        for domain in domains:
-            data = self._registry[domain]
-            tasks.append(
-                _query_notebook_async(
-                    domain=domain,
-                    notebook_id=data["notebook_id"],
-                    label=data["label"],
-                    query=query,
+        # Parallel async queries (structured concurrency, Python 3.11+)
+        async with asyncio.TaskGroup() as tg:
+            tasks = [
+                tg.create_task(
+                    _query_notebook_async(
+                        domain=domain,
+                        notebook_id=self._registry[domain]["notebook_id"],
+                        label=self._registry[domain]["label"],
+                        query=query,
+                    )
                 )
-            )
-
-        responses: list[NotebookResponse] = await asyncio.gather(*tasks, return_exceptions=False)
+                for domain in domains
+            ]
+        responses: list[NotebookResponse] = [t.result() for t in tasks]
         errors = [f"{r.domain}: {r.error}" for r in responses if r.error]
 
         return self._build_result(query, domains, list(responses), errors, t0)
