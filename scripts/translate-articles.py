@@ -42,6 +42,11 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
     datefmt="%H:%M:%S",
+    # ops-hardening fix 2026-05-19: explicit sys.stdout.
+    # Default basicConfig routes to sys.stderr, which sent 1438+
+    # INFO "SKIP (exists)" lines per run to error.log (148 MB at
+    # peak — biggest log noise in the system).
+    stream=sys.stdout,
 )
 logger = logging.getLogger("translate")
 

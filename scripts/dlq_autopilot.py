@@ -24,7 +24,11 @@ logging.basicConfig(
     datefmt="%H:%M:%S",
     handlers=[
         logging.FileHandler(os.path.expanduser("~/logs/dlq_autopilot.log")),
-        logging.StreamHandler(),
+        # ops-hardening fix 2026-05-19: explicit sys.stdout.
+        # Default StreamHandler() routes to sys.stderr, which sent
+        # 62 INFO "status=TERMINAL — skipping" lines per run to
+        # the plist StandardErrorPath (12.7 MB/day error.log).
+        logging.StreamHandler(sys.stdout),
     ],
 )
 logger = logging.getLogger("dlq_autopilot")
