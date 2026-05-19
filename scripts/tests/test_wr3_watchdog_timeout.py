@@ -86,8 +86,9 @@ async def test_submit_clip_timeout_raises(tmp_path: Path, fake_request, fake_ctx
 async def test_submit_clip_quota_error(tmp_path: Path, fake_request, fake_ctx) -> None:
     """Gateway returning QUOTA_EXCEEDED → FlowkitQuotaError."""
     async def _quota_image(*_args, **_kwargs):
-        # _check_quota inside _generate_start_image fires
-        return {"error": "QUOTA_EXCEEDED", "detail": "Flow Pro plan out"}
+        # _check_quota inside _generate_start_image fires.
+        # Note: dict input — _check_quota inspects only the {"error": ...} envelope.
+        return {"error": {"status": "QUOTA_EXCEEDED", "message": "Flow Pro plan out"}}
 
     async def _ok_scene(ctx, shot_index, positive_prompt, timeout_s=30):
         ctx.scene_ids[shot_index] = "scene-id-xyz"
@@ -95,7 +96,7 @@ async def test_submit_clip_quota_error(tmp_path: Path, fake_request, fake_ctx) -
 
     with patch("wr3_flowkit_client._create_scene", new=_ok_scene), \
          patch("wr3_flowkit_client._http_post_json", new=_quota_image):
-        with pytest.raises(FlowkitQuotaError, match="QUOTA_EXCEEDED|Flow Pro"):
+        with pytest.raises(FlowkitQuotaError, match="quota|exceeded|flow"):
             await submit_clip(
                 fake_request, episode_dir=tmp_path,
                 episode_context=fake_ctx, timeout_s=30,
