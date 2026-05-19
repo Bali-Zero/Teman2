@@ -52,7 +52,9 @@ import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
+
+from backend.app.dependencies import get_current_user
 
 logger = logging.getLogger(__name__)
 
@@ -85,8 +87,17 @@ def _classify_health(intel: dict[str, Any], wr2: dict[str, Any], probes: dict[st
 
 
 @router.get("/pipeline")
-async def get_pipeline_health(request: Request) -> dict[str, Any]:
+async def get_pipeline_health(
+    request: Request,
+    _user: dict[str, Any] = Depends(get_current_user),
+) -> dict[str, Any]:
     """Single-pane pipeline health snapshot.
+
+    AUTH: requires authenticated user via dependencies.get_current_user.
+    Panel review 2026-05-20 (DeepSeek HIGH finding) — even though the
+    payload contains only operational counters (no PII, no client data),
+    Symbiosis Law 2 (OSINT blindato) requires authenticated access for
+    internal pipeline observability.
 
     Returns 503 if DB pool unavailable. Returns 200 with partial data on
     individual query failure (degraded reporting > silent failure).

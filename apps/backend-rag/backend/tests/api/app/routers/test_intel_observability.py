@@ -84,9 +84,13 @@ def test_classify_malformed_timestamp_falls_back_to_outbox_only():
 
 
 def _build_app(db_pool: Any) -> FastAPI:
+    from backend.app.dependencies import get_current_user
+
     app = FastAPI()
     app.include_router(router)
     app.state.db_pool = db_pool
+    # Test-only auth bypass — production endpoint requires auth (panel fix 2026-05-20)
+    app.dependency_overrides[get_current_user] = lambda: {"email": "test@balizero.com"}
     return app
 
 
@@ -98,6 +102,25 @@ async def test_endpoint_returns_503_when_db_pool_none():
         resp = await client.get("/api/intel/health/pipeline")
     assert resp.status_code == 503
     assert "db pool not initialized" in resp.json()["detail"]
+
+
+@pytest.mark.asyncio
+async def test_endpoint_requires_auth_when_no_override():
+    """Production endpoint is protected by get_current_user dependency.
+
+    Panel review 2026-05-20 (DeepSeek HIGH finding): observability endpoint
+    must not be public. Without the test-only override, FastAPI calls the
+    real get_current_user which returns 401 on missing Authorization header.
+    """
+    app = FastAPI()
+    app.include_router(router)
+    app.state.db_pool = None
+    # NO dependency override — should hit real auth
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as client:
+        resp = await client.get("/api/intel/health/pipeline")
+    # Either 401 (no auth header) or 403 — anything but 200/503 from the route body
+    assert resp.status_code in (401, 403), f"expected auth failure, got {resp.status_code}"
 
 
 @pytest.mark.asyncio
