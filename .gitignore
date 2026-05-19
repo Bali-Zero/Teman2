@@ -434,6 +434,7 @@ sk-*
 # Temporary files
 codebase_parts/
 openclaw
+!infra/openclaw/
 
 .aider*
 .claude/
