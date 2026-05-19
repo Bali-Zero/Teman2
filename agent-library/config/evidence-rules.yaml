@@ -1,0 +1,84 @@
+# Evidence linter rules — Bali Zero Nuzantara agent-library evolver
+#
+# Loaded by scripts/_evidence_lint.py. Every proposed SKILL.md MUST
+# cite at least one verifiable piece of evidence — anything else is
+# rejected as hallucinated. Five citation types accepted:
+#
+#   - file:line          → file exists + line in range (os.path + wc -l)
+#   - commit_hash        → git rev-parse <hash> returns 0
+#   - external_url       → HTTP HEAD 2s timeout, status 2xx/3xx
+#   - memory_file_ref    → ~/.claude/projects/.../memory/<name>.md exists
+#   - cicatrix_scar_ref  → header line matches in
+#                          .claude/rules/cicatrix-scars.md
+#
+# Spec: docs/superpowers/specs/2026-05-17-agent-library-evoskill-design.md
+#       §"Architecture" step 3a (existence linter, deterministic).
+#
+# Addresses L3 (BM25 dedup threshold) + L10 (file_line_ref extension
+# optional for Makefile / Dockerfile) from .known-limitations-v1.md.
+
+rules:
+  # ─── File reference: `<path>:<line>` or `<path>:<line>-<line>` ───
+  # L10 fix: extension is OPTIONAL — Makefile, Dockerfile, .env
+  # without dot are valid citations.
+  - id: file_line_ref
+    description: file path + line number that resolves on disk
+    pattern: '`([a-zA-Z0-9_./~\-]+(?:\.[a-zA-Z0-9]+)?):(\d+)(?:-(\d+))?`'
+    verify: file_exists_and_line_in_range
+    examples:
+      - "`apps/backend-rag/backend/services/crm_guardian/ocr.py:42`"
+      - "`Makefile:12`"
+      - "`scripts/regulatory-watcher-run.sh:14-31`"
+
+  # ─── Git commit: 8-40 hex chars, must resolve via git rev-parse ───
+  - id: commit_hash
+    description: git commit SHA that resolves
+    pattern: '\b([0-9a-f]{8,40})\b'
+    verify: git_rev_parse
+    examples:
+      - "`e2c834776`"
+      - "`4e495ee8f4bcadc5178d3a39e4984eb089c03052`"
+
+  # ─── External URL: HEAD request, 2s timeout, expect 2xx/3xx ───
+  - id: external_url
+    description: HTTP(S) URL that returns success
+    pattern: 'https?://[^\s)>\]`]+'
+    verify: http_head_2xx_or_3xx
+    timeout_sec: 2
+    examples:
+      - "https://github.com/sentient-agi/EvoSkill/releases/tag/v1.1.0"
+
+  # ─── Memory file: `~/.claude/projects/.../memory/<name>.md` ───
+  - id: memory_file_ref
+    description: memory file path that exists
+    pattern: '~/\.claude/projects/[^/]+/memory/([a-zA-Z0-9_\-]+\.md)'
+    verify: file_exists
+    examples:
+      - "`~/.claude/projects/-Users-nuzantara/memory/lessons_x.md`"
+
+  # ─── Cicatrix scar entry: section header ───
+  - id: cicatrix_scar_ref
+    description: reference to a cicatrix-scars.md scar by section header
+    # Matches lines like:
+    #   ### ✅ RESOLVED: CRM-Guardian L1 worker ... (2026-05-17)
+    #   ### ⚠️ STRUCTURAL: 53 LaunchAgents Pro ... (2026-04-29)
+    pattern: '### \S+ (?:RESOLVED|STRUCTURAL): [^(]+\(\d{4}-\d{2}-\d{2}'
+    verify: section_header_grep_in_cicatrix
+    examples:
+      - "### ⚠️ STRUCTURAL: 53 LaunchAgents Pro, only 7 (13%) have KeepAlive=true (2026-04-29)"
+
+# Aggregate gate:
+#   - PASS: ≥1 rule matched AND verifier returned True
+#   - FAIL: 0 rules matched OR any verifier returned False
+gate:
+  min_verified_refs: 1
+  # FTS5 BM25 dedup vs current 02-patterns.md + 03-lessons.md.
+  # Top match score < dedup_min_score → reject (too similar to
+  # existing pattern, no novelty). L3 calibration: NOT calibrated on
+  # real corpus yet; 1.5 is conservative initial value that will be
+  # tuned in Phase 2 after first 4 weekly runs produce data.
+  dedup_min_score: 1.5
+  # If True, every proposal that matches NO citation pattern at all is
+  # rejected with "no evidence cited" — fail-closed default for an
+  # auto-evolver pipeline.
+  reject_no_citation: true
