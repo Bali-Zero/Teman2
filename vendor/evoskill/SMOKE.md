@@ -109,7 +109,7 @@ the `infer_provider("deepseek-v4-pro")` no longer falls through to the
 anthropic fallback, and `make_scorer` default model is `deepseek-v4-pro`.
 
 ```bash
-cd /Users/nuzantara/Desktop/nuzantara-wt-evoskill-phase1 && \
+cd /Users/nuzantara/Desktop/nuzantara && \
   python3 -m pytest scripts/test_call_llm_deepseek.py -v --tb=short | tail -25
 ```
 
@@ -176,7 +176,7 @@ unset (loud-fail, clear message), or (b) makes a live POST to
 JSON.
 
 ```bash
-cd /Users/nuzantara/Desktop/nuzantara-wt-evoskill-phase1 && \
+cd /Users/nuzantara/Desktop/nuzantara && \
   python3 -m pytest scripts/test_deepseek_executor.py -q --tb=short | tail -10
 ```
 
@@ -251,7 +251,7 @@ from pathlib import Path
 from src.cli.config import load_config
 import pandas as pd
 
-cfg_path = Path('/Users/nuzantara/Desktop/nuzantara-wt-evoskill-phase1/agent-library/.evoskill/config.toml')
+cfg_path = Path('/Users/nuzantara/Desktop/nuzantara/agent-library/.evoskill/config.toml')
 cfg = load_config(config_path=cfg_path)
 
 assert cfg.harness.name == 'deepseek', f'harness.name={cfg.harness.name}'
