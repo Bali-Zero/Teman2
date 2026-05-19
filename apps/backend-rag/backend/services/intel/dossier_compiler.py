@@ -140,7 +140,7 @@ class DossierCompiler:
 
         try:
             trends = await self.repo.top_unconsumed_trends(limit=self.batch_size)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             summary.errors.append(f"fetch_trends: {type(exc).__name__}: {exc}")
             return summary
 
@@ -170,7 +170,7 @@ class DossierCompiler:
                         "confidence": dossier.confidence_0_1,
                     }
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 summary.dossiers_failed += 1
                 summary.errors.append(f"cluster {cluster[0].id}: {type(exc).__name__}: {exc}")
 
@@ -208,7 +208,7 @@ class DossierCompiler:
                 anchor=anchor,
                 topic_hint=topic_hint,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self.logger.info(
                 "compiler: parse error anchor=%s err=%s",
                 anchor.id,
@@ -223,7 +223,7 @@ class DossierCompiler:
             try:
                 await self.repo.mark_trend_consumed(signal.id, dossier.id)
                 consumed += 1
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 self.logger.warning(
                     "mark_consumed failed signal=%s: %s",
                     signal.id,

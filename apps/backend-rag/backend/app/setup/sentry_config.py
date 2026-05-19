@@ -164,7 +164,7 @@ def _before_send(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] 
     """
     try:
         return _before_send_impl(event, hint)
-    except Exception as exc:  # noqa: BLE001 — intentional catch-all
+    except Exception as exc:
         # Use stderr (→ fly logs) rather than `logger`: if the hook is
         # being triggered by a logging-related exception, `logger` itself
         # may be the thing that's broken. This is the documented escape

@@ -16,24 +16,19 @@ from migrations.migration_029_kg_source_chunks import apply
 
 
 async def main():
-    print("🔄 Connecting to database...")
     # Fallback to local dev URL if env var is missing
     db_url = os.getenv("DATABASE_URL") or "postgresql://user:password@localhost:5433/nuzantara_dev"
 
     if not db_url:
-        print("❌ DATABASE_URL not found")
         sys.exit(1)
 
     try:
         conn = await asyncpg.connect(db_url)
-        print("✅ Connected. Applying Migration 029...")
 
         await apply(conn)
 
         await conn.close()
-        print("🎉 Migration applied successfully!")
-    except Exception as e:
-        print(f"❌ Migration failed: {e}")
+    except Exception:
         sys.exit(1)
 
 

@@ -22,9 +22,9 @@ backend_dir = Path(__file__).resolve().parent.parent
 if str(backend_dir) not in sys.path:
     sys.path.insert(0, str(backend_dir))
 
-import asyncpg  # noqa: E402
+import asyncpg
 
-from backend.app.core.config import settings  # noqa: E402
+from backend.app.core.config import settings
 
 
 async def ingest_geojson(file_path: Path):
@@ -103,7 +103,6 @@ async def ingest_geojson(file_path: Path):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python ingest_zoning_data.py <path_to_geojson>")
         sys.exit(1)
 
     target_file = Path(sys.argv[1])

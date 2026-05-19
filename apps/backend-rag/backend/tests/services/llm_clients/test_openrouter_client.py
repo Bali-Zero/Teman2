@@ -20,7 +20,6 @@ from backend.services.llm_clients.openrouter_client import (
     smart_complete_stream,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------

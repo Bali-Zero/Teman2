@@ -348,7 +348,7 @@ def _normalize_by_type(value: Any) -> dict[str, float]:
 
         try:
             parsed = json.loads(value)
-        except Exception:  # noqa: BLE001
+        except Exception:
             return {}
         value = parsed
     if not isinstance(value, dict):

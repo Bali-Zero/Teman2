@@ -120,7 +120,7 @@ async def init_memory_collection(request: InitRequest) -> InitResponse:
         )
     except Exception as exc:
         logger.error("Memory vector init failed: %s", exc)
-        raise HTTPException(status_code=500, detail=f"Initialization failed: {str(exc)}") from exc
+        raise HTTPException(status_code=500, detail=f"Initialization failed: {exc!s}") from exc
 
 
 @router.post("/embed", response_model=EmbedResponse)
@@ -135,7 +135,7 @@ async def generate_embedding(request: EmbedRequest) -> EmbedResponse:
         return EmbedResponse(embedding=embedding, dimensions=len(embedding), model=embedder.model)
     except Exception as e:
         logger.error("Embedding generation failed: %s", e)
-        raise HTTPException(status_code=500, detail=f"Embedding failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Embedding failed: {e!s}") from e
 
 
 @router.post("/store")
@@ -164,7 +164,7 @@ async def store_memory_vector(request: StoreMemoryRequest) -> dict[str, Any]:
         return {"success": True, "memory_id": request.id, "collection": "zantara_memories"}
     except Exception as e:
         logger.error("Memory storage failed: %s", e)
-        raise HTTPException(status_code=500, detail=f"Storage failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Storage failed: {e!s}") from e
 
 
 @router.post("/search", response_model=MemorySearchResponse)
@@ -226,7 +226,7 @@ async def search_memories_semantic(request: SearchMemoryRequest) -> MemorySearch
 
     except Exception as e:
         logger.error("Memory search failed: %s", e)
-        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Search failed: {e!s}") from e
 
 
 @router.post("/similar", response_model=MemorySearchResponse)
@@ -309,7 +309,7 @@ async def find_similar_memories(request: SimilarMemoryRequest) -> MemorySearchRe
         raise
     except Exception as e:
         logger.error("Similar memory search failed: %s", e)
-        raise HTTPException(status_code=500, detail=f"Similar search failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Similar search failed: {e!s}") from e
 
 
 @router.delete("/{memory_id}")
@@ -325,7 +325,7 @@ async def delete_memory_vector(memory_id: str) -> dict[str, Any]:
         return {"success": True, "deleted_id": memory_id}
     except Exception as e:
         logger.error("Memory deletion failed: %s", e)
-        raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Deletion failed: {e!s}") from e
 
 
 @router.get("/stats")
@@ -367,5 +367,5 @@ async def memory_vector_health() -> dict[str, Any]:
     except Exception as e:
         raise HTTPException(
             status_code=503,
-            detail=f"Memory vector service unhealthy: {str(e)}",
+            detail=f"Memory vector service unhealthy: {e!s}",
         ) from e

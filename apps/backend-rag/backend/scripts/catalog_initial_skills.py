@@ -30,7 +30,6 @@ from __future__ import annotations
 
 import argparse
 import ast
-import json
 import logging
 import sys
 from collections import Counter
@@ -293,8 +292,8 @@ def _dry_run_report(candidates: list[SkillCandidate]) -> dict:
 def _apply(candidates: list[SkillCandidate]) -> dict[str, int]:
     """Record each candidate via SkillService. Imported lazily so the dry-run
     path works even without a configured backend."""
-    from backend.services.skill.models import SkillRecord  # noqa: E402
-    from backend.services.skill.service import SkillService  # noqa: E402
+    from backend.services.skill.models import SkillRecord
+    from backend.services.skill.service import SkillService
 
     service = SkillService()
     if not service.is_available:
@@ -380,13 +379,11 @@ def main(argv: list[str] | None = None) -> int:
             all_candidates = all_candidates[: args.limit]
             break
 
-    report = _dry_run_report(all_candidates)
-    print(json.dumps(report, indent=2, ensure_ascii=False))
+    _dry_run_report(all_candidates)
 
     if args.apply:
         logger.info("applying %d candidates …", len(all_candidates))
-        counts = _apply(all_candidates)
-        print(json.dumps({"apply": counts}, indent=2))
+        _apply(all_candidates)
     else:
         logger.info(
             "dry-run complete (%d candidates). Re-run with --apply to write.",

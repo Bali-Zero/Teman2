@@ -898,7 +898,7 @@ class WebSearchTool(BaseTool):
                 return json.dumps(
                     {
                         "success": False,
-                        "error": f"Web search error: {str(e)}",
+                        "error": f"Web search error: {e!s}",
                         "disclaimer": self.WEB_DISCLAIMER,
                     },
                 )
@@ -1164,7 +1164,7 @@ class CRMTool(BaseTool):
 
         except Exception as e:
             logger.error("[CRMTool] Query failed: %s", e)
-            return json.dumps({"error": f"CRM query failed: {str(e)}"})
+            return json.dumps({"error": f"CRM query failed: {e!s}"})
 
 
 def create_default_tools(search_service: Any = None) -> list[BaseTool]:

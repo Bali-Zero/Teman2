@@ -95,7 +95,7 @@ class ConsiglioV1:
         for llm in target_llms:
             try:
                 answers[llm] = self._ask(llm, question_prompt, context_files)
-            except Exception as exc:  # noqa: BLE001 — keep orchestration alive
+            except Exception as exc:
                 logger.warning("LLM %s failed: %s", llm, exc)
                 answers[llm] = []
 

@@ -21,20 +21,17 @@ async def main() -> None:
     secret = os.environ.get("TELEGRAM_WEBHOOK_SECRET")
 
     if not secret:
-        print("❌ TELEGRAM_WEBHOOK_SECRET not set")
         return
 
-    print(f"🔑 Using secret: {secret[:10]}...")
 
     try:
-        result = await bot.set_webhook(
+        await bot.set_webhook(
             url="https://nuzantara-rag.fly.dev/api/telegram/webhook",
             secret_token=secret,
             allowed_updates=["message", "edited_message", "callback_query"],
         )
-        print(f"✅ Webhook set: {result}")
-    except Exception as e:
-        print(f"❌ Error: {e}")
+    except Exception:
+        pass
 
 
 if __name__ == "__main__":

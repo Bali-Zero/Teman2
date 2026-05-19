@@ -129,7 +129,7 @@ def send_proposal_to_telegram(
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout_sec) as resp:  # noqa: S310
+        with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
             data = json.load(resp)
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         logger.warning(
@@ -188,7 +188,7 @@ def edit_message_after_decision(
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout_sec) as resp:  # noqa: S310
+        with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
             data = json.load(resp)
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         logger.warning(
@@ -201,6 +201,6 @@ def edit_message_after_decision(
 
 
 __all__ = [
-    "send_proposal_to_telegram",
     "edit_message_after_decision",
+    "send_proposal_to_telegram",
 ]

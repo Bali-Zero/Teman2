@@ -237,7 +237,6 @@ class BaseMigration:
 
         # Enforce rollback_sql for migrations created after the cutoff (> 111).
         # Legacy migrations are grandfathered via LEGACY_NO_ROLLBACK_WHITELIST.
-        stem = self.sql_file.stem  # e.g., "200_new_feature"
         # Reconstruct what migration_name would look like as a stem key
         migration_stem = f"migration_{migration_number:03d}_{sql_base_name}".rstrip("_")
         is_legacy = migration_number <= 111 or migration_stem in LEGACY_NO_ROLLBACK_WHITELIST

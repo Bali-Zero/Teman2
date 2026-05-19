@@ -96,9 +96,9 @@ def _download_hero(url: str, slide_n: int) -> str | None:
     if dest.exists():
         return str(dest)
     try:
-        urllib.request.urlretrieve(url, dest)  # noqa: S310
+        urllib.request.urlretrieve(url, dest)
         return str(dest)
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning("hero %d download failed: %s", slide_n, e)
         return None
 

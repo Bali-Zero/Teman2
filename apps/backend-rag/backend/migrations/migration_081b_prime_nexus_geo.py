@@ -115,14 +115,12 @@ async def downgrade(conn: asyncpg.Connection) -> None:
 async def main() -> None:
     url = os.environ.get("DATABASE_URL", "")
     if not url:
-        print("DATABASE_URL not set")
         return
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
     conn = await asyncpg.connect(url)
     try:
         await apply(conn)
-        print("✅ Migration 081 applied: Prime Nexus geo columns + geocoding_jobs")
     finally:
         await conn.close()
 

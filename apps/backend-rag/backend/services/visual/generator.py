@@ -310,5 +310,5 @@ class VisualGenerator:
                 cost_usd=cost_usd,
                 meta=meta,
             )
-        except Exception as exc:  # noqa: BLE001 — cost tracking must never fail generation
+        except Exception as exc:
             self.logger.warning("cost record failed: %s", exc)

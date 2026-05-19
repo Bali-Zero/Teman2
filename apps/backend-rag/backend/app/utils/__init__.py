@@ -22,16 +22,16 @@ from backend.app.utils.path_validator import (
 )
 
 __all__ = [
-    # Path validation
-    "validate_path",
-    "sanitize_filename",
+    "create_safe_error_response",
+    "safe_log_message",
     # Error sanitization
     "sanitize_error_message",
-    "safe_log_message",
-    "create_safe_error_response",
-    "truncate_for_logging",
-    # Auth
-    "verify_internal_api_key",
+    "sanitize_filename",
     # JSON
     "to_jsonb",
+    "truncate_for_logging",
+    # Path validation
+    "validate_path",
+    # Auth
+    "verify_internal_api_key",
 ]

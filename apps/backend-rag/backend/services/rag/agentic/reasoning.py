@@ -352,7 +352,7 @@ class ReasoningEngine:
                                 return tc, result, duration
                             except Exception as e:
                                 logger.error(f"Error executing tool {tc.tool_name}: {e}")
-                                return tc, f"Error: {str(e)}", 0.0
+                                return tc, f"Error: {e!s}", 0.0
 
                         # Run all tools in parallel
                         results = await asyncio.gather(
@@ -997,7 +997,7 @@ Do not invent information. If the context is insufficient, admit it.
 
                 # Images only on first step (initial query)
                 step_images = images if state.current_step == 1 else None
-                text_response, model_used_name, response_obj, _ = await llm_gateway.send_message(
+                text_response, _model_used_name, response_obj, _ = await llm_gateway.send_message(
                     chat,
                     message,
                     system_prompt,

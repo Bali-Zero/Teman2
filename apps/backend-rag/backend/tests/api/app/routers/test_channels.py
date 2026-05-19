@@ -23,7 +23,6 @@ from httpx import ASGITransport, AsyncClient
 from backend.app.dependencies import get_current_user
 from backend.app.routers.channels import router
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

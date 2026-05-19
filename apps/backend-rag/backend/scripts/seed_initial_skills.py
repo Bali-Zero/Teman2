@@ -25,7 +25,6 @@ Idempotent: skill_ids are stable; re-running updates the procedure while
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import os
 import sys
@@ -570,7 +569,6 @@ def main(argv: list[str] | None = None) -> int:
         else:
             report["by_confidence"]["high"] += 1
 
-    print(json.dumps(report, indent=2, ensure_ascii=False))
 
     if not args.apply:
         logger.info("dry-run complete. Re-run with --apply to write into %s.", args.db_path)
@@ -584,8 +582,7 @@ def main(argv: list[str] | None = None) -> int:
 
     os.makedirs(os.path.dirname(args.db_path) or ".", exist_ok=True)
     genome = Genome(db_path=args.db_path)
-    counts = apply_seed(SEED_SKILLS, genome=genome)
-    print(json.dumps({"apply": counts}, indent=2))
+    apply_seed(SEED_SKILLS, genome=genome)
     return 0
 
 

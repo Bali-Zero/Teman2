@@ -123,7 +123,7 @@ async def ingest_legal_document(request: LegalIngestRequest) -> LegalIngestRespo
         logger.error("Error in legal ingestion endpoint: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to ingest legal document: {str(e)}",
+            detail=f"Failed to ingest legal document: {e!s}",
         ) from e
 
 
@@ -210,7 +210,7 @@ async def upload_legal_document(
         logger.error("Error uploading legal document: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to ingest legal document: {str(e)}",
+            detail=f"Failed to ingest legal document: {e!s}",
         ) from e
     finally:
         # Clean up temp file
@@ -292,7 +292,7 @@ async def get_collection_stats(collection_name: str = "legal_unified") -> dict[s
         logger.error("Error getting collection stats: %s", e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to get collection stats: {str(e)}",
+            detail=f"Failed to get collection stats: {e!s}",
         ) from e
 
 
@@ -370,14 +370,14 @@ async def register_parent_document(
         logger.error("Failed to register parent document: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to register parent document: {str(e)}",
+            detail=f"Failed to register parent document: {e!s}",
         ) from e
 
 
 @router.get("/parent-documents/{document_id}", status_code=status.HTTP_200_OK)
 async def get_parent_documents(
     document_id: str,
-    current_user: dict = Depends(get_current_user),  # noqa: ARG001 — auth gate
+    current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     Get parent documents (BAB/chapters) from PostgreSQL for a legal document.
@@ -433,7 +433,7 @@ async def get_parent_documents(
         logger.error("Failed to query parent_documents: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to query parent documents: {str(e)}",
+            detail=f"Failed to query parent documents: {e!s}",
         ) from e
 
 
@@ -441,7 +441,7 @@ async def get_parent_documents(
 async def get_bab_full_text(
     document_id: str,
     bab_id: str,
-    current_user: dict = Depends(get_current_user),  # noqa: ARG001 — auth gate
+    current_user: dict = Depends(get_current_user),
 ) -> dict[str, Any]:
     """
     Get full text of a specific BAB from PostgreSQL.
@@ -494,7 +494,7 @@ async def get_bab_full_text(
         logger.error("Failed to query BAB text: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to query BAB text: {str(e)}",
+            detail=f"Failed to query BAB text: {e!s}",
         ) from e
 
 
@@ -615,7 +615,7 @@ async def ingest_legal_full(
         logger.error("Error creating legal ingest job: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to create ingest job: {str(e)}",
+            detail=f"Failed to create ingest job: {e!s}",
         ) from e
 
 
@@ -665,5 +665,5 @@ async def get_legal_ingest_job(job_id: str) -> LegalIngestJobResponse:
         logger.error("Error fetching legal ingest job: %s", e, exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"Failed to fetch job: {str(e)}",
+            detail=f"Failed to fetch job: {e!s}",
         ) from e

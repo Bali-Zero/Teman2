@@ -107,13 +107,13 @@ def _candidate_json_payloads(text: str) -> list[str]:
 
 def _import_langchain_core() -> tuple[Any, Any, Any, Any, Any, Any]:
     """Lazy-import LangChain Core so test collection doesn't require it."""
-    from langchain_core.callbacks.manager import (  # noqa: PLC0415
+    from langchain_core.callbacks.manager import (
         AsyncCallbackManagerForLLMRun,
         CallbackManagerForLLMRun,
     )
-    from langchain_core.language_models.chat_models import BaseChatModel  # noqa: PLC0415
-    from langchain_core.messages import AIMessage, BaseMessage  # noqa: PLC0415
-    from langchain_core.outputs import ChatGeneration, ChatResult  # noqa: PLC0415
+    from langchain_core.language_models.chat_models import BaseChatModel
+    from langchain_core.messages import AIMessage, BaseMessage
+    from langchain_core.outputs import ChatGeneration, ChatResult
 
     return (
         AsyncCallbackManagerForLLMRun,
@@ -331,8 +331,8 @@ def _normalize_to_messages(input_value: Any) -> list[Any]:
     signature crashed when handed a string (``*messages`` would unpack it
     into individual characters) or a PromptValue (no ``__getitem__``).
     """
-    from langchain_core.messages import HumanMessage  # noqa: PLC0415
-    from langchain_core.prompt_values import PromptValue  # noqa: PLC0415
+    from langchain_core.messages import HumanMessage
+    from langchain_core.prompt_values import PromptValue
 
     if isinstance(input_value, str):
         return [HumanMessage(content=input_value)]
@@ -356,7 +356,7 @@ def _augment_messages_with_schema(input_value: Any, schema_hint: str) -> list[An
     Accepts any LangChain Runnable input (string, PromptValue, list of
     messages) — see :func:`_normalize_to_messages`.
     """
-    from langchain_core.messages import SystemMessage  # noqa: PLC0415
+    from langchain_core.messages import SystemMessage
 
     messages = _normalize_to_messages(input_value)
     instruction = (
@@ -374,7 +374,7 @@ def _augment_messages_with_schema(input_value: Any, schema_hint: str) -> list[An
 
 def _build_runnable_class() -> type:
     """Build ``_ClaudeStructuredRunnable`` lazily so import has no langchain dep."""
-    from langchain_core.runnables import Runnable  # noqa: PLC0415
+    from langchain_core.runnables import Runnable
 
     class _ClaudeStructuredRunnable(Runnable):  # type: ignore[misc, valid-type]
         """LangChain Runnable that wraps the Claude OAuth chat model.
@@ -409,12 +409,12 @@ def _build_runnable_class() -> type:
                     return {"raw": raw, "parsed": None, "parsing_error": exc}
             return _validate_against_schema(content, self._schema)
 
-        def invoke(self, input: Any, config: Any = None, **kwargs: Any) -> Any:  # noqa: A002
+        def invoke(self, input: Any, config: Any = None, **kwargs: Any) -> Any:
             messages = _augment_messages_with_schema(input, self._schema_hint)
             result = self._model.invoke(messages, config=config, **kwargs)
             return self._wrap_result(result)
 
-        async def ainvoke(self, input: Any, config: Any = None, **kwargs: Any) -> Any:  # noqa: A002
+        async def ainvoke(self, input: Any, config: Any = None, **kwargs: Any) -> Any:
             messages = _augment_messages_with_schema(input, self._schema_hint)
             result = await self._model.ainvoke(messages, config=config, **kwargs)
             return self._wrap_result(result)

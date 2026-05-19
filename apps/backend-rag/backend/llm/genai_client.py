@@ -439,7 +439,7 @@ class GenAIClient:
                     request_id=request_id,
                     error_class=error_class,
                 )
-            except Exception as rec_exc:  # noqa: BLE001 — never break the caller
+            except Exception as rec_exc:
                 logger.warning("llm_cost recorder failed for gemini: %s", rec_exc)
 
     async def generate_structured(
@@ -625,7 +625,7 @@ class GenAIClient:
                     request_id=request_id,
                     error_class=error_class,
                 )
-            except Exception as rec_exc:  # noqa: BLE001 — never break the caller
+            except Exception as rec_exc:
                 logger.warning("llm_cost recorder failed for gemini: %s", rec_exc)
 
     async def generate_content_stream(

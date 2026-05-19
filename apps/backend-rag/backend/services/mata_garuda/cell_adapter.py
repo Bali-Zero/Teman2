@@ -362,13 +362,13 @@ def confidence_tier(reliability: str, credibility: int) -> str:
 
 __all__ = [
     "ASSET_KIND_AUTHORITATIVE",
-    "RELIABILITY_VALUES",
     "CREDIBILITY_VALUES",
-    "TLP_VALUES",
     "INVALIDATION_MODES",
+    "RELIABILITY_VALUES",
+    "TLP_VALUES",
     "ProvenanceRow",
-    "tag_provenance",
+    "confidence_tier",
     "get_provenance",
     "list_expired_assets",
-    "confidence_tier",
+    "tag_provenance",
 ]

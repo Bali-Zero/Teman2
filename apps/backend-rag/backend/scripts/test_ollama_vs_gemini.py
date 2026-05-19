@@ -42,12 +42,8 @@ async def test_ollama_titles():
 
     available = await is_ollama_available(MODEL_FAST)
     if not available:
-        print(f"❌ Ollama not available or {MODEL_FAST} not loaded")
         return {}
 
-    print(f"\n{'=' * 70}")
-    print(f"🟢 OLLAMA ({MODEL_FAST}) — Local, Free")
-    print(f"{'=' * 70}")
 
     results = {}
     total_time = 0
@@ -84,10 +80,8 @@ Return ONLY the title text, nothing else."""
 
         results[test_id] = {"title": title, "ms": elapsed}
         total_time += elapsed
-        print(f"  [{test_id:8s}] {elapsed:6.0f}ms → {title}")
 
-    avg = total_time / len(TEST_MESSAGES)
-    print(f"\n  ⏱️  Average: {avg:.0f}ms | Total: {total_time:.0f}ms | Cost: $0.00")
+    total_time / len(TEST_MESSAGES)
     return results
 
 
@@ -96,17 +90,12 @@ async def test_gemini_titles():
     try:
         from backend.llm.genai_client import get_genai_client
     except ImportError:
-        print("❌ GenAI client not importable")
         return {}
 
     client = get_genai_client()
     if not client or not client.is_available:
-        print("❌ Gemini client not available (check GOOGLE_API_KEY)")
         return {}
 
-    print(f"\n{'=' * 70}")
-    print("🔵 GEMINI FLASH (API) — Google Cloud")
-    print(f"{'=' * 70}")
 
     results = {}
     total_time = 0
@@ -142,48 +131,33 @@ Return ONLY the title text, nothing else."""
         elapsed = (time.perf_counter() - start) * 1000
         results[test_id] = {"title": title, "ms": elapsed}
         total_time += elapsed
-        print(f"  [{test_id:8s}] {elapsed:6.0f}ms → {title}")
 
-    avg = total_time / len(TEST_MESSAGES)
-    cost = len(TEST_MESSAGES) * 0.000003
-    print(f"\n  ⏱️  Average: {avg:.0f}ms | Total: {total_time:.0f}ms | Cost: ~${cost:.6f}")
+    total_time / len(TEST_MESSAGES)
+    len(TEST_MESSAGES) * 0.000003
     return results
 
 
 async def compare():
     """Run both and compare side by side."""
-    print("\n" + "🏁 TITLE GENERATION: OLLAMA vs GEMINI — LIVE COMPARISON")
-    print(f"   Tests: {len(TEST_MESSAGES)} messages (IT/EN/ID/short/long)\n")
 
     ollama_results = await test_ollama_titles()
     gemini_results = await test_gemini_titles()
 
     if ollama_results and gemini_results:
-        print(f"\n{'=' * 70}")
-        print("📊 SIDE-BY-SIDE COMPARISON")
-        print(f"{'=' * 70}")
-        print(f"{'ID':10s} | {'Ollama':40s} | {'Gemini':40s}")
-        print(f"{'-' * 10}-+-{'-' * 40}-+-{'-' * 40}")
 
         for test_id, _ in TEST_MESSAGES:
             o = ollama_results.get(test_id, {})
             g = gemini_results.get(test_id, {})
-            o_title = o.get("title", "N/A")[:38]
-            g_title = g.get("title", "N/A")[:38]
-            o_ms = o.get("ms", 0)
-            g_ms = g.get("ms", 0)
-            winner = "🟢" if o_ms < g_ms else "🔵"
-            print(f"{test_id:10s} | {o_title:38s} | {g_title:38s} {winner}")
+            o.get("title", "N/A")[:38]
+            g.get("title", "N/A")[:38]
+            o.get("ms", 0)
+            g.get("ms", 0)
 
         # Summary
         o_avg = sum(r["ms"] for r in ollama_results.values()) / len(ollama_results)
         g_avg = sum(r["ms"] for r in gemini_results.values()) / len(gemini_results)
-        speedup = g_avg / o_avg if o_avg > 0 else 0
+        g_avg / o_avg if o_avg > 0 else 0
 
-        print(
-            f"\n  Ollama avg: {o_avg:.0f}ms | Gemini avg: {g_avg:.0f}ms | Speedup: {speedup:.1f}x",
-        )
-        print("  Cost saved: 100% (Ollama is free)")
 
 
 if __name__ == "__main__":

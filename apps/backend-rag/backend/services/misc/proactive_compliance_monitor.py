@@ -405,7 +405,7 @@ class ProactiveComplianceMonitor:
 
         if success:
             # Mark related alerts as resolved
-            for _alert_id, alert in self.alerts.items():
+            for alert in self.alerts.values():
                 if alert.compliance_item_id == item_id:
                     alert.status = AlertStatus.RESOLVED
 

@@ -21,12 +21,12 @@ from .registry import PluginRegistry, registry
 
 __all__ = [
     "Plugin",
-    "PluginMetadata",
-    "PluginInput",
-    "PluginOutput",
     "PluginCategory",
-    "PluginRegistry",
-    "registry",
     "PluginExecutor",
+    "PluginInput",
+    "PluginMetadata",
+    "PluginOutput",
+    "PluginRegistry",
     "executor",
+    "registry",
 ]

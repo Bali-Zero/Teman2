@@ -98,7 +98,7 @@ class FederationAlertDaemon:
                     channel=PG_CHANNEL,
                     consumer_id=self._config.daemon_owner,
                 )
-        except Exception as exc:  # noqa: BLE001 — keep daemon alive
+        except Exception as exc:
             logger.warning("replay_unconsumed failed at boot: %s", exc)
             self._audit.emit(
                 "daemon.replay_failed",
@@ -184,7 +184,7 @@ class FederationAlertDaemon:
                 )
                 await asyncio.sleep(backoff)
                 backoff = min(backoff * 2, 30.0)
-            except Exception as exc:  # noqa: BLE001 — keep daemon alive
+            except Exception as exc:
                 logger.exception("LISTEN loop crashed: %s", exc)
                 self._audit.emit(
                     "daemon.listener_crashed",
@@ -259,7 +259,7 @@ class FederationAlertDaemon:
 
         try:
             await self._dispatch_proposal(repo, proposal, mode)
-        except Exception as exc:  # noqa: BLE001 — keep daemon alive
+        except Exception as exc:
             logger.exception("proposal %s crashed: %s", proposal_id, exc)
             self._audit.emit(
                 "proposal.crashed",

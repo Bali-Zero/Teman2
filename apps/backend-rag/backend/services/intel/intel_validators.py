@@ -52,7 +52,7 @@ _module_client: httpx.AsyncClient | None = None
 
 
 def _get_module_client() -> httpx.AsyncClient:
-    global _module_client  # noqa: PLW0603 — singleton by design
+    global _module_client
     if _module_client is None or _module_client.is_closed:
         _module_client = httpx.AsyncClient(follow_redirects=True, timeout=10.0)
     return _module_client
@@ -60,7 +60,7 @@ def _get_module_client() -> httpx.AsyncClient:
 
 async def close_intel_validators_client() -> None:
     """Release the module-level AsyncClient (lifespan shutdown hook)."""
-    global _module_client  # noqa: PLW0603
+    global _module_client
     if _module_client is not None and not _module_client.is_closed:
         await _module_client.aclose()
     _module_client = None
@@ -198,7 +198,7 @@ async def kg_crossref(text: str, *, kg: Any) -> list[dict[str, Any]]:
     try:
         entities = await asyncio.wait_for(kg.find_entities(text), timeout=3.0)
         return list(entities) if entities else []
-    except (asyncio.TimeoutError, Exception) as exc:  # noqa: BLE001 — soft signal
+    except (asyncio.TimeoutError, Exception) as exc:
         logger.info("kg_crossref failed (non-fatal): %s", exc)
         return []
 
@@ -278,12 +278,12 @@ async def validate(
 
 
 __all__ = [
-    "IntelDoc",
-    "ValidationResult",
-    "TierResult",
     "CitationResult",
-    "regex_schema",
+    "IntelDoc",
+    "TierResult",
+    "ValidationResult",
     "citation_check",
     "kg_crossref",
+    "regex_schema",
     "validate",
 ]

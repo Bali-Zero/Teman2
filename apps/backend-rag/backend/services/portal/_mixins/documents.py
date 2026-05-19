@@ -858,7 +858,7 @@ class PortalDocumentsMixin:
 
         except Exception as e:
             logger.error("Service Account upload failed: %s", e, exc_info=True)
-            result["error"] = f"Service Account upload failed: {str(e)}"
+            result["error"] = f"Service Account upload failed: {e!s}"
 
         return result
 

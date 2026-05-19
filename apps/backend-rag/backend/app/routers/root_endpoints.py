@@ -106,6 +106,6 @@ async def get_dashboard_stats(request: Request) -> dict[str, str | dict[str, str
             "active_agents": "0",
             "system_health": "error",
             "uptime_status": "ERROR",
-            "knowledge_base": {"vectors": "0", "status": f"Error: {str(e)}"},
+            "knowledge_base": {"vectors": "0", "status": f"Error: {e!s}"},
             "error": "Failed to retrieve statistics",
         }

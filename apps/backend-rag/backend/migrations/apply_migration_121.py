@@ -23,7 +23,7 @@ import asyncpg
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from migrations.migration_121_practices_family_member import apply  # noqa: E402
+from migrations.migration_121_practices_family_member import apply
 
 logging.basicConfig(
     level=logging.INFO,

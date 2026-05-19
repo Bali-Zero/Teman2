@@ -52,7 +52,7 @@ class WhatsAppTriageService:
         self,
         phone: str,
         message_text: str,
-        sender_name: str | None = None,  # noqa: ARG002
+        sender_name: str | None = None,
     ) -> tuple[TriageDecision, str]:
         """
         Determine if message should escalate to human.

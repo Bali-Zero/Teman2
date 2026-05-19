@@ -63,7 +63,7 @@ def _start_claude_cli_span(model_name: str, prompt_len_tokens: int) -> Any:
                 "gen_ai.usage.input_tokens": prompt_len_tokens,
             },
         )
-    except Exception:  # noqa: BLE001 — OTEL must never break the host.
+    except Exception:
         return nullcontext()
 
 
@@ -294,7 +294,7 @@ async def complete_async(
             _span_set.set_attribute("nuzantara.claude_oauth.attempts", len(tokens))
             _span_set.set_attribute("error.message", last_error[:200])
             _span_set.set_status(Status(StatusCode.ERROR, "all OAuth tokens failed"))
-        except Exception:  # noqa: BLE001 — never let OTEL break the host.
+        except Exception:
             pass
     _otel_span_ctx.__exit__(type(err), err, err.__traceback__)
     await _record_claude_oauth_call(
@@ -339,7 +339,7 @@ async def _record_claude_oauth_call(
             request_id=request_id,
             error_class=error_class,
         )
-    except Exception as exc:  # noqa: BLE001 — never break the caller
+    except Exception as exc:
         logger.warning("llm_cost recorder failed for claude_oauth: %s", exc)
 
 

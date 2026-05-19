@@ -45,10 +45,8 @@ async def apply(conn: Any) -> None:
         CREATE INDEX IF NOT EXISTS idx_kg_edges_type ON kg_edges(relationship_type);
     """)
 
-    print("✅ Applied migration 028: Knowledge Graph schema created")
 
 
 async def rollback(conn: Any) -> None:
     await conn.execute("DROP TABLE IF EXISTS kg_edges;")
     await conn.execute("DROP TABLE IF EXISTS kg_nodes;")
-    print("Rollback migration 028: Knowledge Graph schema dropped")

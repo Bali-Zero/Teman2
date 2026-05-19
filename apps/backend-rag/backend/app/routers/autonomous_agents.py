@@ -642,7 +642,7 @@ async def get_autonomous_agents_status() -> dict[str, Any]:
         agent_execs.sort(key=lambda x: x[1].get("started_at", ""), reverse=True)
 
         # Get latest execution
-        latest_exec_id, latest_exec = agent_execs[0]
+        _latest_exec_id, latest_exec = agent_execs[0]
 
         # Determine status
         latest_status = latest_exec.get("status", "idle")

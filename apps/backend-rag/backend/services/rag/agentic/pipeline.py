@@ -304,7 +304,7 @@ class FormatStage(PipelineStage):
 
         # Add processing metadata
         data["pipeline_version"] = "1.0"
-        data["stages_completed"] = data.get("stages_completed", []) + [self.name]
+        data["stages_completed"] = [*data.get("stages_completed", []), self.name]
 
         logger.debug(f"[{self.name}] Final formatting complete")
 

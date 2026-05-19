@@ -27,7 +27,6 @@ async def migrate(conn: asyncpg.Connection) -> None:
         ON google_drive_tokens(expires_at);
     """)
 
-    print("[Migration 034] Created google_drive_tokens table")
 
 
 async def rollback(conn: asyncpg.Connection) -> None:
@@ -35,4 +34,3 @@ async def rollback(conn: asyncpg.Connection) -> None:
     Remove Google Drive OAuth tokens table.
     """
     await conn.execute("DROP TABLE IF EXISTS google_drive_tokens;")
-    print("[Migration 034] Dropped google_drive_tokens table")

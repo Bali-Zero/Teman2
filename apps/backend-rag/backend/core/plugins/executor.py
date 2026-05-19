@@ -157,7 +157,7 @@ class PluginExecutor:
         try:
             validated_input = plugin.input_schema(**input_data)
         except Exception as e:
-            return PluginOutput(success=False, error=f"Input validation failed: {str(e)}")
+            return PluginOutput(success=False, error=f"Input validation failed: {e!s}")
 
         # Check cache
         if use_cache and self.redis:
@@ -215,7 +215,7 @@ class PluginExecutor:
                     # Final failure
                     return PluginOutput(
                         success=False,
-                        error=f"Plugin execution failed after {retry_count + 1} attempts: {str(e)}",
+                        error=f"Plugin execution failed after {retry_count + 1} attempts: {e!s}",
                         metadata={"attempts": retry_count + 1},
                     )
 

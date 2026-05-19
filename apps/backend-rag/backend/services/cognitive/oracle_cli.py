@@ -58,7 +58,7 @@ def _hb(status: str, note: str = "") -> None:
         tmp = path.with_suffix(path.suffix + f".tmp.{os.getpid()}")
         tmp.write_text(json.dumps(payload, separators=(",", ":")) + "\n", encoding="utf-8")
         os.replace(tmp, path)
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
 
 
@@ -77,18 +77,18 @@ def _build_proponents() -> dict:
     proponents: dict = {}
     try:
         proponents["claude"] = ClaudeCLIRunner()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("claude voice unavailable: %s", exc)
     try:
         proponents["gemini"] = GeminiCLIRunner()
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("gemini voice unavailable: %s", exc)
 
     dk = os.environ.get("DEEPSEEK_API_KEY")
     if dk:
         try:
             proponents["deepseek"] = DeepSeekHTTPRunner(api_key=dk)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("deepseek voice unavailable: %s", exc)
     else:
         logger.info("deepseek voice skipped (no DEEPSEEK_API_KEY)")
@@ -190,7 +190,7 @@ async def run(mode: str) -> int:
             max_size=2,
             command_timeout=200,
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.error("pool init failed: %s", exc, exc_info=True)
         return 1
     _hb("starting", f"mode={mode}")
@@ -202,7 +202,7 @@ async def run(mode: str) -> int:
             rc = await _deliberate(pool)
         _hb("ok" if rc == 0 else "warning", f"mode={mode} rc={rc}")
         return rc
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         _hb("fail", f"mode={mode} exc={type(exc).__name__}")
         raise
     finally:

@@ -209,7 +209,7 @@ class AlertFeedback:
                         str(new),
                         f'{{"precision":{precision},"sample_size":{sample_size}}}',
                     )
-            except asyncpg.PostgresError as exc:  # noqa: BLE001 — table missing is non-fatal
+            except asyncpg.PostgresError as exc:
                 logger.warning("guardian_decisions insert failed (non-fatal): %s", exc)
         else:
             # connection / tx mode (tests) — use a savepoint to protect the outer tx
@@ -228,7 +228,7 @@ class AlertFeedback:
                         str(new),
                         f'{{"precision":{precision},"sample_size":{sample_size}}}',
                     )
-            except asyncpg.PostgresError as exc:  # noqa: BLE001 — table missing is non-fatal
+            except asyncpg.PostgresError as exc:
                 logger.warning("guardian_decisions insert failed (non-fatal): %s", exc)
 
 

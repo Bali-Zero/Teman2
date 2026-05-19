@@ -53,7 +53,7 @@ def _hb(status: str, note: str = "") -> None:
         tmp = path.with_suffix(path.suffix + f".tmp.{os.getpid()}")
         tmp.write_text(json.dumps(payload, separators=(",", ":")) + "\n", encoding="utf-8")
         os.replace(tmp, path)
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
 
 
@@ -85,7 +85,7 @@ async def run() -> int:
             max_size=2,
             command_timeout=60,
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.error("pool init failed: %s", exc, exc_info=True)
         _hb("fail", f"pool init {type(exc).__name__}")
         return 1
@@ -128,7 +128,7 @@ async def run() -> int:
             return 2
         _hb("ok", f"sent={result.recipients_sent}")
         return 0
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         _hb("fail", f"exc={type(exc).__name__}")
         raise
     finally:

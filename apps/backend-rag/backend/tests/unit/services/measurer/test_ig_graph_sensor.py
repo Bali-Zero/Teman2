@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
+
 from backend.services.measurer.ig_graph_sensor import (
-    IGGraphSensor,
     IGGraphError,
+    IGGraphSensor,
     IGPostMetrics,
 )
 

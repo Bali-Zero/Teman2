@@ -52,7 +52,7 @@ def render_pdf(
     logger.info("Render draft %s → %s", draft_id, out_path)
 
     try:
-        result = subprocess.run(  # noqa: S603 — known python interpreter
+        result = subprocess.run(
             cmd,
             capture_output=True,
             text=True,

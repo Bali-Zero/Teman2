@@ -222,7 +222,7 @@ class PortalMessagingMixin:
                 "timezone": str,
             }
 
-            for field, _field_type in allowed_fields.items():
+            for field in allowed_fields.keys():
                 if field in preferences:
                     updates.append(f"{field} = ${param_idx}")
                     params.append(preferences[field])

@@ -39,20 +39,20 @@ from .language_detector import detect_language, get_language_instruction
 from .procedural_formatter import get_procedural_format_instruction, is_procedural_question
 
 __all__ = [
-    # Language detection
-    "detect_language",
-    "get_language_instruction",
-    # Emotion analysis
-    "has_emotional_content",
-    "get_emotional_response_instruction",
-    # Procedural formatting
-    "is_procedural_question",
-    "get_procedural_format_instruction",
-    # Domain formatting
-    "get_domain_format_instruction",
+    "build_alternatives_instructions",
+    "build_explanation_instructions",
     # Explanation level
     "detect_explanation_level",
+    # Language detection
+    "detect_language",
+    # Domain formatting
+    "get_domain_format_instruction",
+    "get_emotional_response_instruction",
+    "get_language_instruction",
+    "get_procedural_format_instruction",
+    # Emotion analysis
+    "has_emotional_content",
+    # Procedural formatting
+    "is_procedural_question",
     "needs_alternatives_format",
-    "build_explanation_instructions",
-    "build_alternatives_instructions",
 ]

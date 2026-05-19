@@ -318,7 +318,7 @@ class RAGASEvaluator:
             logger.error("LLM evaluation failed: %s", e)
             return {
                 "score": 0.5,
-                "reasoning": f"Evaluation error: {str(e)}",
+                "reasoning": f"Evaluation error: {e!s}",
                 "error": str(e),
             }
 

@@ -140,7 +140,7 @@ class StrategosContextBuilder:
                 return ""
             latest = await fetcher()
             return latest or ""
-        except Exception:  # noqa: BLE001 — soft fallback is the contract
+        except Exception:
             return ""
 
     async def build(self, *, week_of: date) -> StrategosContext:
@@ -163,7 +163,7 @@ class StrategosContextBuilder:
             if self.dossier_filter is not None and rows:
                 try:
                     seed_thesis = await self._fetch_seed_thesis()
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     logger.debug("seed thesis fetch failed: %s", exc)
                     seed_thesis = ""
                 if not seed_thesis:
@@ -176,13 +176,13 @@ class StrategosContextBuilder:
                         seed_text=seed_thesis,
                         top_k=len(rows),
                     )
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     logger.warning(
                         "dossier_filter.rank failed, preserving SQL order: %s",
                         exc,
                     )
             context.dossiers_block = "\n".join(_format_dossier_row(r) for r in rows)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug("dossiers context failed: %s", exc)
 
         # 2. theses
@@ -194,7 +194,7 @@ class StrategosContextBuilder:
                 f"- conf={t.confidence:.2f} | {t.title[:120]} → {(t.implication or '')[:120]}"
                 for t in theses[:DEFAULT_TOP_THESES]
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug("theses context failed: %s", exc)
 
         # 3. unresolved alerts
@@ -205,7 +205,7 @@ class StrategosContextBuilder:
                 f"(A={a.dossier_a_id} B={a.dossier_b_id})"
                 for a in alerts[:10]
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug("alerts context failed: %s", exc)
 
         # 4. metrics per register
@@ -228,7 +228,7 @@ class StrategosContextBuilder:
                 f"- {r['register']} · {r['metric_name']} avg={float(r['avg_value']):.2f} n={r['n']}"
                 for r in metric_rows
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug("metrics context failed: %s", exc)
 
         # 5. rejections
@@ -244,7 +244,7 @@ class StrategosContextBuilder:
                 DEFAULT_REJECTIONS_LOOKBACK,
             )
             context.rejections_block = "\n".join(f"- {r['reason']}: {r['n']}" for r in rej_rows)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug("rejections context failed: %s", exc)
 
         # 6. genome snapshot (optional)
@@ -252,7 +252,7 @@ class StrategosContextBuilder:
             try:
                 snapshot = await self.skills_snapshot_fn()
                 context.skills_block = (snapshot or "")[:1500]
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.debug("skills snapshot failed: %s", exc)
 
         return context
@@ -361,7 +361,7 @@ class StrategosOrchestrator:
 
         try:
             context = await self.context_builder.build(week_of=week_of)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             result.errors.append(f"context: {type(exc).__name__}: {exc}")
             return result
 
@@ -391,7 +391,7 @@ class StrategosOrchestrator:
 
         try:
             brief = await self.cognitive_repo.insert_brief(payload)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             result.errors.append(f"insert: {type(exc).__name__}: {exc}")
             return result
 

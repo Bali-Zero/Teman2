@@ -92,7 +92,7 @@ def cache_crm_result(ttl: int = 300, key_prefix: str = "") -> Any:
     def decorator(func: Callable[..., Any]) -> Callable[..., Any]:
         @wraps(func)
         async def async_wrapper(*args, **kwargs) -> Any:
-            key_data = f"{func.__name__}:{str(args)}:{str(kwargs)}"
+            key_data = f"{func.__name__}:{args!s}:{kwargs!s}"
             cache_key = f"{key_prefix}:{hashlib.md5(key_data.encode()).hexdigest()}"
             cached = await crm_cache.get(cache_key)
             if cached is not None:

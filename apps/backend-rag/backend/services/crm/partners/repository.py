@@ -13,16 +13,16 @@ from uuid import UUID
 import asyncpg
 
 from backend.services.crm.partners.models import (
-    Partner,
-    PartnerReferral,
-    PartnerCommission,
-    PartnerAuditLogEntry,
-    EntityType,
-    CommissionType,
-    CommissionStatus,
     CommissionEntryType,
-    WithholdingCategory,
+    CommissionStatus,
+    CommissionType,
+    EntityType,
+    Partner,
+    PartnerAuditLogEntry,
+    PartnerCommission,
+    PartnerReferral,
     RuleSource,
+    WithholdingCategory,
 )
 
 logger = logging.getLogger(__name__)
@@ -167,7 +167,7 @@ class PartnersRepository:
         if "email" in fields:
             await self._assert_email_is_not_internal(fields["email"])
         sets = [f"{k} = ${i + 2}" for i, k in enumerate(fields)]
-        sets.append(f"updated_at = now()")
+        sets.append("updated_at = now()")
         sql = f"UPDATE partners SET {', '.join(sets)} WHERE id = $1"
         await self.conn.execute(sql, partner_id, *fields.values())
 

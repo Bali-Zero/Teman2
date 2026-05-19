@@ -75,7 +75,7 @@ def send_telegram(*, text: str, chat_id: str = TELEGRAM_CHAT_ID) -> None:
         data = urllib.parse.urlencode(
             {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"},
         ).encode()
-        urllib.request.urlopen(  # noqa: S310 — known URL
+        urllib.request.urlopen(
             f"https://api.telegram.org/bot{bot_token}/sendMessage",
             data,
             timeout=15,

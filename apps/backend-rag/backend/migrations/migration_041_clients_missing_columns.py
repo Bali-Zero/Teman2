@@ -110,10 +110,8 @@ ALTER TABLE clients DROP COLUMN IF EXISTS avatar_url;
 async def apply_migration(conn):
     """Apply migration 041"""
     await conn.execute(migration_sql)
-    print("✅ Migration 041 applied: Added 6 missing columns to clients table")
 
 
 async def rollback_migration(conn):
     """Rollback migration 041"""
     await conn.execute(rollback_sql)
-    print("✅ Migration 041 rolled back: Removed 6 columns from clients table")

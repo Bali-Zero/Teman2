@@ -9,39 +9,38 @@ from __future__ import annotations
 from datetime import date, timedelta
 from unittest.mock import AsyncMock, MagicMock
 
-import pytest
 import asyncpg
+import pytest
 
 from backend.services.compliance.alerts_engine import AlertsEngine
 from backend.services.compliance.predictive_engine import ComplianceForecast
-
 
 pytestmark = pytest.mark.integration
 
 
 def _make_forecast(client_id: int, **overrides) -> ComplianceForecast:
     today = date.today()
-    base = dict(
-        client_id=client_id,
-        client_name="X",
-        assigned_to=None,
-        document_type="visa",
-        current_visa_type="C1",
-        expiry_date=today + timedelta(days=7),
-        days_until_expiry=7,
-        matched_rule_id="visa_c1",
-        processing_days=14,
-        lead_time_start=today,
-        recommended_action_by=today,
-        days_until_action=0,
-        estimated_revenue_idr=None,
-        renewal_pricing_key="visa.c1_renewal",
-        priority_score=0.9,
-        urgency_level="urgent",
-        required_docs=[],
-        has_active_renewal_practice=False,
-        notes="",
-    )
+    base = {
+        "client_id": client_id,
+        "client_name": "X",
+        "assigned_to": None,
+        "document_type": "visa",
+        "current_visa_type": "C1",
+        "expiry_date": today + timedelta(days=7),
+        "days_until_expiry": 7,
+        "matched_rule_id": "visa_c1",
+        "processing_days": 14,
+        "lead_time_start": today,
+        "recommended_action_by": today,
+        "days_until_action": 0,
+        "estimated_revenue_idr": None,
+        "renewal_pricing_key": "visa.c1_renewal",
+        "priority_score": 0.9,
+        "urgency_level": "urgent",
+        "required_docs": [],
+        "has_active_renewal_practice": False,
+        "notes": "",
+    }
     base.update(overrides)
     return ComplianceForecast(**base)
 

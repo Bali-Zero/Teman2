@@ -83,7 +83,7 @@ async def upload_and_ingest(
 
     except Exception as e:
         logger.error("Upload ingestion error: %s", e)
-        raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Ingestion failed: {e!s}") from e
 
 
 @router.post("/file", response_model=BookIngestionResponse)
@@ -115,7 +115,7 @@ async def ingest_local_file(request: BookIngestionRequest) -> BookIngestionRespo
 
     except Exception as e:
         logger.error("File ingestion error: %s", e)
-        raise HTTPException(status_code=500, detail=f"Ingestion failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Ingestion failed: {e!s}") from e
 
 
 @router.post("/batch", response_model=BatchIngestionResponse)
@@ -203,7 +203,7 @@ async def batch_ingest(
         raise
     except Exception as e:
         logger.error("Batch ingestion error: %s", e)
-        raise HTTPException(status_code=500, detail=f"Batch ingestion failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Batch ingestion failed: {e!s}") from e
 
 
 @router.get("/stats")
@@ -227,4 +227,4 @@ async def get_ingestion_stats() -> dict[str, Any]:
 
     except Exception as e:
         logger.error("Stats error: %s", e)
-        raise HTTPException(status_code=500, detail=f"Failed to get stats: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Failed to get stats: {e!s}") from e

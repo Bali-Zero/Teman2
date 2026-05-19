@@ -92,7 +92,6 @@ async def apply(conn: Any) -> None:
     """)
 
     logger.info("Migration 052 applied successfully: OpenClaw Message Logs table created")
-    print("✅ Applied migration 052: OpenClaw Message Logs")
 
 
 async def rollback(conn: Any) -> None:
@@ -110,4 +109,3 @@ async def rollback(conn: Any) -> None:
     await conn.execute("DROP TABLE IF EXISTS openclaw_message_logs;")
 
     logger.info("Migration 052 rolled back successfully")
-    print("⏪ Rolled back migration 052: OpenClaw Message Logs")

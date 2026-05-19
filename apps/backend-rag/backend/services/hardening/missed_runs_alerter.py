@@ -60,7 +60,7 @@ class MissedRunsAlerter:
         now = now or datetime.now(timezone.utc)
         try:
             pending = await self.repo.pending_missed_runs(days=self.lookback_days)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return MissedRunsAlertResult(
                 ran_at=now,
                 pending_count=0,
@@ -94,7 +94,7 @@ class MissedRunsAlerter:
         ids = [r.id for r in pending]
         try:
             await self.repo.mark_missed_runs_notified(ids)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             # Telegram already sent — next sweep might re-alert for the same
             # ids. Flag the error but count as notified for this run.
             return MissedRunsAlertResult(

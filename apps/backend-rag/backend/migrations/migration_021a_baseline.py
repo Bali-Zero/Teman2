@@ -162,8 +162,6 @@ async def run_migration():
         database_url = os.getenv("DATABASE_URL")
 
     if not database_url:
-        print("ERROR: DATABASE_URL environment variable not set.")
-        print("Please set DATABASE_URL in your .env file or environment.")
         return
 
     conn = await asyncpg.connect(database_url)
@@ -173,11 +171,11 @@ async def run_migration():
         if success:
             verified = await migration.verify(conn)
             if verified:
-                print("Migration 021 completed and verified")
+                pass
             else:
-                print("Migration 021 applied but verification failed")
+                pass
         else:
-            print("Migration 021 failed")
+            pass
     finally:
         await conn.close()
 

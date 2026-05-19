@@ -434,7 +434,7 @@ async def login(
             success=False,
             ip_address=client_ip,
             user_agent=user_agent,
-            failure_reason=f"System error: {str(e)}",
+            failure_reason=f"System error: {e!s}",
         )
         raise HTTPException(status_code=500, detail="Authentication service unavailable") from e
 

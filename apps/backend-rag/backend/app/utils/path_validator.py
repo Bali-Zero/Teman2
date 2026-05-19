@@ -51,7 +51,7 @@ def validate_path(
 
     # Check for path traversal patterns in the original path
     path_str = str(path)
-    if ".." in path_str or path_str.startswith("/") and ".." in path_str:
+    if ".." in path_str or (path_str.startswith("/") and ".." in path_str):
         # Additional check: resolve and verify it's within allowed bases
         pass  # Will be checked below against allowed bases
 

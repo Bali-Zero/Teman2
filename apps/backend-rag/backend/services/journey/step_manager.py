@@ -121,7 +121,7 @@ class StepManagerService:
     def _update_journey_status(self, journey) -> None:
         """Update journey status based on step completion."""
         from backend.services.misc.client_journey_orchestrator import (
-            JourneyStatus,  # noqa: F401
+            JourneyStatus,
             StepStatus,
         )
 

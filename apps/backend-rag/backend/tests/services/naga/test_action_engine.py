@@ -11,7 +11,6 @@ import pytest
 from backend.core.claims.models import ClaimRecord
 from backend.services.naga.actions.action_engine import ActionItem, detect_actions
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

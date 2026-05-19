@@ -10,7 +10,6 @@ import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
-
 # ============================================================
 # Module-level mocks: must be set up before import
 # ============================================================
@@ -381,8 +380,8 @@ def test_chat_kbli_qdrant_fails_no_db(client):
     from backend.app.dependencies import get_optional_database_pool
 
     app2 = FastAPI()
-    from backend.app.routers.kbli_notebook_chat import router as kbli_router
     from backend.app.dependencies import get_search_service
+    from backend.app.routers.kbli_notebook_chat import router as kbli_router
 
     app2.include_router(kbli_router)
     app2.dependency_overrides[get_optional_database_pool] = lambda: None  # No DB pool

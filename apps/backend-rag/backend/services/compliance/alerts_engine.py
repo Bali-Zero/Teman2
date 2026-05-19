@@ -201,7 +201,7 @@ class AlertsEngine:
         if fc.renewal_pricing_key and self._pricing is not None:
             try:
                 cost = self._pricing.get_price(fc.renewal_pricing_key)
-            except Exception as exc:  # noqa: BLE001 — pricing is best-effort
+            except Exception as exc:
                 logger.warning("pricing lookup failed for %s: %s", fc.renewal_pricing_key, exc)
 
         # NB-2 ref (if rule carries one)
@@ -240,7 +240,7 @@ class AlertsEngine:
             return
         try:
             await self._dispatcher.dispatch(alert)
-        except Exception as exc:  # noqa: BLE001 — dispatch failure never blocks generation
+        except Exception as exc:
             logger.warning("dispatcher failed for %s: %s", alert.alert_id, exc)
 
     def _lookup_nb2_ref(self, rule_id: str | None) -> str | None:

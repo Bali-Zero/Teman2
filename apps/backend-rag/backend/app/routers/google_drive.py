@@ -89,7 +89,7 @@ async def get_connection_status(
 
 @router.get("/auth/url")
 async def get_auth_url(
-    request: Request,  # noqa: ARG001
+    request: Request,
     current_user: dict = Depends(get_current_user),
     db_pool=Depends(get_database_pool),
 ) -> dict[str, str]:
@@ -425,7 +425,7 @@ async def list_files(
 @router.get("/files/{file_id}")
 async def get_file(
     file_id: str,
-    current_user: dict = Depends(get_current_user),  # noqa: ARG001
+    current_user: dict = Depends(get_current_user),
     db_pool=Depends(get_database_pool),
 ) -> FileItem:
     """
@@ -459,7 +459,7 @@ async def get_file(
 async def search_files(
     q: str = Query(..., min_length=2, description="Search query"),
     page_size: int = Query(20, ge=1, le=50),
-    current_user: dict = Depends(get_current_user),  # noqa: ARG001
+    current_user: dict = Depends(get_current_user),
     db_pool=Depends(get_database_pool),
 ) -> list[FileItem]:
     """

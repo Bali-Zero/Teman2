@@ -372,7 +372,7 @@ class TestExaSearchAgent:
 
         # The mcp_call receives keyword arguments for the Exa tool parameters.
         # Check that domain filters were included.
-        all_args = {**dict(enumerate(call_args_pos)), **call_kwargs}
+        {**dict(enumerate(call_args_pos)), **call_kwargs}
         # Flatten: the agent should pass includeDomains / excludeDomains
         raw_call = mcp_call.call_args
         assert raw_call is not None

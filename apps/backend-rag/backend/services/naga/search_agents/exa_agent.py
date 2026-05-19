@@ -8,7 +8,7 @@ auto searches and maps the results to :class:`SearchResult` objects.
 from __future__ import annotations
 
 import logging
-from typing import Callable
+from collections.abc import Callable
 
 from backend.services.naga.search_agents.base import (
     AgentResponse,
@@ -31,7 +31,7 @@ class ExaSearchAgent(BaseSearchAgent):
 
     name: str = "exa"
 
-    def __init__(self, mcp_call: Callable) -> None:  # noqa: ANN401
+    def __init__(self, mcp_call: Callable) -> None:
         self._mcp_call = mcp_call
 
     async def search(

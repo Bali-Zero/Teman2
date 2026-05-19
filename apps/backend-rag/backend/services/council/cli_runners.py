@@ -36,7 +36,7 @@ _module_client: httpx.AsyncClient | None = None
 
 
 def _get_module_client(timeout: float) -> httpx.AsyncClient:
-    global _module_client  # noqa: PLW0603 — singleton by design
+    global _module_client
     if _module_client is None or _module_client.is_closed:
         _module_client = httpx.AsyncClient(timeout=timeout)
     return _module_client
@@ -44,7 +44,7 @@ def _get_module_client(timeout: float) -> httpx.AsyncClient:
 
 async def close_council_runner_client() -> None:
     """Release the module-level AsyncClient (lifespan shutdown hook)."""
-    global _module_client  # noqa: PLW0603
+    global _module_client
     if _module_client is not None and not _module_client.is_closed:
         await _module_client.aclose()
     _module_client = None
@@ -241,7 +241,7 @@ class DeepSeekHTTPRunner(CLIRunner):
                 duration_ms=duration_ms,
                 meta={"model": self.model},
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return RunnerResult(
                 runner_name=self.name,
                 prompt_chars=len(prompt),

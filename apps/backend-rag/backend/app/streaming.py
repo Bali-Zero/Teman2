@@ -464,10 +464,7 @@ async def chat_stream_post(
 
             if ai_full_response:
                 try:
-                    new_messages = conversation_history_list + [
-                        {"role": "user", "content": body.message},
-                        {"role": "assistant", "content": ai_full_response},
-                    ]
+                    new_messages = [*conversation_history_list, {"role": "user", "content": body.message}, {"role": "assistant", "content": ai_full_response}]
 
                     session_id_to_save = session_id
 

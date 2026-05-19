@@ -381,7 +381,7 @@ class LLMGateway:
         circuit.record_failure()
 
         # Classify error and log metrics
-        error_category, error_severity = ErrorClassifier.classify_error(error)
+        _error_category, _error_severity = ErrorClassifier.classify_error(error)
         error_type = type(error).__name__
 
         # Log with structured context

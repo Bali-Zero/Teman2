@@ -7,7 +7,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -269,7 +268,7 @@ class TestGenerateDraft:
         ]
 
         # _save_draft returns id
-        save_call = AsyncMock(return_value={"id": 99})
+        AsyncMock(return_value={"id": 99})
         conn.fetchrow.side_effect = [
             None,
             _make_config_row(),
@@ -290,7 +289,6 @@ class TestGenerateDraft:
 
         # Make the final fetchrow (in _save_draft) return an id
         call_count = 0
-        original_fetchrow = conn.fetchrow
 
         async def smart_fetchrow(*args, **kwargs):
             nonlocal call_count

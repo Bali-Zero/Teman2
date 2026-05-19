@@ -170,7 +170,7 @@ async def get_system_metrics() -> Any:
 
     except Exception as e:
         logger.error("Failed to calculate system metrics: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Metrics calculation failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Metrics calculation failed: {e!s}") from e
 
 
 @router.post("/api/intel/search")
@@ -453,7 +453,7 @@ async def get_intelligence_analytics(days: int = IntelConstants.TRENDS_ANALYSIS_
         logger.error("Failed to calculate analytics: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Analytics calculation failed: {str(e)}",
+            detail=f"Analytics calculation failed: {e!s}",
         ) from e
 
 

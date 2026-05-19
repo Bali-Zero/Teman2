@@ -34,26 +34,26 @@ from .quality_check import (
 from .scraper import LegalScraper, ScrapedDocument, SourceConfig, SourceType
 
 __all__ = [
+    # Auto Ingestion
+    "AutoIngestionService",
+    # Change Detector
+    "ChangeDetector",
+    "ChangeEvent",
+    "ChangeType",
+    "DimensionScore",
+    "DocumentState",
+    "DocumentType",
+    "ExtractedDocument",
+    "IngestionResult",
+    "IngestionStatus",
     # Scraper
     "LegalScraper",
+    # Quality Check
+    "QualityCheckService",
+    "QualityDimension",
+    "QualityLevel",
+    "QualityReport",
     "ScrapedDocument",
     "SourceConfig",
     "SourceType",
-    # Change Detector
-    "ChangeDetector",
-    "DocumentState",
-    "ChangeType",
-    "ChangeEvent",
-    # Auto Ingestion
-    "AutoIngestionService",
-    "IngestionResult",
-    "IngestionStatus",
-    "ExtractedDocument",
-    "DocumentType",
-    # Quality Check
-    "QualityCheckService",
-    "QualityReport",
-    "QualityLevel",
-    "QualityDimension",
-    "DimensionScore",
 ]

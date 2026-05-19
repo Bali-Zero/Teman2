@@ -1,7 +1,9 @@
 """Tests for Olympus v2 OlympusAlerts — nullable alert_service."""
 
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
+
 from backend.services.olympus.alerts import OlympusAlerts
 
 

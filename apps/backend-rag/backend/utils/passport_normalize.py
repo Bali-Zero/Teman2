@@ -9,7 +9,6 @@ from __future__ import annotations
 import re
 from datetime import datetime
 
-
 # ---------------------------------------------------------------------------
 # NATIONALITY_MAP
 # Keys: ISO3 codes, full country names (upper), adjective forms, and common

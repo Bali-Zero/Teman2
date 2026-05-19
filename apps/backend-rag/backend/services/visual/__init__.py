@@ -39,11 +39,11 @@ from backend.services.visual.vision_qa import (
 
 __all__ = [
     "BRAND_SUFFIX",
+    "NEGATIVE_PROMPT",
     "ImagenClient",
     "ImagenError",
     "ImagenQuality",
     "ImagenResult",
-    "NEGATIVE_PROMPT",
     "OllamaVisionClient",
     "QADecision",
     "QAJudge",

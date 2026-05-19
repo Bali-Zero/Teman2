@@ -50,7 +50,7 @@ except ImportError:
         )
 
     def safe_git_add(files: list, cwd: str | None = None) -> subprocess.CompletedProcess:  # type: ignore[type-arg]
-        return subprocess.run(["git", "add"] + files, cwd=cwd, check=True, timeout=10.0)
+        return subprocess.run(["git", "add", *files], cwd=cwd, check=True, timeout=10.0)
 
     def safe_git_commit(message: str, cwd: str | None = None) -> subprocess.CompletedProcess:  # type: ignore[type-arg]
         return subprocess.run(["git", "commit", "-m", message], cwd=cwd, check=True, timeout=10.0)
@@ -295,7 +295,7 @@ Based on analysis of successful conversations:
             reports_dir = Path("reports")
             reports_dir.mkdir(exist_ok=True)
             report_file = reports_dir / f"conversation_analysis_{timestamp}.md"
-            repo_path = Path(".")
+            repo_path = Path()
 
             # 1. Create branch (safe subprocess)
             try:

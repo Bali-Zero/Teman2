@@ -254,7 +254,7 @@ async def replay_unconsumed(
 
         try:
             await dispatch_fn(payload_dict)
-        except Exception as exc:  # noqa: BLE001 — bubbling up would block replay
+        except Exception as exc:
             logger.error(
                 "events_outbox: dispatch failed for id=%d channel=%s: %s",
                 outbox_id,

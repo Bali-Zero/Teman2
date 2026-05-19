@@ -135,7 +135,7 @@ class ObservedShellBus:
                 )
         except (asyncpg.PostgresError, OSError) as e:
             self._fallback_to_jsonl(record, reason=f"db error: {e!r}")
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             # Defensive net: ANY exception falls back. Observability MUST
             # NOT cascade into automation failure.
             self._fallback_to_jsonl(record, reason=f"unexpected: {e!r}")
@@ -185,4 +185,4 @@ async def emit_one(
     await ObservedShellBus(db_pool).emit(automation_name, status, payload, trace_id)
 
 
-__all__ = ["ObservedShellBus", "emit_one", "JSONL_FALLBACK", "VALID_STATUSES"]
+__all__ = ["JSONL_FALLBACK", "VALID_STATUSES", "ObservedShellBus", "emit_one"]

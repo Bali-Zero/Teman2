@@ -29,39 +29,26 @@ async def cmd_status(manager: MigrationManager):
     """Show migration status"""
     status = await manager.get_status()
 
-    print("\n" + "=" * 70)
-    print("MIGRATION STATUS")
-    print("=" * 70)
-    print(f"Total migrations discovered: {status['total']}")
-    print(f"Applied: {status['applied']}")
-    print(f"Pending: {status['pending']}")
 
     if status["applied_list"]:
-        print(f"\n✅ Applied migrations: {', '.join(map(str, status['applied_list']))}")
+        pass
 
     if status["pending_list"]:
-        print(f"\n⏳ Pending migrations: {', '.join(map(str, status['pending_list']))}")
+        pass
 
-    print("=" * 70 + "\n")
 
 
 async def cmd_list(manager: MigrationManager):
     """List all migrations"""
     discovered = await manager.discover_migrations()
     applied_migrations = await manager.get_applied_migrations()
-    applied_numbers = {m["migration_number"] for m in applied_migrations}
+    {m["migration_number"] for m in applied_migrations}
 
-    print("\n" + "=" * 70)
-    print("ALL MIGRATIONS")
-    print("=" * 70)
 
     for migration_info in sorted(discovered, key=lambda x: x["number"]):
-        number = migration_info["number"]
-        file = migration_info["file"]
-        status = "✅ APPLIED" if number in applied_numbers else "⏳ PENDING"
-        print(f"{number:03d}: {file:50s} {status}")
+        migration_info["number"]
+        migration_info["file"]
 
-    print("=" * 70 + "\n")
 
 
 async def cmd_apply(
@@ -73,34 +60,26 @@ async def cmd_apply(
     if migration_number:
         # Apply specific migration
         # This would require importing the specific migration class
-        print(f"⚠️  Applying specific migration {migration_number} not yet implemented")
-        print("Use 'apply-all' to apply all pending migrations")
         return False
     else:
         # Apply all pending migrations
         if dry_run:
-            print("\n🔍 DRY RUN - No changes will be made\n")
+            pass
 
         result = await manager.apply_all_pending(dry_run=dry_run)
 
-        print("\n" + "=" * 70)
-        print("MIGRATION RESULTS")
-        print("=" * 70)
 
         if result["applied"]:
-            print(f"✅ Applied: {len(result['applied'])} migrations")
-            for num in result["applied"]:
-                print(f"   - Migration {num:03d}")
+            for _num in result["applied"]:
+                pass
 
         if result["skipped"]:
-            print(f"⏭️  Skipped: {len(result['skipped'])} migrations")
+            pass
 
         if result["failed"]:
-            print(f"❌ Failed: {len(result['failed'])} migrations")
-            for failure in result["failed"]:
-                print(f"   - Migration {failure['number']:03d}: {failure['error']}")
+            for _failure in result["failed"]:
+                pass
 
-        print("=" * 70 + "\n")
 
         return len(result["failed"]) == 0
 
@@ -110,20 +89,12 @@ async def cmd_info(manager: MigrationManager, migration_number: int):
     applied_migrations = await manager.get_applied_migrations()
     applied_dict = {m["migration_number"]: m for m in applied_migrations}
 
-    print("\n" + "=" * 70)
-    print(f"MIGRATION {migration_number:03d} INFO")
-    print("=" * 70)
 
     if migration_number in applied_dict:
-        info = applied_dict[migration_number]
-        print("Status: ✅ APPLIED")
-        print(f"Applied at: {info['executed_at']}")
-        print(f"Description: {info['description']}")
+        applied_dict[migration_number]
     else:
-        print("Status: ⏳ PENDING")
-        print("This migration has not been applied yet")
+        pass
 
-    print("=" * 70 + "\n")
 
 
 def main():

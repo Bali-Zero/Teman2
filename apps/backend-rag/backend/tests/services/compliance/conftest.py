@@ -14,12 +14,11 @@ from __future__ import annotations
 import os
 from datetime import date, timedelta
 
+import asyncpg
 import pytest
 import pytest_asyncio
-import asyncpg
 
 from backend.services.compliance.predictive_engine import ComplianceForecast
-
 
 _DEFAULT_DB_URL = os.environ.get(
     "TEST_DATABASE_URL",

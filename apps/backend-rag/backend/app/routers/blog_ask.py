@@ -115,7 +115,7 @@ async def ask_zantara(request: Request, body: BlogAskRequest) -> BlogAskResponse
         )
 
     except Exception as e:
-        logger.error(f"❌ Blog ask error: {str(e)}")
+        logger.error(f"❌ Blog ask error: {e!s}")
         raise HTTPException(
             status_code=500,
             detail="Sorry, I couldn't process your question. Please try again.",

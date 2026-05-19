@@ -89,7 +89,7 @@ async def run_crm_drive_backfill(
                 link_kg=link_kg,
                 allow_ocr=allow_ocr,
             )
-        except Exception as exc:  # noqa: BLE001 - batch worker must continue
+        except Exception as exc:
             logger.error(
                 "CRM Drive backfill failed for document %s: %s",
                 candidate.document_id,

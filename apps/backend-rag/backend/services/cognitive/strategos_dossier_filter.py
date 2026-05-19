@@ -85,7 +85,7 @@ class QdrantDossierFilter:
                 reverse=True,
             )
             return ranked[:top_k] if top_k else ranked
-        except Exception as exc:  # noqa: BLE001 — intentional fail-open
+        except Exception as exc:
             logger.warning("QdrantDossierFilter fail-open: %s", exc)
             return dossier_rows
 

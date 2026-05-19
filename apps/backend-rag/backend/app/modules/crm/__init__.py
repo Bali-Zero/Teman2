@@ -16,13 +16,13 @@ from .models import Client, Interaction, Practice, PracticeType
 __all__ = [
     # Core CRM Models
     "Client",
-    "Practice",
-    "PracticeType",
-    "Interaction",
+    "ClientCompanyLink",
     # Company-Centric Models
     "Company",
-    "ClientCompanyLink",
     "CompanyDocument",
-    "TaxRecord",
+    "Interaction",
+    "Practice",
+    "PracticeType",
     "TaxDocument",
+    "TaxRecord",
 ]

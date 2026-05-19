@@ -51,7 +51,7 @@ def configure_tool_executor(
     The function exists so that tool_executor doesn't import from
     service_initializer (which would create a circular import).
     """
-    global _authorizer, _confirmation_service  # noqa: PLW0603
+    global _authorizer, _confirmation_service
     _authorizer = authorizer
     _confirmation_service = confirmation_service
 
@@ -348,4 +348,4 @@ async def execute_tool(
         duration = time.time() - start_time
         metrics_collector.record_tool_call(tool_name, "error")
         logger.error("Tool execution failed: %s", e, exc_info=True)
-        return f"Error executing {tool_name}: {str(e)}", duration
+        return f"Error executing {tool_name}: {e!s}", duration

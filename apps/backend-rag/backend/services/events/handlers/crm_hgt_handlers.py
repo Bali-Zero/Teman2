@@ -66,7 +66,7 @@ async def _get_bridge() -> Any:
             client = redis_async.from_url(redis_url, decode_responses=False)
             _bridge = CrmHGTBridge.from_redis(redis_client=client, cell_name="crm-cell")
             logger.info("crm_hgt_handlers: bridge initialized url=%s", redis_url)
-        except Exception as exc:  # noqa: BLE001 — defense in depth
+        except Exception as exc:
             logger.warning(
                 "crm_hgt_handlers: bridge init failed: %r — patterns disabled this process",
                 exc,
@@ -107,7 +107,7 @@ async def _ingest_event(
             pipe.expire(window_key, retention_seconds + 60)
             results = await pipe.execute()
         return int(results[2])
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning(
             "crm_hgt_handlers: window state failed key=%s err=%r",
             window_key,
@@ -152,7 +152,7 @@ async def on_practice_status_changed(payload: dict[str, Any]) -> None:
     ts_epoch = time.time()
 
     count = await _ingest_event(
-        bridge._publisher._redis,  # noqa: SLF001 — bridge wraps publisher
+        bridge._publisher._redis,
         f"{_PRACTICE_WINDOW_KEY}:{new_status}",
         event_id,
         ts_epoch,
@@ -171,7 +171,7 @@ async def on_practice_status_changed(payload: dict[str, Any]) -> None:
     # Threshold crossed → publish structural pattern
     try:
         from crm_cell.hgt_publisher import StructuralPattern
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("crm_hgt: StructuralPattern import failed: %r", exc)
         return
 
@@ -227,7 +227,7 @@ async def on_lkpm_ingest_completed(payload: dict[str, Any]) -> None:
     ts_epoch = time.time()
 
     count = await _ingest_event(
-        bridge._publisher._redis,  # noqa: SLF001
+        bridge._publisher._redis,
         _LKPM_WINDOW_KEY,
         event_id,
         ts_epoch,
@@ -244,7 +244,7 @@ async def on_lkpm_ingest_completed(payload: dict[str, Any]) -> None:
 
     try:
         from crm_cell.hgt_publisher import StructuralPattern
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.warning("crm_hgt: StructuralPattern import failed: %r", exc)
         return
 
@@ -295,7 +295,7 @@ def register_crm_hgt_handlers(bus: Any) -> None:
 
 __all__ = [
     "HANDLERS",
-    "on_practice_status_changed",
     "on_lkpm_ingest_completed",
+    "on_practice_status_changed",
     "register_crm_hgt_handlers",
 ]

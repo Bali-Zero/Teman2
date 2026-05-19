@@ -26,17 +26,17 @@ PR #1 (this) ships only models + repository + EventBus channel registration.
 from __future__ import annotations
 
 __all__: list[str] = [
-    "FederationAlertMode",
-    "ProposalStatus",
-    "AlertSeverity",
-    "RiskLevel",
-    "RequestedAction",
-    "ProposalRow",
     "AlertInput",
-    "FederationAlertRepo",
-    "FederationAlertDaemon",
-    "FADConfig",
+    "AlertSeverity",
     "AuditLogger",
+    "FADConfig",
+    "FederationAlertDaemon",
+    "FederationAlertMode",
+    "FederationAlertRepo",
+    "ProposalRow",
+    "ProposalStatus",
+    "RequestedAction",
+    "RiskLevel",
 ]
 
 from backend.services.federation_alerts.audit import AuditLogger

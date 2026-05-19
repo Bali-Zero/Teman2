@@ -91,7 +91,7 @@ class Pulse:
             t0 = time.monotonic()
             try:
                 async with self._pool.acquire() as conn:
-                    await conn.execute(f"VACUUM ANALYZE {table}")  # noqa: S608
+                    await conn.execute(f"VACUUM ANALYZE {table}")
                 duration_ms = int((time.monotonic() - t0) * 1000)
                 actions.append(
                     PulseAction(
@@ -265,14 +265,14 @@ class Pulse:
         for row in rows:
             table, column, seq = row["table_name"], row["column_name"], row["seq"]
             async with self._pool.acquire() as conn:
-                max_val = await conn.fetchval(f"SELECT COALESCE(MAX({column}), 0) FROM {table}")  # noqa: S608
-                last_val = await conn.fetchval(f"SELECT last_value FROM {seq}")  # noqa: S608
+                max_val = await conn.fetchval(f"SELECT COALESCE(MAX({column}), 0) FROM {table}")
+                last_val = await conn.fetchval(f"SELECT last_value FROM {seq}")
 
             if max_val is not None and last_val is not None and max_val > last_val:
                 t0 = time.monotonic()
                 try:
                     async with self._pool.acquire() as conn:
-                        await conn.execute(f"SELECT setval('{seq}', {max_val})")  # noqa: S608
+                        await conn.execute(f"SELECT setval('{seq}', {max_val})")
                     duration_ms = int((time.monotonic() - t0) * 1000)
                     actions.append(
                         PulseAction(
@@ -321,7 +321,7 @@ class Pulse:
             t0 = time.monotonic()
             try:
                 async with self._pool.acquire() as conn:
-                    await conn.execute(f"REINDEX INDEX CONCURRENTLY {idx}")  # noqa: S608
+                    await conn.execute(f"REINDEX INDEX CONCURRENTLY {idx}")
                 duration_ms = int((time.monotonic() - t0) * 1000)
                 actions.append(
                     PulseAction(
@@ -357,7 +357,7 @@ class Pulse:
             t0 = time.monotonic()
             try:
                 async with self._pool.acquire() as conn:
-                    await conn.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {view}")  # noqa: S608
+                    await conn.execute(f"REFRESH MATERIALIZED VIEW CONCURRENTLY {view}")
                 duration_ms = int((time.monotonic() - t0) * 1000)
                 actions.append(
                     PulseAction(
@@ -373,7 +373,7 @@ class Pulse:
                 t0 = time.monotonic()
                 try:
                     async with self._pool.acquire() as conn:
-                        await conn.execute(f"REFRESH MATERIALIZED VIEW {view}")  # noqa: S608
+                        await conn.execute(f"REFRESH MATERIALIZED VIEW {view}")
                     duration_ms = int((time.monotonic() - t0) * 1000)
                     actions.append(
                         PulseAction(

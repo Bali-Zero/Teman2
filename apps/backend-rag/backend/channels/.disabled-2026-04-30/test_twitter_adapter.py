@@ -20,10 +20,11 @@ os.environ.setdefault("API_KEYS", "test_api_key_1")
 os.environ.setdefault("OPENAI_API_KEY", "test_key")
 os.environ.setdefault("GOOGLE_API_KEY", "test_key")
 
-from backend.channels.base import ChannelResponse
 from backend.channels.twitter.adapter import TwitterChannelAdapter
 from backend.channels.twitter.config import TwitterChannelConfig
 from backend.channels.twitter.formatter import TwitterMessageFormatter
+
+from backend.channels.base import ChannelResponse
 
 # ============================================================================
 # FIXTURES

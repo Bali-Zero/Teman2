@@ -152,7 +152,7 @@ async def deliberate_with_deadline(
             "meta": {},
             "errors": {"deadline": f"exceeded {deadline_sec}s"},
         }
-    except Exception as exc:  # noqa: BLE001 — keep daemon alive
+    except Exception as exc:
         logger.exception("consiglio_crashed: %s", exc)
         return {
             "passed": False,
@@ -197,7 +197,7 @@ def quick_subprocess_check() -> bool:
 
 __all__ = [
     "DispatchResult",
-    "dispatch_via_ai_dispatch",
     "deliberate_with_deadline",
+    "dispatch_via_ai_dispatch",
     "quick_subprocess_check",
 ]

@@ -100,7 +100,7 @@ def upload_pdf(
                     head.get("ETag", "?"),
                     head.get("ContentLength", "?"),
                 )
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 logger.warning("Tigris HEAD verify failed (non-fatal): %s", e)
             return f"https://{PUBLIC_HOST}/{key}", key
         except (ClientError, BotoCoreError) as e:
@@ -130,7 +130,7 @@ def delete_pdf(s3: Any, *, draft_id: str, prefix: str = "wr2-pdf") -> None:
     try:
         s3.delete_object(Bucket=BUCKET, Key=key)
         logger.info("Tigris delete OK: %s", key)
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning("Tigris delete failed (swallowed): %s — %s", key, e)
 
 
@@ -139,7 +139,7 @@ def delete_pdf_by_key(s3: Any, *, key: str) -> None:
     try:
         s3.delete_object(Bucket=BUCKET, Key=key)
         logger.info("Tigris delete_by_key OK: %s", key)
-    except Exception as e:  # noqa: BLE001
+    except Exception as e:
         logger.warning("Tigris delete_by_key failed (swallowed): %s — %s", key, e)
 
 

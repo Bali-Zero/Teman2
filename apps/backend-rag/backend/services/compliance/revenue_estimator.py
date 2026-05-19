@@ -294,10 +294,10 @@ async def clients_at_revenue_risk(
 
 
 __all__ = [
-    "estimate_renewal_revenue",
-    "estimate_urgent_surcharge",
     "RiskBand",
     "classify_client_risk",
-    "get_weighted_revenue",
     "clients_at_revenue_risk",
+    "estimate_renewal_revenue",
+    "estimate_urgent_surcharge",
+    "get_weighted_revenue",
 ]

@@ -180,7 +180,7 @@ def normalize_entity_id(raw_name: str, entity_type: str) -> str:
 def generate_edge_id(source_id: str, target_id: str, rel_type: str) -> str:
     """Generate deterministic edge ID from source, target, and relationship type."""
     raw = f"{source_id}|{rel_type}|{target_id}"
-    return f"edge:{hashlib.md5(raw.encode()).hexdigest()[:16]}"  # noqa: S324
+    return f"edge:{hashlib.md5(raw.encode()).hexdigest()[:16]}"
 
 
 # ============================================================================

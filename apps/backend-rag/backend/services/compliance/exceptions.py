@@ -34,9 +34,9 @@ class LkpmValidationError(ComplianceError):
 
 
 __all__ = [
-    "ComplianceError",
-    "AlertGenerationError",
     "AlertDispatchError",
+    "AlertGenerationError",
+    "ComplianceError",
     "IntelValidationError",
     "LkpmValidationError",
 ]

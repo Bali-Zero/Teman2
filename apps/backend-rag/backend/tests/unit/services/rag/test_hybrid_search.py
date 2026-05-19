@@ -5,8 +5,9 @@ Tests BM25 vectorization, RRF fusion (bimodal and trimodal),
 hybrid search orchestration, and dense-only fallback.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 
 def _make_service(*, bm25_enabled: bool = True):

@@ -41,6 +41,8 @@ from backend.app.dependencies import get_current_user, get_database_pool
 from backend.services.crm.partners.commission_engine import CommissionEngine
 from backend.services.crm.partners.service import (
     INTERNAL_ROLES_ALWAYS_ALLOWED as _SERVICE_INTERNAL_ROLES,
+)
+from backend.services.crm.partners.service import (
     PartnersService,
     verify_partner_access_with_role,
 )

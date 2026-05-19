@@ -19,7 +19,7 @@ https://github.com/robusta-dev/robusta):
 from __future__ import annotations
 
 # Importing the action modules registers them via @register_action decorator
-from backend.services.federation_alerts.actions import (  # noqa: F401
+from backend.services.federation_alerts.actions import (
     ack_outbox_event,
     cleanup_log,
     # Whitelist V2 — Codex 5.5 capabilities (OAuth Pro, no API key)

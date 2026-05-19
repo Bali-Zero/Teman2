@@ -7,7 +7,6 @@ import asyncio
 import logging
 import os
 from pathlib import Path
-from typing import Union
 
 try:
     from PyPDF2 import PdfReader
@@ -65,7 +64,7 @@ async def extract_text_from_pdf_async(
     file_path: str,
     use_ocr: bool = False,
     return_page_markers: bool = False,
-) -> Union[str, tuple[str, list[int]]]:
+) -> str | tuple[str, list[int]]:
     """
     Async version of PDF extraction for use in async contexts.
 
@@ -137,14 +136,14 @@ async def extract_text_from_pdf_async(
     except DocumentParseError:
         raise
     except Exception as e:
-        raise DocumentParseError(f"Failed to parse PDF {file_path}: {str(e)}") from e
+        raise DocumentParseError(f"Failed to parse PDF {file_path}: {e!s}") from e
 
 
 def extract_text_from_pdf(
     file_path: str,
     use_ocr: bool = False,
     return_page_markers: bool = False,
-) -> Union[str, tuple[str, list[int]]]:
+) -> str | tuple[str, list[int]]:
     """
     Extract text content from PDF file.
     Falls back to OCR if no text is found (for scanned PDFs).
@@ -252,7 +251,7 @@ def extract_text_from_pdf(
     except DocumentParseError:
         raise
     except Exception as e:
-        raise DocumentParseError(f"Failed to parse PDF {file_path}: {str(e)}") from e
+        raise DocumentParseError(f"Failed to parse PDF {file_path}: {e!s}") from e
 
 
 async def extract_text_from_pdf_ocr_async(file_path: str) -> str:
@@ -427,7 +426,7 @@ def extract_text_from_docx(file_path: str) -> str:
         return full_text
 
     except Exception as e:
-        raise DocumentParseError(f"Failed to parse DOCX {file_path}: {str(e)}") from e
+        raise DocumentParseError(f"Failed to parse DOCX {file_path}: {e!s}") from e
 
 
 def extract_text_from_epub(file_path: str) -> str:
@@ -472,7 +471,7 @@ def extract_text_from_epub(file_path: str) -> str:
         return full_text
 
     except Exception as e:
-        raise DocumentParseError(f"Failed to parse EPUB {file_path}: {str(e)}") from e
+        raise DocumentParseError(f"Failed to parse EPUB {file_path}: {e!s}") from e
 
 
 def extract_text_from_txt(file_path: str) -> str:
@@ -500,7 +499,7 @@ def extract_text_from_txt(file_path: str) -> str:
         return text
 
     except Exception as e:
-        raise DocumentParseError(f"Failed to read TXT {file_path}: {str(e)}") from e
+        raise DocumentParseError(f"Failed to read TXT {file_path}: {e!s}") from e
 
 
 def auto_detect_and_parse(file_path: str, use_ocr: bool = False) -> str:

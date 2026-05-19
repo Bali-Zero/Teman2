@@ -65,7 +65,7 @@ def _answer_callback(
         method="POST",
     )
     try:
-        with urllib.request.urlopen(req, timeout=timeout_sec):  # noqa: S310
+        with urllib.request.urlopen(req, timeout=timeout_sec):
             pass
     except (urllib.error.URLError, TimeoutError, OSError) as exc:
         logger.debug("answerCallbackQuery failed: %s", exc)

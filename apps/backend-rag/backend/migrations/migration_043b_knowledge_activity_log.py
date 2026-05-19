@@ -73,22 +73,17 @@ async def run_migration():
     from backend.app.core.config import settings
 
     if not settings.database_url:
-        print("ERROR: DATABASE_URL not found")
         return False
 
     try:
-        print("Connecting to PostgreSQL...")
         conn = await asyncpg.connect(settings.database_url)
-        print("Connected")
 
         await apply(conn)
 
         await conn.close()
-        print("Migration 043 completed successfully!")
         return True
 
-    except Exception as e:
-        print(f"Migration failed: {e}")
+    except Exception:
         import traceback
 
         traceback.print_exc()

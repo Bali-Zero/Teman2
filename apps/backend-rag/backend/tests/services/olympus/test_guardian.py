@@ -1,7 +1,9 @@
 """Tests for Olympus v2 Guardian — feedback loop and shutdown."""
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock
+
+import pytest
+
 from backend.services.olympus.guardian import OlympusGuardian
 from backend.services.olympus.models import PulseAction
 
@@ -42,7 +44,7 @@ class TestGuardianFeedbackLoop:
         guardian.alerts.send_pulse_summary = AsyncMock()
         guardian._persist_action = AsyncMock()
 
-        actions = await guardian.run_pulse_once()
+        await guardian.run_pulse_once()
 
         assert guardian.rules_engine.record_applied.call_count == 2
         called_rules = {c.args[0] for c in guardian.rules_engine.record_applied.call_args_list}

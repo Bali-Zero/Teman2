@@ -13,7 +13,6 @@ import pytest
 
 from backend.migrations.migration_079_naga_tables import apply, rollback
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

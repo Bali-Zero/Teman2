@@ -79,7 +79,7 @@ class BGEReranker:
         def _score() -> list[dict[str, Any]]:
             pairs = [(query, doc.get("content", doc.get("text", ""))) for doc in documents]
             scores = model.predict(pairs)
-            for doc, score in zip(documents, scores):
+            for doc, score in zip(documents, scores, strict=False):
                 doc["rerank_score"] = float(score)
             ranked = sorted(documents, key=lambda d: d.get("rerank_score", 0), reverse=True)
             return ranked[:top_k]

@@ -126,7 +126,7 @@ class PlaywrightClient:
                 width=width,
                 height=height,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return ScreenshotResult(
                 ok=False,
                 error=f"{type(exc).__name__}: {exc}",
@@ -138,12 +138,12 @@ class PlaywrightClient:
             if page is not None:
                 try:
                     await page.close()
-                except Exception:  # noqa: BLE001
+                except Exception:
                     pass
             if context is not None:
                 try:
                     await context.close()
-                except Exception:  # noqa: BLE001
+                except Exception:
                     pass
 
     async def screenshot_once(

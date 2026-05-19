@@ -94,7 +94,6 @@ async def apply(conn: Any) -> None:
     """)
 
     logger.info("Migration 050 applied successfully: Client-Memory Sync Trigger created")
-    print("✅ Applied migration 050: Client-Memory Sync Trigger")
 
 
 async def rollback(conn: Any) -> None:
@@ -109,4 +108,3 @@ async def rollback(conn: Any) -> None:
     await conn.execute("DROP FUNCTION IF EXISTS sync_client_to_memory();")
 
     logger.info("Migration 050 rolled back successfully")
-    print("⏪ Rolled back migration 050: Client-Memory Sync Trigger")

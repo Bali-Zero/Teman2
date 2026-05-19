@@ -21,12 +21,12 @@ logger = logging.getLogger(__name__)
 security = HTTPBearer(auto_error=False)
 
 __all__ = [
-    "security",
-    "get_current_user",
-    "get_current_user_optional",
-    "get_current_user_email",
-    "require_team_member",
     "get_current_portal_client",
+    "get_current_user",
+    "get_current_user_email",
+    "get_current_user_optional",
+    "require_team_member",
+    "security",
 ]
 
 

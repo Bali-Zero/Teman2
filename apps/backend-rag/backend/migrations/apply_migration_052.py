@@ -17,11 +17,8 @@ async def run_migration():
     """Apply migration 052 to create openclaw_message_logs table"""
     conn = await asyncpg.connect(DATABASE_URL)
     try:
-        print("📦 Applying migration 052: OpenClaw Message Logs...")
         await apply(conn)
-        print("✅ Migration 052 applied successfully!")
-    except Exception as e:
-        print(f"❌ Migration 052 failed: {e}")
+    except Exception:
         raise
     finally:
         await conn.close()

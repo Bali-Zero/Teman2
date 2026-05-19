@@ -20,15 +20,15 @@ from unittest.mock import patch
 
 import pytest
 
+import backend.services.crm.partners.events as events_mod
 from backend.services.crm.partners.commission_engine import CommissionEngine
-from backend.services.crm.partners.events import handle_practice_status_changed
 from backend.services.crm.partners.emails import (
-    enqueue_welcome,
     enqueue_commission_earned,
+    enqueue_welcome,
     flush_outbox,
 )
+from backend.services.crm.partners.events import handle_practice_status_changed
 from backend.services.crm.partners.service import PartnersService
-import backend.services.crm.partners.events as events_mod
 
 
 @pytest.mark.asyncio
@@ -44,7 +44,7 @@ async def test_full_flow_process_to_paid_email(
     # ── Setup: create users ──────────────────────────────────────────────────
     # CATA-5: user_factory returns _StrWithId (team_members.id VARCHAR), not UUID.
     admin_id = await user_factory(role="admin")
-    team_id = await user_factory(role="team")
+    await user_factory(role="team")
     partner_id = await partner_factory(
         tax_withholding_category="pph23",
         default_commission_value=Decimal("10.0"),
@@ -195,4 +195,4 @@ async def test_full_flow_process_to_paid_email(
     # ── Step 9: Verify sterilization (UU PDP) ────────────────────────────────
     body = commission_call["body"]
     assert "Mario Rossi" not in body, "Full client name leaked — UU PDP violation"
-    assert "Mario R." in body, f"Sterilized client name 'Mario R.' missing from body"
+    assert "Mario R." in body, "Sterilized client name 'Mario R.' missing from body"

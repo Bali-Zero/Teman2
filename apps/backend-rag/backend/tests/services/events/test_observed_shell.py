@@ -29,7 +29,6 @@ from backend.services.events.observed_shell import (
     emit_one,
 )
 
-
 # ── happy path: pool valid, INSERT executes ───────────────────────────
 
 

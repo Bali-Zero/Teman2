@@ -409,7 +409,7 @@ async def _generate_kbli_explanation(
             system_instruction=lang_system,
         )
 
-        response_text, model_used, resp_obj, usage = await gateway.send_message(
+        response_text, model_used, _resp_obj, usage = await gateway.send_message(
             chat=chat,
             message=message,
             system_prompt=lang_system,
@@ -1357,5 +1357,5 @@ async def chat_kbli(
             suggested_queries=suggested_queries,
         )
     except Exception as e:
-        logger.error(f"❌ KBLI Chat Error: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"AI Engine error: {str(e)}") from e
+        logger.error(f"❌ KBLI Chat Error: {e!s}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"AI Engine error: {e!s}") from e

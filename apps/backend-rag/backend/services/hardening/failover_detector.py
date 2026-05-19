@@ -69,7 +69,7 @@ class FailoverDetector:
         now = now or datetime.now(timezone.utc)
         try:
             last = await self.heartbeat_lookup_fn(peer)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("heartbeat lookup failed for %s: %s", peer, exc)
             return FailoverState(
                 peer=peer,

@@ -10,9 +10,9 @@ from .progress_tracker import ProgressTrackerService
 from .step_manager import StepManagerService
 
 __all__ = [
-    "JourneyTemplatesService",
     "JourneyBuilderService",
+    "JourneyTemplatesService",
     "PrerequisitesCheckerService",
-    "StepManagerService",
     "ProgressTrackerService",
+    "StepManagerService",
 ]

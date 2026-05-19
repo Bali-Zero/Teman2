@@ -25,10 +25,8 @@ async def apply(conn: Any) -> None:
         CREATE INDEX IF NOT EXISTS idx_kg_edges_chunks ON kg_edges USING GIN(source_chunk_ids);
     """)
 
-    print("✅ Applied migration 029: Added source_chunk_ids to Knowledge Graph")
 
 
 async def rollback(conn: Any) -> None:
     await conn.execute("ALTER TABLE kg_nodes DROP COLUMN IF EXISTS source_chunk_ids;")
     await conn.execute("ALTER TABLE kg_edges DROP COLUMN IF EXISTS source_chunk_ids;")
-    print("Rollback migration 029: source_chunk_ids dropped")

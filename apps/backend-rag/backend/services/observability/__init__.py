@@ -19,7 +19,7 @@ __all__ = [
     "LLMCallEvent",
     "LLMCostRecorder",
     "get_llm_cost_recorder",
-    "record_llm_call",
     "llm_cost_tracked",
+    "record_llm_call",
     "set_usage",
 ]

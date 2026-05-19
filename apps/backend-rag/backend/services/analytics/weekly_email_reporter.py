@@ -14,7 +14,6 @@ from email.mime.text import MIMEText
 from zoneinfo import ZoneInfo
 
 import aiosmtplib
-
 import asyncpg
 
 from backend.app.core.config import settings

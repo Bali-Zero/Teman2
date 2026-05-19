@@ -235,7 +235,7 @@ Return ONLY the JSON object, no other text."""
         except OSError as e:
             logger.error("DB connection error during table init: %s", e)
             raise
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error initializing DB tables")
             raise
 
@@ -460,7 +460,7 @@ Return ONLY the JSON object, no other text."""
         except OSError as e:
             logger.error("LLM client network error: %s", e)
             raise
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected LLM extraction error")
             raise
 
@@ -518,7 +518,7 @@ Return ONLY the JSON object, no other text."""
         except OSError as e:
             logger.error("Network error during Qdrant ingestion: %s", e)
             raise
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected Qdrant ingestion error")
             raise
 
@@ -614,7 +614,7 @@ Full Text:
             logger.warning("DB error saving ingestion result: %s", e)
         except OSError as e:
             logger.warning("Connection error saving ingestion result: %s", e)
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error saving ingestion result")
 
     def get_stats(self) -> dict[str, Any]:
@@ -673,6 +673,6 @@ Full Text:
         except (KeyError, ValueError, TypeError) as e:
             logger.warning("Data error constructing results: %s", e)
             return []
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error fetching recent results")
             return []

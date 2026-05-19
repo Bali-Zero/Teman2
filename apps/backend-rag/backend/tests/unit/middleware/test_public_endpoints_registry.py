@@ -161,7 +161,7 @@ class TestB2_RegistryEntriesResolveToRoutes:
         if unresolved:
             pytest.fail(
                 "Registry entries with no mounted route — either the router "
-                f"was renamed/removed, or the entry is stale:\n  "
+                "was renamed/removed, or the entry is stale:\n  "
                 + "\n  ".join(unresolved)
                 + f"\n\nTotal mounted paths collected: {len(mounted_paths)}",
             )

@@ -16,7 +16,6 @@ from fastapi.testclient import TestClient
 
 from backend.app.routers.news import router
 
-
 # ============================================================
 # FIXTURES
 # ============================================================

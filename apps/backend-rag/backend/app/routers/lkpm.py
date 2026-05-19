@@ -721,7 +721,7 @@ async def generate_ready_pack_pdf(
         )
 
         drive_service = GoogleDriveService(db_pool)
-    except (ImportError, Exception):  # noqa: BLE001
+    except (ImportError, Exception):
         logger.warning("lkpm ready-pack: GoogleDriveService unavailable — Drive upload skipped")
 
     # Brevo is invoked via LkpmReadyPack._send_brevo_direct (no class needed)

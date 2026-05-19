@@ -15,10 +15,10 @@ try:
     from .unified_coverage_collector import UnifiedCoverageCollector, UnifiedCoverageReport
 
     __all__ = [
-        "UnifiedCoverageCollector",
-        "UnifiedCoverageReport",
         "DifferentialCoverageAnalyzer",
         "DifferentialReport",
+        "UnifiedCoverageCollector",
+        "UnifiedCoverageReport",
     ]
 except ImportError:
     # Services may not be available in all contexts

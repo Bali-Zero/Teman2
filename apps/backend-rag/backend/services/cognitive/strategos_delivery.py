@@ -205,7 +205,7 @@ class StrategosDelivery:
     ) -> StrategosDeliverySendResult:
         try:
             brief = await self.repo.latest_brief()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return StrategosDeliverySendResult(
                 ok=False,
                 error=f"latest_brief: {type(exc).__name__}: {exc}",
@@ -296,7 +296,7 @@ class StrategosDelivery:
                 parsed.brief_id,
                 approved=approved,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             await self._try_answer(
                 callback_query_id,
                 "Errore DB — riprova.",

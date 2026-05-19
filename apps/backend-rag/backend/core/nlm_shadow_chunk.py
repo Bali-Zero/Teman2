@@ -18,7 +18,6 @@ Why a separate model from HierarchicalChunk:
 from __future__ import annotations
 
 from datetime import datetime, timezone
-from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -36,7 +35,7 @@ class NLMShadowChunk(BaseModel):
     # Provenance (all flat strings/ints to play nice with Qdrant filters)
     nb_id: str = Field(..., description="Source notebook UUID")
     nb_label: str = Field(..., description="Domain label: immigration|company|tax|...")
-    nlm_source_id: Optional[str] = Field(
+    nlm_source_id: str | None = Field(
         default=None, description="Originating source within the NB, when known"
     )
     extraction_run_id: str = Field(..., description="UUID of the extractor cron run")
@@ -49,7 +48,7 @@ class NLMShadowChunk(BaseModel):
     deepseek_confidence: float = Field(
         default=0.0, ge=0.0, le=1.0, description="Confidence reported by DeepSeek validator"
     )
-    deepseek_notes: Optional[str] = Field(
+    deepseek_notes: str | None = Field(
         default=None, description="Short DeepSeek note (rejection reason, caveat)"
     )
 
@@ -88,7 +87,7 @@ class NLMShadowChunk(BaseModel):
         }
 
     @classmethod
-    def from_qdrant_payload(cls, payload: dict) -> "NLMShadowChunk":
+    def from_qdrant_payload(cls, payload: dict) -> NLMShadowChunk:
         """Re-hydrate a chunk from a Qdrant payload."""
         # Datetime parsing — string back to datetime
         ext = payload.get("extracted_at")

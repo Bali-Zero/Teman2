@@ -28,16 +28,16 @@ async def repo(db_conn):
 
 async def _make_commission(repo: PartnersRepository, partner_id, **kwargs) -> str:
     """Insert a minimal commission row."""
-    defaults = dict(
-        partner_id=partner_id,
-        entry_type="accrual",
-        base_amount_idr=Decimal("10000000"),
-        commission_type_snapshot="percentage",
-        commission_value_snapshot=Decimal("10.0"),
-        gross_amount_idr=Decimal("1000000"),
-        net_amount_idr=Decimal("1000000"),
-        idempotency_key=f"accrual:test:{uuid4()}",
-    )
+    defaults = {
+        "partner_id": partner_id,
+        "entry_type": "accrual",
+        "base_amount_idr": Decimal("10000000"),
+        "commission_type_snapshot": "percentage",
+        "commission_value_snapshot": Decimal("10.0"),
+        "gross_amount_idr": Decimal("1000000"),
+        "net_amount_idr": Decimal("1000000"),
+        "idempotency_key": f"accrual:test:{uuid4()}",
+    }
     defaults.update(kwargs)
     return await repo.insert_commission(**defaults)
 

@@ -80,8 +80,10 @@ async def test_run_sends_and_logs(monkeypatch) -> None:
     fake_wa = AsyncMock()
     fake_wa.send_message = AsyncMock(return_value={"id": "sent"})
 
+    import sys
+    import types
+
     import scripts.portal_deadline_watchdog as mod
-    import sys, types
 
     fake_module = types.ModuleType("backend.services.integrations.whatsapp_service")
     fake_module.whatsapp_service = fake_wa  # type: ignore[attr-defined]

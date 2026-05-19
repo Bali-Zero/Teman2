@@ -251,7 +251,7 @@ class OrchestratorStreamingCore:
         # This is applied AFTER prepare_react_execution via state mutation below.
         _crm_precall_has_data = len(crm_precall_context) > 0
 
-        model_tier, deep_think_mode, state, system_prompt = await self.core.prepare_react_execution(
+        model_tier, _deep_think_mode, state, system_prompt = await self.core.prepare_react_execution(
             query=query,
             user_context=user_context,
             history=optimized_history,

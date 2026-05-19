@@ -74,7 +74,7 @@ class HeartbeatSnapshot(BaseModel):
         # Lock waits: 10pt at 0, -5pt per lock
         score += max(0.0, 10.0 - self.lock_waits * 5.0)
 
-        return max(0, min(100, int(round(score))))
+        return max(0, min(100, round(score)))
 
 
 class PulseAction(BaseModel):

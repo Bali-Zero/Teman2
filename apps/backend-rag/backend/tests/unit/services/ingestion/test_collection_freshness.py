@@ -91,7 +91,7 @@ class TestCollectionFreshness:
 
         before = time.time()
 
-        with patch("backend.app.metrics.metrics_collector") as mock_metrics:
+        with patch("backend.app.metrics.metrics_collector"):
             result = await collection_manager.ingest_with_lock(
                 collection_name="visa_oracle",
                 documents=["test doc"],

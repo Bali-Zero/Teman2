@@ -9,4 +9,4 @@ from backend.kb.politics.hierarchical.chunker import HierarchicalChunker
 from backend.kb.politics.hierarchical.extractor import ClaimExtractor
 from backend.kb.politics.hierarchical.retriever import HierarchicalRetriever
 
-__all__ = ["HierarchicalChunker", "ClaimExtractor", "HierarchicalRetriever"]
+__all__ = ["ClaimExtractor", "HierarchicalChunker", "HierarchicalRetriever"]

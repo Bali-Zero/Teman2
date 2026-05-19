@@ -79,30 +79,30 @@ logger = logging.getLogger(__name__)
 # Export all public classes
 __all__ = [
     "AgenticRAGOrchestrator",
-    "KGAgenticOrchestrator",
     "AgenticResponse",
-    "create_agentic_rag",
-    "create_kg_agentic_rag",
     # Tools
     "CRMTool",
-    "TimeSheetTool",
-    "VectorSearchTool",
     "CalculatorTool",
-    "VisionTool",
-    "PricingTool",
-    "TeamKnowledgeTool",
-    "ImageGenerationTool",
-    "WebSearchTool",
-    "GraphTraversalTool",
-    # Pipeline components
-    "ResponsePipeline",
-    "VerificationStage",
-    "PostProcessingStage",
     "CitationStage",
     "FormatStage",
-    "create_default_pipeline",
+    "GraphTraversalTool",
+    "ImageGenerationTool",
+    "KGAgenticOrchestrator",
+    "PostProcessingStage",
+    "PricingTool",
+    # Pipeline components
+    "ResponsePipeline",
+    "TeamKnowledgeTool",
+    "TimeSheetTool",
+    "VectorSearchTool",
+    "VerificationStage",
+    "VisionTool",
+    "WebSearchTool",
     # Submodules (for direct access)
     "context_manager",
+    "create_agentic_rag",
+    "create_default_pipeline",
+    "create_kg_agentic_rag",
     "llm_gateway",
     "memory_handler",
     "prompt_builder",
@@ -116,7 +116,7 @@ def create_agentic_rag(
     _web_search_client=None,
     semantic_cache: "SemanticCache" = None,
     clarification_service: "ClarificationService" = None,
-    nlm_enrichment_service: Any = None,  # noqa: ARG001 R5 Phase 6: DEPRECATED — call-site compat
+    nlm_enrichment_service: Any = None,  # noqa: Phase 6: DEPRECATED — call-site compat
     specialized_service_router: Any = None,
 ) -> AgenticRAGOrchestrator:
     """

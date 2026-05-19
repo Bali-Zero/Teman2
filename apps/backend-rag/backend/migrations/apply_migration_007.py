@@ -15,26 +15,21 @@ def apply_migration():
     database_url = settings.database_url
 
     if not database_url:
-        print("❌ DATABASE_URL not set")
         return False
 
     # Read migration SQL
     migration_file = "backend/db/migrations/007_crm_system_schema.sql"
 
     if not os.path.exists(migration_file):
-        print(f"❌ Migration file not found: {migration_file}")
         return False
 
-    print(f"📁 Reading {migration_file}...")
     with open(migration_file) as f:
         sql = f.read()
 
-    print("🔌 Connecting to database...")
     try:
         conn = psycopg2.connect(database_url)
         cursor = conn.cursor()
 
-        print("⚙️  Executing migration...")
         cursor.execute(sql)
 
         conn.commit()
@@ -56,26 +51,22 @@ def apply_migration():
 
         tables = cursor.fetchall()
 
-        print("\n✅ Migration completed successfully!")
-        print(f"\n📊 Created {len(tables)} CRM tables:")
-        for table in tables:
-            print(f"   ✓ {table[0]}")
+        for _table in tables:
+            pass
 
         # Show practice types
         cursor.execute("SELECT code, name FROM practice_types ORDER BY code")
         practice_types = cursor.fetchall()
 
-        print(f"\n📋 Loaded {len(practice_types)} practice types:")
-        for code, name in practice_types:
-            print(f"   • {code}: {name}")
+        for _code, _name in practice_types:
+            pass
 
         cursor.close()
         conn.close()
 
         return True
 
-    except Exception as e:
-        print(f"❌ Migration failed: {e}")
+    except Exception:
         import traceback
 
         traceback.print_exc()

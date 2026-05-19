@@ -5,8 +5,9 @@ Tests all 4 subgraph nodes (identify, RPTKA check, requirements, synthesize)
 and the build_visa_subgraph constructor with mocked DB and LLM.
 """
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 
 
 def _make_pool(conn=None):
@@ -322,8 +323,8 @@ class TestSynthesizeVisaWorkflowNode:
         assert wf["confidence"] == 0.82
 
     async def test_kitap_workflow(self):
-        from backend.services.rag.kg_subgraph_visa import synthesize_visa_workflow_node
         from backend.services.rag.confidence import ConfidenceBreakdown
+        from backend.services.rag.kg_subgraph_visa import synthesize_visa_workflow_node
 
         state = _make_state(
             visa_type="kitap", requires_rptka=False, duration_months=60, kg_sources_used=1
@@ -338,8 +339,8 @@ class TestSynthesizeVisaWorkflowNode:
         assert len(result["workflow"]["steps"]) == 3
 
     async def test_voa_workflow(self):
-        from backend.services.rag.kg_subgraph_visa import synthesize_visa_workflow_node
         from backend.services.rag.confidence import ConfidenceBreakdown
+        from backend.services.rag.kg_subgraph_visa import synthesize_visa_workflow_node
 
         state = _make_state(
             visa_type="visa_on_arrival", requires_rptka=False, duration_months=1, kg_sources_used=0

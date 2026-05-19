@@ -429,17 +429,17 @@ class MemoryOptimizer:
 
 # Export optimized components
 __all__ = [
-    "PerformanceMonitor",
-    "perf_monitor",
-    "async_timed",
-    "timed",
     "AsyncLRUCache",
-    "embedding_cache",
-    "search_cache",
-    "ConnectionPool",
-    "http_pool",
     "BatchProcessor",
-    "OptimizedSearchService",
-    "create_optimized_app",
+    "ConnectionPool",
     "MemoryOptimizer",
+    "OptimizedSearchService",
+    "PerformanceMonitor",
+    "async_timed",
+    "create_optimized_app",
+    "embedding_cache",
+    "http_pool",
+    "perf_monitor",
+    "search_cache",
+    "timed",
 ]

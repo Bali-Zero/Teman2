@@ -42,7 +42,6 @@ async def apply(conn: Any) -> None:
         ON kg_nodes(entity_id) WHERE confidence > 0.7;
     """)
 
-    print("✅ Applied migration 055: KG performance indexes (trigram, composite, partial)")
 
 
 async def rollback(conn: Any) -> None:
@@ -50,4 +49,3 @@ async def rollback(conn: Any) -> None:
     await conn.execute("DROP INDEX IF EXISTS idx_kg_edges_source_reltype;")
     await conn.execute("DROP INDEX IF EXISTS idx_kg_nodes_name_lower;")
     await conn.execute("DROP INDEX IF EXISTS idx_kg_nodes_high_confidence;")
-    print("Rollback migration 055: KG performance indexes dropped")

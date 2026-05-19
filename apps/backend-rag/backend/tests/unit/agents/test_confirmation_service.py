@@ -25,7 +25,6 @@ from backend.services.agents.confirmation_service import (
     ConfirmationTimeout,
 )
 
-
 # ─────────────────────────────────────────────────────────────────────────
 # Helpers
 # ─────────────────────────────────────────────────────────────────────────

@@ -149,7 +149,6 @@ async def apply(conn: Any) -> None:
     """)
     logger.info("✅ Created indexes")
 
-    print("✅ Applied migration 063: LKPM Investment Activity Reports")
 
 
 async def rollback(conn: Any) -> None:
@@ -160,4 +159,3 @@ async def rollback(conn: Any) -> None:
     await conn.execute("DROP TABLE IF EXISTS lkpm_client_config CASCADE;")
 
     logger.info("Migration 063 rolled back successfully")
-    print("⏪ Rolled back migration 063: LKPM Investment Activity Reports")
