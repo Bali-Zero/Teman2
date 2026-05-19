@@ -1,0 +1,72 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Log-size watchdog — Wave 1 fix 2026-05-19 (4-LLM panel synthesis 3/3 quorum).
+
+  Hourly cron that scans ~/logs/*.{err.log, stderr*.log, error.log,
+  launchd.err*} for files exceeding 1 MB and Telegram-alerts Zero
+  (chat_id 1125336968). Per-file cooldown 6h to avoid spam.
+
+  Why this exists: the WR2 supervisor 84h silent crashloop
+  (2026-05-16 → 2026-05-19) generated 6.3 MB + 1.2 MB + 4.1 MB of
+  error logs that grew silently because no proactive surveillance
+  was in place. With this watchdog, MTTR drops from 84h to ~1h.
+
+  Bootstrap:
+    cp infra/launchagents/com.balizero.nuzantara.log-size-watchdog.plist \
+       ~/Library/LaunchAgents/
+    launchctl bootstrap gui/$(id -u) \
+       ~/Library/LaunchAgents/com.balizero.nuzantara.log-size-watchdog.plist
+
+  Manual trigger:
+    launchctl kickstart -k gui/$(id -u)/com.balizero.nuzantara.log-size-watchdog
+
+  Bootout:
+    launchctl bootout gui/$(id -u) \
+       ~/Library/LaunchAgents/com.balizero.nuzantara.log-size-watchdog.plist
+
+  Reference:
+    research/operations/2026-05-19-wr2-intel-lake-fixes-panel.md
+-->
+<plist version="1.0">
+  <dict>
+    <key>Label</key>
+    <string>com.balizero.nuzantara.log-size-watchdog</string>
+
+    <!--
+      Script path: nuzantara-deploy worktree (pinned to origin/main via
+      wr2-deploy-pull cron). Same pattern as wr2-script-wrapper.sh —
+      prevents branch-hijack from breaking the watchdog. After this PR
+      merges to main, the next wr2-deploy-pull (~1h) will publish the
+      script to the deploy worktree automatically.
+    -->
+    <key>ProgramArguments</key>
+    <array>
+      <string>/bin/bash</string>
+      <string>/Users/nuzantara/Desktop/nuzantara-deploy/scripts/log_size_watchdog.sh</string>
+    </array>
+
+    <key>StartInterval</key>
+    <integer>3600</integer>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/Users/nuzantara/logs/log-size-watchdog.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Users/nuzantara/logs/log-size-watchdog.err.log</string>
+
+    <key>ProcessType</key>
+    <string>Background</string>
+
+    <key>EnvironmentVariables</key>
+    <dict>
+      <key>HOME</key>
+      <string>/Users/nuzantara</string>
+      <key>PATH</key>
+      <string>/Users/nuzantara/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+    </dict>
+  </dict>
+</plist>
