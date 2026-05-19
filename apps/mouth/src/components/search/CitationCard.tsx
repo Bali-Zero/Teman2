@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
   FileText,
   ChevronDown,
@@ -6,10 +6,10 @@ import {
   CheckCircle2,
   Download,
   ExternalLink,
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Source } from '@/types';
-import { CitationPopover } from '@/components/chat/CitationPopover';
+} from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { Source } from "@/types";
+import { CitationPopover } from "@/components/chat/CitationPopover";
 
 interface CitationCardProps {
   sources: Source[];
@@ -55,18 +55,21 @@ export const CitationCard: React.FC<CitationCardProps> = ({ sources }) => {
               {/* Header / Title */}
               <div
                 onClick={() => hasExpandableContent && toggleSource(idx)}
-                className={`px-3 py-2.5 flex items-center justify-between ${hasExpandableContent ? 'cursor-pointer' : 'cursor-default'}`}
+                className={`px-3 py-2.5 flex items-center justify-between ${hasExpandableContent ? "cursor-pointer" : "cursor-default"}`}
               >
                 <div className="flex items-center gap-2.5 overflow-hidden">
                   <div className="p-1 rounded-md bg-[var(--background)]/50 text-[var(--accent)]">
                     <FileText className="w-3.5 h-3.5" />
                   </div>
-                  <CitationPopover source={source} disabled={expandedIndex === idx}>
+                  <CitationPopover
+                    source={source}
+                    disabled={expandedIndex === idx}
+                  >
                     <span
                       tabIndex={0}
                       className="text-xs font-medium text-[var(--foreground-secondary)] group-hover:text-[var(--foreground)] transition-colors truncate focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)] rounded"
                     >
-                      {source.title || 'Unknown Source'}
+                      {source.title || "Unknown Source"}
                     </span>
                   </CitationPopover>
                   {source.score && source.score > 0.8 && (
@@ -92,7 +95,7 @@ export const CitationCard: React.FC<CitationCardProps> = ({ sources }) => {
                 {expandedIndex === idx && expandedContent && (
                   <motion.div
                     initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
+                    animate={{ height: "auto", opacity: 1 }}
                     exit={{ height: 0, opacity: 0 }}
                     transition={{ duration: 0.2 }}
                   >

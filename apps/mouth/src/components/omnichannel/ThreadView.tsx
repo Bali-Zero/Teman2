@@ -1,26 +1,34 @@
-'use client';
+"use client";
 
-import { useCallback, useRef, useState, useEffect } from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { AutoResizeTextarea } from '@/components/ui/auto-resize-textarea';
+import { useCallback, useRef, useState, useEffect } from "react";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 import {
   CHANNEL_COLORS,
   CHANNEL_LABELS,
   type Thread,
   type ThreadMessage,
-} from '@/lib/api/omnichannel/omnichannel.types';
+} from "@/lib/api/omnichannel/omnichannel.types";
 
 interface ThreadViewProps {
   thread: Thread | null;
   messages: ThreadMessage[];
-  onSendMessage: (content: string, opts: { channel?: string; isNote?: boolean }) => void;
+  onSendMessage: (
+    content: string,
+    opts: { channel?: string; isNote?: boolean },
+  ) => void;
   onUpdateThread: (update: { status?: string; priority?: string }) => void;
 }
 
-export function ThreadView({ thread, messages, onSendMessage, onUpdateThread }: ThreadViewProps) {
-  const [input, setInput] = useState('');
+export function ThreadView({
+  thread,
+  messages,
+  onSendMessage,
+  onUpdateThread,
+}: ThreadViewProps) {
+  const [input, setInput] = useState("");
   const [isNote, setIsNote] = useState(false);
   const [replyChannel, setReplyChannel] = useState<string | undefined>();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -45,17 +53,17 @@ export function ThreadView({ thread, messages, onSendMessage, onUpdateThread }: 
       channel: isNote ? undefined : replyChannel,
       isNote,
     });
-    setInput('');
+    setInput("");
   }, [input, isNote, replyChannel, onSendMessage]);
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
+      if (e.key === "Enter" && !e.shiftKey) {
         e.preventDefault();
         handleSend();
       }
     },
-    [handleSend]
+    [handleSend],
   );
 
   if (!thread) {
@@ -64,7 +72,9 @@ export function ThreadView({ thread, messages, onSendMessage, onUpdateThread }: 
         <div className="text-center">
           <div className="text-4xl mb-4">💬</div>
           <p className="text-lg font-medium">Select a conversation</p>
-          <p className="text-sm mt-1">Choose a thread from the inbox to view messages</p>
+          <p className="text-sm mt-1">
+            Choose a thread from the inbox to view messages
+          </p>
         </div>
       </div>
     );
@@ -77,38 +87,40 @@ export function ThreadView({ thread, messages, onSendMessage, onUpdateThread }: 
         <div className="flex items-center gap-3">
           <div>
             <h3 className="font-semibold text-[var(--foreground)]">
-              {thread.client_name || thread.subject || 'Unknown'}
+              {thread.client_name || thread.subject || "Unknown"}
             </h3>
             <div className="flex items-center gap-2 mt-0.5">
               {thread.channels.map((ch) => (
                 <span
                   key={ch}
                   className="text-[10px] font-medium"
-                  style={{ color: CHANNEL_COLORS[ch] || '#6B7280' }}
+                  style={{ color: CHANNEL_COLORS[ch] || "#6B7280" }}
                 >
                   {CHANNEL_LABELS[ch] || ch}
                 </span>
               ))}
-              <span className="text-[10px] text-[var(--foreground-muted)]">{thread.status}</span>
+              <span className="text-[10px] text-[var(--foreground-muted)]">
+                {thread.status}
+              </span>
             </div>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          {thread.status === 'open' && (
+          {thread.status === "open" && (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onUpdateThread({ status: 'resolved' })}
+              onClick={() => onUpdateThread({ status: "resolved" })}
               className="text-xs h-7"
             >
               Resolve
             </Button>
           )}
-          {thread.status === 'resolved' && (
+          {thread.status === "resolved" && (
             <Button
               variant="outline"
               size="sm"
-              onClick={() => onUpdateThread({ status: 'open' })}
+              onClick={() => onUpdateThread({ status: "open" })}
               className="text-xs h-7"
             >
               Reopen
@@ -140,8 +152,8 @@ export function ThreadView({ thread, messages, onSendMessage, onUpdateThread }: 
             onClick={() => setIsNote(false)}
             className={`text-xs px-2 py-1 rounded transition-colors ${
               !isNote
-                ? 'bg-[var(--accent)] text-white'
-                : 'bg-[var(--background-secondary)] text-[var(--foreground-muted)]'
+                ? "bg-[var(--accent)] text-white"
+                : "bg-[var(--background-secondary)] text-[var(--foreground-muted)]"
             }`}
           >
             Reply
@@ -151,8 +163,8 @@ export function ThreadView({ thread, messages, onSendMessage, onUpdateThread }: 
             onClick={() => setIsNote(true)}
             className={`text-xs px-2 py-1 rounded transition-colors ${
               isNote
-                ? 'bg-yellow-500 text-black'
-                : 'bg-[var(--background-secondary)] text-[var(--foreground-muted)]'
+                ? "bg-yellow-500 text-black"
+                : "bg-[var(--background-secondary)] text-[var(--foreground-muted)]"
             }`}
           >
             Internal Note
@@ -174,15 +186,24 @@ export function ThreadView({ thread, messages, onSendMessage, onUpdateThread }: 
         </div>
 
         {/* Input */}
-        <div className={`flex gap-2 ${isNote ? 'bg-yellow-500/10 rounded p-2' : ''}`}>
+        <div
+          className={`flex gap-2 ${isNote ? "bg-yellow-500/10 rounded p-2" : ""}`}
+        >
           <AutoResizeTextarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder={isNote ? 'Write an internal note...' : 'Type a reply...'}
+            placeholder={
+              isNote ? "Write an internal note..." : "Type a reply..."
+            }
             className="flex-1 text-sm bg-[var(--background-secondary)] resize-none min-h-[36px] max-h-[120px]"
           />
-          <Button onClick={handleSend} disabled={!input.trim()} size="sm" className="self-end h-9">
+          <Button
+            onClick={handleSend}
+            disabled={!input.trim()}
+            size="sm"
+            className="self-end h-9"
+          >
             Send
           </Button>
         </div>
@@ -192,8 +213,9 @@ export function ThreadView({ thread, messages, onSendMessage, onUpdateThread }: 
 }
 
 function MessageBubble({ message }: { message: ThreadMessage }) {
-  const isInbound = message.direction === 'inbound';
-  const isInternal = message.direction === 'internal' || message.metadata?.is_internal_note;
+  const isInbound = message.direction === "inbound";
+  const isInternal =
+    message.direction === "internal" || message.metadata?.is_internal_note;
   const senderName =
     (message.metadata?.sender_name as string) ||
     (message.metadata?.first_name as string) ||
@@ -201,17 +223,17 @@ function MessageBubble({ message }: { message: ThreadMessage }) {
 
   return (
     <div
-      className={`flex ${isInbound ? 'justify-start' : 'justify-end'} ${
-        isInternal ? 'opacity-90' : ''
+      className={`flex ${isInbound ? "justify-start" : "justify-end"} ${
+        isInternal ? "opacity-90" : ""
       }`}
     >
       <div
         className={`max-w-[75%] rounded-xl px-4 py-2.5 ${
           isInternal
-            ? 'bg-yellow-500/15 border border-yellow-500/30'
+            ? "bg-yellow-500/15 border border-yellow-500/30"
             : isInbound
-              ? 'bg-[var(--background-secondary)]'
-              : 'bg-[var(--accent)]/15'
+              ? "bg-[var(--background-secondary)]"
+              : "bg-[var(--accent)]/15"
         }`}
       >
         {/* Channel badge + sender */}
@@ -219,12 +241,14 @@ function MessageBubble({ message }: { message: ThreadMessage }) {
           <span
             className="w-1.5 h-1.5 rounded-full flex-shrink-0"
             style={{
-              backgroundColor: CHANNEL_COLORS[message.channel] || '#6B7280',
+              backgroundColor: CHANNEL_COLORS[message.channel] || "#6B7280",
             }}
           />
           <span className="text-[10px] font-medium text-[var(--foreground-muted)]">
-            {isInternal ? 'Note' : CHANNEL_LABELS[message.channel] || message.channel}
-            {' - '}
+            {isInternal
+              ? "Note"
+              : CHANNEL_LABELS[message.channel] || message.channel}
+            {" - "}
             {senderName}
           </span>
         </div>
@@ -237,11 +261,11 @@ function MessageBubble({ message }: { message: ThreadMessage }) {
         {/* Timestamp */}
         <p className="text-[10px] text-[var(--foreground-muted)] mt-1 text-right">
           {message.created_at
-            ? new Date(message.created_at).toLocaleTimeString('en-GB', {
-                hour: '2-digit',
-                minute: '2-digit',
+            ? new Date(message.created_at).toLocaleTimeString("en-GB", {
+                hour: "2-digit",
+                minute: "2-digit",
               })
-            : ''}
+            : ""}
         </p>
       </div>
     </div>

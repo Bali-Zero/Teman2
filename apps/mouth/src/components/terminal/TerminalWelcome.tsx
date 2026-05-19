@@ -24,11 +24,13 @@ const SUGGESTIONS: Array<{ title: string; prompt: string }> = [
   },
   {
     title: "Latest KBLI regulation updates",
-    prompt: "What are the latest KBLI 2025 regulation updates I should know about?",
+    prompt:
+      "What are the latest KBLI 2025 regulation updates I should know about?",
   },
   {
     title: "Draft a visa extension reminder",
-    prompt: "Draft a polite WhatsApp reminder in Indonesian for a client whose visa expires in 10 days.",
+    prompt:
+      "Draft a polite WhatsApp reminder in Indonesian for a client whose visa expires in 10 days.",
   },
   {
     title: "Summarise today's new leads",
@@ -36,8 +38,13 @@ const SUGGESTIONS: Array<{ title: string; prompt: string }> = [
   },
 ];
 
-export function TerminalWelcome({ userName, onSelectSuggestion }: TerminalWelcomeProps) {
-  const greeting = userName ? `Ready for input, ${userName}` : "Ready for input";
+export function TerminalWelcome({
+  userName,
+  onSelectSuggestion,
+}: TerminalWelcomeProps) {
+  const greeting = userName
+    ? `Ready for input, ${userName}`
+    : "Ready for input";
 
   return (
     <motion.div

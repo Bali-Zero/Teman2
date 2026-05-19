@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { useEffect } from 'react';
-import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { useEffect } from "react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
   X,
   Plus,
@@ -13,7 +13,7 @@ import {
   Trash2,
   Search,
   Loader2,
-} from 'lucide-react';
+} from "lucide-react";
 
 export interface Conversation {
   id: number;
@@ -54,23 +54,27 @@ export function ChatSidebar({
   useEffect(() => {
     if (!isOpen) return;
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+      if (e.key === "Escape") onClose();
     };
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [isOpen, onClose]);
 
   return (
     <>
       {/* Sidebar Overlay */}
       {isOpen && (
-        <div className="fixed inset-0 bg-black/50 z-40 transition-opacity" onClick={onClose} role="presentation" />
+        <div
+          className="fixed inset-0 bg-black/50 z-40 transition-opacity"
+          onClick={onClose}
+          role="presentation"
+        />
       )}
 
       {/* Sidebar */}
       <aside
         className={`fixed left-0 top-0 h-full w-72 bg-[var(--background)] border-r border-white/5 z-50 transform transition-transform duration-300 ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
+          isOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex flex-col h-full">
@@ -110,13 +114,17 @@ export function ChatSidebar({
 
           {/* Chat History */}
           <div className="flex-1 overflow-y-auto px-4">
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Recent Chats</p>
+            <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">
+              Recent Chats
+            </p>
             {isLoading ? (
               <div className="flex justify-center py-4">
                 <Loader2 className="w-5 h-5 animate-spin text-gray-500" />
               </div>
             ) : conversations.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-4">No conversations yet</p>
+              <p className="text-sm text-gray-500 text-center py-4">
+                No conversations yet
+              </p>
             ) : (
               <ul className="space-y-1">
                 {conversations.slice(0, 10).map((conv) => (
@@ -126,21 +134,23 @@ export function ChatSidebar({
                       onClick={() => onConversationClick(conv.id)}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-all duration-200 text-left border border-transparent focus-ring ${
                         currentConversationId === conv.id
-                          ? 'sidebar-item-active text-white'
-                          : 'text-gray-400'
+                          ? "sidebar-item-active text-white"
+                          : "text-gray-400"
                       }`}
-                      aria-current={currentConversationId === conv.id ? 'true' : undefined}
+                      aria-current={
+                        currentConversationId === conv.id ? "true" : undefined
+                      }
                     >
                       <MessageSquare className="w-4 h-4 text-gray-500 flex-shrink-0" />
                       <span className="text-sm text-gray-400 truncate flex-1">
-                        {conv.title || 'Untitled'}
+                        {conv.title || "Untitled"}
                       </span>
                     </button>
                     <button
                       type="button"
                       onClick={(e) => onDeleteConversation(conv.id, e)}
                       className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-white/10 rounded opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity"
-                      aria-label={`Delete conversation: ${conv.title || 'Untitled'}`}
+                      aria-label={`Delete conversation: ${conv.title || "Untitled"}`}
                     >
                       <Trash2 className="w-3.5 h-3.5 text-gray-500 hover:text-red-400" />
                     </button>
@@ -176,7 +186,7 @@ export function ChatSidebar({
             </button>
             <button
               type="button"
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push("/dashboard")}
               className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-white/5 rounded-lg transition-colors text-blue-400 focus-ring"
             >
               <Home className="w-4 h-4" />

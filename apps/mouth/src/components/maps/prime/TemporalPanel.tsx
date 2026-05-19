@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 interface TemporalBucket {
   date: string;
@@ -14,21 +14,25 @@ interface TemporalData {
   period: string;
   granularity: string;
   buckets: TemporalBucket[];
-  trend: 'increasing' | 'stable' | 'decreasing';
+  trend: "increasing" | "stable" | "decreasing";
   total_activity: number;
 }
 
-const PERIODS = ['1m', '3m', '6m', '12m'] as const;
+const PERIODS = ["1m", "3m", "6m", "12m"] as const;
 
 export function TemporalPanel({ zoneCode }: { zoneCode: string | null }) {
   const [data, setData] = useState<TemporalData | null>(null);
   const [loading, setLoading] = useState(false);
-  const [period, setPeriod] = useState<string>('6m');
+  const [period, setPeriod] = useState<string>("6m");
 
   useEffect(() => {
     if (!zoneCode) return;
     setLoading(true);
-    const params = new URLSearchParams({ zone_code: zoneCode, period, granularity: 'weekly' });
+    const params = new URLSearchParams({
+      zone_code: zoneCode,
+      period,
+      granularity: "weekly",
+    });
     fetch(`/api/prime/v2/temporal?${params.toString()}`)
       .then((r) => r.json())
       .then(setData)
@@ -37,15 +41,21 @@ export function TemporalPanel({ zoneCode }: { zoneCode: string | null }) {
   }, [zoneCode, period]);
 
   const trendArrow =
-    data?.trend === 'increasing' ? '\u2197' : data?.trend === 'decreasing' ? '\u2198' : '\u2192';
+    data?.trend === "increasing"
+      ? "\u2197"
+      : data?.trend === "decreasing"
+        ? "\u2198"
+        : "\u2192";
   const trendColor =
-    data?.trend === 'increasing'
-      ? 'text-emerald-400'
-      : data?.trend === 'decreasing'
-        ? 'text-red-400'
-        : 'text-amber-400';
+    data?.trend === "increasing"
+      ? "text-emerald-400"
+      : data?.trend === "decreasing"
+        ? "text-red-400"
+        : "text-amber-400";
 
-  const maxScore = data ? Math.max(...data.buckets.map((b) => b.activity_score), 1) : 1;
+  const maxScore = data
+    ? Math.max(...data.buckets.map((b) => b.activity_score), 1)
+    : 1;
 
   return (
     <div className="w-80 rounded-2xl bg-black/90 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden">
@@ -53,7 +63,9 @@ export function TemporalPanel({ zoneCode }: { zoneCode: string | null }) {
       <div className="px-4 py-3 border-b border-white/10 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-base">&#x1F4C8;</span>
-          <span className="text-sm font-semibold text-white">Zone Activity</span>
+          <span className="text-sm font-semibold text-white">
+            Zone Activity
+          </span>
         </div>
         {data && <span className={`text-lg ${trendColor}`}>{trendArrow}</span>}
       </div>
@@ -66,8 +78,8 @@ export function TemporalPanel({ zoneCode }: { zoneCode: string | null }) {
             onClick={() => setPeriod(p)}
             className={`flex-1 py-1 rounded-lg text-xs font-medium transition-all ${
               period === p
-                ? 'bg-accent-warm text-white'
-                : 'text-slate-500 hover:text-white hover:bg-white/5'
+                ? "bg-accent-warm text-white"
+                : "text-slate-500 hover:text-white hover:bg-white/5"
             }`}
           >
             {p}
@@ -100,15 +112,21 @@ export function TemporalPanel({ zoneCode }: { zoneCode: string | null }) {
             {/* Stats */}
             <div className="grid grid-cols-3 gap-1.5">
               <div className="rounded-lg bg-white/5 border border-white/8 p-2 text-center">
-                <div className="text-white font-semibold text-sm">{data.total_activity}</div>
+                <div className="text-white font-semibold text-sm">
+                  {data.total_activity}
+                </div>
                 <div className="text-slate-500 text-[10px]">Total</div>
               </div>
               <div className="rounded-lg bg-white/5 border border-white/8 p-2 text-center">
-                <div className="text-white font-semibold text-sm">{data.buckets.length}</div>
+                <div className="text-white font-semibold text-sm">
+                  {data.buckets.length}
+                </div>
                 <div className="text-slate-500 text-[10px]">Periods</div>
               </div>
               <div className="rounded-lg bg-white/5 border border-white/8 p-2 text-center">
-                <div className={`font-semibold text-sm ${trendColor}`}>{data.trend}</div>
+                <div className={`font-semibold text-sm ${trendColor}`}>
+                  {data.trend}
+                </div>
                 <div className="text-slate-500 text-[10px]">Trend</div>
               </div>
             </div>
@@ -116,11 +134,12 @@ export function TemporalPanel({ zoneCode }: { zoneCode: string | null }) {
             {/* Activity bars */}
             <div className="space-y-0.5">
               {data.buckets.map((bucket) => {
-                const pct = maxScore > 0 ? (bucket.activity_score / maxScore) * 100 : 0;
+                const pct =
+                  maxScore > 0 ? (bucket.activity_score / maxScore) * 100 : 0;
                 return (
                   <div key={bucket.date} className="flex items-center gap-2">
                     <span className="text-[9px] text-slate-600 w-16 shrink-0 tabular-nums">
-                      {bucket.date?.slice(5) || '?'}
+                      {bucket.date?.slice(5) || "?"}
                     </span>
                     <div className="flex-1 h-2 bg-white/5 rounded-full overflow-hidden">
                       <div

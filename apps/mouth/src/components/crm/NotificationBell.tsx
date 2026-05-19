@@ -71,7 +71,11 @@ export function NotificationBell({
 
       {open && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} role="presentation" />
+          <div
+            className="fixed inset-0 z-40"
+            onClick={() => setOpen(false)}
+            role="presentation"
+          />
           <div
             className="absolute right-0 top-full mt-3 w-80 z-50 rounded-xl shadow-2xl border max-h-[420px] flex flex-col overflow-hidden"
             style={{

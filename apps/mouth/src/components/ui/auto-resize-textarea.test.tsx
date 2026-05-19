@@ -5,7 +5,9 @@ import { AutoResizeTextarea } from "./auto-resize-textarea";
 
 describe("AutoResizeTextarea", () => {
   it("renders a textarea with the given value", () => {
-    render(<AutoResizeTextarea value="Hello world" readOnly data-testid="ta" />);
+    render(
+      <AutoResizeTextarea value="Hello world" readOnly data-testid="ta" />,
+    );
     const ta = screen.getByTestId("ta") as HTMLTextAreaElement;
     expect(ta.tagName).toBe("TEXTAREA");
     expect(ta.value).toBe("Hello world");
@@ -20,7 +22,12 @@ describe("AutoResizeTextarea", () => {
 
   it("merges custom className", () => {
     render(
-      <AutoResizeTextarea value="" readOnly className="my-class" data-testid="ta" />,
+      <AutoResizeTextarea
+        value=""
+        readOnly
+        className="my-class"
+        data-testid="ta"
+      />,
     );
     expect(screen.getByTestId("ta").className).toContain("my-class");
   });
@@ -28,11 +35,7 @@ describe("AutoResizeTextarea", () => {
   it("fires onChange when typing", () => {
     const onChange = vi.fn();
     render(
-      <AutoResizeTextarea
-        value=""
-        onChange={onChange}
-        data-testid="ta"
-      />,
+      <AutoResizeTextarea value="" onChange={onChange} data-testid="ta" />,
     );
     fireEvent.change(screen.getByTestId("ta"), {
       target: { value: "new text" },
@@ -41,9 +44,7 @@ describe("AutoResizeTextarea", () => {
   });
 
   it("supports placeholder", () => {
-    render(
-      <AutoResizeTextarea value="" readOnly placeholder="Type here..." />,
-    );
+    render(<AutoResizeTextarea value="" readOnly placeholder="Type here..." />);
     expect(screen.getByPlaceholderText("Type here...")).toBeInTheDocument();
   });
 });

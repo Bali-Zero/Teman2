@@ -1,9 +1,9 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState } from "react";
 
 interface PortfolioEntity {
-  type: 'company' | 'practice';
+  type: "company" | "practice";
   id: number;
   name: string;
   zone_code?: string;
@@ -30,7 +30,12 @@ interface PortfolioData {
 }
 
 function HealthDot({ score }: { score: number }) {
-  const color = score >= 0.7 ? 'bg-emerald-400' : score >= 0.4 ? 'bg-amber-400' : 'bg-red-400';
+  const color =
+    score >= 0.7
+      ? "bg-emerald-400"
+      : score >= 0.4
+        ? "bg-amber-400"
+        : "bg-red-400";
   return <span className={`w-2 h-2 rounded-full shrink-0 ${color}`} />;
 }
 
@@ -50,10 +55,10 @@ export function PortfolioPanel({ clientId }: { clientId: number | null }) {
 
   const healthColor =
     (data?.overall_health ?? 0) >= 0.7
-      ? 'text-emerald-400'
+      ? "text-emerald-400"
       : (data?.overall_health ?? 0) >= 0.4
-        ? 'text-amber-400'
-        : 'text-red-400';
+        ? "text-amber-400"
+        : "text-red-400";
 
   return (
     <div className="w-80 rounded-2xl bg-black/90 backdrop-blur-xl border border-white/10 shadow-2xl overflow-hidden">
@@ -76,7 +81,9 @@ export function PortfolioPanel({ clientId }: { clientId: number | null }) {
       <div className="max-h-[55vh] overflow-y-auto">
         {!clientId && (
           <div className="px-4 py-6 text-center">
-            <p className="text-xs text-slate-500">Sign in to view your investment portfolio</p>
+            <p className="text-xs text-slate-500">
+              Sign in to view your investment portfolio
+            </p>
           </div>
         )}
 
@@ -118,22 +125,29 @@ export function PortfolioPanel({ clientId }: { clientId: number | null }) {
                   <HealthDot score={entity.health_score} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
-                      <span className="text-xs text-white truncate">{entity.name}</span>
-                      <span className="text-[9px] text-slate-600 uppercase">{entity.type}</span>
+                      <span className="text-xs text-white truncate">
+                        {entity.name}
+                      </span>
+                      <span className="text-[9px] text-slate-600 uppercase">
+                        {entity.type}
+                      </span>
                     </div>
                     {entity.zone_code && (
-                      <span className="text-[10px] text-slate-500">{entity.zone_code}</span>
-                    )}
-                    {entity.days_until_expiry != null && entity.days_until_expiry < 90 && (
-                      <span
-                        className={`text-[10px] ml-1 ${entity.days_until_expiry < 30 ? 'text-red-400' : 'text-amber-400'}`}
-                      >
-                        {entity.days_until_expiry}d left
+                      <span className="text-[10px] text-slate-500">
+                        {entity.zone_code}
                       </span>
                     )}
+                    {entity.days_until_expiry != null &&
+                      entity.days_until_expiry < 90 && (
+                        <span
+                          className={`text-[10px] ml-1 ${entity.days_until_expiry < 30 ? "text-red-400" : "text-amber-400"}`}
+                        >
+                          {entity.days_until_expiry}d left
+                        </span>
+                      )}
                     {entity.issues.length > 0 && (
                       <div className="text-[9px] text-red-400 mt-0.5">
-                        {entity.issues.join(', ')}
+                        {entity.issues.join(", ")}
                       </div>
                     )}
                   </div>

@@ -51,7 +51,8 @@ export function KitaCommandPalette() {
         id: "go-prime",
         label: t("commandPalette.actions.goPrime"),
         group: t("commandPalette.groups.navigation"),
-        run: () => window.open("https://prime.balizero.com/", "_blank", "noopener"),
+        run: () =>
+          window.open("https://prime.balizero.com/", "_blank", "noopener"),
       },
       {
         id: "create-kitas",
@@ -82,6 +83,10 @@ export function KitaCommandPalette() {
   );
 
   return (
-    <CommandPalette open={open} actions={actions} onClose={() => setOpen(false)} />
+    <CommandPalette
+      open={open}
+      actions={actions}
+      onClose={() => setOpen(false)}
+    />
   );
 }

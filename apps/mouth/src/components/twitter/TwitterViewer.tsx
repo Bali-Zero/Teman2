@@ -145,7 +145,10 @@ export function TwitterViewer({
             )}
           </div>
         </div>
-        <button className="p-2 rounded-lg hover:bg-[var(--background-elevated)] transition-colors" aria-label="More options">
+        <button
+          className="p-2 rounded-lg hover:bg-[var(--background-elevated)] transition-colors"
+          aria-label="More options"
+        >
           <MoreHorizontal className="w-5 h-5" />
         </button>
       </div>

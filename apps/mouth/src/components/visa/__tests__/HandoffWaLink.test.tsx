@@ -12,7 +12,7 @@ describe("HandoffWaLink", () => {
         durationMonths={12}
         budgetBand="under_50m"
         reason="Investor routes all have minimum capital requirements."
-      />
+      />,
     );
     const link = screen.getByRole("link", { name: /whatsapp/i });
     const href = link.getAttribute("href")!;
@@ -29,9 +29,12 @@ describe("HandoffWaLink", () => {
     render(
       <HandoffWaLink
         phone="+6285156005858"
-        nationality="USA" purpose="other" durationMonths={6}
-        budgetBand="50m_500m" reason="..."
-      />
+        nationality="USA"
+        purpose="other"
+        durationMonths={6}
+        budgetBand="50m_500m"
+        reason="..."
+      />,
     );
     const href = screen.getByRole("link").getAttribute("href")!;
     expect(href).toContain("wa.me/6285156005858");

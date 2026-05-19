@@ -175,9 +175,7 @@ function SidebarForm({
   const [email, setEmail] = React.useState("");
   const [name, setName] = React.useState("");
   const [categories, setCategories] = React.useState<ArticleCategory[]>(
-    defaultCategories.length > 0
-      ? defaultCategories
-      : ["visas", "business"],
+    defaultCategories.length > 0 ? defaultCategories : ["visas", "business"],
   );
   const [frequency, setFrequency] = React.useState<
     "daily" | "weekly" | "monthly"

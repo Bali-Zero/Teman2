@@ -74,7 +74,9 @@ export function TerminalToolCall({ toolCall }: TerminalToolCallProps) {
         <Wrench size={10} className="text-white/40 flex-shrink-0" />
         <span className="font-medium">{toolCall.name}</span>
         {toolCall.duration !== undefined && (
-          <span className="text-white/40">· {formatDuration(toolCall.duration)}</span>
+          <span className="text-white/40">
+            · {formatDuration(toolCall.duration)}
+          </span>
         )}
         {hasDetails && (
           <ChevIcon size={11} className="text-white/40 ml-0.5 flex-shrink-0" />

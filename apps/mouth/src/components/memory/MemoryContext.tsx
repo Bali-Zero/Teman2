@@ -3,15 +3,15 @@
  * Combines User Facts and Episodic Timeline in a unified view
  */
 
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { UserFactsDisplay } from './UserFactsDisplay';
-import { EpisodicTimeline } from './EpisodicTimeline';
-import type { UserMemory, EpisodicEvent } from '@/lib/api/zantara-sdk/types';
-import { ZantaraSDK } from '@/lib/api/zantara-sdk';
-import { logger } from '@/lib/logger';
+import { useState, useEffect } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { UserFactsDisplay } from "./UserFactsDisplay";
+import { EpisodicTimeline } from "./EpisodicTimeline";
+import type { UserMemory, EpisodicEvent } from "@/lib/api/zantara-sdk/types";
+import { ZantaraSDK } from "@/lib/api/zantara-sdk";
+import { logger } from "@/lib/logger";
 
 export interface MemoryContextProps {
   userId: string;
@@ -19,7 +19,11 @@ export interface MemoryContextProps {
   readonly?: boolean;
 }
 
-export function MemoryContext({ userId, sdk, readonly = false }: MemoryContextProps) {
+export function MemoryContext({
+  userId,
+  sdk,
+  readonly = false,
+}: MemoryContextProps) {
   const [userMemory, setUserMemory] = useState<UserMemory | null>(null);
   const [episodicEvents, setEpisodicEvents] = useState<EpisodicEvent[]>([]);
   const [loading, setLoading] = useState(true);
@@ -40,7 +44,7 @@ export function MemoryContext({ userId, sdk, readonly = false }: MemoryContextPr
       setUserMemory(memory);
       setEpisodicEvents(events);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load memory');
+      setError(err instanceof Error ? err.message : "Failed to load memory");
     } finally {
       setLoading(false);
     }
@@ -54,7 +58,7 @@ export function MemoryContext({ userId, sdk, readonly = false }: MemoryContextPr
   const handleRemoveFact = async (index: number) => {
     // Note: SDK doesn't have remove fact endpoint yet
     // This would need to be implemented in the backend
-    logger.warn('Remove fact not implemented');
+    logger.warn("Remove fact not implemented");
   };
 
   if (loading) {

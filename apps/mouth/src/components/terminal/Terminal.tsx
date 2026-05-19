@@ -65,7 +65,11 @@ export function Terminal() {
       if (!raw) return;
       window.localStorage.removeItem(TERMINAL_HANDOFF_KEY);
       const parsed = JSON.parse(raw) as TerminalHandoff;
-      if (parsed && Array.isArray(parsed.history) && parsed.history.length > 0) {
+      if (
+        parsed &&
+        Array.isArray(parsed.history) &&
+        parsed.history.length > 0
+      ) {
         seedFromHandoff(parsed.history);
       }
     } catch {
@@ -101,7 +105,9 @@ export function Terminal() {
   );
 
   // Compute the most recent model / tokens for the status bar.
-  const lastAssistant = [...blocks].reverse().find((b) => b.role === "assistant");
+  const lastAssistant = [...blocks]
+    .reverse()
+    .find((b) => b.role === "assistant");
   const totalTokens = blocks.reduce((sum, b) => sum + (b.tokenCount ?? 0), 0);
 
   return (
@@ -165,19 +171,14 @@ export function Terminal() {
           background: rgba(255, 255, 255, 0.08);
           border-radius: 4px;
         }
-        [data-zantara-terminal] .terminal-scrollbar::-webkit-scrollbar-thumb:hover {
+        [data-zantara-terminal]
+          .terminal-scrollbar::-webkit-scrollbar-thumb:hover {
           background: rgba(255, 255, 255, 0.16);
         }
         [data-zantara-terminal] .terminal-md {
           font-family:
-            "JetBrains Mono",
-            "IBM Plex Mono",
-            ui-monospace,
-            SFMono-Regular,
-            Menlo,
-            Monaco,
-            Consolas,
-            monospace;
+            "JetBrains Mono", "IBM Plex Mono", ui-monospace, SFMono-Regular,
+            Menlo, Monaco, Consolas, monospace;
         }
       `}</style>
     </div>

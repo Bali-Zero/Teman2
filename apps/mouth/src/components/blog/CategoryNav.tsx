@@ -20,7 +20,7 @@ const categoryIcons: Record<ArticleCategory | "all", React.ElementType> = {
   all: LayoutGrid,
   visas: Plane,
   business: Building2,
-  "taxes": Scale,
+  taxes: Scale,
   property: Home,
   living: Sun,
   trends: Cpu,
@@ -31,7 +31,7 @@ const categoryLabels: Record<ArticleCategory | "all", string> = {
   all: "All",
   visas: "Visas",
   business: "Business",
-  "taxes": "Taxes",
+  taxes: "Taxes",
   property: "Property",
   living: "Living",
   trends: "Trends",
@@ -61,7 +61,7 @@ const categoryColors: Record<
     inactive: "text-white/50 hover:text-emerald-400 hover:bg-emerald-500/10",
     gradient: "from-emerald-500/20 to-teal-500/20",
   },
-  "taxes": {
+  taxes: {
     active: "bg-amber-500/20 text-amber-400",
     inactive: "text-white/50 hover:text-amber-400 hover:bg-amber-500/10",
     gradient: "from-amber-500/20 to-orange-500/20",

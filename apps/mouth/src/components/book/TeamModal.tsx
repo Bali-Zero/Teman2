@@ -30,7 +30,10 @@ export function TeamModal({ member, open, onClose }: TeamModalProps) {
                   className="bg-[#161618] border border-white/10 rounded-2xl p-8 w-full max-w-md relative"
                 >
                   <Dialog.Close asChild>
-                    <button className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors" aria-label="Close">
+                    <button
+                      className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors"
+                      aria-label="Close"
+                    >
                       <X size={20} />
                     </button>
                   </Dialog.Close>
