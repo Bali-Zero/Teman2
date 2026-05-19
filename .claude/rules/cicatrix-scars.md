@@ -5,6 +5,49 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: Intel Lake routing prefix-blind for subdomains (2026-05-20)
+
+_Discovered: 2026-05-20 03:00 WITA durante Phase A audit · Patched PR-B1a `feat/intel-lake-2stage-routing-2026-05-20` · Severity: P1_
+
+**TRAUMA:** Phase A audit ha trovato che **90% intel_items finivano in `needs_review`** invece di essere classificati. Producer scraper inviava `source_domain="kompas.com"` o `tempo.co` ma le rules in `intel_lake_router.py` matchavano solo TLD diretto, non sotto-dominii (es. `nasional.kompas.com` → unmatched). Effetto: la coda `needs_review` cresceva quotidianamente di ~50 items/day, router silently skipping. Compounding: SSOT JSON (`~/scripts/intel-lake-routing-rules.json`) deviava dal Python backend (`_RULES` in `intel_lake_router.py`) — Pro-local router cron usava JSON, Fly backend usava Python. 4-LLM panel verdict (Gemini + Codex 3/3 convergent): rules troppo restrittive, non un bug pipeline.
+
+**ANTIBODY (shipped feat/intel-lake-2stage-routing-2026-05-20):**
+
+1. **2-stage routing**: domain match (con `_SUBDOMAIN_PREFIX = r"(?:[a-z0-9-]+\.)*"` regex tollerante) → keyword content match → classifica. `_PRESS_GENERAL_RE` apre la lista press, ma deve poi ottenere un match in `_PRESS_REGULATORY_KEYWORDS` (visa/kitas/pajak/pmk/kbli/...) per andare a `nb-intel/press`. Gov rules restano STRICT (security: non vuoi `nasional.kompas-fake.com` che si dichiari `kemenkumham.go.id`).
+2. **Shadow mode**: env `INTEL_LAKE_ROUTING_SHADOW=1` → calcola classifica ma non muta DB. Permette A/B test live.
+3. **SSOT reconciliation**: `~/scripts/intel-lake-routing-rules.json` _meta.version bumped to 2, `synced_from_backend_at = 2026-05-20`. Nota corretta: in-process router IS attivo, `DISABLE_BACKGROUND_WORKERS` NON è settato in prod.
+4. **`backfill_needs_review(dry_run=True)`** helper: ri-classifica retroattivamente la coda `needs_review` con le nuove rules. Default dry_run per safety. 49/49 unit test pass.
+
+**GOTCHA:**
+
+- `_PRESS_GENERAL_RE` deve mai includere `.go.id` o `kemenkumham/*` — quelli sono gov authoritative, lì TLD strict. Mix-up = fake gov authority bypass.
+- `_SUBDOMAIN_PREFIX` regex usa `(?:...)` non-capturing — non rompere `re.match(_PRESS_GENERAL_RE, domain).group(0)` (non c'è group, usa `.group(0)`).
+- Backfill cron NON è attivo automaticamente — solo invocato manualmente da Antonello via `python -m backend.services.intel.intel_lake_router --backfill`.
+
+---
+
+### ✅ RESOLVED: outbox-drain stderr noise (2026-05-20)
+
+_Discovered: 2026-05-13 audit `~/logs/intel-lake-outbox-drain.err` 841KB · **RESOLVED** PR-B2 2026-05-20 `chore/outbox-drain-log-routing-2026-05-20`_
+
+**TRAUMA:** `/Users/nuzantara/scripts/intel-lake-outbox-drain.py` usava `logging.basicConfig` default che routa ogni livello a stderr. `.err` log cresceva indefinitamente (~841KB in 7 giorni) con INFO routinari "idle (pending=N delivered=M)" che Pro launchd cattura come "stderr → errore". Effetto: false-alarm fatigue, vero WARN/ERROR sepolti.
+
+**ANTIBODY (shipped):**
+
+Split-stream handlers: `_stdout_handler` filtra `< WARNING` (INFO/DEBUG → stdout `.log`), `_stderr_handler` filtra `>= WARNING` (WARN/ERROR → stderr `.err`). Stesso formatter, root logger ha entrambi handlers.
+
+```python
+_stdout_handler = logging.StreamHandler(sys.stdout)
+_stdout_handler.setLevel(logging.DEBUG)
+_stdout_handler.addFilter(lambda r: r.levelno < logging.WARNING)
+_stderr_handler = logging.StreamHandler(sys.stderr)
+_stderr_handler.setLevel(logging.WARNING)
+```
+
+**GOTCHA:** se aggiungi un nuovo handler (es: Sentry), va aggiunto a `logging.root.handlers = [...]` esplicito, non basta `addHandler`. Il root logger `.handlers = []` riscrive l'intera lista.
+
+---
+
 ### ⚠️ STRUCTURAL: WR2 master template requires verified richtext slot count (2026-05-10 → architecturally bypassed 2026-05-13)
 
 _Discovered: 2026-05-10 02:53 WITA · Patched via `chore/wr2-pipeline-hardening-2026-05-10` · **Architecturally bypassed 2026-05-13 via `feat/wr2-canva-pdf-render-2026-05-13`** (ReportLab→Tigris→Canva import, no master template required) · Severity: P0 (defanged)_
