@@ -1,60 +1,119 @@
-// filters.test.ts — unit tests for the wa-mirror privacy gate.
+// filters.test.ts — unit tests for the wa-mirror JID parser.
 //
-// jidToPhone() is load-bearing for the PRIVACY_CONTRACT_TEAM.md commitment:
-// it MUST return "" for any group JID (@g.us) so group chats never reach the
-// mirror path, and it MUST normalise direct-chat JIDs to a digit-only string
-// so the clients-table lookup in shouldMirror() can match.
-//
-// shouldMirror() itself touches Postgres (findClientByPhone), so it is out of
-// scope for this pure-function test file — the jidToPhone behaviour it
-// depends on is what we pin here.
+// parseJid() must distinguish (1) real phone JIDs (@s.whatsapp.net / @c.us),
+// (2) LID identifiers (@lid, WhatsApp privacy-shielded anonymous IDs rolled
+// out late 2024), (3) groups (@g.us, dropped from mirror), and (4) malformed
+// input. The pre-v2 bridge collapsed (2) into fake phone numbers; the LID
+// branch here is the regression fence for that bug.
 
 import { describe, expect, it } from "vitest";
 
-import { jidToPhone } from "../bridge/filters.js";
+import { jidToPhone, parseJid } from "../bridge/filters.js";
 
-describe("jidToPhone — group rejection (privacy contract)", () => {
-  it("returns empty string for any @g.us group JID", () => {
-    expect(jidToPhone("120363012345678901@g.us")).toBe("");
-    expect(jidToPhone("0@g.us")).toBe("");
+describe("parseJid — phone server (@s.whatsapp.net / @c.us)", () => {
+  it("returns kind='phone' and canonical E.164 for standard JID", () => {
+    expect(parseJid("628123456789@s.whatsapp.net")).toEqual({
+      kind: "phone",
+      phone: "+628123456789",
+      lid: "",
+      server: "s.whatsapp.net",
+    });
   });
 
-  it("rejects group JIDs even if they contain a phone-like prefix", () => {
-    // A group id can be all-digits; the @g.us suffix is the only signal.
-    expect(jidToPhone("628123456789@g.us")).toBe("");
+  it("handles the legacy @c.us server tag", () => {
+    expect(parseJid("628123456789@c.us")).toMatchObject({
+      kind: "phone",
+      phone: "+628123456789",
+      server: "c.us",
+    });
+  });
+
+  it("strips the :<device> multi-device suffix", () => {
+    expect(parseJid("628213107363:1@s.whatsapp.net")).toMatchObject({
+      kind: "phone",
+      phone: "+628213107363",
+    });
+    expect(parseJid("628213107363:42@s.whatsapp.net")).toMatchObject({
+      kind: "phone",
+      phone: "+628213107363",
+    });
+  });
+
+  it("preserves international numbers (Italian +39)", () => {
+    expect(parseJid("393398745516@s.whatsapp.net")).toMatchObject({
+      kind: "phone",
+      phone: "+393398745516",
+    });
+  });
+
+  it("returns kind='empty' when the JID user has no digits", () => {
+    expect(parseJid("@s.whatsapp.net")).toMatchObject({ kind: "empty" });
   });
 });
 
-describe("jidToPhone — direct chat normalisation", () => {
-  it("extracts digits from a standard @s.whatsapp.net JID", () => {
-    expect(jidToPhone("628123456789@s.whatsapp.net")).toBe("628123456789");
+describe("parseJid — @lid (privacy-shielded identifiers)", () => {
+  it("returns kind='lid' and preserves the raw LID identifier, NO phone synthesis", () => {
+    expect(parseJid("224112131756075@lid")).toEqual({
+      kind: "lid",
+      phone: "",
+      lid: "224112131756075",
+      server: "lid",
+    });
   });
 
-  it("extracts digits from the legacy @c.us JID", () => {
-    expect(jidToPhone("628123456789@c.us")).toBe("628123456789");
+  it("never injects +62 into a LID identifier (regression for the +62NNNNNNNNNNNNN bug)", () => {
+    const cases = [
+      "224112131756075@lid",
+      "179065826877524@lid",
+      "187840445030654@lid",
+      "224971225866242@lid",
+    ];
+    for (const jid of cases) {
+      const out = parseJid(jid);
+      expect(out.kind).toBe("lid");
+      expect(out.phone).toBe("");
+      expect(out.lid).not.toMatch(/^\+62/);
+    }
+  });
+});
+
+describe("parseJid — group / broadcast / newsletter (must NOT be mirrored)", () => {
+  it("returns kind='group' for @g.us regardless of digit content", () => {
+    expect(parseJid("120363012345678901@g.us")).toMatchObject({
+      kind: "group",
+    });
+    expect(parseJid("628123456789@g.us")).toMatchObject({ kind: "group" });
   });
 
-  it("strips the multi-device :<device> suffix", () => {
-    // This is the exact shape Baileys reported for zero@balizero.com:
-    //   628213107363:1@s.whatsapp.net
+  it("returns kind='broadcast' for status / broadcast / newsletter", () => {
+    expect(parseJid("status@broadcast")).toMatchObject({ kind: "broadcast" });
+    expect(parseJid("0@broadcast")).toMatchObject({ kind: "broadcast" });
+    expect(parseJid("xxx@newsletter")).toMatchObject({ kind: "broadcast" });
+  });
+});
+
+describe("parseJid — empty / malformed", () => {
+  it("returns kind='empty' for null / undefined / empty / no-@", () => {
+    expect(parseJid(null)).toMatchObject({ kind: "empty" });
+    expect(parseJid(undefined)).toMatchObject({ kind: "empty" });
+    expect(parseJid("")).toMatchObject({ kind: "empty" });
+    expect(parseJid("no-at-sign-here")).toMatchObject({ kind: "empty" });
+  });
+});
+
+describe("jidToPhone (legacy) — STRICTER post-v2 contract", () => {
+  it("returns digits for phone JIDs", () => {
     expect(jidToPhone("628213107363:1@s.whatsapp.net")).toBe("628213107363");
-    expect(jidToPhone("628123456789:42@s.whatsapp.net")).toBe("628123456789");
   });
 
-  it("strips any non-digit characters defensively", () => {
-    expect(jidToPhone("+62 812-3456-789@s.whatsapp.net")).toBe("628123456789");
-  });
-});
-
-describe("jidToPhone — empty / malformed input", () => {
-  it("returns empty string for null/undefined/empty", () => {
-    expect(jidToPhone(null)).toBe("");
-    expect(jidToPhone(undefined)).toBe("");
-    expect(jidToPhone("")).toBe("");
+  it("returns '' for @lid (BREAKING change from v1 — callers must migrate to parseJid)", () => {
+    expect(jidToPhone("224112131756075@lid")).toBe("");
   });
 
-  it("returns empty string when there are no digits at all", () => {
-    expect(jidToPhone("@s.whatsapp.net")).toBe("");
+  it("returns '' for groups, broadcasts, malformed", () => {
+    expect(jidToPhone("120363012345678901@g.us")).toBe("");
     expect(jidToPhone("status@broadcast")).toBe("");
+    expect(jidToPhone(null)).toBe("");
+    expect(jidToPhone("")).toBe("");
   });
 });
