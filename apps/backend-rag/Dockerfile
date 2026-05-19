@@ -1,8 +1,16 @@
+# syntax=docker/dockerfile:1.7
 # ZANTARA RAG Backend — Fly.io Deployment (OPTIMIZED FOR <8GB)
 # Multi-stage build. Python 3.11 + FastAPI + Qdrant + Sentence Transformers.
 #
 # BUILD CONTEXT: monorepo root (set by `flyctl deploy --dockerfile apps/backend-rag/Dockerfile --config apps/backend-rag/fly.toml` in .github/workflows/fly-deploy.yml).
 # Local: `docker build -f apps/backend-rag/Dockerfile -t rag-test .` FROM repo root, not from apps/backend-rag/.
+#
+# BuildKit cache mounts (added 2026-05-18): pip cache mounted at /root/.cache/pip
+# (default pip user-cache for root). Cache persists across builds, drastically
+# reducing rebuild time for ML deps (torch + transformers + sentence-transformers).
+# `--no-cache-dir` flag is REMOVED — it instructs pip to NOT write to its cache,
+# which is counterproductive with cache mounts. The `--user` install target
+# (/root/.local) is separate from the pip cache (/root/.cache/pip).
 
 # ========================================
 # Stage 1: Build Stage
@@ -34,7 +42,8 @@ COPY apps/backend-rag /app/apps/backend-rag
 # Install Python dependencies (skip Playwright browsers to save ~500MB)
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 WORKDIR /app/apps/backend-rag
-RUN pip install --no-cache-dir --user -r requirements-prod.txt \
+RUN --mount=type=cache,target=/root/.cache/pip,sharing=locked \
+    pip install --user -r requirements-prod.txt \
     && find /root/.local -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true \
     && find /root/.local -type f -name "*.pyc" -delete \
     && find /root/.local -type f -name "*.pyo" -delete
