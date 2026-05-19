@@ -119,6 +119,26 @@ async def hop2_check_outbox(conn: asyncpg.Connection, item_id: str) -> None:
     logger.info("hop2 PASS — outbox id=%s consumed_at=%s", row["id"], row["consumed_at"])
 
 
+async def hop2_5_set_sandbox_flag(conn: asyncpg.Connection, item_id: str) -> None:
+    """Post-ingestion UPDATE to set is_probe_sandbox=true on the probe row.
+
+    The backend intel_lake_service.record_observation does NOT set the
+    flag (panel review 2026-05-20). The migration 187 CHECK constraint
+    only allows is_probe_sandbox=true if canonical_url starts with the
+    reserved RFC 2606 .test prefix — verified by the constraint at
+    INSERT time (here we UPDATE post-INSERT). This is a probe-only
+    step; real producers cannot trigger it because they never write
+    URLs with this prefix.
+    """
+    result = await conn.execute(
+        "UPDATE intel_items SET is_probe_sandbox = true WHERE id = $1",
+        item_id,
+    )
+    if not result.endswith(" 1"):
+        raise AssertionError(f"hop2.5: failed to set sandbox flag — UPDATE returned {result}")
+    logger.info("hop2.5 PASS — is_probe_sandbox=true set on %s", item_id)
+
+
 async def hop3_check_routing(conn: asyncpg.Connection, item_id: str, wait_seconds: int) -> str:
     """Poll intel_items until routing_status != 'unrouted'."""
     deadline = time.monotonic() + wait_seconds
@@ -180,10 +200,14 @@ async def hop4_check_nb_push(conn: asyncpg.Connection, item_id: str, wait_second
 
 
 async def hop5_cleanup_verify(conn: asyncpg.Connection, item_id: str) -> None:
-    """Soft-delete probe row, verify 0 residue in production-facing queries."""
+    """Delete probe row, verify 0 stale sandbox residue.
+
+    `producer_name` lives on `intel_observations` (junction table), not on
+    `intel_items` directly. Use the is_probe_sandbox flag for residue check.
+    """
     await conn.execute("DELETE FROM intel_items WHERE id = $1", item_id)
     leftover = await conn.fetchval(
-        "SELECT count(*) FROM intel_items WHERE producer_name LIKE 'probe-sandbox-%' AND first_seen_at < now() - interval '24h'"
+        "SELECT count(*) FROM intel_items WHERE is_probe_sandbox = true AND first_seen_at < now() - interval '24h'"
     )
     if leftover > 0:
         logger.warning("hop5 WARN — %s stale sandbox rows (>24h), candidate for cleanup", leftover)
@@ -212,6 +236,7 @@ async def run(wait_seconds: int) -> int:
         conn = await asyncpg.connect(dsn)
         try:
             await hop2_check_outbox(conn, item_id)
+            await hop2_5_set_sandbox_flag(conn, item_id)
             await hop3_check_routing(conn, item_id, wait_seconds)
             await hop4_check_nb_push(conn, item_id, wait_seconds)
             await hop5_cleanup_verify(conn, item_id)
