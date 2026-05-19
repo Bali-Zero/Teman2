@@ -1,0 +1,90 @@
+name: SBOM (Software Bill of Materials)
+
+# UU PDP audit-ready posture: every push to main produces a SPDX/CycloneDX SBOM
+# artifact that lists every dependency baked into the deploy. Required for
+# supply-chain visibility on 1282+ production files.
+#
+# Runs on:
+#   - push to main (after merge) — produces the authoritative SBOM
+#   - workflow_dispatch — on-demand for audit response
+#   - pull_request — preview SBOM diff (non-blocking, retention 7 days)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - "requirements*.txt"
+      - "pyproject.toml"
+      - "package.json"
+      - "package-lock.json"
+      - ".github/workflows/sbom.yml"
+  pull_request:
+    paths:
+      - "apps/**"
+      - "packages/**"
+      - "requirements*.txt"
+      - "pyproject.toml"
+      - "package.json"
+      - "package-lock.json"
+  workflow_dispatch:
+
+concurrency:
+  group: sbom-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  generate-sbom:
+    name: Generate SBOM (SPDX + CycloneDX)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Generate SBOM (SPDX format)
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: spdx-json
+          output-file: sbom-spdx.json
+          upload-artifact: false
+
+      - name: Generate SBOM (CycloneDX format)
+        uses: anchore/sbom-action@v0
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: sbom-cyclonedx.json
+          upload-artifact: false
+
+      - name: Upload SBOM artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ github.sha }}
+          path: |
+            sbom-spdx.json
+            sbom-cyclonedx.json
+          retention-days: ${{ github.event_name == 'pull_request' && 7 || 90 }}
+
+      - name: SBOM summary
+        run: |
+          echo "## SBOM Generated" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- SPDX: \`sbom-spdx.json\` ($(wc -c < sbom-spdx.json) bytes)" >> $GITHUB_STEP_SUMMARY
+          echo "- CycloneDX: \`sbom-cyclonedx.json\` ($(wc -c < sbom-cyclonedx.json) bytes)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          python3 -c "
+          import json
+          for fmt in ['spdx', 'cyclonedx']:
+              with open(f'sbom-{fmt}.json') as f:
+                  data = json.load(f)
+              if fmt == 'spdx':
+                  count = len(data.get('packages', []))
+              else:
+                  count = len(data.get('components', []))
+              print(f'- **{fmt.upper()}**: {count} packages indexed')
+          " | tee -a $GITHUB_STEP_SUMMARY
