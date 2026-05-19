@@ -23,6 +23,9 @@ os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost:5432/tes
 os.environ.setdefault("QDRANT_URL", "http://localhost:6333")
 os.environ.setdefault("REDIS_URL", "redis://localhost:6379/0")
 os.environ.setdefault("ENVIRONMENT", "test")
+# Unit tests run with localhost Qdrant while developer shells may export a
+# different cloud QDRANT_URL; keep the production ingest guard explicit.
+os.environ["LEGAL_INGEST_ALLOW_QDRANT_ENV_OVERRIDE"] = "1"
 os.environ.setdefault("WHATSAPP_VERIFY_TOKEN", "test_whatsapp_verify_token")
 os.environ.setdefault("INSTAGRAM_VERIFY_TOKEN", "test_instagram_verify_token")
 os.environ.setdefault("TELEGRAM_BOT_TOKEN", "123456:test_token")
