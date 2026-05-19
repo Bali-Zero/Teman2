@@ -200,16 +200,38 @@ acquire_lock() {
         log "WARN: psql not on PATH — skipping advisory lock"
         return 0
     fi
-    local got
-    got="$(psql "${DATABASE_URL}" -At -c "SELECT pg_try_advisory_lock(${PG_LOCK_KEY});" 2>>"${LOG_FILE}" || echo "")"
-    if [[ "${got}" != "t" ]]; then
-        log "another run holds the advisory lock (key=${PG_LOCK_KEY}) — exiting"
-        exit 3
+    # Phase 1.1 fix B (2026-05-19 smoke #4 discovery): we must
+    # distinguish three psql outcomes — only one of them means
+    # "another run holds the lock":
+    #
+    #   1. psql exit 0, output "t"  → lock acquired, proceed
+    #   2. psql exit 0, output "f"  → another run holds, exit 3
+    #   3. psql exit non-zero       → connection failure (e.g.
+    #      DATABASE_URL points to Fly flycast hostname not reachable
+    #      from outside Fly net), degrade gracefully per Symbiosis
+    #      Law 4 — log warning + skip lock + continue. Treating
+    #      connection failure as "lock held" would block every
+    #      Sunday run forever if the operator's DATABASE_URL is
+    #      misconfigured. Better to lose single-flight protection
+    #      than to silently never run.
+    local got rc
+    set +e
+    got="$(psql "${DATABASE_URL}" -At -c "SELECT pg_try_advisory_lock(${PG_LOCK_KEY});" 2>>"${LOG_FILE}")"
+    rc=$?
+    set -e
+    if [[ "${rc}" -ne 0 ]]; then
+        log "WARN: psql connection to DATABASE_URL failed (rc=${rc}) — skipping advisory lock (single-flight degraded, see ${LOG_FILE})"
+        return 0
     fi
-    log "advisory lock acquired (key=${PG_LOCK_KEY})"
-    # Best-effort release on EXIT (Bash trap)
-    # shellcheck disable=SC2064
-    trap "psql '${DATABASE_URL}' -c 'SELECT pg_advisory_unlock(${PG_LOCK_KEY});' >/dev/null 2>&1 || true" EXIT
+    if [[ "${got}" == "t" ]]; then
+        log "advisory lock acquired (key=${PG_LOCK_KEY})"
+        # Best-effort release on EXIT (Bash trap)
+        # shellcheck disable=SC2064
+        trap "psql '${DATABASE_URL}' -c 'SELECT pg_advisory_unlock(${PG_LOCK_KEY});' >/dev/null 2>&1 || true" EXIT
+        return 0
+    fi
+    log "another run holds the advisory lock (key=${PG_LOCK_KEY}) — exiting"
+    exit 3
 }
 acquire_lock
 
