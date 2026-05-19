@@ -200,6 +200,11 @@ ROUTER_MANIFEST: tuple[RouterEntry, ...] = (
     RouterEntry(name="intel", process_groups=_RAG, tags=("intel",)),
     RouterEntry(name="intel_analytics", process_groups=_RAG, tags=("intel",)),
     RouterEntry(name="intel_lake", process_groups=_BOTH, tags=("intel", "intel-lake")),
+    RouterEntry(
+        name="intel_observability",
+        process_groups=_BOTH,
+        tags=("intel", "intel-lake", "wr2", "observability"),
+    ),
     RouterEntry(name="intel_scraper", process_groups=_RAG, tags=("intel",)),
     # ── KBLI ──
     RouterEntry(name="kbli_notebook", process_groups=_RAG, prefix="__API_V1__", tags=("kbli",)),
