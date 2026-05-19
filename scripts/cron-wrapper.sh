@@ -55,6 +55,23 @@ if [ -f "$SECRETS_FILE" ]; then
     set -a; source "$SECRETS_FILE"; set +a
 fi
 
+# Wave 3 ops-hardening fix 2026-05-19 (4-LLM panel 2/2 quorum):
+# DATABASE_URL FORCE-override to LOCAL pg-proxy (mirrors
+# wr2-script-wrapper.sh:60-72 pattern, same root-cause class).
+# ~/.nuzantara-secrets.env defines DATABASE_URL=postgres://...@nuzantara-
+# postgres.flycast (Fly 6PN internal hostname — only resolves *inside*
+# Fly). Sourced on Pro, DATABASE_URL becomes unusable: cron jobs emit
+# "socket.gaierror [Errno 8] nodename nor servname" forever. Always
+# pin DATABASE_URL_LOCAL on Pro regardless of secrets-file content.
+# Affected jobs unblocked by this fix:
+#   - crm_automation (cron 23:00 daily) — exit 1 after 3 attempts
+#   - any cron-wrapper.sh-wrapped job touching the local PG.
+# Discovered 2026-05-19 via sentinel triage Wave 3 panel review.
+if [[ -n "${DATABASE_URL_LOCAL:-}" ]]; then
+    DATABASE_URL="$DATABASE_URL_LOCAL"
+    export DATABASE_URL
+fi
+
 # macOS uses gtimeout from coreutils
 if command -v gtimeout &>/dev/null; then
     TIMEOUT_CMD="gtimeout"
