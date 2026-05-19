@@ -13,6 +13,7 @@ from backend.services.intel.intel_lake_router import (
     NB_INTEL_PRESS,
     NB_INTEL_REGULATION,
     NB_INTEL_TAX,
+    NB_PROBE_SANDBOX,
     IntelLakeRouter,
     _press_content_gate,
     backfill_needs_review,
@@ -94,6 +95,47 @@ class _PaginatedBackfillPool:
     @asynccontextmanager
     async def acquire(self) -> Any:
         yield self.conn
+
+
+class TestClassifySandbox:
+    """Phase F 2026-05-20: sandbox routing rule must short-circuit before
+    any production rule, and only match the exact RFC 2606 .test host."""
+
+    def test_sandbox_exact_host_routes_to_nb_probe_sandbox(self) -> None:
+        d = _make_router()._classify("probe-sandbox.example.test")
+        assert d["status"] == "nb-intel"
+        assert d["targets"]["nb_uuids"] == [NB_PROBE_SANDBOX]
+        assert d["rule"] == "probe_sandbox"
+
+    def test_sandbox_with_url_still_matches(self) -> None:
+        d = _make_router()._classify(
+            "probe-sandbox.example.test",
+            canonical_url="https://probe-sandbox.example.test/probe-abc123",
+        )
+        assert d["status"] == "nb-intel"
+        assert d["targets"]["nb_uuids"] == [NB_PROBE_SANDBOX]
+
+    def test_sandbox_substring_in_real_domain_does_NOT_match(self) -> None:
+        """A real producer URL containing the substring must NOT match."""
+        d = _make_router()._classify("probe-sandbox-attack.kompas.com")
+        # Falls through to press_general rule, not sandbox
+        assert d["rule"] != "probe_sandbox"
+        # Should route to NB-PROBE-SANDBOX UUID nowhere in the targets
+        if "nb_uuids" in d.get("targets", {}):
+            assert NB_PROBE_SANDBOX not in d["targets"]["nb_uuids"]
+
+    def test_sandbox_prefix_attack_does_NOT_match(self) -> None:
+        """Domain like 'probe-sandbox.example.test.evil.com' must NOT match."""
+        d = _make_router()._classify("probe-sandbox.example.test.evil.com")
+        # Anchored regex with $ prevents this attack
+        assert d["rule"] != "probe_sandbox"
+
+    def test_sandbox_does_not_collide_with_real_test_domains(self) -> None:
+        """A different .test host must not accidentally match."""
+        d = _make_router()._classify("other-sandbox.example.test")
+        assert d["rule"] != "probe_sandbox"
+        # Falls through to needs_review (no other rule matches .test)
+        assert d["status"] == "needs_review"
 
 
 class TestClassifyImmigration:
