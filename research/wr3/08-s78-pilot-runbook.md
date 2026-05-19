@@ -2,8 +2,8 @@
 date: 2026-05-18
 domain: wr3-design
 step: 7.8
-title: S7.8 — "Manifesto Zantara" pilot runbook (executable when 3 blockers resolved)
-status: blocked-on-prereqs-runbook-ready
+title: S7.8 — "Manifesto Zantara" pilot runbook (executable when Chatterbox installed)
+status: 4-of-5-blockers-resolved-2026-05-19
 ---
 
 # WR3 Step 7.8 — "Manifesto Zantara" pilot runbook
@@ -38,12 +38,12 @@ during post-deploy pipeline. Sibling file has never been git-add'ed.
 
 ### Blocker 2 — Flow Pro gateway
 
-Required: local FlowKit gateway listening on `http://127.0.0.1:9412`.
+Required: local FlowKit gateway listening on `http://127.0.0.1:8100`.
 
 **Verify:**
 
 ```bash
-curl -s http://127.0.0.1:9412/health
+curl -s http://127.0.0.1:8100/health
 # expected: {"status":"ok","plan":"pro","credits_remaining":N}
 ```
 
