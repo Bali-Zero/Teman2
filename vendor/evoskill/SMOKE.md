@@ -161,33 +161,72 @@ cd vendor/evoskill && uv pip list 2>/dev/null | grep -iE "^anthropic|^claude-age
 
 Expected: `0` (no anthropic / claude-agent-sdk / browser-use installed).
 
-## Gate 6 — DeepSeek harness stub: set_sdk accepted + execute raises
+## Gate 6 (Phase 0) — superseded by Gate 6b (Phase 1 Task #23)
+
+Phase 0 stub raised `NotImplementedError` on `execute_query()`. Phase 1
+Task #23 replaces the stub with a real DeepSeek V4 Pro adapter. The
+new gate is below.
+
+## Gate 6b (Phase 1 Task #23) — DeepSeek executor real impl
+
+`execute_query()` no longer raises `NotImplementedError`. Instead it
+either (a) raises `RuntimeError` if `DEEPSEEK_API_KEY` env var is
+unset (loud-fail, clear message), or (b) makes a live POST to
+`https://api.deepseek.com/v1/chat/completions` and returns the parsed
+JSON.
 
 ```bash
-cd vendor/evoskill && uv run python -c "
+cd /Users/nuzantara/Desktop/nuzantara-wt-evoskill-phase1 && \
+  python3 -m pytest scripts/test_deepseek_executor.py -q --tb=short | tail -10
+```
+
+Expected: `21 passed in <0.1s`. Tests cover:
+
+- Happy path: 200 OK, choices[0].message.content parses as JSON,
+  Pydantic model validates, AgentTrace fields populated
+- Auth: `DEEPSEEK_API_KEY` missing → `RuntimeError` with clear message
+- 401 Unauthorized → `DeepSeekAPIError` (non-retryable, propagates)
+- 500 Internal Server Error → `DeepSeekTransientError` after 4
+  attempts (initial + 3 retries: 30s → 60s → 120s — backoffs mocked)
+- 429 Too Many Requests → retryable (same path as 500)
+- 408 Request Timeout → retryable
+- 400 Bad Request → `DeepSeekAPIError` non-retryable
+- Network errors (`httpx.ConnectError`, `ReadTimeout`) → retryable
+- JSON code-fence stripping (` ```json ... ``` ` block extracted)
+- Pydantic `ValidationError` captured into `parse_error`, NOT raised
+- Empty `messages` list / non-dict response → `_empty_trace_fields`
+- Cost math: prompt_cache_hit + prompt_cache_miss + completion against
+  pricing snapshot for `deepseek-v4-pro`
+- Fuzzy model prefix match: `deepseek-v4-pro-2024-Q3` → pricing for
+  `deepseek-v4-pro`
+- `response_format = {"type": "json_object"}` builder when schema
+  non-empty
+- `reasoning_effort` forwarded conditionally
+- End-to-end round trip via `parse_response()`
+
+Optional live smoke (requires real `DEEPSEEK_API_KEY`):
+
+```bash
+DEEPSEEK_API_KEY="sk-..." cd vendor/evoskill && uv run python -c "
 import asyncio
 from src.harness.deepseek import build_deepseek_options, execute_query, parse_response
-from src.harness import set_sdk, get_sdk, is_deepseek_sdk
 
-set_sdk('deepseek')
-assert get_sdk() == 'deepseek'
-assert is_deepseek_sdk()
+opts = build_deepseek_options(system='You are a calculator. Output JSON {\"answer\": <int>} only.')
+opts['schema'] = {'answer': {'type': 'integer'}}
+opts['max_tokens'] = 100
 
-opts = build_deepseek_options(system='test')
-assert opts['sdk'] == 'deepseek'
+messages = asyncio.run(execute_query(opts, 'What is 7 * 6?'))
+print(f'raw response: {messages[0][\"choices\"][0][\"message\"][\"content\"][:200]}')
 
-try:
-    asyncio.run(execute_query(opts, 'q'))
-    raise RuntimeError('FAIL: should have raised NotImplementedError')
-except NotImplementedError as e:
-    print('deepseek stub raises NotImplementedError OK')
+fields = parse_response(messages, response_model=None, get_options=lambda: opts)
+print(f'total_cost_usd: {fields[\"total_cost_usd\"]}')
+print(f'usage: {fields[\"usage\"]}')
+print(f'is_error: {fields[\"is_error\"]}')
 "
 ```
 
-Expected: `deepseek stub raises NotImplementedError OK`. Round-2 panel
-(2026-05-18) found CRITICAL convergent that `evolver.toml provider=deepseek`
-was load-bearing for Phase 1 but the SDK dispatcher was missing in 5
-upstream surfaces. This gate verifies all 5 are now wired.
+Expected (if key set): non-zero `total_cost_usd`, usage dict populated,
+`is_error=False`. Without key: `RuntimeError: DEEPSEEK_API_KEY env var not set`.
 
 ## Gate 7 (Phase 1 Task #21) — load real agent-library evolver config
 
