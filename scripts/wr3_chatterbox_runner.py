@@ -59,45 +59,116 @@ class VOResult:
     cascade_used: bool = False  # True if Cartesia exception path was taken
 
 
-async def _run_chatterbox_cli(
+# Lazy-loaded Chatterbox model (heavy: torch + transformers + tokenizers +
+# ~10GB weights downloaded on first run from Resemble AI HuggingFace).
+# Re-used across segments within an episode — model load is the dominant cost.
+_CHATTERBOX_MODEL = None  # type: ignore[var-annotated]
+
+
+def _get_chatterbox_model():
+    """Load ChatterboxMultilingualTTS once per process, cache on module."""
+    global _CHATTERBOX_MODEL
+    if _CHATTERBOX_MODEL is not None:
+        return _CHATTERBOX_MODEL
+
+    try:
+        import torch  # type: ignore
+        from chatterbox.mtl_tts import ChatterboxMultilingualTTS  # type: ignore
+    except ImportError as e:
+        raise ChatterboxCrashError(
+            "chatterbox-tts not installed in active venv. "
+            "pip install chatterbox-tts. "
+            f"Underlying: {e}"
+        ) from e
+
+    # Device selection: prefer MPS on Mac, CUDA on NVIDIA, else CPU.
+    # NOTE: Chatterbox 0.1.7 checkpoints reference cuda storage tensors —
+    # `from_pretrained(device="mps")` actually passes map_location="mps" but
+    # the unpickler still hits cuda location strings and crashes. The only
+    # safe load path right now is CPU.
+    # Override via WR3_CHATTERBOX_DEVICE="mps"|"cuda"|"cpu" if a future
+    # Chatterbox release fixes the checkpoint encoding.
+    requested = os.environ.get("WR3_CHATTERBOX_DEVICE", "cpu").lower()
+    if requested == "mps" and torch.backends.mps.is_available():
+        device = torch.device("mps")
+    elif requested == "cuda" and torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
+
+    # Defense in depth: patch torch.load to inject map_location even when
+    # mtl_tts.from_local() calls it. Required for cross-device weight load.
+    _orig_torch_load = torch.load
+
+    def _patched_load(*args, **kwargs):
+        kwargs["map_location"] = device  # always force, overriding any caller value
+        return _orig_torch_load(*args, **kwargs)
+
+    torch.load = _patched_load
+    try:
+        _CHATTERBOX_MODEL = ChatterboxMultilingualTTS.from_pretrained(device=device)
+    finally:
+        torch.load = _orig_torch_load
+    return _CHATTERBOX_MODEL
+
+
+async def _generate_segment_in_thread(
     text: str,
     out_path: Path,
     *,
-    bin_path: str,
-    model: str,
+    language_id: str,
     seed: int,
     cfg_weight: float,
     temperature: float,
     exaggeration: float,
     timeout_s: int,
 ) -> None:
-    """Invoke chatterbox-tts CLI subprocess (Symbiosis Law 1 compliant)."""
-    out_path.parent.mkdir(parents=True, exist_ok=True)
-    proc = await asyncio.create_subprocess_exec(
-        bin_path,
-        "--model", model,
-        "--seed", str(seed),
-        "--cfg-weight", str(cfg_weight),
-        "--temperature", str(temperature),
-        "--exaggeration", str(exaggeration),
-        "--out", str(out_path),
-        "--text", text,
-        stdout=asyncio.subprocess.PIPE,
-        stderr=asyncio.subprocess.PIPE,
-    )
-    try:
-        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout_s)
-    except asyncio.TimeoutError as e:
-        proc.kill()
-        raise ChatterboxCrashError(
-            f"Chatterbox timeout {timeout_s}s for {out_path.name}"
-        ) from e
+    """Generate one segment WAV via ChatterboxMultilingualTTS Python API.
 
-    if proc.returncode != 0:
-        err = stderr.decode("utf-8", "replace")[:400]
-        raise ChatterboxCrashError(
-            f"Chatterbox exit {proc.returncode}: {err}"
+    Runs the CPU/MPS-bound generate() in a worker thread so the asyncio
+    event loop doesn't block. Symbiosis Law 1 compliant: model is local
+    (Resemble AI MIT, no cloud TTS).
+
+    Indonesian (`id`) NOT in SUPPORTED_LANGUAGES — caller must pre-select
+    `en` for English scripts or fall back to MiniMax for Indonesian VO.
+    """
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def _do_generate() -> None:
+        import soundfile as sf  # type: ignore
+        import torch  # type: ignore
+
+        model = _get_chatterbox_model()
+        # Pin seed for deterministic output
+        torch.manual_seed(seed)
+        if torch.backends.mps.is_available():
+            torch.mps.manual_seed(seed)
+        if torch.cuda.is_available():
+            torch.cuda.manual_seed_all(seed)
+
+        wav = model.generate(
+            text=text,
+            language_id=language_id,
+            exaggeration=exaggeration,
+            cfg_weight=cfg_weight,
+            temperature=temperature,
         )
+        # ChatterboxMultilingualTTS returns a torch.Tensor [1, samples] at S3_SR (24000)
+        from chatterbox.mtl_tts import S3GEN_SR  # type: ignore
+        if hasattr(wav, "cpu"):
+            wav = wav.cpu().numpy().squeeze()
+        sf.write(str(out_path), wav, samplerate=S3GEN_SR, subtype="PCM_16")
+
+    try:
+        await asyncio.wait_for(asyncio.to_thread(_do_generate), timeout=timeout_s)
+    except asyncio.TimeoutError as e:
+        raise ChatterboxCrashError(
+            f"Chatterbox generate timeout {timeout_s}s for {out_path.name}"
+        ) from e
+    except Exception as e:
+        raise ChatterboxCrashError(
+            f"Chatterbox generate failed for {out_path.name}: {e}"
+        ) from e
 
 
 async def _measure_lufs(wav_path: Path) -> float | None:
@@ -138,20 +209,23 @@ async def generate_voiceover(
     script_path: Path,
     episode_dir: Path,
     *,
-    chatterbox_bin: str | None = None,
-    model: str = "chatterbox-multilingual",
-    per_segment_timeout_s: int = 60,
+    chatterbox_bin: str | None = None,  # legacy, unused (kept for caller compat)
+    model: str = "chatterbox-multilingual",  # legacy
+    per_segment_timeout_s: int = 120,
+    language_id: str = "en",  # Indonesian not in SUPPORTED_LANGUAGES — see Voice-Clone-Pilot-2026-05-16
 ) -> VOResult:
-    """Generate VO WAV from script.json segments.
+    """Generate VO WAV from script.json segments via Chatterbox Python API.
 
     Concatenates per-segment WAV via ffmpeg into vo.wav. LUFS-normalize to -14 ±1.
+
+    The Chatterbox model (~10GB) is loaded once per process and reused across
+    segments via `_get_chatterbox_model()`. First call may take 30-60s for
+    HuggingFace download + warmup; subsequent generates are 3-8s each.
     """
-    bin_path = chatterbox_bin or os.environ.get("WR3_CHATTERBOX_BIN", "chatterbox-tts")
-    if not shutil.which(bin_path):
-        raise ChatterboxCrashError(
-            f"chatterbox-tts CLI not found at {bin_path!r}. "
-            "Install: brew install chatterbox-multilingual (or path via WR3_CHATTERBOX_BIN)"
-        )
+    # chatterbox_bin / model kwargs preserved for backward-compat with the
+    # WR3_CHATTERBOX_BIN env var contract documented in __doc__ above —
+    # they are not used by the Python API path. CLI path is removed.
+    del chatterbox_bin, model  # explicit "intentionally unused"
 
     script = json.loads(script_path.read_text())
     segments_raw = script.get("segments") or []
@@ -170,11 +244,10 @@ async def generate_voiceover(
         if not seg_text:
             continue
         seg_path = segments_tmp_dir / f"{i:03d}.wav"
-        await _run_chatterbox_cli(
+        await _generate_segment_in_thread(
             text=seg_text,
             out_path=seg_path,
-            bin_path=bin_path,
-            model=model,
+            language_id=language_id,
             seed=EMMA_SEED,
             cfg_weight=EMMA_CFG_WEIGHT,
             temperature=EMMA_TEMPERATURE,
