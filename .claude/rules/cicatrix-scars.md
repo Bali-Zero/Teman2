@@ -11,24 +11,28 @@ _Discovered: 2026-05-10 02:53 WITA · Patched via `chore/wr2-pipeline-hardening-
 
 **RESOLUTION (2026-05-13):** New rendering pipeline: PDF generated server-side via ReportLab (`wr2_canva_pdf_render.py`, 12 layout families), uploaded to Tigris S3, imported into Canva via `import-design-from-url` MCP → no richtext slots needed.
 
-| Design ID | Status | Reason |
-|---|---|---|
-| `DAHE6lx1lf8` | DECOMMISSIONED 2026-05-08 | Original master, obsolete |
-| `DAHJLYRn_3E` | KEPT AS FAILURE EXAMPLE | Only 2 usable pages (PR #565 failed) |
-| `DAHJEkWpkzY` | UNUSED IN NEW FLOW | Was the 2026-05-10 "fix" master |
+| Design ID     | Status                    | Reason                               |
+| ------------- | ------------------------- | ------------------------------------ |
+| `DAHE6lx1lf8` | DECOMMISSIONED 2026-05-08 | Original master, obsolete            |
+| `DAHJLYRn_3E` | KEPT AS FAILURE EXAMPLE   | Only 2 usable pages (PR #565 failed) |
+| `DAHJEkWpkzY` | UNUSED IN NEW FLOW        | Was the 2026-05-10 "fix" master      |
 
 **Production cron disabled 2026-05-13**: kill switch `system_settings.wr2_canva_renderer_enabled='false'` + `launchctl bootout gui/$(id -u)/com.balizero.wr2.canva-renderer`. Plist preserved on disk for reload after orchestrator refactor. Queue: 0 pending, 20 rendered + 15 rejected.
+
+**Plist resurrection 2026-05-15 → PURGED 2026-05-19 (4-LLM panel decision)**: someone (sibling agent / re-bootstrap) re-loaded `com.balizero.wr2.canva-renderer.plist` despite the 2026-05-13 bootout. From 2026-05-15 20:07 to 2026-05-19 10:04: 1122 traceback in `wr2_canva_apply.error.log` (4.1 MB), every 5min `socket.gaierror: [Errno 8] nodename nor servname provided` on `DATABASE_URL=postgres://...flycast` (Fly internal hostname, irrisolvibile da Pro). The DB kill-switch was correctly OFF the whole time but the script crashed on `asyncpg.connect()` BEFORE reading it (gaierror happens in `_connect_addr` socket.getaddrinfo call, never reaches the kill-switch SELECT). Panel synthesis 2026-05-19 (Gemini + DeepSeek + Codex 3/3 convergent, doc: `research/operations/2026-05-19-wr2-intel-lake-fixes-panel.md`): purge plist + archive script + add `launchd_cicatrix_lint.sh` pre-push hook (Wave 2 Codex unique). The "preserved for reload" stance was wrong — preserving on disk under `~/Library/LaunchAgents/` IS the attack surface for sibling-agent resurrection. Correct posture: physical move to `.disabled-YYYY-MM-DD/` directory + script archival under `scripts/.disabled-YYYY-MM-DD/`.
 
 New `canva_renderer_v2` package (~1000 LOC, 9 modules). T1-T13 commits on `feat/wr2-canva-pdf-render-2026-05-13`, 47/47 unit tests passing. Key modules: migration 170 lease columns, `_telegram.py`, `_schema_adapter.py`, `_pdf_pipeline.py`, `_tigris.py`, `_token_storage.py` (HMAC+flock), `_canva_mcp.py` (mcp SDK 1.27.0), `_pg.py` asyncpg, `_telemetry.py`, orchestrator, entrypoint, bootstrap+watchdogs, 3 launchd plists. Deploy via `docs/runbooks/wr2-orchestrator-pdf-render-runbook.md`.
 
 **TRAUMA:** PR #565 promoted `DAHJLYRn_3E` as new master without verifying its shape. Design only had richtext slots on pages 2-3; renderer emits ops for pages 1+4-11. Phase A live-mapping detected 19/22 ops (86%) would drop → `template_mismatch`. Phase 0 had already wiped 3 elements. CI checks (E2E+MCP) were green — they tested python code, NOT the live template shape.
 
 **ANTIBODY (shipped `chore/wr2-pipeline-hardening-2026-05-10`):**
+
 1. **Pre-flight validator** `scripts/wr2_validate_master.py` — exits non-zero if design missing, <11 usable pages, or <18 richtext elements (filter: `width >= 30`). Run before any commit bumping `TEMPLATE_DESIGN_ID`.
 2. **Unit-test contract** `test_template_design_id_format` asserts constant matches `^DAH[A-Za-z0-9_-]{8}$`.
 3. **Docstring header** on `TEMPLATE_DESIGN_ID` lists verification checklist.
 
 **GOTCHA:**
+
 - Phase 0 wipes master BEFORE Phase A detects mismatch — a wrong design ID means someone else's design gets blanked. Validator catches this pre-wipe; run it before every `TEMPLATE_DESIGN_ID` change.
 - `start-editing-transaction` returns ALL richtext elements; renderer + validator both filter `width >= 30`. Change threshold in one → must change both (no programmatic link).
 - `DAHJLYRn_3E` is kept in Canva (not trashed) as canonical failure example.
@@ -45,11 +49,13 @@ _Discovered: 2026-05-10 03:50 WITA · Severity: P0 · Workaround SHIPPED in `cho
 Temporary fix was a runtime symlink (fragile: destroyed by `git worktree remove`; invisible without `ls -la`).
 
 **ANTIBODY (shipped):**
+
 1. Skill reads `WR2_OUTPUT_ROOT` env var (fallback: legacy main-repo path). Plist exports `WR2_OUTPUT_ROOT` matching the writer side. Symlink no longer needed.
 2. Snapshot copy at `infra/claude-skills/canva-apply.md` with CI drift check.
 3. **Long-term TODO**: move output dir to `~/var/wr2/output/canva/` (out of git tree entirely).
 
 **GOTCHA:**
+
 - `WR2_OUTPUT_ROOT` must NOT have trailing slash. Plist value is normalized (skill strips on read).
 - `wr2_canva_desktop_apply.py` reads `WR2_REPO_ROOT` (different var — repo root for venv+imports vs output dir). Don't conflate.
 - Local skill at `~/.claude/skills/canva-apply.md` is NOT in git by default; iterate locally → commit to `infra/claude-skills/`.
@@ -61,6 +67,7 @@ Temporary fix was a runtime symlink (fragile: destroyed by `git worktree remove`
 _Discovered: 2026-05-10 ~15:00 WITA · **RESOLVED** (verified 2026-05-17 by reading `backend/core/embeddings.py`) · Move to archive at next cleanup._
 
 **RESOLUTION:** `EmbeddingsGenerator.generate_embeddings_batch()` now implements two-level batching (lines 409-509 of `embeddings.py`):
+
 - Level 1: item batches of max 50 texts
 - Level 2: `_split_by_token_budget()` splits each item batch into sub-batches ≤200k tokens
 - `_embed_batch()` propagates exceptions instead of swallowing (cicatrix comment at line 374-382)
@@ -75,20 +82,24 @@ _Discovered: 2026-05-10 ~15:00 WITA · **RESOLVED** (verified 2026-05-17 by read
 _Discovered: 2026-05-06 22:45 WITA during Symbiosis W1 genome enrollment audit · Severity: P1 · Workaround: TBD (cleanup follow-up PR)_
 
 **TRAUMA:** 13 launchd labels fire SIMULTANEOUSLY on Pro AND Mini:
+
 ```
 watcher.daily, reg-alert.30min, kg-linker, wr-topic, wr2-bridge.hourly,
 bridge.adaptive, sentinel.daily, intel-bridge.daily, daily-briefing,
 kita-feed.daily, public-channel, weekly-digest, gap.consumer
 ```
+
 Blast radius: `regulation-alert.30min` sends duplicate Telegram alerts; `kg-linker` risks duplicate PG edges; `weekly-digest`/`daily-briefing` sent twice; `intel-bridge.daily` emits 2 distinct Redis entries with same OSINT content. Masked until 2026-05-04 because Mini was offline most of April.
 
 **ANTIBODY (proposed, NOT yet implemented):**
+
 1. Per-organ decision: (a) Pro-only, (b) Mini-only, or (c) leader-election. Default: Pro-only (canonical CRM + API tokens).
 2. `launchctl bootout + rm plist` on losing side; update `organs_registry.yaml`.
 3. Extend `wave1-pro-mini-dup-resolver.sh --resolve` to cover 13 labels.
 4. CI test `test_genome_no_active_active.py` — scan `organs_registry.yaml` for shared labels across hosts, fail if outside explicit allowlist.
 
 **GOTCHA:**
+
 - `organs_registry.yaml` `duplicates_id` is HEADER-ONLY — validator does NOT enforce it.
 - `--check` returns "0 conflicts" when Mini is offline → misleading. Only reliable when Mini is up.
 - Metrics: `items_processed` inflated 2× until cleanup. Dashboard queries: filter by `host_pro_or_mini`.
@@ -105,6 +116,7 @@ _Discovered: 2026-05-06 22:00 WITA · Patched same day, branch `fix/nlm-feeder-r
 Before fix (22:30 WITA): NB-INTEL-Immigration 61 sources, last updated 2026-05-04. After fix (23:00 WITA): +61 total sources across all 5 NB-INTEL notebooks.
 
 **ANTIBODY (shipped):**
+
 1. `base_worker.redis_cmd` reads `GARUDA_REDIS_HOST` + `GARUDA_REDIS_PORT` env vars; prepends `-h $host` to every redis-cli call. Unset → localhost (backward compat).
 2. `KnowledgeBase.__init__` enables WAL + `synchronous=NORMAL` — lock contention waits on busy_timeout instead of crashing.
 3. 9 new tests (`test_redis_host_override.py` + `test_knowledge_resilience.py`).
@@ -112,6 +124,7 @@ Before fix (22:30 WITA): NB-INTEL-Immigration 61 sources, last updated 2026-05-0
 5. Pro plist gains `GARUDA_REDIS_HOST=100.93.236.6` in `EnvironmentVariables`. Reloaded via `launchctl bootout + bootstrap`.
 
 **GOTCHA:**
+
 - `redis-cli` does NOT honor `GARUDA_REDIS_HOST` — env var is ONLY for the Python wrapper. Debug: use `redis-cli -h $host` explicitly; verify via `INFO server | grep run_id` (Pro and Mini each have unique `run_id`).
 - Env-var override only takes effect after `fix/nlm-feeder-resurrect-2026-05-06` merges to main; until then, hourly cron still reads Pro localhost.
 - Future cross-host consumers MUST set `GARUDA_REDIS_HOST=100.93.236.6` — no auto-discovery.
@@ -125,16 +138,19 @@ Before fix (22:30 WITA): NB-INTEL-Immigration 61 sources, last updated 2026-05-0
 _Discovered: 2026-05-02 — 3 hotfix PRs (#423, #424) chained on PR #422 because tests were green but live endpoints failed · Severity: P1_
 
 **TRAUMA:** PR #422 added `GET /api/channels/{name}/health` router. Unit tests 4/4 green. On prod:
+
 1. `401` — `HybridAuthMiddleware` blocked path not in `PUBLIC_ENDPOINTS`. Test `_build_app_with_db_pool()` mounted router only, not middleware. Fixed by #423: added 4 entries to `_INFRA` group in `public_endpoints.py`.
 2. `404` — router added to `router_manifest.py` but `router_registration.py` uses explicit imports, not the manifest. Fixed by #424: added `from backend.app.routers import channel_health` (×2) + `api.include_router(channel_health.router)` (×2).
 3. After #424: 200 ✅. Timeline: 11:30 UTC (401) → 12:50 UTC (404) → 14:25 UTC (200).
 
 **ANTIBODY (proposed, NOT yet implemented):**
+
 1. Integration test `tests/integration/test_endpoints_reachable.py` — mount full `create_app()` via `httpx.AsyncClient`, GET every route; `404` → fail; `/health` returning `401` → flag for PUBLIC_ENDPOINTS review.
 2. Manifest-vs-registration parity test `tests/setup/test_manifest_parity.py` — assert every `RouterEntry(name=X)` for `_API`/`_BOTH` has a matching `api.include_router(X.router)` in both include functions.
 3. Extend `tests/test_public_endpoints_registry.py`: routes with `/health`/`/heartbeat` NOT in PUBLIC_ENDPOINTS → warning (not failure); silence with `# health-private: <reason>`.
 
 **GOTCHA:**
+
 - `_build_app_with_db_pool()` is intentionally minimal (no middleware) — correct for unit tests. Bug is absence of complementary integration layer.
 - PR #422 is a regression of PRs #54/#55/#60 (same scar class). The manifest was created to prevent this but only catches symmetric include-function drift, not "manifest entry with zero include_router calls".
 - `HybridAuthMiddleware.__init__` logs `Public Endpoints: N` at startup — grep-able sanity check on Fly machines.
@@ -147,10 +163,10 @@ _Discovered: 2026-04-29 21:42 WITA (incident #1) and 22:30 WITA (incident #2) ·
 
 **TRAUMA:** Long-running sessions accumulate untracked files before commit threshold. Sibling processes (`nuz-sync`, parallel claude sessions, `agent-*` subagents `--dangerously-skip-permissions`) do `git stash` + `git checkout` automatically. `git stash` without `-u` does NOT stash untracked files → silent loss.
 
-| Incident | Time | Producer | Lost | Recovery |
-|---|---|---|---|---|
-| #1 | 21:42 | `nuz-sync` watchdog auto-pull | 2 design docs ~17KB (never `git add`-ed) | Reconstructed from conversation context only |
-| #2 | 22:30 | Parallel Claude session checking out `nbe/resend-fallback-team-templates` | 4 `.py` files ~26KB | Recovered from `.git/objects` dangling blobs (had been `git add`-ed) |
+| Incident | Time  | Producer                                                                  | Lost                                     | Recovery                                                             |
+| -------- | ----- | ------------------------------------------------------------------------- | ---------------------------------------- | -------------------------------------------------------------------- |
+| #1       | 21:42 | `nuz-sync` watchdog auto-pull                                             | 2 design docs ~17KB (never `git add`-ed) | Reconstructed from conversation context only                         |
+| #2       | 22:30 | Parallel Claude session checking out `nbe/resend-fallback-team-templates` | 4 `.py` files ~26KB                      | Recovered from `.git/objects` dangling blobs (had been `git add`-ed) |
 
 Incident #2 key sequence: Session-A wrote 4 untracked `.py` + 18/18 tests passing → 22:30:03 sibling stashes (tracked only) + checks out main → 22:30:06 checks out `nbe/*` → 4 files silently dropped → 22:32 Session-A diagnoses via `git fsck --dangling` → recovers to `/tmp/innervation-recovery-*/` → WIP commit `3980a1403`.
 
@@ -171,6 +187,7 @@ Incident #2 key sequence: Session-A wrote 4 untracked `.py` + 18/18 tests passin
 **ANTIBODY (TBD):** Identify producer for 22:30 switch (suspects: PID 79949, PID 42807, wave-2/3 team agents). `nuz-sync` explicitly NOT enrolled in `organs_registry.yaml` — manual restart only until producer identified.
 
 **GOTCHA:**
+
 - A stash labeled `temp-<branch>` does NOT guarantee it contains all WIP — only tracked-dirty files. Always cross-check with `git fsck --dangling`.
 - Files written via `Write` tool but never `git add`-ed have NO blob in `.git/objects` → unrecoverable via fsck. Only `git add`-ed content is recoverable.
 - `/tmp/innervation-recovery-*` dirs are volatile (cleared on macOS reboot) — commit within minutes.
@@ -199,12 +216,14 @@ _Discovered: 2026-04-29 audit · Severity: P0 · Phase 1 SHIPPED PR #342 (`00620
 **TRAUMA:** `SYMBIOSIS.md` Law 4 promises "Redis Streams + consumer groups". Reality: EventBus uses **PostgreSQL LISTEN/NOTIFY** (`PG_CHANNEL_MAP`: `practice_changed`, `client_changed`, `compliance_alert`, `lkpm_ingest_completed`, `war_room_event`, `intel_event`, `cognitive_event`). When PG listener disconnects (5s window), every NOTIFY is **silently lost** — pg_notify is volatile, no queue.
 
 **ANTIBODY phase 1 (PR #342):**
+
 - New `events_outbox` table (migration 144). `outbox.py` exposes `publish`/`acknowledge`/`replay_unconsumed`/`prune_consumed`. `publish()` writes to outbox + fires `pg_notify($1, $2)` parameterised (**NOT** `quote_ident` — wrong for `pg_notify(text, text)`). `_outbox_id` injected into NOTIFY payload for idempotent ack.
 - `EventBus._replay_outbox_on_reconnect` called after `add_listener`, before keep-alive loop.
 - 20 unit tests (`test_outbox.py` + `test_event_bus_replay.py`).
 - Phase-1 limit: `replay_unconsumed` auto-acks immediately after `dispatch_fn` returns; handler crash = event consumed. Phase 2 fixes.
 
 **ANTIBODY phase 2 (feat/p0-2-fase2-callsite-refactor):**
+
 - `EventBus.emit_pg` delegates to `outbox.publish` (local import, avoids circular init). Any future `emit_pg` call auto-writes to `events_outbox`.
 - Migration `146_eventbus_triggers_use_outbox.sql`: rewrites 6 trigger functions (`notify_practice_change`, `notify_client_change`, `notify_compliance_alert`, `notify_war_room_event`, `notify_intel_event`, `notify_cognitive_event`) to `INSERT INTO events_outbox … RETURNING id` + `pg_notify(channel, payload||{_outbox_id})` inside the user transaction. Idempotent (`CREATE OR REPLACE`). ROLLBACK section restores pre-146 bodies.
 - 12 new tests in `test_outbox_callsite_integration.py`.
@@ -215,6 +234,7 @@ _Discovered: 2026-04-29 audit · Severity: P0 · Phase 1 SHIPPED PR #342 (`00620
 **Decision:** kept PG LISTEN/NOTIFY + Outbox. SYMBIOSIS.md doc update pending (low priority — code-as-truth). Redis Streams migration rejected as too risky for an audit fix.
 
 **GOTCHA:**
+
 - Migration 146 trigger wraps INSERT+NOTIFY in the SAME user transaction — rollback loses both (correct MVCC behavior). Disconnect after commit → outbox row stays unconsumed → replayed on reconnect.
 - Consumers MUST be idempotent on `_outbox_id`. Phase 3 adds per-handler ack; until then `replay_unconsumed` auto-acks on `dispatch_fn` return.
 - **`schema_migrations` is the active runner table (88 rows); `_schema_versions` is legacy (6 rows).** Future agents: always query `schema_migrations` to check migration status.
@@ -259,6 +279,7 @@ _Discovered: 2026-04-29 ~15:30Z during P0-3 audit · Severity: P0 · Recovery au
 On-disk corruption was masked (launchd serves cached boot config); **reboot would have lost 51 services** including `com.cell.organism`, `com.balizero.nlm-bridge`, all WR2 producers, all key cron jobs.
 
 **Secrets leaked** into world-readable (0644) plist files:
+
 - `post-publish-poller` → `GH_TOKEN`, `FIREWORKS_API_KEY`, `SCRAPER_API_KEY`
 - `post-publish-webhook` → `POST_PUBLISH_SECRET`
 - `cell.organism` → `GOOGLE_API_KEY`, `CELL_TELEGRAM_BOT_TOKEN`, `FLY_API_TOKEN`, `CELL_DATABASE_URL`
@@ -269,6 +290,7 @@ Rotation plan: `~/p0-3-recovery/secrets_rotation_plan.md`.
 **ANTIBODY (recovery):** `~/p0-3-recovery/reconstruct_plist.py` parses `launchctl print gui/501/<label>` (in-memory config) and emits valid plist XML via `plistlib.dump`, validated with `plutil -lint`, atomic mv. 53/54 recovered in ~30s, zero service flap.
 
 Recovery command:
+
 ```bash
 python3 ~/p0-3-recovery/reconstruct_plist.py && \
 for src in ~/p0-3-recovery/plist_reconstructed/com.*.plist; do
@@ -278,12 +300,14 @@ done
 ```
 
 **ANTIBODY (prevention):**
+
 1. **Filesystem hardening**: 5 plist with leaked secrets → `0400`; 49 remaining → `0444`. To edit: `chmod u+w "$plist"`, edit, restore mode.
 2. **fs_usage audit** at `~/p0-3-recovery/fs_usage_trap/capture-*.log` — captures `WrData`/`O_TRUNC`/`truncate` on project plist. Check: `grep -E "WrData|O_TRUNC|truncate" ~/p0-3-recovery/fs_usage_trap/capture-*.log`. Stop: `sudo pkill -f "fs_usage -w -f filesys"`.
 
 56-minute recurrence hypothesis **refuted** — no third wave by 18:44 WITA. Most likely: one-shot AI agent action (Antigravity/Cline/parallel Claude Code via filesystem MCP).
 
 **GOTCHA:**
+
 - Producer targets only launchd-loaded services. Unbootstrapped plist = safe canary, useless production state.
 - `plutil -lint` fails on corrupted plist but launchd still serves cached boot XML. Don't equate lint-OK with service-OK.
 - Most likely candidates: (a) parallel AI-agent session via filesystem MCP (Antigravity network activity at 15:09:05-13 supports this); (b) unknown binary with `plutil -convert` semantics; (c) launchd race from simultaneous `launchctl list`. 56-min cycle hypothesis refuted.
