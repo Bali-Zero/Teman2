@@ -285,6 +285,62 @@ None)` falls through to `default_model_for_harness("deepseek")` which
 raises `KeyError` because `_DEFAULT_MODELS` lacks the key. Documented
 inline in `agent-library/.evoskill/config.toml` header.
 
+## Gate 8 (Phase 1 Task #26) — LaunchAgent plist + wrapper smoke
+
+The plist `infra/launchd/com.balizero.agent-library-evolver.weekly.plist`
+is the git-tracked source of truth per cicatrix scar 2026-04-29 (plist
+corruption — the only safe reload is to overwrite from repo).
+
+```bash
+# 1) Plist syntax valid
+plutil -lint infra/launchd/com.balizero.agent-library-evolver.weekly.plist
+# Expected: ... OK
+
+# 2) Install + bootstrap (only after this PR merges to main)
+cp infra/launchd/com.balizero.agent-library-evolver.weekly.plist \
+   ~/Library/LaunchAgents/
+# (if previously loaded — Phase 0 had a stub plist already loaded —
+# bootout first to pick up the new env vars REPO_ROOT + TELEMETRY_DIR)
+launchctl bootout gui/$(id -u) \
+   ~/Library/LaunchAgents/com.balizero.agent-library-evolver.weekly.plist \
+   2>/dev/null || true
+launchctl bootstrap gui/$(id -u) \
+   ~/Library/LaunchAgents/com.balizero.agent-library-evolver.weekly.plist
+
+# 3) Verify loaded
+launchctl list | grep agent-library-evolver
+# Expected: "-  0  com.balizero.agent-library-evolver.weekly"
+#           (status 0 = never run yet; will populate after first kickstart)
+
+# 4) Smoke first run with BUDGET cap $0.10 (no real DeepSeek call yet —
+# the wrapper exits dry-run-style if EVOSKILL_DRY_RUN=1 OR if --dry-run
+# flag is passed via wrapper args — see scripts/agent-library-evolver-run.sh).
+# To smoke against real DeepSeek API at low budget:
+launchctl setenv BUDGET_USD 0.10
+launchctl kickstart -k gui/$(id -u)/com.balizero.agent-library-evolver.weekly
+# Then watch:
+tail -f ~/logs/agent-library-evolver.err.log
+# Expected: secrets validated → context gathered → redacted → evoskill
+# run → telemetry parsed → ≤ $0.10 → evidence/entailment gates → Telegram
+# alert. Exit 0 if 0 proposals (clean), exit 5 if budget exceeded.
+
+# 5) Dry-run smoke (no real API call, no $) — preferred for PR review
+bash scripts/agent-library-evolver-run.sh --dry-run
+# Expected: ~1s exit 0 with context gathered + redacted, evoskill run +
+# gates skipped.
+```
+
+**Verified on this branch 2026-05-19:**
+
+- `plutil -lint`: OK
+- `bash -n scripts/agent-library-evolver-run.sh`: syntax OK
+- `--dry-run` end-to-end: ~1s, 49893 bytes context-raw, 49942 bytes
+  redacted, 3/3 fail-closed gates verified (`/dev/null` rejected,
+  missing file rejected, missing `DEEPSEEK_API_KEY` rejected).
+- `launchctl kickstart` real-budget smoke: DEFERRED to post-merge
+  bootstrap (Phase 1 PR ships the source of truth; bootstrap on Pro
+  happens after `gh pr merge`).
+
 ## Known limitations (intentional — Phase 1 scope)
 
 | Limitation                                                                                 | Why deferred                                                                                                                                                                                                                                       | Phase that addresses it |
