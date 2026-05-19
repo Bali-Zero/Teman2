@@ -6,7 +6,7 @@ Veo API is the SINGLE cloud touchpoint in the WR3 hot path. All orchestration
 happens locally (Symbiosis Law 6).
 
 Settings:
-  endpoint        WR3_FLOWKIT_ENDPOINT (default http://127.0.0.1:9412)
+  endpoint        WR3_FLOWKIT_ENDPOINT (default http://127.0.0.1:8100)
   plan            "pro" (10 cr / clip 720x1280 9:16 8s)
   watchdog        300s wall-clock per clip (Symbiosis Law 4 — degrade-loud on timeout)
   retry policy    up to 2 retries with strengthened prompt; 3rd fail → b-roll-curator fallback
@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin
 
-DEFAULT_ENDPOINT = os.environ.get("WR3_FLOWKIT_ENDPOINT", "http://127.0.0.1:9412")
+DEFAULT_ENDPOINT = os.environ.get("WR3_FLOWKIT_ENDPOINT", "http://127.0.0.1:8100")
 DEFAULT_PLAN = os.environ.get("WR3_FLOWKIT_PLAN", "pro")
 PER_CLIP_TIMEOUT_S = int(os.environ.get("WR3_FLOWKIT_TIMEOUT_S", "300"))
 
