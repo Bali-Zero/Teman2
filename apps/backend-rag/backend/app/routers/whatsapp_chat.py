@@ -23,7 +23,7 @@ from typing import Any
 
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request
 from fastapi.responses import PlainTextResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.app.core.config import settings
 from backend.services.integrations.telegram_bot_service import telegram_bot
@@ -46,14 +46,13 @@ router = APIRouter(prefix="/webhook/whatsapp", tags=["whatsapp"])
 class WhatsAppMessage(BaseModel):
     """WhatsApp message structure."""
 
-    from_: str  # Sender phone
+    from_: str = Field(..., alias="from")  # Sender phone
     id: str  # Message ID
     timestamp: str
     type: str  # text, image, audio, etc.
     text: dict[str, Any] | None = None
 
-    class Config:
-        fields = {"from_": "from"}
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class WhatsAppChange(BaseModel):

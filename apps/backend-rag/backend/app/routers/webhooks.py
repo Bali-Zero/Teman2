@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.dependencies import get_db
@@ -38,8 +38,7 @@ class OpenClawWebhookPayload(BaseModel):
     media_type: str | None = Field(None, description="Media type if present")
     metadata: OpenClawMetadata | None = Field(None, description="Additional metadata")
 
-    class Config:
-        populate_by_name = True
+    model_config = ConfigDict(populate_by_name=True)
 
 
 @router.post(

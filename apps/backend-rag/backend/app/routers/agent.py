@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from backend.app.agents.graph import invoke_rag_workflow
 from backend.app.dependencies import get_current_user
@@ -44,8 +44,8 @@ class AgentInvokeRequest(BaseModel):
         description="Optional metadata (user_id, session_id, etc.)",
     )
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "question": "What are the requirements for a KITAS visa in Bali?",
                 "metadata": {
@@ -54,7 +54,8 @@ class AgentInvokeRequest(BaseModel):
                     "language": "en",
                 },
             },
-        }
+        },
+    )
 
 
 class AgentInvokeResponse(BaseModel):
@@ -80,8 +81,8 @@ class AgentInvokeResponse(BaseModel):
         description="List of errors encountered (if any)",
     )
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "success": True,
                 "question": "What are the requirements for a KITAS visa in Bali?",
@@ -92,7 +93,8 @@ class AgentInvokeResponse(BaseModel):
                 "metadata": {"user_id": "user_123"},
                 "errors": None,
             },
-        }
+        },
+    )
 
 
 class AgentHealthResponse(BaseModel):
