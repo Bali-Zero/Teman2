@@ -267,6 +267,20 @@ def evaluate_proposal(skill_md: Path, config: EvidenceConfig) -> ProposalReport:
         )
         return report
 
+    # Codex panel R5 BLOCKING #5: strict gate — if ANY matched citation
+    # failed verification, reject the whole proposal. Mixing valid +
+    # invalid citations weakens the deterministic anti-hallucination
+    # gate (the proposer could pad a real citation with bogus ones to
+    # ride through). Fail-closed default.
+    if report.failed_refs:
+        report.reject_reason = (
+            f"{report.verified_refs} verified refs PASS but "
+            f"{len(report.failed_refs)} other citations failed verification — "
+            f"strict gate rejects mixed valid+invalid citation sets "
+            f"(first failure: {report.failed_refs[0][1][:120]})"
+        )
+        return report
+
     report.passed = True
     return report
 
