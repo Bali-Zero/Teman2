@@ -249,7 +249,7 @@ async def instagram_webhook(request: Request) -> dict[str, Any]:
                     dedup_key=mid,
                     payload=raw_payload,
                 )
-        except Exception as exc:  # noqa: BLE001 — never block ack
+        except Exception as exc:
             logger.warning(
                 "IG Webhook: persist failed (mid=%s): %s — falling back to synchronous-only path",
                 mid,

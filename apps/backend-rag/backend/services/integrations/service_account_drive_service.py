@@ -84,7 +84,7 @@ class ServiceAccountDriveService:
         self,
         name: str,
         parent_id: str | None = None,
-        user_id: str | None = None,  # noqa: ARG002  # Kept for API compatibility
+        user_id: str | None = None,  # Kept for API compatibility
     ) -> dict[str, Any]:
         """Create a new folder in Google Drive."""
         if not parent_id:
@@ -127,7 +127,7 @@ class ServiceAccountDriveService:
     async def get_folder_structure(
         self,
         root_folder_id: str,
-        user_id: str | None = None,  # noqa: ARG002  # Kept for API compatibility
+        user_id: str | None = None,  # Kept for API compatibility
     ) -> dict[str, Any]:
         """Get folder structure (list subfolders and stats)."""
         # Get root folder info
@@ -183,7 +183,7 @@ class ServiceAccountDriveService:
         file_content: bytes,
         file_name: str,
         mime_type: str | None = None,
-        user_id: str | None = None,  # noqa: ARG002  # Kept for API compatibility
+        user_id: str | None = None,  # Kept for API compatibility
     ) -> dict[str, Any]:
         """Upload a file to Google Drive folder."""
         if not mime_type:

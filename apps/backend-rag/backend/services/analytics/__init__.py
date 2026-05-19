@@ -19,16 +19,16 @@ from .team_timesheet_service import (
 from .workload_balance import WorkloadBalanceService
 
 __all__ = [
-    "PatternAnalyzerService",
-    "ProductivityScorerService",
-    "BurnoutDetectorService",
-    "PerformanceTrendService",
-    "WorkloadBalanceService",
-    "OptimalHoursService",
-    "TeamInsightsService",
     "AnalyticsAggregator",
+    "BurnoutDetectorService",
+    "OptimalHoursService",
+    "PatternAnalyzerService",
+    "PerformanceTrendService",
+    "ProductivityScorerService",
     "TeamAnalyticsService",
+    "TeamInsightsService",
     "TeamTimesheetService",
+    "WorkloadBalanceService",
     "get_timesheet_service",
     "init_timesheet_service",
 ]

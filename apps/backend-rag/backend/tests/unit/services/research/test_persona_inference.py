@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+
 from backend.services.research.persona_inference import (
     Persona,
     PersonaInferenceAgent,
@@ -12,30 +13,30 @@ from backend.services.research.persona_inference import (
 
 def _complete_persona_kwargs() -> dict:
     """Helper: kwargs for a Persona that passes Gate 4."""
-    return dict(
-        slug="expat_boomer_retiree",
-        market_segment="expat",
-        age_range="55-70",
-        geo_origin="EU + North America",
-        gender_split="50/50",
-        profession_past="middle manager, doctor, lawyer",
-        wealth_level="300k-1M USD liquid",
-        primary_goal="retire in Bali legally",
-        pain_points=["KITAS renewal complexity", "tax residency confusion", "healthcare"],
-        platforms_used=["facebook_groups", "instagram", "newsletter"],
-        content_preferences=["long form", "case studies"],
-        language_primary="english",
-        language_secondary=["italian", "german"],
-        decision_journey_stages=["awareness", "research", "consideration", "decision"],
-        tone_resonance={"pedagogico": 0.4, "analitico": 0.3, "rituale": 0.2, "tecnico": 0.1},
-        hook_patterns_that_work=["story", "question"],
-        verbatim_quotes=[
+    return {
+        "slug": "expat_boomer_retiree",
+        "market_segment": "expat",
+        "age_range": "55-70",
+        "geo_origin": "EU + North America",
+        "gender_split": "50/50",
+        "profession_past": "middle manager, doctor, lawyer",
+        "wealth_level": "300k-1M USD liquid",
+        "primary_goal": "retire in Bali legally",
+        "pain_points": ["KITAS renewal complexity", "tax residency confusion", "healthcare"],
+        "platforms_used": ["facebook_groups", "instagram", "newsletter"],
+        "content_preferences": ["long form", "case studies"],
+        "language_primary": "english",
+        "language_secondary": ["italian", "german"],
+        "decision_journey_stages": ["awareness", "research", "consideration", "decision"],
+        "tone_resonance": {"pedagogico": 0.4, "analitico": 0.3, "rituale": 0.2, "tecnico": 0.1},
+        "hook_patterns_that_work": ["story", "question"],
+        "verbatim_quotes": [
             "I'm 62, wife 58, we want a 10-year plan...",
             "My pension from Germany, does Indonesia tax it?",
             "I keep reading conflicting answers about KITAS 2...",
         ],
-        trust_signals=["google_reviews", "referral_chain", "press_mentions"],
-    )
+        "trust_signals": ["google_reviews", "referral_chain", "press_mentions"],
+    }
 
 
 def test_persona_validates_when_complete():

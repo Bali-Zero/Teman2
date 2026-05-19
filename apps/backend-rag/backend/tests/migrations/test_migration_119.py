@@ -22,7 +22,6 @@ import pytest
 
 from backend.migrations.migration_119_partners import apply, rollback
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

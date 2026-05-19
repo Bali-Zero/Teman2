@@ -14,8 +14,8 @@ from fastapi import Request
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "get_orchestrator",
     "_agentic_rag_orchestrator",
+    "get_orchestrator",
 ]
 
 # Global orchestrator instance (lazy-loaded on first request)

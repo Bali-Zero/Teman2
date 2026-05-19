@@ -145,7 +145,7 @@ class TrendHunterOrchestrator:
             try:
                 await self._persist(sig)
                 summary.persisted += 1
-            except Exception as exc:  # noqa: BLE001 — never abort the cycle
+            except Exception as exc:
                 self.logger.warning(
                     "persist failed for %s: %s",
                     sig.topic[:80],

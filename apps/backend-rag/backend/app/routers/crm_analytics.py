@@ -151,7 +151,7 @@ async def get_client_overview(
                 {where_clause}
                 {"AND" if where_clause else "WHERE"} created_at >= $2
             """
-            month_params = params + [month_start] if params else [month_start]
+            month_params = [*params, month_start] if params else [month_start]
             new_this_month = await conn.fetchval(new_month_query, *month_params) or 0
 
             # New this week
@@ -164,7 +164,7 @@ async def get_client_overview(
                 {where_clause}
                 {"AND" if where_clause else "WHERE"} created_at >= $2
             """
-            week_params = params + [week_start] if params else [week_start]
+            week_params = [*params, week_start] if params else [week_start]
             new_this_week = await conn.fetchval(new_week_query, *week_params) or 0
 
             # By status
@@ -334,7 +334,7 @@ async def get_revenue_summary(
                     {"AND" if where_clause else "WHERE"} p.created_at >= $2 AND p.created_at < $3
                 """
                 month_params = (
-                    params + [month_start, month_end] if params else [month_start, month_end]
+                    [*params, month_start, month_end] if params else [month_start, month_end]
                 )
                 month_row = await conn.fetchrow(month_query, *month_params)
 
@@ -467,7 +467,7 @@ async def get_client_trend(
                     {"AND" if where_clause else "WHERE"} created_at >= $2 AND created_at < $3
                 """
                 new_params = (
-                    client_params + [month_start, month_end]
+                    [*client_params, month_start, month_end]
                     if client_params
                     else [month_start, month_end]
                 )
@@ -482,7 +482,7 @@ async def get_client_trend(
                     {"AND" if where_clause else "WHERE"} p.created_at >= $2 AND p.created_at < $3
                 """
                 rev_params = (
-                    practice_params + [month_start, month_end]
+                    [*practice_params, month_start, month_end]
                     if practice_params
                     else [month_start, month_end]
                 )

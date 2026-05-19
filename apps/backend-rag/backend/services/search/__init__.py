@@ -6,8 +6,8 @@ from .search_service import SearchService
 from .semantic_cache import SemanticCache
 
 __all__ = [
-    "SearchService",
-    "build_search_filter",
-    "SemanticCache",
     "CitationService",
+    "SearchService",
+    "SemanticCache",
+    "build_search_filter",
 ]

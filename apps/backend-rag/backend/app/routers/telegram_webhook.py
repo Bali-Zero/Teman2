@@ -283,7 +283,7 @@ async def telegram_webhook(
                     dedup_key=f"telegram-{update_id}",
                     payload=update,
                 )
-            except Exception as exc:  # noqa: BLE001 — never block ack
+            except Exception as exc:
                 logger.warning(
                     "Telegram webhook: persist failed (update_id=%s): %s — "
                     "falling back to synchronous-only path",
@@ -324,7 +324,7 @@ async def telegram_webhook(
                             "update_id": update_id,
                             "type": "fad_callback",
                         }
-                except Exception as exc:  # noqa: BLE001 — never block ack
+                except Exception as exc:
                     logger.warning(
                         "FAD callback handler crashed: %s (data=%s)",
                         exc,

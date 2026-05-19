@@ -173,7 +173,7 @@ class AutonomousResearchService:
             Collection name or None if no more to try
         """
         # Use query router with fallback chain
-        primary, confidence, all_collections = self.router.route_with_confidence(
+        _primary, _confidence, all_collections = self.router.route_with_confidence(
             query,
             return_fallbacks=True,
         )

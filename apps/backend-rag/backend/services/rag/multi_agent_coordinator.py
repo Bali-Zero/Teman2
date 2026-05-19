@@ -23,11 +23,10 @@ import time
 from typing import Annotated, Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
+from prometheus_client import Counter, Histogram
 
 from backend.services.pricing.pricing_service import PricingService, get_pricing_service
 from backend.services.rag.kg_enhanced_retrieval import KGEnhancedRetrieval
-
-from prometheus_client import Counter, Histogram
 
 logger = logging.getLogger(__name__)
 

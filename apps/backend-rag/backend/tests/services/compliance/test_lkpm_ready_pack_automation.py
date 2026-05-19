@@ -15,10 +15,11 @@ If lkpm_receipts is missing the test creates it inline via conftest.
 
 from __future__ import annotations
 
+from unittest.mock import AsyncMock, MagicMock
+
+import asyncpg
 import pytest
 import pytest_asyncio
-import asyncpg
-from unittest.mock import AsyncMock, MagicMock
 
 from backend.services.compliance.exceptions import LkpmValidationError
 from backend.services.compliance.lkpm_ready_pack import LkpmReadyPack
@@ -193,7 +194,7 @@ def _make_brevo(success: bool = True) -> MagicMock:
 async def test_happy_path_returns_hashes_and_drive_url(db_tx, client_row: dict) -> None:
     """generate() with real DB, mock Drive + Brevo returns drive_url + sha256 hashes."""
     conn, pool = db_tx
-    report_id = await _insert_complete_report(conn, client_row["id"])
+    await _insert_complete_report(conn, client_row["id"])
 
     drive = _make_drive(success=True)
     brevo = _make_brevo(success=True)

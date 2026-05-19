@@ -20,5 +20,5 @@ class CacheCheck:
         try:
             self.redis_client.ping()
             return CheckResult(healthy=True, detail={"configured": True})
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return CheckResult(healthy=False, error=f"{type(exc).__name__}: {exc}")

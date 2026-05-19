@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 import json
-import pytest
 from pathlib import Path
+
+import pytest
 
 from backend.services.war_room.editorial_config import (
     EditorialConfig,

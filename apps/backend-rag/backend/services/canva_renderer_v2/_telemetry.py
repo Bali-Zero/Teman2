@@ -66,5 +66,5 @@ def log_telemetry(
         }
         with open(path, "a") as f:
             f.write(json.dumps(record) + "\n")
-    except Exception as e:  # noqa: BLE001 — telemetry must never break run
+    except Exception as e:
         logger.warning("Telemetry write failed (swallowed): %s", e)

@@ -16,7 +16,7 @@ from __future__ import annotations
 import logging
 import os
 from datetime import datetime, timezone
-from typing import Any, Optional
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -58,7 +58,7 @@ def is_enabled() -> bool:
 async def search_nlm_shadow_claims(
     query_vector: list[float],
     *,
-    domain: Optional[str] = None,
+    domain: str | None = None,
     top_k: int = _DEFAULT_TOP_K,
     min_confidence: float = _DEFAULT_MIN_CONFIDENCE,
     qdrant_client: Any = None,

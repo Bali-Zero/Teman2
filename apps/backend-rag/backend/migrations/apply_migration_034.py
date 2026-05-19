@@ -18,12 +18,6 @@ def apply_migration():
 
     database_url = settings.database_url
     if not database_url:
-        print("❌ DATABASE_URL environment variable not set")
-        print()
-        print("To run this migration:")
-        print("1. Get your DATABASE_URL from Fly.io dashboard or .env")
-        print("2. Run: export DATABASE_URL='postgresql://...'")
-        print("3. Run: python apply_migration_034.py")
         return False
 
     # Read migration SQL
@@ -32,18 +26,8 @@ def apply_migration():
     )
 
     if not migration_file.exists():
-        print(f"❌ Migration file not found: {migration_file}")
         return False
 
-    print("=" * 70)
-    print("ZANTARA - Company-Centric CRM Migration")
-    print("=" * 70)
-    print()
-    print(f"📁 Migration file: {migration_file.name}")
-    print(
-        f"🗄️  Target database: {database_url.split('@')[1] if '@' in database_url else 'PostgreSQL'}",
-    )
-    print()
 
     # Read SQL
     with open(migration_file, encoding="utf-8") as f:
@@ -51,11 +35,9 @@ def apply_migration():
 
     # Connect and execute
     try:
-        print("🔌 Connecting to PostgreSQL...")
         conn = psycopg2.connect(database_url)
         cursor = conn.cursor()
 
-        print("⚙️  Executing migration...")
         cursor.execute(sql)
 
         conn.commit()
@@ -90,17 +72,11 @@ def apply_migration():
         )
         indexes = cursor.fetchall()
 
-        print()
-        print("✅ Migration completed successfully!")
-        print()
-        print(f"📊 Created {len(tables)} tables:")
-        for table in tables:
-            print(f"   ✓ {table[0]}")
+        for _table in tables:
+            pass
 
-        print()
-        print(f"📈 Created {len(indexes)} indexes:")
-        for idx in indexes:
-            print(f"   ✓ {idx[0]}")
+        for _idx in indexes:
+            pass
 
         # Show views
         cursor.execute(
@@ -115,31 +91,18 @@ def apply_migration():
         views = cursor.fetchall()
 
         if views:
-            print()
-            print(f"👁️  Created {len(views)} views:")
-            for view in views:
-                print(f"   ✓ {view[0]}")
+            for _view in views:
+                pass
 
         cursor.close()
         conn.close()
 
-        print()
-        print("=" * 70)
-        print("🎉 Company-Centric CRM is ready!")
-        print()
-        print("Next steps:")
-        print("  1. Deploy the backend to Fly.io")
-        print("  2. Add Company and Tax tabs to the frontend")
-        print("  3. Start linking clients to companies")
-        print("=" * 70)
 
         return True
 
-    except psycopg2.Error as e:
-        print(f"\n❌ Database error: {e}")
+    except psycopg2.Error:
         return False
-    except Exception as e:
-        print(f"\n❌ Error: {e}")
+    except Exception:
         import traceback
 
         traceback.print_exc()

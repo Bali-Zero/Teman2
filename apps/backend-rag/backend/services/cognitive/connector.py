@@ -130,7 +130,7 @@ class ConnectorOrchestrator:
 
         try:
             dossiers = await self._load_recent_dossiers()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             result.errors.append(f"load_dossiers: {type(exc).__name__}: {exc}")
             return result
 
@@ -175,7 +175,7 @@ class ConnectorOrchestrator:
             try:
                 recent = await self.cognitive_repo.recent_theses(days=1)
                 result.inserted_ids = [t.id for t in recent[: result.theses_inserted]]
-            except Exception:  # noqa: BLE001
+            except Exception:
                 pass
 
         return result
@@ -234,7 +234,7 @@ class ConnectorOrchestrator:
                 valid_sources,
                 days=IDEMPOTENCY_LOOKBACK_DAYS,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self.logger.debug("idempotency check failed: %s", exc)
             already = False
         if already:
@@ -251,7 +251,7 @@ class ConnectorOrchestrator:
         )
         try:
             await self.cognitive_repo.insert_thesis(payload)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self.logger.warning("insert_thesis failed: %s", exc)
             return "rejected"
         return "inserted"

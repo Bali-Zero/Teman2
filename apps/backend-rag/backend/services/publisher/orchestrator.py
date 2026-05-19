@@ -60,7 +60,7 @@ def build_db_kill_switch_check(
                     "SELECT value FROM system_settings WHERE key = $1",
                     KILL_SWITCH_SETTING_KEY,
                 )
-        except Exception as exc:  # noqa: BLE001 — fail closed
+        except Exception as exc:
             logger.warning(
                 "wr2 publisher kill-switch read failed (%s): defaulting to OFF",
                 exc,
@@ -193,7 +193,7 @@ class PublisherOrchestrator:
             total_attempts = attempt
             try:
                 result = await publisher.publish(draft)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 self.logger.info(
                     "publisher %s raised on attempt %d: %s",
                     platform_key,
@@ -246,7 +246,7 @@ class PublisherOrchestrator:
                         final_text=pr.final_text,
                     )
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 # recording failure must NOT roll back the publication
                 self.logger.warning(
                     "failed to record war_room_post for %s: %s",

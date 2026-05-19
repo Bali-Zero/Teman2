@@ -10,7 +10,6 @@ from backend.services.ingestion.scraper_normalizer import (
     ScraperDataNormalizer,
 )
 
-
 # ── NormalizationConfig tests ────────────────────────────────────
 
 

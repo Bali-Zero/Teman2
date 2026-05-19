@@ -34,17 +34,17 @@ def _source(
     source_id: str = "test_src",
     **overrides,
 ) -> SourceConfig:
-    defaults = dict(
-        source_id=source_id,
-        name="Test Source",
-        base_url="https://example.go.id",
-        source_type=SourceType.GOVERNMENT_SITE,
-        search_paths=["/"],
-        selectors={},
-        rate_limit_delay=0.0,  # tests don't need real sleeps
-        timeout=5,
-        max_retries=2,
-    )
+    defaults = {
+        "source_id": source_id,
+        "name": "Test Source",
+        "base_url": "https://example.go.id",
+        "source_type": SourceType.GOVERNMENT_SITE,
+        "search_paths": ["/"],
+        "selectors": {},
+        "rate_limit_delay": 0.0,  # tests don't need real sleeps
+        "timeout": 5,
+        "max_retries": 2,
+    }
     defaults.update(overrides)
     return SourceConfig(**defaults)
 

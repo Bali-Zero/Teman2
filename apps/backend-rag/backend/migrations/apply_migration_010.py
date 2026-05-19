@@ -13,7 +13,6 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 try:
     import asyncpg
 except ImportError:
-    print("❌ asyncpg not installed. Install with: pip install asyncpg")
     sys.exit(1)
 
 
@@ -24,7 +23,6 @@ async def apply_migration():
     database_url = settings.database_url
 
     if not database_url:
-        print("❌ DATABASE_URL not set")
         return False
 
     # Read migration SQL
@@ -33,18 +31,14 @@ async def apply_migration():
     )
 
     if not migration_file.exists():
-        print(f"❌ Migration file not found: {migration_file}")
         return False
 
-    print(f"📁 Reading {migration_file.name}...")
     with open(migration_file) as f:
         sql = f.read()
 
-    print("🔌 Connecting to database...")
     try:
         conn = await asyncpg.connect(database_url)
 
-        print("⚙️  Executing migration...")
         await conn.execute(sql)
 
         # Verify columns added
@@ -62,11 +56,8 @@ async def apply_migration():
 
         columns = await conn.fetch(columns_query)
 
-        print("\n✅ Migration completed successfully!")
-        print("\n📊 Verified columns in team_members table:")
         for col in columns:
-            nullable = "NULL" if col["is_nullable"] == "YES" else "NOT NULL"
-            print(f"   ✓ {col['column_name']}: {col['data_type']} ({nullable})")
+            "NULL" if col["is_nullable"] == "YES" else "NOT NULL"
 
         # Check indexes
         indexes_query = """
@@ -78,16 +69,14 @@ async def apply_migration():
         """
         indexes = await conn.fetch(indexes_query)
 
-        print("\n📑 Indexes created:")
-        for idx in indexes:
-            print(f"   ✓ {idx['indexname']}")
+        for _idx in indexes:
+            pass
 
         await conn.close()
 
         return True
 
-    except Exception as e:
-        print(f"❌ Error applying migration: {e}")
+    except Exception:
         import traceback
 
         traceback.print_exc()
@@ -97,20 +86,10 @@ async def apply_migration():
 if __name__ == "__main__":
     import asyncio
 
-    print("=" * 70)
-    print("MIGRATION 010: Fix team_members schema alignment")
-    print("=" * 70)
-    print()
 
     success = asyncio.run(apply_migration())
 
     if success:
-        print("\n" + "=" * 70)
-        print("✅ Migration 010 applied successfully!")
-        print("=" * 70)
         sys.exit(0)
     else:
-        print("\n" + "=" * 70)
-        print("❌ Migration 010 failed!")
-        print("=" * 70)
         sys.exit(1)

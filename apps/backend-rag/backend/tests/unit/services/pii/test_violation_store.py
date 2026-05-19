@@ -22,8 +22,8 @@ from backend.services.pii.violation_store import (
     aggregate,
     hash_subject,
     record_violations,
-    severity_for,
     set_app,
+    severity_for,
 )
 
 

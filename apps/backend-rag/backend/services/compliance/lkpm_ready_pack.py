@@ -28,7 +28,7 @@ _brevo_client: httpx.AsyncClient | None = None
 
 def _get_brevo_client() -> httpx.AsyncClient:
     """Lazy-init persistent httpx client for Brevo (Golden Rule #10)."""
-    global _brevo_client  # noqa: PLW0603 — singleton by design
+    global _brevo_client
     if _brevo_client is None or _brevo_client.is_closed:
         _brevo_client = httpx.AsyncClient(timeout=15.0)
     return _brevo_client
@@ -36,7 +36,7 @@ def _get_brevo_client() -> httpx.AsyncClient:
 
 async def close_brevo_client() -> None:
     """Call from FastAPI lifespan shutdown."""
-    global _brevo_client  # noqa: PLW0603
+    global _brevo_client
     if _brevo_client is not None and not _brevo_client.is_closed:
         await _brevo_client.aclose()
     _brevo_client = None
@@ -492,7 +492,7 @@ class LkpmReadyPack:
                     mime_type="application/pdf",
                 )
                 drive_url = result.get("download_url") or result.get("id")
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "LkpmReadyPack: Drive upload failed for client %d / %s — %s",
                     client_id,
@@ -535,7 +535,7 @@ class LkpmReadyPack:
                     email_sent_to = client_email
                 else:
                     logger.warning("LkpmReadyPack: Brevo send returned False for %s", client_email)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "LkpmReadyPack: email send failed for client %d — %s", client_id, exc
                 )
@@ -649,9 +649,9 @@ class LkpmReadyPack:
 __all__ = [
     # original exports
     "OBSTACLE_TEMPLATES",
-    "format_idr",
-    "generate_ready_pack_html",
     # new exports
     "LkpmReadyPack",
     "close_brevo_client",
+    "format_idr",
+    "generate_ready_pack_html",
 ]

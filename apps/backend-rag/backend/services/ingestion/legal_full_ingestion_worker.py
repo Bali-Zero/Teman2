@@ -32,7 +32,7 @@ NLM_BRIDGE_URL = os.getenv("NLM_BRIDGE_URL", "")
 NLM_BRIDGE_KEY = os.getenv("NLM_BRIDGE_KEY", "")
 
 
-async def run_worker(db_pool: asyncpg.Pool, app_state: Any) -> None:  # noqa: ANN401
+async def run_worker(db_pool: asyncpg.Pool, app_state: Any) -> None:
     """Main worker loop. Runs forever in lifespan background task."""
     logger.info("✅ LegalFullIngestionWorker started")
     while True:
@@ -221,7 +221,7 @@ def _drive_find_file(
     }
 
 
-async def _process_one_job(db_pool: asyncpg.Pool, app_state: Any) -> None:  # noqa: ANN401
+async def _process_one_job(db_pool: asyncpg.Pool, app_state: Any) -> None:
     """Claim and process one job, updating status after each step."""
     async with db_pool.acquire() as conn:
         async with conn.transaction():

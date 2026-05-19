@@ -45,14 +45,14 @@ from backend.services.portal.document_processing import (
 logger = get_logger(__name__)
 
 __all__ = [
+    "MAGIC_AVAILABLE",
+    "PDF_VISION_AVAILABLE",
+    "PYMUPDF_AVAILABLE",
+    "DocumentOCR",
+    "ExpiryDetector",
     "PortalService",
     # Re-exports for backward compatibility:
     "VirusScanner",
-    "DocumentOCR",
-    "ExpiryDetector",
-    "PDF_VISION_AVAILABLE",
-    "PYMUPDF_AVAILABLE",
-    "MAGIC_AVAILABLE",
 ]
 
 

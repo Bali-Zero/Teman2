@@ -11,6 +11,6 @@ from backend.llm.providers.openrouter import OpenRouterProvider
 
 __all__ = [
     "GeminiProvider",
-    "OpenRouterProvider",
     "OllamaProvider",
+    "OpenRouterProvider",
 ]

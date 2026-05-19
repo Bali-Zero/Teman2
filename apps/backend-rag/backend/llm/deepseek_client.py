@@ -249,7 +249,7 @@ async def complete_async(
             finish_reason=str(choice0.get("finish_reason") or "stop"),
         )
 
-    except BaseException as exc:  # noqa: BLE001 — record EVERY failure
+    except BaseException as exc:
         error_class = type(exc).__name__
         raise
     finally:
@@ -271,5 +271,5 @@ async def complete_async(
                 request_id=request_id,
                 error_class=error_class,
             )
-        except Exception as exc:  # noqa: BLE001 — never break the caller
+        except Exception as exc:
             logger.warning("llm_cost recorder failed for deepseek: %s", exc)

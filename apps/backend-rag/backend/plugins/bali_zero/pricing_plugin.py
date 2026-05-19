@@ -140,4 +140,4 @@ class PricingPlugin(Plugin):
 
         except Exception as e:
             logger.error("Pricing plugin error: %s", e, exc_info=True)
-            return PricingQueryOutput(success=False, error=f"Pricing lookup failed: {str(e)}")
+            return PricingQueryOutput(success=False, error=f"Pricing lookup failed: {e!s}")

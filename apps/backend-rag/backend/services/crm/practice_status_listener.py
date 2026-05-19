@@ -198,7 +198,7 @@ class PracticeStatusListener:
             logger.error(
                 "M4 payment email failed for practice %s: %s", practice_id, exc, exc_info=True
             )
-        except Exception as exc:  # noqa: BLE001 — EventBus callback must never crash listener loop
+        except Exception as exc:
             logger.error(
                 "M4 payment email unexpected error for practice %s: %s",
                 practice_id,
@@ -258,7 +258,7 @@ Zantara — Bali Zero Team
                 logger.info("M4: payment confirmation sent to client %s", client_email)
             except httpx.HTTPError as exc:
                 logger.error("M4: failed to email client %s: %s", client_email, exc, exc_info=True)
-            except Exception as exc:  # noqa: BLE001 — must continue to the team email below
+            except Exception as exc:
                 logger.error(
                     "M4: unexpected error emailing client %s: %s",
                     client_email,
@@ -308,7 +308,7 @@ Zantara — Bali Zero Team
                 logger.error(
                     "M4: failed to email team member %s: %s", team_member_email, exc, exc_info=True
                 )
-            except Exception as exc:  # noqa: BLE001 — notification failure never blocks the listener
+            except Exception as exc:
                 logger.error(
                     "M4: unexpected error emailing team member %s: %s",
                     team_member_email,
@@ -349,7 +349,7 @@ Zantara — Bali Zero Team
                 exc,
                 exc_info=True,
             )
-        except Exception as exc:  # noqa: BLE001 — EventBus callback must never crash listener loop
+        except Exception as exc:
             logger.error(
                 "M5: status milestone handler unexpected error for practice %s new_status=%s: %s",
                 practice_id,
@@ -398,7 +398,7 @@ Zantara — Bali Zero Team
             )
         except httpx.HTTPError as exc:
             logger.error("M5: milestone email failed for %s: %s", client_email, exc, exc_info=True)
-        except Exception as exc:  # noqa: BLE001 — milestone notification failure never propagates
+        except Exception as exc:
             logger.error(
                 "M5: milestone email unexpected error for %s: %s",
                 client_email,

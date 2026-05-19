@@ -220,4 +220,4 @@ def render_template(
     return _jinja_env.from_string(source).render(**ctx)
 
 
-__all__ = ["TEMPLATE_REGISTRY", "render_template", "TemplateCategory", "TemplateField"]
+__all__ = ["TEMPLATE_REGISTRY", "TemplateCategory", "TemplateField", "render_template"]

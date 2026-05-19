@@ -13,7 +13,6 @@ from backend.services.kg_monitoring.quality_check import (
     QualityReport,
 )
 
-
 # ── Dataclass tests ───────────────────────────────────────────────
 
 

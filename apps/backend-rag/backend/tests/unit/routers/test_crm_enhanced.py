@@ -27,7 +27,6 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 
-
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
@@ -103,6 +102,7 @@ class TestGetClientProfile:
         self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
     ) -> None:
         from fastapi import HTTPException
+
         from backend.app.routers.crm_enhanced import get_client_profile
 
         with patch("backend.app.routers.crm_enhanced.verify_client_access", new=AsyncMock()):
@@ -116,6 +116,7 @@ class TestGetClientProfile:
         self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock
     ) -> None:
         from fastapi import HTTPException
+
         from backend.app.routers.crm_enhanced import get_client_profile
 
         user = {"id": "u1", "email": "nobody@example.com", "role": "team", "full_name": "Nobody"}
@@ -235,6 +236,7 @@ class TestUpdateClientProfile:
         self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
     ) -> None:
         from fastapi import HTTPException
+
         from backend.app.routers.crm_enhanced import ClientProfileUpdate, update_client_profile
 
         with patch("backend.app.routers.crm_enhanced.verify_client_access", new=AsyncMock()):
@@ -448,6 +450,7 @@ class TestUpdateFamilyMember:
         self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
     ) -> None:
         from fastapi import HTTPException
+
         from backend.app.routers.crm_enhanced import FamilyMemberUpdate, update_family_member
 
         mock_db_conn.execute = AsyncMock(return_value="UPDATE 0")
@@ -470,6 +473,7 @@ class TestUpdateFamilyMember:
         self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
     ) -> None:
         from fastapi import HTTPException
+
         from backend.app.routers.crm_enhanced import FamilyMemberUpdate, update_family_member
 
         with patch("backend.app.routers.crm_enhanced.verify_client_access", new=AsyncMock()):
@@ -507,6 +511,7 @@ class TestUpdateFamilyMember:
         self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
     ) -> None:
         from fastapi import HTTPException
+
         from backend.app.routers.crm_enhanced import FamilyMemberUpdate, update_family_member
 
         with patch("backend.app.routers.crm_enhanced.verify_client_access", new=AsyncMock()):
@@ -548,6 +553,7 @@ class TestDeleteFamilyMember:
         self, mock_db_pool: MagicMock, mock_db_conn: AsyncMock, admin_user: dict
     ) -> None:
         from fastapi import HTTPException
+
         from backend.app.routers.crm_enhanced import delete_family_member
 
         mock_db_conn.execute = AsyncMock(return_value="DELETE 0")

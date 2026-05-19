@@ -202,7 +202,7 @@ async def twitter_webhook(request: Request) -> dict:
                 dedup_key=inbound_dm_id,
                 payload=raw_payload,
             )
-        except Exception as exc:  # noqa: BLE001 — never block ack
+        except Exception as exc:
             logger.warning(
                 "X webhook: persist failed (dm_id=%s): %s — falling back to synchronous-only path",
                 inbound_dm_id,

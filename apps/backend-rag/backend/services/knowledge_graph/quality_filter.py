@@ -310,7 +310,7 @@ class KGQualityFilter:
             by_type.setdefault(entity.type, []).append(entity)
 
         merged = []
-        for _entity_type, type_entities in by_type.items():
+        for type_entities in by_type.values():
             merged.extend(self._merge_entities_of_type(type_entities))
 
         return merged

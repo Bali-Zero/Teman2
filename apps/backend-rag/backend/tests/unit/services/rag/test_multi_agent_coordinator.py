@@ -14,7 +14,6 @@ from backend.services.rag.multi_agent_coordinator import (
     requires_multi_agent,
 )
 
-
 # ── _merge_agent_outputs ────────────────────────────────────────────────────
 
 

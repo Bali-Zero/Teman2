@@ -369,7 +369,7 @@ class EntityLinker:
                 payload = point.payload or {}
                 # Try common content field names
                 for field in ("content", "text", "chunk_text", "document"):
-                    if field in payload and payload[field]:
+                    if payload.get(field):
                         content = str(payload[field])
                         break
 

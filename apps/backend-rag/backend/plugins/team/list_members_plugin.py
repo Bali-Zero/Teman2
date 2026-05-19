@@ -127,4 +127,4 @@ class TeamMembersListPlugin(Plugin):
 
         except Exception as e:
             logger.error("Team list error: %s", e, exc_info=True)
-            return TeamListOutput(success=False, error=f"Team list failed: {str(e)}")
+            return TeamListOutput(success=False, error=f"Team list failed: {e!s}")

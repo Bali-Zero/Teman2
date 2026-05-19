@@ -19,7 +19,6 @@ import hmac
 
 import pytest
 
-
 CONSUMER_SECRET = "test_consumer_secret_p0_6_validation"
 CRC_TOKEN = "ChallengeFromTwitter_p0_6"
 

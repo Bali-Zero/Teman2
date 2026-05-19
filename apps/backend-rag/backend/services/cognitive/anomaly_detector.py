@@ -143,7 +143,7 @@ class AnomalyDetector:
                 days=self.lookback_days,
                 limit=self.max_candidates,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             result.errors.append(
                 f"related_fresh_dossiers: {type(exc).__name__}: {exc}",
             )
@@ -221,7 +221,7 @@ class AnomalyDetector:
                 other_id,
                 days=PAIR_IDEMPOTENCY_DAYS,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self.logger.debug("alert_exists_for_pair failed: %s", exc)
             exists = False
         if exists:
@@ -237,7 +237,7 @@ class AnomalyDetector:
         )
         try:
             alert = await self.cognitive_repo.insert_alert(payload)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             self.logger.warning("insert_alert failed: %s", exc)
             return "rejected"
         result.inserted_alerts.append(alert)

@@ -6,8 +6,10 @@ Bali Zero CRM schema as of 2026-04-22).
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock
+
+import pytest
+
 from backend.services.research.crm_baseline import fetch_crm_baseline
 
 

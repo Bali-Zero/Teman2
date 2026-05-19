@@ -10,9 +10,9 @@ from .metadata_extractor import LegalMetadataExtractor
 from .structure_parser import LegalStructureParser
 
 __all__ = [
+    "HierarchicalIndexer",
+    "LegalChunker",
     "LegalCleaner",
     "LegalMetadataExtractor",
     "LegalStructureParser",
-    "LegalChunker",
-    "HierarchicalIndexer",
 ]

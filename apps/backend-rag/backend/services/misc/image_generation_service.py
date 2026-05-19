@@ -7,9 +7,8 @@ UPDATED 2026-04-08:
 """
 
 import logging
-from urllib.parse import quote
-
 from typing import Any
+from urllib.parse import quote
 
 logger = logging.getLogger(__name__)
 

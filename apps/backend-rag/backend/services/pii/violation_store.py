@@ -137,7 +137,7 @@ async def _write(violations: list[PIIViolation]) -> None:
                     for v in violations
                 ],
             )
-    except Exception as exc:  # noqa: BLE001 — never fail the request path
+    except Exception as exc:
         logger.warning(
             "pii_violation_store.write_failed",
             extra={

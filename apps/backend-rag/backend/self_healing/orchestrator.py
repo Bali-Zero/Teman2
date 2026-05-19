@@ -65,7 +65,7 @@ class SelfHealingOrchestrator:
 
             try:
                 result = await check.run()
-            except Exception as exc:  # noqa: BLE001 — guard against rogue check
+            except Exception as exc:
                 result = CheckResult(healthy=False, error=f"{type(exc).__name__}: {exc}")
 
             outcome.check_results[check.name] = result
@@ -85,7 +85,7 @@ class SelfHealingOrchestrator:
                 continue
             try:
                 action_result = await action.run()
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 self.stats.action(action.name).record(
                     success=False,
                     error=f"{type(exc).__name__}: {exc}",
@@ -113,7 +113,7 @@ class SelfHealingOrchestrator:
                         },
                     }
                 )
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.debug("reporter.report raised: %s", exc)
 
         return outcome

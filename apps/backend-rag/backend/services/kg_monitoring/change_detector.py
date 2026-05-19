@@ -222,7 +222,7 @@ class ChangeDetector:
 
             logger.info("✅ Change tracking tables initialized")
 
-        except (asyncpg.PostgresError, OSError) as e:
+        except (asyncpg.PostgresError, OSError):
             logger.exception("Failed to initialize DB tables")
             raise
 
@@ -428,7 +428,7 @@ class ChangeDetector:
 
         except (asyncpg.PostgresError, OSError) as e:
             logger.warning("Failed to load source states from DB: %s", e)
-        except (KeyError, TypeError) as e:
+        except (KeyError, TypeError):
             logger.exception("Corrupt row data while loading source states")
 
     async def _save_state(self, state: DocumentState) -> None:
@@ -473,7 +473,7 @@ class ChangeDetector:
 
         except (asyncpg.PostgresError, OSError) as e:
             logger.warning("Failed to save state for %s: %s", state.document_id, e)
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error saving state for %s", state.document_id)
 
     async def _log_change_event(self, state: DocumentState) -> None:
@@ -549,7 +549,7 @@ class ChangeDetector:
                 )
             except httpx.HTTPError as e:
                 logger.warning("Failed to send change alert for %s: %s", source_id, e)
-            except Exception as e:
+            except Exception:
                 logger.exception("Unexpected error sending alert for %s", source_id)
 
     def get_stats(self) -> dict[str, Any]:
@@ -606,7 +606,7 @@ class ChangeDetector:
         except (asyncpg.PostgresError, OSError) as e:
             logger.warning("Failed to query recent changes: %s", e)
             return []
-        except (KeyError, ValueError) as e:
+        except (KeyError, ValueError):
             logger.exception("Corrupt row data while reading recent changes")
             return []
 

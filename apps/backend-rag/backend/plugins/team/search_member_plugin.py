@@ -118,4 +118,4 @@ class TeamMemberSearchPlugin(Plugin):
 
         except Exception as e:
             logger.error("Team search error: %s", e, exc_info=True)
-            return TeamSearchOutput(success=False, error=f"Team search failed: {str(e)}")
+            return TeamSearchOutput(success=False, error=f"Team search failed: {e!s}")

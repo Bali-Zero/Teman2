@@ -144,7 +144,7 @@ def _build_pricing_services() -> list[dict[str, str]]:
     result: list[dict[str, str]] = []
     if not isinstance(top, dict):
         return result
-    for _, entries in top.items():
+    for entries in top.values():
         if isinstance(entries, dict):
             for service_name, entry in entries.items():
                 if not isinstance(entry, dict):

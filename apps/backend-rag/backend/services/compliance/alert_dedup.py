@@ -12,7 +12,6 @@ from __future__ import annotations
 
 from backend.services.compliance.severity_calculator import AlertSeverity
 
-
 _SEVERITY_ORDER: dict[AlertSeverity, int] = {
     AlertSeverity.INFO: 0,
     AlertSeverity.WARNING: 1,

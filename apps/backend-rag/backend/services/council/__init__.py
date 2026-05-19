@@ -24,6 +24,7 @@ from backend.services.council.tone_council import (
 )
 
 __all__ = [
+    "REGISTER_PROMPTS",
     "CLIRunner",
     "CLIRunnerError",
     "ClaudeCLIRunner",
@@ -32,7 +33,6 @@ __all__ = [
     "GeminiCLIRunner",
     "JudgeDecision",
     "RegisterDefinition",
-    "REGISTER_PROMPTS",
     "RunnerResult",
     "ToneCouncil",
     "ToneCouncilResult",

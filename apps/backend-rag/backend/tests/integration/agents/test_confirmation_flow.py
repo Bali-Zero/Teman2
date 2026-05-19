@@ -33,7 +33,6 @@ from backend.services.rag.agentic.tool_executor import (
 )
 from backend.services.tools.definitions import BaseTool
 
-
 # ─────────────────────────────────────────────────────────────────────────
 # Test fixtures
 # ─────────────────────────────────────────────────────────────────────────

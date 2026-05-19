@@ -67,7 +67,7 @@ class NotebookLMCacheService:
         except (RedisError, OSError) as e:
             logger.warning("Redis connection failed for NotebookLM cache: %s", e)
             self.redis_client = None
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error initializing NotebookLM cache")
             self.redis_client = None
 
@@ -144,7 +144,7 @@ class NotebookLMCacheService:
         except (RedisError, OSError) as e:
             logger.warning("Redis error during cache get: %s", e)
             return None
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error during cache get")
             return None
 
@@ -200,7 +200,7 @@ class NotebookLMCacheService:
         except (RedisError, OSError) as e:
             logger.warning("Redis error during cache set: %s", e)
             return False
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error during cache set")
             return False
 
@@ -226,7 +226,7 @@ class NotebookLMCacheService:
         except (RedisError, OSError) as e:
             logger.warning("Redis error during cache delete: %s", e)
             return False
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error during cache delete")
             return False
 
@@ -255,7 +255,7 @@ class NotebookLMCacheService:
         except (RedisError, OSError) as e:
             logger.warning("Redis error during cache clear: %s", e)
             return 0
-        except Exception as e:
+        except Exception:
             logger.exception("Unexpected error during cache clear")
             return 0
 

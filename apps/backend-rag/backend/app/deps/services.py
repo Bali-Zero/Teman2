@@ -11,17 +11,19 @@ from typing import Any, cast
 
 from fastapi import HTTPException, Request
 
-from backend.core.cache import get_cache_service  # noqa: E402 (needed at module level for mock patching)
+from backend.core.cache import (
+    get_cache_service,
+)
 
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "get_search_service",
     "get_ai_client",
-    "get_intelligent_router",
-    "get_memory_service",
     "get_cache",
     "get_channel_router",
+    "get_intelligent_router",
+    "get_memory_service",
+    "get_search_service",
 ]
 
 

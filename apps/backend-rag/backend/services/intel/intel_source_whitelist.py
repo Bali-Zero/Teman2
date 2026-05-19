@@ -10,7 +10,6 @@ from __future__ import annotations
 
 from urllib.parse import urlparse
 
-
 INTEL_SOURCE_WHITELIST: frozenset[str] = frozenset(
     {
         # Government (Indonesia) — bare domains + www
@@ -53,7 +52,7 @@ def is_whitelisted(url: str) -> bool:
         return False
     try:
         host = (urlparse(url).hostname or "").lower()
-    except Exception:  # noqa: BLE001
+    except Exception:
         return False
     if not host:
         return False

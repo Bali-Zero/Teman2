@@ -226,7 +226,7 @@ def test_query_limit_is_respected(service):
                 trajectory_id=f"t{i}",
                 cell="c",
                 outcome="success",
-                procedure=f"sample prose iteration",
+                procedure="sample prose iteration",
             )
         )
     results = service.query(TrajectoryQuery(query="prose", limit=2))

@@ -172,7 +172,6 @@ async def bulk_ingest(directories: list[str]):
 if __name__ == "__main__":
     dirs = sys.argv[1:]
     if not dirs:
-        print("Usage: python bulk_ingest_harvested_zones.py <dir1> <dir2> ...")
         sys.exit(1)
 
     asyncio.run(bulk_ingest(dirs))

@@ -218,7 +218,7 @@ class CursorAdapter:
             # For now, we'll use it for file context
             if files:
                 # Open files in Cursor for context
-                cmd = [self.cursor_cmd] + files
+                cmd = [self.cursor_cmd, *files]
                 subprocess.run(cmd, capture_output=True, timeout=10.0)
 
             # Note: Cursor is primarily IDE-based

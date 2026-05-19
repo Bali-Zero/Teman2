@@ -80,7 +80,7 @@ class DomainFanoutDispatcher:
                 )
             try:
                 return await consumer.consume(dossier)
-            except Exception as exc:  # noqa: BLE001 — consumers shouldn't raise
+            except Exception as exc:
                 self.logger.warning(
                     "consumer %s raised on dossier %s: %s",
                     consumer.consumer_type.value,
@@ -110,7 +110,7 @@ class DomainFanoutDispatcher:
                         context=r.meta or None,
                     )
                     result.recorded_reuses += 1
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     self.logger.warning(
                         "record_reuse failed dossier=%s consumer=%s: %s",
                         dossier.id,

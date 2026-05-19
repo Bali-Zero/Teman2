@@ -14,7 +14,6 @@ from fastapi.testclient import TestClient
 
 from backend.app.routers.crm_interactions import router
 
-
 # ============================================================
 # FIXTURES
 # ============================================================

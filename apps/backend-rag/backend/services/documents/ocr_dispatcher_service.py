@@ -117,7 +117,7 @@ async def _kg_link_after_ocr(
                 result.get("error"),
             )
 
-    except Exception as e:  # noqa: BLE001 — broad-except is the contract here
+    except Exception as e:
         # Total swallow: KG linking failures must NEVER cause an OCR caller
         # to think the upload failed. Document state of truth lives in the
         # documents table, populated by the handler before this hook fires.

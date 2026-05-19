@@ -27,11 +27,11 @@ def _clients_full_view_emails() -> frozenset[str]:
 
 
 __all__ = [
-    "require_crm_admin",
-    "require_super_admin",
+    "can_view_all_clients",
     "get_crm_user_filter",
     "get_practices_user_filter",
-    "can_view_all_clients",
+    "require_crm_admin",
+    "require_super_admin",
 ]
 
 

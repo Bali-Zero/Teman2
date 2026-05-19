@@ -155,7 +155,7 @@ async def semantic_search(query: SearchQuery, request: Request) -> SearchRespons
         raise
     except Exception as e:
         logger.error("Search error: %s", e, exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}") from e
+        raise HTTPException(status_code=500, detail=f"Search failed: {e!s}") from e
 
 
 @router.options("/")
@@ -184,7 +184,7 @@ async def search_health(request: Request) -> dict[str, Any]:
         }
     except Exception as e:
         logger.error("Health check failed: %s", e, exc_info=True)
-        raise HTTPException(status_code=503, detail=f"Knowledge service unhealthy: {str(e)}") from e
+        raise HTTPException(status_code=503, detail=f"Knowledge service unhealthy: {e!s}") from e
 
 
 @router.get("/debug/parent-documents/{document_id}")
@@ -232,7 +232,7 @@ async def get_parent_documents_debug(document_id: str) -> dict[str, Any]:
         logger.error("Error fetching parent documents: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to fetch parent documents: {str(e)}",
+            detail=f"Failed to fetch parent documents: {e!s}",
         ) from e
 
 

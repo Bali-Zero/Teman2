@@ -79,7 +79,7 @@ class GeminiJakselService:
                         )
                 except (RuntimeError, AttributeError) as e:
                     logger.warning(f"Failed to initialize Gemini client: {e}")
-                except Exception as e:
+                except Exception:
                     logger.exception("Unexpected error initializing Gemini client")
         return self._genai_client
 
@@ -163,7 +163,7 @@ class GeminiJakselService:
         except ValueError as e:
             logger.warning(f"OpenRouter fallback configuration error: {e}")
             raise
-        except Exception as e:
+        except Exception:
             logger.exception("OpenRouter fallback failed unexpectedly")
             raise
 
@@ -192,7 +192,7 @@ class GeminiJakselService:
         except ValueError as e:
             logger.warning(f"OpenRouter streaming fallback configuration error: {e}")
             raise
-        except Exception as e:
+        except Exception:
             logger.exception("OpenRouter streaming fallback failed unexpectedly")
             raise
 
@@ -372,7 +372,7 @@ if __name__ == "__main__":
             async for chunk in gemini_jaksel.generate_response_stream(query):
                 logger.info(chunk, end="", flush=True)
             logger.info("\n")
-        except Exception as e:
+        except Exception:
             logger.exception("Test execution failed")
 
     asyncio.run(test())

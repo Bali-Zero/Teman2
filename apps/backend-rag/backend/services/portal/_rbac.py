@@ -46,8 +46,8 @@ logger = logging.getLogger(__name__)
 
 __all__ = [
     "ClientContext",
-    "require_client_access",
     "PortalAuthRequired",
+    "require_client_access",
 ]
 
 

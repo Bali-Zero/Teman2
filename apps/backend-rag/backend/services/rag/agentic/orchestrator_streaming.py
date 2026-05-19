@@ -184,7 +184,7 @@ class OrchestratorStreamingManager:
                     get_error_context,
                 )
 
-                error_category, error_severity = ErrorClassifier.classify_error(e)
+                _error_category, _error_severity = ErrorClassifier.classify_error(e)
                 error_context = get_error_context(
                     e,
                     correlation_id=correlation_id,
@@ -201,7 +201,7 @@ class OrchestratorStreamingManager:
                 if event_error_count >= self._max_event_errors:
                     yield self.create_error_event(
                         "processing_error",
-                        f"Stream aborted: {str(e)}",
+                        f"Stream aborted: {e!s}",
                         correlation_id,
                     )
                     break

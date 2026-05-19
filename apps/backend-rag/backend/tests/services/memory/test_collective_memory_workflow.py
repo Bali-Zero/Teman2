@@ -27,7 +27,6 @@ from backend.services.memory.collective_memory_workflow import (
     update_team_relationships,
 )
 
-
 # ── Helpers ──────────────────────────────────────────────────────
 
 

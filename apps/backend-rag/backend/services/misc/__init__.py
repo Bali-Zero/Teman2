@@ -5,13 +5,14 @@ Uses lazy imports to avoid circular dependencies with llm module.
 
 from typing import TYPE_CHECKING
 
-from ..autonomous_agents.knowledge_graph_builder import (
+from backend.services.autonomous_agents.knowledge_graph_builder import (
     Entity,
     EntityType,
     KnowledgeGraphBuilder,
     Relationship,
     RelationType,
 )
+
 from . import autonomous_scheduler
 from .autonomous_research_service import AutonomousResearchService
 from .autonomous_scheduler import AutonomousScheduler
@@ -63,32 +64,32 @@ __all__ = [
     "AutonomousResearchService",
     "AutonomousScheduler",
     "ClarificationService",
+    # Lazy
+    "ClientJourneyOrchestrator",
     "ConversationService",
     "CulturalInsightsService",
     "CulturalRAGService",
     "EmotionalAttunementService",
-    "ToneStyle",
-    "GraphService",
-    "KnowledgeGraphBuilder",
     "Entity",
     "EntityType",
-    "Relationship",
-    "RelationType",
+    "FollowupService",
+    "GoldenAnswerService",
+    "GraphService",
+    "ImageGenerationService",
+    "KnowledgeGraphBuilder",
     "MCPClientService",
     "MigrationRunner",
     "PerformanceMonitor",
-    "async_timed",
-    "timed",
     "ProactiveComplianceMonitor",
-    "format_search_results",
+    "RelationType",
+    "Relationship",
     "SessionService",
+    "ToneStyle",
     "ToolExecutor",
     "WorkSessionService",
-    # Lazy
-    "ClientJourneyOrchestrator",
-    "FollowupService",
-    "GoldenAnswerService",
-    "ImageGenerationService",
     "ZantaraTools",
+    "async_timed",
+    "format_search_results",
     "get_zantara_tools",
+    "timed",
 ]

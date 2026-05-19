@@ -198,7 +198,7 @@ class ToolExecutor:
                         "type": "tool_result",
                         "tool_use_id": tool_id,
                         "is_error": True,
-                        "content": f"Tool execution error: {str(e)}",
+                        "content": f"Tool execution error: {e!s}",
                     },
                 )
 

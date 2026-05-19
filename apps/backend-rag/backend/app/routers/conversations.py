@@ -20,10 +20,10 @@ from pydantic import BaseModel
 
 from backend.app.dependencies import get_current_user, get_database_pool
 from backend.app.metrics import metrics_collector
-from backend.core.cache import invalidate_cache
 from backend.app.utils.error_handlers import handle_database_error
 from backend.app.utils.json_utils import to_jsonb
 from backend.app.utils.logging_utils import get_logger, log_error, log_success, log_warning
+from backend.core.cache import invalidate_cache
 from backend.services.common.background import spawn
 from backend.services.crm.conversation_title_generator import generate_conversation_title
 from backend.services.memory import MemoryOrchestrator, get_memory_cache

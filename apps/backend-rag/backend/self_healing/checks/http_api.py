@@ -6,14 +6,13 @@ import httpx
 
 from backend.self_healing.checks.base import CheckResult
 
-
 # Golden Rule #10: module-level lazy singleton AsyncClient. Lifespan
 # closes via close_http_api_check_client() in app_factory.lifespan().
 _module_client: httpx.AsyncClient | None = None
 
 
 def _get_module_client(timeout: float) -> httpx.AsyncClient:
-    global _module_client  # noqa: PLW0603 — singleton by design
+    global _module_client
     if _module_client is None or _module_client.is_closed:
         _module_client = httpx.AsyncClient(timeout=timeout)
     return _module_client
@@ -21,7 +20,7 @@ def _get_module_client(timeout: float) -> httpx.AsyncClient:
 
 async def close_http_api_check_client() -> None:
     """Release the module-level AsyncClient (lifespan shutdown hook)."""
-    global _module_client  # noqa: PLW0603
+    global _module_client
     if _module_client is not None and not _module_client.is_closed:
         await _module_client.aclose()
     _module_client = None
@@ -47,5 +46,5 @@ class HTTPAPICheck:
                 detail={"url": self.url, "status_code": response.status_code},
                 error=None if healthy else f"HTTP {response.status_code}",
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return CheckResult(healthy=False, error=f"{type(exc).__name__}: {exc}")

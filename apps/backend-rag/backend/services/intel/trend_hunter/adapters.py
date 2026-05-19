@@ -90,7 +90,7 @@ class SourceAdapter(ABC):
                 signals=signals,
                 duration_ms=(time.perf_counter() - start) * 1000,
             )
-        except Exception as exc:  # noqa: BLE001 — adapters must be safe
+        except Exception as exc:
             logger.warning("adapter %s failed: %s", self.name, exc, exc_info=True)
             return SourceAdapterResult(
                 adapter_name=self.name,
@@ -131,7 +131,7 @@ class RSSAdapter(SourceAdapter):
                         )
                         continue
                     items = _parse_rss(resp.text)
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     logger.warning(
                         "rss fetch failed for %s: %s",
                         feed_url,
@@ -246,7 +246,7 @@ def _parse_rss_fallback(xml_text: str) -> list[dict[str, Any]]:
 
     try:
         root = ET.fromstring(xml_text)
-    except Exception:  # noqa: BLE001
+    except Exception:
         return []
 
     items: list[dict[str, Any]] = []

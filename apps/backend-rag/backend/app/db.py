@@ -31,16 +31,16 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Module-level holder — set once at startup via set_pool().
-_pool: "asyncpg.Pool | None" = None
+_pool: asyncpg.Pool | None = None
 
 
-def set_pool(pool: "asyncpg.Pool") -> None:
+def set_pool(pool: asyncpg.Pool) -> None:
     """Store the application-level asyncpg pool for later retrieval."""
     global _pool
     _pool = pool
 
 
-async def get_pool() -> "asyncpg.Pool":
+async def get_pool() -> asyncpg.Pool:
     """Return the asyncpg pool.
 
     Raises:

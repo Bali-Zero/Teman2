@@ -10,7 +10,7 @@ from __future__ import annotations
 import logging
 
 from backend.services.crm.enrichment import (  # noqa: F401
-    _TITLE_PROMPT,  # noqa: F401
+    _TITLE_PROMPT,
     _clean_title,
 )
 from backend.services.crm.enrichment import (

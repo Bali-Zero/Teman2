@@ -16,7 +16,7 @@ class CPUCheck:
     async def run(self) -> CheckResult:
         try:
             cpu = psutil.cpu_percent(interval=1)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return CheckResult(healthy=False, error=f"{type(exc).__name__}: {exc}")
         healthy = cpu < self.threshold_percent
         return CheckResult(
@@ -35,7 +35,7 @@ class MemoryCheck:
     async def run(self) -> CheckResult:
         try:
             memory = psutil.virtual_memory().percent
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return CheckResult(healthy=False, error=f"{type(exc).__name__}: {exc}")
         healthy = memory < self.threshold_percent
         return CheckResult(
@@ -55,7 +55,7 @@ class DiskCheck:
     async def run(self) -> CheckResult:
         try:
             disk = psutil.disk_usage(self.path).percent
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return CheckResult(healthy=False, error=f"{type(exc).__name__}: {exc}")
         healthy = disk < self.threshold_percent
         return CheckResult(

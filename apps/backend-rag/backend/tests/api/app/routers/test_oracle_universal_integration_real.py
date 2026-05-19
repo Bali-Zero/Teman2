@@ -32,7 +32,6 @@ from backend.app.routers.oracle_universal import router
 from backend.services.oracle.oracle_service import oracle_service
 from backend.services.rag.agentic.schema import CoreResult
 
-
 # ---------------------------------------------------------------------------
 # Fixture helpers
 # ---------------------------------------------------------------------------

@@ -45,7 +45,7 @@ _module_client: httpx.AsyncClient | None = None
 
 
 def _get_module_client(timeout: float) -> httpx.AsyncClient:
-    global _module_client  # noqa: PLW0603 — singleton by design
+    global _module_client
     if _module_client is None or _module_client.is_closed:
         _module_client = httpx.AsyncClient(timeout=timeout)
     return _module_client
@@ -53,7 +53,7 @@ def _get_module_client(timeout: float) -> httpx.AsyncClient:
 
 async def close_x_publisher_client() -> None:
     """Release the module-level AsyncClient (lifespan shutdown hook)."""
-    global _module_client  # noqa: PLW0603
+    global _module_client
     if _module_client is not None and not _module_client.is_closed:
         await _module_client.aclose()
     _module_client = None
@@ -155,7 +155,7 @@ class XPublisher(Publisher):
                     "all_ids": posted,
                 },
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return PublishResult(
                 ok=False,
                 platform=Platform.X,
@@ -172,7 +172,7 @@ class XPublisher(Publisher):
                 timeout=self.timeout,
             )
             return resp.status_code in (200, 204)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.info("x delete failed: %s", exc)
             return False
 

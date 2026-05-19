@@ -66,7 +66,7 @@ class DocumentRetrievalService:
 
                     done = False
                     while done is False:
-                        status, done = downloader.next_chunk()
+                        _status, done = downloader.next_chunk()
 
                     file_stream.seek(0)
                     temp_path = f"/tmp/{found_file['name']}"

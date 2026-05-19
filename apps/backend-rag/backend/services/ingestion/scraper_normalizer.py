@@ -250,7 +250,7 @@ class ScraperDataNormalizer:
 
             is_duplicate = False
 
-            if content_hash and content_hash in seen_hashes or url and url in seen_urls:
+            if (content_hash and content_hash in seen_hashes) or (url and url in seen_urls):
                 is_duplicate = True
 
             if is_duplicate:

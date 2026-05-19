@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, patch
+
+import pytest
+
 from backend.services.measurer.brevo_stats_client import (
-    BrevoStatsClient,
     BrevoError,
+    BrevoStatsClient,
 )
 
 

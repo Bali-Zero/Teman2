@@ -61,21 +61,16 @@ RELATIONSHIP_PATTERNS = [
 async def main():
     from backend.core.qdrant_db import QdrantClient
 
-    print("=" * 60)
-    print("KG EXTRACTION - 500 CHUNKS (ASYNC)")
-    print("=" * 60)
 
     client = QdrantClient(collection_name="legal_unified_hybrid")
 
     # Get collection stats
-    stats = await client.get_collection_stats()
-    print(f"Collection: {stats['collection_name']}, Total docs: {stats['total_documents']}")
+    await client.get_collection_stats()
 
     # Fetch 500 chunks in batches
     all_chunks = []
     batch_size = 100
     for batch_num in range(5):
-        print(f"Fetching batch {batch_num + 1}/5...")
         # Use peek with offset simulation via scroll
         result = await client._client.scroll(
             collection_name="legal_unified_hybrid",
@@ -86,9 +81,7 @@ async def main():
         )
         points = result[0] if isinstance(result, tuple) else result
         all_chunks.extend(points)
-        print(f"  Got {len(points)} chunks")
 
-    print(f"\nTotal chunks retrieved: {len(all_chunks)}")
 
     # Extract entities
     all_entities = {}
@@ -141,8 +134,6 @@ async def main():
 
     # Results
     sorted_e = sorted(all_entities.values(), key=lambda x: x["mentions"], reverse=True)
-    print(f"\nFOUND {len(sorted_e)} UNIQUE ENTITIES")
-    print(f"FOUND {len(all_relationships)} RELATIONSHIPS\n")
 
     # Group by type
     by_type = {}
@@ -153,20 +144,14 @@ async def main():
         by_type[t].append(e)
 
     for t, entities in sorted(by_type.items()):
-        print(f"\n[{t.upper()}] ({len(entities)} entities)")
         for e in entities[:5]:
-            print(f"  {e['name']:25} ({e['mentions']:3} mentions)")
+            pass
         if len(entities) > 5:
-            print(f"  ... and {len(entities) - 5} more")
+            pass
 
     # Summary
-    print(f"\n{'=' * 60}")
-    print("SUMMARY")
-    print("=" * 60)
     for t, entities in sorted(by_type.items()):
-        total_mentions = sum(e["mentions"] for e in entities)
-        print(f"  {t:15}: {len(entities):4} entities, {total_mentions:6} mentions")
-    print(f"\n  TOTAL: {len(sorted_e)} entities, {len(all_relationships)} relationships")
+        sum(e["mentions"] for e in entities)
 
     # Save to JSON
     output = {
@@ -181,7 +166,6 @@ async def main():
     }
     with open("/tmp/kg_extraction_500.json", "w") as f:
         json.dump(output, f, indent=2)
-    print("\nSaved to /tmp/kg_extraction_500.json")
 
     await client.close()
 

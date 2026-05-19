@@ -26,7 +26,7 @@ class EditorialConfig:
     publisher_enabled_by_channel: dict[str, bool] = field(default_factory=dict)
 
     @classmethod
-    def load(cls, path: Path) -> "EditorialConfig":
+    def load(cls, path: Path) -> EditorialConfig:
         if not path.is_file():
             raise EditorialConfigNotReady(
                 f"Editorial config not found at {path}. "

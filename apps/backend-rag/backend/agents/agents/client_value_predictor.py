@@ -269,7 +269,7 @@ class ClientValuePredictor:
                                 logger.info(f"✅ Nurtured {client_data['name']} ({reason})")
 
                 except Exception as e:
-                    error_msg = f"Client {client_id}: {str(e)}"
+                    error_msg = f"Client {client_id}: {e!s}"
                     results["errors"].append(error_msg)
                     logger.error("❌ Error processing client %s: %s", client_id, e, exc_info=True)
 
@@ -314,7 +314,7 @@ All clients scored and segmented automatically!""",
                 "vip_nurtured": 0,
                 "high_risk_contacted": 0,
                 "total_messages_sent": 0,
-                "errors": [f"Database error: {str(e)}"],
+                "errors": [f"Database error: {e!s}"],
             }
         except Exception as e:
             logger.error("Unexpected error in run_daily_nurturing: %s", e, exc_info=True)
@@ -322,5 +322,5 @@ All clients scored and segmented automatically!""",
                 "vip_nurtured": 0,
                 "high_risk_contacted": 0,
                 "total_messages_sent": 0,
-                "errors": [f"Unexpected error: {str(e)}"],
+                "errors": [f"Unexpected error: {e!s}"],
             }

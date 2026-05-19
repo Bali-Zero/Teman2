@@ -36,7 +36,7 @@ class ProcessAutomationService:
 
     @cache_invalidating(
         [
-            lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",  # noqa: ARG005
+            lambda self, practice_id, *a, **k: f"zantara:crm_practice:{practice_id}:*",
             "zantara:crm_practices:*",
             "zantara:crm_activity:*",
         ]

@@ -100,7 +100,7 @@ class HybridSearchService:
             except (ImportError, RuntimeError, FileNotFoundError, ValueError) as e:
                 logger.warning("Failed to initialize BM25 vectorizer (import/runtime): %s", e)
                 self._bm25_enabled = False
-            except Exception as e:  # noqa: BLE001 — hybrid must degrade to dense-only, never crash init
+            except Exception as e:
                 logger.warning(
                     "Failed to initialize BM25 vectorizer (unexpected): %s",
                     e,
@@ -147,7 +147,7 @@ class HybridSearchService:
         except (ValueError, RuntimeError, AttributeError) as e:
             logger.error("Failed to compute BM25 vectors (vectorizer error): %s", e)
             return [{"indices": [], "values": []} for _ in texts]
-        except Exception as e:  # noqa: BLE001 — caller expects empty-vector fallback on any failure
+        except Exception as e:
             logger.error("Failed to compute BM25 vectors (unexpected): %s", e, exc_info=True)
             return [{"indices": [], "values": []} for _ in texts]
 
@@ -182,7 +182,7 @@ class HybridSearchService:
         except (ValueError, RuntimeError, AttributeError) as e:
             logger.error("Failed to compute BM25 query vector (vectorizer error): %s", e)
             return {"indices": [], "values": []}
-        except Exception as e:  # noqa: BLE001 — caller degrades to dense-only on any failure
+        except Exception as e:
             logger.error("Failed to compute BM25 query vector (unexpected): %s", e, exc_info=True)
             return {"indices": [], "values": []}
 
@@ -481,7 +481,7 @@ class HybridSearchService:
                         f"Native hybrid search failed ({type(e).__name__}): {e}, falling back to manual fusion",
                     )
                     has_native_hybrid = False
-                except Exception as e:  # noqa: BLE001 — manual fusion fallback must still run on unknown errors
+                except Exception as e:
                     logger.warning(
                         "Native hybrid search failed (unexpected): %s, falling back to manual fusion",
                         e,
@@ -533,7 +533,7 @@ class HybridSearchService:
                 "alpha": alpha,
                 "error": str(e),
             }
-        except Exception as e:  # noqa: BLE001 — search must never propagate to the caller
+        except Exception as e:
             logger.error("Hybrid search failed (unexpected): %s", e, exc_info=True)
             return {
                 "results": [],
@@ -603,7 +603,7 @@ class HybridSearchService:
                 bm25_used = True
             except (QdrantError, AttributeError, ValueError) as e:
                 logger.warning(f"Sparse search not available ({type(e).__name__}): {e}")
-            except Exception as e:  # noqa: BLE001 — dense path continues on any sparse error
+            except Exception as e:
                 logger.warning("Sparse search not available (unexpected): %s", e, exc_info=True)
 
         # Fuse results
@@ -728,7 +728,7 @@ class HybridSearchService:
                 "alpha": 1.0,
                 "error": str(e),
             }
-        except Exception as e:  # noqa: BLE001 — caller must receive a structured error, never an exception
+        except Exception as e:
             logger.error("Dense search failed (unexpected): %s", e, exc_info=True)
             return {
                 "results": [],

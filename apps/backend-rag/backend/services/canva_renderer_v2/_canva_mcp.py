@@ -192,5 +192,5 @@ class CanvaMcpClient:
                     "user_intent": "Organize WR2 rendered carousel into WR2 Drafts folder",
                 },
             )
-        except Exception as e:  # noqa: BLE001 — intentional best-effort
+        except Exception as e:
             logger.warning("move-item-to-folder failed (non-fatal): %s", e)

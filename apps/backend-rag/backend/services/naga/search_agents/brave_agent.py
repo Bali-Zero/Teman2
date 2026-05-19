@@ -9,7 +9,8 @@ falls back to the snippet/description returned by Brave.
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable, Coroutine
+from collections.abc import Callable, Coroutine
+from typing import Any
 
 from backend.services.naga.search_agents.base import (
     AgentResponse,

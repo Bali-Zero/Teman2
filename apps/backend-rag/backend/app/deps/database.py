@@ -14,8 +14,8 @@ from fastapi import HTTPException, Request
 logger = logging.getLogger(__name__)
 
 __all__ = [
-    "get_database_pool",
     "get_database",
+    "get_database_pool",
     "get_db",
     "get_optional_database_pool",
 ]

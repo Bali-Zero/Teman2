@@ -16,7 +16,6 @@ from fastapi.testclient import TestClient
 
 from backend.app.routers.whatsapp_chat import alias_router, router
 
-
 # ============================================================
 # FIXTURES
 # ============================================================

@@ -204,7 +204,7 @@ class CRMMetricsCollector:
 
         except Exception as e:
             logger.error("Failed to update client metrics: %s", e)
-            results["errors"].append(f"client_metrics: {str(e)}")
+            results["errors"].append(f"client_metrics: {e!s}")
 
     async def update_application_metrics(self, results: dict[str, Any]) -> None:
         """Update application processing metrics"""
@@ -259,7 +259,7 @@ class CRMMetricsCollector:
 
         except Exception as e:
             logger.error("Failed to update application metrics: %s", e)
-            results["errors"].append(f"application_metrics: {str(e)}")
+            results["errors"].append(f"application_metrics: {e!s}")
 
     async def update_business_metrics(self, results: dict[str, Any]) -> None:
         """Update business KPI metrics"""
@@ -315,7 +315,7 @@ class CRMMetricsCollector:
 
         except Exception as e:
             logger.error("Failed to update business metrics: %s", e)
-            results["errors"].append(f"business_metrics: {str(e)}")
+            results["errors"].append(f"business_metrics: {e!s}")
 
     async def update_operational_metrics(self, results: dict[str, Any]) -> None:
         """Update operational efficiency metrics"""
@@ -353,7 +353,7 @@ class CRMMetricsCollector:
 
         except Exception as e:
             logger.error("Failed to update operational metrics: %s", e)
-            results["errors"].append(f"operational_metrics: {str(e)}")
+            results["errors"].append(f"operational_metrics: {e!s}")
 
     async def get_metrics_summary(self) -> dict[str, Any]:
         """Get a summary of current CRM metrics"""

@@ -13,9 +13,8 @@ failure into a 422 at the boundary.
 
 from __future__ import annotations
 
-from enum import Enum
-
 import re
+from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 

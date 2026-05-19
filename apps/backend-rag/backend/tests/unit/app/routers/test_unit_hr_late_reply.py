@@ -34,7 +34,6 @@ from backend.services.analytics.attendance_monitor import (
     STATE_RESOLVED_LATE,
 )
 
-
 # ---------------------------------------------------------------------------
 # Fake asyncpg connection / pool
 # ---------------------------------------------------------------------------

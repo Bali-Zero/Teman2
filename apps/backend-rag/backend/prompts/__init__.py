@@ -13,7 +13,7 @@ from backend.prompts.zantara_core import (
 )
 
 __all__ = [
-    "ZANTARA_MASTER_TEMPLATE",
     "CREATOR_PERSONA",
     "TEAM_PERSONA",
+    "ZANTARA_MASTER_TEMPLATE",
 ]

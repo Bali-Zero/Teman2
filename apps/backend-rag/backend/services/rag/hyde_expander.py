@@ -120,7 +120,7 @@ class HyDEExpander:
         for i in range(num_docs):
             prompt = HYDE_PROMPT.format(query=query)
             if i > 0:
-                prompt += f"\n\n(Provide a DIFFERENT perspective from previous answers.)"
+                prompt += "\n\n(Provide a DIFFERENT perspective from previous answers.)"
 
             doc = await self._call_llm(prompt)
             if doc and len(doc.strip()) > 30:
@@ -142,7 +142,7 @@ class HyDEExpander:
                     return result
             except (httpx.HTTPError, ConnectionError, TimeoutError) as exc:
                 logger.debug("HyDE: Ollama failed (%s), trying fallback", exc)
-            except Exception as exc:  # noqa: BLE001 — HyDE is optional; degrade to empty document
+            except Exception as exc:
                 logger.debug("HyDE: Ollama failed unexpectedly (%s), trying fallback", exc)
 
         # Stub for when no LLM is available — return empty for graceful degradation
@@ -163,7 +163,7 @@ class HyDEExpander:
                     vectors.append(vector)
             except (httpx.HTTPError, ValueError, TimeoutError) as exc:
                 logger.warning("HyDE: embedding failed for doc (%s)", exc)
-            except Exception as exc:  # noqa: BLE001 — skip bad doc, continue embedding others
+            except Exception as exc:
                 logger.warning(
                     "HyDE: embedding failed unexpectedly for doc (%s)", exc, exc_info=True
                 )
@@ -187,7 +187,7 @@ class HyDEExpander:
         except (RedisError, json.JSONDecodeError, TypeError):
             # cache miss on redis/parse error is fine — caller will recompute
             pass
-        except Exception:  # noqa: BLE001 — cache read must never surface to caller
+        except Exception:
             logger.debug("HyDE: cache get failed unexpectedly", exc_info=True)
         return None
 
@@ -199,5 +199,5 @@ class HyDEExpander:
             await self._redis.set(key, json.dumps(vectors), ex=CACHE_TTL)
         except (RedisError, TypeError, ValueError) as exc:
             logger.debug("HyDE: cache set failed (%s)", exc)
-        except Exception as exc:  # noqa: BLE001 — cache write is best-effort
+        except Exception as exc:
             logger.debug("HyDE: cache set failed unexpectedly (%s)", exc)

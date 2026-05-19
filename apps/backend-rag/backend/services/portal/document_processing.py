@@ -470,10 +470,10 @@ class ExpiryDetector:
 
 
 __all__ = [
-    "VirusScanner",
-    "DocumentOCR",
-    "ExpiryDetector",
+    "MAGIC_AVAILABLE",
     "PDF_VISION_AVAILABLE",
     "PYMUPDF_AVAILABLE",
-    "MAGIC_AVAILABLE",
+    "DocumentOCR",
+    "ExpiryDetector",
+    "VirusScanner",
 ]

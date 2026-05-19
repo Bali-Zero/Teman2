@@ -58,7 +58,7 @@ class TemplateRenderer:
 
         try:
             rendered = Template(spec.html).safe_substitute(**full_vars)
-        except Exception as exc:  # noqa: BLE001 — string.Template is defensive; still, we wrap
+        except Exception as exc:
             raise TemplateValidationError(
                 f"template substitution failed: {exc}",
             ) from exc

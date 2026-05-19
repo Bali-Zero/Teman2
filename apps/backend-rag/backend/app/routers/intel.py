@@ -242,7 +242,7 @@ async def bulk_approve_items(type: str, item_ids: list[str]) -> Any:
 
         except Exception as e:
             results["failed"] += 1
-            results["errors"].append(f"{item_id}: {str(e)}")
+            results["errors"].append(f"{item_id}: {e!s}")
             logger.error("Bulk approve failed for %s: %s", item_id, e, exc_info=True)
 
     staging_service.update_staging_queue_metrics()
@@ -278,7 +278,7 @@ async def bulk_reject_items(type: str, item_ids: list[str]) -> Any:
 
         except Exception as e:
             results["failed"] += 1
-            results["errors"].append(f"{item_id}: {str(e)}")
+            results["errors"].append(f"{item_id}: {e!s}")
             logger.error("Bulk reject failed for %s: %s", item_id, e, exc_info=True)
 
     staging_service.update_staging_queue_metrics()

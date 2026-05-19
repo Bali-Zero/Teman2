@@ -21,7 +21,6 @@ from backend.services.rag.kg_subgraph_tax import (
     synthesize_tax_workflow_node,
 )
 
-
 # ============================================================
 # FIXTURES
 # ============================================================

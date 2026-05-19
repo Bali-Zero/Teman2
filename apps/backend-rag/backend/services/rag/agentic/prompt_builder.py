@@ -187,8 +187,8 @@ class SystemPromptBuilder:
                 is_creator = True
             elif (
                 "@balizero.com" in email_lower
-                or profile
-                and "admin" in str(profile.get("role", "")).lower()
+                or (profile
+                and "admin" in str(profile.get("role", "")).lower())
             ):
                 is_team = True
 

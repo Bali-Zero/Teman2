@@ -72,7 +72,7 @@ class MeasurerOrchestrator:
                 try:
                     await self._record(post.id, datum, sr.partial)
                     result.recorded_datums += 1
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     self.logger.warning(
                         "record_metric failed post=%s metric=%s err=%s",
                         post.id,

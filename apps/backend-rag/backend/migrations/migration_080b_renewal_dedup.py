@@ -36,12 +36,10 @@ async def downgrade(conn: asyncpg.Connection) -> None:
 async def main() -> None:
     url = os.environ.get("DATABASE_URL", "")
     if not url:
-        print("DATABASE_URL not set")
         return
     conn = await asyncpg.connect(url)
     try:
         await apply(conn)
-        print("Migration 080 applied successfully")
     finally:
         await conn.close()
 

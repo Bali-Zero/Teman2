@@ -44,7 +44,7 @@ from backend.services.prime.property_service import (  # noqa: F401
     classify_activity,
     is_investor_relevant,
 )
-from backend.services.prime.tax_service import (  # noqa: F401
+from backend.services.prime.tax_service import (
     calculate_property_eligibility,
     calculate_property_tax,
 )

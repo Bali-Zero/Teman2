@@ -28,7 +28,8 @@ from backend.app.dependencies import (
     get_orchestrator,
 )
 from backend.app.utils.tracing import add_span_event, set_span_status, trace_span
-from backend.core.observability import init_observability, is_enabled as _lf_enabled
+from backend.core.observability import init_observability
+from backend.core.observability import is_enabled as _lf_enabled
 from backend.db.repositories.conversation_repository import ConversationRepository
 from backend.services.agents.team_agent_config import (
     AgentRole,
@@ -109,12 +110,12 @@ def clean_image_generation_response(text: str) -> str:
         # Skip lines with pollinations URLs (any subdomain)
         if (
             "pollinations" in line_lower
-            or "image" in line_lower
-            and "http" in line_lower
+            or ("image" in line_lower
+            and "http" in line_lower)
             or re.search(r"!\[.*?\]\(.*?\)", line, re.IGNORECASE)
             or "![" in line
-            or "](" in line
-            and "http" in line
+            or ("](" in line
+            and "http" in line)
             or line.strip().startswith("[Visualizza")
             or re.search(
                 r"^\s*\d+\.\s*\*{0,2}(Versione|Prima|Seconda|Opzione)",
@@ -472,7 +473,7 @@ async def query_agentic_rag(
         import traceback
 
         tb = traceback.format_exc()
-        logger.error(f"❌ Error in query_agentic_rag: {str(e)}\n{tb}")
+        logger.error(f"❌ Error in query_agentic_rag: {e!s}\n{tb}")
         # Temporarily include traceback in response for debugging
         # Generic error message for production
         raise HTTPException(
@@ -893,7 +894,7 @@ async def stream_agentic_rag(
                 "type": "error",
                 "data": {
                     "error_type": "fatal_error",
-                    "message": f"Stream failed: {str(e)}",
+                    "message": f"Stream failed: {e!s}",
                     "fatal": True,
                     "correlation_id": correlation_id,
                 },

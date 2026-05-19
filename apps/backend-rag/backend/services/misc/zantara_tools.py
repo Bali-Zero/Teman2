@@ -94,7 +94,7 @@ class ZantaraTools:
 
         except Exception as e:
             logger.error("❌ get_pricing error: %s", e)
-            return {"success": False, "error": f"Pricing lookup failed: {str(e)}"}
+            return {"success": False, "error": f"Pricing lookup failed: {e!s}"}
 
     async def _search_team_member(self, params: dict[str, Any]) -> dict[str, Any]:
         """

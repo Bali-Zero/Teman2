@@ -201,7 +201,7 @@ async def process_draft(
             canva_edit_url=edit_url,
             canva_view_url=None,
         )
-    except Exception as e:  # noqa: BLE001 — orphan: Canva design exists but DB didn't record
+    except Exception as e:
         send_telegram(
             f"🚨 WR2 PG persist FAILED (Canva design EXISTS but DB unaware)\n"
             f"draft: `{draft_id}` design: `{design_id}` err: `{str(e)[:300]}`"
@@ -315,13 +315,13 @@ async def run() -> ExitCode:
                             draft_id=draft_id,
                             lease_owner=lease_owner,
                         )
-                    except Exception as exc:  # noqa: BLE001 — siblings must continue
+                    except Exception as exc:
                         logger.error("Draft %s unexpected exception: %s", draft_id, exc)
                         try:
                             await _pg.release_lease_transient(
                                 conn, draft_id=draft_id, reason=f"unexpected: {exc}"
                             )
-                        except Exception:  # noqa: BLE001
+                        except Exception:
                             pass
         except TokenStorageError as e:
             msg = str(e).lower()

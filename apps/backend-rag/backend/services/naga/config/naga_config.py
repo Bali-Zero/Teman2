@@ -12,7 +12,7 @@ import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Dict
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ class TierBudget:
     default_ttl_seconds: int
 
 
-def _default_tier_budgets() -> Dict[str, TierBudget]:
+def _default_tier_budgets() -> dict[str, TierBudget]:
     """Build the canonical tier-budget mapping."""
     return {
         "flash": TierBudget(
@@ -53,7 +53,7 @@ def _default_tier_budgets() -> Dict[str, TierBudget]:
     }
 
 
-def _default_channel_ttls() -> Dict[str, int]:
+def _default_channel_ttls() -> dict[str, int]:
     """Per-channel TTL overrides (seconds)."""
     return {
         "telegram": 30,
@@ -77,17 +77,17 @@ class NagaConfig:
         channel_ttls: Per-channel TTL overrides in seconds.
     """
 
-    tier_budgets: Dict[str, TierBudget] = field(default_factory=_default_tier_budgets)
+    tier_budgets: dict[str, TierBudget] = field(default_factory=_default_tier_budgets)
     convergence_coverage_threshold: float = 0.80
     convergence_novelty_threshold: float = 0.10
     source_score_min: float = 0.30
-    channel_ttls: Dict[str, int] = field(default_factory=_default_channel_ttls)
+    channel_ttls: dict[str, int] = field(default_factory=_default_channel_ttls)
 
     # ------------------------------------------------------------------
     # Source weights
     # ------------------------------------------------------------------
 
-    def load_source_weights(self, path: Path | None = None) -> Dict[str, Any]:
+    def load_source_weights(self, path: Path | None = None) -> dict[str, Any]:
         """Load domain-credibility weights from the bundled JSON file.
 
         Args:
@@ -103,5 +103,5 @@ class NagaConfig:
         """
         target = path or _SOURCE_WEIGHTS_PATH
         logger.debug("Loading source weights from %s", target)
-        data: Dict[str, Any] = json.loads(target.read_text(encoding="utf-8"))
+        data: dict[str, Any] = json.loads(target.read_text(encoding="utf-8"))
         return data

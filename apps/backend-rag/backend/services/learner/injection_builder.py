@@ -87,7 +87,7 @@ class MemoriaEpisodicaBuilder:
         if self.skill_search_fn is not None:
             try:
                 parts.skills = await self.skill_search_fn("war_room", MAX_SKILLS)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.debug("skill_search_fn failed: %s", exc)
 
         # 2. rejections last 14d
@@ -96,14 +96,14 @@ class MemoriaEpisodicaBuilder:
             for rej in rejections:
                 key = rej.reason.value
                 parts.rejections[key] = parts.rejections.get(key, 0) + 1
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.debug("recent_rejections failed: %s", exc)
 
         # 3. council performance view
         if self.council_performance_fn is not None:
             try:
                 parts.performance = await self.council_performance_fn()
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.debug("council_performance failed: %s", exc)
 
         return parts

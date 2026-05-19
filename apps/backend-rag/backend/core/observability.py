@@ -94,7 +94,7 @@ def init_observability(
             return _CLIENT
 
         try:
-            from langfuse import Langfuse  # noqa: WPS433
+            from langfuse import Langfuse
         except Exception as exc:
             logger.warning("langfuse.import_failed error=%s", exc)
             return None
@@ -259,8 +259,8 @@ def shutdown_observability() -> None:
 
 
 __all__ = [
-    "init_observability",
-    "shutdown_observability",
     "get_langfuse_client",
+    "init_observability",
     "is_enabled",
+    "shutdown_observability",
 ]

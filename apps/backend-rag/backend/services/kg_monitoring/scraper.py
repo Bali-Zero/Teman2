@@ -210,7 +210,7 @@ class LegalScraper:
         logger.info("✅ LegalScraper initialized")
         logger.info(f"   Sources configured: {len(self.sources)}")
         logger.info(f"   UA rotation pool: {self._ua_rotator.size} agents")
-        for _src_id, src in self.sources.items():
+        for src in self.sources.values():
             status = "✅ enabled" if src.enabled else "❌ disabled"
             fallback = " +playwright" if src.use_playwright_fallback else ""
             logger.info(f"   - {src.name}: {status}{fallback}")
@@ -333,14 +333,14 @@ class LegalScraper:
                             documents.append(doc)
                     except (AttributeError, ValueError, TypeError) as e:
                         logger.warning("   Failed to parse item: %s", e)
-                    except Exception as e:
+                    except Exception:
                         logger.exception("   Unexpected error parsing document item")
 
             except httpx.HTTPError as e:
                 logger.warning("   HTTP error scraping %s: %s", search_path, e)
             except (AttributeError, ValueError) as e:
                 logger.warning("   Parse error scraping %s: %s", search_path, e)
-            except Exception as e:
+            except Exception:
                 logger.exception("   Unexpected error scraping %s", search_path)
 
         return documents
@@ -417,7 +417,7 @@ class LegalScraper:
                 if attempt < source.max_retries - 1:
                     await asyncio.sleep(2**attempt)
 
-            except Exception as e:
+            except Exception:
                 self.scrape_stats["failed_requests"] += 1
                 logger.exception("   Unexpected request error for %s", url)
                 if attempt < source.max_retries - 1:
@@ -634,7 +634,7 @@ class LegalScraper:
             except (httpx.HTTPError, OSError) as e:
                 logger.warning("Failed to scrape %s: %s", source_id, e)
                 results[source_id] = []
-            except Exception as e:
+            except Exception:
                 logger.exception("Unexpected error scraping %s", source_id)
                 results[source_id] = []
 

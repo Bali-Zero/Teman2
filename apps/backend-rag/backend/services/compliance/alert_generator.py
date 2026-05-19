@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import warnings
 
-from backend.services.compliance.alert_repository import AlertRow as ComplianceAlert  # noqa: F401
+from backend.services.compliance.alert_repository import AlertRow as ComplianceAlert
 from backend.services.compliance.alerts_engine import AlertsEngine  # noqa: F401
 from backend.services.compliance.severity_calculator import AlertSeverity  # noqa: F401
 

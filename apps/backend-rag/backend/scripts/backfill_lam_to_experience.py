@@ -24,7 +24,8 @@ import argparse
 import asyncio
 import logging
 import os
-from typing import Any, Iterable, Iterator, Protocol
+from collections.abc import Iterable, Iterator
+from typing import Any, Protocol
 
 from backend.services.experience.models import (
     TrajectoryOutcome,

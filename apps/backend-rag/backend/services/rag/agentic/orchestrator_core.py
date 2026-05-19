@@ -726,7 +726,7 @@ class OrchestratorCore:
                 (
                     state,
                     model_used_name,
-                    conversation_messages,
+                    _conversation_messages,
                     token_usage,
                 ) = await self.reasoning_engine.execute_react_loop(
                     state=state,
@@ -924,7 +924,7 @@ class OrchestratorCore:
             return kg_fast_result
 
         # 4. Route query (intent classification + tier selection)
-        model_tier, deep_think_mode, state = await self.routing_manager.route_query(query)
+        model_tier, _deep_think_mode, state = await self.routing_manager.route_query(query)
 
         # 5. Build system prompt
         system_prompt = self.prompt_builder.build_system_prompt(
@@ -1433,7 +1433,7 @@ class OrchestratorCore:
         query: str,
         user_context: dict[str, Any],
         history: list[dict],
-        extracted_entities: dict[str, Any],  # noqa: ARG002 — kept for signature compatibility
+        extracted_entities: dict[str, Any],
         deep_think_mode: bool = False,
         kg_context_str: str = "",  # New argument to pass pre-fetched KG context
         channel: str | None = None,  # Channel overlay for response formatting

@@ -262,7 +262,7 @@ class KGAgenticOrchestrator:
 
             except Exception as e:
                 logger.error("❌ KG-Agentic orchestration failed: %s", e, exc_info=True)
-                reasoning_trace.append(f"Error during orchestration: {str(e)}")
+                reasoning_trace.append(f"Error during orchestration: {e!s}")
 
                 # Return fallback response
                 return AgenticResponse(

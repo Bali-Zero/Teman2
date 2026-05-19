@@ -471,7 +471,7 @@ def _post_telegram(text: str) -> None:
         data = urllib.parse.urlencode(
             {"chat_id": _OWNER_CHAT_ID, "text": text, "parse_mode": "Markdown"},
         ).encode()
-        urllib.request.urlopen(  # noqa: S310 — api.telegram.org is a known URL
+        urllib.request.urlopen(
             f"https://api.telegram.org/bot{bot_token}/sendMessage",
             data,
             timeout=10,

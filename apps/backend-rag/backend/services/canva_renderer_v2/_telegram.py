@@ -23,10 +23,10 @@ def send_telegram(text: str) -> None:
         data = urllib.parse.urlencode(
             {"chat_id": chat_id, "text": text, "parse_mode": "Markdown"},
         ).encode()
-        urllib.request.urlopen(  # noqa: S310 — known URL
+        urllib.request.urlopen(
             f"https://api.telegram.org/bot{token}/sendMessage",
             data,
             timeout=10,
         )
-    except Exception as e:  # noqa: BLE001 — best-effort
+    except Exception as e:
         logger.warning("Telegram send failed (swallowed): %s", e)

@@ -13,9 +13,9 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from backend.services.knowledge_graph.ontology import (
+    RELATION_SCHEMAS,
     EntityType,
     RelationType,
-    RELATION_SCHEMAS,
 )
 
 logger = logging.getLogger(__name__)

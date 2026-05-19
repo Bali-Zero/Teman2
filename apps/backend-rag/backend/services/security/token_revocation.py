@@ -42,7 +42,7 @@ class TokenRevocationService:
         except (RedisError, OSError) as e:
             logger.warning("S03: Token revocation failed jti=%s: %s", jti, e)
             return False
-        except Exception as e:
+        except Exception:
             logger.exception("S03: Unexpected error revoking token jti=%s", jti)
             return False
 
@@ -55,7 +55,7 @@ class TokenRevocationService:
         except (RedisError, OSError) as e:
             logger.warning("S03: Revocation check failed (fail-open): %s", e)
             return False
-        except Exception as e:
+        except Exception:
             logger.exception("S03: Unexpected error checking revocation for jti=%s", jti)
             return False
 
@@ -74,7 +74,7 @@ class TokenRevocationService:
         except (RedisError, OSError) as e:
             logger.warning("S03: User revocation failed %s: %s", user_email, e)
             return False
-        except Exception as e:
+        except Exception:
             logger.exception("S03: Unexpected error revoking tokens for %s", user_email)
             return False
 
@@ -87,6 +87,6 @@ class TokenRevocationService:
         except (RedisError, OSError) as e:
             logger.warning("S03: User revocation check failed (fail-open): %s", e)
             return False
-        except Exception as e:
+        except Exception:
             logger.exception("S03: Unexpected error checking user revocation for %s", user_email)
             return False

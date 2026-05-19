@@ -83,4 +83,4 @@ def decode_callback(callback_data: str) -> FADCallback | None:
     return FADCallback(action=action, target=target, token_prefix=token_prefix)
 
 
-__all__ = ["FADCallback", "encode_callback", "decode_callback"]
+__all__ = ["FADCallback", "decode_callback", "encode_callback"]

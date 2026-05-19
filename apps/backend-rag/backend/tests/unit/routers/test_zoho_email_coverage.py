@@ -12,7 +12,6 @@ from fastapi.testclient import TestClient
 
 from backend.app.routers.zoho_email import router
 
-
 # ============================================================
 # FIXTURES
 # ============================================================

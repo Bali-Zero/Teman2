@@ -13,7 +13,6 @@ from backend.services.crm.cache_query import (
     health_check_crm_tables,
 )
 
-
 # ── CRMCache ────────────────────────────────────────────────────────────────
 
 

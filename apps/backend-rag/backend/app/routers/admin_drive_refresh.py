@@ -53,6 +53,6 @@ async def drive_refresh(request: Request) -> dict[str, Any]:
     except Exception as e:
         return {
             "status": "error",
-            "message": f"Refresh error: {str(e)}",
+            "message": f"Refresh error: {e!s}",
             "auth_url": "/admin/google-drive/auth",
         }

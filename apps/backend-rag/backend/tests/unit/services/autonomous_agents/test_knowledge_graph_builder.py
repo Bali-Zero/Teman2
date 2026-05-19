@@ -24,7 +24,6 @@ from backend.services.autonomous_agents.knowledge_graph_builder import (
     RelationType,
 )
 
-
 # ============================================================================
 # Fixtures
 # ============================================================================

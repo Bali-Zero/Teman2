@@ -318,7 +318,6 @@ def main() -> None:
     args = parser.parse_args()
 
     if not Path(args.report).exists():
-        print(f"ERROR: Report file not found: {args.report}", file=sys.stderr)
         sys.exit(1)
 
     failures = classify_report(args.report)
@@ -335,14 +334,8 @@ def main() -> None:
         json.dump(output, f, indent=2)
 
     # Print summary to stdout
-    print("=== Test Failure Classification ===")
-    print(f"Total failures: {summary['total']}")
-    print(f"By type: {json.dumps(summary['by_type'], indent=2)}")
-    print(f"Unique root causes: {summary['unique_groups']}")
-    print("\nTop root causes:")
-    for item in summary["top_root_causes"][:10]:
-        print(f"  {item['count']:4d}x  {item['group']}")
-    print(f"\nOutput written to: {args.output}")
+    for _item in summary["top_root_causes"][:10]:
+        pass
 
 
 if __name__ == "__main__":

@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import importlib.util
-import tomllib
 from pathlib import Path
 from types import ModuleType
+
+import tomllib
 
 BACKEND_ROOT = Path(__file__).resolve().parents[3]
 REPO_ROOT = BACKEND_ROOT.parents[1]

@@ -300,7 +300,7 @@ async def shutdown_event() -> None:
 @limiter.limit("10/minute")  # Rate limiting: 10 requests per minute per IP
 async def compose_article(
     payload: ComposeRequest,  # Body
-    request: Request = None,  # type: ignore  # noqa: ARG001 - required by @limiter
+    request: Request = None,  # type: ignore
     background_tasks: BackgroundTasks = None,  # type: ignore
     request_id: str = Depends(get_request_id),
 ) -> ComposeResponse:
@@ -498,7 +498,7 @@ async def compose_article(
     except Exception as e:
         error = APIError.create(
             code=ErrorCode.ENRICHMENT_FAILED,
-            message=f"Enrichment failed: {str(e)}",
+            message=f"Enrichment failed: {e!s}",
             details={
                 "request_id": request_id,
                 "article_title": payload.title,

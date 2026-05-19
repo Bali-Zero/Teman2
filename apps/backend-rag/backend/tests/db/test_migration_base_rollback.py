@@ -14,12 +14,11 @@ Tests:
 import pytest
 
 from backend.db.migration_base import (
-    BaseMigration,
     LEGACY_NO_ROLLBACK_WHITELIST,
+    BaseMigration,
     MigrationError,
     MigrationIrreversibleError,
 )
-
 
 # ---------------------------------------------------------------------------
 # 1. MigrationIrreversibleError

@@ -101,7 +101,7 @@ class BackendSelfHealingAgent:
             redis_url = _settings.redis_url
             hostname = _settings.hostname
             region = _settings.fly_region
-        except Exception:  # noqa: BLE001
+        except Exception:
             redis_url, hostname, region = None, None, None
 
         self._reconnect_cache_action = ReconnectCacheAction(redis_url=redis_url)
@@ -184,7 +184,7 @@ class BackendSelfHealingAgent:
                 fix_count=self.fix_count,
                 uptime=time.time() - self.start_time,
             )
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.error("Health check projection failed: %s", exc)
             return None
 
@@ -272,7 +272,7 @@ class BackendSelfHealingAgent:
                 await asyncio.sleep(self.check_interval)
             except asyncio.CancelledError:
                 break
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.error("Error in monitoring loop: %s", exc)
                 logger.error(traceback.format_exc())
                 await asyncio.sleep(5)
@@ -288,7 +288,7 @@ if __name__ == "__main__":
         asyncio.run(agent.start())
     except KeyboardInterrupt:
         logger.info("Agent stopped by user")
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.error("Agent crashed: %s", exc)
         logger.error(traceback.format_exc())
         sys.exit(1)

@@ -99,7 +99,7 @@ def get_llm_for_reasoning() -> Any:
 
     if provider != "openai":
         try:
-            from backend.llm.claude_oauth_langchain import (  # noqa: PLC0415
+            from backend.llm.claude_oauth_langchain import (
                 build_claude_oauth_chat_model,
             )
 

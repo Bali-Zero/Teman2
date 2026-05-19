@@ -149,7 +149,7 @@ class WebhookProcessor:
             while not self._stopped:
                 try:
                     await self.drain_pending()
-                except Exception as exc:  # noqa: BLE001
+                except Exception as exc:
                     logger.exception(
                         "WebhookProcessor: drain_pending crashed: %s",
                         exc,
@@ -183,7 +183,7 @@ class WebhookProcessor:
             try:
                 async with self._pool.acquire() as conn:
 
-                    def _on_notify(_conn, _pid, channel, payload):  # noqa: ANN001
+                    def _on_notify(_conn, _pid, channel, payload):
                         logger.debug(
                             "WebhookProcessor: NOTIFY on %s payload=%s",
                             channel,
@@ -201,7 +201,7 @@ class WebhookProcessor:
                         await asyncio.sleep(60)
             except asyncio.CancelledError:
                 raise
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning(
                     "WebhookProcessor: listener loop crashed (%s); reconnect in 5s",
                     exc,
@@ -283,7 +283,7 @@ class WebhookProcessor:
 
         try:
             await handler(payload)
-        except Exception as exc:  # noqa: BLE001 — every channel exception is retryable
+        except Exception as exc:
             logger.exception(
                 "WebhookProcessor: handler crashed for id=%d channel=%s: %s",
                 row_id,

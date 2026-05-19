@@ -111,7 +111,7 @@ async def persist(
                         "inbound_webhook_id": new_id,
                     },
                 )
-            except Exception as exc:  # noqa: BLE001 — never block the ack
+            except Exception as exc:
                 # Outbox failure must not break the ack — the row is in
                 # inbound_webhooks and the processor will pick it up via
                 # the 5s poll.

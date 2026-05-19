@@ -118,6 +118,7 @@ class TestLifespan:
     async def test_lifespan_yields(self):
         """Lifespan should yield (startup) then complete (shutdown)."""
         from types import SimpleNamespace
+
         from backend.app.setup.app_factory import lifespan
 
         app_state = SimpleNamespace()
@@ -135,6 +136,7 @@ class TestLifespan:
     async def test_lifespan_cancels_pending_init_on_shutdown(self):
         """If init_task is not done, lifespan should cancel it."""
         from types import SimpleNamespace
+
         from backend.app.setup.app_factory import lifespan
 
         app_state = SimpleNamespace()

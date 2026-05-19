@@ -214,7 +214,7 @@ Summary:"""
         }
 
         # Inject at beginning
-        return [summary_message] + recent_messages
+        return [summary_message, *recent_messages]
 
     @staticmethod
     def _cache_key(messages: list[dict], existing_summary: str | None) -> str:

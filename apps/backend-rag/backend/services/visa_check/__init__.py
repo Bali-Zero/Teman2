@@ -24,6 +24,6 @@ __all__ = [
     "VisaClockResult",
     "VisaMatchResult",
     "clock_timeline",
-    "recommend_visa",
     "estimate_match_cost",
+    "recommend_visa",
 ]

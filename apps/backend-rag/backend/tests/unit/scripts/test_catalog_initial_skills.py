@@ -20,7 +20,6 @@ from backend.scripts.catalog_initial_skills import (
     scan_tree,
 )
 
-
 # ─── Function eligibility ────────────────────────────────────────
 
 

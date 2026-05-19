@@ -189,7 +189,7 @@ async def invoke_agent(
         logger.error("[AGENT_API] Error invoking workflow: %s", e, exc_info=True)
         raise HTTPException(
             status_code=500,
-            detail=f"Failed to invoke agent workflow: {str(e)}",
+            detail=f"Failed to invoke agent workflow: {e!s}",
         ) from e
 
 
@@ -239,7 +239,7 @@ async def agent_health() -> AgentHealthResponse:
             status="unhealthy",
             graph_loaded=False,
             timestamp=datetime.now(tz=timezone.utc),
-            message=f"Import error: {str(e)}",
+            message=f"Import error: {e!s}",
         )
 
     except Exception as e:
@@ -248,5 +248,5 @@ async def agent_health() -> AgentHealthResponse:
             status="degraded",
             graph_loaded=False,
             timestamp=datetime.now(tz=timezone.utc),
-            message=f"Error: {str(e)}",
+            message=f"Error: {e!s}",
         )

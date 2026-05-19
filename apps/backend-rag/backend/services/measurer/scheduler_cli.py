@@ -60,7 +60,7 @@ def _build_samplers() -> list:
 
         try:
             samplers.append(MetaGraphSampler())
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("MetaGraphSampler init failed: %s", exc)
     return samplers
 
@@ -87,7 +87,7 @@ async def run() -> int:
             max_size=2,
             command_timeout=60,
         )
-    except Exception as exc:  # noqa: BLE001
+    except Exception as exc:
         logger.error("pool init failed: %s", exc, exc_info=True)
         return 1
 

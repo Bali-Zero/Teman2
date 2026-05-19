@@ -242,7 +242,7 @@ def plan_consolidation(
             fid, rel_path, disp = stack.pop()
             try:
                 children = _drive_list_children(drive, fid)
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 logger.warning("list_children failed for %s: %s", fid, exc)
                 continue
             for c in children:
@@ -383,7 +383,7 @@ async def apply_consolidation_for_client(
             )
             moved += 1
             context.bump_ops()
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             errors += 1
             context.bump_errors()
             await record_event(
@@ -438,7 +438,7 @@ async def apply_consolidation_for_client(
                     ),
                 )
                 trashed += 1
-            except Exception as exc:  # noqa: BLE001
+            except Exception as exc:
                 await record_event(
                     conn,
                     ev(

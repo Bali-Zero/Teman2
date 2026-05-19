@@ -16,7 +16,6 @@ import pytest
 from backend.services.rag.agentic.schema import CoreResult
 from backend.services.tools.definitions import AgentState
 
-
 # ---------------------------------------------------------------------------
 # Common patches
 # ---------------------------------------------------------------------------

@@ -15,11 +15,10 @@ from __future__ import annotations
 from datetime import date, timedelta
 from uuid import uuid4
 
-import pytest
 import asyncpg
+import pytest
 
 from backend.services.compliance.alert_feedback import AlertFeedback
-
 
 pytestmark = pytest.mark.integration
 
@@ -139,7 +138,7 @@ async def test_high_precision_tightens_threshold(
     # precision = 55 / (55+2) ≈ 0.965, n = 57 → triggers DOWN rule
     await _seed_outcomes(db_tx, sample_client["id"], "visa_expiry", acted=55, dismissed=2)
     fb = AlertFeedback(connection=db_tx)
-    result = await fb.retrain()
+    await fb.retrain()
     new = await db_tx.fetchval(
         "SELECT value FROM system_settings WHERE key='compliance_alert_threshold_urgent_visa_expiry'",
     )

@@ -23,10 +23,9 @@ from backend.services.mata_garuda.cell_adapter import (
     INVALIDATION_MODES,
     RELIABILITY_VALUES,
     TLP_VALUES,
-    confidence_tier,
     _validate_inputs,
+    confidence_tier,
 )
-
 
 # Path to the migration file that owns the schema's CHECK constraints.
 _MIGRATION_154 = (

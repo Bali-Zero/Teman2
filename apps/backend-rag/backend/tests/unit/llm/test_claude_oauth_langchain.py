@@ -21,7 +21,6 @@ from typing import Any
 import pytest
 from pydantic import BaseModel, Field, ValidationError
 
-
 pytest.importorskip("langchain_core")
 
 

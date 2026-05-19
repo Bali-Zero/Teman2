@@ -102,7 +102,7 @@ class QuotaMonitor:
             totals_30d = await self._cost_totals_by_type(days=30)
             today_by_type = await self._cost_totals_by_type_on_date(now.date())
             prior_7d = await self._daily_cost_series(days=7, skip_today=True)
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             result.errors.append(
                 f"fetch: {type(exc).__name__}: {exc}",
             )

@@ -18,12 +18,11 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 import pytest
-
 from scripts.drive_token_watchdog import (
-    TIER_14_DAYS,
     TIER_1_DAY,
-    TIER_30_DAYS,
     TIER_7_DAYS,
+    TIER_14_DAYS,
+    TIER_30_DAYS,
     TIER_EXPIRED,
     TIER_OK,
     TIER_SEVERITY,
@@ -33,7 +32,6 @@ from scripts.drive_token_watchdog import (
     render_alert_text,
     should_alert,
 )
-
 
 # ---------------------------------------------------------------------------
 # classify_tier — tier-by-tier

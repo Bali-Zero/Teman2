@@ -395,7 +395,7 @@ class EventBus:
 
         try:
             from backend.services.events.outbox import replay_unconsumed
-        except Exception as exc:  # noqa: BLE001 — module import is the failure
+        except Exception as exc:
             logger.error("EventBus: outbox module unavailable: %s", exc)
             return
 
@@ -418,7 +418,7 @@ class EventBus:
                             channel=pg_channel,
                             max_age_minutes=60,
                         )
-                    except Exception as exc:  # noqa: BLE001 — per-channel isolation
+                    except Exception as exc:
                         logger.error(
                             "EventBus: outbox replay failed for '%s': %s",
                             pg_channel,
@@ -434,7 +434,7 @@ class EventBus:
                             pg_channel,
                         )
                         total += count
-        except Exception as exc:  # noqa: BLE001 — pool acquire / unexpected
+        except Exception as exc:
             logger.error("EventBus: outbox replay aborted: %s", exc, exc_info=True)
             return
 
@@ -516,7 +516,7 @@ class EventBus:
                     outbox_id,
                     consumer_id=f"event_bus:{event_type}",
                 )
-        except Exception as exc:  # noqa: BLE001 — ack failure must not block handlers
+        except Exception as exc:
             logger.error(
                 "EventBus: outbox ack failed for id=%d event_type=%s: %s",
                 outbox_id,

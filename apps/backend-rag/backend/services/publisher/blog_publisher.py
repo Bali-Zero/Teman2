@@ -189,7 +189,7 @@ class BlogPublisher(Publisher):
                 },
             )
 
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             return PublishResult(
                 ok=False,
                 platform=Platform.BLOG,
@@ -223,7 +223,7 @@ class BlogPublisher(Publisher):
                 if rc != 0:
                     return False
             return True
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.info("blog delete failed: %s", exc)
             return False
 
@@ -256,7 +256,7 @@ class BlogPublisher(Publisher):
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
         )
-        stdout, stderr = await proc.communicate()
+        _stdout, stderr = await proc.communicate()
         err = stderr.decode("utf-8", errors="replace").strip()
         rc = proc.returncode or 0
         return rc, err

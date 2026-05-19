@@ -141,7 +141,7 @@ class PDFVisionService:
 
         except Exception as e:
             logger.error("❌ Vision analysis failed: %s", e)
-            return f"Error analyzing page: {str(e)}"
+            return f"Error analyzing page: {e!s}"
 
     async def _analyze_via_ollama(self, prompt: str, image_base64: str) -> str | None:
         """Analyze image using local Ollama qwen2.5vl:7b vision."""
@@ -271,7 +271,7 @@ class PDFVisionService:
             return text
         except Exception as e:
             logger.error("PDF extraction failed: %s", e)
-            return f"Error extracting PDF: {str(e)}"
+            return f"Error extracting PDF: {e!s}"
 
     async def analyze_vision(self, pdf_data: bytes) -> dict[str, Any]:
         """Analyze PDF using vision model (for test compatibility)."""

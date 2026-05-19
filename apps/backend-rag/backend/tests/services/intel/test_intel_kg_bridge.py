@@ -12,11 +12,10 @@ doesn't exist locally (m108 may not be applied yet on nuzantara_dev).
 
 from __future__ import annotations
 
-import pytest
 import asyncpg
+import pytest
 
 from backend.services.intel.intel_kg_bridge import propose_kg_entities
-
 
 pytestmark = pytest.mark.integration
 
