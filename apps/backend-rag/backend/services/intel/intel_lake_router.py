@@ -55,6 +55,13 @@ NB_INTEL_REGULATION = "80821295-703f-40ab-a32a-f0307e43ae2a"
 NB_INTEL_PRESS = "caec5b82-287c-464f-844f-02e2c8f04c21"
 NB_INTEL_AI_RESEARCH = "d48c4933-4d93-4d1e-8753-23b88145ba78"
 
+# ─── NB-PROBE-SANDBOX (Phase F, 2026-05-20) ─────────────────────────────────
+# Dedicated NotebookLM for synthetic e2e probes. Never NB-INTEL family.
+# Matching rule: source_domain == "probe-sandbox.example.test" (RFC 2606 .test
+# TLD never resolves on the public internet — only probe scripts use it).
+# Migration 187 CHECK constraint enforces canonical_url prefix at INSERT.
+NB_PROBE_SANDBOX = "7e6ae978-136c-4c96-bed5-9fab6f39176f"
+
 
 # ─── Routing rules (closed-set, applied top-to-bottom; first match wins) ────
 
@@ -155,6 +162,18 @@ _PRESS_REGULATORY_PATTERNS = tuple(
 
 
 _RULES: list[tuple[re.Pattern[str], str, dict[str, Any], str]] = [
+    # ─── Sandbox probe (Phase F, 2026-05-20) ────────────────────────────────
+    # Match EXACT RFC 2606 .test domain — never the public internet.
+    # First rule so probes are routed before any other classification.
+    # Uses ^...$ anchors via fullmatch semantics (pattern.match anchors at
+    # start; explicit $ anchors at end) to prevent prefix attacks like
+    # "probe-sandbox.example.test.evil.com".
+    (
+        re.compile(r"probe-sandbox\.example\.test$"),
+        "nb-intel",
+        {"nb_uuids": [NB_PROBE_SANDBOX]},
+        "probe_sandbox",
+    ),
     # Immigration (visa, KITAS, KITAP) → NB-INTEL-Immigration
     (
         re.compile(
