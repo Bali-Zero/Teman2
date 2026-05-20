@@ -366,6 +366,24 @@ class HybridAuthMiddleware(BaseHTTPMiddleware):
                 "user_id": "admin",
             }
 
+        # Priority 0.5: Internal Service Key via X-Internal-Key header (for
+        # Pro-side scripts like wa-mirror-auto-promote-leads that bypass the
+        # normal POST /api/crm/clients/ router and need to trigger
+        # ensure-drive-folder). The matching settings field is
+        # `wa_mirror_internal_key`; rotate via Fly secret WA_MIRROR_INTERNAL_KEY.
+        # Returns an "internal" pseudo-user; downstream routers MUST treat
+        # this as service-to-service, NOT a real user identity.
+        internal_key = request.headers.get("X-Internal-Key")
+        configured_internal = getattr(settings, "wa_mirror_internal_key", None)
+        if internal_key and configured_internal and internal_key == configured_internal:
+            logger.info("Internal service key authenticated from %s", client_host)
+            return {
+                "role": "internal",
+                "email": "wa-mirror-internal@balizero.com",
+                "auth_method": "internal_key",
+                "user_id": "wa-mirror-internal",
+            }
+
         # Priority 1: API Key Authentication (fastest, bypasses database)
         api_key = request.headers.get("X-API-Key")
         if api_key:
