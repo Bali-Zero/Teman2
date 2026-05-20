@@ -175,12 +175,16 @@ def main():
     logger.info("Loaded %d Company_CRM folders", len(company_crm_idx))
     with open(TAX_MEMBERS_INDEX_PATH) as f:
         tax_members_idx = json.load(f)
-    # Flatten tax member PT folders into single name→id map
+    # New format: {member: {fid: name}} (was {member: {name: fid}})
     tax_pt_idx = {}
     for member, pts in tax_members_idx.items():
-        for pt_name, pt_id in pts.items():
-            tax_pt_idx[pt_name] = pt_id
-    logger.info("Loaded %d Tax/Members PT folders (Angel only for now)", len(tax_pt_idx))
+        for k, v in pts.items():
+            # Detect format: if key is folder ID (long), v is name; else swap
+            if len(k) > 30 and ' ' not in k:
+                tax_pt_idx[v] = k  # k=id, v=name → register name→id
+            else:
+                tax_pt_idx[k] = v  # k=name, v=id
+    logger.info("Loaded %d Tax/Members PT folders (all 5 consultants)", len(tax_pt_idx))
 
     # DB
     conn = psycopg2.connect(**DB)
