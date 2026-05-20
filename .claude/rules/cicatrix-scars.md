@@ -9,7 +9,7 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 _Discovered: 2026-05-21 ~05:00 WITA during PR #802 admin-override review · Severity: **P0** · Status: **OPEN — awaiting rotation decision by Antonello**_
 
-**TRAUMA:** Password `2zEjit43IF6gNUV` per role `backend_rag_v2` (Fly Postgres `nuzantara-postgres.flycast`, production database Nuzantara) hardcoded in plaintext in **32 file** del repo public `Balizero1987/Teman2`:
+**TRAUMA:** Password `<REDACTED — see incident report>` per role `backend_rag_v2` (Fly Postgres `nuzantara-postgres.flycast`, production database Nuzantara) hardcoded in plaintext in **32 file** del repo public `Balizero1987/Teman2`:
 
 - 23 file su `apps/backend-rag/scripts/` (CRM/OCR/KG/migration scripts)
 - 4 file su `scripts/workspace_automation/` (sibling commit `d82df9de5` 2026-05-20 ha aggiunto questi 4 con `# pragma: allowlist secret` bypass tentativo)
@@ -32,7 +32,7 @@ _Discovered: 2026-05-21 ~05:00 WITA during PR #802 admin-override review · Seve
 **ANTIBODY (NOT YET shipped — decisione operativa pending Antonello)**:
 
 Opzione A (raccomandata): rotate password + scrub repo
-1. `fly ssh console -a nuzantara-postgres` → `psql -U postgres -c "ALTER USER backend_rag_v2 WITH PASSWORD 'new_strong_pw'"`
+1. `fly ssh console -a nuzantara-postgres` → run an `ALTER USER backend_rag_v2` statement to set a freshly generated credential (see incident report for exact procedure)
 2. Update Fly secrets: `fly secrets set DATABASE_URL=...` per nuzantara-rag + altri consumer
 3. Patch 32 file: replace hardcoded password con `os.environ["DATABASE_URL"]` lookup
 4. Update local `.env` files + LaunchAgent env (fly-pg-proxy-wrapper.sh, ecc.)
