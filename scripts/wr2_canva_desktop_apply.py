@@ -147,14 +147,19 @@ async def _kill_switch_enabled(conn: asyncpg.Connection) -> bool:
 async def _fetch_ready_drafts(conn: asyncpg.Connection, limit: int) -> list[asyncpg.Record]:
     # WR2 pipeline: topic → briefed → (draft_generator) → drafts →
     # (image_generator) → drafts_imaged → (canva_apply) → published.
-    # Accept both 'drafts_imaged' (normal) and 'drafts' (legacy/fallback when
-    # image_generator is disabled) so the pipeline keeps flowing even if
-    # the image step is skipped.
+    # Accept 'drafts_imaged' (normal), 'drafts' (legacy/fallback when
+    # image_generator is disabled), 'drafts_imaged_facted' (post fact-extractor),
+    # and 'drafts_imaged_checked' (post fact-checker — supervisor routes this
+    # status to canva-apply per wr2_supervisor.py:97). The supervisor's
+    # routing table is the source of truth; this query must accept any
+    # status the supervisor will route here. Bug fix 2026-05-20: previously
+    # drafts that passed fact-checker were stuck because the query only
+    # matched 'drafts_imaged' / 'drafts'.
     return await conn.fetch(
         """
         SELECT id, topic, register AS tone, slides_json
           FROM war_room_drafts
-         WHERE status IN ('drafts_imaged', 'drafts')
+         WHERE status IN ('drafts_imaged', 'drafts', 'drafts_imaged_facted', 'drafts_imaged_checked')
            AND canva_edit_url IS NULL
          ORDER BY created_at ASC
          LIMIT $1
@@ -526,7 +531,7 @@ async def _fetch_one_by_id(
         SELECT id, topic, register AS tone, slides_json
           FROM war_room_drafts
          WHERE id = $1::uuid
-           AND status IN ('drafts_imaged', 'drafts')
+           AND status IN ('drafts_imaged', 'drafts', 'drafts_imaged_facted', 'drafts_imaged_checked')
            AND canva_edit_url IS NULL
         """,
         draft_id,
