@@ -38,6 +38,107 @@ def get_client_service(db_pool: asyncpg.Pool = Depends(get_database_pool)) -> Cl
     return ClientService(repository)
 
 
+async def get_current_user_or_internal(request: Request) -> dict | None:
+    """Auth dependency: accept either JWT user OR `X-Internal-Key` service token.
+
+    Returns the user dict for JWT path (RBAC enforced by caller via
+    `verify_client_access`). Returns `None` when authenticated via internal key —
+    callers MUST treat None as "skip RBAC" and apply per-endpoint trust model
+    (the internal key is used by wa-mirror auto-promote and is rotation-managed
+    via Fly secret `WA_MIRROR_INTERNAL_KEY`).
+
+    Raises 401 if neither auth path succeeds.
+    """
+    from backend.app.core.config import settings as _settings
+
+    internal_key = (request.headers.get("X-Internal-Key") or "").strip()
+    configured = (getattr(_settings, "wa_mirror_internal_key", None) or "").strip()
+    if internal_key and configured and internal_key == configured:
+        return None  # Trusted service call — no user identity
+
+    # Fall back to normal JWT validation. `get_current_user` is sync, takes (request, credentials).
+    # Credentials come from FastAPI's HTTPBearer security; we replicate that here.
+    try:
+        from fastapi.security import HTTPAuthorizationCredentials
+        auth_header = request.headers.get("Authorization") or ""
+        credentials: HTTPAuthorizationCredentials | None = None
+        if auth_header.lower().startswith("bearer "):
+            credentials = HTTPAuthorizationCredentials(
+                scheme="Bearer",
+                credentials=auth_header.split(" ", 1)[1].strip(),
+            )
+        return get_current_user(request, credentials)  # type: ignore[arg-type]
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.warning("get_current_user_or_internal: auth failed: %s", e)
+        raise HTTPException(status_code=401, detail="authentication required") from e
+
+
+# ================================================
+# HELPERS — Drive folder observability
+# ================================================
+
+
+def _report_drive_folder_failure(
+    client_id: int,
+    client_name: str | None,
+    client_type: str | None,
+    error: BaseException,
+) -> None:
+    """Surface Drive folder creation failures to Sentry without leaking PII.
+
+    Sentry already redacts UU PDP fields via `_before_send` (sentry_config.py).
+    Tags are scalar metadata, no PII.
+    """
+    try:
+        import sentry_sdk
+        with sentry_sdk.push_scope() as scope:
+            scope.set_tag("subsystem", "drive_folder_create")
+            scope.set_tag("client_type", client_type or "unknown")
+            scope.set_extra("client_id", client_id)
+            sentry_sdk.capture_exception(error)
+    except Exception:
+        pass
+
+
+async def _create_drive_folder_with_observability(
+    drive_service,
+    *,
+    client_id: int,
+    client_name: str,
+    client_type: str,
+    db_pool,
+) -> None:
+    """BackgroundTask wrapper that surfaces Drive create failures instead of swallowing.
+
+    Without this, an exception in `create_client_folder` (e.g. 404 on a phantom
+    parent folder ID) is silently logged and never reaches Sentry — clients end
+    up without a Drive folder and no alert fires. See cicatrix-scars.md
+    (2026-05-21: GDRIVE_COMPANIES_FOLDER_ID phantom).
+    """
+    try:
+        result = await drive_service.create_client_folder(
+            client_id=client_id,
+            client_name=client_name,
+            client_type=client_type,
+            db_pool=db_pool,
+        )
+        if not result.get("success"):
+            err = RuntimeError(f"create_client_folder returned success=False: {result.get('error')}")
+            logger.error(
+                "Drive folder creation failed for client %s (%s): %s",
+                client_id, client_type, result.get("error"),
+            )
+            _report_drive_folder_failure(client_id, client_name, client_type, err)
+    except Exception as e:
+        logger.error(
+            "Drive folder creation exception for client %s (%s): %s",
+            client_id, client_type, e,
+        )
+        _report_drive_folder_failure(client_id, client_name, client_type, e)
+
+
 # Constants
 MAX_LIMIT = 200
 DEFAULT_LIMIT = 50
@@ -404,14 +505,16 @@ async def create_client(
 
             drive_service = ServiceAccountDriveService()
             background_tasks.add_task(
-                drive_service.create_client_folder,
+                _create_drive_folder_with_observability,
+                drive_service,
                 client_id=new_client["id"],
                 client_name=client.full_name,
                 client_type=client.client_type,
                 db_pool=db_pool,
             )
         except Exception as e:
-            logger.error("Drive folder creation failed: %s", e)
+            logger.error("Drive folder creation scheduling failed: %s", e)
+            _report_drive_folder_failure(new_client["id"], client.full_name, client.client_type, e)
 
         # Invalidazione extra cache HTTP (il service invalida la memory cache)
         await invalidate_cache("zantara:crm_clients_stats:*")
@@ -701,6 +804,78 @@ async def get_client_by_email(
         raise
     except Exception as e:
         raise handle_database_error(e) from e
+
+
+@router.post("/{client_id}/ensure-drive-folder")
+async def ensure_drive_folder(
+    request: Request,
+    client_id: int = Path(..., gt=0, description="Client ID"),
+    db_pool: asyncpg.Pool = Depends(get_database_pool),
+    current_user: dict | None = Depends(get_current_user_or_internal),
+) -> dict:
+    """Idempotently ensure a Google Drive folder structure exists for a client.
+
+    Auth: either a normal user JWT (RBAC enforced — admin or assigned user) OR
+    a valid `X-Internal-Key` header matching `settings.wa_mirror_internal_key`.
+    Used by:
+      - `wa-mirror-auto-promote-leads.py` after inserting a new lead client directly in DB
+        (those clients bypass `POST /api/crm/clients/` so the BackgroundTask Drive creation
+         never fires).
+      - Manual repair tooling / scripts.
+
+    Behavior:
+      - If `clients.google_drive_folder_id` is already set → returns `{"created": False, ...}`.
+      - Otherwise → calls `ServiceAccountDriveService.create_client_folder` (sync, NOT a
+        BackgroundTask) so caller knows the outcome.
+    """
+    async with db_pool.acquire() as conn:
+        # RBAC: skip if authenticated via internal key (service-to-service call)
+        if current_user is not None:
+            await verify_client_access(client_id, current_user, conn, allow_assigned=True)
+        row = await conn.fetchrow(
+            "SELECT id, full_name, client_type, google_drive_folder_id "
+            "FROM clients WHERE id = $1 AND deleted_at IS NULL",
+            client_id,
+        )
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"client {client_id} not found")
+
+    if row["google_drive_folder_id"]:
+        return {
+            "created": False,
+            "reason": "already_exists",
+            "client_id": client_id,
+            "folder_id": row["google_drive_folder_id"],
+        }
+
+    from backend.services.integrations.service_account_drive_service import (
+        ServiceAccountDriveService,
+    )
+
+    drive_service = ServiceAccountDriveService()
+    try:
+        result = await drive_service.create_client_folder(
+            client_id=client_id,
+            client_name=row["full_name"] or f"client_{client_id}",
+            client_type=row["client_type"] or "individual",
+            db_pool=db_pool,
+        )
+    except Exception as e:
+        _report_drive_folder_failure(client_id, row["full_name"], row["client_type"], e)
+        raise HTTPException(status_code=502, detail=f"Drive folder creation failed: {e}") from e
+
+    if not result.get("success"):
+        err = RuntimeError(result.get("error") or "create_client_folder returned success=False")
+        _report_drive_folder_failure(client_id, row["full_name"], row["client_type"], err)
+        raise HTTPException(status_code=502, detail=str(err))
+
+    return {
+        "created": True,
+        "client_id": client_id,
+        "folder_id": result.get("root_folder_id"),
+        "folder_url": result.get("root_folder_url"),
+        "subfolder_count": len(result.get("subfolders", {})),
+    }
 
 
 @router.patch("/{client_id}", response_model=ClientResponse)

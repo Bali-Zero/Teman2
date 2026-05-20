@@ -809,6 +809,14 @@ class Settings(BaseSettings):
     gdrive_companies_folder_id: str | None = (
         None  # Set via GDRIVE_COMPANIES_FOLDER_ID env var (parent for company clients)
     )
+
+    # Shared secret used by Pro-side `wa-mirror-auto-promote-leads.py` (and similar
+    # service-to-service scripts that bypass POST /api/crm/clients/) to call
+    # POST /api/crm/clients/{id}/ensure-drive-folder. Auth dependency:
+    # `get_current_user_or_internal` (crm_clients.py). Rotate via
+    # `fly secrets set WA_MIRROR_INTERNAL_KEY=...`. Unset → endpoint requires JWT only.
+    wa_mirror_internal_key: str | None = None
+
     hf_api_key: str | None = None  # Set via HF_API_KEY env var
 
     # ========================================
