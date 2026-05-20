@@ -48,6 +48,12 @@ class WaMirrorMessageResponse(BaseModel):
     has_media: bool
     has_ocr: bool
     source: str = Field(default="wa_mirror")
+    # Phase 1 attention queue (migration 188) — optional, NULL = not yet classified
+    attention_priority: str | None = Field(
+        default=None, description="HIGH | MEDIUM | LOW | None"
+    )
+    attention_reason: list[str] | None = None
+    attention_resolved: bool = False
 
 
 class WaMirrorMessagesResponse(BaseModel):
@@ -104,7 +110,10 @@ def _build_messages_query(
                COALESCE(NULLIF(media_type, ''), 'text') AS media_type,
                media_mime,
                (ocr_result IS NOT NULL) AS has_ocr,
-               source
+               source,
+               attention_priority,
+               attention_reason,
+               (attention_resolved_at IS NOT NULL) AS attention_resolved
           FROM whatsapp_message_context
          WHERE {" AND ".join(where)}
          ORDER BY message_date DESC, id DESC
@@ -136,6 +145,18 @@ def _message_response_from_row(row: Mapping[str, Any]) -> WaMirrorMessageRespons
     if has_ocr is None:
         has_ocr = _row_get(row, "ocr_result") is not None
 
+    attention_priority = _row_get(row, "attention_priority")
+    if attention_priority not in (None, "HIGH", "MEDIUM", "LOW"):
+        attention_priority = None
+    raw_reasons = _row_get(row, "attention_reason")
+    if raw_reasons is None:
+        attention_reason: list[str] | None = None
+    elif isinstance(raw_reasons, list):
+        attention_reason = [str(r) for r in raw_reasons if r]
+    else:
+        attention_reason = None
+    attention_resolved = bool(_row_get(row, "attention_resolved", False))
+
     return WaMirrorMessageResponse(
         id=int(_row_get(row, "id")),
         client_id=_row_get(row, "client_id"),
@@ -151,6 +172,9 @@ def _message_response_from_row(row: Mapping[str, Any]) -> WaMirrorMessageRespons
         has_media=media_type != "text",
         has_ocr=bool(has_ocr),
         source=str(_row_get(row, "source", "wa_mirror") or "wa_mirror"),
+        attention_priority=attention_priority,
+        attention_reason=attention_reason,
+        attention_resolved=attention_resolved,
     )
 
 

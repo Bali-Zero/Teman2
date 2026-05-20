@@ -4,10 +4,35 @@
  */
 
 import type { IApiClient } from "../types/api-client.types";
-import type { WhatsAppConversation, WhatsAppMessage } from "./whatsapp.types";
+import type {
+  WhatsAppConversation,
+  WhatsAppMessage,
+  WaMirrorMessagesResponse,
+} from "./whatsapp.types";
 
 export class WhatsAppApi {
   constructor(private client: IApiClient) {}
+
+  /**
+   * Get wa-mirror (Baileys) messages tied to a CRM client or practice.
+   * Backend route: /api/wa/messages (CRM-safe allowlist, RBAC enforced).
+   */
+  async getMirrorMessages(params: {
+    clientId?: number;
+    practiceId?: number;
+    limit?: number;
+    offset?: number;
+  }): Promise<WaMirrorMessagesResponse> {
+    const qs = new URLSearchParams();
+    if (params.clientId != null) qs.set("client_id", String(params.clientId));
+    if (params.practiceId != null)
+      qs.set("practice_id", String(params.practiceId));
+    qs.set("limit", String(params.limit ?? 50));
+    qs.set("offset", String(params.offset ?? 0));
+    return await this.client.request<WaMirrorMessagesResponse>(
+      `/api/wa/messages?${qs.toString()}`,
+    );
+  }
 
   /**
    * Get WhatsApp conversations (grouped by phone number)
