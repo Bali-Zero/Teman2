@@ -360,18 +360,43 @@ export function OverviewTab({
                 </>
               )}
 
-              {/* Notes */}
-              {client.notes && (
+              {/* Strategic Recap (primary curated client story) */}
+              {(client as any).strategic_recap && (
                 <>
                   <div className="border-t border-[var(--bz-border)]" />
                   <div>
-                    <p className="text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] mb-1">
-                      Notes
-                    </p>
-                    <p className="text-sm text-[var(--bz-text-2)] leading-relaxed whitespace-pre-line">
-                      {client.notes}
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-[10px] uppercase tracking-wider text-[var(--bz-accent)]">
+                        Strategic recap
+                      </p>
+                      {(client as any).strategic_recap_source && (
+                        <span className="text-[9px] uppercase tracking-wider opacity-50">
+                          {(client as any).strategic_recap_source.replace(
+                            "_",
+                            " ",
+                          )}
+                        </span>
+                      )}
+                    </div>
+                    <p className="text-sm leading-relaxed whitespace-pre-line">
+                      {(client as any).strategic_recap}
                     </p>
                   </div>
+                </>
+              )}
+
+              {/* Notes — machine log, collapsed by default */}
+              {client.notes && (
+                <>
+                  <div className="border-t border-[var(--bz-border)]" />
+                  <details className="text-xs">
+                    <summary className="cursor-pointer text-[10px] uppercase tracking-wider text-[var(--bz-text-2)] hover:text-[var(--bz-text-1)]">
+                      Audit log ({client.notes.length} chars)
+                    </summary>
+                    <p className="text-xs text-[var(--bz-text-2)] leading-relaxed whitespace-pre-line mt-2 max-h-64 overflow-y-auto font-mono opacity-70">
+                      {client.notes}
+                    </p>
+                  </details>
                 </>
               )}
 
