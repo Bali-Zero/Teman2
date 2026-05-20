@@ -80,6 +80,52 @@ class ServiceAccountDriveService:
         # Build API client
         self.service = build("drive", "v3", credentials=self.credentials)
 
+        # Validate configured parent folder IDs exist & are reachable.
+        # Reason: GDRIVE_COMPANIES_FOLDER_ID pointed to a phantom (404) from Feb 2026 to May
+        # 2026, silently breaking every company-client create_client_folder call. The
+        # BackgroundTask exception was swallowed by crm_clients.py and never surfaced.
+        # See cicatrix-scars.md (2026-05-21) for the full incident.
+        self._validate_configured_folders()
+
+    def _validate_configured_folders(self) -> None:
+        """Verify each configured parent folder ID exists and is accessible.
+
+        Logs ERROR (and would alert via Sentry / Telegram in production) for any
+        404 / inaccessible folder. Does NOT raise — the service still boots so
+        other endpoints work, but operators know which folder is broken.
+        """
+        configured = [
+            ("GOOGLE_DRIVE_ROOT_FOLDER_ID", getattr(settings, "google_drive_root_folder_id", None)),
+            ("GDRIVE_INDIVIDUALS_FOLDER_ID", getattr(settings, "gdrive_individuals_folder_id", None)),
+            ("GDRIVE_COMPANIES_FOLDER_ID", getattr(settings, "gdrive_companies_folder_id", None)),
+        ]
+        for env_name, folder_id in configured:
+            if not folder_id:
+                logger.warning("⚠ Drive folder env %s not set — skipping validation", env_name)
+                continue
+            try:
+                meta = self.service.files().get(
+                    fileId=folder_id,
+                    fields="id, name, trashed",
+                    supportsAllDrives=True,
+                ).execute()
+                if meta.get("trashed"):
+                    logger.error(
+                        "🚨 Drive folder %s (%s) is TRASHED — client folder creation will fail",
+                        env_name, folder_id,
+                    )
+                else:
+                    logger.info(
+                        "✅ Drive folder %s OK: %s (%r)",
+                        env_name, folder_id, meta.get("name"),
+                    )
+            except Exception as e:
+                logger.error(
+                    "🚨 Drive folder %s (%s) UNREACHABLE — clients of the matching type "
+                    "will fail to get a Drive folder. Error: %s",
+                    env_name, folder_id, e,
+                )
+
     async def create_folder(
         self,
         name: str,

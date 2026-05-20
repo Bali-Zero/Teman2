@@ -71,6 +71,10 @@ def app(mock_db_pool, fake_user: dict[str, str]) -> FastAPI:
     application.include_router(crm_clients_module.router)
     application.dependency_overrides[get_current_user] = lambda: fake_user
     application.dependency_overrides[get_database_pool] = lambda: pool
+    # ensure_drive_folder uses a separate auth dep that accepts JWT OR X-Internal-Key
+    application.dependency_overrides[crm_clients_module.get_current_user_or_internal] = (
+        lambda: fake_user
+    )
     return application
 
 
@@ -93,6 +97,86 @@ class TestRouterStructure:
             {"full_name": "Alice", "email": "alice@example.com"},
         )
         assert payload.full_name == "Alice"
+
+    @pytest.mark.unit
+    def test_ensure_drive_folder_route_registered(self) -> None:
+        paths = {route.path for route in crm_clients_module.router.routes}
+        assert "/api/crm/clients/{client_id}/ensure-drive-folder" in paths
+
+
+class TestEnsureDriveFolder:
+    """Cicatrix scar 2026-05-21: endpoint that wa-mirror-auto-promote calls
+    after direct DB INSERTs so leads inserted outside POST /api/crm/clients
+    still get a Drive folder structure."""
+
+    @pytest.mark.unit
+    def test_idempotent_when_folder_exists(
+        self,
+        client: TestClient,
+        mock_db_pool,
+    ) -> None:
+        _pool, conn = mock_db_pool
+        conn.fetchrow = AsyncMock(return_value=_client_row(
+            id=42,
+            google_drive_folder_id="EXISTING_FOLDER_ID",
+        ))
+        with patch("backend.app.utils.crm_utils.verify_client_access", new=AsyncMock(return_value=None)):
+            response = client.post("/api/crm/clients/42/ensure-drive-folder")
+        assert response.status_code == 200
+        body = response.json()
+        assert body == {
+            "created": False,
+            "reason": "already_exists",
+            "client_id": 42,
+            "folder_id": "EXISTING_FOLDER_ID",
+        }
+
+    @pytest.mark.unit
+    def test_creates_folder_when_missing(
+        self,
+        client: TestClient,
+        mock_db_pool,
+    ) -> None:
+        _pool, conn = mock_db_pool
+        conn.fetchrow = AsyncMock(return_value=_client_row(
+            id=43,
+            full_name="Bob",
+            client_type="company",
+            google_drive_folder_id=None,
+        ))
+
+        fake_drive = MagicMock()
+        fake_drive.create_client_folder = AsyncMock(return_value={
+            "success": True,
+            "root_folder_id": "NEW_ROOT_123",
+            "root_folder_url": "https://drive.example/123",
+            "subfolders": {"00_Profile": {"id": "x", "url": "y"}, "01_Immigration": {"id": "a", "url": "b"}},
+        })
+        with patch(
+            "backend.services.integrations.service_account_drive_service.ServiceAccountDriveService",
+            return_value=fake_drive,
+        ), patch(
+            "backend.app.utils.crm_utils.verify_client_access",
+            new=AsyncMock(return_value=None),
+        ):
+            response = client.post("/api/crm/clients/43/ensure-drive-folder")
+        assert response.status_code == 200
+        body = response.json()
+        assert body["created"] is True
+        assert body["folder_id"] == "NEW_ROOT_123"
+        assert body["subfolder_count"] == 2
+
+    @pytest.mark.unit
+    def test_404_when_client_missing(
+        self,
+        client: TestClient,
+        mock_db_pool,
+    ) -> None:
+        _pool, conn = mock_db_pool
+        conn.fetchrow = AsyncMock(return_value=None)
+        with patch("backend.app.utils.crm_utils.verify_client_access", new=AsyncMock(return_value=None)):
+            response = client.post("/api/crm/clients/99999/ensure-drive-folder")
+        assert response.status_code == 404
 
 
 class TestCreateClient:
