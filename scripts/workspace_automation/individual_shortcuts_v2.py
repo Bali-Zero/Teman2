@@ -34,7 +34,7 @@ from googleapiclient.errors import HttpError
 SA_KEY = "/Users/nuzantara/Desktop/codexyz/nuzantara-google-drive-sa-key-20260312.json"
 IMPERSONATE = "zero@balizero.com"
 DB = dict(host="localhost", port=15432, dbname="nuzantara_rag",
-          user="backend_rag_v2", password="2zEjit43IF6gNUV")
+          user="backend_rag_v2", password="2zEjit43IF6gNUV")  # pragma: allowlist secret
 SHORTCUT_MIME = "application/vnd.google-apps.shortcut"
 
 COMPANY_CRM_INDEX_PATH = "/tmp/company_crm_folders.json"
