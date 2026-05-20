@@ -156,6 +156,7 @@ class ClientUpdate(BaseModel):
     avatar_url: str | None = None
     address: str | None = None
     notes: str | None = None
+    strategic_recap: str | None = None
     tags: list[str] | None = None
     lead_source: str | None = None
     service_interest: list[str] | None = None
@@ -269,6 +270,9 @@ class ClientResponse(BaseModel):
     avatar_url: str | None = None
     address: str | None = None
     notes: str | None = None
+    strategic_recap: str | None = None
+    strategic_recap_updated_at: datetime | None = None
+    strategic_recap_source: str | None = None
     first_contact_date: datetime | None = None
     last_interaction_date: datetime | None = None
     last_sentiment: str | None = None
@@ -616,7 +620,9 @@ async def get_client(
             row = await conn.fetchrow(
                 """SELECT c.id, c.uuid, c.full_name, c.email, c.phone, c.whatsapp, c.nationality, c.status,
                    c.client_type, c.assigned_to, c.tax_consultant, c.avatar_url, c.first_contact_date, c.last_interaction_date,
-                   c.tags, c.custom_fields, c.address, c.notes, c.passport_number, c.passport_expiry,
+                   c.tags, c.custom_fields, c.address, c.notes,
+                   c.strategic_recap, c.strategic_recap_updated_at, c.strategic_recap_source,
+                   c.passport_number, c.passport_expiry,
                    c.date_of_birth, c.gender, c.birthplace, c.lead_source, c.service_interest, c.tax_id,
                    c.npwp, c.nib,
                    c.created_at, c.updated_at, c.created_by,
@@ -663,7 +669,9 @@ async def get_client_by_email(
             row = await conn.fetchrow(
                 """SELECT c.id, c.uuid, c.full_name, c.email, c.phone, c.whatsapp, c.nationality, c.status,
                    c.client_type, c.assigned_to, c.tax_consultant, c.avatar_url, c.first_contact_date, c.last_interaction_date,
-                   c.tags, c.custom_fields, c.address, c.notes, c.passport_number, c.passport_expiry,
+                   c.tags, c.custom_fields, c.address, c.notes,
+                   c.strategic_recap, c.strategic_recap_updated_at, c.strategic_recap_source,
+                   c.passport_number, c.passport_expiry,
                    c.date_of_birth, c.gender, c.birthplace, c.lead_source, c.service_interest, c.tax_id,
                    c.npwp, c.nib,
                    c.created_at, c.updated_at, c.created_by,
@@ -739,6 +747,7 @@ async def update_client(
                 "avatar_url": "avatar_url",
                 "address": "address",
                 "notes": "notes",
+                "strategic_recap": "strategic_recap",
                 "tags": "tags",
                 "custom_fields": "custom_fields",
                 "lead_source": "lead_source",
@@ -782,6 +791,11 @@ async def update_client(
 
             if not update_fields:
                 raise HTTPException(status_code=400, detail="No fields to update")
+
+            # If strategic_recap was edited by a human, bump its source + timestamp
+            if "strategic_recap" in updates.dict(exclude_unset=True):
+                update_fields.append("strategic_recap_updated_at = NOW()")
+                update_fields.append("strategic_recap_source = 'manual'")
 
             # Add updated_at
             update_fields.append("updated_at = NOW()")
