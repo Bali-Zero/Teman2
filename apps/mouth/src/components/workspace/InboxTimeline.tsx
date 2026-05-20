@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   inboxApi,
   type InboxChannel,
   type InboxItem,
 } from "@/lib/api/workspace/inbox.api";
+
+const AUTO_REFRESH_MS = 5000;
 
 const CHANNELS: Array<{ value: InboxChannel | ""; label: string }> = [
   { value: "", label: "Tutti i canali" },
@@ -35,26 +37,50 @@ export function InboxTimeline() {
   const [channel, setChannel] = useState<InboxChannel | "">("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [lastRefreshAt, setLastRefreshAt] = useState<Date | null>(null);
+  const inFlightRef = useRef(false);
+
+  const fetchFeed = useCallback(
+    async (currentChannel: InboxChannel | "", showLoading: boolean) => {
+      if (inFlightRef.current) return;
+      inFlightRef.current = true;
+      if (showLoading) setLoading(true);
+      try {
+        const res = await inboxApi.feed({
+          channel: currentChannel || undefined,
+          limit: 100,
+        });
+        setItems(res.items);
+        setError(null);
+        setLastRefreshAt(new Date());
+      } catch (err) {
+        setError(String(err));
+      } finally {
+        if (showLoading) setLoading(false);
+        inFlightRef.current = false;
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    inboxApi
-      .feed({ channel: channel || undefined, limit: 100 })
-      .then((res) => {
-        if (!cancelled) setItems(res.items);
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) setError(String(err));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => {
-      cancelled = true;
+    void fetchFeed(channel, true);
+    const tick = () => {
+      if (document.visibilityState === "visible") {
+        void fetchFeed(channel, false);
+      }
     };
-  }, [channel]);
+    const interval = window.setInterval(tick, AUTO_REFRESH_MS);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible")
+        void fetchFeed(channel, false);
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [channel, fetchFeed]);
 
   const groups = useMemo(() => {
     const map = new Map<string, InboxItem[]>();
@@ -88,6 +114,37 @@ export function InboxTimeline() {
         <h1 style={{ margin: 0, fontSize: "var(--font-size-xl, 20px)" }}>
           Inbox
         </h1>
+        <span
+          aria-live="polite"
+          style={{
+            fontSize: "var(--font-size-sm, 12px)",
+            color: "var(--color-text-secondary, #6b7280)",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <span
+            aria-hidden
+            style={{
+              width: 8,
+              height: 8,
+              borderRadius: 4,
+              background: error
+                ? "var(--color-danger, #dc2626)"
+                : "var(--color-success, #16a34a)",
+              display: "inline-block",
+            }}
+          />
+          Auto-refresh 5s
+          {lastRefreshAt
+            ? ` · last ${lastRefreshAt.toLocaleTimeString(undefined, {
+                hour: "2-digit",
+                minute: "2-digit",
+                second: "2-digit",
+              })}`
+            : ""}
+        </span>
         <label
           style={{
             marginLeft: "auto",
