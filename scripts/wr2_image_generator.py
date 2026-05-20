@@ -1184,7 +1184,7 @@ async def _process_one(
 
     results: list[Any] = []
 
-    if IMAGE_BACKEND == "codex" or (IMAGE_BACKEND == "auto" and codex_available and not flowkit_available):
+    if IMAGE_BACKEND == "codex" or (IMAGE_BACKEND == "auto" and codex_available):
         # Codex-only path: no Playwright launch at all.
         # In auto mode, if Codex is available we skip Playwright entirely
         # — Codex handles 4:5 native and is the desired primary. FlowKit/
@@ -1192,6 +1192,12 @@ async def _process_one(
         # Without this guard, the Playwright launch loop below ran a
         # `launch_persistent_context` per slide even when Codex succeeded,
         # leading to network-service crashes on slide 11 (08:09 WITA run).
+        # 2026-05-20 fix: removed `and not flowkit_available` clause — when
+        # BOTH Codex AND FlowKit were available, auto mode fell through to
+        # the `else` Playwright branch (which crashed with No module named
+        # 'playwright' in the deploy venv). Codex MUST be preferred when
+        # available regardless of FlowKit status. Empirical 2026-05-19:
+        # 2 drafts (2f21e709, 98805a61) went image_failed because of this.
         sem = asyncio.Semaphore(1)
         logger.info(
             "Codex-only path active (backend=%s, codex_available=True). "
