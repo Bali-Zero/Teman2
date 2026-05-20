@@ -64,6 +64,37 @@ def _resolve_ffmpeg() -> str:
     )
 
 
+_LIBASS_AVAILABLE: bool | None = None
+
+
+def _has_libass(ffmpeg_bin: str) -> bool:
+    """Check whether the resolved ffmpeg binary supports the `ass` subtitle filter.
+
+    Cached at module level (filters list is invariant per binary).
+    brew ffmpeg 8.x on macOS ships WITHOUT --enable-libass by default → the
+    `ass` filter is missing and `[0:v]ass=...` filter_complex hard-fails. The
+    evermeet static binary at /tmp/ffmpeg-full/ffmpeg includes libass.
+    Degrade-loud: log a warning and skip the subtitle filter when missing.
+    """
+    global _LIBASS_AVAILABLE
+    if _LIBASS_AVAILABLE is not None:
+        return _LIBASS_AVAILABLE
+    try:
+        import subprocess as _sp
+        out = _sp.run(
+            [ffmpeg_bin, "-hide_banner", "-filters"],
+            capture_output=True, text=True, timeout=5,
+        ).stdout
+        _LIBASS_AVAILABLE = any(
+            len(line.split()) > 1 and line.split()[1] == "ass"
+            for line in out.splitlines()
+            if line.strip().startswith(".")
+        )
+    except Exception:
+        _LIBASS_AVAILABLE = False
+    return _LIBASS_AVAILABLE
+
+
 async def _run(args: list[str], *, timeout_s: int = 600) -> None:
     proc = await asyncio.create_subprocess_exec(
         *args,
@@ -125,7 +156,18 @@ async def assemble_master(
 
     filter_parts: list[str] = []
     if subtitles_ass and subtitles_ass.exists():
-        filter_parts.append(f"[0:v]ass={subtitles_ass.as_posix()}[v]")
+        if _has_libass(ffmpeg):
+            filter_parts.append(f"[0:v]ass={subtitles_ass.as_posix()}[v]")
+        else:
+            # Degrade-loud per Symbiosis Law 4: brew ffmpeg ships without
+            # libass on macOS → `ass` filter missing → hard-fail at runtime.
+            # Skip subtitle rendering and continue with bare video.
+            print(
+                f"[wr3-ffmpeg] WARN: libass not available in {ffmpeg} — "
+                f"skipping ASS subtitles {subtitles_ass.name} (degrade-loud).",
+                flush=True,
+            )
+            filter_parts.append("[0:v]null[v]")
     else:
         # `copy` is a codec, not a filter — `null` is the no-op filter.
         # Codex review 2026-05-18 caught this; verified empirically against
