@@ -49,7 +49,7 @@ from googleapiclient.http import MediaIoBaseDownload
 SA_KEY = "/Users/nuzantara/Desktop/codexyz/nuzantara-google-drive-sa-key-20260312.json"
 IMPERSONATE = "zero@balizero.com"
 DB = dict(host="localhost", port=15432, dbname="nuzantara_rag",
-          user="backend_rag_v2", password="2zEjit43IF6gNUV")
+          user="backend_rag_v2", password="2zEjit43IF6gNUV")  # pragma: allowlist secret
 DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
 DEEPSEEK_MODEL = "deepseek-v4-pro"
 LINK_SOURCE_TAG = "ai_profil_perseroan_backfill_2026_05_20"

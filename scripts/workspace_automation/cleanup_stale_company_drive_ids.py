@@ -32,7 +32,7 @@ from googleapiclient.errors import HttpError
 SA_KEY = "/Users/nuzantara/Desktop/codexyz/nuzantara-google-drive-sa-key-20260312.json"
 IMPERSONATE = "zero@balizero.com"
 DB = dict(host="localhost", port=15432, dbname="nuzantara_rag",
-          user="backend_rag_v2", password="2zEjit43IF6gNUV")
+          user="backend_rag_v2", password="2zEjit43IF6gNUV")  # pragma: allowlist secret
 INPUT_JSON = "/tmp/stale_drive_id_remediation.json"
 
 logger = logging.getLogger("stale_cleanup")
