@@ -136,6 +136,7 @@ def include_routers(api: FastAPI) -> None:
         whatsapp_conversations,
         workflow_analytics,
         workflow_queue,
+        workspace_inbox,  # /api/workspace/inbox unified team feed (wa-mirror, telegram, email)
         zoho_email,
     )
 
@@ -203,6 +204,7 @@ def include_routers(api: FastAPI) -> None:
     api.include_router(channel_health.router)  # /api/channels/{name}/health Cell heartbeat bridge
     api.include_router(channels.router)  # Channel health, DLQ, unified conversations
     api.include_router(omnichannel.router)  # [NEW] Unified inbox threads API
+    api.include_router(workspace_inbox.router)  # /api/workspace/inbox unified team feed
     api.include_router(observed_shell.router)  # /api/observed-shell/emit (Sprint 1 PR-1.2)
 
     # HR/Payroll router
@@ -502,6 +504,7 @@ def include_light_routers(api: FastAPI) -> None:
         whatsapp_conversations,
         workflow_analytics,
         workflow_queue,
+        workspace_inbox,  # /api/workspace/inbox unified team feed
         zoho_email,
     )
 
@@ -552,6 +555,7 @@ def include_light_routers(api: FastAPI) -> None:
     api.include_router(channel_health.router)  # /api/channels/{name}/health Cell heartbeat bridge
     api.include_router(channels.router)  # /api/channels (health, DLQ, conversations)
     api.include_router(omnichannel.router)  # /api/omnichannel (threads, assignment)
+    api.include_router(workspace_inbox.router)  # /api/workspace/inbox unified team feed
     api.include_router(observed_shell.router)  # /api/observed-shell/emit (Sprint 1 PR-1.2)
 
     # HR/Payroll router
