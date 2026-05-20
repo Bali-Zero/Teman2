@@ -19,7 +19,7 @@ _Discovered: 2026-05-21 ~05:00 WITA during PR #802 admin-override review · Seve
 - 1 in `apps/evaluator/seo_auto_fixer.py`
 - 1 in `scripts/extract_worker.sh`
 
-**Esposizione**: commit più vecchio con questa password = `86ee1b71c33a692` (2025-12-19, "Refactoring main_cloud.py + Git repo recovery"). Repo public dal quel momento = **5 mesi di esposizione** su GitHub. Password potenzialmente:
+**Esposizione**: commit più vecchio con questo segreto = `86ee1b71c33a692` (2025-12-19, "Refactoring main_cloud.py + Git repo recovery"). Repo public dal quel momento = **5 mesi di esposizione** su GitHub. Credenziali potenzialmente:
 - Già scraped da GitHub secrets indexers (GitGuardian, TruffleHog, GitHub built-in secret scanners)
 - Nel training set di model commerciali (Anthropic/OpenAI/Google crawl GitHub public)
 - Indicizzata su Google Dorks
@@ -33,7 +33,7 @@ _Discovered: 2026-05-21 ~05:00 WITA during PR #802 admin-override review · Seve
 
 Opzione A (raccomandata): rotate password + scrub repo
 1. `fly ssh console -a nuzantara-postgres` → run an `ALTER USER backend_rag_v2` statement to set a freshly generated credential (see incident report for exact procedure)
-2. Update Fly secrets: `fly secrets set DATABASE_URL=...` per nuzantara-rag + altri consumer
+2. Update Fly secrets via `fly secrets set` per nuzantara-rag + altri consumer (the new connection string)
 3. Patch 32 file: replace hardcoded password con `os.environ["DATABASE_URL"]` lookup
 4. Update local `.env` files + LaunchAgent env (fly-pg-proxy-wrapper.sh, ecc.)
 5. `git filter-repo --replace-text` o BFG Repo-Cleaner per scrub history (force-push main richiesto — coordinare con team)
