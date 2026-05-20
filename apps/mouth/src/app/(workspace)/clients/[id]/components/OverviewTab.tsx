@@ -360,17 +360,25 @@ export function OverviewTab({
                 </>
               )}
 
-              {/* Strategic Recap (primary curated client story) */}
+              {/* Strategic Recap — primary intelligent auto-summary (bold + distinct) */}
               {(client as any).strategic_recap && (
                 <>
                   <div className="border-t border-[var(--bz-border)]" />
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <p className="text-[10px] uppercase tracking-wider text-[var(--bz-accent)]">
+                  <div
+                    className="rounded-lg p-4 -mx-1"
+                    style={{
+                      background:
+                        "linear-gradient(135deg, rgba(212,132,90,0.12), rgba(212,132,90,0.03))",
+                      border: "1px solid rgba(212,132,90,0.28)",
+                    }}
+                  >
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-[11px] uppercase tracking-[0.15em] font-semibold text-[var(--bz-accent)] flex items-center gap-1.5">
+                        <span>◆</span>
                         Strategic recap
                       </p>
                       {(client as any).strategic_recap_source && (
-                        <span className="text-[9px] uppercase tracking-wider opacity-50">
+                        <span className="text-[9px] uppercase tracking-wider opacity-60 font-mono">
                           {(client as any).strategic_recap_source.replace(
                             "_",
                             " ",
@@ -378,7 +386,10 @@ export function OverviewTab({
                         </span>
                       )}
                     </div>
-                    <p className="text-sm leading-relaxed whitespace-pre-line">
+                    <p
+                      className="font-bold leading-[1.55] whitespace-pre-line text-[var(--bz-text-1)]"
+                      style={{ fontSize: "0.97rem" }}
+                    >
                       {(client as any).strategic_recap}
                     </p>
                   </div>
