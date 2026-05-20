@@ -4,8 +4,15 @@
 <dict>
     <key>Label</key>
     <string>com.balizero.wr2.trend-hunter</string>
+    <!-- Force interpreter via /bin/bash to bypass launchd's broken
+         direct-exec of #!/bin/bash scripts (audit 2026-05-20: launchd
+         was loading Python directly via getpath, crashing pre-runtime
+         with `OSError: failed to make path absolute`). -->
+    <key>Program</key>
+    <string>/bin/bash</string>
     <key>ProgramArguments</key>
     <array>
+        <string>/bin/bash</string>
         <string>/Users/nuzantara/Desktop/nuzantara/scripts/wr2-cron-wrapper.sh</string>
         <string>backend.services.intel.trend_hunter.cli</string>
     </array>
@@ -19,12 +26,27 @@
     <string>/Users/nuzantara/.openclaw/workspace/logs/war-room-v2/trend-hunter.log</string>
     <key>StandardErrorPath</key>
     <string>/Users/nuzantara/.openclaw/workspace/logs/war-room-v2/trend-hunter.error.log</string>
+    <!-- Explicit cwd: macOS launchd defaults to /var/empty which makes
+         Python's `<frozen getpath>` fail with `OSError: failed to make
+         path absolute` (Fatal Python error before runtime init). The
+         wrapper `cd`s to apps/backend-rag, but Python is invoked BEFORE
+         that via shebang resolution and crashes on cwd lookup. Set HOME
+         here so the path resolver has a valid base. (Audit 2026-05-20:
+         this is why trend-hunter has been silently failing every 2h
+         since 2026-04-30 plist reconstruction). -->
+    <key>WorkingDirectory</key>
+    <string>/Users/nuzantara/Desktop/nuzantara</string>
     <key>EnvironmentVariables</key>
     <dict>
         <key>HOME</key>
         <string>/Users/nuzantara</string>
         <key>PATH</key>
         <string>/Users/nuzantara/.pyenv/versions/3.11.11/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin</string>
+        <!-- Force PWD so Python's `<frozen getpath>` does not crash with
+             `OSError: failed to make path absolute` on launchd's empty cwd
+             (audit 2026-05-20). -->
+        <key>PWD</key>
+        <string>/Users/nuzantara/Desktop/nuzantara</string>
     </dict>
 </dict>
 </plist>
