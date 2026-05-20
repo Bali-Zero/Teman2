@@ -34,3 +34,33 @@ export interface WhatsAppInteraction extends WhatsAppMessage {
   summary?: string;
   full_content?: string;
 }
+
+/**
+ * wa-mirror (Baileys) message — backend route /api/wa/messages.
+ * Mirrors WaMirrorMessageResponse in apps/backend-rag/backend/app/routers/wa_mirror_messages.py.
+ */
+export interface WaMirrorMessage {
+  id: number;
+  client_id: number | null;
+  practice_id: number | null;
+  direction: "inbound" | "outbound";
+  team_member_phone: string | null;
+  counterpart_phone: string | null;
+  body: string;
+  body_truncated: boolean;
+  message_date: string;
+  media_type: string;
+  media_mime: string | null;
+  has_media: boolean;
+  has_ocr: boolean;
+  source: string;
+  attention_priority: "HIGH" | "MEDIUM" | "LOW" | null;
+  attention_reason: string[] | null;
+  attention_resolved: boolean;
+}
+
+export interface WaMirrorMessagesResponse {
+  items: WaMirrorMessage[];
+  limit: number;
+  offset: number;
+}

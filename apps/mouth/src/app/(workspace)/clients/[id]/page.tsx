@@ -54,6 +54,7 @@ import { ImmigrationTab } from "./components/ImmigrationTab";
 import { CompanyTab } from "./components/CompanyTab";
 import { TaxTab } from "./components/TaxTab";
 import { TimelineTab } from "./components/TimelineTab";
+import { WaTimelineTab } from "./components/WaTimelineTab";
 import { PortalMessages } from "./components/PortalMessages";
 import { BusinessStoryPanel } from "./components/BusinessStoryPanel";
 import { EditClientModal } from "./components/modals/EditClientModal";
@@ -829,6 +830,11 @@ export default function ClientDetailPage() {
             label: `Timeline (${interactions.length})`,
             icon: Activity,
           },
+          {
+            key: "whatsapp",
+            label: "WhatsApp",
+            icon: MessageCircle,
+          },
         ].map(({ key, label, icon: Icon }) => (
           <Button
             key={key}
@@ -954,6 +960,8 @@ export default function ClientDetailPage() {
           clientId={clientId}
         />
       )}
+
+      {activeTab === "whatsapp" && <WaTimelineTab clientId={clientId} />}
 
       {/* Modals */}
       {activeModal === "edit_client" && profile && (

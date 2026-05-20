@@ -28,6 +28,9 @@ EXPECTED_MESSAGE_KEYS = {
     "has_media",
     "has_ocr",
     "source",
+    "attention_priority",
+    "attention_reason",
+    "attention_resolved",
 }
 
 

@@ -8,7 +8,8 @@ export type TabType =
   | "visas"
   | "company"
   | "tax"
-  | "timeline";
+  | "timeline"
+  | "whatsapp";
 
 export type ModalType =
   | "none"
