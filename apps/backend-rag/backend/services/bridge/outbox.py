@@ -43,6 +43,17 @@ async def insert_outbox_event(
     """Insert an event into bridge_outbox. Returns the new BIGSERIAL id.
 
     Raises ValueError if event_type is not in ALLOWED_TYPES.
+
+    CICATRIX 2026-05-21 — DO NOT pre-serialize payload with json.dumps().
+    The app/runtime asyncpg pool registers a jsonb codec with
+    `encoder=json.dumps` (see app/setup/service_initializer.py
+    init_db_connection). Pre-serializing here double-encodes into a jsonb
+    string scalar instead of an object, which then deserializes back as a
+    `str` in fetch_outbox_events → downstream consumers like
+    mata-garuda nerve.py crash with "'str' object is not a mapping" and
+    refuse to advance the cursor (see ANTIBODY in
+    research/operations/2026-05-21-nb-automations-audit.md).
+    Pass the raw dict — the pool codec serializes once.
     """
     if event_type not in ALLOWED_TYPES:
         raise ValueError(
@@ -52,7 +63,7 @@ async def insert_outbox_event(
     row = await conn.fetchrow(
         "INSERT INTO bridge_outbox (type, payload) VALUES ($1, $2::jsonb) RETURNING id",
         event_type,
-        json.dumps(payload, ensure_ascii=False),
+        payload,
     )
     new_id = int(row["id"])
     logger.debug("Inserted outbox event id=%d type=%s", new_id, event_type)
@@ -67,6 +78,13 @@ async def fetch_outbox_events(
     """Fetch events with id > after_id, ordered by id, capped at limit.
 
     Returns list of dicts with keys: id, type, payload, created_at (str).
+
+    CICATRIX 2026-05-21 — payload can be either a dict (correctly
+    inserted via codec) OR a str (legacy double-encoded row from before
+    migration 175). Defensive json.loads() unwrap so downstream consumers
+    always receive a dict. Migration 175 repairs the column in-place,
+    after which the str branch will only fire if a stale code path
+    re-introduces the bug.
     """
     rows = await conn.fetch(
         "SELECT id, type, payload, created_at "
@@ -77,12 +95,25 @@ async def fetch_outbox_events(
         int(after_id),
         int(limit),
     )
-    return [
-        {
-            "id": int(r["id"]),
-            "type": r["type"],
-            "payload": r["payload"],  # asyncpg auto-decodes JSONB
-            "created_at": r["created_at"].isoformat(),
-        }
-        for r in rows
-    ]
+
+    events: list[dict[str, Any]] = []
+    for r in rows:
+        payload = r["payload"]
+        if isinstance(payload, str):
+            try:
+                payload = json.loads(payload)
+            except (TypeError, ValueError):
+                logger.warning(
+                    "Outbox row id=%s has malformed string payload (skipped unwrap)",
+                    r["id"],
+                )
+                payload = {}
+        events.append(
+            {
+                "id": int(r["id"]),
+                "type": r["type"],
+                "payload": payload,
+                "created_at": r["created_at"].isoformat(),
+            }
+        )
+    return events

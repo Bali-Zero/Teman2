@@ -1,0 +1,243 @@
+{
+  "model": "qwen3.5:9b",
+  "results": [
+    {
+      "client_id": 11801,
+      "display_name": "Anaya Ashamaya",
+      "msg_count": 56,
+      "elapsed_s": 80.32,
+      "ok": true
+    },
+    {
+      "client_id": 11800,
+      "display_name": "Gerard",
+      "msg_count": 45,
+      "elapsed_s": 54.06,
+      "ok": true
+    },
+    {
+      "client_id": 11802,
+      "display_name": "Lead +628133946856",
+      "msg_count": 40,
+      "elapsed_s": 85.77,
+      "ok": true
+    },
+    {
+      "client_id": 2877,
+      "display_name": "Bu Ayu",
+      "msg_count": 36,
+      "elapsed_s": 180.04,
+      "ok": false
+    },
+    {
+      "client_id": 11798,
+      "display_name": "Irma K\u00fclaviir",
+      "msg_count": 35,
+      "elapsed_s": 148.72,
+      "ok": true
+    },
+    {
+      "client_id": 11677,
+      "display_name": "Asraf Guy Baruch",
+      "msg_count": 31,
+      "elapsed_s": 147.44,
+      "ok": true
+    },
+    {
+      "client_id": 2175,
+      "display_name": "Lia Bayu",
+      "msg_count": 34,
+      "elapsed_s": 125.3,
+      "ok": true
+    },
+    {
+      "client_id": 11799,
+      "display_name": "Sindy Kirks",
+      "msg_count": 22,
+      "elapsed_s": 107.6,
+      "ok": true
+    },
+    {
+      "client_id": 1526,
+      "display_name": "Adi Bayu Santero",
+      "msg_count": 19,
+      "elapsed_s": 105.79,
+      "ok": true
+    },
+    {
+      "client_id": 3571,
+      "display_name": "Cristian",
+      "msg_count": 18,
+      "elapsed_s": 84.76,
+      "ok": true
+    },
+    {
+      "client_id": 4703,
+      "display_name": "Davide Bisognini",
+      "msg_count": 17,
+      "elapsed_s": 63.75,
+      "ok": true
+    },
+    {
+      "client_id": 11814,
+      "display_name": "Lead +628213454723",
+      "msg_count": 17,
+      "elapsed_s": 37.86,
+      "ok": true
+    },
+    {
+      "client_id": 11803,
+      "display_name": "Jonathan",
+      "msg_count": 11,
+      "elapsed_s": 51.46,
+      "ok": true
+    },
+    {
+      "client_id": 2539,
+      "display_name": "Stefano Caradonna",
+      "msg_count": 11,
+      "elapsed_s": 132.65,
+      "ok": true
+    },
+    {
+      "client_id": 10208,
+      "display_name": "Fuad Ishola Agoro",
+      "msg_count": 10,
+      "elapsed_s": 83.25,
+      "ok": true
+    },
+    {
+      "client_id": 3081,
+      "display_name": "Edwin Lundgren",
+      "msg_count": 9,
+      "elapsed_s": 28.49,
+      "ok": true
+    },
+    {
+      "client_id": 3445,
+      "display_name": "Muthia",
+      "msg_count": 9,
+      "elapsed_s": 57.74,
+      "ok": true
+    },
+    {
+      "client_id": 11757,
+      "display_name": "Simonetta Mangione",
+      "msg_count": 8,
+      "elapsed_s": 65.66,
+      "ok": true
+    },
+    {
+      "client_id": 3205,
+      "display_name": "Mattia inghlieri",
+      "msg_count": 7,
+      "elapsed_s": 44.95,
+      "ok": true
+    },
+    {
+      "client_id": 10913,
+      "display_name": "Daniele Finocchio",
+      "msg_count": 7,
+      "elapsed_s": 27.6,
+      "ok": true
+    },
+    {
+      "client_id": 10906,
+      "display_name": "Ilaria Parena",
+      "msg_count": 7,
+      "elapsed_s": 24.73,
+      "ok": true
+    },
+    {
+      "client_id": 7174,
+      "display_name": "Karlos",
+      "msg_count": 6,
+      "elapsed_s": 73.79,
+      "ok": true
+    },
+    {
+      "client_id": 4685,
+      "display_name": "Antonio Antelo",
+      "msg_count": 6,
+      "elapsed_s": 24.67,
+      "ok": true
+    },
+    {
+      "client_id": 9408,
+      "display_name": "Lisa Marek",
+      "msg_count": 5,
+      "elapsed_s": 95.01,
+      "ok": true
+    },
+    {
+      "client_id": 1815,
+      "display_name": "Nico",
+      "msg_count": 5,
+      "elapsed_s": 85.12,
+      "ok": true
+    },
+    {
+      "client_id": 11804,
+      "display_name": "Luca",
+      "msg_count": 5,
+      "elapsed_s": 52.6,
+      "ok": true
+    },
+    {
+      "client_id": 11741,
+      "display_name": "HOPE ANNIE FALCONER",
+      "msg_count": 4,
+      "elapsed_s": 44.0,
+      "ok": true
+    },
+    {
+      "client_id": 11654,
+      "display_name": "Trevor Richard Gerhardt",
+      "msg_count": 4,
+      "elapsed_s": 32.97,
+      "ok": true
+    },
+    {
+      "client_id": 4076,
+      "display_name": "Diego",
+      "msg_count": 3,
+      "elapsed_s": 25.59,
+      "ok": true
+    },
+    {
+      "client_id": 9204,
+      "display_name": "Jana Stastna",
+      "msg_count": 2,
+      "elapsed_s": 25.78,
+      "ok": true
+    },
+    {
+      "client_id": 7439,
+      "display_name": "Novi BS",
+      "msg_count": 2,
+      "elapsed_s": 17.19,
+      "ok": true
+    },
+    {
+      "client_id": 2843,
+      "display_name": "Mas",
+      "msg_count": 2,
+      "elapsed_s": 31.32,
+      "ok": true
+    },
+    {
+      "client_id": 5135,
+      "display_name": "Tommi Tulpe \ud83c\udf37",
+      "msg_count": 1,
+      "elapsed_s": 20.17,
+      "ok": true
+    },
+    {
+      "client_id": 2180,
+      "display_name": "Stefano Givitta",
+      "msg_count": 1,
+      "elapsed_s": 18.34,
+      "ok": true
+    }
+  ]
+}
