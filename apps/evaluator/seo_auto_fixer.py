@@ -20,7 +20,7 @@ import asyncpg
 SHARED_MEMORY = Path.home() / ".openclaw" / "workspace" / "shared_memory"
 DB_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag",
+    "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag",
 )
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "")

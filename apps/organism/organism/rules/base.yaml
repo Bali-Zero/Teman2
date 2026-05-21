@@ -1,40 +1,94 @@
 rules:
   - id: cron_agent_failure_restart
-    match: {kind: cron_agent_failure, severity: [error, critical]}
-    action: {actuator: restart_agent, params: {agent_ref: "{payload.agent}"}}
+    match: { kind: cron_agent_failure, severity: [error, critical] }
+    action:
+      { actuator: restart_agent, params: { agent_ref: "{payload.agent}" } }
     confidence: 0.95
 
   - id: disk_fill_cleanup_log
-    match: {kind: disk_fill, payload.percent_gte: 85}
-    action: {actuator: cleanup_log, params: {min_age_days: 30}}
+    match: { kind: disk_fill, payload.percent_gte: 85 }
+    action: { actuator: cleanup_log, params: { min_age_days: 30 } }
     confidence: 0.90
 
   - id: zombie_detected_restart
-    match: {kind: zombie_detected}
-    action: {actuator: restart_agent, params: {agent_ref: "{payload.agent}"}}
+    match: { kind: zombie_detected }
+    action:
+      { actuator: restart_agent, params: { agent_ref: "{payload.agent}" } }
     confidence: 0.85
 
   - id: new_module_adopt
-    match: {kind: new_module}
-    action: {actuator: adopt_module, params: {module_path: "{payload.module_path}"}}
+    match: { kind: new_module }
+    action:
+      {
+        actuator: adopt_module,
+        params: { module_path: "{payload.module_path}" },
+      }
     confidence: 0.80
 
   - id: scheduled_cleanup_log_nightly
-    match: {kind: scheduled_tick, payload.hour: 3}
-    action: {actuator: cleanup_log, params: {min_age_days: 30}}
+    match: { kind: scheduled_tick, payload.hour: 3 }
+    action: { actuator: cleanup_log, params: { min_age_days: 30 } }
     confidence: 1.0
 
   - id: scheduled_cleanup_cache_weekly
-    match: {kind: scheduled_tick, payload.day_of_week: 6, payload.hour: 4}
-    action: {actuator: cleanup_cache, params: {}}
+    match: { kind: scheduled_tick, payload.day_of_week: 6, payload.hour: 4 }
+    action: { actuator: cleanup_cache, params: {} }
     confidence: 1.0
 
   - id: scheduled_cleanup_branches_weekly
-    match: {kind: scheduled_tick, payload.day_of_week: 6, payload.hour: 5}
-    action: {actuator: cleanup_branches, params: {}}
+    match: { kind: scheduled_tick, payload.day_of_week: 6, payload.hour: 5 }
+    action: { actuator: cleanup_branches, params: {} }
     confidence: 1.0
 
   - id: scheduled_cleanup_zombie_plist_monthly_first_sunday
-    match: {kind: scheduled_tick, payload.day_of_week: 6, payload.hour: 6, payload.day_of_month_lte: 7}
-    action: {actuator: cleanup_zombie_plist, params: {}}
+    match:
+      {
+        kind: scheduled_tick,
+        payload.day_of_week: 6,
+        payload.hour: 6,
+        payload.day_of_month_lte: 7,
+      }
+    action: { actuator: cleanup_zombie_plist, params: {} }
     confidence: 0.9
+
+  # ─── Autonomic closed-loop (2026-05-22) ────────────────────────────────────
+  # Cell daemon silent for > genoma.expected_hb_seconds × 3 → auto-restart.
+  # Triggered by genoma_aggregator_sensor when it observes an organ has not
+  # emitted heartbeat within expected window. Replaces the historic
+  # "Telegram alert to Zero" pattern with autonomic kickstart.
+
+  - id: organ_silent_kickstart_critical
+    match: { kind: organ_silent, payload.severity: critical }
+    action:
+      { actuator: restart_agent, params: { agent_ref: "{payload.organ_id}" } }
+    confidence: 0.95
+
+  - id: organ_silent_kickstart_error
+    match: { kind: organ_silent, payload.severity: error }
+    action:
+      { actuator: restart_agent, params: { agent_ref: "{payload.organ_id}" } }
+    confidence: 0.85
+
+  # Cell pulse went RED for >5 consecutive pulses → restart sequence.
+  # Cell will be killed and bootstrapped; on restart it resumes from
+  # EpisodicMemory (age/pulses/actions preserved).
+  - id: cell_sustained_red_restart
+    match: { kind: cell_pulse_sustained_red, payload.consecutive_gte: 5 }
+    action:
+      { actuator: restart_agent, params: { agent_ref: "com.cell.organism" } }
+    confidence: 0.90
+
+  # Fly machine stopped (not "scheduled stop") → auto-restart.
+  # This handles the case where a Fly machine OOMs or crashes; the genome
+  # has fly_machines_start as recovery_action for these organs.
+  - id: fly_machine_stopped_restart
+    match: { kind: fly_machine_stopped, payload.reason_excludes: scheduled }
+    action: { actuator: fly_machines_start, params: { app: "{payload.app}" } }
+    confidence: 0.85
+
+  # Postgres outbox unconsumed > 200 events → propose YAML rule for review.
+  # Don't auto-act on data semantics; flag for Reflexion weekly synthesis.
+  - id: outbox_backlog_propose_rule
+    match: { kind: outbox_backlog, payload.unconsumed_gte: 200 }
+    action: { actuator: propose_yaml_rule, params: { topic: "outbox_backlog" } }
+    confidence: 0.70

@@ -8,7 +8,7 @@ Saves directly to PostgreSQL kg_nodes + kg_edges.
 Usage:
     cd apps/backend-rag
     source .venv/bin/activate
-    DATABASE_URL="postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable" \
+    DATABASE_URL="postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag?sslmode=disable" \
     PYTHONPATH=. python scripts/kg_extract_2026_laws.py
 """
 
@@ -177,7 +177,7 @@ async def save_to_db(
 async def main():
     db_url = os.environ.get(
         "DATABASE_URL",
-        "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable",
+        "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag?sslmode=disable",
     )
 
     openai_client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))

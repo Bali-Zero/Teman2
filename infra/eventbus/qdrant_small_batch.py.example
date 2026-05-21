@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 load_dotenv("/Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.env", override=True)
 os.environ.setdefault(
     "DATABASE_URL",
-    "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable",
+    "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag?sslmode=disable",
 )
 sys.path.insert(0, "/Users/nuzantara/Desktop/nuzantara/apps/backend-rag")
 from backend.services.ingestion.legal_ingestion_service import LegalIngestionService

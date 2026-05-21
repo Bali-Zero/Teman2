@@ -685,7 +685,7 @@ async def run() -> None:
     """Run migration standalone."""
     db_url = os.environ.get(
         "DATABASE_URL",
-        "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable",
+        "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag?sslmode=disable",
     )
     conn = await asyncpg.connect(db_url)
     try:

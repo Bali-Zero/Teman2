@@ -301,7 +301,7 @@ async def exa_search(**kwargs: Any) -> dict:
     return {"results": []}
 
 
-async def brave_search(**kwargs: Any) -> dict:  # noqa: ARG001
+async def brave_search(**kwargs: Any) -> dict:
     return {"web": {"results": []}}
 
 
@@ -317,7 +317,7 @@ async def fetch_url(**kwargs: Any) -> dict:
         return {"content": ""}
 
 
-async def gemini_generate(prompt: str = "", **kwargs: Any) -> dict:  # noqa: ARG001
+async def gemini_generate(prompt: str = "", **kwargs: Any) -> dict:
     logger.debug("gemini_generate: %d chars", len(prompt))
     try:
         proc = await asyncio.create_subprocess_exec(
@@ -349,11 +349,11 @@ async def gemini_generate(prompt: str = "", **kwargs: Any) -> dict:  # noqa: ARG
         return {"text": "{}"}
 
 
-async def notebook_query(**kwargs: Any) -> dict:  # noqa: ARG001
+async def notebook_query(**kwargs: Any) -> dict:
     return {"status": "success", "answer": "", "sources_used": []}
 
 
-async def recall_similar(**kwargs: Any) -> dict:  # noqa: ARG001
+async def recall_similar(**kwargs: Any) -> dict:
     return {"episodes": []}
 
 
@@ -365,7 +365,7 @@ async def get_db_pool() -> asyncpg.Pool | None:
     db_url = os.getenv("DATABASE_URL", "")
     if not db_url:
         # Try local tunnel default
-        db_url = "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag"
+        db_url = "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag"
         logger.info("DATABASE_URL not set, trying tunnel default: localhost:15432")
 
     try:
