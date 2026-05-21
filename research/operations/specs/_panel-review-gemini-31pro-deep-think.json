@@ -1,0 +1,65 @@
+{
+  "ds_missed_blockers": [
+    {
+      "spec_id": "G3",
+      "issue": "Rollback does not kill running Claude Code processes before overwriting memory.db (SQLite) and settings.json, risking WAL corruption and overwrite-on-exit race conditions.",
+      "why_ds_missed": "DS evaluated the bash script statically but didn't model the OS-level process locks and SQLite WAL behavior of an active Claude Code session during a hot rollback.",
+      "fix": "Add `pkill -f claude` or prompt the user to manually terminate the session in G3 before Phase 3 (extract backup)."
+    },
+    {
+      "spec_id": "G4",
+      "issue": "LaunchAgent plist injects cleartext TELEGRAM_BOT_TOKEN into EnvironmentVariables, directly violating the active cicatrix scar 'LaunchAgent plist hardening (0444 + secrets rotation 2026-04-29)'.",
+      "why_ds_missed": "DS missed the cross-reference to the specific project scar rules. Writing secrets into world-readable/persistent plists is a known vulnerability.",
+      "fix": "Source the Telegram token from a secure, restricted `.env` file (e.g., `source ~/.config/nuzantara/.env.secret`) inside the bash script itself, rather than injecting it via plist."
+    },
+    {
+      "spec_id": "Wave 1 / Wave 2 Sequencing",
+      "issue": "Context compaction will likely trigger before Wave 2 is reached, causing the executor to lose state and skip/repeat specs because T2.5 (PreCompact Mnemos hook) is installed too late.",
+      "why_ds_missed": "DS didn't simulate the context window exhaustion timeline of the executor across the cumulative 2h+ effort required for Wave 0 and Wave 1.",
+      "fix": "Promote T2.5 (PreCompact Mnemos handoff) to Wave 0, or enforce a hard session restart at the G1 gate between Wave 1 and Wave 2."
+    }
+  ],
+  "ds_missed_security": [
+    "Supply Chain Risk: No version pinning or checksums defined for MCP installs (T2.2 Playwright, T2.3 GitHub, T2.4 Vercel), exposing the system to malicious npx/npm packages.",
+    "Ghost Access Paths: G3 local rollback does not revoke the Postgres read-only roles created remotely in T3.2. If a rollback occurs, the database retains the modified permissions.",
+    "Guardrail Bypass: T1.2 blocks destructive bash commands, but an adversary/rogue LLM can bypass it by encoding commands (e.g., `echo YmFzaA== | base64 -d`) or executing arbitrary Python scripts to delete files."
+  ],
+  "ds_missed_hallucination_vectors": [
+    "Predictable Outputs: G1/G2 write results to predictable JSON files (`gate-results-*.json`). The LLM could hallucinate the creation and content of these files without actually running the gate.",
+    "Gaming the Metric: G2 Test 6 uses `/verify` command count as a proxy for anti-hallucination compliance. The LLM can artificially inflate this by spamming `/verify` on trivial facts just to pass the gate.",
+    "Script Source Guessing: G1 parses the output of `alzheimer-hook.sh`. Instead of executing it, Claude could read the script source and plausibly hallucinate an 'Orphaned: 0' output based on context."
+  ],
+  "ds_missed_hard_rule_edges": [
+    "R1 (claude-mem evaluation) introduces a vector embedding layer. If it defaults to Anthropic's API or a different embedding model, it violates BOTH the 'Anthropic API ban' and the 'FROZEN text-embedding-3-small' constraint, which would invalidate the 93k+ existing vectors.",
+    "Playwright MCP (T2.2) may attempt to fetch browser binaries from unauthenticated external endpoints, which might trip strict firewall/proxy configurations meant to prevent unauthorized API calls."
+  ],
+  "ds_missed_empirical_assumptions": [
+    "Linear Dispatch Assumption: G2 Test 1 assumes subagent dispatch ratio scales linearly with session lines (30 per 7500 lines). Task nature drastically skews this; heavy bash/coding sessions may legitimately have 0 dispatches, causing false negative gate failures.",
+    "Append-Only Log Flaw: G4 assumes `find ... -mtime -7` isolates only sessions from the last 7 days. Because `.jsonl` transcripts are append-only, recently appended historical sessions will be included, massively skewing the `TOTAL_LINES` calculation."
+  ],
+  "g_series_weaknesses": [
+    "G1 gate only checks the byte size of `MEMORY.md`, ignoring the potential for unbounded linear growth in other individual memory files inside the `memory/` directory.",
+    "G3 uses `git stash push -u`, but does not clean up ignored untracked files or reset git submodules, potentially leaving the working tree polluted after a rollback.",
+    "G1 uses a strict `curl -m 5` timeout for Fly.io health checks. While `auto_stop=off` is configured, temporary network latency could cause a false-positive gate failure."
+  ],
+  "execution_failure_modes": [
+    "Corrupted State Deadlock: If Claude Code inadvertently corrupts `settings.json` during a wave execution, the process will crash and won't even be able to invoke the G1 gate to detect its own failure.",
+    "Mid-Wave Halt Amnesia: If the executor errors out or hits a rate limit mid-wave, there is no persistent state-tracking manifest. The agent relies entirely on its context window to know where to resume."
+  ],
+  "anti_fragility_concerns": [
+    "Hook Race Conditions: The plan assumes PreToolUse hooks (T1.2 guardrails) and other event hooks execute sequentially without interference. Overlapping bash hooks could deadlock or terminate the tool call prematurely.",
+    "Safety Backup OOM: G3 creates a tarball of the current state *before* rolling back. If the disk is near capacity, this safety backup will fail, aborting the rollback and leaving the system in a degraded state."
+  ],
+  "overall_assessment": "APPROVE_WITH_ADDITIONAL_FIXES",
+  "additional_specs_needed": [
+    {
+      "name": "T-2-executor-state-manifest",
+      "rationale": "A persistent JSON state tracker that records exactly which specs have been successfully completed. This ensures the executor can survive context compaction, crashes, or session restarts without repeating or skipping specs."
+    },
+    {
+      "name": "G0-external-state-rollback",
+      "rationale": "An explicit script to tear down external state modifications (such as Postgres roles created in T3.2 or remote Vercel/Fly.io configs) that the local G3 tarball rollback is incapable of reversing."
+    }
+  ],
+  "verdict_vs_deepseek": "DS_MISSED_CRITICAL"
+}

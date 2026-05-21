@@ -1,0 +1,97 @@
+{
+  "third_pass_blockers": [
+    {
+      "spec": "T-1-pre-execution-global-backup.md",
+      "issue_missed_by_both": "The backup copies an active SQLite MOS database as a raw file and does not include memory.db-wal or memory.db-shm. A tar-level copy can be internally stale or inconsistent even if tar -tzf succeeds.",
+      "fix": "Quiesce Claude/MOS writers before backup or use sqlite3 .backup into a temp snapshot, include WAL/SHM handling, then run PRAGMA integrity_check on the restored DB."
+    },
+    {
+      "spec": "T-1-pre-execution-global-backup.md + G3-global-rollback.md",
+      "issue_missed_by_both": "The backup/rollback scope misses state created by the specs themselves: ~/scripts/*, ~/Library/LaunchAgents/*.plist, ~/.zshenv mutations, Keychain items such as PG_PASSWORD_RO, npm/npx MCP installs, and Claude MCP registry side effects. G3 cannot restore a real pre-fix machine.",
+      "fix": "Promote backup scope to an explicit manifest of local files, LaunchAgents, shell profiles, keychain item names, claude mcp list output, npm package versions, and external-state teardown commands. Rollback must remove or restore each item."
+    },
+    {
+      "spec": "T1.2-guardrails-hook.md",
+      "issue_missed_by_both": "The post-DS guardrail still allows major destructive paths: SQL UPDATE, DELETE with WHERE, TRUNCATE without TABLE, MCP merge/create/update/deploy/promote tools, and MultiEdit are not covered. The MCP regex only catches a narrow delete/drop/truncate/destroy/remove/wipe/purge/reset prefix pattern.",
+      "fix": "Use an allowlist for read-only MCP tools plus SQL read-only validation that permits only SELECT/EXPLAIN. Cover MultiEdit and all file-write tools. Block write verbs including create/update/merge/deploy/promote/rollback/cancel/rerun unless explicitly confirmed."
+    },
+    {
+      "spec": "T3.2-postgres-qdrant-mcp.md",
+      "issue_missed_by_both": "The read-only DB password is leaked into local transcripts/log surfaces and exported globally. The spec echoes PG_PASSWORD_RO and appends PGPASSWORD retrieval to ~/.zshenv, causing every future child process to inherit a database credential.",
+      "fix": "Never echo generated credentials. Store in Keychain silently. Use a dedicated MCP wrapper that retrieves the password at exec time and exports PGPASSWORD only for the MCP child process."
+    },
+    {
+      "spec": "T2.5-precompact-mnemos-hook.md",
+      "issue_missed_by_both": "The handoff writes 'verified_commands' by regexing recent command strings, not by checking tool result status or actual output. It can label failed, skipped, or merely proposed commands as verified, violating the active anti-hallucination rule.",
+      "fix": "Parse structured transcript tool_use/tool_result pairs, require exit_code == 0, store the exact observed command plus result metadata, and rename the field to attempted_commands until verified status is proven."
+    }
+  ],
+  "code_review_findings": [
+    {
+      "spec": "T-1-pre-execution-global-backup.md",
+      "line_or_section": "lines 38-42 vs lines 51-53 and 141-154",
+      "bug_or_logic_error": "Acceptance criteria require fixed artifact/tag names pre-orchestration-fix-20260521, but implementation creates timestamped names. A literal checker will fail or a human may pass the wrong backup_id into G3."
+    },
+    {
+      "spec": "T-1-pre-execution-global-backup.md",
+      "line_or_section": "lines 98-112 and 115",
+      "bug_or_logic_error": "tar stderr is piped to tail without pipefail, so tar failures from missing paths or permission errors can be hidden by tail's zero exit. Verification only proves the archive is readable, not complete."
+    },
+    {
+      "spec": "T1.2-guardrails-hook.md",
+      "line_or_section": "lines 152-156 and 197-200",
+      "bug_or_logic_error": "SQL destructive regex misses UPDATE entirely, DELETE FROM clients WHERE id=1, and TRUNCATE clients. These are explicitly tested as forbidden in T3.2 but would not be blocked by the hook."
+    },
+    {
+      "spec": "T3.2-postgres-qdrant-mcp.md",
+      "line_or_section": "lines 149-155",
+      "bug_or_logic_error": "Docker alternative registers psql, not an MCP server, and connects as backend_rag_v2 rather than nuzantara_readonly. This both breaks MCP protocol and violates read-only enforcement."
+    },
+    {
+      "spec": "T3.2-postgres-qdrant-mcp.md",
+      "line_or_section": "lines 290-293",
+      "bug_or_logic_error": "Memory documentation says Postgres MCP uses $PG_PASSWORD, but the enforced read-only role uses PG_PASSWORD_RO. This doc drift can route future operators back to the write-capable credential."
+    },
+    {
+      "spec": "G3-global-rollback.md",
+      "line_or_section": "lines 46, 119-147, 183-188",
+      "bug_or_logic_error": "Rollback uses set -uo pipefail, not set -euo pipefail. tar backup/extract or git reset failures can be followed by a success path because verification checks only file existence."
+    },
+    {
+      "spec": "00-INDEX.md",
+      "line_or_section": "lines 6, 60-120, 184-219",
+      "bug_or_logic_error": "Index is stale relative to the requested state: it says 28 specs and DS-only integration, while the directory has 29 markdown files plus two panel JSONs and Gemini fixes are not reflected in the wave plan."
+    }
+  ],
+  "operational_risks": [
+    "Gemini blocker integration is incomplete in the specs read here: T2.5 remains Wave 2 in 00-INDEX, G3 only documents active SQLite rollback safety as an open question, and G4 still contains plist token injection.",
+    "Read-only Postgres still allows broad PII exfiltration by SELECT. The spec relies on etiquette for 'no SELECT * on clients' but has no deterministic projection/row-limit enforcement.",
+    "Global rollback resets git but does not account for Claude Code sessions, launchd jobs, keychain items, shell startup files, or MCP registry mutations, so repeated rollback/retry cycles can accumulate ghost state.",
+    "G4 and other monitoring scripts use transcript grep heuristics over append-only JSONL files; metrics can be skewed by recently appended historical sessions and by tool-name schema changes.",
+    "Machine start check found peer unreachable in this session, so any cross-machine sync or remote recovery assumption should be treated as unverified before execution."
+  ],
+  "alternative_approaches": [
+    {
+      "current_approach": "Regex-based guardrail hook over Bash/MCP/Edit/Write inputs",
+      "alternative": "Policy engine with default-deny write tools, read-only MCP allowlist, and SQL AST validation for DB tools",
+      "why_better": "It blocks whole classes of writes instead of chasing command spellings and encoded variants."
+    },
+    {
+      "current_approach": "Raw tar backup of live Claude/MOS state",
+      "alternative": "Quiesced snapshot script that exports sqlite .backup, launchd inventory, keychain item inventory, mcp registry, shell profiles, and repo state into a manifest",
+      "why_better": "It creates a restorable machine state, not just a readable archive."
+    },
+    {
+      "current_approach": "Postgres MCP with global PGPASSWORD from ~/.zshenv",
+      "alternative": "Dedicated wrapper script that reads Keychain and execs the MCP child with a scoped environment",
+      "why_better": "It avoids transcript leaks and prevents unrelated processes from inheriting DB credentials."
+    },
+    {
+      "current_approach": "PreCompact handoff inferred by regex over transcript text",
+      "alternative": "Structured event parser that records only observed tool results, exit codes, changed file paths, and explicit current plan state",
+      "why_better": "It preserves anti-hallucination guarantees across compaction instead of manufacturing false verification state."
+    }
+  ],
+  "verdict_vs_panels": "THIRD_PASS_FOUND_GAPS",
+  "additional_blockers_count": 5
+}

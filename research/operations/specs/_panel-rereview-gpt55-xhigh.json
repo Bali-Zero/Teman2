@@ -1,0 +1,149 @@
+{
+  "fixes_integrated_correctly": [
+    {
+      "original_finding": "T-1 copied active SQLite memory.db as raw file without WAL/SHM handling.",
+      "current_state": "PARTIAL",
+      "reason": "SQLite .backup snapshot was added, but rollback still expects/restores ~/.claude/memory.db and the tarball only stores memory.db.snapshot-${DATE}; restore path is not closed."
+    },
+    {
+      "original_finding": "T-1/G3 backup and rollback scope missed spec-created local/external state.",
+      "current_state": "PARTIAL",
+      "reason": "Scope and G0 were added, but optional paths can abort tar, G3 only points to G0 instead of orchestrating it, and secret/external inventories remain manual."
+    },
+    {
+      "original_finding": "T1.2 guardrail missed SQL UPDATE/DELETE/TRUNCATE, MCP write verbs, and MultiEdit.",
+      "current_state": "PARTIAL",
+      "reason": "MultiEdit and common SQL writes were added, but MCP matching is still regex/default-allow and misses suffix verbs like user_delete, deployment_promote, pull_request_create; SQL still allows ALTER/GRANT/DROP SCHEMA/CREATE TABLE in MCP input."
+    },
+    {
+      "original_finding": "T3.2 leaked read-only DB password and exported PGPASSWORD globally.",
+      "current_state": "PARTIAL",
+      "reason": "Scoped wrapper was added and global zshenv export removed, but Keychain write uses security add-generic-password -w - incorrectly, and backend_rag_v2:$PG_PASSWORD is still used in argv for psql."
+    },
+    {
+      "original_finding": "T2.5 labelled regex-extracted commands as verified_commands without checking tool results.",
+      "current_state": "PARTIAL",
+      "reason": "Fields were renamed and a structured parser added, but it does not require an actual exit_code==0, uses text heuristics, and its verification section still expects changed_files/verified_commands."
+    },
+    {
+      "original_finding": "T-1 artifact/tag naming was inconsistent with timestamped backup_id.",
+      "current_state": "INTEGRATED",
+      "reason": "Timestamped names are now explicit and last-backup-id is saved for G3."
+    },
+    {
+      "original_finding": "T-1 tar errors could be hidden by piping through tail without pipefail.",
+      "current_state": "INTEGRATED",
+      "reason": "T-1 now uses set -euo pipefail and no tail pipe around the main tar command."
+    },
+    {
+      "original_finding": "T1.2 SQL destructive regex missed UPDATE, DELETE FROM ... WHERE, and TRUNCATE without TABLE.",
+      "current_state": "INTEGRATED",
+      "reason": "Those concrete patterns are now covered in Bash and .sql file content checks."
+    },
+    {
+      "original_finding": "T3.2 Docker alternative registered psql, not an MCP server, and used backend_rag_v2.",
+      "current_state": "INTEGRATED",
+      "reason": "The Docker alternative was removed and replaced by a wrapper around @modelcontextprotocol/server-postgres."
+    },
+    {
+      "original_finding": "T3.2 memory docs routed future operators to PG_PASSWORD instead of PG_PASSWORD_RO.",
+      "current_state": "INTEGRATED",
+      "reason": "The memory documentation now names PG_PASSWORD_RO and the scoped wrapper."
+    },
+    {
+      "original_finding": "G3 used set -uo pipefail instead of set -euo pipefail.",
+      "current_state": "INTEGRATED",
+      "reason": "G3 now uses set -euo pipefail."
+    },
+    {
+      "original_finding": "00-INDEX was stale relative to all panel integrations.",
+      "current_state": "PARTIAL",
+      "reason": "The wave plan now includes all three panels, but counts remain inconsistent: there are 30 spec markdown files plus INDEX, while the index claims 31 spec files plus INDEX and 35 total."
+    }
+  ],
+  "new_issues_post_integration": [
+    {
+      "severity": "BLOCKER",
+      "spec": "T-2-executor-state-manifest.md",
+      "issue": "The implementation does not instantiate the schema it designs. init_manifest writes specs: {}, so exec-state.sh next returns ALL_DONE and check T1.1 returns unknown, causing the required executor guard to skip or block every real spec.",
+      "evidence": "Schema is shown at lines 2837-2883, but the actual init at lines 2913-2923 writes an empty specs object.",
+      "fix": "Generate the manifest from the full 30-spec schema in init_manifest and make check distinguish unknown from completed instead of treating unknown as do-not-run."
+    },
+    {
+      "severity": "BLOCKER",
+      "spec": "T-1 + G3",
+      "issue": "SQLite snapshot adoption breaks rollback: T-1 archives .claude/memory.db.snapshot-${DATE}, while G3 verifies/restores ~/.claude/memory.db. Extraction will not replace a corrupted memory.db.",
+      "evidence": "T-1 archives only the snapshot at line 2625; G3 verifies memory.db existence at lines 1384-1395.",
+      "fix": "Archive snapshot under a restore path or add G3 logic to move/copy .claude/memory.db.snapshot-${BACKUP_ID} to .claude/memory.db and verify PRAGMA integrity_check after restore."
+    },
+    {
+      "severity": "BLOCKER",
+      "spec": "T-1 + G3",
+      "issue": "Backup scripts treat optional paths as mandatory. On this machine ~/.claude/commands is missing, and shell glob handling around LaunchAgents can also abort. T-1 can fail before Wave 0.",
+      "evidence": "T-1 includes .claude/commands at line 2622 and notes missing paths are okay at line 2644, but current filesystem check shows ~/.claude/commands is absent.",
+      "fix": "Build an explicit file list with existence checks, create missing directories before backup, or use tar include files generated by find rather than literal optional paths/globs."
+    },
+    {
+      "severity": "BLOCKER",
+      "spec": "T3.2-postgres-qdrant-mcp.md",
+      "issue": "The Keychain write command is wrong for macOS security CLI. security add-generic-password -w - does not read stdin; it treats '-' as the password or prompts depending mode, so the stored PG_PASSWORD_RO can differ from the role password.",
+      "evidence": "Spec uses echo -n \"$PG_PASSWORD_RO\" | security ... -w - at line 6380; security usage says -w expects a password argument.",
+      "fix": "Use security add-generic-password without -w to prompt, or use a temporary file/osascript/keychain-safe helper verified by retrieving and comparing length/hash without printing the secret."
+    },
+    {
+      "severity": "HIGH",
+      "spec": "T2.2/T2.3/T3.2",
+      "issue": "Gemini's supply-chain pinning concern is not actually integrated. The plan still uses @latest, docker :latest, unpinned npx packages, and unpinned qdrant MCP.",
+      "evidence": "Playwright uses @latest at lines 4923 and 4954; GitHub pulls latest at line 5167 and npx unpinned at line 5160; Qdrant uses npx -y mcp-server-qdrant at line 6493.",
+      "fix": "Pin exact versions or digests, record hashes in T-1 inventory, and add verification commands before registering MCP servers."
+    },
+    {
+      "severity": "HIGH",
+      "spec": "T1.5-alzheimer-diagnose-script.md",
+      "issue": "Gemini's plist-secret fix was applied to G4 but not to T1.5. T1.5 still proposes TELEGRAM_BOT_TOKEN inside LaunchAgent EnvironmentVariables.",
+      "evidence": "T1.5 plist block includes TELEGRAM_BOT_TOKEN at lines 4638-4645.",
+      "fix": "Use the same ~/.config/nuzantara/.env.secret or Keychain retrieval pattern as G4 and add a grep verification that no token/password/secret appears in the plist."
+    },
+    {
+      "severity": "HIGH",
+      "spec": "T3.4-custom-slash-commands.md",
+      "issue": "The spec assumes ~/.claude/commands exists, but it is missing on this machine and the implementation never mkdir -p's it before writing command files.",
+      "evidence": "Step 1 only runs ls at lines 7125-7130; current filesystem check shows ~/.claude/commands missing.",
+      "fix": "Add mkdir -p ~/.claude/commands before Step 2 and include it in T-1 as a directory that may be created if absent."
+    }
+  ],
+  "compositional_issues": [
+    {
+      "severity": "BLOCKER",
+      "interaction": "T-2 + T2.5",
+      "issue": "The plan says T2.5 will include the execution manifest, but the T2.5 implementation does not contain the Step 4 manifest-reading code from T-2. Compaction still loses spec progress.",
+      "fix": "Patch the T2.5 hook body itself to read orchestration-execution-manifest.json and add a test asserting execution_manifest exists in the handoff."
+    },
+    {
+      "severity": "HIGH",
+      "interaction": "T1.2 + Wave 2/3 installs",
+      "issue": "The guardrail blocks Edit/Write on .mcp.json but later MCP install specs may require project .mcp.json edits. There is no documented safe override path, so the plan can deadlock after installing its own guardrail.",
+      "fix": "Define an explicit operator-approved bypass token or a narrow allowlist for specific setup scripts, and test install flows after T1.2 is active."
+    },
+    {
+      "severity": "HIGH",
+      "interaction": "G4 + T-1",
+      "issue": "G4 moves Telegram secrets into ~/.config/nuzantara/.env.secret, but T-1 backs up .config/nuzantara/ into an unencrypted tarball. The secret leaves the plist only to be captured in the global backup.",
+      "fix": "Exclude secret values from T-1 tarballs; backup only keychain item names and file metadata, or encrypt the backup before adding .config/nuzantara."
+    },
+    {
+      "severity": "MEDIUM",
+      "interaction": "G2 + T3.4 + orchestration metrics",
+      "issue": "Final validation still uses gameable and task-insensitive proxies: /verify count, newest transcript grep, linear Agent-call targets, and no independent tool-output audit.",
+      "fix": "Replace /verify-count with sampled claim-to-tool-output audits, and normalize dispatch expectations by task class rather than lines alone."
+    },
+    {
+      "severity": "MEDIUM",
+      "interaction": "00-INDEX + execution planning",
+      "issue": "Spec counts are inconsistent with disk: 31 markdown files total including INDEX, 30 executable spec files, and 3 panel JSONs. The index claims 31 spec files plus INDEX and 35 total, which can confuse T-2 manifest completeness checks.",
+      "fix": "Normalize vocabulary: '30 executable specs + 00-INDEX + 3 panel JSONs = 34 files total'. Update title/frontmatter and T-2 schema count."
+    }
+  ],
+  "verdict_final": "NEEDS_MORE_FIXES",
+  "honest_admission": "This was a static second-pass over /tmp/all-specs-final.md (7860 lines, sha256 ead39f09c22637135b74a21b71af126e9315ac67388236225efc1da0ba06d2bd) plus the panel JSONs and live filesystem checks. I did not execute the full generated scripts or mutate state. Pro machine check succeeded, but the peer check was unreachable/out of sync via the repo AGENTS command, so cross-machine recovery assumptions remain unverified."
+}
