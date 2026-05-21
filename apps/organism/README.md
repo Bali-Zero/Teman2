@@ -6,7 +6,8 @@ See `docs/superpowers/specs/2026-04-22-autonomic-organism-design.md` for full de
 
 ## Innervation Genoma (`organism/organs_registry.yaml`)
 
-Single source of truth for the ~149 organi nervosi. Spec:
+Single source of truth for the 120 organi nervosi (snapshot 2026-05-21:
+107 `pro_launchd` + 9 `fly_machine` + 4 `mini_launchd`). Spec:
 `docs/innervation-2026-04-29/07_innervation_protocol.md` §2.
 
 > **Renamed 2026-05-08 (IG-3):** the file `genome.yaml` is now

@@ -16,8 +16,8 @@
     <key>KeepAlive</key>
     <true/>
     <key>StandardOutPath</key>
-    <string>/tmp/cell.stdout.log</string>
+    <string>/Users/nuzantara/logs/cell/organism.stdout.log</string>
     <key>StandardErrorPath</key>
-    <string>/tmp/cell.stderr.log</string>
+    <string>/Users/nuzantara/logs/cell/organism.stderr.log</string>
 </dict>
 </plist>

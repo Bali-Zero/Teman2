@@ -7,6 +7,43 @@
 This directory stores the canonical source for plist files; operators copy
 them into `~/Library/LaunchAgents/` and chmod them read-only.
 
+## cell.organism (Cell core daemon) — RESURRECTION 2026-05-21
+
+The Cell core daemon plist source is at `apps/cell/com.cell.organism.plist`
+(parent dir, not this directory — historical layout).
+
+**Status as of 2026-05-21**: NOT installed in `~/Library/LaunchAgents/`.
+Cell core stopped pulsing on 2026-05-16 08:01 WITA. Empirical evidence in
+`~/.cell-observatory/observatory.db` (`cell_id='cell'` last_pulse).
+
+**Operator install steps** (run from clean checkout of `nuzantara` main):
+
+```bash
+# 1. Preconditions
+ls apps/cell/.env                    # secrets in CELL_*, GOOGLE_API_KEY, etc.
+ls apps/cell/.venv/bin/python        # virtualenv exists
+ls apps/cell/com.cell.organism.plist # plist source
+
+# 2. Run installer (idempotent)
+bash apps/cell/scripts/install_cell_daemon.sh
+
+# 3. Verify pulses resume within 5min
+sleep 60
+sqlite3 ~/.cell-observatory/observatory.db \
+  "SELECT max(pulse_timestamp) FROM pulse_events WHERE cell_id='cell';"
+```
+
+**Warning re P0 secret leak 2026-05-21**: `apps/cell/.env` currently contains
+the `backend_rag_v2` Postgres password that is the subject of the P0
+incident (`cicatrix-scars.md` head entry). If/when that password is rotated,
+`apps/cell/.env` MUST be updated BEFORE re-launching the daemon (or the
+daemon will crash-loop on `CELL_DATABASE_URL` auth failure).
+
+The reconstructed plist at `~/p0-3-recovery/plist_reconstructed/com.cell.organism.plist`
+contains the same leaked secrets inline; do NOT use that file as install
+source. The repo-tracked `apps/cell/com.cell.organism.plist` sources
+secrets from `.env` (out-of-tree) — this is the correct posture.
+
 ## skills-bridge-consumer (TICKET G.3)
 
 Cron-invoked shim that pulls `cell:skills` Redis stream entries from
