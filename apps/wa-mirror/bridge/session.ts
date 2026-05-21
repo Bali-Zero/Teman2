@@ -59,7 +59,10 @@ import {
   extractMessageRecord,
   persistCapturedMessage,
 } from "./message_capture.js";
-import type { MessageContextStore, WaMirrorAccount } from "./message_capture.js";
+import type {
+  MessageContextStore,
+  WaMirrorAccount,
+} from "./message_capture.js";
 import { queueMediaDownload } from "./media.js";
 import { normalizePhone, phoneDigits } from "./phone.js";
 import { sendTelegramAlert } from "./telegram.js";
@@ -90,10 +93,7 @@ export type StartSessionOptions = {
   resolveOnFirstOpen?: boolean;
 };
 
-const DEFAULT_SESSIONS_ROOT = path.join(
-  process.cwd(),
-  "sessions"
-);
+const DEFAULT_SESSIONS_ROOT = path.join(process.cwd(), "sessions");
 
 const DEFAULT_LABEL = "Bali Zero WA-Mirror";
 
@@ -226,17 +226,17 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
     const scheduleReconnect = (): void => {
       const delay = Math.min(
         RECONNECT_BASE_MS * 2 ** Math.min(attempt - 1, 5),
-        RECONNECT_MAX_MS
+        RECONNECT_MAX_MS,
       );
       logger.info(
         { sessionId: ctx.sessionId, attempt, delayMs: delay },
-        "wa-mirror scheduling reconnect"
+        "wa-mirror scheduling reconnect",
       );
       setTimeout(() => {
         connectOnce().catch(() => {
           logger.error(
             { sessionId: ctx.sessionId },
-            "wa-mirror connectOnce threw — retrying"
+            "wa-mirror connectOnce threw — retrying",
           );
           scheduleReconnect();
         });
@@ -246,7 +246,7 @@ function connectWithRetry(ctx: ConnectContext): Promise<number> {
     connectOnce().catch(() => {
       logger.error(
         { sessionId: ctx.sessionId },
-        "wa-mirror initial connectOnce threw"
+        "wa-mirror initial connectOnce threw",
       );
       scheduleReconnect();
     });
@@ -271,7 +271,7 @@ async function handleConnectionUpdate(
   update: ConnectionUpdate,
   sock: WASocket,
   ctx: ConnectContext,
-  deps: ConnectionUpdateDeps
+  deps: ConnectionUpdateDeps,
 ): Promise<void> {
   const { connection, lastDisconnect, qr } = update;
 
@@ -279,7 +279,7 @@ async function handleConnectionUpdate(
     const qrPath = `/tmp/qr-${phoneDigits(ctx.account.phone)}.png`;
     await QRCode.toFile(qrPath, qr, { width: 400 });
     process.stderr.write(
-      `\n[wa-mirror] QR saved to ${qrPath} — open it with: open ${qrPath}\n`
+      `\n[wa-mirror] QR saved to ${qrPath} — open it with: open ${qrPath}\n`,
     );
     qrcodeTerminal.generate(qr, { small: true }, (qrAscii) => {
       process.stdout.write(qrAscii);
@@ -288,30 +288,25 @@ async function handleConnectionUpdate(
   }
 
   if (connection === "open") {
-    const ownPhone = normalizePhone(jidToPhone(sock.user?.id)) || ctx.account.phone;
+    const ownPhone =
+      normalizePhone(jidToPhone(sock.user?.id)) || ctx.account.phone;
     try {
       await query(
         `UPDATE whatsapp_team_sessions
          SET phone_normalized = COALESCE(NULLIF($1, ''), phone_normalized),
                team_member_phone = COALESCE(NULLIF($2, ''), team_member_phone)
          WHERE id = $3`,
-        [phoneDigits(ownPhone), ownPhone, ctx.sessionId]
+        [phoneDigits(ownPhone), ownPhone, ctx.sessionId],
       );
       await markConnected(ctx.sessionId);
     } catch {
       logger.warn(
         { sessionId: ctx.sessionId },
-        "wa-mirror markConnected failed (non-fatal)"
+        "wa-mirror markConnected failed (non-fatal)",
       );
     }
-    logger.info(
-      { sessionId: ctx.sessionId },
-      "wa-mirror session connected"
-    );
-    await sendTelegramAlert(
-      `wa-mirror connected: ${ctx.account.name}`,
-      logger
-    );
+    logger.info({ sessionId: ctx.sessionId }, "wa-mirror session connected");
+    await sendTelegramAlert(`wa-mirror connected: ${ctx.account.name}`, logger);
     if (ctx.resolveOnFirstOpen) {
       // onboard.ts: auth state is persisted, our job is done.
       deps.settleResolve();
@@ -331,7 +326,7 @@ async function handleConnectionUpdate(
       await markDisconnected(
         ctx.sessionId,
         reason,
-        terminal ? "revoked" : "disconnected"
+        terminal ? "revoked" : "disconnected",
       );
     } catch {
       // The pre-2026-05-14 UNIQUE(team_member_email, status) constraint made
@@ -340,7 +335,7 @@ async function handleConnectionUpdate(
       // swallow errors here so a bookkeeping failure never kills the loop.
       logger.warn(
         { sessionId: ctx.sessionId },
-        "wa-mirror markDisconnected failed (non-fatal)"
+        "wa-mirror markDisconnected failed (non-fatal)",
       );
     }
 
@@ -352,18 +347,16 @@ async function handleConnectionUpdate(
         terminal,
         attempt: deps.attempt,
       },
-      "wa-mirror session closed"
+      "wa-mirror session closed",
     );
     await sendTelegramAlert(
       `wa-mirror disconnected: ${ctx.account.name}; reason=${reason}; reconnect_attempt=${deps.attempt}`,
-      logger
+      logger,
     );
 
     if (terminal) {
       // Device removed from the phone's Linked Devices — needs a fresh QR.
-      deps.settleReject(
-        new Error(`wa-mirror: session logged out: ${reason}`)
-      );
+      deps.settleReject(new Error(`wa-mirror: session logged out: ${reason}`));
       return;
     }
 
@@ -395,16 +388,18 @@ function registerMessageHandler(sock: WASocket, ctx: ConnectContext): void {
           continue;
         }
 
-        try {
-          await touchWhatsAppContact({
-            phone: record.counterpartPhone,
-            name: m.pushName ?? `wa:${record.counterpartPhone}`,
-          });
-        } catch {
-          logger.warn(
-            { sessionId: ctx.sessionId },
-            "wa-mirror contact touch failed (message capture continues)"
-          );
+        if (record.chatType === "direct" && record.counterpartPhone) {
+          try {
+            await touchWhatsAppContact({
+              phone: record.counterpartPhone,
+              name: m.pushName ?? `wa:${record.counterpartPhone}`,
+            });
+          } catch {
+            logger.warn(
+              { sessionId: ctx.sessionId },
+              "wa-mirror contact touch failed (message capture continues)",
+            );
+          }
         }
 
         const persisted = await persistCapturedMessage(record, {
@@ -441,12 +436,12 @@ function registerMessageHandler(sock: WASocket, ctx: ConnectContext): void {
             sessionId: ctx.sessionId,
             consecutiveDbErrors,
           },
-          "wa-mirror message persist failed"
+          "wa-mirror message persist failed",
         );
         if (consecutiveDbErrors > 5) {
           await sendTelegramAlert(
             `wa-mirror DB write errors >5: ${ctx.account.name}; consecutive=${consecutiveDbErrors}`,
-            logger
+            logger,
           );
         }
       }
