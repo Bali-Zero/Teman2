@@ -21,8 +21,6 @@ import argparse
 import json
 import logging
 import re
-import sys
-from dataclasses import dataclass
 from typing import Optional
 
 import psycopg2
@@ -34,7 +32,7 @@ from googleapiclient.errors import HttpError
 SA_KEY = "/Users/nuzantara/Desktop/codexyz/nuzantara-google-drive-sa-key-20260312.json"
 IMPERSONATE = "zero@balizero.com"
 DB = dict(host="localhost", port=15432, dbname="nuzantara_rag",
-          user="backend_rag_v2", password="2zEjit43IF6gNUV")  # pragma: allowlist secret
+          user="backend_rag_v2", password="<<ROTATED_2026_05_22_see_DATABASE_URL_env>>")  # pragma: allowlist secret
 SHORTCUT_MIME = "application/vnd.google-apps.shortcut"
 
 COMPANY_CRM_INDEX_PATH = "/tmp/company_crm_folders.json"

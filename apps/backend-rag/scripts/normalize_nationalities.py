@@ -319,7 +319,7 @@ NATIONALITY_MAP: dict[str, str] = {
     "other": None,
 }
 
-DB_URL = "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag"
+DB_URL = "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag"
 
 
 async def run(dry_run: bool = True) -> None:

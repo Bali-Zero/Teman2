@@ -32,7 +32,7 @@ import asyncpg
 # ---------------------------------------------------------------------------
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag",
+    "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag",
 )
 
 LOG_DIR = Path(__file__).resolve().parent.parent / "logs"
@@ -234,7 +234,7 @@ async def main(
 
             print(f"\n⚠️  Stai per assegnare {len(unassigned)} clienti a: {assign_to}")
             if not confirm:
-                answer = input("Confermi? (s/N): ").strip().lower()
+                answer = input("Confermi? (s/N): ").strip().lower()  # noqa: ASYNC250
                 if answer not in ("s", "si", "y", "yes"):
                     print("Annullato.")
                     return
@@ -256,7 +256,7 @@ async def main(
                 print(f"   ... e altri {len(suggestions) - 10}")
 
             if not confirm:
-                answer = input("Confermi? (s/N): ").strip().lower()
+                answer = input("Confermi? (s/N): ").strip().lower()  # noqa: ASYNC250
                 if answer not in ("s", "si", "y", "yes"):
                     print("Annullato.")
                     return

@@ -8,7 +8,7 @@ BATCH_FILE="/tmp/batches/batch_${BATCH}.json"
 WORK_DIR="/Users/nuzantara/Desktop/nuzantara/.gemini/tmp/worker_${BATCH}"
 RESULT_DIR="/tmp/results"
 SA_KEY="/Users/nuzantara/Desktop/codexyz/nuzantara-google-drive-sa-key-20260312.json"
-DB_URL="postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag"
+DB_URL="postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag"
 
 mkdir -p "$WORK_DIR" "$RESULT_DIR"
 
