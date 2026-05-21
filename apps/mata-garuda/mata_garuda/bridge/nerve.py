@@ -157,12 +157,36 @@ def pull_once(
     # Publish each event. If ANY fails, do NOT advance cursor.
     for event in events:
         try:
+            # CICATRIX 2026-05-21 — payload from /api/bridge/events may be a
+            # `str` instead of a `dict` if it was written by the legacy
+            # double-encoded INSERT path (pre-migration 192 / outbox.py fix).
+            # The backend side now unwraps in fetch_outbox_events, but keep
+            # a client-side belt-and-suspenders in case a stale Fly instance
+            # mid-rolling-deploy serves an unfixed row. See
+            # research/operations/2026-05-21-nb-automations-audit.md.
+            raw_payload = event.get("payload", {})
+            if isinstance(raw_payload, str):
+                try:
+                    raw_payload = json.loads(raw_payload)
+                except (TypeError, ValueError):
+                    logger.warning(
+                        "Event id=%s has malformed string payload — using empty dict",
+                        event.get("id"),
+                    )
+                    raw_payload = {}
+            if not isinstance(raw_payload, dict):
+                logger.warning(
+                    "Event id=%s payload is %s, not dict — coercing to empty",
+                    event.get("id"), type(raw_payload).__name__,
+                )
+                raw_payload = {}
+
             env = Envelope(
                 type=event["type"],
                 source="bridge",
                 priority=3,  # default; payload-specific priority is Phase 2
                 payload={
-                    **event.get("payload", {}),
+                    **raw_payload,
                     "_outbox_id": event["id"],
                     "_outbox_created_at": event.get("created_at"),
                 },
