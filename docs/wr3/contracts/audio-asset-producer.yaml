@@ -1,6 +1,10 @@
 # WR3 Agent I/O Contract — wr3-audio-asset-producer
 # Schema: docs/wr3/contracts/_schema.yaml v1.0.0
-# Description: Local Chatterbox VO + music bed + license attribution. ZERO cloud TTS (Cartesia BANNED Law 6).
+# Description: Veo audio nativo primary (extracted from Veo clips) + Chatterbox fallback + voice
+#   corpus accumulator (~/Desktop/Zantara-Voice-Corpus/<episode_id>.wav). Music bed + license
+#   attribution unchanged. Override 2026-05-22 Antonello — pilot-A confirmed Veo audio Emma-grade.
+#   Cartesia BANNED Law 6 (Chatterbox is the local fallback path, not Cartesia).
+# audio_provider: veo_native (extract) + chatterbox_fallback
 
 name: wr3-audio-asset-producer
 contract_version: 1.0.0
@@ -25,6 +29,11 @@ inputs:
     source: "apps/war-room/output/episode/<slug>/script.json"
     required: true
     schema_ref: "free-form"
+  - name: clips
+    kind: file
+    source: "apps/war-room/output/episode/<slug>/clips/*.mp4"
+    required: true
+    schema_ref: "free-form"
   - name: pre_render_ready
     kind: channel_payload
     source: "wr3_episode_pre_render_ready"
@@ -36,6 +45,14 @@ outputs:
     kind: file
     sink: "apps/war-room/output/episode/<slug>/audio/vo.wav"
     schema_ref: "free-form"
+  - name: lufs_report
+    kind: file
+    sink: "apps/war-room/output/episode/<slug>/audio/lufs_report.json"
+    schema_ref: "free-form"
+  - name: voice_corpus_entry
+    kind: file
+    sink: "~/Desktop/Zantara-Voice-Corpus/<episode_id>.wav"
+    schema_ref: "free-form"
   - name: music_bed
     kind: file
     sink: "apps/war-room/output/episode/<slug>/audio/music.wav"
@@ -45,25 +62,29 @@ outputs:
     sink: "apps/war-room/output/episode/<slug>/license-report.json"
     schema_ref: "free-form"
 
-emits: []
+emits:
+  - wr3_episode_assembly_ready
 
 consumes:
   - wr3_episode_pre_render_ready
 
 failure_modes:
+  - code: retry_with_cascade
+    action: "Veo audio LUFS out of bounds (>±5 LUFS from -14) OR missing/corrupt → cascade to Chatterbox TTS Emma seed=42 cfg=0.30 (script.json source-of-truth)"
+    telegram_p0_on: false
   - code: degrade_loud
-    action: "Chatterbox crash → no-VO + music + subtitles only (manifest flags 'vo_degraded: true')"
+    action: "Chatterbox fallback ALSO crashes → no-VO + music + subtitles only (manifest flags 'vo_degraded: true')"
     telegram_p0_on: false
   - code: hard_fail
     action: "Music pool empty AND license attribution incomplete → Telegram P0"
     telegram_p0_on: true
 
 law_compliance:
-  law_1_cli_only: "Chatterbox via Python subprocess (no SDK)"
+  law_1_cli_only: "ffmpeg subprocess for Veo audio extract + Chatterbox via Python subprocess (no SDK)"
   law_2_osint_blindato: "No NB access"
-  law_3_event_driven: "Consumes pre_render_ready in parallel with shot-director"
-  law_4_graceful_degradation: "VO failure → degrade-loud (subtitles only, never silent)"
-  law_5_zero_authority: "Antonello per-episode exception path via Telegram P0 if Cartesia needed (NORMALLY BANNED)"
-  law_6_local_sovereignty: "Chatterbox Pro M4 local Emma seed=42 cfg_weight=0.30. Cartesia BANNED Law 6 sovranità."
-  law_7_numbers_first: "LUFS normalized to -14 ±1"
-  law_8_past_present_future: "Loads voice cortex (Emma seed pinned)"
+  law_3_event_driven: "Consumes pre_render_ready in parallel with shot-director; emits assembly_ready"
+  law_4_graceful_degradation: "Veo audio bad → Chatterbox cascade; Chatterbox crash → degrade-loud subtitles only, never silent"
+  law_5_zero_authority: "Antonello per-episode exception path via Telegram P0 if Cartesia needed (NORMALLY BANNED). Veo audio nativo override 2026-05-22."
+  law_6_local_sovereignty: "Veo audio nativo via Flow API (existing cloud touchpoint, no new surface). Chatterbox Pro M4 local Emma seed=42 cfg_weight=0.30 as fallback. Cartesia BANNED Law 6 sovranità."
+  law_7_numbers_first: "LUFS measured per-clip + concat, normalized to -14 ±1; outside [-15,-13] LUFS triggers ffmpeg loudnorm; >±5 LUFS triggers fallback"
+  law_8_past_present_future: "Loads voice cortex (Emma seed pinned). Voice corpus accumulator ~/Desktop/Zantara-Voice-Corpus/ collects Veo audio for future voice/avatar cloning (50+ wav threshold for custom Chatterbox training)"

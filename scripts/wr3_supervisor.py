@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """WR3 Supervisor — event-bus consumer + episode lifecycle coordinator.
 
-Listens on 6 PG channels declared in migration 182_wr3_eventbus_channels.sql:
+Listens on 6 PG channels declared in migration 183_wr3_eventbus_channels.sql:
   - wr3_episode_brief_requested
   - wr3_episode_pre_render_ready
   - wr3_episode_gate_passed

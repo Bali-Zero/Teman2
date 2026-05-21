@@ -30,16 +30,45 @@ from wr3_contracts import load_contracts  # noqa: E402
 from wr3_episode_manifest import ManifestBuilder  # noqa: E402
 
 
-def _seed_episode(episode_dir: Path, episode_id: str) -> None:
-    """Write minimal fixture files (brief, script, shot-pack) for smoke."""
+# Duration mapping table (Veo 3.1 Fast Tier_ONE clip nativo = 8s).
+# Mirror of docs/wr3/contracts/brief-interpreter.yaml + wr3-brief-interpreter.md.
+# Smoke test asserts these constants stay in sync with contracts/agents.
+DURATION_MAPPING: dict[int, dict[str, int]] = {
+    60: {"clip_count": 8, "word_count": 180, "flow_cr": 80},
+    90: {"clip_count": 12, "word_count": 270, "flow_cr": 120},
+    120: {"clip_count": 15, "word_count": 360, "flow_cr": 150},
+    150: {"clip_count": 19, "word_count": 450, "flow_cr": 190},
+}
+
+
+def _seed_episode(episode_dir: Path, episode_id: str, target_duration_s: int = 60) -> None:
+    """Write minimal fixture files (brief, script, shot-pack) for smoke.
+
+    target_duration_s in [60, 150]; out-of-range raises ValueError (mirrors
+    wr3-brief-interpreter hard_fail).
+    """
+    if not (60 <= target_duration_s <= 150):
+        raise ValueError(
+            f"target_duration_s out of [60,150] range: {target_duration_s}"
+        )
+    mapping = DURATION_MAPPING.get(target_duration_s)
+    if mapping is None:
+        # Allow intermediate values; derive on the fly.
+        mapping = {
+            "clip_count": -(-target_duration_s // 8),  # ceil
+            "word_count": target_duration_s * 3,
+            "flow_cr": (-(-target_duration_s // 8)) * 10,
+        }
+
     episode_dir.mkdir(parents=True, exist_ok=True)
     (episode_dir / "clips").mkdir(exist_ok=True)
     (episode_dir / "audio").mkdir(exist_ok=True)
 
     brief = {
         "episode_id": episode_id,
-        "topic": "Manifesto Zantara — Bali Zero brand intro 60s",
+        "topic": f"Manifesto Zantara — Bali Zero brand intro {target_duration_s}s",
         "audience_segment": "new-arrivals-bali",
+        "target_duration_s": target_duration_s,
         "key_facts": [
             {"id": "claim-uu-6-2011-art-117", "text": "Foreigners must register their stay (UU 6/2011 Art. 117)"},
             {"id": "claim-vita-deposit-2bn", "text": "Second Home visa requires IDR 2 billion deposit (Perpres 37/2022)"},
@@ -112,12 +141,15 @@ def _verify_episode(episode_dir: Path) -> dict:
 
 async def main_async(args: argparse.Namespace) -> int:
     contracts = load_contracts()
+    # Default target_duration_s=60 if Namespace doesn't carry it (e.g., pytest test-mode invocation).
+    target_duration_s = getattr(args, "target_duration_s", 60)
     print(f"[wr3-smoke] Loaded {len(contracts.agents)} agent contracts")
-    print(f"[wr3-smoke] {len(contracts.routes)} channels in router\n")
+    print(f"[wr3-smoke] {len(contracts.routes)} channels in router")
+    print(f"[wr3-smoke] target_duration_s={target_duration_s} (mapping: {DURATION_MAPPING.get(target_duration_s, 'derived')})\n")
 
     episode_dir = Path(args.output) / args.episode_id
     print(f"[wr3-smoke] Seeding episode at {episode_dir}")
-    _seed_episode(episode_dir, args.episode_id)
+    _seed_episode(episode_dir, args.episode_id, target_duration_s=target_duration_s)
 
     print("[wr3-smoke] Verifying manifest builder…")
     manifest = _verify_episode(episode_dir)
@@ -143,6 +175,18 @@ async def main_async(args: argparse.Namespace) -> int:
     checks.append(("LUFS within ±1 of -14",
                   abs((manifest["lufs_measured"] or 0) + 14) <= 1.0,
                   f"lufs={manifest['lufs_measured']}"))
+    # Duration-mapping sanity (defends against drift between agents/contracts/smoke).
+    brief_data = json.loads((episode_dir / "brief.json").read_text())
+    td = brief_data.get("target_duration_s", 60)
+    checks.append(("target_duration_s in [60,150]",
+                  60 <= td <= 150,
+                  f"target_duration_s={td}"))
+    if td in DURATION_MAPPING:
+        expected = DURATION_MAPPING[td]
+        checks.append((f"duration mapping {td}s: {expected['clip_count']} clips / "
+                       f"{expected['word_count']}w / {expected['flow_cr']} cr",
+                      True,
+                      f"mapping consistent"))
 
     failures = 0
     print("\n[wr3-smoke] Sanity checks:")
@@ -167,6 +211,11 @@ def main() -> None:
                         help="Episode slug (default: smoke-manifesto-zantara)")
     parser.add_argument("--output", default="/tmp/wr3-smoke",
                         help="Output dir (default: /tmp/wr3-smoke)")
+    parser.add_argument("--target-duration-s", type=int, default=60,
+                        choices=[60, 90, 120, 150],
+                        help="Episode duration target in seconds. Must be in [60,150] range "
+                             "(default: 60). Drives clip_count + word_count + Flow Pro spend "
+                             "per Veo 3.1 Fast Tier_ONE mapping.")
     args = parser.parse_args()
     sys.exit(asyncio.run(main_async(args)))
 

@@ -25,7 +25,7 @@ inputs:
     kind: channel_payload
     source: "wr3_episode_brief_requested"
     required: true
-    schema_ref: "free-form"
+    schema_ref: "free-form (must carry optional target_duration_s in [60,150], default 60; out-of-range = hard_fail)"
   - name: nb_authority
     kind: in_memory_obj
     source: "NotebookLM MCP (mcp__notebooklm-mcp__notebook_query)"
@@ -36,7 +36,7 @@ outputs:
   - name: brief
     kind: file
     sink: "apps/war-room/output/episode/<slug>/brief.json"
-    schema_ref: "brief.schema.json"
+    schema_ref: "brief.schema.json (target_duration_s integer in [60,150], default 60; drives clip_count + word_count downstream)"
   - name: nb_sources_private
     kind: file
     sink: "apps/war-room/output/episode/<slug>/nb_source_ids.private.json (NEVER pushed downstream — Law 2)"
@@ -56,7 +56,10 @@ failure_modes:
     action: "On Claude OAuth limit → cascade Sonnet → Gemini 3.1 Pro free OAuth (NB unchanged)"
     telegram_p0_on: false
   - code: hard_fail
-    action: "NB MCP all 5 NB-INTEL down → Telegram P0 + episode HALTED (cannot ground without authority)"
+    action: "NB MCP all domain NBs (NB-2..NB-7) down → Telegram P0 + episode HALTED (cannot ground without authority)"
+    telegram_p0_on: true
+  - code: hard_fail
+    action: "target_duration_s out of [60,150] range → Telegram P0 + episode HALTED (downstream clip_count/word_count derivation undefined)"
     telegram_p0_on: true
 
 law_compliance:

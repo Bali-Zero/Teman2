@@ -1,0 +1,129 @@
+# WR3 Mode Config — companion_from_carousel
+# Schema: docs/wr3/contracts/_schema.yaml v1.0.0 (NOT an agent contract — see note)
+# Description: Mode-level configuration consumed by wr3-design-architect when
+# dispatched on the wr2_episode_published channel. Defines 3 sub-modes,
+# per-sub-mode durations, clip counts, cost ceilings, and critic lane mask.
+#
+# NOTE: this file intentionally lives in `contracts/modes/` (a subdirectory)
+# so that `scripts/wr3_contracts.py:load_contracts()` — which uses a
+# non-recursive `glob("*.yaml")` on `contracts/` — does NOT attempt to
+# validate it as an AgentContract. It is loaded separately by
+# `scripts/wr3_companion_dispatcher.py:load_companion_mode_config()`.
+
+mode_name: companion_from_carousel
+mode_version: 1.0.0
+triggered_by_channel: wr2_episode_published
+handler_agent: wr3-design-architect
+
+# Cost discipline (Law 7): companion mode REUSES the WR2 brief + claim_ids
+# verbatim. brief-interpreter is SKIPPED (saves ~$0.30 NB query cost) for ALL
+# sub-modes. NB source UUIDs never re-enter the room — they are inherited
+# transitively from WR2 (already vetted there).
+inherit_from_wr2:
+  reuse_claim_ids: true
+  reuse_brief_audience: true
+  reuse_brief_domain: true
+  skip_brief_interpreter: true
+  skip_nb_query: true
+
+output_dir_template: "apps/war-room/output/companion/{wr2_slug}-{sub_mode}/"
+
+sub_modes:
+  # ── Default sub-mode ─────────────────────────────────────────────────
+  # Triggered automatically on every wr2_episode_published. Antonello can
+  # disable per-episode with `companion_skip: true` in the WR2 brief.json.
+  story_15s:
+    is_default: true
+    output_format: "IG Story 9:16 1080×1920"
+    target_duration_s: 15
+    clip_count: 2
+    clip_duration_s: 8 # 2×8s = 16s trimmed to 15s in post-assembler
+    has_voiceover: true
+    has_video: true
+    cost:
+      ceiling_unit: "20 cr Flow Pro (~$0.05 cash equivalent)"
+      ceiling_usd: 0.05
+      hard_halt_on_exceed: false
+    critic_lane_mask:
+      # Lightweight gate — only Lane 1 (Identity ArcFace) + Lane 3 (Brand voice).
+      # Lane 2 (audio sync) skipped: 15s window, sync drift imperceptible.
+      # Lane 4 (legal verbatim) skipped: claim_ids inherited from WR2, already
+      # verified by WR2 fact-checker — re-verifying same claim_ids is wasteful.
+      lane_1_identity_arcface: true
+      lane_2_audio_sync: false
+      lane_3_brand_voice: true
+      lane_4_legal_verbatim: false
+    voice_register: "ironico" # see ~/.claude/skills/bali-zero-brand/wr3/companion-mode-spec.md
+    activation: "automatic_on_publish"
+
+  # ── Opt-in expanded sub-mode (Antonello flag `--expand`) ─────────────
+  # Triggered only when WR2 brief.json carries `companion_expand: true`.
+  # Full standard WR3 pipeline (60s Reel), full 4-lane critic.
+  reel_60s:
+    is_default: false
+    output_format: "IG Reel / TikTok / Shorts 9:16 1080×1920"
+    target_duration_s: 60
+    clip_count: 8
+    clip_duration_s: 8
+    has_voiceover: true
+    has_video: true
+    cost:
+      ceiling_unit: "80 cr Flow Pro (~$0.20 cash equivalent)"
+      ceiling_usd: 0.20
+      hard_halt_on_exceed: false
+    critic_lane_mask:
+      # Full 4-lane critic — Reel is a first-class episode artifact.
+      lane_1_identity_arcface: true
+      lane_2_audio_sync: true
+      lane_3_brand_voice: true
+      lane_4_legal_verbatim: true
+    voice_register: "analitico"
+    activation: "antonello_flag --expand (WR2 brief.companion_expand=true)"
+
+  # ── Opt-in text-only sub-mode (Antonello flag `--engage`) ────────────
+  # NO video, NO voice — text-only. Generates an IG comment + DM reply
+  # template in Zantara voice for community engagement.
+  comment_interactive:
+    is_default: false
+    output_format: "text/json (no MP4)"
+    target_duration_s: 0
+    clip_count: 0
+    clip_duration_s: 0
+    has_voiceover: false
+    has_video: false
+    cost:
+      ceiling_unit: "$0.05 cash (Claude Sonnet text-only)"
+      ceiling_usd: 0.05
+      hard_halt_on_exceed: false
+    critic_lane_mask:
+      # Brand voice ONLY — no visual/audio artifacts to gate.
+      # Manual review by Antonello before publishing as IG comment.
+      lane_1_identity_arcface: false
+      lane_2_audio_sync: false
+      lane_3_brand_voice: true
+      lane_4_legal_verbatim: false
+    voice_register: "pedagogico-ironico"
+    activation: "antonello_flag --engage (WR2 brief.companion_engage=true)"
+
+# ── Failure modes (mode-level, separate from agent-level) ──────────────
+failure_modes:
+  - code: "missing_wr2_brief"
+    action: "If brief_path does NOT exist on disk → log WARN, skip companion, no Telegram"
+    telegram_p0_on: false
+  - code: "claim_ids_empty"
+    action: "If primary_claim_ids is empty → fallback to story_15s using slides_path hook only"
+    telegram_p0_on: false
+  - code: "wr2_slug_collision"
+    action: "If output_dir already exists → suffix with -retry-<timestamp>"
+    telegram_p0_on: false
+
+# ── Law compliance (mode-level) ────────────────────────────────────────
+law_compliance:
+  law_1_cli_only: "Dispatch via wr3_companion_dispatcher.py → publish_wr3_event() (no SDK)"
+  law_2_osint_blindato: "NB source_ids never touched — claim_ids inherited transitively from WR2"
+  law_3_event_driven: "Consumes wr2_episode_published, emits wr3_episode_brief_requested with mode=companion_from_carousel"
+  law_4_graceful_degradation: "Missing brief → log skip; claim_ids empty → fallback story_15s"
+  law_5_zero_authority: "comment_interactive sub-mode REQUIRES manual Antonello publish (no autopublish)"
+  law_6_local_sovereignty: "All dispatch on local Pro/Mini (Flow API only cloud touchpoint, same as standard WR3)"
+  law_7_numbers_first: "Per-sub-mode ceilings enforced; inherited claim_ids preserve numeric verbatim"
+  law_8_past_present_future: "Voice register pulled from ~/.claude/skills/bali-zero-brand/wr3/companion-mode-spec.md"

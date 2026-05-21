@@ -115,7 +115,10 @@ properties:
     type: array
     items:
       type: string
-      pattern: "^wr3_episode_[a-z_]+$"
+      # Accepts WR3 episode channels (default) AND cross-pipeline handoff
+      # channels — currently only `wr2_episode_published` (migration 186)
+      # which feeds the design-architect "companion_from_carousel" mode.
+      pattern: "^(wr2|wr3)_episode_[a-z_]+$"
     description: "PG NOTIFY channels this agent listens (via wr3_supervisor route_event)"
 
   failure_modes:

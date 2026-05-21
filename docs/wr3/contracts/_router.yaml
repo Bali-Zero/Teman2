@@ -2,12 +2,17 @@
 # Consumed by: scripts/wr3_supervisor.py route_event()
 # Schema: docs/wr3/contracts/_schema.yaml v1.0.0
 #
-# 6 PG channels declared in migration 182_wr3_eventbus_channels.sql.
+# 6 WR3 PG channels declared in migration 183_wr3_eventbus_channels.sql
+# PLUS 1 cross-pipeline handoff channel (`wr2_episode_published`) declared
+# in migration 186_wr2_published_channel.sql — emitted by the WR2 supervisor
+# when a carousel completes, consumed by WR3 design-architect to spawn
+# companion content (IG Story / Reel / interactive comment).
+#
 # Each channel maps to EXACTLY ONE consumer agent (no fanout at router level —
 # fanout happens INSIDE the design-architect agent via Claude Agent SDK
 # parallel query() calls).
 
-router_version: 1.0.0
+router_version: 1.1.0
 
 channels:
   wr3_episode_brief_requested:
@@ -39,6 +44,28 @@ channels:
     handler: wr3-design-architect # Triggers Drive staging + Telegram P0
     hot_path: false # End of pipeline, no time pressure
     description: "Drive staged, awaiting Antonello manual publish"
+
+  # ── Cross-pipeline handoff (WR2 → WR3) ───────────────────────────────
+  # Emitted by scripts/wr2_supervisor.py when a carousel completes the
+  # full WR2 flow (Canva apply + Drive staged + Telegram P0). Consumed by
+  # WR3 design-architect under the "companion_from_carousel" mode (see
+  # docs/wr3/contracts/modes/companion-mode.yaml).
+  #
+  # Payload shape (validated at dispatch time by wr3_companion_dispatcher):
+  #   {
+  #     "slug": "<wr2_carousel_slug>",
+  #     "slides_count": 10,
+  #     "hero_image_path": "apps/war-room/output/carousel/<slug>/slide-01.png",
+  #     "primary_claim_ids": ["claim_kep71_2025", ...],
+  #     "domain": "tax|visa|company|property|compliance",
+  #     "audience_segment": "expat-35-55|founder|...",
+  #     "brief_path": "apps/war-room/output/carousel/<slug>/brief.json",
+  #     "slides_path": "apps/war-room/output/carousel/<slug>/slides.json"
+  #   }
+  wr2_episode_published:
+    handler: wr3-design-architect # Dispatches via wr3_companion_dispatcher → companion_from_carousel mode
+    hot_path: false # Companion content is non-time-critical (post-publish)
+    description: "WR2 carousel published → WR3 produces companion content (Story/Reel/Comment)"
 
 # HOT_PATH_CHANNELS (for explicit ack policy):
 # - hot_path: true → telegram P0 on handler crash (do NOT ack, retry on reconnect)
