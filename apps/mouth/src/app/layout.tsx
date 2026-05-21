@@ -256,7 +256,19 @@ export default function RootLayout({
           }}
         />
         {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
-          <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
+          <>
+            {/* Consent Mode v2 default — MUST load BEFORE gtag.js (which @next/third-parties
+                injects with strategy="afterInteractive"). Without this, Google Tag defaults
+                analytics_storage to "denied" on first hit → /g/collect arrives with gcs=G100
+                and GA4 silently drops the event from reports/Realtime. Empirically verified
+                2026-05-21: property 505466833 had 1 event in 94 days because every hit was
+                consent-denied. Strategy: analytics_storage=granted by legitimate interest
+                (analytics-only, no PII, no ad cookies), ad_* stay denied for GDPR/UU-PDP. */}
+            <Script id="gtag-consent-default" strategy="beforeInteractive">
+              {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{'analytics_storage':'granted','ad_storage':'denied','ad_user_data':'denied','ad_personalization':'denied'});`}
+            </Script>
+            <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
+          </>
         )}
       </body>
     </html>
