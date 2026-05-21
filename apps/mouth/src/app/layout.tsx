@@ -174,6 +174,22 @@ export default function RootLayout({
         {/* Pre-paint theme init — prevents FOUC before React hydrates (design §5). */}
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
 
+        {/* Google Consent Mode v2 default — MUST be in <head> BEFORE gtag.js preload
+            (which @next/third-parties injects ~byte 2132 of HTML). Without this,
+            Google Tag defaults analytics_storage="denied" → /g/collect hits arrive
+            with gcs=G100 and GA4 drops them from reports/Realtime. Empirically
+            verified 2026-05-21 (subhi-activity-log.md): Next.js App Router IGNORES
+            strategy="beforeInteractive" for <Script> rendered as <body> children,
+            so we use raw <script> in <head> for guaranteed pre-paint execution.
+            Strategy: analytics_storage=granted by legitimate interest (analytics-
+            only, no PII, no ad cookies), ad_* stay denied for GDPR/UU-PDP. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{'analytics_storage':'granted','ad_storage':'denied','ad_user_data':'denied','ad_personalization':'denied'});",
+          }}
+        />
+
         {/* ⚡ Performance: Preconnect to critical domains */}
         <link rel="preconnect" href="https://nuzantara-rag.fly.dev" />
         <link rel="dns-prefetch" href="https://nuzantara-rag.fly.dev" />
@@ -256,19 +272,7 @@ export default function RootLayout({
           }}
         />
         {process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID && (
-          <>
-            {/* Consent Mode v2 default — MUST load BEFORE gtag.js (which @next/third-parties
-                injects with strategy="afterInteractive"). Without this, Google Tag defaults
-                analytics_storage to "denied" on first hit → /g/collect arrives with gcs=G100
-                and GA4 silently drops the event from reports/Realtime. Empirically verified
-                2026-05-21: property 505466833 had 1 event in 94 days because every hit was
-                consent-denied. Strategy: analytics_storage=granted by legitimate interest
-                (analytics-only, no PII, no ad cookies), ad_* stay denied for GDPR/UU-PDP. */}
-            <Script id="gtag-consent-default" strategy="beforeInteractive">
-              {`window.dataLayer=window.dataLayer||[];function gtag(){dataLayer.push(arguments);}gtag('consent','default',{'analytics_storage':'granted','ad_storage':'denied','ad_user_data':'denied','ad_personalization':'denied'});`}
-            </Script>
-            <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
-          </>
+          <GoogleAnalytics gaId={process.env.NEXT_PUBLIC_GA_MEASUREMENT_ID} />
         )}
       </body>
     </html>
