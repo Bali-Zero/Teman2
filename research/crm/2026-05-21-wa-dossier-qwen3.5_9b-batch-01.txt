@@ -1,0 +1,768 @@
+# Bali Zero CRM WhatsApp Dossier — batch 01/01
+# Generated: 2026-05-21 (UTC)
+# Window: last 180 days
+# Clients in this batch: 33
+# Total messages synthesized: 459
+# Source: whatsapp_message_context_enriched (CRM-resolved phone matches only)
+# Synthesis: Ollama qwen3.5:9b (local, temperature=0, seed=42, deterministic)
+# PII: NPWP/passport/NIK/NIB/full-phone/email/EFIN masked pre-LLM
+
+---
+## Client: Anaya Ashamaya (id=11801)
+**Window**: 2026-05-19 → 2026-05-19 · **Messages**: 56
+
+### Hard Facts
+#### Decisions
+- 2026-05-19: [joint] Client agrees to wait for staff visit tomorrow
+#### Documents delivered
+- 2026-05-19: Document Requirements List
+#### Declared deadlines
+- 2026-06-01: Preparation start date for extension
+- 2026-05-20: Follow-up on account recovery steps
+#### Quotes approved
+- 2026-05-19: KITAS Extension — IDR 18.000.000
+
+### Soft Facts
+#### Client business goals
+- Extend Investor KITAS before August 30 expiration
+- Avoid extra fees for account recovery
+- Switch from previous agency (Maaxx Group) due to trust issues
+#### Warnings / disclaimers given to client
+- 2026-05-19 [Processing time for first-time applicants]: Additional time needed for document verification and checks
+#### Promises / SLA
+- 2026-05-19 by Damar: Send detailed requirements
+- 2026-05-19 by Damar: Follow up on account recovery steps tomorrow
+
+### Human Layer
+**Sentiment trend**: frustrated
+#### Frustration episodes
+- 2026-05-19: Client expresses distrust of previous agency (Maaxx Group) and fear of them withholding passwords
+
+---
+
+## Client: Gerard (id=11800)
+**Window**: 2026-05-18 → 2026-05-19 · **Messages**: 45
+
+### Hard Facts
+#### Decisions
+- 2026-05-18: [joint] Meeting scheduled for 9:30 AM
+- 2026-05-19: [joint] Meeting rescheduled to 3 PM
+
+### Soft Facts
+#### Client business goals
+- Moving fiscal residency to Indonesia
+- Solving visa issues related to existing business structure
+#### Warnings / disclaimers given to client
+- 2026-05-19 [Heavy rain]: Meeting postponed until rain stops
+
+### Human Layer
+**Sentiment trend**: positive
+#### Frustration episodes
+- 2026-05-19: Client expressed frustration ('Dammit') due to heavy rain
+
+---
+
+## Client: Lead +628133946856 (id=11802)
+**Window**: 2026-05-19 → 2026-05-19 · **Messages**: 40
+
+### Hard Facts
+#### Decisions
+- 2026-05-19: [client] Revisi IMTA + Evisa untuk Erin Anna Helena Hayes
+- 2026-05-19: [client] Update nomor telepon untuk proses revisi
+
+### Soft Facts
+#### Client business goals
+- Mendapatkan IMTA dan Evisa untuk Erin Anna Helena Hayes dengan cepat karena kondisi darurat
+- Melakukan revisi IMTA dan Evisa karena paspor lama rusak (digigit anjing) saat di UK
+#### Warnings / disclaimers given to client
+- 2026-05-19 [Kondisi paspor rusak]: Paspor klien rusak saat mau terbang, perlu revisi IMTA dan Evisa
+
+### Human Layer
+**Sentiment trend**: mixed
+#### Frustration episodes
+- 2026-05-19: Klien mengeluh tidak memiliki stiker dan menanyakan proses revisi paspor yang rusak
+#### Operator handoffs
+- 2026-05-19: +6282134547725 → +6282134547726 — Klien meminta update status revisi IMTA
+
+---
+
+## Client: Irma Külaviir (id=11798)
+**Window**: 2026-05-19 → 2026-05-19 · **Messages**: 35
+
+### Hard Facts
+#### Decisions
+- 2026-05-19: [client] Client chose bank transfer for payment
+#### Documents delivered
+- 2026-05-19: selfie
+- 2026-05-19: passport_photo
+- 2026-05-19: proof_of_payment
+#### Declared deadlines
+- 2026-05-21: Payment due
+#### Quotes approved
+- 2026-05-19: VOA extension — IDR 850.000
+
+### Soft Facts
+#### Client business goals
+- Extend VOA in Bali
+- Maintain flexibility for work travel to Dubai or Estonia
+#### Warnings / disclaimers given to client
+- 2026-05-19 [Flight booking timing]: Client unsure of departure date; advised not to book yet
+#### Promises / SLA
+- 2026-05-19 by Bali Zero Team: Send photo appointment invitation and immigration office address later
+
+### Human Layer
+**Sentiment trend**: positive
+
+---
+
+## Client: Asraf Guy Baruch (id=11677)
+**Window**: 2026-05-19 → 2026-05-19 · **Messages**: 31
+
+### Hard Facts
+#### Decisions
+- 2026-05-19: [joint] Client agreed to proceed with VoA application
+#### Documents delivered
+- 2026-05-19: invoice
+- 2026-05-19: bank_details
+#### Declared deadlines
+- 2026-05-20: Visa on Arrival ready
+#### Quotes approved
+- 2026-05-19: Visa on Arrival (VoA) — IDR 800.000
+
+### Soft Facts
+#### Client business goals
+- Avoid standing in line for Visa on Arrival
+- Extend visa without visiting immigration office
+- Obtain 60-day stay permit
+#### Warnings / disclaimers given to client
+- 2026-05-19 [Visa extension]: Biometric session at immigration office required
+- 2026-05-19 [C1 Visa eligibility]: Not possible as client is returning to Indonesia
+#### Promises / SLA
+- 2026-05-19 by team: Visa ready before client returns tomorrow
+
+### Human Layer
+**Sentiment trend**: mixed
+#### Frustration episodes
+- 2026-05-19: Client questioned 800k fee and asked for QR payment
+#### Operator handoffs
+- 2026-05-19: unknown → unknown — Colleague will contact client for invoice
+
+---
+
+## Client: Lia Bayu (id=2175)
+**Window**: 2026-05-18 → 2026-05-21 · **Messages**: 34
+
+### Hard Facts
+#### Decisions
+- 2026-05-19: [client] Marco Farsura billing approval requested
+
+### Soft Facts
+#### Client business goals
+- Ensure Gloria Radulescu has flown out
+- Obtain photo of Dursun Emre Karabacak
+- Complete OTP process for Marco Farsura
+- Resolve billing approval for Marco Farsura
+
+### Human Layer
+**Sentiment trend**: mixed
+#### Frustration episodes
+- 2026-05-18: Client reports system error, asks to retry
+- 2026-05-19: Client apologizes for forgetting to inform about photo status
+- 2026-05-21: Client expresses frustration over slow OTP process and login issues
+#### Operator handoffs
+- 2026-05-19: +6282134547725 → +6282134547725 — New phone number provided by team member
+
+---
+
+## Client: Sindy Kirks (id=11799)
+**Window**: 2026-05-18 → 2026-05-19 · **Messages**: 22
+
+### Hard Facts
+#### Decisions
+- 2026-05-19: [client] Client selected 2 working days abroad option
+#### Declared deadlines
+- 2026-05-18: Travel by beginning of next month (June)
+#### Quotes approved
+- 2026-05-19: Visa Processing (2 working days) — IDR 14.000.000
+
+### Soft Facts
+#### Client business goals
+- Obtain ITK D12 visa for 1 year
+- Travel to Kuala Lumpur, Germany, Dubai, and Bali
+- Minimize time spent abroad during processing
+#### Warnings / disclaimers given to client
+- 2026-05-18 [Processing timeframes]: Must be done on working days; no significant difference in results between 5 or 2 days
+#### Promises / SLA
+- 2026-05-18 by Aditya: Proceed with process if documents ready this week
+
+### Human Layer
+**Sentiment trend**: positive
+#### Operator handoffs
+- 2026-05-18: unknown → Aditya — New office number and communication channel switch
+
+---
+
+## Client: Adi Bayu Santero (id=1526)
+**Window**: 2026-05-18 → 2026-05-21 · **Messages**: 19
+
+### Hard Facts
+#### Decisions
+- 2026-05-19: [team] Client added as admin to Extend Antonello group
+- 2026-05-21: [joint] Agreement to transfer 40M IDR directly to BS
+#### Declared deadlines
+- 2026-05-19: Urgenan (Urgent) completion
+- unknown: Kitas validity period (less than 90 days in Indonesia)
+#### Quotes approved
+- 2026-05-21: Kitas processing — IDR 40.000.000
+
+### Soft Facts
+#### Client business goals
+- Apply for E-VOA for Kjell Edwin Lundgren
+- Extend Antonello work permit
+- Maintain KITAS validity with monthly income requirement
+#### Warnings / disclaimers given to client
+- 2026-05-21 [KITAS validity duration]: Must be fulfilled within less than 90 days in Indonesia
+#### Promises / SLA
+- 2026-05-19 by team: Urgent completion today
+
+### Human Layer
+**Sentiment trend**: positive
+#### Operator handoffs
+- 2026-05-19: vino → adit — New office number and role change
+
+---
+
+## Client: Cristian (id=3571)
+**Window**: 2026-05-18 → 2026-05-19 · **Messages**: 18
+
+### Hard Facts
+#### Decisions
+- 2026-05-19: [joint] Client agrees to apply for new D12 visa
+#### Declared deadlines
+- 2026-07-31: E-visa expiration
+#### Quotes approved
+- 2026-05-19: D12 Visa — amount unspecified
+
+### Soft Facts
+#### Client business goals
+- Extend mother's stay in Indonesia
+- Explore retirement KITAS option
+#### Warnings / disclaimers given to client
+- 2026-05-18 [Visa extension availability]: Extension not guaranteed; may require new visa application
+
+### Human Layer
+**Sentiment trend**: mixed
+#### Frustration episodes
+- 2026-05-18: Client concerned about visa expiration in August and extension uncertainty
+#### Operator handoffs
+- 2026-05-18: unknown → Adit — New number provided; old number being closed
+
+---
+
+## Client: Davide Bisognini (id=4703)
+**Window**: 2026-05-19 → 2026-05-19 · **Messages**: 17
+
+### Hard Facts
+#### Decisions
+- 2026-05-19: [joint] Start KITAs process
+- 2026-05-19: [client] Davide: 2 years KITAS with address change
+- 2026-05-19: [client] Davide: 1 year KITAS same address
+- 2026-05-19: [team] Jennifer: 1 year extension possibility
+- 2026-05-19: [joint] Adjust bank statement balance
+#### Documents delivered
+- 2026-05-19: Bank Statement
+- 2026-05-19: New Address
+
+### Soft Facts
+#### Client business goals
+- Davide wants to start KITAs process
+- Davide needs 2 years KITAS with address change
+- Davide needs 1 year KITAS with same address
+- Jennifer needs 1 year extension
+
+### Human Layer
+**Sentiment trend**: positive
+
+---
+
+## Client: Lead +628213454723 (id=11814)
+**Window**: 2026-05-18 → 2026-05-21 · **Messages**: 17
+
+### Hard Facts
+#### Decisions
+- 2026-05-21: [joint] Client approves team to make announcement in group
+- 2026-05-21: [client] Client directs all process payments to BS
+
+### Soft Facts
+#### Client business goals
+- Client wants to proceed with processes immediately via transfer to BS
+- Client wants team to announce the update in the group chat
+
+### Human Layer
+**Sentiment trend**: positive
+
+---
+
+## Client: Jonathan (id=11803)
+**Window**: 2026-05-18 → 2026-05-18 · **Messages**: 11
+
+### Hard Facts
+#### Declared deadlines
+- 2026-06-21: client flight to bali
+
+### Soft Facts
+#### Client business goals
+- Client needs to enter Bali on June 21st with a passport expiring in December 2026.
+#### Warnings / disclaimers given to client
+- 2026-05-18 [passport validity regulation]: Indonesian Immigration may refuse entry if passport validity is less than 6 months.
+
+### Human Layer
+**Sentiment trend**: frustrated
+#### Frustration episodes
+- 2026-05-18: Client expresses uncertainty about entry requirements and inability to get a new passport from USA embassy.
+
+---
+
+## Client: Stefano Caradonna (id=2539)
+**Window**: 2026-05-18 → 2026-05-19 · **Messages**: 11
+
+### Hard Facts
+#### Decisions
+- 2026-05-18: [client] Client requested VoA extension assistance
+- 2026-05-18: [team] Team offered service for VoA extension
+- 2026-05-18: [team] Team requested passport photo and issue details
+- 2026-05-18: [client] Client sent passport photo
+- 2026-05-18: [team] Team listed requirements and cost for extension
+- 2026-05-18: [team] Team advised retrying website after error review
+- 2026-05-19: [client] Client reported persistent error
+#### Documents delivered
+- 2026-05-18: passport_photo
+#### Declared deadlines
+- unknown: Invitation for photo and interview ready
+- unknown: Extension finished after photo and interview
+#### Quotes approved
+- 2026-05-18: Visa On Arrival Extension — IDR 850.000
+
+### Soft Facts
+#### Client business goals
+- Extend VoA on evisa.imigrasi.go.id
+#### Warnings / disclaimers given to client
+- 2026-05-18 [Website error]: Team suggested retrying after review
+#### Promises / SLA
+- 2026-05-18 by Vino: Invitation ready in 3-5 working days after submission
+- 2026-05-18 by Vino: Extension finished in 3-5 working days after photo and interview
+
+### Human Layer
+**Sentiment trend**: frustrated
+#### Frustration episodes
+- 2026-05-18: Client unable to proceed with VoA extension on website
+- 2026-05-19: Client reports persistent error despite multiple attempts
+
+---
+
+## Client: Fuad Ishola Agoro (id=10208)
+**Window**: 2026-05-18 → 2026-05-19 · **Messages**: 10
+
+### Hard Facts
+#### Decisions
+- 2026-05-19: [client] Client confirmed attendance for photo session
+#### Documents delivered
+- 2026-05-19: Photo Invitation
+#### Declared deadlines
+- 2026-07-20: Last date to leave Indonesia
+
+### Soft Facts
+#### Client business goals
+- Client needs to leave Indonesia by July 20th, 2026.
+#### Warnings / disclaimers given to client
+- 2026-05-18 [Departure Deadline]: Validity of second extension ends on July 20th, 2026.
+#### Promises / SLA
+- 2026-05-19 by Adit: Confirm completion of photo process
+
+### Human Layer
+**Sentiment trend**: positive
+#### Operator handoffs
+- 2026-05-18: unknown → Adit — New office number and communication channel update
+
+---
+
+## Client: Edwin Lundgren (id=3081)
+**Window**: 2026-05-18 → 2026-05-18 · **Messages**: 9
+
+### Hard Facts
+#### Decisions
+- 2026-05-18: [client] Client confirmed address and thanked Edwin
+
+### Soft Facts
+- (none extracted)
+
+### Human Layer
+**Sentiment trend**: positive
+
+---
+
+## Client: Muthia (id=3445)
+**Window**: 2026-05-18 → 2026-05-18 · **Messages**: 9
+
+### Hard Facts
+#### Decisions
+- 2026-05-18: [client] Continue using current email system for now
+#### Quotes approved
+- 2026-05-18: Email mutation/transfer — IDR 1.000.000
+
+### Soft Facts
+#### Client business goals
+- Plan to use personal email for spouse KITAS application in the future
+- Avoid back-and-forth OTP requests for Molina login
+#### Warnings / disclaimers given to client
+- 2026-05-18 [Email mutation cost]: Imigration charges Rp1,000,000 for email transfer
+
+### Human Layer
+**Sentiment trend**: positive
+
+---
+
+## Client: Simonetta Mangione (id=11757)
+**Window**: 2026-05-18 → 2026-05-19 · **Messages**: 8
+
+### Hard Facts
+#### Decisions
+- 2026-05-19: [client] Wait for babies after address change
+- 2026-05-19: [team] Address mutation ready by end of week
+#### Documents delivered
+- 2026-05-19: E-VISA C1
+#### Declared deadlines
+- unknown: Address mutation ready
+- unknown: Notify upon arrival
+- unknown: Text 2 weeks before visa expiration
+
+### Soft Facts
+#### Client business goals
+- Secure e-visa for parents
+- Wait for babies after address change
+#### Warnings / disclaimers given to client
+- 2026-05-19 [Passport safety and visa expiry]: Personal responsibility when passport not in custody
+#### Promises / SLA
+- 2026-05-19 by team: Address mutation ready by end of week
+
+### Human Layer
+**Sentiment trend**: positive
+
+---
+
+## Client: Mattia inghlieri (id=3205)
+**Window**: 2026-05-19 → 2026-05-21 · **Messages**: 7
+
+### Hard Facts
+#### Decisions
+- 2026-05-21: [client] Client confirmed attendance for tomorrow morning
+
+### Soft Facts
+#### Client business goals
+- Client needs assistance with business services and extension renewal.
+#### Promises / SLA
+- 2026-05-19 by Morpheus: Reach out anytime for assistance
+
+### Human Layer
+**Sentiment trend**: positive
+#### Operator handoffs
+- 2026-05-19: unknown → Morpheus — New number introduction
+
+---
+
+## Client: Daniele Finocchio (id=10913)
+**Window**: 2026-05-21 → 2026-05-21 · **Messages**: 7
+
+### Hard Facts
+- (none extracted)
+
+### Soft Facts
+- (none extracted)
+
+### Human Layer
+**Sentiment trend**: neutral
+#### Frustration episodes
+- 2026-05-21: Client admitted to being distracted
+
+---
+
+## Client: Ilaria Parena (id=10906)
+**Window**: 2026-05-21 → 2026-05-21 · **Messages**: 7
+
+### Hard Facts
+- (none extracted)
+
+### Soft Facts
+- (none extracted)
+
+### Human Layer
+**Sentiment trend**: neutral
+
+---
+
+## Client: Karlos (id=7174)
+**Window**: 2026-05-18 → 2026-05-18 · **Messages**: 6
+
+### Hard Facts
+#### Decisions
+- 2026-05-18: [client] Client confirmed ability to leave Indonesia before November 7
+#### Declared deadlines
+- 2026-10-07: e-Visa expiration
+- 2026-11-07: Latest departure date for client
+
+### Soft Facts
+#### Client business goals
+- Client needs to resolve immigration permit validity issue to ensure legal departure in November.
+#### Warnings / disclaimers given to client
+- 2026-05-18 [e-Visa validity period]: e-Visa valid until October 7; D12 permit granted for 180 days from entry.
+
+### Human Layer
+**Sentiment trend**: positive
+#### Frustration episodes
+- 2026-05-18: Client mentioned immigration officials took 15 minutes to resolve permit issue upon entry.
+
+---
+
+## Client: Antonio Antelo (id=4685)
+**Window**: 2026-05-18 → 2026-05-18 · **Messages**: 6
+
+### Hard Facts
+- (none extracted)
+
+### Soft Facts
+- (none extracted)
+
+### Human Layer
+**Sentiment trend**: positive
+
+---
+
+## Client: Lisa Marek (id=9408)
+**Window**: 2026-05-19 → 2026-05-19 · **Messages**: 5
+
+### Hard Facts
+#### Decisions
+- 2026-05-19: [joint] Reschedule photo appointment to Friday
+#### Documents delivered
+- 2026-05-19: Invitation photo
+#### Declared deadlines
+- 2026-05-20: Photo appointment at Denpasar Immigration Office
+
+### Soft Facts
+#### Client business goals
+- Client needs to complete photo process for immigration office for Marta
+#### Warnings / disclaimers given to client
+- 2026-05-19 [Photo completion confirmation]: Client must confirm immediately after photo process
+#### Promises / SLA
+- 2026-05-19 by Adit: Continue all communication via new office number
+
+### Human Layer
+**Sentiment trend**: positive
+#### Operator handoffs
+- 2026-05-19: unknown → Adit — New office number introduction
+
+---
+
+## Client: Nico (id=1815)
+**Window**: 2026-05-18 → 2026-05-19 · **Messages**: 5
+
+### Hard Facts
+#### Decisions
+- 2026-05-18: [client] Client requested SKTT for vehicle purchase
+- 2026-05-18: [team] Team clarified SKTT is separate from KITAS
+- 2026-05-18: [client] Client agreed to proceed with SKTT process
+- 2026-05-19: [client] Client approved price and timeline
+#### Declared deadlines
+- 2026-05-19: SKTT processing completion
+#### Quotes approved
+- 2026-05-19: SKTT — IDR 1.500.000
+
+### Soft Facts
+#### Client business goals
+- Purchase a new vehicle
+- Obtain SKTT for vehicle registration
+#### Warnings / disclaimers given to client
+- 2026-05-18 [SKTT process separation]: SKTT is not included in KITAS process
+#### Promises / SLA
+- 2026-05-19 by Aditya: Complete SKTT in max 5 working days
+
+### Human Layer
+**Sentiment trend**: positive
+
+---
+
+## Client: Luca (id=11804)
+**Window**: 2026-05-19 → 2026-05-19 · **Messages**: 5
+
+### Hard Facts
+#### Decisions
+- 2026-05-19: [client] Client inquired about 30-day vs 60-day visa options for self and son
+#### Declared deadlines
+- 2026-06-10: Client arrival in Bali
+- 2026-07-14: Client departure from Bali
+
+### Soft Facts
+#### Client business goals
+- Secure visa for 34-day stay in Bali for client and 17-year-old son
+- Prepare supporting documents (e.g., 'I love Bali') before arrival
+
+### Human Layer
+**Sentiment trend**: positive
+
+---
+
+## Client: HOPE ANNIE FALCONER (id=11741)
+**Window**: 2026-05-19 → 2026-05-19 · **Messages**: 4
+
+### Hard Facts
+#### Declared deadlines
+- 2026-07-22: earliest e-visa read
+- 2026-07-25: latest e-visa read
+
+### Soft Facts
+#### Client business goals
+- Client needs to obtain an e-visa before arriving in Bali on Tuesday 28th May 2026.
+#### Promises / SLA
+- 2026-05-19 by Aditya: e-visa will be ready before client arrival
+
+### Human Layer
+**Sentiment trend**: positive
+
+---
+
+## Client: Trevor Richard Gerhardt (id=11654)
+**Window**: 2026-05-18 → 2026-05-18 · **Messages**: 4
+
+### Hard Facts
+#### Decisions
+- 2026-05-18: [joint] Confirm address mutation process
+
+### Soft Facts
+#### Client business goals
+- Proceed with submitting the address mutation process
+
+### Human Layer
+**Sentiment trend**: positive
+
+---
+
+## Client: Diego (id=4076)
+**Window**: 2026-05-21 → 2026-05-21 · **Messages**: 3
+
+### Hard Facts
+- (none extracted)
+
+### Soft Facts
+- (none extracted)
+
+### Human Layer
+**Sentiment trend**: neutral
+
+---
+
+## Client: Jana Stastna (id=9204)
+**Window**: 2026-05-19 → 2026-05-19 · **Messages**: 2
+
+### Hard Facts
+- (none extracted)
+
+### Soft Facts
+- (none extracted)
+
+### Human Layer
+**Sentiment trend**: positive
+
+---
+
+## Client: Novi BS (id=7439)
+**Window**: 2026-05-19 → 2026-05-19 · **Messages**: 2
+
+### Hard Facts
+- (none extracted)
+
+### Soft Facts
+- (none extracted)
+
+### Human Layer
+**Sentiment trend**: neutral
+
+---
+
+## Client: Mas (id=2843)
+**Window**: 2026-05-21 → 2026-05-21 · **Messages**: 2
+
+### Hard Facts
+- (none extracted)
+
+### Soft Facts
+- (none extracted)
+
+### Human Layer
+**Sentiment trend**: neutral
+
+---
+
+## Client: Tommi Tulpe 🌷 (id=5135)
+**Window**: 2026-05-21 → 2026-05-21 · **Messages**: 1
+
+### Hard Facts
+- (none extracted)
+
+### Soft Facts
+#### Client business goals
+- Client wants to know the price of Bali Zero services
+
+### Human Layer
+**Sentiment trend**: neutral
+
+---
+
+## Client: Stefano Givitta (id=2180)
+**Window**: 2026-05-21 → 2026-05-21 · **Messages**: 1
+
+### Hard Facts
+- (none extracted)
+
+### Soft Facts
+- (none extracted)
+
+### Human Layer
+**Sentiment trend**: neutral
+
+---
+
+## Client: Bu Ayu (id=2877) [via Claude Haiku — extra-strip]
+**Window**: 2026-05-18 → 2026-05-19 · **Messages**: 36
+
+### Hard Facts
+#### Decisions
+- 2026-05-18: [client] Client considers D1 Multiple Entry Tourism Visa (1 or 2 years)
+- 2026-05-19: [client] Client decides to apply for D12 Multiple Entry Tourism Visa 2-year instead of extension
+- 2026-05-19: [client] Client confirms departure date 2026-09-23 and return 2026-10-23 for visa processing
+#### Documents delivered
+- 2026-05-18: D1 Multiple Entry Tourism Visa product details
+- 2026-05-18: E33G Remote Worker Digital Nomad KITAS product details
+#### Declared deadlines
+- 2026-09-23: Client (Frederic) departs Indonesia to trigger D12 visa application process
+- 2026-10-23: Client (Frederic) returns to Indonesia
+#### Quotes approved
+- 2026-05-19: D12 Multiple Entry Tourism Visa 2-year (normal processing) — IDR 8.500.000
+
+### Soft Facts
+#### Client business goals
+- Obtain D12 Multiple Entry Tourism Visa for 2-year stay permit
+- Maintain ability to exit and re-enter Indonesia flexibly
+#### Warnings / disclaimers given to client
+- 2026-05-18 [D1 visa employment prohibition]: Client prohibited from employment relationship, earning income, or promoting products in Indonesia or on social media
+- 2026-05-18 [D1 visa processing requirement]: Process can only begin if client is outside Indonesian territory
+- 2026-05-18 [E33G KITAS extension requirement]: For future extensions, client must be physically present for photo, fingerprinting, and interview at immigration office
+#### Promises / SLA
+- 2026-05-19 by unknown: Team will initiate D12 application process when client departs on 2026-09-23
+- 2026-05-18 by unknown: Team can provide custom travel itinerary if client needs assistance preparing it
+
+### Human Layer
+**Sentiment trend**: neutral
+#### Frustration episodes
+- 2026-05-19: Client confusion between D1 and D12 visa types; clarification required multiple exchanges
+
+---
