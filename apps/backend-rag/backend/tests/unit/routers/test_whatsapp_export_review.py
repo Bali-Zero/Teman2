@@ -372,3 +372,47 @@ def test_message_helper_uses_excerpt_not_body() -> None:
     payload = item.model_dump()
     assert "body" not in payload
     assert len(payload["body_excerpt"]) <= 240
+
+
+def test_generic_approve_blocks_contacts_without_explicit_match(
+    admin_user: dict[str, str],
+) -> None:
+    conn = FakeConn(
+        existing_tables={
+            "whatsapp_export_contacts_staging",
+            "whatsapp_export_review_actions",
+        }
+    )
+    client = make_client(admin_user, conn)
+
+    response = client.post(
+        "/api/whatsapp-export/contacts/44/approve",
+        json={"reason": "looks fine"},
+    )
+
+    assert response.status_code == 400
+    assert "approve-match" in response.json()["detail"]
+    executed_sql = "\n".join(query for query, _args in conn.executed)
+    assert "UPDATE whatsapp_export_contacts_staging" not in executed_sql
+
+
+def test_generic_approve_blocks_documents_without_explicit_link(
+    admin_user: dict[str, str],
+) -> None:
+    conn = FakeConn(
+        existing_tables={
+            "whatsapp_export_documents_staging",
+            "whatsapp_export_review_actions",
+        }
+    )
+    client = make_client(admin_user, conn)
+
+    response = client.post(
+        "/api/whatsapp-export/documents/77/approve",
+        json={"reason": "looks fine"},
+    )
+
+    assert response.status_code == 400
+    assert "approve-link" in response.json()["detail"]
+    executed_sql = "\n".join(query for query, _args in conn.executed)
+    assert "UPDATE whatsapp_export_documents_staging" not in executed_sql

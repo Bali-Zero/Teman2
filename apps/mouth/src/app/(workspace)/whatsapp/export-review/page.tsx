@@ -14,12 +14,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   approveWhatsAppExportReview,
   getWhatsAppExportYopoCase,
@@ -83,23 +78,41 @@ function formatConfidence(value?: number | null): string {
   return `${Math.round(normalized)}%`;
 }
 
-function statusVariant(status?: string | null): "default" | "secondary" | "destructive" | "outline" {
+function statusVariant(
+  status?: string | null,
+): "default" | "secondary" | "destructive" | "outline" {
   if (status === "approved" || status === "completed") return "default";
-  if (status === "rejected" || status === "failed" || status === "archived") return "destructive";
-  if (status === "pending" || status === "reviewing" || status === "parsed") return "secondary";
+  if (status === "rejected" || status === "failed" || status === "archived")
+    return "destructive";
+  if (status === "pending" || status === "reviewing" || status === "parsed")
+    return "secondary";
   return "outline";
 }
 
-function countValue(counts: WhatsAppExportCounts | null | undefined, key: keyof WhatsAppExportCounts): number {
+function countValue(
+  counts: WhatsAppExportCounts | null | undefined,
+  key: keyof WhatsAppExportCounts,
+): number {
   return counts?.[key] ?? 0;
 }
 
-function aggregateCounts(batches: WhatsAppExportReviewBatch[]): Required<WhatsAppExportCounts> {
+function aggregateCounts(
+  batches: WhatsAppExportReviewBatch[],
+): Required<WhatsAppExportCounts> {
   return batches.reduce(
     (total, batch) => ({
-      contacts: total.contacts + countValue(batch.counts, "contacts") + (batch.total_contacts ?? 0),
-      documents: total.documents + countValue(batch.counts, "documents") + (batch.total_documents ?? 0),
-      messages: total.messages + countValue(batch.counts, "messages") + (batch.total_messages ?? 0),
+      contacts:
+        total.contacts +
+        countValue(batch.counts, "contacts") +
+        (batch.total_contacts ?? 0),
+      documents:
+        total.documents +
+        countValue(batch.counts, "documents") +
+        (batch.total_documents ?? 0),
+      messages:
+        total.messages +
+        countValue(batch.counts, "messages") +
+        (batch.total_messages ?? 0),
       yopo_cases: total.yopo_cases + countValue(batch.counts, "yopo_cases"),
       pending: total.pending + countValue(batch.counts, "pending"),
       approved: total.approved + countValue(batch.counts, "approved"),
@@ -130,7 +143,9 @@ export default function WhatsAppExportReviewPage() {
   const [actionKey, setActionKey] = useState<string | null>(null);
 
   const selectedBatch = useMemo(
-    () => batches.find((batch) => String(batch.id) === selectedBatchId) ?? batches[0],
+    () =>
+      batches.find((batch) => String(batch.id) === selectedBatchId) ??
+      batches[0],
     [batches, selectedBatchId],
   );
 
@@ -178,17 +193,22 @@ export default function WhatsAppExportReviewPage() {
   }, [loadReview]);
 
   const handleAction = async (
-    kind: WhatsAppExportReviewKind,
-    id: string | number,
+    kind: "contacts" | "documents",
+    item: WhatsAppExportReviewItem,
     action: "approve" | "reject",
   ): Promise<void> => {
-    const key = `${kind}:${id}:${action}`;
+    const key = `${kind}:${item.id}:${action}`;
     setActionKey(key);
     try {
       if (action === "approve") {
-        await approveWhatsAppExportReview({ kind, id });
+        await approveWhatsAppExportReview({
+          kind,
+          id: item.id,
+          approvedClientId: item.suggested_client_id,
+          approvedPracticeId: item.suggested_practice_id,
+        });
       } else {
-        await rejectWhatsAppExportReview({ kind, id });
+        await rejectWhatsAppExportReview({ kind, id: item.id });
       }
       await loadReview();
     } catch (nextError) {
@@ -210,11 +230,14 @@ export default function WhatsAppExportReviewPage() {
             <div>
               <div className="flex items-center gap-2">
                 <ShieldCheck className="h-5 w-5 text-[var(--accent)]" />
-                <h1 className="text-xl font-semibold">WhatsApp Export Review</h1>
+                <h1 className="text-xl font-semibold">
+                  WhatsApp Export Review
+                </h1>
                 <Badge variant="outline">Internal</Badge>
               </div>
               <p className="mt-1 text-sm text-[var(--foreground-muted)]">
-                Staged contacts, document hints, and YOPO candidates awaiting review.
+                Staged contacts, document hints, and YOPO candidates awaiting
+                review.
               </p>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -229,7 +252,9 @@ export default function WhatsAppExportReviewPage() {
                 onClick={loadReview}
                 disabled={isLoading}
               >
-                <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+                <RefreshCw
+                  className={cn("h-4 w-4", isLoading && "animate-spin")}
+                />
                 Refresh
               </Button>
             </div>
@@ -247,7 +272,11 @@ export default function WhatsAppExportReviewPage() {
           <div className="border-b border-[var(--border)] px-5 py-3">
             <TabsList className="h-9 bg-[var(--background-secondary)]">
               {REVIEW_TABS.map((tab) => (
-                <TabsTrigger key={tab.value} value={tab.value} className="h-7 text-xs">
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className="h-7 text-xs"
+                >
                   {tab.label}
                 </TabsTrigger>
               ))}
@@ -295,9 +324,7 @@ export default function WhatsAppExportReviewPage() {
                     actionKey={actionKey}
                     onAction={handleAction}
                   />
-                  <YopoPanel
-                    yopoCase={yopoCase}
-                  />
+                  <YopoPanel yopoCase={yopoCase} />
                 </TabsContent>
               </>
             )}
@@ -358,8 +385,14 @@ function Overview({
         {selectedBatch ? (
           <div className="mt-4 space-y-3 text-sm">
             <SafeField label="Source" value={selectedBatch.source_label} />
-            <SafeField label="File" value={sanitizeBasename(selectedBatch.source_basename)} />
-            <SafeField label="Confidence" value={formatConfidence(selectedBatch.confidence)} />
+            <SafeField
+              label="File"
+              value={sanitizeBasename(selectedBatch.source_basename)}
+            />
+            <SafeField
+              label="Confidence"
+              value={formatConfidence(selectedBatch.confidence)}
+            />
             <div className="flex items-center justify-between gap-3">
               <span className="text-[var(--foreground-muted)]">Status</span>
               <Badge variant={statusVariant(selectedBatch.review_status)}>
@@ -401,8 +434,8 @@ function ReviewTable({
   items: WhatsAppExportReviewItem[];
   actionKey: string | null;
   onAction: (
-    kind: WhatsAppExportReviewKind,
-    id: string | number,
+    kind: "contacts" | "documents",
+    item: WhatsAppExportReviewItem,
     action: "approve" | "reject",
   ) => Promise<void>;
 }) {
@@ -436,29 +469,43 @@ function ReviewTable({
             </thead>
             <tbody>
               {items.map((item) => (
-                <tr key={item.id} className="border-b border-[var(--border)]/70">
+                <tr
+                  key={item.id}
+                  className="border-b border-[var(--border)]/70"
+                >
                   <td className="px-4 py-3">
-                    <div className="font-medium">{sanitizeText(item.source_label)}</div>
+                    <div className="font-medium">
+                      {sanitizeText(item.source_label)}
+                    </div>
                     <div className="text-[var(--foreground-muted)]">
                       {sanitizeBasename(item.source_basename)}
                     </div>
                   </td>
-                  <td className="px-4 py-3 font-mono">{sanitizePhone(item.masked_phone)}</td>
+                  <td className="px-4 py-3 font-mono">
+                    {sanitizePhone(item.masked_phone)}
+                  </td>
                   <td className="px-4 py-3">
                     {sanitizeText(item.display_name ?? item.body_excerpt)}
                   </td>
                   <td className="px-4 py-3">
-                    {sanitizeText(item.suggested_client ?? item.suggested_client_id)}
+                    {sanitizeText(
+                      item.suggested_client ?? item.suggested_client_id,
+                    )}
                   </td>
                   <td className="px-4 py-3">
-                    {sanitizeText(item.suggested_practice ?? item.suggested_practice_id)}
+                    {sanitizeText(
+                      item.suggested_practice ?? item.suggested_practice_id,
+                    )}
                   </td>
                   <td className="px-4 py-3">
                     {formatConfidence(item.confidence)}
                   </td>
                   <td className="max-w-[220px] px-4 py-3">
                     <ReasonList
-                      reasons={item.reasons ?? (item.body_excerpt ? [item.body_excerpt] : [])}
+                      reasons={
+                        item.reasons ??
+                        (item.body_excerpt ? [item.body_excerpt] : [])
+                      }
                       compact
                     />
                   </td>
@@ -470,7 +517,7 @@ function ReviewTable({
                   <td className="px-4 py-3">
                     <ActionButtons
                       kind={kind}
-                      id={item.id}
+                      item={item}
                       actionKey={actionKey}
                       onAction={onAction}
                     />
@@ -497,14 +544,30 @@ function YopoPanel({ yopoCase }: { yopoCase: WhatsAppExportYopoCase | null }) {
       </div>
       {yopoCase ? (
         <div className="grid gap-3 lg:grid-cols-3">
-          <SafeField label="Contacts" value={String(yopoCase.recap?.contact_count ?? contacts.length)} />
-          <SafeField label="Documents" value={String(yopoCase.recap?.document_count ?? documents.length)} />
-          <SafeField label="Messages" value={String(yopoCase.recap?.message_count ?? messages.length)} />
-          <SafeField label="Status" value={yopoCase.recap?.review_status ?? "pending"} />
+          <SafeField
+            label="Contacts"
+            value={String(yopoCase.recap?.contact_count ?? contacts.length)}
+          />
+          <SafeField
+            label="Documents"
+            value={String(yopoCase.recap?.document_count ?? documents.length)}
+          />
+          <SafeField
+            label="Messages"
+            value={String(yopoCase.recap?.message_count ?? messages.length)}
+          />
+          <SafeField
+            label="Status"
+            value={yopoCase.recap?.review_status ?? "pending"}
+          />
           <SafeField label="Lead contact" value={contacts[0]?.display_name} />
-          <SafeField label="Lead document" value={documents[0]?.display_name ?? documents[0]?.source_basename} />
+          <SafeField
+            label="Lead document"
+            value={documents[0]?.display_name ?? documents[0]?.source_basename}
+          />
           <div className="lg:col-span-3 rounded-md border border-[var(--border)] p-3 text-xs text-[var(--foreground-muted)]">
-            Review contacts, documents, and message signals in their tabs before approving individual rows.
+            Review contacts, documents, and message signals in their tabs before
+            approving individual rows.
           </div>
         </div>
       ) : (
@@ -518,7 +581,9 @@ function SafeField({ label, value }: { label: string; value: unknown }) {
   return (
     <div className="flex items-center justify-between gap-3 rounded-md border border-[var(--border)] p-3">
       <span className="text-xs text-[var(--foreground-muted)]">{label}</span>
-      <span className="max-w-[220px] truncate text-right text-sm">{sanitizeText(value)}</span>
+      <span className="max-w-[220px] truncate text-right text-sm">
+        {sanitizeText(value)}
+      </span>
     </div>
   );
 }
@@ -539,10 +604,18 @@ function ReasonList({
   reasons?: string[] | null;
   compact?: boolean;
 }) {
-  const safeReasons = (reasons ?? []).slice(0, compact ? 2 : 4).map((reason) => sanitizeText(reason));
-  if (safeReasons.length === 0) return <span className="text-[var(--foreground-muted)]">—</span>;
+  const safeReasons = (reasons ?? [])
+    .slice(0, compact ? 2 : 4)
+    .map((reason) => sanitizeText(reason));
+  if (safeReasons.length === 0)
+    return <span className="text-[var(--foreground-muted)]">—</span>;
   return (
-    <ul className={cn("space-y-1 text-xs text-[var(--foreground-muted)]", compact && "truncate")}>
+    <ul
+      className={cn(
+        "space-y-1 text-xs text-[var(--foreground-muted)]",
+        compact && "truncate",
+      )}
+    >
       {safeReasons.map((reason, index) => (
         <li key={`${reason}-${index}`} className="truncate">
           {reason}
@@ -554,36 +627,46 @@ function ReasonList({
 
 function ActionButtons({
   kind,
-  id,
+  item,
   actionKey,
   onAction,
 }: {
   kind: WhatsAppExportReviewKind;
-  id: string | number;
+  item: WhatsAppExportReviewItem;
   actionKey: string | null;
   onAction: (
-    kind: WhatsAppExportReviewKind,
-    id: string | number,
+    kind: "contacts" | "documents",
+    item: WhatsAppExportReviewItem,
     action: "approve" | "reject",
   ) => Promise<void>;
 }) {
-  const approveKey = `${kind}:${id}:approve`;
-  const rejectKey = `${kind}:${id}:reject`;
+  if (kind !== "contacts" && kind !== "documents") {
+    return <span className="text-[var(--foreground-muted)]">—</span>;
+  }
+
+  const approveKey = `${kind}:${item.id}:approve`;
+  const rejectKey = `${kind}:${item.id}:reject`;
+  const approveDisabled =
+    Boolean(actionKey) || (kind === "contacts" && !item.suggested_client_id);
   return (
     <div className="flex justify-end gap-2">
       <Button
         size="sm"
         variant="outline"
-        onClick={() => onAction(kind, id, "approve")}
-        disabled={Boolean(actionKey)}
+        onClick={() => onAction(kind, item, "approve")}
+        disabled={approveDisabled}
         aria-label="Approve review item"
       >
-        {actionKey === approveKey ? <Loader2 className="animate-spin" /> : <Check />}
+        {actionKey === approveKey ? (
+          <Loader2 className="animate-spin" />
+        ) : (
+          <Check />
+        )}
       </Button>
       <Button
         size="sm"
         variant="outline"
-        onClick={() => onAction(kind, id, "reject")}
+        onClick={() => onAction(kind, item, "reject")}
         disabled={Boolean(actionKey)}
         aria-label="Reject review item"
       >
@@ -610,12 +693,20 @@ function EmptyState({ label }: { label: string }) {
   );
 }
 
-function ErrorState({ message, onRetry }: { message: string; onRetry: () => void }) {
+function ErrorState({
+  message,
+  onRetry,
+}: {
+  message: string;
+  onRetry: () => void;
+}) {
   return (
     <div className="mx-5 mt-4 flex items-center justify-between gap-3 rounded-md border border-[var(--warning)]/40 bg-[var(--warning)]/10 px-4 py-3 text-sm">
       <div className="flex min-w-0 items-center gap-2">
         <AlertTriangle className="h-4 w-4 shrink-0 text-[var(--warning)]" />
-        <span className="truncate text-[var(--foreground)]">{sanitizeText(message)}</span>
+        <span className="truncate text-[var(--foreground)]">
+          {sanitizeText(message)}
+        </span>
       </div>
       <Button size="sm" variant="outline" onClick={onRetry}>
         Retry
