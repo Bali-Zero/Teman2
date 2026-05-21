@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import pathlib
 import subprocess
 from typing import Any, Callable
 
@@ -34,6 +35,55 @@ from mata_garuda.config import (
 )
 
 logger = logging.getLogger("mata_garuda.bridge.nerve")
+
+
+# ── Heartbeat (W1 cicatrix 2026-05-22) ─────────────────────────────────
+# When the backlog is empty AND there are no errors, pull_once returns
+# silently — launchd shows the cron is `active` with `last exit 0`, but
+# operators cannot distinguish "idle + healthy" from "cron silently dead"
+# without correlating against backend state. Emit a periodic heartbeat
+# every N consecutive idle ticks so the log line "still alive, idle" is
+# observable. Counter persists across ticks via a sidecar file next to
+# the cursor; resets on any non-idle tick.
+
+_HEARTBEAT_IDLE_TICKS = int(os.getenv("BRIDGE_HEARTBEAT_IDLE_TICKS", "10"))
+
+
+def _heartbeat_path(cursor: "BridgeCursor") -> "pathlib.Path":
+    return cursor.path.parent / (cursor.path.stem + "-idle-ticks.json")
+
+
+def _track_idle_tick(cursor: "BridgeCursor", stats: dict[str, int]) -> None:
+    """Increment idle counter on truly-idle ticks; emit heartbeat every N.
+
+    Idle = fetched == 0 AND errors == 0. Any other state resets the counter.
+    Failure to read/write the sidecar file is non-fatal (logged at debug).
+    """
+    path = _heartbeat_path(cursor)
+    try:
+        if stats["fetched"] == 0 and stats["errors"] == 0:
+            count = 0
+            if path.exists():
+                try:
+                    count = int(json.loads(path.read_text()).get("count", 0))
+                except (json.JSONDecodeError, ValueError, KeyError):
+                    count = 0
+            count += 1
+            if count >= _HEARTBEAT_IDLE_TICKS:
+                logger.info(
+                    "Bridge heartbeat: pull idle for %d consecutive ticks (cursor=%d)",
+                    count, cursor.read(),
+                )
+                count = 0
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_suffix(path.suffix + ".tmp")
+            tmp.write_text(json.dumps({"count": count}))
+            os.replace(tmp, path)
+        else:
+            if path.exists():
+                path.unlink(missing_ok=True)
+    except Exception as e:
+        logger.debug("Heartbeat tracker error (non-fatal): %s", e)
 
 
 # ── Default I/O implementations (replaceable for tests) ────────────────
@@ -152,6 +202,7 @@ def pull_once(
     stats["fetched"] = len(events)
 
     if not events:
+        _track_idle_tick(cursor, stats)
         return stats
 
     # Publish each event. If ANY fails, do NOT advance cursor.
@@ -213,6 +264,7 @@ def pull_once(
             stats["fetched"], stats["published"], stats["errors"],
         )
 
+    _track_idle_tick(cursor, stats)
     return stats
 
 
