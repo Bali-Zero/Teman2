@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 
 DB = (
     os.getenv("DATABASE_URL", "").replace("postgres://", "postgresql://")
-    or "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable"
+    or "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag?sslmode=disable"
 )
 
 

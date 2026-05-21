@@ -10,7 +10,7 @@ import asyncpg
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-DB = "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable"
+DB = "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag?sslmode=disable"
 OUT = "/tmp/drive_reorg/companies_ocr_extract.csv"
 
 
@@ -135,7 +135,7 @@ async def main() -> None:
             co["company_status_ocr"] = str(ocr["company_status"])
 
     # Write CSV
-    fields = list(list(companies.values())[0].keys())
+    fields = list(list(companies.values())[0].keys())  # noqa: RUF015
     with open(OUT, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=fields)
         w.writeheader()

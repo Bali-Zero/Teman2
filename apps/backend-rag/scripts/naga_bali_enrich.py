@@ -230,7 +230,7 @@ async def exa_search(**kw: Any) -> dict:
     return {"results": []}
 
 
-async def brave_search(**kw: Any) -> dict:  # noqa: ARG001
+async def brave_search(**kw: Any) -> dict:
     return {"web": {"results": []}}
 
 
@@ -244,15 +244,15 @@ async def fetch_url(**kw: Any) -> dict:
         return {"content": ""}
 
 
-async def gemini_generate(prompt: str = "", **kw: Any) -> dict:  # noqa: ARG001
+async def gemini_generate(prompt: str = "", **kw: Any) -> dict:
     return {"text": "{}"}
 
 
-async def notebook_query(**kw: Any) -> dict:  # noqa: ARG001
+async def notebook_query(**kw: Any) -> dict:
     return {"status": "success", "answer": "", "sources_used": []}
 
 
-async def recall_similar(**kw: Any) -> dict:  # noqa: ARG001
+async def recall_similar(**kw: Any) -> dict:
     return {"episodes": []}
 
 
@@ -291,7 +291,7 @@ async def run(limit: int | None, dry_run: bool, delay: float) -> None:
         return
 
     db_url = os.getenv("DATABASE_URL",
-        "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag")
+        "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag")
     try:
         pool = await asyncpg.create_pool(db_url, min_size=1, max_size=3)
         async with pool.acquire() as conn:

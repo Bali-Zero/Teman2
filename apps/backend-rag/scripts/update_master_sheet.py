@@ -45,7 +45,7 @@ logger = logging.getLogger(__name__)
 
 DB = (
     os.getenv("DATABASE_URL", "").replace("postgres://", "postgresql://")
-    or "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable"
+    or "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag?sslmode=disable"
 )
 
 SHEET_ID = "1CcsZmYOiajdWtTlgmoHNeCqBXhbLRZrQVQOBRs422oY"
@@ -395,7 +395,7 @@ async def main(dry_run: bool, limit: int) -> None:
 
             row = find_sheet_row(cname)
             if not row:
-                logger.info(f"  [{cid}] NOT FOUND in sheet: {repr(cname[:50])}")
+                logger.info(f"  [{cid}] NOT FOUND in sheet: {cname[:50]!r}")
                 totals["not_found"] += 1
                 continue
 

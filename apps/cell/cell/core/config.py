@@ -18,7 +18,7 @@ class CellSettings(BaseSettings):
     fly_api_token: str = ""  # set FLY_API_TOKEN env var (not CELL_ prefix — shared)
 
     # Database (via fly proxy tunnel)
-    database_url: str = "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag"
+    database_url: str = "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag"
 
     # Redis
     redis_url: str = "redis://localhost:6379/1"

@@ -30,7 +30,7 @@ _db_env = os.getenv("DATABASE_URL", "")
 DB = (
     _db_env.replace("postgres://", "postgresql://")
     if _db_env
-    else "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable"
+    else "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag?sslmode=disable"
 )
 
 COMPANY_CRM_NAME = "Company_CRM"
@@ -425,7 +425,7 @@ async def main(dry_run: bool, batch_size: int, folder: str) -> None:
             logger.info(f"    ✓ {updated}/{len(docs)} docs matched in DB")
 
             # Rate limit (be nice to Gemini)
-            time.sleep(2)
+            time.sleep(2)  # noqa: ASYNC251
 
             # Progress log
             if stats["processed"] % 10 == 0:
