@@ -16,9 +16,11 @@ Reference scar: cicatrix `GDRIVE_COMPANIES_FOLDER_ID phantom + wa-mirror bypass`
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
+import subprocess
 from datetime import date, datetime
 from typing import Any, Literal
 
@@ -129,6 +131,32 @@ _FULL_PHONE_PATTERN = re.compile(r"\+\d{1,3}(?:[\s-]?\d{2,5}){2,5}")
 _EMAIL_PATTERN = re.compile(r"[\w.+-]+@[\w.-]+\.[\w.-]+")
 _EFIN_PATTERN = re.compile(r"\bEFIN[\s:]*\d{10}\b", re.IGNORECASE)
 
+# Claude OAuth CLI fallback for Ollama timeouts. Triggers extra-strip per Law 2.
+CLAUDE_CLI = "/Users/nuzantara/.local/bin/claude"
+CLAUDE_MODEL = "claude-haiku-4-5-20251001"
+CLAUDE_TIMEOUT = 120.0
+
+
+def strip_pii_extra(text: str, *, client_display_name: str | None = None) -> str:
+    """Additional aggressive masking for cloud LLM calls (Symbiosis Law 2).
+
+    On top of strip_pii (numbers, IDs), also masks:
+    - the client display_name (so Claude doesn't learn who said what)
+    - team emails @balizero.com (so attribution stays generic 'agent_TEAM')
+    The dossier loses fine-grained attribution but Law 2 is respected.
+    """
+    text = strip_pii(text)
+    if client_display_name and len(client_display_name) >= 3:
+        # Case-insensitive masking of full display name
+        text = re.sub(
+            re.escape(client_display_name),
+            "[CLIENT]",
+            text,
+            flags=re.IGNORECASE,
+        )
+    text = re.sub(r"[\w.+-]+@balizero\.com", "[TEAM-AGENT]", text, flags=re.IGNORECASE)
+    return text
+
 
 def strip_pii(text: str) -> str:
     """Mask hard-PII before sending to LLM.
@@ -223,6 +251,59 @@ async def _call_ollama_json(prompt: str, model: str = OLLAMA_MODEL) -> dict[str,
         return None
 
 
+async def _call_claude_json(prompt: str) -> dict[str, Any] | None:
+    """Claude Haiku 4.5 OAuth CLI fallback. Used when Ollama timeouts.
+
+    Symbiosis Law 2 disclaimer: prompt passes via Anthropic API (cloud).
+    Caller MUST apply strip_pii_extra() before invoking this function.
+    OAuth-only (no ANTHROPIC_API_KEY) per global Anthropic ban rule.
+    """
+    cmd = [
+        CLAUDE_CLI,
+        "--print",
+        "--model", CLAUDE_MODEL,
+        "--output-format", "json",
+        "--no-session-persistence",
+        prompt,
+    ]
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+            env={**__import__("os").environ, "ANTHROPIC_API_KEY": ""},
+        )
+        try:
+            stdout, stderr = await asyncio.wait_for(
+                proc.communicate(), timeout=CLAUDE_TIMEOUT
+            )
+        except asyncio.TimeoutError:
+            proc.kill()
+            await proc.wait()
+            logger.warning("Claude CLI timeout after %ss", CLAUDE_TIMEOUT)
+            return None
+        if proc.returncode != 0:
+            logger.warning("Claude CLI exited %d: %s", proc.returncode, stderr.decode()[:200])
+            return None
+        raw = stdout.decode().strip()
+        if not raw:
+            return None
+        envelope = json.loads(raw)
+        # CLI returns {"type":"result","result":"...assistant text..."}
+        assistant_text = envelope.get("result", "") if isinstance(envelope, dict) else ""
+        if not assistant_text:
+            return None
+        # Extract JSON from assistant_text (may include code-fence)
+        match = re.search(r"\{[\s\S]*\}", assistant_text)
+        if not match:
+            logger.warning("Claude returned no JSON block")
+            return None
+        return json.loads(match.group(0))
+    except (subprocess.SubprocessError, json.JSONDecodeError, FileNotFoundError) as exc:
+        logger.warning("Claude fallback failed: %s", exc)
+        return None
+
+
 def _format_conversation(messages: list[dict[str, Any]]) -> str:
     """Render messages into chronological strip-PII text for the LLM prompt."""
     lines: list[str] = []
@@ -248,10 +329,13 @@ async def synthesize_client_dossier(
     messages: list[dict[str, Any]],
     workspace_facts: list[dict[str, Any]] | None = None,
     model: str = OLLAMA_MODEL,
+    claude_fallback: bool = False,
 ) -> ClientDossier | None:
     """Synthesize a 3-layer dossier for one client. Returns None on hard failure.
 
-    Deterministic: same input → same output (temperature=0, seed=42).
+    Deterministic on Ollama: same input → same output (temperature=0, seed=42).
+    With `claude_fallback=True`, falls back to Claude Haiku 4.5 OAuth CLI on
+    Ollama failure (extra-PII-strip applied to comply with Symbiosis Law 2).
     """
     if not messages:
         logger.info("client_id=%s: no messages, skipping", client_id)
@@ -264,6 +348,11 @@ async def synthesize_client_dossier(
     prompt = SYNTHESIZE_PROMPT.format(conversation=conversation_text)
 
     raw = await _call_ollama_json(prompt, model=model)
+    if raw is None and claude_fallback:
+        logger.info("client_id=%s: Ollama failed, trying Claude Haiku fallback (extra-strip applied)", client_id)
+        extra_stripped = strip_pii_extra(conversation_text, client_display_name=display_name)
+        prompt_claude = SYNTHESIZE_PROMPT.format(conversation=extra_stripped)
+        raw = await _call_claude_json(prompt_claude)
     if raw is None:
         logger.warning("client_id=%s: LLM call failed, skipping", client_id)
         return None
