@@ -207,6 +207,12 @@ export default async function ServiceDetailPage({
                       itemScope
                       itemType={`https://schema.org/${serviceType}`}
                     >
+                      <dt>Name</dt>
+                      <dd itemProp="name">{service.name}</dd>
+                      <dt>Image</dt>
+                      <dd itemProp="image">
+                        {baseUrl}/static/balizero-logo-clean.png
+                      </dd>
                       <dt>Service Type</dt>
                       <dd itemProp="serviceType">{service.name}</dd>
                       <dt>Processing Time</dt>
