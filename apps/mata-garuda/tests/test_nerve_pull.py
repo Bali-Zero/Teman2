@@ -327,3 +327,83 @@ def test_pull_once_non_idle_resets_heartbeat_counter(tmp_path: Path, monkeypatch
         http_get=fake_get_evt, redis_xadd=MagicMock(return_value="1-0"),
     )
     assert not sidecar.exists()
+
+
+# ── W2 cicatrix 2026-05-22 consecutive-error escalation ────────────────
+
+
+def test_pull_once_error_streak_escalates_after_threshold(tmp_path: Path, monkeypatch, caplog):
+    """W2 cicatrix 2026-05-22 — single Fly cold-restart timeout is noise
+    (WARNING). 5+ consecutive timeouts means the backend is actually DOWN
+    and must escalate to ERROR so dashboard/Sentry/Telegram pick it up."""
+    import logging
+    monkeypatch.setenv("BRIDGE_ERROR_STREAK_ALERT", "3")
+    import importlib
+    import mata_garuda.bridge.nerve as nerve_mod
+    importlib.reload(nerve_mod)
+
+    cursor = nerve_mod.BridgeCursor(tmp_path / "c.json")
+    streak_file = tmp_path / "c-error-streak.json"
+
+    def bad_get(*a, **kw):
+        raise ConnectionError("curl exit 28: timeout")
+
+    fake_xadd = MagicMock()
+
+    with caplog.at_level(logging.WARNING, logger="mata_garuda.bridge.nerve"):
+        # Ticks 1+2: WARNING (below threshold).
+        for expected in (1, 2):
+            caplog.clear()
+            nerve_mod.pull_once(
+                cursor=cursor, backend_url="https://x", api_key="k",
+                http_get=bad_get, redis_xadd=fake_xadd,
+            )
+            assert streak_file.exists()
+            assert json.loads(streak_file.read_text())["count"] == expected
+            warning_records = [r for r in caplog.records if r.levelno == logging.WARNING]
+            error_records = [r for r in caplog.records if r.levelno == logging.ERROR]
+            assert len(warning_records) == 1, f"tick {expected} should warn"
+            assert not error_records, f"tick {expected} must not error yet"
+
+        # Tick 3: hits threshold → ERROR.
+        caplog.clear()
+        nerve_mod.pull_once(
+            cursor=cursor, backend_url="https://x", api_key="k",
+            http_get=bad_get, redis_xadd=fake_xadd,
+        )
+        assert json.loads(streak_file.read_text())["count"] == 3
+        error_records = [r for r in caplog.records if r.levelno == logging.ERROR]
+        assert len(error_records) == 1
+        assert "streak=3" in error_records[0].getMessage()
+        assert "backend likely DOWN" in error_records[0].getMessage()
+
+
+def test_pull_once_error_streak_resets_on_success(tmp_path: Path, monkeypatch):
+    """A successful tick (200 + parseable body, even if events=[]) must
+    delete the streak sidecar so the next failure starts fresh from 1."""
+    monkeypatch.setenv("BRIDGE_ERROR_STREAK_ALERT", "5")
+    import importlib
+    import mata_garuda.bridge.nerve as nerve_mod
+    importlib.reload(nerve_mod)
+
+    cursor = nerve_mod.BridgeCursor(tmp_path / "c.json")
+    streak_file = tmp_path / "c-error-streak.json"
+
+    # Prime with 2 errors.
+    def bad_get(*a, **kw):
+        raise ConnectionError("curl exit 28")
+
+    for _ in range(2):
+        nerve_mod.pull_once(
+            cursor=cursor, backend_url="https://x", api_key="k",
+            http_get=bad_get, redis_xadd=MagicMock(),
+        )
+    assert json.loads(streak_file.read_text())["count"] == 2
+
+    # Now a success: streak file must be deleted.
+    good_get = MagicMock(return_value={"status_code": 200, "json": {"events": [], "last_id": 0}})
+    nerve_mod.pull_once(
+        cursor=cursor, backend_url="https://x", api_key="k",
+        http_get=good_get, redis_xadd=MagicMock(),
+    )
+    assert not streak_file.exists()

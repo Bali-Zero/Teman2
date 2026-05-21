@@ -47,10 +47,48 @@ logger = logging.getLogger("mata_garuda.bridge.nerve")
 # the cursor; resets on any non-idle tick.
 
 _HEARTBEAT_IDLE_TICKS = int(os.getenv("BRIDGE_HEARTBEAT_IDLE_TICKS", "10"))
+_ERROR_STREAK_ALERT = int(os.getenv("BRIDGE_ERROR_STREAK_ALERT", "5"))
 
 
 def _heartbeat_path(cursor: "BridgeCursor") -> "pathlib.Path":
     return cursor.path.parent / (cursor.path.stem + "-idle-ticks.json")
+
+
+def _error_streak_path(cursor: "BridgeCursor") -> "pathlib.Path":
+    return cursor.path.parent / (cursor.path.stem + "-error-streak.json")
+
+
+def _track_error_streak(cursor: "BridgeCursor", stats: dict[str, int]) -> int:
+    """Increment consecutive-error counter; return current streak.
+
+    Streak < _ERROR_STREAK_ALERT  → noise (every Fly restart transients).
+    Streak >= _ERROR_STREAK_ALERT → escalate caller to logger.error.
+
+    Reset on any successful tick (errors==0 AND fetched>=0 reaching the
+    bottom of pull_once). File read/write failures are non-fatal.
+    """
+    path = _error_streak_path(cursor)
+    try:
+        if stats["errors"] > 0:
+            count = 0
+            if path.exists():
+                try:
+                    count = int(json.loads(path.read_text()).get("count", 0))
+                except (json.JSONDecodeError, ValueError, KeyError):
+                    count = 0
+            count += 1
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_suffix(path.suffix + ".tmp")
+            tmp.write_text(json.dumps({"count": count}))
+            os.replace(tmp, path)
+            return count
+        else:
+            if path.exists():
+                path.unlink(missing_ok=True)
+            return 0
+    except Exception as e:
+        logger.debug("Error-streak tracker error (non-fatal): %s", e)
+        return 0
 
 
 def _track_idle_tick(cursor: "BridgeCursor", stats: dict[str, int]) -> None:
@@ -177,24 +215,40 @@ def pull_once(
     try:
         resp = http_get(url, headers=headers, timeout=timeout)
     except Exception as e:
-        logger.warning("Bridge pull HTTP error: %s — cursor unchanged", e)
         stats["errors"] = 1
+        streak = _track_error_streak(cursor, stats)
+        if streak >= _ERROR_STREAK_ALERT:
+            logger.error(
+                "Bridge pull HTTP error (streak=%d ≥ %d): %s — backend likely DOWN, cursor unchanged",
+                streak, _ERROR_STREAK_ALERT, e,
+            )
+        else:
+            logger.warning("Bridge pull HTTP error: %s — cursor unchanged", e)
         return stats
 
     status = resp.get("status_code")
     if status != 200:
-        logger.warning(
-            "Bridge pull non-200: status=%s body=%s",
-            status,
-            (resp.get("text") or "")[:200],
-        )
         stats["errors"] = 1
+        streak = _track_error_streak(cursor, stats)
+        if streak >= _ERROR_STREAK_ALERT:
+            logger.error(
+                "Bridge pull non-200 (streak=%d ≥ %d): status=%s body=%s",
+                streak, _ERROR_STREAK_ALERT, status,
+                (resp.get("text") or "")[:200],
+            )
+        else:
+            logger.warning(
+                "Bridge pull non-200: status=%s body=%s",
+                status,
+                (resp.get("text") or "")[:200],
+            )
         return stats
 
     body = resp.get("json")
     if not isinstance(body, dict):
-        logger.error("Bridge pull JSON parse error or empty body")
         stats["errors"] = 1
+        _track_error_streak(cursor, stats)
+        logger.error("Bridge pull JSON parse error or empty body")
         return stats
 
     events = body.get("events", [])
@@ -202,6 +256,7 @@ def pull_once(
     stats["fetched"] = len(events)
 
     if not events:
+        _track_error_streak(cursor, stats)
         _track_idle_tick(cursor, stats)
         return stats
 
@@ -252,6 +307,7 @@ def pull_once(
             stats["errors"] += 1
 
     # Advance cursor ONLY if zero errors during publish (all-or-nothing semantics)
+    _track_error_streak(cursor, stats)
     if stats["errors"] == 0:
         cursor.write(last_id)
         logger.info(
