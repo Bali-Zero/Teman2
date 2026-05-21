@@ -1,6 +1,9 @@
 """Team-only CRM intelligence endpoints."""
 
-from typing import Annotated, Literal
+import asyncio
+import json
+import logging
+from typing import Annotated, Any, Literal
 
 import asyncpg
 from fastapi import APIRouter, Depends, HTTPException, Query
@@ -20,11 +23,36 @@ from backend.services.crm.workspace_ai_snapshots import (
 )
 
 router = APIRouter(prefix="/api/crm/intelligence", tags=["crm-intelligence"])
+logger = logging.getLogger(__name__)
+
+_NLM_CLI_PATH = "/Users/nuzantara/.local/bin/nlm"
+_NLM_NOTEBOOK_ID = "5c2c3d90-eed2-4755-86b1-269e637e51e1"
+_NLM_TIMEOUT_SECONDS = 30
 
 
 class WorkspaceAiAutoApproveRequest(BaseModel):
     dry_run: bool = True
     limit: int = Field(default=25, ge=1, le=100)
+
+
+class NlmQueryRequest(BaseModel):
+    """Request body for querying NotebookLM about a specific client."""
+
+    question: str = Field(..., min_length=1, max_length=2000)
+
+
+class NlmCitation(BaseModel):
+    """A single citation returned by NotebookLM."""
+
+    source_id: str
+    cited_text: str
+
+
+class NlmQueryResponse(BaseModel):
+    """Response from a NotebookLM client query."""
+
+    answer: str
+    citations: list[NlmCitation]
 
 
 @router.get("/evidence-dossiers", response_model=list[TaxCompanyPilotMap])
@@ -114,3 +142,98 @@ async def approve_workspace_ai_snapshot_draft(
             status_code=404,
             detail="Workspace AI snapshot not found or not in draft status.",
         ) from exc
+
+
+@router.post("/{client_id}/query", response_model=NlmQueryResponse)
+async def query_notebooklm_for_client(
+    client_id: int,
+    body: NlmQueryRequest,
+    pool: asyncpg.Pool = Depends(get_database_pool),
+    _current_user: dict = Depends(require_team_member),
+) -> NlmQueryResponse:
+    """Query NotebookLM with CRM context for a specific client.
+
+    Builds an Italian-language prompt that references the client by name and ID,
+    then shells out to the NLM CLI to query the CRM notebook.
+    """
+    # 1. Fetch client name from database
+    row: asyncpg.Record | None = await pool.fetchrow(
+        "SELECT full_name FROM clients WHERE id = $1",
+        client_id,
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail=f"Client {client_id} not found.")
+
+    client_name: str = row["full_name"]
+
+    # 2. Build prompt with CRM context
+    prompt_text = (
+        f"Con riferimento specifico al cliente '{client_name}' (ID {client_id}) "
+        f"e a qualsiasi informazione associata o documenti ad esso collegati "
+        f"nel database CRM, rispondi in italiano in modo professionale e preciso "
+        f"alla seguente domanda: {body.question}"
+    )
+
+    # 3. Run NLM CLI as async subprocess
+    try:
+        process = await asyncio.create_subprocess_exec(
+            _NLM_CLI_PATH,
+            "query",
+            "notebook",
+            _NLM_NOTEBOOK_ID,
+            prompt_text,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await asyncio.wait_for(
+            process.communicate(),
+            timeout=_NLM_TIMEOUT_SECONDS,
+        )
+    except asyncio.TimeoutError:
+        logger.error("NLM CLI timed out after %ds for client %s", _NLM_TIMEOUT_SECONDS, client_id)
+        raise HTTPException(
+            status_code=503,
+            detail="NotebookLM query timed out.",
+        )
+    except OSError as exc:
+        logger.error("Failed to execute NLM CLI: %s", exc)
+        raise HTTPException(
+            status_code=503,
+            detail="NotebookLM service unavailable.",
+        ) from exc
+
+    if process.returncode != 0:
+        logger.error(
+            "NLM CLI exited with code %d for client %s: %s",
+            process.returncode,
+            client_id,
+            stderr.decode(errors="replace").strip(),
+        )
+        raise HTTPException(
+            status_code=503,
+            detail="NotebookLM query failed.",
+        )
+
+    # 4. Parse JSON stdout
+    try:
+        result: dict[str, Any] = json.loads(stdout.decode())
+    except (json.JSONDecodeError, UnicodeDecodeError) as exc:
+        logger.error("Failed to parse NLM CLI output for client %s: %s", client_id, exc)
+        raise HTTPException(
+            status_code=503,
+            detail="Invalid response from NotebookLM.",
+        ) from exc
+
+    # 5. Build and return typed response
+    citations = [
+        NlmCitation(
+            source_id=cite.get("source_id", ""),
+            cited_text=cite.get("cited_text", ""),
+        )
+        for cite in result.get("citations", [])
+    ]
+
+    return NlmQueryResponse(
+        answer=result.get("answer", ""),
+        citations=citations,
+    )

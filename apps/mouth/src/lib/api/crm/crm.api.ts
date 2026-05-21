@@ -535,6 +535,30 @@ export class CrmApi {
   }
 
   /**
+   * Query the CRM Oracle (NotebookLM) for a specific client.
+   */
+  async queryClientIntelligence(
+    clientId: number,
+    question: string,
+  ): Promise<{
+    answer: string;
+    citations: Array<{ source_id: string; cited_text: string }>;
+  }> {
+    return this.client.request<{
+      answer: string;
+      citations: Array<{ source_id: string; cited_text: string }>;
+    }>(
+      `/api/crm/intelligence/${clientId}/query`,
+      {
+        method: "POST",
+        body: JSON.stringify({ question }),
+        headers: { "Content-Type": "application/json" },
+      },
+      30000,
+    );
+  }
+
+  /**
    * Get client interaction timeline
    */
   async getClientTimeline(

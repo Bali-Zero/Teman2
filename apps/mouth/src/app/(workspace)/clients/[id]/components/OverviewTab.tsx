@@ -31,6 +31,7 @@ import { formatPhoneNumber, isBirthdayToday } from "./utils";
 import { PassportCard } from "./PassportCard";
 import { VisaCard } from "./VisaCard";
 import { AiSummaryCard } from "./AiSummaryCard";
+import { OracleChat } from "./OracleChat";
 
 const INTERACTION_ICONS: Record<string, typeof MessageCircle> = {
   chat: MessageCircle,
@@ -94,6 +95,8 @@ export function OverviewTab({
     <div className="space-y-6">
       {/* AI Summary (CRM-Guardian Phase 1 cross-folder L1) */}
       <AiSummaryCard clientId={clientId} section="overview" />
+      {/* Oracle Chat — NLM-powered Q&A */}
+      <OracleChat clientId={clientId} />
       {/* 3 Columns Layout - Team Member | Passport | Visa */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
         {/* COLUMN 1: Client Info */}
