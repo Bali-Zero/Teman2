@@ -17,3 +17,7 @@
 ## 2026-04-28 - [Consistent Focus Indicators with focus-ring Utility]
 **Learning:** In highly customized dark UIs, default browser focus outlines are often invisible or clash with the aesthetic. Providing a dedicated `.focus-ring` utility class using `focus-visible` ensures that keyboard users have clear, brand-consistent navigation cues without affecting mouse users.
 **Action:** Apply `.focus-ring` to all interactive elements that do not have a robust built-in focus state.
+
+## 2026-05-18 - [Loading States and Interaction Feedback in Portal]
+**Learning:** Asynchronous actions in the client portal (like marking notifications as read) lacked visual feedback, leading to a "dead" feel during network latency. Providing immediate feedback via spinning icons and disabling buttons during mutations significantly improves the perceived responsiveness and prevents duplicate requests.
+**Action:** Always expose and utilize mutation pending states from hooks to provide visual feedback and disable interactive elements during async operations.
