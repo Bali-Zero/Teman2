@@ -244,6 +244,7 @@ async def build_all_dossiers(
     limit_clients: int | None,
     model: str,
     timing_log_path: Path | None = None,
+    claude_fallback: bool = False,
 ) -> list[ClientDossier]:
     """For each CRM-resolved client with WA activity, synthesize a dossier."""
     import time
@@ -277,6 +278,7 @@ async def build_all_dossiers(
             messages=messages,
             workspace_facts=workspace,
             model=model,
+            claude_fallback=claude_fallback,
         )
         elapsed = time.perf_counter() - t0
         timings.append({
@@ -319,6 +321,7 @@ async def main_async(args: argparse.Namespace) -> int:
             limit_clients=args.limit_clients,
             model=args.model,
             timing_log_path=timing_log,
+            claude_fallback=args.claude_fallback,
         )
     finally:
         await conn.close()
@@ -379,6 +382,9 @@ def build_arg_parser() -> argparse.ArgumentParser:
                    help="Process at most N clients (debugging)")
     p.add_argument("--model", type=str, default="qwen3.5:9b",
                    help="Ollama model tag (e.g. qwen3.5:9b, qwen3.6:27b)")
+    p.add_argument("--claude-fallback", action="store_true",
+                   help="Use Claude Haiku 4.5 OAuth CLI fallback when Ollama times out "
+                        "(extra PII-strip applied — Symbiosis Law 2 partial compliance)")
     p.add_argument("--push", action="store_true",
                    help="Push compiled files to NotebookLM (default: dry-run)")
     p.add_argument("--notebook-id", type=str, default=DEFAULT_NOTEBOOK_ID,
