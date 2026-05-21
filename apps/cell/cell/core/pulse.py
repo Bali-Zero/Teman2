@@ -670,14 +670,12 @@ class PulseEngine:
                                     pulse_number=pulse_number,
                                 )
                                 logger.info(f"alert_silent written to DB: {proposal.reason[:80]}")
-                            # Execute alert_human — Telegram + DB
-                            elif proposal.action == "alert_human" and self._alerter:
-                                msg = (
-                                    f"*Health: {status.value.upper()}*\n"
-                                    f"Reason: {proposal.reason[:200]}\n"
-                                    f"Confidence: {proposal.confidence:.0%} | Tier: {proposal.tier_used}"
-                                )
-                                await self._alerter.send(msg)
+                            # Execute alert_human — Telegram + DB (legacy path).
+                            # In autonomic mode (default 2026-05-22), self._alerter is None
+                            # and Cell publishes to events_outbox channel `cell_incident`
+                            # for Organism to handle autonomously. Telegram path only
+                            # fires when CELL_ALERT_TELEGRAM_ENABLED=true.
+                            elif proposal.action == "alert_human":
                                 await cell_db.log_alert(
                                     level="critical",
                                     action="alert_human",
@@ -685,6 +683,18 @@ class PulseEngine:
                                     health_status=status.value,
                                     pulse_number=pulse_number,
                                 )
+                                if self._alerter:
+                                    msg = (
+                                        f"*Health: {status.value.upper()}*\n"
+                                        f"Reason: {proposal.reason[:200]}\n"
+                                        f"Confidence: {proposal.confidence:.0%} | Tier: {proposal.tier_used}"
+                                    )
+                                    await self._alerter.send(msg)
+                                else:
+                                    logger.info(
+                                        f"alert_human autonomic-skip (Telegram disabled): "
+                                        f"DB-logged, Organism will dispatch recovery"
+                                    )
                     else:
                         logger.info(
                             f"THINK → BLOCKED: {proposal.action} — {validation.reason} "
