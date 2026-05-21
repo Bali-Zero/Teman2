@@ -125,14 +125,23 @@ class TestPulseWithCortex:
 
     @pytest.mark.asyncio
     async def test_during_idle_not_called_when_yellow(self) -> None:
-        """During idle hook is NOT called when health is YELLOW."""
+        """During idle hook is NOT called when health is YELLOW.
+
+        After P0-0 fix (commit 2a3256758) HTTP 5xx classifies as RED, not
+        YELLOW. To exercise the YELLOW path we use a 200 response with
+        body.status='degraded' — see classify_http_status() in pulse.py.
+        """
         dna = MagicMock()
         dna.verify_integrity = MagicMock(return_value=True)
         safety = AsyncMock()
         safety.check = AsyncMock(return_value=MagicMock(can_proceed=True))
         health = AsyncMock()
         health.read = AsyncMock(return_value=MagicMock(
-            reachable=True, status_code=500, response_time_seconds=0.2, error=None,
+            reachable=True,
+            status_code=200,
+            body={"status": "degraded"},
+            response_time_seconds=0.2,
+            error=None,
         ))
         cortex = AsyncMock()
         cortex.before_reasoning = AsyncMock(return_value="")
