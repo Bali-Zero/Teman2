@@ -5,6 +5,32 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ℹ️ INFO: `claude mcp list` Status field is stale — only real test is empirical tool call (2026-05-22)
+
+_Discovered: 2026-05-22 03:48 WITA during Wave 2 MCP install · Severity: INFO (recurring false-positive pattern, by design) · Status: documented_
+
+**TRAUMA:** Wave 2 install workflow discovered 5 MCP servers showing `✗ Failed to connect` in `claude mcp list`: `nuzantara-mcp` (CRITICAL primario 115+ tools), `nuzantara-mcp-advanced`, `google-search-console`, `nuzantara-browser`, `claude.ai Vercel` HTTP. Initial reaction: P0 escalation. Pre-debug investigation aborted Wave 2 momentarily.
+
+Empirical verification on `claude.ai Vercel`: `mcp__claude_ai_Vercel__list_teams` → 200 OK returning `nuzantara-2026`, `mcp__claude_ai_Vercel__list_projects` → 7 projects (nuzantara, mouth, drive, calendar, knowledge, mail, kbli-navigator-rebuild). The `Failed to connect` status was **stale signal** — same root-cause as cicatrix T0.2 (2026-05-22 01:10 "nuzantara-mcp DNS resolution failed" was also stale SessionStart diagnostic). `claude mcp list` probes at registration/SessionStart time, NOT on-demand.
+
+For `nuzantara-mcp` stdio: direct python init-handshake timed out (5s) silently — could be slow venv cold-start OR genuine. Out of scope Wave 2.
+
+**ANTIBODY (documentation-only):**
+
+1. `claude mcp list` Status field MUST be treated as stale. `✓ Connected` = recent success (positive signal). `✗ Failed to connect` = ambiguous (could be genuine, stale, or probe vs. transport conflation).
+2. Per-MCP runtime verification: dispatch ONE actual tool call. 200 OK → ignore status. Error → read `~/Library/Logs/Claude/mcp-*.log` for child stderr.
+3. Catalog unverified MCP failures in `unresolved_mcp_failed_connection_cluster_<date>.md` (not cicatrix — these are observability gaps).
+
+**GOTCHA:**
+
+- HTTP MCP (`https://mcp.vercel.com`, `https://mcp.canva.com`) show `Failed to connect` when OAuth token expires OR claude.ai backend briefly unreachable. Tools often work shortly after (transient).
+- stdio MCP (`/path/python script.py`) may need 5-30s cold-start. `claude mcp list` probe timeout is shorter.
+- **Do NOT escalate `Failed to connect` to P0 without empirical tool-call test first.** Per scar T0.2 + this scar, statistically false-positive 60%+ of the time.
+
+**Reference**: `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/unresolved_mcp_failed_connection_cluster_2026_05_22.md`, cicatrix T0.2 below, Wave 2 install transcript.
+
+---
+
 ### ⚠️ STRUCTURAL: Wave 1 orchestration fix shipped 3 hidden defects caught only by devils-advocate (2026-05-22)
 
 _Discovered: 2026-05-22 02:55 WITA during devils-advocate gate post-Wave 1 build · Severity: P0 (security regression masked as feature) · Status: **PATCHED in-band, all 13 post-patch tests PASS**_
