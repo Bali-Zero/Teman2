@@ -260,3 +260,70 @@ def test_pull_once_handles_dict_payload_unchanged(tmp_path: Path):
     assert stats["published"] == 1
     assert stats["errors"] == 0
     assert cursor.read() == 70
+
+
+def test_pull_once_idle_increments_heartbeat_counter(tmp_path: Path, monkeypatch):
+    """W1 cicatrix 2026-05-22 — silent-idle ticks must persist a counter
+    sidecar so a heartbeat log fires every N consecutive idle ticks. Without
+    this, launchd shows `state=active last exit=0` while the log stays
+    silent for hours, indistinguishable from a dead cron."""
+    monkeypatch.setenv("BRIDGE_HEARTBEAT_IDLE_TICKS", "3")
+    import importlib
+    import mata_garuda.bridge.nerve as nerve_mod
+    importlib.reload(nerve_mod)
+
+    cursor = nerve_mod.BridgeCursor(tmp_path / "c.json")
+    fake_resp = {"status_code": 200, "json": {"events": [], "last_id": 0}}
+    fake_get = MagicMock(return_value=fake_resp)
+    fake_xadd = MagicMock()
+
+    sidecar = tmp_path / "c-idle-ticks.json"
+
+    # Tick 1 + 2: counter accumulates, no heartbeat yet.
+    for expected in (1, 2):
+        nerve_mod.pull_once(
+            cursor=cursor, backend_url="https://x", api_key="k",
+            http_get=fake_get, redis_xadd=fake_xadd,
+        )
+        assert sidecar.exists()
+        assert json.loads(sidecar.read_text())["count"] == expected
+
+    # Tick 3: threshold hit → heartbeat fires, counter resets to 0.
+    nerve_mod.pull_once(
+        cursor=cursor, backend_url="https://x", api_key="k",
+        http_get=fake_get, redis_xadd=fake_xadd,
+    )
+    assert json.loads(sidecar.read_text())["count"] == 0
+
+
+def test_pull_once_non_idle_resets_heartbeat_counter(tmp_path: Path, monkeypatch):
+    """Any tick that fetches >0 events OR errors out must clear the
+    sidecar — heartbeat is only for genuine quiet periods."""
+    monkeypatch.setenv("BRIDGE_HEARTBEAT_IDLE_TICKS", "5")
+    import importlib
+    import mata_garuda.bridge.nerve as nerve_mod
+    importlib.reload(nerve_mod)
+
+    cursor = nerve_mod.BridgeCursor(tmp_path / "c.json")
+    sidecar = tmp_path / "c-idle-ticks.json"
+
+    # Prime counter with 2 idle ticks.
+    fake_get = MagicMock(return_value={"status_code": 200, "json": {"events": [], "last_id": 0}})
+    fake_xadd = MagicMock()
+    for _ in range(2):
+        nerve_mod.pull_once(
+            cursor=cursor, backend_url="https://x", api_key="k",
+            http_get=fake_get, redis_xadd=fake_xadd,
+        )
+    assert json.loads(sidecar.read_text())["count"] == 2
+
+    # Non-idle tick (1 event) → sidecar must be deleted.
+    fake_get_evt = MagicMock(return_value={
+        "status_code": 200,
+        "json": {"events": [{"id": 100, "type": "crm.x", "payload": {}, "created_at": "2026-05-22T00:00:00+00:00"}], "last_id": 100},
+    })
+    nerve_mod.pull_once(
+        cursor=cursor, backend_url="https://x", api_key="k",
+        http_get=fake_get_evt, redis_xadd=MagicMock(return_value="1-0"),
+    )
+    assert not sidecar.exists()
