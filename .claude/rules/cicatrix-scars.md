@@ -5,6 +5,98 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: Wave 1 orchestration fix shipped 3 hidden defects caught only by devils-advocate (2026-05-22)
+
+_Discovered: 2026-05-22 02:55 WITA during devils-advocate gate post-Wave 1 build · Severity: P0 (security regression masked as feature) · Status: **PATCHED in-band, all 13 post-patch tests PASS**_
+
+**TRAUMA:** Wave 1 of orchestration-regression-fix shipped 5 antibodies (T1.1 dispatch_nudge hook, T1.2 guardrails daemon+static+client+plist, T1.3 feedback memory, T1.4 karpathy skill, T1.5 alzheimer verify). All 5 individually passed acceptance criteria + verbose Spec-described smoke tests. Devils-advocate red-team pass discovered THREE silent defects that would have shipped to prod:
+
+1. **T1.2 H5 (CRITICAL):** `MCP_DESTRUCTIVE_PATTERN` regex (iter-5 lookahead) blocked **22/44 = 50% of nuzantara-mcp toolset** as false positives — including routine `create_client`, `create_practice`, `update_client`, `notebook_create`, `note_update`, `set_reminder`. The Spec-promoted verb list (`create|update|merge|deploy|promote|rollback|cancel|rerun|insert|modify|patch|set|write|alter`) was overbroad for the production reality where 90% of MCP "create_*" tools are routine CRM ops, not destructive. Bali Zero CRM workflows would have crashed on first real use within hours of deploy.
+
+2. **T1.1 H2 (HIGH):** `DISPATCH_KEYWORDS = ("Task(", '"subagent_type"', "Agent(")` — the string `"Agent("` appears **0 times** in actual Claude Code transcripts (empirically scanned 1955 lines, 3.1MB). Real tool_use blocks store `{"name": "TaskCreate"}` not `Agent(...)` Python-call syntax. Hook would have triggered false-positive nudges in sessions where TaskCreate was actually dispatched, training Antonello to ignore the reminder.
+
+3. **T1.5 H6 (MEDIUM):** alzheimer-hook had `STATE_KEY="${MFILE//\//_}_${TODAY_KEY}"` path-based dedup. Empirical discovery: `~/.claude/projects/-Users-nuzantara/memory/MEMORY.md` and `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/MEMORY.md` share **inode 123213483** (same file, 2 access paths). Path-string dedup → 2× Telegram alerts per threshold breach, trains operator to ignore alerts.
+
+4. **T1.2 H1 (MEDIUM, documentation-only):** `settings.json` hook changes do NOT take effect mid-session — they require Claude Code session restart. No empirical proof guardrails covered Wave 1's own construction calls in this session. Could ship guardrails that LOOK active but don't fire until next session.
+
+5. **Bonus discovery during T1.2 implementation**: macOS `nc` (BSD/Apple) does NOT support `-N` flag (GNU netcat extension). The original Spec's `nc -U -N -w 2 $SOCK` recipe fails on macOS with `nc: invalid tcp adaptive write timeout value`. Forced switch to inline Python UNIX socket client. Latency: spec-promised median 4.8ms nc, empirically Python socket is **0.9ms median** (5× faster than spec claim).
+
+**ANTIBODY (shipped in same Wave 1 commit):**
+
+1. **Patch 1 (H5):** Narrowed `MCP_DESTRUCTIVE_PATTERN` to `(delete|drop|truncate|destroy|remove|wipe|purge)(?=_|$|[A-Z])`. Removed 15 routine verbs. Bypass for actually-dangerous create ops (pr_create, deploy_to_vercel) retained via explicit `MCP_DESTRUCTIVE_TOOLS` set. 13/13 post-patch regex tests PASS (8 false-positive guards + 5 security regression guards).
+
+2. **Patch 2 (H2):** `DISPATCH_KEYWORDS = ('"name":"TaskCreate"', '"name": "TaskCreate"', '"subagent_type"', '"name":"Task"', '"name": "Task"')` — matches actual JSON transcript format. 3/3 post-patch synthetic transcript tests PASS.
+
+3. **Patch 3 (H6):** alzheimer-hook now uses `INODE=$(stat -f%i "$MFILE" || stat -c%i "$MFILE")` for cross-platform inode, `STATE_KEY="inode_${INODE}_${TODAY_KEY}"`. Dedup is now correct even when 2 paths share inode.
+
+4. **Patch 4 (H1):** Document deployment trap — settings.json hooks require session restart. Add `--verify` step to runbook.
+
+**GOTCHA:**
+
+- The MCP regex hallucination is the SECOND time iter-1/iter-2/iter-5 design failed in the same spec — original spec had `[_$]` (broken), iter-2 had `\b` (Gemini Deep Think GDT-3 caught), iter-5 had explicit lookahead (worked syntactically) but had wrong VERB LIST (this scar). Three rounds of regex spec failure on a single component proves: **devils-advocate gate is non-negotiable for any guardrails-layer regex change**. Spec authors cannot self-validate adversarial regex with markdown test tables — only empirical execution against real-world tool names catches the over-blocking.
+- macOS BSD nc vs GNU nc divergence: when porting hook scripts across platforms, the `nc -N` recipe is a non-portable trap. Python `socket` module is universally available + dependency-free + faster.
+- Same-inode file paths in `~/.claude/projects/` likely a filesystem mountpoint trick or symlink-disguised-as-dir setup — verify with `stat -f%i` before assuming 2 paths = 2 files.
+- mid-session settings.json edit deployment ambiguity: until Anthropic documents hot-reload behavior, ALWAYS assume settings.json hooks need session restart. Plan deploys as "edit settings, restart Claude, run verification call, then proceed with feature use."
+
+**Reference**: `research/operations/specs/T1.1-dispatch-nudge-hook.md` + `T1.2-guardrails-hook.md` (1900 lines, 5 iter) + `T1.5-alzheimer-diagnose-script.md` + this session devils-advocate red-team output.
+
+---
+
+### ✅ RESOLVED / FALSE-ALARM: T0.2 spec premise "nuzantara-mcp DNS resolution failed" was stale SessionStart diagnostic (2026-05-22)
+
+_Discovered: 2026-05-22 ~01:10 WITA during T0.2 worker execution · Severity: P0 (per spec, but moot in reality) · Status: **NO FIX NEEDED — server already connected**_
+
+**TRAUMA:** Spec T0.2 (promoted from T3.1 by DS panel sequencing 2026-05-21 22:00) declared all 115 `mcp__nuzantara-mcp__*` tools dead due to DNS failure on `nuzantara-rag.fly.dev`. Empirical re-verification 2026-05-22 01:10 WITA:
+
+```
+$ claude mcp list | grep nuzantara-mcp
+nuzantara-mcp: /Users/nuzantara/Desktop/nuzantara/apps/nuzantara-mcp/.venv/bin/python apps/nuzantara-mcp/nuzantara_mcp/server.py - ✓ Connected
+
+$ claude mcp get nuzantara-mcp
+nuzantara-mcp:
+  Scope: Project config (shared via .mcp.json)
+  Status: ✓ Connected
+
+$ <mcp__nuzantara-mcp__check_health>
+{"status":"healthy","version":"v100-qdrant","database":{"status":"connected","type":"postgresql"},"embeddings":{"status":"operational","model":"text-embedding-3-small","dimensions":1536}}
+
+$ dig +short nuzantara-rag.fly.dev
+66.241.124.44
+77.83.141.51
+
+$ curl -s -o /dev/null -w "%{http_code}" -m 5 https://nuzantara-rag.fly.dev/health
+200
+```
+
+The spec premise was wrong on two counts:
+
+1. **Transport conflation**: `nuzantara-mcp` uses **stdio transport** (local Python subprocess: `apps/nuzantara-mcp/.venv/bin/python ... server.py`), per `.mcp.json` and CLAUDE.md §7. The Python child process talks to `nuzantara-rag.fly.dev` over HTTPS via `NUZANTARA_API_KEY` — DNS failure inside the child would manifest as **tool call errors**, not as the MCP server itself being unreachable. The MCP stdio handshake works regardless of upstream backend DNS.
+2. **Stale SessionStart signal**: the SessionStart MCP-readiness probe likely sampled during a transient DNS hiccup, OR it was probing the HTTPS backend health (not the stdio child), OR the worker who wrote the spec was reading an old hook output. By the time T0.2 was promoted (22:00), the state had already recovered.
+
+`mcp__nuzantara-mcp__check_health_detailed` shows the backend in **degraded** state (search/ai/router unavailable on the rag-process group), but that is an orthogonal concern, NOT a DNS issue — it's the same rag worker-process gap that exists independently of MCP transport.
+
+**ANTIBODY (no shipping required — observational hardening only):**
+
+1. **Diagnostic discipline**: future SessionStart MCP-readiness lines should distinguish (a) stdio child handshake (b) upstream HTTPS backend reachability (c) per-tool first-call latency. Conflating them produces false P0s like this one.
+2. **Spec promotion guard**: DS panel sequencing decisions should require a second empirical probe (≤5 min before promotion) to confirm the symptom is still live. T0.2 was promoted ~17 hours after the original diagnosis — plenty of time for transient state to recover.
+3. **MCP listing as canonical**: `claude mcp list` is the single source of truth for server connection state. If it shows `✓ Connected`, the server is reachable via stdio. Per-tool health is a separate concern reachable only via actual tool invocation.
+
+**GOTCHA:**
+
+- `mcp__nuzantara-mcp__check_health` returns 200 even when `check_health_detailed` shows critical services down (search/ai). That's by design — the MCP server itself is up, even when its dependencies are degraded. Do not use top-level `check_health` as a proxy for service readiness.
+- The 115 tool count cited in spec (and CLAUDE.md §7) is the manifest definition; deferred-tool-list during this session showed ~170+ entries because newer tools were added since CLAUDE.md was last updated.
+- The `check_health_detailed` "critical": ["search", "ai"] result is a real P1-ish backend issue (orthogonal to MCP transport): the rag worker process group does not have search/AI initialized. Worth its own spec if not already covered by Wave 1.
+
+**Verification commands** (anyone can re-run):
+
+```bash
+claude mcp list 2>&1 | grep nuzantara-mcp        # Expect: ✓ Connected
+claude mcp get nuzantara-mcp                      # Expect: Status: ✓ Connected
+# Then in Claude session: mcp__nuzantara-mcp__check_health   → 200 OK
+```
+
+---
+
 ### ⚠️ STRUCTURAL: `apps/cell/.env` unquoted multi-token value silent-aborts `launch_cell.sh` under `set -e` (2026-05-22)
 
 _Discovered: 2026-05-22 00:00 WITA during Cell daemon resurrection (worktree audit-cell-genoma-organism-2026-05-21) · Severity: P1 · Status: **RESOLVED** (quote-fix applied + Python normalizer; reproducible via audit installer)_
