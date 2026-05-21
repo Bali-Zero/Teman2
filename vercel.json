@@ -3,5 +3,6 @@
   "buildCommand": "npm run build -w apps/mouth",
   "outputDirectory": "apps/mouth/.next",
   "framework": "nextjs",
-  "installCommand": "npm install"
+  "installCommand": "npm install",
+  "ignoreCommand": "exit 1"
 }
