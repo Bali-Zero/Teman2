@@ -24,10 +24,21 @@ import httpx
 sys.path.insert(0, str(Path(__file__).parent))
 from intel_lake_outbox import fetch_pending, mark_delivered, mark_failed, stats  # type: ignore
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s %(levelname)s [outbox-drain] %(message)s",
-)
+# Log routing fix (PR-B2 2026-05-20):
+# Default `basicConfig` sends ALL levels to sys.stderr. Pro launchd captures
+# stderr to ~/logs/intel-lake-outbox-drain.err — INFO routing noise grew to
+# 841 KB while the stdout log stayed empty (false-alarm appearance).
+# Split: INFO/DEBUG -> stdout, WARNING+ -> stderr.
+_stdout_handler = logging.StreamHandler(sys.stdout)
+_stdout_handler.setLevel(logging.DEBUG)
+_stdout_handler.addFilter(lambda r: r.levelno < logging.WARNING)
+_stderr_handler = logging.StreamHandler(sys.stderr)
+_stderr_handler.setLevel(logging.WARNING)
+_fmt = logging.Formatter("%(asctime)s %(levelname)s [outbox-drain] %(message)s")
+_stdout_handler.setFormatter(_fmt)
+_stderr_handler.setFormatter(_fmt)
+logging.root.setLevel(logging.INFO)
+logging.root.handlers = [_stdout_handler, _stderr_handler]
 logger = logging.getLogger("intel-lake-outbox-drain")
 
 BACKEND_URL = os.environ.get("NUZANTARA_BACKEND_URL", "https://nuzantara-rag.fly.dev")
