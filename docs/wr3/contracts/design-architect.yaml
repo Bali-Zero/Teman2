@@ -9,9 +9,12 @@ lifecycle_tier: core
 cost_class: reasoning
 
 cost:
-  ceiling_usd: 0.5
-  ceiling_unit: "$0.50 cash"
+  ceiling_usd: 2.0
+  ceiling_unit: "$2.00 cash"
   hard_halt_on_exceed: true
+  # 2026-05-22 bump from $0.5 → $2.0. Empirical: Opus 4.7 1M-ctx orchestrator
+  # hit $0.5 cap on first spawn during pilot wr3-pilot-2026-05-22-manifesto-zantara-real-1.
+  # $2 covers brand-cortex skill load + 8-subagent fan-out coordination.
 
 allowed_tools:
   - Read
