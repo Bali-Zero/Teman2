@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 DB = (
     os.getenv("DATABASE_URL", "").replace("postgres://", "postgresql://")
-    or "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag?sslmode=disable"
+    or "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag?sslmode=disable"
 )
 
 OAUTH_CLIENT_ID = "930328104463-m3g4gq72095rip08269kvt8s7et9ev12.apps.googleusercontent.com"

@@ -32,11 +32,9 @@ import logging
 import os
 import re
 import subprocess
-import sys
 import tempfile
 import time
 import urllib.request
-from dataclasses import dataclass, asdict
 from typing import Optional
 
 import psycopg2
@@ -49,7 +47,7 @@ from googleapiclient.http import MediaIoBaseDownload
 SA_KEY = "/Users/nuzantara/Desktop/codexyz/nuzantara-google-drive-sa-key-20260312.json"
 IMPERSONATE = "zero@balizero.com"
 DB = dict(host="localhost", port=15432, dbname="nuzantara_rag",
-          user="backend_rag_v2", password="2zEjit43IF6gNUV")  # pragma: allowlist secret
+          user="backend_rag_v2", password="<<ROTATED_2026_05_22_see_DATABASE_URL_env>>")  # pragma: allowlist secret
 DEEPSEEK_URL = "https://api.deepseek.com/v1/chat/completions"
 DEEPSEEK_MODEL = "deepseek-v4-pro"
 LINK_SOURCE_TAG = "ai_profil_perseroan_backfill_2026_05_20"

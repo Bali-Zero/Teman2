@@ -9,7 +9,7 @@ session is recorded as a single interaction record.
 Usage:
     cd /Users/nuzantara/Desktop/nuzantara
     source apps/backend-rag/.venv/bin/activate
-    DATABASE_URL="postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag" \
+    DATABASE_URL="postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag" \
         PYTHONPATH=apps/backend-rag python scripts/backfill_interactions_from_conversations.py [--dry-run]
 """
 

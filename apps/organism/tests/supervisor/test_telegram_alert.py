@@ -35,7 +35,10 @@ def _decision(actuator="restart_agent"):
 
 
 @pytest.mark.asyncio
-async def test_alerter_sends_message_on_success():
+async def test_alerter_sends_message_on_success(monkeypatch):
+    # Autonomic mode (2026-05-22): Telegram alerts gated by env var.
+    # Test exercises the OPT-IN path to verify message formatting still works.
+    monkeypatch.setenv("ORGANISM_TELEGRAM_DISPATCH_ALERTS", "true")
     notifier = _FakeNotifyTelegram()
     alerter = build_dispatch_alerter({"notify_telegram": notifier})
     await alerter(
@@ -52,7 +55,8 @@ async def test_alerter_sends_message_on_success():
 
 
 @pytest.mark.asyncio
-async def test_alerter_marks_failure_explicitly():
+async def test_alerter_marks_failure_explicitly(monkeypatch):
+    monkeypatch.setenv("ORGANISM_TELEGRAM_DISPATCH_ALERTS", "true")
     notifier = _FakeNotifyTelegram()
     alerter = build_dispatch_alerter({"notify_telegram": notifier})
     await alerter(
@@ -64,6 +68,21 @@ async def test_alerter_marks_failure_explicitly():
     assert len(notifier.calls) == 1
     msg = notifier.calls[0]["params"]["message"]
     assert "fail" in msg.lower() or "❌" in msg or "error" in msg.lower()
+
+
+@pytest.mark.asyncio
+async def test_alerter_skips_when_autonomic_mode_default(monkeypatch):
+    """Default 2026-05-22: ORGANISM_TELEGRAM_DISPATCH_ALERTS unset → no-op."""
+    monkeypatch.delenv("ORGANISM_TELEGRAM_DISPATCH_ALERTS", raising=False)
+    notifier = _FakeNotifyTelegram()
+    alerter = build_dispatch_alerter({"notify_telegram": notifier})
+    await alerter(
+        decision=_decision(),
+        target="core-guardian",
+        correlation_id="abc",
+        result={"success": True},
+    )
+    assert notifier.calls == []  # Autonomic: no Telegram sent
 
 
 @pytest.mark.asyncio

@@ -82,9 +82,16 @@ async def test_canary_t2_shadow_low_stakes_target(fake_redis, tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_canary_t3_active_low_stakes_target_with_telegram(fake_redis, tmp_path):
+async def test_canary_t3_active_low_stakes_target_with_telegram(
+    fake_redis, tmp_path, monkeypatch,
+):
     """T3-equivalent: kill switch ON, low-stakes target → actuator called once,
-    Telegram alert fires once, JSONL records dispatched."""
+    Telegram alert fires once, JSONL records dispatched.
+
+    Autonomic-mode gate added 2026-05-22: this test exercises the OPT-IN
+    Telegram path to verify message formatting + actuator side-effect.
+    """
+    monkeypatch.setenv("ORGANISM_TELEGRAM_DISPATCH_ALERTS", "true")
     e = Event(
         severity=Severity.WARNING,
         source="canary.test",

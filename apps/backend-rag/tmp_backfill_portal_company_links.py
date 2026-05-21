@@ -9,11 +9,14 @@ Steps:
 5. Print final stats
 """
 
+import os
 from datetime import datetime, timezone
 
 import psycopg2
 
-DB_URL = "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag"
+# Password rotated 2026-05-22 (P0 cicatrix). Old hardcoded URL replaced
+# with env-var lookup. Operator must export DATABASE_URL before running.
+DB_URL = os.environ["DATABASE_URL"]
 
 
 def main() -> None:
@@ -34,7 +37,7 @@ def main() -> None:
         ORDER BY c.full_name
     """)
     portal_clients = cur.fetchall()
-    print(f"Total portal clients: {len(portal_clients)}")
+    print(f"Total portal clients: {len(portal_clients)}")  # noqa: T201
 
     # ── Step 2: Find those WITHOUT company links ──
     cur.execute("""
@@ -49,7 +52,7 @@ def main() -> None:
         ORDER BY c.full_name
     """)
     no_links = cur.fetchall()
-    print(f"Portal clients WITHOUT company links: {len(no_links)}")
+    print(f"Portal clients WITHOUT company links: {len(no_links)}")  # noqa: T201
 
     # ── Step 3: Match and INSERT company links ──
     links_created = 0
@@ -91,7 +94,7 @@ def main() -> None:
                 WHERE client_id = %s AND company_id = %s
             """, (client_id, company_id))
             if cur.fetchone():
-                print(f"  SKIP (already linked): {full_name} -> {comp_name}")
+                print(f"  SKIP (already linked): {full_name} -> {comp_name}")  # noqa: T201
                 continue
 
             cur.execute("""
@@ -100,16 +103,16 @@ def main() -> None:
                 VALUES (%s, %s, %s, %s, %s, %s, %s)
             """, (client_id, company_id, "Director", True, "active", now, now))
             links_created += 1
-            print(f"  LINKED: {full_name} (id={client_id}) -> {comp_name} (id={company_id})")
+            print(f"  LINKED: {full_name} (id={client_id}) -> {comp_name} (id={company_id})")  # noqa: T201
         else:
             no_match_clients.append((client_id, full_name, clean))
 
     if no_match_clients:
-        print(f"\n  NO MATCH for {len(no_match_clients)} client(s):")
+        print(f"\n  NO MATCH for {len(no_match_clients)} client(s):")  # noqa: T201
         for cid, name, cname in no_match_clients:
-            print(f"    id={cid}, {name}, company_name=\"{cname}\"")
+            print(f"    id={cid}, {name}, company_name=\"{cname}\"")  # noqa: T201
 
-    print(f"\nCompany links created: {links_created}")
+    print(f"\nCompany links created: {links_created}")  # noqa: T201
 
     # ── Step 4: Backfill NPWP and NIB from linked companies ──
     # For ALL 80 portal clients with company links, fill missing NPWP/NIB
@@ -167,14 +170,14 @@ def main() -> None:
             if "nib = %s" in sql.split("updated_at")[0]:
                 nib_filled += 1
                 filled.append("NIB")
-            print(f"  BACKFILLED {'+'.join(filled)}: {full_name} (id={client_id})")
+            print(f"  BACKFILLED {'+'.join(filled)}: {full_name} (id={client_id})")  # noqa: T201
 
-    print(f"\nNPWP backfilled: {npwp_filled}")
-    print(f"NIB backfilled: {nib_filled}")
+    print(f"\nNPWP backfilled: {npwp_filled}")  # noqa: T201
+    print(f"NIB backfilled: {nib_filled}")  # noqa: T201
 
     # ── Step 5: Commit ──
     conn.commit()
-    print("\n--- COMMITTED ---")
+    print("\n--- COMMITTED ---")  # noqa: T201
 
     # ── Step 6: Final stats ──
     cur.execute("""
@@ -204,12 +207,12 @@ def main() -> None:
     """)
     with_nib = cur.fetchone()[0]
 
-    print(f"\n{'='*50}")
-    print(f"FINAL STATS (out of {len(portal_clients)} portal clients):")
-    print(f"  With company links: {with_links}/{len(portal_clients)}")
-    print(f"  With NPWP:          {with_npwp}/{len(portal_clients)}")
-    print(f"  With NIB:           {with_nib}/{len(portal_clients)}")
-    print(f"{'='*50}")
+    print(f"\n{'='*50}")  # noqa: T201
+    print(f"FINAL STATS (out of {len(portal_clients)} portal clients):")  # noqa: T201
+    print(f"  With company links: {with_links}/{len(portal_clients)}")  # noqa: T201
+    print(f"  With NPWP:          {with_npwp}/{len(portal_clients)}")  # noqa: T201
+    print(f"  With NIB:           {with_nib}/{len(portal_clients)}")  # noqa: T201
+    print(f"{'='*50}")  # noqa: T201
 
     cur.close()
     conn.close()

@@ -34,7 +34,7 @@ import httpx
 # ---------------------------------------------------------------------------
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag",
+    "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag",
 )
 BACKEND_URL = os.environ.get("BACKEND_URL", "https://nuzantara-rag.fly.dev")
 EMAIL_API_KEY = os.environ.get("INTERNAL_API_KEY", "REDACTED-ROTATED-KEY")
@@ -355,7 +355,7 @@ async def run_segment(
 
     # Conferma prima di inviare
     if not confirm:
-        answer = input(f"\nConfermi invio di {len(clients)} email per segmento '{segment}'? (s/N): ").strip().lower()
+        answer = input(f"\nConfermi invio di {len(clients)} email per segmento '{segment}'? (s/N): ").strip().lower()  # noqa: ASYNC250
         if answer not in ("s", "si", "y", "yes"):
             print("Annullato.")
             return {"segment": len(clients), "sent": 0, "errors": 0}

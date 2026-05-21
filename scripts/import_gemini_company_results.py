@@ -6,7 +6,7 @@ import glob
 import sys
 import os
 
-DB_URL = "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag"
+DB_URL = "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag"
 
 
 async def import_results(result_dir: str):
@@ -149,7 +149,7 @@ async def import_results(result_dir: str):
         "SELECT COUNT(DISTINCT company_id) FROM client_company_links WHERE shares_count > 0"
     )
 
-    print(f"\n=== Import Complete ===")
+    print("\n=== Import Complete ===")
     print(f"Companies processed: {total_updated}")
     print(f"Links updated: {total_links_updated}")
     print(f"Errors: {total_errors}")

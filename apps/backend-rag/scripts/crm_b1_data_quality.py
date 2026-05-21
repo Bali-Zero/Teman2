@@ -26,7 +26,7 @@ import asyncpg
 
 DATABASE_URL = os.environ.get(
     "DATABASE_URL",
-    "postgresql://backend_rag_v2:2zEjit43IF6gNUV@localhost:15432/nuzantara_rag",
+    "postgresql://backend_rag_v2:<<ROTATED_2026_05_22_see_DATABASE_URL_env>>@localhost:15432/nuzantara_rag",
 )
 
 LOG_DIR = Path(__file__).resolve().parent.parent / "logs"

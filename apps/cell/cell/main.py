@@ -211,15 +211,28 @@ async def main() -> None:
         vercel_sensor = VercelSensor(client=http_client)
         logger.info(f"Sensors initialized (DB, Qdrant, ErrorRate, Ollama, Backup, Cron, Vercel → {metrics_url})")
 
-        # Telegram alerter — CELL's voice
+        # Telegram alerter — CELL's voice to the human operator.
+        # 2026-05-22 architectural shift: Cell/Organism/Genoma operate in
+        # AUTONOMIC CLOSED-LOOP mode by default. The Cell publishes incident
+        # events to the EventBus; the Organism receives them and dispatches
+        # recovery actions (restart, scale, cleanup, propose_yaml_rule) from
+        # the genome `recovery_action` field. No human in the loop.
+        #
+        # Telegram alerter is opt-in via CELL_ALERT_TELEGRAM_ENABLED=true
+        # (default: false = autonomic). Code path preserved for future
+        # re-enable if a specific class of incident requires escalation.
+        tg_enabled = os.environ.get("CELL_ALERT_TELEGRAM_ENABLED", "").lower() == "true"
         tg_token = os.environ.get("CELL_TELEGRAM_BOT_TOKEN", "")
         tg_chat = os.environ.get("CELL_TELEGRAM_CHAT_ID", "")
         alerter: TelegramAlerter | None = None
-        if tg_token and tg_chat:
+        if tg_enabled and tg_token and tg_chat:
             alerter = TelegramAlerter(client=http_client, bot_token=tg_token, chat_id=tg_chat)
-            logger.info("Telegram alerter initialized")
+            logger.info("Telegram alerter initialized (CELL_ALERT_TELEGRAM_ENABLED=true)")
         else:
-            logger.warning("CELL_TELEGRAM_BOT_TOKEN or CELL_TELEGRAM_CHAT_ID not set — alerts disabled")
+            logger.info(
+                "Telegram alerter disabled (autonomic mode) — Cell publishes "
+                "incident events to EventBus, Organism handles recovery"
+            )
 
         # Fly.io effector — CELL's hands (restart, scale)
         fly_token = os.environ.get("FLY_API_TOKEN", "")
