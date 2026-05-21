@@ -16,6 +16,7 @@ Self-recursion guard: when the dispatched actuator is itself
 from __future__ import annotations
 
 import logging
+import os
 from typing import Any, Awaitable, Callable, Mapping
 
 from organism.schemas import ActionDecision
@@ -25,6 +26,20 @@ log = logging.getLogger(__name__)
 
 
 _MAX_TELEGRAM_BODY = 3500  # Telegram caps at 4096 chars; leave headroom
+
+
+def _telegram_alerts_enabled() -> bool:
+    """Autonomic-mode gate (2026-05-22).
+
+    The Cell/Organism/Genoma triad operates in closed-loop by default:
+    Cell detects incident → publishes event → Organism dispatches recovery
+    actuator (restart, scale, cleanup, propose_yaml_rule). Telegram-to-Zero
+    is opt-in via ORGANISM_TELEGRAM_DISPATCH_ALERTS=true.
+
+    This module remains importable and tested; only the side-effect (sending
+    Telegram) is gated. Future re-enable: flip env var, no code change.
+    """
+    return os.environ.get("ORGANISM_TELEGRAM_DISPATCH_ALERTS", "").lower() == "true"
 
 
 def _format_message(
@@ -70,6 +85,20 @@ def build_dispatch_alerter(
     ) -> None:
         if decision.actuator == "notify_telegram":
             # Avoid feedback loop: NotifyTelegram dispatched → don't alert about it.
+            return
+        if not _telegram_alerts_enabled():
+            # Autonomic mode (default 2026-05-22): no human-in-the-loop.
+            # Dispatch outcomes are logged to PG events_outbox + organism
+            # internal tables. The Reflexion loop reviews them weekly.
+            log.debug(
+                "telegram_alert: autonomic-mode skip "
+                "(ORGANISM_TELEGRAM_DISPATCH_ALERTS not true) "
+                "actuator=%s target=%s corr=%s success=%s",
+                decision.actuator,
+                target,
+                correlation_id[:32],
+                bool(result.get("success", False)),
+            )
             return
         if notifier is None:
             log.debug(
