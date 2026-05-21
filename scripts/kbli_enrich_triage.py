@@ -7,7 +7,16 @@ import subprocess
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 
-GEMINI_BIN = "/opt/homebrew/bin/gemini"
+import os
+# Antigravity CLI `agy` is the canonical Gemini frontend (Google AI Ultra sub,
+# 10k Flow cr/mese). Legacy `/opt/homebrew/bin/gemini` remains as fallback.
+_AGY_BIN = "/Users/nuzantara/.local/bin/agy"
+_LEGACY_GEMINI_BIN = "/opt/homebrew/bin/gemini"
+GEMINI_BIN = os.environ.get(
+    "GEMINI_BIN",
+    _AGY_BIN if os.path.exists(_AGY_BIN) else _LEGACY_GEMINI_BIN,
+)
+_IS_AGY = os.path.basename(GEMINI_BIN) == "agy"
 
 TRIAGE_PROMPT_TEMPLATE = """You are an expert on Indonesian business classification (KBLI 2025) and foreign investment in Bali.
 
@@ -52,11 +61,21 @@ def run_gemini_batch(batch_id: int, codes: list[dict], output_dir: Path) -> Path
     prompt_file.write_text(prompt)
 
     try:
-        result = subprocess.run(
-            [GEMINI_BIN, "-p", prompt],
-            capture_output=True, text=True, timeout=300,
-            cwd=str(Path(__file__).parent.parent)
-        )
+        if _IS_AGY:
+            # agy: prompt on stdin via -p flag.
+            result = subprocess.run(
+                [GEMINI_BIN, "-p", "--print-timeout", "5m"],
+                input=prompt,
+                capture_output=True, text=True, timeout=310,
+                cwd=str(Path(__file__).parent.parent),
+            )
+        else:
+            # legacy gemini: prompt as -p arg.
+            result = subprocess.run(
+                [GEMINI_BIN, "-p", prompt],
+                capture_output=True, text=True, timeout=300,
+                cwd=str(Path(__file__).parent.parent),
+            )
 
         raw = result.stdout.strip()
         # Strip markdown fences if present

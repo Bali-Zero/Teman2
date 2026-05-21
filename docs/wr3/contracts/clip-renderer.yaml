@@ -41,7 +41,8 @@ outputs:
     sink: "apps/war-room/output/episode/<slug>/identity-report.json"
     schema_ref: "free-form"
 
-emits: []
+emits:
+  - wr3_episode_assembly_ready # emitted UNCONDITIONALLY on render-complete. Rendezvous handled by post-assembler consumer (NOT here): post-assembler MUST verify fs presence of BOTH clips/ AND audio/vo.wav before proceeding (cicatrix 2026-05-22 panel agy+DeepSeek 2/2 — co-emit was a race, not a rendezvous).
 
 consumes:
   - wr3_episode_gate_passed
@@ -57,7 +58,7 @@ failure_modes:
 law_compliance:
   law_1_cli_only: "Flow API via wr3_flowkit_client.py subprocess wrapper"
   law_2_osint_blindato: "No NB access"
-  law_3_event_driven: "Consumes gate_passed, emits NOTHING (synchronous render then handoff)"
+  law_3_event_driven: "Consumes gate_passed, emits assembly_ready unconditionally on render-complete. Consumer post-assembler enforces fs-presence join, NOT this emitter (avoids race-on-co-emit)."
   law_4_graceful_degradation: "b-roll fallback is degrade-loud (license-clean alternative shot)"
   law_5_zero_authority: "Each clip retry visible in telemetry"
   law_6_local_sovereignty: "Flow API is cloud touchpoint, all orchestration local"

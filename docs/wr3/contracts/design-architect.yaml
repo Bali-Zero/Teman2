@@ -36,6 +36,10 @@ outputs:
     kind: channel_emit
     sink: "wr3_episode_pre_render_ready"
     schema_ref: "free-form"
+  - name: staged_emit
+    kind: channel_emit
+    sink: "wr3_episode_staged"
+    schema_ref: "{slug, drive_url, telegram_msg_id}"
   - name: supervisor_log
     kind: file
     sink: "~/.cell-observatory/wr3/design-architect.jsonl"
@@ -43,9 +47,12 @@ outputs:
 
 emits:
   - wr3_episode_pre_render_ready
+  - wr3_episode_staged # final pipeline emit after critic PASS + Drive staging + Telegram P0
 
 consumes:
   - wr3_episode_brief_requested
+  - wr3_episode_critic_verdict # router-routed: PASS → staged, FAIL → retry lane dispatch
+  - wr3_episode_staged # router self-route: triggers Drive staging + Telegram P0 handler
 
 failure_modes:
   - code: hard_fail

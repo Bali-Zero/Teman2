@@ -42,14 +42,26 @@ Expected stdout:
 Failures emit to chat_id 1125336968 (Zero) via `~/scripts/telegram-notify.sh`.
 Includes: episode slug, agent, failure reason, retry attempt count.
 
-## Cron LaunchAgents
+## LaunchAgents (installed 2026-05-21)
 
-S7.5 will install:
+| Plist                                            | Status                                                      | Trigger                  | Wrapper                                                                                  |
+| ------------------------------------------------ | ----------------------------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------- |
+| `com.balizero.wr3.supervisor.plist`              | LIVE (KeepAlive=true, RunAtLoad=true, ThrottleInterval=30s) | Event-driven (PG LISTEN) | `~/.openclaw/bin/wr3/wr3-supervisor-wrapper.sh`                                          |
+| `com.balizero.wr3.reflexion.weekly.plist`        | LIVE                                                        | Sun 02:30 WITA           | `~/.claude/skills/bali-zero-brand/wr3/_reflexion-synthesis.py` (PLACEHOLDER stub exit 0) |
+| `com.balizero.wr3.yt-metrics.weekly.plist`       | LIVE                                                        | Mon 06:07 WITA           | `~/.openclaw/bin/wr3/wr3-yt-metrics-run.sh` (fail-safe gate ≥3 episodi)                  |
+| `com.balizero.wr3.editorial-bench.monthly.plist` | LIVE                                                        | Day 1 07:00 WITA         | `~/.openclaw/bin/wr3/wr3-editorial-bench-run.sh` (fail-safe gate ≥1 lessons.md)          |
 
-- `com.balizero.wr3.supervisor.plist` (KeepAlive=true, RunAtLoad=true)
-- `com.balizero.wr3.reflexion.weekly.plist` (Sun 02:30 WITA)
-- `com.balizero.wr3.yt-metrics.weekly.plist` (Mon 06:00 WITA)
-- `com.balizero.wr3.editorial-bench.monthly.plist` (1st Mon 07:00 WITA)
+### Thundering herd risk (deferred — panel DeepSeek 2026-05-22 P3 finding)
+
+Quattro LaunchAgent condividono lo stesso pg-proxy upstream (`com.balizero.wr2.pg-proxy` su porta 15432). Tutti usano `EX_TEMPFAIL=75` + `ThrottleInterval=30s`. Se pg-proxy va down per >30s, i 4 agent failureranno simultaneamente e ripartiranno tutti dopo 30s precisi → connessioni concorrenti su Fly proxy appena risuscitato.
+
+Mitigation deferred (richiede design):
+
+- Opzione A: `ThrottleInterval` distinti per plist (30s, 47s, 73s, 113s — primes per anti-sync)
+- Opzione B: wrapper aggiunge `sleep $(($RANDOM % 30))` prima di nc check (jitter)
+- Opzione C: exponential backoff in wrapper con counter su `/tmp/wr3-<label>-fail-count`
+
+In pratica: supervisor è l'unico critico H24. Gli altri 3 sono scheduled (no concurrent failure window). Risk teorico, basso impatto reale finché yt-metrics+editorial-bench restano fail-safe stub.
 
 ## See also
 
