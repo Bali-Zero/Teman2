@@ -159,26 +159,39 @@ async def _dispatch_gemini_cli(
     *,
     timeout_s: int = 300,
 ) -> DispatchResult:
-    """Cascade fallback: gemini -m gemini-3.1-pro-preview -p '...'.
+    """Cascade fallback: `agy` Antigravity CLI (Gemini 3.1 Pro, Google AI Ultra)
+    with legacy `gemini` CLI as last-ditch fallback.
 
-    OAuth free — no API key. Symbiosis Law 1 compliant (CLI subprocess).
+    OAuth via Google AI Ultra sub (10k Flow cr/mese). Symbiosis Law 1
+    compliant (CLI subprocess, never SDK).
     """
-    gemini = shutil.which("gemini")
-    if gemini is None:
-        raise WR3DispatchError("gemini CLI not on PATH for cascade Tier 2")
+    agy = shutil.which("agy")
+    if agy:
+        cli = agy
+        # agy: prompt on stdin via -p flag.
+        cmd = [cli, "-p", "--print-timeout", f"{timeout_s}s"]
+        stdin_payload = prompt.encode()
+    else:
+        legacy = shutil.which("gemini")
+        if legacy is None:
+            raise WR3DispatchError(
+                "Neither `agy` nor `gemini` CLI on PATH for cascade Tier 2"
+            )
+        cli = legacy
+        cmd = [cli, "-m", "gemini-3.1-pro-preview", "-p", prompt]
+        stdin_payload = None
 
     started = asyncio.get_event_loop().time()
     proc = await asyncio.create_subprocess_exec(
-        gemini,
-        "-m",
-        "gemini-3.1-pro-preview",
-        "-p",
-        prompt,
+        *cmd,
+        stdin=asyncio.subprocess.PIPE if stdin_payload else None,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
     try:
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=timeout_s)
+        stdout, stderr = await asyncio.wait_for(
+            proc.communicate(input=stdin_payload), timeout=timeout_s + 10
+        )
     except asyncio.TimeoutError as e:
         proc.kill()
         raise CascadeExhaustedError(
@@ -188,7 +201,7 @@ async def _dispatch_gemini_cli(
     duration_ms = int((asyncio.get_event_loop().time() - started) * 1000)
     if proc.returncode != 0:
         text = stderr.decode("utf-8", "replace").lower()
-        if "quota" in text or "429" in text or "rate" in text:
+        if "quota" in text or "429" in text or "rate" in text or "terminalquotaerror" in text:
             raise CascadeExhaustedError(
                 f"{contract.name}: Gemini quota exhausted (stderr={text[:200]})"
             )

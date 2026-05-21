@@ -116,7 +116,12 @@ async def test_reconcile_query_failure_does_not_crash(contracts) -> None:
 
 @pytest.mark.asyncio
 async def test_reconcile_only_wr3_channels(contracts) -> None:
-    """The SQL query filters by ANY($1) channel list — verify list comes from contracts."""
+    """The SQL query filters by ANY($1) channel list — verify list comes from contracts.
+
+    Note 2026-05-22: companion handoff added wr2_episode_published as additional
+    consumed channel for design-architect (cross-pipeline rendezvous). Channels
+    must startswith wr3_ OR wr2_ (companion).
+    """
     conn = AsyncMock()
     conn.fetch = AsyncMock(return_value=[])
     await wr3_supervisor._reconcile_unconsumed(conn, contracts)
@@ -125,5 +130,5 @@ async def test_reconcile_only_wr3_channels(contracts) -> None:
     assert kwargs is not None or len(_args) >= 2
     # Channel list is the second positional arg to fetch
     channels = _args[-1] if _args else kwargs.get("channels", [])
-    assert all(ch.startswith("wr3_") for ch in channels)
+    assert all(ch.startswith(("wr3_", "wr2_")) for ch in channels)
     assert "wr3_episode_brief_requested" in channels

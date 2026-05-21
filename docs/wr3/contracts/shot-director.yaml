@@ -10,7 +10,7 @@ cost_class: reasoning
 
 cost:
   ceiling_usd: 0.5
-  ceiling_unit: "$0.50 cash"
+  ceiling_unit: "$0.50 cash (LLM reasoning; Veo Flow Pro spend scales 80/120/150/190 cr per target_duration_s 60/90/120/150)"
   hard_halt_on_exceed: false
 
 allowed_tools:
@@ -37,7 +37,7 @@ outputs:
   - name: shot_pack
     kind: file
     sink: "apps/war-room/output/episode/<slug>/shot-pack.json"
-    schema_ref: "shot-pack.schema.json"
+    schema_ref: "shot-pack.schema.json (clip_count derived from brief.target_duration_s: 60s→8 clips/80cr, 90s→12/120cr, 120s→15/150cr, 150s→19/190cr; Veo Tier_ONE clip nativo = 8s)"
 
 emits: []
 

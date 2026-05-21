@@ -27,8 +27,10 @@ def test_load_thirteen_agents(contracts: WR3Contracts) -> None:
     assert len(contracts.agents) == 13
 
 
-def test_load_six_channels(contracts: WR3Contracts) -> None:
-    assert len(contracts.routes) == 6
+def test_load_seven_channels(contracts: WR3Contracts) -> None:
+    # 6 WR3 channels (migration 183) + 1 cross-pipeline handoff channel
+    # `wr2_episode_published` (migration 186, WR2 → WR3 companion handoff).
+    assert len(contracts.routes) == 7
     expected = {
         "wr3_episode_brief_requested",
         "wr3_episode_pre_render_ready",
@@ -36,8 +38,23 @@ def test_load_six_channels(contracts: WR3Contracts) -> None:
         "wr3_episode_assembly_ready",
         "wr3_episode_critic_verdict",
         "wr3_episode_staged",
+        "wr2_episode_published",
     }
     assert set(contracts.routes.keys()) == expected
+
+
+def test_companion_handoff_channel_routes_to_architect(contracts: WR3Contracts) -> None:
+    """wr2_episode_published → wr3-design-architect (companion_from_carousel mode)."""
+    route = contracts.route_for("wr2_episode_published")
+    assert route.handler == "wr3-design-architect"
+    assert route.hot_path is False, "companion content is post-publish, not time-critical"
+
+
+def test_design_architect_consumes_wr2_handoff(contracts: WR3Contracts) -> None:
+    """design-architect must declare both standard WR3 entry + companion handoff."""
+    arch = contracts.for_agent("wr3-design-architect")
+    assert "wr3_episode_brief_requested" in arch.consumes
+    assert "wr2_episode_published" in arch.consumes
 
 
 def test_design_architect_is_gate(contracts: WR3Contracts) -> None:

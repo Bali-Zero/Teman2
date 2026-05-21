@@ -54,7 +54,7 @@ consumes: []
 
 failure_modes:
   - code: hard_fail
-    action: "Cost ceiling Flow Pro <200 cr remaining → HARD HALT + Telegram P0 (no Veo spend authorization)"
+    action: "Cost ceiling Flow Pro insufficient for target_duration_s (need 80cr@60s / 120cr@90s / 150cr@120s / 190cr@150s; min remaining = ceil(target_duration_s/8) × 10 cr) → HARD HALT + Telegram P0 (no Veo spend authorization)"
     telegram_p0_on: true
   - code: retry_with_cascade
     action: "Single shot cliche flag → REROLL specific shot only (other shots pass through)"

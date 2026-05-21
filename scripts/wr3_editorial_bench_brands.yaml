@@ -1,0 +1,94 @@
+# WR3 Editorial Bench — Reference Brands + Competitors + Trend Reports
+# Consumed by scripts/wr3_editorial_bench.py monthly.
+# Last reviewed: 2026-05-22
+
+reference_brands:
+  - name: "NYT Opinion Video"
+    youtube_channel_url: "https://www.youtube.com/@NYTOpinion"
+    domain_relevance_to_balizero: high
+    why_pick: "Editorial argumentation + visual evidence layering — closest grammar to Bali Zero regulatory explainers."
+
+  - name: "Bloomberg Originals"
+    youtube_channel_url: "https://www.youtube.com/@business"
+    domain_relevance_to_balizero: high
+    why_pick: "Financial/regulatory density similar to visa-tax content. Reference for chart-on-talking-head pacing."
+
+  - name: "Reuters"
+    youtube_channel_url: "https://www.youtube.com/@Reuters"
+    domain_relevance_to_balizero: medium
+    why_pick: "News-grade neutrality benchmark — calibration for our compliance tone."
+
+  - name: "Wired"
+    youtube_channel_url: "https://www.youtube.com/@WIRED"
+    domain_relevance_to_balizero: medium
+    why_pick: "Long-form explainer (5 levels, etc.) — transferable scaffold for KBLI/KITAS deep dives."
+
+  - name: "Pudding"
+    youtube_channel_url: "https://www.youtube.com/@thepudding"
+    domain_relevance_to_balizero: medium
+    why_pick: "Data-vis storytelling — visual grammar for pricing/timeline graphics."
+
+  - name: "Rest of World"
+    youtube_channel_url: "https://www.youtube.com/@RestofWorld"
+    domain_relevance_to_balizero: high
+    why_pick: "Global-South tech/biz journalism — closest cultural register to Indonesia expat audience."
+
+  - name: "ProPublica"
+    youtube_channel_url: "https://www.youtube.com/@propublica"
+    domain_relevance_to_balizero: medium
+    why_pick: "Investigative document-handling pattern — useful for 'reading the regulation' segments."
+
+  - name: "Vox"
+    youtube_channel_url: "https://www.youtube.com/@Vox"
+    domain_relevance_to_balizero: high
+    why_pick: "Explainer-format gold standard. Hook→context→stakes pattern directly reusable."
+
+  - name: "Quartz"
+    youtube_channel_url: "https://www.youtube.com/@qz"
+    domain_relevance_to_balizero: medium
+    why_pick: "Business-news short-form — text-overlay + chart density reference."
+
+  - name: "Drift"
+    youtube_channel_url: "https://www.youtube.com/@DriftMedia"
+    domain_relevance_to_balizero: low
+    why_pick: "Premium documentary craft — aspirational ceiling for production value."
+
+  - name: "Vice News"
+    youtube_channel_url: "https://www.youtube.com/@VICENews"
+    domain_relevance_to_balizero: medium
+    why_pick: "Field reportage in SE Asia — local-color grammar for Bali on-location content."
+
+  - name: "Al Jazeera English"
+    youtube_channel_url: "https://www.youtube.com/@aljazeeraenglish"
+    domain_relevance_to_balizero: medium
+    why_pick: "Multi-cultural register — calibration for our Italian/English/Indonesian mixed audience."
+
+competitors:
+  - name: "Lets Move Indonesia"
+    youtube_channel_url: "https://www.youtube.com/@LetsMoveIndonesia"
+    instagram_handle: "@letsmoveindonesia"
+    domain_relevance_to_balizero: high
+    why_pick: "Direct competitor — expat services Indonesia (visa, KITAS, relocation). Track every release."
+
+  - name: "Emerhub"
+    youtube_channel_url: "https://www.youtube.com/@Emerhub"
+    instagram_handle: "@emerhub"
+    domain_relevance_to_balizero: high
+    why_pick: "Direct competitor — company-setup Indonesia + regional. Track positioning + price-anchor frames."
+
+  - name: "Flado Bali"
+    youtube_channel_url: null
+    instagram_handle: "@flado.bali"
+    domain_relevance_to_balizero: high
+    why_pick: "Direct competitor IG Reels — closest format match to our short-form output. Track weekly."
+
+trend_reports:
+  - name: "Later.com Social Video Benchmarks"
+    url: "https://later.com/blog/social-media-benchmarks/"
+    fetch_method: webfetch
+    why_pick: "Quarterly engagement benchmark by format (Reels, Shorts, TikTok)."
+
+  - name: "Hootsuite Social Trends"
+    url: "https://www.hootsuite.com/research/social-trends"
+    fetch_method: webfetch
+    why_pick: "Annual + quarterly trend report. Reference for emerging formats."

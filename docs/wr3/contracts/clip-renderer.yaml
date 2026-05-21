@@ -1,6 +1,9 @@
 # WR3 Agent I/O Contract — wr3-clip-renderer
 # Schema: docs/wr3/contracts/_schema.yaml v1.0.0
 # Description: Veo 3.1 Fast Tier_ONE jobs via wr3_flowkit_client.py + Identity Gate (ArcFace + VLM).
+# Audio mode: native-audio-on (Veo audio nativo embedded, override 2026-05-22 Antonello — pilot-A
+#   pilot-A-veo-zantara-lipsync.mp4 confirmed lipsync grade). Env WR3_VEO_AUDIO=native|off (default
+#   native). Chatterbox path retained as fallback when audio missing/corrupt or LUFS out of bounds.
 
 name: wr3-clip-renderer
 contract_version: 1.0.0

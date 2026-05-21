@@ -53,7 +53,7 @@ outputs:
   - name: manifest
     kind: file
     sink: "apps/war-room/output/episode/<slug>/episode_manifest.json"
-    schema_ref: "episode_manifest.schema.json"
+    schema_ref: "episode_manifest.schema.json (18 fields + target_duration_s integer in [60,150] mirrored from brief.json; duration_s actual master length, must be within ±2s of target_duration_s after ffmpeg trim)"
 
 emits: []
 
@@ -61,17 +61,20 @@ consumes:
   - wr3_episode_assembly_ready
 
 failure_modes:
+  - code: retry_with_cascade
+    action: "On assembly_ready NOTIFY received: BEFORE any ffmpeg call, verify fs presence of BOTH apps/war-room/output/episode/<slug>/clips/ (non-empty) AND apps/war-room/output/episode/<slug>/audio/vo.wav (non-zero size). If either missing, requeue with 60s poll timeout (max 5 polls = 5min wait). After 5min one side still missing → HARD-FAIL with code=missing_join_partner + Telegram P0. Cicatrix 2026-05-22 panel agy+DeepSeek 2/2: clip-renderer and audio-asset-producer co-emit assembly_ready independently, this consumer is the join point."
+    telegram_p0_on: false
   - code: degrade_loud
     action: "Variant ffmpeg failure → DEGRADE (deliver master + 3/4 variants, manifest flags missing variant)"
     telegram_p0_on: false
   - code: hard_fail
-    action: "Master assembly failure → HARD-FAIL (no coherent artifact to critic) + Telegram P0"
+    action: "Master assembly failure → HARD-FAIL (no coherent artifact to critic) + Telegram P0. Also: missing_join_partner after 5min poll → HARD-FAIL."
     telegram_p0_on: true
 
 law_compliance:
   law_1_cli_only: "ffmpeg subprocess only; Sonnet for diagnostic via Claude Agent SDK"
   law_2_osint_blindato: "No NB access. Manifest includes claim_ids verbatim from brief.json"
-  law_3_event_driven: "Consumes assembly_ready (clip-renderer + audio-asset-producer joined ready)"
+  law_3_event_driven: "Consumes assembly_ready (fired by EITHER clip-renderer OR audio-asset-producer — this consumer is the fs-presence join enforcer, NOT the producers)"
   law_4_graceful_degradation: "Variant failure degrades, master failure halts"
   law_5_zero_authority: "Manifest is the immutable artifact Antonello reviews pre-publish"
   law_6_local_sovereignty: "ffmpeg evermeet static /tmp/ffmpeg-full/ffmpeg local"

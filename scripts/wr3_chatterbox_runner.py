@@ -313,6 +313,27 @@ async def generate_voiceover(
 
 
 if __name__ == "__main__":
+    import argparse
     import sys
+
+    parser = argparse.ArgumentParser(
+        description="WR3 Chatterbox runner — local Emma-seed TTS fallback path"
+    )
+    parser.add_argument(
+        "--mode",
+        choices=("primary", "fallback"),
+        default=os.environ.get("WR3_CHATTERBOX_MODE", "fallback"),
+        help=(
+            "Operational mode (default 'fallback' per override 2026-05-22 — Veo audio nativo "
+            "is the primary path; Chatterbox engages only on LUFS catastrophe or missing audio). "
+            "Mode is informational/logging only; voice params remain Emma-locked."
+        ),
+    )
+    args, _ = parser.parse_known_args()
+
     print(f"chatterbox bin: {os.environ.get('WR3_CHATTERBOX_BIN', 'chatterbox-tts')}", file=sys.stderr)
-    print(f"emma seed={EMMA_SEED} cfg={EMMA_CFG_WEIGHT} temp={EMMA_TEMPERATURE} exag={EMMA_EXAGGERATION}", file=sys.stderr)
+    print(
+        f"emma seed={EMMA_SEED} cfg={EMMA_CFG_WEIGHT} temp={EMMA_TEMPERATURE} exag={EMMA_EXAGGERATION}",
+        file=sys.stderr,
+    )
+    print(f"mode={args.mode} (Veo native primary path, Chatterbox fallback role)", file=sys.stderr)
