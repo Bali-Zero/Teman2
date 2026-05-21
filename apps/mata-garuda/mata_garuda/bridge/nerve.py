@@ -48,10 +48,56 @@ logger = logging.getLogger("mata_garuda.bridge.nerve")
 
 _HEARTBEAT_IDLE_TICKS = int(os.getenv("BRIDGE_HEARTBEAT_IDLE_TICKS", "10"))
 _ERROR_STREAK_ALERT = int(os.getenv("BRIDGE_ERROR_STREAK_ALERT", "5"))
+_PUSH_HEARTBEAT_IDLE_TICKS = int(os.getenv("BRIDGE_PUSH_HEARTBEAT_IDLE_TICKS", "10"))
 
 
 def _heartbeat_path(cursor: "BridgeCursor") -> "pathlib.Path":
     return cursor.path.parent / (cursor.path.stem + "-idle-ticks.json")
+
+
+def _push_idle_path() -> "pathlib.Path":
+    """Sidecar for push-side idle counter — uses BRIDGE_CURSOR_PATH dir as anchor."""
+    base = pathlib.Path(BRIDGE_CURSOR_PATH)
+    return base.parent / "bridge-push-idle-ticks.json"
+
+
+def _track_push_idle_tick(stats: dict[str, int]) -> None:
+    """W3 cicatrix 2026-05-22 — push_once mirrors pull_once silent-idle gap.
+
+    Idle on push side = no messages dequeued from STREAM_BRIDGE_OUTBOUND
+    AND no errors. Without a heartbeat, push_once returns silently for
+    however long the Redis stream stays empty, leaving operators unable
+    to distinguish a healthy quiet cron from a dead one.
+
+    Counter persists in BRIDGE_CURSOR_PATH.parent / bridge-push-idle-ticks.json
+    (separate from the pull-side sidecar to avoid scope confusion).
+    Failure to read/write the sidecar is non-fatal.
+    """
+    path = _push_idle_path()
+    try:
+        if stats["sent"] == 0 and stats["errors"] == 0:
+            count = 0
+            if path.exists():
+                try:
+                    count = int(json.loads(path.read_text()).get("count", 0))
+                except (json.JSONDecodeError, ValueError, KeyError):
+                    count = 0
+            count += 1
+            if count >= _PUSH_HEARTBEAT_IDLE_TICKS:
+                logger.info(
+                    "Bridge heartbeat: push idle for %d consecutive ticks",
+                    count,
+                )
+                count = 0
+            path.parent.mkdir(parents=True, exist_ok=True)
+            tmp = path.with_suffix(path.suffix + ".tmp")
+            tmp.write_text(json.dumps({"count": count}))
+            os.replace(tmp, path)
+        else:
+            if path.exists():
+                path.unlink(missing_ok=True)
+    except Exception as e:
+        logger.debug("Push-idle tracker error (non-fatal): %s", e)
 
 
 def _error_streak_path(cursor: "BridgeCursor") -> "pathlib.Path":
@@ -490,6 +536,7 @@ def push_once(
     )
 
     if not items:
+        _track_push_idle_tick(stats)
         return stats
 
     headers = {"X-Bridge-Auth": api_key, "Content-Type": "application/json"}
@@ -533,6 +580,7 @@ def push_once(
             stats["sent"], stats["acked"], stats["errors"],
         )
 
+    _track_push_idle_tick(stats)
     return stats
 
 
