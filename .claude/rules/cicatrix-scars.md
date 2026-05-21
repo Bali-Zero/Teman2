@@ -5,6 +5,63 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: `apps/cell/.env` unquoted multi-token value silent-aborts `launch_cell.sh` under `set -e` (2026-05-22)
+
+_Discovered: 2026-05-22 00:00 WITA during Cell daemon resurrection (worktree audit-cell-genoma-organism-2026-05-21) · Severity: P1 · Status: **RESOLVED** (quote-fix applied + Python normalizer; reproducible via audit installer)_
+
+**TRAUMA:** Cell core daemon (`com.cell.organism`) had been silent since 2026-05-16 08:01 WITA (5.5 giorni). Audit phase concluded the cause was "plist not installed in `~/Library/LaunchAgents/`". Re-bootstrap via `apps/cell/scripts/install_cell_daemon.sh` succeeded the install step but daemon entered `spawn scheduled` + `last exit code = 1` immediately. `/tmp/cell.stderr.log` revealed `bash: /Users/nuzantara/Desktop/nuzantara/apps/cell/.env: line 5: fm2_lJP...,fm2_lJP...: No such file or directory`.
+
+Root cause: `FLY_API_TOKEN=FlyV1 fm2_xxx==,fm2_yyy==` in `.env` had:
+- Space between `FlyV1` and the first token segment → `set -a; source .env` assigns `FLY_API_TOKEN=FlyV1`, then tries to **execute** `fm2_xxx==,fm2_yyy==` as a command;
+- `,` in middle of the token → bash interprets `fm2_xxx==,fm2_yyy==` as a path (the `/` inside the base64-ish content) → "no such file or directory";
+- `launch_cell.sh` has `set -euo pipefail` → ANY error in `source` aborts the entire wrapper with exit 1 → launchd marks daemon failed, retries, same crash → loop;
+- Earlier interactive dry-run during audit Phase 5 used the SAME `set -a; source .env; set +a` but the parent shell had **no** `set -e`, so it survived the same error (only printed the warning and assigned the truncated value). This created a **FALSE POSITIVE empirical signal** that "the code works manually" — it doesn't, when invoked under launchd's strict-mode wrapper.
+
+Hidden for 5.5 days because:
+1. The daemon was never re-installed after being uninstalled (date unknown — likely 2026-04-29 plist-corruption episode or post-handoff cleanup);
+2. `cell-observatory` collector kept showing "no new cell pulses" but the symptom was attributed to missing daemon, not to `.env` parsing;
+3. The historic plist (still in `~/p0-3-recovery/plist_reconstructed/`) bypassed this by inlining env vars in the plist `EnvironmentVariables` dict — which is exactly the P0 secret-leak posture we want to avoid.
+
+**ANTIBODY (shipped):**
+
+1. **Quote-fix `.env` line 5**: backup at `apps/cell/.env.pre-quote-fix-2026-05-21`, line rewritten as `FLY_API_TOKEN="FlyV1 fm2_xxx==,fm2_yyy=="`. Verified via `bash -c 'set -euo pipefail; set -a; source apps/cell/.env; set +a; echo ${#FLY_API_TOKEN}'` returns 687 (full token length).
+2. **Python normalizer** (one-shot, ad-hoc): iterates lines, detects values containing `[\s,;|&<>(){}*?\\]`, wraps with double quotes after escaping any embedded `"`. Lives inline in the bootstrap session for now — could be promoted to `apps/cell/scripts/validate_env.py` if recurring.
+3. **Daemon empirical verification**: `Pulse #1 complete. Health: green` at 23:58:44, `Pulse #2 complete. Health: green` at 23:59:56, PID 48494 stable. Cell SelfModel age=56d pulses=39911 actions=20217 resumed from EpisodicMemory.
+
+**GOTCHA:**
+
+- Phase 5 of the audit (interactive dry-run from `set -a; source .env`) returned green INFO logs and made the "code works" claim plausible. The bug only manifests when invoked from a wrapper that uses `set -e`. **Generalize**: dry-running env-loading code WITHOUT `set -e` does not prove launchd behavior. Always test under the same shell flags as production wrapper (`bash -c 'set -euo pipefail; ./launch_cell.sh' </dev/null`).
+- `.env` line was added by someone manually copying the FLY token output of `fly auth token` — that command emits the token with a leading `FlyV1 ` prefix (space-separated). The token format itself is the issue.
+- `apps/cell/.env.example` does NOT include `FLY_API_TOKEN` (audited 2026-05-22). Future onboarding will hit the same trap. Consider adding `FLY_API_TOKEN="FlyV1 <token>"` to `.env.example` with explicit quoting demonstration.
+- This scar is adjacent to but DIFFERENT from the 2026-05-21 P0 password leak: that one is about secrets-in-tracked-files, this one is about whitespace handling in untracked secrets. Same `.env`, different failure mode.
+
+**Reference**: bootstrap session log = `/tmp/cell.stderr.log` (initial crash trace), worktree `audit-cell-genoma-organism-2026-05-21` audit report (this commit's body).
+
+---
+
+### ℹ️ INFO: Cell pulse → `cell_pulse_observed` PG channel emit gated by `CELL_OBSERVATORY_EMIT=true` (2026-05-22)
+
+_Discovered: 2026-05-22 00:05 WITA during Cell daemon resurrection · Severity: INFO (by design, not a bug) · Status: behavior documented_
+
+**TRAUMA:** Not really a trauma — by design. After Cell daemon was successfully resurrected (cicatrix above), the empirical check on `~/.cell-observatory/observatory.db` showed `count(*) WHERE cell_id='cell' AND pulse_timestamp > NOW() - 5min = 0` despite the daemon emitting `Pulse #1` and `Pulse #2` green internally. The pulse loop runs fine; the bridge to PG `cell_pulse_observed` channel is conditional on env var `CELL_OBSERVATORY_EMIT=true` (gate in `apps/cell/cell/core/pulse.py:803` and `packages/cell-core/...`).
+
+Without the flag: Cell pulses internally, sensors fire, cortex thinks, actions taken — but no row in `events_outbox` channel `cell_pulse_observed`, no row in `pulse_events` SQLite. Observability gap, not a functional gap.
+
+**Historic context**: `~/.cell-observatory/observatory.db` shows `cell_id='cell'` pulses from 2026-05-02 to 2026-05-16 (~14925 rows). Someone HAD set `CELL_OBSERVATORY_EMIT=true` historically. It was removed (silently — `.env` does not contain the variable now) at some point coincident with the daemon being uninstalled.
+
+**ANTIBODY (deferred):**
+
+- Decision pending operator (Antonello): set `CELL_OBSERVATORY_EMIT=true` in `apps/cell/.env` to restore historical observability? Cost: 1 row per pulse in `events_outbox` (~1380/day, persistent table) + 1 row in SQLite + Redis stream bytes. Benefit: dashboard continuity, anomaly detection, weekly Cell health reports.
+- If yes: add line to `.env`, `launchctl bootout + bootstrap` to pick up new env. Verify with `sqlite3 ~/.cell-observatory/observatory.db "SELECT count(*) FROM pulse_events WHERE cell_id='cell' AND pulse_timestamp/1000 > strftime('%s','now') - 600"` within 5 min.
+- Mention also in `apps/cell/launchagent/README.md` resurrection section so the variable is not lost on future re-bootstraps.
+
+**GOTCHA:**
+
+- This is a "silent observability gap" — daemon is technically healthy, dashboards just don't see it. Easy to miss in audits because `launchctl print` shows `state = running`, no exit codes, no crash logs.
+- The 14925 historic rows from before 2026-05-16 are NOT regenerated retroactively when the flag is re-enabled; they remain frozen as snapshot. Trend continuity gap is permanent unless backfill is scripted.
+
+---
+
 ### 🚨 P0 SECURITY: Postgres prod password `backend_rag_v2` hardcoded in 32 files repo public — 5 months exposure (2026-05-21)
 
 _Discovered: 2026-05-21 ~05:00 WITA during PR #802 admin-override review · Severity: **P0** · Status: **OPEN — awaiting rotation decision by Antonello**_
