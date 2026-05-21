@@ -1,0 +1,151 @@
+{
+  "validation_of_gemini_findings": [
+    {
+      "finding": "B1: SQLite WAL safety – force-kill Claude before rolling back memory.db (integrated in G3)",
+      "valid": true,
+      "integration_quality": "GOOD"
+    },
+    {
+      "finding": "B2: G4 plist secret leak – source token from secure file, never in world‑readable plist (integrated in G4 with .env.secret, chmod 0400)",
+      "valid": true,
+      "integration_quality": "GOOD"
+    },
+    {
+      "finding": "B3: Wave compaction amnesia – promote T2.5 (PreCompact Mnemos) to Wave 0 to protect executor state before context compaction hits",
+      "valid": true,
+      "integration_quality": "GOOD"
+    },
+    {
+      "finding": "Security #1 – supply chain bypass (`curl | bash`, base64 decode→exec)",
+      "valid": true,
+      "integration_quality": "GOOD"
+    },
+    {
+      "finding": "Security #2 – ghost access via MCP destructive verbs (mcp__github__pr_delete, mcp__vercel__deploy, etc.)",
+      "valid": true,
+      "integration_quality": "GOOD"
+    },
+    {
+      "finding": "Security #3 – guardrail bypass (python -c, perl -e, node -e)",
+      "valid": true,
+      "integration_quality": "GOOD"
+    },
+    {
+      "finding": "Hallucination #1 – predictable JSON handoff (Mnemos would include assumed facts, not verified)",
+      "valid": true,
+      "integration_quality": "PARTIAL"
+    },
+    {
+      "finding": "Hallucination #2 – `/verify` slash command can be gamed (scoped to command success, not semantic truth)",
+      "valid": true,
+      "integration_quality": "PARTIAL"
+    },
+    {
+      "finding": "Hallucination #3 – script source for T3.x generators may hallucinate output",
+      "valid": true,
+      "integration_quality": "PARTIAL"
+    },
+    {
+      "finding": "Hard‑rule edge #1 – R1 clause on embedding model check (`text-embedding-3-small` vs claude‑mem model)",
+      "valid": true,
+      "integration_quality": "PARTIAL"
+    },
+    {
+      "finding": "Hard‑rule edge #2 – T2.2 Playwright MCP binary path (version pin)",
+      "valid": true,
+      "integration_quality": "GOOD"
+    },
+    {
+      "finding": "Anti‑fragility #1 – disk space check PRE safety backup in G3",
+      "valid": true,
+      "integration_quality": "GOOD"
+    },
+    {
+      "finding": "Anti‑fragility #2 – G3 rollback must reset submodules and clean ignored paths",
+      "valid": true,
+      "integration_quality": "GOOD"
+    },
+    {
+      "finding": "New spec T‑2: executor state manifest (persistent JSON tracker across compactions)",
+      "valid": true,
+      "integration_quality": "GOOD"
+    },
+    {
+      "finding": "New spec G0: external state rollback (Postgres roles, Keychain, MCP registry, npm globals)",
+      "valid": true,
+      "integration_quality": "GOOD"
+    }
+  ],
+  "validation_of_gpt55_findings": [
+    {
+      "finding": "B1: T‑1 SQLite quiesce – use `.backup` command for atomic snapshot, not raw `tar` of WAL‑mode DB",
+      "valid": true,
+      "integration_quality": "GOOD"
+    },
+    {
+      "finding": "B2: T‑1 extended backup scope – inventory external state (Keychain, LaunchAgents, npm, MCP registry) for rollback",
+      "valid": true,
+      "integration_quality": "GOOD"
+    },
+    {
+      "finding": "B3: T1.2 guardrails missing SQL destructive patterns (UPDATE, DELETE, INSERT, TRUNCATE without TABLE), MultiEdit tool, and cURL‑pipe‑to‑shell bypass",
+      "valid": true,
+      "integration_quality": "GOOD"
+    },
+    {
+      "finding": "B4: T3.2 Postgres MCP password leak – never export `PGPASSWORD` globally; use a scoped wrapper that fetches from Keychain per invocation",
+      "valid": true,
+      "integration_quality": "GOOD"
+    },
+    {
+      "finding": "B5: T2.5 Mnemos anti‑hallucination – parse structured `tool_use`/`tool_result` pairs from JSONL, check `exit_code`; separate `attempted_commands` from `successful_commands`",
+      "valid": true,
+      "integration_quality": "GOOD"
+    },
+    {
+      "finding": "Code review #1 – `set -euo pipefail` was missing `-e` in T-1 and G3",
+      "valid": true,
+      "integration_quality": "GOOD"
+    },
+    {
+      "finding": "Code review #2 – `pipefail` missing, causing tar errors to be swallowed",
+      "valid": true,
+      "integration_quality": "GOOD"
+    }
+  ],
+  "new_issues_post_integration": [
+    {
+      "id": "NI-1",
+      "description": "G3 rollback does not restore the SQLite snapshot to the live `memory.db`. T-1 now backs up a snapshot file (`.claude/memory.db.snapshot-${DATE}`) instead of the raw DB, but G3 merely extracts the backup tarball without later copying the snapshot over the live `memory.db`. Consequently a full rollback leaves the old (possibly corrupt) live DB unchanged.",
+      "severity": "BLOCKER",
+      "recommendation": "Add a step in G3 Phase 4 (after tar extraction) to copy the snapshot to the real path: `cp .claude/memory.db.snapshot-* .claude/memory.db`."
+    },
+    {
+      "id": "NI-2",
+      "description": "T-1 backup `tar` command is missing `--ignore-missing` (or equivalent). The script runs with `set -euo pipefail`, and several listed paths (`~/.claude/state/`, certain LaunchAgent plists, `~/.config/nuzantara/`, etc.) may not exist at backup time. This will cause the entire T-1 backup to fail early, potentially blocking all subsequent waves.",
+      "severity": "BLOCKER",
+      "recommendation": "Add `--no-error-if-missing` / `--ignore-failed-read` flag (macOS `tar` uses `--no-recursion` but better to wrap in a loop that collects existing files) or explicitly allow missing files with a pre-check."
+    },
+    {
+      "id": "NI-3",
+      "description": "T3.2 post‑integration fallback for storing the read‑only password: `security add-generic-password … -w \"$PG_PASSWORD_RO\"` would expose the generated password as a command‑line argument in `ps` output. The spec itself documents this fallback, but the integration should either remove it or strictly avoid it.",
+      "severity": "MAJOR",
+      "recommendation": "Remove the fallback entirely; the‑stdin method (`-w -`) is sufficient on modern macOS. If a fallback is truly necessary, wrap in a Python helper that calls Security.framework."
+    }
+  ],
+  "regressions_from_fixes": [
+    {
+      "id": "R-1",
+      "description": "The T-1 backup script now attempts to back up several extended‑scope paths (e.g., `~/.claude/state/`, `~/.zshenv`, `~/.config/nuzantara/`) that may not exist or may contain sensitive data. While the extended scope itself is a good addition (from GPT-5.5 B2), the script does not gracefully handle missing files, which breaks the bullet‑proof pre‑execution backup assumption.",
+      "related_new_issue": "NI-2"
+    }
+  ],
+  "missing_still": [
+    "G3 rollback must explicitly restore the SQLite snapshot to the live DB path (NI-1).",
+    "T-1 backup must tolerate missing files to avoid failing the entire pre‑execution step (NI-2).",
+    "The password fallback in T3.2 should be eliminated to avoid process‑listing exposure (NI-3).",
+    "G1 gate currently only checks nuzantara‑rag health; after Wave 2 it should be expanded to verify the other MCP servers that were installed (postgres, github, vercel) to match the full spec scope."
+  ],
+  "verdict_final": "NEEDS_MORE_FIXES",
+  "honest_admission": "In my first‑pass DeepSeek review I identified 3 blockers and 12 concerns, but I completely missed: (a) the SQLite WAL safety issue when rolling back the memory database; (b) the necessity of an executor state manifest to survive context compaction; (c) the external state rollback dimension (Postgres roles, Keychain, MCP registry); (d) the late placement of T2.5 which would let compaction destroy executor state before Wave 2; (e) the hard‑coded secret‑in‑plist anti‑pattern in G4; (f) the missing guardrail patterns for MultiEdit and advanced SQL statements; (g) the subtle tar failure mode due to missing files; and (h) the password exposure via process arguments in T3.2. Gemini and GPT-5.5 each caught critical classes of bugs that I overlooked, and their fixes have been integrated mostly correctly, but a few new regressions (notably the snapshot restoration gap and backup fragility) were introduced during integration."
+}

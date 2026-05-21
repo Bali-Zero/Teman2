@@ -1,0 +1,118 @@
+{
+  "blockers": [
+    {
+      "spec": "T1.2",
+      "issue": "Guardrails hook only applies to Bash tool calls (matcher: Bash). Autonomous Ops L2 enables Claude to use MCP tools (GitHub, Vercel, Postgres, etc.) that can perform destructive actions (PR merge, deploy, DB writes) without guardrails. This creates a critical security gap.",
+      "fix": "Extend guardrails to cover MCP tool calls, or add a separate PreToolUse hook for MCP tools that checks tool_input for destructive operations. Alternatively, restrict tool availability in subagent whitelists."
+    },
+    {
+      "spec": "T3.2",
+      "issue": "Postgres MCP read-only enforcement is not configured. The spec assumes read-only but doesn't set up a read-only user or connection parameter. The test to verify DROP TABLE rejection may not catch misconfiguration if the MCP server doesn't enforce it.",
+      "fix": "Explicitly create a read-only Postgres role with limited permissions, use that in the MCP config, and add a programmatic verification step that runs a 'DROP TABLE' attempt and confirms failure before marking the server active."
+    },
+    {
+      "spec": "T3.1",
+      "issue": "P0 critical fix (nuzantara-mcp DNS) is placed in Tier 3 after many Tier 1/2 changes, even though nuzantara-mcp is the primary MCP with 115+ tools. While it doesn't block earlier specs technically, any P0 should be triaged immediately to avoid compounding issues.",
+      "fix": "Move T3.1 to Tier 0 (after T0.1) as part of the critical bugfix wave, or at minimum add a validation check in all Tier 1/2 specs to ensure they don't inadvertently rely on nuzantara-mcp being reachable."
+    }
+  ],
+  "high_concerns": [
+    {
+      "spec": "T1.2",
+      "issue": "Guardrails only covers Bash; MCP tools and file writes (Write/Edit) can still execute destructive operations outside the hook's scope, violating the principle of deterministic enforcement gates."
+    },
+    {
+      "spec": "R3",
+      "issue": "LiteLLM gateway verification plan is manual and depends on operator correctly interpreting usage dashboards. Any misstep could lead to pay-per-token billing, violating the HARD RULE of Anthropic API ban. Even with the prerequisite gate, the risk of misconfiguration is high."
+    },
+    {
+      "spec": "T2.7",
+      "issue": "Effort estimate for refactoring CLAUDE.md from 29.6KB to 8KB (60-90 min) is optimistic. This involves manual content migration, cross-reference validation, and testing across multiple apps. Realistic effort is 2-3 hours."
+    },
+    {
+      "spec": "Global",
+      "issue": "No pre-execution global backup is planned. Each spec has individual rollbacks, but no snapshot of the entire environment (hooks, settings, MCP configs, CLAUDE.md, memory) before starting the waves. A global backup is critical for disaster recovery."
+    },
+    {
+      "spec": "Global",
+      "issue": "No explicit validation gate between waves to measure that the orchestration regression is actually improving. The plan relies on empirical observation in future sessions, but no A/B metric plan is included."
+    },
+    {
+      "spec": "T3.2",
+      "issue": "Postgres MCP could expose database passwords if misconfigured, given the recent password leak incident (cicatrix 2026-05-21). The spec uses env var, but doesn't verify that the MCP server doesn't log connection strings."
+    }
+  ],
+  "medium_concerns": [
+    {
+      "spec": "T0.1",
+      "issue": "Orphan triage deletion step is based on a manually curated list without a pre-execution diff or dry-run. A mistake in the classification script could delete valuable memory files. Backup exists, but immediate rollback is cumbersome."
+    },
+    {
+      "spec": "T3.4",
+      "issue": "The /verify slash command relies on Claude to faithfully report command output, but there's no programmatic hook ensuring the command was actually executed. This is a weak link in anti-hallucination defense."
+    },
+    {
+      "spec": "T3.3",
+      "issue": "Lane aggregator subagents are declared read-only in their support files, but there's no programmatic enforcement of tool restrictions. A subagent could execute write operations if the orchestrator provides those tools."
+    },
+    {
+      "spec": "T2.7",
+      "issue": "CLAUDE.md refactoring in Tier 2 may not incorporate new capabilities added in Tier 3 (e.g., custom slash commands, new lane aggregators, session start consolidation), leading to outdated root documentation until manually updated later."
+    },
+    {
+      "spec": "R4",
+      "issue": "Agent teams pilot has a hallucination detection gate, but the gate's reliability is unproven. The prior incident (2026-05-12/13) showed that multi-agent synthesis can produce convincing fabrications that pass manual inspection."
+    },
+    {
+      "spec": "T3.5",
+      "issue": "Consolidating SessionStart from 13 to 6 hooks is beneficial, but the spec lacks a formal comparison checklist to ensure no critical information is lost during compression."
+    }
+  ],
+  "missing_specs": [
+    {
+      "name": "PRE-FIX-GLOBAL-BACKUP",
+      "rationale": "Create a full snapshot of all config files, hooks, settings, memory files, and MCP JSONs before starting any implementation. This ensures a single rollback point if the orchestration fix introduces new regressions."
+    },
+    {
+      "name": "POST-FIX-VALIDATION-SUITE",
+      "rationale": "Define a set of empirical tests to run after each wave (or at the end) to confirm that orchestration decay has been reduced (subagent dispatch rate >0 in sessions >500 lines, Nuzantara MCP reachable, no new orphan files, etc.)."
+    },
+    {
+      "name": "GLOBAL-ROLLBACK",
+      "rationale": "A unified rollback procedure that reverses all changes across all waves if the overall regression fix fails, instead of requiring manual per-spec rollbacks."
+    },
+    {
+      "name": "CONTINUOUS-MONITORING",
+      "rationale": "A lightweight check (cron or hook) that periodically assesses orchestration health: subagent dispatch ratios, MCP reachability, and memory file integrity over the following week."
+    },
+    {
+      "name": "GUARDRAILS-MCP-EXTENSION",
+      "rationale": "Extend the guardrails hook or create a separate one for MCP tool calls, covering destructive operations through MCP servers (GitHub PR write, Vercel deploy, Postgres DB modification)."
+    }
+  ],
+  "sequencing_fixes": [
+    {
+      "current_order": "T3.1 is in Tier 3 (dopo T1.x e T2.x)",
+      "should_be": "Move T3.1 to Tier 0 alongside T0.1 as a critical P0 bugfix, since nuzantara-mcp is the primary MCP and its DNS failure blocks all 115 tools. If not moved, add a pre-condition check in all Tier 1/2 specs to confirm nuzantara-mcp is not needed, or temporarily remove it from active MCPs until fixed."
+    }
+  ],
+  "effort_revisions": [
+    {
+      "spec": "T2.7",
+      "current": "60-90 min",
+      "actual": "120-180 min (includes manual migration, cross-reference verification for 24+ app directories, content restructuring, and testing SessionStart context reduction)"
+    },
+    {
+      "spec": "T2.5",
+      "current": "30 min",
+      "actual": "45-60 min (writing a robust Python hook that parses transcripts and extracts state reliably, plus mock testing with realistic JSONL data, is non-trivial)"
+    }
+  ],
+  "kill_recommendations": [
+    {
+      "spec": "R3",
+      "reason": "Given the HARD RULE against Anthropic API usage, the LiteLLM gateway carries inherent risk of accidental pay-per-token billing even with the prerequisite verification. The verification manual step can be misinterpreted or skipped. Unless an automated test can confirm OAuth quota retention with zero false positive possibility, this spec should be killed or downgraded to a DOCUMENT-ONLY evaluation of feasibility without any actual installation."
+    }
+  ],
+  "overall_verdict": "APPROVE_WITH_FIXES"
+}
