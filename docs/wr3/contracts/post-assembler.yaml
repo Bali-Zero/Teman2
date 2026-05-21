@@ -53,7 +53,7 @@ outputs:
   - name: manifest
     kind: file
     sink: "apps/war-room/output/episode/<slug>/episode_manifest.json"
-    schema_ref: "episode_manifest.schema.json"
+    schema_ref: "episode_manifest.schema.json (18 fields + target_duration_s integer in [60,150] mirrored from brief.json; duration_s actual master length, must be within ±2s of target_duration_s after ffmpeg trim)"
 
 emits: []
 

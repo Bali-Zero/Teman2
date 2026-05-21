@@ -30,29 +30,32 @@ inputs:
     source: "wr3_episode_brief_requested"
     required: true
     schema_ref: "topic+audience+mode"
+  - name: companion_payload
+    kind: channel_payload
+    source: "wr2_episode_published"
+    required: false
+    schema_ref: "wr2-handoff (slug+slides_count+hero+claim_ids+domain+audience+brief_path+slides_path)"
 
 outputs:
   - name: fanout_dispatch
     kind: channel_emit
     sink: "wr3_episode_pre_render_ready"
     schema_ref: "free-form"
-  - name: staged_emit
-    kind: channel_emit
-    sink: "wr3_episode_staged"
-    schema_ref: "{slug, drive_url, telegram_msg_id}"
   - name: supervisor_log
     kind: file
     sink: "~/.cell-observatory/wr3/design-architect.jsonl"
     schema_ref: "free-form"
+  - name: companion_output
+    kind: file
+    sink: "apps/war-room/output/companion/<wr2_slug>-<sub_mode>/"
+    schema_ref: "free-form"
 
 emits:
   - wr3_episode_pre_render_ready
-  - wr3_episode_staged # final pipeline emit after critic PASS + Drive staging + Telegram P0
 
 consumes:
   - wr3_episode_brief_requested
-  - wr3_episode_critic_verdict # router-routed: PASS → staged, FAIL → retry lane dispatch
-  - wr3_episode_staged # router self-route: triggers Drive staging + Telegram P0 handler
+  - wr2_episode_published
 
 failure_modes:
   - code: hard_fail
