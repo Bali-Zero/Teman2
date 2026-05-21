@@ -9,19 +9,20 @@
 | Machine | User             | Hostname      | Role                            |
 | ------- | ---------------- | ------------- | ------------------------------- |
 | **Pro** | `nuzantara`      | `Nuzantara`   | Server H24 + Dev (48GB, M4 Pro) |
-| **Air** | `antonellosiano` | `Nuzantara-9` | Server H24 (16GB, M4)           |
+| **Mini** | `nuzantara`     | `mini-pro2`   | Server H24 + automation         |
 
 **At every session start, run:**
 
 ```bash
 echo "Machine: $(whoami)@$(hostname)" && \
-OTHER=$(if [ "$(whoami)" = "nuzantara" ]; then echo "air"; else echo "pro"; fi) && \
-ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null || echo "Peer: UNREACHABLE"
+HOST=$(hostname | tr '[:upper:]' '[:lower:]') && \
+case "$HOST" in nuzantara) OTHER=mini ;; mini-pro2) OTHER=pro ;; *) OTHER="" ;; esac && \
+if [ -z "$OTHER" ]; then echo "Peer: UNKNOWN_HOST($HOST)"; else ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null || echo "Peer: UNREACHABLE"; fi
 ```
 
-- `whoami` = `nuzantara` → **Pro** · `whoami` = `antonellosiano` → **Air**
-- Always prefix first response with "[Pro]" or "[Air]"
-- SSH: `ssh air` / `ssh pro` (mDNS). Details: `docs/PRO_AIR_CONNECTION.md`
+- `hostname` = `Nuzantara` → **Pro** · `hostname` = `mini-pro2` → **Mini**
+- Always prefix first response with "[Pro]" or "[Mini]"
+- SSH: `ssh mini` / `ssh pro` via Tailscale aliases. mDNS is not assumed reliable across subnets.
 
 ---
 
@@ -407,8 +408,8 @@ reference: [`docs/oss-injections-2026-04-26.md`](docs/oss-injections-2026-04-26.
 
 ### Federation Protocol
 
-- Escalation: Air → `shared/escalations.json` → Pro reads at session start
-- Git sync: post-commit hook. Pro→Air auto-pull. Air→Pro push. GitHub: only Pro→origin.
+- Escalation: Mini/Pro per-machine JSONL files under `shared/` until the legacy `air` filename is retired.
+- Git sync: verify live at session start. Pro↔Mini may be hook-assisted, but parity is never presumed. GitHub: only Pro→origin unless explicitly directed.
 - CLAUDE.md: IDENTICAL on both — git-tracked
 
 ## 13. Anthropic API — Quick Reference
@@ -437,11 +438,10 @@ thinking={"type": "adaptive"}, output_config={"effort": "medium"}  # NOT budget_
 
 ### Virtualenv
 
-- **Air:** `venv` (NOT `.venv`) — `apps/backend-rag/venv/bin/python`
-- **Pro:** `.venv` — verify with `ls apps/backend-rag/ | grep venv`
-- **pip on Air:** `/Users/antonellosiano/.pyenv/shims/python3 -m pip`
+- **Pro and Mini:** `.venv` — verify with `ls apps/backend-rag/ | grep venv`
+- Never use system Python for backend work.
 
-### Drive Polling (Air only)
+### Drive Polling (Mini/Pro local automation only)
 
 - Cron every 5min (`scripts/drive_poll_cron.sh`). **NOT on Fly.io** (auto_stop loses page_token)
 - `page_token` in `system_settings` table — loss = full re-scan
@@ -525,7 +525,7 @@ Reference: [`docs/oss-injections-2026-04-26.md`](docs/oss-injections-2026-04-26.
 
 Company ✅ · Visa ✅ · Property ✅ · Tax ✅
 
-### Cron Air
+### Cron Mini
 
 | Job               | Schedule     | Script                               |
 | ----------------- | ------------ | ------------------------------------ |

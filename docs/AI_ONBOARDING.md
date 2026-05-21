@@ -17,12 +17,13 @@
 
 ```bash
 echo "Machine: $(whoami)@$(hostname)" && \
-OTHER=$(if [ "$(whoami)" = "nuzantara" ]; then echo "air"; else echo "pro"; fi) && \
-ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null || echo "Peer: UNREACHABLE"
+HOST=$(hostname | tr '[:upper:]' '[:lower:]') && \
+case "$HOST" in nuzantara) OTHER=mini ;; mini-pro2) OTHER=pro ;; *) OTHER="" ;; esac && \
+if [ -z "$OTHER" ]; then echo "Peer: UNKNOWN_HOST($HOST)"; else ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null || echo "Peer: UNREACHABLE"; fi
 ```
 
-- `nuzantara@Nuzantara` → **Pro** (48GB, dev) | `antonellosiano@Nuzantara-9` → **Air** (16GB, server H24)
-- Always prefix first response with **[Pro]** or **[Air]**
+- `nuzantara@Nuzantara` → **Pro** (48GB, dev) | `nuzantara@mini-pro2` → **Mini** (server H24 + automation)
+- Always prefix first response with **[Pro]** or **[Mini]**
 
 **2. Verify backend works:**
 

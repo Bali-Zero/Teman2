@@ -9,41 +9,41 @@ Two machines exist on the local network:
 | Machine | User             | Hostname      | Role                       |
 | ------- | ---------------- | ------------- | -------------------------- |
 | **Pro** | `nuzantara`      | `Nuzantara`   | Development (48GB, M4 Pro) |
-| **Air** | `antonellosiano` | `Nuzantara-9` | Server H24 (16GB, M4)      |
+| **Mini** | `nuzantara`     | `mini-pro2`   | Server H24 / automation    |
 
 **At every session start, run this check:**
 
 ```bash
 echo "Machine: $(whoami)@$(hostname)" && \
-OTHER=$(if [ "$(whoami)" = "nuzantara" ]; then echo "air"; else echo "pro"; fi) && \
-ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null || echo "Peer: UNREACHABLE" && \
+HOST=$(hostname | tr '[:upper:]' '[:lower:]') && \
+case "$HOST" in nuzantara) OTHER=mini ;; mini-pro2) OTHER=pro ;; *) OTHER="" ;; esac && \
+if [ -z "$OTHER" ]; then echo "Peer: UNKNOWN_HOST($HOST)"; else ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null || echo "Peer: UNREACHABLE"; fi && \
 LOCAL_HEAD=$(git log --oneline -1 2>/dev/null) && \
-REMOTE_HEAD=$(ssh -o ConnectTimeout=3 $OTHER 'cd ~/Desktop/projects/nuzantara 2>/dev/null || cd ~/Desktop/nuzantara 2>/dev/null; git log --oneline -1' 2>/dev/null) && \
-if [ "$LOCAL_HEAD" = "$REMOTE_HEAD" ]; then echo "Git sync: OK ($LOCAL_HEAD)"; else echo "Git sync: OUT OF SYNC! Local=$LOCAL_HEAD Remote=$REMOTE_HEAD"; fi
+REMOTE_HEAD=$(if [ -n "$OTHER" ]; then ssh -o ConnectTimeout=3 $OTHER 'cd ~/Desktop/nuzantara 2>/dev/null || cd ~/Desktop/projects/nuzantara 2>/dev/null; git log --oneline -1' 2>/dev/null; fi) && \
+if [ -z "$OTHER" ]; then echo "Git sync: UNKNOWN (unrecognized host: $HOST)"; elif [ "$LOCAL_HEAD" = "$REMOTE_HEAD" ]; then echo "Git sync: OK ($LOCAL_HEAD)"; else echo "Git sync: OUT OF SYNC! Local=$LOCAL_HEAD Remote=$REMOTE_HEAD"; fi
 ```
 
 This tells you:
 
-- `whoami` = `nuzantara` → you are on **Pro**
-- `whoami` = `antonellosiano` → you are on **Air**
+- `hostname` = `Nuzantara` → you are on **Pro**
+- `hostname` = `mini-pro2` → you are on **Mini**
 - Whether the other machine is reachable via SSH
 - Whether both repos are on the same commit
 
-**Always prefix your first response with which machine you're on**, e.g. "[Pro]" or "[Air]".
+**Always prefix your first response with which machine you're on**, e.g. "[Pro]" or "[Mini]".
 If the peer is unreachable or out of sync, **warn the user immediately**.
 
-**SSH between machines:** `ssh air` (from Pro) / `ssh pro` (from Air) — uses mDNS, works on any WiFi.
-See `docs/PRO_AIR_CONNECTION.md` for full details.
+**SSH between machines:** `ssh mini` (from Pro) / `ssh pro` (from Mini). Prefer the SSH aliases because Tailscale is more reliable than mDNS across subnets. Trust the live command above and `~/.ssh/config` before legacy connection docs.
 
-### Git Sync Architecture (updated 2026-03-28)
+### Git Sync Architecture (updated 2026-05-21)
 
-Both machines work on `main` branch only. Sync is **automatic** via husky post-commit hooks:
+Both machines work on `main` branch only. Sync must be verified live at session start; do not infer parity from previous runs or from hook intent.
 
-- **Pro commits** → Air auto-pulls (`git pull pro main --ff-only`)
-- **Air commits** → Air auto-pushes to Pro (`git push pro main`)
+- **Pro commits** → Mini should fast-forward from Pro when sync hooks run.
+- **Mini commits** → Pro should fast-forward from Mini when sync hooks run.
 - **GitHub** is updated by Pro only via `git push origin main`
 
-**Never** create an `air` branch. **Never** push from Air to `origin`. Log: `~/.openclaw/logs/git-sync.log`.
+**Never** create machine-specific peer branches such as `air` or `mini`; this branch rule is separate from legacy filenames like `shared/escalations_air.jsonl`. **Never** push from Mini to `origin` unless explicitly requested. Log: `~/.openclaw/logs/git-sync.log`.
 
 ---
 
@@ -117,7 +117,7 @@ Both machines work on `main` branch only. Sync is **automatic** via husky post-c
 
 ```bash
 # Activate virtualenv
-source venv/bin/activate  # or: . venv/bin/activate
+source .venv/bin/activate  # or: . .venv/bin/activate
 
 # Run backend locally
 cd apps/backend-rag
@@ -181,7 +181,7 @@ apps/backend-rag/
 │   ├── llm/              # LLM clients (Gemini, Ollama, OpenRouter)
 │   └── migrations/       # Alembic (up to 060)
 ├── tests/                # 419 test files
-├── .venv/                # ⚠️ ALWAYS .venv on Pro, venv on Air
+├── .venv/                # ⚠️ ALWAYS .venv on Pro and Mini
 └── fly.toml
 ```
 

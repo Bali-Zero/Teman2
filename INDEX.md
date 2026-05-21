@@ -7,16 +7,16 @@
 
 ## Cosa cerchi?
 
-| Bisogno                                       | Dove guardare                                                      | Come                                          |
-| --------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------- |
-| Perché fare X?                                | [SYMBIOSIS.md](SYMBIOSIS.md)                                       | Filosofia, "prima di toccare"                 |
-| Come fare X?                                  | [VADEMECUM.md](VADEMECUM.md)                                       | Checklist operativa per ogni tipo di elemento |
-| Dove vive X?                                  | Questa pagina, sezione "Organi" sotto                              | Mappa statica top-level                       |
-| Metriche live (count routers/servizi/vector)? | [CLAUDE.md](CLAUDE.md) §Tech Stack                                 | Auto-sincronizzate via `docs_sync.py`         |
-| Dettagli tecnici di un'app?                   | `apps/<nome>/README.md` o `apps/<nome>/CLAUDE.md`                  | File locali all'app                           |
-| Quando X è stato fatto?                       | `git log` + MOS (`~/.claude/scripts/mem query "X"`)                | Git + memoria persistente                     |
-| Policy AI dispatch / federazione?             | [docs/AI_DISPATCH_REFERENCE.md](docs/AI_DISPATCH_REFERENCE.md)     | Dispatch, fallback, timeout                   |
-| Cicatrici / bug ricorrenti?                   | [.claude/rules/cicatrix-scars.md](.claude/rules/cicatrix-scars.md) | Trauma + antibody per file chiave             |
+| Bisogno                                       | Dove guardare                                                      | Come                                                 |
+| --------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------- |
+| Perché fare X?                                | [SYMBIOSIS.md](SYMBIOSIS.md)                                       | Filosofia, "prima di toccare"                        |
+| Come fare X?                                  | [VADEMECUM.md](VADEMECUM.md)                                       | Checklist operativa per ogni tipo di elemento        |
+| Dove vive X?                                  | Questa pagina, sezione "Organi" sotto                              | Mappa statica top-level                              |
+| Metriche live (count routers/servizi/vector)? | [CLAUDE.md](CLAUDE.md) §Tech Stack                                 | Auto-sincronizzate via `docs_sync.py`                |
+| Dettagli tecnici di un'app?                   | `apps/<nome>/README.md` o `apps/<nome>/CLAUDE.md`                  | File locali all'app                                  |
+| Quando X è stato fatto?                       | `git log` + MOS (`~/.claude/scripts/mem query "X"`)                | Git + memoria persistente                            |
+| Policy AI dispatch / federazione?             | [docs/AI_DISPATCH_REFERENCE.md](docs/AI_DISPATCH_REFERENCE.md)     | Dispatch, fallback, timeout                          |
+| Cicatrici / bug ricorrenti?                   | [.claude/rules/cicatrix-scars.md](.claude/rules/cicatrix-scars.md) | Trauma + antibody per file chiave                    |
 | Stato della documentazione (live/stale)?      | [docs/DOCS_INVENTORY.md](docs/DOCS_INVENTORY.md)                   | Auto-generato, refresh settimanale via docs-guardian |
 
 ## Organi principali (top of mind)
@@ -37,7 +37,7 @@
 ### Intelligence
 
 - **`apps/evaluator/`** — Core Guardian V3/V5 (auto-calibration), NLM deep research (10 pipelines NB-1..10).
-- **`apps/federation/`** — A2A protocol multi-agent. Pro↔Air.
+- **`apps/federation/`** — A2A protocol multi-agent. Pro↔Mini.
 - **`packages/core/`** — BZ design tokens, BZLogo, libraries condivise.
 
 ### MCP
@@ -74,7 +74,7 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 ### Filesystem state
 
 - `~/.agent/decisions/` — agent state, DLQ, escalation
-- `shared/escalations_pro.jsonl`, `shared/escalations_air.jsonl` — federation bus
+- `shared/escalations_pro.jsonl`, `shared/escalations_air.jsonl` — federation bus (`air` filename is legacy until scripts are migrated)
 - `apps/evaluator/nlm_deep_research/*_state.json` — NB pipelines state
 
 ### GitHub
@@ -89,15 +89,15 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 - **02:10-02:50 WITA** NLM NB-2..10 pipeline (Mon-Sat)
 - **21:30/22:00 WITA** gap_scanner + freshness_monitor
 - **every 3h** Core Guardian
-- **every 5min** log-anomaly-detector, drive-poll (Air), sentinel
+- **every 5min** log-anomaly-detector, drive-poll (local automation host), sentinel
 - **Dettagli completi:** `docs/AUTOMATIONS_REFERENCE.md` + `scripts/automation_catalog.json`
 
 ## Machine & env
 
 - **Pro** (`nuzantara@Nuzantara`, M4 Pro 48GB): Dev + Server H24. Venv `.venv` in `apps/backend-rag/`.
-- **Air** (`antonellosiano@Nuzantara-9`, M4 16GB): Server H24. Venv `venv` (non `.venv`).
-- SSH: `ssh pro` / `ssh air` via mDNS.
-- Git sync: post-commit hook Pro→Air auto-pull. GitHub: only Pro→origin.
+- **Mini** (`nuzantara@mini-pro2`): Server H24 + automation. Venv `.venv` in `apps/backend-rag/`.
+- SSH: `ssh pro` / `ssh mini` via Tailscale aliases. mDNS is not assumed reliable across subnets.
+- Git sync: verify live at session start. GitHub: only Pro→origin unless explicitly directed.
 
 ## 5 Libri sacri — 5 funzioni cognitive
 
