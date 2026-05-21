@@ -5,6 +5,46 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ℹ️ INFO: Wave 3 partial — T3.3 lane aggregators SHIPPED, T3.2 Postgres MCP BLOCKED at pre-flight (2026-05-22)
+
+_Discovered: 2026-05-22 04:35 WITA during T3.2 pre-flight execution · Severity: INFO (mixed wave: 1 ship + 1 deferred-to-operator) · Status: T3.3 commit, T3.2 unresolved_
+
+**TRAUMA / Discovery (3-fold):**
+
+1. **T3.3 ship clean**: 4 new lane aggregator subagent files (backend-verifier, frontend-browser, mcp-health, spalla-review) written to `~/.claude/agents/` (mode 0644). Each has `tools:` whitelist + `disallowedTools: [Edit, Write, MultiEdit, NotebookEdit]` (post-devils-advocate medium finding H2 fix to align with `devils-advocate` agent pattern — denylist is the actual enforcement mechanism, not whitelist-only). Memory `reference_lane_aggregators_2026_05_22.md` + MEMORY.md line 33 entry. 6 lane aggregators now total (Explore existing + 4 NEW + nb-curator existing).
+
+2. **T3.2 BLOCKED at pre-flight**: Empirical verification revealed multiple infra prerequisites not met:
+   - `DATABASE_URL` env points to `nuzantara-postgres.flycast` (Fly internal DNS, unreachable from Pro local)
+   - `DATABASE_URL_LOCAL` in `apps/backend-rag/.env` points to `localhost:5432/nuzantara` BUT brew `postgresql@18` NOT running + DB `nuzantara` doesn't exist
+   - fly-pg-proxy ALIVE on `localhost:15432` (PID 72582) BUT extracting password from `DATABASE_URL` and connecting fails: `FATAL: password authentication failed for user "backend_rag_v2"`. Password likely stale post-2026-05-21 cicatrix P0 SECURITY rotation (still "OPEN — awaiting decision" per scar)
+   - Qdrant local Docker NOT running, cloud `QDRANT_API_KEY` env absent
+   
+   Result: T3.2 cannot create `nuzantara_readonly` role + install Postgres MCP without operator decision (3 options A/B/C in unresolved memory).
+
+3. **Devils-advocate gate findings (medium, in-band fixed)**: Original 4 agent files had `tools:` whitelist but NO `disallowedTools:` denylist. Empirical comparison with existing `devils-advocate` agent showed `disallowedTools` is the documented enforcement pattern in this stack. Patched 4 files to add explicit Edit/Write denylist. Plus dead-link fix in memory (referenced `[[karpathy-discipline]]` which lives in `~/.claude/skills/`, not `~/.claude/projects/.../memory/` — patched to absolute path).
+
+**ANTIBODY (shipped):**
+
+1. **T3.3 4 agent files** + `disallowedTools` denylist + memory + MEMORY.md update.
+2. **T3.2 unresolved memory** `unresolved_t3_2_postgres_mcp_blocked_2026_05_22.md` (3949 bytes) catalogs empirical pre-flight state, 3 root-cause hypotheses, 3 recovery options (A=touch PROD with valid admin password, B=setup local mirror with snapshot restore, C=defer indefinitely). Operator must choose A/B/C next session.
+3. **Pre-flight pattern reinforced**: T3.2 spec was 902 lines with 5 iterations of fix (iter-5 hex password generation, FIX 2 SHA-256 verify file). All this Spec engineering was downstream of the assumption that "psql to localhost:15432 works with $DATABASE_URL password". Empirical pre-flight took ~3 min, saved ~45 min of attempting a doomed install path. **Reinforces feedback rule**: ALWAYS empirical pre-flight before spec-described install workflow, even for "battle-tested" specs.
+
+**GOTCHA:**
+
+- `claude mcp list ✗ Failed to connect` is not the only stale-signal class — env vars (`DATABASE_URL`, `QDRANT_API_KEY`) can also be stale post-rotation. Empirical test BEFORE trusting any env-derived credential. T3.2 password was 15 chars in env vs presumed-current — would have failed silently mid-install otherwise.
+- Agent file `tools:` whitelist is the **declaration** (helpful for the model's self-routing), `disallowedTools:` is the **enforcement** boundary (per `devils-advocate` agent pattern). Both should be specified for read-only-intent agents. Anthropic harness behavior on `tools:` whitelist enforcement empirically unverified — `disallowedTools:` is the safer assumption.
+- T3.2 spec iter-5 hex password generation + FIX 2 SHA-256 verify file would have been useful WORK if pre-flight had passed. Engineering investment in iter-2/3/4/5 was correct given spec assumption but downstream of false premise (DB reachable + admin creds available). Spec authors should add a "Step 0 pre-flight" gate to all infra-touch specs.
+- Wave 3 was scoped "T3.3 + T3.2 entrambi" but the partial-ship pattern (1 yes + 1 deferred-with-clear-handoff) is acceptable per Symbiosis Law 5 (Zero come ultima istanza) — operator decision-gate is correct posture, NOT engineering shortcoming.
+
+**Reference**: 
+- T3.3 spec `research/operations/specs/T3.3-6-named-subagent-lanes.md` (411 lines)
+- T3.2 spec `research/operations/specs/T3.2-postgres-qdrant-mcp.md` (902 lines, iter-5)
+- `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/unresolved_t3_2_postgres_mcp_blocked_2026_05_22.md`
+- `~/.claude/projects/-Users-nuzantara-Desktop-nuzantara/memory/reference_lane_aggregators_2026_05_22.md`
+- cicatrix scar 2026-05-21 P0 SECURITY (postgres password leak, decision status OPEN)
+
+---
+
 ### ⚠️ STRUCTURAL: WR3 supervisor `_reconcile_unconsumed` swallowed connection-closed → zombie process, KeepAlive blind (2026-05-22)
 
 _Discovered: 2026-05-22 03:14 WITA during `/verify` of `com.balizero.wr3.supervisor` LaunchAgent · Severity: P0 (silent operational degradation) · Status: **PATCHED on branch `fix/wr3-supervisor-reconnect-2026-05-22`**, 39/39 supervisor+outbox+contracts tests PASS, 81/81 WR3 broad regression PASS_
