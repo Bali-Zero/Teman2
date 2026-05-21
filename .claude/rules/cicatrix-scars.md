@@ -5,6 +5,46 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: WR3 supervisor `_reconcile_unconsumed` swallowed connection-closed → zombie process, KeepAlive blind (2026-05-22)
+
+_Discovered: 2026-05-22 03:14 WITA during `/verify` of `com.balizero.wr3.supervisor` LaunchAgent · Severity: P0 (silent operational degradation) · Status: **PATCHED on branch `fix/wr3-supervisor-reconnect-2026-05-22`**, 39/39 supervisor+outbox+contracts tests PASS, 81/81 WR3 broad regression PASS_
+
+**TRAUMA:** `com.balizero.wr3.supervisor` PID 25068 was alive in launchctl for 3h09m (etime 03:09:29) but `lsof -p 25068 | grep TCP` returned **empty** — zero PG sockets open. The process had successfully connected at boot 2026-05-22 00:03:54, then the TCP connection died, and the supervisor became a zombie:
+
+- `_reconcile_unconsumed` (`scripts/wr3_supervisor.py:465-485`) called `conn.fetch(...)` on dead conn → asyncpg raised `InterfaceError("connection is closed")` → the bare `except Exception` SWALLOWED the error with a `print + return`
+- inner `while not stop_event.is_set()` loop continued running on the dead conn
+- `queue.get()` with timeout=5s kept returning `TimeoutError` forever (no NOTIFY arriving on dead conn)
+- outer `except Exception` (line 460) — the reconnect path — was NEVER reached
+- 16 identical stderr lines `[wr3-supervisor] reconcile query failed: connection is closed` accumulated over ~3h, one per reconcile cycle (every 300s)
+- KeepAlive=true monitored only OS process state, not PG socket health → no respawn
+
+Compounding observability bug: stdout was 4KB block-buffered on the launchd pipe. Operators tailing `~/Library/Logs/wr3-supervisor.log` saw NO activity (no startup messages of subsequent connections, no routed events) until SIGTERM forced a flush. Pattern matches scar 2026-04-29 (Backend `/health` masks `app.state.startup_failed`) — "up but broken silently".
+
+The "supervisor LaunchAgent live" claim of commit `56d311225` (PR #818) held on cold start (initial NOTIFY routing works end-to-end, verified via synthetic probe) but failed on continuous operation: first PG socket drop turned the daemon into a zombie until external `launchctl kickstart -k` or reboot.
+
+**ANTIBODY (shipped on `fix/wr3-supervisor-reconnect-2026-05-22`):** 5-layer hybrid validated by 3-LLM panel (Gemini 3.1 Pro + Codex GPT-5.5 + DeepSeek V4 Pro) + DeepSeek V4 Pro red-team gate. See `/tmp/wr3-supervisor-fix-panel/SYNTHESIS-v2-AMENDED.md` for full strategy ranking.
+
+1. **L1 stdout fix**: `sys.stdout.reconfigure(line_buffering=True)` + plist `PYTHONUNBUFFERED=1` env (defense-in-depth). Operators see startup + routing decisions in real time.
+2. **L2 re-raise on connection-fatal**: new `_ReconnectRequired(RuntimeError)` control-flow signal + `_is_connection_fatal()` classifier (matches `asyncpg.InterfaceError` and `ConnectionDoesNotExistError`). `_reconcile_unconsumed` now classifies — non-fatal errors (e.g. `PostgresSyntaxError`) still swallowed + logged; fatal errors propagate to outer loop's reconnect path.
+3. **L3 termination listener + sentinel**: `conn.add_termination_listener` registers an `_on_terminate` callback that sets a per-iteration `dead_event` + enqueues `("__dead__", "")` into a per-iteration `session_queue`. Inner loop checks the sentinel after every `queue.get()` and raises `_ReconnectRequired`. **Closures pin via default args** (`def _on_terminate(_conn, *, _q=session_queue, _de=dead_event)`) — defeats Python closure-over-loop-variable trap that DeepSeek red-team flagged as P0-B.
+4. **L4 heartbeat**: new `_heartbeat(conn, timeout=2.0)` issues `await asyncio.wait_for(conn.fetchval("SELECT 1"), timeout=2.0)` every 30s. Catches half-open TCP (where termination listener may not fire because the OS hasn't surfaced the dropped connection). Conservative: any failure (timeout, InterfaceError, even unexpected return value) raises `_ReconnectRequired`.
+5. **L5 outer catch + exponential backoff**: dedicated `except _ReconnectRequired` branch closes conn explicitly before reconnect (releases asyncpg callback references), backoff sequence `2s → 4s → 8s → 16s → 30s (cap)`, resets to 0 on successful event.
+
+Tests: 7 new in `scripts/tests/test_wr3_supervisor_reconnect.py` covering L2 (reconcile re-raises on InterfaceError, ConnectionDoesNotExistError; swallows PostgresSyntaxError), L4 (heartbeat passes/fails/timeout/unexpected-return), L3 closure-pinning empirical guardrail. 1 amended in `test_wr3_outbox_replay.py` for contract update (non-fatal swallow path now requires explicit `is_closed=False` mock).
+
+**GOTCHA:**
+
+- **DeepSeek red-team P0-A was a false positive empirically refuted.** It claimed `conn.execute("SELECT 1")` raises because "execute is for DML/DDL". Empirical test against pg-proxy: `await conn.execute('SELECT 1')` returns the command-tag string `'SELECT 1'` with no exception. Heartbeat could have used `execute` but uses `fetchval` for clarity (returns value 1, lets us validate round-trip).
+- **DeepSeek red-team P0-B was confirmed real.** Python closures bind by NAME, not VALUE. Without default-arg pinning, all callbacks defined inside the outer reconnect-loop would reference the SAME (last-iteration's) `dead_event` and `queue` variable names. After a reconnect, an old `_on_terminate` (if asyncpg still held a reference, even briefly) would set the NEW dead_event → spurious reconnect storm. Default args `*, _q=session_queue, _de=dead_event` snapshot the value at definition time, NOT at call time.
+- **launchd KeepAlive is process-liveness, not service-liveness.** A Python process with `asyncio.run` blocked on `queue.get()` looks alive to launchd indefinitely. Add `add_termination_listener` for explicit-disconnect cases + heartbeat for half-open cases — both, not either-or.
+- **Don't use `getattr(conn, "is_closed", lambda: False)()`** even though it's "defensive". On a generic `AsyncMock` (in tests) `conn.is_closed` is itself a MagicMock that returns a truthy MagicMock — mis-classifies every error as connection-fatal. Use `callable(getattr(...)) and is_closed_fn()` pattern, and in tests set `MagicMock(return_value=False)` explicitly.
+- **Stdout buffering is 4KB on a pipe.** 14 startup lines (~600B) + 1 routed event line (~80B) takes ~50 routed events to fill. In dry_run with no production events, hours. `python3 -u`, `PYTHONUNBUFFERED=1`, OR `sys.stdout.reconfigure(line_buffering=True)` all work — ship all three (cheap insurance).
+- Panel + red-team gate process: original SYNTHESIS had `asyncio.wait_for(conn.execute("SELECT 1"), ...)` (Gemini's strategy 1) — survived initial 3-LLM consensus, caught + amended at red-team gate. Cross-LLM divergence at gate-time prevented shipping the false-positive trap.
+
+**Reference**: `/tmp/wr3-supervisor-fix-panel/` (brief.md, gemini-response.md, codex-response.md, deepseek-response.md, SYNTHESIS-v2-AMENDED.md, redteam-deepseek.md), PR #819, test file `scripts/tests/test_wr3_supervisor_reconnect.py`.
+
+---
+
 ### ℹ️ INFO: `claude mcp list` Status field is stale — only real test is empirical tool call (2026-05-22)
 
 _Discovered: 2026-05-22 03:48 WITA during Wave 2 MCP install · Severity: INFO (recurring false-positive pattern, by design) · Status: documented_
