@@ -255,6 +255,10 @@ async def list_interactions(
     if pool:
         db_pool = pool
 
+    # FIX: Resolve Depends/Query objects when called directly (not via HTTP)
+    if not isinstance(current_user, dict):
+        current_user = None
+
     # If called directly, we might not have current_user, but we have user_id
     if user_id and not current_user:
         user_email = user_id.lower()
@@ -262,8 +266,8 @@ async def list_interactions(
         # settings.admin_emails_set + CRM extras) rather than a hardcoded list.
         user_is_admin = is_crm_admin({"email": user_email})
     else:
-        user_email = (current_user.get("email") or "").lower()
-        user_is_admin = is_crm_admin(current_user)
+        user_email = (current_user.get("email") or "").lower() if current_user else ""
+        user_is_admin = is_crm_admin(current_user) if current_user else False
     try:
         async with db_pool.acquire() as conn:
             # Build query dynamically with explicit columns
@@ -487,6 +491,10 @@ async def get_interactions_stats(
     # Use provided pool if called directly
     if pool:
         db_pool = pool
+
+    # FIX: Resolve Depends/Query objects when called directly (not via HTTP)
+    if not isinstance(current_user, dict):
+        current_user = None
 
     # If called directly from dashboard_summary, user_id is passed as the first positional arg (team_member)
     # or as a keyword arg. We prioritize it if provided.
