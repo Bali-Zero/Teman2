@@ -78,9 +78,12 @@ rules:
   # (the right target when the api machine is hung).
   # Cell emits the event via emit_sustained_red() in cell_core/observatory.py
   # ONCE per sustained-red window (idempotency flag resets on first non-red).
+  # W31 (2026-05-23): action changed fly_machines_start → fly_machines_restart
+  # because live production test showed fly_machines_start is no-op on
+  # already-running machines (STARTED but UNHEALTHY outage class).
   - id: cell_sustained_red_restart
     match: { kind: cell_pulse_sustained_red, payload.consecutive_gte: 3 }
-    action: { actuator: fly_machines_start, params: { app: "{payload.app}" } }
+    action: { actuator: fly_machines_restart, params: { app: "{payload.app}" } }
     confidence: 0.90
 
   # Fly machine stopped (not "scheduled stop") → auto-restart.
