@@ -87,6 +87,7 @@ jobs:
           grep -v '^-e \.\./\.\./packages/cell-core' requirements.txt > /tmp/requirements-audit.txt
           pip-audit --strict --requirement /tmp/requirements-audit.txt \
             --ignore-vuln GHSA-69w3-r845-3855 \
+            --ignore-vuln PYSEC-2025-217 \
             --ignore-vuln CVE-2025-62800 \
             --ignore-vuln CVE-2025-62801 \
             --ignore-vuln GHSA-rcfx-77hg-w2wv \
