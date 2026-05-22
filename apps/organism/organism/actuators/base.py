@@ -20,6 +20,7 @@ from pathlib import Path
 
 from organism.emit import emit_event
 from organism.schemas import Severity
+from organism.supervisor import incident_ledger
 
 
 log = logging.getLogger(__name__)
@@ -54,6 +55,18 @@ class ActuatorBase(abc.ABC):
                 )
             except Exception:
                 log.exception("emit done event failed (non-fatal)")
+            # W37: durable ledger UPDATE — best-effort.
+            if not dry_run:
+                try:
+                    await incident_ledger.record_outcome(
+                        correlation_id=correlation_id,
+                        actuator=self.name,
+                        outcome="done",
+                    )
+                except Exception:
+                    log.exception(
+                        "incident_ledger.record_outcome(done) raised (non-fatal)",
+                    )
             return {"success": True, **result}
         except Exception as exc:
             try:
@@ -67,6 +80,19 @@ class ActuatorBase(abc.ABC):
                 )
             except Exception:
                 log.exception("emit failed event failed (non-fatal)")
+            # W37: durable ledger UPDATE — best-effort.
+            if not dry_run:
+                try:
+                    await incident_ledger.record_outcome(
+                        correlation_id=correlation_id,
+                        actuator=self.name,
+                        outcome="failed",
+                        error=str(exc)[:500],
+                    )
+                except Exception:
+                    log.exception(
+                        "incident_ledger.record_outcome(failed) raised (non-fatal)",
+                    )
             return {"success": False, "error": str(exc)}
 
     @abc.abstractmethod
