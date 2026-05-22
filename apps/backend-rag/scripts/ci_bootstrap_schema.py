@@ -304,7 +304,23 @@ def main() -> int:
             )
             """,
         ))
-    print("[bootstrap] legacy tables ensured in DB (user_profiles, conversations, lkpm_reports, system_settings, notification_log, notification_prefs, war_room_drafts)")
+        # bridge_outbox: created by legacy Python migration 107.
+        # Required by db/migrations_v2/192_bridge_outbox_jsonb_double_encoding_repair.sql
+        conn.execute(text(
+            """
+            CREATE TABLE IF NOT EXISTS bridge_outbox (
+                id         BIGSERIAL PRIMARY KEY,
+                type       VARCHAR(100) NOT NULL,
+                payload    JSONB NOT NULL,
+                created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+            )
+            """,
+        ))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_outbox_id ON bridge_outbox (id)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_outbox_type ON bridge_outbox (type)"))
+        conn.execute(text("CREATE INDEX IF NOT EXISTS idx_outbox_created_at ON bridge_outbox (created_at)"))
+
+    print("[bootstrap] legacy tables ensured in DB (user_profiles, conversations, lkpm_reports, system_settings, notification_log, notification_prefs, war_room_drafts, bridge_outbox)")
 
     # Register stub Tables so SQLAlchemy's FK resolver finds the targets.
     # Must live in the SAME MetaData the SQLModel classes use, otherwise
