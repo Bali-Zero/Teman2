@@ -85,10 +85,12 @@ LOG = logging.getLogger("crm_guardian.cli_worker")
 # Phase 1.5 prompt is the new default (Phase 1 v2 is metadata-only; v3 adds
 # the OCR-content blocks + identity-guardrail). The legacy v2 file is kept
 # on disk for rollback drills.
-DEFAULT_PROMPT_FILE = BACKEND_RAG / "backend/services/crm_guardian/prompts/L1_extraction_v3.md"
+DEFAULT_PROMPT_FILE = BACKEND_RAG / "backend/services/crm_guardian/prompts/L1_extraction_v4.md"
+LEGACY_V3_PROMPT_FILE = BACKEND_RAG / "backend/services/crm_guardian/prompts/L1_extraction_v3.md"
 LEGACY_PROMPT_FILE = BACKEND_RAG / "backend/services/crm_guardian/prompts/L1_extraction_v2.md"
 PROMPT_VERSION_V2 = "L1_extraction_v2"  # legacy, kept for old queue rows
 PROMPT_VERSION_V3 = "L1_extraction_v3"
+PROMPT_VERSION_V4 = "L1_extraction_v4"  # 2026-05-23: anti-chat-mode header
 
 RAW_DUMP_DIR = Path.home() / ".crm_guardian" / "raw_dumps_cli"
 RAW_DUMP_DIR.mkdir(parents=True, exist_ok=True)
@@ -798,8 +800,34 @@ def call_gemini_cli(
 JSON_FENCE_RE = re.compile(r"```json\s*(\{.*?\})\s*```", re.DOTALL)
 
 
+_CHAT_MODE_PREFIXES = (
+    "ciao", "salve", "buongiorno", "buonasera",
+    "hello", "hi ", "hi,", "hey", "greetings",
+    "i have received", "ho ricevuto", "got it",
+)
+
+
+def _looks_like_chat_response(text: str) -> bool:
+    """2026-05-23: Gemini in OAuth personal sometimes ignores prompt and chats.
+    Detects short conversational replies that lack JSON. Returns True if the
+    response is < 600 bytes AND starts with a chat greeting AND has no fence."""
+    if len(text) > 600:
+        return False
+    head = text.lstrip()[:80].lower()
+    if not any(head.startswith(p) for p in _CHAT_MODE_PREFIXES):
+        return False
+    return "```json" not in text and "{" not in text
+
+
 def extract_json_block(text: str) -> dict[str, Any] | None:
     """Extract ```json fenced block, fallback to largest balanced {...}."""
+    if _looks_like_chat_response(text):
+        LOG.warning(
+            "chat_mode_response detected (len=%d, head=%r) — Gemini ignored prompt",
+            len(text), text.lstrip()[:80],
+        )
+        return None
+
     m = JSON_FENCE_RE.search(text)
     if m:
         try:
@@ -949,12 +977,15 @@ async def run_one_client(
 
     payload = extract_json_block(response_text)
     if payload is None:
+        # 2026-05-23: distinguish chat-mode (short greeting) from genuine parse fail
+        is_chat = _looks_like_chat_response(response_text)
+        err_msg = "chat_mode_response (Gemini ignored JSON-only instruction)" if is_chat else "no JSON block in response"
         await queue_mark_terminal(conn, queue_id, "error",
-                                    last_error="no JSON block in response",
+                                    last_error=err_msg,
                                     raw_response_path=str(response_dump))
         return {
             "client_id": client_id, "status": "error",
-            "error": "no JSON block", "raw_dump": str(response_dump),
+            "error": err_msg, "raw_dump": str(response_dump),
         }
 
     # Enrich with server-known metadata
