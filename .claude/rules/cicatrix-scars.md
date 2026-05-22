@@ -5,6 +5,54 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### 🚨 CRITICAL: Pro<->Mini Redis split-brain — producers writing to different hosts, consumers reading one (2026-05-22)
+
+_Discovered: 2026-05-22 11:35 WITA during W16 survey post-W15 ship · Severity: P1 · Status: **DIAGNOSTIC SHIPPED (W16 detector)**, root-cause fix DEFERRED (architectural decision needed)_
+
+**TRAUMA:** Survey of why W15 cap-gate hadn't fired in production logs revealed nlm-feeder cron has been running with `processed=0, fed=0, skipped=0` for hours despite `garuda:enriched` lag=2942. Investigation traced root cause to **producer/consumer Redis host mismatch**:
+
+- **Pro Redis (127.0.0.1)**: hosts intel_scraper + ner-1 + classifier-1 workers (no `GARUDA_REDIS_HOST` env = localhost). 4337 enriched entries, last write 2026-05-22 11:38.
+- **Mini Redis (100.93.236.6)**: hosts sentinel.daily worker. 1145 enriched entries, last write 2026-05-22 02:01 (~9.5h ago).
+- **nlm-feeder cron (on Pro)** has `GARUDA_REDIS_HOST=100.93.236.6` per W11 cicatrix (2026-05-06) → reads **only Mini Redis**. Misses 4337 items accumulating on Pro Redis.
+
+Worse for `garuda:alerts`: **Pro Redis stale by 210h (~9 days)**. Pro hasn't received an alert since 2026-05-13. The W10 lag monitor (which probes only the single GARUDA_REDIS_HOST-configured host) shows lag normally — but only for Mini, where lag is genuinely low because sentinel.daily isn't producing new items.
+
+This is a recurrence-mutation of the 2026-05-06 cicatrix ("NLM feeder split-brain"): that scar was fixed by adding the GARUDA_REDIS_HOST env, but the architecture assumption (producers + consumers on same host via env) silently broke when intel_scraper kept writing to localhost while sentinel writes to Mini. No alert fired because no health check compared the two hosts.
+
+**ANTIBODY (diagnostic-only, root-cause fix deferred):**
+
+1. **`apps/mata-garuda/scripts/check_redis_split_brain.py`** (~110 lines, stdlib-only): probes 3 streams (`garuda:raw`, `garuda:enriched`, `garuda:alerts`) on both Pro + Mini. Compares `last-generated-id` timestamps. Emits WARNING JSON to stderr (matches W10 lag-monitor format) when drift > 1h. Exits 1 if split-brain detected, 0 if both in sync OR one host unreachable.
+
+2. **Live empirical output 2026-05-22 11:35 WITA**:
+   ```json
+   {"level":"WARNING","tag":"redis-split-brain","stream":"garuda:enriched","stale_host":"mini","fresh_host":"pro","drift_h":9.6,"stale_length":1145,"fresh_length":4337}
+   {"level":"WARNING","tag":"redis-split-brain","stream":"garuda:alerts","stale_host":"pro","fresh_host":"mini","drift_h":210.1,"stale_length":290,"fresh_length":250}
+   ```
+
+3. **7 unit tests** in `test_check_redis_split_brain.py`: constants, XINFO STREAM parsing, missing-stream + unreachable handling, alert-emission when drift > threshold, silence when in sync OR one host unreachable. **7/7 PASS** in 0.03s.
+
+4. **Cross-tree sync** (W9 lesson): script mirrored to main tree at `~/Desktop/nuzantara/apps/mata-garuda/scripts/`.
+
+**Root-cause fix DEFERRED to Antonello decision**:
+
+- **Option A** (operational, low-risk): add second nlm-feeder LaunchAgent on Pro that reads **Pro Redis** (unset GARUDA_REDIS_HOST). Both feeders run independently; each Redis has its own `nlm_feeder` consumer group. Solves intel_scraper-on-Pro path but doubles cron count.
+- **Option B** (centralize): kill sentinel.daily on Mini, move it to Pro. Single Redis on Pro. Loses Mini's role as a quiet long-running worker host.
+- **Option C** (replicate): Redis MASTER/REPLICA Pro→Mini (or vice versa). Eliminates split-brain at the cost of one-way data flow constraints + Redis 7 configuration work.
+- **Option D** (status quo + monitoring): keep split-brain by design, wire W16 detector into hourly cron alert. Operator manually decides when intel_scraper items need to be fed.
+
+W17 candidate: implement chosen option after Antonello sign-off.
+
+**GOTCHA:**
+
+- **W10 lag monitor blind spot**: only probes ONE host (the configured GARUDA_REDIS_HOST). Until split-brain detector is wired to cron, this scar will resurface every time a producer is added or moved.
+- **`garuda:alerts` Pro stale by 9 days** is not a fresh regression — it's been festering since ~2026-05-13. Pro hasn't been receiving alerts (scorer-on-Pro must have stopped writing to Pro's alerts stream long ago, or the regulation_alert_agent that writes to alerts was moved to Mini). Out of scope for W16 detector; needs producer audit.
+- **Consumer-group split is by Redis instance**: `nlm_feeder` group on Pro Redis has its own offset/PEL separate from `nlm_feeder` group on Mini Redis. No race even if Option A's two-feeder approach is chosen. But: if a future Option C (replication) is taken, group state must be migrated or reset.
+- **Pro Redis garuda:enriched at 4337 entries growing** + nlm_feeder lag 2942 = real backlog. Even with W15 cap-gate skipping ai_research items, the other domains (immigration_visa, intel_scraper press items) would have flowed if a Pro-reading consumer existed. Production NLM has been missing ~hundreds of recent items.
+
+**Reference**: `research/operations/2026-05-22-redis-split-brain-detector.md` (next commit). Will keep open as W16/W17 decision point for Antonello.
+
+---
+
 ### ⚠️ STRUCTURAL: `_nlm_add_url`/`_nlm_add_text` waste cycles on at-cap NB + swallow rejection stderr (2026-05-22)
 
 _Discovered: 2026-05-22 10:50 WITA during W15 survey post-W14 ship · Severity: P2 · Status: **FIXED via cap-gate + stderr-surface in nlm_feeder W15 patch**_
