@@ -5,6 +5,63 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: W27 — Cell organism deaf during 36-min Fly api outage + Organism phantom event kind (2026-05-23)
+
+_Discovered: 2026-05-23 03:00 WITA W27 loop iteration · Severity: P1 (silent monitoring failure during real outage) · Status: **PHASE 1 FIXED** (Telegram enabled + dedup 30min, empirical smoke green); **PHASE 2 DEFERRED** (architectural decision needed across 3 packages)_
+
+**TRAUMA:** During the 36-min Fly api machine outage 2026-05-23 02:14-02:50 WITA (root cause W26: Fly DNS i/o timeout), the Cell organism on Pro correctly detected `health=red` and recorded 22 panic episodes in episodic memory. But:
+
+1. **`CELL_ALERT_TELEGRAM_ENABLED=false`** → no Telegram dispatch to Antonello
+2. Cell's autonomous `THINK→ACT` loop chose `scale_up` action (PatternIndex match) which is useless when the machine is unreachable
+3. The Organism daemon ON Pro receives all `cell_pulse_observed` events but routes EVERY pulse to `dispatch_outcome: deferred_defer_actuator`, `actuator: defer_to_human` — empirically confirmed in `~/logs/organism/decisions.jsonl`
+4. No operator notification, no auto-remediation, no escalation. Discovered ~12h after recovery by accident during W27 audit.
+
+**Root cause of Organism not acting**: `apps/organism/organism/rules/base.yaml:75-79` rule `cell_sustained_red_restart` matches `kind: cell_pulse_sustained_red` + `payload.consecutive_gte: 5` — but this event kind is **never emitted by Cell**. PHANTOM event kind. Rule has existed for ~6 months and never fired. Cell emits `cell_pulse_observed` (different kind name).
+
+Compounding: `yaml_rules.py:80-98` matcher engine supports `payload.<field>_gte` ONLY on flat dict keys — does NOT support nested paths like `payload.pulse_result.classifier_self`. So even fixing the kind mismatch wouldn't unlock the existing data.
+
+Pattern match: W18 (Cell daemon silent dead 5 days). Sophisticated sensory + cortex layer that **records and decides but external alert is gated by 1 env var that nobody flipped**.
+
+**ANTIBODY (Phase 1, SHIPPED 03:34 WITA):**
+
+1. `apps/cell/.env`: `CELL_ALERT_TELEGRAM_ENABLED=true` + `CELL_ALERT_DEDUP_WINDOW_MIN=30`. Backup `.env.pre-w27-2026-05-23`.
+2. `launchctl bootout + bootstrap` Cell daemon
+3. **Empirical smoke** post-restart: Pulse #1 health=yellow → PatternIndex hit → `scale_up` (confidence=0.95) → FlyEffector "Already at 2 machines, no action" → **Telegram alert FIRED** ("✅ *SCALE_UP*..." in chat 1125336968) → Episode #34721 stored → Critic LLM expectation #14656 registered
+
+Phase 1 alone solves the monitoring blindness that was the proximate W27 discovery. Cell now alerts Antonello within 60s of any red-tier (with 30min dedup to avoid storms).
+
+**ANTIBODY (Phase 2, DEFERRED) — 3-LLM panel verdict + 3 implementation paths:**
+
+3-LLM panel (Codex + Gemini + DeepSeek) ran at 03:05 WITA on `/tmp/w27-spec.md`. Convergent verdicts:
+
+- All 3: Telegram MUST fire on red-tier (current state P1)
+- All 3: Action whitelist = ONLY `fly machine restart` for hardcoded machine ID (no dynamic command)
+- All 3: ≥3 consecutive red pulses before any action
+- All 3: Kill switch env var + L3 Telegram fires on time-based trigger (15min sustained red)
+- All 3: NO blanket-pause operator writes
+- Divergent: new `apps/remediator` daemon (Codex/Gemini) vs in-Cell restart fn (DeepSeek)
+
+Phase 2 implementation attempt at 03:30 WITA (Cell streak counter + emit + yaml rule) was reverted as **functionally incomplete**: `cell_core/observatory.emit_pulse_observed()` hardcodes channel name `cell_pulse_observed`, so my new event would still route as the same kind. 3 paths require Antonello decision:
+
+- **Path A** (extend observatory.py + new PG channel + bridge + rule, 4 files cross-package, ~30min)
+- **Path B** (Cell XADD directly to Redis `organism:events` stream, simpler but breaks Symbiosis Law 3 durabilità)
+- **Path C** (fix yaml_rules matcher to support nested payload paths + stateful streak counter in matcher)
+
+Reference: `research/operations/2026-05-23-w27-cell-autoheal-panel.md` (full panel synthesis + paths).
+
+**GOTCHA:**
+
+- **Cell ALREADY has FlyEffector + LocalEffector + autonomous THINK→ACT loop**. The architecture is mostly built — it just lacks (a) Telegram (NOW fixed Phase 1) and (b) wiring for "restart unhealthy machine when http=red sustained" pattern. The action vocabulary covers `scale_up`, `restart_agent`, `ollama_restart`, `run_backup`, but NOT `restart_fly_machine` for a hung machine still in "started" state.
+- **Cell's `scale_up` action during outage is misleading**: confidence 0.95 PatternIndex match, but does nothing if target=N already. Cell consumed its action budget on a no-op while machine was hung.
+- **Linter / session-stop hook stashes uncommitted edits aggressively.** My Phase 2 pulse.py edits got auto-stashed as `session-stop sibling W27 pulse.py 2026-05-23T04:11`. Cross-tree gotcha: edited main tree (`feat/t2.7-claude-md-refactor-2026-05-23` branch) while working from worktree — sibling agent's session-stop hook intercepted. Lesson: for multi-file edits across packages, either (a) commit aggressively after every Edit, (b) work in worktree branch consistently, (c) set `STOP_VERIFY_ALLOW_DIRTY=1` for the session.
+- **The `cell_pulse_sustained_red` event kind in `base.yaml:75` is the SECOND phantom-feature in NB-automations** (W14 `stream_ack` was the first — silently swallowed XACK return value). Pattern: "we wrote the rule but never wired the emitter". Future cicatrix audit candidate: grep all yaml rule `kind:` values vs actual emitted event kinds.
+- Organism `decisions.jsonl` `dispatch_outcome: deferred_defer_actuator` for cell_pulse_observed events means the L0 yaml layer ran out of matching rules → fall-through to "defer to human". This is correct fallback behavior. Bug is the missing rule, not the fallback.
+- `pg-to-organism-bridge.py:178` sets `kind = channel` (literal channel name). So any new PG channel = new kind. Path A enables this; Path B/C don't need new channels.
+
+**Reference**: `research/operations/2026-05-23-w27-cell-autoheal-panel.md`. Panel artifacts at `/tmp/w27-{codex,deepseek,gemini}.md`. Backup at `apps/cell/.env.pre-w27-2026-05-23`.
+
+---
+
 ### ℹ️ INFO: W26 — pg-proxy 13:00-13:30 outage RCA = Fly DNS i/o timeout (platform, not code) (2026-05-23)
 
 _Discovered: 2026-05-23 02:50 WITA W26 loop close · Severity: INFO (platform incident, auto-recovered) · Status: no action needed_
