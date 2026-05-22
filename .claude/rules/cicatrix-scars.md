@@ -5,6 +5,43 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: W36 — outbox replay can re-fire stale-payload events past actuator guard (2026-05-23)
+
+_Discovered: 2026-05-23 W36 audit of W27 panel-deferred items · Severity: P2 (defense-in-depth on top of an existing row-level TTL; no observed production firings) · Status: **FIXED via payload-level TTL guard in `replay_unconsumed` + 19/19 tests PASS**_
+
+**TRAUMA:** The W27 + W31 + W33 Cell/Organism auto-heal chain wires `cell_pulse_observed` PG events through `scripts/pg-to-organism-bridge.py` → `organism:events` Redis stream → Organism supervisor → actuators (e.g. `fly_machines_restart` via rule `cell_sustained_red_restart` at `apps/organism/organism/rules/base.yaml:75-79`). The W27 panel listed "stale-event TTL on replay" as a deferred safety: after a reconnect, OLD events could re-fire and trigger actuators against machines whose RED-tier state has already recovered.
+
+Two-stage audit found:
+
+1. **`scripts/pg-to-organism-bridge.py` is LISTEN-only** — `grep -n "replay\|outbox"` returns ONE hit (a `payload.get("_outbox_id")` correlation-id read). No replay path, no TTL needed here.
+2. **`apps/backend-rag/backend/services/events/event_bus.py:376 _replay_outbox_on_reconnect`** calls `outbox.replay_unconsumed` on every reconnect for every `PG_CHANNEL_MAP` channel — including `cell_pulse_observed`. Each row gets dispatched back through `_handle_pg_event` (re-entering the live consumer chain) then acked.
+
+`outbox.replay_unconsumed` had a TTL but **only row-level** (`WHERE created_at > NOW() - INTERVAL '60 minutes'`). A row can be fresh (long-running PG transaction finally commits) while its in-payload `pulse_timestamp` is hours older. That's exactly the failure mode for `cell_pulse_observed` payloads, which carry `pulse_timestamp` in ms-since-epoch (per `packages/cell-core/cell_core/observatory.py:113`). The row-level TTL alone cannot catch this.
+
+Gap is real but narrow: no production firings observed yet — this is defense-in-depth before the Cell auto-heal chain processes high enough volume to surface the race in the wild.
+
+**ANTIBODY (shipped):**
+
+1. **`outbox.py` module-level constants**: `_DEFAULT_PAYLOAD_TTL_MIN = 60`, `_PAYLOAD_TTL_ENV_VAR = "BRIDGE_STALE_EVENT_TTL_MIN"`, `_PAYLOAD_TIMESTAMP_FIELDS = ("pulse_timestamp", "timestamp", "ts")`.
+2. **`_resolve_payload_ttl_minutes(explicit=None)`** — precedence: explicit arg > env > default. Malformed/negative env values log a WARNING and fall back to default (no silent disable via typo).
+3. **`_payload_timestamp_seconds(payload)`** — extracts first recognised field. Heuristic for unit detection: values > 1e12 → ms (1e12 ms is 2001-09-09; 1e12 s is year 33658 — safe boundary).
+4. **`_is_payload_stale(payload, ttl_minutes)`** — **open by default**: payloads without any recognised timestamp field return `False` (not stale). Closing-by-default would mass-drop legitimate channels (`practice_changed`, `client_changed`) with no pulse timestamp.
+5. **`replay_unconsumed` new kwarg `payload_ttl_minutes`**. Stale row → `dispatch_fn` NOT called + row acked with `consumer_id="<base>_stale_skip"` (stops re-firing on subsequent replays) + WARNING log surfaces `id`, `channel`, TTL. Skip counts toward returned `acked` ("rows removed from the unconsumed backlog").
+6. **Live (real-time) `_on_notification` path unchanged** — only replay is gated.
+7. **19 unit tests** in `backend/tests/services/events/test_outbox_stale_ttl.py`: env resolver (5), timestamp extractor (5), stale checker (4), `replay_unconsumed` integration including WARNING-log assertion (5). All PASS in 0.08s. Regression sweep on 4 existing outbox test files: 32 PASS + 6 SKIP unchanged.
+
+**GOTCHA:**
+
+- **Ack-on-skip is intentional, not a bug.** Alternative "drop without ack" would leave the row in the backlog → re-fire WARNING on every replay → operator alert fatigue. Alternative "DELETE the row" destroys audit trail. Chosen middle path: `consumed_at` records the stale-skip, `consumer_id = <base>_stale_skip` annotates it for post-mortem queries.
+- **Open-by-default on missing timestamps** means a future channel with a non-standard timestamp key won't benefit until added to `_PAYLOAD_TIMESTAMP_FIELDS`. Acceptable: row-level `created_at` is still in force.
+- **`event_bus.py:419` still passes `max_age_minutes=60` hardcoded** — could be wired to the same env var for parity. Deferred; the SQL WHERE clause is doing the right thing under normal conditions.
+- **Env var read on every replay call** (no caching). Acceptable: ~14 channels × per-reconnect-rate.
+- **Tests use mocked asyncpg connection (AsyncMock)** following the existing pattern in `test_outbox.py`. No live DB needed.
+
+**Reference**: source `apps/backend-rag/backend/services/events/outbox.py`, tests `apps/backend-rag/backend/tests/services/events/test_outbox_stale_ttl.py`, docs `research/operations/2026-05-23-w36-stale-event-ttl-guard.md`. Cross-ref: W27 panel synthesis listing this item as deferred.
+
+---
+
 ### ✅ RESOLVED: W34 — broader asyncpg.PostgresError audit + lint guard against W29/W32 silent-death pattern (2026-05-23)
 
 _Discovered: 2026-05-23 W32 closure mentioned "pattern coverage 2/2 known instances" — W34 audit found 3 more · Severity: P1 (latent silent-death traps in wr2_supervisor.py 3 sites) · Status: **FIXED on commit `cb32f8214`** — 5 sites patched + lint guard 11/11 tests PASS + live codebase green_
