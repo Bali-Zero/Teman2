@@ -201,3 +201,30 @@ END $$;
 
 COMMENT ON FUNCTION notify_wa_message_inserted() IS
   'Pointer-only payload (id + tuple keys). SSE worker SELECTs full row by ID. Avoids 8KB NOTIFY limit. wa_outbound_queued + wa_outbound_dispatched channels emitted explicitly by send endpoint / bridge worker (NOT via row trigger).';
+
+-- === ROLLBACK ===
+-- Reverses migration 193 (wa_dashboard_v1).
+-- Order: trigger → function → FTS index on existing table → new indexes → new tables.
+-- All operations use IF EXISTS for idempotency.
+-- Note: whatsapp_message_context table predates this migration (wa-mirror service).
+-- Only the trigger + FTS index added by 193 are dropped from it; the table stays.
+
+DROP TRIGGER IF EXISTS trg_wa_message_notify ON whatsapp_message_context;
+DROP FUNCTION IF EXISTS notify_wa_message_inserted();
+
+DROP INDEX IF EXISTS idx_wmc_body_fts;
+DROP INDEX IF EXISTS idx_woa_target_thread;
+DROP INDEX IF EXISTS idx_woa_target_msg;
+DROP INDEX IF EXISTS idx_woa_user_created;
+DROP INDEX IF EXISTS idx_wdt_last_message;
+DROP INDEX IF EXISTS idx_wdt_assigned_status;
+DROP INDEX IF EXISTS idx_woi_expires;
+DROP INDEX IF EXISTS idx_wdoq_created_by;
+DROP INDEX IF EXISTS idx_wdoq_team_scheduled;
+DROP INDEX IF EXISTS idx_tmpa_lookup;
+
+DROP TABLE IF EXISTS whatsapp_operator_actions;
+DROP TABLE IF EXISTS wa_dashboard_threads;
+DROP TABLE IF EXISTS wa_outbound_idempotency;
+DROP TABLE IF EXISTS wa_dashboard_outbound_queue;
+DROP TABLE IF EXISTS team_member_phone_authorizations;
