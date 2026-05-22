@@ -1,0 +1,603 @@
+{
+  "role_attrs": {
+    "rolname": "backend_rag_v2",
+    "rolsuper": true,
+    "rolinherit": true,
+    "rolcreaterole": false,
+    "rolcreatedb": false,
+    "rolcanlogin": true,
+    "rolreplication": false,
+    "rolbypassrls": false,
+    "rolconnlimit": -1,
+    "rolvaliduntil": null
+  },
+  "live_activity_sample": [
+    {
+      "datname": "nuzantara_rag",
+      "usename": "backend_rag_v2",
+      "application_name": "",
+      "state": "idle",
+      "query_start": "2026-05-22 23:40:49.458145+00:00",
+      "query": "SELECT pg_advisory_unlock_all();\nCLOSE ALL;\nUNLISTEN *;\nRESET ALL;"
+    },
+    {
+      "datname": "nuzantara_rag",
+      "usename": "backend_rag_v2",
+      "application_name": "",
+      "state": "idle",
+      "query_start": "2026-05-22 23:40:49.362769+00:00",
+      "query": "SELECT 1"
+    },
+    {
+      "datname": "nuzantara_rag",
+      "usename": "backend_rag_v2",
+      "application_name": "wa-mirror",
+      "state": "idle",
+      "query_start": "2026-05-22 23:40:46.509450+00:00",
+      "query": "UPDATE whatsapp_team_sessions\n       SET status = 'connected',\n           connected_at = COALESCE(connected_at, NOW()),\n           last_seen_at = NOW(),\n           disconnected_at = NULL,\n           d"
+    },
+    {
+      "datname": "nuzantara_rag",
+      "usename": "backend_rag_v2",
+      "application_name": "",
+      "state": "idle",
+      "query_start": "2026-05-22 23:40:44.293945+00:00",
+      "query": "SELECT pg_advisory_unlock_all();\nCLOSE ALL;\nUNLISTEN *;\nRESET ALL;"
+    },
+    {
+      "datname": "nuzantara_rag",
+      "usename": "backend_rag_v2",
+      "application_name": "",
+      "state": "idle",
+      "query_start": "2026-05-22 23:40:39.079890+00:00",
+      "query": "SELECT 1"
+    },
+    {
+      "datname": "nuzantara_rag",
+      "usename": "backend_rag_v2",
+      "application_name": "",
+      "state": "idle",
+      "query_start": "2026-05-22 23:40:38.961177+00:00",
+      "query": "SELECT 1"
+    },
+    {
+      "datname": "nuzantara_rag",
+      "usename": "backend_rag_v2",
+      "application_name": "",
+      "state": "idle",
+      "query_start": "2026-05-22 23:40:37.313609+00:00",
+      "query": "SELECT pg_advisory_unlock_all();\nCLOSE ALL;\nUNLISTEN *;\nRESET ALL;"
+    },
+    {
+      "datname": "nuzantara_rag",
+      "usename": "backend_rag_v2",
+      "application_name": "",
+      "state": "idle",
+      "query_start": "2026-05-22 23:40:37.117550+00:00",
+      "query": "SELECT pg_advisory_unlock_all();\nCLOSE ALL;\nUNLISTEN *;\nRESET ALL;"
+    },
+    {
+      "datname": "nuzantara_rag",
+      "usename": "backend_rag_v2",
+      "application_name": "",
+      "state": "idle",
+      "query_start": "2026-05-22 23:40:35.836634+00:00",
+      "query": "\n            SELECT id, channel, payload\n            FROM events_outbox\n            WHERE channel = ANY($1)\n              AND consumed_at IS NULL\n              AND created_at >= NOW() - INTERVAL '60 m"
+    },
+    {
+      "datname": "nuzantara_rag",
+      "usename": "backend_rag_v2",
+      "application_name": "",
+      "state": "idle",
+      "query_start": "2026-05-22 23:40:26.525885+00:00",
+      "query": "SELECT 1"
+    },
+    {
+      "datname": "nuzantara_rag",
+      "usename": "backend_rag_v2",
+      "application_name": "",
+      "state": "idle",
+      "query_start": "2026-05-22 23:40:02.899918+00:00",
+      "query": "SELECT pg_advisory_unlock_all();\nCLOSE ALL;\nUNLISTEN *;\nRESET ALL;"
+    },
+    {
+      "datname": "nuzantara_rag",
+      "usename": "backend_rag_v2",
+      "application_name": "",
+      "state": "idle",
+      "query_start": "2026-05-22 23:40:02.749065+00:00",
+      "query": "SELECT pg_advisory_unlock_all();\nCLOSE ALL;\nUNLISTEN *;\nRESET ALL;"
+    },
+    {
+      "datname": "nuzantara_rag",
+      "usename": "backend_rag_v2",
+      "application_name": "",
+      "state": "idle",
+      "query_start": "2026-05-22 23:40:00.695087+00:00",
+      "query": "\n        SELECT COUNT(*)\n          FROM war_room_drafts\n         WHERE status = 'rendered'\n           AND canva_applied_at > NOW() - $1::interval\n        "
+    },
+    {
+      "datname": "nuzantara_rag",
+      "usename": "backend_rag_v2",
+      "application_name": "",
+      "state": "idle",
+      "query_start": "2026-05-22 23:39:47.877263+00:00",
+      "query": "\n        SELECT file_id, modified_time_ms, content_hash, text_content,\n               text_length, extractor, confidence, page_count\n        FROM crm_guardian_file_content_cache\n        WHERE file_id "
+    },
+    {
+      "datname": "nuzantara_rag",
+      "usename": "backend_rag_v2",
+      "application_name": "",
+      "state": "idle",
+      "query_start": "2026-05-22 23:36:14.599912+00:00",
+      "query": "SELECT pg_advisory_unlock_all();\nCLOSE ALL;\nUNLISTEN *;\nRESET ALL;"
+    },
+    {
+      "datname": "nuzantara_rag",
+      "usename": "backend_rag_v2",
+      "application_name": "",
+      "state": "idle",
+      "query_start": "2026-05-22 23:31:38.925500+00:00",
+      "query": "LISTEN \"inbound_webhook_queued\""
+    }
+  ],
+  "extensions_owned_by_backend_rag_v2": [
+    {
+      "extname": "pg_trgm",
+      "extversion": "1.6",
+      "owner": "backend_rag_v2",
+      "schema": "public"
+    },
+    {
+      "extname": "postgis",
+      "extversion": "3.5.2",
+      "owner": "backend_rag_v2",
+      "schema": "public"
+    }
+  ],
+  "all_extensions": [
+    {
+      "extname": "pg_trgm",
+      "extversion": "1.6",
+      "owner": "backend_rag_v2"
+    },
+    {
+      "extname": "pgcrypto",
+      "extversion": "1.3",
+      "owner": "zantara_rag_user"
+    },
+    {
+      "extname": "plpgsql",
+      "extversion": "1.0",
+      "owner": "postgres"
+    },
+    {
+      "extname": "postgis",
+      "extversion": "3.5.2",
+      "owner": "backend_rag_v2"
+    },
+    {
+      "extname": "uuid-ossp",
+      "extversion": "1.1",
+      "owner": "zantara_rag_user"
+    }
+  ],
+  "tables_owned_by_backend_rag_v2": [
+    {
+      "schemaname": "public",
+      "table_count": 227
+    }
+  ],
+  "schemas": [
+    {
+      "nspname": "mata_garuda",
+      "owner": "backend_rag_v2"
+    },
+    {
+      "nspname": "public",
+      "owner": "pg_database_owner"
+    }
+  ],
+  "databases": [
+    {
+      "datname": "nuzantara_backend",
+      "owner": "postgres",
+      "encoding": "UTF8"
+    },
+    {
+      "datname": "nuzantara_memory",
+      "owner": "postgres",
+      "encoding": "UTF8"
+    },
+    {
+      "datname": "nuzantara_rag",
+      "owner": "postgres",
+      "encoding": "UTF8"
+    },
+    {
+      "datname": "postgres",
+      "owner": "postgres",
+      "encoding": "UTF8"
+    },
+    {
+      "datname": "repmgr",
+      "owner": "repmgr",
+      "encoding": "UTF8"
+    }
+  ],
+  "all_roles": [
+    {
+      "rolname": "backend_rag_v2",
+      "rolsuper": true,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": true,
+      "rolreplication": false
+    },
+    {
+      "rolname": "backend_ts_user",
+      "rolsuper": true,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": true,
+      "rolreplication": false
+    },
+    {
+      "rolname": "flypgadmin",
+      "rolsuper": true,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": true,
+      "rolreplication": false
+    },
+    {
+      "rolname": "nuzantara_memory",
+      "rolsuper": true,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": true,
+      "rolreplication": false
+    },
+    {
+      "rolname": "nuzantara_rag",
+      "rolsuper": true,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": true,
+      "rolreplication": false
+    },
+    {
+      "rolname": "nuzantara_readonly",
+      "rolsuper": false,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": true,
+      "rolreplication": false
+    },
+    {
+      "rolname": "pg_checkpoint",
+      "rolsuper": false,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": false,
+      "rolreplication": false
+    },
+    {
+      "rolname": "pg_create_subscription",
+      "rolsuper": false,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": false,
+      "rolreplication": false
+    },
+    {
+      "rolname": "pg_database_owner",
+      "rolsuper": false,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": false,
+      "rolreplication": false
+    },
+    {
+      "rolname": "pg_execute_server_program",
+      "rolsuper": false,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": false,
+      "rolreplication": false
+    },
+    {
+      "rolname": "pg_maintain",
+      "rolsuper": false,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": false,
+      "rolreplication": false
+    },
+    {
+      "rolname": "pg_monitor",
+      "rolsuper": false,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": false,
+      "rolreplication": false
+    },
+    {
+      "rolname": "pg_read_all_data",
+      "rolsuper": false,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": false,
+      "rolreplication": false
+    },
+    {
+      "rolname": "pg_read_all_settings",
+      "rolsuper": false,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": false,
+      "rolreplication": false
+    },
+    {
+      "rolname": "pg_read_all_stats",
+      "rolsuper": false,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": false,
+      "rolreplication": false
+    },
+    {
+      "rolname": "pg_read_server_files",
+      "rolsuper": false,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": false,
+      "rolreplication": false
+    },
+    {
+      "rolname": "pg_signal_backend",
+      "rolsuper": false,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": false,
+      "rolreplication": false
+    },
+    {
+      "rolname": "pg_stat_scan_tables",
+      "rolsuper": false,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": false,
+      "rolreplication": false
+    },
+    {
+      "rolname": "pg_use_reserved_connections",
+      "rolsuper": false,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": false,
+      "rolreplication": false
+    },
+    {
+      "rolname": "pg_write_all_data",
+      "rolsuper": false,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": false,
+      "rolreplication": false
+    },
+    {
+      "rolname": "pg_write_server_files",
+      "rolsuper": false,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": false,
+      "rolreplication": false
+    },
+    {
+      "rolname": "postgres",
+      "rolsuper": true,
+      "rolcreaterole": true,
+      "rolcreatedb": true,
+      "rolcanlogin": true,
+      "rolreplication": true
+    },
+    {
+      "rolname": "repmgr",
+      "rolsuper": true,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": true,
+      "rolreplication": false
+    },
+    {
+      "rolname": "zantara_rag_user",
+      "rolsuper": true,
+      "rolcreaterole": false,
+      "rolcreatedb": false,
+      "rolcanlogin": true,
+      "rolreplication": false
+    }
+  ],
+  "top_15_tables_by_size": [
+    {
+      "schemaname": "public",
+      "tablename": "kg_edges",
+      "size": "527 MB",
+      "size_bytes": 552935424
+    },
+    {
+      "schemaname": "public",
+      "tablename": "bali_zoning_layers",
+      "size": "376 MB",
+      "size_bytes": 394067968
+    },
+    {
+      "schemaname": "public",
+      "tablename": "api_audit_trail",
+      "size": "284 MB",
+      "size_bytes": 297967616
+    },
+    {
+      "schemaname": "public",
+      "tablename": "kg_nodes",
+      "size": "267 MB",
+      "size_bytes": 279756800
+    },
+    {
+      "schemaname": "public",
+      "tablename": "crm_audit_log",
+      "size": "52 MB",
+      "size_bytes": 54239232
+    },
+    {
+      "schemaname": "public",
+      "tablename": "kg_entity_mentions",
+      "size": "45 MB",
+      "size_bytes": 47136768
+    },
+    {
+      "schemaname": "public",
+      "tablename": "clients",
+      "size": "43 MB",
+      "size_bytes": 45187072
+    },
+    {
+      "schemaname": "public",
+      "tablename": "company_documents",
+      "size": "39 MB",
+      "size_bytes": 41123840
+    },
+    {
+      "schemaname": "public",
+      "tablename": "events_outbox",
+      "size": "38 MB",
+      "size_bytes": 40321024
+    },
+    {
+      "schemaname": "public",
+      "tablename": "kg_node_community",
+      "size": "24 MB",
+      "size_bytes": 25108480
+    },
+    {
+      "schemaname": "public",
+      "tablename": "crm_guardian_file_content_cache",
+      "size": "24 MB",
+      "size_bytes": 24952832
+    },
+    {
+      "schemaname": "public",
+      "tablename": "auth_audit_log",
+      "size": "23 MB",
+      "size_bytes": 24166400
+    },
+    {
+      "schemaname": "public",
+      "tablename": "parent_documents",
+      "size": "19 MB",
+      "size_bytes": 19595264
+    },
+    {
+      "schemaname": "public",
+      "tablename": "whatsapp_message_context",
+      "size": "17 MB",
+      "size_bytes": 18071552
+    },
+    {
+      "schemaname": "public",
+      "tablename": "workflow_analytics",
+      "size": "14 MB",
+      "size_bytes": 14786560
+    }
+  ],
+  "schema_object_counts": [
+    {
+      "schema": "mata_garuda",
+      "tables": 0,
+      "sequences": 0,
+      "views": 0
+    },
+    {
+      "schema": "public",
+      "tables": 239,
+      "sequences": 151,
+      "views": 21
+    }
+  ],
+  "existing_grants": [
+    {
+      "grantee": "PUBLIC",
+      "table_schema": "information_schema",
+      "privilege_type": "SELECT",
+      "cnt": 62
+    },
+    {
+      "grantee": "PUBLIC",
+      "table_schema": "pg_catalog",
+      "privilege_type": "SELECT",
+      "cnt": 128
+    },
+    {
+      "grantee": "PUBLIC",
+      "table_schema": "pg_catalog",
+      "privilege_type": "UPDATE",
+      "cnt": 1
+    },
+    {
+      "grantee": "PUBLIC",
+      "table_schema": "public",
+      "privilege_type": "SELECT",
+      "cnt": 3
+    },
+    {
+      "grantee": "backend_rag_v2",
+      "table_schema": "public",
+      "privilege_type": "DELETE",
+      "cnt": 244
+    },
+    {
+      "grantee": "backend_rag_v2",
+      "table_schema": "public",
+      "privilege_type": "INSERT",
+      "cnt": 244
+    },
+    {
+      "grantee": "backend_rag_v2",
+      "table_schema": "public",
+      "privilege_type": "REFERENCES",
+      "cnt": 244
+    },
+    {
+      "grantee": "backend_rag_v2",
+      "table_schema": "public",
+      "privilege_type": "SELECT",
+      "cnt": 244
+    },
+    {
+      "grantee": "backend_rag_v2",
+      "table_schema": "public",
+      "privilege_type": "TRIGGER",
+      "cnt": 244
+    },
+    {
+      "grantee": "backend_rag_v2",
+      "table_schema": "public",
+      "privilege_type": "TRUNCATE",
+      "cnt": 244
+    },
+    {
+      "grantee": "backend_rag_v2",
+      "table_schema": "public",
+      "privilege_type": "UPDATE",
+      "cnt": 244
+    },
+    {
+      "grantee": "nuzantara_readonly",
+      "table_schema": "public",
+      "privilege_type": "SELECT",
+      "cnt": 255
+    }
+  ],
+  "clients_count": 11684
+}
