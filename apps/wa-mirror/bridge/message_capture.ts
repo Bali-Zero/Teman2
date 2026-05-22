@@ -1,8 +1,9 @@
 import { query } from "./pg.js";
-import { jidToPhone } from "./filters.js";
+import { jidToPhone, parseJid } from "./filters.js";
 import { normalizePhone } from "./phone.js";
 
 export type Direction = "inbound" | "outbound";
+export type ChatType = "direct" | "group";
 
 export type MediaType =
   | "text"
@@ -29,6 +30,13 @@ export type CapturedMessageRecord = {
   mediaMime: string | null;
   mediaUrl: string | null;
   rawBaileysEvent: unknown;
+  chatType: ChatType;
+  groupJid: string | null;
+  groupSubject: string | null;
+  senderPhone: string | null;
+  senderLid: string | null;
+  senderJid: string | null;
+  senderPushName: string | null;
 };
 
 export type PersistedMessageContext = CapturedMessageRecord & {
@@ -65,9 +73,12 @@ type BaileysMessageLike = {
     fromMe?: boolean | null;
     remoteJid?: string | null;
     participant?: string | null;
+    participantPn?: string | null;
+    participantLid?: string | null;
   } | null;
   messageTimestamp?: number | string | { toNumber?: () => number } | null;
   message?: unknown;
+  pushName?: string | null;
 };
 
 type MessageShape = {
@@ -99,15 +110,23 @@ export class PgMessageContextStore implements MessageContextStore {
   async upsertMessage(
     row: Omit<PersistedMessageContext, "id" | "mediaStoredPath" | "ocrResult">,
   ): Promise<{ id: number; row: PersistedMessageContext }> {
+    const counterpartPhoneOrNull =
+      row.counterpartPhone === "" ? null : row.counterpartPhone;
+    const phoneNumberOrNull = counterpartPhoneOrNull;
+
     const result = await query<{ id: number }>(
       `INSERT INTO whatsapp_message_context
          (client_id, practice_id, direction, team_member_phone,
           counterpart_phone, body, message_text, phone_number, message_date,
           media_type, media_mime, media_url, raw_baileys_event,
-          baileys_message_id, team_member_email, source)
+          baileys_message_id, team_member_email, source,
+          chat_type, group_jid, group_subject_snapshot,
+          sender_phone, sender_lid, sender_jid, sender_push_name_snapshot)
        VALUES
-         ($1, $2, $3, $4, $5, $6, $6, $5, $7, $8, $9, $10,
-          $11::jsonb, $12, $4, 'wa_mirror')
+         ($1, $2, $3, $4, $5, $6, $6, $14, $7, $8, $9, $10,
+          $11::jsonb, $12, $4, 'wa_mirror',
+          $13, $15, $16,
+          $17, $18, $19, $20)
        ON CONFLICT (baileys_message_id) WHERE baileys_message_id IS NOT NULL
        DO UPDATE SET
          client_id = EXCLUDED.client_id,
@@ -123,6 +142,13 @@ export class PgMessageContextStore implements MessageContextStore {
          media_mime = EXCLUDED.media_mime,
          media_url = EXCLUDED.media_url,
          raw_baileys_event = EXCLUDED.raw_baileys_event,
+         chat_type = EXCLUDED.chat_type,
+         group_jid = EXCLUDED.group_jid,
+         group_subject_snapshot = COALESCE(EXCLUDED.group_subject_snapshot, whatsapp_message_context.group_subject_snapshot),
+         sender_phone = EXCLUDED.sender_phone,
+         sender_lid = EXCLUDED.sender_lid,
+         sender_jid = EXCLUDED.sender_jid,
+         sender_push_name_snapshot = EXCLUDED.sender_push_name_snapshot,
          updated_at = NOW()
        RETURNING id`,
       [
@@ -130,7 +156,7 @@ export class PgMessageContextStore implements MessageContextStore {
         row.practiceId,
         row.direction,
         row.teamMemberPhone,
-        row.counterpartPhone,
+        counterpartPhoneOrNull,
         row.body,
         row.timestamp.toISOString(),
         row.mediaType,
@@ -138,6 +164,14 @@ export class PgMessageContextStore implements MessageContextStore {
         row.mediaUrl,
         safeJson(row.rawBaileysEvent),
         row.baileysMessageId,
+        row.chatType,
+        phoneNumberOrNull,
+        row.groupJid,
+        row.groupSubject,
+        row.senderPhone,
+        row.senderLid,
+        row.senderJid,
+        row.senderPushName,
       ],
     );
     const id = result.rows[0].id;
@@ -228,11 +262,60 @@ export function extractMessageRecord(
   const message = raw.message;
   if (!message) return null;
 
-  const counterpartPhone = normalizePhone(jidToPhone(raw.key?.remoteJid));
-  if (!counterpartPhone) return null;
-
   const teamMemberPhone = normalizePhone(account.phone);
-  if (!teamMemberPhone || counterpartPhone === teamMemberPhone) return null;
+  if (!teamMemberPhone) return null;
+
+  const remoteJid = raw.key?.remoteJid ?? null;
+  const parsed = parseJid(remoteJid);
+
+  if (parsed.kind === "group") {
+    const participantRaw = raw.key?.participant ?? null;
+    const participantParsed = parseJid(participantRaw);
+    const senderPhoneFromPn = raw.key?.participantPn
+      ? normalizePhone(jidToPhone(raw.key.participantPn))
+      : "";
+    const senderPhone =
+      senderPhoneFromPn ||
+      (participantParsed.kind === "phone" ? participantParsed.phone : "") ||
+      null;
+    const senderLid =
+      (raw.key?.participantLid ? parseJid(raw.key.participantLid).lid : "") ||
+      (participantParsed.kind === "lid" ? participantParsed.lid : "") ||
+      null;
+
+    const media = extractMedia(message);
+    const body = extractBody(message, media.mediaType);
+    const timestamp = parseTimestamp(raw.messageTimestamp);
+    const direction: Direction = raw.key?.fromMe ? "outbound" : "inbound";
+    const groupJid = remoteJid ?? "";
+    const messageId =
+      raw.key?.id ??
+      `${teamMemberPhone}:group:${groupJid}:${timestamp.getTime()}:${direction}`;
+
+    return {
+      baileysMessageId: messageId,
+      direction,
+      teamMemberPhone,
+      counterpartPhone: "",
+      body,
+      timestamp,
+      mediaType: media.mediaType,
+      mediaMime: media.mediaMime,
+      mediaUrl: media.mediaUrl,
+      rawBaileysEvent: raw,
+      chatType: "group",
+      groupJid,
+      groupSubject: null,
+      senderPhone,
+      senderLid,
+      senderJid: participantRaw,
+      senderPushName: raw.pushName ?? null,
+    };
+  }
+
+  const counterpartPhone = normalizePhone(jidToPhone(remoteJid));
+  if (!counterpartPhone) return null;
+  if (counterpartPhone === teamMemberPhone) return null;
 
   const media = extractMedia(message);
   const body = extractBody(message, media.mediaType);
@@ -253,6 +336,13 @@ export function extractMessageRecord(
     mediaMime: media.mediaMime,
     mediaUrl: media.mediaUrl,
     rawBaileysEvent: raw,
+    chatType: "direct",
+    groupJid: null,
+    groupSubject: null,
+    senderPhone: null,
+    senderLid: null,
+    senderJid: null,
+    senderPushName: raw.pushName ?? null,
   };
 }
 
