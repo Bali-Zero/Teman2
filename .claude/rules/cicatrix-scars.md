@@ -5,6 +5,43 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: W22 audit over-counted historical errors as currently-broken — W24 recency-weighting (2026-05-23)
+
+_Discovered: 2026-05-23 02:00 WITA Loop iteration 24, W22 follow-up · Severity: **P2** (audit accuracy, not production) · Status: **FIXED via recency_window_s=86400 + daily Telegram-alert cron deployed**_
+
+**TRAUMA:** W22 launchd audit flagged 61/115 plists "unhealthy" by counting any line matching `REAL_ERROR_PATTERNS` (Fatal Python / Traceback / OperationalError / etc.). But many plists had errors only in HISTORICAL log entries (pre-fix, pre-redeploy, pre-dep-install). Example: `com.matagaruda.bridge.adaptive` flagged with 1372 "real_errors" — but ALL were 2-week-old DNS resolution errors that have since recovered. Same false-positive pattern across `wa-mirror-*`, `guardrails-daemon` (528 historical / 0 recent), `canva-lease-watchdog` (265 / 0), `bridge.adaptive` (1372 / 0). W22's "53% degraded inventory" claim was structurally true but operationally misleading — most "broken" crons had already self-recovered.
+
+**ANTIBODY (shipped):**
+
+1. **Audit v2 recency-weighting**: `analyze_log()` now parses each line's leading `YYYY-MM-DD HH:MM:SS` timestamp and counts only errors within `recency_window_s` (default 86400 = 24h). Lines without timestamps (bare `Traceback` continuations) inherit the most-recent prior timestamped line. New return field `real_recent` (count within window) alongside `real` (lifetime total). Health verdict triggers UNHEALTHY only on recent errors; total-only errors emit `HISTORICAL_ERRORS=N` diagnostic but don't fail health.
+
+2. **Daily cron + Telegram delta alert** via `~/scripts/audit-launchd-daily.sh` + `com.balizero.audit-launchd.daily.plist` (StartCalendarInterval 02:00 WITA). Wrapper: TCC-safe pattern (no `*sh -l`), writes JSON snapshot to `~/logs/audit-launchd-daily-snapshots/<date>.json`, compares vs `~/.agent/decisions/audit-launchd-last-summary.json` baseline, emits Telegram on `delta_msg != ""` OR `recent_errors_present`. Defensive Python helper reads archive from disk (not stdin pipe) to avoid bash variable expansion munging JSON `\\\'` escapes.
+
+3. **Repo mirror at `scripts/ops/audit_launchd_crons.py`** (W22 path) — auto-tracked.
+
+**Empirical results (2026-05-23 02:06 WITA):**
+
+| Metric | W22 | W24 v2 |
+|---|---|---|
+| Unhealthy | 61 | **36** (-41%) |
+| With real_errors (total) | 35 | 34 |
+| With real_errors RECENT 24h | (not tracked) | **4** |
+| Historical-only | (not tracked) | 30 |
+
+Only 4 plists currently broken: `wr2.supervisor-watchdog` (690 recent), `cell.organism` (22), `wr2.sla-worker` (4), `wr2.trend-hunter` (2).
+
+**GOTCHA:**
+
+- **Defensive python-file-based processing**: first wrapper used `python3 -c "..." | json.loads(stdin)` with audit JSON piped through bash variable expansion. Failed with `JSONDecodeError: Invalid \escape` because some plists' ProgramArguments contain embedded shell scripts with `\\\'` quoting that got partially-unescaped through bash echo. Fix: redirect audit stdout DIRECTLY to archive file, then process via Python helper reading file from disk.
+- **Recency window precision**: timestamps are line-by-line. If a plist logs a single timestamp and then 50 lines of stack trace continuation, the count is 1 per Traceback (since the pattern matches the first line that says "Traceback"). Stack-trace lines like `File "...", line N` don't match REAL_ERROR_PATTERNS so they don't double-count. Verified empirically.
+- **Telegram alert noise risk**: with 4 plists currently broken, daily alert fires every day until fixed. Consider per-plist dedup window (4h pattern from W17 split-brain alerter). Defer to W25.
+- **Recovery-rate signal lost**: counting only recent errors loses the "historically degrading but currently fine" signal. `bridge.adaptive` 1372 historical errors might indicate a periodic transient pattern worth investigating BEFORE it becomes recurrent. Future enhancement: "lifetime trend" metric (errors per week). W26+ candidate.
+- **Audit v2 didn't fix root causes** — it just makes the dashboard actionable. The 4 currently-broken crons (especially `wr2.supervisor-watchdog` 690 recent + `cell.organism` 22) are W25+ targets.
+
+**Reference**: `research/operations/2026-05-23-w24-audit-v2-daily-cron.md` + `scripts/ops/audit_launchd_crons.py` (W24 version). Wrapper at `~/scripts/audit-launchd-daily.sh`, plist at `~/Library/LaunchAgents/com.balizero.audit-launchd.daily.plist`.
+
+---
+
 ### ℹ️ INFO: W23 cross-tree audit reveals sibling-agent already mirrored W8 fix (2026-05-23)
 
 _Discovered: 2026-05-23 01:45 WITA Loop iteration 23 attacking top-P0 from W22 audit · Severity: INFO (observational, no code change) · Status: **NO-OP — sibling agent had already mirrored W8 fix to main tree**_
