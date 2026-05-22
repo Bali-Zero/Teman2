@@ -1,0 +1,53 @@
+<!doctype html>
+<html><head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="_base.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&display=swap');
+html, body { background: var(--color-bg-black); margin: 0; padding: 0; }
+.hero {
+  position: absolute; inset: 0;
+  background-color: var(--color-bg-black);
+  background-image: url('1-hero.jpg');
+  background-size: cover; background-position: center;
+}
+.gradient {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.0) 30%, var(--color-overlay-darken-60) 70%, var(--color-bg-black) 100%);
+}
+.content {
+  position: absolute;
+  left: var(--spacing-edge-margin);
+  right: var(--spacing-edge-margin);
+  bottom: 180px;
+  color: var(--color-text-white);
+}
+.subheading {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-subheadline);
+  line-height: var(--line-height-snug);
+  letter-spacing: var(--letter-spacing-title);
+  color: var(--color-accent-yellow);
+  margin-bottom: 24px;
+  text-transform: uppercase;
+}
+.heading {
+  font-weight: var(--font-weight-extrabold);
+  font-size: var(--font-size-headline-cover);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--letter-spacing-title);
+  color: var(--color-text-white);
+  text-transform: uppercase;
+}
+</style>
+</head>
+<body data-slide-index="1" data-layout="cover-photo">
+  <div class="hero" data-zone-type="hero-photo"></div>
+  <div class="gradient" data-zone-type="overlay"></div>
+  <div class="regulation-badge" data-zone-type="text">Permenkumham 22/2023</div>
+  <div class="content" data-zone-type="text">
+    <div class="subheading">PERMENKUMHAM 22/2023 + 11/2024</div>
+    <div class="heading">YOUR KITAP IS VALID. 3 RULES CHANGED.</div>
+  </div>
+  <div class="logo" data-zone-type="logo"></div>
+</body></html>

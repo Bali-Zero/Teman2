@@ -24,6 +24,7 @@ aiOptimization:
 
 locale: "id"
 ---
+
 ## TL;DR
 
 <InfoCard
@@ -31,7 +32,10 @@ locale: "id"
   items={[
     { label: "Haruskah Saya Khawatir?", value: "Tergantung" },
     { label: "Tingkat Risiko", value: "Menengah" },
-    { label: "Siapa yang Terdampak", value: "Ekspatriat dan investor di Indonesia" },
+    {
+      label: "Siapa yang Terdampak",
+      value: "Ekspatriat dan investor di Indonesia",
+    },
     { label: "Kapan", value: "Cek artikel untuk tanggal spesifik" },
   ]}
 />
@@ -75,8 +79,16 @@ Bagi klien Bali Zero — terutama mereka yang memiliki struktur PT PMA, investas
 <Checklist
   title="Daftar Tindakan"
   items={[
-    { text: "Untuk Ekspatriat", subItems: ["Tinjau artikel ini untuk tindakan spesifik"] },
-    { text: "Untuk Investor", subItems: ["Wajib pajak yang berpartisipasi dalam Tax Amnesty II (PPS 2022) harus segera bertindak di tiga lini. Pertama, ambil dan tinjau kembali SPH (Surat Pemberitahuan Harta) Anda — deklarasi aset yang diajukan selama masa amnesti — dan bandingkan baris demi baris dengan inventaris aset Anda saat ini, termasuk semua rekening luar negeri, properti di luar negeri, kepemilikan ekuitas, dan aset kripto. Kedua, libatkan Konsultan Pajak berlisensi di Indonesia untuk menilai apakah ada kelalaian yang dapat dikategorikan sebagai celah yang perlu diungkapkan sebelum surat audit dari DJP tiba. Ketiga, jika ditemukan celah, pelajari mekanisme pembetulan pengungkapan sukarela yang tersedia di bawah ketentuan UU KUP sebelum pemeriksaan formal dimulai — ini adalah satu-satunya cara untuk membatasi risiko penalti. Jangan menunggu surat dari DJP untuk bertindak."] },
+    {
+      text: "Untuk Ekspatriat",
+      subItems: ["Tinjau artikel ini untuk tindakan spesifik"],
+    },
+    {
+      text: "Untuk Investor",
+      subItems: [
+        "Wajib pajak yang berpartisipasi dalam Tax Amnesty II (PPS 2022) harus segera bertindak di tiga lini. Pertama, ambil dan tinjau kembali SPH (Surat Pemberitahuan Harta) Anda — deklarasi aset yang diajukan selama masa amnesti — dan bandingkan baris demi baris dengan inventaris aset Anda saat ini, termasuk semua rekening luar negeri, properti di luar negeri, kepemilikan ekuitas, dan aset kripto. Kedua, libatkan Konsultan Pajak berlisensi di Indonesia untuk menilai apakah ada kelalaian yang dapat dikategorikan sebagai celah yang perlu diungkapkan sebelum surat audit dari DJP tiba. Ketiga, jika ditemukan celah, pelajari mekanisme pembetulan pengungkapan sukarela yang tersedia di bawah ketentuan UU KUP sebelum pemeriksaan formal dimulai — ini adalah satu-satunya cara untuk membatasi risiko penalti. Jangan menunggu surat dari DJP untuk bertindak.",
+      ],
+    },
   ]}
 />
 

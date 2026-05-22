@@ -15,6 +15,6 @@ paths:
 - bali-intel-scraper runs ONLY on Pro locally via OpenClaw — NOT on Fly
 - Backend deploy: ALWAYS from `apps/backend-rag/` (not monorepo root — manca training-data)
 - Use `fly deploy --strategy rolling` for zero-downtime
-- Pre-deploy: run critical import chain + KG tests (CLAUDE.md §13 checklist)
+- Pre-deploy: run critical import chain + KG tests (CLAUDE.md §11 Deploy Lifecycle checklist)
 - Never modify fly.toml, docker-compose.yml, .env.production without user confirmation
 - Secrets via env vars or secrets manager — never hardcode

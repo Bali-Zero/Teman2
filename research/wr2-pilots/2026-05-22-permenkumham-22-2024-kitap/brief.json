@@ -1,0 +1,184 @@
+{
+  "topic": "Permenkumham 22/2024 — KITAS pensionato: cosa cambia per chi ha già il KITAP",
+  "domain": "visa",
+  "audience_segment": "retiree",
+  "archetype_recommended": "regulatory-explainer",
+  "slide_count_recommended": 9,
+
+  "regulatory_flag": {
+    "status": "CITATION_AMBIGUITY_DETECTED",
+    "detail": "NB-2 (97 sources, ground truth) explicitly confirms NO regulation named 'Permenkumham No. 22 Tahun 2024' exists. The topic likely conflates two distinct instruments: Permenkumham 22/2023 (main visa/stay-permit reform) amended by Permenkumham 11/2024. Storyboarder MUST NOT use 'Permenkumham 22/2024' as a regulatory citation. The carousel should be framed around the 2023-2024 reform package.",
+    "actual_governing_regulations": [
+      "Permenkumham 22/2023 (base regulation — visa and izin tinggal system overhaul)",
+      "Permenkumham 11/2024 (amendment to 22/2023 — Golden Visa policy adjustments, sponsor definitions)",
+      "UU No. 63/2024 (national immigration law amendment — MERP integration)",
+      "Permenimipas 5/2025 (new sponsor/penjamin rules, supersedes Permenkumham 36/2021)",
+      "PP 31/2013 (underlying framework — KITAS→KITAP transition rules, 3-year minimum)"
+    ]
+  },
+
+  "key_facts": [
+    "No Permenkumham 22/2024 exists — topic refers to the Permenkumham 22/2023 + 11/2024 reform package — NB-2 [IMM-356]",
+    "Existing KITAP holders face ZERO mandatory conversion: all permits issued before the new regulations remain fully valid until their natural expiry date — NB-2 [IMM-356, IMM-354]",
+    "On next renewal, new KITAP documents automatically incorporate updated regulations — no special action required from the holder — NB-2 source 27394849",
+    "UU 63/2024 abolished the MERP (Multiple Exit Re-entry Permit) as a separate document: MERP is now automatically integrated into KITAP from date of issuance — NB-2 [IMM-362]",
+    "KITAP-RET (retirement permanent residency) is granted initially for 5 years, then renewable for unlimited duration (jangka waktu tidak terbatas) — NB-2 source d14f6c39",
+    "KITAP unlimited-duration holders must report (Lapor) to their local Kantor Imigrasi every 5 years — this check-in is FREE of charge — NB-2 [IMM-195], Permenkumham-29-2021 Pasal 144 Ayat 1",
+    "KITAP renewal window: application may be submitted earliest 3 months before expiry and no later than the expiry date itself — NB-2 Pasal 128 Ayat 3",
+    "Overstay protection: if KITAP renewal is filed AND government fee (PNBP) paid before expiry, the holder is NOT considered in overstay even if processing extends past the original expiry date — NB-2 Pasal 128 Ayat 4",
+    "KITAP holders are independent of sponsor obligation for ongoing residency (unlike KITAS E33F which requires a licensed agency sponsor) — NB-2 [IMM-100]",
+    "New sponsor rules under Permenimipas 5/2025 (superseding Permenkumham 36/2021) affect KITAP at the application/renewal submission stage: a penjamin (sponsor/guarantor) must formally file the renewal request — NB-2 [IMM-366]",
+    "If passport is renewed, holder must update KITAP with new passport number at Kantor Imigrasi — this is a distinct and separate procedure from MERP and is still required — NB-2 source 27394849",
+    "KITAP-RET eligibility requires: minimum age 55+, minimum 5 years continuous retirement KITAS (E33E or E33F categories) — NB-2 source d14f6c39 + 2d2ec0af",
+    "The ministry overseeing immigration changed in 2024: from Kemenkumham to the new Kementerian Imigrasi dan Pemasyarakatan (Kemenimipas) — NB-2 [IMM-365]",
+    "KITAP independent of sponsor for daily residency: the sponsor supervision obligation applies only to KITAS holders, not KITAP holders — NB-2 [IMM-100]"
+  ],
+
+  "key_numbers": [
+    "5 years — initial KITAP validity period before unlimited renewal",
+    "5 years — reporting (Lapor) cycle for unlimited-duration KITAP holders",
+    "IDR 0 — cost of the mandatory 5-year Lapor check-in (no government fee)",
+    "3 months — earliest advance window to file KITAP renewal application",
+    "3 years — minimum consecutive KITAS tenure required for KITAS-to-KITAP status change",
+    "55+ years — minimum age for KITAP-RET (retirement permanent residency)",
+    "5 years — minimum retirement KITAS tenure before KITAP-RET eligibility",
+    "IDR 45,000,000 — KITAP-RET government fee (PNBP) — NB-2 source 2d2ec0af",
+    "18 months — minimum remaining passport validity required for KITAP renewal application"
+  ],
+
+  "regulatory_citations_verbatim": [
+    "Permenkumham 22/2023",
+    "Permenkumham 11/2024",
+    "UU No. 63/2024",
+    "Permenimipas 5/2025",
+    "PP 31/2013",
+    "Permenkumham 29/2021"
+  ],
+
+  "bilingual_lexicon_with_english_assist": [
+    { "id_term": "KITAS", "english_assist": null, "always_untranslated": true },
+    { "id_term": "KITAP", "english_assist": null, "always_untranslated": true },
+    {
+      "id_term": "Permenkumham",
+      "english_assist": null,
+      "always_untranslated": true
+    },
+    {
+      "id_term": "Imigrasi",
+      "english_assist": null,
+      "always_untranslated": true
+    },
+    { "id_term": "ITAS", "english_assist": null, "always_untranslated": true },
+    { "id_term": "ITAP", "english_assist": null, "always_untranslated": true },
+    {
+      "id_term": "Kemenimipas",
+      "english_assist": null,
+      "always_untranslated": true
+    },
+    { "id_term": "PNBP", "english_assist": null, "always_untranslated": true },
+    { "id_term": "MERP", "english_assist": null, "always_untranslated": true },
+    {
+      "id_term": "perpanjangan",
+      "english_assist": "renewal/extension of stay permit",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "izin tinggal terbatas",
+      "english_assist": "limited/temporary stay permit",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "izin tinggal tetap",
+      "english_assist": "permanent stay permit",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "sponsor",
+      "english_assist": "formal immigration guarantor registered with Kemenimipas",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "penjamin",
+      "english_assist": "guarantor — person or agency legally responsible for the foreigner's stay",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "jamin diri",
+      "english_assist": "self-guarantee — financial collateral substituting a traditional sponsor",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "Lapor",
+      "english_assist": "mandatory check-in/reporting at local immigration office",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "alih status",
+      "english_assist": "change of immigration status (e.g., KITAS to KITAP)",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "overstay",
+      "english_assist": "remaining in Indonesia beyond permit expiry — a deportable offense",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "jangka waktu tidak terbatas",
+      "english_assist": "unlimited duration — the post-first-renewal KITAP status",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "Kantor Imigrasi",
+      "english_assist": "local immigration office",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "Pernyataan Integrasi",
+      "english_assist": "Integration Declaration — formal pledge to integrate into Indonesian society, required for KITAP application",
+      "always_untranslated": false
+    }
+  ],
+
+  "tone_register_primary": "pedagogico",
+  "tone_register_secondary": "analitico",
+
+  "taboo_check": [
+    "DO NOT use 'Permenkumham 22/2024' as a regulatory citation — this regulation does not exist; use '22/2023 + 11/2024 reform package'",
+    "DO NOT say 'nothing changes' without specifying scope — MERP integration and new sponsor rules DO change",
+    "DO NOT say 'your KITAP is permanent forever' — first issuance is 5-year, only after renewal does unlimited duration apply",
+    "DO NOT imply KITAP holders need no sponsor — a penjamin is still required to FILE the renewal application",
+    "DO NOT omit the passport-update requirement — if passport renewed, KITAP update is still mandatory",
+    "DO NOT use 'easy', 'simple fix', 'no worries' — regulatory compliance requires concrete action",
+    "DO NOT conflate KITAS and KITAP rules — sponsor dependency is category-specific",
+    "DO NOT say 'MERP is no longer needed' without clarifying scope: old MERP documents remain valid until their expiry; only NEW issuances auto-include MERP",
+    "Standard ban list: 'loophole', 'life hack', 'workaround', 'technically legal'"
+  ],
+
+  "hook_angle": "Your existing KITAP is fully valid — but Permenkumham 11/2024 and UU 63/2024 brought 3 changes that affect what you must do at your NEXT renewal: MERP is free and automatic, Lapor is free and every 5 years, but passport renewal still requires an Imigrasi visit.",
+
+  "nb_sources_consulted": ["NB-2"],
+  "nb_notebook_id": "cff93ab0-813a-42f2-a8de-36987e724271",
+
+  "nb_query_log": [
+    "Permenkumham 22/2024 — tutti i fatti: cosa cambia per titolari KITAP esistenti, scadenze, obbligo di conversione, validità ITAP/KITAP permanente, articoli chiave, sponsor requirements, jamin diri, perpanjangan procedure, nuove regole ITAS ITAP",
+    "KITAP pensione retirement visa Indonesia: requisiti età 55+, izin tinggal tetap holders, differenza KITAS vs KITAP, validità permanente, rinnovo annuale, dokumen yang dibutuhkan, Permenkumham terbaru 2023 2024"
+  ],
+
+  "brief_meta": {
+    "generated_by": "wr2-brief-interpreter",
+    "generated_at": "2026-05-22",
+    "nb_primary": "NB-2: Immigration & Visa — Indonesia 2025 (97 sources)",
+    "confidence": "HIGH — NB-2 returned 27+ cited references across both queries with verbatim Indonesian regulatory text",
+    "storyboarder_notes": [
+      "Slide 1 HOOK: Address panic directly — 'Your KITAP is safe. Here is what actually changed.'",
+      "Slide 2: Regulatory landscape clarification — 22/2023 + 11/2024 + UU 63/2024 (not a single '22/2024')",
+      "Slide 3: The GOOD NEWS — MERP now automatic, no separate procedure, no extra cost",
+      "Slide 4: The SIMPLE RULE — Lapor every 5 years, FREE, that is your only obligation for unlimited-duration KITAP",
+      "Slide 5: Renewal window mechanics — 3 months before, overstay protection if PNBP paid before expiry",
+      "Slide 6: Sponsor/penjamin nuance — KITAP holder is independent day-to-day, but penjamin still files the renewal. Explain who can be penjamin.",
+      "Slide 7: Passport gotcha — renew passport → Imigrasi visit required to update KITAP (separate from everything else)",
+      "Slide 8: Timeline visual — 'You have KITAP: What your next 5 years looks like'",
+      "Slide 9: CTA — 'Check your KITAP expiry date NOW. Book a call with Bali Zero before month -3.'"
+    ]
+  }
+}

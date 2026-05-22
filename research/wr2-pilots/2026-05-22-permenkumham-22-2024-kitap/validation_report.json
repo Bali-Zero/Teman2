@@ -1,0 +1,163 @@
+{
+  "status": "success",
+  "generated_by": "wr2-layout-composer",
+  "generated_at": "2026-05-22",
+  "carousel_id": "permenkumham-22-2024-kitap-2026-05-22",
+  "slides_written": [1, 2, 3, 4, 5, 6, 7, 8, 9],
+  "slide_files": [
+    "slides/1.html",
+    "slides/2.html",
+    "slides/3.html",
+    "slides/4.html",
+    "slides/5.html",
+    "slides/6.html",
+    "slides/7.html",
+    "slides/8.html",
+    "slides/9.html"
+  ],
+  "qr_asset_written": null,
+  "qr_status": "skipped_no_url",
+  "per_slide_body_word_count": {
+    "S1": {
+      "layout": "cover-photo",
+      "body_words": 0,
+      "note": "cover-photo: heading+subheading only — body exempt per spec"
+    },
+    "S2": {
+      "layout": "evidence-carved",
+      "body_words": 44,
+      "note": "body text: 'Two regulations updated the rules in 2023–2024... But at your next renewal, three things work differently.' — PASS (25-50)"
+    },
+    "S3": {
+      "layout": "evidence-carved",
+      "body_words": 40,
+      "note": "body text: 'The reform is not a single regulation... acting on outdated advice.' — PASS (25-50)"
+    },
+    "S4": {
+      "layout": "photo-headline-yellow-sub",
+      "body_words": 47,
+      "note": "PASS (25-90)"
+    },
+    "S5": {
+      "layout": "dark-status-list",
+      "body_words": 0,
+      "note": "dark-status-list: list_items only — body exempt per spec"
+    },
+    "S6": {
+      "layout": "dark-status-list",
+      "body_words": 0,
+      "note": "dark-status-list: list_items only — body exempt per spec"
+    },
+    "S7": {
+      "layout": "photo-headline-yellow-sub",
+      "body_words": 43,
+      "note": "PASS (25-90)"
+    },
+    "S8": {
+      "layout": "dark-status-list",
+      "body_words": 0,
+      "note": "dark-status-list: list_items only — body exempt per spec"
+    },
+    "S9": {
+      "layout": "statement-bomb",
+      "body_words": 0,
+      "note": "statement-bomb: single statement line — body exempt per spec"
+    }
+  },
+  "assist_on_first_use_check": {
+    "perpanjangan": {
+      "first_use_slide": "S6",
+      "assist_rendered": "(renewal)",
+      "status": "PASS"
+    },
+    "izin tinggal tetap": {
+      "first_use_slide": "S3",
+      "assist_rendered": "(permanent stay permit)",
+      "status": "PASS"
+    },
+    "penjamin": {
+      "first_use_slide": "S3",
+      "assist_rendered": "(guarantor)",
+      "status": "PASS — brief first-use at S3 via carved fact; full assist definition at S8"
+    },
+    "Lapor": {
+      "first_use_slide": "S5",
+      "assist_rendered": "(mandatory check-in/reporting)",
+      "status": "PASS"
+    },
+    "jangka waktu tidak terbatas": {
+      "first_use_slide": "S5",
+      "assist_rendered": "(unlimited duration)",
+      "status": "PASS"
+    },
+    "Kantor Imigrasi": {
+      "first_use_slide": "S7",
+      "assist_rendered": "(local immigration office)",
+      "status": "PASS"
+    },
+    "overstay": {
+      "first_use_slide": "S6",
+      "assist_rendered": "(remaining in Indonesia beyond permit expiry)",
+      "status": "PASS"
+    },
+    "jamin diri": {
+      "first_use_slide": "N/A",
+      "assist_rendered": "N/A",
+      "status": "SKIPPED — term not used in any slide (storyboarder did not include)"
+    },
+    "izin tinggal terbatas": {
+      "first_use_slide": "N/A",
+      "assist_rendered": "N/A",
+      "status": "SKIPPED — term not used in final slides"
+    },
+    "alih status": {
+      "first_use_slide": "N/A",
+      "assist_rendered": "N/A",
+      "status": "SKIPPED — term not used in final slides"
+    },
+    "Pernyataan Integrasi": {
+      "first_use_slide": "N/A",
+      "assist_rendered": "N/A",
+      "status": "SKIPPED — term not used in final slides"
+    }
+  },
+  "regulation_badge_status": {
+    "S1": "PRESENT — text: 'Permenkumham 22/2023' (verbatim, most prominent of the package), class='regulation-badge', position: top-right",
+    "S2-S9": "ABSENT — correct per spec (badge is cover-only)"
+  },
+  "swipe_indicator_status": {
+    "S1": "ABSENT — cover slide exempt",
+    "S2": "PRESENT",
+    "S3": "PRESENT",
+    "S4": "PRESENT",
+    "S5": "PRESENT",
+    "S6": "PRESENT",
+    "S7": "PRESENT",
+    "S8": "PRESENT",
+    "S9": "ABSENT — closing slide exempt per Article 14.1"
+  },
+  "hex_code_leak_check": "PASS — grep found zero raw hex codes in all 9 HTML files (rgba gradient patterns in layout template from _base.css are token-proxied)",
+  "hero_image_strategy": {
+    "S1": "imagegen:019e4c08-ec0e-75d1-86e6-64ada63c22ef — url('1-hero.jpg')",
+    "S4": "imagegen:019e4c09-188b-7381-aadc-37644aef19ee — url('4-hero.jpg')",
+    "S7": "imagegen:019e4c09-2cbc-7092-b0c4-eecc010e853d — url('7-hero.jpg')"
+  },
+  "taboo_check_results": {
+    "Permenkumham_22_2024_forbidden": "PASS — no slide uses '22/2024' as standalone citation; all use '22/2023 + 11/2024 reform package'",
+    "no_loophole_workaround": "PASS — forbidden terms absent",
+    "no_easy_simple": "PASS — no minimizing language",
+    "merp_scope_correct": "PASS — S4 clarifies old MERP stays valid until printed expiry; new issuances auto-include",
+    "penjamin_renewal_requirement": "PASS — S8 explicitly states penjamin still files renewal"
+  },
+  "layout_families_rendered": {
+    "cover-photo": ["S1"],
+    "evidence-carved": ["S2", "S3"],
+    "photo-headline-yellow-sub": ["S4", "S7"],
+    "dark-status-list": ["S5", "S6", "S8"],
+    "statement-bomb": ["S9"]
+  },
+  "statement_bomb_auto_shrink": "PRESENT — inline <script> in 9.html fires at render time to add class='shrunk' if lines > 2",
+  "antracite_background_s9": "APPLIED — radial-gradient from --color-bg-antracite to --color-bg-black per Article 2.6 (not pure flat black)",
+  "validation_failures": [],
+  "render_warnings": []
+}

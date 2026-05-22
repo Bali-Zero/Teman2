@@ -1,0 +1,126 @@
+{
+  "verdict": "FAIL",
+  "binary_carousel_verdict": "FAIL",
+  "binary_carousel_reason": "Article 6.3 bullet-promise hard fail on S3 (heading promises THREE INSTRUMENTS, body delivers 4 carved_facts); Article 6.1.1 UPPERCASE body word-count hard fail on S2/S4/S7 (47/42/44 words vs ≤35 cap for UPPERCASE bodies).",
+  "rubric_scores": {
+    "1_brand_adherence": {
+      "score": 96,
+      "notes": "Aspect ratio 1080×1350 verified on all 9 slides. Logo (3 ALI ZERO wordmark) centered-bottom on every slide. Yellow regulation badge present top-right on S1 (Article 14.4 ✓). Yellow swipe-indicator dot bottom-right on S2..S8, absent on S1 and S9 (Article 14.1 ✓). Palette compliance: antracite bg + white body + yellow accent + red status across text zones. Red text on S6 'HARD DEADLINE' row and S8 'ACTION' row uses color.status.red token (#C8102E) — brand-token compliant (role: critical alerts). S9 statement-bomb uses antracite + radial-gradient atmospheric bg per Article 2.6 (not flat black). No banned colors detected in text zones. Hero photos (S1/S4/S7) carry teal-amber chiaroscuro grading as expected — palette check skipped in hero region per Article 2.3."
+    },
+    "2_typography": {
+      "score": 100,
+      "notes": "Single sans-serif family Montserrat throughout. All titles UPPERCASE with consistent letter-spacing ~0.02em. Hierarchy clear: heading top, yellow subhead second, then carved_facts/list_items / prose body, source label IBM Plex Mono on S3 carved_fact labels. No serif/script/display detected. S9 statement-bomb single-family extrabold weight."
+    },
+    "3_copy": {
+      "score": 62,
+      "notes": "HARD FAIL Article 6.3 bullet-promise: S3 heading 'THE REFORM PACKAGE: THREE INSTRUMENTS, ONE IMPACT' announces N=3, body delivers N=4 carved_facts (Permenkumham 22/2023, Permenkumham 11/2024, UU No. 63/2024, Permenimipas 5/2025). Direct repeat of Golden Visa S2 lesson pattern (2026-05-10): count promise mismatch — either heading must change to FOUR or fourth instrument must be merged/dropped. HARD FAIL Article 6.1.1 UPPERCASE body word-count: slides.json declared body_case_chosen='Title Case' but renderer output ALL bodies UPPERCASE — S2 body=47 words, S4 body=42 words, S7 body=44 words (all exceed the ≤35 cap for UPPERCASE bodies; Title Case cap of ≤50 would have applied but rendered case wins). Three carousel slides in violation. Either renderer must respect Title Case declaration OR storyboarder must compress bodies under 35 words. Regulatory citations: all verbatim — Permenkumham 22/2023, Permenkumham 11/2024, UU No. 63/2024, Permenimipas 5/2025, Permenkumham 29/2021 Pasal 144 Ayat 1, Pasal 128 Ayat 3, Pasal 128 Ayat 4 (Article 6.4 ✓). Taboo check: NO occurrence of phantom regulation 'Permenkumham 22/2024' (brief regulatory_flag respected ✓). Forbidden phrases (loophole/life hack/workaround/easy/no worries/this is not legal advice): NONE detected. No emoji. No corporate disclaimer. Bilingual lexicon two-bucket: KITAS/KITAP/Permenkumham/Imigrasi/PNBP/MERP/Permenimipas/Pasal/Ayat untranslated verbatim ✓. First-use English assists rendered correctly: 'perpanjangan (renewal)' S6, 'izin tinggal tetap (permanent stay permit)' S3, 'penjamin (guarantor)' S3 + S8, 'Lapor (mandatory check-in/reporting)' S5, 'overstay (remaining in Indonesia beyond permit expiry)' S6, 'jangka waktu tidak terbatas (unlimited duration)' S5, 'Kantor Imigrasi (local immigration office)' S7. Article 6.2 PASS. Tone register: pedagogico+analitico identifiable on S2-S8, rituale on S9 — consistent with brief. Closing S9 statement-bomb 2 lines, within Article 6.6 cap ✓."
+    },
+    "4_image_text_fit": {
+      "score": 92,
+      "notes": "Hero count 3 (S1/S4/S7) — Article 16 PASS (cover-photo + 2x photo-headline-yellow-sub, statement-bomb correctly demoted from hero per orchestrator note). All hero shas distinct (947b9bd9, 45706bac, 409f31ff) and distinct from visa-anchor sha (6e3a6e79) — Article 5.10 PASS. S1 hero: older expat couple back-to-camera at Imigrasi counter, hand visible holding KITAP card, official behind frosted partition. Teal-amber chiaroscuro, no faces visible, anti-cliché ✓ (no palms/sunsets/handshakes). S4 hero: KITAP card close-up under desk-lamp pool — architecture-or-texture mode, pure object study, Indonesian emblem visible, no AI tells. S7 hero: anonymous older figure back-to-camera at Kantor Imigrasi service window with passport+KITAP visible, real signage 'KANTOR IMIGRASI / LOKET PELAYANAN' on partition (adds authenticity, allowed). All 3 heros: 35mm chiaroscuro teal-amber consistent grading, no extra fingers / melted faces, no boho / vector-flat. Cover S1 gradient bottom→up legibility OK (text zone bottom 40% has darken-60 overlay, white headline + yellow subhead readable). Vision sweep on text-only slides (S2/S3/S5/S6/S8/S9): no text overlap, no glyph corruption, no empty 60%+ canvas patterns, no yellow-accent inflation (≤3 yellow tokens per body block respected)."
+    },
+    "5_empirical_performance": {
+      "score": 90,
+      "notes": "Article 6.9 cover anchors: combined S1 heading+subhead 'YOUR KITAP IS VALID. 3 RULES CHANGED. PERMENKUMHAM 22/2023 + 11/2024' matches 3 anchors — (1) concrete number '3 RULES', (2) regulation code 'PERMENKUMHAM 22/2023', (5) editorial parallelism (two short statements). PASS. S-pattern: rule slide present (S2-S8 collectively name regulations), consequence slide present (S6 overstay + S5 IDR 45M PNBP), action slide present (S8 'CONFIRM YOUR PENJAMIN IS PERMENIMIPAS 5/2025 COMPLIANT BEFORE MONTH -3'). Cover image-style mode 'event-photo' = Tier 1 PASS. Audience-segment retiree with investor-tilted regulatory body slides — no tilt mismatch. Source-citation slide: NO dedicated slide with layout='source-citation', however body-text verbatim citations are present in S3/S5/S6 (Permenkumham 22/2023 + 11/2024, UU 63/2024, Permenimipas 5/2025, Permenkumham 29/2021 Pasal 144 Ayat 1, Pasal 128 Ayat 3+4) — Article 14.3 is DEFERRED (info-only soft advisory per 2026-05-12 partial-approval). No score deduction. Swipe-indicator present on S2..S8 (Article 14.1 ✓). Regulation badge consistency: brief lacks explicit primary_regulation_code field but slides.json declares 'Permenkumham 22/2023 + 11/2024' as regulation_badge; rendered badge text appears truncated to 'Permenkumham 22/2023' — soft inconsistency, not citation tampering since brief.regulatory_citations_verbatim contains both 22/2023 and 11/2024."
+    }
+  },
+  "per_slide_findings": {
+    "1": {
+      "binary_verdict": "PASS",
+      "binary_reason": "",
+      "rubric_1": 100,
+      "rubric_2": 100,
+      "rubric_3": 95,
+      "rubric_4": 95,
+      "verbal_feedback": "Cover S1 strong: hero photo perfect topic fit (older couple at Imigrasi counter with KITAP card), regulation badge top-right, headline 'YOUR KITAP IS VALID. 3 RULES CHANGED.' lands the reassurance hook. Matches 3 of 6 empirical anchors (number, regulation code, parallelism). Yellow accent '3 RULES' on white headline. Cover image mode event-photo (Tier 1). One observation: regulation badge in render shows 'Permenkumham 22/2023' truncated from full slides.json declaration 'Permenkumham 22/2023 + 11/2024' — minor render-side artifact, brief.regulatory_citations_verbatim covers both."
+    },
+    "2": {
+      "binary_verdict": "FAIL",
+      "binary_reason": "Article 6.1.1 UPPERCASE body 47 words > 35 cap (renderer output UPPERCASE despite slides.json body_case_chosen='Title Case').",
+      "rubric_1": 100,
+      "rubric_2": 100,
+      "rubric_3": 60,
+      "rubric_4": 100,
+      "verbal_feedback": "Body word count 47 (slides.json declared Title Case → ≤50 cap, but renderer output UPPERCASE → ≤35 cap applies). Either renderer must respect Title Case declaration or storyboarder must compress to ≤35 words for UPPERCASE consistency. Article 14.2 nuance: orchestrator pre-flight expected S2 to be pure framing question/statement; render shows framing prose + 3 carved_facts (STATUS/REFORM/SCOPE). Carved_facts reinforce the framing rather than diluting it — soft observation, not hard fail at slide level. carved_facts content sound: 'Existing KITAP: fully valid, no mandatory conversion' (positive) + 'Permenkumham 22/2023 + 11/2024: the governing package' (neutral) + '3 changes affect your next renewal — not your current card' (neutral)."
+    },
+    "3": {
+      "binary_verdict": "FAIL",
+      "binary_reason": "Article 6.3: heading promised THREE INSTRUMENTS but body delivered 4 carved_facts (Permenkumham 22/2023, 11/2024, UU 63/2024, Permenimipas 5/2025).",
+      "rubric_1": 100,
+      "rubric_2": 100,
+      "rubric_3": 50,
+      "rubric_4": 100,
+      "verbal_feedback": "HARD FAIL Article 6.3 bullet-promise: heading 'THE REFORM PACKAGE: THREE INSTRUMENTS, ONE IMPACT' counts N=3 but body delivers N=4. Direct repeat of Golden Visa S2 lesson 2026-05-10 (carousel critic spec already documents this pattern). Fix options: (a) heading → 'THE REFORM PACKAGE: FOUR INSTRUMENTS, ONE IMPACT' if all 4 are central; (b) merge Permenimipas 5/2025 into a single bullet with Permenkumham 11/2024 (both penjamin-related); (c) demote Permenimipas 5/2025 to S8 only and keep 3 here. Body word count 33 (under both Title Case and UPPERCASE caps ✓). All 4 carved_fact labels in IBM Plex Mono mono-style — typography clean."
+    },
+    "4": {
+      "binary_verdict": "FAIL",
+      "binary_reason": "Article 6.1.1 UPPERCASE body 42 words > 35 cap.",
+      "rubric_1": 100,
+      "rubric_2": 100,
+      "rubric_3": 65,
+      "rubric_4": 95,
+      "verbal_feedback": "Body word count 42 (UPPERCASE cap ≤35). Compress to ≤35 or fix renderer to Title Case. Hero photo S4 clean: KITAP card object-study under desk-lamp pool, Indonesian emblem visible, deep teal shadows + amber-warm focal point. Architecture-or-texture mode coherent with brand. Yellow accent 'AUTOMATIC AND FREE' renders prominently. UU No. 63/2024 citation verbatim. MERP integration framing clean ('UU No. 63/2024 ABOLISHED THE MERP AS A STANDALONE DOCUMENT')."
+    },
+    "5": {
+      "binary_verdict": "PASS",
+      "binary_reason": "",
+      "rubric_1": 100,
+      "rubric_2": 100,
+      "rubric_3": 95,
+      "rubric_4": 100,
+      "verbal_feedback": "Dark-status-list layout clean. 5 list_items with mono labels (RULE/COST/SOURCE/SCOPE/ACTION) + value rows. Yellow heading per layout_defaults['dark-status-list']. Citation 'Permenkumham 29/2021 Pasal 144 Ayat 1' verbatim. Bilingual: 'Lapor (mandatory check-in/reporting)' first-use gloss ✓; 'jangka waktu tidak terbatas (unlimited duration)' first-use gloss ✓. IDR 0 concrete numeric anchor reinforces 'ZERO GOVERNMENT FEE' subhead."
+    },
+    "6": {
+      "binary_verdict": "PASS",
+      "binary_reason": "",
+      "rubric_1": 95,
+      "rubric_2": 100,
+      "rubric_3": 95,
+      "rubric_4": 100,
+      "verbal_feedback": "Dark-status-list with status='critical' RED row for HARD DEADLINE. Red text (#C8102E) uses color.status.red token per constitution role 'critical alerts (STOPPED, CRIMINAL)'. The 'FILE NO LATER THAN EXPIRY DATE — POST-EXPIRY IS A SEPARATE PROCEDURE' qualifies as critical hard-deadline alert. Article 6.3: no count promise in heading ('RENEWAL WINDOW: RULES YOU CANNOT MISS' is generic plural). Pasal 128 Ayat 3 and Ayat 4 cited verbatim. IDR 45,000,000 KITAP-RET PNBP concrete number — matches brief.key_numbers exactly. 'overstay (remaining in Indonesia beyond permit expiry)' first-use gloss ✓."
+    },
+    "7": {
+      "binary_verdict": "FAIL",
+      "binary_reason": "Article 6.1.1 UPPERCASE body 44 words > 35 cap.",
+      "rubric_1": 100,
+      "rubric_2": 100,
+      "rubric_3": 65,
+      "rubric_4": 95,
+      "verbal_feedback": "Body word count 44 (UPPERCASE cap ≤35). Compress or render Title Case. Hero photo S7 strong: anonymous grey-haired figure back-to-camera at Kantor Imigrasi service window, passport+KITAP visible on counter, real KANTOR IMIGRASI / LOKET PELAYANAN signage adds authenticity. Teal-amber chiaroscuro. Topic fit excellent (passport-renewal Imigrasi visit). 'Kantor Imigrasi (local immigration office)' first-use gloss ✓. MERP independence framing clear."
+    },
+    "8": {
+      "binary_verdict": "PASS",
+      "binary_reason": "",
+      "rubric_1": 95,
+      "rubric_2": 100,
+      "rubric_3": 95,
+      "rubric_4": 100,
+      "verbal_feedback": "Dark-status-list with 4 rows (DAILY RESIDENCY/AT RENEWAL/WHO QUALIFIES/ACTION). ACTION row uses status='critical' red text — 'CONFIRM YOUR PENJAMIN IS PERMENIMIPAS 5/2025 COMPLIANT BEFORE MONTH -3'. Edge case: 'critical' for an ACTION row vs constitution's red-role of 'STOPPED/CRIMINAL' alerts is mildly stretched, but the action is a hard deadline trigger so defensible. 'penjamin (guarantor — person or agency legally responsible...)' rendered with gloss in S8 body row 2 (also appeared first-use S3) ✓. Permenimipas 5/2025 cited verbatim. Subhead 'INDEPENDENT RESIDENT — NOT AN INDEPENDENT APPLICANT' is brand-voice (analitico register)."
+    },
+    "9": {
+      "binary_verdict": "PASS",
+      "binary_reason": "",
+      "rubric_1": 100,
+      "rubric_2": 100,
+      "rubric_3": 100,
+      "rubric_4": 100,
+      "verbal_feedback": "Statement-bomb clean. 2 lines + yellow accent 'DOES NOT WAIT' on white statement. Radial-gradient antracite atmospheric bg per Article 2.6 (orchestrator note correctly demoted hero → backdrop, used gradient instead of full-bleed photo per Article 16). Logo centered-bottom. No swipe-indicator (correct — last slide). Tone register 'rituale' lands the closing statement-bomb. Under Article 6.6 ≤2 line cap. No hard-sell CTA ban violation."
+    }
+  },
+  "hard_failures": [
+    "S3 — Article 6.3 bullet-promise: heading 'THE REFORM PACKAGE: THREE INSTRUMENTS, ONE IMPACT' announces N=3 but body delivers N=4 carved_facts. Heading or body count must align.",
+    "S2 — Article 6.1.1 UPPERCASE body word-count cap exceeded (47 > 35).",
+    "S4 — Article 6.1.1 UPPERCASE body word-count cap exceeded (42 > 35).",
+    "S7 — Article 6.1.1 UPPERCASE body word-count cap exceeded (44 > 35)."
+  ],
+  "soft_failures": [
+    "Renderer-spec mismatch: slides.json declares body_case_chosen='Title Case' but renderer output UPPERCASE on all bodies. Either renderer respects Title Case (then S2/S4/S7 are within ≤50 cap) or storyboarder compresses to ≤35 words. Resolve at pipeline level.",
+    "S2 — Article 14.2 ambiguity: orchestrator pre-flight expected pure framing prose, render shows prose + 3 carved_facts. Carved_facts reinforce the framing rather than dilute it; logging as soft to inform future pipeline runs.",
+    "S1 — regulation badge render truncated to 'Permenkumham 22/2023' from slides.json declaration 'Permenkumham 22/2023 + 11/2024'. Renderer truncation issue, not citation tampering (both codes are verbatim in brief).",
+    "S8 — ACTION row uses status='critical' red text for a hard-deadline call-to-action. Constitution status.red role is 'critical alerts (STOPPED, CRIMINAL)' — usage is mildly stretched but defensible for deadline-trigger actions. Logging for future calibration."
+  ],
+  "retry_recommended": true,
+  "retry_feedback": "ROUTE TO storyboarder + renderer maintainer. (1) S3: change heading from 'THREE INSTRUMENTS' to 'FOUR INSTRUMENTS' (recommended: all 4 Permenkumham 22/2023 + 11/2024 + UU 63/2024 + Permenimipas 5/2025 are central to the reform package) OR merge Permenkumham 11/2024 + Permenimipas 5/2025 into a single 'amendment + sponsor rules' carved_fact (then keep N=3). (2) Renderer-spec mismatch: slides.json declared body_case_chosen='Title Case' but renderer rendered UPPERCASE — either (a) renderer must respect the slides.json declaration, OR (b) storyboarder must compress S2 (47→≤35), S4 (42→≤35), S7 (44→≤35) word counts to satisfy UPPERCASE Article 6.1.1 cap. Recommend option (a) — content quality is high and Title Case would render cleaner per Article 6.1.1 Title Case ≤50 cap (all 3 bodies under 50). (3) S1 regulation_badge: investigate renderer truncation of '+ 11/2024' suffix. (4) Re-render and resubmit; expect this carousel to PASS with these 3 fixes. No new lesson needed — Article 6.3 mismatch is already covered in critic spec lesson (Golden Visa S2 2026-05-10).",
+  "circuit_breaker": null,
+  "new_lessons": []
+}

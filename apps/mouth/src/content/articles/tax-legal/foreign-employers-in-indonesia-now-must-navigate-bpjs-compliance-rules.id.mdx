@@ -24,6 +24,7 @@ aiOptimization:
 
 locale: "id"
 ---
+
 ## TL;DR
 
 <InfoCard
@@ -31,7 +32,10 @@ locale: "id"
   items={[
     { label: "Apakah Saya Perlu Khawatir?", value: "Tergantung" },
     { label: "Tingkat Risiko", value: "Menengah" },
-    { label: "Siapa yang Terdampak", value: "Ekspatriat dan investor di Indonesia" },
+    {
+      label: "Siapa yang Terdampak",
+      value: "Ekspatriat dan investor di Indonesia",
+    },
     { label: "Kapan", value: "Cek artikel untuk tanggal spesifik" },
   ]}
 />
@@ -77,8 +81,16 @@ Bagi klien kami, pertanyaan kuncinya bukan apakah mereka perlu patuh, melainkan 
 <Checklist
   title="Daftar Tindakan"
   items={[
-    { text: "Untuk Ekspatriat", subItems: ["riate \u2014 terdaftar dengan tanggal pendaftaran yang benar. Verifikasi bahwa perhitungan kontribusi bulanan Anda menggunakan plafon gaji saat ini dan kategori risiko JKK yang benar untuk sektor bisnis Anda. Jika perusahaan Anda telah berdiri lebih dari 30 hari dan pendaftaran BPJS belum dilakukan, carilah saran tentang cara menangani pendaftaran retroaktif sebelum inspeksi memicunya. Hubungi Bali Zero untuk peninjauan kepatuhan jika Anda tidak yakin dengan status Anda saat ini \u2014 mengidentifikasi celah secara proaktif jauh lebih murah daripada menyelesaikan sanksi pemerintah."] },
-    { text: "Untuk Investor", subItems: ["Tinjau artikel ini untuk tindakan spesifik"] },
+    {
+      text: "Untuk Ekspatriat",
+      subItems: [
+        "riate \u2014 terdaftar dengan tanggal pendaftaran yang benar. Verifikasi bahwa perhitungan kontribusi bulanan Anda menggunakan plafon gaji saat ini dan kategori risiko JKK yang benar untuk sektor bisnis Anda. Jika perusahaan Anda telah berdiri lebih dari 30 hari dan pendaftaran BPJS belum dilakukan, carilah saran tentang cara menangani pendaftaran retroaktif sebelum inspeksi memicunya. Hubungi Bali Zero untuk peninjauan kepatuhan jika Anda tidak yakin dengan status Anda saat ini \u2014 mengidentifikasi celah secara proaktif jauh lebih murah daripada menyelesaikan sanksi pemerintah.",
+      ],
+    },
+    {
+      text: "Untuk Investor",
+      subItems: ["Tinjau artikel ini untuk tindakan spesifik"],
+    },
   ]}
 />
 

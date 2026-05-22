@@ -297,7 +297,7 @@ async def _evaluate_once(conn: asyncpg.Connection) -> None:
                 "and `tail ~/logs/wr2_supervisor.launchd.err.log`."
             )
             _send_telegram(msg)
-            _state_set(f"last_alert_supervisor_down", now_epoch)
+            _state_set("last_alert_supervisor_down", now_epoch)
             logger.warning("ALERT P0 supervisor_down age=%.0fs", age)
         else:
             logger.info("supervisor_down stale but cooldown active (age=%.0fs)", age)
@@ -396,7 +396,12 @@ async def _run_loop() -> None:
             while not _shutdown_event.is_set():
                 try:
                     await _evaluate_once(conn)
-                except (asyncpg.PostgresError, OSError, asyncio.TimeoutError):
+                except (
+                    asyncpg.PostgresError,
+                    asyncpg.InterfaceError,  # W29: stale connection after pg-proxy hiccup
+                    OSError,
+                    asyncio.TimeoutError,
+                ):
                     raise  # let outer reconnect handle it
                 except Exception as e:  # noqa: BLE001 — never crash on per-tick error
                     logger.exception("evaluate failed: %s", e)
@@ -404,7 +409,12 @@ async def _run_loop() -> None:
                     await asyncio.sleep(POLL_INTERVAL_SEC)
                 except asyncio.CancelledError:
                     return
-        except (asyncpg.PostgresError, OSError, asyncio.TimeoutError) as e:
+        except (
+            asyncpg.PostgresError,
+            asyncpg.InterfaceError,  # W29: "connection is closed" after pg-proxy hiccup
+            OSError,
+            asyncio.TimeoutError,
+        ) as e:
             logger.warning("watchdog connection lost: %s — reconnecting in %.1fs", e, backoff)
         finally:
             if conn is not None:

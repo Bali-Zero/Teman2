@@ -290,7 +290,7 @@ Pages: `src/app/`, Components: `src/components/`, API: `src/lib/api/`
 | **KG Architecture**       | `docs/KG_LANGGRAPH_ARCHITECTURE.md`                      | Knowledge Graph deep dive                                    |
 | **System Map 4D**         | `docs/SYSTEM_MAP_4D.md`                                  | Full architecture overview                                   |
 | **Database Architecture** | `docs/DATABASE_ARCHITECTURE_V2.md`                       | DB schema reference                                          |
-| **Deploy Checklist**      | `scripts/preflight.sh` (automated) or `CLAUDE.md §15`    | Before deploying — run `./scripts/preflight.sh full`         |
+| **Deploy Checklist**      | `scripts/preflight.sh` (automated) or `CLAUDE.md §11` (Deploy Lifecycle)    | Before deploying — run `./scripts/preflight.sh full`         |
 | **Monitoring**            | `scripts/system_doctor.py`                               | 47 checks: infra, frontend, SSL, LLM, security, quality      |
 | **RAG Quality**           | `scripts/rag_canary.py`                                  | Embedding drift + golden query regression (monthly/weekly)   |
 | **Intel Pipeline**        | `apps/bali-intel-scraper/docs/PIPELINE_DOCUMENTATION.md` | News scraper                                                 |

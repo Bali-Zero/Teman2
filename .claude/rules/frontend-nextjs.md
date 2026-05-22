@@ -16,4 +16,4 @@ paths:
 - Deploy mouth/kita from monorepo root, NOT from apps/mouth
 - Use `NEXT_PUBLIC_` env vars via `git push` not `vercel --prod` for build env
 - KBLI routes: `/kbli` (navigator), `/kbli/[code]` (detail, 1563 SSG), `/kbli-explorer` (AI chat)
-- After deploy: mandatory QA screenshots (CLAUDE.md §13)
+- After deploy: mandatory QA screenshots (CLAUDE.md §11 Deploy Lifecycle Post-deploy QA)

@@ -243,6 +243,21 @@ async def lifespan(app: FastAPI):
                     logger.warning(
                         "⚠️ crm_hgt_handlers registration failed (non-fatal): %s", crm_exc
                     )
+                # WA Team Inbox Dashboard SSE — subscribes to wa_message.inserted
+                # event_type emitted by trg_wa_message_notify (migration 193).
+                # Fans out to apps/wa-dashboard SSE clients via WaSseManager.
+                try:
+                    from backend.app.routers.wa_dashboard_stream import sse_manager
+
+                    async def _wa_sse_handler(payload: dict) -> None:
+                        sse_manager.publish(payload)
+
+                    event_bus.subscribe("wa_message.inserted", _wa_sse_handler)
+                except Exception as wa_exc:
+                    logger.warning(
+                        "⚠️ wa_dashboard_stream SSE handler registration failed (non-fatal): %s",
+                        wa_exc,
+                    )
                 app.state.event_bus = event_bus
                 logger.info("✅ EventBus started (client_changed, compliance_alert)")
             except Exception as e:
