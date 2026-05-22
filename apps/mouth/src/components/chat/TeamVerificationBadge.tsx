@@ -1,75 +1,46 @@
-"use client";
-
 import React from "react";
-import { Users, ChevronDown } from "lucide-react";
+import { BadgeCheck } from "lucide-react";
 import { useChatLocale } from "@/hooks/useChatLocale";
-import type { Locale } from "@/i18n/types";
 
-const LABELS: Record<
-  Locale,
-  {
-    consulting: (domain?: string) => string;
-    verified: (domain?: string) => string;
-  }
-> = {
-  en: {
-    consulting: (d) => `Our${d ? ` ${d}` : ""} specialists are verifying...`,
-    verified: (d) => `Verified by${d ? ` ${d}` : ""} team`,
-  },
-  it: {
-    consulting: (d) =>
-      `I nostri specialisti${d ? ` ${d}` : ""} stanno verificando...`,
-    verified: (d) => `Verificato dal team${d ? ` ${d}` : ""}`,
-  },
-  id: {
-    consulting: (d) =>
-      `Spesialis${d ? ` ${d}` : ""} kami sedang memverifikasi...`,
-    verified: (d) => `Diverifikasi oleh tim${d ? ` ${d}` : ""}`,
-  },
-  fr: {
-    consulting: (d) => `Nos spécialistes${d ? ` ${d}` : ""} vérifient...`,
-    verified: (d) => `Vérifié par l'équipe${d ? ` ${d}` : ""}`,
-  },
-  ru: {
-    consulting: (d) => `Наши специалисты${d ? ` ${d}` : ""} проверяют...`,
-    verified: (d) => `Проверено командой${d ? ` ${d}` : ""}`,
-  },
-};
+export type VerificationStatus = "verified" | "consulting" | "not_needed";
 
 interface TeamVerificationBadgeProps {
-  status: "consulting" | "verified" | "not_needed";
+  status?: VerificationStatus;
   domainLabel?: string;
-  onToggleCitations?: () => void;
 }
 
+const LABELS: Record<string, (domain: string) => string> = {
+  en: (d) => `Our ${d} specialists are verifying`,
+  it: (d) => `Verificato dal team ${d}`,
+  id: (d) => `Diverifikasi oleh tim ${d}`,
+  fr: (d) => `Vérifié par l'équipe ${d}`,
+  ru: (d) => `Подтверждено командой ${d}`,
+};
+
+const VERIFIED_LABELS: Record<string, (domain: string) => string> = {
+  en: (d) => `Verified by ${d} team`,
+  it: (d) => `Verificato dal team ${d}`,
+  id: (d) => `Diverifikasi oleh tim ${d}`,
+  fr: (d) => `Vérifié par l'équipe ${d}`,
+  ru: (d) => `Подтверждено командой ${d}`,
+};
+
 export const TeamVerificationBadge: React.FC<TeamVerificationBadgeProps> = ({
-  status,
-  domainLabel,
-  onToggleCitations,
+  status = "verified",
+  domainLabel = "Legal",
 }) => {
   const locale = useChatLocale();
-  const labels = LABELS[locale];
 
   if (status === "not_needed") return null;
 
-  if (status === "consulting") {
-    return (
-      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium text-zinc-400 mt-3 select-none animate-pulse">
-        <Users size={13} />
-        <span>{labels.consulting(domainLabel)}</span>
-      </div>
-    );
-  }
+  const labelFn = status === "verified" ? VERIFIED_LABELS[locale] || VERIFIED_LABELS.en : LABELS[locale] || LABELS.en;
+
+  const label = labelFn(domainLabel);
 
   return (
-    <button
-      type="button"
-      onClick={onToggleCitations}
-      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium text-amber-600 hover:text-amber-500 mt-3 select-none transition-colors cursor-pointer focus-ring"
-    >
-      <Users size={13} />
-      <span>{labels.verified(domainLabel)}</span>
-      <ChevronDown size={11} className="ml-0.5 opacity-60" />
-    </button>
+    <div className="flex items-center gap-1 text-[10px] text-accent/80 font-medium">
+      <BadgeCheck size={12} className="shrink-0" aria-hidden="true" />
+      <span aria-label={label}>{label}</span>
+    </div>
   );
 };

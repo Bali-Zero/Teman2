@@ -2,16 +2,6 @@
 
 import React from "react";
 import { BookOpen, ChevronDown, ChevronUp, FileText } from "lucide-react";
-import { useChatLocale } from "@/hooks/useChatLocale";
-import type { Locale } from "@/i18n/types";
-
-const LABELS: Record<Locale, (domain: string) => string> = {
-  en: (d) => `Official sources — ${d}`,
-  it: (d) => `Fonti ufficiali — ${d}`,
-  id: (d) => `Sumber resmi — ${d}`,
-  fr: (d) => `Sources officielles — ${d}`,
-  ru: (d) => `Официальные источники — ${d}`,
-};
 
 interface NLMCitation {
   source_file: string;
@@ -33,9 +23,6 @@ export const NLMCitationPanel: React.FC<NLMCitationPanelProps> = ({
   expanded,
   onToggle,
 }) => {
-  const locale = useChatLocale();
-  const label = LABELS[locale](domainLabel);
-
   return (
     <div className="mt-3 rounded-lg border-l-2 border-amber-600 overflow-hidden">
       {/* Header — always visible, toggles expand */}
@@ -47,7 +34,7 @@ export const NLMCitationPanel: React.FC<NLMCitationPanelProps> = ({
       >
         <div className="flex items-center gap-2 text-xs font-medium text-amber-600">
           <BookOpen size={14} />
-          <span>{label}</span>
+          <span>Fonti ufficiali — {domainLabel}</span>
         </div>
         <div className="text-zinc-400">
           {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}

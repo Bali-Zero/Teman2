@@ -1,27 +1,15 @@
-"use client";
-
-import { useEffect, useState } from "react";
-import { DEFAULT_LOCALE, LOCALES, type Locale } from "@/i18n/types";
+import { useState, useLayoutEffect } from "react";
 
 /**
- * Read the persisted locale without depending on `<I18nProvider>`, since the
- * `/chat` route is not currently wrapped in it. Falls back to DEFAULT_LOCALE
- * during SSR.
+ * Shared hook to detect the current locale for the chat micro-frontend.
+ * Reads from localStorage "blog-language" with "en" as default.
  */
-export function useChatLocale(override?: Locale): Locale {
-  const [locale, setLocale] = useState<Locale>(override ?? DEFAULT_LOCALE);
+export function useChatLocale(override?: string) {
+  const [locale, setLocale] = useState(override || "en");
 
-  useEffect(() => {
-    if (override) return;
-    if (typeof window === "undefined") return;
-    try {
-      const saved = window.localStorage.getItem("blog-language");
-      if (saved && (LOCALES as readonly string[]).includes(saved)) {
-        setLocale(saved as Locale);
-      }
-    } catch {
-      /* ignore storage errors */
-    }
+  useLayoutEffect(() => {
+    if (override) setLocale(override);
+    else setLocale(localStorage.getItem("blog-language") || "en");
   }, [override]);
 
   return locale;
