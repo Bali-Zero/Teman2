@@ -163,7 +163,10 @@ async def _fetch_recent_wa_touches(conn: asyncpg.Connection) -> list[dict[str, A
             """,
             cutoff,
         )
-    except asyncpg.PostgresError:
+    except (
+        asyncpg.PostgresError,
+        asyncpg.InterfaceError,  # W34: sibling of PostgresError, NOT subclass
+    ):
         logger.warning("fallback to created_at; first_touch_at missing?")
         rows = await conn.fetch(
             """
