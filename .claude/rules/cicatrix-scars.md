@@ -5,6 +5,49 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: W24 24h window too wide for "currently broken" — W25 two-tier (1h hot + 24h recent) (2026-05-23)
+
+_Discovered: 2026-05-23 02:18 WITA Loop iteration 25, W24 open question follow-up · Severity: P3 (audit accuracy refinement) · Status: **FIXED via two-tier window + Telegram body updated to HOT-only**_
+
+**TRAUMA:** W24 launched audit-launchd-daily with 24h recency window for "real_recent" classification. Empirical: `wr2.supervisor-watchdog` flagged as "690 recent errors" (unhealthy), but root-cause investigation revealed all 690 Tracebacks were from a single 30-min pg-proxy outage burst at 13:00-13:30 yesterday (~13h ago). Tracebacks in last 1h: **0**. pg-proxy currently `state = running`, port 15432 LISTEN. The cron is currently healthy — it just had a transient outage that already recovered. W24's binary "recent vs historical" classification can't distinguish "currently broken" from "broken in last 24h but recovered".
+
+**ANTIBODY (shipped):**
+
+1. **Two-tier window in `analyze_log()`**: `hot_window_s` (default 3600 = 1h) for currently-broken classification + `recent_window_s` (default 86400 = 24h) for "had issues" awareness. Single-pass count of both via shared timestamp parsing.
+
+2. **Three-tier health verdict** in `audit_plist()`:
+   - HOT (last 1h) > 0 → **UNHEALTHY** + diagnosis `REAL_ERRORS_HOT={n}`
+   - RECENT (24h) > 0, HOT == 0 → healthy + diagnosis `DEGRADING_RECENT={n}` (informational)
+   - HISTORICAL (total) > 0, RECENT == 0 → healthy + diagnosis `HISTORICAL_ERRORS={n}`
+
+3. **Summary fields added**: `with_real_errors_hot_1h`, `with_degrading_recovered`. Backward-compat `with_real_errors_recent_24h` retained.
+
+4. **Telegram alert body switched to HOT-only**: actionable list says "Plists currently broken (hot, last 1h)" instead of "recent". Recovered plists don't generate pager noise. Delta tracking still includes hot/recent/total transitions so improvements ARE visible (e.g., today's run showed `unhealthy: 36 -> 33 (-3)` delta because 4 plists moved from "recent unhealthy" to "degrading-recovered healthy").
+
+**Empirical (2026-05-23 02:21 WITA):**
+
+| Metric | W22 | W24 | W25 |
+|---|---|---|---|
+| Unhealthy | 61 | 36 | **33** |
+| With hot1h | n/a | n/a | **0** |
+| With recent24h | 35 | 4 | 4 |
+| With degrading_recovered | n/a | n/a | 4 |
+| With historical_only | n/a | 30 | 30 |
+| With lc_antipattern | 16 | 16 | 16 |
+
+The 4 DEGRADING_RECOVERED plists: supervisor-watchdog (671 recent / 0 hot), cell.organism (22/0), sla-worker (4/0), trend-hunter (2/0). None currently broken; all flagged in informational tier.
+
+**GOTCHA:**
+
+- **Window precision tied to log format**: timestamp parser expects `YYYY-MM-DD HH:MM:SS` at line start. Logs with different formats (epoch, ISO with timezone, no leading TS) won't be counted accurately. Audit fallback: lines without timestamps inherit previous line's TS — handles stack-trace continuation but may misclassify multi-line headers.
+- **Mtime liveness check unchanged**: stdout mtime is still proxy for "alive". Combined with HOT errors, the audit now distinguishes (a) silent dead (STALE + no logs), (b) currently broken (HOT > 0), (c) recovered (DEGRADING_RECENT > 0 + HOT == 0), (d) historical-only (RECENT == 0 + total > 0), (e) healthy.
+- **W24's audit dashboard goal achieved**: 0 hot1h = "system currently green". The 4 DEGRADING plists are visible in summary but don't pollute the actionable list. Operator can scan summary daily; only HOT entries demand action.
+- **`bridge.adaptive` (1372 historical / 0 recent / 0 hot)** remains in `historical_only` bucket — its 30-min spike is too old to surface in any tier. Future enhancement: weekly-trend metric for degrading-over-time patterns (W26+).
+
+**Reference**: `research/operations/2026-05-23-w25-audit-two-tier-hot-recent.md` + `scripts/ops/audit_launchd_crons.py` (W25 version).
+
+---
+
 ### ⚠️ STRUCTURAL: W22 audit over-counted historical errors as currently-broken — W24 recency-weighting (2026-05-23)
 
 _Discovered: 2026-05-23 02:00 WITA Loop iteration 24, W22 follow-up · Severity: **P2** (audit accuracy, not production) · Status: **FIXED via recency_window_s=86400 + daily Telegram-alert cron deployed**_

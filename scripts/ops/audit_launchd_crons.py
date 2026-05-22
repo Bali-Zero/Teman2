@@ -92,13 +92,15 @@ def _parse_log_ts(line: str) -> int | None:
         return None
 
 
-def analyze_log(path: Path, recency_window_s: int = 86400) -> dict:
-    """Return {lines, size, noise, real, real_recent, sample_errors, mtime}.
+def analyze_log(path: Path, *, hot_window_s: int = 3600,
+                 recent_window_s: int = 86400) -> dict:
+    """Return error analysis with two-tier recency.
 
-    W24: `real_recent` counts only real_errors with timestamp within
-    `recency_window_s` of now (default 24h). Distinguishes "currently
-    broken" from "historical errors, recovered now". `real` remains
-    total for backward-compat.
+    W25: split into HOT (last 1h = "currently broken") + RECENT (last 24h =
+    "recent issues, may have recovered"). UNHEALTHY verdict triggers
+    on hot > 0. recent > 0 with hot == 0 is informational only.
+
+    Fields: lines, size, noise, real, real_hot, real_recent, sample_errors, mtime.
     """
     if not path.exists():
         return {"exists": False}
@@ -108,7 +110,7 @@ def analyze_log(path: Path, recency_window_s: int = 86400) -> dict:
         return {"exists": False}
     if size == 0:
         return {"exists": True, "lines": 0, "size": 0, "noise": 0, "real": 0,
-                "real_recent": 0, "sample_errors": []}
+                "real_hot": 0, "real_recent": 0, "sample_errors": []}
     try:
         content = path.read_text(errors="replace")
     except OSError as e:
@@ -117,13 +119,12 @@ def analyze_log(path: Path, recency_window_s: int = 86400) -> dict:
     noise = sum(1 for ln in lines if any(p in ln for p in NOISE_PATTERNS))
     real_errors = [ln for ln in lines if any(p in ln for p in REAL_ERROR_PATTERNS)]
 
-    # Recency: count real_errors with parsed timestamp within window.
-    # If a line has no timestamp (e.g. bare "Traceback" continuation), use
-    # the most-recent prior timestamped line in the whole log as fallback.
-    # We iterate `lines` once, track last_ts, and flag matches via pattern check.
+    # Two-tier recency counting (single pass).
     now = int(time.time())
-    cutoff = now - recency_window_s
+    hot_cutoff = now - hot_window_s
+    recent_cutoff = now - recent_window_s
     last_ts: int | None = None
+    real_hot = 0
     real_recent = 0
     for line in lines:
         ts = _parse_log_ts(line)
@@ -131,8 +132,12 @@ def analyze_log(path: Path, recency_window_s: int = 86400) -> dict:
             last_ts = ts
         if any(p in line for p in REAL_ERROR_PATTERNS):
             effective_ts = ts if ts is not None else last_ts
-            if effective_ts is not None and effective_ts >= cutoff:
+            if effective_ts is None:
+                continue
+            if effective_ts >= recent_cutoff:
                 real_recent += 1
+                if effective_ts >= hot_cutoff:
+                    real_hot += 1
 
     return {
         "exists": True,
@@ -140,6 +145,7 @@ def analyze_log(path: Path, recency_window_s: int = 86400) -> dict:
         "size": size,
         "noise": noise,
         "real": len(real_errors),
+        "real_hot": real_hot,
         "real_recent": real_recent,
         "sample_errors": real_errors[-3:] if real_errors else [],
         "mtime": int(path.stat().st_mtime),
@@ -200,16 +206,20 @@ def audit_plist(plist_path: Path) -> dict:
         diagnosis.append("USES_LC_ANTIPATTERN")
         healthy = False
 
-    # Real errors in stderr — W24: split historical vs recent (24h window).
-    # `unhealthy` triggers ONLY on recent errors. Historical-only is INFO_ONLY
-    # (degraded badge but not failing).
+    # Real errors in stderr — W25 two-tier window:
+    #   HOT (1h)    => UNHEALTHY (currently broken)
+    #   RECENT 24h  => DEGRADING (had issues, may have recovered)
+    #   total only  => HISTORICAL (logged but not flagged)
     total_real = err_analysis.get("real", 0)
     recent_real = err_analysis.get("real_recent", 0)
-    if recent_real > 0:
-        diagnosis.append(f"REAL_ERRORS_RECENT={recent_real} (total={total_real})")
+    hot_real = err_analysis.get("real_hot", 0)
+    if hot_real > 0:
+        diagnosis.append(f"REAL_ERRORS_HOT={hot_real} (recent24h={recent_real}, total={total_real})")
         healthy = False
+    elif recent_real > 0:
+        # Recent but not hot — may have already recovered
+        diagnosis.append(f"DEGRADING_RECENT={recent_real} (recovered? total={total_real})")
     elif total_real > 0:
-        # Historical only — log but don't flag unhealthy
         diagnosis.append(f"HISTORICAL_ERRORS={total_real}")
 
     # Mostly noise in stderr (W21 silent-dead signal)
@@ -249,6 +259,7 @@ def audit_plist(plist_path: Path) -> dict:
         "stderr_lines": err_analysis.get("lines", 0),
         "stderr_noise": err_analysis.get("noise", 0),
         "stderr_real_errors": err_analysis.get("real", 0),
+        "stderr_real_hot_1h": err_analysis.get("real_hot", 0),
         "stderr_real_recent_24h": err_analysis.get("real_recent", 0),
         "stderr_sample": err_analysis.get("sample_errors", []),
         "stdout_lines": out_analysis.get("lines", 0),
@@ -278,8 +289,13 @@ def main():
         "unhealthy": sum(1 for r in rows if not r.get("healthy")),
         "with_lc_antipattern": sum(1 for r in rows if r.get("uses_lc_antipattern")),
         "with_real_errors_total": sum(1 for r in rows if r.get("stderr_real_errors", 0) > 0),
+        "with_real_errors_hot_1h": sum(1 for r in rows
+                                        if r.get("stderr_real_hot_1h", 0) > 0),
         "with_real_errors_recent_24h": sum(1 for r in rows
                                             if r.get("stderr_real_recent_24h", 0) > 0),
+        "with_degrading_recovered": sum(1 for r in rows
+                                         if r.get("stderr_real_recent_24h", 0) > 0
+                                         and r.get("stderr_real_hot_1h", 0) == 0),
         "with_historical_only": sum(1 for r in rows
                                      if r.get("stderr_real_errors", 0) > 0
                                      and r.get("stderr_real_recent_24h", 0) == 0),
