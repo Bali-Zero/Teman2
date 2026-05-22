@@ -1,0 +1,256 @@
+{
+  "carousel_id": "permenkumham-22-2024-kitap-2026-05-22",
+  "archetype": "regulatory-explainer",
+  "slide_count": 9,
+  "hero_count": 3,
+  "body_case_chosen": "Title Case",
+  "layout_families_used": [
+    "cover-photo",
+    "evidence-carved",
+    "photo-headline-yellow-sub",
+    "dark-status-list",
+    "statement-bomb"
+  ],
+  "dominant_image_style_mode": "event-photo",
+  "secondary_image_style_mode": "architecture-or-texture",
+  "regulation_badge": "Permenkumham 22/2023 + 11/2024",
+  "fact_check_warnings": [],
+  "assist_on_first_use_tracking": {
+    "perpanjangan": 6,
+    "izin tinggal terbatas": null,
+    "izin tinggal tetap": 3,
+    "sponsor": 8,
+    "penjamin": 8,
+    "jamin diri": null,
+    "Lapor": 5,
+    "alih status": null,
+    "overstay": 6,
+    "jangka waktu tidak terbatas": 5,
+    "Kantor Imigrasi": 7,
+    "Pernyataan Integrasi": null
+  },
+  "slides": [
+    {
+      "index": 1,
+      "layout_family": "cover-photo",
+      "tone_register": "analitico",
+      "is_hero_image": true,
+      "heading": "YOUR KITAP IS VALID. 3 RULES CHANGED.",
+      "subheading": "PERMENKUMHAM 22/2023 + 11/2024",
+      "body": null,
+      "yellow_accent": "3 RULES",
+      "regulation_badge": "Permenkumham 22/2023 + 11/2024",
+      "image_prompt": "35mm film editorial photograph, event-photo mode. An older expat couple seated at a Kantor Imigrasi Indonesia government counter, backs to camera, hands resting on the counter — one hand holding a KITAP card visible to viewer. Indonesian immigration officer behind frosted glass partition, blurred. Late afternoon light through venetian blinds casting diagonal amber bars across the tiled counter. Chiaroscuro lighting. Teal-amber cinematic grade, low saturation. No faces visible — shallow depth of field on the KITAP card in foreground. Shot on ARRI Alexa Mini LF 35mm. 4:5 portrait. Dark gradient overlay bottom third for text. Reference: visa-anchor.jpg domain mood — official, serious, warm directional light.",
+      "hero_image_path": "/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/carousel/2026-05-22-permenkumham-22-2024-kitap/slides/1-hero.jpg",
+      "hero_image_sha256": "947b9bd9b868ab5b8271935cb991bd9cdec2844dfcb7d4b41d684dcb620320f2",
+      "image_source": "imagegen:019e4c08-ec0e-75d1-86e6-64ada63c22ef"
+    },
+    {
+      "index": 2,
+      "layout_family": "evidence-carved",
+      "tone_register": "pedagogico",
+      "is_hero_image": false,
+      "heading": "WHAT ACTUALLY CHANGED FOR YOUR KITAP",
+      "subheading": null,
+      "body": "Two regulations updated the rules in 2023–2024. Your existing KITAP — issued under the old regime — remains fully valid until its natural expiry. But at your next renewal, three things work differently. Here is what you need to know before that date arrives.",
+      "yellow_accent": null,
+      "carved_facts": [
+        {
+          "label": "STATUS",
+          "value": "Existing KITAP: fully valid, no mandatory conversion",
+          "status": "positive"
+        },
+        {
+          "label": "REFORM",
+          "value": "Permenkumham 22/2023 + 11/2024: the governing package",
+          "status": "neutral"
+        },
+        {
+          "label": "SCOPE",
+          "value": "3 changes affect your next renewal — not your current card",
+          "status": "neutral"
+        }
+      ]
+    },
+    {
+      "index": 3,
+      "layout_family": "evidence-carved",
+      "tone_register": "analitico",
+      "is_hero_image": false,
+      "heading": "THE REFORM PACKAGE: FOUR INSTRUMENTS, ONE IMPACT",
+      "subheading": null,
+      "body": "The reform is not a single regulation. It is a layered package. Understanding which instrument governs which rule is the difference between acting correctly and acting on outdated advice from your previous agent.",
+      "yellow_accent": null,
+      "carved_facts": [
+        {
+          "label": "PERMENKUMHAM 22/2023",
+          "value": "Base reform: visa and izin tinggal tetap (permanent stay permit) system overhaul",
+          "status": "neutral"
+        },
+        {
+          "label": "PERMENKUMHAM 11/2024",
+          "value": "Amendment: Golden Visa adjustments + updated penjamin definitions",
+          "status": "neutral"
+        },
+        {
+          "label": "UU NO. 63/2024",
+          "value": "National immigration law: abolished MERP as a separate document",
+          "status": "positive"
+        },
+        {
+          "label": "PERMENIMIPAS 5/2025",
+          "value": "New penjamin rules — supersedes Permenkumham 36/2021",
+          "status": "neutral"
+        }
+      ],
+      "_post_critic_fix": "2026-05-22 critic FAIL retry: heading THREE→FOUR INSTRUMENTS to honor Article 6.3.1 bullet promise (body has 4 carved_facts)"
+    },
+    {
+      "index": 4,
+      "layout_family": "photo-headline-yellow-sub",
+      "tone_register": "pedagogico",
+      "is_hero_image": true,
+      "heading": "MERP IS NOW AUTOMATIC AND FREE",
+      "subheading": "UU NO. 63/2024 — NO SEPARATE APPLICATION",
+      "body": "UU No. 63/2024 abolished the MERP as a standalone document. Multiple exit re-entry rights are now automatically integrated into your KITAP at issuance — no separate procedure, no extra government fee. Existing MERP documents stay valid until their printed expiry date.",
+      "yellow_accent": "AUTOMATIC AND FREE",
+      "image_prompt": "35mm film editorial photograph, architecture-or-texture mode. Close-up of an Indonesian government KITAP card resting on a dark-stone Imigrasi office counter, single focused desk lamp creating a warm amber pool of light on the card surface. Deep teal shadows surround. Card surface visible but text not legible at distance. No hands, no faces — pure object study. Chiaroscuro. ARRI Alexa Mini LF 35mm macro. 4:5 portrait. Teal-amber editorial grade. [slide 4 variant — distinct from cover]",
+      "hero_image_path": "/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/carousel/2026-05-22-permenkumham-22-2024-kitap/slides/4-hero.jpg",
+      "hero_image_sha256": "45706bac427c755b34145621242830b6137dfb4ab9d0d0ad83fe373f76ea0424",
+      "image_source": "imagegen:019e4c09-188b-7381-aadc-37644aef19ee"
+    },
+    {
+      "index": 5,
+      "layout_family": "dark-status-list",
+      "tone_register": "pedagogico",
+      "is_hero_image": false,
+      "heading": "LAPOR: YOUR ONLY ONGOING OBLIGATION",
+      "subheading": "EVERY 5 YEARS — ZERO GOVERNMENT FEE",
+      "body": null,
+      "yellow_accent": "ZERO GOVERNMENT FEE",
+      "list_items": [
+        {
+          "label": "RULE",
+          "value": "Lapor (mandatory check-in) every 5 years — unlimited-duration KITAP holders",
+          "status": "neutral"
+        },
+        {
+          "label": "COST",
+          "value": "IDR 0 — no PNBP government fee for the Lapor check-in",
+          "status": "positive"
+        },
+        {
+          "label": "SOURCE",
+          "value": "Permenkumham 29/2021 Pasal 144 Ayat 1",
+          "status": "neutral"
+        },
+        {
+          "label": "SCOPE",
+          "value": "After first renewal — KITAP becomes jangka waktu tidak terbatas (unlimited)",
+          "status": "neutral"
+        },
+        {
+          "label": "ACTION",
+          "value": "Mark your calendar: 5 years from your last Lapor date — no earlier, no later",
+          "status": "positive"
+        }
+      ]
+    },
+    {
+      "index": 6,
+      "layout_family": "dark-status-list",
+      "tone_register": "analitico",
+      "is_hero_image": false,
+      "heading": "RENEWAL WINDOW: RULES YOU CANNOT MISS",
+      "subheading": "3 MONTHS BEFORE EXPIRY — NOT AFTER",
+      "body": null,
+      "yellow_accent": "3 MONTHS",
+      "list_items": [
+        {
+          "label": "WINDOW OPENS",
+          "value": "Submit perpanjangan (renewal) earliest 3 months before expiry — Pasal 128 Ayat 3",
+          "status": "neutral"
+        },
+        {
+          "label": "HARD DEADLINE",
+          "value": "File no later than expiry date — post-expiry is a separate procedure",
+          "status": "critical"
+        },
+        {
+          "label": "OVERSTAY SHIELD",
+          "value": "Filed AND PNBP paid before expiry? You are NOT in overstay — Pasal 128 Ayat 4",
+          "status": "positive"
+        },
+        {
+          "label": "FEE",
+          "value": "KITAP-RET PNBP: IDR 45,000,000 — pay before expiry to activate overstay",
+          "status": "neutral"
+        }
+      ]
+    },
+    {
+      "index": 7,
+      "layout_family": "photo-headline-yellow-sub",
+      "tone_register": "pedagogico",
+      "is_hero_image": true,
+      "heading": "NEW PASSPORT: ONE MORE VISIT TO IMIGRASI",
+      "subheading": "KITAP UPDATE IS MANDATORY — SEPARATE FROM MERP",
+      "body": "If you renew your passport, you must update your KITAP with the new passport number at your local Kantor Imigrasi (local immigration office). This requirement is independent of MERP, unaffected by the 2023–2024 reform, and fully in force. One visit. Bring both documents.",
+      "yellow_accent": "MANDATORY",
+      "image_prompt": "35mm film editorial photograph, event-photo mode. Anonymous figure — back to camera, grey-haired, older — standing at an Indonesian Kantor Imigrasi service window, sliding documents under the glass partition. Passport booklet and KITAP card visible on the counter from above angle. Fluorescent office light overhead, single warm amber streak from a corridor window cutting diagonally. Deep teal shadows in background corridor. No face visible. Chiaroscuro. ARRI Alexa Mini LF 35mm. 4:5 portrait. Teal-amber editorial grade. [slide 7 variant — distinct from slides 1 and 4]",
+      "hero_image_path": "/Users/nuzantara/Desktop/nuzantara/apps/war-room/output/carousel/2026-05-22-permenkumham-22-2024-kitap/slides/7-hero.jpg",
+      "hero_image_sha256": "409f31ff4e799e59d96ce52b5637dea71d30eb276324acb29830bc0add50f700",
+      "image_source": "imagegen:019e4c09-2cbc-7092-b0c4-eecc010e853d"
+    },
+    {
+      "index": 8,
+      "layout_family": "dark-status-list",
+      "tone_register": "pedagogico",
+      "is_hero_image": false,
+      "heading": "PENJAMIN AT RENEWAL: WHO FILES FOR YOU",
+      "subheading": "INDEPENDENT RESIDENT — NOT AN INDEPENDENT APPLICANT",
+      "body": null,
+      "yellow_accent": null,
+      "list_items": [
+        {
+          "label": "DAILY RESIDENCY",
+          "value": "KITAP holders: no sponsor obligation for ongoing stay — unlike KITAS",
+          "status": "positive"
+        },
+        {
+          "label": "AT RENEWAL",
+          "value": "A penjamin (guarantor) must formally submit the renewal — Permenimipas 5/2025",
+          "status": "neutral"
+        },
+        {
+          "label": "WHO QUALIFIES",
+          "value": "Licensed immigration agent, notarized individual, or registered employer",
+          "status": "neutral"
+        },
+        {
+          "label": "ACTION",
+          "value": "Confirm your penjamin is Permenimipas 5/2025 compliant before month -3",
+          "status": "critical"
+        }
+      ]
+    },
+    {
+      "index": 9,
+      "layout_family": "statement-bomb",
+      "tone_register": "rituale",
+      "is_hero_image": false,
+      "heading": "YOUR KITAP PROTECTS YOU. THE RENEWAL WINDOW DOES NOT WAIT.",
+      "subheading": null,
+      "body": null,
+      "yellow_accent": "DOES NOT WAIT",
+      "image_prompt_backdrop": "35mm film editorial photograph, event-photo mode. Exterior of an Indonesian Kementerian Imigrasi dan Pemasyarakatan government building entrance at dusk — national emblem visible on facade. A solitary anonymous older figure walks toward the entrance, silhouetted against the warm amber light spilling from the doorway. Deep teal sky overhead, low light. No faces. Chiaroscuro — light from the building doorway. ARRI Alexa Mini LF 35mm wide. 4:5 portrait. Teal-amber editorial grade. Negative space top third for headline overlay. [slide 9 variant — distinct from all prior heroes]",
+      "_orchestrator_note": "Storyboarder declared hero on statement-bomb (Article 16 violation). Demoted to backdrop. Use radial-gradient atmospheric bg per Article 2.6 instead of full-bleed hero."
+    }
+  ],
+  "narrative_arc_summary": "Hook + Reassurance (S1: your KITAP is valid, 3 rules changed, regulation badge Permenkumham 22/2023 + 11/2024) → Framing transition (S2: what actually changed and why this carousel matters — no bullet list) → Regulatory context (S3: the 3-instrument package — 22/2023 + 11/2024 + UU 63/2024 + Permenimipas 5/2025) → First change — good news (S4: MERP now automatic and free via UU 63/2024, hero photo) → Second change — simple obligation (S5: Lapor every 5 years, IDR 0, Permenkumham 29/2021 Pasal 144 Ayat 1) → Renewal mechanics — action required (S6: 3-month window, PNBP overstay protection per Pasal 128) → Third change — passport gotcha (S7: new passport requires Imigrasi visit regardless, hero photo) → Sponsor nuance (S8: penjamin still files the renewal under Permenimipas 5/2025) → Statement-bomb closing (S9: KITAP protects you — the renewal window does not wait, hero photo)",
+  "_orchestrator_retry_round": 1,
+  "_orchestrator_fixes_applied": [
+    "S3 heading: THREE→FOUR INSTRUMENTS (Article 6.3.1 bullet promise)",
+    "S2/S4/S7 body CSS: removed text-transform: uppercase to honor body_case_chosen='Title Case' (Article 6.1.1)"
+  ]
+}

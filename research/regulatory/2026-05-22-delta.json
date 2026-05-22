@@ -1,0 +1,41 @@
+{
+  "run_at": "2026-05-22T07:00:00+08:00",
+  "today": "2026-05-22",
+  "yesterday_seen_count": 1,
+  "new_today_count": 0,
+  "partial": false,
+  "unreachable_sources": [
+    "https://www.hukumonline.com/berita/ (403)",
+    "https://muc.co.id/article (403)",
+    "https://ikpi.or.id/news/ (404)",
+    "https://peraturan.bpk.go.id/Search (403)",
+    "https://jdih.kemenkumham.go.id/ (ECONNREFUSED)",
+    "https://www.kemenkumham.go.id/berita-utama (ECONNREFUSED)",
+    "https://www.bkpm.go.id/id/publikasi (SSL error)",
+    "https://jdih.kemnaker.go.id/data-puu (404)"
+  ],
+  "nb_query_errors": [],
+  "nb_query_notes": {
+    "NB-INTEL-Regulation": "Queried UUID a17f134e-b9ab-42d9-bfc2-5bbc45165c76. sources_used=[]. No verifiable citations returned for May 17-22 window.",
+    "NB-INTEL-Press": "Queried UUID 9d262101-abeb-4e15-af9c-c38e028c62fe. sources_used=[]. Mentioned 'UU Nomor 2 Tahun 2026 tentang PPRT' and 'Perpres AI' but without verbatim source reference — unverifiable, dropped per hard rule §2.",
+    "NB-INTEL-Tax": "Queried UUID 7fb12c9c-4e12-4a8d-9bd1-c5b857bf310f. sources_used=[]. No new citations in May 17-22 window.",
+    "NB-INTEL-Immigration": "Queried UUID 1ed02e54-542f-426a-94f8-53c5ffde4b7d. sources_used=[]. Confirmed no specific regulatory texts for May 17-22."
+  },
+  "deltas": [],
+  "dropped_candidates": [
+    {
+      "citation": "UU [unverified]/2026 tentang PPRT",
+      "reason": "NB-INTEL-Press mentioned 'Undang-Undang Nomor 2 Tahun 2026 tentang Pelindungan Pekerja Rumah Tangga' but sources_used=[] and no independent web source (DDTC, Ortax, Tempo tag page, Hukumonline) confirmed the UU number or enactment date within May 17-22 window. Dropped per hard rule §2 (no speculation) and §4 (verbatim citations only). Recommend manual check on jdih.kemenkumham.go.id."
+    },
+    {
+      "citation": "Perpres [no number]/2026 tentang Kecerdasan Artifisial",
+      "reason": "NB-INTEL-Press mentioned Perpres on AI but without number/year citation and no web source confirmed it. Dropped per hard rule §2."
+    },
+    {
+      "citation": "PP [draft]/2026 — SDA export centralization via BUMN",
+      "reason": "Ortax May 20, 2026: draft PP on natural resource export management mentioned but described as 'being discussed, not yet formally issued'. Dropped — not enacted. Service line: potentially tax/company. Monitor."
+    }
+  ],
+  "seen_citations": ["PER-6/PJ/2026"],
+  "note": "Cold start on gap 2026-05-17 to 2026-05-21 (5 days, no intermediate delta files). seen_citations carried forward from 2026-05-16-delta.json. NB-INTEL all returned sources_used=[] — possible NB freshness issue or May 17-22 was genuinely quiet. Web sources (DDTC, Ortax) confirmed no new regulation citations in target window."
+}

@@ -1,0 +1,87 @@
+{
+  "mcpServers": {
+    "nuzantara-mcp": {
+      "command": "/Users/nuzantara/Desktop/nuzantara/apps/nuzantara-mcp/.venv/bin/python",
+      "args": [
+        "apps/nuzantara-mcp/nuzantara_mcp/server.py"
+      ],
+      "cwd": "/Users/nuzantara/Desktop/nuzantara",
+      "env": {
+        "PYTHONPATH": "apps/nuzantara-mcp",
+        "NUZANTARA_API_KEY": "${NUZANTARA_API_KEY}",
+        "LANGSMITH_API_KEY": "${LANGSMITH_API_KEY}",
+        "LANGSMITH_PROJECT": "nuzantara-rag"
+      }
+    },
+    "nuzantara-mcp-advanced": {
+      "command": "/Users/nuzantara/Desktop/nuzantara/apps/nuzantara-mcp-advanced/.venv/bin/python",
+      "args": [
+        "apps/nuzantara-mcp-advanced/nuzantara_mcp_advanced/server.py"
+      ],
+      "cwd": "/Users/nuzantara/Desktop/nuzantara",
+      "env": {
+        "PYTHONPATH": "apps/nuzantara-mcp-advanced"
+      }
+    },
+    "nuzantara-fetch": {
+      "command": "uvx",
+      "args": [
+        "mcp-server-fetch"
+      ]
+    },
+    "ga4-analytics": {
+      "command": "/Users/nuzantara/Desktop/nuzantara/.mcp-servers/ga4-analytics/.venv/bin/ga4-mcp-server",
+      "env": {
+        "GOOGLE_APPLICATION_CREDENTIALS": "/Users/nuzantara/Desktop/nuzantara/.secrets/google-credentials.json",
+        "GA4_PROPERTY_ID": "505466833"
+      }
+    },
+    "google-search-console": {
+      "command": "/Users/nuzantara/Desktop/nuzantara/.mcp-servers/gsc/.venv/bin/python",
+      "args": [
+        "/Users/nuzantara/Desktop/nuzantara/.mcp-servers/gsc/gsc_server.py"
+      ],
+      "env": {
+        "GSC_CREDENTIALS_PATH": "/Users/nuzantara/Desktop/nuzantara/.secrets/google-credentials.json",
+        "GSC_SKIP_OAUTH": "true",
+        "GSC_DATA_STATE": "all"
+      }
+    },
+    "ocr-tesseract": {
+      "command": "/Users/nuzantara/Desktop/nuzantara/.mcp-servers/ocr/.venv/bin/mcp-ocr",
+      "env": {
+        "TESSDATA_PREFIX": "/opt/homebrew/share/tessdata"
+      }
+    },
+    "nuzantara-browser": {
+      "command": "/Users/nuzantara/Desktop/nuzantara/apps/nuzantara-mcp-browser/.venv/bin/python",
+      "args": [
+        "apps/nuzantara-mcp-browser/nuzantara_mcp_browser/server.py"
+      ],
+      "cwd": "/Users/nuzantara/Desktop/nuzantara",
+      "env": {
+        "PYTHONPATH": "apps/nuzantara-mcp-browser:packages/browser-core"
+      }
+    },
+    "notebooklm-mcp": {
+      "command": "/Users/nuzantara/.local/bin/notebooklm-mcp"
+    },
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest"
+      ]
+    },
+    "github": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-github"
+      ],
+      "env": {
+        "GITHUB_PERSONAL_ACCESS_TOKEN": "${GITHUB_PERSONAL_ACCESS_TOKEN}"
+      }
+    }
+  }
+}

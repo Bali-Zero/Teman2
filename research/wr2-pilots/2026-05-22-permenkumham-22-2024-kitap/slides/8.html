@@ -1,0 +1,76 @@
+<!doctype html>
+<html><head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="_base.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&display=swap');
+body {
+  padding: 80px var(--spacing-edge-margin) 180px var(--spacing-edge-margin);
+  display: flex; flex-direction: column;
+}
+.heading {
+  font-weight: var(--font-weight-extrabold);
+  font-size: 48px; line-height: var(--line-height-tight);
+  letter-spacing: var(--letter-spacing-title);
+  color: var(--color-text-white);
+  text-transform: uppercase; margin-bottom: 8px;
+}
+.subheading {
+  font-weight: var(--font-weight-bold);
+  font-size: 26px;
+  line-height: var(--line-height-snug);
+  letter-spacing: var(--letter-spacing-title);
+  color: var(--color-accent-yellow);
+  text-transform: uppercase;
+  margin-bottom: var(--spacing-section-gap);
+}
+.items {
+  display: flex; flex-direction: column; gap: 30px;
+}
+.item {
+  display: flex; flex-direction: column; gap: 6px;
+  border-left: 4px solid rgba(255,255,255,0.2); padding-left: 20px;
+}
+.item.status-neutral { border-left-color: rgba(255,255,255,0.2); }
+.item.status-positive { border-left-color: var(--color-accent-yellow); }
+.item.status-critical { border-left-color: var(--color-status-red); }
+.label {
+  font-weight: var(--font-weight-bold);
+  font-size: 20px; letter-spacing: 0.06em;
+  color: rgba(255,255,255,0.6); text-transform: uppercase;
+  font-family: var(--font-family-mono);
+}
+.value {
+  font-weight: var(--font-weight-extrabold);
+  font-size: 30px; line-height: 1.2;
+  letter-spacing: var(--letter-spacing-title); text-transform: uppercase;
+}
+.item.status-neutral .value { color: var(--color-text-white); }
+.item.status-critical .value { color: var(--color-status-red); }
+.item.status-positive .value { color: var(--color-accent-yellow); }
+</style>
+</head>
+<body data-slide-index="8" data-layout="dark-status-list">
+  <div class="heading" data-zone-type="text">PENJAMIN AT RENEWAL: WHO FILES FOR YOU</div>
+  <div class="subheading" data-zone-type="text">INDEPENDENT RESIDENT — NOT AN INDEPENDENT APPLICANT</div>
+  <div class="items" data-zone-type="text">
+    <div class="item status-positive">
+      <div class="label">DAILY RESIDENCY</div>
+      <div class="value">KITAP holders: no sponsor obligation for ongoing stay — unlike KITAS</div>
+    </div>
+    <div class="item status-neutral">
+      <div class="label">AT RENEWAL</div>
+      <div class="value">A penjamin (guarantor — person or agency legally responsible for the foreigner's stay) must formally submit the renewal — Permenimipas 5/2025</div>
+    </div>
+    <div class="item status-neutral">
+      <div class="label">WHO QUALIFIES</div>
+      <div class="value">Licensed immigration agent, notarized individual, or registered employer</div>
+    </div>
+    <div class="item status-critical">
+      <div class="label">ACTION</div>
+      <div class="value">Confirm your penjamin is Permenimipas 5/2025 compliant before month -3</div>
+    </div>
+  </div>
+  <div class="logo" data-zone-type="logo"></div>
+  <div class="swipe-indicator" data-zone-type="text"></div>
+</body></html>
