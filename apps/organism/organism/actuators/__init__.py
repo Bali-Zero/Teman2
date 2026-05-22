@@ -16,6 +16,7 @@ from organism.actuators.cleanup_branches import CleanupBranches
 from organism.actuators.cleanup_zombie_plist import CleanupZombiePlist
 from organism.actuators.propose_yaml_rule import ProposeYamlRule
 from organism.actuators.fly_machines_start import FlyMachinesStart
+from organism.actuators.fly_machines_restart import FlyMachinesRestart
 
 
 __all__ = [
@@ -31,6 +32,7 @@ __all__ = [
     "CleanupZombiePlist",
     "ProposeYamlRule",
     "FlyMachinesStart",
+    "FlyMachinesRestart",
     "build_actuator_registry",
 ]
 
@@ -55,4 +57,5 @@ def build_actuator_registry(*, redis) -> dict[str, ActuatorBase]:
         CleanupZombiePlist.name: CleanupZombiePlist(),
         ProposeYamlRule.name: ProposeYamlRule(),
         FlyMachinesStart.name: FlyMachinesStart(),
+        FlyMachinesRestart.name: FlyMachinesRestart(),
     }
