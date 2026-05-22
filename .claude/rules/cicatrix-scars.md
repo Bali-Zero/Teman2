@@ -5,6 +5,48 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: kg-linker + wr-topic plists `/bin/bash -lc` polluted error.log with 75 lines false-noise (2026-05-23)
+
+_Discovered: 2026-05-22 23:50 WITA during W20 survey post-W19 ship · Severity: P2 (noise pollution + W8 violation, no production impact — Python still runs) · Status: **FIXED via generic TCC-safe wrapper template + plist rebuilds, empirical 0-lines verification**_
+
+**TRAUMA:** W19 survey of remaining matagaruda plists with `*sh -lc` patterns found 2 more candidates:
+
+- `com.matagaruda.kg-linker.plist` (hourly): error.log 73 lines / 4KB of `/bin/bash: .venv/bin/activate: Operation not permitted`
+- `com.matagaruda.wr-topic.plist` (Wed/Sat 08:00 WITA): error.log 2 lines (same pattern, less accumulation due to schedule)
+
+Both plists used `/bin/bash -lc "set -a; source ~/.nuzantara-secrets.env; set +a; export PATH=...; cd .../mata-garuda && .venv/bin/python entry.py ..."`. The `-l` flag sources `.bashrc`/`.profile` which has a `source .venv/bin/activate` (relative path) that fails under launchd TCC sandbox before the explicit `cd` lands. Python still ran (`last exit code = 0`, both crons emit healthy JSON output). But the 75 lines of false-noise in error.log are W8-violation pattern — non-actionable noise masks real WARN/ERROR.
+
+**ANTIBODY (shipped):**
+
+1. **Generic wrapper `~/scripts/matagaruda-cron-tcc-safe.sh`** (50 lines, reusable). Refactored from W19's single-purpose `matagaruda-nlm-feeder-stream.sh`. Signature: `matagaruda-cron-tcc-safe.sh <entry_script_abs_path> [log_label]`. Pre-checks venv python + entry existence (exit 2 if missing). Same TCC-safe pattern: no `-l`, explicit env source, venv python direct, `exec`. Logs to `~/logs/matagaruda-<label>.log`.
+
+2. **Plist rebuilds**: both `com.matagaruda.kg-linker.plist` + `com.matagaruda.wr-topic.plist` now invoke the generic wrapper:
+   ```xml
+   <key>ProgramArguments</key>
+   <array>
+       <string>/Users/nuzantara/scripts/matagaruda-cron-tcc-safe.sh</string>
+       <string>/Users/nuzantara/Desktop/nuzantara/apps/mata-garuda/scripts/run_kg_linker.py</string>
+       <string>kg-linker</string>
+   </array>
+   ```
+   Schedule + EnvironmentVariables preserved. Old plists archived to `.archive-2026-05-22/*.pre-w20`.
+
+3. **Empirical verification 2026-05-22 23:58 WITA**:
+   - kg-linker: kickstart → `last exit code = 0`, error.log = **0 lines** (was 73)
+   - wr-topic: kickstart → `last exit code = 0`, error.log = **0 lines** (was 2)
+   - Both stdout logs continue to emit healthy JSON (kg_observations preserved on kg-linker; wr-topic candidates/chars/tg_ok preserved)
+
+**GOTCHA:**
+
+- Generic wrapper accumulates W21+ migration debt savings: future cron migrations from `*sh -lc` only need plist rebuild (no new wrapper). Reduces work surface ~5×.
+- The wrapper sets `GARUDA_REDIS_HOST=100.93.236.6` AND `PYTHONPATH=$APP_ROOT` as defaults. If a future entry script needs different values, pass via plist `EnvironmentVariables` (overrides wrapper default via `${VAR:-default}`).
+- W21 survey candidates: `daily-briefing`, `kita-feed.daily`, `nlm-expander.weekly`, `public-channel`, `reg-alert.30min`, `sentinel.hourly`, `weekly-digest`, `wr2-bridge.hourly` — all use `*sh -lc` per W19 survey. Plus balizero/* family. Decide per-plist if migration is needed by `wc -l .error.log` first (small files may have legitimate signal).
+- This is the 3rd consecutive iteration finding the same anti-pattern (W19 nlm-feeder-stream, W20 kg-linker+wr-topic). The `*sh -lc` pattern is endemic across the Pro launchd inventory. A separate ops audit task should sweep ALL plists before they accumulate more cruft.
+
+**Reference**: `research/operations/2026-05-23-kg-linker-wr-topic-tcc-safe.md` + generic wrapper template at `~/scripts/matagaruda-cron-tcc-safe.sh`.
+
+---
+
 ### ⚠️ STRUCTURAL: nlm-feeder-stream plist `/bin/zsh -lc` polluted error.log with 842 lines of shell-init EPERM (2026-05-22)
 
 _Discovered: 2026-05-22 23:20 WITA during W19 survey · Severity: P2 (noise pollution, masks real errors per W8) · Status: **FIXED via wrapper rebuild + plist rebuild + empirical 0-lines verification**_
