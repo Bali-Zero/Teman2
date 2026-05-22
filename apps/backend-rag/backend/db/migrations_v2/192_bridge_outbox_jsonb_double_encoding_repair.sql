@@ -36,10 +36,29 @@
 -- rollout window, old-code instances may still write new double-encoded
 -- rows. A second manual run after full rollout is safe.
 
+-- Defensive guard: `bridge_outbox` is created by legacy migration 107
+-- (`apps/backend-rag/backend/migrations/migration_107_bridge_outbox.py`)
+-- which lives in the legacy .py system and is NOT auto-discovered by the
+-- v2 runner (`migration_manager.py:discover_migrations` globs only
+-- `migrations_v2/*.sql`). Mig 107 was applied manually on prod pre-
+-- 2026-04-18 (table exists in production), but fresh CI Postgres does
+-- NOT have it. Without this guard, `UPDATE bridge_outbox …` aborts the
+-- entire migration run with `relation "bridge_outbox" does not exist`
+-- and the suite stops at mig 192 forever. The IF NOT EXISTS check makes
+-- this migration a no-op when the table is absent — repair will run
+-- when (if) mig 107 is promoted to v2 (separate ticket).
 DO $$
 DECLARE
     n_repaired bigint;
 BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.tables
+         WHERE table_schema = 'public' AND table_name = 'bridge_outbox'
+    ) THEN
+        RAISE NOTICE 'm192 jsonb repair: bridge_outbox absent — skipping (legacy mig 107 not yet promoted to v2)';
+        RETURN;
+    END IF;
+
     UPDATE bridge_outbox
        SET payload = (payload #>> '{}')::jsonb
      WHERE jsonb_typeof(payload) = 'string'
