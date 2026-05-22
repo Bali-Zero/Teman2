@@ -31,7 +31,7 @@ outputs:
   - name: script
     kind: file
     sink: "apps/war-room/output/episode/<slug>/script.json"
-    schema_ref: "script.schema.json"
+    schema_ref: "script.schema.json (word_count = brief.target_duration_s × 3 ±10%; 60s→180w, 90s→270w, 120s→360w, 150s→450w)"
 
 emits: []
 
@@ -42,7 +42,7 @@ failure_modes:
     action: "Up to 2 retries if legal_claim_gate FAIL (mismatched claim_ids); 3rd retry → hard halt"
     telegram_p0_on: false
   - code: hard_fail
-    action: "Word-count >200 for 60s after 2 retries → Telegram P0"
+    action: "Word-count exceeds target_duration_s × 3 × 1.10 ceiling (60s→200w, 90s→300w, 120s→396w, 150s→495w) after 2 retries → Telegram P0"
     telegram_p0_on: true
 
 law_compliance:

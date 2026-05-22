@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """WR3 Supervisor — event-bus consumer + episode lifecycle coordinator.
 
-Listens on 6 PG channels declared in migration 182_wr3_eventbus_channels.sql:
+Listens on 6 PG channels declared in migration 183_wr3_eventbus_channels.sql:
   - wr3_episode_brief_requested
   - wr3_episode_pre_render_ready
   - wr3_episode_gate_passed
@@ -30,6 +30,81 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+# Layer 1 (defense-in-depth): line-buffer stdout/stderr in case launchd wrapper
+# was deployed without PYTHONUNBUFFERED=1 / python3 -u. Closes scar 2026-05-22
+# observability gap (4KB stdout block-buffer hid the zombie state for 3h).
+try:
+    sys.stdout.reconfigure(line_buffering=True)  # type: ignore[attr-defined]
+    sys.stderr.reconfigure(line_buffering=True)  # type: ignore[attr-defined]
+except Exception:
+    pass  # Python <3.7 or restricted env — wrapper-level -u is the fallback
+
+
+class _ReconnectRequired(RuntimeError):
+    """Layer 2 control-flow signal: PG connection unusable, outer loop must reconnect.
+
+    Raised by _reconcile_unconsumed / _heartbeat / inner-loop fatal-error branch
+    when the asyncpg Connection is dead. Caught by the outer `while not
+    stop_event.is_set()` loop, which closes the dead conn and reconnects with
+    exponential backoff (Layer 5).
+
+    Previously: _reconcile_unconsumed swallowed asyncpg.InterfaceError with a
+    print + return, leaving the supervisor PID alive but with a dead TCP socket
+    indefinitely (scar 2026-05-22, vecchio PID 25068 lived 3h09m with lsof empty).
+    """
+
+
+def _is_connection_fatal(err: BaseException) -> bool:
+    """True if `err` is one of asyncpg's connection-fatal exception classes.
+
+    Used by the outer loop to decide reconnect vs. log-and-continue. Excludes
+    things like PostgresSyntaxError (script bug, not connection issue).
+
+    Lazy-import asyncpg so this module remains importable from unit tests
+    that don't activate the venv (asyncpg is bundled in apps/backend-rag/.venv).
+    """
+    try:
+        import asyncpg  # type: ignore
+    except ImportError:
+        return False
+    return isinstance(
+        err,
+        (asyncpg.exceptions.InterfaceError, asyncpg.exceptions.ConnectionDoesNotExistError),
+    )
+
+
+async def _heartbeat(conn: Any, *, timeout: float = 2.0) -> None:
+    """Layer 4 — issue a cheap SELECT 1 to detect half-open TCP.
+
+    asyncpg's add_termination_listener (Layer 3) covers explicit termination
+    but NOT half-open scenarios where the OS hasn't surfaced the dropped TCP
+    yet. A timed SELECT 1 forces I/O and raises promptly on dead conn.
+
+    `fetchval` rather than `execute` because fetchval returns the value (1)
+    confirming round-trip, while execute returns a command-tag string.
+
+    Wrap in `asyncio.wait_for` so a stuck pg-proxy can't hang the daemon
+    (the wait_for cancels the inner coroutine and we re-raise as
+    _ReconnectRequired so the outer loop reconnects).
+
+    Raises:
+        _ReconnectRequired: on any failure (timeout OR connection-fatal OR
+            unexpected exception — conservative: any heartbeat failure
+            triggers reconnect since the only purpose of this call is
+            liveness detection).
+    """
+    try:
+        result = await asyncio.wait_for(conn.fetchval("SELECT 1"), timeout=timeout)
+        if result != 1:
+            raise _ReconnectRequired(f"heartbeat returned unexpected: {result!r}")
+    except asyncio.TimeoutError as e:
+        raise _ReconnectRequired(f"heartbeat timed out after {timeout}s") from e
+    except _ReconnectRequired:
+        raise
+    except Exception as e:
+        # Conservative: any error from a SELECT 1 means the conn is unusable.
+        raise _ReconnectRequired(f"heartbeat failed: {e!r}") from e
 
 # Make sibling scripts importable as top-level modules
 HERE = Path(__file__).resolve().parent
@@ -420,45 +495,136 @@ async def run_supervisor(
     for sig in (signal.SIGTERM, signal.SIGINT):
         loop.add_signal_handler(sig, _handle_sigterm)
 
-    queue: asyncio.Queue[tuple[str, str]] = asyncio.Queue()
-
-    def _on_notify(_conn: Any, _pid: int, channel: str, payload: str) -> None:
-        queue.put_nowait((channel, payload))
+    # Layer 5 — exponential backoff counter for reconnect attempts
+    backoff_attempt = 0
 
     while not stop_event.is_set():
+        conn: Any = None
         try:
             conn = await asyncpg.connect(database_url)
             print(f"[wr3-supervisor] Connected to PG ({database_url.split('@')[-1]})")
+
+            # Layer 3 — PER-ITERATION queue + dead_event, captured via
+            # default args (post-redteam P0-B amendment 2026-05-22: Python
+            # closures bind by NAME not VALUE; without default-args, old
+            # callbacks fired after reconnect would set the NEW dead_event).
+            session_queue: asyncio.Queue = asyncio.Queue()
+            dead_event = asyncio.Event()
+
+            def _on_terminate(
+                _conn: Any,
+                *,
+                _q: asyncio.Queue = session_queue,
+                _de: asyncio.Event = dead_event,
+            ) -> None:
+                """asyncpg fires this when it detects connection termination.
+                Must not raise. Default args pin THIS iteration's q+de."""
+                _de.set()
+                try:
+                    _q.put_nowait(("__dead__", ""))
+                except Exception:
+                    pass
+
+            conn.add_termination_listener(_on_terminate)
+
+            def _on_notify(
+                _conn: Any,
+                _pid: int,
+                channel: str,
+                payload: str,
+                *,
+                _q: asyncio.Queue = session_queue,
+                _de: asyncio.Event = dead_event,
+            ) -> None:
+                """NOTIFY callback. Default args pin THIS iteration's q+de."""
+                if _de.is_set():
+                    return  # connection already known dead — discard
+                try:
+                    _q.put_nowait((channel, payload))
+                except Exception as e:
+                    print(
+                        f"[wr3-supervisor] queue.put_nowait failed: {e}",
+                        file=sys.stderr,
+                    )
+
             for ch in contracts.routes:
                 await conn.add_listener(ch, _on_notify)
                 print(f"[wr3-supervisor] LISTEN {ch}")
 
-            # Initial reconcile — replay unconsumed outbox rows for our channels
+            # Initial reconcile — replay unconsumed outbox rows for our channels.
+            # May raise _ReconnectRequired if conn is already dead.
             await _reconcile_unconsumed(conn, contracts)
 
             last_reconcile = asyncio.get_event_loop().time()
+            last_heartbeat = last_reconcile
+
+            # Connection is established — reset backoff for next failure cycle
+            backoff_attempt = 0
+
             while not stop_event.is_set():
                 try:
-                    channel, payload = await asyncio.wait_for(queue.get(), timeout=5.0)
+                    channel, payload = await asyncio.wait_for(
+                        session_queue.get(), timeout=5.0
+                    )
                 except asyncio.TimeoutError:
-                    # idle — check reconcile timer
-                    if asyncio.get_event_loop().time() - last_reconcile > reconcile_interval_s:
+                    now = asyncio.get_event_loop().time()
+                    # Layer 4 — periodic heartbeat catches half-open TCP
+                    # (termination listener won't fire on silent network freeze).
+                    if now - last_heartbeat > 30.0:
+                        await _heartbeat(conn, timeout=2.0)  # raises _ReconnectRequired on failure
+                        last_heartbeat = now
+                    # Periodic outbox reconcile (Symbiosis Law 3)
+                    if now - last_reconcile > reconcile_interval_s:
                         await _reconcile_unconsumed(conn, contracts)
-                        last_reconcile = asyncio.get_event_loop().time()
+                        last_reconcile = now
                     continue
+
+                # Termination-listener sentinel — connection died, reconnect
+                if channel == "__dead__" or dead_event.is_set():
+                    raise _ReconnectRequired("termination listener fired")
 
                 try:
                     await route_event(conn, contracts, channel, payload, dry_run=dry_run)
                 except Exception as e:
                     print(f"[wr3-supervisor] route_event error: {e}", file=sys.stderr)
-                    # Do NOT crash the listener loop — next event continues
+                    if _is_connection_fatal(e):
+                        raise _ReconnectRequired("route_event used dead connection") from e
+                    # Non-fatal: keep the listener loop alive
 
-            await conn.close()
+            # Graceful shutdown path (stop_event set)
+            try:
+                await conn.close()
+            except Exception:
+                pass
             print("[wr3-supervisor] graceful shutdown complete")
             return
 
+        except _ReconnectRequired as e:
+            print(f"[wr3-supervisor] reconnect required: {e!s}", file=sys.stderr)
+            # CRITICAL: close conn before next iteration so asyncpg releases
+            # references to old _on_notify/_on_terminate (defends against
+            # the closure-capture trap even though default-args already pin).
+            if conn is not None:
+                try:
+                    await conn.close()
+                except Exception:
+                    pass
+            # Layer 5 — exponential backoff 2→4→8→16→30 (cap)
+            backoff_s = min(2 * (2 ** backoff_attempt), 30)
+            backoff_attempt = min(backoff_attempt + 1, 4)
+            await asyncio.sleep(backoff_s)
+            continue
+
         except Exception as e:
-            print(f"[wr3-supervisor] listener crashed: {e!r}, backing off 5s", file=sys.stderr)
+            print(
+                f"[wr3-supervisor] listener crashed: {e!r}, backing off 5s",
+                file=sys.stderr,
+            )
+            if conn is not None:
+                try:
+                    await conn.close()
+                except Exception:
+                    pass
             await asyncio.sleep(5)
 
 
@@ -466,6 +632,17 @@ async def _reconcile_unconsumed(conn: Any, contracts: WR3Contracts) -> None:
     """Replay outbox rows older than 60 min and not yet consumed.
 
     Symbiosis Law 3 (Event-driven durability) — outbox replay on reconnect.
+
+    Layer 2 (post 3-LLM panel + red-team gate 2026-05-22): classifies the
+    exception. Connection-fatal errors (`asyncpg.InterfaceError`,
+    `ConnectionDoesNotExistError`) raise `_ReconnectRequired` so the outer
+    loop reconnects. Non-fatal errors (e.g., `PostgresSyntaxError`) are
+    logged and swallowed — they're script bugs, not transport issues.
+
+    Previously: ALL exceptions were swallowed with `print + return`, which
+    left the supervisor running on a dead asyncpg connection indefinitely.
+    Vecchio PID 25068 (2026-05-22 03:09 WITA) lived 3h09m in this zombie
+    state with lsof showing 0 open PG sockets.
     """
     try:
         rows = await conn.fetch(
@@ -482,7 +659,10 @@ async def _reconcile_unconsumed(conn: Any, contracts: WR3Contracts) -> None:
         )
     except Exception as e:
         print(f"[wr3-supervisor] reconcile query failed: {e}", file=sys.stderr)
-        return
+        is_closed_fn = getattr(conn, "is_closed", None)
+        if _is_connection_fatal(e) or (callable(is_closed_fn) and is_closed_fn()):
+            raise _ReconnectRequired("reconcile_unconsumed hit dead connection") from e
+        return  # non-fatal: log + continue
 
     if not rows:
         return

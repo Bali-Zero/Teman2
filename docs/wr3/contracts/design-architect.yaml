@@ -9,9 +9,12 @@ lifecycle_tier: core
 cost_class: reasoning
 
 cost:
-  ceiling_usd: 0.5
-  ceiling_unit: "$0.50 cash"
+  ceiling_usd: 2.0
+  ceiling_unit: "$2.00 cash"
   hard_halt_on_exceed: true
+  # 2026-05-22 bump from $0.5 → $2.0. Empirical: Opus 4.7 1M-ctx orchestrator
+  # hit $0.5 cap on first spawn during pilot wr3-pilot-2026-05-22-manifesto-zantara-real-1.
+  # $2 covers brand-cortex skill load + 8-subagent fan-out coordination.
 
 allowed_tools:
   - Read
@@ -30,6 +33,11 @@ inputs:
     source: "wr3_episode_brief_requested"
     required: true
     schema_ref: "topic+audience+mode"
+  - name: companion_payload
+    kind: channel_payload
+    source: "wr2_episode_published"
+    required: false
+    schema_ref: "wr2-handoff (slug+slides_count+hero+claim_ids+domain+audience+brief_path+slides_path)"
 
 outputs:
   - name: fanout_dispatch
@@ -40,12 +48,17 @@ outputs:
     kind: file
     sink: "~/.cell-observatory/wr3/design-architect.jsonl"
     schema_ref: "free-form"
+  - name: companion_output
+    kind: file
+    sink: "apps/war-room/output/companion/<wr2_slug>-<sub_mode>/"
+    schema_ref: "free-form"
 
 emits:
   - wr3_episode_pre_render_ready
 
 consumes:
   - wr3_episode_brief_requested
+  - wr2_episode_published
 
 failure_modes:
   - code: hard_fail
