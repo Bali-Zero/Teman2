@@ -1,4 +1,4 @@
--- 193_reconcile_107_bridge_outbox_tracking.sql
+-- 194_reconcile_107_bridge_outbox_tracking.sql
 -- Backfill `schema_migrations` for legacy migration 107 when it was applied
 -- manually on production and recorded only in `_schema_versions`.
 --
@@ -9,7 +9,8 @@
 -- `107_bridge_outbox.sql` is SKIPPED by number and never logs a row into
 -- `schema_migrations`. `schema_audit.py` treats tracker divergence as an error.
 -- This file repairs the divergence in a separate migration number that the
--- runner WILL execute (193 is fresh on both prod and fresh-CI).
+-- runner WILL execute (194 is fresh on both prod and fresh-CI; originally
+-- planned as 193 but PR #826 claimed that number first — rebased to 194).
 --
 -- SAFE TIMEOUTS: small `lock_timeout` and `statement_timeout` because this is
 -- a metadata-only INSERT — should complete in milliseconds.
@@ -31,7 +32,7 @@ SELECT
     107,
     COALESCE(sv.executed_at, NOW()),
     COALESCE(NULLIF(sv.checksum, ''), 'legacy-107-bridge-outbox'),
-    'Backfilled from _schema_versions by 193_reconcile_107_bridge_outbox_tracking',
+    'Backfilled from _schema_versions by 194_reconcile_107_bridge_outbox_tracking',
     COALESCE(sv.execution_time_ms, 0),
     NULL
 FROM _schema_versions sv
