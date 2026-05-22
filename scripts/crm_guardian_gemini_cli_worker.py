@@ -94,7 +94,7 @@ RAW_DUMP_DIR = Path.home() / ".crm_guardian" / "raw_dumps_cli"
 RAW_DUMP_DIR.mkdir(parents=True, exist_ok=True)
 
 GEMINI_CLI = "/opt/homebrew/bin/gemini"
-GEMINI_TIMEOUT_SECONDS = 240  # match Web App worker
+GEMINI_TIMEOUT_SECONDS = 360  # 2026-05-23: empirical p99=103s on 130KB prompts, +250% safety margin (was 240s, caused 91 timeout errors in 14h)
 GEMINI_DEFAULT_MODEL: str | None = None  # let CLI pick its default (Gemini 2.5 Pro free OAuth)
 
 # Phase 1.5 OCR budget per client. Tesseract is fast but akta scans can spike
