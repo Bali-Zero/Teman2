@@ -79,7 +79,7 @@ Rispondi con il nome della cartella:"""
         "curl", "-s", "-X", "POST", "http://localhost:11434/api/generate",
         "-d", f"'{payload}'"
     ]
-    
+
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode == 0:
         data = json.loads(result.stdout)
@@ -89,10 +89,10 @@ Rispondi con il nome della cartella:"""
 async def process_company_folder():
     async with httpx.AsyncClient(timeout=30.0) as client:
         token = await get_token(client)
-        
+
         logger.info("Scansionando sottocartelle della compagnia...")
         subfolders = await list_subfolders(client, token, TEST_COMPANY_FOLDER_ID)
-        
+
         # Troviamo la cartella 99_Misc o elaboriamo la radice se non c'è
         misc_id = subfolders.get("99_Misc")
         if not misc_id:
@@ -109,22 +109,22 @@ async def process_company_folder():
         for f in files_to_check:
             filename = f['name']
             logger.info(f"Trovato file: {filename}")
-            
+
             # Filtro rapido (Heuristic Router)
             lower_name = filename.lower()
             if "npwp" in lower_name:
-                logger.info(f" -> [HEURISTIC] Smistato in: 02_NPWP")
+                logger.info(" -> [HEURISTIC] Smistato in: 02_NPWP")
                 continue
             if "nib" in lower_name:
-                logger.info(f" -> [HEURISTIC] Smistato in: 01_NIB")
+                logger.info(" -> [HEURISTIC] Smistato in: 01_NIB")
                 continue
             if "akta" in lower_name:
-                logger.info(f" -> [HEURISTIC] Smistato in: 00_AKTA")
+                logger.info(" -> [HEURISTIC] Smistato in: 00_AKTA")
                 continue
-                
+
             # Se è PDF e non è ovvio, estraiamo il testo e mandiamo a Ollama
             if f['mimeType'] == 'application/pdf':
-                logger.info(f" -> Nome ambiguo. Scarico il PDF per leggerlo...")
+                logger.info(" -> Nome ambiguo. Scarico il PDF per leggerlo...")
                 resp = await client.get(
                     f"https://www.googleapis.com/drive/v3/files/{f['id']}?alt=media",
                     headers={"Authorization": f"Bearer {token}"}
@@ -135,7 +135,7 @@ async def process_company_folder():
                         text = ""
                         for page in reader.pages[:2]: # Prime 2 pagine
                             text += page.extract_text() + "\n"
-                        
+
                         logger.info(f" -> Testo estratto ({len(text)} chars). Chiedo a Ollama su Mini...")
                         category = await classify_with_ollama(text)
                         logger.info(f" -> [OLLAMA AI] File classificato come: {category}")

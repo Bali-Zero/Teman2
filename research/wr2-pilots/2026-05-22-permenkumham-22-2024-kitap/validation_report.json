@@ -18,28 +18,108 @@
   "qr_asset_written": null,
   "qr_status": "skipped_no_url",
   "per_slide_body_word_count": {
-    "S1": {"layout": "cover-photo", "body_words": 0, "note": "cover-photo: heading+subheading only — body exempt per spec"},
-    "S2": {"layout": "evidence-carved", "body_words": 44, "note": "body text: 'Two regulations updated the rules in 2023–2024... But at your next renewal, three things work differently.' — PASS (25-50)"},
-    "S3": {"layout": "evidence-carved", "body_words": 40, "note": "body text: 'The reform is not a single regulation... acting on outdated advice.' — PASS (25-50)"},
-    "S4": {"layout": "photo-headline-yellow-sub", "body_words": 47, "note": "PASS (25-90)"},
-    "S5": {"layout": "dark-status-list", "body_words": 0, "note": "dark-status-list: list_items only — body exempt per spec"},
-    "S6": {"layout": "dark-status-list", "body_words": 0, "note": "dark-status-list: list_items only — body exempt per spec"},
-    "S7": {"layout": "photo-headline-yellow-sub", "body_words": 43, "note": "PASS (25-90)"},
-    "S8": {"layout": "dark-status-list", "body_words": 0, "note": "dark-status-list: list_items only — body exempt per spec"},
-    "S9": {"layout": "statement-bomb", "body_words": 0, "note": "statement-bomb: single statement line — body exempt per spec"}
+    "S1": {
+      "layout": "cover-photo",
+      "body_words": 0,
+      "note": "cover-photo: heading+subheading only — body exempt per spec"
+    },
+    "S2": {
+      "layout": "evidence-carved",
+      "body_words": 44,
+      "note": "body text: 'Two regulations updated the rules in 2023–2024... But at your next renewal, three things work differently.' — PASS (25-50)"
+    },
+    "S3": {
+      "layout": "evidence-carved",
+      "body_words": 40,
+      "note": "body text: 'The reform is not a single regulation... acting on outdated advice.' — PASS (25-50)"
+    },
+    "S4": {
+      "layout": "photo-headline-yellow-sub",
+      "body_words": 47,
+      "note": "PASS (25-90)"
+    },
+    "S5": {
+      "layout": "dark-status-list",
+      "body_words": 0,
+      "note": "dark-status-list: list_items only — body exempt per spec"
+    },
+    "S6": {
+      "layout": "dark-status-list",
+      "body_words": 0,
+      "note": "dark-status-list: list_items only — body exempt per spec"
+    },
+    "S7": {
+      "layout": "photo-headline-yellow-sub",
+      "body_words": 43,
+      "note": "PASS (25-90)"
+    },
+    "S8": {
+      "layout": "dark-status-list",
+      "body_words": 0,
+      "note": "dark-status-list: list_items only — body exempt per spec"
+    },
+    "S9": {
+      "layout": "statement-bomb",
+      "body_words": 0,
+      "note": "statement-bomb: single statement line — body exempt per spec"
+    }
   },
   "assist_on_first_use_check": {
-    "perpanjangan": {"first_use_slide": "S6", "assist_rendered": "(renewal)", "status": "PASS"},
-    "izin tinggal tetap": {"first_use_slide": "S3", "assist_rendered": "(permanent stay permit)", "status": "PASS"},
-    "penjamin": {"first_use_slide": "S3", "assist_rendered": "(guarantor)", "status": "PASS — brief first-use at S3 via carved fact; full assist definition at S8"},
-    "Lapor": {"first_use_slide": "S5", "assist_rendered": "(mandatory check-in/reporting)", "status": "PASS"},
-    "jangka waktu tidak terbatas": {"first_use_slide": "S5", "assist_rendered": "(unlimited duration)", "status": "PASS"},
-    "Kantor Imigrasi": {"first_use_slide": "S7", "assist_rendered": "(local immigration office)", "status": "PASS"},
-    "overstay": {"first_use_slide": "S6", "assist_rendered": "(remaining in Indonesia beyond permit expiry)", "status": "PASS"},
-    "jamin diri": {"first_use_slide": "N/A", "assist_rendered": "N/A", "status": "SKIPPED — term not used in any slide (storyboarder did not include)"},
-    "izin tinggal terbatas": {"first_use_slide": "N/A", "assist_rendered": "N/A", "status": "SKIPPED — term not used in final slides"},
-    "alih status": {"first_use_slide": "N/A", "assist_rendered": "N/A", "status": "SKIPPED — term not used in final slides"},
-    "Pernyataan Integrasi": {"first_use_slide": "N/A", "assist_rendered": "N/A", "status": "SKIPPED — term not used in final slides"}
+    "perpanjangan": {
+      "first_use_slide": "S6",
+      "assist_rendered": "(renewal)",
+      "status": "PASS"
+    },
+    "izin tinggal tetap": {
+      "first_use_slide": "S3",
+      "assist_rendered": "(permanent stay permit)",
+      "status": "PASS"
+    },
+    "penjamin": {
+      "first_use_slide": "S3",
+      "assist_rendered": "(guarantor)",
+      "status": "PASS — brief first-use at S3 via carved fact; full assist definition at S8"
+    },
+    "Lapor": {
+      "first_use_slide": "S5",
+      "assist_rendered": "(mandatory check-in/reporting)",
+      "status": "PASS"
+    },
+    "jangka waktu tidak terbatas": {
+      "first_use_slide": "S5",
+      "assist_rendered": "(unlimited duration)",
+      "status": "PASS"
+    },
+    "Kantor Imigrasi": {
+      "first_use_slide": "S7",
+      "assist_rendered": "(local immigration office)",
+      "status": "PASS"
+    },
+    "overstay": {
+      "first_use_slide": "S6",
+      "assist_rendered": "(remaining in Indonesia beyond permit expiry)",
+      "status": "PASS"
+    },
+    "jamin diri": {
+      "first_use_slide": "N/A",
+      "assist_rendered": "N/A",
+      "status": "SKIPPED — term not used in any slide (storyboarder did not include)"
+    },
+    "izin tinggal terbatas": {
+      "first_use_slide": "N/A",
+      "assist_rendered": "N/A",
+      "status": "SKIPPED — term not used in final slides"
+    },
+    "alih status": {
+      "first_use_slide": "N/A",
+      "assist_rendered": "N/A",
+      "status": "SKIPPED — term not used in final slides"
+    },
+    "Pernyataan Integrasi": {
+      "first_use_slide": "N/A",
+      "assist_rendered": "N/A",
+      "status": "SKIPPED — term not used in final slides"
+    }
   },
   "regulation_badge_status": {
     "S1": "PRESENT — text: 'Permenkumham 22/2023' (verbatim, most prominent of the package), class='regulation-badge', position: top-right",

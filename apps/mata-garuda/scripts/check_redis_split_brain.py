@@ -48,8 +48,8 @@ def host_stream_state(host: str, stream: str) -> dict[str, Any] | None:
         return None
     lines = out.split("\n")
     length, last_id = None, None
-    for i, l in enumerate(lines):
-        key = l.strip()
+    for i, ln in enumerate(lines):
+        key = ln.strip()
         if key == "length" and i + 1 < len(lines):
             try:
                 length = int(lines[i + 1].strip())

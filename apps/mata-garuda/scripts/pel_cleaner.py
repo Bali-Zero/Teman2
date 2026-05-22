@@ -52,7 +52,7 @@ def parse_xinfo_consumers(out: str) -> list[dict[str, Any]]:
 
     A new consumer record starts at every "name" key. Close current and start fresh.
     """
-    lines = [l for l in out.split("\n") if l != ""]
+    lines = [ln for ln in out.split("\n") if ln != ""]
     records: list[dict[str, Any]] = []
     cur: dict[str, Any] = {}
     i = 0
@@ -100,7 +100,7 @@ def _parse_xpending_long(out: str) -> list[tuple[str, str, int]]:
 
     redis-cli emits 4 lines per entry: id, owner, idle_ms, deliveries.
     """
-    lines = [l.strip() for l in out.split("\n") if l.strip()]
+    lines = [ln.strip() for ln in out.split("\n") if ln.strip()]
     records: list[tuple[str, str, int]] = []
     i = 0
     while i + 3 < len(lines):

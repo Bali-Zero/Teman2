@@ -1,6 +1,9 @@
+# ruff: noqa: T201
 import asyncio
-from sqlalchemy import text
+
 from backend.core.database import SessionLocal
+from sqlalchemy import text
+
 
 async def main():
     try:

@@ -56,27 +56,87 @@
   ],
 
   "bilingual_lexicon_with_english_assist": [
-    {"id_term": "KITAS", "english_assist": null, "always_untranslated": true},
-    {"id_term": "KITAP", "english_assist": null, "always_untranslated": true},
-    {"id_term": "Permenkumham", "english_assist": null, "always_untranslated": true},
-    {"id_term": "Imigrasi", "english_assist": null, "always_untranslated": true},
-    {"id_term": "ITAS", "english_assist": null, "always_untranslated": true},
-    {"id_term": "ITAP", "english_assist": null, "always_untranslated": true},
-    {"id_term": "Kemenimipas", "english_assist": null, "always_untranslated": true},
-    {"id_term": "PNBP", "english_assist": null, "always_untranslated": true},
-    {"id_term": "MERP", "english_assist": null, "always_untranslated": true},
-    {"id_term": "perpanjangan", "english_assist": "renewal/extension of stay permit", "always_untranslated": false},
-    {"id_term": "izin tinggal terbatas", "english_assist": "limited/temporary stay permit", "always_untranslated": false},
-    {"id_term": "izin tinggal tetap", "english_assist": "permanent stay permit", "always_untranslated": false},
-    {"id_term": "sponsor", "english_assist": "formal immigration guarantor registered with Kemenimipas", "always_untranslated": false},
-    {"id_term": "penjamin", "english_assist": "guarantor — person or agency legally responsible for the foreigner's stay", "always_untranslated": false},
-    {"id_term": "jamin diri", "english_assist": "self-guarantee — financial collateral substituting a traditional sponsor", "always_untranslated": false},
-    {"id_term": "Lapor", "english_assist": "mandatory check-in/reporting at local immigration office", "always_untranslated": false},
-    {"id_term": "alih status", "english_assist": "change of immigration status (e.g., KITAS to KITAP)", "always_untranslated": false},
-    {"id_term": "overstay", "english_assist": "remaining in Indonesia beyond permit expiry — a deportable offense", "always_untranslated": false},
-    {"id_term": "jangka waktu tidak terbatas", "english_assist": "unlimited duration — the post-first-renewal KITAP status", "always_untranslated": false},
-    {"id_term": "Kantor Imigrasi", "english_assist": "local immigration office", "always_untranslated": false},
-    {"id_term": "Pernyataan Integrasi", "english_assist": "Integration Declaration — formal pledge to integrate into Indonesian society, required for KITAP application", "always_untranslated": false}
+    { "id_term": "KITAS", "english_assist": null, "always_untranslated": true },
+    { "id_term": "KITAP", "english_assist": null, "always_untranslated": true },
+    {
+      "id_term": "Permenkumham",
+      "english_assist": null,
+      "always_untranslated": true
+    },
+    {
+      "id_term": "Imigrasi",
+      "english_assist": null,
+      "always_untranslated": true
+    },
+    { "id_term": "ITAS", "english_assist": null, "always_untranslated": true },
+    { "id_term": "ITAP", "english_assist": null, "always_untranslated": true },
+    {
+      "id_term": "Kemenimipas",
+      "english_assist": null,
+      "always_untranslated": true
+    },
+    { "id_term": "PNBP", "english_assist": null, "always_untranslated": true },
+    { "id_term": "MERP", "english_assist": null, "always_untranslated": true },
+    {
+      "id_term": "perpanjangan",
+      "english_assist": "renewal/extension of stay permit",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "izin tinggal terbatas",
+      "english_assist": "limited/temporary stay permit",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "izin tinggal tetap",
+      "english_assist": "permanent stay permit",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "sponsor",
+      "english_assist": "formal immigration guarantor registered with Kemenimipas",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "penjamin",
+      "english_assist": "guarantor — person or agency legally responsible for the foreigner's stay",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "jamin diri",
+      "english_assist": "self-guarantee — financial collateral substituting a traditional sponsor",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "Lapor",
+      "english_assist": "mandatory check-in/reporting at local immigration office",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "alih status",
+      "english_assist": "change of immigration status (e.g., KITAS to KITAP)",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "overstay",
+      "english_assist": "remaining in Indonesia beyond permit expiry — a deportable offense",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "jangka waktu tidak terbatas",
+      "english_assist": "unlimited duration — the post-first-renewal KITAP status",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "Kantor Imigrasi",
+      "english_assist": "local immigration office",
+      "always_untranslated": false
+    },
+    {
+      "id_term": "Pernyataan Integrasi",
+      "english_assist": "Integration Declaration — formal pledge to integrate into Indonesian society, required for KITAP application",
+      "always_untranslated": false
+    }
   ],
 
   "tone_register_primary": "pedagogico",

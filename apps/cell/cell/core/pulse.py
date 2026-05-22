@@ -734,8 +734,8 @@ class PulseEngine:
                                     await self._alerter.send(msg)
                                 else:
                                     logger.info(
-                                        f"alert_human autonomic-skip (Telegram disabled): "
-                                        f"DB-logged, Organism will dispatch recovery"
+                                        "alert_human autonomic-skip (Telegram disabled): "
+                                        "DB-logged, Organism will dispatch recovery"
                                     )
                     else:
                         logger.info(
