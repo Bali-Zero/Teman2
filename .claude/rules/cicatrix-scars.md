@@ -5,6 +5,31 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ℹ️ INFO: W23 cross-tree audit reveals sibling-agent already mirrored W8 fix (2026-05-23)
+
+_Discovered: 2026-05-23 01:45 WITA Loop iteration 23 attacking top-P0 from W22 audit · Severity: INFO (observational, no code change) · Status: **NO-OP — sibling agent had already mirrored W8 fix to main tree**_
+
+**TRAUMA:** W23 initial hypothesis: W22 audit flagged `com.matagaruda.gap.consumer.plist` with 176 real_errors, but actual log scan revealed 25k lines mostly INFO "no new gaps" heartbeat polluting `.err.log` despite W8 cicatrix fix existing in worktree branch. Theory: W8 fix never deployed to production because main tree branch (`feat/wa-mirror-group-capture-2026-05-22`) was 21 commits behind worktree branch (`worktree-audit-nb-automations-2026-05-21`), so cron's `python -m mata_garuda.workers.gap_consumer` invocation from main tree used pre-W8 code path.
+
+**RESOLUTION (already shipped by sibling agent):** check after `cp` from worktree→main tree showed `nothing to commit, working tree clean`. Git log revealed commit `3f72c924b chore(mata-garuda): adopt W8 cicatrix log-split fix from sibling worktree` made by parallel Claude Opus session at **2026-05-23 01:45:48 WITA — TWO MINUTES BEFORE MY W23 SMOKE**. Another agent had proactively mirrored the W8 fix while I was running W22 audit. Truncated .err.log to 0; next gap_consumer fire at 06:00 WITA will produce clean separated output.
+
+**ANTIBODY (lesson-only):**
+
+1. **Always check `git log -1 -- <file>` on main tree** before assuming a fix isn't deployed. My W23 hypothesis would have been correct 2 minutes earlier; sibling timing made it stale.
+2. **The team has cross-tree-mirror redundancy I wasn't tracking**. W19/W20/W21 work shipped wrappers + plists in `$HOME/scripts` + `~/Library/LaunchAgents` (gitignored, deploy-effective immediately). W18 + W14 were mirrored to main tree via explicit `cp` (W9 lesson). W8 was retroactively mirrored by sibling-agent — without my knowledge.
+3. **Race conditions exist with sibling mirrors**: if I had `cp`-ed AFTER sibling's commit, but my worktree had further edits past their snapshot, I would have re-introduced regressions. Future mirrors should `diff` first.
+
+**GOTCHA:**
+
+- The 25k INFO lines in pre-W23 .err.log are historical pre-fix accumulation, NOT evidence of fix failure. After 01:45:48 commit + my truncation, those lines are gone.
+- The sibling-agent's commit `3f72c924b` is on main tree's local branch `feat/wa-mirror-group-capture-2026-05-22`, NOT yet pushed (9 commits ahead of origin). PR #823 is from worktree branch → main and does NOT include this fix. Sibling-agent has separate workstream PR pending.
+- W23 effectively wasted ~10 minutes on a fix that didn't need shipping. Net positive: discovered the cross-tree redundancy pattern. Net neutral: nothing new added to PR #823 (W23 doc + cicatrix entry land on PR but are observational, not surgical).
+- W24+ candidates clarified: schedule the W22 audit cron (daily 02:00 WITA + Telegram alert on `unhealthy_delta > 0`); attack next P0 (`bridge.adaptive` 1372 OR `wr2.supervisor-watchdog` 2797).
+
+**Reference**: `research/operations/2026-05-23-w23-cross-tree-discovery.md`. Sibling commit `3f72c924b` (NOT in PR #823 — separate workstream).
+
+---
+
 ### 🚨 STRUCTURAL: 61/115 launchd plists (53%) are unhealthy — W22 programmatic mass audit (2026-05-23)
 
 _Discovered: 2026-05-23 01:20 WITA Loop iteration 22, panel-consensus follow-up · Severity: **P1** (5 P0 plists with >100 real errors, 11 P1 with 10-100, 3 STALE/silent-dead) · Status: **AUDIT TOOLING SHIPPED**; individual root-cause fixes deferred to W23+ as per-plist work_
