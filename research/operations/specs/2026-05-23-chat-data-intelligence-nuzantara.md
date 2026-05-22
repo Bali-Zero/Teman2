@@ -18,8 +18,8 @@ sul sistema Nuzantara attuale, dentro i vincoli UU PDP 27/2022 e Symbiosis Law 2
 
 ## 1. TL;DR
 
-- **L'asset esiste già su disco e non è sfruttato**: ~56 conversazioni WhatsApp esportate, ~13.100
-  immagini, ~10.854 PDF, ~7.707 vCard, ~5.3 GB, span 2023-08 → 2026-05 (~3 anni). È _dark data_ —
+- **L'asset esiste già su disco e non è sfruttato**: **109 conversazioni** WhatsApp esportate, ~13.540
+  immagini, ~11.275 PDF, ~7.721 vCard, ~5.3 GB, span 2023-08 → 2026-05 (~3 anni). È _dark data_ —
   il bridge live `wa-mirror` per design NON fa backfill di questo storico (README riga 119).
 - **Convergenza 4/4 LLM sul "wedge"**: il primo move a più alto ROI è un **historical ingestion
   pipeline offline** che trasforma quel dark data in record CRM ricchi + memoria RAG interrogabile,
@@ -38,17 +38,24 @@ sul sistema Nuzantara attuale, dentro i vincoli UU PDP 27/2022 e Symbiosis Law 2
 
 | Asset                        | Volume      | Note                                                            |
 | ---------------------------- | ----------- | --------------------------------------------------------------- |
-| Conversazioni `_chat.txt`    | ~56         | client-facing (Ari visa, Surya company), 1:1 + gruppi familiari |
-| Immagini (jpg/webp/png/heic) | ~13.100     | passaporti, selfie, foto ville/proprietà, screenshot bonifici   |
-| PDF                          | ~10.854     | akta PT PMA, invoice, bank statement, e-visa, LKPM              |
-| vCard (vcf)                  | ~7.707      | grafo contatti/referral (asset di rete sottovalutato)           |
-| Audio voice (opus)           | 37          | note vocali — trascrivibili (whisper local)                     |
-| Excel/Word                   | ~42         | tax/LKPM, materiale interno team                                |
+| Conversazioni `_chat.txt`    | **109**     | client-facing (Ari visa, Surya company), 1:1 + gruppi familiari |
+| Immagini (jpg/webp/png/heic) | ~13.540     | passaporti, selfie, foto ville/proprietà, screenshot bonifici   |
+| PDF                          | ~11.275     | akta PT PMA, invoice, bank statement, e-visa, LKPM              |
+| vCard (vcf)                  | ~7.721      | grafo contatti/referral (asset di rete sottovalutato)           |
+| Audio voice (opus)           | 88          | note vocali — trascrivibili (whisper local)                     |
+| Excel/Word                   | ~40         | tax/LKPM, materiale interno team                                |
 | **Totale**                   | **~5.3 GB** | span 2023-08 → 2026-05                                          |
 
-Fonti: `~/Downloads/chat_history/` (49 conv), `~/Downloads/wa-corpus-extracted/` (batch zip-of-zips),
-`~/Desktop/WhatsApp Chat - INVOICE BALI ZERO` (4.3 GB allegati, manca `_chat.txt`),
-`~/Downloads/TAX DEPARTMENT...` (workspace interno per-membro: Angel/Dea/Veronika/Kadek/Dewa Ayu + LKPM).
+Fonti (4 batch `chat_history/` + 362MB batch + standalone):
+
+- `~/Downloads/chat_history/drive-download-...142735` → 20 conv
+- `~/Downloads/chat_history/drive-download-...142751` → 29 conv
+- `~/Downloads/chat_history/drive-download-...142807` → **51 conv** (era zip-of-zips, estratto in `_extracted/`)
+- `~/Downloads/chat_history/drive-download-...142858` → **2 conv** (idem)
+- `~/Downloads/wa-corpus-extracted/` (362MB batch) → 4 conv
+- Susiane + YOPO standalone → 3 conv
+- `~/Desktop/WhatsApp Chat - INVOICE BALI ZERO` (4.3 GB allegati, manca `_chat.txt`)
+- `~/Downloads/TAX DEPARTMENT...` (workspace interno per-membro: Angel/Dea/Veronika/Kadek/Dewa Ayu + LKPM)
 
 Due nature di dato distinte:
 
@@ -70,7 +77,7 @@ Due nature di dato distinte:
 
 ```
 BRONZE (immutable raw, local Pro/Mini, encrypted-at-rest)
-  56 _chat.txt + 13k img + 11k pdf + 8k vcf
+  109 _chat.txt + 13.5k img + 11k pdf + 7.7k vcf
     → archivio immutabile con SHA-256 per file (dedup + provenienza + anti-tamper)
     → NESSUN LLM tocca questo layer
 
