@@ -5,6 +5,51 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: `_nlm_add_url`/`_nlm_add_text` waste cycles on at-cap NB + swallow rejection stderr (2026-05-22)
+
+_Discovered: 2026-05-22 10:50 WITA during W15 survey post-W14 ship · Severity: P2 · Status: **FIXED via cap-gate + stderr-surface in nlm_feeder W15 patch**_
+
+**TRAUMA:** W14 survey flagged NB-INTEL-AIResearch at **600 sources** — empirically beyond Google NotebookLM's silent-rejection threshold (~500 for Workspace tier). Every `nlm source add --url <X>` to this NB returns "Error: Could not add url source" in ~3s. The feeder code (`_nlm_add_url` and `_nlm_add_text` in `apps/mata-garuda/mata_garuda/workers/nlm_feeder.py`):
+
+- Did NOT pre-check NB source count — every call to AIResearch went through the full subprocess invocation (~3-6s each, plus 5s `NLM_FEEDER_SLEEP_BETWEEN_S` rate-limit), wasting up to a minute per cron cycle on guaranteed-failing calls
+- Returned `False` on non-zero exit but **discarded stderr** — operator log only said `[nlm_feeder] case_not_resolved <title>` with no hint that the NB itself was rejecting. To diagnose required manually running `nlm source add` outside the worker and noticing the "Could not add url source" error
+- Combined with W13/W14: feeder kept XACKing failed messages (so PEL stayed clean), but every batch wasted ~30-60s on guaranteed-rejected adds, slowing real feeds from other NBs
+
+Empirical live check confirmed:
+- `_nlm_notebook_source_count('dc5d01cd-...')` = 600 → `_nlm_at_cap` = True
+- `_nlm_notebook_source_count('9d262101-...')` = 216 → `_nlm_at_cap` = False (Press NB still accepts)
+
+**ANTIBODY (shipped):**
+
+1. **Cap constant + cache**: `NLM_NOTEBOOK_SOURCE_CAP = 500` and `_NB_COUNT_CACHE: dict[str, (int, ts)]` with 1h TTL. Avoids per-call `nlm notebook list` (one HTTP round-trip per cron is cheaper than per add-attempt).
+2. **`_nlm_notebook_source_count(nb_id)`** helper: returns current count from cached `nlm notebook list`, or None on error. Refreshes cache by re-running notebook list and updating ALL NB counts in one pass (amortizes the call).
+3. **`_nlm_at_cap(nb_id)`** helper: True if count ≥ 500, False if below OR if probe failed (graceful degrade — let CLI try, don't skip-block).
+4. **`_nlm_add_url` v2**: pre-check `_nlm_at_cap` → if True, log "skip add (NB at cap)" + return False without subprocess. On non-zero CLI exit, surface stderr snippet (200 chars) in WARNING log so operator sees the actual reason.
+5. **`_nlm_add_text` v2**: same gate + surface-stderr treatment on non-auth rejection (auth-retry path unchanged).
+6. **9 new tests** in `test_nlm_feeder_cap_gate.py`:
+   - `_nlm_at_cap` True/False/None paths
+   - `_nlm_add_url` skips when at cap (no subprocess call)
+   - `_nlm_add_url` surfaces stderr on rejection
+   - `_nlm_add_url` success still returns True
+   - Cache TTL hits within window (no re-spawn)
+   - Returns None on subprocess error
+   - Constants match design (500, 3600)
+
+   All 9/9 PASS in 0.20s. Full suite: 938 passed (+9 W15), 21 skipped, 1 pre-existing UUID-drift failure unrelated.
+7. **Empirical live verification**: import + call `_nlm_at_cap` against production Redis returns True for AIResearch (600), False for Press (216).
+
+**GOTCHA:**
+
+- **Cap is empirical**, not Google-documented. 500 chosen as conservative midpoint between observed "accepts" (Press @216) and "rejects" (AIResearch @600). If Google bumps Workspace cap to 1000+, the gate will continue to skip adds at 500 — acceptable conservative side effect (no false positives = no data loss; only slower fill rate). Tune `NLM_NOTEBOOK_SOURCE_CAP` upward when fresh evidence justifies.
+- **Cache TTL 1h means cap-state changes lag 1h**: if operator manually deletes 100 sources from a full NB to free space, the next add still skips for up to 1h. Acceptable trade-off vs `nlm notebook list` per call.
+- **The fix doesn't ROUTE around full NBs** — items destined for full AIResearch are now skipped AND marked `case_not_resolved` (no fallback NB). W16 candidate: NLM_DOMAIN_ROUTING could add overflow NBs (e.g. AIResearch-2026Q2). For now, full NBs silently drop ai_research items.
+- **Cap-gate fires BEFORE the auth-refresh retry path** in `_nlm_add_text`. If auth expires AND NB is at cap, the cap-skip wins (correct — no point refreshing auth to make a guaranteed-failing call).
+- **Empirical via cache only on first call** — first call after worker restart triggers the `nlm notebook list` probe (which costs 1-2s + needs CLI auth). If CLI auth is also broken (`nlm` returns 1), the probe returns None and the gate degrades to "let CLI try" — which then itself fails. So broken auth manifests as before (rejected adds), not as cascading silent skip.
+
+**Reference**: `research/operations/2026-05-22-nlm-feeder-cap-gate.md` (next commit). Open: W16 candidate — overflow-NB routing for full domains.
+
+---
+
 ### ⚠️ STRUCTURAL: `stream_ack` silently swallowed XACK failure → invisible PEL stuck-orphan drift (2026-05-22)
 
 _Discovered: 2026-05-22 10:10 WITA during W14 follow-up on W13 cicatrix open question · Severity: P2 · Status: **FIXED via return-value+log W14 patch in `base_worker.stream_ack`**_
