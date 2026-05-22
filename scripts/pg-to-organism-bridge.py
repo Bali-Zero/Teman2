@@ -67,13 +67,17 @@ CHANNELS = [
     "partner_commission_changed",
     "federation_alert",
     "cell_pulse_observed",
+    # W27 Path A (2026-05-23): sustained-red signal from Cell to Organism.
+    # Maps to yaml rule `cell_sustained_red_restart` which dispatches
+    # `fly_machines_start` action when Cell observes ≥3 consecutive red pulses.
+    "cell_pulse_sustained_red",
     "measurer_event",
     "crm_welcome_completed",
     "asset_provenance",
     "wr2_status_change",
 ]
 
-WARNING_CHANNELS = {"compliance_alert", "federation_alert"}
+WARNING_CHANNELS = {"compliance_alert", "federation_alert", "cell_pulse_sustained_red"}
 
 EVENTS_JSONL = Path.home() / ".organism" / "events" / "pg-bridge.jsonl"
 HEARTBEAT_PATH = Path.home() / ".organism" / "last_seen" / "pro.pg_organism_bridge.json"
