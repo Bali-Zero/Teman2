@@ -529,7 +529,12 @@ async def main(*, dry_run: bool = False, module: str | None = None) -> None:
         try:
             pool = await asyncpg.create_pool(DATABASE_URL, min_size=1, max_size=5)
             break
-        except (ConnectionResetError, OSError, asyncpg.PostgresError) as exc:
+        except (
+            ConnectionResetError,
+            OSError,
+            asyncpg.PostgresError,
+            asyncpg.InterfaceError,  # W34: sibling of PostgresError, NOT subclass
+        ) as exc:
             logger.warning(f"DB connect attempt {attempt}/3 failed: {exc}")
             if attempt < 3:
                 await asyncio.sleep(10 * attempt)
