@@ -5,6 +5,34 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: `stream_ack` silently swallowed XACK failure → invisible PEL stuck-orphan drift (2026-05-22)
+
+_Discovered: 2026-05-22 10:10 WITA during W14 follow-up on W13 cicatrix open question · Severity: P2 · Status: **FIXED via return-value+log W14 patch in `base_worker.stream_ack`**_
+
+**TRAUMA:** W13 cicatrix flagged (open question): "`stream_ack` silent-failure detection — `base_worker.stream_ack` calls `redis_cmd('XACK', ...)` and discards return value. Could check return ≥1, log warning on 0." Empirical fallout of this design:
+
+- W13 investigation discovered 60 messages PEL-stuck across 4 groups (45 ner, 9 normalizer, 5 nlm_feeder, 1 bridge-push) from **silent stream_ack failures** at unknown past points
+- The worker code was logically correct (calls stream_ack on every branch — success/skip/error) but Redis XACK can return 0 if the msg is no longer in PEL (already drained by cleaner, race condition, wrong id) — invisible to worker
+- Only way to detect these in production was running an external XPENDING audit, which only happened by accident during W13 root-cause hunt
+- Operators have NO log signal when ACK silently no-ops — PEL drift happens invisibly until someone runs W10 lag monitor and sees a slow climb
+
+**ANTIBODY (shipped):**
+
+1. **`base_worker.stream_ack` v2**: signature `-> None` → `-> bool`. Returns True on `XACK ≥ 1`, False on `XACK = 0` / redis-cli error / unparseable reply. Emits WARNING log on every False path with the exact stream/group/msg_id triple. All 10 existing callers use statement form (ignore return value) — backward-compat preserved.
+2. **5 unit tests** in `test_base_worker_stream_ack.py`: success returns True, silent-failure (XACK=0) returns False+WARN, redis-cli error returns False+WARN, unparseable returns False+WARN, callers backward-compat (statement form). All 5/5 PASS.
+3. **Operator runbook impact**: future PEL stuck-orphan investigations will find a grep-able trail in `~/logs/matagaruda-*.log` for `[stream_ack] XACK returned 0` — instantly locating the failure point instead of requiring an XPENDING dive across all groups.
+
+**GOTCHA:**
+
+- **Race with W12+W13 PEL-cleaner**: the cleaner XACKs deep-stale messages independently. If a worker tries to XACK the same msg AFTER the cleaner drained it, XACK returns 0 → WARN log. This is EXPECTED (race won by cleaner, no actual problem) but log noise. Mitigation: log message says "(already drained, wrong id, or race)" to set operator expectations.
+- **`-> None` → `-> bool` is backward-compat at Python call sites** (statement form ignores return) but breaks pyright/mypy callers that asserted return type. Grep across mata-garuda found zero such callers, but if a future caller asserts `-> None` this will type-fail.
+- **Doesn't protect against the W11/W12 XCLAIM-orphan pattern** — those messages are in PEL because XCLAIM put them there + worker never reads them. The W14 stream_ack log surfaces a DIFFERENT failure (worker called XACK but Redis returned 0). For W11/W12 orphans, the W13 cleaner deep-ACK is the recovery.
+- **Doesn't fix the root cause** (workers using `>` semantic only — see W13). That's still the open question with broad blast radius. W14 just makes one consequence visible.
+
+**Reference**: `research/operations/2026-05-22-stream-ack-silent-failure.md` (next commit).
+
+---
+
 ### 🚨 CRITICAL: XCLAIM without XACK creates permanent orphan PEL — workers use `>` semantic, NEVER re-read pending (2026-05-22)
 
 _Discovered: 2026-05-22 09:20 WITA during W13 root-cause investigation of W11 nlm_feeder drainage failure · Severity: P1 · Status: **FIXED via W13 deep-stale-msg XACK in pel_cleaner.py + one-shot 142-msg historical recovery**_
