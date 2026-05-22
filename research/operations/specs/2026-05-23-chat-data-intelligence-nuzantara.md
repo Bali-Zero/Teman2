@@ -2,7 +2,7 @@
 date: 2026-05-23
 domain: operations
 client_case: internal — Bali Zero chat-data intelligence (WhatsApp corpus → CRM/RAG/forecasting)
-status: draft — pre 4-LLM review gate, pre Antonello approval
+status: APPROVE_WITH_AMENDMENTS (4-LLM gate 2026-05-23) — amendments incorporated, pre Antonello approval
 sources: 4-LLM panel (Gemini 3.1 Pro + Codex GPT-5.5 + DeepSeek V4 Pro + NB-6 ground-truth) + WebSearch (Gong/RAG/privacy 2026) + on-disk corpus census
 supersedes_partial: research/marketing/2026-05-16-whatsapp-conversation-intelligence.md (industry pattern + UU PDP base)
 complements: research/operations/2026-05-23-wa-mirror-dashboard-discovery.md (UI layer, different scope)
@@ -26,13 +26,15 @@ sul sistema Nuzantara attuale, dentro i vincoli UU PDP 27/2022 e Symbiosis Law 2
   girando **interamente in locale** (Ollama su Mini-Pro2) per soddisfare UU PDP.
 - **Il valore non è un chatbot**: è (a) **memoria corporate unificata** — quando un cliente scrive
   ad Adit che non l'ha mai sentito, il sistema gli mostra un dossier 3-bullet della storia con
-  Bali Zero; (b) un **case ledger legalmente difendibile** — cosa è stato richiesto/inviato/promesso/
-  prezzato/mancante per ogni pratica; (c) **forecasting** da promesse di pagamento + geo-temporal
-  journey da EXIF.
-- **Vincolo legale duro (NB-6 ground-truth)**: processare dati specifici (passaporti, bank statement)
-  con AI su larga scala attiva obblighi **DPIA + DPO + ROPA** non opzionali. Retention minimo
-  **5 anni** (KYC/fiscale), non 12 mesi. Sanzioni: admin 2% fatturato + penale fino 6 anni / IDR 500jt
-  - NIB freeze via OSS flag. Mitigazione: redazione PII deterministica PRIMA dell'LLM + tutto locale.
+  Bali Zero; (b) un **case ledger** (aide accuracy-checked, NON sostituto della raw chat come
+  evidenza) — cosa è stato richiesto/inviato/promesso/prezzato/mancante per ogni pratica;
+  (c) forecasting da promesse di pagamento (fragile, da validare) + geo-temporal EXIF (da verificare,
+  WhatsApp strippa EXIF — vedi §11 panel P1).
+- **Vincolo legale duro (NB-6 ground-truth)**: AI su dati specifici (passaporti, bank) larga scala
+  attiva **DPIA + DPO + ROPA** non opzionali. Retention a **2 tier** (NB-6, nessuna contraddizione):
+  Customer 5y assoluto / Lead cancellazione a scopo esaurito (~12 mesi). Sanzioni: admin 2% fatturato
+  - penale fino 6 anni / IDR 500jt + NIB freeze via OSS flag. **Caveat panel**: la redazione regex
+    NON copre le immagini → serve pipeline OCR-FIRST (§4 SILVER); tutto locale.
 
 ## 2. Censimento del corpus reale (on-disk, 2026-05-23)
 
@@ -83,23 +85,38 @@ BRONZE (immutable raw, local Pro/Mini, encrypted-at-rest)
 
 SILVER (extraction, 100% LOCALE — Symbiosis Law 2)
   parser deterministico WA (timestamp/sender/attachment refs)
-    → PII redaction layer DETERMINISTICO (regex passport/NIK/IBAN/phone → token) PRIMA dell'LLM
-    → testo redatto → Ollama qwen3.5:9b  → JSON strutturato {client, service, quote, deadline, doc_ref}
-    → immagini → Ollama qwen2.5vl:7b      → OCR akta/passport/bank (MRZ → campi)
-    → voice opus → whisper local           → transcript
+    TESTO:
+    → redaction DETERMINISTICA (regex passport/NIK/IBAN/phone → token) PRIMA dell'LLM testo
+    → testo redatto → Ollama qwen3.5:9b → JSON {client, service, quote, deadline, doc_ref}
+    IMMAGINI (vision PII paradox fix — panel P1):
+    → la redaction-regex NON si applica a un'immagine; serve pipeline OCR-FIRST:
+       qwen2.5vl:7b (o tesseract local) OCR → testo grezzo → redaction regex → poi estrazione campi
+    → l'output del vision model (MRZ/IBAN estratti) è SUBITO tokenizzato, mai persistito raw in chiaro
+    → log esplicito di cosa il vision model riceve (DPIA audit trail)
+    VOICE:
+    → opus → whisper local → transcript → redaction → estrazione
     → bge-m3 (local) re-embed per RAG locale
   Tabelle PG nuove: chat_events, chat_entities, chat_attachments, chat_commitments, chat_case_timeline
     → ogni fact ha source_span (file + riga) + confidence + needs_review flag
-    → match phone/vcf → clients.id; NULL = prospect (NON scartare)
+    → match phone/vcf → clients.id SOLO con (phone E.164 normalizzato + name match) + threshold;
+      mai phone-only (numeri riciclati/condivisi → false-positive merge di ledger distinti — panel P2)
+    → NULL = prospect (NON scartare)
 
-GOLD (surfaces, valore consegnato)
-  1. Omniscient Handoff Dossier  → CRM UI: 3-bullet client recap on inbound (continuità tra agenti)
-  2. Case Ledger difendibile     → per practice: requested/sent/promised/priced/delayed/MISSING
-  3. Missing-doc queue + stale-promise alerts → EventBus → Telegram
-  4. Lead-stage classifier + scoring → client_scoring (da 3 anni di outcome storici)
+GOLD (surfaces, valore consegnato — realismo flaggato post-panel)
+  1. Omniscient Handoff Dossier  → CRM UI: 3-bullet client recap on inbound (continuità) [REALE]
+  2. Case Ledger                 → per practice: requested/sent/promised/priced/delayed/MISSING
+       [REALE ma è aide accuracy-checked, NON court-ready record — la raw chat resta l'evidenza]
+  3. Missing-doc queue + stale-promise alerts → EventBus → Telegram [REALE]
+  4. Lead-stage classifier + scoring → client_scoring (da 3 anni outcome storici) [REALE]
   5. Cash-flow forecast da payment-intent ("trasferisco 50jt lunedì") → expected_close
-  6. SOP candidates da chat interne → human approval → RAG team (Ari/Surya tribal knowledge)
-  7. Geo-temporal journey da EXIF (5849 jpg, locale) → site-visits→deposit funnel (moat fisico)
+       [FRAGILE — false-positive (ironia/tentativo) gonfiano il forecast; serve reliability
+        weighting + reconciliation core-banking; NON presentare come proiezione finanziaria live]
+  6. SOP candidates da chat interne → human approval → RAG team (tribal knowledge) [REALE]
+  7. Geo-temporal journey da EXIF → site-visits→deposit funnel
+       [❌ DECLASSATO 2026-05-23 — verifica empirica su 250 img campionate del corpus (PIL):
+        1/250 ha EXIF (0%), 0/250 GPS, 0/250 DateTimeOriginal. WhatsApp strippa i metadati.
+        Surface MORTA: nessun moat geo-temporale dal corpus. Timestamp utilizzabile = solo
+        quello del messaggio WA (riga _chat.txt), non EXIF foto.]
 ```
 
 ### Funnel su organi esistenti
@@ -117,8 +134,10 @@ GOLD (surfaces, valore consegnato)
 
 ## 5. Il wedge (primo move) — Historical Ingestion Pipeline, read-only
 
-Perché: sfrutta l'asset che `wa-mirror` non può backfillare, gira in ore, in locale, e crea il
-test-set per ogni automazione futura. Sequenza:
+Perché: sfrutta l'asset che `wa-mirror` non può backfillare, gira in locale, e crea il
+test-set per ogni automazione futura. **Wall-time NON è "ore"**: ~13.5k immagini × vision model
+su Mini-Pro2 24GB = realisticamente **giorni**, non ore (panel P2). Serve batching + queue +
+memory guardrail + benchmark before/after su campione. Sequenza:
 
 1. Bronze: copia immutabile + SHA-256 di ogni file (no LLM).
 2. Parser deterministico dei 56 `_chat.txt` (sender/timestamp/attachment refs).
@@ -133,17 +152,18 @@ training corpus per scoring/forecasting, "what did we promise this client?" riso
 
 ## 6. Compliance UU PDP 27/2022 (NB-6 ground-truth) — gating
 
-| Item                   | Requisito                                                                      | Azione spec                                                       |
-| ---------------------- | ------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
-| Lawful basis clienti   | contractual obligation (Art 20(2)(b))                                          | clausola engagement letter + WA auto-reply 1×                     |
-| Lawful basis prospect  | consent o legitimate interest (Art 20(2)(f))                                   | LIA documentata 1×, riusabile                                     |
-| Chat dipendenti        | legitimate interest **+ Peraturan Perusahaan + notice**                        | clausola PKWT (già `apps/wa-mirror/docs/PKWT_CLAUSE.md`) + notice |
-| Specific personal data | passaporti/bank = tier alto Art 4(2)                                           | redazione deterministica + encrypted-at-rest + RBAC               |
-| AI large-scale         | **DPIA obbligatorio**                                                          | DPIA prima di attivare la pipeline                                |
-| DPO                    | obbligatorio (systematic monitoring of specific data)                          | nominare DPO (Antonello o delega)                                 |
-| ROPA                   | record processing activities                                                   | template APPDI/APINDO, file `docs/compliance/`                    |
-| Retention              | **min 5 anni** (KYC/fiscale) — riconcilia col 12-mesi della ricerca 2026-05-16 | 5y default; prospect non-convertiti rivalutare a fine periodo     |
-| Diritti subject        | objection ad automated decision                                                | nessun auto-write CRM senza human-in-loop                         |
+| Item                            | Requisito                                                                                                | Azione spec                                                                                                                                                                                                                                                       |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Lawful basis clienti            | contractual obligation (Art 20(2)(b))                                                                    | clausola engagement letter + WA auto-reply 1×                                                                                                                                                                                                                     |
+| Lawful basis prospect           | consent o legitimate interest (Art 20(2)(f))                                                             | LIA documentata 1×, riusabile                                                                                                                                                                                                                                     |
+| Chat dipendenti                 | legitimate interest **+ Peraturan Perusahaan + notice**                                                  | clausola PKWT (già `apps/wa-mirror/docs/PKWT_CLAUSE.md`) + notice                                                                                                                                                                                                 |
+| Specific personal data          | passaporti/bank = tier alto Art 4(2) — DeepSeek P1: forse serve CONSENT esplicito, non basta contractual | DPIA deve decidere se MRZ-extraction richiede consent; legal opinion prima di toccare immagini                                                                                                                                                                    |
+| AI large-scale                  | **DPIA obbligatorio**                                                                                    | DPIA prima di attivare la pipeline                                                                                                                                                                                                                                |
+| DPO                             | obbligatorio (systematic monitoring of specific data)                                                    | nominare DPO (Antonello o delega)                                                                                                                                                                                                                                 |
+| ROPA                            | record processing activities                                                                             | template APPDI/APINDO, file `docs/compliance/`                                                                                                                                                                                                                    |
+| **Retention (RISOLTO da NB-6)** | NESSUNA contraddizione — servono **2 tier separati**                                                     | **Customer Data**: min 5y assoluto (KYC/fiscale/LKPM settoriale). **Lead Data** (prospect non-convertiti): NO retention settoriale → vince storage limitation → **cancellare** quando scopo esaurito (es. 12 mesi). Tenere prospect 5y VIOLEREBBE minimizzazione. |
+| Chat dipendenti storiche        | LIA retroattiva su 2023-25 = problema (Gemini P1)                                                        | F0 serve strategia legale specifica per lo STORICO interno, non solo clausola PKWT futura                                                                                                                                                                         |
+| Diritti subject                 | objection ad automated decision                                                                          | nessun auto-write CRM senza human-in-loop                                                                                                                                                                                                                         |
 
 ## 7. Top 3 rischi + mitigazione
 
@@ -166,27 +186,59 @@ training corpus per scoring/forecasting, "what did we promise this client?" riso
 
 ## 9. Roadmap (fasi, non stime orarie definitive)
 
-| Fase | Contenuto                                                                   | Gate                                   |
-| ---- | --------------------------------------------------------------------------- | -------------------------------------- |
-| F0   | DPIA + DPO + ROPA + LIA + clausole                                          | **legal gate — blocca tutto il resto** |
-| F1   | Bronze immutable + SHA-256 + parser deterministico                          | nessun LLM, nessun rischio             |
-| F2   | Silver: redazione PII + estrazione locale (testo+vision+voice) + tabelle PG | smoke su 5 conv pilota                 |
-| F3   | Match CRM + prospect backlog + needs-review queue                           | human-review prima di promozione       |
-| F4   | Gold #1 Handoff Dossier + #2 Case Ledger (i due core value)                 | CRM UI                                 |
-| F5   | Gold #3-7 (alerts, scoring, forecast, SOP, EXIF)                            | incrementale                           |
+| Fase | Contenuto                                                                   | Gate                                              |
+| ---- | --------------------------------------------------------------------------- | ------------------------------------------------- |
+| F0   | DPIA + DPO + ROPA + LIA + retention 2-tier + EXIF check + consent decision  | **legal gate — blocca SILVER/GOLD**               |
+| F1   | Bronze immutable + SHA-256 + parser deterministico                          | no LLM/no PII → **può partire in parallelo a F0** |
+| F2   | Silver: redazione PII + estrazione locale (testo+vision+voice) + tabelle PG | smoke su 5 conv pilota                            |
+| F3   | Match CRM + prospect backlog + needs-review queue                           | human-review prima di promozione                  |
+| F4   | Gold #1 Handoff Dossier + #2 Case Ledger (i due core value)                 | CRM UI                                            |
+| F5   | Gold #3-7 (alerts, scoring, forecast, SOP, EXIF)                            | incrementale                                      |
 
 ## 10. Checklist azione
 
-- [ ] **F0 legal gate**: DPIA + nomina DPO + ROPA template + LIA prospect + clausola engagement/PKWT.
-- [ ] Riconciliare retention 5y (PDP/KYC) vs 12-mesi prospect della ricerca 2026-05-16.
-- [ ] Bronze importer + SHA-256 (read-only, no LLM).
-- [ ] PII redaction layer deterministico (regex passport/NIK/IBAN/phone) — test round-trip.
+P1 bloccanti (panel) — risolvere PRIMA di scrivere codice:
+
+- [ ] **F0 legal gate**: DPIA + nomina DPO + ROPA + LIA prospect + clausola engagement/PKWT.
+- [ ] **Retention 2-tier** (NB-6): Customer Data 5y assoluto; Lead Data cancellazione a scopo
+      esaurito (es. 12 mesi). Due policy distinte + pruning script prospect.
+- [ ] **Consent per specific data**: DPIA decide se MRZ/bank-extraction richiede consent esplicito
+      (DeepSeek P1) — legal opinion prima di toccare qualsiasi immagine passaporto.
+- [ ] **Vision PII fix**: pipeline OCR-FIRST (qwen2.5vl/tesseract → testo → redact → estrazione),
+      output tokenizzato subito, mai raw in chiaro, log DPIA di cosa il vision model riceve.
+- [ ] **EXIF empirical check**: verificare su campione se le immagini conservano EXIF/GPS (WhatsApp
+      le strippa). Se assenti → declassare Gold #7, non è un moat.
+- [ ] **LIA storico dipendenti**: strategia legale per chat interne 2023-25 (no notice retroattivo).
+
+P2/P3:
+
+- [ ] Bronze importer + SHA-256 (read-only, no LLM) — può partire in parallelo a F0 (no PII processing).
+- [ ] Batching + queue + memory guardrail Mini-Pro2; benchmark before/after (wall-time = giorni non ore).
+- [ ] Phone match: E.164 normalize + name match + threshold, MAI phone-only.
 - [ ] Schema PG silver: chat_events, chat_entities, chat_attachments, chat_commitments, chat_case_timeline.
-- [ ] Estrazione locale qwen3.5:9b + qwen2.5vl:7b + whisper, con source_span + confidence + needs_review.
 - [ ] Qdrant collection locale `chat_history` con bge-m3 (MAI nel corpus 1536d frozen).
 - [ ] PricingTool come validator dei prezzi estratti (anti-poisoning) + tag legacy_data.
-- [ ] Gold #1 Handoff Dossier + #2 Case Ledger come primi deliverable.
-- [ ] **4-LLM review di questa spec PRIMA dell'approval Antonello** (regola feedback 2026-05-13).
+- [ ] Gold #1 Handoff Dossier + #2 Case Ledger come primi deliverable (i due core value REALI).
+- [ ] Cash-flow (#5): reliability weighting, NON proiezione finanziaria live.
+- [ ] Case Ledger (#2): UI disclaimer — aide accuracy-checked, NON sostituto della raw chat come evidenza.
+
+## 11. Panel review verdict (4-LLM gate, 2026-05-23)
+
+Fan-out: Gemini 3.1 Pro + DeepSeek V4 Pro + NB-6 ground-truth. **Codex escluso** (OAuth ChatGPT Pro
+token scaduto mid-run — non re-loggato per non bloccare il gate; 3 reviewer sostanziosi + ground-truth
+sufficienti).
+
+| Reviewer | Verdetto                                                                                |
+| -------- | --------------------------------------------------------------------------------------- |
+| Gemini   | **REJECT** (pesa i 2 bug fatali: vision PII paradox + EXIF fantasma)                    |
+| DeepSeek | **APPROVE_WITH_AMENDMENTS** (architettura coerente, fix obbligatori pre-ingestion)      |
+| NB-6     | conferma retention 2-tier, nessuna contraddizione; specific data forse richiede consent |
+
+**Sintesi**: la DIREZIONE è approvata (local-first + medallion + wedge storico = corretti). La
+FORMULAZIONE attuale aveva 5 P1: (1) vision PII paradox, (2) EXIF dati-fantasma, (3) retention
+indifferenziata, (4) consent specific-data, (5) LIA retroattiva dipendenti. Tutti incorporati sopra.
+**Verdetto consolidato: APPROVE_WITH_AMENDMENTS** — gli amendment sono in spec; F0 legal gate +
+EXIF empirical check sono i due gate che decidono se il progetto procede come scritto.
 
 ## Sources
 
