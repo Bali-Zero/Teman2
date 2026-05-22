@@ -150,3 +150,81 @@ async def emit_pulse_observed(
             "cell_observatory emit failed (non-blocking): cell=%s pulse=%s err=%s",
             cell_id, pulse_id, exc,
         )
+
+
+# W27 Path A (2026-05-23): separate emit function for the sustained-red
+# event kind. Routes to PG channel `cell_pulse_sustained_red` so the
+# pg-to-organism-bridge maps `kind=channel` correctly, and the Organism
+# yaml rule `cell_sustained_red_restart` matches it. Payload is FLAT so
+# the yaml_rules matcher (which reads payload.<key>_gte) can read
+# `consecutive` as a numeric field.
+async def emit_sustained_red(
+    cell_id: str,
+    pulse_id: str,
+    pulse_timestamp_ms: int,
+    consecutive: int,
+    target_app: str = "nuzantara-rag",
+    target_process_group: str = "api",
+    metadata: Optional[dict[str, Any]] = None,
+) -> None:
+    """Emit a cell_pulse_sustained_red event to events_outbox + pg_notify.
+
+    No-op when CELL_OBSERVATORY_EMIT != 'true' or EVENTBUS_DATABASE_URL is unset.
+    Errors are swallowed (WARN log) — caller MUST NOT block on this.
+
+    Payload schema (FLAT — required by yaml_rules.py matcher engine):
+      - cell_id: str
+      - pulse_id: str
+      - pulse_timestamp: int (ms)
+      - consecutive: int (red-streak count)
+      - classifier_self: "red"
+      - app: str (Fly app target, default nuzantara-rag)
+      - process_group: str (Fly process group, default api)
+    """
+    if not is_enabled():
+        return
+
+    try:
+        pool = await _get_or_create_pool()
+        if pool is None:
+            return
+
+        payload: dict[str, Any] = {
+            "event_version": "v1",
+            "cell_id": cell_id,
+            "pulse_id": pulse_id,
+            "pulse_timestamp": pulse_timestamp_ms,
+            "consecutive": consecutive,
+            "classifier_self": "red",
+            "app": target_app,
+            "process_group": target_process_group,
+            "metadata": metadata or {},
+        }
+
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                row = await conn.fetchrow(
+                    _INSERT_SQL, "cell_pulse_sustained_red", json.dumps(payload),
+                )
+                outbox_id = int(row["id"])
+                notify_stub = {
+                    "_outbox_id": outbox_id,
+                    "cell_id": cell_id,
+                    "pulse_id": pulse_id,
+                    "consecutive": consecutive,
+                    "classifier_self": "red",
+                    "app": target_app,
+                    "process_group": target_process_group,
+                }
+                await conn.execute(
+                    _NOTIFY_SQL, "cell_pulse_sustained_red", json.dumps(notify_stub),
+                )
+                logger.warning(
+                    "W27: cell_pulse_sustained_red emitted (cell=%s consecutive=%d outbox_id=%d)",
+                    cell_id, consecutive, outbox_id,
+                )
+    except Exception as exc:
+        logger.warning(
+            "cell_observatory sustained_red emit failed (non-blocking): cell=%s pulse=%s err=%s",
+            cell_id, pulse_id, exc,
+        )
