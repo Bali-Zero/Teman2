@@ -2,8 +2,8 @@
 
 import { ChevronDown } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useEffect, useState } from "react";
-import { DEFAULT_LOCALE, LOCALES, type Locale } from "@/i18n/types";
+import { useChatLocale } from "@/hooks/useChatLocale";
+import type { Locale } from "@/i18n/types";
 
 const LABEL: Record<Locale, (count: number) => string> = {
   en: (n) =>
@@ -20,22 +20,6 @@ const LABEL: Record<Locale, (count: number) => string> = {
   ru: (n) =>
     n > 0 ? `${n} новое сообщение${n === 1 ? "" : "(й)"}` : "К последнему",
 };
-
-function useChatLocale(): Locale {
-  const [locale, setLocale] = useState<Locale>(DEFAULT_LOCALE);
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    try {
-      const saved = window.localStorage.getItem("blog-language");
-      if (saved && (LOCALES as readonly string[]).includes(saved)) {
-        setLocale(saved as Locale);
-      }
-    } catch {
-      /* ignore */
-    }
-  }, []);
-  return locale;
-}
 
 export interface NewMessagesPillProps {
   show: boolean;

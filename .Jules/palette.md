@@ -17,3 +17,7 @@
 ## 2026-04-28 - [Consistent Focus Indicators with focus-ring Utility]
 **Learning:** In highly customized dark UIs, default browser focus outlines are often invisible or clash with the aesthetic. Providing a dedicated `.focus-ring` utility class using `focus-visible` ensures that keyboard users have clear, brand-consistent navigation cues without affecting mouse users.
 **Action:** Apply `.focus-ring` to all interactive elements that do not have a robust built-in focus state.
+
+## 2026-04-30 - [Shared Locale Hook for Chat Micro-frontend]
+**Learning:** In applications where certain routes (like `/chat`) are architecturally isolated from the main `I18nProvider`, duplicating locale-detection logic across components leads to inconsistencies and maintenance overhead. Consolidating this into a shared `useChatLocale` hook that synchronizes with `localStorage` ensures a unified language experience across all chat-specific components.
+**Action:** Use a shared `useChatLocale` hook for any components in the chat interface that require multi-language support (Tool Indicators, Badges, Panels).
