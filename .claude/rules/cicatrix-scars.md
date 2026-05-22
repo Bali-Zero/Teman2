@@ -5,6 +5,36 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: PEL accumulation pattern recurs across Mata Garuda streams — no systematic recovery (2026-05-22)
+
+_Discovered: 2026-05-22 08:50 WITA during W12 PEL survey post-W11 nlm_feeder cleanup · Severity: P2 · Status: **FIXED via weekly cron `com.matagaruda.pel-cleaner.weekly`**_
+
+**TRAUMA:** Pattern observed in W11 (nlm_feeder `scan` ghost, 77 pending, 18d idle) and now W12 (nlm_feeder_alerts `debug-2` ghost, 5 pending, 17.9d idle) reveals a recurring failure mode: debug/test sessions create consumer names (`scan`, `debug-2`, `debug-trace`, `nlm_feeder-debug`) that crash mid-batch, leaving Pending Entries List (PEL) entries claimed by dead consumers forever. Standard Redis Streams behavior: messages stay in dead consumer's PEL unless XCLAIM'd or PEL is manually trimmed. W10 lag monitor (30min cron) surfaces the symptom but does not act on it. Manual XCLAIM cleanup (as done in W11) costs ~5 min per incident and requires operator awareness — does not scale. Empirical survey 2026-05-22 found 1 new instance in <12h since W11 cleanup (debug-2), confirming recurrence rate is non-trivial.
+
+**ANTIBODY (shipped W12 same session):**
+
+1. **`apps/mata-garuda/scripts/pel_cleaner.py`** (Python, stdlib-only per Mata Garuda CLAUDE.md §1.4 minimal deps). Scans all `garuda:*`/`bridge:*`/`nexus:*` Redis streams. For each consumer group:
+   - **STALE_PEL** (`pending>0 AND idle>24h`): XCLAIM all pending messages from stale consumer to **youngest alive consumer** in the same group (lowest idle_ms, must be <24h idle). If no alive target exists: log error, leave alone (manual decision).
+   - **GHOST_CONSUMER** (`pending=0 AND idle>30d`): `XGROUP DELCONSUMER`.
+   - Idempotent: re-running on clean state = no-op. Exit 0 if no errors, 1 if any XCLAIM/DELCONSUMER errored.
+2. **Wrapper** `~/scripts/matagaruda-pel-cleaner.sh` with W7 flock (`--nonblock --exclusive --conflict-exit-code 75`). TCC-safe: calls venv python directly.
+3. **LaunchAgent** `~/Library/LaunchAgents/com.matagaruda.pel-cleaner.weekly.plist` — `StartCalendarInterval Weekday=0 Hour=4 Minute=0` (Sunday 04:00 WITA). Quiet cadence so manual ops can react during business days.
+4. **Empirical smoke** 2026-05-22 08:57 WITA: cleaner XCLAIM'd 5 messages from `debug-2`→`nlm_feeder_alerts-1`. Re-run = no-op. Wrapper smoke = no-op. Plist kickstart = no-op + stderr empty (W8 split-stream lesson respected by reusing exit code semantics).
+5. **Unit tests** `apps/mata-garuda/tests/test_pel_cleaner.py` (4/4 PASS): XINFO parser with two-consumer fixture, single-consumer fixture, empty fixture, threshold constants. Full mata-garuda test suite 935 passed + 1 pre-existing unrelated failure (`test_compat_shim.py` NB UUID drift).
+
+**GOTCHA:**
+
+- **Parser trap**: real Redis `XINFO CONSUMERS` output emits BOTH `idle` AND `inactive` fields per consumer (recent Redis versions). Naive parser closing record on `inactive` desynchronizes subsequent consumers' fields. Fix: close current record on `name` start (next consumer begins), not on field-end heuristic. Reference: `parse_xinfo_consumers` in `pel_cleaner.py:80`.
+- **Alive threshold tension**: alert digest consumers (`nlm_feeder_alerts-1`) run on hourly+ cadence — initial 1h alive threshold misclassified them as ghosts. Relaxed to 24h. Future: if any consumer legitimately idles >24h between work (weekly archive worker?), threshold must be per-group.
+- **Recurrence window**: cleaner runs weekly. If a debug session crashes Tuesday, PEL pollution lasts until Sunday. Acceptable trade-off vs noisy daily run on already-clean state. If operator wants faster: `launchctl kickstart -k gui/$(id -u)/com.matagaruda.pel-cleaner.weekly` ad-hoc.
+- **`debug-2` post-XCLAIM state**: still exists with `pending=0` + idle 17.9d. Will be auto-deleted on next Sunday run when crossing the 30-day ghost threshold (around 2026-06-04). Until then, it shows in `XINFO CONSUMERS` as harmless zero-pending entry.
+- **nexus-bridge orphan group** (W11 deferred): unchanged. `bridge-worker-1` consumer is `pending=0 + idle=12d` → does NOT trigger ghost threshold (30d). Will surface for cleaner consideration only after 2026-06-21. Antonello decision still pending (DELETE group / RESTORE worker / LEAVE).
+- **W11 nlm_feeder-1 drainage** (W11 follow-up): 82 pending still at 08:57 WITA (no drain yet). Next `com.matagaruda.nlm-feeder-stream.hourly` fire ~09:00 WITA will start drainage. Independent of W12 cleaner (alive consumer, not eligible for XCLAIM).
+
+**Reference**: `research/operations/2026-05-22-pel-cleaner-weekly-cron.md` (next commit). Wrapper exit codes: 0=clean, 1=errors, 75=concurrent instance blocked.
+
+---
+
 ### ⚠️ STRUCTURAL: Wave 1 orchestration fix shipped 3 hidden defects caught only by devils-advocate (2026-05-22)
 
 _Discovered: 2026-05-22 02:55 WITA during devils-advocate gate post-Wave 1 build · Severity: P0 (security regression masked as feature) · Status: **PATCHED in-band, all 13 post-patch tests PASS**_
