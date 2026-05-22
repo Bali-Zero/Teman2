@@ -1,6 +1,7 @@
 # Anthropic API — Best Practices for Nuzantara
 
-> Extracted from CLAUDE.md §17 on 2026-03-31 to reduce context window load.
+> Extracted from CLAUDE.md (pre-T2.7 §13) on 2026-03-31 to reduce context window load.
+> Post-T2.7 refactor 2026-05-23: only tombstone "Anthropic SDK BANNED" remains in root CLAUDE.md §5. Anthropic SDK direct use is BANNED — use `claude` CLI with `CLAUDE_CODE_OAUTH_TOKEN` via `apps/backend-rag/backend/llm/claude_oauth_client.py`.
 
 ## Adaptive Thinking (REQUIRED on Opus 4.6 / Sonnet 4.6)
 
