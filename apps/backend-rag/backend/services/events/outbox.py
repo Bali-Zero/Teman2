@@ -33,7 +33,9 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import re
+import time
 from collections.abc import Awaitable, Callable
 from typing import Any
 
@@ -52,6 +54,111 @@ _CHANNEL_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,62}$")
 # long disconnect (e.g. days). The EventBus calls replay per-channel
 # already, so 500 per channel is plenty.
 _DEFAULT_REPLAY_BATCH_SIZE = 500
+
+# W36 stale-event TTL guard (2026-05-23) — defense-in-depth on top of
+# the row-level ``created_at`` filter in :func:`replay_unconsumed`.
+# Some payloads carry their own timestamp (notably ``cell_pulse_observed``
+# which writes ``pulse_timestamp`` in ms-since-epoch in
+# ``packages/cell-core/cell_core/observatory.py``). If an event has been
+# buffered or its producing transaction committed long after the inner
+# event-time, the row may be fresh but the payload semantically stale.
+# Re-dispatching such an event from the outbox replay path can fire
+# actuators (e.g. ``fly_machines_restart`` via
+# ``apps/organism/organism/rules/base.yaml`` rule
+# ``cell_sustained_red_restart``) against a machine that has already
+# recovered. The TTL is in MINUTES and can be overridden by the env var
+# ``BRIDGE_STALE_EVENT_TTL_MIN``. Live (real-time) NOTIFY processing in
+# the listener path is NOT gated by this — only replay.
+_DEFAULT_PAYLOAD_TTL_MIN = 60
+_PAYLOAD_TTL_ENV_VAR = "BRIDGE_STALE_EVENT_TTL_MIN"
+# Fields scanned for an in-payload timestamp, in priority order. The
+# canonical one is ``pulse_timestamp`` (cell_pulse_observed); other
+# producers may use plain ``timestamp`` or ``ts``. All values are
+# expected to be ms since epoch (integer) or float seconds since epoch.
+_PAYLOAD_TIMESTAMP_FIELDS = ("pulse_timestamp", "timestamp", "ts")
+
+
+def _resolve_payload_ttl_minutes(explicit: int | None = None) -> int:
+    """Resolve the payload-TTL in minutes.
+
+    Precedence: explicit arg > ``BRIDGE_STALE_EVENT_TTL_MIN`` env > default 60.
+    Negative or non-integer env values are ignored (default used) with a
+    warning so a malformed deploy config can't silently disable the guard.
+    """
+    if explicit is not None:
+        return max(int(explicit), 0)
+    raw = os.environ.get(_PAYLOAD_TTL_ENV_VAR)
+    if raw is None or raw.strip() == "":
+        return _DEFAULT_PAYLOAD_TTL_MIN
+    try:
+        parsed = int(raw)
+    except (TypeError, ValueError):
+        logger.warning(
+            "events_outbox: %s=%r is not an integer — using default %dm",
+            _PAYLOAD_TTL_ENV_VAR,
+            raw,
+            _DEFAULT_PAYLOAD_TTL_MIN,
+        )
+        return _DEFAULT_PAYLOAD_TTL_MIN
+    if parsed < 0:
+        logger.warning(
+            "events_outbox: %s=%d is negative — using default %dm",
+            _PAYLOAD_TTL_ENV_VAR,
+            parsed,
+            _DEFAULT_PAYLOAD_TTL_MIN,
+        )
+        return _DEFAULT_PAYLOAD_TTL_MIN
+    return parsed
+
+
+def _payload_timestamp_seconds(payload: dict[str, Any]) -> float | None:
+    """Extract an in-payload timestamp (seconds since epoch) if present.
+
+    Returns ``None`` if the payload carries no recognised timestamp field
+    OR if the value is unparseable. The caller's convention is that
+    ``None`` means "no timestamp claim" — the event is NOT considered
+    stale on this signal alone (open-by-default; row-level ``created_at``
+    is the safety net).
+
+    Recognises both ms-since-epoch (typical for ``pulse_timestamp``) and
+    seconds-since-epoch (typical for ``timestamp``/``ts``). Heuristic:
+    values > 1e12 are assumed ms; smaller values are assumed seconds.
+    1e12 seconds is year 33658, 1e12 ms is 2001-09-09 — safe boundary.
+    """
+    if not isinstance(payload, dict):
+        return None
+    for key in _PAYLOAD_TIMESTAMP_FIELDS:
+        if key not in payload:
+            continue
+        raw = payload[key]
+        if raw is None:
+            continue
+        try:
+            value = float(raw)
+        except (TypeError, ValueError):
+            continue
+        if value <= 0:
+            continue
+        # Heuristic: > 1e12 → ms, else → seconds.
+        return value / 1000.0 if value > 1e12 else value
+    return None
+
+
+def _is_payload_stale(payload: dict[str, Any], ttl_minutes: int) -> bool:
+    """Return True iff payload has a timestamp field older than TTL.
+
+    Open by default: events WITHOUT a recognised timestamp field return
+    ``False`` (not stale) — the row-level ``created_at`` filter is the
+    safety net for that case. A non-positive TTL disables the check
+    (returns ``False``) so callers can opt out by passing ``0``.
+    """
+    if ttl_minutes <= 0:
+        return False
+    payload_ts_s = _payload_timestamp_seconds(payload)
+    if payload_ts_s is None:
+        return False
+    age_s = time.time() - payload_ts_s
+    return age_s > (ttl_minutes * 60)
 
 
 class InvalidChannelError(ValueError):
@@ -175,6 +282,7 @@ async def replay_unconsumed(
     max_age_minutes: int = 60,
     batch_size: int = _DEFAULT_REPLAY_BATCH_SIZE,
     consumer_id: str = "outbox_replay",
+    payload_ttl_minutes: int | None = None,
 ) -> int:
     """Re-dispatch unconsumed events to ``dispatch_fn`` and ack each on success.
 
@@ -187,6 +295,14 @@ async def replay_unconsumed(
     next replay). At-least-once semantics — handlers must dedupe via
     ``_outbox_id`` for idempotency.
 
+    W36 stale-event TTL guard (2026-05-23): in addition to the row-level
+    ``max_age_minutes`` filter on ``created_at``, any row whose payload
+    carries an in-payload timestamp (``pulse_timestamp``, ``timestamp``
+    or ``ts``) older than ``payload_ttl_minutes`` is skipped with a
+    WARNING log and **acked anyway** so it stops re-firing on every
+    subsequent replay. Live (real-time) NOTIFY processing is not gated
+    by this; only the replay path. See cicatrix W36.
+
     Args:
         conn: asyncpg connection.
         dispatch_fn: async callable receiving the payload dict (with
@@ -197,12 +313,20 @@ async def replay_unconsumed(
             replaying days of stale events after a long outage.
         batch_size: cap on rows fetched in a single call.
         consumer_id: tag written into ``events_outbox.consumer_id`` on ack.
+        payload_ttl_minutes: TTL for in-payload timestamps. ``None`` →
+            resolved via :func:`_resolve_payload_ttl_minutes` (env
+            ``BRIDGE_STALE_EVENT_TTL_MIN`` or default 60). Pass ``0``
+            to disable the payload-level guard.
 
     Returns:
-        Number of rows successfully acked.
+        Number of rows successfully acked (including rows acked as
+        stale-skips — the ack count is "rows removed from the
+        unconsumed backlog", not "rows successfully dispatched").
     """
     if channel is not None:
         validate_channel(channel)
+
+    resolved_payload_ttl_min = _resolve_payload_ttl_minutes(payload_ttl_minutes)
 
     where_clauses = [
         "consumed_at IS NULL",
@@ -251,6 +375,21 @@ async def replay_unconsumed(
 
         payload_dict["_outbox_id"] = outbox_id
         payload_dict["_replay"] = True
+
+        # W36 stale-event TTL guard: skip + ack rows whose in-payload
+        # timestamp is older than the configured TTL. Ack-on-skip
+        # prevents re-firing on every reconnect.
+        if _is_payload_stale(payload_dict, resolved_payload_ttl_min):
+            logger.warning(
+                "events_outbox: skipping stale-payload event id=%d channel=%s "
+                "(payload-ts older than %dm); acking to suppress further replay",
+                outbox_id,
+                row["channel"],
+                resolved_payload_ttl_min,
+            )
+            if await acknowledge(conn, outbox_id, consumer_id=f"{consumer_id}_stale_skip"):
+                acked += 1
+            continue
 
         try:
             await dispatch_fn(payload_dict)
@@ -334,4 +473,8 @@ __all__ = [
     "publish",
     "replay_unconsumed",
     "validate_channel",
+    # W36 stale-event TTL guard — exported for tests + opt-in introspection.
+    "_resolve_payload_ttl_minutes",
+    "_is_payload_stale",
+    "_payload_timestamp_seconds",
 ]
