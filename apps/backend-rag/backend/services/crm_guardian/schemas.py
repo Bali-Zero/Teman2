@@ -123,7 +123,7 @@ class Company(BaseModel):
     source_company_folders tracking which Drive folder IDs contributed.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")  # 2026-05-23 Wave 1 (was forbid; Gemini emits company_id/folder_id/etc)
 
     legal_name: str | None = None
     legal_form: Literal["PT_PMA", "PT", "CV", "Perseroan", "Foundation", "Other"] | None = None
@@ -253,7 +253,7 @@ class Timeline(BaseModel):
 class Compliance(BaseModel):
     """Compliance signals (LKPM, SPT, BPJS, expiries)."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")  # 2026-05-23 Wave 1 (was forbid)
 
     lkpm_last_reported: date | None = None
     lkpm_next_due: date | None = None
@@ -285,7 +285,7 @@ _ARCHETYPE_CANONICAL: frozenset[str] = frozenset({
 class Profile(BaseModel):
     """Top-level tiering and archetype (used for routing + AI Profile Card)."""
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")  # 2026-05-23 Wave 1 (was forbid)
 
     # 2026-05-23: relaxed from Literal — Gemini occasionally emits novel labels;
     # validator below maps to canonical 7-enum, unknown → "other" (no crash).
@@ -313,6 +313,16 @@ class Profile(BaseModel):
         return v if v in _ARCHETYPE_CANONICAL else "other"
 
 
+# 2026-05-23 Wave 1 quick fix — sub-models below flipped to extra="ignore":
+# Empirical: Gemini/agy under high payload struct-shifted, emitting top-level
+# fields like company_id, client, extracted_data, error, note, status, kbli_codes
+# (as string), folder_id — none in schema. extra="forbid" → 100% error rate on
+# re-enqueue cohort (50min, 5/5 pydantic fail). Trade-off: silent field drop OK
+# for L1ClientSummary root + Company + Profile + Compliance (extracted data
+# layers). KEPT forbid on Identity/VisaStatus/Shareholder/Tax/Lkpm/Document/
+# Timeline — these are legal/medical/regulatory critical, no silent loss.
+
+
 class L1ClientSummary(BaseModel):
     """Root L1 summary written to clients.ai_summary JSONB.
 
@@ -321,7 +331,7 @@ class L1ClientSummary(BaseModel):
     defensive `.get()` chains.
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="ignore")  # 2026-05-23 Wave 1 (was forbid)
 
     schema_version: str = SCHEMA_VERSION
     client_id: int
