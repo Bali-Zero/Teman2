@@ -5,6 +5,32 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ✅ RESOLVED: W33 — CELL_AUTOREMEDIATION_ENABLED operator kill switch for W27/W31 auto-heal chain (2026-05-23)
+
+_Discovered: W27 panel Codex non-negotiable item (deferred 2026-05-23 03:00 WITA) · Severity: P2 (safety hardening, not active bug) · Status: **SHIPPED commit `2eeccee93`** — 23/23 unit tests PASS, default-ON, hot-flip without Cell restart_
+
+**TRAUMA (pre-W33):** W27/W31 auto-heal chain wired Cell sustained_red → Organism → fly_machines_restart with three layers of safety (Cell emit-once flag, Organism circuit breaker, fly CLI idempotency). But there was NO operator override. If the chain misbehaved (restart loop, wrong actuator, false-positive red on a flaky probe), operator had to ssh into Pro, find Cell PID, kill it, then patch — all under outage pressure. Codex during W27 panel called this a non-negotiable gap.
+
+**ANTIBODY (shipped commit `2eeccee93`):**
+
+1. **Helper** `_autoremediation_enabled()` in `apps/cell/cell/core/pulse.py:53-83`: reads `CELL_AUTOREMEDIATION_ENABLED` env var each invocation (no cache). Disabled set: `{false, 0, no, off, disabled}` case-insensitive whitespace-trimmed. Empty/unset/anything-else → True (default-on).
+2. **Gate at emit site** (`pulse.py:862-895`): when disabled, logs WARNING `"W33 kill switch active (CELL_AUTOREMEDIATION_ENABLED=false): would emit sustained_red (streak=N) but suppressed by operator override"` and sets idempotency flag to prevent repeat spam during the same red window. Streak counter advances normally for log visibility.
+3. **23 unit tests** in `apps/cell/tests/test_w33_autoremediation_kill_switch.py`: default unset, explicit true, empty string, every disabled-value variant (11 cases), every active-value variant (7 cases including unknown→default-on), no-caching-between-calls. All 23/23 PASS in 0.11s.
+4. **Default-ON discipline**: chain has been validated end-to-end (W27+W31 live test). Defaulting OFF would silently disarm new deployments where someone forgets to set the var. Explicit opt-out is safer.
+
+**GOTCHA:**
+
+- **No-cache pattern**: function reads env on EVERY pulse cycle. Operator flips the flag → next pulse (60s) sees new state. No Cell daemon restart needed if env is exported into the running process. With `apps/cell/.env` source pattern: edit .env + `launchctl bootout + bootstrap` (5s).
+- **Idempotency flag set even when suppressed**: prevents WARNING spam during a long red window. If kill switch is enabled mid-window, the suppressed-emit decision is locked until status flips non-red (which resets the flag). Edge case: short window of "supposed to fire but suppressed" → operator enables → next red window emits. Acceptable trade.
+- **Default-ON vs Default-OFF debate**: I chose default-ON because the chain is validated and the goal is auto-heal. Default-OFF would mean every new Cell deployment requires explicit opt-in (boilerplate friction). Codex panel was silent on this — discretionary call documented inline + in test docstring so future operators see the rationale.
+- **Doesn't block the Organism dispatch path** — only gates Cell emit. If something else (e.g. future manual emit script, replayed events) sends `cell_pulse_sustained_red` to Organism, the dispatch still happens. To kill at the Organism layer, separate switch needed (W34 candidate, lower priority).
+- **`.env.example` not updated** — guardrails hook blocked `.env*` writes on this path. Function docstring + cicatrix entry + research doc are the discovery surface for future operators.
+- **Branch contortion**: sibling worktree had main tree branch checked out, so I committed to sibling's branch then cherry-picked to a temp branch off `main` and pushed via refspec `git push origin w33-temp:main`. Final commit on origin: `2eeccee93`. Pattern lesson: when sibling holds the canonical branch, use `--detach` + temp branch + refspec push rather than fighting checkout.
+
+**Reference**: `research/operations/2026-05-23-w33-autoremediation-kill-switch.md`. Commit `2eeccee93` on `origin/main`. Test PASS evidence: 23/23 PASS in 0.11s.
+
+---
+
 ### ✅ RESOLVED: W32 — pg-bridge silently died on asyncpg.InterfaceError, dropped 50min of NOTIFY events (2026-05-23)
 
 _Discovered: 2026-05-23 during W27 live production test 04:42-05:25 WITA · Severity: P1 (Organism auto-heal blind during the very outage class it was built for) · Status: **FIXED on commit `630f1bd1d`** — 5/5 unit tests + live restart verified "LISTEN on 15 channels active"_
