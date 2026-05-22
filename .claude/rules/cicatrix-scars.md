@@ -5,6 +5,54 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ℹ️ INFO: Bridge_outbox mig 107 promoted to v2 + pg-proxy Perl prefixer SHIPPED — 3-LLM panel caught 4 P0 traps (2026-05-23)
+
+_Discovered: 2026-05-23 04:00 WITA during session "fix Migration 107 + pg-proxy flap, discuti con 4llm" · Severity: INFO (clean ship, panel-reviewed) · Status: PR #828 + ~/scripts/fly-pg-proxy-wrapper.sh edit shipped, empirical verification PASS_
+
+**TRAUMA / Discovery (2 residual debts, 4 panel P0 traps caught BEFORE implementation):**
+
+Residual debts from prior sessions:
+
+1. **Migration 107 bridge_outbox tech debt**: legacy Python migration `migration_107_bridge_outbox.py` applied manually on prod, recorded only in `_schema_versions(107)`. Fresh CI DBs lacked the table → migration 192 (jsonb repair) crashed on `relation "bridge_outbox" does not exist`. PR #827 added IF EXISTS guard to mig 192 but the schema-source-of-truth gap remained.
+2. **pg-proxy intermittent flap** (LaunchAgent `com.balizero.wr2.pg-proxy`, KeepAlive=true): no timestamp prefix on `fly proxy` child output made correlation with backend timeouts, EventBus drops, WR3 supervisor restarts guesswork.
+
+Panel (Gemini agy + DeepSeek V4 Pro reasoning_effort=high + Codex GPT-5.5 adversarial) caught 4 P0 traps in the proposed fixes BEFORE shipping:
+
+| # | Trap | Caught by | Resolution |
+|---|---|---|---|
+| 1 | Brief proposed `BIGSERIAL`; DeepSeek "assumed SERIAL was original". Empirical override 2026-05-23: legacy `.py` line 34 = `id BIGSERIAL PRIMARY KEY`. Schema drift on fresh CI if we'd switched. | DeepSeek raised, empirical override decided | Kept BIGSERIAL (faithful to legacy `.py`) |
+| 2 | `MigrationManager.apply_all_pending()` computes pending from `_schema_versions.migration_number`, NOT from `schema_migrations` (`migration_manager.py:399-412`). On prod with legacy `_schema_versions(107)` present, the new `107.sql` is SKIPPED by number — never executes, never backfills `schema_migrations`. Brief's "will try to re-apply but safe" was wrong. | **Codex** (empirical file read) | Added companion `193_reconcile_107_bridge_outbox_tracking.sql` to backfill `schema_migrations(107)` from `_schema_versions(107)` |
+| 3 | macOS `/usr/bin/awk` does NOT support `strftime()`. `gawk` and `ts` absent on this host (empirical: `/usr/bin/awk: calling undefined function strftime`). Original awk-based pg-proxy patch would crash wrapper → KeepAlive flap loop. | **Codex** (empirical command execution) | Switched to `/usr/bin/perl -MPOSIX=strftime` (Perl ships with macOS, POSIX is core) |
+| 4 | `exec foo \| bar` in bash is **undefined behavior** — pipelines need subshell, can't combine with `exec` process replacement. | **Gemini** | Dropped `exec` keyword. KeepAlive=true + ThrottleInterval=30 handle respawn cleanly. `${PIPESTATUS[0]}` propagates child exit code. |
+
+Additional Codex P1: tests still import `migration_107_bridge_outbox.py` + `apply_migration_107.py`. Brief's "no longer in repo" was wrong. Cleanup of legacy `.py` + `LEGACY_NO_ROLLBACK_WHITELIST` removed from this PR scope.
+
+**ANTIBODY (shipped):**
+
+1. **PR #828** `feat/mig-107-promotion-2026-05-23` — 3 files: `107_bridge_outbox.sql` (BIGSERIAL faithful), `193_reconcile_107_bridge_outbox_tracking.sql` (NOT EXISTS + ON CONFLICT DO NOTHING), `test_migration_107_bridge_outbox_promotion.py` (8/8 pass: idempotency, type fidelity, non-destructive rollback, guarded insert).
+2. **`~/scripts/fly-pg-proxy-wrapper.sh`** edited (HOME, gitignored — backup at `.pre-perl-prefix-2026-05-23`): Perl prefixer + `2>&1 | prefix_child_output` writes to STDERR (preserves log-stream split: error lines stay in `pg-proxy.error.log`, not migrated to `pg-proxy.log`). `${PIPESTATUS[0]}` propagation + `exit $status` line. Runbook + diff archived at `research/operations/2026-05-23-pg-proxy-perl-prefix-runbook.md`.
+3. **Empirical verification PASS** (2026-05-23 04:14 WITA):
+   - PID transition 13602→49113→52218 across reload + stress-test kill
+   - Timestamped lines in `pg-proxy.error.log`: `[2026-05-23 04:14:28] Proxying...` + `[2026-05-23 04:14:52] fly proxy exited status=0` + `[2026-05-23 04:14:58] Proxying...` (KeepAlive respawn)
+   - `nc -z -w 2 127.0.0.1 15432` OPEN within ~5s of KeepAlive respawn
+
+**GOTCHA:**
+
+- **DeepSeek's `SERIAL` assumption was wrong** — DeepSeek (and even GPT-5.5 referenced "Codex GPT-5.5 flags line 13" inside DeepSeek's response, suggesting DeepSeek hallucinated Codex's verdict). Empirical override discriminant: always Read the legacy file before trusting any panelist's claim about its content. **Lesson**: cross-LLM panel review does NOT eliminate need for empirical Read on file contents — it identifies questions, doesn't answer them with certainty.
+- **The wrapper diff is in HOME, not in git**. The plist mirror at `infra/launchagents/` does NOT include the wrapper. Operator runbook in `research/operations/` is the canonical record. If the wrapper is lost (machine reimage), recover from the runbook diff + verify with `bash -n` + empirical reload.
+- **Codex panel response time was 2x Gemini and DeepSeek but caught the most P0 traps (2 of 4)**. Pattern: long empirical work (Read 7 source files, exec awk, exec pg_isready --version, check PATH) beats long-context style on infrastructure traps. Gemini called the bash `exec` pipeline trap; DeepSeek called the type drift assumption (but also wrong about which type was original).
+- **Skipped layers documented as deferrable**: L2 daemon `pg_isready` health-check (WR3 heartbeat already covers half-open zombies; would race with WR3 recovery), L3 fly-agent flap monitor (alert fatigue; existing `fly-restart-loop-detector.sh` covers correlated symptoms). Both ship-able later if empirical evidence justifies.
+- **Don't bundle PRs across failure domains**: 2/3 panelists (DeepSeek + Codex) preferred separate PRs over Gemini's bundle suggestion. DB migration + cron wrapper edit are different blast radii. Codex argument: "L2 changes behavior, not just observability. Gather timestamped flap evidence first" — applies equally to bundling.
+
+**Reference**:
+- PR: https://github.com/Balizero1987/Teman2/pull/828
+- Runbook: `research/operations/2026-05-23-pg-proxy-perl-prefix-runbook.md`
+- Panel artifacts: `/tmp/107-flap-panel/{brief,gemini,deepseek,codex,SYNTHESIS}.md`
+- Wrapper backup: `~/scripts/fly-pg-proxy-wrapper.sh.pre-perl-prefix-2026-05-23`
+- Empirical legacy file inspection: `grep -n "BIGSERIAL\|SERIAL" apps/backend-rag/backend/migrations/migration_107_bridge_outbox.py`
+
+---
+
 ### ℹ️ INFO: Wave 4 partial — T2.6 stop_verify live (2x triggered correctly) + T3.4 4/6 slash commands SHIPPED, T3.5+T3.6 deferred (2026-05-23)
 
 _Discovered: 2026-05-23 ~00:55 WITA during Wave 4 execution · Severity: INFO (clean partial ship + 2 deferred per panel) · Status: T2.6 + T3.4 partial shipped, T3.5 needs spec iter-2 harness, T3.6 out-of-band A/B_
