@@ -31,7 +31,7 @@ Claude falls back to conservative mode and pings the user to re-certify.
 - `gh workflow run`, `gh run rerun`, `gh run watch`
 - Read-only `fly logs`, `fly status`, `fly ssh console -C "<read-only cmd>"`
 - Edit/Write on code, tests, migrations (SQL v2), docs, workflows under `.github/`
-- Browser QA after deploy (screenshot kita/my/prime/mail/calendar/drive/knowledge/zantara per `CLAUDE.md §10`)
+- Browser QA after deploy (screenshot kita/my/prime/mail/calendar/drive/knowledge/zantara per `CLAUDE.md §11` Deploy Lifecycle Post-deploy QA)
 - Local venv, pytest, npm, docker builds (no push)
 
 ### Requires confirmation
@@ -99,7 +99,7 @@ When Claude receives a non-trivial task that will ship to prod:
 6. `bash scripts/post-deploy-verify.sh <PR_NUMBER>` in background. It polls
    `fly-deploy.yml`, probes `/health`, posts Telegram on completion.
 7. When the post-deploy verify returns green, Claude runs browser QA for the
-   relevant subdomains (per `CLAUDE.md §10`).
+   relevant subdomains (per `CLAUDE.md §11` Deploy Lifecycle Post-deploy QA).
 8. Claude saves a `decision` memory in MOS: what shipped, which PR, which
    fly-deploy run, health state.
 9. One-line summary to the user with all the relevant links.
@@ -118,16 +118,16 @@ these rules. They are **part of the autonomy contract**: violating them
 counts as "modifying shared state without confirmation" and is out of
 scope for L2.
 
-| Rule                                                                                                  | Why                                                                                                                  |
-| ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| **No `SQLModel.metadata.create_all()` in prod or CI paths.** Test scratch fixtures only.              | CI bootstraps schema differently from prod — `apps/backend-rag/scripts/ci_bootstrap_schema.py` exists as a workaround, not as a path forward. |
-| **All schema changes are SQL files in `apps/backend-rag/backend/db/migrations_v2/NNN_name.sql`.**     | Single source of truth. Forward DDL above the `-- === ROLLBACK ===` marker, rollback DDL below.                      |
-| **No new `apps/backend-rag/backend/migrations/apply_migration_NNN.py` without explicit human approval.** | Python migrations run *post-deploy* in `fly-deploy.yml` and can leave the new image live but degraded. Convert to SQL or surface to Antonello. |
-| **Do not rename or delete files in `migrations_v2/` once they have been applied to prod.**            | The runner tracks `migration_number` — renaming creates orphans; deleting silently corrupts state.                   |
-| **`PYTHONPATH=. python -m backend.db.migrate apply-all --dry-run` must pass before merge.**           | Catches syntax errors and ordering issues before they reach the deploy job.                                          |
+| Rule                                                                                                     | Why                                                                                                                                            |
+| -------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| **No `SQLModel.metadata.create_all()` in prod or CI paths.** Test scratch fixtures only.                 | CI bootstraps schema differently from prod — `apps/backend-rag/scripts/ci_bootstrap_schema.py` exists as a workaround, not as a path forward.  |
+| **All schema changes are SQL files in `apps/backend-rag/backend/db/migrations_v2/NNN_name.sql`.**        | Single source of truth. Forward DDL above the `-- === ROLLBACK ===` marker, rollback DDL below.                                                |
+| **No new `apps/backend-rag/backend/migrations/apply_migration_NNN.py` without explicit human approval.** | Python migrations run _post-deploy_ in `fly-deploy.yml` and can leave the new image live but degraded. Convert to SQL or surface to Antonello. |
+| **Do not rename or delete files in `migrations_v2/` once they have been applied to prod.**               | The runner tracks `migration_number` — renaming creates orphans; deleting silently corrupts state.                                             |
+| **`PYTHONPATH=. python -m backend.db.migrate apply-all --dry-run` must pass before merge.**              | Catches syntax errors and ordering issues before they reach the deploy job.                                                                    |
 
-**Recovery:** if a migration fails *before* deploy, stop and fix the SQL
-file. If a migration fails *after* deploy (Python apply_migration_NNN
+**Recovery:** if a migration fails _before_ deploy, stop and fix the SQL
+file. If a migration fails _after_ deploy (Python apply_migration_NNN
 post-deploy job), roll back the app via `fly releases` and open an
 incident — never apply a fix manually via `fly ssh` console without a
 follow-up migration.
@@ -150,7 +150,7 @@ write to either table directly outside the runner.
 | `PreToolUse` hook blocks edits to `fly.toml`, `.env.production`, `package.json`  | ✅ Active in `~/.claude/settings.json`             |                                                                                                                                                     |
 | Hotfix audit log `shared/hotfix_audit.jsonl` + Telegram notifier                 | ✅ Active (2026-04-21)                             | `~/.claude/scripts/hotfix-notify.sh` wired into `PostToolUse` Bash hook                                                                             |
 | Post-deploy health + Telegram notifier                                           | ✅ Active (2026-04-21)                             | `scripts/post-deploy-verify.sh <PR_NUMBER>`                                                                                                         |
-| Post-deploy browser QA (kita + 7 subdomains)                                     | ✅ Active (manual invocation by Claude)            | Per `CLAUDE.md §10`. No dedicated script — Claude uses `mcp__claude-in-chrome__*` directly                                                          |
+| Post-deploy browser QA (kita + 7 subdomains)                                     | ✅ Active (manual invocation by Claude)            | Per `CLAUDE.md §11` Deploy Lifecycle. No dedicated script — Claude uses `mcp__claude-in-chrome__*` directly                                         |
 | MOS auto-save for decisions                                                      | ✅ Active                                          | `~/.claude/scripts/mos-auto-save.sh`                                                                                                                |
 | Federation orchestrator + Consiglio v1 red-team on architectural changes         | ✅ Implemented, triggered case-by-case             | Not blocking gate yet                                                                                                                               |
 

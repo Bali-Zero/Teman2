@@ -58,6 +58,12 @@ PG_CHANNEL_MAP: dict[str, str] = {
     # occurred_at}. Consumers: review_handler (Telegram review gate),
     # publisher_worker, measurer_worker, dashboard_sse.
     "war_room_event": "war_room.event",
+    # Emitted by whatsapp_message_context INSERT trigger trg_wa_message_notify
+    # (migration 193). Payload: {id, direction, team_member_phone, counterpart_phone,
+    # chat_type, group_jid, attention_priority}. Consumers: wa_dashboard_stream
+    # SSE manager (sse_manager.publish). Pointer-only payload — well under
+    # 8KB NOTIFY hard limit. SSE worker SELECTs full row by id.
+    "wa_message_inserted": "wa_message.inserted",
     # Emitted by trend_signals INSERT + research_dossiers INSERT/UPDATE triggers
     # (migration 113). Payload: {signal_id|dossier_id, topic|slug, event_type,
     # occurred_at}. Consumers: dossier_compiler (batch pre-compute on new trends),

@@ -296,11 +296,34 @@ def _persist_unmapped_snapshot(
 
 
 def main() -> None:
-    """Entry point for the cron worker (single iteration)."""
-    logging.basicConfig(
-        level=logging.INFO,
-        format="%(asctime)s %(levelname)s %(name)s: %(message)s",
-    )
+    """Entry point for the cron worker (single iteration).
+
+    W8 cicatrix 2026-05-22: split log levels across stdout/stderr so the
+    launchd-routed `.error.log` only carries WARNING+. Previously
+    `logging.basicConfig()` defaults sent every level to stderr, producing
+    3.3MB of mixed INFO+WARNING+RuntimeWarning noise per week in the
+    error log (24609 lines, ~2842 benign runpy warnings + ~2493 INFO
+    heartbeat). Same fix shape as PR-B2 2026-05-20 for intel-lake-outbox-drain.
+    """
+    import sys as _sys
+
+    fmt = logging.Formatter("%(asctime)s %(levelname)s %(name)s: %(message)s")
+
+    stdout_h = logging.StreamHandler(_sys.stdout)
+    stdout_h.setLevel(logging.DEBUG)
+    stdout_h.addFilter(lambda r: r.levelno < logging.WARNING)
+    stdout_h.setFormatter(fmt)
+
+    stderr_h = logging.StreamHandler(_sys.stderr)
+    stderr_h.setLevel(logging.WARNING)
+    stderr_h.setFormatter(fmt)
+
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+    # Replace any pre-existing handlers (e.g. from basicConfig elsewhere in
+    # the import chain) so the split routing is the only behaviour.
+    root.handlers = [stdout_h, stderr_h]
+
     run_gap_consumer()
 
 

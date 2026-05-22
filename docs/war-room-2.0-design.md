@@ -111,20 +111,20 @@ Ogni modulo = un **organo** cell-core con singola responsabilità. Comunicazione
 
 ### Riuso codice esistente (citato con path:line)
 
-| Pattern                | Path                                                                                 | Uso in War Room 2.0                                               |
-| ---------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------- |
-| EventBus + PG channel  | `apps/backend-rag/backend/services/events/event_bus.py:73` + `:46-55` PG_CHANNEL_MAP | Aggiungere `war_room_event`                                       |
-| Approval Telegram      | `apps/backend-rag/backend/services/intel/intel_approval_service.py`                  | Template per M11                                                  |
-| Webhook callback       | `apps/backend-rag/backend/app/routers/telegram_webhook.py`                           | Estendere con route `warroom:*`                                   |
-| Multi-AI orchestration | `apps/backend-rag/backend/agents/services/multi_ai_adapter.py:496-504`               | Base Consiglio (DA VERIFICARE se HTTP o CLI)                      |
-| Curiosity orchestrator | `apps/graph-engine/src/nuzantara_graph/curiosity/`                                   | Pattern per Trend-Hunter (orchestrator+grader+dispatchers)        |
-| genome API             | `packages/cell-core/cell_core/genome.py`                                             | Learner M14 scrive skill/scar; Director legge prima del Consiglio |
-| PulseLoop              | `packages/cell-core/cell_core/pulse.py`                                              | Moduli lunghi (Trend-Hunter, Publisher worker) girano come pulse  |
-| Voice SSOT             | `apps/backend-rag/backend/prompts/zantara_core.py`                                   | Director/Drafter partono da qui + overlay registro                |
-| Ollama client          | `backend/llm/ollama_client.py` (CLAUDE.md §10)                                       | QA M8/M10 con `qwen2.5vl:7b` + `think: false`                     |
-| Playwright MCP         | `apps/nuzantara-mcp-browser`                                                         | M9 Renderer + M13 scraping                                        |
-| Migration base + last  | `migration_111_notification_log.py`                                                  | `migration_112_war_room_tables.py` new                            |
-| Olympus heartbeat      | `apps/backend-rag/backend/services/olympus/heartbeat.py`                             | Detection Pro down per failover                                   |
+| Pattern                | Path                                                                                                       | Uso in War Room 2.0                                               |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| EventBus + PG channel  | `apps/backend-rag/backend/services/events/event_bus.py:73` + `:46-55` PG_CHANNEL_MAP                       | Aggiungere `war_room_event`                                       |
+| Approval Telegram      | `apps/backend-rag/backend/services/intel/intel_approval_service.py`                                        | Template per M11                                                  |
+| Webhook callback       | `apps/backend-rag/backend/app/routers/telegram_webhook.py`                                                 | Estendere con route `warroom:*`                                   |
+| Multi-AI orchestration | `apps/backend-rag/backend/agents/services/multi_ai_adapter.py:496-504`                                     | Base Consiglio (DA VERIFICARE se HTTP o CLI)                      |
+| Curiosity orchestrator | `apps/graph-engine/src/nuzantara_graph/curiosity/`                                                         | Pattern per Trend-Hunter (orchestrator+grader+dispatchers)        |
+| genome API             | `packages/cell-core/cell_core/genome.py`                                                                   | Learner M14 scrive skill/scar; Director legge prima del Consiglio |
+| PulseLoop              | `packages/cell-core/cell_core/pulse.py`                                                                    | Moduli lunghi (Trend-Hunter, Publisher worker) girano come pulse  |
+| Voice SSOT             | `apps/backend-rag/backend/prompts/zantara_core.py`                                                         | Director/Drafter partono da qui + overlay registro                |
+| Ollama client          | `backend/llm/ollama_client.py` (CLAUDE.md §9 Data Invariants + apps/backend-rag/CLAUDE.md Local AI Ollama) | QA M8/M10 con `qwen2.5vl:7b` + `think: false`                     |
+| Playwright MCP         | `apps/nuzantara-mcp-browser`                                                                               | M9 Renderer + M13 scraping                                        |
+| Migration base + last  | `migration_111_notification_log.py`                                                                        | `migration_112_war_room_tables.py` new                            |
+| Olympus heartbeat      | `apps/backend-rag/backend/services/olympus/heartbeat.py`                                                   | Detection Pro down per failover                                   |
 
 ---
 
@@ -221,7 +221,7 @@ Ogni scar generato da Learner aggiunge formule alla banlist (crescita organica).
 
 ### QA Visivo (M8) — due voci
 
-1. **Ollama `qwen2.5vl:7b`** (unica vision che funziona su Pro, vedi `CLAUDE.md §10`): flag JSON binari `{matches_brief, has_banned_elements, brand_fit_0_10, text_area_available_ratio, readability_issues}`
+1. **Ollama `qwen2.5vl:7b`** (unica vision che funziona su Pro, vedi `CLAUDE.md §9 Data Invariants`): flag JSON binari `{matches_brief, has_banned_elements, brand_fit_0_10, text_area_available_ratio, readability_issues}`
 2. **Claude Haiku CLI** (judge): legge flag + prompt + screenshot b64 → decide `pass | retry_with_modified_prompt | hard_reject`
 
 **Retry policy**: max 3 per slide, poi fallback placeholder + Telegram alert "slide N senza immagine approvata".
@@ -404,7 +404,7 @@ Publisher (ABC):
 ### Implementazioni
 
 - **IGPublisher**: IG Graph API v20, long-lived token (60gg, watchdog rinnovo 7gg prima). `POST /{ig-user-id}/media` (container carousel N slide) + `media_publish`. Tigris signed URL 1h TTL.
-- **XPublisher**: OAuth 2.0 user context + refresh. `POST /2/tweets` thread chained. **ATTENZIONE**: CRC attualmente broken (`CLAUDE.md §10`). Rifare OAuth. **DA VERIFICARE** X API Basic quota 2026.
+- **XPublisher**: OAuth 2.0 user context + refresh. `POST /2/tweets` thread chained. **ATTENZIONE**: CRC attualmente broken (`CLAUDE.md §12 Operational Channels` quarantine). Rifare OAuth. **DA VERIFICARE** X API Basic quota 2026.
 - **LinkedInPublisher**: OAuth2 scope `w_member_social`, token 60gg. `POST /rest/posts`. Personal vs Company configurable. **DA VERIFICARE** API v202507+ deprecation ugcPost.
 - **BlogPublisher**: git commit `apps/blog/content/war-room/{YYYY-MM-DD}-{slug}.mdx` + push → Vercel auto-deploy. **DA VERIFICARE** esistenza `apps/blog/` (non in CLAUDE.md §1).
 
@@ -1148,7 +1148,7 @@ Aggiungo Sprint 13-18 ai 12 sprint della Parte I. Possibile parallelizzazione co
 
 ### Sprint 20 — Newsletter Publisher (M20)
 
-- `NewsletterPublisher` Brevo-based (pattern esistente `CLAUDE.md §10`)
+- `NewsletterPublisher` Brevo-based (pattern esistente `CLAUDE.md §13 Critical Operational — Email sending`)
 - Roundup weekly domenica/lunedì 06:00 WITA con 5 top dossier + Strategos brief
 - Template HTML email-safe
 - **Done**: 2 newsletter test → open rate ≥20%, zero bounce

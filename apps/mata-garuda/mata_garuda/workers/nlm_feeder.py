@@ -24,6 +24,7 @@ Layer 3 Nexus.
 """
 from __future__ import annotations
 
+import json
 import logging
 import subprocess
 import time
@@ -49,17 +50,80 @@ logger = logging.getLogger("mata_garuda.workers")
 STREAM_CONSUMER_GROUP = "nlm_feeder"
 STREAM_CONSUMER_NAME = "nlm_feeder-1"
 
+# W15 (2026-05-22): Google NotebookLM silently rejects `source add` when
+# notebook reaches account-tier cap. Empirically observed cap: ~500-600
+# sources per NB. NB-INTEL-AIResearch at 600 returns "Could not add url
+# source" instantly without useful stderr. Skip-add when NB at cap to
+# avoid wasted cycles + log noise.
+NLM_NOTEBOOK_SOURCE_CAP = 500
+_NB_COUNT_CACHE: dict[str, tuple[int, float]] = {}
+_NB_COUNT_TTL_S = 3600
+
+
+def _nlm_notebook_source_count(notebook_id: str) -> int | None:
+    """Return current source_count for a notebook (cached 1h), or None on error.
+
+    W15: used by gate to skip-add when NB at cap.
+    """
+    now = time.time()
+    cached = _NB_COUNT_CACHE.get(notebook_id)
+    if cached and (now - cached[1]) < _NB_COUNT_TTL_S:
+        return cached[0]
+    try:
+        result = subprocess.run(
+            ["nlm", "notebook", "list"],
+            capture_output=True, text=True, timeout=30,
+        )
+        if result.returncode != 0:
+            return None
+        data = json.loads(result.stdout)
+        for nb in data:
+            count = int(nb.get("source_count", 0))
+            _NB_COUNT_CACHE[nb["id"]] = (count, now)
+        cached = _NB_COUNT_CACHE.get(notebook_id)
+        return cached[0] if cached else None
+    except Exception as e:
+        logger.warning(f"[nlm_feeder] notebook source-count probe failed: {e}")
+        return None
+
+
+def _nlm_at_cap(notebook_id: str) -> bool:
+    """W15: True if notebook is at or above NLM_NOTEBOOK_SOURCE_CAP."""
+    count = _nlm_notebook_source_count(notebook_id)
+    if count is None:
+        return False
+    return count >= NLM_NOTEBOOK_SOURCE_CAP
+
 
 def _nlm_add_url(notebook_id: str, url: str) -> bool:
-    """Add a URL source to NLM notebook. Returns True on success."""
+    """Add a URL source to NLM notebook. Returns True on success.
+
+    W15: pre-check NB cap; if at cap, skip immediately. On CLI rejection,
+    surface stderr in WARNING log so operator can distinguish cap-rejection
+    from other failures.
+    """
     if not notebook_id:
+        return False
+    if _nlm_at_cap(notebook_id):
+        logger.warning(
+            "[nlm_feeder] skip add (NB at cap): nb=%s url=%s",
+            notebook_id, url,
+        )
         return False
     try:
         result = subprocess.run(
             ["nlm", "source", "add", "--profile", "zero", notebook_id, "--url", url],
             capture_output=True, text=True, timeout=60,
         )
-        return result.returncode == 0
+        if result.returncode == 0:
+            return True
+        stderr_blob = (result.stderr or "") + (result.stdout or "")
+        snippet = stderr_blob.replace("\n", " ").strip()[:200]
+        logger.warning(
+            "[nlm_feeder] add_url rejected: nb=%s url=%s rc=%d reason=%s",
+            notebook_id, url, result.returncode, snippet or "(empty)",
+        )
+        return False
     except Exception as e:
         logger.warning(f"[nlm_feeder] Failed to add {url}: {e}")
         return False
@@ -114,8 +178,17 @@ def _nlm_add_text(notebook_id: str, title: str, text: str) -> bool:
     + retry. Subsequent auth failures within the same run are NOT retried
     (Layer-1 recovery only — if Chrome profile is stale too, only an
     interactive `nlm login --clear` will fix it).
+
+    W15: pre-check NB cap; if at cap, skip immediately. On non-auth
+    rejection, surface stderr in WARNING log.
     """
     if not notebook_id:
+        return False
+    if _nlm_at_cap(notebook_id):
+        logger.warning(
+            "[nlm_feeder] skip add_text (NB at cap): nb=%s title=%s",
+            notebook_id, title[:60],
+        )
         return False
     tmp = Path(f"/tmp/nlm_feed_{uuid4().hex[:8]}.txt")
     try:
@@ -143,6 +216,11 @@ def _nlm_add_text(notebook_id: str, title: str, text: str) -> bool:
                     return False
                 # loop back for retry with refreshed auth.json
                 continue
+            snippet = stderr.replace("\n", " ").strip()[:200]
+            logger.warning(
+                "[nlm_feeder] add_text rejected: nb=%s title=%s rc=%d reason=%s",
+                notebook_id, title[:60], result.returncode, snippet or "(empty)",
+            )
             return False
         return False
     except Exception as e:

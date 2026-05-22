@@ -80,9 +80,46 @@ def stream_read_new(
     return _parse_xreadgroup(result, stream)
 
 
-def stream_ack(stream: str, group: str, msg_id: str) -> None:
-    """Acknowledge a message in a consumer group."""
-    redis_cmd("XACK", stream, group, msg_id)
+def stream_ack(stream: str, group: str, msg_id: str) -> bool:
+    """Acknowledge a message in a consumer group.
+
+    Returns True if XACK confirmed the message was in PEL and got acked,
+    False if Redis returned 0 (msg not in PEL — silent failure, e.g. the
+    cleaner already drained it, or msg_id was wrong) or the redis-cli
+    invocation errored.
+
+    Callers that don't care about ack failure can ignore the return value;
+    backward-compatible. Callers that DO care (e.g. graceful PEL-overflow
+    detection) can act on False.
+
+    W14 (2026-05-22): added return value + WARNING log on silent ack-zero
+    to make PEL stuck-orphan issues visible from worker logs without
+    requiring a separate XPENDING audit. See W13 cicatrix for the
+    accumulation pattern this catches.
+    """
+    result = redis_cmd("XACK", stream, group, msg_id)
+    if result.startswith("[ERROR]"):
+        logger.warning(
+            "[stream_ack] redis-cli error acking %s/%s/%s: %s",
+            stream, group, msg_id, result,
+        )
+        return False
+    try:
+        acked = int(result.strip())
+    except ValueError:
+        logger.warning(
+            "[stream_ack] unparseable XACK reply for %s/%s/%s: %r",
+            stream, group, msg_id, result,
+        )
+        return False
+    if acked == 0:
+        logger.warning(
+            "[stream_ack] XACK returned 0 for %s/%s/%s — msg not in PEL "
+            "(already drained, wrong id, or race)",
+            stream, group, msg_id,
+        )
+        return False
+    return True
 
 
 def stream_publish(stream: str, data: dict) -> str:

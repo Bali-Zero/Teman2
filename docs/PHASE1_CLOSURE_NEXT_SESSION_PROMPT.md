@@ -19,6 +19,7 @@ Leggi prima di toccare codice:
 7. `apps/mata-garuda/mata_garuda/workers/gap_consumer.py` — riferimento per capire come avviene il consume (serve per P1-4, verificare XACK)
 
 MOS query obbligatorie:
+
 ```bash
 ~/.claude/scripts/mem query "phase 1 sinapsi"
 ~/.claude/scripts/mem query "lhkpn"
@@ -88,6 +89,7 @@ Oggi `intel:articles` XLEN=0 → bridge push è codice morto in prod. Senza prod
 Identifica in `apps/war-room/` dove un articolo è "dichiarato pronto per pubblicazione" (probabilmente final stage della pipeline articoli). Aggiungi UN SOLO write: dopo articolo finito, scrivi envelope `intel.article_ready` su Redis stream `intel:articles`.
 
 Schema payload (minimo):
+
 ```json
 {
   "article_id": "uuid",
@@ -120,11 +122,13 @@ Crea `docs/PHASE1_METRICS_2026-04-16.md`. Formato:
 # Phase 1 — Metriche before/after
 
 ## Before (stato iniziale prima Phase 1, dalla memoria/plan)
+
 - nexus:gaps = 552 (non consumato)
 - intel:articles = N/A (stream inesistente)
 - bridge cycle count = 0
 
 ## After (stato 2026-04-XX)
+
 - nexus:gaps = <redis-cli XLEN>
 - intel:articles = <N> dopo P0-3 (o 0 se producer manuale)
 - bridge outbox inserts/day = <psql count on bridge_outbox by day>
@@ -169,7 +173,7 @@ Se una di queste cose ti sembra rotta o confusa: **non è compito tuo in questa 
 - Se trovi bug nel bridge/gap_consumer/handlers.py che non sono nel mio audit → FERMA e riporta. Probabilmente regressione.
 - Se LPSE endpoint richiede auth → FERMA: LHKPN è public, LPSE pubblico è un'assunzione mia non verificata.
 - Se `nexus:gaps` XLEN è sceso sotto 500 o è salito sopra 2000 → FERMA: gap_consumer semantics potrebbe essere rotta.
-- Se devi toccare `fly.toml`, `zantara_core.py`, `alembic/env.py` → FERMA (off-limits CLAUDE.md §12).
+- Se devi toccare `fly.toml`, `zantara_core.py`, `alembic/env.py` → FERMA (off-limits CLAUDE.md §5 Agent/LLM Routing & Bans).
 - Se `gh pr list` mostra >5 PR aperte inaspettate → FERMA e chiedi priorità (stanno lavorando altri in parallelo).
 
 ## Ordine esecuzione

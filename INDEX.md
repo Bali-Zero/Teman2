@@ -7,16 +7,16 @@
 
 ## Cosa cerchi?
 
-| Bisogno                                       | Dove guardare                                                      | Come                                          |
-| --------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------- |
-| Perché fare X?                                | [SYMBIOSIS.md](SYMBIOSIS.md)                                       | Filosofia, "prima di toccare"                 |
-| Come fare X?                                  | [VADEMECUM.md](VADEMECUM.md)                                       | Checklist operativa per ogni tipo di elemento |
-| Dove vive X?                                  | Questa pagina, sezione "Organi" sotto                              | Mappa statica top-level                       |
-| Metriche live (count routers/servizi/vector)? | [CLAUDE.md](CLAUDE.md) §Tech Stack                                 | Auto-sincronizzate via `docs_sync.py`         |
-| Dettagli tecnici di un'app?                   | `apps/<nome>/README.md` o `apps/<nome>/CLAUDE.md`                  | File locali all'app                           |
-| Quando X è stato fatto?                       | `git log` + MOS (`~/.claude/scripts/mem query "X"`)                | Git + memoria persistente                     |
-| Policy AI dispatch / federazione?             | [docs/AI_DISPATCH_REFERENCE.md](docs/AI_DISPATCH_REFERENCE.md)     | Dispatch, fallback, timeout                   |
-| Cicatrici / bug ricorrenti?                   | [.claude/rules/cicatrix-scars.md](.claude/rules/cicatrix-scars.md) | Trauma + antibody per file chiave             |
+| Bisogno                                       | Dove guardare                                                      | Come                                                 |
+| --------------------------------------------- | ------------------------------------------------------------------ | ---------------------------------------------------- |
+| Perché fare X?                                | [SYMBIOSIS.md](SYMBIOSIS.md)                                       | Filosofia, "prima di toccare"                        |
+| Come fare X?                                  | [VADEMECUM.md](VADEMECUM.md)                                       | Checklist operativa per ogni tipo di elemento        |
+| Dove vive X?                                  | Questa pagina, sezione "Organi" sotto                              | Mappa statica top-level                              |
+| Metriche live (count routers/servizi/vector)? | [CLAUDE.md](CLAUDE.md) §Tech Stack                                 | Auto-sincronizzate via `docs_sync.py`                |
+| Dettagli tecnici di un'app?                   | `apps/<nome>/README.md` o `apps/<nome>/CLAUDE.md`                  | File locali all'app                                  |
+| Quando X è stato fatto?                       | `git log` + MOS (`~/.claude/scripts/mem query "X"`)                | Git + memoria persistente                            |
+| Policy AI dispatch / federazione?             | [docs/AI_DISPATCH_REFERENCE.md](docs/AI_DISPATCH_REFERENCE.md)     | Dispatch, fallback, timeout                          |
+| Cicatrici / bug ricorrenti?                   | [.claude/rules/cicatrix-scars.md](.claude/rules/cicatrix-scars.md) | Trauma + antibody per file chiave                    |
 | Stato della documentazione (live/stale)?      | [docs/DOCS_INVENTORY.md](docs/DOCS_INVENTORY.md)                   | Auto-generato, refresh settimanale via docs-guardian |
 
 ## Organi principali (top of mind)
@@ -37,7 +37,7 @@
 ### Intelligence
 
 - **`apps/evaluator/`** — Core Guardian V3/V5 (auto-calibration), NLM deep research (10 pipelines NB-1..10).
-- **`apps/federation/`** — A2A protocol multi-agent. Pro↔Air.
+- **`apps/federation/`** — A2A protocol multi-agent. Pro↔Mini sync via Tailscale (Air decommissioned 2026-05-05).
 - **`packages/core/`** — BZ design tokens, BZLogo, libraries condivise.
 
 ### MCP
@@ -56,7 +56,7 @@
 | Creare router FastAPI        | VADEMECUM §3 + `backend/app/dependencies.py` import check                         | Routers in `backend/app/routers/`, NOT `backend/routers/` |
 | Alembic migration            | VADEMECUM + `ai-dispatch.sh codex-migrate`                                        | Testa upgrade+downgrade                                   |
 | Deploy production Fly.io     | VADEMECUM §Pre-Deploy + `./scripts/ai-dispatch.sh claude-redteam`                 | Mai senza red team                                        |
-| Frontend deploy Vercel       | CLAUDE.md §10 (Frontend Deploy QA) + `mcp__claude-in-chrome__*`                   | Screenshot obbligatorio post-deploy                       |
+| Frontend deploy Vercel       | CLAUDE.md §11 (Deploy Lifecycle) + `mcp__claude-in-chrome__*`                     | Screenshot obbligatorio post-deploy                       |
 | Federation dispatch          | Skill `federation-dispatch` (~/.claude/skills/) + `./scripts/ai-dispatch.sh help` | No-skip rule se user ordina                               |
 | Debuggare bug                | Skill `superpowers:systematic-debugging` + cicatrix-scars                         | Root cause > patch                                        |
 | Modificare `zantara_core.py` | **FERMATI**. È SSOT prompt, OFF-LIMITS diretto.                                   | Solo via revisione esplicita Zero                         |
@@ -89,15 +89,16 @@ Tabelle core: `articles`, `kg_nodes`/`kg_edges` (108K/242K), `garuda_index`/`gar
 - **02:10-02:50 WITA** NLM NB-2..10 pipeline (Mon-Sat)
 - **21:30/22:00 WITA** gap_scanner + freshness_monitor
 - **every 3h** Core Guardian
-- **every 5min** log-anomaly-detector, drive-poll (Air), sentinel
+- **every 5min** log-anomaly-detector, drive-poll (Pro), sentinel
 - **Dettagli completi:** `docs/AUTOMATIONS_REFERENCE.md` + `scripts/automation_catalog.json`
 
 ## Machine & env
 
-- **Pro** (`nuzantara@Nuzantara`, M4 Pro 48GB): Dev + Server H24. Venv `.venv` in `apps/backend-rag/`.
-- **Air** (`antonellosiano@Nuzantara-9`, M4 16GB): Server H24. Venv `venv` (non `.venv`).
-- SSH: `ssh pro` / `ssh air` via mDNS.
-- Git sync: post-commit hook Pro→Air auto-pull. GitHub: only Pro→origin.
+- **Pro** (`nuzantara@Nuzantara`, M4 Pro 48GB): Dev primario + Server H24. Venv `.venv` in `apps/backend-rag/`.
+- **Mini-Pro2** (`nuzantara@Mini-Pro2`, M4 Pro 24GB): Server H24, Ollama dedicato, cron pesanti.
+- SSH: `ssh pro` / `ssh mini` (Tailscale `100.93.236.6` for Mini, `100.107.22.111` for Pro from Mini).
+- Git sync: Pro↔Mini Tailscale sync. GitHub: only Pro→origin.
+- **Air decommissioned 2026-05-05** — handed off to Ari/Bali Zero. Historical references in code/scripts are archaeology, NOT active.
 
 ## 5 Libri sacri — 5 funzioni cognitive
 
