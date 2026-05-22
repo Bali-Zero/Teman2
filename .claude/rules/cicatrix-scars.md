@@ -5,6 +5,42 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### 🚨 CRITICAL: XCLAIM without XACK creates permanent orphan PEL — workers use `>` semantic, NEVER re-read pending (2026-05-22)
+
+_Discovered: 2026-05-22 09:20 WITA during W13 root-cause investigation of W11 nlm_feeder drainage failure · Severity: P1 · Status: **FIXED via W13 deep-stale-msg XACK in pel_cleaner.py + one-shot 142-msg historical recovery**_
+
+**TRAUMA:** W11 (commit `646043dff`) and W12 (commit `a4e14ba38`) both used `XCLAIM` to recover from ghost-consumer PEL accumulation, transferring ownership from dead consumers to alive ones. Both shipped with passing smoke tests showing immediate XCLAIM success + correct PEL count transfer. W13 follow-up investigation revealed the messages **never get drained** because Mata Garuda workers (`nlm_feeder`, `ner`, `classifier`, `normalizer`, `scorer`, `kg_linker`, `gap_consumer`) all use `XREADGROUP GROUP consumer COUNT N STREAMS stream >` — the `>` semantic reads ONLY NEW messages after the consumer's last delivered ID, NEVER re-reads PEL. Post-XCLAIM, messages enter the new owner's PEL but the worker never sees them again. Empirical proof at W13 t+30min from W12 XCLAIM:
+
+- W12 XCLAIM'd 5 messages debug-2 → nlm_feeder_alerts-1
+- 30min later: `nlm_feeder_alerts-1` pending=5, idle=2.3M ms, deliveries=2
+  (worker never invoked XREADGROUP `0` to drain PEL — they're stuck forever)
+- W11 XCLAIM'd 77 messages scan → nlm_feeder-1
+- Today: nlm_feeder-1 pending=77, idle=1.2h, deliveries=2 (same pattern)
+
+Also discovered while investigating: 1 msg in `bridge:outbound/bridge-push` (nerve-1 owner), 45 msgs in `garuda:enriched/ner/ner-1`, 9 msgs in `garuda:raw/normalizer/normalizer-1`. **None of them had a ghost-consumer origin** — they accumulated because the worker received them, attempted processing, but failed to XACK (silent error path inside `stream_ack`), and the consumer aged enough (>7d for these) without re-delivery.
+
+This is a categorically different scar from W11/W12: PEL accumulation isn't only debug-session ghosts — it's a SYSTEMIC consequence of `>` semantic + missing-startup PEL drainage + silent ack failures. The W12 cleaner's XCLAIM approach was the WRONG fix; it just relocated the problem.
+
+**ANTIBODY (shipped same session):**
+
+1. **`pel_cleaner.py` v2 (W13)**: added `_xack_deep_stale(stream, group)` pass that runs BEFORE per-consumer XCLAIM logic. Scans `XPENDING - + 1000` (4-line records: id, owner, idle_ms, deliveries), and `XACK`s any msg whose `idle_ms > DEEP_STALE_MSG_IDLE_MS = 24h` regardless of which consumer owns it. Workers using `>` semantic functionally treat PEL as write-only, so PEL entries >24h are abandoned by design — drain them.
+2. **Cleaner report schema** extended with `deep_acks: [{stream, group, acked}]` alongside existing `claims/deletions/errors`. Idempotent: re-run on clean state = empty arrays.
+3. **One-shot historical recovery** 2026-05-22 09:20 WITA: XACK'd 77 + 5 = 82 messages from the W11/W12 PEL pollution (idle ~1h, deliveries=2, never going to be re-processed). Plus W13 cleaner pass auto-XACK'd 60 deep-stale (45 ner + 9 normalizer + 5 nlm_feeder + 1 bridge-push). **Total drained: 142 abandoned messages.** Post-recovery `XPENDING * = 0` for nlm_feeder, nlm_feeder_alerts, normalizer, scorer, classifier, kg_linker; only ner has 51 pending (active processing, normal).
+4. **4 new tests** in `test_pel_cleaner.py`: `_parse_xpending_long` with 3-record fixture, empty input, malformed-line skipping, plus thresholds assertion now covers `DEEP_STALE_MSG_IDLE_MS`. **7/7 PASS.**
+
+**GOTCHA:**
+
+- **Data-loss safety verified empirically**: 49/82 of the W11/W12 historical victims were already in the `nlm_fed` dedup table (`type='nlm_fed', source=<url|hash>` in `data/knowledge.db`). Of the 33 not-fed, all were 18-day-old arxiv/youtube content — too stale for NB-INTEL value, and re-injection would cascade through normalizer + ner + classifier needlessly. XACK without re-processing is the correct call.
+- **Deliveries=2 trap**: `XCLAIM` itself increments `deliveries` counter — a message in PEL with deliveries=2 doesn't necessarily mean the worker tried it twice; it may just mean (worker once) + (XCLAIM once). To distinguish, check `idle_ms`: low idle (<minutes) after XCLAIM means worker hasn't seen it since the claim.
+- **24h threshold rationale**: workers run on 5-30 min cron cycles. If a message has been in PEL >24h, the worker has had ≥48 chances to re-read it and didn't. Lower threshold (e.g. 6h) would race against legitimate slow batches; higher (7d) leaves W11/W12 orphans stuck for a week. 24h is the conservative compromise.
+- **Workers that DO drain PEL on startup**: none discovered. If any future worker adds `XREADGROUP GROUP consumer COUNT N STREAMS stream 0` (PEL drain) followed by `>` (new msgs), they will recover their own PEL — but the cleaner's deep-ACK pass would race against them. Future enhancement: per-group opt-out config.
+- **Lag stays high after PEL drain**: lag in `XINFO GROUPS` is `entries-read` counter, not `pending` — XACK drains pending but doesn't move the read cursor. Lag will narrow only as workers process NEW messages on each cron. nlm_feeder lag at 2226 post-recovery vs 2171 pre = +55 because new arxiv keep arriving.
+- **`stream_ack` is silent on failure**: `base_worker.stream_ack` does `redis_cmd("XACK", ...)` and ignores the return value. Future hardening (W14+ candidate): check XACK return ≥1, log warning otherwise.
+
+**Reference**: `research/operations/2026-05-22-pel-cleaner-w13-deep-ack.md` (next commit). The W11 + W12 scars above remain accurate as descriptions of the recurrence pattern; W13 adds the systemic fix.
+
+---
+
 ### ⚠️ STRUCTURAL: PEL accumulation pattern recurs across Mata Garuda streams — no systematic recovery (2026-05-22)
 
 _Discovered: 2026-05-22 08:50 WITA during W12 PEL survey post-W11 nlm_feeder cleanup · Severity: P2 · Status: **FIXED via weekly cron `com.matagaruda.pel-cleaner.weekly`**_

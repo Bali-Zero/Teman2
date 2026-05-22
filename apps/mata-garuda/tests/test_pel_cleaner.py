@@ -52,8 +52,50 @@ def test_parse_xinfo_consumers_empty():
 
 
 def test_thresholds_match_design():
-    """Confirm thresholds: stale_pel=24h, ghost=30d, alive=24h."""
+    """Confirm thresholds: stale_pel=24h, ghost=30d, alive=24h, deep_stale_msg=24h."""
     assert pel_cleaner.STALE_PEL_IDLE_MS == 24 * 3600 * 1000
     assert pel_cleaner.GHOST_IDLE_MS == 30 * 86400 * 1000
     assert pel_cleaner.ALIVE_IDLE_MS_MAX == 24 * 3600 * 1000
     assert pel_cleaner.XCLAIM_MIN_IDLE_MS == 60_000
+    assert pel_cleaner.DEEP_STALE_MSG_IDLE_MS == 24 * 3600 * 1000
+
+
+def test_parse_xpending_long_4line_records():
+    """W13: XPENDING returns 4 lines per msg: id, owner, idle_ms, deliveries."""
+    raw = (
+        "1775772056014-0\n"
+        "nlm_feeder-1\n"
+        "1549149197\n"
+        "2\n"
+        "1775772056025-0\n"
+        "nlm_feeder-1\n"
+        "1549149197\n"
+        "2\n"
+        "1775772056034-0\n"
+        "ghost-x\n"
+        "100000\n"
+        "1\n"
+    )
+    recs = pel_cleaner._parse_xpending_long(raw)
+    assert len(recs) == 3
+    assert recs[0] == ("1775772056014-0", "nlm_feeder-1", 1549149197)
+    assert recs[1] == ("1775772056025-0", "nlm_feeder-1", 1549149197)
+    assert recs[2] == ("1775772056034-0", "ghost-x", 100000)
+
+
+def test_parse_xpending_long_empty():
+    assert pel_cleaner._parse_xpending_long("") == []
+    assert pel_cleaner._parse_xpending_long("\n\n\n") == []
+
+
+def test_parse_xpending_long_skips_malformed_lines():
+    """Defensive: garbage lines (header banners, ERR messages) don't crash."""
+    raw = (
+        "(error) ERR no such key\n"
+        "1775772056014-0\n"
+        "nlm_feeder-1\n"
+        "1549149197\n"
+        "2\n"
+    )
+    recs = pel_cleaner._parse_xpending_long(raw)
+    assert recs == [("1775772056014-0", "nlm_feeder-1", 1549149197)]
