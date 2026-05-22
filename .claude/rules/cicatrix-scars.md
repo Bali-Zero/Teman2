@@ -5,6 +5,45 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: nlm-feeder-stream plist `/bin/zsh -lc` polluted error.log with 842 lines of shell-init EPERM (2026-05-22)
+
+_Discovered: 2026-05-22 23:20 WITA during W19 survey · Severity: P2 (noise pollution, masks real errors per W8) · Status: **FIXED via wrapper rebuild + plist rebuild + empirical 0-lines verification**_
+
+**TRAUMA:** `~/logs/matagaruda-nlm-feeder-stream.error.log` reached 842 lines / 100KB over ~3 weeks of hourly runs. **100% of lines** were identical pairs:
+
+```
+shell-init: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+job-working-directory: error retrieving current directory: getcwd: cannot access parent directories: Operation not permitted
+```
+
+Zero actionable signal. Root cause: `com.matagaruda.nlm-feeder-stream.hourly.plist` ProgramArguments used `/bin/zsh -lc "cd .../mata-garuda && source ~/.nuzantara-secrets.env; .venv/bin/python ..."`. The `-l` flag sources `.zshrc` which contains sub-shell commands (likely pyenv hook or prompt-rendering) that call `pwd` on parent dirs of `~/Desktop/...`. Under launchd's TCC sandbox, those parent dirs return EPERM → zshrc init noise routed to launchd .error.log.
+
+Compounding: this is also a W8 violation — non-actionable noise routed to .error.log trains operator to ignore the file, masking real WARNING/ERROR signal. Plus W17 cicatrix already showed the TCC-safe pattern (W10, W17 wrappers) works — the legacy plist just wasn't migrated.
+
+**ANTIBODY (shipped):**
+
+1. **Wrapper `~/scripts/matagaruda-nlm-feeder-stream.sh`** (50 lines, TCC-safe pattern from W7+W10+W17): `#!/bin/zsh` shebang (no `-l`), explicit `PATH` export, `set -a; . ~/.nuzantara-secrets.env; set +a`, venv python invoked directly via `exec $VENV_PY $ENTRY >> $LOG 2>&1`. Mandatory pre-checks: venv python executable + entry script existence (exit 2 if missing).
+
+2. **Plist rebuild**: `ProgramArguments` reduced to single wrapper invocation `["/Users/nuzantara/scripts/matagaruda-nlm-feeder-stream.sh"]`. All env state moved into `EnvironmentVariables`. `GARUDA_REDIS_HOST=100.93.236.6` set in BOTH plist + wrapper for defense-in-depth (2026-05-06 split-brain mitigation lineage). Old plist archived to `~/Library/LaunchAgents/.archive-2026-05-22/com.matagaruda.nlm-feeder-stream.hourly.plist.pre-w19`.
+
+3. **Empirical verification 2026-05-22 23:30 WITA**:
+   - error.log truncated to 0 → kickstart fired → 30s wait
+   - error.log NEW size = **0 lines** (was 842)
+   - last exit code = 0 (Python ran clean, NO TCC noise)
+   - stdout log received expected JSON output: `{"agent": "nlm_feeder_stream", "alerts": {"processed": 0, ...}, "enriched": {"processed": 0, ...}}`
+
+**GOTCHA:**
+
+- The `processed=0, fed=0` output is the EXISTING split-brain behavior (W16 cicatrix — Pro hosts intel_scraper writes, Mini hosts feeder reader). W19 ONLY de-noises the error log. The productivity gap remains until Antonello chooses Option A/B/C/D from W16.
+- 100% noise + zero signal pattern is exactly the W8 cicatrix anti-pattern (outbox-drain ~841KB INFO routed to stderr). Same fix recipe: pivot to per-level handler / TCC-safe wrapper. Survey-then-fix loop has now caught this 3 times (W8, W17 dedup, W19).
+- Other Mata Garuda plists may share the bug. Survey TBD W20+ for `nlm-expander.weekly`, `sentinel.*`. `com.matagaruda.watcher.daily.plist` already TCC-safe per CLAUDE.md §6.
+- `zsh -l` is the source of evil under launchd. Rule of thumb: NEVER use `-l` flag in plist ProgramArguments. If env needs to be loaded, source it explicitly in a TCC-safe wrapper.
+- Defense-in-depth: GARUDA_REDIS_HOST set in plist EnvironmentVariables AND defaulted in wrapper to 100.93.236.6. If one path breaks, the other holds.
+
+**Reference**: `research/operations/2026-05-22-nlm-feeder-wrapper-tcc-safe.md`. Pattern parallel to W10 (`matagaruda-consumer-lag-check.sh`) + W17 (`matagaruda-redis-split-brain-check.sh`).
+
+---
+
 ### ⚠️ STRUCTURAL: APOPTOSIS test suite silently appends to real audit_log.md every run (2026-05-22)
 
 _Discovered: 2026-05-22 14:50 WITA Loop iteration 18 NB-automations hardening · Severity: P2 (test-driven file pollution, no production impact) · Status: **FIXED on commit pending — env-var redirect + test-side setenv+setattr belt-and-suspenders**_
