@@ -132,7 +132,7 @@ class Company(BaseModel):
     akta_number: str | None = None
     akta_date: date | None = None
     sk_kemenkumham: str | None = None
-    kbli_codes: list[str] = Field(default_factory=list)
+    kbli_codes: list[str] = Field(default_factory=list)  # validator below coerces str→[str]
     kbli_primary: str | None = None
     paid_up_capital_idr: int | None = None
     authorized_capital_idr: int | None = None
@@ -151,6 +151,19 @@ class Company(BaseModel):
         default_factory=list,
         description="Drive folder IDs delle cartelle company che hanno contribuito a questo summary.",
     )
+
+    @field_validator("kbli_codes", "source_company_folders", mode="before")
+    @classmethod
+    def _coerce_str_list(cls, v: object) -> list[str]:
+        # 2026-05-23: Gemini occasionally emits single string for list[str] fields
+        # (smoke v3 caught `company.kbli_codes Input should be a [list]` on cli 11435).
+        if v is None:
+            return []
+        if isinstance(v, str):
+            return [v] if v.strip() else []
+        if isinstance(v, list):
+            return [str(x) for x in v if x is not None]
+        return []
 
 
 class Shareholder(BaseModel):
@@ -249,6 +262,18 @@ class Compliance(BaseModel):
     passport_days_until_expiry: int | None = None
     visa_days_until_expiry: int | None = None
     red_flags: list[str] = Field(default_factory=list)
+
+    @field_validator("red_flags", mode="before")
+    @classmethod
+    def _coerce_red_flags(cls, v: object) -> list[str]:
+        # 2026-05-23: same str→[str] coercion pattern as Company.kbli_codes.
+        if v is None:
+            return []
+        if isinstance(v, str):
+            return [v] if v.strip() else []
+        if isinstance(v, list):
+            return [str(x) for x in v if x is not None]
+        return []
 
 
 _ARCHETYPE_CANONICAL: frozenset[str] = frozenset({
