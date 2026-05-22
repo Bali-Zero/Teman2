@@ -105,6 +105,71 @@ def get_streams_snapshot() -> list[dict[str, Any]]:
     return snapshot
 
 
+def stream_groups_lag(stream: str) -> list[dict[str, Any]]:
+    """W5 cicatrix 2026-05-22 — return per-consumer-group lag for a stream.
+
+    Each entry: {"group": str, "consumers": int, "pending": int, "lag": int}.
+    Empty list if stream has no consumer groups or redis unavailable.
+
+    Lag = number of stream entries NOT yet delivered to this consumer group.
+    A high lag means the consumer hasn't caught up — the stream is producing
+    faster than the consumer drains. Silent failure mode: nothing in the
+    consumer's log because XREADGROUP with BLOCK returns empty on lag.
+    """
+    out = _redis_cmd("XINFO", "GROUPS", stream)
+    if not out:
+        return []
+    groups: list[dict[str, Any]] = []
+    current: dict[str, Any] = {}
+    lines = [ln.strip() for ln in out.splitlines() if ln.strip()]
+    # redis-cli XINFO GROUPS prints alternating key/value lines.
+    prev_key: str | None = None
+    for ln in lines:
+        if prev_key is None:
+            prev_key = ln
+            continue
+        # Process value
+        if prev_key == "name":
+            if current:
+                groups.append(current)
+            current = {"group": ln}
+        elif prev_key == "consumers":
+            try:
+                current["consumers"] = int(ln)
+            except ValueError:
+                current["consumers"] = 0
+        elif prev_key == "pending":
+            try:
+                current["pending"] = int(ln)
+            except ValueError:
+                current["pending"] = 0
+        elif prev_key == "lag":
+            try:
+                current["lag"] = int(ln)
+            except ValueError:
+                current["lag"] = None
+        prev_key = None
+    if current:
+        groups.append(current)
+    return groups
+
+
+def get_consumer_groups_lag(lag_threshold: int = 500) -> list[dict[str, Any]]:
+    """Aggregate consumer-group lag for all HEALTH_STREAMS above threshold.
+
+    Returns list of {"stream": s, "group": g, "lag": n, "pending": p,
+    "consumers": c} for groups with lag >= lag_threshold. Operators can
+    grep WARNING logs for any non-empty result.
+    """
+    alerts: list[dict[str, Any]] = []
+    for s in HEALTH_STREAMS:
+        for grp in stream_groups_lag(s):
+            lag = grp.get("lag")
+            if lag is not None and lag >= lag_threshold:
+                alerts.append({"stream": s, **grp})
+    return alerts
+
+
 def launchctl_list() -> dict[str, dict[str, str | int | None]]:
     """Return dict of {label: {status, pid}} from `launchctl list`.
 
