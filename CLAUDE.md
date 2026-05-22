@@ -160,6 +160,8 @@ Twitter (CRC broken), Google Chat (scaffold), Slack (scaffold) quarantined `.dis
 - **Team perimeter rule**: full roster in memory `reference_bali_zero_team.md`. Subhi probation 90gg (2026-04-30 → 2026-07-29), perimeter `apps/mouth/(blog|marketing|kbli|visa|property|tax-calendar)/**` + GA4/GSC only. NO backend RAG, NO secrets, NO organs_registry.yaml.
 - **OCR multi-page**: ALWAYS all pages — directors typically page 2-3 of akta. Timeout 120s for >3 pages. Vision: `qwen2.5vl:7b` ONLY.
 - **Drive OAuth**: token in `google_drive_tokens` table, 90d expiry. Watchdog `scripts/drive_token_watchdog.py` alerts 7d before. Re-auth `https://kita.balizero.com/settings/integrations`.
+- **GitHub Secrets** (Actions + cron alerts): `FLY_API_TOKEN`, `TELEGRAM_BOT_TOKEN`, `TELEGRAM_OWNER_CHAT_ID=1125336968` (Zero's `@zero0101010101010` chat with `@Balizerobot`, verified live 2026-04-07). Never commit, never log. Rotation via `gh secret set`.
+- **WR2 image-generator backend** (`WR2_IMAGE_BACKEND` env): `auto` (default, FlowKit primary + Playwright fallback) / `flowkit` / `playwright`. See `docs/wr2/flowkit-integration.md`.
 
 ## 14. Escalations & Continuity
 

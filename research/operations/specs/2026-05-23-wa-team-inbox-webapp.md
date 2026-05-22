@@ -836,7 +836,7 @@ Tot estimato: ~1500 LOC frontend (nuovo app `apps/wa-dashboard/`), ~500 LOC back
 5. **Operator presence**: mostrare typing indicator? _Raccomandazione_: M3 con SSE broadcast leggero.
 6. **AI auto-reply hooks**: integriamo LangGraph RAG già in M3 o M5? _Raccomandazione_: M5 future — out of M1-M5 v1 scope per evitare scope creep.
 7. **Mobile responsive**: Sahira da tablet? _Raccomandazione_: M5 con responsive 3→1 pane <1024px + swipe gesture.
-8. **UI language**: italiano o inglese? _Raccomandazione_: inglese per artifact ma italiano per labels operator (CLAUDE.md §9). Compromesso pragmatico: inglese per ora, i18n opzionale futura.
+8. **UI language**: italiano o inglese? _Raccomandazione_: inglese per artifact ma italiano per labels operator (CLAUDE.md §4 Language Protocol). Compromesso pragmatico: inglese per ora, i18n opzionale futura.
 9. **Outbound jitter override**: hard-coded 10-30s o per-account configurabile via UI Admin? _Raccomandazione_: hard-coded default + env override `WA_DASHBOARD_JITTER_MIN_S=10 / WA_DASHBOARD_JITTER_MAX_S=30`. NO UI override (operatore non deve poter bypass anti-ban).
 10. **Auth strategy**: A (admin password .env), B (local JWT contro `users` table — best audit), o C (reverse-proxy su `kita.balizero.com`)? _Raccomandazione_: **B** (local JWT, cookie scoped localhost).
 11. **Baileys retest cadence**: calendar entry chi mantiene? _Raccomandazione_: scheduled cron `wa_mirror_baileys_retest.sh` ogni 10 settimane → Telegram alert.
@@ -894,7 +894,7 @@ PRIMA dell'approvazione finale Antonello, eseguire devils-advocate (DeepSeek rea
 
 **Architecture references**: 18. https://dev.to/teglos/i-built-an-open-source-whatsapp-business-inbox-for-teams-heres-how-411d 19. https://dev.to/ribato/building-multiwa-an-open-source-self-hosted-whatsapp-api-gateway-2me1 20. https://blog.algomaster.io/p/polling-vs-long-polling-vs-sse-vs-websockets-webhooks 21. https://leapcell.io/blog/realtime-applications-with-postgresql-listen-notify-a-lightweight-alternative 22. https://baileys.wiki/docs/api/interfaces/GroupMetadata/ 23. https://deepwiki.com/EvolutionAPI/evolution-api/8-development-guide 24. https://deepwiki.com/chatwoot/chatwoot/7.1-email-configuration
 
-**Internal references**: 25. CLAUDE.md §9 (RBAC), §10 (research capture), §16 (research convention) 26. `.claude/rules/cicatrix-scars.md` (2026-04-29 worktree contamination, 2026-04-29 EventBus PG NOTIFY phase 1+2, 2026-05-22 wa-mirror launcher exit 127)
+**Internal references**: 25. CLAUDE.md §13 (CRM RBAC), §15 (Research Capture Convention) — post-T2.7 refactor 2026-05-23. 26. `.claude/rules/cicatrix-scars.md` (2026-04-29 worktree contamination, 2026-04-29 EventBus PG NOTIFY phase 1+2, 2026-05-22 wa-mirror launcher exit 127)
 
 ---
 
