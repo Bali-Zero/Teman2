@@ -5,6 +5,7 @@
 
 # Core Framework
 fastapi>=0.135.2  # Upgraded for starlette 0.50+ compatibility
+starlette>=1.0.1  # Security fix: PYSEC-2026-161 / GHSA-86qp-5c8j-p5mr (malformed Host header URL injection). starlette 1.0 is the first stable release after 8 years of ZeroVer; fastapi 0.135.2 allows starlette>=0.46.0 so this pin is compatible.
 uvicorn[standard]>=0.40.0  # Upgraded for async improvements
 sentry-sdk[fastapi]>=2.59.0  # Error monitoring
 pydantic>=2.12.5  # Compatible with MCP 1.25+, google-genai 1.56+
