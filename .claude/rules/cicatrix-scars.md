@@ -5,6 +5,39 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: W16 split-brain detector shipped but unwired → no continuous visibility (2026-05-22)
+
+_Discovered: 2026-05-22 12:00 WITA during W17 survey post-W16 ship · Severity: P2 · Status: **FIXED via launchd cron + Telegram dedup alert**_
+
+**TRAUMA:** W16 (commit `542bb2f19`) shipped `check_redis_split_brain.py` detector that catches Pro<->Mini Redis drift on garuda:* streams, but did NOT wire it to a launchd cron. The script could only be invoked manually. Given that the original W16 discovery happened ONLY because I manually ran the script during W17 survey, this is precisely the "diagnostic exists but no operator sees it" failure pattern documented in W5/W10 cicatrices.
+
+Without a cron, the 9.6h enriched drift + 210h alerts drift would have continued growing invisibly until the next manual investigation. The W10 lag monitor (which IS wired to cron) is blind to split-brain because it only probes the single configured GARUDA_REDIS_HOST.
+
+**ANTIBODY (shipped same iteration):**
+
+1. **Wrapper** `~/scripts/matagaruda-redis-split-brain-check.sh` (HOME, gitignored): TCC-safe via venv-python-direct. Sources `~/.nuzantara-secrets.env` for `TELEGRAM_BOT_TOKEN` + `TELEGRAM_OWNER_CHAT_ID`. Runs detector, captures stderr (JSON alerts) + exit code via `set +e/-e` block (avoids `|| true` exit-code masking).
+2. **LaunchAgent** `~/Library/LaunchAgents/com.matagaruda.redis-split-brain.check.plist`, `StartInterval=1800` (30min — matches W10 lag-monitor cadence). Bootstrapped via `launchctl bootstrap`.
+3. **Telegram dedup**: state file `~/.agent/decisions/matagaruda-split-brain-last.txt` stores `<epoch> <stream>|<stale_host>` per active split-brain combo. Suppress repeat alerts within 4h window (avoid notification fatigue when operator hasn't fixed root cause yet). GC entries older than 4h on each run.
+4. **Exit-code propagation**: launchctl `last exit code = 1` reflects active split-brain (matches W10 W5 lag-monitor pattern). Operator runbook: check `launchctl print` or grep stderr log directly.
+5. **Empirical smoke** 2026-05-22 12:12 WITA:
+   - Plist bootstrap OK; kickstart fired immediately
+   - stderr.log: 2 JSON alert lines (enriched 10.2h drift + alerts 210.1h drift)
+   - stdout.log: 0 bytes (silent success path correct)
+   - last exit code = 1 (split-brain visible to `launchctl print`)
+   - state file: 2 combos recorded; second wrapper invocation correctly suppressed Telegram re-send
+
+**GOTCHA:**
+
+- **`$? after |\| true` always returns 0**: initial wrapper used `ALERTS=$(...) || true; EXIT_CODE=$?` which always set EXIT_CODE=0 (the `|| true` is the last command, $? = its exit = 0). Fix: wrap in `set +e ... set -e` block to allow non-zero capture without `|| true`. Bug caught in smoke test before deploy.
+- **Telegram dedup state file unbounded growth**: GC on every run prunes entries older than 4h. If detector keeps running for years with no split-brain ever resolved, state file stays at N entries max (N = number of distinct stream+host combos = ≤6 in current topology). Safe.
+- **30min cadence vs Telegram quota**: even if all 6 possible combos go split-brain simultaneously + dedup window expires together, max 6 Telegram messages every 4h = 36/day. Well within Telegram's free-tier limits.
+- **Wrapper depends on `python3` in PATH for inline JSON parsing**: PATH var in plist includes pyenv 3.11.11 so it's available. If pyenv breaks (cf. lessons_fly_cli_token_regression_cascade pattern), the Telegram alert silently no-ops but exit code still propagates.
+- **Doesn't fix the underlying split-brain** (W16 deferred Option A/B/C/D for Antonello). W17 only makes it continuously visible. Until root-cause fix lands, every 30min the detector will re-confirm 2 active split-brains.
+
+**Reference**: `research/operations/2026-05-22-split-brain-cron-deployed.md` (next commit).
+
+---
+
 ### 🚨 CRITICAL: Pro<->Mini Redis split-brain — producers writing to different hosts, consumers reading one (2026-05-22)
 
 _Discovered: 2026-05-22 11:35 WITA during W16 survey post-W15 ship · Severity: P1 · Status: **DIAGNOSTIC SHIPPED (W16 detector)**, root-cause fix DEFERRED (architectural decision needed)_
