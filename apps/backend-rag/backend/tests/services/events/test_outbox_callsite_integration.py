@@ -364,6 +364,17 @@ _TRIGGER_BACKED_CHANNELS_IN_OTHER_MIGRATIONS = frozenset(
         # See migration 168 + backend/tests/db/test_migration_168_intel_lake.py
         # for per-migration contract (outbox-before-notify + _outbox_id injection).
         "intel_lake_event",
+        # WA Team Inbox Dashboard (2026-05-23). Trigger ``notify_wa_message_inserted``
+        # lives in migration 193_wa_dashboard_v1.sql. INTENTIONALLY pg_notify
+        # pointer-only (no events_outbox INSERT) because the consumer is SSE
+        # fan-out (apps/wa-dashboard) — volatile by design. Replay on
+        # browser reconnect uses the `Last-Event-ID` header to query
+        # whatsapp_message_context directly (id > last_event_id), so the
+        # message body is the durable source-of-truth. A lost NOTIFY costs
+        # at most a missed live update; no event data is lost.
+        # See research/operations/specs/2026-05-23-wa-team-inbox-webapp.md (v3)
+        # devils-advocate fix #11 (Last-Event-ID replay).
+        "wa_message_inserted",
     }
 )
 _TRIGGER_BACKED_CHANNELS = frozenset(

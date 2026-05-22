@@ -45,6 +45,13 @@ _BODY_STATUS_GREEN = frozenset({
     "operational",
 })
 
+# W27 Path A (2026-05-23): sustained-red detection threshold for emitting the
+# `cell_pulse_sustained_red` Organism event. Calibrated per 3-LLM panel
+# (Codex + Gemini + DeepSeek): 3 consecutive red pulses (~3 min wall time at
+# 60s cadence) is the minimum before triggering Organism dispatch of
+# `fly_machines_start` for the affected machine.
+SUSTAINED_RED_THRESHOLD = 3
+
 
 def classify_http_status(reading: HealthReading) -> HealthStatus:
     """Classify a HealthReading by body.status first, then HTTP envelope.
@@ -163,6 +170,12 @@ class PulseEngine:
         self._recent_pulses: list[dict] = []
         self._ltm_cache: str = ""
         self._ltm_cache_pulse: int = -999  # refresh every 60 pulses (~1h)
+        # W27 Path A (2026-05-23): consecutive-red streak counter +
+        # idempotency flag for cell_pulse_sustained_red event emission.
+        # Emit fires ONLY when streak hits SUSTAINED_RED_THRESHOLD AND only
+        # ONCE per sustained window — resets on first non-red pulse.
+        self._red_streak: int = 0
+        self._sustained_red_emitted: bool = False
 
     async def single_pulse(self, pulse_number: int = 0) -> PulseResult:
         from cell.metabolism.attention_allocator import AttentionCost
@@ -692,8 +705,8 @@ class PulseEngine:
                                     await self._alerter.send(msg)
                                 else:
                                     logger.info(
-                                        f"alert_human autonomic-skip (Telegram disabled): "
-                                        f"DB-logged, Organism will dispatch recovery"
+                                        "alert_human autonomic-skip (Telegram disabled): "
+                                        "DB-logged, Organism will dispatch recovery"
                                     )
                     else:
                         logger.info(
@@ -807,6 +820,43 @@ class PulseEngine:
             action_reason=action_reason,
             thought_tier=thought_tier,
         )
+
+        # W27 Path A (2026-05-23): consecutive-red streak tracking. When
+        # streak reaches SUSTAINED_RED_THRESHOLD (3 = ~3 min at 60s cadence),
+        # emit cell_pulse_sustained_red event so the Organism's
+        # `cell_sustained_red_restart` rule can dispatch fly_machines_start.
+        # Emit fires ONCE per sustained window (idempotency flag resets on
+        # first non-red pulse) — prevents Organism restart spam.
+        _status_value = status.value if hasattr(status, "value") else str(status)
+        if _status_value == "red":
+            self._red_streak += 1
+            if (self._red_streak >= SUSTAINED_RED_THRESHOLD
+                    and not self._sustained_red_emitted):
+                try:
+                    from cell_core import observatory as _obs
+                    if _obs.is_enabled():
+                        import asyncio as _a
+                        _a.create_task(_obs.emit_sustained_red(
+                            cell_id=_cell,
+                            pulse_id=f"sustained-red-{pulse_number}",
+                            pulse_timestamp_ms=int(now.timestamp() * 1000),
+                            consecutive=self._red_streak,
+                            target_app="nuzantara-rag",
+                            target_process_group="api",
+                            metadata={"pulse_number": pulse_number},
+                        ))
+                        self._sustained_red_emitted = True
+                except Exception as _exc:
+                    logger.warning(
+                        f"W27 sustained_red emit failed (non-blocking): {_exc}"
+                    )
+        else:
+            if self._red_streak > 0 or self._sustained_red_emitted:
+                logger.info(
+                    f"W27: red streak reset (was {self._red_streak}, status={_status_value})"
+                )
+            self._red_streak = 0
+            self._sustained_red_emitted = False
 
         # Cell Pulse Observatory hook (Track A activation 2026-05-02).
         # Fire-and-forget — pulse loop must NEVER block on observatory.

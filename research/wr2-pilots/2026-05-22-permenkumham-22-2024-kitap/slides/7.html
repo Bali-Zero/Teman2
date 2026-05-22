@@ -1,0 +1,59 @@
+<!doctype html>
+<html><head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="_base.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&display=swap');
+.hero {
+  width: var(--canvas-width); height: 540px;
+  background-image: url('7-hero.jpg');
+  background-size: cover; background-position: center;
+  position: relative;
+}
+.hero::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(0,0,0,0.0) 60%, var(--color-bg-antracite) 100%);
+}
+.text-panel {
+  width: var(--canvas-width); height: 810px;
+  background: var(--color-bg-antracite);
+  padding: var(--spacing-edge-margin) var(--spacing-edge-margin) 180px var(--spacing-edge-margin);
+  display: flex; flex-direction: column;
+}
+.subheading {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-subheadline);
+  line-height: var(--line-height-snug);
+  letter-spacing: var(--letter-spacing-title);
+  color: var(--color-accent-yellow);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+.heading {
+  font-weight: var(--font-weight-extrabold);
+  font-size: var(--font-size-headline-slide);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--letter-spacing-title);
+  color: var(--color-text-white);
+  text-transform: uppercase;
+  margin-bottom: 28px;
+}
+.body {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-body-md);
+  line-height: var(--line-height-normal);
+  letter-spacing: var(--letter-spacing-body);
+  color: var(--color-text-white);
+}
+</style>
+</head>
+<body data-slide-index="7" data-layout="photo-headline-yellow-sub">
+  <div class="hero" data-zone-type="hero-photo"></div>
+  <div class="text-panel" data-zone-type="text">
+    <div class="subheading">KITAP UPDATE IS <span style="color:var(--color-accent-yellow);">MANDATORY</span> — SEPARATE FROM MERP</div>
+    <div class="heading">NEW PASSPORT: ONE MORE VISIT TO IMIGRASI</div>
+    <div class="body">If you renew your passport, you must update your KITAP with the new passport number at your local Kantor Imigrasi (local immigration office). This requirement is independent of MERP, unaffected by the 2023–2024 reform, and fully in force. One visit. Bring both documents.</div>
+  </div>
+  <div class="logo" data-zone-type="logo"></div>
+  <div class="swipe-indicator" data-zone-type="text"></div>
+</body></html>

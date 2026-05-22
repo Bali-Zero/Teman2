@@ -1,0 +1,38 @@
+<!doctype html>
+<html><head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="_base.css">
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@700;800&display=swap');
+body {
+  background: radial-gradient(ellipse at center, var(--color-bg-antracite) 0%, var(--color-bg-black) 100%);
+  display: flex; align-items: center; justify-content: center;
+  padding: var(--spacing-edge-margin) var(--spacing-edge-margin) 180px var(--spacing-edge-margin);
+}
+.statement {
+  font-weight: var(--font-weight-extrabold);
+  font-size: var(--font-size-statement-bomb);
+  line-height: var(--line-height-tight);
+  letter-spacing: var(--letter-spacing-title);
+  color: var(--color-text-white);
+  text-transform: uppercase; text-align: center;
+  max-width: 100%;
+}
+.statement.shrunk {
+  font-size: var(--font-size-statement-bomb-shrunk);
+}
+.emphasis { color: var(--color-accent-yellow); }
+</style>
+</head>
+<body data-slide-index="9" data-layout="statement-bomb">
+  <div class="statement" data-zone-type="text">
+    YOUR KITAP PROTECTS YOU. THE RENEWAL WINDOW <span class="emphasis">DOES NOT WAIT.</span>
+  </div>
+  <div class="logo" data-zone-type="logo"></div>
+  <script>
+    const stmt = document.querySelector('.statement');
+    const lh = parseFloat(getComputedStyle(stmt).lineHeight);
+    const lines = Math.round(stmt.getBoundingClientRect().height / lh);
+    if (lines > 2) stmt.classList.add('shrunk');
+  </script>
+</body></html>

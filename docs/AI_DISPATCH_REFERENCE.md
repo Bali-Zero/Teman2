@@ -1,7 +1,7 @@
 # AI Dispatch System — Full Reference
 
-> Extracted from CLAUDE.md §16 on 2026-03-31 to reduce context window load.
-> Quick reference remains in CLAUDE.md §12. This file has full details.
+> Extracted from CLAUDE.md (pre-T2.7 §16) on 2026-03-31 to reduce context window load.
+> Quick reference remains in CLAUDE.md §5 (Agent/LLM Routing & Bans) post-T2.7 refactor 2026-05-23. This file has full details.
 
 ## 3-Tier Taxonomy (v3.1, 2026-03-25)
 
