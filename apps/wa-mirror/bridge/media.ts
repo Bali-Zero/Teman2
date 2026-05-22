@@ -22,7 +22,10 @@ export function queueMediaDownload(opts: {
   store: MessageContextStore;
   logger: pino.Logger;
 }): void {
-  if (opts.record.mediaType === "text" || opts.record.mediaType === "location") {
+  if (
+    opts.record.mediaType === "text" ||
+    opts.record.mediaType === "location"
+  ) {
     return;
   }
 
@@ -32,7 +35,7 @@ export function queueMediaDownload(opts: {
         {
           messageContextId: opts.messageContextId,
         },
-        "wa-mirror media download failed"
+        "wa-mirror media download failed",
       );
     });
   });
@@ -53,14 +56,15 @@ async function downloadAndStoreMedia(opts: {
     {
       logger: opts.logger,
       reuploadRequest: opts.sock.updateMediaMessage,
-    }
+    },
   );
 
   const mediaRoot = process.env.WA_MIRROR_MEDIA_ROOT ?? DEFAULT_MEDIA_ROOT;
-  const contactDir = path.join(
-    mediaRoot,
-    phonePathSegment(opts.record.counterpartPhone)
-  );
+  const isGroup = opts.record.chatType === "group" && !!opts.record.groupJid;
+  const segment = isGroup
+    ? "groups/" + (opts.record.groupJid ?? "").replace(/[^a-zA-Z0-9_.-]/g, "_")
+    : phonePathSegment(opts.record.counterpartPhone);
+  const contactDir = path.join(mediaRoot, segment);
   await mkdir(contactDir, { recursive: true });
 
   const ext = extensionForMime(opts.record.mediaMime, opts.record.mediaType);
@@ -68,17 +72,21 @@ async function downloadAndStoreMedia(opts: {
   const filePath = path.join(contactDir, `${safeId}.${ext}`);
   await writeFile(filePath, buffer);
 
-  const ocrResult = await maybeRunOcr(filePath, opts.record.mediaMime, opts.logger);
+  const ocrResult = await maybeRunOcr(
+    filePath,
+    opts.record.mediaMime,
+    opts.logger,
+  );
   await opts.store.updateMediaStoredPath(
     opts.messageContextId,
     filePath,
-    ocrResult
+    ocrResult,
   );
 }
 
 export function extensionForMime(
   mime: string | null,
-  mediaType: string
+  mediaType: string,
 ): string {
   switch (mime) {
     case "image/jpeg":
@@ -103,7 +111,7 @@ export function extensionForMime(
 async function maybeRunOcr(
   filePath: string,
   mime: string | null,
-  logger: pino.Logger
+  logger: pino.Logger,
 ): Promise<unknown | null> {
   if (!["image/jpeg", "image/png", "application/pdf"].includes(mime ?? "")) {
     return null;
@@ -114,8 +122,7 @@ async function maybeRunOcr(
     return null;
   }
 
-  const baseUrl =
-    process.env.WA_MIRROR_BACKEND_URL ?? "http://127.0.0.1:8000";
+  const baseUrl = process.env.WA_MIRROR_BACKEND_URL ?? "http://127.0.0.1:8000";
   const endpoint =
     process.env.WA_MIRROR_OCR_ENDPOINT ?? `${baseUrl}/api/ocr/extract`;
 
@@ -126,10 +133,7 @@ async function maybeRunOcr(
       body: JSON.stringify({ file_path: filePath }),
     });
     if (!response.ok) {
-      logger.warn(
-        { status: response.status },
-        "wa-mirror OCR request failed"
-      );
+      logger.warn({ status: response.status }, "wa-mirror OCR request failed");
       return null;
     }
     return response.json();
@@ -151,13 +155,16 @@ async function scanRoutersForOcrEndpoint(): Promise<boolean> {
     process.env.WA_MIRROR_REPO_ROOT ?? path.resolve(process.cwd(), "../..");
   const routersDir = path.join(
     repoRoot,
-    "apps/backend-rag/backend/app/routers"
+    "apps/backend-rag/backend/app/routers",
   );
   try {
     const files = await listPythonFiles(routersDir);
     for (const file of files) {
       const content = await readFile(file, "utf8");
-      if (content.includes("/api/ocr/extract") || content.includes("ocr/extract")) {
+      if (
+        content.includes("/api/ocr/extract") ||
+        content.includes("ocr/extract")
+      ) {
         return true;
       }
     }
