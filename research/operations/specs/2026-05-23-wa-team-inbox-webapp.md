@@ -20,6 +20,29 @@ companion: research/operations/2026-05-23-wa-mirror-dashboard-discovery.md
 
 > Local-only webapp per visualizzare tutta la messaggistica WhatsApp captured dai 9 account team Bali Zero, vedere il flow incoming→automation→action, e intervenire (reply, tag, escalate, assign).
 
+## Cambiamenti v2→v3 (devils-advocate gate)
+
+DeepSeek V4 Pro reasoning_effort=high red-team della spec v2 ha trovato **2 CRITICAL + 4 HIGH + 5 MEDIUM + 1 LOW**. Verdetto pre-patch: **DON'T SHIP**. Patch applicate inline in v3:
+
+| #   | Severità     | Issue                                                                                                          | Fix applicato                                                                                                                                                                                                    |
+| --- | ------------ | -------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 1   | **CRITICAL** | SSE `await q.put()` block-on-full freeza l'intero fan-out se un subscriber è lento (browser tab zombie)        | `WaSseManager.publish` ora usa `put_nowait()` + drop+metric on QueueFull. Mai blocca event loop                                                                                                                  |
+| 2   | **CRITICAL** | Outbound jitter race: 2 send concurrent vedono stesso `MAX(scheduled_for)` → schedule a 1-2s distanza → ban WA | `pg_advisory_xact_lock(hash(team_member_phone))` prima del SELECT MAX. Serializza scheduling per account                                                                                                         |
+| 3   | HIGH         | Bridge restart perde future-scheduled rows (notify non re-fired post-restart)                                  | On-boot: `SELECT * WHERE status='pending'` (no time filter) → per ogni row scheduled_for nel futuro fa `setTimeout(remaining_delay)`. Anche reaper `status='dispatching' AND dispatched_at < NOW()-60s → failed` |
+| 4   | HIGH         | Endpoint legacy `/api/omnichannel/threads/{id}/messages` POST bypassa jitter+queue → outbound burst possibile  | Pre-M3: il legacy endpoint resta read-only o ritorna 410 Gone se WA channel. Solo `/api/v1/wa-dashboard/{phone}/send` può inviare WA. Documentato in §1.3                                                        |
+| 5   | HIGH         | `WaSseManager.subscribe` overwrites queue per user_email → multi-tab rotto (Sahira desktop+tablet)             | `subscribers: dict[str, set[Queue]]`, fan-out broadcast a TUTTE le code per user                                                                                                                                 |
+| 6   | HIGH         | `can_send_from()` RBAC senza backing table — chiunque autenticato può inviare da qualsiasi numero              | Nuova table `team_member_phone_authorizations` in migration 192. Seed con grants 1:1 user→propri numero. Cross-account grants opt-in admin                                                                       |
+| 7   | MEDIUM       | No transizione `dispatching` prima di Baileys send → crash mid-send → duplicate message                        | Worker fa COMMIT dispatching prima di `sock.sendMessage()`. Restart reaper `dispatching > 60s old → failed for manual review`                                                                                    |
+| 8   | MEDIUM       | SSE RBAC filter senza try/except → exception kills stream permanentemente                                      | Wrap message-processing in try/except, log error, skip message, NON breaka stream                                                                                                                                |
+| 9   | MEDIUM       | `wa_outbound_idempotency` rows mai puliti → unbounded growth                                                   | Cron hourly `DELETE FROM wa_outbound_idempotency WHERE expires_at < NOW()`. Aggiunto a §8 M1 deliverables                                                                                                        |
+| 10  | MEDIUM       | UNIQUE INDEX COALESCE collision tra NULL e empty string in `team_member_phone`                                 | API-level Zod validation: empty string → NULL. CHECK constraint `team_member_phone IS NULL OR team_member_phone <> ''`                                                                                           |
+| 11  | MEDIUM       | SSE `Last-Event-ID` replay non implementato → message loss durante reconnect                                   | Endpoint SSE legge header `Last-Event-ID`, fa `SELECT WHERE id > $1 LIMIT 200` come replay events prima del live stream                                                                                          |
+| 12  | LOW          | No CSRF token su mutation endpoint (localhost-only, ma local-exec attacker plausible)                          | `X-CSRF-Token` header + `SameSite=Strict` cookie. Add a M1 backlog                                                                                                                                               |
+
+**Verdetto post-patch**: SHIP WITH PATCHES — tutti i CRITICAL + HIGH risolti, MEDIUM 7-11 inline, MEDIUM 12 backlog. Companion full output: `2026-05-23-wa-team-inbox-webapp-devils-advocate.md`.
+
+---
+
 ## ⚠️ GATING RISK — leggere PRIMA di approvare
 
 **UU PDP 27/2022** (Indonesia Personal Data Protection Law, effettiva Oct 2024, transition 2 anni). Wa-mirror cattura messaggi su account WhatsApp personali del team con **prospects non-clienti** (counterpart che hanno scritto al numero team senza sapere della cattura centralizzata). Il passaggio da "passive logging" a **active centralized reply** introduce esposizione legale aggiuntiva. **MVP v1 = read-only Admin-only finché legal-counsel firma off su**: (a) prospect message retention basis, (b) centralized reply lawful basis, (c) data subject rights surface (deletion/access on request). Send capability = **v2** post sign-off.
@@ -208,17 +231,36 @@ from backend.app.deps.crm_access import can_view_all_clients
 router = APIRouter(prefix="/api/v1/wa-dashboard", tags=["wa-dashboard"])
 
 class WaSseManager:
+    """Multi-tab safe SSE fan-out with non-blocking publish (devils-advocate v3 fix #1, #5)."""
+
     def __init__(self):
-        self.subscribers: dict[str, asyncio.Queue] = {}  # user_email → queue
+        # CRITICAL fix v3: dict[user_email, set[queue]] for multi-tab support
+        self.subscribers: dict[str, set[asyncio.Queue]] = defaultdict(set)
+        self._drop_counter = Counter()  # per-user dropped-message metric
+
     async def publish(self, payload: dict):
-        for q in self.subscribers.values():
-            await q.put(payload)
-    async def subscribe(self, user_email: str) -> asyncio.Queue:
-        q = asyncio.Queue(maxsize=100)
-        self.subscribers[user_email] = q
+        """Non-blocking publish — drop on full queue, log metric (NEVER block event loop)."""
+        for user_email, queues in list(self.subscribers.items()):
+            for q in list(queues):
+                try:
+                    q.put_nowait(payload)
+                except asyncio.QueueFull:
+                    # CRITICAL fix v3: one slow subscriber MUST NOT stall fan-out
+                    self._drop_counter[user_email] += 1
+                    logger.warning("sse_drop",
+                        extra={"user": user_email, "drops": self._drop_counter[user_email]})
+
+    def subscribe(self, user_email: str) -> asyncio.Queue:
+        """Create a NEW queue per connection — supports multi-tab (Sahira desktop + tablet)."""
+        q = asyncio.Queue(maxsize=200)  # bigger headroom + non-blocking publish above
+        self.subscribers[user_email].add(q)
         return q
-    def unsubscribe(self, user_email: str):
-        self.subscribers.pop(user_email, None)
+
+    def unsubscribe(self, user_email: str, q: asyncio.Queue):
+        """Remove ONLY the specific queue, not all user connections."""
+        self.subscribers[user_email].discard(q)
+        if not self.subscribers[user_email]:
+            del self.subscribers[user_email]
 
 sse_mgr = WaSseManager()
 
@@ -332,7 +374,12 @@ async def send_wa(
         if not await can_send_from(db, user, payload.team_member_phone):
             raise HTTPException(403, "Cannot send from this team account")
 
-        # 3. compute jittered scheduled_for
+        # 3. CRITICAL fix v3: advisory lock per team_member_phone hash
+        # Prevents jitter race when two operators send concurrently to same account
+        lock_key = hash(payload.team_member_phone) % (2**31)
+        await db.execute("SELECT pg_advisory_xact_lock($1)", lock_key)
+
+        # 4. compute jittered scheduled_for (now safe — serialized per account)
         last = await db.fetchval(
             "SELECT MAX(scheduled_for) FROM wa_dashboard_outbound_queue "
             "WHERE team_member_phone=$1 AND status IN ('pending','dispatching')",
@@ -369,12 +416,21 @@ async def send_wa(
         return response
 ```
 
-**Bridge side** (`apps/wa-mirror/bridge/outbound_worker.ts` ~120 LOC):
+**Bridge side** (`apps/wa-mirror/bridge/outbound_worker.ts` ~150 LOC — v3 hardened):
 
 - Importa `pg.Client` LISTEN su `wa_outbound_queued` (riusa connection già in `bridge/pg.ts`)
-- on notify: `setTimeout(send, scheduled_for - now)` ms
-- on fire: `SELECT ... FOR UPDATE SKIP LOCKED` → `sock.sendMessage()` Baileys → UPDATE status
-- gestisce timer in-memory; restart bridge → al boot fa `SELECT WHERE status='pending'` per riprendere pending
+- on notify: `setTimeout(send, max(0, scheduled_for - now))` ms
+- on fire (critical path — v3 fix #2 + #7 dispatching state):
+  1. `BEGIN; SELECT ... FOR UPDATE SKIP LOCKED WHERE queue_id=$1 AND status='pending'`
+  2. `UPDATE status='dispatching', dispatched_at=NOW() WHERE queue_id=$1`
+  3. `COMMIT` — marker visible to crash-recovery
+  4. `await sock.sendMessage(jid, ...)` → baileys_message_id
+  5. `UPDATE status='dispatched', dispatched_baileys_message_id=$2 WHERE queue_id=$1`
+  6. On error → `UPDATE status='failed', error_message=$2, retry_count=retry_count+1`
+- **Restart recovery (v3 fix #3 — bridge restart misses future-scheduled)**:
+  - On boot: `SELECT * FROM wa_dashboard_outbound_queue WHERE status='pending'` (NO `scheduled_for > NOW()` filter)
+  - For each row: if `scheduled_for <= NOW()` → send immediately; if future → `setTimeout(send, remaining_delay_ms)` like live notify path
+  - Also: `SELECT * WHERE status='dispatching' AND dispatched_at < NOW() - INTERVAL '60 seconds'` → mark `status='failed'` for manual review (crash mid-send protection)
 
 **UI side**: `useSendMessage` hook ritorna `{queue_id, eta_seconds}` → componente `SendCountdown` mostra timer "Send in 18s" → quando `eta_seconds=0` UI rimuove countdown e attende messaggio outbound dal SSE stream (refletted automaticamente via `messages.upsert` Baileys → INSERT outbound row → pg_notify).
 
@@ -520,6 +576,33 @@ CREATE INDEX idx_woa_user_created ON whatsapp_operator_actions(user_email, creat
 ```sql
 -- migration 192_wa_dashboard_v1.sql
 -- Lint via Squawk (PR check). DO NOT drop existing whatsapp_message_context.
+
+-- ============================================================
+-- 0. RBAC mapping table (v3 devils-advocate fix #6)
+-- Who can send from which team_member_phone
+-- ============================================================
+CREATE TABLE IF NOT EXISTS team_member_phone_authorizations (
+  user_email VARCHAR(255) NOT NULL,
+  team_member_phone VARCHAR(20) NOT NULL,
+  granted_by VARCHAR(255) NOT NULL,  -- admin who granted
+  granted_at TIMESTAMPTZ DEFAULT NOW(),
+  revoked_at TIMESTAMPTZ,
+  PRIMARY KEY (user_email, team_member_phone)
+);
+CREATE INDEX idx_tmpa_lookup
+  ON team_member_phone_authorizations(user_email)
+  WHERE revoked_at IS NULL;
+
+-- Seed: each team member can send from their OWN team account by default
+-- (admin can add cross-account grants manually)
+-- INSERT INTO team_member_phone_authorizations (user_email, team_member_phone, granted_by) VALUES
+--   ('adit@balizero.com',  '+6282134547725', 'zero@balizero.com'),
+--   ('vino@balizero.com',  '+6282134547727', 'zero@balizero.com'),
+--   ('sahira@balizero.com','+6282134547723', 'zero@balizero.com'),
+--   ('surya@balizero.com', '+628133946856',  'zero@balizero.com'),
+--   ('ari.firda@balizero.com','+628213454721', 'zero@balizero.com'),
+--   ('damar@balizero.com', '+6282134547726', 'zero@balizero.com'),
+--   ('asya@balizero.com',  '+62881038467246','zero@balizero.com');
 
 -- ============================================================
 -- 1. Outbound queue (anti-ban jittered cooldown)
