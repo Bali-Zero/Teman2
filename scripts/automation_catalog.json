@@ -2293,6 +2293,14 @@
     "genome_decay.sh": {
       "description": "Genome Decay — SYMBIOSIS Pillar 5 (Sogno) cron wrapper Invoked by ~/Library/LaunchAgents/com.cell.genome-decay.plist (02:30 WITA)  Ebbinghaus: confidence × 0.95^days_unused, min_idle=7d, threshold 0.3",
       "_source": "auto_discovered"
+    },
+    "nb-agents-daily-dr.sh": {
+      "description": "NB-AGENTS daily adaptive Deep Research Schedule: 07:30 WITA daily Logic: read yesterday's DR, extract \"open questions\" section, query NB-AGENTS on the first one. If no yesterday-file or no open questi",
+      "_source": "auto_discovered"
+    },
+    "nextdns-weekly-digest.sh": {
+      "description": "NextDNS weekly DNS digest → Telegram Runs: Monday 08:55 WITA via crontab (before wa-audit-bot reminder) Mostra top-20 domain visitati nella settimana — log-only, nessun blocco Richiede: NEXTDNS_API_KE",
+      "_source": "auto_discovered"
     }
   }
 }

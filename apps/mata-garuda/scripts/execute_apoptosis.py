@@ -13,6 +13,7 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import re
 import subprocess
 import sys
@@ -29,7 +30,7 @@ EXPORT_DIR = REPO.parent.parent / "research" / "nb-archive"
 DECISION_MATRIX_PATH = (
     REPO.parent.parent / "docs" / "nb-lifecycle" / "round1-19-ambiguous-decisions-2026-05-07.md"
 )
-AUDIT_LOG = EXPORT_DIR / "audit_log.md"
+AUDIT_LOG = Path(os.environ["APOPTOSIS_AUDIT_LOG"]) if os.environ.get("APOPTOSIS_AUDIT_LOG") else EXPORT_DIR / "audit_log.md"
 TODAY = "2026-05-07"
 ARCHIVED_PREFIX = f"[ARCHIVED-{TODAY}]"
 EXPORTED_PREFIX = f"[EXPORTED-{TODAY}]"

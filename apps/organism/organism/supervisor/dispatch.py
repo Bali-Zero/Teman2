@@ -41,6 +41,11 @@ SAFE_ACTUATORS = frozenset({
     "cleanup_branches",        # W3.B
     "cleanup_zombie_plist",    # W3.B
     "propose_yaml_rule",       # W4.A — L3 (gated by consiglio_gate IRREVERSIBLE_ACTUATORS)
+    # W27 Path A (2026-05-23): auto-restart Fly api machines on Cell-detected
+    # sustained-red. Wired through cell_pulse_sustained_red → yaml rule
+    # cell_sustained_red_restart → FlyMachinesStart actuator. Idempotent on
+    # already-running machines (fly machines start is no-op then).
+    "fly_machines_start",
 })
 
 HUMAN_ONLY_ACTUATORS = frozenset({

@@ -486,6 +486,14 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)research/marketing/zantara-visual-dataset/.*/metadata/.*\.json$"),
         "zantara-visual-dataset metadata: SHA-256 file checksums for image assets, not secrets",
     ),
+    # WR2 pilot slides.json: each slide entry has `hero_image_sha256` —
+    # content-derived hash of the imagegen-produced hero JPG, used by
+    # wr2-critic to enforce Article 5.10 no-silent-placeholder-reuse.
+    # File checksums, never API keys.
+    (
+        re.compile(r"(^|/)research/wr2-pilots/.*/slides\.json$"),
+        "wr2-pilots slides.json: hero_image_sha256 anchor checksums, not secrets",
+    ),
     # vendor/<pkg>/tests/: vendored third-party test files contain fake
     # API keys and dummy credentials in mock setups. Vendor source is
     # byte-identical to upstream (see vendor/*/UPSTREAM.md), reviewed at

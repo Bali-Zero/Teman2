@@ -409,5 +409,5 @@ Now reachable by:
 - `~/Desktop/nuzantara/apps/backend-rag/backend/services/ingestion/legal_ingestion_service.py` — main pipeline
 - Spreadsheet GAP_ANALYSIS: `https://docs.google.com/spreadsheets/d/1Je7eAK3ya_P5yY9L_JtnwRzkTDrucnzgZ4PvvWlb2us/edit`
 - Lesson `lessons_devils_advocate_loop_pattern.md` — why 90s NB wait matters
-- CLAUDE.md §16 (Research Capture) — adjacent convention for non-regulatory docs
+- CLAUDE.md §15 (Research Capture Convention) — adjacent convention for non-regulatory docs
 - `infra/eventbus/nb-population-batch.sh.example` — reference for batch NB push
