@@ -53,6 +53,35 @@ _BODY_STATUS_GREEN = frozenset({
 SUSTAINED_RED_THRESHOLD = 3
 
 
+def _autoremediation_enabled() -> bool:
+    """W33 (2026-05-23) — operator kill switch for the W27 auto-heal chain.
+
+    Returns True if Cell's sustained-red detection should emit
+    `cell_pulse_sustained_red` (which downstream triggers Organism dispatch
+    of `fly_machines_restart`). Returns False to disable auto-heal at the
+    source.
+
+    Default: True (auto-heal active). Set `CELL_AUTOREMEDIATION_ENABLED=false`
+    in `apps/cell/.env` to disable. Reads each invocation (no caching) so
+    operator can flip the flag without restarting Cell daemon — next pulse
+    cycle sees new state.
+
+    Codex non-negotiable from W27 4-LLM panel. When auto-heal misbehaves
+    (e.g. restart loop, wrong actuator, false-positive red), operator must
+    have a fast off-switch without ssh + grep + kill workflow.
+
+    Returns:
+        True if disabled value is anything OTHER than literal lowercase
+        "false", "0", "no", "off", "disabled". Empty/unset → True (default-on).
+        Note: default-ON because the chain has been validated end-to-end
+        (W27+W31); flipping to default-OFF would silently disarm the auto-
+        heal for new deployments — explicit opt-out is safer than default-out.
+    """
+    import os
+    val = os.environ.get("CELL_AUTOREMEDIATION_ENABLED", "").strip().lower()
+    return val not in {"false", "0", "no", "off", "disabled"}
+
+
 def classify_http_status(reading: HealthReading) -> HealthStatus:
     """Classify a HealthReading by body.status first, then HTTP envelope.
 
@@ -832,24 +861,37 @@ class PulseEngine:
             self._red_streak += 1
             if (self._red_streak >= SUSTAINED_RED_THRESHOLD
                     and not self._sustained_red_emitted):
-                try:
-                    from cell_core import observatory as _obs
-                    if _obs.is_enabled():
-                        import asyncio as _a
-                        _a.create_task(_obs.emit_sustained_red(
-                            cell_id=_cell,
-                            pulse_id=f"sustained-red-{pulse_number}",
-                            pulse_timestamp_ms=int(now.timestamp() * 1000),
-                            consecutive=self._red_streak,
-                            target_app="nuzantara-rag",
-                            target_process_group="api",
-                            metadata={"pulse_number": pulse_number},
-                        ))
-                        self._sustained_red_emitted = True
-                except Exception as _exc:
+                # W33 (2026-05-23): operator kill switch. Gate at source so
+                # Organism never receives the dispatch trigger when disabled.
+                # Set idempotency flag either way to suppress repeat log spam
+                # during the same red window.
+                if not _autoremediation_enabled():
                     logger.warning(
-                        f"W27 sustained_red emit failed (non-blocking): {_exc}"
+                        "W33 kill switch active "
+                        "(CELL_AUTOREMEDIATION_ENABLED=false): "
+                        f"would emit sustained_red (streak={self._red_streak}) "
+                        "but suppressed by operator override"
                     )
+                    self._sustained_red_emitted = True
+                else:
+                    try:
+                        from cell_core import observatory as _obs
+                        if _obs.is_enabled():
+                            import asyncio as _a
+                            _a.create_task(_obs.emit_sustained_red(
+                                cell_id=_cell,
+                                pulse_id=f"sustained-red-{pulse_number}",
+                                pulse_timestamp_ms=int(now.timestamp() * 1000),
+                                consecutive=self._red_streak,
+                                target_app="nuzantara-rag",
+                                target_process_group="api",
+                                metadata={"pulse_number": pulse_number},
+                            ))
+                            self._sustained_red_emitted = True
+                    except Exception as _exc:
+                        logger.warning(
+                            f"W27 sustained_red emit failed (non-blocking): {_exc}"
+                        )
         else:
             if self._red_streak > 0 or self._sustained_red_emitted:
                 logger.info(
