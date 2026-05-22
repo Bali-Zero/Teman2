@@ -30,9 +30,17 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from sse_starlette.sse import EventSourceResponse
 
 from backend.app.dependencies import get_current_user, get_database_pool
-from backend.app.deps.crm_access import can_view_all_clients
+from backend.app.utils.crm_utils import is_crm_admin
 
 logger = logging.getLogger(__name__)
+
+
+def _safe_log_value(value: str) -> str:
+    """Strip CRLF + ANSI control chars to neutralize log-injection (CodeQL py/log-injection)."""
+    if not isinstance(value, str):
+        return str(value)
+    return value.replace("\r", "").replace("\n", "").replace("\x1b", "")[:200]
+
 
 router = APIRouter(prefix="/api/v1/wa-dashboard", tags=["wa-dashboard"])
 
@@ -63,7 +71,7 @@ class WaSseManager:
             self.subscribers.setdefault(user_email, set()).add(q)
         logger.info(
             "wa-dashboard SSE subscribe user=%s tabs=%d",
-            user_email,
+            _safe_log_value(user_email),
             len(self.subscribers[user_email]),
         )
         return q
@@ -76,7 +84,7 @@ class WaSseManager:
             queues.discard(q)
             if not queues:
                 self.subscribers.pop(user_email, None)
-        logger.info("wa-dashboard SSE unsubscribe user=%s", user_email)
+        logger.info("wa-dashboard SSE unsubscribe user=%s", _safe_log_value(user_email))
 
     def publish(self, payload: dict[str, Any]) -> None:
         """Non-blocking fan-out. Drop on full queue (subscriber too slow)."""
@@ -89,7 +97,7 @@ class WaSseManager:
                     if self._drop_count % 50 == 1:
                         logger.warning(
                             "wa-dashboard SSE queue full user=%s drops=%d (slow subscriber)",
-                            user_email,
+                            _safe_log_value(user_email),
                             self._drop_count,
                         )
 
@@ -98,18 +106,21 @@ sse_manager = WaSseManager()
 
 
 async def can_view_message(
-    pool: asyncpg.Pool, user_email: str, payload: dict[str, Any]
+    pool: asyncpg.Pool, user: dict[str, Any], payload: dict[str, Any]
 ) -> bool:
     """RBAC check: can this user see this message?
 
     Devils-advocate fix #8: caller wraps this in try/except. Raises on DB
     error so caller decides drop-event vs terminate-stream policy.
     """
-    if await can_view_all_clients(pool, user_email):
+    if is_crm_admin(user):
         return True
     team_phone = payload.get("team_member_phone")
     if not team_phone:
         return True
+    user_email = user.get("email")
+    if not user_email:
+        return False
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """
@@ -225,7 +236,7 @@ async def wa_dashboard_stream(
                 replay = await fetch_replay(pool, last_event_id)
                 for msg in replay:
                     try:
-                        if await can_view_message(pool, user_email, msg):
+                        if await can_view_message(pool, user,msg):
                             yield {
                                 "id": str(msg["id"]),
                                 "event": "wa_message",
