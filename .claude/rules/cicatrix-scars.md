@@ -5,6 +5,32 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ✅ RESOLVED: W32 — pg-bridge silently died on asyncpg.InterfaceError, dropped 50min of NOTIFY events (2026-05-23)
+
+_Discovered: 2026-05-23 during W27 live production test 04:42-05:25 WITA · Severity: P1 (Organism auto-heal blind during the very outage class it was built for) · Status: **FIXED on commit `630f1bd1d`** — 5/5 unit tests + live restart verified "LISTEN on 15 channels active"_
+
+**TRAUMA:** Same family as W29 watchdog burn. `asyncpg.InterfaceError` is a SIBLING of `PostgresError`, NOT a subclass. `scripts/pg-to-organism-bridge.py:246` except tuple was `(asyncpg.PostgresError, OSError, asyncio.TimeoutError)` — when pg-proxy briefly hiccuped during the W27 test and the keep-alive `SELECT 1` raised `InterfaceError` on a stale conn, the exception escaped past the except clause, the `_run_listener` task crashed, but the daemon kept running because the heartbeat task is separate. Heartbeat ticked "ok" every 60s while listener was dead. `lsof -p PID | grep 15432` confirmed ZERO open TCP for ~50min. Any `cell_pulse_sustained_red` events emitted during that window would have been invisible to Organism — auto-heal chain BLIND during a real outage.
+
+The W27 chain that we shipped to handle these outages was disabled by THIS bug at the very moment we needed it.
+
+**ANTIBODY (shipped commit `630f1bd1d`):**
+
+1. **Source fix** `scripts/pg-to-organism-bridge.py:246` — added `asyncpg.InterfaceError` to except tuple with inline `# W32: sibling of PostgresError, NOT subclass` comment.
+2. **5 textual unit tests** `scripts/tests/test_pg_to_organism_bridge_interface_error.py`: file existence + InterfaceError in except tuple + rationale comment preserved (so refactor can't strip it) + `cell_pulse_sustained_red` channel regression guard + WARNING_CHANNELS membership regression guard. All 5/5 PASS in 0.03s.
+3. **Live empirical** `launchctl kickstart -k` cycled to PID 67325, error.log shows `LISTEN on 15 channels active` at 06:08:21 WITA — 14 baseline channels + cell_pulse_sustained_red all re-armed.
+4. **Defense-in-depth audit**: grep across `apps/`, `scripts/`, `packages/` for `asyncpg.PostgresError` finds 2 known instances — `wr2_supervisor_watchdog.py` (W29 fixed) and `pg-to-organism-bridge.py` (W32 fixed). Pattern coverage complete for known instances.
+
+**GOTCHA:**
+
+- **The asyncpg hierarchy trap**: developers see `PostgresError` in the except tuple and assume it's the base class. It isn't. `InterfaceError` is a sibling (both directly inherit from Exception). Lint/typecheck won't catch this. The only signal is silent-death under specific timing. **Future agents touching any `except asyncpg.PostgresError`: always pair with `asyncpg.InterfaceError`.**
+- **Heartbeat task masks listener death**: pg-bridge has TWO async tasks running side-by-side — `_run_listener` (LISTEN+keep-alive) and `_heartbeat_loop` (writes status file every 60s). When listener crashes, heartbeat keeps ticking "ok". External health probes that only check heartbeat freshness will report the bridge healthy while it's deaf. Watchdog candidates (W34+): cross-check heartbeat against `lsof -p PID | grep 15432` count OR check `pg-bridge.jsonl` mtime — if no NOTIFY in N hours during business hours, suspect listener death.
+- **Same bug exists in other places that catch `asyncpg.PostgresError`**: at the time of W32, grep finds 2 known instances (both fixed). Future PRs adding new `except asyncpg.PostgresError` should be reviewed against this scar. Spec authors: link to W32 when introducing new asyncpg consumers.
+- **Hyphenated script names can't be imported as Python modules**: `scripts/pg-to-organism-bridge.py` can't `import pg-to-organism-bridge`. Test approach uses source-textual assertions (read file as text, assert string presence). Less powerful than behavior tests but sufficient for structural guards. Future scripts should use underscores in filenames if they need test coverage beyond textual.
+
+**Reference**: `research/operations/2026-05-23-w32-pg-bridge-interface-error.md`. Commit `630f1bd1d` on main. Test PASS evidence: `pytest scripts/tests/test_pg_to_organism_bridge_interface_error.py -v` → 5/5 PASS in 0.03s.
+
+---
+
 ### ✅ RESOLVED: W31 — fly_machines_start was no-op on STARTED-but-UNHEALTHY outages → fly_machines_restart added (2026-05-23)
 
 _Discovered: 2026-05-23 05:08 WITA W27 live production test · Severity: P1 (W27 chain dispatched but actuator ineffective for most common outage class) · Status: **FIXED on commit `6cd4e3166`** — new actuator + yaml rule swap + 11/11 unit tests PASS + 264 organism regression PASS_
