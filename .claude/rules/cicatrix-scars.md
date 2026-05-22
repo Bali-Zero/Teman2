@@ -5,6 +5,65 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### 🚨 STRUCTURAL: 61/115 launchd plists (53%) are unhealthy — W22 programmatic mass audit (2026-05-23)
+
+_Discovered: 2026-05-23 01:20 WITA Loop iteration 22, panel-consensus follow-up · Severity: **P1** (5 P0 plists with >100 real errors, 11 P1 with 10-100, 3 STALE/silent-dead) · Status: **AUDIT TOOLING SHIPPED**; individual root-cause fixes deferred to W23+ as per-plist work_
+
+**TRAUMA:** W21 unmasked reg-alert.30min silently dead for ~6 days. Panel review (Gemini + Codex + DeepSeek 3/3 convergent) flagged: "if reg-alert was silent dead, COUNT how many other crons may be silently dead behind their noise. Build PROGRAMMATIC audit matrix — NO kickstart-blind on non-idempotent entries."
+
+W22 built `~/scripts/audit_launchd_crons.py` (stdlib only, read-only). Empirical inventory revealed **115 total plists, 61 unhealthy (53%)**:
+
+| Tier | Definition | Count |
+|---|---|---|
+| **P0** | real_errors > 100 | **5** |
+| **P1** | 10-100 real_errors OR critical ModuleNotFound/FileNotFound | **11** |
+| **P2** | STALE (last_activity > 2× expected interval) | **3** |
+| **P3** | `*sh -lc` antipattern only, no errors (cosmetic) | **13** |
+| **Other** | NONZERO_EXIT or noise without real errors | 29 |
+
+Top P0 hitters:
+- `com.balizero.wr2.supervisor-watchdog.plist`: **2797 real errors** (likely loop crash)
+- `com.matagaruda.bridge.adaptive.plist`: **1372** (InterruptedError pattern, same matagaruda family as W21)
+- `com.balizero.guardrails-daemon.plist`: **528** (recent Wave 2 ship, regression?)
+- `com.balizero.wr2.canva-lease-watchdog.10min.plist`: 265
+- `com.matagaruda.gap.consumer.plist`: 176 (CLAUDE_CODE_OAUTH_TOKEN_1 timeouts — quota exhaustion)
+
+Notable P1 findings:
+- **wa-mirror family** (`attention-classifier`, `attention-realtime`, `auto-promote`): 35-69 real errors + STALE + NONZERO_EXIT=1 (wa-mirror pipeline degraded)
+- **`com.cell.organism.plist`**: 22 real errors + NONZERO_EXIT=1 — STILL BROKEN despite 2026-05-22 Cell daemon resurrection cicatrix (the `.env` quote-fix didn't fully resolve, or new regression)
+- **Dependency drift**: `profile-monitor-wrapper` ModuleNotFoundError asyncpg; `wr2.image-generator` ModuleNotFoundError playwright; `sota.m13-monthly` FileNotFoundError psql (PATH issue)
+- **`sota.m13-collect`**: same `Fatal Python error: error evaluating path` as W21 reg-alert — `*sh -l` shell init breaking Python interpreter
+
+P2 silent-dead crons (no fires in days):
+- `competitor-monitor.monthly`: dead **13.2 days** (since 2026-05-10)
+- `regulatory-watcher.fix-b-verify`: dead **8.7 days** (since 2026-05-14)
+- `nuzantara.disk-watchdog`: dead **3.1 days** (since 2026-05-20)
+
+16 balizero plists still use `*sh -lc` antipattern (W21 only migrated matagaruda/* family; balizero/* still exposed to same TCC silent-failure mode).
+
+**ANTIBODY (shipped):**
+
+1. **`~/scripts/audit_launchd_crons.py`** (~150 lines, stdlib only). Mirror at `scripts/ops/audit_launchd_crons.py` (repo-tracked). For each plist surfaces: `launchctl print` state + last exit, stderr signature analysis (REAL_ERROR_PATTERNS vs NOISE_PATTERNS), stdout mtime as liveness proxy, schedule comparison, `*sh -lc` antipattern flag. Health verdict + diagnosis array per row.
+
+2. **JSON snapshot** archived at `research/operations/audits/2026-05-23-launchd-audit-snapshot.json` (2122 lines) — single-shot baseline for delta tracking.
+
+3. **W22-prep accomplishments** (per panel consensus PRIOR to W22):
+   - `gh auth` fix: `unset GITHUB_TOKEN` (env var blocked keyring auth)
+   - **PR #823 opened** for 21-commit W1→W21 loop
+   - W22 patch lands on same PR as epilogue
+
+**GOTCHA:**
+
+- **Audit can't distinguish "logs from THIS run" from "accumulated noise from past runs"**. A plist showing 2797 errors might have ZERO new errors today + 2797 historical. Operator must check sample_errors timestamps or truncate logs as baseline pass.
+- **Liveness proxy via stdout mtime is imperfect**: a cron that fires successfully but produces zero output (e.g., conditional dispatcher) appears identical to one that never fired. False-positive STALE flags possible for these.
+- **W22 doesn't FIX the 61 unhealthy plists** — that's W23+ per-plist root-cause work. The script is the dashboard, not the surgeon.
+- **Panel concern (DeepSeek)**: scheduling the audit as a cron creates meta-recursion risk (audit cron polluted by its own noise). Acceptable trade if audit uses W21 TCC-safe wrapper.
+- **Audit covers `com.{matagaruda,balizero,cell}.*.plist`** glob. May miss un-prefixed labels (`com.nuzantara.*`, `com.openclaw.*`, etc.). Sweep boundary documented in script docstring.
+
+**Reference**: `research/operations/2026-05-23-w22-launchd-mass-audit.md`. JSON snapshot at `research/operations/audits/2026-05-23-launchd-audit-snapshot.json`. Audit tool at `~/scripts/audit_launchd_crons.py` + `scripts/ops/audit_launchd_crons.py`.
+
+---
+
 ### 🚨 CRITICAL: 2 silent dead crons unmasked by W21 mass TCC migration + wrapper bug fix (2026-05-23)
 
 _Discovered: 2026-05-23 00:30 WITA Loop iteration 21 mass plist survey · Severity: **P1** (reg-alert.30min silently dead in prod ~6 days, daily-briefing sqlite I/O error masked) · Status: **FIXED via wrapper bug fix + 8-plist mass migration + empirical verification: reg-alert now processes 20 regulations/cycle**_
