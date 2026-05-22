@@ -46,6 +46,12 @@ SAFE_ACTUATORS = frozenset({
     # cell_sustained_red_restart → FlyMachinesStart actuator. Idempotent on
     # already-running machines (fly machines start is no-op then).
     "fly_machines_start",
+    # W31 (2026-05-23): restart Fly machine when already-started but unhealthy.
+    # Different actuator than fly_machines_start (which is no-op on running
+    # machines). Used by cell_sustained_red_restart yaml rule for the live
+    # outage class observed during W27 production test (machine STARTED, 0/1
+    # critical checks). Idempotent on healthy machines via fly CLI semantics.
+    "fly_machines_restart",
 })
 
 HUMAN_ONLY_ACTUATORS = frozenset({
