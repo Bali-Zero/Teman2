@@ -5,6 +5,53 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: canva-renderer cron 5min-loop with PG gaierror — DATABASE_URL flycast hostname unresolvable from Pro (2026-05-23)
+
+_Discovered: 2026-05-23 04:30 WITA during user question "a che ora parte wr2 / indaga nel codice" · Severity: P1 (silent cicatrix loop ~1 week) · Status: **FIXED** via dedicated wrapper mirroring WR3 supervisor pattern_
+
+**TRAUMA:** Cron `com.balizero.wr2.canva-renderer` (StartInterval=300s, runs since 2026-05-15 resurrection per WR2 cicatrix archive) was crash-looping every 5min with `socket.gaierror: [Errno 8] nodename nor servname provided, or not known`. Error log `~/logs/wr2_canva_pdf_apply.error.log` accumulated 638KB / 922 gaierror occurrences. Mechanism:
+
+1. Plist `ProgramArguments` = `zsh -lc 'source ~/.nuzantara-secrets.env; exec flock python -u scripts/wr2_canva_pdf_apply.py'`
+2. `~/.nuzantara-secrets.env` exports `DATABASE_URL=postgres://...@nuzantara-postgres.flycast/...` (Fly internal hostname)
+3. Pro DNS: `nslookup nuzantara-postgres.flycast` → NXDOMAIN (Fly internal hostnames only resolve INSIDE Fly machines)
+4. Orchestrator `backend/services/canva_renderer_v2/orchestrator.py:267-276` reads `os.environ.get("DATABASE_URL")` and calls `asyncpg.connect(dsn, timeout=10)` — no localhost rewrite, no fallback. Errors out at line 274 BEFORE kill-switch check at line 279.
+5. Exit code = ExitCode.TRANSIENT_ERROR (not in plist `SuccessfulExit=[0,3,4,5,7]` whitelist) → launchd marks fail, retries 5min later, same crash.
+
+**Why hidden ~1 week**: kill-switch off pattern (cicatrix 2026-05-13 WR2 architecturally bypassed) led to assumption "cron is harmless when disabled". Reality: the crash happens BEFORE the kill-switch check, so the safety mechanism never engages. Logs filled silently because nobody tailed pg-proxy.error.log unless investigating a different incident.
+
+**ANTIBODY (shipped 2026-05-23):**
+
+1. **New wrapper** `~/.openclaw/bin/wr2/wr2-canva-renderer-wrapper.sh` (3KB, exec 755). Mirrors the WR3 supervisor wrapper pattern (already battle-tested per cicatrix 2026-05-21 WR3 supervisor launchd):
+   - Source `~/.nuzantara-secrets.env` (additive)
+   - **FORCE-override** `DATABASE_URL="$DATABASE_URL_LOCAL"; export DATABASE_URL` (DATABASE_URL_LOCAL = `127.0.0.1:15432` via pg-proxy)
+   - Fail fast `exit 74` (EX_CONFIG) if DATABASE_URL_LOCAL not set
+   - Pre-flight `nc -z 127.0.0.1 15432` → `exit 75` (EX_TEMPFAIL, launchd retries after ThrottleInterval) if pg-proxy down
+   - `exec flock -n /tmp/wr2_canva_pdf_apply.lock $VENV_PY -u $FULL_SCRIPT`
+2. **Plist patched** `~/Library/LaunchAgents/com.balizero.wr2.canva-renderer.plist` (backup `.pre-wrapper-fix-2026-05-23`, mode 0444 → u+w → patch via `plutil -replace ProgramArguments -json` → 0444). `ProgramArguments` now = single-element array pointing to the wrapper.
+3. **Empirical verification** (2026-05-23 04:51 WITA):
+   - Smoke test wrapper standalone → exit 0, log: `INFO wr2_canva_renderer_enabled != true — exiting quiet`
+   - launchctl bootout + bootstrap → first cron tick post-reload at 04:51:14 → `[wr2-canva-renderer-wrapper] starting` + clean exit 3 (KILL_SWITCH_OFF, whitelisted in SuccessfulExit)
+   - `last exit code = 3` (not 1) — launchd dashboard reports green
+   - Zero new gaierror lines in error.log post-fix (lock at 922 historical)
+
+**GOTCHA:**
+
+- **DATABASE_URL_LOCAL was already in `~/.nuzantara-secrets.env`** but the original plist's inline `zsh -lc 'source ... ; exec ... script'` recipe never overrode DATABASE_URL with it. The fix is purely the wrapper override; secrets file untouched.
+- **Cicatrix family**: this is the **third** "secrets file exports prod DSN, local cron needs localhost rewrite" instance after WR2 (cicatrix 2026-05-13 architecturally bypassed) and WR3 supervisor (cicatrix 2026-05-21). Each fix used the same wrapper pattern. **Promote to template**: any future cron on Pro that needs PG should use a wrapper from `~/.openclaw/bin/wrN/`, NOT inline `source secrets` in ProgramArguments.
+- **Why exit code 3 is OK**: ExitCode enum (`backend/services/canva_renderer_v2/orchestrator.py`) maps `KILL_SWITCH_OFF=3`. The plist `SuccessfulExit=[0,3,4,5,7]` whitelist treats 3 as success → launchd does NOT trigger crash-retry. When kill-switch flips ON (operator decision deferred since 2026-05-13), the same exit-3 exits become exit-0 with PDF generation.
+- **The exit code 3 is the GOAL POSTURE**: cron stays harmless until orchestrator refactor + kill-switch flip. The fix prevents observability noise (922 gaierror in error.log) while preserving the architectural defer.
+- **Wrapper script lives in `~/.openclaw/bin/wr2/`, gitignored.** Plist also gitignored. This cicatrix entry is the canonical reproduction record for future operators.
+- **Pattern for replicating fix on other crons**: grep cron error logs for `gaierror|nodename nor servname|flycast` → any match = same root cause. Audit candidates: `~/logs/*.error.log` + `~/Library/Logs/*.err`.
+
+**Reference**:
+- Wrapper: `~/.openclaw/bin/wr2/wr2-canva-renderer-wrapper.sh` (chmod 755)
+- Plist backup: `~/Library/LaunchAgents/com.balizero.wr2.canva-renderer.plist.pre-wrapper-fix-2026-05-23`
+- Sibling wrapper (template): `~/.openclaw/bin/wr3/wr3-supervisor-wrapper.sh`
+- Memory log: `~/logs/wr2_canva_pdf_apply.{log,error.log}` (errors stop accumulating 2026-05-23T04:50)
+- Same-day related cicatrix: pg-proxy Perl prefixer entry below (PR #829)
+
+---
+
 ### ℹ️ INFO: Bridge_outbox mig 107 promoted to v2 + pg-proxy Perl prefixer SHIPPED — 3-LLM panel caught 4 P0 traps (2026-05-23)
 
 _Discovered: 2026-05-23 04:00 WITA during session "fix Migration 107 + pg-proxy flap, discuti con 4llm" · Severity: INFO (clean ship, panel-reviewed) · Status: PR #828 + ~/scripts/fly-pg-proxy-wrapper.sh edit shipped, empirical verification PASS_
