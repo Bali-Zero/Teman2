@@ -1,0 +1,32 @@
+{
+  "name": "wa-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local-only Bali Zero team WhatsApp inbox dashboard (M1 read-only)",
+  "scripts": {
+    "dev": "next dev --port 3030",
+    "build": "next build",
+    "start": "next start --port 3030",
+    "lint": "next lint",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.62.7",
+    "clsx": "^2.1.1",
+    "lucide-react": "^0.469.0",
+    "next": "^16.2.5",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-virtuoso": "^4.12.3",
+    "tailwind-merge": "^2.5.5",
+    "zustand": "^5.0.2"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^22",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "tailwindcss": "^4",
+    "typescript": "^5.7"
+  }
+}
