@@ -20,8 +20,8 @@ How does Antonello (Italian, KITAS, PT PMA owner) activate Telkomsel +62 821 645
 
 ## Key citations (verbatim)
 
-- **Permen Komdigi 7/2026** (effective 19 Jan 2026, supersedes Art. 153–175 of Permenkominfo 5/2021 which itself absorbed Permenkominfo 14/2017): "*penyelenggara dilarang melakukan registrasi lebih dari tiga nomor prabayar untuk setiap identitas pelanggan pada satu operator yang sama*" — max 3 prepaid per identity per operator. WNA register with "*nomor pelanggan disertai dengan paspor, Kartu Izin Tinggal Tetap (KITAP), atau Kartu Izin Tinggal Terbatas (KITAS)*". WNI add facial-recognition biometric (≥95% match, ISO/IEC 30107-3). Old NIK+KK self-registration allowed until system upgrade deadline (~19 Jul 2026). Source: justisio + komdigi + Kompas Tekno.
-- **Telkomsel FAQ WNA** (verbatim): "*Foreign Citizens may do prepaid registration by coming to telco operator outlets or its partners*. The outlet records *name, passport/Temporary Stay Permit Card (KITAS)/Permanent Stay Permit Card (KITAP) number, citizenship, as well as Date & Place of Birth*." No self-service for WNA.
+- **Permen Komdigi 7/2026** (effective 19 Jan 2026, supersedes Art. 153–175 of Permenkominfo 5/2021 which itself absorbed Permenkominfo 14/2017): "_penyelenggara dilarang melakukan registrasi lebih dari tiga nomor prabayar untuk setiap identitas pelanggan pada satu operator yang sama_" — max 3 prepaid per identity per operator. WNA register with "_nomor pelanggan disertai dengan paspor, Kartu Izin Tinggal Tetap (KITAP), atau Kartu Izin Tinggal Terbatas (KITAS)_". WNI add facial-recognition biometric (≥95% match, ISO/IEC 30107-3). Old NIK+KK self-registration allowed until system upgrade deadline (~19 Jul 2026). Source: justisio + komdigi + Kompas Tekno.
+- **Telkomsel FAQ WNA** (verbatim): "_Foreign Citizens may do prepaid registration by coming to telco operator outlets or its partners_. The outlet records _name, passport/Temporary Stay Permit Card (KITAS)/Permanent Stay Permit Card (KITAP) number, citizenship, as well as Date & Place of Birth_." No self-service for WNA.
 - **Telkomsel prefix map**: 0821 / 0822 / 0823 = simPATI/Kartu AS prepaid; 0811 = Halo postpaid.
 
 ## Findings
@@ -38,15 +38,15 @@ The often-cited "Permenkominfo 14/2017" was already absorbed into Permenkominfo 
 
 ### 2. Activation channels — feasibility ranking for Antonello
 
-| Channel | Antonello (KITAS holder) | Works? |
-|---|---|---|
-| **GraPARI walk-in with KITAS + passport** | Agent enters passport + KITAS number, captures bio data + face | **YES — recommended** |
-| SMS to 4444 (format `REG NIK#KK#`) | Requires Indonesian NIK (KTP) and KK number; KITAS does have a NIK but Telkomsel self-service does not accept it (no KK pair) | **NO** |
-| MyTelkomsel app self-registration | Same constraint as SMS 4444 + biometric face capture wired to Dukcapil database, foreigner not enrolled | **NO** |
-| Telkomsel web `my.telkomsel.com/v3/prepaid-registration/landing-page` | Same constraint | **NO** |
-| USSD `*444#` | Menu-driven equivalent of SMS 4444 | **NO** |
-| Call Center 188 | Triage only — will redirect to GraPARI for WNA | NO (informational) |
-| **Pre-Order Tourist SIM online** (`telkomsel.com/shops/preorder-wna/`) | For inbound tourists, pickup at airport/GraPARI | YES but he is already in Bali with SIM in hand → moot |
+| Channel                                                                | Antonello (KITAS holder)                                                                                                      | Works?                                                |
+| ---------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------- |
+| **GraPARI walk-in with KITAS + passport**                              | Agent enters passport + KITAS number, captures bio data + face                                                                | **YES — recommended**                                 |
+| SMS to 4444 (format `REG NIK#KK#`)                                     | Requires Indonesian NIK (KTP) and KK number; KITAS does have a NIK but Telkomsel self-service does not accept it (no KK pair) | **NO**                                                |
+| MyTelkomsel app self-registration                                      | Same constraint as SMS 4444 + biometric face capture wired to Dukcapil database, foreigner not enrolled                       | **NO**                                                |
+| Telkomsel web `my.telkomsel.com/v3/prepaid-registration/landing-page`  | Same constraint                                                                                                               | **NO**                                                |
+| USSD `*444#`                                                           | Menu-driven equivalent of SMS 4444                                                                                            | **NO**                                                |
+| Call Center 188                                                        | Triage only — will redirect to GraPARI for WNA                                                                                | NO (informational)                                    |
+| **Pre-Order Tourist SIM online** (`telkomsel.com/shops/preorder-wna/`) | For inbound tourists, pickup at airport/GraPARI                                                                               | YES but he is already in Bali with SIM in hand → moot |
 
 ### 3. Edge cases
 
@@ -57,15 +57,15 @@ The often-cited "Permenkominfo 14/2017" was already absorbed into Permenkominfo 
 
 ### 4. PT PMA owner — corporate option
 
-Halo Korporat (postpaid corporate) is a separate enrollment under the PT PMA NPWP + Akta + Direktur KTP/KITAS; numbers issued are 0811-prefix. For a personal phone Antonello already has 0821, so corporate route is not applicable to *this* SIM. If later he wants a corporate line for Bali Zero billing, that is a different process (NPWP PT PMA + Akta + SIUP) handled by Telkomsel Account Manager, not GraPARI walk-in.
+Halo Korporat (postpaid corporate) is a separate enrollment under the PT PMA NPWP + Akta + Direktur KTP/KITAS; numbers issued are 0811-prefix. For a personal phone Antonello already has 0821, so corporate route is not applicable to _this_ SIM. If later he wants a corporate line for Bali Zero billing, that is a different process (NPWP PT PMA + Akta + SIUP) handled by Telkomsel Account Manager, not GraPARI walk-in.
 
 ### 5. GraPARI locations Denpasar (closest to Bali Zero / Sanur)
 
-| Outlet | Address | Hours |
-|---|---|---|
-| **GraPARI Renon** (recommended — closest Sanur) | Jl. Raya Puputan Renon No. 33, Denpasar Selatan 80234 | Mon–Fri 08:00–17:00, Sat 08:00–12:00, Sun closed |
-| GraPARI Teuku Umar | Gedung Plasa Telkom, Jl. Teuku Umar No. 6, Denpasar Barat 80114 | same hours |
-| GraPARI Gatot Subroto Timur | Jl. Gatot Subroto Timur No. 36C, Denpasar Timur 80237 | same hours |
+| Outlet                                          | Address                                                         | Hours                                            |
+| ----------------------------------------------- | --------------------------------------------------------------- | ------------------------------------------------ |
+| **GraPARI Renon** (recommended — closest Sanur) | Jl. Raya Puputan Renon No. 33, Denpasar Selatan 80234           | Mon–Fri 08:00–17:00, Sat 08:00–12:00, Sun closed |
+| GraPARI Teuku Umar                              | Gedung Plasa Telkom, Jl. Teuku Umar No. 6, Denpasar Barat 80114 | same hours                                       |
+| GraPARI Gatot Subroto Timur                     | Jl. Gatot Subroto Timur No. 36C, Denpasar Timur 80237           | same hours                                       |
 
 Call centre common to all: **0807 1 811 811** or **188** from a Telkomsel line.
 
@@ -96,7 +96,7 @@ Call centre common to all: **0807 1 811 811** or **188** from a Telkomsel line.
 │                                                Telkomsel WNA FAQ explicitly accepts passport-only registration.
 │                                                Validity tied to visa stamp/passport — re-registration on KITAS issuance recommended.
 │
-└─ SIM already registered to someone else (shop sold pre-activated starter)? 
+└─ SIM already registered to someone else (shop sold pre-activated starter)?
                                               ──> Option A (cleanest): return SIM to shop, demand fresh inactive starter pack, register on the spot.
                                               ──> Option B: bring previous registrant in person to GraPARI Renon with their KTP+KK + Antonello's KITAS + passport, request "ganti kepemilikan" (transfer of ownership).
                                               ──> Option C (worst): notarised surat kuasa (Rp 10,000 materai) from previous registrant + originals of both parties' KTP+KK + Antonello's KITAS + passport.

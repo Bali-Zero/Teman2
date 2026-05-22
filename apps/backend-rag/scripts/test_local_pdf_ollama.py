@@ -25,7 +25,7 @@ Rispondi con il nome della cartella:"""
         "curl", "-s", "-X", "POST", "http://localhost:11434/api/generate",
         "-d", f"'{payload}'"
     ]
-    
+
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode == 0:
         data = json.loads(result.stdout)
@@ -35,13 +35,13 @@ Rispondi con il nome della cartella:"""
 async def process_local_pdf():
     pdf_path = "/Users/nuzantara/Desktop/nuzantara/.gemini/tmp/company_pdfs/1755.pdf"
     logger.info(f"Leggo il file PDF locale REALE: {pdf_path}")
-    
+
     try:
         reader = PdfReader(pdf_path)
         text = ""
         for page in reader.pages[:2]: # Prime 2 pagine
             text += page.extract_text() + "\n"
-        
+
         logger.info(f" -> Testo estratto ({len(text)} chars). Chiedo a Ollama su Mini...")
         category = await classify_with_ollama(text)
         logger.info(f" -> [OLLAMA AI] File classificato come: {category}")

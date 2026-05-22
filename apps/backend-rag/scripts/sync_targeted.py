@@ -23,8 +23,8 @@ import time
 
 import asyncpg
 import httpx
-from pypdf import PdfReader
 from dotenv import load_dotenv
+from pypdf import PdfReader
 
 load_dotenv()
 
@@ -193,11 +193,11 @@ Rispondi con il nome della cartella:"""
         "curl", "-s", "-X", "POST", "http://localhost:11434/api/generate",
         "-d", "@-"
     ]
-    
+
     # We use asyncio.to_thread to not block the event loop
     loop = asyncio.get_running_loop()
     result = await loop.run_in_executor(
-        None, 
+        None,
         lambda: subprocess.run(cmd, input=payload, capture_output=True, text=True)
     )
     if result.returncode == 0:
@@ -212,7 +212,7 @@ Rispondi con il nome della cartella:"""
 async def route_stray_file(http: httpx.AsyncClient, f: dict, dest_parent_id: str, dest_subs: dict, dry_run: bool) -> str:
     filename = f["name"]
     lower_name = filename.lower()
-    
+
     # Heuristic Router
     category = None
     if "npwp" in lower_name:
@@ -223,7 +223,7 @@ async def route_stray_file(http: httpx.AsyncClient, f: dict, dest_parent_id: str
         category = "00_AKTA"
     elif "profile" in lower_name or "profil" in lower_name:
         category = "03_Profile_Perseroan"
-        
+
     # AI Router (se ambiguo e PDF)
     if not category:
         if f["mimeType"] == "application/pdf":
@@ -249,7 +249,7 @@ async def route_stray_file(http: httpx.AsyncClient, f: dict, dest_parent_id: str
                 category = "99_Misc"
         else:
             category = "99_Misc"
-            
+
     # Get or create the destination subfolder
     dest_sub_id = dest_subs.get(category)
     if not dest_sub_id:
@@ -260,22 +260,22 @@ async def route_stray_file(http: httpx.AsyncClient, f: dict, dest_parent_id: str
         else:
             dest_sub_id = f"DRY_RUN_{category}"
             dest_subs[category] = dest_sub_id
-            
+
     return dest_sub_id
 
 
 async def process_subfolders(
-    http: httpx.AsyncClient, 
-    totals: dict, 
-    dry_run: bool, 
-    src_parent_id: str, 
-    dest_parent_id: str, 
+    http: httpx.AsyncClient,
+    totals: dict,
+    dry_run: bool,
+    src_parent_id: str,
+    dest_parent_id: str,
     subfolders_to_sync: list[str] = None,
     enable_ai_routing: bool = False
 ):
     src_subs = await list_subfolders(http, src_parent_id)
     dest_subs = await list_subfolders(http, dest_parent_id) if not dry_run else {}
-    
+
     # Also sync root files
     root_files = await list_files(http, src_parent_id)
     if root_files:
@@ -283,17 +283,17 @@ async def process_subfolders(
             target_dest_id = dest_parent_id
             if enable_ai_routing:
                 target_dest_id = await route_stray_file(http, f, dest_parent_id, dest_subs, dry_run)
-            
+
             # Check existing files in target_dest_id
             existing = set()
             if not dry_run and not target_dest_id.startswith("DRY_RUN"):
                 target_files = await list_files(http, target_dest_id)
                 existing = {x["name"] for x in target_files}
-                
+
             if f["name"] in existing:
                 totals["skipped"] += 1
                 continue
-                
+
             if not dry_run:
                 if await create_shortcut(http, f["id"], target_dest_id, f["name"]):
                     totals["shortcuts_created"] += 1
@@ -315,11 +315,11 @@ async def process_subfolders(
                     if not dry_run and not target_dest_id.startswith("DRY_RUN"):
                         target_files = await list_files(http, target_dest_id)
                         existing = {x["name"] for x in target_files}
-                        
+
                     if f["name"] in existing:
                         totals["skipped"] += 1
                         continue
-                        
+
                     if not dry_run:
                         if await create_shortcut(http, f["id"], target_dest_id, f["name"]):
                             totals["shortcuts_created"] += 1
@@ -329,7 +329,7 @@ async def process_subfolders(
                         totals["shortcuts_created"] += 1
                         logger.info(f"      [DRY RUN] Would route stray {f['name']} (from {sub_name}) -> {target_dest_id}")
             continue
-            
+
         dest_sub_id = dest_subs.get(sub_name)
         if not dest_sub_id:
             if not dry_run:
@@ -404,7 +404,7 @@ async def main(dry_run: bool, limit: int) -> None:
 
                 logger.info(f"\n[{i + 1}/{len(links)}] {client_name} → {company_name}")
                 client_subs = await list_subfolders(http, client_drive)
-                
+
                 # --- COMPANY DOCS (02_Company) ---
                 company_sub_id = client_subs.get("02_Company")
                 if not company_sub_id:
@@ -421,13 +421,13 @@ async def main(dry_run: bool, limit: int) -> None:
 
                 if company_drive:
                     await process_subfolders(
-                        http, totals, dry_run, 
-                        src_parent_id=company_drive, 
-                        dest_parent_id=company_sub_id, 
+                        http, totals, dry_run,
+                        src_parent_id=company_drive,
+                        dest_parent_id=company_sub_id,
                         subfolders_to_sync=COMPANY_SUBFOLDERS,
                         enable_ai_routing=True
                     )
-                
+
                 # --- TAX DOCS (03_Tax) ---
                 tax_sub_id = client_subs.get("03_Tax")
                 if not tax_sub_id:
@@ -448,12 +448,12 @@ async def main(dry_run: bool, limit: int) -> None:
                     if k in norm_comp_name or norm_comp_name in k:
                         tax_folder_id = v
                         break
-                
+
                 if tax_folder_id:
                     await process_subfolders(
-                        http, totals, dry_run, 
-                        src_parent_id=tax_folder_id, 
-                        dest_parent_id=tax_sub_id, 
+                        http, totals, dry_run,
+                        src_parent_id=tax_folder_id,
+                        dest_parent_id=tax_sub_id,
                         subfolders_to_sync=None, # Sync all subfolders in Tax
                         enable_ai_routing=False
                     )

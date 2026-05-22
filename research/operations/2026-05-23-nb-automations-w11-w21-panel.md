@@ -8,13 +8,13 @@ Questo documento raccoglie il consenso e le divergenze del panel 4-LLM in merito
 
 ## Tabella Convergente/Divergente
 
-| Domanda | Gemini 3.1 Pro (Long-context/Architecture) | GPT-5.5 Codex (Code/Adversarial) | DeepSeek V4 Pro (Devils-Advocate) | NB-1 (Ground-truth) |
-|---|---|---|---|---|
-| **1. W16 (Redis Split-Brain)** | **Option A (2° nlm-feeder su Pro)**. Favorisce la _Sovranità Locale_ (Legge 6) e la _Graceful Degradation_ (Legge 4). Pro e Mini operano come cellule indipendenti sui propri Redis. | *In attesa* | *In attesa* | *In attesa* |
-| **2. W21 (Audit crons)** | **Script programmatico**. `audit_launchd_crons.py` per listare job, check exit status, ed estrarre errori reali escludendo rumore. Va schedulato come cron su `garuda:alerts`. | *In attesa* | *In attesa* | *In attesa* |
-| **3. PEL Drain (W13)** | **Defer/Reject**. Lascia il task al cleaner W13 (eventual consistency). Aggiungere il drain al boot dei worker rischia race conditions. Nessun SLA stretto = keep it simple. | *In attesa* | *In attesa* | *In attesa* |
-| **4. Loop Pacing** | **Stop e Fase "Sogno"**. 11 iterazioni in 5 ore generano regressioni da fatica (W18, W21). Consolidare i log e attendere 24h di telemetria prima di W22. | *In attesa* | *In attesa* | *In attesa* |
-| **5. Branch State** | **P0: Fix gh auth e Push remoto**. Il codice locale non pushato mette a rischio il "genoma". Il remote push ha la priorità su ulteriori iterazioni. | *In attesa* | *In attesa* | *In attesa* |
+| Domanda                        | Gemini 3.1 Pro (Long-context/Architecture)                                                                                                                                           | GPT-5.5 Codex (Code/Adversarial) | DeepSeek V4 Pro (Devils-Advocate) | NB-1 (Ground-truth) |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------------------------------- | --------------------------------- | ------------------- |
+| **1. W16 (Redis Split-Brain)** | **Option A (2° nlm-feeder su Pro)**. Favorisce la _Sovranità Locale_ (Legge 6) e la _Graceful Degradation_ (Legge 4). Pro e Mini operano come cellule indipendenti sui propri Redis. | _In attesa_                      | _In attesa_                       | _In attesa_         |
+| **2. W21 (Audit crons)**       | **Script programmatico**. `audit_launchd_crons.py` per listare job, check exit status, ed estrarre errori reali escludendo rumore. Va schedulato come cron su `garuda:alerts`.       | _In attesa_                      | _In attesa_                       | _In attesa_         |
+| **3. PEL Drain (W13)**         | **Defer/Reject**. Lascia il task al cleaner W13 (eventual consistency). Aggiungere il drain al boot dei worker rischia race conditions. Nessun SLA stretto = keep it simple.         | _In attesa_                      | _In attesa_                       | _In attesa_         |
+| **4. Loop Pacing**             | **Stop e Fase "Sogno"**. 11 iterazioni in 5 ore generano regressioni da fatica (W18, W21). Consolidare i log e attendere 24h di telemetria prima di W22.                             | _In attesa_                      | _In attesa_                       | _In attesa_         |
+| **5. Branch State**            | **P0: Fix gh auth e Push remoto**. Il codice locale non pushato mette a rischio il "genoma". Il remote push ha la priorità su ulteriori iterazioni.                                  | _In attesa_                      | _In attesa_                       | _In attesa_         |
 
 ---
 
@@ -25,6 +25,7 @@ Scelgo senza esitazione **Opzione A (aggiungere un 2° nlm-feeder su Pro)**. Il 
 
 **Q2: W21 long-tail audit**
 L'approccio manuale non scala. In base alla Legge 7 (_Numeri prima_), dobbiamo sviluppare un `audit_launchd_crons.py` automatizzato che:
+
 1. Chiama `launchctl list | grep matagaruda` per verificare lo stato e l'exit code.
 2. Parsa gli `StandardErrorPath` ignorando pattern noti di rumore (es. `shell-init`).
 3. Notifica anomalie (es. `Fatal Python error`) sul bus `garuda:alerts`.
@@ -41,4 +42,5 @@ Il codice non pushato non esiste nell'organismo, è solo nella short-term memory
 ---
 
 ## Sign-off
+
 **Azione:** Zero, analizza i pareri degli LLM (quando pronti) e fornisci il verdetto architetturale.
