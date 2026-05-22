@@ -5,6 +5,51 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ℹ️ INFO: Wave 4 partial — T2.6 stop_verify live (2x triggered correctly) + T3.4 4/6 slash commands SHIPPED, T3.5+T3.6 deferred (2026-05-23)
+
+_Discovered: 2026-05-23 ~00:55 WITA during Wave 4 execution · Severity: INFO (clean partial ship + 2 deferred per panel) · Status: T2.6 + T3.4 partial shipped, T3.5 needs spec iter-2 harness, T3.6 out-of-band A/B_
+
+**TRAUMA / Discovery (4-fold):**
+
+1. **T2.6 stop_verify.py hook LIVE & WORKING**: Hook `~/.claude/hooks/stop_verify.py` (1951B mode 755) wired settings.json Stop array entry [2] (additive). Block exit 2 + stderr se git dirty AND no intent marker (WIP/checkpoint/leave dirty/non commit/incomplete on purpose/pause here/salvare per dopo/wip(). Override env `STOP_VERIFY_ALLOW_DIRTY=1`. Transcript scan last 10KB. Tested 6/6 PASS (dirty Nuzantara→2, fresh dirty→2, override→0, intent→0, non-git→0, clean→0). **Live empirical proof**: 2x triggered correctly during current Wave 4 session (operator Stop attempted, hook blocked because cicatrix + sibling leftover dirty).
+
+2. **T3.4 4/6 commands SHIPPED post-panel APPROVE_WITH_AMENDMENTS**: Panel 3-LLM (Gemini agy + DeepSeek V4 Pro + Codex GPT-5.5) verdict APPROVE_WITH_AMENDMENTS 3/3. Convergent risks (1) cross-node drift Pro/Mini, (2) `/research` collision with T3.3 lane aggregators, (3) free-form args quoting bugs. **Shipped 4 with per-command contract section** (side effects / input schema / failure mode / audit): `/verify` (anti-hallucination), `/scar` (append-only no auto-commit + audit log), `/resume` (Mnemos handoff display), `/dispatch-stat` (session tool count + GREEN/YELLOW/RED verdict). **Deferred 2**: `/panel` (sync CLI lock ~2min looks like hang per Gemini), `/research` (collision risk T3.3 + Federation Orchestrator per Gemini+DeepSeek).
+
+3. **T3.5 SessionStart consolidation DEFERRED**: Same panel 3/3 APPROVE_WITH_AMENDMENTS but amendment is STRUCTURAL (Codex+DeepSeek convergent): "hash per keyword prova presence NOT meaning, need before/after harness con LLM-judge semantic equivalence + dry-run capture cold/compact/resume separately". Original spec only had SHA-256 keyword check — insufficient. Re-spec needed before implementation.
+
+4. **T3.6 ENABLE_TOOL_SEARCH A/B DEFERRED**: Spec stesso dichiara "monitor over week, not do today" — A/B baseline measurement richiede 3 sessioni 30min ciascuna su task simili = operator effort cron, NOT inline orchestrator work.
+
+**ANTIBODY:**
+
+1. **T2.6 hook**: shipped + backup `~/.claude/settings.json.pre-t2.6`. **Empirical 2x live trigger** durante Wave 4 conferma hook funziona ed è già di valore (blocked Stop a worktree dirty).
+
+2. **T3.4 4 commands**: shipped a `~/.claude/commands/{verify,scar,resume,dispatch-stat}.md`. Audit infra `~/.claude/state/scar-audit.log` initialized empty. Each command has explicit Per-command contract per panel amendment.
+
+3. **Empirical /dispatch-stat smoke (validation finding)**: 1534 lines / 277 tool uses / 3 Agent / 186 Bash → agent_ratio **1.08% YELLOW**. Conferma empiricamente orchestration ancora sotto baseline target 3% (Wave 1+2+3 hook recovery target). Dispatch-stat command output verificabile.
+
+4. **T3.5 deferred**: requires spec iter-2 (~30 min spec work) before re-pickup. Pattern: panel APPROVE_WITH_AMENDMENTS può richiedere structural re-design, NOT just code amendment. Discriminante: amendment è "add field" (code) vs "rethink verification model" (re-spec).
+
+5. **T3.6 deferred**: legit cron candidate. NOT orchestration failure — spec design correct.
+
+**GOTCHA:**
+
+- **`~/.claude/commands/`, `~/.claude/hooks/`, `~/.claude/settings.json` sono user-global, NOT git-tracked**. Pro+Mini sync manual richiesto. Future hardening: `~/.claude/scripts/sync-claude-config-to-mini.sh` over Tailscale.
+- **`/scar` command bypasses Wave 1 guardrails** because append (not destructive). Audit log `~/.claude/state/scar-audit.log` is the accountability layer — if a scar is fabricated, audit log proves provenance + timestamp. Operator audit recurring.
+- **Stop hook (T2.6) può creare lock loop in sessione long-running con WIP**: workaround = either commit WIP periodically (every ~30min) or set `STOP_VERIFY_ALLOW_DIRTY=1` shell env per intentional session pause. Live during this session: hook triggered 2x but didn't loop infinite — operator just had to override or continue.
+- **Panel amendments tendono to NOT include code, only directional changes**: panel feedback "add harness LLM-judge" is design-level, not "fix line 47". Implementor must judge "amendment fits in current iter" vs "re-spec needed".
+- **`/dispatch-stat` smoke 1.08% YELLOW** è il primo data point empirico orchestration health post-Wave 3. Need 5-10 future sessions data to establish trend (recovery vs further decay).
+- **T3.4 `/panel` was the most-used command in spec proposal** but was deferred because of synchronous lock UX. Practical workaround: continue using ad-hoc `agy/codex/curl` pattern in Bash (what Wave 4 itself just did). `/panel` would only save the typing of brief file path.
+- **Memory: panel verdict "APPROVE_WITH_AMENDMENTS" is the most common outcome** (T3.2 Hybrid D + T3.4 + T3.5 all 3/3 amendments). Pattern: 4-LLM panel rarely says APPROVE_AS_IS, almost never REJECT (because spec authors already self-filter). Real signal is in the amendments themselves.
+
+**Reference**:
+- Memory: `fact_wave4_slash_commands_t26_t34_shipped_2026_05_23.md`
+- MEMORY.md line ~17 entry under Facts (infra core)
+- Specs: `research/operations/specs/{T2.6-stop-verify-hook,T3.4-custom-slash-commands,T3.5-session-start-consolidation,T3.6-tool-search-auto-10}.md`
+- Panel brief (cleaned post-exec): was `/tmp/wave4-panel-brief.md`
+- Backups: `~/.claude/settings.json.pre-t2.6`
+
+---
+
 ### ⚠️ STRUCTURAL: Redis consumer-group PEL accumulates dead-letter on crashed consumers (2026-05-22)
 
 _Discovered: 2026-05-22 08:20 WITA Loop iteration 11 NB-automations hardening · Severity: P2 (operational housekeeping, recovered 77 stuck messages) · Status: **FIXED on commit 646043dff** (nlm_feeder cleanup); `nexus-bridge` deferred to Antonello_
