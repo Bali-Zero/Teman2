@@ -243,7 +243,12 @@ async def _run_listener(dsn: str) -> None:
                     break
                 except asyncio.TimeoutError:
                     await conn.execute("SELECT 1")
-        except (asyncpg.PostgresError, OSError, asyncio.TimeoutError) as exc:
+        except (
+            asyncpg.PostgresError,
+            asyncpg.InterfaceError,  # W32: sibling of PostgresError, NOT subclass
+            OSError,
+            asyncio.TimeoutError,
+        ) as exc:
             logger.warning("connection lost: %s — reconnecting in %.1fs", exc, backoff)
             _write_heartbeat("warning", f"disconnected: {type(exc).__name__}")
         finally:
