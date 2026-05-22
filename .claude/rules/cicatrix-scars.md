@@ -5,6 +5,39 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### 🚨 CRITICAL: 2 silent dead crons unmasked by W21 mass TCC migration + wrapper bug fix (2026-05-23)
+
+_Discovered: 2026-05-23 00:30 WITA Loop iteration 21 mass plist survey · Severity: **P1** (reg-alert.30min silently dead in prod ~6 days, daily-briefing sqlite I/O error masked) · Status: **FIXED via wrapper bug fix + 8-plist mass migration + empirical verification: reg-alert now processes 20 regulations/cycle**_
+
+**TRAUMA:** Two compounding issues uncovered:
+
+1. **Wrapper bug from W19+W20** (anti-hallucination discovery): `matagaruda-cron-tcc-safe.sh` ended with `exec "$VENV_PY" "$ENTRY" >> "$LOG" 2>&1`, which **redirected stdout+stderr** to wrapper's own log file (`~/logs/matagaruda-<label>.log`), bypassing launchd's `StandardOutPath`/`StandardErrorPath` separation. My W19+W20 "DELTA=0 lines in error.log" verification was technically true but structurally misleading — the launchd error.log was 0 lines because stderr was going elsewhere, not because there were no errors. Stdout-stderr merged into one file = W8 signal/noise separation defeated by the very fix that was supposed to enforce it.
+
+2. **Silent production failures** unmasked when W21 properly migrated 8 remaining `*sh -lc` plists:
+   - **reg-alert.30min**: 806-line error.log split as 489 noise + 317 lines of `Fatal Python error: error evaluating path` + `InterruptedError [Errno 4]`. Cron was **DEAD in production**, Python interpreter crashing on every 30-minute fire. At 30min cadence × ~6 days, that's ~290 failed attempts. Pre-existing `last exit code = 0` was a lie (the `/bin/bash -lc` wrapper masked the Python crash exit).
+   - **daily-briefing**: `sqlite3.OperationalError: disk I/O error` during KnowledgeBase init (same family as 2026-05-06 KB resilience scar, recurrent).
+
+**ANTIBODY (shipped):**
+
+1. **Wrapper bug fix** at `~/scripts/matagaruda-cron-tcc-safe.sh`: removed `>> "$LOG" 2>&1` redirect, now `exec "$VENV_PY" -u "$ENTRY"`. Python `-u` for unbuffered output. Launchd captures stdout/stderr separately per plist's StandardOutPath/StandardErrorPath. **Restores W8 signal/noise separation that W19+W20 had inadvertently broken.**
+
+2. **Mass plist migration via `plistlib`**: Python script `/tmp/w21_migrate_plists.py` rewrote 8 plists in one atomic batch — daily-briefing, kita-feed.daily, nlm-expander.weekly, public-channel, reg-alert.30min, sentinel.hourly, weekly-digest, wr2-bridge.hourly. Each plist's `ProgramArguments` reduced from 3-line `/bin/bash -lc "..."` to 3-element wrapper call. All other keys (schedule, env vars, log paths, working directory) preserved. Old plists archived to `.archive-2026-05-22/*.pre-w21`.
+
+3. **Empirical verification on 2 high-risk plists** (2026-05-23 00:45-00:50 WITA):
+   - **reg-alert.30min**: kickstart → `last exit code = 0`, error.log = **0 lines** (was 806), stdout = `{'processed': 20, 'sent': 20, 'failed': 0}` — **cron is now actually sending alerts after being silently dead in production**.
+   - **daily-briefing**: kickstart → error.log = **0 lines** (was 41), stdout = `{'domains': 0, 'items': 0, 'tg_ok': True}` — clean Python startup, sqlite I/O error gone (Python interpreter no longer corrupted by broken bash -l init).
+
+**GOTCHA:**
+
+- **Pre-existing Label-vs-filename mismatch**: 2 plists (`kita-feed.daily.plist`, `wr2-bridge.hourly.plist`) had internal `<key>Label</key>` ≠ filename (kita-feed and wr2-bridge respectively). launchctl service-target uses internal Label. My bootout-by-filename failed silently, then bootstrap-by-filename returned I/O error 5 because the service was still loaded under its internal Label. No action needed — internal Label is source of truth — but a Sweep audit may catch other instances of this naming drift across the launchd inventory.
+- **Lesson: 0-byte error.log ≠ no errors.** Anti-hallucination CLAUDE.md rule #2: when verifying "no error", check BOTH launchd-supplied error path AND any wrapper-redirected paths. The W19+W20 wrapper redirected stderr into a wrapper log file (luckily same path as launchd StandardOutPath by accident), masking real errors. ANY future wrapper that catches stdout/stderr should explicitly preserve launchd's path-separation semantic.
+- **Long-tail audit needed**: if reg-alert was silently dead for 6 days, COUNT how many other crons may have been silently dead behind their noise. This is W22+ candidate. Likely candidates: any cron with non-zero error.log + `*sh -lc` pattern — sentinel.hourly already has 10 lines (W15-flagged AIResearch source-cap timeouts) but is otherwise probably healthy. nlm-expander/public-channel/kita-feed/weekly-digest/wr2-bridge had 0-1 lines pre-W21 so likely fine. The smoking gun is reg-alert; might also be lurking in balizero/* family.
+- **W21 is the THIRD consecutive iteration** finding the `*sh -lc` anti-pattern (W19 nlm-feeder-stream, W20 kg-linker+wr-topic, W21 the remaining 8). Endemic. Future plist creators MUST use the `matagaruda-cron-tcc-safe.sh` wrapper template — there's no acceptable launchd use case for `*sh -lc` given the TCC sandbox interaction.
+
+**Reference**: `research/operations/2026-05-23-w21-mass-tcc-migration.md`. Wrapper at `~/scripts/matagaruda-cron-tcc-safe.sh` (now W21 version). Plist migration script at `/tmp/w21_migrate_plists.py` (one-shot, archived).
+
+---
+
 ### ⚠️ STRUCTURAL: kg-linker + wr-topic plists `/bin/bash -lc` polluted error.log with 75 lines false-noise (2026-05-23)
 
 _Discovered: 2026-05-22 23:50 WITA during W20 survey post-W19 ship · Severity: P2 (noise pollution + W8 violation, no production impact — Python still runs) · Status: **FIXED via generic TCC-safe wrapper template + plist rebuilds, empirical 0-lines verification**_
