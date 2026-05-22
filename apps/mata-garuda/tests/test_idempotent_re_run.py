@@ -15,10 +15,21 @@ def _import_apo():
 
 @pytest.fixture
 def tmp_registry(tmp_path, monkeypatch):
-    """Redirect _registry_data.py target to a tmp file."""
+    """Redirect _registry_data.py target + AUDIT_LOG to tmp files.
+
+    W18 (2026-05-22): without env-var redirect, run_apoptosis() appended
+    one row per UUID to the real research/nb-archive/audit_log.md on every
+    test invocation (~17/run x 5 tests), drifting the file. AUDIT_LOG is
+    now `Path(os.environ["APOPTOSIS_AUDIT_LOG"])` if the var is set; tests
+    set it to tmp_path. Also patches in-memory `apo.AUDIT_LOG` for runs
+    that import the module before the env var is read.
+    """
     apo = _import_apo()
     fake_target = tmp_path / "_registry_data.py"
+    fake_audit = tmp_path / "audit_log.md"
+    monkeypatch.setenv("APOPTOSIS_AUDIT_LOG", str(fake_audit))
     monkeypatch.setattr(apo, "REGISTRY_TARGET", fake_target)
+    monkeypatch.setattr(apo, "AUDIT_LOG", fake_audit)
     return fake_target
 
 

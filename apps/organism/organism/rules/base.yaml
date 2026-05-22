@@ -69,13 +69,21 @@ rules:
       { actuator: restart_agent, params: { agent_ref: "{payload.organ_id}" } }
     confidence: 0.85
 
-  # Cell pulse went RED for >5 consecutive pulses → restart sequence.
-  # Cell will be killed and bootstrapped; on restart it resumes from
-  # EpisodicMemory (age/pulses/actions preserved).
+  # W27 Path A (2026-05-23): Cell pulse went RED for ≥3 consecutive pulses
+  # (~3 min wall time at 60s cadence) → start any stopped Fly machine for
+  # the target app via fly_machines_start (idempotent on already-running
+  # machines). Threshold lowered from 5 to 3 per 3-LLM panel convergent
+  # verdict (Codex+Gemini+DeepSeek). Action changed from restart_agent
+  # (which targeted the Cell daemon itself — wrong) to fly_machines_start
+  # (the right target when the api machine is hung).
+  # Cell emits the event via emit_sustained_red() in cell_core/observatory.py
+  # ONCE per sustained-red window (idempotency flag resets on first non-red).
+  # W31 (2026-05-23): action changed fly_machines_start → fly_machines_restart
+  # because live production test showed fly_machines_start is no-op on
+  # already-running machines (STARTED but UNHEALTHY outage class).
   - id: cell_sustained_red_restart
-    match: { kind: cell_pulse_sustained_red, payload.consecutive_gte: 5 }
-    action:
-      { actuator: restart_agent, params: { agent_ref: "com.cell.organism" } }
+    match: { kind: cell_pulse_sustained_red, payload.consecutive_gte: 3 }
+    action: { actuator: fly_machines_restart, params: { app: "{payload.app}" } }
     confidence: 0.90
 
   # Fly machine stopped (not "scheduled stop") → auto-restart.

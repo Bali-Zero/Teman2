@@ -132,7 +132,7 @@ class Company(BaseModel):
     akta_number: str | None = None
     akta_date: date | None = None
     sk_kemenkumham: str | None = None
-    kbli_codes: list[str] = Field(default_factory=list)
+    kbli_codes: list[str] = Field(default_factory=list)  # validator below coerces str→[str]
     kbli_primary: str | None = None
     paid_up_capital_idr: int | None = None
     authorized_capital_idr: int | None = None
@@ -151,6 +151,19 @@ class Company(BaseModel):
         default_factory=list,
         description="Drive folder IDs delle cartelle company che hanno contribuito a questo summary.",
     )
+
+    @field_validator("kbli_codes", "source_company_folders", mode="before")
+    @classmethod
+    def _coerce_str_list(cls, v: object) -> list[str]:
+        # 2026-05-23: Gemini occasionally emits single string for list[str] fields
+        # (smoke v3 caught `company.kbli_codes Input should be a [list]` on cli 11435).
+        if v is None:
+            return []
+        if isinstance(v, str):
+            return [v] if v.strip() else []
+        if isinstance(v, list):
+            return [str(x) for x in v if x is not None]
+        return []
 
 
 class Shareholder(BaseModel):
@@ -231,7 +244,7 @@ class Timeline(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    event_date: date
+    event_date: date | None = None  # 2026-05-23: relaxed (Gemini emits null for unknown dates, was crashing 49 rows)
     event_type: str
     description: str
     source_file_id: str | None = None
@@ -250,21 +263,33 @@ class Compliance(BaseModel):
     visa_days_until_expiry: int | None = None
     red_flags: list[str] = Field(default_factory=list)
 
+    @field_validator("red_flags", mode="before")
+    @classmethod
+    def _coerce_red_flags(cls, v: object) -> list[str]:
+        # 2026-05-23: same str→[str] coercion pattern as Company.kbli_codes.
+        if v is None:
+            return []
+        if isinstance(v, str):
+            return [v] if v.strip() else []
+        if isinstance(v, list):
+            return [str(x) for x in v if x is not None]
+        return []
+
+
+_ARCHETYPE_CANONICAL: frozenset[str] = frozenset({
+    "individual_expat", "individual_investor", "pt_pma_owner",
+    "family_member", "property_holder", "business_only", "other",
+})
+
 
 class Profile(BaseModel):
     """Top-level tiering and archetype (used for routing + AI Profile Card)."""
 
     model_config = ConfigDict(extra="forbid")
 
-    archetype: Literal[
-        "individual_expat",
-        "individual_investor",
-        "pt_pma_owner",
-        "family_member",
-        "property_holder",
-        "business_only",
-        "other",
-    ] = "other"
+    # 2026-05-23: relaxed from Literal — Gemini occasionally emits novel labels;
+    # validator below maps to canonical 7-enum, unknown → "other" (no crash).
+    archetype: str = "other"
     tier: Literal["VIP", "standard", "archive", "unknown"] = "unknown"
     primary_service: Literal[
         "visa_immigration",
@@ -279,6 +304,13 @@ class Profile(BaseModel):
         default=None,
         description="One-sentence explanation of archetype+tier choice (for audit).",
     )
+
+    @field_validator("archetype", mode="before")
+    @classmethod
+    def _normalize_archetype(cls, v: object) -> str:
+        if not isinstance(v, str):
+            return "other"
+        return v if v in _ARCHETYPE_CANONICAL else "other"
 
 
 class L1ClientSummary(BaseModel):
@@ -330,6 +362,18 @@ class L1ClientSummary(BaseModel):
         default_factory=list,
         description="Things Gemini couldn't determine (e.g. 'shareholder percentages inconsistent').",
     )
+
+    @field_validator("extraction_notes", mode="before")
+    @classmethod
+    def _coerce_notes(cls, v: object) -> list[str]:
+        # 2026-05-23: Gemini sometimes emits single string instead of list (was crashing 8 rows).
+        if v is None:
+            return []
+        if isinstance(v, str):
+            return [v] if v.strip() else []
+        if isinstance(v, list):
+            return [str(x) for x in v if x is not None]
+        return []
 
 
 __all__ = [

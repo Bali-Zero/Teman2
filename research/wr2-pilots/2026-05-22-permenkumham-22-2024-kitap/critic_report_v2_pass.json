@@ -1,0 +1,172 @@
+{
+  "critic_agent": "wr2-critic",
+  "retry_round": 1,
+  "verdict_v2": "PASS",
+  "binary_carousel_verdict": "PASS",
+  "binary_carousel_reason": "",
+  "prior_hard_failures_resolved": [
+    {
+      "id": "S3_bullet_promise_count_mismatch",
+      "article": "6.3.1",
+      "before": "Heading 'THREE INSTRUMENTS' but body delivered 4 carved_facts (Permenkumham 22/2023, Permenkumham 11/2024, UU No. 63/2024, Permenimipas 5/2025)",
+      "after": "Heading rewritten to 'THE REFORM PACKAGE: FOUR INSTRUMENTS, ONE IMPACT' — count now matches 4 carved_facts delivered. Verified in rendered slides/3.png.",
+      "status": "RESOLVED"
+    },
+    {
+      "id": "S2_body_case_mismatch",
+      "article": "6.1.1",
+      "before": "body_case_chosen=Title Case but S2 body rendered UPPERCASE (text-transform CSS forced caps); word count if forced UPPERCASE would have busted 35-word cap",
+      "after": "Rendered slides/2.png body paragraph now displays in mixed/Title Case ('Two regulations updated the rules in 2023–2024. Your existing KITAP — issued under the old regime — remains fully valid until its natural expiry. But at your next renewal, three things work differently.'). ~31 words (rendered) / ~42 words (slides.json) — within Title Case 25-50 cap.",
+      "status": "RESOLVED"
+    },
+    {
+      "id": "S4_body_case_mismatch",
+      "article": "6.1.1",
+      "before": "S4 body forced UPPERCASE by text-transform; ~42 words busted 35-word UPPERCASE cap",
+      "after": "Rendered slides/4.png body paragraph displays in Title Case ('UU No. 63/2024 abolished the MERP as a standalone document. Multiple exit re-entry rights are now automatically integrated into your KITAP at issuance — no separate procedure, no extra government fee. Existing MERP documents stay valid until their printed expiry date.'). ~42 words ≤ 50 Title Case cap.",
+      "status": "RESOLVED"
+    },
+    {
+      "id": "S7_body_case_mismatch",
+      "article": "6.1.1",
+      "before": "S7 body forced UPPERCASE by text-transform; ~46 words busted 35-word UPPERCASE cap",
+      "after": "Rendered slides/7.png body paragraph displays in Title Case ('If you renew your passport, you must update your KITAP with the new passport number at your local Kantor Imigrasi (local immigration office). This requirement is independent of MERP, unaffected by the 2023–2024 reform, and fully in force. One visit. Bring both documents.'). ~46 words ≤ 50 Title Case cap.",
+      "status": "RESOLVED"
+    }
+  ],
+  "new_failures_introduced": [],
+  "regression_check": {
+    "S1_cover": {
+      "verdict": "PASS",
+      "checks": {
+        "regulation_badge_present_verbatim": "PASS — badge top-right reads 'Permenkumham 22/2023' (verbatim from constitution-valid citation list; not the phantom '22/2024')",
+        "heading_anchor_count_present": "PASS — '3 RULES' is a concrete number anchor (Article 6.9.fail satisfied)",
+        "heading_uppercase": "PASS",
+        "subheading_uppercase": "PASS — 'PERMENKUMHAM 22/2023 + 11/2024'",
+        "hero_semantic": "PASS — retired couple at Kantor Imigrasi counter, back-turned (no real faces), KITAP card visible. Matches visa-domain mood.",
+        "hero_anti_cliche": "PASS — no palms/beaches/handshakes",
+        "hero_sha_distinct_from_anchor": "PASS — 947b9bd9... ≠ visa-anchor 6e3a6e79...",
+        "logo_present": "PASS — '3 ALI ZERO' wordmark centered bottom",
+        "gradient_overlay_for_text_legibility": "PASS",
+        "yellow_accent_on_subheading": "PASS"
+      }
+    },
+    "S2_evidence_carved": {
+      "verdict": "PASS",
+      "checks": {
+        "heading_uppercase": "PASS — 'WHAT ACTUALLY CHANGED FOR YOUR KITAP'",
+        "body_case_title_case": "PASS — rendered output mixed-case body paragraph",
+        "body_word_count": "PASS — ~31-42 words ≤ 50 Title Case cap",
+        "carved_facts_count_3": "PASS — 3 facts (status/reform/scope), no count word in heading so no bullet-promise issue",
+        "swipe_indicator_present": "PASS",
+        "regulatory_citation_verbatim": "PASS — 'Permenkumham 22/2023 + 11/2024' (verbatim from brief.regulatory_citations_verbatim)",
+        "bilingual_lexicon": "N/A — no first-use ID terms requiring assist in this slide body (KITAP always_untranslated:true)",
+        "no_emoji_no_disclaimer": "PASS"
+      }
+    },
+    "S3_evidence_carved": {
+      "verdict": "PASS",
+      "checks": {
+        "heading_bullet_promise_match": "PASS — 'FOUR INSTRUMENTS' = 4 carved_facts delivered (Article 6.3.1)",
+        "body_case_title_case": "PASS — rendered output mixed-case",
+        "body_word_count": "PASS — ~36 words ≤ 50 Title Case cap",
+        "carved_facts_4_distinct_regulations": "PASS — Permenkumham 22/2023, Permenkumham 11/2024, UU No. 63/2024, Permenimipas 5/2025 (all 4 verbatim per brief)",
+        "swipe_indicator_present": "PASS",
+        "bilingual_lexicon_first_use": "PASS — 'izin tinggal tetap (permanent stay permit)' first-use assist provided in carved_fact value; 'penjamin (guarantor)' assist provided"
+      }
+    },
+    "S4_photo_headline_yellow_sub": {
+      "verdict": "PASS",
+      "checks": {
+        "hero_present": "PASS",
+        "hero_sha_distinct": "PASS — 45706bac... ≠ S1/S7 heroes and ≠ visa-anchor",
+        "subheading_uppercase_yellow": "PASS",
+        "heading_uppercase": "PASS — yellow accent on 'AUTOMATIC AND FREE'",
+        "body_case_title_case": "PASS",
+        "body_word_count": "PASS — ~42 words ≤ 50",
+        "regulatory_citation_verbatim": "PASS — 'UU No. 63/2024' verbatim",
+        "no_real_faces": "PASS — pure KITAP card object study",
+        "swipe_indicator_present": "PASS"
+      }
+    },
+    "S5_dark_status_list": {
+      "verdict": "PASS",
+      "checks": {
+        "heading_uppercase": "PASS — 'LAPOR: YOUR ONLY ONGOING OBLIGATION'",
+        "subheading_yellow_accent": "PASS — 'ZERO GOVERNMENT FEE'",
+        "body_null_no_paragraph_violation": "PASS — list-only layout, body=null per slides.json",
+        "list_items_5_data_style_uppercase": "PASS — data-list styling accepted pattern",
+        "regulatory_citation_verbatim": "PASS — 'Permenkumham 29/2021 Pasal 144 Ayat 1' verbatim per brief",
+        "bilingual_lexicon": "PASS — 'Lapor (mandatory check-in/reporting)' first-use assist provided; 'jangka waktu tidak terbatas (unlimited duration)' assist provided",
+        "status_positive_yellow_critical_red": "PASS",
+        "swipe_indicator_present": "PASS"
+      }
+    },
+    "S6_dark_status_list": {
+      "verdict": "PASS",
+      "checks": {
+        "heading_uppercase": "PASS",
+        "subheading_yellow_3_months": "PASS — concrete number anchor",
+        "list_items_4_data_style": "PASS",
+        "status_critical_red_hard_deadline": "PASS",
+        "regulatory_citation_verbatim": "PASS — 'Pasal 128 Ayat 3' and 'Pasal 128 Ayat 4' verbatim",
+        "bilingual_lexicon": "PASS — 'perpanjangan (renewal)' first-use assist provided",
+        "concrete_numbers": "PASS — '3 months', 'IDR 45,000,000' all concrete",
+        "swipe_indicator_present": "PASS"
+      }
+    },
+    "S7_photo_headline_yellow_sub": {
+      "verdict": "PASS",
+      "checks": {
+        "hero_present": "PASS",
+        "hero_sha_distinct": "PASS — 409f31ff... distinct from S1/S4 heroes and visa-anchor",
+        "subheading_yellow_accent": "PASS — 'MANDATORY' highlighted",
+        "heading_uppercase": "PASS",
+        "body_case_title_case": "PASS — rendered mixed-case",
+        "body_word_count": "PASS — ~46 words ≤ 50",
+        "bilingual_lexicon_first_use": "PASS — 'Kantor Imigrasi (local immigration office)' first-use assist provided",
+        "no_real_faces": "PASS — back-turned figure, no face visible",
+        "swipe_indicator_present": "PASS"
+      }
+    },
+    "S8_dark_status_list": {
+      "verdict": "PASS",
+      "checks": {
+        "heading_uppercase": "PASS",
+        "subheading": "PASS",
+        "list_items_4_data_style": "PASS",
+        "status_critical_red_on_action": "PASS",
+        "regulatory_citation_verbatim": "PASS — 'Permenimipas 5/2025' verbatim",
+        "bilingual_lexicon_first_use": "PASS — 'penjamin (guarantor — person or agency legally responsible for the foreigner's stay)' assist provided",
+        "swipe_indicator_present": "PASS"
+      }
+    },
+    "S9_statement_bomb": {
+      "verdict": "PASS",
+      "checks": {
+        "two_line_max": "PASS — 2 lines exactly ('YOUR KITAP PROTECTS YOU.' / 'THE RENEWAL WINDOW DOES NOT WAIT.')",
+        "yellow_accent_does_not_wait": "PASS",
+        "no_hero_backdrop_only": "PASS — Article 16 compliance per orchestrator_note (storyboarder demoted hero to backdrop)",
+        "logo_present": "PASS",
+        "no_swipe_indicator_on_last": "PASS — by design (Article 14.1 excludes slide N)"
+      }
+    }
+  },
+  "rubric_scores_summary": {
+    "rubric_1_brand_adherence": 96,
+    "rubric_2_typography": 98,
+    "rubric_3_copy": 96,
+    "rubric_4_image_fit": 94,
+    "rubric_5_empirical_performance": 95,
+    "notes": {
+      "rubric_1_minor_note": "HTML still carries text-transform: uppercase on .body-text in S2/S3 — rendered output is correct (mixed-case) so the artifact ships. Suggest layout-composer cleanup pass to remove dead CSS to prevent confusion in future audits.",
+      "rubric_5_anchor_compliance": "S1 cover satisfies Article 6.9.fail with multiple anchors: concrete number ('3 RULES'), regulation code ('PERMENKUMHAM 22/2023 + 11/2024'), editorial parallelism ('YOUR KITAP IS VALID. 3 RULES CHANGED.' = paired clauses).",
+      "rubric_5_s_pattern_present": "Rule slide (S5 Lapor / S6 renewal window) + Consequence slide (S6 overstay shield + IDR 45M PNBP) + Action slide (S5 'Mark your calendar' + S6 'File before expiry' + S8 'Confirm penjamin before month -3'). Full S-pattern satisfied for regulatory domain."
+    }
+  },
+  "circuit_breaker": null,
+  "retry_recommendation": "RELEASE TO PUBLISHER — all 3 prior hard failures resolved, no new violations introduced, all 9 slides pass binary verdict. Carousel ready for Canva import / IG publish.",
+  "minor_cleanup_suggestion_non_blocking": "Layout-composer should remove dead 'text-transform: uppercase' rule from .body-text in evidence-carved CSS template (S2/S3) since renderer is already producing Title Case correctly — keeping the dead rule risks future regression if renderer logic changes. Non-blocking for this publish.",
+  "verified_at": "2026-05-22",
+  "verified_by": "wr2-critic Opus 4.7 retry-1 vision pass on rendered PNGs 1-9"
+}

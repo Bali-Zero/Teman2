@@ -100,6 +100,35 @@ Additional Codex P1: tests still import `migration_107_bridge_outbox.py` + `appl
 
 ---
 
+### ✅ RESOLVED: W31 — fly_machines_start was no-op on STARTED-but-UNHEALTHY outages → fly_machines_restart added (2026-05-23)
+
+_Discovered: 2026-05-23 05:08 WITA W27 live production test · Severity: P1 (W27 chain dispatched but actuator ineffective for most common outage class) · Status: **FIXED on commit `6cd4e3166`** — new actuator + yaml rule swap + 11/11 unit tests PASS + 264 organism regression PASS_
+
+**TRAUMA:** W27 chain (commits `6533c883b` + `f41ddb764` + `cf46382ef`) wired Cell sustained-red → PG NOTIFY → Redis bridge → Organism dispatch → `fly_machines_start` actuator. Live production test 2026-05-23 04:42-05:25 WITA during real backend outage revealed: cell emit fired correctly, pg-bridge bridged correctly, organism dispatched correctly, actuator returned `success=True returncode=0 stdout="machine started"` — but the machine was already in `started` state (just unhealthy with 0/1 critical checks). `fly machines start` is a no-op on running machines. Manual `fly machine restart 7847d95ce257d8` fixed it.
+
+The W27 chain was 4/5 correct but used the wrong fly primitive for the most common outage class. STOPPED machines are rare; STARTED-but-UNHEALTHY (uvicorn deadlock, DB pool exhausted, OOMed sub-process) is what actually happens in production.
+
+**ANTIBODY (shipped commit `6cd4e3166`):**
+
+1. **New actuator** `apps/organism/organism/actuators/fly_machines_restart.py` (92 lines). Shells out to `fly machines restart -a <app> [<machine>] [--skip-health-checks]` with 180s timeout (longer than start because fly CLI waits for health checks by default).
+2. **Registry registration** in `actuators/__init__.py` (import + `__all__` + `build_actuator_registry`).
+3. **SAFE_ACTUATORS whitelist** in `supervisor/dispatch.py` — without this, even a correctly-built rule referencing the actuator would be REJECTED_UNKNOWN at dispatch time. W27 hard-learned discovery codified as W31 unit test (`test_safe_actuators_includes_restart`).
+4. **YAML rule swap** `rules/base.yaml` — `cell_sustained_red_restart` action now `fly_machines_restart` instead of `fly_machines_start`. Threshold unchanged at 3.
+5. **11 unit tests** in `tests/test_fly_machines_restart.py` covering _build_argv (5 variants), _dry_run (2 paths), _execute ValueError, registry, SAFE_ACTUATORS, name attribute. All PASS. Full organism regression: 264 passed / 1 skipped / 0 regressions.
+
+**GOTCHA:**
+
+- **Three-layer anti-loop guards**: (1) Cell `_sustained_red_emitted` flag (W27 path A) suppresses re-emit during 90-120s warmup window, (2) organism circuit breaker max 2 tries / 15min per `(actuator, target)` tuple, (3) fly CLI itself is idempotent. The 90s warmup creates ~3 red pulses but Cell emits ONCE per recovery cycle.
+- **`fly machines start` returncode=0 stdout="machine started"** is the false-positive trap — looks like success but is a no-op when machine is running. Future actuator authors: always verify "did the primitive ACTUALLY change machine state, or just confirm current state?" via a `fly status` probe before claiming success.
+- **`skip_health_checks` param** is for emergency mode where waiting up to 120s for fly health verification blocks the dispatch loop. Default false (safer). Use in concert with downstream verification (Cell pulse will resume monitoring within 60s anyway).
+- **180s actuator timeout vs Cell 60s pulse cadence**: during a real restart, Cell will see ~3 red pulses while the restart is in flight. The W27 path A emit-once flag handles this — no flood of duplicate dispatches.
+- **W31 doesn't address** these W27-panel items (deferred to W32+): kill switch `CELL_AUTOREMEDIATION_ENABLED=false`, durable incident ledger table, stale-event TTL guard on bridge replay, `pg-bridge` asyncpg.InterfaceError handling (same W29 pattern that already silently dropped 50min of NOTIFY events during W27 test). These don't block W31's correctness but represent attack surface.
+- **Sibling-agent session-stop hook stashed my work mid-edit again** (3rd time in this loop). Stash `sibling-orphan W31 fly_machines_restart actuator` captured 3 modified files but missed 2 untracked (actuator + test). Atomic `git stash pop && git add -A specific-paths && git commit && git push` chain defeated the race. The new files survived because session-stop only stashes tracked-dirty, not untracked.
+
+**Reference**: `research/operations/2026-05-23-w31-fly-machines-restart-actuator.md`. Commit `6cd4e3166` on `feat/t2.7-claude-md-refactor-2026-05-23`.
+
+---
+
 ### ℹ️ INFO: Wave 4 partial — T2.6 stop_verify live (2x triggered correctly) + T3.4 4/6 slash commands SHIPPED, T3.5+T3.6 deferred (2026-05-23)
 
 _Discovered: 2026-05-23 ~00:55 WITA during Wave 4 execution · Severity: INFO (clean partial ship + 2 deferred per panel) · Status: T2.6 + T3.4 partial shipped, T3.5 needs spec iter-2 harness, T3.6 out-of-band A/B_
