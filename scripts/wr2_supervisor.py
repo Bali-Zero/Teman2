@@ -289,7 +289,11 @@ async def _handle_payload(payload: dict[str, Any], conn: asyncpg.Connection) -> 
         # landed between our LISTEN and the handler dispatch.
         try:
             current = await _current_status(conn, draft_id)
-        except (asyncpg.PostgresError, OSError) as e:
+        except (
+            asyncpg.PostgresError,
+            asyncpg.InterfaceError,  # W34: sibling of PostgresError, NOT subclass
+            OSError,
+        ) as e:
             logger.warning("draft %s: cannot re-read status (%s) — using payload", draft_id, e)
             current = new
 
@@ -476,7 +480,12 @@ async def _write_heartbeat(conn_hb: asyncpg.Connection, note: str) -> None:
         # Migration 161 not yet applied → degrade silently. The watchdog
         # will see no rows and skip alerts (safe-fail).
         logger.debug("heartbeat skipped: wr2_supervisor_heartbeat missing")
-    except (asyncpg.PostgresError, OSError, asyncio.TimeoutError) as e:
+    except (
+        asyncpg.PostgresError,
+        asyncpg.InterfaceError,  # W34: sibling of PostgresError, NOT subclass
+        OSError,
+        asyncio.TimeoutError,
+    ) as e:
         # The dedicated conn_hb may itself drop; the outer reconnect
         # loop in _run_loop replaces it on the next iteration.
         logger.warning("heartbeat write failed: %s", e)
@@ -648,7 +657,12 @@ async def _run_loop() -> None:
                 await asyncio.sleep(5)
                 async with _get_conn_lock():
                     await conn.execute("SELECT 1")
-        except (asyncpg.PostgresError, OSError, asyncio.TimeoutError) as e:
+        except (
+            asyncpg.PostgresError,
+            asyncpg.InterfaceError,  # W34: sibling of PostgresError, NOT subclass
+            OSError,
+            asyncio.TimeoutError,
+        ) as e:
             logger.warning("connection lost: %s — reconnecting in %.1fs", e, backoff)
         finally:
             # Cancel both background tasks before closing connections.
