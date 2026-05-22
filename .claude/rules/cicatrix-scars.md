@@ -5,6 +5,78 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ℹ️ INFO: W26 — pg-proxy 13:00-13:30 outage RCA = Fly DNS i/o timeout (platform, not code) (2026-05-23)
+
+_Discovered: 2026-05-23 02:50 WITA W26 loop close · Severity: INFO (platform incident, auto-recovered) · Status: no action needed_
+
+**TRAUMA:** W25 audit flagged `wr2.supervisor-watchdog` with 690 recent24h asyncpg errors. W25 itself showed hot1h=0 → degrading-recovered. W26 investigated source of the 13:00-13:30 yesterday burst.
+
+`~/.fly/agent-logs/1122430107.log` (3.3MB, last mod 2026-05-22 13:31) reveals:
+
+```
+2026/05/22 13:30:37 #2a4c -> err dial: lookup nuzantara-postgres.internal.
+  on fdaa:31:dc12::3: read udp [fdaa:31:dc12:a7b:d6b:4008:1dbd:b100]:16420: i/o timeout
+2026/05/22 13:31:13 #2a4e -> err dial: lookup nuzantara-postgres.internal.
+  on fdaa:31:dc12::3: write udp ...:26852: i/o timeout
+```
+
+Root cause: **Fly platform DNS i/o timeout**. `fdaa:31:dc12::3` is the Fly-side resolver for `*.internal`. UDP timeouts mean Fly DNS infrastructure was unreachable from Pro for ~30min. Auto-recovered. Current pg-proxy PID 13602 healthy since 17:42 yesterday.
+
+**ANTIBODY (already in place, verified):**
+
+1. **`ThrottleInterval=30s`** on pg-proxy launchd → automatic restart on crash.
+2. **supervisor-watchdog tiered alerts** with PIPELINE_FROZEN cooldown logic correctly suppressed redundant alerts during the outage window.
+3. **W24+W25 audit dashboard** caught the after-effect (690 errors), W26 traced source. Two-tier window (hot1h=0) correctly classified it as "recovered, not currently broken" — no Telegram alert at 02:00 today.
+
+**GOTCHA:**
+
+- pg-proxy may show clean `lsof -nP -iTCP:15432 -sTCP:LISTEN` while Fly DNS is timing out — the proxy binds the port and accepts client connections, but every upstream dial fails.
+- Future enhancement (W27+, OPTIONAL): explicit Fly DNS health probe `flyctl agent ping` every 5min would shorten alert latency to seconds. Not urgent — Fly platform outages are rare and recover.
+- The 28 pg-proxy restart events 2026-05-22 02:00→17:42 prove auto-restart machinery worked. No supervisor intervention needed.
+
+**Reference**: `research/operations/2026-05-23-w26-pg-proxy-dns-rca-loop-conclusion.md`.
+
+---
+
+### 📋 LOOP CLOSE: W26 — NB automations hardening loop W1→W26 declared done (2026-05-23)
+
+_Status: **LOOP CLOSED** unless new HOT findings surface · PR #823 status MERGEABLE post-conflict-resolution_
+
+**System status snapshot 2026-05-23 02:50 WITA:**
+
+```
+unhealthy=33/116 | hot1h=0 | recent24h=4 | degrading_recovered=4 | historical_only=30 | lc_antipattern=16
+```
+
+**0 plists currently broken.** Audit dashboard reactive (Telegram fires on hot1h>0 delta).
+
+**Phases recap:**
+
+| Phase | Iters | Theme |
+|---|---|---|
+| 1 | W1-W17 | Pipeline hardening (bridge, kg-linker, lag monitor, NER/classifier restoration, PEL recovery, NLM source-cap, Redis split-brain) |
+| 2 | W18-W21 | TCC-safe wrapper migration (11 plists) — unmasked `reg-alert.30min` + `daily-briefing` silent failures |
+| 3 | W22-W25 | Programmatic audit dashboard (115 plists baseline → 33 unhealthy after two-tier hot/recent windows) |
+| 4 | W26 | pg-proxy RCA (Fly DNS) + PR maintenance + loop close |
+
+**Open items (Antonello sign-off needed):**
+
+1. **W16 Redis split-brain root-cause**: panel diverged Option A (duplicate nlm-feeder on Pro) vs B (centralize sentinel) vs D (status quo + detector). Detector deployed. Architecture decision pending.
+2. **`bridge.adaptive` 1372 historical errors**: weekly-trend metric not built. Pickup if pattern recurs.
+3. **`cell.organism` 22 recent24h errors**: scar still active despite 2026-05-22 daemon resurrection. Different from `.env` quote-fix.
+
+**3 production crons added during loop:**
+
+| Plist | Schedule | Purpose |
+|---|---|---|
+| `com.matagaruda.pel-cleaner.weekly` | Sun 04:00 | PEL stale + ghost consumer cleanup |
+| `com.matagaruda.redis-split-brain.check` | 30min | Pro<->Mini Redis drift detector |
+| `com.balizero.audit-launchd.daily` | 02:00 | 116-plist inventory + Telegram delta alert |
+
+Reference: `research/operations/2026-05-23-w26-pg-proxy-dns-rca-loop-conclusion.md` + PR #823 comment chain.
+
+---
+
 ### ⚠️ STRUCTURAL: W24 24h window too wide for "currently broken" — W25 two-tier (1h hot + 24h recent) (2026-05-23)
 
 _Discovered: 2026-05-23 02:18 WITA Loop iteration 25, W24 open question follow-up · Severity: P3 (audit accuracy refinement) · Status: **FIXED via two-tier window + Telegram body updated to HOT-only**_
