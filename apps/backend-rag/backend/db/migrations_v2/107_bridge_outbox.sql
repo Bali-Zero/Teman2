@@ -14,7 +14,7 @@
 -- `_schema_versions.migration_number`, not from `schema_migrations`. On prod
 -- with legacy `_schema_versions(107)` already present, this file is SKIPPED by
 -- number. Tracker convergence is handled by the companion migration
--- `193_reconcile_107_bridge_outbox_tracking.sql`.
+-- `194_reconcile_107_bridge_outbox_tracking.sql`.
 --
 -- TYPE FIDELITY: id is BIGSERIAL to match the legacy migration_107_bridge_outbox.py
 -- verified empirically 2026-05-23. Diverging to SERIAL would create cross-

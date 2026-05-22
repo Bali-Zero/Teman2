@@ -10,10 +10,11 @@ a v2 source-of-truth.
 This PR adds:
 - `107_bridge_outbox.sql` — promotes the legacy DDL into migrations_v2/ so
   fresh CI DBs build the table the same way prod has it.
-- `193_reconcile_107_bridge_outbox_tracking.sql` — backfills
+- `194_reconcile_107_bridge_outbox_tracking.sql` — backfills
   `schema_migrations(107)` from `_schema_versions(107)` because the v2 runner
   computes pending migrations by number from `_schema_versions`, so 107.sql
-  is SKIPPED on prod and never logs into `schema_migrations` itself.
+  is SKIPPED on prod and never logs into `schema_migrations` itself. (Number
+  was originally 193 but PR #826 merged claimed 193 first; rebased to 194.)
 
 What this test enforces (no Postgres needed):
 - both files present;
@@ -23,7 +24,7 @@ What this test enforces (no Postgres needed):
 - 107 column type fidelity: BIGSERIAL matches the legacy Python migration;
 - ROLLBACK section of 107 is non-destructive (no table-removal verb) —
   the table holds live event payloads on prod.
-- 193 INSERT is guarded by NOT EXISTS subquery + ON CONFLICT DO NOTHING.
+- 194 INSERT is guarded by NOT EXISTS subquery + ON CONFLICT DO NOTHING.
 """
 
 from __future__ import annotations
@@ -36,7 +37,7 @@ import pytest
 MIG_DIR = Path(__file__).resolve().parents[2] / "db" / "migrations_v2"
 
 PROMOTION_FILE = "107_bridge_outbox.sql"
-RECONCILE_FILE = "193_reconcile_107_bridge_outbox_tracking.sql"
+RECONCILE_FILE = "194_reconcile_107_bridge_outbox_tracking.sql"
 
 _ROLLBACK_MARKER = re.compile(r"^--\s*===\s*ROLLBACK\s*===\s*$", re.MULTILINE | re.IGNORECASE)
 
