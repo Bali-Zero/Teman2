@@ -5,6 +5,38 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ✅ RESOLVED: W50 — `dlq_autopilot` wrapper exec'd HOME fork instead of repo copy (deploy-path desync) (2026-05-23)
+
+_Discovered: 2026-05-23 15:18 WITA during W50 loop iteration · Severity: P3 (cosmetic log pollution 12.7 MB/day, but signals broken deploy-boundary affecting any future repo fix) · Status: **FIXED** commit `dfdfe3607` — wrapper now exec's repo copy with existence check; daemon reloaded; verification pending next 30min cron tick_
+
+**TRAUMA:** `docs/infra/launchagents/launch_dlq_autopilot.sh:17` hardcoded `exec ... $HOME/scripts/dlq_autopilot.py` instead of the repo copy at `$HOME/Desktop/nuzantara/scripts/dlq_autopilot.py`. Production ran a May-11 fork (28905 bytes) missing the 2026-05-19 ops-hardening fix (`logging.StreamHandler(sys.stdout)` instead of bare `StreamHandler()` that routes to stderr). Empirical: `diff -q` between the two showed they DIFFERED; HOME copy had bare StreamHandler, repo had the fix. Result: 9500+ INFO "status=TERMINAL — skipping" lines/day still polluting `~/logs/dlq_autopilot.error.log` (13378 lifetime, 71% accumulated today alone, 12.7 MB/day per original cicatrix-self-doc comment in `scripts/dlq_autopilot.py:25-31`).
+
+The repo `scripts/dlq_autopilot.py` carries its OWN cicatrix-style comment from the 2026-05-19 ops-hardening wave documenting exactly this bloat — but the fix never reached production because the wrapper boundary was a silent SSOT pointing at the wrong file.
+
+**ANTIBODY (shipped):**
+
+1. **Wrapper points at REPO copy**: `docs/infra/launchagents/launch_dlq_autopilot.sh` now sets `REPO_DIR="$HOME/Desktop/nuzantara"; SCRIPT="$REPO_DIR/scripts/dlq_autopilot.py"`, with explicit `[ ! -f "$SCRIPT" ] && exit 1` defense-in-depth. Every future repo fix propagates at next cron tick.
+2. **Daemon reloaded** immediately post-commit via `launchctl bootout/bootstrap`. Next cron tick (~30min from reload at 15:24 WITA) will run REPO code.
+3. **Empirical verification plan**: `wc -l ~/logs/dlq_autopilot.error.log` baseline 13378, expected freeze (no new INFO TERMINAL-skipping lines). WARNING lines for legit `max attempts → TERMINAL` first-time promotion still appear.
+
+**ANTIBODY (deferred, W51+ candidate):**
+
+- **HOME fork cleanup**: `~/scripts/dlq_autopilot.py` (May-11, 28905 bytes) should be deleted to prevent accidental future drift. Audit first: any other script importing it would break.
+- **Audit all wrappers in `docs/infra/launchagents/*.sh`** for `\$HOME/scripts/` pattern (exec'ing HOME copies instead of repo). Grep candidate list.
+- **CI lint**: detect wrapper scripts exec'ing paths outside `$HOME/Desktop/nuzantara/`. Generalize wrapper-boundary as SSOT enforcement.
+
+**GOTCHA:**
+
+- **Wrapper scripts ARE the silent SSOT for deploy path**. Repo CI tests are meaningless if the wrapper never executes the tested code. Always verify wrapper boundary at PR review when touching anything launchd-driven.
+- **Log file naming lies**: `.error.log` is just where stderr goes. Default `logging.StreamHandler()` routes to stderr regardless of severity. INFO can flood `.error.log` if not explicitly routed to stdout. Cross-check: a script logging 9500 "INFO skipping" entries to `.error.log` is the canary for missing-stdout-routing.
+- **Existence check in wrapper is cheap defense-in-depth**: malformed REPO_DIR or missing script now produces clean FATAL message instead of cryptic shell error.
+- **Sibling race during commit**: this fix shipped on second attempt because a sibling agent's rebase reset the wrapper file mid-edit. Single-Bash atomic ship pattern (stash → rebase → commit → push → reload → restore-stash) defeats the race but requires explicit choreography.
+- **Family**: deploy-path desync (HOME-fork drift from repo). Future watch: any LaunchAgent wrapper hardcoding `$HOME/scripts/` or other paths outside the repo SSOT.
+
+**Reference**: `research/operations/2026-05-23-w50-dlq-autopilot-home-fork-desync.md` (next commit). File: `docs/infra/launchagents/launch_dlq_autopilot.sh` (commit `dfdfe3607`). Self-doc in `scripts/dlq_autopilot.py:25-31` (the fix that wasn't reaching production).
+
+---
+
 ### ✅ RESOLVED: W49 — `wr2_canva_lease_watchdog` 98 lifetime TimeoutError on PG connect (pg-proxy WG idle drop race) (2026-05-23)
 
 _Discovered: 2026-05-23 14:39 WITA during W49 loop iteration · Severity: P2 (98 lifetime asyncpg.TimeoutError, lost cron ticks accumulating stale-lease window) · Status: **FIXED** commit `120078999` — connect-with-retry + exit-0 retry-exhaust posture_
