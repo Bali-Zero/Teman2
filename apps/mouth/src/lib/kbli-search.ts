@@ -229,14 +229,16 @@ function scoreCode(code: KBLICode, query: string): number {
     score -= Math.floor((code.description.length - 500) / 100) * 0.5;
   }
 
-  // --- PMA open bonus ---
-  if (code.pma.status === "open") {
-    score += 3;
-  }
+  if (score > 0) {
+    // --- PMA open bonus ---
+    if (code.pma.status === "open") {
+      score += 3;
+    }
 
-  // --- Gold tier bonus ---
-  if (code.tier === "gold") {
-    score += 5;
+    // --- Gold tier bonus ---
+    if (code.tier === "gold") {
+      score += 5;
+    }
   }
 
   return score;
