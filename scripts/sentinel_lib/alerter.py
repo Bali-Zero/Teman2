@@ -3,6 +3,7 @@ import hashlib
 import json
 import os
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -91,18 +92,47 @@ def send_alert(message: str, level: str = "INFO") -> bool:
     clean_message = message.replace("*", "").replace("`", "").replace("_", "-")
     full_message = f"{prefix} Sentinel | {clean_message}"
 
-    try:
-        data = urllib.parse.urlencode({"chat_id": chat_id, "text": full_message}).encode()
-        req = urllib.request.Request(
-            f"https://api.telegram.org/bot{bot_token}/sendMessage",
-            data=data,
-        )
-        with urllib.request.urlopen(req, timeout=10) as resp:
-            if resp.status == 200:
-                _mark_sent(dedup_key)
-                return True
-    except Exception as e:
-        print(f"[ALERT-FAILED] {e}")
+    # W55 (2026-05-23): retry-with-backoff for transient network errors.
+    # Pre-W55 empirical: 149 lifetime [ALERT-FAILED] entries in sentinel.log,
+    # 100% transient network (DNS NXDOMAIN, SSL handshake timeout, connection
+    # reset, network unreachable) — NordVPN/WiFi flap during cron. Single
+    # 10s attempt was insufficient; alerts silently dropped meant operator
+    # never saw escalations during network blips.
+    # Mirror W49 (lease watchdog connect-retry): 3 attempts, progressive
+    # backoff 1s/3s. Total max wall-time ~14s (3×10s timeout + 4s backoff).
+    # Acceptable in cron context where deadline is multi-minute.
+    data = urllib.parse.urlencode({"chat_id": chat_id, "text": full_message}).encode()
+    req = urllib.request.Request(
+        f"https://api.telegram.org/bot{bot_token}/sendMessage",
+        data=data,
+    )
+    last_err: Exception | None = None
+    for attempt in range(1, 4):
+        try:
+            with urllib.request.urlopen(req, timeout=10) as resp:
+                if resp.status == 200:
+                    _mark_sent(dedup_key)
+                    return True
+                # Non-200 HTTP (400 = bad request, 401 = auth, 429 = rate-limit).
+                # Don't retry on these — payload/auth issue, not transient.
+                print(f"[ALERT-FAILED] HTTP {resp.status} (non-retryable)")
+                return False
+        except urllib.error.HTTPError as e:
+            # 4xx/5xx surfaced as exception. 5xx might be transient.
+            last_err = e
+            if 500 <= e.code < 600:
+                print(f"[ALERT-RETRY {attempt}/3] HTTP {e.code} (retrying)")
+            else:
+                # 4xx — payload/auth/rate. Don't retry.
+                print(f"[ALERT-FAILED] HTTP {e.code} (non-retryable): {e}")
+                return False
+        except Exception as e:
+            # URLError, socket.timeout, ssl.SSLError etc. — all transient.
+            last_err = e
+            print(f"[ALERT-RETRY {attempt}/3] {type(e).__name__}: {e}")
+        if attempt < 3:
+            time.sleep(1 if attempt == 1 else 3)
+    print(f"[ALERT-FAILED] exhausted 3 retries (last error: {last_err})")
     return False
 
 
