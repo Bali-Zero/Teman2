@@ -468,8 +468,27 @@ async def _run_loop() -> None:
                     raise  # let outer reconnect handle it
                 except Exception as e:  # noqa: BLE001 — never crash on per-tick error
                     logger.exception("evaluate failed: %s", e)
+                # W47 (2026-05-23): keepalive SELECT 1 every 5s while waiting for
+                # next probe cycle. The watchdog poll interval is 60s by default
+                # but Fly proxy WG tunnel drops idle conns at ~10s (cf. observed
+                # 2026-04-28 in wr2_supervisor.py:649). Without keepalive, the
+                # NEXT poll hits a dead conn → InterfaceError('connection is
+                # closed') → outer catch + reconnect (=lost cycle). Empirical
+                # pre-W47: 370 Tracebacks/24h, one lost cycle every ~4min.
+                # 5s tick keeps socket below the tunnel timeout.
                 try:
-                    await asyncio.sleep(POLL_INTERVAL_SEC)
+                    chunk_count = max(1, POLL_INTERVAL_SEC // 5)
+                    for _ in range(chunk_count):
+                        if _shutdown_event.is_set():
+                            return
+                        await asyncio.sleep(5)
+                        # Keep socket alive. If this raises, outer reconnect
+                        # handles it cleanly (same exception path as evaluate).
+                        await conn.execute("SELECT 1")
+                    # Handle remainder seconds (POLL_INTERVAL_SEC not divisible by 5).
+                    remainder = POLL_INTERVAL_SEC - chunk_count * 5
+                    if remainder > 0:
+                        await asyncio.sleep(remainder)
                 except asyncio.CancelledError:
                     return
         except (
