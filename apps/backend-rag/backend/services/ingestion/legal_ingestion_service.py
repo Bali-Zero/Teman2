@@ -32,6 +32,11 @@ logger = logging.getLogger(__name__)
 LEGAL_CANONICAL_COLLECTION = "legal_unified"
 LEGAL_ENV_OVERRIDE_FLAG = "LEGAL_INGEST_ALLOW_QDRANT_ENV_OVERRIDE"
 
+ALLOWED_CANONICAL_COLLECTIONS = frozenset({
+    LEGAL_CANONICAL_COLLECTION,
+    "tax_genius",
+})
+
 
 class LegalIngestIntegrityError(RuntimeError):
     """Raised when legal/regulatory ingestion would write to an unsafe target."""
@@ -128,10 +133,11 @@ def validate_legal_ingest_preflight(preflight: LegalIngestPreflight) -> None:
         )
 
     canonical_target = canonicalize_collection_name(preflight.resolved_collection)
-    if canonical_target != LEGAL_CANONICAL_COLLECTION:
+    if canonical_target not in ALLOWED_CANONICAL_COLLECTIONS:
         raise LegalIngestIntegrityError(
-            "Legal ingestion target collection must resolve to "
-            f"{LEGAL_CANONICAL_COLLECTION!r}; requested={preflight.requested_collection!r} "
+            "Legal ingestion target collection must resolve to one of "
+            f"{sorted(ALLOWED_CANONICAL_COLLECTIONS)!r}; "
+            f"requested={preflight.requested_collection!r} "
             f"resolved={preflight.resolved_collection!r}"
         )
 
