@@ -19,7 +19,7 @@ import importlib.util
 import subprocess
 import sys
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -131,6 +131,48 @@ class TestFileInventoryBlock:
 
 
 # ---------------------------------------------------------------------------
+# build_file_content_snippets_block
+# ---------------------------------------------------------------------------
+
+
+class TestFileContentSnippetsBlock:
+    def test_prompt_content_budget_truncates_large_ocr_payload(
+        self, worker, monkeypatch
+    ) -> None:
+        monkeypatch.setattr(worker, "OCR_PROMPT_MAX_CHARS_PER_FILE", 8)
+        monkeypatch.setattr(worker, "OCR_PROMPT_MAX_CHARS_PER_CLIENT", 12)
+        files = [
+            {"id": "f1", "name": "akta.pdf"},
+            {"id": "f2", "name": "nib.pdf"},
+        ]
+        ocr_results = {
+            "f1": worker.ExtractionResult(
+                text="A" * 20,
+                extractor="pdfminer",
+                confidence=0.9,
+                page_count=2,
+                duration_ms=10,
+                truncated=False,
+            ),
+            "f2": worker.ExtractionResult(
+                text="B" * 20,
+                extractor="pdfminer",
+                confidence=0.9,
+                page_count=1,
+                duration_ms=10,
+                truncated=False,
+            ),
+        }
+
+        block = worker.build_file_content_snippets_block(files, ocr_results)
+
+        assert "A" * 8 in block
+        assert "B" * 4 in block
+        assert "B" * 5 not in block
+        assert "prompt_truncated=True" in block
+
+
+# ---------------------------------------------------------------------------
 # assemble_full_prompt
 # ---------------------------------------------------------------------------
 
@@ -218,6 +260,52 @@ class TestCallGeminiCli:
         with patch.object(worker.shutil, "which", return_value=None):
             with pytest.raises(RuntimeError, match="gemini CLI not found"):
                 worker.call_gemini_cli("p")
+
+
+# ---------------------------------------------------------------------------
+# result classification
+# ---------------------------------------------------------------------------
+
+
+class TestResultClassification:
+    def test_retrying_timeout_is_launchd_success_like(self, worker) -> None:
+        assert worker.is_success_like_status("retrying") is True
+
+    def test_error_is_not_launchd_success_like(self, worker) -> None:
+        assert worker.is_success_like_status("error") is False
+
+    def test_gemini_capacity_429_is_retryable(self, worker) -> None:
+        message = "No capacity available for model gemini-3.1-pro-preview; status 429"
+        assert worker.is_retryable_gemini_error(message) is True
+
+    def test_gemini_schema_error_is_not_retryable(self, worker) -> None:
+        assert worker.is_retryable_gemini_error("pydantic validation error") is False
+
+
+# ---------------------------------------------------------------------------
+# queue retry lifecycle
+# ---------------------------------------------------------------------------
+
+
+class TestQueueRetryLifecycle:
+    @pytest.mark.asyncio
+    async def test_queue_mark_running_can_claim_due_error_retry(self, worker) -> None:
+        captured: dict[str, object] = {}
+
+        async def mock_fetchrow(sql: str, *args):
+            captured["sql"] = sql
+            captured["args"] = args
+            return {"id": 42}
+
+        mock_conn = MagicMock()
+        mock_conn.fetchrow = mock_fetchrow
+
+        row_id = await worker.queue_mark_running(mock_conn, client_id=10014, run_id="abc")
+
+        assert row_id == 42
+        assert "status = 'pending'" in captured["sql"]
+        assert "status = 'error'" in captured["sql"]
+        assert "next_retry_at <= NOW()" in captured["sql"]
 
 
 # ---------------------------------------------------------------------------

@@ -183,9 +183,13 @@ class Shareholder(BaseModel):
         ID_TO_EN = {
             "DIREKTUR": "Director",
             "DIREKTUR UTAMA": "Director",
+            "PRESIDEN DIREKTUR": "Director",
+            "PRESIDENT DIRECTOR": "Director",
             "DIR": "Director",
             "KOMISARIS": "Commissioner",
             "KOMISARIS UTAMA": "Commissioner",
+            "PRESIDEN KOMISARIS": "Commissioner",
+            "PRESIDENT COMMISSIONER": "Commissioner",
             "KOM": "Commissioner",
             "PEMEGANG SAHAM": "Shareholder",
             "PEMEGANGSAHAM": "Shareholder",

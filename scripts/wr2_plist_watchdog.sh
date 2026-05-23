@@ -59,8 +59,9 @@ fi
 # write their own watchdog if they need one.
 shopt -s nullglob
 for source_plist in "${SOURCE_DIR}"/com.balizero.wr2.*.plist; do
-    label="$(basename "${source_plist}" .plist)"
-    target_plist="${TARGET_DIR}/${label}.plist"
+    source_name="$(basename "${source_plist}")"
+    label="$(/usr/libexec/PlistBuddy -c 'Print :Label' "${source_plist}" 2>/dev/null || basename "${source_plist}" .plist)"
+    target_plist="${TARGET_DIR}/${source_name}"
 
     if [[ ! -f "${target_plist}" ]]; then
         echo "[wr2-plist-watchdog] ${label}: missing on disk, restoring..."

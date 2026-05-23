@@ -208,7 +208,7 @@ pass4_dynamic:
 
   - id: crm_company_names_runtime
     description: |
-      Built at runtime from `companies.name` table (PT PMA, CV, Yayasan,
+      Built at runtime from `companies.company_name` table (PT PMA, CV, Yayasan,
       Firma, UD). Same placeholder mechanism.
     placeholder_id: __DYNAMIC_CRM_COMPANY_NAMES__
     replace: "[COMPANY-NAME-REDACTED]"

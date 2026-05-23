@@ -1,6 +1,6 @@
 question,ground_truth,category
-"Cron drive-poll runs every 5min on Pro and Mini simultaneously; both pull same Drive change events and both UPDATE crm_practices.status to 'in_review'. Result: doppia Telegram alert + race on UPDATE.","Pattern 1: Single-flight / lease / idempotency guard",concurrency
-"PG NOTIFY fires when canva_renderer_v2 emits wr2_status_change; listener disconnects for 5s during cron rotation; events lost forever.","Pattern 2: Durable queue / outbox / DLQ / replay contract",reliability
-"Backend FastAPI lifespan stuck on RAG cold-start; /health returns 200 because endpoint never checks app.state.startup_failed.","Pattern 3: Heartbeat / liveness / watchdog contract",observability
-"Claude OAuth quota exhausted mid-cron-wave; agent fails with 'out of extra usage'; downstream pipeline halts because wrapper has no fallback.","Pattern 4: Provider cascade + circuit breaker + degraded-mode",resilience
-"Write tool returned success but file disappeared 30s later because sibling claude session auto-cleanup ran git checkout on different branch.","Pattern 5: Empirical post-action verification",integrity
+"Cron drive-poll runs every 5min on Pro and Mini simultaneously; both pull same Drive change events and both UPDATE crm_practices.status to 'in_review'. Result: doppia Telegram alert + race on UPDATE.","Pattern 1: Single-flight / lease / idempotency guard",agent_pattern
+"PG NOTIFY fires when canva_renderer_v2 emits wr2_status_change; listener disconnects for 5s during cron rotation; events lost forever.","Pattern 2: Durable queue / outbox / DLQ / replay contract",agent_pattern
+"Backend FastAPI lifespan stuck on RAG cold-start; /health returns 200 because endpoint never checks app.state.startup_failed.","Pattern 3: Heartbeat / liveness / watchdog contract",agent_pattern
+"Claude OAuth quota exhausted mid-cron-wave; agent fails with 'out of extra usage'; downstream pipeline halts because wrapper has no fallback.","Pattern 4: Provider cascade + circuit breaker + degraded-mode",agent_pattern
+"Write tool returned success but file disappeared 30s later because sibling claude session auto-cleanup ran git checkout on different branch.","Pattern 5: Empirical post-action verification",agent_pattern

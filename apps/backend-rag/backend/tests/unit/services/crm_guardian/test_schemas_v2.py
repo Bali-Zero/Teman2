@@ -213,6 +213,12 @@ class TestShareholderRoleNormalizer:
         s = Shareholder(name="Gergely Gal", role="DIREKTUR", percentage=100.0)
         assert s.role == "Director"
 
+    def test_presiden_direktur_normalized(self) -> None:
+        from backend.services.crm_guardian.schemas import Shareholder
+
+        s = Shareholder(name="Test", role="Presiden Direktur")
+        assert s.role == "Director"
+
     def test_indonesian_komisaris_lowercase_normalized(self) -> None:
         from backend.services.crm_guardian.schemas import Shareholder
 

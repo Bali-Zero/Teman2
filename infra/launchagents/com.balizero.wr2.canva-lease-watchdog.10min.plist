@@ -8,7 +8,7 @@
   <array>
     <string>/bin/zsh</string>
     <string>-lc</string>
-    <string>source ~/.nuzantara-secrets.env 2>/dev/null; exec /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -u /Users/nuzantara/Desktop/nuzantara/scripts/wr2_canva_lease_watchdog.py</string>
+    <string>set -a; source ~/.nuzantara-secrets.env 2>/dev/null; set +a; export DATABASE_URL="${DATABASE_URL_LOCAL:-$DATABASE_URL}"; exec /Users/nuzantara/Desktop/nuzantara/apps/backend-rag/.venv/bin/python -u /Users/nuzantara/Desktop/nuzantara/scripts/wr2_canva_lease_watchdog.py</string>
   </array>
   <key>WorkingDirectory</key>
   <string>/Users/nuzantara/Desktop/nuzantara</string>

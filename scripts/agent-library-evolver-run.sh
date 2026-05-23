@@ -142,6 +142,15 @@ validate_secrets() {
 }
 validate_secrets
 
+# Local launchd jobs run on Pro/Mini, where Fly private DNS names such as
+# *.flycast do not resolve. Prefer the local pg-proxy DSN when present so
+# advisory locks and dynamic redaction use the reachable database path.
+if [[ "${DATABASE_URL:-}" == *".flycast"* && -n "${DATABASE_URL_LOCAL:-}" ]]; then
+    log "DATABASE_URL points at Fly private DNS; using DATABASE_URL_LOCAL for local run"
+    DATABASE_URL="${DATABASE_URL_LOCAL}"
+    export DATABASE_URL
+fi
+
 # ─── 2b. Telegram alert helpers (defined early — bash doesn't hoist) ─
 
 telegram_alert() {
@@ -155,8 +164,7 @@ telegram_alert() {
 import json, sys
 print(json.dumps({
     'chat_id': '${TELEGRAM_OWNER_CHAT_ID}',
-    'text': sys.argv[1],
-    'parse_mode': 'Markdown'
+    'text': sys.argv[1]
 }))
 " "${msg}")"
     curl -sS -X POST \

@@ -22,7 +22,7 @@ Architecture:
       pass3_generic: generic email (remaining = client/partner/third-
              party), IBAN strict, SWIFT BIC with context, bank account.
       pass4_dynamic: client/company names from PG `clients.full_name`
-             + `companies.name` (built at runtime, regex alternation).
+             + `companies.company_name` (built at runtime, regex alternation).
 
 Usage as module:
     from scripts._redact_pii import Redactor
@@ -268,7 +268,7 @@ class Redactor:
                 pg_url=pg_url,
             ),
             "__DYNAMIC_CRM_COMPANY_NAMES__": _load_pg_names(
-                "SELECT name FROM companies WHERE name IS NOT NULL;",
+                "SELECT company_name FROM companies WHERE company_name IS NOT NULL;",
                 pg_url=pg_url,
             ),
         }

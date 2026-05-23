@@ -1184,7 +1184,7 @@ async def _process_one(
 
     results: list[Any] = []
 
-    if IMAGE_BACKEND == "codex" or (IMAGE_BACKEND == "auto" and codex_available and not flowkit_available):
+    if IMAGE_BACKEND == "codex" or (IMAGE_BACKEND == "auto" and codex_available):
         # Codex-only path: no Playwright launch at all.
         # In auto mode, if Codex is available we skip Playwright entirely
         # — Codex handles 4:5 native and is the desired primary. FlowKit/
@@ -1358,7 +1358,7 @@ async def run(*, dry_run: bool = False, draft_id: str | None = None) -> int:
 
             if not rows:
                 logger.info("No drafts in 'drafts' status to process")
-                return 1
+                return 0
 
             if dry_run:
                 logger.info("[DRY-RUN] would process %d drafts:", len(rows))

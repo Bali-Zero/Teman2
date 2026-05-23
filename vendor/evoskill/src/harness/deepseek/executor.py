@@ -140,6 +140,22 @@ def _build_messages(system: str, query: str) -> list[dict[str, str]]:
     return messages
 
 
+def _ensure_json_object_instruction(
+    messages: list[dict[str, str]],
+) -> list[dict[str, str]]:
+    """Ensure DeepSeek accepts json_object response_format requests."""
+    if any("json" in msg.get("content", "").lower() for msg in messages):
+        return messages
+    instruction = "Return a valid JSON object only."
+    if messages and messages[0].get("role") == "system":
+        messages[0] = {
+            **messages[0],
+            "content": f"{messages[0]['content']}\n\n{instruction}",
+        }
+        return messages
+    return [{"role": "system", "content": instruction}, *messages]
+
+
 def _build_response_format(schema: dict[str, Any] | None) -> dict[str, Any] | None:
     """Translate a JSON schema dict into DeepSeek `response_format`.
 
@@ -247,6 +263,8 @@ async def execute_query(options: dict[str, Any], query: str) -> list[Any]:
     }
     response_format = _build_response_format(options.get("schema"))
     if response_format is not None:
+        if response_format.get("type") == "json_object":
+            payload["messages"] = _ensure_json_object_instruction(payload["messages"])
         payload["response_format"] = response_format
 
     # `reasoning_effort` is a DeepSeek V4 Pro extension (low/high/max).

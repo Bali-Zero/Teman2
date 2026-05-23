@@ -53,6 +53,7 @@ import hashlib
 import io
 import json
 import logging
+import os
 import re
 import shutil
 import subprocess
@@ -94,13 +95,28 @@ RAW_DUMP_DIR = Path.home() / ".crm_guardian" / "raw_dumps_cli"
 RAW_DUMP_DIR.mkdir(parents=True, exist_ok=True)
 
 GEMINI_CLI = "/opt/homebrew/bin/gemini"
-GEMINI_TIMEOUT_SECONDS = 240  # match Web App worker
-GEMINI_DEFAULT_MODEL: str | None = None  # let CLI pick its default (Gemini 2.5 Pro free OAuth)
+GEMINI_TIMEOUT_SECONDS = int(os.environ.get("CRM_GUARDIAN_GEMINI_TIMEOUT_SECONDS", "240"))
+GEMINI_DEFAULT_MODEL: str | None = os.environ.get("CRM_GUARDIAN_GEMINI_MODEL") or None
+SUCCESS_LIKE_STATUSES = frozenset({"success", "dry_run", "skipped", "retrying"})
+RETRYABLE_GEMINI_ERROR_MARKERS = (
+    "429",
+    "no capacity available",
+    "resource_exhausted",
+    "rate limit",
+    "temporarily unavailable",
+    "deadline exceeded",
+)
 
 # Phase 1.5 OCR budget per client. Tesseract is fast but akta scans can spike
 # latency; we cap how many priority files we OCR in a single client run.
 # Excess files fall through as metadata-only (extractor='skipped').
-OCR_MAX_FILES_PER_CLIENT = 30
+OCR_MAX_FILES_PER_CLIENT = int(os.environ.get("CRM_GUARDIAN_OCR_MAX_FILES_PER_CLIENT", "30"))
+OCR_PROMPT_MAX_CHARS_PER_FILE = int(
+    os.environ.get("CRM_GUARDIAN_OCR_PROMPT_MAX_CHARS_PER_FILE", "8000")
+)
+OCR_PROMPT_MAX_CHARS_PER_CLIENT = int(
+    os.environ.get("CRM_GUARDIAN_OCR_PROMPT_MAX_CHARS_PER_CLIENT", "100000")
+)
 
 
 # ---------------------------------------------------------------------------
@@ -615,11 +631,10 @@ def build_file_content_snippets_block(
 ) -> str:
     """Render <FILE_CONTENT_SNIPPETS> with OCR-extracted text per priority file.
 
-    Phase 1.5: the model gets to see actual document content (passport MRZ,
-    akta capital section, NPWP number, etc.) instead of inferring from
-    filenames. Snippets are truncated at MAX_TEXT_CHARS_PER_FILE in ocr.py
-    so prompt size stays bounded (≈12k chars × up to 30 priority files ≈
-    360k chars at worst-case — well under Gemini 2.5 Pro 1M context).
+    Phase 1.5: the model gets to see actual document content instead of
+    inferring from filenames. OCR cache rows may hold more text, but this
+    renderer applies a tighter per-file and per-client prompt budget so large
+    folders do not turn a launchd tick into a repeated Gemini CLI timeout.
     """
     if not ocr_results:
         return "<FILE_CONTENT_SNIPPETS>\n# No OCR content extracted (no priority files, or OCR disabled).\n</FILE_CONTENT_SNIPPETS>"
@@ -634,24 +649,42 @@ def build_file_content_snippets_block(
         "# Use THIS for identity / compliance fields. Use filename inventory only as fallback."
     )
     rendered = 0
+    prompt_content_chars = 0
+    prompt_truncated = False
     for f in flat_files:
         fid = f["id"]
         result = ocr_results.get(fid)
         if result is None or not result.text:
             continue
+        remaining_budget = OCR_PROMPT_MAX_CHARS_PER_CLIENT - prompt_content_chars
+        if remaining_budget <= 0:
+            prompt_truncated = True
+            break
+        snippet_limit = min(OCR_PROMPT_MAX_CHARS_PER_FILE, remaining_budget)
+        snippet = result.text[:snippet_limit]
+        snippet_truncated = len(result.text) > len(snippet)
+        prompt_truncated = prompt_truncated or snippet_truncated
+        prompt_content_chars += len(snippet)
         rendered += 1
         conf_str = f"{result.confidence:.2f}" if result.confidence is not None else "n/a"
         lines.append("")
         lines.append(f"--- file_id: {fid} ---")
         lines.append(
             f"# extractor={result.extractor} confidence={conf_str} "
-            f"pages={result.page_count or '?'} truncated={result.truncated}"
+            f"pages={result.page_count or '?'} truncated={result.truncated} "
+            f"prompt_truncated={snippet_truncated}"
         )
         lines.append(f"# filename: {f.get('name', '?')}")
-        lines.append(result.text)
+        lines.append(snippet)
+        if snippet_truncated:
+            lines.append("[TRUNCATED_FOR_PROMPT]")
 
     lines.append("")
     lines.append(f"# Snippets rendered: {rendered}")
+    lines.append(
+        f"# Prompt content chars: {prompt_content_chars}/"
+        f"{OCR_PROMPT_MAX_CHARS_PER_CLIENT} prompt_truncated={prompt_truncated}"
+    )
     lines.append("</FILE_CONTENT_SNIPPETS>")
     return "\n".join(lines)
 
@@ -675,7 +708,7 @@ def assemble_full_prompt(
 # ---------------------------------------------------------------------------
 
 async def queue_mark_running(conn, client_id: int, run_id: str) -> int | None:
-    """Mark pending queue row 'running'. Returns row id or None."""
+    """Mark pending or due retry queue row 'running'. Returns row id or None."""
     row = await conn.fetchrow(
         """
         UPDATE crm_guardian_summary_queue
@@ -684,7 +717,16 @@ async def queue_mark_running(conn, client_id: int, run_id: str) -> int | None:
             last_attempt_at = NOW(),
             started_at = COALESCE(started_at, NOW()),
             run_id = $2::uuid
-        WHERE client_id = $1 AND status = 'pending'
+        WHERE client_id = $1
+          AND (
+            status = 'pending'
+            OR (
+              status = 'error'
+              AND attempts < 3
+              AND next_retry_at IS NOT NULL
+              AND next_retry_at <= NOW()
+            )
+          )
         RETURNING id
         """,
         client_id, run_id,
@@ -700,10 +742,14 @@ async def queue_mark_terminal(
     last_error: str | None = None,
     duration_ms: int | None = None,
     raw_response_path: str | None = None,
-) -> None:
-    """Mark queue row terminal with exponential backoff on retry-eligible errors."""
+) -> bool:
+    """Mark queue row terminal.
+
+    Returns True when an error was scheduled for a later retry, False when
+    the status is terminal or no queue row was available.
+    """
     if queue_id is None:
-        return
+        return False
     if status == "error":
         attempts_row = await conn.fetchrow(
             "SELECT attempts FROM crm_guardian_summary_queue WHERE id = $1",
@@ -725,7 +771,7 @@ async def queue_mark_terminal(
                 """,
                 queue_id, last_error, duration_ms, raw_response_path,
             )
-            return
+            return True
     await conn.execute(
         """
         UPDATE crm_guardian_summary_queue
@@ -738,6 +784,18 @@ async def queue_mark_terminal(
         """,
         queue_id, status, last_error, duration_ms, raw_response_path,
     )
+    return False
+
+
+def is_success_like_status(status: str | None) -> bool:
+    """Return whether a per-client result should keep launchd green."""
+    return status in SUCCESS_LIKE_STATUSES
+
+
+def is_retryable_gemini_error(message: str) -> bool:
+    """Return whether a Gemini CLI failure should stay queued for retry."""
+    lowered = message.lower()
+    return any(marker in lowered for marker in RETRYABLE_GEMINI_ERROR_MARKERS)
 
 
 # ---------------------------------------------------------------------------
@@ -932,15 +990,37 @@ async def run_one_client(
     try:
         response_text = call_gemini_cli(full_prompt, model=model)
     except subprocess.TimeoutExpired:
-        await queue_mark_terminal(conn, queue_id, "error",
-                                    last_error=f"gemini CLI timeout > {GEMINI_TIMEOUT_SECONDS}s",
-                                    raw_response_path=str(prompt_dump))
-        return {"client_id": client_id, "status": "error", "error": "gemini timeout"}
+        retry_scheduled = await queue_mark_terminal(
+            conn,
+            queue_id,
+            "error",
+            last_error=f"gemini CLI timeout > {GEMINI_TIMEOUT_SECONDS}s",
+            raw_response_path=str(prompt_dump),
+        )
+        return {
+            "client_id": client_id,
+            "status": "retrying" if retry_scheduled else "error",
+            "error": "gemini timeout",
+        }
     except Exception as e:
-        await queue_mark_terminal(conn, queue_id, "error",
-                                    last_error=f"gemini CLI: {e}",
-                                    raw_response_path=str(prompt_dump))
-        return {"client_id": client_id, "status": "error", "error": f"gemini: {e}"}
+        retry_scheduled = False
+        if is_retryable_gemini_error(str(e)):
+            retry_scheduled = await queue_mark_terminal(
+                conn,
+                queue_id,
+                "error",
+                last_error=f"gemini CLI retryable: {e}",
+                raw_response_path=str(prompt_dump),
+            )
+        else:
+            await queue_mark_terminal(conn, queue_id, "error",
+                                        last_error=f"gemini CLI: {e}",
+                                        raw_response_path=str(prompt_dump))
+        return {
+            "client_id": client_id,
+            "status": "retrying" if retry_scheduled else "error",
+            "error": f"gemini: {e}",
+        }
 
     response_dump = RAW_DUMP_DIR / f"client_{client_id}_{int(datetime.now().timestamp())}_response.txt"
     response_dump.write_text(response_text, encoding="utf-8")
@@ -1077,7 +1157,17 @@ async def main() -> int:
             """
             SELECT client_id FROM crm_guardian_summary_queue
             WHERE status = 'pending'
-            ORDER BY priority ASC, enqueued_at ASC
+               OR (
+                 status = 'error'
+                 AND attempts < 3
+                 AND next_retry_at IS NOT NULL
+                 AND next_retry_at <= NOW()
+               )
+            ORDER BY
+              CASE WHEN status = 'pending' THEN 0 ELSE 1 END ASC,
+              priority ASC,
+              COALESCE(next_retry_at, enqueued_at) ASC,
+              enqueued_at ASC
             LIMIT $1
             """, args.max,
         )
@@ -1108,9 +1198,7 @@ async def main() -> int:
 
     await conn.close()
     print(json.dumps({"run_id": run_id, "results": results}, indent=2, default=str))
-    return 0 if all(
-        r.get("status") in ("success", "dry_run", "skipped") for r in results
-    ) else 1
+    return 0 if all(is_success_like_status(r.get("status")) for r in results) else 1
 
 
 if __name__ == "__main__":
