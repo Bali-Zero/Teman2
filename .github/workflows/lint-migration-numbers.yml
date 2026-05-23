@@ -7,9 +7,23 @@ name: Migration number uniqueness lint
 # first alphabetically and silently skips the second on the next deploy.
 # Complementary to migration-lint.yml (Squawk DDL safety) and the
 # runtime assert in migration_manager.discover_migrations.
+#
+# W41 (2026-05-23): added `push: branches: [main]` trigger to close the
+# direct-push bypass discovered in W40. L2 autonomous-ops policy allows
+# direct-push to main; pull_request-only triggers SKIP the lint for
+# those commits. W37 1234c9114 went direct-to-main and landed dup 194,
+# detected only by next iteration's manual survey. The push trigger
+# fires post-merge (can't block the commit) but produces an immediate
+# CI failure + Telegram alert so revert/rename can ship within minutes
+# instead of being discovered at next deploy.
 
 on:
   pull_request:
+    paths:
+      - "apps/backend-rag/backend/db/migrations_v2/**"
+  push:
+    branches:
+      - main
     paths:
       - "apps/backend-rag/backend/db/migrations_v2/**"
 
