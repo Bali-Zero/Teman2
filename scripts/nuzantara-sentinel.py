@@ -507,16 +507,24 @@ def _process_openclaw_job(
 # ─── Main job processor ───────────────────────────────────────────────────────
 
 def process_job(job_id: str, state: dict, registry: dict,
-                openclaw_is_down: bool = False) -> dict:
+                openclaw_is_down: bool = False,
+                dlq_terminal_set: set | None = None) -> dict:
     """
     Evaluate one job. Returns action taken: {action, tier, success}.
 
     openclaw_is_down: when True, skip all type=openclaw jobs to avoid flooding
     the DLQ with duplicate alerts when the gateway itself is the root cause.
+    dlq_terminal_set: jobs already in DLQ with status=TERMINAL. W53 (2026-05-23):
+    these MUST be suppressed at the staleness layer — dlq_autopilot already
+    decided no more autopilot attempts are warranted (max_attempts reached),
+    so sentinel re-escalating them every cron tick is an alert storm and
+    contradicts Phase 0 TERMINAL-state intent. Pre-W53 empirical: 19 of 28
+    stale-flagged jobs were already in DLQ as TERMINAL (sentinel.log 24h sample).
     """
     now = time.time()
     circuit = get_state(job_id)
     reg = registry.get(job_id, {})
+    dlq_terminal_set = dlq_terminal_set or set()
 
     # Circuit OPEN → skip
     if circuit == "OPEN":
@@ -546,6 +554,15 @@ def process_job(job_id: str, state: dict, registry: dict,
     if reg.get("optional") and status in ("failed", "stale"):
         logger.info(f"{job_id}: optional job failed/stale — skipping escalation")
         return {"action": "skipped_optional", "tier": 0, "success": None}
+
+    # W53 (2026-05-23): DLQ TERMINAL suppression gate. Honors Phase 0 intent
+    # at the staleness layer (was previously only honored inside dlq_autopilot
+    # entry processing). Without this gate, sentinel re-escalates the same 19
+    # TERMINAL-marked jobs every hourly tick = alert storm. Suppression is
+    # silent (info-log only) — no WARNING to keep error.log clean.
+    if job_id in dlq_terminal_set and status in ("failed", "stale"):
+        logger.info(f"{job_id}: DLQ TERMINAL — suppressing escalation (W53)")
+        return {"action": "skipped_dlq_terminal", "tier": 0, "success": None}
 
     # --- FAILURE PATH ---
     logger.warning(f"{job_id}: status={status}, error={last_error[:80]}")
@@ -792,6 +809,24 @@ def run_sentinel() -> None:
     if openclaw_is_down:
         logger.warning("OpenClaw gateway down — openclaw jobs will be suppressed this cycle")
 
+    # W53 (2026-05-23): pre-load DLQ TERMINAL set so process_job can suppress
+    # re-escalation of jobs already classified as max-attempts-reached. Read
+    # once per sentinel cycle (DLQ doesn't mutate during a single cycle from
+    # sentinel's perspective). Empty set on read failure → behavior identical
+    # to pre-W53 (graceful degradation, no new failure mode introduced).
+    dlq_terminal_set: set = set()
+    try:
+        _dlq_path = os.path.expanduser("~/.agent/decisions/dlq.json")
+        _dlq_data = json.loads(open(_dlq_path).read())
+        _dlq_list = _dlq_data.get("queue", _dlq_data if isinstance(_dlq_data, list) else [])
+        dlq_terminal_set = {
+            e.get("job") for e in _dlq_list
+            if isinstance(e, dict) and e.get("status") == "TERMINAL" and e.get("job")
+        }
+        logger.info(f"W53 DLQ TERMINAL gate: {len(dlq_terminal_set)} jobs suppressed from escalation")
+    except Exception as _e:
+        logger.warning(f"W53 DLQ TERMINAL gate: failed to load dlq.json ({_e}); falling back to no suppression")
+
     results = {}
     timed_out = False
     for job_id, state in states.items():
@@ -801,7 +836,11 @@ def run_sentinel() -> None:
             timed_out = True
             break
         try:
-            results[job_id] = process_job(job_id, state, registry, openclaw_is_down=openclaw_is_down)
+            results[job_id] = process_job(
+                job_id, state, registry,
+                openclaw_is_down=openclaw_is_down,
+                dlq_terminal_set=dlq_terminal_set,
+            )
         except Exception as e:
             logger.error(f"Error processing {job_id}: {e}", exc_info=True)
 
