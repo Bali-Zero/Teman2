@@ -117,6 +117,12 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)research/.*\.md$"),
         "research/ markdown: design/audit/planning notes, token strings illustrative",
     ),
+    # Claude rule/cicatrix markdown: internal operator scar notes and guardrail
+    # documentation. These are not executable config or credential stores.
+    (
+        re.compile(r"(^|/)\.claude/rules/.*\.md$"),
+        ".claude/rules markdown: operator scar notes and guardrail docs, not secrets",
+    ),
     # Fake-Gemini cleanup audit backup: CSV snapshot from the deleted
     # `drive_autowatcher` producer. The high-entropy hits are serialized
     # source/fact snapshot payloads preserved for the cleanup audit trail,
@@ -501,6 +507,14 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
     (
         re.compile(r"(^|/)vendor/[^/]+/tests/.*\.py$"),
         "vendor third-party tests: mock credentials in upstream test suites, not secrets",
+    ),
+    # research/operations/audits/*.json: launchd / system audit snapshots
+    # may contain base64-encoded plist data, fingerprints, or system token
+    # remnants (visible via `launchctl print | base64`). Operator-authored
+    # diagnostic artifacts, never user-input secrets.
+    (
+        re.compile(r"(^|/)research/operations/audits/.*\.json$"),
+        "research audit snapshots: launchd/system base64 diagnostic data, not secrets",
     ),
     # vendor/<pkg>/examples/<*>/README.md: usage examples with fake API
     # keys for documentation purposes. Same vendor-byte-identical caveat.
