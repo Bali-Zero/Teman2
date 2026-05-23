@@ -1,0 +1,46 @@
+name: Migration ROLLBACK marker lint
+
+# W42 (2026-05-23): PR + push guardrail against missing inline
+# `-- === ROLLBACK ===` markers in apps/backend-rag/backend/db/migrations_v2/.
+# BaseMigration.__init__ requires every migration_number > 111 (not in
+# LEGACY_NO_ROLLBACK_WHITELIST) to declare rollback SQL INLINE in the .sql
+# file (apps/backend-rag/backend/db/migration_base.py:239). Missing marker
+# raises ValueError at module-import time, blocking ALL pending migrations.
+#
+# W37 195_organism_incident_ledger.sql shipped without inline marker; the
+# rollback was documented in research/* but the runner checks the SQL file.
+# Caught by sibling agent 10min after W37 land (commit 2d864e402). W42
+# closes the gap at commit-time + post-push.
+#
+# Triggers BOTH pull_request AND push from day 1 (W41 cicatrix lesson:
+# pull_request-only gives a false sense of safety because L2 autonomous-ops
+# direct-push to main silently SKIPS the lint).
+
+on:
+  pull_request:
+    paths:
+      - "apps/backend-rag/backend/db/migrations_v2/**"
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/backend-rag/backend/db/migrations_v2/**"
+
+concurrency:
+  group: lint-migration-rollback-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Detect missing ROLLBACK markers
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Run rollback marker lint
+        run: python3 scripts/lint_migration_rollback.py
