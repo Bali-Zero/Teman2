@@ -24,6 +24,7 @@ from enum import Enum
 from typing import Any, Awaitable, Callable, Mapping, Protocol
 
 from organism.schemas import ActionDecision
+from organism.supervisor import incident_ledger
 
 
 log = logging.getLogger(__name__)
@@ -215,7 +216,23 @@ class Dispatcher:
                     except Exception:
                         log.exception("dispatch: CB record_failure failed (non-fatal)")
 
-            # 7. Best-effort callback (e.g. Telegram alert). Failures here
+            # 7. W37 — record the dispatch in the durable incident ledger.
+            #    Best-effort: ledger module swallows errors. We record BEFORE
+            #    the Telegram callback so that even a callback explosion
+            #    leaves a ledger trail behind.
+            try:
+                await incident_ledger.record_dispatch(
+                    correlation_id=correlation_id,
+                    actuator=actuator,
+                    outcome=DispatchOutcome.DISPATCHED.value,
+                    params=decision.params,
+                )
+            except Exception:
+                log.exception(
+                    "dispatch: incident_ledger.record_dispatch raised (non-fatal)",
+                )
+
+            # 8. Best-effort callback (e.g. Telegram alert). Failures here
             #    must NOT propagate — they would cascade into supervise-loop
             #    crashes the moment the bot token expires.
             if self.on_dispatched is not None:
