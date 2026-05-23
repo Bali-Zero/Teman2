@@ -5,6 +5,39 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ✅ RESOLVED: W49 — `wr2_canva_lease_watchdog` 98 lifetime TimeoutError on PG connect (pg-proxy WG idle drop race) (2026-05-23)
+
+_Discovered: 2026-05-23 14:39 WITA during W49 loop iteration · Severity: P2 (98 lifetime asyncpg.TimeoutError, lost cron ticks accumulating stale-lease window) · Status: **FIXED** commit `120078999` — connect-with-retry + exit-0 retry-exhaust posture_
+
+**TRAUMA:** `scripts/wr2_canva_lease_watchdog.py` is a 10-min cron (StartInterval=600) that resets stale `war_room_drafts.status='rendering'` leases. Pre-fix: single `await asyncpg.connect(dsn, timeout=10)` raced pg-proxy WG tunnel idle drop (W47-family pattern). When the proxy dropped the idle conn between cron ticks, the new TCP handshake on next tick timed out at exactly the 10s mark → script crash → exit 1 → launchd marks fail → next attempt 10min later (lost tick). 98 lifetime `TimeoutError` events accumulated in `~/logs/wr2_canva_lease_watchdog.error.log` (6874 total lines, 41% TCC shell-noise, 4068 real Python errors of which 98 were the connect timeout). Pathological: script `CONNECT_TIMEOUT_SEC=10` matches pg-proxy WG idle drop window exactly.
+
+Same family as W47 (`wr2_supervisor_watchdog` keepalive fix) but different surface: W47 fixed long-running service with `SELECT 1` keepalive; W49 fixes one-shot cron with connect retry. Two faces of same root cause (pg-proxy WG idle drop at ~10s).
+
+**ANTIBODY (shipped):**
+
+1. **`_connect_with_retry()` helper** with `MAX_RETRIES=3`, `BACKOFF_SEC=(1, 3, 7)` progressive backoff. Catches `asyncio.TimeoutError | OSError | asyncpg.PostgresError`. Logs each attempt with type+message. Returns `None` on exhaust.
+2. **Exit-0 posture on retry-exhaust**: caller checks `if conn is None: return 0`. Watchdog is a recovery loop, not a producer — losing one tick is harmless if next tick (10min later) recovers within 15min stale-lease threshold. Two consecutive misses (20min) exceed threshold but broader `wr2_supervisor_watchdog` (1min cadence) raises the alert anyway. Exit-0 prevents launchd retry-storm.
+3. **Empirical pre-W49 verification**: live `asyncpg.connect` probe with same DSN returned `OK in 0.01s` (cached route hot from prior bash command). Cron-context cold-connect timing differs — production observation will confirm retry pathway activates.
+
+**ANTIBODY (deferred, W50+ candidate):**
+
+- **TCC `getcwd` shell noise eradication**: 2806 of 6874 error log lines (41%) are launchd zsh `-lc` sandbox noise (`getcwd: Operation not permitted`, `shell-init`, `job-working-directory`). Independent of W49 connect issue — purely cosmetic but pollutes log analysis. Fix via wrapper script (eliminates `-l` interactive shell init), same template as today's sibling W48 `~/.openclaw/bin/wr2/wr2-canva-renderer-wrapper.sh`.
+- **Sibling `wr2_canva_pdf_apply.error.log` 695KB**: same TCC noise pattern, less actionable (already gated to kill-switch exit 3).
+- **`pg-organism-bridge.error.log` 309KB** last updated 06:25 WITA: investigate whether dead daemon or just quiet.
+- **Tune connect timeout to 15s** (forces handshake completion before WG idle drop) OR add `tcp_keepalive` to DSN as orthogonal hardening; W49 retry is sufficient but defense-in-depth would prevent the race entirely.
+
+**GOTCHA:**
+
+- **Connect timeout == tunnel idle timeout is pathological alignment**. `CONNECT_TIMEOUT_SEC=10` matches pg-proxy WG ~10s drop window. Future watchdog scripts on Pro should use 15s+ OR explicit retry-with-backoff, never 10s.
+- **Local probe ≠ cron-context probe**: manual `asyncpg.connect` from bash returned 0.01s because route was cached from prior queries. Cron-context cold connect has different timing. Never declare "all green" based on interactive probe alone.
+- **Exit-0 on retry-exhaust requires business-tolerance proof**: only safe because stale-lease threshold (15min) > cron interval (10min). For producer scripts (where missing a tick means missing data), exit-1 + retry-on-failure plist is the right pattern.
+- **98 TimeoutError vs 4068 real Python errors**: there are other error classes in the log. Future W50+ iteration: sample-grep top-N error types to enumerate next weakness.
+- **Cicatrix family**: pg-proxy WG idle drop now has TWO defenses (W47 keepalive in long-running, W49 retry in one-shot). Promote pattern: every PG-touching cron on Pro must use retry OR keepalive based on its lifecycle.
+
+**Reference**: `research/operations/2026-05-23-w49-lease-watchdog-connect-retry.md` (next commit). File: `scripts/wr2_canva_lease_watchdog.py` (commit `120078999`). W47 sibling pattern: `scripts/wr2_supervisor_watchdog.py` lines 656-659 (keepalive).
+
+---
+
 ### ⚠️ STRUCTURAL: canva-renderer cron 5min-loop with PG gaierror — DATABASE_URL flycast hostname unresolvable from Pro (2026-05-23)
 
 _Discovered: 2026-05-23 04:30 WITA during user question "a che ora parte wr2 / indaga nel codice" · Severity: P1 (silent cicatrix loop ~1 week) · Status: **FIXED** via dedicated wrapper mirroring WR3 supervisor pattern_
