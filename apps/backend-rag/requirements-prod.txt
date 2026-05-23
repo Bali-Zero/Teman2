@@ -93,7 +93,7 @@ prometheus-fastapi-instrumentator>=6.1.0
 sentry-sdk[fastapi]>=2.59.0  # Error monitoring
 
 # XML/HTML Processing
-lxml>=5.3.0
+lxml>=6.1.1
 
 # ML/Math
 scikit-learn>=1.3.0  # Required for GoldenAnswerService cosine similarity
