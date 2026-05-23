@@ -5,6 +5,40 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ✅ RESOLVED: W52 — `lint_launchagents.sh` HOME-fork silent-drift rule (closes W50/W51 family at CI time) (2026-05-23)
+
+_Discovered: 2026-05-23 16:55 WITA during W52 loop iteration · Severity: P3 (preventive — closes regression class shipped by W50/W51) · Status: **SHIPPED** commit `4b97b041c`; rule live, empirical verified via injected test plist, current state 0 violations_
+
+**TRAUMA:** W50 (dlq_autopilot wrapper) and W51 (sentinel plist) both shipped because a plist/wrapper exec'd a `~/scripts/` HOME copy that had drifted from the repo equivalent. W51 empirical impact was material: sentinel HOME was 24 days stale (missed Phase 0/1/2/4 sentinel hardening features) — production was making 60% more escalations per run and running 75% slower than it should. The lint script `scripts/lint_launchagents.sh` (Renaissance PR-B1, 2026-04-29) already enforced VADEMECUM §11 (KeepAlive, EnvironmentVariables, script-existence, /tmp/ logs, daemon-registry) but had NO check for silent-drift. Each new HOME-fork drift would land + persist undetected until manual audit (W50: 4 days; W51: 24 days).
+
+W52 empirical sweep showed perceived vs actual scope:
+- Perceived (W51 headline): 84/167 plists (50%) exec from HOME
+- Actual (W52 hash-comparison): 7 drifting HOME-vs-REPO pairs, of which 2 were exec'd by plists (W50+W51), 5 are orphans (no plist references). The "84" headline was a structural surface, not a structural risk.
+
+**ANTIBODY (shipped):**
+
+1. **New lint rule** added to `scripts/lint_launchagents.sh` (commit `4b97b041c`): scans every plist's resolved `script_to_check` that points at `$HOME/scripts/<X>`, searches repo at `~/Desktop/nuzantara/scripts/**/<X>` for same basename, compares via `cmp -s`. On mismatch emits `[VIOLATION] $label: exec'ing HOME fork that differs from repo` with HOME/REPO paths + dates + family pointer "W50/W51 deploy-path desync. Fix: edit plist to exec REPO path."
+2. **Empirically verified** by injecting test plist into scan dir (`~/Library/LaunchAgents/com.balizero.w52-rule-test.plist`) pointing at stale sentinel HOME → rule fired correctly with all expected fields → cleanup successful (file-only, no launchctl bootstrap).
+3. **Defense-in-depth**: W50/W51 were reactive (post-incident fixes); W52 rule is preventive (CI-time gate). Future regression cannot land + persist undetected.
+4. **Live state at ship**: 0 W52 violations across 146 scanned plists. All 72 total violations are pre-existing (KeepAlive, EnvVars, registry, /tmp/ logs) — none from W52 rule.
+
+**ANTIBODY (deferred, W53+ candidate):**
+
+- **Wrapper-content silent-drift detection** (W50-class): the W52 rule only catches plist-direct desync (W51-class). W50 wrapper-level desync (plist exec's a `.sh` wrapper in repo, wrapper itself exec's HOME script) requires a separate lint that scans wrapper content for `exec ... $HOME/scripts/...`. Deferred until a third W50-class case surfaces.
+- **HOME fork cleanup**: the 5 orphan drifting scripts (`intel-lake-nb-pusher-standalone.py`, `openclaw-state-bridge.py`, `vector-reindex-check.py`, `fly-qdrant-backup.sh`, `nextdns-weekly-digest.sh`) have NO plist references. Safe to either delete HOME copies or symlink to repo as one-shot cleanup. Low priority (no production impact).
+- **`.husky/pre-commit` wiring**: lint_launchagents.sh is currently CI-only (`.github/workflows/`). Adding to pre-commit fires it before push. Tradeoff: lint is plist-dependent (scans `~/Library/LaunchAgents/`) which only exists on machines with the project installed — pre-commit on fresh laptop would fail. Deferred to W54+.
+
+**GOTCHA:**
+
+- **Rule has same `script_to_check` resolution limits as the rest of the lint**: complex shell shims (`/bin/zsh -lc "source ...; exec ..."`) are not parsed, so wrapper-style W50 cases are NOT caught. This is documented in the lint comments and the W52 RCA. Intentional limit — false-positive prevention.
+- **Empirical scope-narrowing matters**: W51's "84/167" surface count is misleading. Always quantify the actual risk surface (intersect with "exec'd by plist AND has repo equivalent AND differs") before committing to a batch fix. W52 saved a 83-plist migration effort that would have produced zero actual fixes.
+- **Test-by-injection** (not inspection): a temporary plist in the scan dir is the cheapest way to prove rule logic. Skip live registration with `launchctl bootstrap` — file-only scan never triggers launchd. Always cleanup with `rm` post-test.
+- **Family closure**: W50 + W51 + W52 trio. W50 = first reactive fix (wrapper variant). W51 = second reactive fix (plist variant). W52 = preventive CI gate (closes the FAMILY, not just the specific instances).
+
+**Reference**: `research/operations/2026-05-23-w52-launchagents-lint-home-fork-rule.md` (next commit). File: `scripts/lint_launchagents.sh` (~287 lines, ~40 added in commit `4b97b041c`). Sibling RCAs: W50 = `research/operations/2026-05-23-w50-dlq-autopilot-home-fork-desync.md`, W51 = `research/operations/2026-05-23-w51-sentinel-plist-home-fork.md`. Pre-existing lint context: Renaissance PR-B1 (2026-04-29 audit).
+
+---
+
 ### ⚠️ STRUCTURAL: W51 — `nuzantara-sentinel` plist exec'd HOME fork (Apr-30 vs repo May-18), missed 4 Phase features (2026-05-23)
 
 _Discovered: 2026-05-23 16:00 WITA during W51 loop iteration · Severity: P2 (sentinel making materially worse decisions for 3+ weeks — 60% over-escalation), surfaced systemic 84/167 plist HOME-fork pattern · Status: **FIXED** plist patched + daemon reloaded; empirical 60% escalation reduction observed live (10→4 escalations/run, 12.9s→3.0s duration)_
