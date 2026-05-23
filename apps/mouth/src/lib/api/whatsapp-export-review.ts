@@ -22,7 +22,6 @@ export interface WhatsAppExportCounts {
 
 export interface WhatsAppExportReviewBatch {
   id: string;
-  label?: string | null;
   source_label?: string | null;
   source_basename?: string | null;
   review_status?: WhatsAppExportReviewStatus | null;
@@ -43,16 +42,12 @@ export interface WhatsAppExportReviewItem {
   source_basename?: string | null;
   masked_phone?: string | null;
   display_name?: string | null;
-  title?: string | null;
   suggested_client?: string | null;
   suggested_client_id?: string | null;
   suggested_practice?: string | null;
   suggested_practice_id?: string | null;
-  matched_practice_id?: string | null;
   confidence?: number | null;
-  match_confidence?: number | null;
   reasons?: string[] | null;
-  match_reasons?: string[] | null;
   review_status?: WhatsAppExportReviewStatus | null;
   counts?: WhatsAppExportCounts | null;
   body_excerpt?: string | null;
@@ -78,7 +73,8 @@ export type WhatsAppExportReviewKind =
   | "batches"
   | "contacts"
   | "documents"
-  | "messages";
+  | "messages"
+  | "yopo-case";
 
 export interface WhatsAppExportListParams {
   batchId?: string;
@@ -88,8 +84,10 @@ export interface WhatsAppExportListParams {
 }
 
 export interface WhatsAppExportActionParams {
-  kind: WhatsAppExportReviewKind;
-  id: string | number;
+  kind: "contacts" | "documents";
+  id: string;
+  approvedClientId?: string | null;
+  approvedPracticeId?: string | null;
   reason?: string;
 }
 
@@ -243,9 +241,9 @@ async function requestJson<T>(
 export async function listWhatsAppExportBatches(
   params: WhatsAppExportListParams = {},
 ): Promise<WhatsAppExportReviewBatch[]> {
-  const payload = await requestJson<BackendBatch[] | ListEnvelope<BackendBatch>>(
-    `/batches${buildQuery(params)}`,
-  );
+  const payload = await requestJson<
+    BackendBatch[] | ListEnvelope<BackendBatch>
+  >(`/batches${buildQuery(params)}`);
   return asList(payload).map(mapBatch);
 }
 
@@ -300,16 +298,44 @@ export async function listWhatsAppExportYopoCase(
 export async function approveWhatsAppExportReview(
   params: WhatsAppExportActionParams,
 ): Promise<void> {
-  await requestJson(`/${params.kind}/${encodeURIComponent(String(params.id))}/approve`, {
-    method: "POST",
-    body: JSON.stringify({ reason: params.reason }),
-  });
+  if (params.kind === "contacts") {
+    if (!params.approvedClientId) {
+      throw new Error("Contact approval requires a suggested client.");
+    }
+    await requestJson(
+      `/contacts/${encodeURIComponent(params.id)}/approve-match`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          approved_client_id: Number(params.approvedClientId),
+          note: params.reason,
+        }),
+      },
+    );
+    return;
+  }
+
+  await requestJson(
+    `/documents/${encodeURIComponent(params.id)}/approve-link`,
+    {
+      method: "POST",
+      body: JSON.stringify({
+        approved_client_id: params.approvedClientId
+          ? Number(params.approvedClientId)
+          : undefined,
+        approved_practice_id: params.approvedPracticeId
+          ? Number(params.approvedPracticeId)
+          : undefined,
+        note: params.reason,
+      }),
+    },
+  );
 }
 
 export async function rejectWhatsAppExportReview(
   params: WhatsAppExportActionParams,
 ): Promise<void> {
-  await requestJson(`/${params.kind}/${encodeURIComponent(String(params.id))}/reject`, {
+  await requestJson(`/${params.kind}/${encodeURIComponent(params.id)}/reject`, {
     method: "POST",
     body: JSON.stringify({ reason: params.reason }),
   });

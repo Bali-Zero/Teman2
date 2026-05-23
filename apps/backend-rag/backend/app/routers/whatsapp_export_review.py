@@ -1101,25 +1101,15 @@ async def approve_review_item(
             )
             return ReviewActionResponse(id=entity_id, status="completed", action="approve")
         if resource == "contacts":
-            await _update_contact_review(
-                conn,
-                contact_id=entity_id,
-                review_status="approved",
-                approved_client_id=None,
-                current_user=current_user,
-                note=payload.reason,
+            raise HTTPException(
+                status_code=400,
+                detail="Use /contacts/{id}/approve-match with approved_client_id",
             )
-            return ReviewActionResponse(id=entity_id, status="approved", action="approve")
         if resource == "documents":
-            await _update_document_review(
-                conn,
-                document_id=entity_id,
-                review_status="approved",
-                approved_document_id=None,
-                current_user=current_user,
-                note=payload.reason,
+            raise HTTPException(
+                status_code=400,
+                detail="Use /documents/{id}/approve-link for document approvals",
             )
-            return ReviewActionResponse(id=entity_id, status="approved", action="approve")
         await _update_message_review(
             conn,
             message_id=entity_id,
