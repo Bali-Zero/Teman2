@@ -532,7 +532,22 @@ def process_job(job_id: str, state: dict, registry: dict,
         return {"action": "skipped_circuit_open", "tier": 0, "success": None}
 
     status = state.get("status", "unknown")
-    last_ts = state.get("ts", 0)
+    # W54 (2026-05-23): defensive ts coercion. dlq_autopilot.py historically
+    # wrote ISO-8601 strings (fixed in W54), but legacy state files on disk
+    # may persist that format until next rewrite. Also defends against any
+    # other future writer that gets the type wrong. Empty string / None /
+    # bad parse → 0 (treated as "never run", staleness check catches it).
+    _raw_ts = state.get("ts", 0)
+    try:
+        last_ts = float(_raw_ts) if _raw_ts not in (None, "") else 0.0
+    except (TypeError, ValueError):
+        # ISO-8601 string from pre-W54 dlq_autopilot, etc. Try parse, else 0.
+        try:
+            import datetime as _dt
+            last_ts = _dt.datetime.strptime(str(_raw_ts), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=_dt.timezone.utc).timestamp()
+        except Exception:
+            logger.warning(f"{job_id}: state ts has unparseable type/value {_raw_ts!r}, treating as never-run")
+            last_ts = 0.0
     last_error = state.get("last_error", "") or ""
     retry_attempt = state.get("retry_attempt", 0)
 

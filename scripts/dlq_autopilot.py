@@ -648,6 +648,14 @@ def run_autopilot() -> None:
         )
 
         # Write sentinel state file so Sentinel can monitor autopilot staleness
+        # W54 (2026-05-23): ts must be FLOAT epoch seconds (consistent with all
+        # other state files under .agent/decisions/state/*.last.json). Previous
+        # code wrote ISO-8601 string via time.strftime(), which broke sentinel's
+        # `age = now - last_ts` arithmetic with:
+        #   ERROR Error processing dlq_autopilot:
+        #     unsupported operand type(s) for -: 'float' and 'str'
+        # Empirical: 49 state files surveyed, 48 use int/float, only this one
+        # used string. dlq_autopilot.py was the inconsistent writer.
         state_dir = AGENT_DIR / "state"
         state_dir.mkdir(parents=True, exist_ok=True)
         state_file = state_dir / "dlq_autopilot.last.json"
@@ -655,7 +663,7 @@ def run_autopilot() -> None:
             "job": "dlq_autopilot",
             "status": "ok",
             "detail": f"processed={len(queue)} fixed={fixed} escalated={escalated}",
-            "ts": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "ts": time.time(),  # W54: float epoch seconds (was strftime ISO-8601)
             "_writer": "dlq_autopilot",  # D1.5: audit trail
         }))
 
