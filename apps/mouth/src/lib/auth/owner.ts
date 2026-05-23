@@ -4,5 +4,5 @@ export const OWNER_EMAILS = new Set([
 ]);
 
 export function isOwner(email: string | null | undefined): boolean {
-  return !!email && OWNER_EMAILS.has(email);
+  return !!email && OWNER_EMAILS.has(email.trim().toLowerCase());
 }
