@@ -67,7 +67,7 @@ def test_init_sentry_with_dsn_does_not_block_startup() -> None:
     )
     env = {
         **os.environ,
-        "SENTRY_DSN": "https://public@example.invalid/1",
+        "SENTRY_DSN": "not-a-real-dsn",
         "SKIP_SENTRY_INIT": "",
     }
     result = subprocess.run(
