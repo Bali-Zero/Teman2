@@ -502,6 +502,14 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)vendor/[^/]+/tests/.*\.py$"),
         "vendor third-party tests: mock credentials in upstream test suites, not secrets",
     ),
+    # research/operations/audits/*.json: launchd / system audit snapshots
+    # may contain base64-encoded plist data, fingerprints, or system token
+    # remnants (visible via `launchctl print | base64`). Operator-authored
+    # diagnostic artifacts, never user-input secrets.
+    (
+        re.compile(r"(^|/)research/operations/audits/.*\.json$"),
+        "research audit snapshots: launchd/system base64 diagnostic data, not secrets",
+    ),
     # vendor/<pkg>/examples/<*>/README.md: usage examples with fake API
     # keys for documentation purposes. Same vendor-byte-identical caveat.
     (
