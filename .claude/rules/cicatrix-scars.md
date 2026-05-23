@@ -5,6 +5,64 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ✅ RESOLVED: W55 — `sentinel_lib/alerter.py` single-attempt Telegram send (149 lifetime drops on network flap) (2026-05-23)
+
+_Discovered: 2026-05-23 20:45 WITA during W55 loop iteration — `[ALERT-FAILED]` patterns surfaced from W54 work · Severity: P2 (operator missed escalations silently during NordVPN/WiFi flap) · Status: **FIXED** commit `e0525e228` — 3-attempt retry with backoff + transient/permanent discrimination_
+
+**TRAUMA:** `scripts/sentinel_lib/alerter.py:94-106` did a single `urlopen(req, timeout=10)` attempt then printed `[ALERT-FAILED] <error>` to stdout (captured by launchd → `~/logs/sentinel.log`) and returned False. Empirical grep showed **149 lifetime `[ALERT-FAILED]` entries — 100% transient network errors**: 53 DNS NXDOMAIN, 33 SSL handshake timeout, 19 no route to host, 14 network unreachable, 13 generic timeout, 10 read timeout, 7 connection reset. ZERO 4xx or auth errors. Cause: NordVPN/WiFi/route flap during cron ticks. Each failed alert = escalation silently dropped → operator never saw the warning.
+
+The existing inline comment `# Strip Markdown formatting — use plain text to avoid 400 errors from underscores/special chars` was misdirection — it framed the issue as payload format (4xx) when empirical was 100% network (transient).
+
+**ANTIBODY (shipped):**
+
+1. **3-attempt retry with progressive backoff** (1s, 3s between attempts):
+   ```python
+   for attempt in range(1, 4):
+       try:
+           with urllib.request.urlopen(req, timeout=10) as resp:
+               if resp.status == 200:
+                   _mark_sent(dedup_key); return True
+               print(f"[ALERT-FAILED] HTTP {resp.status} (non-retryable)")
+               return False
+       except urllib.error.HTTPError as e:
+           if 500 <= e.code < 600:
+               print(f"[ALERT-RETRY {attempt}/3] HTTP {e.code} (retrying)")
+           else:
+               print(f"[ALERT-FAILED] HTTP {e.code} (non-retryable): {e}")
+               return False
+       except Exception as e:
+           print(f"[ALERT-RETRY {attempt}/3] {type(e).__name__}: {e}")
+       if attempt < 3:
+           time.sleep(1 if attempt == 1 else 3)
+   ```
+2. **Discrimination table**: transient (URLError, SSLError, timeout, OSError, HTTP 5xx) → retry; permanent (HTTP 4xx: 400 bad payload, 401 auth, 404 wrong bot, 429 rate) → no retry.
+3. **Total max wall time ~14s**: 3×10s timeout + 1s + 3s backoff. Cron deadline is multi-minute, so acceptable.
+4. **`import urllib.error`** added at top (was missing for `HTTPError` catch).
+5. **Empirical verification (live)**:
+   - Bad token → `[ALERT-FAILED] HTTP 404 (non-retryable)` ✓ (correct, doesn't waste retries on auth)
+   - Real token → `send_alert returned: True` ✓ (happy path preserved)
+   - Transient-retry path will fire on next network flap (verification natural over time)
+
+**ANTIBODY (deferred, W56+ candidate):**
+
+- **logger.warning instead of `print()`** for `[ALERT-RETRY*]` lines — adds timestamps + severity for cleaner triage. Requires `logger = logging.getLogger("sentinel.alerter")` import.
+- **Exponential backoff with jitter**: current 1s/3s is fixed. If many sentinels retry simultaneously (cluster of cron ticks during NordVPN flap), exp+jitter spreads load.
+- **NordVPN-detector pre-check**: if `/usr/local/bin/nordvpn status` shows Disconnected OR known-NordVPN-process running, skip Telegram (it WILL fail). Saves 14s retry window during known-bad state.
+- **Apply pattern to other Telegram callers**: `dlq_autopilot.py`, `wr2_canva_lease_watchdog.py`, `regulatory-watcher.sh` all have their own urlopen calls. Audit + dedupe via shared library.
+
+**GOTCHA:**
+
+- **"100% transient" categorical signal makes the fix obvious**: when 149 of 149 errors are network-class, retry is the right hammer. When categories are mixed, retry-with-discrimination is needed. Always empirical-grep error categories before designing the fix.
+- **Existing comments can be misdirection**: `# Strip Markdown formatting...` led me to investigate payload first. Empirical bypassed the comment's framing.
+- **Test the negative path with bad credentials**: W55 verification used `invalid_token` to exercise 404 no-retry branch without Telegram spam. Critical sanity check for any retry logic — never just test happy path.
+- **HTTP 4xx ≠ HTTP 5xx semantics**: 4xx is client-side (payload/auth/rate), no retry. 5xx is server-side, may recover. Treating them the same wastes retries on payload errors OR misses recovery on server errors.
+- **Total retry window must fit cron budget**: 3×10s + 4s = 14s is OK for sentinel (runs hourly, deadline 300s). For 1min cron, would need shorter (2 attempts max).
+- **Family**: transient-error resilience. Sister to W47 (long-running keepalive) and W49 (one-shot connect-retry on PG). All three address network/proxy flap. W55 closes cross-net flap on OUTBOUND side (alerts to Telegram).
+
+**Reference**: `research/operations/2026-05-23-w55-alerter-retry-with-backoff.md` (next commit). File: `scripts/sentinel_lib/alerter.py:94-141` (commit `e0525e228`, ~30 lines net change incl. urllib.error import). Sister patterns: W47 `scripts/wr2_supervisor_watchdog.py` keepalive, W49 `scripts/wr2_canva_lease_watchdog.py` retry. Pre-W55 error sample: `~/logs/sentinel.log` lifetime 149 `[ALERT-FAILED]` entries (0 4xx).
+
+---
+
 ### ✅ RESOLVED: W54 — `dlq_autopilot.last.json` ts as ISO-8601 string crashed sentinel staleness check (2026-05-23)
 
 _Discovered: 2026-05-23 19:52 WITA during W53 live run — error log showed `unsupported operand type(s) for -: 'float' and 'str'` on dlq_autopilot job · Severity: P2 (silent monitoring blackout for dlq_autopilot job — sentinel crashed processing it every cycle, lost observability for unknown duration) · Status: **FIXED** commit `761edf656` — two-layer fix (source + defensive coercion)_
