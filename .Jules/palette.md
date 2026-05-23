@@ -21,3 +21,7 @@
 ## 2026-04-30 - [Shared Locale Hook for Chat Micro-frontend]
 **Learning:** In applications where certain routes (like `/chat`) are architecturally isolated from the main `I18nProvider`, duplicating locale-detection logic across components leads to inconsistencies and maintenance overhead. Consolidating this into a shared `useChatLocale` hook that synchronizes with `localStorage` ensures a unified language experience across all chat-specific components.
 **Action:** Use a shared `useChatLocale` hook for any components in the chat interface that require multi-language support (Tool Indicators, Badges, Panels).
+
+## 2026-05-18 - [Stateful Indicators and Localized Panels]
+**Learning:** Collapsible panels and toggle buttons should provide clear visual feedback for their state. Using a rotating chevron icon synchronized with the 'aria-expanded' attribute ensures both visual and assistive technology users understand the component's state. Additionally, hardcoded strings in a multi-language app should always be refactored to use the shared localization hooks.
+**Action:** Always include a rotating chevron for toggles. Synchronize 'aria-expanded' with the UI state. Use 'useChatLocale' for all UI text in the chat interface.

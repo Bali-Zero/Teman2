@@ -131,17 +131,17 @@ class TestL1ClientSummaryV2:
         assert "narrative_id" not in dump
         assert "narrative_en" in dump
 
-    def test_narrative_id_rejected_as_extra_field(self) -> None:
-        """Trying to pass narrative_id should fail (extra='forbid')."""
-        with pytest.raises(ValidationError):
-            L1ClientSummary(
-                client_id=1,
-                generated_at="2026-05-16T10:00:00Z",
-                source_folder_id="folder_abc",
-                source_file_count=0,
-                source_file_fingerprint="deadbeef",
-                narrative_id="should-be-rejected",  # type: ignore[call-arg]
-            )
+    def test_narrative_id_ignored(self) -> None:
+        """v2.0 removed narrative_id; now L1ClientSummary uses extra='ignore'."""
+        summary = L1ClientSummary(
+            client_id=1,
+            generated_at="2026-05-16T10:00:00Z",
+            source_folder_id="x",
+            source_file_count=0,
+            source_file_fingerprint="x",
+            narrative_id="ignored",  # type: ignore[call-arg]
+        )
+        assert "narrative_id" not in summary.model_dump()
 
     def test_cross_folder_summary_roundtrip(self) -> None:
         """Worker writes L1 cross-folder → roundtrip through JSONB serialization."""

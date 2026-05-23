@@ -34,6 +34,7 @@ export const NLMCitationPanel: React.FC<NLMCitationPanelProps> = ({
 }) => {
   const locale = useChatLocale();
   const labelPrefix = LABELS[locale] || LABELS.en;
+
   return (
     <div className="mt-3 rounded-lg border-l-2 border-amber-600 overflow-hidden">
       {/* Header — always visible, toggles expand */}
