@@ -34,7 +34,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 SCHEMA_VERSION = "v3.0"
 
@@ -332,6 +332,13 @@ class L1ClientSummary(BaseModel):
     """
 
     model_config = ConfigDict(extra="ignore")  # 2026-05-23 Wave 1 (was forbid)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _reject_removed_fields(cls, data: object) -> object:
+        if isinstance(data, dict) and "narrative_id" in data:
+            raise ValueError("narrative_id was removed in schema v2.0; use narrative_en")
+        return data
 
     schema_version: str = SCHEMA_VERSION
     client_id: int
