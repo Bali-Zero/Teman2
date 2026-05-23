@@ -5,6 +5,50 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: W51 — `nuzantara-sentinel` plist exec'd HOME fork (Apr-30 vs repo May-18), missed 4 Phase features (2026-05-23)
+
+_Discovered: 2026-05-23 16:00 WITA during W51 loop iteration · Severity: P2 (sentinel making materially worse decisions for 3+ weeks — 60% over-escalation), surfaced systemic 84/167 plist HOME-fork pattern · Status: **FIXED** plist patched + daemon reloaded; empirical 60% escalation reduction observed live (10→4 escalations/run, 12.9s→3.0s duration)_
+
+**TRAUMA:** `~/Library/LaunchAgents/com.nuzantara.sentinel.plist:23` hardcoded `/Users/nuzantara/scripts/nuzantara-sentinel.py` (HOME fork dated Apr-30, 37643 bytes). Repo copy at `/Users/nuzantara/Desktop/nuzantara/scripts/` was 24 days newer (May-18, 38413 bytes) with 9 missing commits including 4 Phase features: **Phase 0** (DLQ TERMINAL state + circuit-breaker TOCTOU fix), **Phase 1** (decision tree hardening + observability + timestamp fixes), **Phase 2** (security hardening + per-machine escalation JSONL), **Phase 4** (DLQ intelligence upgrade D4.1/D4.2/D4.3).
+
+Empirical pre-fix: sentinel ran every cycle and reported "10 escalated" — same 10 jobs every tick. These jobs were marked TERMINAL in dlq.json but sentinel HOME copy lacked the Phase 0 TERMINAL-state code path, so it kept re-escalating dead jobs. Stderr log accumulated 261KB of `WARNING jobname: status=stale, error=` lines (151 of last 200 lines were the same exact message). False-alarm storm for 3+ weeks.
+
+W51 also surfaced the SYSTEMIC scope: enumeration of `~/Library/LaunchAgents/com.{balizero,nuzantara,cell,matagaruda}*.plist` found **84/167 plists (50%) exec scripts from `~/scripts/` (HOME), not the repo**. Sentinel was the first highest-impact one; 83 others remain at unknown drift.
+
+**ANTIBODY (shipped):**
+
+1. **Plist patched** via `plutil -replace ProgramArguments -json '["/Users/nuzantara/.pyenv/versions/3.11.11/bin/python3", "/Users/nuzantara/Desktop/nuzantara/scripts/nuzantara-sentinel.py"]'`. Also `plutil -replace Program -string ...` for the redundant top-level `<key>Program</key>`.
+2. **Plist backed up** to `.pre-w51-2026-05-23` BEFORE patch.
+3. **Plist mode restored 0400** post-patch (was originally 0400).
+4. **Daemon reloaded** via `launchctl bootout/bootstrap`. RunAtLoad=true triggered immediate execution; PID 12763 ran clean (last exit code 0).
+5. **Empirical post-reload (16:08 WITA)**:
+   - Escalations/run: **10 → 4** (60% reduction). Phase 0 TERMINAL-state guard now honored.
+   - Duration: **12.9s → 3.0s** (75% faster). Phase 1 decision-tree hardening.
+   - New visible logic: `WARNING qdrant_snapshot: phase advance to T4 rejected: Invalid phase transition for 'qdrant_snapshot': T0 → T4. Expected next: T1` (Phase 1 observability — was previously silently allowing invalid state transitions).
+
+**ANTIBODY (deferred, W52-W60 batch):**
+
+- **Bulk audit of 84 HOME-fork plists**: enumerate which have repo copies (deletable HOME) vs which are HOME-only (need migration). File-hash comparison + cron-cadence-priority ordering (≤10min cadence first: intel-lake-router.5min, wa-mirror-attention-realtime, etc.).
+- **HIGH-impact subset for W52-W55**: `bz-daily-visual-pipeline`, `crm-guardian-cli-worker`, `regulatory-watcher.daily`, `intel-lake-router.5min`, `wa-mirror-attention-classifier`. Each touches production state (DB, fly, telegram, drive).
+- **W50-style wrapper migration**: for each HOME plist, either edit plist (W51 pattern) or write wrapper exec'ing repo (W50 pattern). Wrapper is more durable when plist mutates often; direct edit is cleaner.
+- **CI lint**: forbid new plists/wrappers from referencing `~/scripts/` or `/Users/nuzantara/scripts/`. Detects regression at PR time.
+- **Secrets hygiene side-quest**: `com.nuzantara.sentinel.plist:13-14` carries `TELEGRAM_BOT_TOKEN` in plaintext. Separate W-N task — migrate to env file source.
+
+**GOTCHA:**
+
+- **plist `ProgramArguments` is silent SSOT for deploy path**, mirroring W50 wrapper-script pattern. Either pattern hides drift identically. CI tests on repo code path are meaningless if production runs HOME forks.
+- **Single-symbol fix (HOME→repo path) had MATERIAL impact** — 60% escalation drop, 75% latency drop. HOME-fork drift is not cosmetic for sentinel-class scripts; it's silent feature-regression. Generalize: stale forks of decision-making code = wrong decisions in production.
+- **HOME forks pre-date the May-19 repo consolidation**. Anything in `~/scripts/` dated < May-19 is suspect. Anything dated < repo-equivalent is definitely stale.
+- **plutil patch + launchctl reload + 0400 restore** is the cleanest plist-edit recipe. Always backup BEFORE patch (`cp X X.pre-wN-DATE`).
+- **Empirical-first validation**: capture pre-fix metrics ("10 escalated, 12.9s") BEFORE patching, then verify post-fix in same session. Without baseline, "4 escalations" is meaningless.
+- **`Program` AND `ProgramArguments[0]` both needed updating**: macOS launchd uses `Program` if present, else `ProgramArguments[0]`. The original plist had both — patching only ProgramArguments would have left a half-fix.
+- **Backup file extension `.pre-w51-2026-05-23`** is gitignored under `~/Library/` (whole dir is). Backup is local-only; rollback via `cp X.pre-w51-2026-05-23 X && launchctl bootout/bootstrap`.
+- **Family**: deploy-path desync (HOME-fork drift, plist or wrapper as SSOT). Two cases this week (W50 dlq_autopilot wrapper + W51 sentinel plist); 82 more known candidates pending W52-W60 batch.
+
+**Reference**: `research/operations/2026-05-23-w51-sentinel-plist-home-fork.md` (next commit). Plist: `~/Library/LaunchAgents/com.nuzantara.sentinel.plist` (backup `.pre-w51-2026-05-23`). HOME fork (delete candidate): `~/scripts/nuzantara-sentinel.py` (Apr-30). W50 sibling: `docs/infra/launchagents/launch_dlq_autopilot.sh` (wrapper variant). Systemic audit count: 84/167 plists.
+
+---
+
 ### ✅ RESOLVED: W50 — `dlq_autopilot` wrapper exec'd HOME fork instead of repo copy (deploy-path desync) (2026-05-23)
 
 _Discovered: 2026-05-23 15:18 WITA during W50 loop iteration · Severity: P3 (cosmetic log pollution 12.7 MB/day, but signals broken deploy-boundary affecting any future repo fix) · Status: **FIXED** commit `dfdfe3607` — wrapper now exec's repo copy with existence check; daemon reloaded; verification pending next 30min cron tick_
