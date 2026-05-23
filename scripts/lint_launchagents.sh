@@ -265,6 +265,46 @@ except Exception: pass
         VIOLATIONS=$((VIOLATIONS+1))
     fi
 
+    # --- W52 (2026-05-23): HOME-fork silent-drift detection -----------------
+    # W50 (dlq_autopilot) + W51 (nuzantara-sentinel) both shipped because a
+    # plist exec'd a script from ~/scripts/ that had drifted from the repo
+    # equivalent. W51 empirical: sentinel HOME was 24 days stale (missed 4
+    # Phase features), production was making materially worse decisions
+    # (10 escalations/run vs 4 post-fix; 12.9s vs 3.0s).
+    #
+    # This rule scans every script_to_check that resolves to ~/scripts/
+    # (HOME) and checks whether a same-basename copy exists in the repo at
+    # ~/Desktop/nuzantara/scripts/**/<name>. If both exist AND differ, the
+    # plist is silently running stale code — same family as W50/W51.
+    #
+    # Empirical W52 sweep (2026-05-23): out of 84 plists exec'ing HOME
+    # scripts, 7 HOME copies had repo equivalents, of which 2 were
+    # actually exec'd by plists (both already fixed via W50/W51). This
+    # rule catches the next regression at PR/push time, not 24 days later.
+    if [ -n "$script_to_check" ] && [[ "$script_to_check" == "$HOME/scripts/"* ]]; then
+        basename_only=$(basename "$script_to_check")
+        # Search repo for same basename. Use -maxdepth 4 to skip deep nesting
+        # (worktrees/, __pycache__/, .venv/ already excluded).
+        repo_match=$(find "$HOME/Desktop/nuzantara/scripts" -maxdepth 4 \
+                        -name "$basename_only" \
+                        -not -path "*/.worktrees/*" \
+                        -not -path "*/__pycache__/*" \
+                        -not -path "*/.venv/*" \
+                        -not -path "*/venv/*" \
+                        2>/dev/null | head -1)
+        if [ -n "$repo_match" ] && [ -f "$repo_match" ]; then
+            if ! cmp -s "$script_to_check" "$repo_match" 2>/dev/null; then
+                home_date=$(stat -f "%Sm" -t "%Y-%m-%d" "$script_to_check" 2>/dev/null || echo "?")
+                repo_date=$(stat -f "%Sm" -t "%Y-%m-%d" "$repo_match" 2>/dev/null || echo "?")
+                echo "[VIOLATION] $label: exec'ing HOME fork that differs from repo"
+                echo "             HOME: $script_to_check ($home_date)"
+                echo "             REPO: $repo_match ($repo_date)"
+                echo "             Family: W50/W51 deploy-path desync. Fix: edit plist to exec REPO path."
+                VIOLATIONS=$((VIOLATIONS+1))
+            fi
+        fi
+    fi
+
     # --- Daemon must be in job_registry.json --------------------------------
     if ! $is_cron && [ -f "$REGISTRY" ]; then
         if ! jq -e --arg lbl "$label" '.jobs[$lbl] // empty' "$REGISTRY" >/dev/null 2>&1; then
