@@ -102,6 +102,15 @@ _INFRA = (
         "Channel health (web) — Cell heartbeat bridge poll target",
         match="exact",
     ),
+    # M1.2 WA Dashboard (2026-05-23): SSE stream health probe. The /stream
+    # endpoint itself remains auth-protected (cookie JWT); only /stream/health
+    # is public for smoke-test + dashboard reachability ping.
+    PublicEndpoint(
+        "/api/v1/wa-dashboard/stream/health",
+        Category.INFRA,
+        "WA Dashboard SSE stream health probe — public for dashboard reachability",
+        match="exact",
+    ),
     # Intel Lake Wave 1 (2026-05-12, mig 168): unified intel pipeline ingest
     # endpoint. Public to bypass HybridAuthMiddleware — but enforces its own
     # X-Producer-Token header auth in the router (env INTEL_LAKE_PRODUCER_TOKEN).
