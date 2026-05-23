@@ -58,7 +58,7 @@ def test_migration_file_exists_and_well_formed():
     """
     # parents: [0]=tests, [1]=apps/organism, [2]=apps, [3]=repo root.
     apps_dir = Path(__file__).resolve().parents[2]
-    mig = apps_dir / "backend-rag" / "backend" / "db" / "migrations_v2" / "194_organism_incident_ledger.sql"
+    mig = apps_dir / "backend-rag" / "backend" / "db" / "migrations_v2" / "195_organism_incident_ledger.sql"
     assert mig.exists(), f"missing migration at {mig}"
     sql = mig.read_text(encoding="utf-8")
     # Schema additions
