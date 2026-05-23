@@ -202,6 +202,29 @@ class TestL1ClientSummaryV2:
                 extraction_confidence=-0.1,
             )
 
+    def test_timeline_event_date_can_be_null_when_only_upload_date_known(self) -> None:
+        """v3 date provenance: Drive modifiedTime must not be coerced into event_date."""
+        summary = L1ClientSummary(
+            client_id=283,
+            generated_at="2026-05-18T10:00:00Z",
+            source_folder_id="folder_abc",
+            source_file_count=1,
+            source_file_fingerprint="deadbeef",
+            timeline=[
+                {
+                    "event_date": None,
+                    "event_type": "epo_upload_seen",
+                    "description": "Upload date 2026-04-24; document date unknown.",
+                    "source_file_id": "drive_file_epo",
+                }
+            ],
+            extraction_notes=[
+                "timeline epo_upload_seen has upload date only — document date unknown",
+            ],
+        )
+
+        assert summary.timeline[0].event_date is None
+
 
 class TestShareholderRoleNormalizer:
     """Phase 1.5 hotfix 2026-05-18: Indonesian role names from akta OCR
@@ -211,6 +234,12 @@ class TestShareholderRoleNormalizer:
         from backend.services.crm_guardian.schemas import Shareholder
 
         s = Shareholder(name="Gergely Gal", role="DIREKTUR", percentage=100.0)
+        assert s.role == "Director"
+
+    def test_indonesian_presiden_direktur_normalized(self) -> None:
+        from backend.services.crm_guardian.schemas import Shareholder
+
+        s = Shareholder(name="Test", role="PRESIDEN DIREKTUR")
         assert s.role == "Director"
 
     def test_indonesian_komisaris_lowercase_normalized(self) -> None:

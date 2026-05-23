@@ -183,6 +183,8 @@ class Shareholder(BaseModel):
         ID_TO_EN = {
             "DIREKTUR": "Director",
             "DIREKTUR UTAMA": "Director",
+            "PRESIDEN DIREKTUR": "Director",
+            "PRESIDENT DIRECTOR": "Director",
             "DIR": "Director",
             "KOMISARIS": "Commissioner",
             "KOMISARIS UTAMA": "Commissioner",
@@ -231,7 +233,10 @@ class Timeline(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    event_date: date
+    event_date: date | None = Field(
+        default=None,
+        description="Document-content event date. Null when only Drive upload/modifiedTime is known.",
+    )
     event_type: str
     description: str
     source_file_id: str | None = None

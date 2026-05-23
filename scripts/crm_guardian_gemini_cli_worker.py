@@ -66,18 +66,20 @@ REPO_ROOT = Path(__file__).resolve().parent.parent
 BACKEND_RAG = REPO_ROOT / "apps" / "backend-rag"
 sys.path.insert(0, str(BACKEND_RAG))
 
-from backend.services.crm_guardian.schemas import (  # noqa: E402
-    L1ClientSummary,
-    SCHEMA_VERSION,
-)
 from backend.services.crm_guardian.ocr import (  # noqa: E402
+    PRIORITY_DOC_TYPES,
     ExtractionResult,
     OcrHealth,
-    PRIORITY_DOC_TYPES,
-    check_health as ocr_check_health,
     extract_file_content,
     get_cached_content,
     upsert_cache_row,
+)
+from backend.services.crm_guardian.ocr import (  # noqa: E402
+    check_health as ocr_check_health,
+)
+from backend.services.crm_guardian.schemas import (  # noqa: E402
+    SCHEMA_VERSION,
+    L1ClientSummary,
 )
 
 LOG = logging.getLogger("crm_guardian.cli_worker")
@@ -101,6 +103,10 @@ GEMINI_DEFAULT_MODEL: str | None = None  # let CLI pick its default (Gemini 2.5 
 # latency; we cap how many priority files we OCR in a single client run.
 # Excess files fall through as metadata-only (extractor='skipped').
 OCR_MAX_FILES_PER_CLIENT = 30
+
+# Hard cap for inline OCR snippets. Large clients can have hundreds of priority
+# files; beyond this, Gemini CLI latency becomes the bottleneck and may timeout.
+MAX_CONTENT_SNIPPET_CHARS_PER_PROMPT = 120_000
 
 
 # ---------------------------------------------------------------------------
@@ -474,6 +480,7 @@ async def enrich_files_with_ocr(
     """
     enriched: dict[str, ExtractionResult] = {}
     fresh_extractions = 0
+    budget_logged = False
 
     for f in flat_files:
         doc_type = infer_doc_type_from_filename(f.get("name"))
@@ -502,10 +509,12 @@ async def enrich_files_with_ocr(
 
         # Budget guard for FRESH extractions
         if fresh_extractions >= budget:
-            LOG.info(
-                "ocr budget %d reached for this client, skipping further priority files",
-                budget,
-            )
+            if not budget_logged:
+                LOG.info(
+                    "ocr budget %d reached for this client, skipping further priority files",
+                    budget,
+                )
+                budget_logged = True
             continue
 
         # Cache miss → fetch bytes + extract
@@ -585,7 +594,7 @@ def build_cross_folder_context_block(
 def build_file_inventory_block(
     flat_files: list[dict[str, Any]],
     folder_id_to_name: dict[str, str],
-    ocr_results: dict[str, "ExtractionResult"] | None = None,
+    ocr_results: dict[str, ExtractionResult] | None = None,
 ) -> str:
     """Render <FILE_INVENTORY> block exposing file metadata to Gemini.
 
@@ -605,13 +614,17 @@ def build_file_inventory_block(
             f"{f.get('mimeType', '?')} | {size} | {f.get('modifiedTime', '?')} | {doc_type}"
         )
     lines.append(f"# Total files: {len(flat_files)}")
+    if ocr_results is not None:
+        lines.append(f"# OCR content snippets available: {len(ocr_results)}")
     lines.append("</FILE_INVENTORY>")
     return "\n".join(lines)
 
 
 def build_file_content_snippets_block(
     flat_files: list[dict[str, Any]],
-    ocr_results: dict[str, "ExtractionResult"],
+    ocr_results: dict[str, ExtractionResult],
+    *,
+    max_total_chars: int = MAX_CONTENT_SNIPPET_CHARS_PER_PROMPT,
 ) -> str:
     """Render <FILE_CONTENT_SNIPPETS> with OCR-extracted text per priority file.
 
@@ -634,12 +647,17 @@ def build_file_content_snippets_block(
         "# Use THIS for identity / compliance fields. Use filename inventory only as fallback."
     )
     rendered = 0
+    current_content_chars = 0
     for f in flat_files:
         fid = f["id"]
         result = ocr_results.get(fid)
         if result is None or not result.text:
             continue
+        next_entry_size = len(result.text) + len(fid) + len(f.get("name", "")) + 160
+        if rendered > 0 and current_content_chars + next_entry_size > max_total_chars:
+            continue
         rendered += 1
+        current_content_chars += next_entry_size
         conf_str = f"{result.confidence:.2f}" if result.confidence is not None else "n/a"
         lines.append("")
         lines.append(f"--- file_id: {fid} ---")
@@ -652,6 +670,8 @@ def build_file_content_snippets_block(
 
     lines.append("")
     lines.append(f"# Snippets rendered: {rendered}")
+    omitted = max(0, len([r for r in ocr_results.values() if r.text]) - rendered)
+    lines.append(f"# Snippets omitted by prompt budget: {omitted}")
     lines.append("</FILE_CONTENT_SNIPPETS>")
     return "\n".join(lines)
 
@@ -830,6 +850,55 @@ def extract_json_block(text: str) -> dict[str, Any] | None:
     return None
 
 
+def apply_server_guardrails(
+    payload: dict[str, Any],
+    *,
+    client_full_name: str | None,
+) -> dict[str, Any]:
+    """Apply non-negotiable server-known facts before schema validation.
+
+    Gemini is allowed to extract document facts, but it is not allowed to
+    relink the summary to a different person. Phase 1 showed that prompt-only
+    instructions were insufficient: the model substituted CRM clients with
+    names that appeared more often in filenames. The database client row is
+    authoritative for `identity.full_name`.
+    """
+    canonical_name = (client_full_name or "").strip()
+    if not canonical_name:
+        return payload
+
+    identity = payload.get("identity")
+    if not isinstance(identity, dict):
+        identity = {}
+        payload["identity"] = identity
+
+    observed = identity.get("full_name")
+    if observed == canonical_name:
+        return payload
+
+    identity["full_name"] = canonical_name
+    notes_value = payload.get("extraction_notes")
+    if not isinstance(notes_value, list):
+        notes: list[str] = []
+        payload["extraction_notes"] = notes
+    else:
+        notes = notes_value
+
+    if observed:
+        note = (
+            "identity.full_name overwritten by CRM client record: "
+            f"Gemini returned {observed!r}, CRM client_full_name is {canonical_name!r}."
+        )
+    else:
+        note = (
+            "identity.full_name filled from CRM client record: "
+            f"CRM client_full_name is {canonical_name!r}."
+        )
+    if note not in notes:
+        notes.append(note)
+    return payload
+
+
 # ---------------------------------------------------------------------------
 # Orchestration
 # ---------------------------------------------------------------------------
@@ -965,6 +1034,10 @@ async def run_one_client(
     payload["source_folder_id"] = folder_id
     payload["source_file_count"] = len(flat_files)
     payload["source_file_fingerprint"] = fingerprint
+    payload = apply_server_guardrails(
+        payload,
+        client_full_name=client.get("full_name"),
+    )
 
     if "company" not in payload or not isinstance(payload.get("company"), dict):
         payload["company"] = {}
@@ -1065,6 +1138,7 @@ async def main() -> int:
     prompt_template = args.prompt_file.read_text()
 
     import asyncpg
+
     from backend.services.crm_guardian.base import build_drive_service
 
     db_url = _resolve_db_url()
@@ -1107,7 +1181,8 @@ async def main() -> int:
         LOG.info("Result: %s", r)
 
     await conn.close()
-    print(json.dumps({"run_id": run_id, "results": results}, indent=2, default=str))
+    sys.stdout.write(json.dumps({"run_id": run_id, "results": results}, indent=2, default=str))
+    sys.stdout.write("\n")
     return 0 if all(
         r.get("status") in ("success", "dry_run", "skipped") for r in results
     ) else 1

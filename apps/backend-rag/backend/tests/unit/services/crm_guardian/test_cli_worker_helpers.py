@@ -150,6 +150,41 @@ class TestAssembleFullPrompt:
 
 
 # ---------------------------------------------------------------------------
+# build_file_content_snippets_block
+# ---------------------------------------------------------------------------
+
+
+class TestFileContentSnippetsBlock:
+    def test_content_snippets_block_caps_total_text_budget(self, worker) -> None:
+        files = [
+            {"id": f"file_{idx}", "name": f"akta_{idx}.pdf"}
+            for idx in range(3)
+        ]
+        results = {
+            f"file_{idx}": worker.ExtractionResult(
+                text="x" * 100,
+                extractor="tesseract",
+                confidence=0.8,
+                page_count=1,
+                duration_ms=10,
+                truncated=False,
+            )
+            for idx in range(3)
+        }
+
+        block = worker.build_file_content_snippets_block(
+            files,
+            results,
+            max_total_chars=150,
+        )
+
+        assert "--- file_id: file_0 ---" in block
+        assert "--- file_id: file_1 ---" not in block
+        assert "Snippets rendered: 1" in block
+        assert "Snippets omitted by prompt budget: 2" in block
+
+
+# ---------------------------------------------------------------------------
 # call_gemini_cli (subprocess contract)
 # ---------------------------------------------------------------------------
 
@@ -236,6 +271,32 @@ class TestExtractJsonBlock:
 
     def test_no_json_returns_none(self, worker) -> None:
         assert worker.extract_json_block("just words, no json") is None
+
+
+# ---------------------------------------------------------------------------
+# Phase 1.5 server-side guardrails
+# ---------------------------------------------------------------------------
+
+
+class TestServerSideGuardrails:
+    def test_identity_full_name_is_forced_to_crm_value(self, worker) -> None:
+        """Prompt-only guardrails are not enough: worker must overwrite hallucinated names."""
+        payload = {
+            "identity": {"full_name": "Andrey Pozdnyakov"},
+            "extraction_notes": [],
+        }
+
+        guarded = worker.apply_server_guardrails(payload, client_full_name="Sofia Mueller")
+
+        assert guarded["identity"]["full_name"] == "Sofia Mueller"
+        assert any("identity.full_name overwritten" in note for note in guarded["extraction_notes"])
+
+    def test_identity_guardrail_creates_identity_block_when_missing(self, worker) -> None:
+        payload: dict[str, object] = {"extraction_notes": []}
+
+        guarded = worker.apply_server_guardrails(payload, client_full_name="Oleksandr Ozolin")
+
+        assert guarded["identity"]["full_name"] == "Oleksandr Ozolin"
 
 
 # ---------------------------------------------------------------------------
