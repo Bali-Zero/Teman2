@@ -11,7 +11,6 @@ Verifies the linter correctly:
 from __future__ import annotations
 
 import importlib.util
-import sys
 from pathlib import Path
 from textwrap import dedent
 
@@ -122,7 +121,6 @@ def test_no_postgres_at_all_returns_empty(tmp_path, lint):
 
 def test_main_exit_0_on_clean(monkeypatch, capsys):
     """Run on the live codebase — should be green now after W34 fixes."""
-    repo_root = Path(__file__).resolve().parents[2]
     # cd to repo root not needed — script uses parents[1] of __file__
     mod = _load_lint_module()
     rc = mod.main([])

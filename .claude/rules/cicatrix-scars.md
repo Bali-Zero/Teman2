@@ -5,6 +5,101 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ⚠️ STRUCTURAL: canva-renderer cron 5min-loop with PG gaierror — DATABASE_URL flycast hostname unresolvable from Pro (2026-05-23)
+
+_Discovered: 2026-05-23 04:30 WITA during user question "a che ora parte wr2 / indaga nel codice" · Severity: P1 (silent cicatrix loop ~1 week) · Status: **FIXED** via dedicated wrapper mirroring WR3 supervisor pattern_
+
+**TRAUMA:** Cron `com.balizero.wr2.canva-renderer` (StartInterval=300s, runs since 2026-05-15 resurrection per WR2 cicatrix archive) was crash-looping every 5min with `socket.gaierror: [Errno 8] nodename nor servname provided, or not known`. Error log `~/logs/wr2_canva_pdf_apply.error.log` accumulated 638KB / 922 gaierror occurrences. Mechanism:
+
+1. Plist `ProgramArguments` = `zsh -lc 'source ~/.nuzantara-secrets.env; exec flock python -u scripts/wr2_canva_pdf_apply.py'`
+2. `~/.nuzantara-secrets.env` exports `DATABASE_URL=postgres://...@nuzantara-postgres.flycast/...` (Fly internal hostname)
+3. Pro DNS: `nslookup nuzantara-postgres.flycast` → NXDOMAIN (Fly internal hostnames only resolve INSIDE Fly machines)
+4. Orchestrator `backend/services/canva_renderer_v2/orchestrator.py:267-276` reads `os.environ.get("DATABASE_URL")` and calls `asyncpg.connect(dsn, timeout=10)` — no localhost rewrite, no fallback. Errors out at line 274 BEFORE kill-switch check at line 279.
+5. Exit code = ExitCode.TRANSIENT_ERROR (not in plist `SuccessfulExit=[0,3,4,5,7]` whitelist) → launchd marks fail, retries 5min later, same crash.
+
+**Why hidden ~1 week**: kill-switch off pattern (cicatrix 2026-05-13 WR2 architecturally bypassed) led to assumption "cron is harmless when disabled". Reality: the crash happens BEFORE the kill-switch check, so the safety mechanism never engages. Logs filled silently because nobody tailed pg-proxy.error.log unless investigating a different incident.
+
+**ANTIBODY (shipped 2026-05-23):**
+
+1. **New wrapper** `~/.openclaw/bin/wr2/wr2-canva-renderer-wrapper.sh` (3KB, exec 755). Mirrors the WR3 supervisor wrapper pattern (already battle-tested per cicatrix 2026-05-21 WR3 supervisor launchd):
+   - Source `~/.nuzantara-secrets.env` (additive)
+   - **FORCE-override** `DATABASE_URL="$DATABASE_URL_LOCAL"; export DATABASE_URL` (DATABASE_URL_LOCAL = `127.0.0.1:15432` via pg-proxy)
+   - Fail fast `exit 74` (EX_CONFIG) if DATABASE_URL_LOCAL not set
+   - Pre-flight `nc -z 127.0.0.1 15432` → `exit 75` (EX_TEMPFAIL, launchd retries after ThrottleInterval) if pg-proxy down
+   - `exec flock -n /tmp/wr2_canva_pdf_apply.lock $VENV_PY -u $FULL_SCRIPT`
+2. **Plist patched** `~/Library/LaunchAgents/com.balizero.wr2.canva-renderer.plist` (backup `.pre-wrapper-fix-2026-05-23`, mode 0444 → u+w → patch via `plutil -replace ProgramArguments -json` → 0444). `ProgramArguments` now = single-element array pointing to the wrapper.
+3. **Empirical verification** (2026-05-23 04:51 WITA):
+   - Smoke test wrapper standalone → exit 0, log: `INFO wr2_canva_renderer_enabled != true — exiting quiet`
+   - launchctl bootout + bootstrap → first cron tick post-reload at 04:51:14 → `[wr2-canva-renderer-wrapper] starting` + clean exit 3 (KILL_SWITCH_OFF, whitelisted in SuccessfulExit)
+   - `last exit code = 3` (not 1) — launchd dashboard reports green
+   - Zero new gaierror lines in error.log post-fix (lock at 922 historical)
+
+**GOTCHA:**
+
+- **DATABASE_URL_LOCAL was already in `~/.nuzantara-secrets.env`** but the original plist's inline `zsh -lc 'source ... ; exec ... script'` recipe never overrode DATABASE_URL with it. The fix is purely the wrapper override; secrets file untouched.
+- **Cicatrix family**: this is the **third** "secrets file exports prod DSN, local cron needs localhost rewrite" instance after WR2 (cicatrix 2026-05-13 architecturally bypassed) and WR3 supervisor (cicatrix 2026-05-21). Each fix used the same wrapper pattern. **Promote to template**: any future cron on Pro that needs PG should use a wrapper from `~/.openclaw/bin/wrN/`, NOT inline `source secrets` in ProgramArguments.
+- **Why exit code 3 is OK**: ExitCode enum (`backend/services/canva_renderer_v2/orchestrator.py`) maps `KILL_SWITCH_OFF=3`. The plist `SuccessfulExit=[0,3,4,5,7]` whitelist treats 3 as success → launchd does NOT trigger crash-retry. When kill-switch flips ON (operator decision deferred since 2026-05-13), the same exit-3 exits become exit-0 with PDF generation.
+- **The exit code 3 is the GOAL POSTURE**: cron stays harmless until orchestrator refactor + kill-switch flip. The fix prevents observability noise (922 gaierror in error.log) while preserving the architectural defer.
+- **Wrapper script lives in `~/.openclaw/bin/wr2/`, gitignored.** Plist also gitignored. This cicatrix entry is the canonical reproduction record for future operators.
+- **Pattern for replicating fix on other crons**: grep cron error logs for `gaierror|nodename nor servname|flycast` → any match = same root cause. Audit candidates: `~/logs/*.error.log` + `~/Library/Logs/*.err`.
+
+**Reference**:
+- Wrapper: `~/.openclaw/bin/wr2/wr2-canva-renderer-wrapper.sh` (chmod 755)
+- Plist backup: `~/Library/LaunchAgents/com.balizero.wr2.canva-renderer.plist.pre-wrapper-fix-2026-05-23`
+- Sibling wrapper (template): `~/.openclaw/bin/wr3/wr3-supervisor-wrapper.sh`
+- Memory log: `~/logs/wr2_canva_pdf_apply.{log,error.log}` (errors stop accumulating 2026-05-23T04:50)
+- Same-day related cicatrix: pg-proxy Perl prefixer entry below (PR #829)
+
+---
+
+### ℹ️ INFO: Bridge_outbox mig 107 promoted to v2 + pg-proxy Perl prefixer SHIPPED — 3-LLM panel caught 4 P0 traps (2026-05-23)
+
+_Discovered: 2026-05-23 04:00 WITA during session "fix Migration 107 + pg-proxy flap, discuti con 4llm" · Severity: INFO (clean ship, panel-reviewed) · Status: PR #828 + ~/scripts/fly-pg-proxy-wrapper.sh edit shipped, empirical verification PASS_
+
+**TRAUMA / Discovery (2 residual debts, 4 panel P0 traps caught BEFORE implementation):**
+
+Residual debts from prior sessions:
+
+1. **Migration 107 bridge_outbox tech debt**: legacy Python migration `migration_107_bridge_outbox.py` applied manually on prod, recorded only in `_schema_versions(107)`. Fresh CI DBs lacked the table → migration 192 (jsonb repair) crashed on `relation "bridge_outbox" does not exist`. PR #827 added IF EXISTS guard to mig 192 but the schema-source-of-truth gap remained.
+2. **pg-proxy intermittent flap** (LaunchAgent `com.balizero.wr2.pg-proxy`, KeepAlive=true): no timestamp prefix on `fly proxy` child output made correlation with backend timeouts, EventBus drops, WR3 supervisor restarts guesswork.
+
+Panel (Gemini agy + DeepSeek V4 Pro reasoning_effort=high + Codex GPT-5.5 adversarial) caught 4 P0 traps in the proposed fixes BEFORE shipping:
+
+| # | Trap | Caught by | Resolution |
+|---|---|---|---|
+| 1 | Brief proposed `BIGSERIAL`; DeepSeek "assumed SERIAL was original". Empirical override 2026-05-23: legacy `.py` line 34 = `id BIGSERIAL PRIMARY KEY`. Schema drift on fresh CI if we'd switched. | DeepSeek raised, empirical override decided | Kept BIGSERIAL (faithful to legacy `.py`) |
+| 2 | `MigrationManager.apply_all_pending()` computes pending from `_schema_versions.migration_number`, NOT from `schema_migrations` (`migration_manager.py:399-412`). On prod with legacy `_schema_versions(107)` present, the new `107.sql` is SKIPPED by number — never executes, never backfills `schema_migrations`. Brief's "will try to re-apply but safe" was wrong. | **Codex** (empirical file read) | Added companion `193_reconcile_107_bridge_outbox_tracking.sql` to backfill `schema_migrations(107)` from `_schema_versions(107)` |
+| 3 | macOS `/usr/bin/awk` does NOT support `strftime()`. `gawk` and `ts` absent on this host (empirical: `/usr/bin/awk: calling undefined function strftime`). Original awk-based pg-proxy patch would crash wrapper → KeepAlive flap loop. | **Codex** (empirical command execution) | Switched to `/usr/bin/perl -MPOSIX=strftime` (Perl ships with macOS, POSIX is core) |
+| 4 | `exec foo \| bar` in bash is **undefined behavior** — pipelines need subshell, can't combine with `exec` process replacement. | **Gemini** | Dropped `exec` keyword. KeepAlive=true + ThrottleInterval=30 handle respawn cleanly. `${PIPESTATUS[0]}` propagates child exit code. |
+
+Additional Codex P1: tests still import `migration_107_bridge_outbox.py` + `apply_migration_107.py`. Brief's "no longer in repo" was wrong. Cleanup of legacy `.py` + `LEGACY_NO_ROLLBACK_WHITELIST` removed from this PR scope.
+
+**ANTIBODY (shipped):**
+
+1. **PR #828** `feat/mig-107-promotion-2026-05-23` — 3 files: `107_bridge_outbox.sql` (BIGSERIAL faithful), `193_reconcile_107_bridge_outbox_tracking.sql` (NOT EXISTS + ON CONFLICT DO NOTHING), `test_migration_107_bridge_outbox_promotion.py` (8/8 pass: idempotency, type fidelity, non-destructive rollback, guarded insert).
+2. **`~/scripts/fly-pg-proxy-wrapper.sh`** edited (HOME, gitignored — backup at `.pre-perl-prefix-2026-05-23`): Perl prefixer + `2>&1 | prefix_child_output` writes to STDERR (preserves log-stream split: error lines stay in `pg-proxy.error.log`, not migrated to `pg-proxy.log`). `${PIPESTATUS[0]}` propagation + `exit $status` line. Runbook + diff archived at `research/operations/2026-05-23-pg-proxy-perl-prefix-runbook.md`.
+3. **Empirical verification PASS** (2026-05-23 04:14 WITA):
+   - PID transition 13602→49113→52218 across reload + stress-test kill
+   - Timestamped lines in `pg-proxy.error.log`: `[2026-05-23 04:14:28] Proxying...` + `[2026-05-23 04:14:52] fly proxy exited status=0` + `[2026-05-23 04:14:58] Proxying...` (KeepAlive respawn)
+   - `nc -z -w 2 127.0.0.1 15432` OPEN within ~5s of KeepAlive respawn
+
+**GOTCHA:**
+
+- **DeepSeek's `SERIAL` assumption was wrong** — DeepSeek (and even GPT-5.5 referenced "Codex GPT-5.5 flags line 13" inside DeepSeek's response, suggesting DeepSeek hallucinated Codex's verdict). Empirical override discriminant: always Read the legacy file before trusting any panelist's claim about its content. **Lesson**: cross-LLM panel review does NOT eliminate need for empirical Read on file contents — it identifies questions, doesn't answer them with certainty.
+- **The wrapper diff is in HOME, not in git**. The plist mirror at `infra/launchagents/` does NOT include the wrapper. Operator runbook in `research/operations/` is the canonical record. If the wrapper is lost (machine reimage), recover from the runbook diff + verify with `bash -n` + empirical reload.
+- **Codex panel response time was 2x Gemini and DeepSeek but caught the most P0 traps (2 of 4)**. Pattern: long empirical work (Read 7 source files, exec awk, exec pg_isready --version, check PATH) beats long-context style on infrastructure traps. Gemini called the bash `exec` pipeline trap; DeepSeek called the type drift assumption (but also wrong about which type was original).
+- **Skipped layers documented as deferrable**: L2 daemon `pg_isready` health-check (WR3 heartbeat already covers half-open zombies; would race with WR3 recovery), L3 fly-agent flap monitor (alert fatigue; existing `fly-restart-loop-detector.sh` covers correlated symptoms). Both ship-able later if empirical evidence justifies.
+- **Don't bundle PRs across failure domains**: 2/3 panelists (DeepSeek + Codex) preferred separate PRs over Gemini's bundle suggestion. DB migration + cron wrapper edit are different blast radii. Codex argument: "L2 changes behavior, not just observability. Gather timestamped flap evidence first" — applies equally to bundling.
+
+**Reference**:
+- PR: https://github.com/Balizero1987/Teman2/pull/828
+- Runbook: `research/operations/2026-05-23-pg-proxy-perl-prefix-runbook.md`
+- Panel artifacts: `/tmp/107-flap-panel/{brief,gemini,deepseek,codex,SYNTHESIS}.md`
+- Wrapper backup: `~/scripts/fly-pg-proxy-wrapper.sh.pre-perl-prefix-2026-05-23`
+- Empirical legacy file inspection: `grep -n "BIGSERIAL\|SERIAL" apps/backend-rag/backend/migrations/migration_107_bridge_outbox.py`
+
+---
+
 ### ✅ RESOLVED: W40 — migration 194 collision (W37 vs PR #828) renamed to 195 (2026-05-23)
 
 _Discovered: 2026-05-23 ~08:00 WITA during W40 audit · Severity: P1 (next deploy would fail `_assert_unique_migration_numbers`) · Status: **FIXED on commit `cf7ebd85b`** — rename + test update + 9/9 PASS_
