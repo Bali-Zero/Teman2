@@ -107,3 +107,17 @@ COMMENT ON COLUMN incident_ledger.outcome IS
 -- Rollback procedure documented in research/operations/2026-05-23-w37-incident-ledger.md
 -- (kept out of this file so the migration runner does not interpret it).
 SELECT 1;
+
+-- === ROLLBACK ===
+-- Reverses migration 195 (W37 incident_ledger). Additive-only forward: no
+-- destructive ops on existing tables. Rollback procedure (terminal):
+--   1. Stop the Organism Supervisor daemon (com.balizero.organism.supervisor)
+--      so no new dispatch INSERTs land in incident_ledger.
+--   2. Apply this rollback section via psql / fly ssh asyncpg:
+--      DROP INDEX IF EXISTS idx_incident_ledger_open;
+--      DROP INDEX IF EXISTS idx_incident_ledger_incident;
+--      DROP INDEX IF EXISTS idx_incident_ledger_correlation;
+--      DROP INDEX IF EXISTS idx_incident_ledger_started_at;
+--      DROP TABLE IF EXISTS incident_ledger;
+-- Full rollback runbook: research/operations/2026-05-23-w37-incident-ledger.md
+SELECT 1;
