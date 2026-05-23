@@ -47,7 +47,7 @@ if [[ -z "${TELEGRAM_BOT_TOKEN:-}" || -z "${TELEGRAM_OWNER_CHAT_ID:-}" ]]; then
 fi
 
 # Parse df: "/dev/disk3s1s1   460Gi    12Gi    29Gi    29%    ..."
-DISK_LINE=$(df -h / | tail -1)
+DISK_LINE=$(df -h /System/Volumes/Data | tail -1)
 USED_PERCENT=$(echo "$DISK_LINE" | awk '{print $5}' | tr -d '%')
 USED_HUMAN=$(echo "$DISK_LINE" | awk '{print $3}')
 AVAIL_HUMAN=$(echo "$DISK_LINE" | awk '{print $4}')
