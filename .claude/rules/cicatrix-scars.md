@@ -5,6 +5,32 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ✅ RESOLVED: W40 — migration 194 collision (W37 vs PR #828) renamed to 195 (2026-05-23)
+
+_Discovered: 2026-05-23 ~08:00 WITA during W40 audit · Severity: P1 (next deploy would fail `_assert_unique_migration_numbers`) · Status: **FIXED on commit `cf7ebd85b`** — rename + test update + 9/9 PASS_
+
+**TRAUMA:** Parallel-agent wave (4 worktree agents W36-W39 spawned in parallel) included W37 (agent `aacaf4b0815943bfb`) which authored `migrations_v2/194_organism_incident_ledger.sql`. The agent picked 194 as next-available based on a `ls | tail -3` survey at start. Meanwhile, sibling PR #828 (`feat/mig-107-promotion-2026-05-23`) was being merged in same window and brought `194_reconcile_107_bridge_outbox_tracking.sql` into main. W37 commit `1234c9114` at 07:47:20, PR #828 merge `473f92984` at 07:52:22 (5min later). Both files landed on origin/main with the same migration number.
+
+`backend/db/migration_manager.py` has `_assert_unique_migration_numbers` which raises at runner-load time — next deploy would have hard-failed before applying ANY migration. Pattern repeats the 2026-04-29 duplicate 129/130 cicatrix exactly.
+
+**ANTIBODY (shipped commit `cf7ebd85b`):**
+
+1. **Rename** W37's `194_organism_incident_ledger.sql` → `195_organism_incident_ledger.sql` via `git mv` (preserves history at 99% similarity).
+2. **Update SQL file header comment** `-- migration 194_...` → `195_...`.
+3. **Update test reference** `apps/organism/tests/test_incident_ledger.py:61` path string from 194 to 195.
+4. **Verify**: `ls migrations_v2/ | grep -oE '^[0-9]+' | sort -n | uniq -d` returns empty (no duplicates). 9/9 incident_ledger tests still PASS after rename.
+
+**GOTCHA:**
+
+- **Convention "newer arrival yields"** picked W37 to rename even though W37 was committed FIRST (07:47:20 vs 07:52:22). Reason: PR #828 went through the full PR/review cycle — number was "reserved" through that workflow. W37 was direct-to-main. The runner doesn't know about commit time; it sees both files at migration-load and fails.
+- **Pre-flight lesson for parallel-agent waves**: when spawning N agents that may pick migration numbers, the orchestrator should reserve consecutive numbers UPFRONT and pass them as constraints (e.g. "use migration 195"). Otherwise race on `ls | tail -3` survey can produce collisions invisible to each agent. Adding to orchestrator playbook.
+- **Detection happened by next iteration's survey**, not by any automatic check. The migration runner gate would catch this at DEPLOY time (post-deploy worker), but pre-deploy CI doesn't validate uniqueness. W41+ candidate: add `scripts/lint_migration_numbers.py` (mirror W34 pattern) + GitHub workflow on PR touching migrations_v2.
+- **W27/W31 chain validated in production AGAIN** during this W40 work — at 07:57:51 Cell observed sustained_red on backend (outage), emitted `cell_pulse_sustained_red consecutive=3 outbox_id=25327`, Organism dispatched `fly_machines_restart`, backend recovered ~2min. Backend `/health` returned 200 in 120ms at 08:00 verification time. Auto-heal works.
+
+**Reference**: commit `cf7ebd85b` on `origin/main`. Original W37 work in `1234c9114` + `d04fbc0f3`. Sibling collision source: PR #828 merge `473f92984`. Test PASS evidence: `pytest apps/organism/tests/test_incident_ledger.py -v` → 9/9 in 0.10s.
+
+---
+
 ### ℹ️ INFO: W39 — 8 Dependabot alerts triaged: 3 auto-patched (npm), 5 dismissed (no exploit path) (2026-05-23)
 
 _Discovered: 2026-05-23 ~04:50 WITA W39 loop iteration · Severity: INFO (3 high + 5 medium severity were structurally present but 5 had no actual attack path in our usage) · Status: **RESOLVED — 0 open Dependabot alerts post-W39**_
