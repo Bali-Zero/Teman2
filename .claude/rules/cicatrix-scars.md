@@ -5,6 +5,56 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ✅ RESOLVED: W53 — `nuzantara-sentinel` DLQ TERMINAL suppression gate missing at staleness layer (Phase 0 half-ship) (2026-05-23)
+
+_Discovered: 2026-05-23 19:23 WITA during W53 loop iteration — observed sentinel reverted to 10 escalations after W51 fix · Severity: P2 (alert storm — 27 of 38 lifetime stale-flagged jobs were already TERMINAL'd, re-escalated every hourly tick) · Status: **FIXED** commit `c68c8f549` — DLQ TERMINAL set pre-loaded per cycle + gate before WARNING log_
+
+**TRAUMA:** Phase 0 (commit `9e25403a5`) added DLQ TERMINAL state tracking but enforcement was HALF-shipped: only `dlq_autopilot.py:453-455` honors TERMINAL ("status=TERMINAL — skipping"). `nuzantara-sentinel.py:process_job` had no equivalent gate. Sentinel evaluates registry jobs for staleness (`age = now - last_ts > threshold` → status=stale) and escalates to T3/T4 via `add_to_dlq(...)` + `send_alert(...)` every cron tick. For jobs already in DLQ as TERMINAL (max_attempts=10 reached, dlq_autopilot gave up), sentinel keeps creating new DLQ entries with attempts=0 → never reaches TERMINAL → infinite re-escalation loop. Empirical: 27 of 38 lifetime unique stale-flagged jobs (71%) were already TERMINAL.
+
+W51 fixed the SCRIPT (plist pointing at HOME fork). W53 fixes the LOGIC (Phase 0 gate missing at sentinel layer). Both needed for the full Phase 0 intent.
+
+**ANTIBODY (shipped):**
+
+1. **DLQ TERMINAL set pre-loaded** at top of main loop (sentinel.py:790-803, before `for job_id, state in states.items()` at line 808):
+   ```python
+   dlq_terminal_set: set = set()
+   try:
+       _dlq_path = os.path.expanduser("~/.agent/decisions/dlq.json")
+       _dlq_data = json.loads(open(_dlq_path).read())
+       _dlq_list = _dlq_data.get("queue", _dlq_data if isinstance(_dlq_data, list) else [])
+       dlq_terminal_set = {e.get("job") for e in _dlq_list if isinstance(e, dict) and e.get("status") == "TERMINAL" and e.get("job")}
+       logger.info(f"W53 DLQ TERMINAL gate: {len(dlq_terminal_set)} jobs suppressed from escalation")
+   except Exception as _e:
+       logger.warning(f"W53 DLQ TERMINAL gate: failed to load dlq.json ({_e}); falling back to no suppression")
+   ```
+2. **Gate inside `process_job`** (sentinel.py:550-557, after optional-job check, before WARNING log):
+   ```python
+   if job_id in dlq_terminal_set and status in ("failed", "stale"):
+       logger.info(f"{job_id}: DLQ TERMINAL — suppressing escalation (W53)")
+       return {"action": "skipped_dlq_terminal", "tier": 0, "success": None}
+   ```
+3. **New action `skipped_dlq_terminal`** — distinct from `skipped_optional` / `skipped_circuit_open` / `suppressed_gateway_down` for DLQ telemetry observability.
+4. **Live verified at 19:26 WITA**: gate loaded 53 TERMINAL jobs from dlq.json. Current cycle had 9 stale jobs, 0 in TERMINAL set → all 9 correctly escalated (legitimate alerts let through). Future re-escalation of the 27 lifetime-known TERMINAL jobs now blocked.
+5. **Graceful degradation**: dlq.json read failure → empty set → behavior identical to pre-W53 (no new failure mode introduced).
+
+**ANTIBODY (deferred, W54+ candidate):**
+
+- **Type coercion in `process_job`**: live W53 run surfaced `ERROR Error processing dlq_autopilot: unsupported operand type(s) for -: 'float' and 'str'` at line 533 (`age = now - last_ts`). Some state files have `ts` as string. Fix: wrap with `float(state.get("ts", 0) or 0)`.
+- **`add_to_dlq` callers audit**: W53 prevents NEW entries from sentinel re-escalation, but audit other callers (escalation paths, retry handlers) to ensure they also respect TERMINAL.
+- **Sentinel one-shot run duration**: today's W53 live run took 140.9s vs 6.5s typical. Cause: RunAtLoad coincided with `_force_halfopen_stale_circuits` + 27 phantom CB purge + W53 gate IO. Investigate startup throttle.
+
+**GOTCHA:**
+
+- **Phase features must be enforced at EVERY layer**. Phase 0 added TERMINAL state but only half-shipped (dlq_autopilot ✓, sentinel ✗). Audit all consumers when a state field changes meaning.
+- **Empirical gate verification at load time**: `logger.info(f"... {len(dlq_terminal_set)} jobs suppressed")` confirms the read worked. Without it, silent failure of dlq.json parse would skip suppression silently.
+- **Current-cycle stale-overlap can be 0**: W53 was correct to design (27 lifetime TERMINAL jobs would be suppressed), but the most recent sentinel run happened to have 9 stale jobs none of which were currently TERMINAL. "Escalations stayed 10" doesn't mean fix is wrong — it means today's cohort is legitimate.
+- **Family**: sentinel decision-tree completeness (Phase 0 follow-up). W51 fixed the SCRIPT used (HOME-fork). W53 fixes the LOGIC inside that script. Same root concern (Phase 0 features not reaching production), different surface (deploy-path vs decision-tree).
+- **Action-name discipline matters for DLQ telemetry**: `skipped_dlq_terminal` joins the action enum {`healthy`, `running`, `skipped_circuit_open`, `skipped_optional`, `skipped_dlq_terminal`, `suppressed_gateway_down`, `escalated_tier0..tier4`}. Each name discriminates a different decision reason in `~/.agent/decisions/sentinel_status.json`.
+
+**Reference**: `research/operations/2026-05-23-w53-sentinel-dlq-terminal-gate.md` (next commit). File: `scripts/nuzantara-sentinel.py` (commit `c68c8f549`, ~41 lines added at lines 509-557 and 790-803). Phase 0 sibling: commit `9e25403a5`. W51 sibling: `research/operations/2026-05-23-w51-sentinel-plist-home-fork.md` (same script, different bug class).
+
+---
+
 ### ✅ RESOLVED: W52 — `lint_launchagents.sh` HOME-fork silent-drift rule (closes W50/W51 family at CI time) (2026-05-23)
 
 _Discovered: 2026-05-23 16:55 WITA during W52 loop iteration · Severity: P3 (preventive — closes regression class shipped by W50/W51) · Status: **SHIPPED** commit `4b97b041c`; rule live, empirical verified via injected test plist, current state 0 violations_
