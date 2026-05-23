@@ -5,6 +5,56 @@ Each entry has TRAUMA (what went wrong), ANTIBODY (how it's now protected), and 
 
 ---
 
+### ✅ RESOLVED: W54 — `dlq_autopilot.last.json` ts as ISO-8601 string crashed sentinel staleness check (2026-05-23)
+
+_Discovered: 2026-05-23 19:52 WITA during W53 live run — error log showed `unsupported operand type(s) for -: 'float' and 'str'` on dlq_autopilot job · Severity: P2 (silent monitoring blackout for dlq_autopilot job — sentinel crashed processing it every cycle, lost observability for unknown duration) · Status: **FIXED** commit `761edf656` — two-layer fix (source + defensive coercion)_
+
+**TRAUMA:** `scripts/dlq_autopilot.py:658` wrote its sentinel state file with `ts: time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())` (ISO-8601 string), while all 48 sibling state files at `~/.agent/decisions/state/*.last.json` use `ts: time.time()` (float epoch). Sentinel `process_job` line 533 did `age = now - last_ts` → `TypeError: unsupported operand type(s) for -: 'float' and 'str'`. The outer try/except in main loop (`scripts/nuzantara-sentinel.py:805-806`) caught + logged + continued, so dlq_autopilot was SILENTLY SKIPPED from every sentinel cycle for an unknown duration. Empirical: pre-W54 sentinel runs reported `48 checked` instead of expected `49`; post-W54 they report `49 checked, 40 healthy` ✓.
+
+The `try/except Exception` was too permissive: it catches type errors that should be visible alerts. Silent data loss in observability tooling is worst-case for a watchdog.
+
+**ANTIBODY (shipped — two-layer):**
+
+1. **Source fix** in `scripts/dlq_autopilot.py:658`:
+   ```python
+   "ts": time.time(),  # W54: float epoch seconds (was strftime ISO-8601)
+   ```
+   This eliminates the bug at the writer. Next cron tick (StartInterval=1800 = 30min) will rewrite the file with float epoch.
+2. **Defense-in-depth** in `scripts/nuzantara-sentinel.py:528-540` `process_job`:
+   ```python
+   _raw_ts = state.get("ts", 0)
+   try:
+       last_ts = float(_raw_ts) if _raw_ts not in (None, "") else 0.0
+   except (TypeError, ValueError):
+       try:
+           import datetime as _dt
+           last_ts = _dt.datetime.strptime(str(_raw_ts), "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=_dt.timezone.utc).timestamp()
+       except Exception:
+           logger.warning(f"{job_id}: state ts has unparseable type/value {_raw_ts!r}, treating as never-run")
+           last_ts = 0.0
+   ```
+   Three-layer fallback: `float()` → `datetime.strptime(...Z)` → 0 with WARNING log. Fixes monitoring blackout immediately for the legacy pre-W54 file on disk, plus handles any future writer that gets the type wrong.
+3. **Empirical verification (live run 20:09)**: jobs_checked 48→**49**, healthy 38→**40**, escalated 10→**9**, no new `unsupported operand` errors in sentinel.log post-W54.
+
+**ANTIBODY (deferred, W55+ candidate):**
+
+- **Sentinel `[ALERT-FAILED] HTTP Error 400: Bad Request`** surfaced in W54 live run — `send_alert()` malformed Telegram payload. Escalations failing silently. Investigate `sentinel_lib.alerter.send_alert()` retry/format logic.
+- **Narrower except clause in sentinel main loop**: current `except Exception as e: logger.error(...)` is too permissive. Type errors should escalate to "broken state file" alert, not silently continue. Either narrow except OR aggregate error count + alert at run-end.
+- **State-file schema audit**: 1 string-typed ts out of 49 writers = lucky-discovery. A CI lint that snapshots `~/.agent/decisions/state/*.last.json` schemas and flags drift would catch the next inconsistency at PR time.
+
+**GOTCHA:**
+
+- **State-file schema consistency matters even with `try/except`**. Sentinel's catch-all caught the TypeError but the job was silently dropped from monitoring. Watchdogs must NOT silently fail — they should escalate type-mismatch as alert.
+- **Survey schema across siblings before adding a new writer**: `for f in state/*.last.json; do python -c "type(json.load(open('$f')).get('ts'))..."` would have caught this at PR review. Out of 49 writers, 48 used the same type, 1 was the odd one out. Statistically the new writer was wrong.
+- **Defense-in-depth pays off**: source fix alone wouldn't help until dlq_autopilot ran once post-deploy (30min wait). Sentinel defensive coercion fixed monitoring blackout immediately on deploy. Two layers cost ~12 lines combined.
+- **`time.strftime()` vs `time.time()`** is a common type-confusion footgun in Python. `strftime` returns str; `time()` returns float. Reviewers should grep for `strftime.*[\"']ts[\"']` patterns when reviewing state-file writes.
+- **`_writer` audit-trail field** (D1.5 feature) made this trivially diagnosable: `_writer: dlq_autopilot` pointed straight to the culprit. Audit trails are cheap and ridiculously useful.
+- **Family**: state-file schema consistency. Sister to W53 (Phase 0 half-ship of TERMINAL state). Both reveal "field added/changed without consumer audit" anti-pattern.
+
+**Reference**: `research/operations/2026-05-23-w54-dlq-autopilot-ts-string-type.md` (next commit). Files: `scripts/dlq_autopilot.py:658` + `scripts/nuzantara-sentinel.py:528-540` (commit `761edf656`). Bad state file (self-heals at next dlq_autopilot run ~30min): `~/.agent/decisions/state/dlq_autopilot.last.json`. W53 sibling: `research/operations/2026-05-23-w53-sentinel-dlq-terminal-gate.md`.
+
+---
+
 ### ✅ RESOLVED: W53 — `nuzantara-sentinel` DLQ TERMINAL suppression gate missing at staleness layer (Phase 0 half-ship) (2026-05-23)
 
 _Discovered: 2026-05-23 19:23 WITA during W53 loop iteration — observed sentinel reverted to 10 escalations after W51 fix · Severity: P2 (alert storm — 27 of 38 lifetime stale-flagged jobs were already TERMINAL'd, re-escalated every hourly tick) · Status: **FIXED** commit `c68c8f549` — DLQ TERMINAL set pre-loaded per cycle + gate before WARNING log_
