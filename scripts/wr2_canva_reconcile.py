@@ -13,8 +13,9 @@ Symptom (observed 2026-05-10 03:48 WITA on draft de69f035):
   still NULL.
 - Operator has to UPDATE manually (which is what happened tonight).
 
-This script reconciles. Default mode: scan all drafts in
-`drafts_imaged` / `drafts` status, check the latest
+This script reconciles. Default mode: scan all pre-render drafts consumed
+by canva-apply (`drafts`, `drafts_imaged`, `drafts_imaged_facted`,
+`drafts_imaged_checked`), check the latest
 `carousel_canva.json` for a matching topic, UPDATE if confirmed.
 
 Usage:
@@ -80,7 +81,12 @@ async def _fetch_unfinished(conn: asyncpg.Connection) -> list[asyncpg.Record]:
         """
         SELECT id, topic, status, canva_design_id
           FROM war_room_drafts
-         WHERE status IN ('drafts_imaged', 'drafts')
+         WHERE status IN (
+             'drafts_imaged',
+             'drafts',
+             'drafts_imaged_facted',
+             'drafts_imaged_checked'
+         )
            AND canva_edit_url IS NULL
          ORDER BY created_at DESC
          LIMIT 20
@@ -105,7 +111,12 @@ async def _apply_update(
                status           = 'rendered',
                updated_at       = NOW()
          WHERE id = $1
-           AND status IN ('drafts_imaged', 'drafts')
+           AND status IN (
+               'drafts_imaged',
+               'drafts',
+               'drafts_imaged_facted',
+               'drafts_imaged_checked'
+           )
         """,
         draft_id,
         design_id,
