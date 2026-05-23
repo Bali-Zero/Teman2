@@ -29,13 +29,16 @@ Quota policy (Sentry free tier = 5k events/month shared error+transaction):
 
 from __future__ import annotations
 
+import logging
 import os
 import re
+import threading
 from typing import Any
 
-import sentry_sdk
-
 PII_REDACTION_PLACEHOLDER = "[REDACTED]"
+logger = logging.getLogger("zantara.backend")
+_SENTRY_INIT_LOCK = threading.Lock()
+_SENTRY_INIT_STARTED = False
 
 # Keys whose *value* must always be redacted, regardless of nesting depth.
 # Match is case-insensitive and also catches common suffixed variants (e.g.
@@ -183,22 +186,9 @@ def _before_send(event: dict[str, Any], hint: dict[str, Any]) -> dict[str, Any] 
         }
 
 
-def init_sentry() -> None:
-    """
-    Initialize Sentry only when configured.
-
-    Notes:
-    - Avoids initializing during tests unless explicitly desired.
-    - Default behavior is opt-in via SENTRY_DSN.
-    - `traces_sample_rate` defaults to 0.0 in production (APM is opt-in).
-    - `before_send` strips PII before anything leaves the process.
-    """
-    if os.getenv("SKIP_SENTRY_INIT"):
-        return
-
-    dsn = os.getenv("SENTRY_DSN", "")
-    if not dsn:
-        return
+def _init_sentry_blocking(dsn: str) -> None:
+    """Run the actual SDK import/init outside the API startup critical path."""
+    import sentry_sdk
 
     send_pii = os.getenv("SENTRY_SEND_DEFAULT_PII", "").strip().lower() in {"1", "true", "yes"}
     env = os.getenv("ENVIRONMENT", "development")
@@ -217,3 +207,45 @@ def init_sentry() -> None:
         release=os.getenv("SENTRY_RELEASE", "nuzantara-backend@1.0.0"),
         before_send=_before_send,
     )
+
+
+def init_sentry() -> None:
+    """
+    Initialize Sentry only when configured.
+
+    Notes:
+    - Avoids initializing during tests unless explicitly desired.
+    - Default behavior is opt-in via SENTRY_DSN.
+    - `traces_sample_rate` defaults to 0.0 in production (APM is opt-in).
+    - `before_send` strips PII before anything leaves the process.
+    - SDK import/init runs in a daemon thread by default so Sentry cannot
+      block Fly.io health checks before the HTTP socket is bound.
+    """
+    if os.getenv("SKIP_SENTRY_INIT"):
+        return
+
+    dsn = os.getenv("SENTRY_DSN", "")
+    if not dsn:
+        return
+
+    if os.getenv("SENTRY_INIT_SYNC", "").strip().lower() in {"1", "true", "yes"}:
+        _init_sentry_blocking(dsn)
+        return
+
+    def _background_init() -> None:
+        try:
+            _init_sentry_blocking(dsn)
+        except Exception as exc:
+            logger.warning("Sentry init skipped after startup: %s", exc)
+
+    global _SENTRY_INIT_STARTED
+    with _SENTRY_INIT_LOCK:
+        if _SENTRY_INIT_STARTED:
+            return
+        _SENTRY_INIT_STARTED = True
+        thread = threading.Thread(
+            target=_background_init,
+            name="sentry-init",
+            daemon=True,
+        )
+        thread.start()
