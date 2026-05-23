@@ -507,6 +507,14 @@ AUTO_APPROVE_RULES: list[tuple[re.Pattern[str], str]] = [
         re.compile(r"(^|/)vendor/[^/]+/notebooks/.*\.ipynb$"),
         "vendor third-party notebooks: base64 PNG cell outputs from matplotlib, not secrets",
     ),
+    # research/operations/audits/*.json — launchd/system audit snapshots that
+    # frequently capture command output (e.g. SSH commands with base64-encoded
+    # Python payloads inside stderr_sample fields). These are observational
+    # data, not credentials, and the JSON files are read-only audit artifacts.
+    (
+        re.compile(r"(^|/)research/operations/audits/.*\.json$"),
+        "research/operations/audits/*.json: audit snapshots, base64 captures of command output (not secrets)",
+    ),
 ]
 
 # Hard blocks — if the path matches any of these, NEVER auto-approve even if
