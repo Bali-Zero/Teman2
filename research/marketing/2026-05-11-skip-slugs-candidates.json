@@ -1,0 +1,109 @@
+{
+  "generated_at": "2026-05-12T02:22:55.198Z",
+  "total_processed": 220,
+  "skip_count": 12,
+  "flag_count": 208,
+  "heuristic_breakdown": {
+    "migration_keyword": 1,
+    "date_context": 0,
+    "tutorial_signal": 11
+  },
+  "candidates": [
+    {
+      "slug": "immigration/constitutional-clash-bank-statements",
+      "lang": "en",
+      "reason": "Article explicitly references the regulatory change (matched: \"replaced by\")",
+      "matched_phrase": "replaced by",
+      "surrounding_snippet": "- Replaced by stricter enforcement of existing deportation laws - Focus shifts to \"behavior\" not \"wealth\" - No new regulations published - Business as usual --- ## PRECEDENTS: Koster's Track Record Governor Koster has a history of bold announcements that evolve significantly before implementation: | Announcement | Outcome | | ---------------------- | ----------",
+      "heuristic_family": "migration_keyword"
+    },
+    {
+      "slug": "immigration/e25b-director-kitas-guide.fr",
+      "lang": "en",
+      "reason": "Article title signals historical/educational intent (matched: \"timeline\")",
+      "matched_phrase": "timeline",
+      "surrounding_snippet": "Title: \"E25B Director KITAS 2026: Requirements, Costs, Timeline, and Complete Application Guide\"",
+      "heuristic_family": "tutorial_signal"
+    },
+    {
+      "slug": "immigration/e25b-director-kitas-guide.id",
+      "lang": "en",
+      "reason": "Article title signals historical/educational intent (matched: \"timeline\")",
+      "matched_phrase": "timeline",
+      "surrounding_snippet": "Title: \"E25B Director KITAS 2026: Persyaratan, Biaya, Timeline, dan Panduan Aplikasi Lengkap\"",
+      "heuristic_family": "tutorial_signal"
+    },
+    {
+      "slug": "immigration/e25b-director-kitas-guide.it",
+      "lang": "en",
+      "reason": "Article title signals historical/educational intent (matched: \"timeline\")",
+      "matched_phrase": "timeline",
+      "surrounding_snippet": "Title: \"E25B Director KITAS 2026: Requisiti, Costi, Timeline e Guida Completa all'Applicazione\"",
+      "heuristic_family": "tutorial_signal"
+    },
+    {
+      "slug": "immigration/e25b-director-kitas-guide",
+      "lang": "en",
+      "reason": "Article title signals historical/educational intent (matched: \"timeline\")",
+      "matched_phrase": "timeline",
+      "surrounding_snippet": "Title: \"E25B Director KITAS 2026: Requirements, Costs, Timeline, and Complete Application Guide\"",
+      "heuristic_family": "tutorial_signal"
+    },
+    {
+      "slug": "immigration/e25b-director-kitas-guide.ru",
+      "lang": "en",
+      "reason": "Article title signals historical/educational intent (matched: \"timeline\")",
+      "matched_phrase": "timeline",
+      "surrounding_snippet": "Title: \"E25B Director KITAS 2026: Requirements, Costs, Timeline, and Complete Application Guide\"",
+      "heuristic_family": "tutorial_signal"
+    },
+    {
+      "slug": "immigration/immigration-checks-documents-carry-indonesia.id",
+      "lang": "en",
+      "reason": "Article title signals historical/educational intent (matched: \"migrasi\")",
+      "matched_phrase": "migrasi",
+      "surrounding_snippet": "Title: \"Pemeriksaan Imigrasi dan Dokumen yang Wajib Dibawa di Indonesia 2026: Panduan Lengkap\"",
+      "heuristic_family": "tutorial_signal"
+    },
+    {
+      "slug": "immigration/indonesia-visa-timeline-comparison.fr",
+      "lang": "en",
+      "reason": "Article title signals historical/educational intent (matched: \"timeline\")",
+      "matched_phrase": "timeline",
+      "surrounding_snippet": "Title: \"Indonesia Visa Processing Times 2026: Side-by-Side Timeline Comparison of Every Visa Type\"",
+      "heuristic_family": "tutorial_signal"
+    },
+    {
+      "slug": "immigration/indonesia-visa-timeline-comparison.id",
+      "lang": "en",
+      "reason": "Article title signals historical/educational intent (matched: \"timeline\")",
+      "matched_phrase": "timeline",
+      "surrounding_snippet": "Title: \"Waktu Pemrosesan Visa Indonesia 2026: Perbandingan Timeline Berdampingan untuk Setiap Jenis Visa\"",
+      "heuristic_family": "tutorial_signal"
+    },
+    {
+      "slug": "immigration/indonesia-visa-timeline-comparison.it",
+      "lang": "en",
+      "reason": "Article title signals historical/educational intent (matched: \"timeline\")",
+      "matched_phrase": "timeline",
+      "surrounding_snippet": "Title: \"Tempi di Elaborazione Visto Indonesia 2026: Confronto Affiancato delle Timeline per Ogni Tipo di Visto\"",
+      "heuristic_family": "tutorial_signal"
+    },
+    {
+      "slug": "immigration/indonesia-visa-timeline-comparison",
+      "lang": "en",
+      "reason": "Article title signals historical/educational intent (matched: \"timeline\")",
+      "matched_phrase": "timeline",
+      "surrounding_snippet": "Title: \"Indonesia Visa Processing Times 2026: Side-by-Side Timeline Comparison of Every Visa Type\"",
+      "heuristic_family": "tutorial_signal"
+    },
+    {
+      "slug": "immigration/indonesia-visa-timeline-comparison.ru",
+      "lang": "en",
+      "reason": "Article title signals historical/educational intent (matched: \"timeline\")",
+      "matched_phrase": "timeline",
+      "surrounding_snippet": "Title: \"Indonesia Visa Processing Times 2026: Side-by-Side Timeline Comparison of Every Visa Type\"",
+      "heuristic_family": "tutorial_signal"
+    }
+  ]
+}
