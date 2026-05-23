@@ -27,11 +27,11 @@ grep -rn "except.*asyncpg\.PostgresError" --include="*.py" -l
 
 ### Daemon patches
 
-| File | Sites | Class |
-|---|---|---|
-| `scripts/wr2_supervisor.py` | 3 (lines 292, 479, 651) | Long-running daemon with LISTEN + heartbeat + outer reconnect loop |
-| `scripts/lead_intent_matcher.py` | 1 (line 166) | Cron one-shot fallback path |
-| `apps/backend-rag/scripts/crm_automation_engine.py` | 1 (line 532) | Pool creation retry loop |
+| File                                                | Sites                   | Class                                                              |
+| --------------------------------------------------- | ----------------------- | ------------------------------------------------------------------ |
+| `scripts/wr2_supervisor.py`                         | 3 (lines 292, 479, 651) | Long-running daemon with LISTEN + heartbeat + outer reconnect loop |
+| `scripts/lead_intent_matcher.py`                    | 1 (line 166)            | Cron one-shot fallback path                                        |
+| `apps/backend-rag/scripts/crm_automation_engine.py` | 1 (line 532)            | Pool creation retry loop                                           |
 
 All patched with the canonical pattern:
 
@@ -77,14 +77,14 @@ Live codebase post-W34 fixes: **0 violations, exit 0**.
 
 Exempt paths and rationale:
 
-| Path | Why exempt |
-|---|---|
-| `apps/backend-rag/backend/app/routers/` | HTTP handlers — request-scoped, no daemon loop. Connection failure returns 500 to client, no silent-death class. |
-| `apps/backend-rag/backend/agents/` | Per-call agents, no long-running connection state. |
-| `apps/backend-rag/backend/db/base_repository.py` | Per-query retry helper; caller responsible for reconnect at higher layer. |
-| `apps/backend-rag/backend/db/migration_base.py` | One-shot migration runner. |
-| `apps/backend-rag/backend/services/portal/_mixins/billing.py` | One-shot billing operation. |
-| `*/tests/*` | Test fixtures legitimately catch PostgresError only (testing the happy path). |
+| Path                                                          | Why exempt                                                                                                       |
+| ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| `apps/backend-rag/backend/app/routers/`                       | HTTP handlers — request-scoped, no daemon loop. Connection failure returns 500 to client, no silent-death class. |
+| `apps/backend-rag/backend/agents/`                            | Per-call agents, no long-running connection state.                                                               |
+| `apps/backend-rag/backend/db/base_repository.py`              | Per-query retry helper; caller responsible for reconnect at higher layer.                                        |
+| `apps/backend-rag/backend/db/migration_base.py`               | One-shot migration runner.                                                                                       |
+| `apps/backend-rag/backend/services/portal/_mixins/billing.py` | One-shot billing operation.                                                                                      |
+| `*/tests/*`                                                   | Test fixtures legitimately catch PostgresError only (testing the happy path).                                    |
 
 Adding a new exempt path: add prefix to `ALLOW_PREFIXES` in `scripts/lint_asyncpg_except_completeness.py` with comment explaining why.
 

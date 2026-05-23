@@ -100,12 +100,12 @@ a replay-only safety.
 
 19 tests in `backend/tests/services/events/test_outbox_stale_ttl.py`:
 
-| Group | Tests | Coverage |
-|---|---|---|
-| `_resolve_payload_ttl_minutes` | 5 | default, env, explicit-wins, malformed-env, negative-env |
-| `_payload_timestamp_seconds` | 5 | ms field, sec fallback, missing, invalid, non-dict |
-| `_is_payload_stale` | 4 | fresh, old, no-timestamp open-default, ttl=0 disables |
-| `replay_unconsumed` integration | 5 | stale-skip+ack, no-timestamp pass-through, env override, explicit-arg override, WARNING log emitted |
+| Group                           | Tests | Coverage                                                                                            |
+| ------------------------------- | ----- | --------------------------------------------------------------------------------------------------- |
+| `_resolve_payload_ttl_minutes`  | 5     | default, env, explicit-wins, malformed-env, negative-env                                            |
+| `_payload_timestamp_seconds`    | 5     | ms field, sec fallback, missing, invalid, non-dict                                                  |
+| `_is_payload_stale`             | 4     | fresh, old, no-timestamp open-default, ttl=0 disables                                               |
+| `replay_unconsumed` integration | 5     | stale-skip+ack, no-timestamp pass-through, env override, explicit-arg override, WARNING log emitted |
 
 All 19 PASS in 0.08s. Regression sweep against the 4 existing event-outbox
 test files: 32 PASS + 6 SKIP (pre-existing skips, unrelated).

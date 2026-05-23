@@ -465,7 +465,7 @@ async def get_unconsumed_count(
     )
 
 
-__all__ = [
+__all__ = [  # noqa: RUF022 — comment block separates W36 internals from public API
     "InvalidChannelError",
     "acknowledge",
     "get_unconsumed_count",

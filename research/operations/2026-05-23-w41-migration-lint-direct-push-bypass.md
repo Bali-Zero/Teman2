@@ -17,11 +17,11 @@ This is the **third occurrence** of the dup-number class — first time it'd act
 
 ## Three-layer defense
 
-| Layer | File | Stage caught | Bypassable |
-|---|---|---|---|
-| 1 | `scripts/lint_migration_numbers.py` (NEW) | manual invocation, building block for layers 2/3 | n/a |
-| 2 | `.husky/pre-commit` (extended) | **commit-time** (best) | `HUSKY=0` (legitimate hotfixes) |
-| 3 | `.github/workflows/lint-migration-numbers.yml` (extended `+push`) | **post-merge, within 60s** | cannot bypass — CI runs unconditionally |
+| Layer | File                                                              | Stage caught                                     | Bypassable                              |
+| ----- | ----------------------------------------------------------------- | ------------------------------------------------ | --------------------------------------- |
+| 1     | `scripts/lint_migration_numbers.py` (NEW)                         | manual invocation, building block for layers 2/3 | n/a                                     |
+| 2     | `.husky/pre-commit` (extended)                                    | **commit-time** (best)                           | `HUSKY=0` (legitimate hotfixes)         |
+| 3     | `.github/workflows/lint-migration-numbers.yml` (extended `+push`) | **post-merge, within 60s**                       | cannot bypass — CI runs unconditionally |
 
 Each layer catches a different stage. Defense-in-depth.
 
@@ -56,6 +56,7 @@ api_keys        Value error, API_KEYS must be set...
 ```
 
 The manager's import chain pulls in `Settings()` which requires production env vars unavailable in:
+
 - Local dev shells (no secrets loaded)
 - Husky pre-commit hook contexts (`/bin/sh` minimal env)
 - CI lint job runners (only secrets exposed to deploy jobs)
@@ -102,7 +103,7 @@ on:
   pull_request:
     paths:
       - "apps/backend-rag/backend/db/migrations_v2/**"
-  push:                                # NEW W41
+  push: # NEW W41
     branches:
       - main
     paths:
@@ -115,18 +116,18 @@ Cannot block the merge (push has already happened), but produces immediate CI fa
 
 10/10 PASS in 0.06s (`scripts/tests/test_lint_migration_numbers.py`):
 
-| Test | Coverage |
-|---|---|
-| `test_no_files_returns_empty` | Empty dir baseline |
-| `test_unique_prefixes_clean` | Happy path |
-| `test_w40_collision_caught` | Real W40 case (194_incident_ledger + 194_reconcile_107) |
-| `test_2026_04_29_legacy_pattern_caught` | Regression guard for original P0-7 (dup 129 + 130) |
-| `test_non_numeric_prefix_ignored` | Files like `rollback_one.sql`, `README.sql` not flagged |
-| `test_triple_collision_lists_all` | 3+ files at same prefix all reported |
-| `test_main_exits_0_on_live_repo` | Live state (79 files) green post-W40 fix |
-| `test_main_exits_1_on_synthetic_collision` | End-to-end CLI exit code |
-| `test_main_exits_0_on_synthetic_clean` | Negative control |
-| `test_drift_check_vs_canonical` | Inlined algorithm matches re-implemented canonical |
+| Test                                       | Coverage                                                |
+| ------------------------------------------ | ------------------------------------------------------- |
+| `test_no_files_returns_empty`              | Empty dir baseline                                      |
+| `test_unique_prefixes_clean`               | Happy path                                              |
+| `test_w40_collision_caught`                | Real W40 case (194_incident_ledger + 194_reconcile_107) |
+| `test_2026_04_29_legacy_pattern_caught`    | Regression guard for original P0-7 (dup 129 + 130)      |
+| `test_non_numeric_prefix_ignored`          | Files like `rollback_one.sql`, `README.sql` not flagged |
+| `test_triple_collision_lists_all`          | 3+ files at same prefix all reported                    |
+| `test_main_exits_0_on_live_repo`           | Live state (79 files) green post-W40 fix                |
+| `test_main_exits_1_on_synthetic_collision` | End-to-end CLI exit code                                |
+| `test_main_exits_0_on_synthetic_clean`     | Negative control                                        |
+| `test_drift_check_vs_canonical`            | Inlined algorithm matches re-implemented canonical      |
 
 ## What's still open
 

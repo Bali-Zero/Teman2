@@ -11,16 +11,17 @@ sources: 6
 
 During /loop iteration W40 survey of `migrations_v2/` directory, discovered **two files** sharing migration number `194`:
 
-| File | Origin | Commit | Landed on main |
-|---|---|---|---|
-| `194_organism_incident_ledger.sql` | W37 (parallel-agent wave, 2026-05-23) | `1234c9114` | 07:47:20 WITA |
-| `194_reconcile_107_bridge_outbox_tracking.sql` | PR #828 (mig-107 promotion) | (via merge `473f92984`) | 07:52:22 WITA |
+| File                                           | Origin                                | Commit                  | Landed on main |
+| ---------------------------------------------- | ------------------------------------- | ----------------------- | -------------- |
+| `194_organism_incident_ledger.sql`             | W37 (parallel-agent wave, 2026-05-23) | `1234c9114`             | 07:47:20 WITA  |
+| `194_reconcile_107_bridge_outbox_tracking.sql` | PR #828 (mig-107 promotion)           | (via merge `473f92984`) | 07:52:22 WITA  |
 
 `backend/db/migration_manager.py` enforces unique migration numbers via `_assert_unique_migration_numbers` — would have hard-failed on **next post-deploy migration run**, blocking ALL pending migrations from applying.
 
 ## Root cause
 
 Parallel concurrency between:
+
 1. **W37 agent** (worktree `aacaf4b0815943bfb` of W36-W39 parallel wave) — picked `194` from `ls migrations_v2/ | tail -3` survey AT START of agent session
 2. **PR #828** (`feat/mig-107-promotion-2026-05-23`) — author had reserved `194` during PR/review cycle
 
@@ -94,7 +95,7 @@ Backend `/health` returned 200 in 120ms at 08:00 verification time. Auto-heal wo
 3. `apps/backend-rag/backend/db/migrations_v2/194_reconcile_107_bridge_outbox_tracking.sql` — PR #828's winning 194
 4. `apps/organism/tests/test_incident_ledger.py:61` — test reference updated to 195
 5. Git log: commit `1234c9114` (W37 ship), commit `473f92984` (PR #828 merge), commit `cf7ebd85b` (W40 fix)
-6. Cicatrix scar 2026-04-29 "SQL v2 migrations duplicate numbers 129_* and 130_*" — precedent for this class
+6. Cicatrix scar 2026-04-29 "SQL v2 migrations duplicate numbers 129*\* and 130*\*" — precedent for this class
 
 ## Next
 
