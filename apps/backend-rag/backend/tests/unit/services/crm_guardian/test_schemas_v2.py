@@ -131,17 +131,25 @@ class TestL1ClientSummaryV2:
         assert "narrative_id" not in dump
         assert "narrative_en" in dump
 
-    def test_narrative_id_rejected_as_extra_field(self) -> None:
-        """Trying to pass narrative_id should fail (extra='forbid')."""
-        with pytest.raises(ValidationError):
-            L1ClientSummary(
-                client_id=1,
-                generated_at="2026-05-16T10:00:00Z",
-                source_folder_id="folder_abc",
-                source_file_count=0,
-                source_file_fingerprint="deadbeef",
-                narrative_id="should-be-rejected",  # type: ignore[call-arg]
-            )
+    def test_narrative_id_silently_dropped_as_extra_field(self) -> None:
+        """Passing narrative_id is silently dropped after Wave 1 flip to extra='ignore'.
+
+        2026-05-23 Wave 1 (commit ce61e4d6a): L1ClientSummary root flipped
+        extra='forbid' → 'ignore' to survive Gemini struct-shift under high
+        payload (5/5 fail empirical on re-enqueue cohort 06:54 WITA). Trade-off
+        documented in schemas.py:316-323. Test updated from rejection to
+        silent-drop assertion.
+        """
+        summary = L1ClientSummary(
+            client_id=1,
+            generated_at="2026-05-16T10:00:00Z",
+            source_folder_id="folder_abc",
+            source_file_count=0,
+            source_file_fingerprint="deadbeef",
+            narrative_id="should-be-silently-dropped",  # type: ignore[call-arg]
+        )
+        dump = summary.model_dump()
+        assert "narrative_id" not in dump
 
     def test_cross_folder_summary_roundtrip(self) -> None:
         """Worker writes L1 cross-folder → roundtrip through JSONB serialization."""
