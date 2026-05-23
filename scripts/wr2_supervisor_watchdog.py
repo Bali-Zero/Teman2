@@ -184,8 +184,50 @@ async def _probe_heartbeat_age(conn: asyncpg.Connection) -> float | None:
     return float(age)
 
 
+async def _probe_canva_renderer_enabled(conn: asyncpg.Connection) -> bool:
+    """W46 (2026-05-23): kill-switch awareness.
+
+    Reads `system_settings.wr2_canva_renderer_enabled`. Defaults to True
+    when the row is missing (degrade-OPEN: assume feature is on, fire
+    alerts as before — safer than silent suppression on fresh prod).
+
+    Pipeline_frozen + success_rate_low alerts are gated on this flag at
+    their respective sites — when the canva-apply worker is deliberately
+    disabled (cicatrix 2026-05-13 + 2026-05-15 kill switch ON), the
+    pipeline being "frozen" is the EXPECTED state, not an incident.
+
+    W46 root finding: this alert fired daily for 7 days (last canva render
+    2026-05-15) because the watchdog was unaware of the operator-controlled
+    kill switch. Fixed at the probe level so all callers benefit.
+    """
+    try:
+        row = await conn.fetchval(
+            "SELECT value FROM system_settings WHERE key = $1",
+            "wr2_canva_renderer_enabled",
+        )
+    except asyncpg.UndefinedTableError:
+        logger.debug("system_settings table missing — degrade-open (assume enabled)")
+        return True
+    if row is None:
+        return True  # missing row = default enabled
+    return str(row).strip().lower() in {"true", "1", "yes", "on", "enabled"}
+
+
 async def _probe_pipeline_state(conn: asyncpg.Connection) -> dict[str, Any]:
-    """Snapshot for PIPELINE_FROZEN: oldest pending + recent renders."""
+    """Snapshot for PIPELINE_FROZEN: oldest pending + recent renders.
+
+    Returns `{"canva_disabled": True, ...}` early when the canva-apply
+    worker is killed via system_settings.wr2_canva_renderer_enabled=false
+    (W46 2026-05-23). Caller sees `canva_disabled=True` and skips the
+    pipeline_frozen alert — pipeline naturally backs up while feature is
+    off, which is by design.
+    """
+    if not await _probe_canva_renderer_enabled(conn):
+        return {
+            "oldest_pending_hours": 0.0,
+            "rendered_recent": 0,
+            "canva_disabled": True,
+        }
     # Non-terminal statuses are everything that NeedsToProgress; the
     # supervisor reconcile uses the same list (cf. NONTERMINAL_TO_NEXT_STAGE).
     oldest_pending = await conn.fetchval(
@@ -214,6 +256,7 @@ async def _probe_pipeline_state(conn: asyncpg.Connection) -> dict[str, Any]:
     return {
         "oldest_pending_hours": float(oldest_pending) if oldest_pending else 0.0,
         "rendered_recent": int(rendered_recent or 0),
+        "canva_disabled": False,
     }
 
 
@@ -304,9 +347,25 @@ async def _evaluate_once(conn: asyncpg.Connection) -> None:
     else:
         logger.debug("heartbeat ok (age=%s)", age)
 
-    # P0 — PIPELINE_FROZEN
+    # P0 — PIPELINE_FROZEN (W46: skip when canva-apply is kill-switched OFF)
     pipeline = await _probe_pipeline_state(conn)
-    if (
+    if pipeline.get("canva_disabled"):
+        # Operator deliberately disabled canva-apply via
+        # system_settings.wr2_canva_renderer_enabled=false. Pipeline being
+        # "frozen" while feature is off is the expected state, not an
+        # incident. Skip the alert + reset cooldown so the next genuine
+        # incident fires immediately when feature is re-enabled.
+        logger.info("pipeline_frozen check skipped (canva-renderer kill switch OFF)")
+        # Clear stale cooldown so re-enabling the feature gets a fresh alert
+        # window if the pipeline is still actually frozen.
+        STATE_PATH.parent.mkdir(parents=True, exist_ok=True)
+        if STATE_PATH.is_file():
+            kept = [
+                line for line in STATE_PATH.read_text().splitlines()
+                if not line.startswith("last_alert_pipeline_frozen=")
+            ]
+            STATE_PATH.write_text("\n".join(kept) + ("\n" if kept else ""))
+    elif (
         pipeline["oldest_pending_hours"] > PENDING_OLDEST_HOURS
         and pipeline["rendered_recent"] == 0
     ):
@@ -335,7 +394,11 @@ async def _evaluate_once(conn: asyncpg.Connection) -> None:
             pipeline["rendered_recent"],
         )
 
-    # P1 — SUCCESS_RATE_LOW (7-day rolling)
+    # P1 — SUCCESS_RATE_LOW (7-day rolling, W46: skip when canva-apply OFF —
+    # no work attempted = telemetry trivially shows "low rate", false-alert)
+    if pipeline.get("canva_disabled"):
+        logger.info("success_rate_low check skipped (canva-renderer kill switch OFF)")
+        return
     sr = _probe_success_rate_telemetry()
     # Need a minimum sample size to avoid first-day flutter.
     MIN_ATTEMPTS = 5
