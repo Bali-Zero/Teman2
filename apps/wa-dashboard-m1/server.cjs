@@ -19,6 +19,7 @@ const ACCOUNTS_JSON =
   path.join(process.env.HOME || "/", ".wa-mirror.accounts.json");
 
 const MEDIA_ROOT = process.env.WA_MIRROR_MEDIA_ROOT || "/Users/nuzantara/wa-mirror-media";
+const TEAM_AVATAR_DIR = process.env.WA_TEAM_AVATAR_DIR || "/Users/nuzantara/Desktop/nuzantara/apps/mouth/public/static/team";
 
 const TEAM = (() => {
   try {
@@ -28,6 +29,23 @@ const TEAM = (() => {
     return [];
   }
 })();
+
+// Build team→avatar map from disk
+const TEAM_AVATAR_FILES = {};
+try {
+  if (fs.existsSync(TEAM_AVATAR_DIR)) {
+    const files = fs.readdirSync(TEAM_AVATAR_DIR);
+    for (const m of TEAM) {
+      const lower = m.name.toLowerCase();
+      const candidates = files.filter((f) => f.toLowerCase().startsWith(lower + "."));
+      if (candidates.length) {
+        TEAM_AVATAR_FILES[m.e164] = path.join(TEAM_AVATAR_DIR, candidates[0]);
+      }
+    }
+  }
+} catch (err) {
+  console.warn(`[wa-dashboard-m1] team avatar load failed: ${err.message}`);
+}
 
 const TEAM_PHONES = new Set();
 for (const m of TEAM) {
@@ -144,6 +162,7 @@ async function fetchOverview() {
     label: m.label || "BZ",
     role: m.role || "team",
     aliases: aliasesForTeamMember(m),
+    avatar_url: TEAM_AVATAR_FILES[m.e164] ? `/team-avatar/${encodeURIComponent(m.name.toLowerCase())}` : null,
   }));
 
   for (const member of result.team) {
@@ -211,6 +230,7 @@ async function fetchOverview() {
              COALESCE(cli_id.tax_consultant, cli_phone.tax_consultant) AS tax_consultant,
              COALESCE(cli_id.strategic_recap, cli_phone.strategic_recap) AS strategic_recap,
              COALESCE(cli_id.strategic_recap_source, cli_phone.strategic_recap_source) AS strategic_recap_source,
+             COALESCE(cli_id.avatar_url, cli_phone.avatar_url) AS avatar_url,
              wc.name AS wa_contact_name,
              wc.business_name AS wa_business_name
       FROM grouped g
@@ -264,6 +284,7 @@ async function fetchOverview() {
              cli.full_name AS sender_crm_name,
              cli.company_name AS sender_company,
              cli.strategic_recap AS sender_strategic_recap,
+             cli.avatar_url AS sender_avatar_url,
              wc.name AS sender_wa_contact_name
       FROM grouped g
       LEFT JOIN last_msg lm USING (group_jid)
@@ -329,6 +350,7 @@ async function fetchOverview() {
         tax_consultant: r.tax_consultant,
         strategic_recap: r.strategic_recap,
         strategic_recap_source: r.strategic_recap_source,
+        avatar_url: r.avatar_url,
         company_name: r.company_name,
         wa_contact_name: waName,
         wa_business_name: businessName,
@@ -362,6 +384,7 @@ async function fetchOverview() {
         sender_wa_contact_name: cleanName(r.sender_wa_contact_name),
         sender_company: r.sender_company,
         sender_strategic_recap: r.sender_strategic_recap,
+        sender_avatar_url: r.sender_avatar_url,
         crm_match: !!r.sender_crm_name,
         attention_priority: r.attention_priority,
         n: parseInt(r.n, 10),
@@ -579,6 +602,50 @@ app.get("/media", (req, res) => {
       : `inline; filename="${path.basename(resolved)}"`,
   );
   fs.createReadStream(resolved).pipe(res);
+});
+
+// Team avatar — serve disk file mapped by lowercased team name
+app.get("/team-avatar/:name", (req, res) => {
+  const name = String(req.params.name || "").toLowerCase().replace(/[^a-z0-9_-]/g, "");
+  const member = TEAM.find((m) => m.name.toLowerCase() === name);
+  if (!member) return res.status(404).send("no team");
+  const file = TEAM_AVATAR_FILES[member.e164];
+  if (!file || !fs.existsSync(file)) return res.status(404).send("no avatar");
+  const ext = path.extname(file).toLowerCase();
+  res.setHeader("Content-Type", MIME_BY_EXT[ext] || "image/png");
+  res.setHeader("Cache-Control", "private, max-age=3600");
+  fs.createReadStream(file).pipe(res);
+});
+
+// Client avatar — handles base64 data URIs + drive URLs + http URLs
+app.get("/client-avatar/:id", async (req, res) => {
+  const cid = parseInt(req.params.id, 10);
+  if (!cid) return res.status(400).send("bad id");
+  try {
+    const r = await pool.query(`SELECT avatar_url FROM clients WHERE id = $1 AND deleted_at IS NULL`, [cid]);
+    const a = r.rows[0]?.avatar_url;
+    if (!a) return res.status(404).send("no avatar");
+    if (a.startsWith("data:")) {
+      const m = a.match(/^data:([^;]+);base64,(.+)$/);
+      if (!m) return res.status(415).send("bad data uri");
+      res.setHeader("Content-Type", m[1]);
+      res.setHeader("Cache-Control", "private, max-age=3600");
+      return res.end(Buffer.from(m[2], "base64"));
+    }
+    // Google Drive view URLs → not directly streamable, fallback redirect
+    if (a.includes("drive.google.com")) {
+      const idMatch = a.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (idMatch) {
+        // Use thumbnail endpoint (works for public files)
+        return res.redirect(`https://drive.google.com/thumbnail?id=${idMatch[1]}&sz=w200`);
+      }
+    }
+    if (a.startsWith("http")) return res.redirect(a);
+    res.status(415).send("unsupported");
+  } catch (err) {
+    console.error("[client-avatar]", err);
+    res.status(500).send(err.message);
+  }
 });
 
 app.get("/", (_req, res) => {
