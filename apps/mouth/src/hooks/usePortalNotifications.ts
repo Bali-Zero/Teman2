@@ -28,6 +28,8 @@ export function usePortalNotifications() {
     notifications: query.data?.notifications ?? [],
     unreadCount: query.data?.unread_count ?? 0,
     isLoading: query.isLoading,
+    isMarkingRead: markRead.isPending,
+    isMarkingAllRead: markAllRead.isPending,
     markRead: markRead.mutate,
     markAllRead: markAllRead.mutate,
   };

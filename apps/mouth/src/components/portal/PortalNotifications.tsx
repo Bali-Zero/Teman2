@@ -61,10 +61,14 @@ export function PortalNotificationsList({
   notifications,
   onMarkRead,
   onMarkAllRead,
+  isMarkingRead,
+  isMarkingAllRead,
 }: {
   notifications: PortalNotification[];
   onMarkRead: (id: number) => void;
   onMarkAllRead: () => void;
+  isMarkingRead?: boolean;
+  isMarkingAllRead?: boolean;
 }) {
   const unread = notifications.filter((n) => !n.read);
 
@@ -78,11 +82,15 @@ export function PortalNotificationsList({
         <span className="text-sm font-semibold">Notifications</span>
         {unread.length > 0 && (
           <button
+            type="button"
             onClick={onMarkAllRead}
-            className="text-xs flex items-center gap-1 transition-opacity hover:opacity-80"
+            disabled={isMarkingAllRead}
+            className="text-xs flex items-center gap-1 transition-opacity hover:opacity-80 focus-ring rounded disabled:opacity-40 disabled:cursor-not-allowed"
             style={{ color: "var(--bz-accent-warm)" }}
           >
-            <CheckCheck className="w-3 h-3" />
+            <CheckCheck
+              className={`w-3 h-3 ${isMarkingAllRead ? "animate-spin" : ""}`}
+            />
             Mark all read
           </button>
         )}
@@ -150,8 +158,10 @@ export function PortalNotificationsList({
               </div>
               {!notif.read && (
                 <button
+                  type="button"
                   onClick={() => onMarkRead(notif.id)}
-                  className="p-1 rounded-md mt-0.5 flex-shrink-0 transition-opacity hover:opacity-80"
+                  disabled={isMarkingRead}
+                  className="p-1 rounded-md mt-0.5 flex-shrink-0 transition-opacity hover:opacity-80 focus-ring disabled:opacity-40 disabled:cursor-not-allowed"
                   style={{ color: "var(--bz-accent-warm)" }}
                   aria-label="Mark as read"
                 >
@@ -167,8 +177,14 @@ export function PortalNotificationsList({
 }
 
 export function PortalNotificationsPopover() {
-  const { notifications, unreadCount, markRead, markAllRead } =
-    usePortalNotifications();
+  const {
+    notifications,
+    unreadCount,
+    markRead,
+    markAllRead,
+    isMarkingRead,
+    isMarkingAllRead,
+  } = usePortalNotifications();
   const [isOpen, setIsOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
@@ -197,8 +213,9 @@ export function PortalNotificationsPopover() {
   return (
     <div className="relative" ref={ref}>
       <button
+        type="button"
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 rounded-lg transition-colors hover:bg-white/[0.05]"
+        className="relative p-2 rounded-lg transition-colors hover:bg-white/[0.05] focus-ring"
         aria-label={`Notifications${unreadCount > 0 ? ` (${unreadCount} unread)` : ""}`}
       >
         <Bell className="w-5 h-5" style={{ color: "var(--bz-text-2)" }} />
@@ -218,6 +235,8 @@ export function PortalNotificationsPopover() {
             notifications={notifications}
             onMarkRead={(id) => markRead(id)}
             onMarkAllRead={() => markAllRead()}
+            isMarkingRead={isMarkingRead}
+            isMarkingAllRead={isMarkingAllRead}
           />
         </div>
       )}
