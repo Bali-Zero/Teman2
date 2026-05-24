@@ -1,6 +1,3 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
 echo "🔍 Running pre-push hooks..."
 
 # Test suite runs in pre-commit hook (type checking + linting + import chain).
