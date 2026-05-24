@@ -9,41 +9,41 @@ Two machines exist on the local network:
 | Machine | User             | Hostname      | Role                       |
 | ------- | ---------------- | ------------- | -------------------------- |
 | **Pro** | `nuzantara`      | `Nuzantara`   | Development (48GB, M4 Pro) |
-| **Air** | `antonellosiano` | `Nuzantara-9` | Server H24 (16GB, M4)      |
+| **Mini** | `nuzantara`     | `Mini-Pro2`   | Server H24 (24GB, M4 Pro)  |
 
 **At every session start, run this check:**
 
 ```bash
 echo "Machine: $(whoami)@$(hostname)" && \
-OTHER=$(if [ "$(whoami)" = "nuzantara" ]; then echo "air"; else echo "pro"; fi) && \
+OTHER=$(if [ "$(hostname)" = "Nuzantara" ]; then echo "mini"; else echo "pro"; fi) && \
 ssh -o ConnectTimeout=3 $OTHER 'echo "Peer: $(whoami)@$(hostname)"' 2>/dev/null || echo "Peer: UNREACHABLE" && \
 LOCAL_HEAD=$(git log --oneline -1 2>/dev/null) && \
-REMOTE_HEAD=$(ssh -o ConnectTimeout=3 $OTHER 'cd ~/Desktop/projects/nuzantara 2>/dev/null || cd ~/Desktop/nuzantara 2>/dev/null; git log --oneline -1' 2>/dev/null) && \
+REMOTE_HEAD=$(ssh -o ConnectTimeout=3 $OTHER 'cd ~/Desktop/nuzantara 2>/dev/null || cd ~/Projects/nuzantara 2>/dev/null; git log --oneline -1' 2>/dev/null) && \
 if [ "$LOCAL_HEAD" = "$REMOTE_HEAD" ]; then echo "Git sync: OK ($LOCAL_HEAD)"; else echo "Git sync: OUT OF SYNC! Local=$LOCAL_HEAD Remote=$REMOTE_HEAD"; fi
 ```
 
 This tells you:
 
 - `whoami` = `nuzantara` → you are on **Pro**
-- `whoami` = `antonellosiano` → you are on **Air**
+- `hostname` = `Mini-Pro2` → you are on **Mini**
 - Whether the other machine is reachable via SSH
 - Whether both repos are on the same commit
 
-**Always prefix your first response with which machine you're on**, e.g. "[Pro]" or "[Air]".
+**Always prefix your first response with which machine you're on**, e.g. "[Pro]" or "[Mini]".
 If the peer is unreachable or out of sync, **warn the user immediately**.
 
-**SSH between machines:** `ssh air` (from Pro) / `ssh pro` (from Air) — uses mDNS, works on any WiFi.
+**SSH between machines:** `ssh mini` (from Pro) / `ssh pro` (from Mini) — uses Tailscale.
 See `docs/PRO_AIR_CONNECTION.md` for full details.
 
-### Git Sync Architecture (updated 2026-03-28)
+### Git Sync Architecture (updated 2026-05-25)
 
 Both machines work on `main` branch only. Sync is **automatic** via husky post-commit hooks:
 
-- **Pro commits** → Air auto-pulls (`git pull pro main --ff-only`)
-- **Air commits** → Air auto-pushes to Pro (`git push pro main`)
+- **Pro commits** → Mini auto-pulls (`git pull pro main --ff-only`)
+- **Mini commits** → Mini auto-pushes to Pro (`git push pro main`)
 - **GitHub** is updated by Pro only via `git push origin main`
 
-**Never** create an `air` branch. **Never** push from Air to `origin`. Log: `~/.openclaw/logs/git-sync.log`.
+**Never** create an `air` or `mini` branch. **Never** push from Mini to `origin`. Log: `~/.openclaw/logs/git-sync.log`.
 
 ---
 
@@ -181,7 +181,7 @@ apps/backend-rag/
 │   ├── llm/              # LLM clients (Gemini, Ollama, OpenRouter)
 │   └── migrations/       # Alembic (up to 060)
 ├── tests/                # 419 test files
-├── .venv/                # ⚠️ ALWAYS .venv on Pro, venv on Air
+├── .venv/                # ⚠️ ALWAYS .venv on Pro and Mini
 └── fly.toml
 ```
 

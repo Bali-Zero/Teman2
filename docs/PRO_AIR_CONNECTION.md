@@ -1,23 +1,25 @@
-# Pro <-> Air Connection Guide
+# Pro <-> Mini Connection Guide
 
-**Last Updated:** 2026-03-28
+**Last Updated:** 2026-05-25
+
+Air (`antonellosiano@Nuzantara-9`) was decommissioned on 2026-05-05. The active server peer is Mini.
 
 ## Machines
 
-| Machine | Hostname    | mDNS                | User             | Hardware                |
-| ------- | ----------- | ------------------- | ---------------- | ----------------------- |
-| **Pro** | Nuzantara   | `Nuzantara.local`   | `nuzantara`      | MacBook Pro M4 Pro 48GB |
-| **Air** | Nuzantara-9 | `Nuzantara-9.local` | `antonellosiano` | MacBook Air M4 16GB     |
+| Machine  | Hostname  | SSH Alias | Tailscale IP     | User        | Hardware                |
+| -------- | --------- | --------- | ---------------- | ----------- | ----------------------- |
+| **Pro**  | Nuzantara | `pro`     | `100.107.22.111` | `nuzantara` | MacBook Pro M4 Pro 48GB |
+| **Mini** | Mini-Pro2 | `mini`    | `100.93.236.6`   | `nuzantara` | Mac mini M4 Pro 24GB    |
 
 ## SSH Connection
 
-SSH uses **mDNS** (Bonjour) hostnames instead of static IPs. This means connections work regardless of which WiFi network you're on or what IP the DHCP assigns.
+SSH uses **Tailscale** aliases/IPs, so connections work across networks when both machines are online in the tailnet.
 
 ```bash
-# From Pro → Air
-ssh air
+# From Pro → Mini
+ssh mini
 
-# From Air → Pro
+# From Mini → Pro
 ssh pro
 ```
 
@@ -26,9 +28,9 @@ ssh pro
 **Pro** (`~/.ssh/config`):
 
 ```
-Host air
-    HostName Nuzantara-9.local
-    User antonellosiano
+Host mini
+    HostName 100.93.236.6
+    User nuzantara
     IdentityFile ~/.ssh/id_ed25519
     AddKeysToAgent yes
     UseKeychain yes
@@ -41,13 +43,11 @@ Host pro
     UseKeychain yes
 ```
 
-**Air** (`~/.ssh/config`):
+**Mini** (`~/.ssh/config`):
 
 ```
-Include /Users/antonellosiano/.colima/ssh_config
-
 Host pro
-    HostName Nuzantara.local
+    HostName 100.107.22.111
     User nuzantara
     IdentityFile ~/.ssh/id_ed25519
     AddKeysToAgent yes
@@ -55,9 +55,9 @@ Host pro
     ServerAliveInterval 60
     ServerAliveCountMax 10
 
-Host air
-    HostName Nuzantara-9.local
-    User antonellosiano
+Host mini
+    HostName 100.93.236.6
+    User nuzantara
     IdentityFile ~/.ssh/id_ed25519
     AddKeysToAgent yes
     UseKeychain yes
@@ -71,23 +71,22 @@ Run this to verify both machines are reachable:
 
 ```bash
 # Quick check (from either machine)
-ping -c 1 Nuzantara.local && echo "Pro: OK" || echo "Pro: UNREACHABLE"
-ping -c 1 Nuzantara-9.local && echo "Air: OK" || echo "Air: UNREACHABLE"
+ping -c 1 100.107.22.111 && echo "Pro: OK" || echo "Pro: UNREACHABLE"
+ping -c 1 100.93.236.6 && echo "Mini: OK" || echo "Mini: UNREACHABLE"
 
 # Full SSH check
-ssh air "echo 'Air SSH: OK'" 2>/dev/null || echo "Air SSH: FAILED"
+ssh mini "echo 'Mini SSH: OK'" 2>/dev/null || echo "Mini SSH: FAILED"
 ssh pro "echo 'Pro SSH: OK'" 2>/dev/null || echo "Pro SSH: FAILED"
 ```
 
 ## Troubleshooting
 
-### mDNS not resolving
+### Tailscale not connected
 
-Both machines must be on the **same local network** (same WiFi/router). mDNS doesn't work across different networks.
+Both machines must be connected to Tailscale and visible in the same tailnet.
 
 ```bash
-# Check if mDNS is working
-dns-sd -B _ssh._tcp local.
+tailscale status
 ```
 
 ### SSH connection refused
@@ -101,7 +100,8 @@ Remote Login must be enabled on the target machine:
 If a machine gets reinstalled or hostname changes:
 
 ```bash
-ssh-keygen -R Nuzantara-9.local  # or Nuzantara.local
+ssh-keygen -R 100.93.236.6    # Mini
+ssh-keygen -R 100.107.22.111  # Pro
 ```
 
 ### Public key not accepted
@@ -109,36 +109,36 @@ ssh-keygen -R Nuzantara-9.local  # or Nuzantara.local
 Copy your public key to the other machine:
 
 ```bash
-ssh-copy-id -i ~/.ssh/id_ed25519.pub air   # from Pro
-ssh-copy-id -i ~/.ssh/id_ed25519.pub pro   # from Air
+ssh-copy-id -i ~/.ssh/id_ed25519.pub mini  # from Pro
+ssh-copy-id -i ~/.ssh/id_ed25519.pub pro   # from Mini
 ```
 
-## Automatic Git Sync (updated 2026-03-28)
+## Automatic Git Sync (updated 2026-05-25)
 
 Both machines work on `main` directly. Sync is fully automatic via husky post-commit hooks — zero manual intervention required.
 
 ### Topology
 
 ```
-Pro (nuzantara)          Air (antonellosiano)
+Pro (nuzantara)          Mini (nuzantara)
 ────────────────         ──────────────────────
-git remote: air ──────→  (bare receive via SSH)
+git remote: mini ─────→  (bare receive via SSH)
 git remote: origin       git remote: pro ──────→ Pro
                          git remote: origin
 ```
 
-### Pro commits → Air syncs automatically
+### Pro commits → Mini syncs automatically
 
 `.husky/post-commit` on Pro:
 
 ```bash
-# After any commit on main, Air pulls from Pro
-ssh air "cd ~/Projects/nuzantara && git stash -q; git pull pro main --ff-only; git stash pop -q || true"
+# After any commit on main, Mini pulls from Pro
+ssh mini "cd ~/Desktop/nuzantara && git stash -q; git pull pro main --ff-only; git stash pop -q || true"
 ```
 
-### Air commits → Pro syncs automatically
+### Mini commits → Pro syncs automatically
 
-`.husky/post-commit` on Air:
+`.husky/post-commit` on Mini:
 
 ```bash
 # After any commit on main, push to Pro
@@ -150,10 +150,10 @@ Pro accepts pushes via `receive.denyCurrentBranch=updateInstead`.
 ### Manual sync (if needed)
 
 ```bash
-# From Pro — pull what Air pushed
-git fetch air && git merge air/main --ff-only
+# From Pro — pull what Mini pushed
+git fetch mini && git merge mini/main --ff-only
 
-# From Air — pull what Pro committed
+# From Mini — pull what Pro committed
 git pull pro main --ff-only
 ```
 
@@ -163,9 +163,9 @@ Both machines log sync activity to `~/.openclaw/logs/git-sync.log`.
 
 ### Working tree conflicts
 
-Air's `.husky/post-commit` uses `git stash/pop` automatically around the pull. If Air has uncommitted changes, they are stashed, the pull happens, then unstashed. If Pro has uncommitted changes when Air pushes, the push will be rejected — stash first: `git stash && git push air main:main`.
+Mini's `.husky/post-commit` uses `git stash/pop` automatically around the pull. If Mini has uncommitted changes, they are stashed, the pull happens, then unstashed. If Pro has uncommitted changes when Mini pushes, the push will be rejected — stash first: `git stash && git push mini main:main`.
 
 ## Architecture
 
-- **Pro (48GB):** Active development, Claude Code, heavy tasks, GitHub push
-- **Air (16GB):** Server H24 — Ollama, Qdrant, PostgreSQL, Backend RAG, OpenClaw gateway, Telegram bot
+- **Pro (48GB):** Active development, Claude Code, heavy tasks, GitHub push, Server H24
+- **Mini (24GB):** Server H24, Ollama dedicated, heavy cron jobs
