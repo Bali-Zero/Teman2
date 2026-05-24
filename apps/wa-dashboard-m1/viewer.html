@@ -372,6 +372,9 @@
 let DATA = null;
 let SELECTED_TEAM = null;
 let SELECTED_CONV = null;
+let THREAD_SEARCH = "";
+let THREAD_CACHE = null;
+let THREAD_CACHE_KEY = null;
 const KITA_BASE = "https://kita.balizero.com";
 
 const colTeams = document.getElementById("col-teams");
@@ -425,7 +428,8 @@ function renderTeams() {
         <div class="team-body">
           <div class="team-row">
             <div class="team-name">${escapeHtml(m.name)}</div>
-            ${(pd.attention.high || pd.attention.medium) ? `<span class="pill unread">${pd.attention.high + pd.attention.medium}</span>` : ""}
+            ${pd.unread_total ? `<span class="pill unread" title="${pd.unread_total} msg da rispondere in ${pd.unread_convs} conv">${pd.unread_total}</span>` : ""}
+            ${(pd.attention.high || pd.attention.medium) ? `<span class="pill attention" title="HIGH+MED priority" style="background:var(--wa-error);color:white;margin-left:4px">⚠ ${pd.attention.high + pd.attention.medium}</span>` : ""}
           </div>
           <div class="team-phone">${escapeHtml(m.phone)}</div>
           <div class="team-pills">
@@ -494,7 +498,7 @@ function renderConvs() {
               <span class="conv-preview">
                 <span class="conv-tag ${tag}">${tagLabel}</span>${attBadge}${escapeHtml(fmtPreview(c))}
               </span>
-              ${c.n ? `<span class="pill unread">${c.n}</span>` : ""}
+              ${c.unread_count ? `<span class="pill unread" title="${c.unread_count} non risposti su ${c.n} tot">${c.unread_count}</span>` : (c.n ? `<span class="pill" title="msg totali conv">${c.n}</span>` : "")}
             </div>
             ${extra.length ? `<div class="conv-extra">${extra.join("")}</div>` : ""}
           </div>
@@ -514,7 +518,7 @@ function renderMedia(m) {
   if (!m.media_type) return "";
   const path = m.media_stored_path;
   if (!path) {
-    return `<div class="media-thumb"><span class="media-tag">${m.media_type}</span> <em>media non scaricato</em></div>`;
+    return `<div class="media-thumb media-missing" title="Bridge download fallito. Media presente su WhatsApp ma non scaricato in locale."><span class="media-tag">${m.media_type}</span> <span style="color:#f15c6d">❌</span> <em>media non scaricato (bridge fail)</em></div>`;
   }
   const url = `/media?path=${encodeURIComponent(path)}`;
   switch (m.media_type) {
@@ -528,19 +532,37 @@ function renderMedia(m) {
   }
 }
 
+function highlightMatch(text, query) {
+  if (!query) return escapeHtml(text);
+  const q = query.toLowerCase();
+  const idx = text.toLowerCase().indexOf(q);
+  if (idx < 0) return escapeHtml(text);
+  return escapeHtml(text.slice(0, idx))
+    + `<mark style="background:#ffe900;color:#111b21;padding:0 2px;border-radius:2px">${escapeHtml(text.slice(idx, idx + query.length))}</mark>`
+    + escapeHtml(text.slice(idx + query.length));
+}
+
 async function renderThread() {
   if (!SELECTED_TEAM || !SELECTED_CONV) {
     colThread.innerHTML = `<div class="col-header">Messaggi</div><div class="empty">Seleziona una conversazione</div>`;
+    THREAD_CACHE = null; THREAD_CACHE_KEY = null;
     return;
   }
-  colThread.innerHTML = `<div class="col-header">Caricamento…</div>`;
+  const cacheKey = `${SELECTED_TEAM}|${SELECTED_CONV}`;
   let payload;
-  try {
-    const r = await fetch(`/thread.json?member=${encodeURIComponent(SELECTED_TEAM)}&conv=${encodeURIComponent(SELECTED_CONV)}`);
-    payload = await r.json();
-  } catch (err) {
-    colThread.innerHTML = `<div class="col-header">Errore</div><div class="empty">${escapeHtml(err.message)}</div>`;
-    return;
+  if (THREAD_CACHE_KEY === cacheKey && THREAD_CACHE) {
+    payload = THREAD_CACHE;
+  } else {
+    colThread.innerHTML = `<div class="col-header">Caricamento…</div>`;
+    try {
+      const r = await fetch(`/thread.json?member=${encodeURIComponent(SELECTED_TEAM)}&conv=${encodeURIComponent(SELECTED_CONV)}`);
+      payload = await r.json();
+    } catch (err) {
+      colThread.innerHTML = `<div class="col-header">Errore</div><div class="empty">${escapeHtml(err.message)}</div>`;
+      return;
+    }
+    THREAD_CACHE = payload;
+    THREAD_CACHE_KEY = cacheKey;
   }
   const pd = DATA.by_phone[SELECTED_TEAM];
   const conv = pd.convs.find((c) => c.counterpart === SELECTED_CONV);
@@ -563,19 +585,38 @@ async function renderThread() {
 
   const convDisplay = conv ? conv.display_name : SELECTED_CONV;
   const headerAvatarClass = conv?.kind === "group" ? "group" : conv?.tag === "crm" ? "crm" : conv?.tag === "prospect" ? "prospect" : "";
+
+  // Filter messages by search query (case-insensitive, matches body + sender)
+  const q = THREAD_SEARCH.trim().toLowerCase();
+  const messages = q
+    ? payload.messages.filter((m) => {
+        const body = (m.body || "").toLowerCase();
+        const sender = (m.sender_display || m.sender_phone || "").toLowerCase();
+        return body.includes(q) || sender.includes(q);
+      })
+    : payload.messages;
+  const matchInfo = q
+    ? ` <span style="color:var(--wa-link)">· ${messages.length} match su ${payload.count}</span>`
+    : "";
+
   let html = `
     <div class="thread-header">
       <div class="avatar ${headerAvatarClass}">${conv?.kind === "group" ? "👥" : (conv?.client_id ? avatarInner(convDisplay, `/client-avatar/${conv.client_id}`) : initials(convDisplay))}</div>
       <div class="info">
         <div class="name">${escapeHtml(convDisplay)}</div>
-        <div class="sub">${payload.count} messaggi${clientLink}</div>
+        <div class="sub">${payload.count} messaggi${matchInfo}${clientLink}</div>
+      </div>
+      <div style="margin-left:auto;display:flex;align-items:center;gap:6px">
+        <input id="thread-search" type="search" placeholder="🔍 cerca…" value="${escapeHtml(THREAD_SEARCH)}"
+          style="background:var(--wa-search-bg);border:none;border-radius:8px;padding:6px 10px;font-size:13px;color:var(--wa-text);width:200px;outline:none" />
+        ${q ? `<button id="thread-search-clear" title="Esc per pulire" style="background:transparent;border:none;color:var(--wa-text-3);cursor:pointer;font-size:14px">✕</button>` : ""}
       </div>
     </div>
     ${recapHtml}
     <div class="thread-body">`;
   let lastDay = "";
-  if (!payload.messages.length) html += `<div class="empty">Nessun messaggio</div>`;
-  for (const m of payload.messages) {
+  if (!messages.length) html += `<div class="empty">${q ? `Nessun match per "${escapeHtml(THREAD_SEARCH)}"` : "Nessun messaggio"}</div>`;
+  for (const m of messages) {
     const d = new Date(m.message_date);
     const dayKey = d.toLocaleDateString("it-IT", { weekday: "long", day: "2-digit", month: "long" });
     if (dayKey !== lastDay) { html += `<div class="day-divider">${dayKey}</div>`; lastDay = dayKey; }
@@ -585,7 +626,7 @@ async function renderThread() {
     const senderName = m.sender_display || m.sender_phone || "";
     const senderRole = m.sender_client_id ? "CRM" : (m.sender_crm_name ? "CRM" : "");
     const senderLine = senderName && conv && conv.kind === "group"
-      ? `<div class="sender">${escapeHtml(senderName)}${m.sender_company ? " · "+escapeHtml(m.sender_company) : ""}${senderRole ? `<span class="role">${senderRole}</span>` : ""}</div>`
+      ? `<div class="sender">${highlightMatch(senderName, q)}${m.sender_company ? " · "+escapeHtml(m.sender_company) : ""}${senderRole ? `<span class="role">${senderRole}</span>` : ""}</div>`
       : "";
     const attReason = m.attention_reason && m.attention_reason.length && !m.attention_resolved_at
       ? `<div class="att-reason">⚠ ${escapeHtml(m.attention_reason.join(", "))}</div>`
@@ -596,7 +637,7 @@ async function renderThread() {
       <div class="msg ${dir}${attClass}">
         ${senderLine}
         ${m.media_type ? `<span class="media-tag">${m.media_type}</span>` : ""}
-        ${m.body ? `<div class="body">${escapeHtml(m.body)}</div>` : ""}
+        ${m.body ? `<div class="body">${highlightMatch(m.body, q)}</div>` : ""}
         ${renderMedia(m)}
         ${attReason}
         <div class="meta">${time}${tick}</div>
@@ -604,16 +645,38 @@ async function renderThread() {
   }
   html += `</div>`;
   colThread.innerHTML = html;
+
+  // Wire search input
+  const searchEl = document.getElementById("thread-search");
+  if (searchEl) {
+    searchEl.addEventListener("input", (e) => {
+      THREAD_SEARCH = e.target.value;
+      renderThread();
+      // re-focus + restore cursor
+      requestAnimationFrame(() => {
+        const el = document.getElementById("thread-search");
+        if (el) { el.focus(); el.setSelectionRange(THREAD_SEARCH.length, THREAD_SEARCH.length); }
+      });
+    });
+    searchEl.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") { THREAD_SEARCH = ""; renderThread(); }
+    });
+  }
+  const clearBtn = document.getElementById("thread-search-clear");
+  if (clearBtn) clearBtn.addEventListener("click", () => { THREAD_SEARCH = ""; renderThread(); });
 }
 
 function selectTeam(phone) {
   if (SELECTED_TEAM === phone) return;
   SELECTED_TEAM = phone;
   SELECTED_CONV = null;
+  THREAD_SEARCH = "";
+  THREAD_CACHE = null; THREAD_CACHE_KEY = null;
   renderTeams(); renderConvs(); renderThread();
 }
 function selectConv(conv) {
   SELECTED_CONV = conv;
+  THREAD_SEARCH = "";
   renderConvs(); renderThread();
 }
 

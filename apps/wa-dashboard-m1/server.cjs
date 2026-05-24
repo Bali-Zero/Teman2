@@ -64,10 +64,18 @@ function isInternalName(name) {
   if (!name) return false;
   return INTERNAL_NAME_PATTERNS.some((re) => re.test(String(name).trim()));
 }
+// Reject junk auto-names like "wa:+628...", "Lead +628...", bare digits.
+// Real human names never start with "wa:" or "Lead " followed by digits.
+const JUNK_NAME_PATTERNS = [
+  /^wa:\+?[0-9]+$/i,
+  /^lead\s*\+?[0-9]+$/i,
+  /^\+?[0-9]{8,}$/,
+];
 function cleanName(name) {
   if (!name) return null;
   const s = String(name).trim();
   if (!s) return null;
+  if (JUNK_NAME_PATTERNS.some((re) => re.test(s))) return null;
   return s.replace(/\s+/g, " ");
 }
 
@@ -204,17 +212,28 @@ async function fetchOverview() {
                COALESCE(direct_phone, lid_resolved_phone) AS effective_phone
         FROM base
       ),
-      grouped AS (
-        SELECT conv_key,
-               MAX(COALESCE(direct_phone, effective_phone)) AS direct_phone,
-               MAX(lid) AS lid,
-               MAX(effective_phone) AS effective_phone,
-               MAX(client_id) AS client_id,
-               MAX(attention_priority) FILTER (WHERE attention_resolved_at IS NULL) AS attention_priority,
-               COUNT(*) AS n,
-               MAX(message_date) AS last_at
+      last_outbound AS (
+        SELECT conv_key, MAX(message_date) AS last_outbound_at
         FROM keyed
+        WHERE direction = 'outbound'
         GROUP BY conv_key
+      ),
+      grouped AS (
+        SELECT k.conv_key,
+               MAX(COALESCE(k.direct_phone, k.effective_phone)) AS direct_phone,
+               MAX(k.lid) AS lid,
+               MAX(k.effective_phone) AS effective_phone,
+               MAX(k.client_id) AS client_id,
+               MAX(k.attention_priority) FILTER (WHERE k.attention_resolved_at IS NULL) AS attention_priority,
+               COUNT(*) AS n,
+               MAX(k.message_date) AS last_at,
+               COUNT(*) FILTER (
+                 WHERE k.direction = 'inbound'
+                   AND k.message_date > COALESCE(lo.last_outbound_at, 'epoch'::timestamptz)
+               ) AS unread_count
+        FROM keyed k
+        LEFT JOIN last_outbound lo USING (conv_key)
+        GROUP BY k.conv_key
       ),
       last_msg AS (
         SELECT DISTINCT ON (conv_key) conv_key, body AS last_body, media_type AS last_media
@@ -229,7 +248,7 @@ async function fetchOverview() {
         ORDER BY conv_key, message_date DESC NULLS LAST
       )
       SELECT g.conv_key, g.direct_phone, g.lid, g.client_id, g.n, g.last_at,
-             g.attention_priority,
+             g.attention_priority, g.unread_count,
              lm.last_body, lm.last_media, lp.pushname,
              COALESCE(cli_id.full_name, cli_phone.full_name) AS client_name,
              COALESCE(cli_id.company_name, cli_phone.company_name) AS company_name,
@@ -265,18 +284,35 @@ async function fetchOverview() {
       ),
       pool.query(
         `
-      WITH grouped AS (
+      WITH base AS (
         SELECT group_jid,
                COALESCE(NULLIF(group_subject_snapshot, ''), group_jid) AS group_label,
-               COUNT(*) AS n,
-               MAX(message_date) AS last_at,
-               MAX(attention_priority) FILTER (WHERE attention_resolved_at IS NULL) AS attention_priority
+               direction, message_date, attention_priority, attention_resolved_at
         FROM whatsapp_message_context
         WHERE team_member_phone = ANY($1::text[])
           AND chat_type = 'group'
           AND group_jid IS NOT NULL
           AND message_date >= NOW() - INTERVAL '${since}'
-        GROUP BY group_jid, group_subject_snapshot
+      ),
+      last_outbound AS (
+        SELECT group_jid, MAX(message_date) AS last_outbound_at
+        FROM base
+        WHERE direction = 'outbound'
+        GROUP BY group_jid
+      ),
+      grouped AS (
+        SELECT b.group_jid,
+               MAX(b.group_label) AS group_label,
+               COUNT(*) AS n,
+               MAX(b.message_date) AS last_at,
+               MAX(b.attention_priority) FILTER (WHERE b.attention_resolved_at IS NULL) AS attention_priority,
+               COUNT(*) FILTER (
+                 WHERE b.direction = 'inbound'
+                   AND b.message_date > COALESCE(lo.last_outbound_at, 'epoch'::timestamptz)
+               ) AS unread_count
+        FROM base b
+        LEFT JOIN last_outbound lo USING (group_jid)
+        GROUP BY b.group_jid
       ),
       last_msg AS (
         SELECT DISTINCT ON (group_jid)
@@ -288,7 +324,7 @@ async function fetchOverview() {
           AND group_jid IS NOT NULL
         ORDER BY group_jid, message_date DESC NULLS LAST
       )
-      SELECT g.group_jid, g.group_label, g.n, g.last_at, g.attention_priority,
+      SELECT g.group_jid, g.group_label, g.n, g.last_at, g.attention_priority, g.unread_count,
              lm.last_body, lm.last_media, lm.sender_phone, lm.sender_pushname,
              cli.full_name AS sender_crm_name,
              cli.company_name AS sender_company,
@@ -366,6 +402,7 @@ async function fetchOverview() {
         pushname: push,
         attention_priority: r.attention_priority,
         n: parseInt(r.n, 10),
+        unread_count: parseInt(r.unread_count || 0, 10),
         last_at: r.last_at,
         last_body: r.last_body,
         last_media: r.last_media,
@@ -397,6 +434,7 @@ async function fetchOverview() {
         crm_match: !!r.sender_crm_name,
         attention_priority: r.attention_priority,
         n: parseInt(r.n, 10),
+        unread_count: parseInt(r.unread_count || 0, 10),
         last_at: r.last_at,
         last_body: r.last_body,
         last_media: r.last_media,
@@ -423,6 +461,9 @@ async function fetchOverview() {
     );
     const counts = rawCountRow.rows[0] || {};
 
+    const unreadTotal = convs.reduce((sum, c) => sum + (c.unread_count || 0), 0);
+    const unreadConvs = convs.filter((c) => (c.unread_count || 0) > 0).length;
+
     result.by_phone[member.phone] = {
       team: member,
       bridge,                    // Feature #2 (health pill)
@@ -437,6 +478,8 @@ async function fetchOverview() {
       crm_count: crmMatched,
       internal_count: internalCount,
       unresolved_lids: unresolvedLids,
+      unread_total: unreadTotal,         // Feature: unread badge (col 1 team pill)
+      unread_convs: unreadConvs,
       attention: { high: attentionHigh, medium: attentionMedium }, // Feature #7
       convs,
     };
@@ -530,17 +573,20 @@ async function fetchThread(memberPhone, convKey) {
     `,
     params,
   );
-  return rows.rows.map((r) => ({
-    ...r,
-    sender_display:
-      cleanName(r.sender_crm_name) ||
-      cleanName(r.sender_wa_business_name) ||
-      cleanName(r.sender_wa_contact_name) ||
-      cleanName(r.pushname) ||
-      r.sender_phone ||
-      r.sender_resolved_phone,
-    counterpart_resolved: r.counterpart_phone || r.counterpart_resolved_phone,
-  }));
+  return rows.rows.map((r) => {
+    const effectivePhone = r.sender_phone || r.sender_resolved_phone;
+    const formatted = effectivePhone ? `📱 ${effectivePhone}` : null;
+    return {
+      ...r,
+      sender_display:
+        cleanName(r.sender_crm_name) ||
+        cleanName(r.sender_wa_business_name) ||
+        cleanName(r.sender_wa_contact_name) ||
+        cleanName(r.pushname) ||
+        formatted,
+      counterpart_resolved: r.counterpart_phone || r.counterpart_resolved_phone,
+    };
+  });
 }
 
 // === Client lookup with smart-recap (Feature #11) ===
