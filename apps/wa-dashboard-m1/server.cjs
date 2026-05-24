@@ -81,11 +81,14 @@ function aliasesForTeamMember(member) {
   const aliases = new Set();
   if (member.e164) {
     aliases.add(member.e164);
-    // Bali Zero halo team phones (+62821345472X) had double-7 form pre-normalization
-    if (member.e164.startsWith("+62821345472")) {
-      const suffix = member.e164.slice("+62821345472".length);
-      aliases.add(`+62821345477${suffix}`);
-      aliases.add(`+6282134547${suffix}`);
+    // Bali Zero halo team phones single-7 vs double-7 (Baileys legacy)
+    // single-7 example: +628213454725 (13 digits)
+    // double-7 example: +6282134547725 (14 digits, extra "7" after +6282134547)
+    // single-7  +628213454725 (13 chars) → double-7  +6282134547725 (14 chars)
+    // insert "7" at position 11 (after "+6282134547")
+    if (member.e164.startsWith("+6282134547") && member.e164.length === 13) {
+      const doubleSeven = member.e164.slice(0, 11) + "7" + member.e164.slice(11);
+      aliases.add(doubleSeven);
     }
   }
   return [...aliases];
