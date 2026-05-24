@@ -177,32 +177,38 @@ async function fetchOverview() {
         `
       WITH base AS (
         SELECT
-          NULLIF(counterpart_phone, '') AS direct_phone,
-          NULLIF(counterpart_lid, '') AS lid,
-          body, media_type, message_date, raw_baileys_event, direction, client_id,
-          attention_priority, attention_resolved_at
-        FROM whatsapp_message_context
-        WHERE team_member_phone = ANY($1::text[])
-          AND chat_type = 'direct'
-          AND message_date >= NOW() - INTERVAL '${since}'
+          NULLIF(m.counterpart_phone, '') AS direct_phone,
+          NULLIF(m.counterpart_lid, '') AS lid,
+          lpr.resolved_phone AS lid_resolved_phone,
+          m.body, m.media_type, m.message_date, m.raw_baileys_event, m.direction, m.client_id,
+          m.attention_priority, m.attention_resolved_at
+        FROM whatsapp_message_context m
+        LEFT JOIN wa_lid_phone_resolution lpr ON lpr.counterpart_lid = m.counterpart_lid
+        WHERE m.team_member_phone = ANY($1::text[])
+          AND m.chat_type = 'direct'
+          AND m.message_date >= NOW() - INTERVAL '${since}'
           AND (
-            (counterpart_phone IS NOT NULL AND counterpart_phone <> '')
-            OR (counterpart_lid IS NOT NULL AND counterpart_lid <> '')
+            (m.counterpart_phone IS NOT NULL AND m.counterpart_phone <> '')
+            OR (m.counterpart_lid IS NOT NULL AND m.counterpart_lid <> '')
           )
           AND (
-            COALESCE(length(body),0) > 0
-            OR media_type IN ('image','document','video','audio','sticker')
+            COALESCE(length(m.body),0) > 0
+            OR m.media_type IN ('image','document','video','audio','sticker')
           )
       ),
       keyed AS (
         SELECT base.*,
-               COALESCE(direct_phone, 'lid:' || lid) AS conv_key
+               -- conv_key normalizes: phone > resolved_phone > lid:xxx
+               COALESCE(direct_phone, lid_resolved_phone, 'lid:' || lid) AS conv_key,
+               -- effective phone for CRM lookup (real or resolved)
+               COALESCE(direct_phone, lid_resolved_phone) AS effective_phone
         FROM base
       ),
       grouped AS (
         SELECT conv_key,
-               MAX(direct_phone) AS direct_phone,
+               MAX(COALESCE(direct_phone, effective_phone)) AS direct_phone,
                MAX(lid) AS lid,
+               MAX(effective_phone) AS effective_phone,
                MAX(client_id) AS client_id,
                MAX(attention_priority) FILTER (WHERE attention_resolved_at IS NULL) AS attention_priority,
                COUNT(*) AS n,
@@ -243,15 +249,15 @@ async function fetchOverview() {
         ON cli_id.id = g.client_id AND cli_id.deleted_at IS NULL
       LEFT JOIN clients cli_phone
         ON cli_phone.deleted_at IS NULL
-       AND g.direct_phone IS NOT NULL
+       AND COALESCE(g.effective_phone, g.direct_phone) IS NOT NULL
        AND (
-         cli_phone.phone_normalized = regexp_replace(g.direct_phone, '\\D', '', 'g')
-         OR cli_phone.phone = g.direct_phone
-         OR cli_phone.whatsapp = g.direct_phone
+         cli_phone.phone_normalized = regexp_replace(COALESCE(g.effective_phone, g.direct_phone), '\\D', '', 'g')
+         OR cli_phone.phone = COALESCE(g.effective_phone, g.direct_phone)
+         OR cli_phone.whatsapp = COALESCE(g.effective_phone, g.direct_phone)
        )
       LEFT JOIN whatsapp_contacts wc
-        ON g.direct_phone IS NOT NULL
-       AND wc.phone_normalized = regexp_replace(g.direct_phone, '\\D', '', 'g')
+        ON COALESCE(g.effective_phone, g.direct_phone) IS NOT NULL
+       AND wc.phone_normalized = regexp_replace(COALESCE(g.effective_phone, g.direct_phone), '\\D', '', 'g')
       ORDER BY g.last_at DESC NULLS LAST
       LIMIT 200;
       `,
@@ -455,7 +461,13 @@ async function fetchThread(memberPhone, convKey) {
     where = `AND m.counterpart_lid = $2`;
     params.push(convKey.slice("lid:".length));
   } else {
-    where = `AND m.counterpart_phone = $2`;
+    // convKey is a phone — match either direct phone OR LID that resolves to it
+    where = `AND (
+      m.counterpart_phone = $2
+      OR m.counterpart_lid IN (
+        SELECT counterpart_lid FROM wa_lid_phone_resolution WHERE resolved_phone = $2
+      )
+    )`;
     params.push(convKey);
   }
 
@@ -465,6 +477,8 @@ async function fetchThread(memberPhone, convKey) {
            m.media_stored_path, m.message_date,
            m.sender_phone, m.sender_push_name_snapshot, m.group_jid,
            m.counterpart_phone, m.counterpart_lid,
+           lpr_c.resolved_phone AS counterpart_resolved_phone,
+           lpr_s.resolved_phone AS sender_resolved_phone,
            m.attention_priority, m.attention_reason, m.attention_resolved_at,
            m.raw_baileys_event->>'pushName' AS pushname,
            cli_s.id AS sender_client_id,
@@ -478,28 +492,32 @@ async function fetchThread(memberPhone, convKey) {
            wc_c.name AS counterpart_wa_contact_name,
            wc_c.business_name AS counterpart_wa_business_name
     FROM whatsapp_message_context m
+    LEFT JOIN wa_lid_phone_resolution lpr_c
+      ON lpr_c.counterpart_lid = m.counterpart_lid
+    LEFT JOIN wa_lid_phone_resolution lpr_s
+      ON lpr_s.counterpart_lid = m.sender_lid
     LEFT JOIN clients cli_s
       ON cli_s.deleted_at IS NULL
-     AND m.sender_phone IS NOT NULL
+     AND COALESCE(m.sender_phone, lpr_s.resolved_phone) IS NOT NULL
      AND (
-       cli_s.phone_normalized = regexp_replace(m.sender_phone, '\\D', '', 'g')
-       OR cli_s.phone = m.sender_phone
-       OR cli_s.whatsapp = m.sender_phone
+       cli_s.phone_normalized = regexp_replace(COALESCE(m.sender_phone, lpr_s.resolved_phone), '\\D', '', 'g')
+       OR cli_s.phone = COALESCE(m.sender_phone, lpr_s.resolved_phone)
+       OR cli_s.whatsapp = COALESCE(m.sender_phone, lpr_s.resolved_phone)
      )
     LEFT JOIN clients cli_c
       ON cli_c.deleted_at IS NULL
-     AND m.counterpart_phone IS NOT NULL
+     AND COALESCE(m.counterpart_phone, lpr_c.resolved_phone) IS NOT NULL
      AND (
-       cli_c.phone_normalized = regexp_replace(m.counterpart_phone, '\\D', '', 'g')
-       OR cli_c.phone = m.counterpart_phone
-       OR cli_c.whatsapp = m.counterpart_phone
+       cli_c.phone_normalized = regexp_replace(COALESCE(m.counterpart_phone, lpr_c.resolved_phone), '\\D', '', 'g')
+       OR cli_c.phone = COALESCE(m.counterpart_phone, lpr_c.resolved_phone)
+       OR cli_c.whatsapp = COALESCE(m.counterpart_phone, lpr_c.resolved_phone)
      )
     LEFT JOIN whatsapp_contacts wc_s
-      ON m.sender_phone IS NOT NULL
-     AND wc_s.phone_normalized = regexp_replace(m.sender_phone, '\\D', '', 'g')
+      ON COALESCE(m.sender_phone, lpr_s.resolved_phone) IS NOT NULL
+     AND wc_s.phone_normalized = regexp_replace(COALESCE(m.sender_phone, lpr_s.resolved_phone), '\\D', '', 'g')
     LEFT JOIN whatsapp_contacts wc_c
-      ON m.counterpart_phone IS NOT NULL
-     AND wc_c.phone_normalized = regexp_replace(m.counterpart_phone, '\\D', '', 'g')
+      ON COALESCE(m.counterpart_phone, lpr_c.resolved_phone) IS NOT NULL
+     AND wc_c.phone_normalized = regexp_replace(COALESCE(m.counterpart_phone, lpr_c.resolved_phone), '\\D', '', 'g')
     WHERE m.team_member_phone = ANY($1::text[])
       ${where}
       AND m.message_date >= NOW() - INTERVAL '30 days'
@@ -519,7 +537,9 @@ async function fetchThread(memberPhone, convKey) {
       cleanName(r.sender_wa_business_name) ||
       cleanName(r.sender_wa_contact_name) ||
       cleanName(r.pushname) ||
-      r.sender_phone,
+      r.sender_phone ||
+      r.sender_resolved_phone,
+    counterpart_resolved: r.counterpart_phone || r.counterpart_resolved_phone,
   }));
 }
 
@@ -668,6 +688,33 @@ app.get("/client-avatar/:id", async (req, res) => {
   } catch (err) {
     console.error("[client-avatar]", err);
     res.status(500).send(err.message);
+  }
+});
+
+// Refresh LID resolution map (cron-able): POST /lid-refresh
+app.post("/lid-refresh", async (_req, res) => {
+  try {
+    await pool.query("REFRESH MATERIALIZED VIEW CONCURRENTLY wa_lid_phone_resolution");
+    const r = await pool.query("SELECT COUNT(*) AS n FROM wa_lid_phone_resolution");
+    CACHE.teams = { at: 0, payload: null };
+    res.json({ ok: true, resolved_lids: parseInt(r.rows[0].n, 10) });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.get("/lid-stats", async (_req, res) => {
+  try {
+    const r = await pool.query(`
+      SELECT
+        (SELECT COUNT(*) FROM wa_lid_phone_resolution) AS resolved_total,
+        (SELECT COUNT(DISTINCT counterpart_lid) FROM whatsapp_message_context
+         WHERE counterpart_lid IS NOT NULL AND counterpart_phone IS NULL) AS total_lid_only,
+        (SELECT computed_at FROM wa_lid_phone_resolution ORDER BY computed_at DESC LIMIT 1) AS computed_at
+    `);
+    res.json(r.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 
