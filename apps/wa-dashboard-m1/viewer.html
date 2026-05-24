@@ -449,11 +449,12 @@ function renderConvs() {
     colConvs.innerHTML = `<div class="col-header">Conversazioni</div><div class="empty">Seleziona un team member</div>`;
     return;
   }
-  // Sort: HIGH > MEDIUM > by last_at
+  // Sort: HIGH always first, then strictly by last_at DESC (most recent wins, regardless of MEDIUM tag)
+  // Rationale: a group msg of 5 min ago is more relevant than a 3-day-old MEDIUM-flagged direct.
   const convs = [...pd.convs].sort((a,b) => {
-    const pa = a.attention_priority === "HIGH" ? 2 : a.attention_priority === "MEDIUM" ? 1 : 0;
-    const pb = b.attention_priority === "HIGH" ? 2 : b.attention_priority === "MEDIUM" ? 1 : 0;
-    if (pa !== pb) return pb - pa;
+    const aHigh = a.attention_priority === "HIGH" ? 1 : 0;
+    const bHigh = b.attention_priority === "HIGH" ? 1 : 0;
+    if (aHigh !== bHigh) return bHigh - aHigh;
     return new Date(b.last_at) - new Date(a.last_at);
   });
   const headerExtra = pd.attention.high || pd.attention.medium
