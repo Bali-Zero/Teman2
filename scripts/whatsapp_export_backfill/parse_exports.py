@@ -17,7 +17,10 @@ MESSAGE_RE = re.compile(
     r"(?P<time>\d{1,2}[:.]\d{2}[:.]\d{2})\]\s+"
     r"(?P<sender>[^:]+):\s?(?P<body>.*)$"
 )
-ATTACHMENT_RE = re.compile(r"<(?P<label>attached|allegato):\s*(?P<filename>[^>]+)>", re.IGNORECASE)
+ATTACHMENT_RE = re.compile(
+    r"<(?P<label>attached|allegato|terlampir|adjunto|anexo|fichier joint|joint|angehängt|datei):\s*(?P<filename>[^>]+)>",
+    re.IGNORECASE,
+)
 
 
 def canonical_phone(value: str | None) -> str:
@@ -174,12 +177,23 @@ def _extract_attachments(body: str, root: Path) -> list[dict[str, str]]:
     for match in ATTACHMENT_RE.finditer(body):
         filename = _strip_invisible(match.group("filename")).strip()
         label = match.group("label").lower()
+        marker_lang = {
+            "attached": "en",
+            "allegato": "it",
+            "terlampir": "id",
+            "adjunto": "es",
+            "anexo": "pt",
+            "fichier joint": "fr",
+            "joint": "fr",
+            "angehängt": "de",
+            "datei": "de",
+        }.get(label, "en")
         attachments.append(
             {
                 "filename": filename,
                 "filename_nfc": unicodedata.normalize("NFC", filename),
                 "source_path": _resolve_attachment_path(root, filename),
-                "marker_language": "it" if label == "allegato" else "en",
+                "marker_language": marker_lang,
             }
         )
     return attachments
