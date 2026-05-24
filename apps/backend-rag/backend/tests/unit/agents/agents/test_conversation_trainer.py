@@ -20,7 +20,20 @@ from backend.agents.agents.conversation_trainer import ConversationTrainer
 @pytest.fixture
 def mock_db_pool():
     """Mock database pool"""
-    return AsyncMock()
+    mock_conn = AsyncMock()
+    mock_conn.fetch = AsyncMock(return_value=[])
+
+    class _AcquireContext:
+        async def __aenter__(self):
+            return mock_conn
+
+        async def __aexit__(self, *args):
+            return False
+
+    pool = MagicMock()
+    pool.acquire = MagicMock(return_value=_AcquireContext())
+    pool._mock_conn = mock_conn
+    return pool
 
 
 @pytest.fixture

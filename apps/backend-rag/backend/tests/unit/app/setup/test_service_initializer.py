@@ -402,6 +402,12 @@ class TestInitializeDatabaseServices:
         mock_weekly.start = AsyncMock()
         mock_weekly_reporter.return_value = mock_weekly
 
+        def close_created_coro(coro, *args, **kwargs):
+            coro.close()
+            return MagicMock()
+
+        mock_create_task.side_effect = close_created_coro
+
         result = await initialize_database_services(app)
 
         assert result is not None

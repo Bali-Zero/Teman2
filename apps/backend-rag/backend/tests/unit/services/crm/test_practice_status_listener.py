@@ -318,8 +318,10 @@ class TestCloseConn:
 
     @pytest.mark.asyncio
     async def test_close_when_conn_exists(self, listener):
-        mock_conn = AsyncMock()
+        mock_conn = MagicMock()
         mock_conn.is_closed.return_value = False
+        mock_conn.remove_listener = AsyncMock()
+        mock_conn.close = AsyncMock()
         listener._conn = mock_conn
         await listener._close_conn()
         assert listener._conn is None

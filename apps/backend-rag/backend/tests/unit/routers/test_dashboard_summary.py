@@ -151,7 +151,7 @@ class TestGetCriticalDeadlines:
     async def test_exception_returns_zero(self):
         from backend.app.routers.dashboard_summary import _get_critical_deadlines
 
-        mock_pool = AsyncMock()
+        mock_pool = MagicMock()
         mock_pool.acquire.side_effect = Exception("fail")
 
         result = await _get_critical_deadlines(mock_pool, "user1", is_admin=False)
@@ -195,7 +195,7 @@ class TestGetRevenueStats:
     async def test_exception_returns_zeros(self):
         from backend.app.routers.dashboard_summary import _get_revenue_stats
 
-        mock_pool = AsyncMock()
+        mock_pool = MagicMock()
         mock_pool.acquire.side_effect = Exception("fail")
 
         result = await _get_revenue_stats(mock_pool)
@@ -247,7 +247,7 @@ class TestCalculateRevenueGrowth:
     async def test_exception_returns_zero(self):
         from backend.app.routers.dashboard_summary import _calculate_revenue_growth
 
-        mock_pool = AsyncMock()
+        mock_pool = MagicMock()
         mock_pool.acquire.side_effect = Exception("fail")
 
         result = await _calculate_revenue_growth(mock_pool)

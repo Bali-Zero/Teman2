@@ -77,7 +77,7 @@ class TestAgenticRagRouter:
             original = deps._agentic_rag_orchestrator
             deps._agentic_rag_orchestrator = None
             try:
-                orchestrator = get_orchestrator(mock_request)
+                orchestrator = await get_orchestrator(mock_request)
                 assert orchestrator is not None
             finally:
                 deps._agentic_rag_orchestrator = original
@@ -272,9 +272,13 @@ class TestAgenticRagRouter:
     @pytest.mark.asyncio
     async def test_get_conversation_history_for_agentic_with_session_id(self):
         """Test getting history by session ID"""
-        mock_db = AsyncMock()
+        mock_db = MagicMock()
         mock_conn = AsyncMock()
-        mock_db.acquire.return_value.__aenter__.return_value = mock_conn
+        acquire_cm = MagicMock()
+        acquire_cm.__aenter__ = AsyncMock(return_value=mock_conn)
+        acquire_cm.__aexit__ = AsyncMock(return_value=False)
+        mock_db.acquire = MagicMock(return_value=acquire_cm)
+        mock_conn.fetchrow = AsyncMock(return_value=None)
         mock_conn.fetch.return_value = []
 
         result = await get_conversation_history_for_agentic(
