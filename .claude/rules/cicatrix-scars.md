@@ -1365,9 +1365,9 @@ Without the flag: Cell pulses internally, sensors fire, cortex thinks, actions t
 
 ---
 
-### 🚨 P0 SECURITY: Postgres prod password `backend_rag_v2` hardcoded in 32 files repo public — 5 months exposure (2026-05-21)
+### ✅ RESOLVED (silent rotation): P0 SECURITY: Postgres prod password `backend_rag_v2` hardcoded in 32 files repo public — 5 months exposure (2026-05-21 → resolved 2026-05-23)
 
-_Discovered: 2026-05-21 ~05:00 WITA during PR #802 admin-override review · Severity: **P0** · Status: **OPEN — awaiting rotation decision by Antonello**_
+_Discovered: 2026-05-21 ~05:00 WITA during PR #802 admin-override review · Severity: **P0** · Status: **RESOLVED — rotation silently applied lato Fly between 2026-05-21 and 2026-05-23, scoperto 2026-05-23 durante T3.2 Hybrid D pre-flight (sync Pro `.env` 15→31 char password). Repo scrub history NON eseguito (Opzione B partial). Status header aggiornato 2026-05-25 da audit GEN-1.**_
 
 **TRAUMA:** Password `<REDACTED — see incident report>` per role `backend_rag_v2` (Fly Postgres `nuzantara-postgres.flycast`, production database Nuzantara) hardcoded in plaintext in **32 file** del repo public `Balizero1987/Teman2`:
 
