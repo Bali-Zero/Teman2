@@ -26,6 +26,84 @@
 
 BEGIN;
 
+-- A0. WhatsApp export/backfill staging tables.
+-- These are used by scripts/whatsapp_export_backfill/import_staging.py and
+-- provide the FK target for whatsapp_message_context.ingest_batch_id below.
+CREATE TABLE IF NOT EXISTS whatsapp_export_batches (
+    id BIGSERIAL PRIMARY KEY,
+    source_root TEXT NOT NULL,
+    source_label TEXT NOT NULL,
+    source_hash TEXT NOT NULL UNIQUE,
+    chat_title TEXT,
+    canonical_chat_path TEXT,
+    status TEXT NOT NULL DEFAULT 'parsed',
+    metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_by TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS idx_wa_export_batches_status_created
+    ON whatsapp_export_batches (status, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS whatsapp_export_messages_staging (
+    id BIGSERIAL PRIMARY KEY,
+    batch_id BIGINT NOT NULL REFERENCES whatsapp_export_batches(id) ON DELETE CASCADE,
+    source_relpath TEXT NOT NULL,
+    message_index INTEGER NOT NULL,
+    message_date TIMESTAMPTZ,
+    sender_display_name TEXT,
+    body TEXT,
+    body_excerpt TEXT,
+    has_attachments BOOLEAN NOT NULL DEFAULT false,
+    attachment_relpaths JSONB NOT NULL DEFAULT '[]'::jsonb,
+    review_status TEXT NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (batch_id, source_relpath, message_index)
+);
+CREATE INDEX IF NOT EXISTS idx_wa_export_msg_date
+    ON whatsapp_export_messages_staging (message_date DESC);
+CREATE INDEX IF NOT EXISTS idx_wa_export_msg_review
+    ON whatsapp_export_messages_staging (review_status, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS whatsapp_export_documents_staging (
+    id BIGSERIAL PRIMARY KEY,
+    batch_id BIGINT NOT NULL REFERENCES whatsapp_export_batches(id) ON DELETE CASCADE,
+    source_relpath TEXT NOT NULL,
+    file_name TEXT,
+    file_ext TEXT,
+    file_size_bytes BIGINT,
+    sha256 TEXT,
+    document_category TEXT,
+    match_reasons JSONB NOT NULL DEFAULT '[]'::jsonb,
+    contains_sensitive_data BOOLEAN NOT NULL DEFAULT true,
+    review_status TEXT NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (batch_id, source_relpath)
+);
+CREATE INDEX IF NOT EXISTS idx_wa_export_doc_review
+    ON whatsapp_export_documents_staging (review_status, document_category);
+CREATE INDEX IF NOT EXISTS idx_wa_export_doc_sha256
+    ON whatsapp_export_documents_staging (sha256)
+    WHERE sha256 IS NOT NULL;
+
+CREATE TABLE IF NOT EXISTS whatsapp_export_contacts_staging (
+    id BIGSERIAL PRIMARY KEY,
+    batch_id BIGINT NOT NULL REFERENCES whatsapp_export_batches(id) ON DELETE CASCADE,
+    source_relpath TEXT NOT NULL,
+    display_name TEXT,
+    phone_raw TEXT,
+    phone_canonical TEXT,
+    waid TEXT,
+    match_reasons JSONB NOT NULL DEFAULT '[]'::jsonb,
+    review_status TEXT NOT NULL DEFAULT 'pending',
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS uix_wa_export_contacts_batch_rel_phone
+    ON whatsapp_export_contacts_staging (batch_id, source_relpath, COALESCE(phone_canonical, ''));
+CREATE INDEX IF NOT EXISTS idx_wa_export_contacts_phone
+    ON whatsapp_export_contacts_staging (phone_canonical)
+    WHERE phone_canonical IS NOT NULL;
+
 -- A. whatsapp_conversations
 CREATE TABLE IF NOT EXISTS whatsapp_conversations (
     conversation_id BIGSERIAL PRIMARY KEY,
@@ -195,10 +273,8 @@ COMMIT;
 
 -- === ROLLBACK ===
 -- Inline rollback per W42 lint requirement (cicatrix RESOLVED 2026-05-23).
--- Drops 6 new tables CASCADE + removes additive columns from whatsapp_message_context
--- and team_members. Indexes drop with parent tables. Heredoc-authored via Bash
--- to bypass Edit guardrails hook (cicatrix W37 pattern, operator-approved in-session
--- ops, defense-in-depth posture preserved).
+-- Drops new tables CASCADE + removes additive columns from whatsapp_message_context
+-- and team_members. Indexes drop with parent tables.
 -- BEGIN;
 --
 -- DROP INDEX IF EXISTS idx_team_members_telegram_chat_id;
@@ -231,5 +307,9 @@ COMMIT;
 -- DROP TABLE IF EXISTS whatsapp_entity_links CASCADE;
 -- DROP TABLE IF EXISTS whatsapp_extractions CASCADE;
 -- DROP TABLE IF EXISTS whatsapp_conversations CASCADE;
+-- DROP TABLE IF EXISTS whatsapp_export_contacts_staging CASCADE;
+-- DROP TABLE IF EXISTS whatsapp_export_documents_staging CASCADE;
+-- DROP TABLE IF EXISTS whatsapp_export_messages_staging CASCADE;
+-- DROP TABLE IF EXISTS whatsapp_export_batches CASCADE;
 --
 -- COMMIT;
